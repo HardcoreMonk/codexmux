@@ -102,6 +102,7 @@ const PaneContainer = ({
   const [hasEverConnected, setHasEverConnected] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isPanelTransitioning, setIsPanelTransitioning] = useState(false);
   const [tabTitles, setTabTitles] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
     for (const tab of tabs) {
@@ -181,6 +182,7 @@ const PaneContainer = ({
         if (!isCoolingDown) {
           const tab = tabsRef.current.find((t) => t.id === tabId);
           if (tab?.panelType !== 'claude-code') {
+            setIsPanelTransitioning(true);
             onUpdateTabPanelType(paneId, tabId, 'claude-code');
           }
         }
@@ -381,6 +383,7 @@ const PaneContainer = ({
       manualToggleCooldownRef.current[activeTabId] = Date.now();
     }
 
+    setIsPanelTransitioning(true);
     onUpdateTabPanelType(paneId, activeTabId, next);
   }, [paneId, activeTabId, tabs, onUpdateTabPanelType]);
 
@@ -394,6 +397,7 @@ const PaneContainer = ({
       splitGroupRef.current.setLayout({ timeline: 0, 'terminal-area': 100 });
     }
     const timer = setTimeout(() => {
+      setIsPanelTransitioning(false);
       if (!isReady || status !== 'connected') return;
       const { cols, rows } = fit();
       wsActionsRef.current.sendResize(cols, rows);
@@ -459,7 +463,7 @@ const PaneContainer = ({
             ? { timeline: 70, 'terminal-area': 30 }
             : { timeline: 0, 'terminal-area': 100 }
           }
-          className="h-full"
+          className={cn('h-full', isPanelTransitioning && '[&>[data-panel]]:[transition:flex-grow_150ms_ease-out]')}
         >
           <Panel
             id="timeline"
