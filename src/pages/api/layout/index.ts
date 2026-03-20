@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getLayout, updateLayout, collectAllTabs } from '@/lib/layout-store';
-import { getActiveWorkspaceId, getWorkspaceById, updateWorkspaceDirectories } from '@/lib/workspace-store';
+import { getLayout, updateLayout } from '@/lib/layout-store';
+import { getActiveWorkspaceId, getWorkspaceById } from '@/lib/workspace-store';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const wsId = (req.query.workspace as string) || await getActiveWorkspaceId();
@@ -29,16 +29,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     if ('error' in result) {
       return res.status(400).json(result);
     }
-
-    const cwds = [...new Set(
-      collectAllTabs(result.root)
-        .map((t) => t.cwd)
-        .filter((c): c is string => !!c),
-    )];
-    if (cwds.length > 0) {
-      updateWorkspaceDirectories(wsId, cwds).catch(() => {});
-    }
-
     return res.status(200).json(result);
   }
 

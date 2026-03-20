@@ -89,6 +89,19 @@ export const collectPanes = (node: TLayoutNode): IPaneNode[] => {
 export const collectAllTabs = (node: TLayoutNode): ITab[] =>
   collectPanes(node).flatMap((p) => p.tabs);
 
+const syncWorkspaceDirectories = (wsId: string, root: TLayoutNode): void => {
+  const cwds = [...new Set(
+    collectAllTabs(root)
+      .map((t) => t.cwd)
+      .filter((c): c is string => !!c),
+  )];
+  if (cwds.length > 0) {
+    import('@/lib/workspace-store').then(({ updateWorkspaceDirectories }) => {
+      updateWorkspaceDirectories(wsId, cwds).catch(() => {});
+    }).catch(() => {});
+  }
+};
+
 export const normalizeTree = (node: TLayoutNode): TLayoutNode => {
   if (node.type === 'pane') return node;
   const left = normalizeTree(node.children[0]);
@@ -258,6 +271,7 @@ export const updateLayout = async (
       updatedAt: new Date().toISOString(),
     };
     await writeLayoutFile(layout, resolveLayoutFile(wsId));
+    syncWorkspaceDirectories(wsId,normalized);
     return layout;
   });
 
@@ -308,6 +322,7 @@ export const addTabToPane = async (wsId: string, paneId: string, name?: string, 
     pane.activeTabId = tabId;
     layout.updatedAt = new Date().toISOString();
     await writeLayoutFile(layout, filePath);
+    syncWorkspaceDirectories(wsId,layout.root);
 
     console.log(`[layout] 탭 추가: pane=${paneId}, tab=${tabId}, session=${sessionName}`);
     return tab;
@@ -341,6 +356,7 @@ export const removeTabFromPane = async (wsId: string, paneId: string, tabId: str
     pane.tabs.forEach((t, i) => { t.order = i; });
     layout.updatedAt = new Date().toISOString();
     await writeLayoutFile(layout, filePath);
+    syncWorkspaceDirectories(wsId,layout.root);
 
     console.log(`[layout] 탭 삭제: pane=${paneId}, tab=${tabId}`);
     return true;

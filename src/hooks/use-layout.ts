@@ -28,6 +28,15 @@ const replacePane = (
   };
 };
 
+export const collectTabCwds = (node: TLayoutNode): string[] => [
+  ...new Set(
+    collectPanes(node)
+      .flatMap((p) => p.tabs)
+      .map((t) => t.cwd)
+      .filter((c): c is string => !!c),
+  ),
+];
+
 export const getFirstPaneId = (node: TLayoutNode): string => {
   if (node.type === 'pane') return node.id;
   return getFirstPaneId(node.children[0]);

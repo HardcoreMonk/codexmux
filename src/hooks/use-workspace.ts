@@ -27,6 +27,7 @@ interface IUseWorkspace {
   removeWorkspace: (workspaceId: string) => void;
   switchWorkspace: (workspaceId: string) => void;
   renameWorkspace: (workspaceId: string, name: string) => Promise<boolean>;
+  updateDirectories: (workspaceId: string, directories: string[]) => void;
   toggleSidebar: () => void;
   setSidebarWidth: (width: number) => void;
   saveSidebarWidth: (width: number) => void;
@@ -185,6 +186,17 @@ const useWorkspace = (initialData?: IWorkspaceInitialData): IUseWorkspace => {
     [saveActive],
   );
 
+  const updateDirectories = useCallback(
+    (workspaceId: string, directories: string[]) => {
+      setWorkspaces((prev) =>
+        prev.map((w) =>
+          w.id === workspaceId ? { ...w, directories } : w,
+        ),
+      );
+    },
+    [],
+  );
+
   const validateDirectory = useCallback(
     async (directory: string): Promise<IValidateResponse> => {
       try {
@@ -212,6 +224,7 @@ const useWorkspace = (initialData?: IWorkspaceInitialData): IUseWorkspace => {
     removeWorkspace,
     switchWorkspace,
     renameWorkspace: renameWorkspaceAction,
+    updateDirectories,
     toggleSidebar,
     setSidebarWidth,
     saveSidebarWidth,

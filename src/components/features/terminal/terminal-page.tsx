@@ -1,8 +1,8 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Loader2, AlertTriangle, RefreshCw, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import useLayout, { collectPanes } from '@/hooks/use-layout';
+import useLayout, { collectPanes, collectTabCwds } from '@/hooks/use-layout';
 import useWorkspace, { type IWorkspaceInitialData } from '@/hooks/use-workspace';
 import useKeyboardShortcuts from '@/hooks/use-keyboard-shortcuts';
 import PaneLayout from '@/components/features/terminal/pane-layout';
@@ -78,6 +78,17 @@ const TerminalPage = ({ initialWorkspace }: ITerminalPageProps) => {
     },
     [ws, layout],
   );
+
+  const layoutCwds = useMemo(
+    () => layout.layout ? collectTabCwds(layout.layout.root) : [],
+    [layout.layout],
+  );
+  const cwdsKey = layoutCwds.join('\0');
+
+  useEffect(() => {
+    if (!ws.activeWorkspaceId || layoutCwds.length === 0) return;
+    ws.updateDirectories(ws.activeWorkspaceId, layoutCwds);
+  }, [cwdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useKeyboardShortcuts({ layout, ws, onSelectWorkspace: handleSelectWorkspace });
 
