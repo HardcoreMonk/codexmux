@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Loader2, WifiOff } from 'lucide-react';
+import { Loader2, WifiOff, Power } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { TDisconnectReason } from '@/types/terminal';
@@ -44,7 +44,7 @@ const TerminalPage = () => {
   const wsActionsRef = useRef<IWsActions>(NOOP_WS_ACTIONS);
   const newSessionRef = useRef(false);
 
-  const { status, retryCount, disconnectReason, sendStdin, sendResize, reconnect } =
+  const { status, retryCount, disconnectReason, sendStdin, sendResize, sendKillSession, reconnect } =
     useTerminalWebSocket({
       onData: (data) => termActionsRef.current.write(data),
       onConnected: () => {
@@ -115,6 +115,16 @@ const TerminalPage = () => {
           </>
         )}
       </div>
+
+      {hasConnected && status === 'connected' && (
+        <button
+          className="absolute top-3 right-3 z-10 rounded-md p-1.5 text-zinc-600 opacity-0 transition-opacity hover:bg-zinc-800 hover:text-zinc-300 hover:opacity-100 focus:opacity-100"
+          onClick={sendKillSession}
+          title="세션 종료"
+        >
+          <Power className="h-4 w-4" />
+        </button>
+      )}
 
       {hasConnected && (
         <ConnectionStatus
