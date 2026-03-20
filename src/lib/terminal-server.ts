@@ -2,7 +2,7 @@ import { IncomingMessage } from 'http';
 import { WebSocket } from 'ws';
 import * as pty from 'node-pty';
 import {
-  listSessions,
+  hasSession,
   createSession,
   killSession,
   defaultSessionName,
@@ -84,7 +84,7 @@ export const gracefulShutdown = () => {
   });
 };
 
-export const handleConnection = async (ws: WebSocket, request: IncomingMessage) => {
+export const handleConnection = async (ws: WebSocket, request: IncomingMessage, sessionId: string | null) => {
   const url = new URL(request.url || '', 'http://localhost');
   const clientId = url.searchParams.get('clientId');
 
@@ -185,12 +185,11 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage) 
   const cols = pending.resize?.cols || 80;
   const rows = pending.resize?.rows || 24;
 
-  const sessionParam = url.searchParams.get('session');
-
-  if (sessionParam) {
-    sessionName = sessionParam;
-    const sessions = await listSessions();
-    if (!sessions.includes(sessionName)) {
+  if (sessionId) {
+    sessionName = sessionId;
+    console.log(`[terminal] session requested: ${sessionName}`);
+    const exists = await hasSession(sessionId);
+    if (!exists) {
       console.log(`[terminal] session not found: ${sessionName}`);
       ws.close(1011, 'Session not found');
       return;
@@ -203,34 +202,15 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage) 
       return;
     }
   } else {
-    const sessions = await listSessions();
-    if (sessions.length > 0) {
-      sessionName = sessions[0];
-      console.log(`[terminal] existing tmux session found: ${sessionName}`);
-    } else {
-      sessionName = defaultSessionName();
-      try {
-        await createSession(sessionName, cols, rows);
-      } catch (err) {
-        console.log(`[terminal] tmux session creation failed: ${err instanceof Error ? err.message : err}`);
-        ws.close(1011, 'Session create failed');
-        return;
-      }
-    }
-
+    console.log('[terminal] no session param, creating new session');
+    sessionName = defaultSessionName();
     try {
+      await createSession(sessionName, cols, rows);
       ptyProcess = attachToSession(sessionName, cols, rows);
     } catch (err) {
-      console.log(`[terminal] tmux attach failed, creating new session: ${err instanceof Error ? err.message : err}`);
-      sessionName = defaultSessionName();
-      try {
-        await createSession(sessionName, cols, rows);
-        ptyProcess = attachToSession(sessionName, cols, rows);
-      } catch (retryErr) {
-        console.log(`[terminal] tmux retry failed: ${retryErr instanceof Error ? retryErr.message : retryErr}`);
-        ws.close(1011, 'Session create failed');
-        return;
-      }
+      console.log(`[terminal] tmux session creation failed: ${err instanceof Error ? err.message : err}`);
+      ws.close(1011, 'Session create failed');
+      return;
     }
   }
 
@@ -238,7 +218,7 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage) 
     ptyProcess.resize(pending.resize.cols, pending.resize.rows);
   }
 
-  console.log(`[terminal] attached to tmux session: ${sessionName} (pid: ${ptyProcess.pid})`);
+  console.log(`[terminal] attached to ${sessionId ? 'existing' : 'new'} session: ${sessionName} (pid: ${ptyProcess.pid})`);
 
   const heartbeatTimer = setInterval(() => {
     if (conn && Date.now() - lastHeartbeat > HEARTBEAT_TIMEOUT) {

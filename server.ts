@@ -25,9 +25,12 @@ const start = async () => {
   wss.on('connection', handleConnection);
 
   server.on('upgrade', (request, socket, head) => {
-    if (request.url?.startsWith('/api/terminal')) {
+    const url = new URL(request.url ?? '', `http://localhost:${port}`);
+
+    if (url.pathname === '/api/terminal') {
+      const sessionId = url.searchParams.get('session');
       wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit('connection', ws, request);
+        wss.emit('connection', ws, request, sessionId);
       });
     } else {
       upgrade(request, socket, head);
