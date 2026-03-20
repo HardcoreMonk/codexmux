@@ -6,6 +6,7 @@ import {
   encodeStdin,
   encodeResize,
   encodeHeartbeat,
+  encodeKillSession,
   decodeMessage,
 } from '@/lib/terminal-protocol';
 
@@ -153,6 +154,13 @@ const useTerminalWebSocket = ({
     }
   }, []);
 
+  const sendKillSession = useCallback(() => {
+    const ws = wsRef.current;
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(encodeKillSession());
+    }
+  }, []);
+
   const reconnect = useCallback(() => {
     retryCountRef.current = 0;
     setRetryCount(0);
@@ -170,7 +178,7 @@ const useTerminalWebSocket = ({
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { status, retryCount, disconnectReason, sendStdin, sendResize, reconnect };
+  return { status, retryCount, disconnectReason, sendStdin, sendResize, sendKillSession, reconnect };
 };
 
 export default useTerminalWebSocket;

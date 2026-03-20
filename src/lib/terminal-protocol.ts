@@ -2,6 +2,7 @@ export const MSG_STDIN = 0x00;
 export const MSG_STDOUT = 0x01;
 export const MSG_RESIZE = 0x02;
 export const MSG_HEARTBEAT = 0x03;
+export const MSG_KILL_SESSION = 0x04;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -25,6 +26,10 @@ export const encodeResize = (cols: number, rows: number): ArrayBuffer => {
 
 export const encodeHeartbeat = (): ArrayBuffer => {
   return new Uint8Array([MSG_HEARTBEAT]).buffer;
+};
+
+export const encodeKillSession = (): ArrayBuffer => {
+  return new Uint8Array([MSG_KILL_SESSION]).buffer;
 };
 
 export const decodeMessage = (
