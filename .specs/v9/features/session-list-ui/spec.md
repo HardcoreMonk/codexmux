@@ -2,7 +2,7 @@
 page: session-list-ui
 title: 세션 목록 UI 및 뷰 전환
 route: /
-status: DRAFT
+status: DETAILED
 complexity: High
 depends_on:
   - .specs/v9/features/session-list-api/spec.md

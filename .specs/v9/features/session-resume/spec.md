@@ -2,7 +2,7 @@
 page: session-resume
 title: 세션 Resume 연결
 route: /api/timeline
-status: DRAFT
+status: DETAILED
 complexity: Medium
 depends_on:
   - .specs/v9/features/session-list-api/spec.md

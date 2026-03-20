@@ -3,19 +3,15 @@ import { Loader2, AlertTriangle, RefreshCw, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import useLayout, { collectPanes } from '@/hooks/use-layout';
-import useWorkspace, { type IWorkspaceInitialData } from '@/hooks/use-workspace';
+import useWorkspaceStore from '@/hooks/use-workspace-store';
 import useKeyboardShortcuts from '@/hooks/use-keyboard-shortcuts';
-import useTabMetadataStore, { setLayoutSyncCallback, setDirectorySyncCallback } from '@/hooks/use-tab-metadata-store';
+import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import type { ITabMetadata } from '@/hooks/use-tab-metadata-store';
 import PaneLayout from '@/components/features/terminal/pane-layout';
 import Sidebar from '@/components/features/terminal/sidebar';
 
-interface ITerminalPageProps {
-  initialWorkspace?: IWorkspaceInitialData;
-}
-
-const TerminalPage = ({ initialWorkspace }: ITerminalPageProps) => {
-  const ws = useWorkspace(initialWorkspace);
+const TerminalPage = () => {
+  const ws = useWorkspaceStore();
   const prevWorkspaceIdRef = useRef<string | null>(null);
   const switchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [fadeOut, setFadeOut] = useState(false);
@@ -23,10 +19,10 @@ const TerminalPage = ({ initialWorkspace }: ITerminalPageProps) => {
   const handleFetchError = useCallback(() => {
     const prevId = prevWorkspaceIdRef.current;
     if (prevId) {
-      ws.switchWorkspace(prevId);
+      useWorkspaceStore.getState().switchWorkspace(prevId);
       toast.error('전환할 수 없습니다');
     }
-  }, [ws]);
+  }, []);
 
   const layout = useLayout({
     workspaceId: ws.activeWorkspaceId,
@@ -38,11 +34,6 @@ const TerminalPage = ({ initialWorkspace }: ITerminalPageProps) => {
     !layout.isLoading &&
     collectPanes(layout.layout.root).every((p) => p.tabs.length === 0)
   );
-
-  const wsRef = useRef(ws);
-  useEffect(() => {
-    wsRef.current = ws;
-  });
 
   // Hydrate store from layout data
   const layoutUpdatedAt = layout.layout?.updatedAt;
@@ -62,45 +53,6 @@ const TerminalPage = ({ initialWorkspace }: ITerminalPageProps) => {
     useTabMetadataStore.getState().hydrate(metadata);
   }, [layout.layout, layoutUpdatedAt]);
 
-  // Sync store → layout.json (debounced by store)
-  const updateAndSaveRef = useRef(layout.updateAndSave);
-  useEffect(() => {
-    updateAndSaveRef.current = layout.updateAndSave;
-  });
-
-  useEffect(() => {
-    setLayoutSyncCallback((allMetadata: Record<string, ITabMetadata>) => {
-      updateAndSaveRef.current((data) => {
-        for (const pane of collectPanes(data.root)) {
-          for (const tab of pane.tabs) {
-            const meta = allMetadata[tab.id];
-            if (!meta) continue;
-            if (meta.title !== undefined) tab.title = meta.title;
-            if (meta.cwd !== undefined) tab.cwd = meta.cwd;
-          }
-        }
-        return data;
-      });
-    });
-    return () => setLayoutSyncCallback(null);
-  }, []);
-
-  // Sync store cwds → workspace directories
-  const wsActiveIdRef = useRef(ws.activeWorkspaceId);
-  useEffect(() => {
-    wsActiveIdRef.current = ws.activeWorkspaceId;
-  });
-
-  useEffect(() => {
-    setDirectorySyncCallback((cwds) => {
-      const wsId = wsActiveIdRef.current;
-      if (wsId && cwds.length > 0) {
-        wsRef.current.updateDirectories(wsId, cwds);
-      }
-    });
-    return () => setDirectorySyncCallback(null);
-  }, []);
-
   // Cleanup stale tab metadata
   useEffect(() => {
     if (!layout.layout) return;
@@ -113,7 +65,7 @@ const TerminalPage = ({ initialWorkspace }: ITerminalPageProps) => {
   useEffect(() => {
     if (!allTabsEmpty) return;
 
-    const { activeWorkspaceId, workspaces, switchWorkspace, deleteWorkspace, removeWorkspace } = wsRef.current;
+    const { activeWorkspaceId, workspaces, switchWorkspace, deleteWorkspace, removeWorkspace } = useWorkspaceStore.getState();
     if (!activeWorkspaceId) return;
 
     const idx = workspaces.findIndex((w) => w.id === activeWorkspaceId);
@@ -131,9 +83,10 @@ const TerminalPage = ({ initialWorkspace }: ITerminalPageProps) => {
 
   const handleSelectWorkspace = useCallback(
     (workspaceId: string) => {
-      if (workspaceId === ws.activeWorkspaceId) return;
+      const { activeWorkspaceId } = useWorkspaceStore.getState();
+      if (workspaceId === activeWorkspaceId) return;
 
-      prevWorkspaceIdRef.current = ws.activeWorkspaceId;
+      prevWorkspaceIdRef.current = activeWorkspaceId;
       layout.saveCurrentLayout();
 
       if (switchTimeoutRef.current) clearTimeout(switchTimeoutRef.current);
@@ -141,14 +94,14 @@ const TerminalPage = ({ initialWorkspace }: ITerminalPageProps) => {
       switchTimeoutRef.current = setTimeout(() => {
         useTabMetadataStore.getState().reset();
         layout.clearLayout();
-        ws.switchWorkspace(workspaceId);
+        useWorkspaceStore.getState().switchWorkspace(workspaceId);
         setFadeOut(false);
       }, 100);
     },
-    [ws, layout],
+    [layout],
   );
 
-  useKeyboardShortcuts({ layout, ws, onSelectWorkspace: handleSelectWorkspace });
+  useKeyboardShortcuts({ layout, onSelectWorkspace: handleSelectWorkspace });
 
   if (ws.isLoading) {
     return (
@@ -190,7 +143,7 @@ const TerminalPage = ({ initialWorkspace }: ITerminalPageProps) => {
       <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 overflow-hidden bg-terminal-bg">
         <AlertTriangle className="h-5 w-5 text-ui-amber" />
         <span className="text-sm text-muted-foreground">{ws.error}</span>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={ws.retry}>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={ws.fetchWorkspaces}>
           <RefreshCw className="h-3.5 w-3.5" />
           재시도
         </Button>
@@ -202,23 +155,7 @@ const TerminalPage = ({ initialWorkspace }: ITerminalPageProps) => {
 
   return (
     <div className="relative flex h-screen w-screen overflow-hidden bg-terminal-bg">
-      <Sidebar
-        workspaces={ws.workspaces}
-        activeWorkspaceId={ws.activeWorkspaceId}
-        collapsed={ws.sidebarCollapsed}
-        width={ws.sidebarWidth}
-        isLoading={false}
-        error={null}
-        onToggleCollapse={ws.toggleSidebar}
-        onWidthChange={ws.setSidebarWidth}
-        onWidthDragEnd={ws.saveSidebarWidth}
-        onSelectWorkspace={handleSelectWorkspace}
-        onCreateWorkspace={ws.createWorkspace}
-        onDeleteWorkspace={ws.deleteWorkspace}
-        onRemoveWorkspace={ws.removeWorkspace}
-        onRenameWorkspace={ws.renameWorkspace}
-        onRetry={ws.retry}
-      />
+      <Sidebar onSelectWorkspace={handleSelectWorkspace} />
 
       <div className="relative min-w-0 flex-1">
         {showSwitching && (
@@ -233,7 +170,7 @@ const TerminalPage = ({ initialWorkspace }: ITerminalPageProps) => {
           <div className="flex h-full flex-col items-center justify-center gap-3">
             <AlertTriangle className="h-5 w-5 text-ui-amber" />
             <span className="text-sm text-muted-foreground">{layout.error}</span>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => layout.retry()}>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => layout.fetchLayout()}>
               <RefreshCw className="h-3.5 w-3.5" />
               재시도
             </Button>
@@ -276,8 +213,8 @@ const TerminalPage = ({ initialWorkspace }: ITerminalPageProps) => {
               size="sm"
               className="gap-1.5"
               onClick={async () => {
-                const created = await ws.createWorkspace('');
-                if (created) ws.switchWorkspace(created.id);
+                const created = await useWorkspaceStore.getState().createWorkspace('');
+                if (created) useWorkspaceStore.getState().switchWorkspace(created.id);
               }}
             >
               <Plus className="h-3.5 w-3.5" />

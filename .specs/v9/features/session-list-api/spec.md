@@ -2,7 +2,7 @@
 page: session-list-api
 title: 세션 목록 조회 API
 route: /api/timeline/sessions
-status: DRAFT
+status: DETAILED
 complexity: Medium
 depends_on:
   - .specs/v8/features/session-detection/spec.md

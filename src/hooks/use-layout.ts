@@ -1,7 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useEffect } from 'react';
+import { create } from 'zustand';
 import { toast } from 'sonner';
 import type { ILayoutData, TLayoutNode, IPaneNode, ITab, TPanelType } from '@/types/terminal';
 
+// --- Pure utility functions (exported for use by other modules) ---
 
 export const collectPanes = (node: TLayoutNode): IPaneNode[] => {
   if (node.type === 'pane') return [node];
@@ -87,21 +89,21 @@ const findAdjacentPaneId = (node: TLayoutNode, paneId: string): string | null =>
 
 const removePaneWithFocus = (data: ILayoutData, paneId: string) => {
   const adjacent = findAdjacentPaneId(data.root, paneId);
-  const result = removePane(data.root, paneId);
+  const result = removePaneNode(data.root, paneId);
   if (result) data.root = result;
   if (data.focusedPaneId === paneId) {
     data.focusedPaneId = adjacent ?? collectPanes(data.root)[0]?.id ?? null;
   }
 };
 
-const removePane = (node: TLayoutNode, paneId: string): TLayoutNode | null => {
+const removePaneNode = (node: TLayoutNode, paneId: string): TLayoutNode | null => {
   if (node.type === 'pane') return null;
   const [left, right] = node.children;
   if (left.type === 'pane' && left.id === paneId) return right;
   if (right.type === 'pane' && right.id === paneId) return left;
-  const leftResult = removePane(left, paneId);
+  const leftResult = removePaneNode(left, paneId);
   if (leftResult) return { ...node, children: [leftResult, right] };
-  const rightResult = removePane(right, paneId);
+  const rightResult = removePaneNode(right, paneId);
   if (rightResult) return { ...node, children: [left, rightResult] };
   return null;
 };
@@ -140,551 +142,472 @@ export const equalizeNode = (node: TLayoutNode): TLayoutNode => {
 const cloneLayout = (data: ILayoutData): ILayoutData =>
   JSON.parse(JSON.stringify(data));
 
-interface IUseLayoutOptions {
+// --- Zustand store ---
+
+interface ILayoutState {
+  layout: ILayoutData | null;
+  isLoading: boolean;
+  error: string | null;
+  isSplitting: boolean;
   workspaceId: string | null;
-  onFetchError?: () => void;
+  paneCount: number;
+  canSplit: boolean;
+
+  setWorkspaceId: (id: string | null) => void;
+  fetchLayout: (wsId?: string | null) => Promise<void>;
+  updateAndSave: (updater: (data: ILayoutData) => ILayoutData) => Promise<void>;
+  splitPane: (paneId: string, orientation: 'horizontal' | 'vertical') => Promise<void>;
+  closePane: (paneId: string) => Promise<void>;
+  focusPane: (paneId: string) => void;
+  updateRatio: (path: number[], ratio: number) => void;
+  moveTab: (tabId: string, fromPaneId: string, toPaneId: string, toIndex: number) => void;
+  createTabInPane: (paneId: string) => Promise<ITab | null>;
+  deleteTabInPane: (paneId: string, tabId: string) => Promise<void>;
+  switchTabInPane: (paneId: string, tabId: string) => void;
+  renameTabInPane: (paneId: string, tabId: string, name: string) => Promise<void>;
+  reorderTabsInPane: (paneId: string, tabIds: string[]) => void;
+  removeTabLocally: (paneId: string, tabId: string) => void;
+  equalizeRatios: () => void;
+  updateTabPanelType: (paneId: string, tabId: string, panelType: TPanelType) => void;
+  saveCurrentLayout: () => void;
+  clearLayout: () => void;
 }
 
-const useLayout = ({ workspaceId, onFetchError }: IUseLayoutOptions) => {
-  const [layout, setLayout] = useState<ILayoutData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isSplitting, setIsSplitting] = useState(false);
+let _retryCount = 0;
+let _abortController: AbortController | null = null;
+let _pendingSave: Promise<void> | null = null;
+let _onFetchError: (() => void) | null = null;
 
-  const layoutRef = useRef<ILayoutData | null>(null);
-  const retryCountRef = useRef(0);
-  const workspaceIdRef = useRef(workspaceId);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const onFetchErrorRef = useRef(onFetchError);
+const wsQuery = (base: string, wsId: string | null): string => {
+  if (!wsId) return base;
+  const sep = base.includes('?') ? '&' : '?';
+  return `${base}${sep}workspace=${wsId}`;
+};
 
-  useEffect(() => {
-    onFetchErrorRef.current = onFetchError;
-  }, [onFetchError]);
-
-  useEffect(() => {
-    layoutRef.current = layout;
-  }, [layout]);
-
-  useEffect(() => {
-    workspaceIdRef.current = workspaceId;
-  }, [workspaceId]);
-
-  const wsQuery = useCallback(
-    (base: string) => {
-      const wsId = workspaceIdRef.current;
-      if (!wsId) return base;
-      const sep = base.includes('?') ? '&' : '?';
-      return `${base}${sep}workspace=${wsId}`;
-    },
-    [],
-  );
-
-  const pendingSaveRef = useRef<Promise<void> | null>(null);
-
-  const saveToServer = useCallback(async (data: ILayoutData) => {
-    try {
-      const res = await fetch(wsQuery('/api/layout'), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          root: data.root,
-          focusedPaneId: data.focusedPaneId,
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        console.error('[layout] 저장 실패:', res.status, body);
-      }
-    } catch (err) {
-      console.error('[layout] 저장 중 네트워크 오류:', err);
+const saveToServer = async (data: ILayoutData, wsId: string | null) => {
+  try {
+    const res = await fetch(wsQuery('/api/layout', wsId), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ root: data.root, focusedPaneId: data.focusedPaneId }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      console.error('[layout] 저장 실패:', res.status, body);
     }
-  }, [wsQuery]);
+  } catch (err) {
+    console.error('[layout] 저장 중 네트워크 오류:', err);
+  }
+};
 
-  const updateAndSave = useCallback(
-    (updater: (data: ILayoutData) => ILayoutData): Promise<void> => {
-      let saved: ILayoutData | null = null;
-      setLayout((prev) => {
-        if (!prev) return prev;
-        const next = updater(cloneLayout(prev));
-        next.updatedAt = new Date().toISOString();
-        saved = next;
-        return next;
-      });
-      if (saved) {
-        const promise = saveToServer(saved);
-        pendingSaveRef.current = promise;
-        promise.finally(() => {
-          if (pendingSaveRef.current === promise) {
-            pendingSaveRef.current = null;
-          }
-        });
-        return promise;
-      }
-      return Promise.resolve();
-    },
-    [saveToServer],
-  );
+const updateDerived = (layout: ILayoutData | null, isSplitting: boolean) => {
+  const paneCount = layout ? collectPanes(layout.root).length : 0;
+  return { paneCount, canSplit: paneCount < 10 && !isSplitting };
+};
 
-  const createFallbackLayout = useCallback(async (): Promise<boolean> => {
-    try {
-      const res = await fetch(wsQuery('/api/layout/pane'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      if (!res.ok) return false;
-      const { paneId, tab } = await res.json();
-      const fallback: ILayoutData = {
-        root: {
-          type: 'pane',
-          id: paneId,
-          tabs: [tab],
-          activeTabId: tab.id,
-        },
-        focusedPaneId: paneId,
-        updatedAt: new Date().toISOString(),
-      };
-      setLayout(fallback);
-      fetch(wsQuery('/api/layout'), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ root: fallback.root, focusedPaneId: fallback.focusedPaneId }),
-      }).catch(() => {});
-      toast.info('기본 레이아웃으로 시작합니다');
-      retryCountRef.current = 0;
-      return true;
-    } catch {
-      return false;
-    }
-  }, [wsQuery]);
+const useLayoutStore = create<ILayoutState>((set, get) => ({
+  layout: null,
+  isLoading: true,
+  error: null,
+  isSplitting: false,
+  workspaceId: null,
+  paneCount: 0,
+  canSplit: false,
 
-  const fetchLayout = useCallback(async (wsId?: string | null) => {
-    const targetWsId = wsId ?? workspaceIdRef.current;
+  setWorkspaceId: (id) => {
+    set({ workspaceId: id });
+  },
+
+  fetchLayout: async (wsId?) => {
+    const targetWsId = wsId ?? get().workspaceId;
     if (!targetWsId) return;
 
-    abortControllerRef.current?.abort();
+    _abortController?.abort();
     const controller = new AbortController();
-    abortControllerRef.current = controller;
+    _abortController = controller;
 
-    setIsLoading(true);
-    setError(null);
+    set({ isLoading: true, error: null });
     try {
-      const url = `/api/layout?workspace=${targetWsId}`;
-      const res = await fetch(url, { signal: controller.signal });
+      const res = await fetch(`/api/layout?workspace=${targetWsId}`, { signal: controller.signal });
       if (!res.ok) throw new Error();
       const data: ILayoutData = await res.json();
       if (controller.signal.aborted) return;
-      setLayout(data);
-      retryCountRef.current = 0;
+      set({ layout: data, ...updateDerived(data, get().isSplitting) });
+      _retryCount = 0;
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      retryCountRef.current += 1;
-      if (retryCountRef.current >= 3) {
-        const ok = await createFallbackLayout();
-        if (ok) return;
+      _retryCount += 1;
+      if (_retryCount >= 3) {
+        try {
+          const res = await fetch(wsQuery('/api/layout/pane', targetWsId), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+          });
+          if (res.ok) {
+            const { paneId, tab } = await res.json();
+            const fallback: ILayoutData = {
+              root: { type: 'pane', id: paneId, tabs: [tab], activeTabId: tab.id },
+              focusedPaneId: paneId,
+              updatedAt: new Date().toISOString(),
+            };
+            set({ layout: fallback, ...updateDerived(fallback, get().isSplitting) });
+            fetch(wsQuery('/api/layout', targetWsId), {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ root: fallback.root, focusedPaneId: fallback.focusedPaneId }),
+            }).catch(() => {});
+            toast.info('기본 레이아웃으로 시작합니다');
+            _retryCount = 0;
+            return;
+          }
+        } catch { /* fallthrough */ }
       }
-      setError('레이아웃을 불러올 수 없습니다');
-      onFetchErrorRef.current?.();
+      set({ error: '레이아웃을 불러올 수 없습니다' });
+      _onFetchError?.();
     } finally {
       if (!controller.signal.aborted) {
-        setIsLoading(false);
+        set({ isLoading: false });
       }
     }
-  }, [createFallbackLayout]);
+  },
 
-  useEffect(() => {
-    if (workspaceId) {
-      retryCountRef.current = 0;
-      fetchLayout(workspaceId);
-    }
-  }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
+  updateAndSave: async (updater) => {
+    const prev = get().layout;
+    if (!prev) return;
+    const next = updater(cloneLayout(prev));
+    next.updatedAt = new Date().toISOString();
+    set({ layout: next, ...updateDerived(next, get().isSplitting) });
+    const promise = saveToServer(next, get().workspaceId);
+    _pendingSave = promise;
+    promise.finally(() => {
+      if (_pendingSave === promise) _pendingSave = null;
+    });
+    return promise;
+  },
 
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      const current = layoutRef.current;
-      if (!current) return;
-      const blob = new Blob(
-        [JSON.stringify({ root: current.root, focusedPaneId: current.focusedPaneId })],
-        { type: 'application/json' },
-      );
-      navigator.sendBeacon(wsQuery('/api/layout/beacon'), blob);
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [wsQuery]);
+  splitPane: async (paneId, orientation) => {
+    const { layout, isSplitting, workspaceId, updateAndSave: uas } = get();
+    if (!layout || isSplitting) return;
+    if (collectPanes(layout.root).length >= 10) return;
 
+    set({ isSplitting: true, canSplit: false });
+    try {
+      let cwd: string | undefined;
+      const pane = findPane(layout.root, paneId);
+      const activeTab = pane?.tabs.find((t) => t.id === pane.activeTabId);
+      if (activeTab) {
+        try {
+          const res = await fetch(wsQuery(`/api/layout/cwd?session=${activeTab.sessionName}`, workspaceId));
+          if (res.ok) cwd = (await res.json()).cwd;
+        } catch { /* fallback */ }
+      }
 
-  const paneCount = layout ? collectPanes(layout.root).length : 0;
-  const canSplit = paneCount < 10 && !isSplitting;
+      const res = await fetch(wsQuery('/api/layout/pane', workspaceId), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cwd }),
+      });
+      if (!res.ok) throw new Error();
+      const { paneId: newPaneId, tab } = await res.json();
 
-  const splitPane = useCallback(
-    async (paneId: string, orientation: 'horizontal' | 'vertical') => {
-      const current = layoutRef.current;
-      if (!current || isSplitting) return;
-      if (collectPanes(current.root).length >= 10) return;
+      const newPane: IPaneNode = { type: 'pane', id: newPaneId, tabs: [tab], activeTabId: tab.id };
 
-      setIsSplitting(true);
-      try {
-        let cwd: string | undefined;
-        const pane = findPane(current.root, paneId);
-        const activeTab = pane?.tabs.find((t) => t.id === pane.activeTabId);
-        if (activeTab) {
-          try {
-            const res = await fetch(wsQuery(`/api/layout/cwd?session=${activeTab.sessionName}`));
-            if (res.ok) cwd = (await res.json()).cwd;
-          } catch {
-            /* fallback to no cwd */
-          }
+      await uas((data) => {
+        const existingPane = findPane(data.root, paneId);
+        if (!existingPane) return data;
+        if (cwd && activeTab) {
+          const srcTab = existingPane.tabs.find((t) => t.id === activeTab.id);
+          if (srcTab) srcTab.cwd = cwd;
         }
-
-        const res = await fetch(wsQuery('/api/layout/pane'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cwd }),
-        });
-        if (!res.ok) throw new Error();
-        const { paneId: newPaneId, tab } = await res.json();
-
-        const newPane: IPaneNode = {
-          type: 'pane',
-          id: newPaneId,
-          tabs: [tab],
-          activeTabId: tab.id,
+        const splitNode: TLayoutNode = {
+          type: 'split', orientation, ratio: 50,
+          children: [{ ...existingPane }, newPane],
         };
+        data.root = replacePane(data.root, paneId, splitNode);
+        data.focusedPaneId = newPaneId;
+        return data;
+      });
+    } catch {
+      toast.error('분할할 수 없습니다');
+    } finally {
+      set((s) => ({ isSplitting: false, canSplit: (s.paneCount) < 10 }));
+    }
+  },
 
-        await updateAndSave((data) => {
-          const existingPane = findPane(data.root, paneId);
-          if (!existingPane) return data;
-          if (cwd && activeTab) {
-            const srcTab = existingPane.tabs.find((t) => t.id === activeTab.id);
-            if (srcTab) srcTab.cwd = cwd;
-          }
-          const splitNode: TLayoutNode = {
-            type: 'split',
-            orientation,
-            ratio: 50,
-            children: [{ ...existingPane }, newPane],
-          };
-          data.root = replacePane(data.root, paneId, splitNode);
-          data.focusedPaneId = newPaneId;
-          return data;
-        });
-      } catch {
-        toast.error('분할할 수 없습니다');
-      } finally {
-        setIsSplitting(false);
+  closePane: async (paneId) => {
+    const { layout, workspaceId, updateAndSave: uas } = get();
+    if (!layout) return;
+    if (collectPanes(layout.root).length <= 1) return;
+
+    const pane = findPane(layout.root, paneId);
+    const sessions = pane?.tabs.map((t) => t.sessionName) ?? [];
+
+    try {
+      await fetch(wsQuery(`/api/layout/pane/${paneId}`, workspaceId), {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessions }),
+      });
+    } catch {
+      toast.error('Pane을 닫을 수 없습니다');
+      return;
+    }
+
+    uas((data) => {
+      removePaneWithFocus(data, paneId);
+      return data;
+    });
+  },
+
+  focusPane: (paneId) => {
+    set((s) => {
+      if (!s.layout || s.layout.focusedPaneId === paneId) return s;
+      return { layout: { ...s.layout, focusedPaneId: paneId } };
+    });
+  },
+
+  updateRatio: (path, ratio) => {
+    get().updateAndSave((data) => {
+      data.root = updateRatioAtPath(data.root, path, ratio);
+      return data;
+    });
+  },
+
+  moveTab: (tabId, fromPaneId, toPaneId, toIndex) => {
+    if (fromPaneId === toPaneId) return;
+    const { layout, workspaceId, updateAndSave: uas } = get();
+    if (!layout) return;
+
+    const from = findPane(layout.root, fromPaneId);
+    const willBeEmpty = from ? from.tabs.length === 1 : false;
+    const shouldClosePane = willBeEmpty && collectPanes(layout.root).length > 1;
+
+    uas((data) => {
+      const fromPane = findPane(data.root, fromPaneId);
+      const toPane = findPane(data.root, toPaneId);
+      if (!fromPane || !toPane) return data;
+
+      const tabIdx = fromPane.tabs.findIndex((t) => t.id === tabId);
+      if (tabIdx === -1) return data;
+
+      const [tab] = fromPane.tabs.splice(tabIdx, 1);
+      if (fromPane.activeTabId === tabId) {
+        fromPane.activeTabId = fromPane.tabs[0]?.id ?? null;
       }
-    },
-    [isSplitting, updateAndSave, wsQuery],
-  );
+      fromPane.tabs.forEach((t, i) => { t.order = i; });
 
-  const closePane = useCallback(
-    async (paneId: string) => {
-      const current = layoutRef.current;
-      if (!current) return;
-      if (collectPanes(current.root).length <= 1) return;
-
-      const pane = findPane(current.root, paneId);
-      const sessions = pane?.tabs.map((t) => t.sessionName) ?? [];
-
-      try {
-        await fetch(wsQuery(`/api/layout/pane/${paneId}`), {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessions }),
-        });
-      } catch {
-        toast.error('Pane을 닫을 수 없습니다');
-        return;
-      }
-
-      updateAndSave((data) => {
-        removePaneWithFocus(data, paneId);
-        return data;
-      });
-    },
-    [updateAndSave, wsQuery],
-  );
-
-  const updateRatio = useCallback(
-    (path: number[], ratio: number) => {
-      updateAndSave((data) => {
-        data.root = updateRatioAtPath(data.root, path, ratio);
-        return data;
-      });
-    },
-    [updateAndSave],
-  );
-
-  const focusPane = useCallback(
-    (paneId: string) => {
-      setLayout((prev) => {
-        if (!prev || prev.focusedPaneId === paneId) return prev;
-        return { ...prev, focusedPaneId: paneId };
-      });
-    },
-    [],
-  );
-
-  const moveTab = useCallback(
-    (tabId: string, fromPaneId: string, toPaneId: string, toIndex: number) => {
-      if (fromPaneId === toPaneId) return;
-
-      const current = layoutRef.current;
-      if (!current) return;
-
-      const from = findPane(current.root, fromPaneId);
-      const willBeEmpty = from ? from.tabs.length === 1 : false;
-      const shouldClosePane = willBeEmpty && collectPanes(current.root).length > 1;
-
-      updateAndSave((data) => {
-        const fromPane = findPane(data.root, fromPaneId);
-        const toPane = findPane(data.root, toPaneId);
-        if (!fromPane || !toPane) return data;
-
-        const tabIdx = fromPane.tabs.findIndex((t) => t.id === tabId);
-        if (tabIdx === -1) return data;
-
-        const [tab] = fromPane.tabs.splice(tabIdx, 1);
-        if (fromPane.activeTabId === tabId) {
-          fromPane.activeTabId = fromPane.tabs[0]?.id ?? null;
-        }
-        fromPane.tabs.forEach((t, i) => {
-          t.order = i;
-        });
-
-        toPane.tabs.splice(toIndex, 0, tab);
-        toPane.tabs.forEach((t, i) => {
-          t.order = i;
-        });
-        toPane.activeTabId = tabId;
-
-        if (shouldClosePane) {
-          const result = removePane(data.root, fromPaneId);
-          if (result) data.root = result;
-        }
-
-        data.focusedPaneId = toPaneId;
-        return data;
-      });
+      toPane.tabs.splice(toIndex, 0, tab);
+      toPane.tabs.forEach((t, i) => { t.order = i; });
+      toPane.activeTabId = tabId;
 
       if (shouldClosePane) {
-        fetch(wsQuery(`/api/layout/pane/${fromPaneId}`), { method: 'DELETE' }).catch(() => {});
+        const result = removePaneNode(data.root, fromPaneId);
+        if (result) data.root = result;
       }
-    },
-    [updateAndSave, wsQuery],
-  );
 
-  const createTabInPane = useCallback(
-    async (paneId: string): Promise<ITab | null> => {
-      try {
-        let cwd: string | undefined;
-        let sourceTabId: string | undefined;
-        const current = layoutRef.current;
-        if (current) {
-          const pane = findPane(current.root, paneId);
-          const activeTab = pane?.tabs.find((t) => t.id === pane.activeTabId);
-          if (activeTab) {
-            sourceTabId = activeTab.id;
-            try {
-              const cwdRes = await fetch(wsQuery(`/api/layout/cwd?session=${activeTab.sessionName}`));
-              if (cwdRes.ok) cwd = (await cwdRes.json()).cwd;
-            } catch {
-              /* fallback to no cwd */
-            }
-          }
+      data.focusedPaneId = toPaneId;
+      return data;
+    });
+
+    if (shouldClosePane) {
+      fetch(wsQuery(`/api/layout/pane/${fromPaneId}`, workspaceId), { method: 'DELETE' }).catch(() => {});
+    }
+  },
+
+  createTabInPane: async (paneId) => {
+    const { layout, workspaceId, updateAndSave: uas } = get();
+    try {
+      let cwd: string | undefined;
+      let sourceTabId: string | undefined;
+      if (layout) {
+        const pane = findPane(layout.root, paneId);
+        const activeTab = pane?.tabs.find((t) => t.id === pane.activeTabId);
+        if (activeTab) {
+          sourceTabId = activeTab.id;
+          try {
+            const cwdRes = await fetch(wsQuery(`/api/layout/cwd?session=${activeTab.sessionName}`, workspaceId));
+            if (cwdRes.ok) cwd = (await cwdRes.json()).cwd;
+          } catch { /* fallback */ }
         }
-
-        const res = await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs`), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cwd }),
-        });
-        if (!res.ok) throw new Error();
-        const newTab: ITab = await res.json();
-
-        updateAndSave((data) => {
-          const pane = findPane(data.root, paneId);
-          if (pane) {
-            if (cwd && sourceTabId) {
-              const srcTab = pane.tabs.find((t) => t.id === sourceTabId);
-              if (srcTab) srcTab.cwd = cwd;
-            }
-            pane.tabs.push(newTab);
-            pane.activeTabId = newTab.id;
-          }
-          return data;
-        });
-        return newTab;
-      } catch {
-        toast.error('탭을 생성할 수 없습니다');
-        return null;
       }
-    },
-    [updateAndSave, wsQuery],
-  );
 
-  const deleteTabInPane = useCallback(
-    async (paneId: string, tabId: string) => {
-      updateAndSave((data) => {
-        const pane = findPane(data.root, paneId);
-        if (!pane) return data;
-        pane.tabs = pane.tabs.filter((t) => t.id !== tabId);
-        if (pane.activeTabId === tabId) {
-          pane.activeTabId = pane.tabs[0]?.id ?? null;
-        }
-        pane.tabs.forEach((t, i) => {
-          t.order = i;
-        });
-        return data;
+      const res = await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs`, workspaceId), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cwd }),
       });
-      try {
-        await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`), { method: 'DELETE' });
-      } catch {
-        toast.error('탭 삭제 중 오류가 발생했습니다');
-      }
-    },
-    [updateAndSave, wsQuery],
-  );
+      if (!res.ok) throw new Error();
+      const newTab: ITab = await res.json();
 
-  const switchTabInPane = useCallback(
-    (paneId: string, tabId: string) => {
-      updateAndSave((data) => {
-        const pane = findPane(data.root, paneId);
-        if (pane) pane.activeTabId = tabId;
-        return data;
-      });
-    },
-    [updateAndSave],
-  );
-
-  const renameTabInPane = useCallback(
-    async (paneId: string, tabId: string, name: string) => {
-      updateAndSave((data) => {
+      uas((data) => {
         const pane = findPane(data.root, paneId);
         if (pane) {
-          const tab = pane.tabs.find((t) => t.id === tabId);
-          if (tab) tab.name = name;
+          if (cwd && sourceTabId) {
+            const srcTab = pane.tabs.find((t) => t.id === sourceTabId);
+            if (srcTab) srcTab.cwd = cwd;
+          }
+          pane.tabs.push(newTab);
+          pane.activeTabId = newTab.id;
         }
         return data;
       });
-      try {
-        await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`), {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name }),
-        });
-      } catch {
-        toast.error('탭 이름 변경에 실패했습니다');
+      return newTab;
+    } catch {
+      toast.error('탭을 생성할 수 없습니다');
+      return null;
+    }
+  },
+
+  deleteTabInPane: async (paneId, tabId) => {
+    const { workspaceId, updateAndSave: uas } = get();
+    uas((data) => {
+      const pane = findPane(data.root, paneId);
+      if (!pane) return data;
+      pane.tabs = pane.tabs.filter((t) => t.id !== tabId);
+      if (pane.activeTabId === tabId) {
+        pane.activeTabId = pane.tabs[0]?.id ?? null;
       }
-    },
-    [updateAndSave, wsQuery],
-  );
+      pane.tabs.forEach((t, i) => { t.order = i; });
+      return data;
+    });
+    try {
+      await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`, workspaceId), { method: 'DELETE' });
+    } catch {
+      toast.error('탭 삭제 중 오류가 발생했습니다');
+    }
+  },
 
-  const reorderTabsInPane = useCallback(
-    (paneId: string, tabIds: string[]) => {
-      updateAndSave((data) => {
-        const pane = findPane(data.root, paneId);
-        if (!pane) return data;
-        const tabMap = new Map(pane.tabs.map((t) => [t.id, t]));
-        pane.tabs = tabIds
-          .map((id, i) => {
-            const tab = tabMap.get(id);
-            return tab ? { ...tab, order: i } : null;
-          })
-          .filter((t): t is ITab => t !== null);
-        return data;
+  switchTabInPane: (paneId, tabId) => {
+    get().updateAndSave((data) => {
+      const pane = findPane(data.root, paneId);
+      if (pane) pane.activeTabId = tabId;
+      return data;
+    });
+  },
+
+  renameTabInPane: async (paneId, tabId, name) => {
+    const { workspaceId, updateAndSave: uas } = get();
+    uas((data) => {
+      const pane = findPane(data.root, paneId);
+      if (pane) {
+        const tab = pane.tabs.find((t) => t.id === tabId);
+        if (tab) tab.name = name;
+      }
+      return data;
+    });
+    try {
+      await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`, workspaceId), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
       });
-    },
-    [updateAndSave],
-  );
+    } catch {
+      toast.error('탭 이름 변경에 실패했습니다');
+    }
+  },
 
-  const removeTabLocally = useCallback(
-    (paneId: string, tabId: string) => {
-      updateAndSave((data) => {
-        const pane = findPane(data.root, paneId);
-        if (!pane) return data;
+  reorderTabsInPane: (paneId, tabIds) => {
+    get().updateAndSave((data) => {
+      const pane = findPane(data.root, paneId);
+      if (!pane) return data;
+      const tabMap = new Map(pane.tabs.map((t) => [t.id, t]));
+      pane.tabs = tabIds
+        .map((id, i) => {
+          const tab = tabMap.get(id);
+          return tab ? { ...tab, order: i } : null;
+        })
+        .filter((t): t is ITab => t !== null);
+      return data;
+    });
+  },
 
-        pane.tabs = pane.tabs.filter((t) => t.id !== tabId);
-        if (pane.activeTabId === tabId) {
-          pane.activeTabId = pane.tabs[0]?.id ?? null;
-        }
-        pane.tabs.forEach((t, i) => {
-          t.order = i;
-        });
+  removeTabLocally: (paneId, tabId) => {
+    get().updateAndSave((data) => {
+      const pane = findPane(data.root, paneId);
+      if (!pane) return data;
 
-        if (pane.tabs.length === 0 && collectPanes(data.root).length > 1) {
-          removePaneWithFocus(data, paneId);
-        }
+      pane.tabs = pane.tabs.filter((t) => t.id !== tabId);
+      if (pane.activeTabId === tabId) {
+        pane.activeTabId = pane.tabs[0]?.id ?? null;
+      }
+      pane.tabs.forEach((t, i) => { t.order = i; });
 
-        return data;
-      });
-    },
-    [updateAndSave],
-  );
+      if (pane.tabs.length === 0 && collectPanes(data.root).length > 1) {
+        removePaneWithFocus(data, paneId);
+      }
 
-  const equalizeRatios = useCallback(() => {
-    updateAndSave((data) => {
+      return data;
+    });
+  },
+
+  equalizeRatios: () => {
+    get().updateAndSave((data) => {
       data.root = equalizeNode(data.root);
       return data;
     });
-  }, [updateAndSave]);
+  },
 
-  const updateTabPanelType = useCallback(
-    (paneId: string, tabId: string, panelType: TPanelType) => {
-      updateAndSave((data) => {
-        const pane = findPane(data.root, paneId);
-        if (!pane) return data;
-        const tab = pane.tabs.find((t) => t.id === tabId);
-        if (tab) tab.panelType = panelType;
-        return data;
-      });
-    },
-    [updateAndSave],
-  );
+  updateTabPanelType: (paneId, tabId, panelType) => {
+    get().updateAndSave((data) => {
+      const pane = findPane(data.root, paneId);
+      if (!pane) return data;
+      const tab = pane.tabs.find((t) => t.id === tabId);
+      if (tab) tab.panelType = panelType;
+      return data;
+    });
+  },
 
-  const saveCurrentLayout = useCallback(() => {
-    const current = layoutRef.current;
-    if (!current) return;
-    fetch(wsQuery('/api/layout'), {
+  saveCurrentLayout: () => {
+    const { layout, workspaceId } = get();
+    if (!layout) return;
+    fetch(wsQuery('/api/layout', workspaceId), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        root: current.root,
-        focusedPaneId: current.focusedPaneId,
-      }),
+      body: JSON.stringify({ root: layout.root, focusedPaneId: layout.focusedPaneId }),
     }).catch(() => {});
-  }, [wsQuery]);
+  },
 
-  const clearLayout = useCallback(() => {
-    setLayout(null);
-  }, []);
+  clearLayout: () => {
+    set({ layout: null, paneCount: 0, canSplit: false });
+  },
+}));
 
-  return {
-    layout,
-    isLoading,
-    error,
-    isSplitting,
-    splitPane,
-    closePane,
-    updateRatio,
-    focusPane,
-    moveTab,
-    paneCount,
-    canSplit,
-    createTabInPane,
-    deleteTabInPane,
-    switchTabInPane,
-    renameTabInPane,
-    reorderTabsInPane,
-    removeTabLocally,
-    equalizeRatios,
-    updateTabPanelType,
-    updateAndSave,
-    saveCurrentLayout,
-    clearLayout,
-    retry: fetchLayout,
-  };
+export const setOnFetchError = (fn: (() => void) | null): void => {
+  _onFetchError = fn;
 };
 
+// --- React hook wrapper (handles lifecycle: workspace switch, beforeunload) ---
+
+const useLayout = ({ workspaceId, onFetchError }: { workspaceId: string | null; onFetchError?: () => void }) => {
+  useEffect(() => {
+    setOnFetchError(onFetchError ?? null);
+  }, [onFetchError]);
+
+  useEffect(() => {
+    if (workspaceId) {
+      _retryCount = 0;
+      useLayoutStore.getState().setWorkspaceId(workspaceId);
+      useLayoutStore.getState().fetchLayout(workspaceId);
+    }
+  }, [workspaceId]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const { layout, workspaceId: wsId } = useLayoutStore.getState();
+      if (!layout) return;
+      const blob = new Blob(
+        [JSON.stringify({ root: layout.root, focusedPaneId: layout.focusedPaneId })],
+        { type: 'application/json' },
+      );
+      navigator.sendBeacon(wsQuery('/api/layout/beacon', wsId), blob);
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
+  return useLayoutStore();
+};
+
+export { useLayoutStore };
 export default useLayout;

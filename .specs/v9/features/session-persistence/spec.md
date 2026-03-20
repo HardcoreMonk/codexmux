@@ -2,7 +2,7 @@
 page: session-persistence
 title: 세션 ID 영속화 및 자동 Resume
 route: /
-status: DRAFT
+status: DETAILED
 complexity: Medium
 depends_on:
   - .specs/v9/features/session-resume/spec.md

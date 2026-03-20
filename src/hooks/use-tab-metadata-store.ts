@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { collectPanes } from '@/hooks/use-layout';
 
 interface ITabMetadata {
   title?: string;
@@ -18,31 +19,42 @@ interface ITabMetadataState {
 const SYNC_DEBOUNCE_MS = 100;
 
 let _syncTimer: ReturnType<typeof setTimeout> | null = null;
-let _layoutSyncFn: ((metadata: Record<string, ITabMetadata>) => void) | null = null;
-let _directorySyncFn: ((cwds: string[]) => void) | null = null;
 let _prevCwdsKey = '';
 
 const scheduleSyncToLayout = () => {
   if (_syncTimer) clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(() => {
+  _syncTimer = setTimeout(async () => {
     _syncTimer = null;
     const { metadata } = useTabMetadataStore.getState();
-    _layoutSyncFn?.(metadata);
-    syncDirectories(metadata);
-  }, SYNC_DEBOUNCE_MS);
-};
 
-const syncDirectories = (metadata: Record<string, ITabMetadata>) => {
-  const cwds = [...new Set(
-    Object.values(metadata)
-      .map((m) => m.cwd)
-      .filter((c): c is string => !!c),
-  )];
-  const key = cwds.join('\0');
-  if (key !== _prevCwdsKey) {
-    _prevCwdsKey = key;
-    _directorySyncFn?.(cwds);
-  }
+    const { useLayoutStore } = await import('@/hooks/use-layout');
+    useLayoutStore.getState().updateAndSave((data) => {
+      for (const pane of collectPanes(data.root)) {
+        for (const tab of pane.tabs) {
+          const meta = metadata[tab.id];
+          if (!meta) continue;
+          if (meta.title !== undefined) tab.title = meta.title;
+          if (meta.cwd !== undefined) tab.cwd = meta.cwd;
+        }
+      }
+      return data;
+    });
+
+    const cwds = [...new Set(
+      Object.values(metadata)
+        .map((m) => m.cwd)
+        .filter((c): c is string => !!c),
+    )];
+    const key = cwds.join('\0');
+    if (key !== _prevCwdsKey) {
+      _prevCwdsKey = key;
+      const { default: useWorkspaceStore } = await import('@/hooks/use-workspace-store');
+      const { activeWorkspaceId, updateDirectories } = useWorkspaceStore.getState();
+      if (activeWorkspaceId && cwds.length > 0) {
+        updateDirectories(activeWorkspaceId, cwds);
+      }
+    }
+  }, SYNC_DEBOUNCE_MS);
 };
 
 const useTabMetadataStore = create<ITabMetadataState>((set) => ({
@@ -97,14 +109,6 @@ const useTabMetadataStore = create<ITabMetadataState>((set) => ({
     set({ metadata: {} });
   },
 }));
-
-export const setLayoutSyncCallback = (fn: ((metadata: Record<string, ITabMetadata>) => void) | null): void => {
-  _layoutSyncFn = fn;
-};
-
-export const setDirectorySyncCallback = (fn: ((cwds: string[]) => void) | null): void => {
-  _directorySyncFn = fn;
-};
 
 export type { ITabMetadata };
 export default useTabMetadataStore;

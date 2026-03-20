@@ -2,12 +2,13 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { collectPanes, findAdjacentPaneInDirection } from '@/hooks/use-layout';
 import type { TDirection } from '@/hooks/use-layout';
+import useWorkspaceStore from '@/hooks/use-workspace-store';
 import {
   KEY_MAP,
   TAB_NUMBER_KEYS,
   WORKSPACE_NUMBER_KEYS,
 } from '@/lib/keyboard-shortcuts';
-import type { ILayoutData, IPaneNode, ITab, IWorkspace } from '@/types/terminal';
+import type { ILayoutData, IPaneNode, ITab } from '@/types/terminal';
 
 interface ILayoutActions {
   layout: ILayoutData | null;
@@ -21,14 +22,8 @@ interface ILayoutActions {
   switchTabInPane: (paneId: string, tabId: string) => void;
 }
 
-interface IWorkspaceActions {
-  workspaces: IWorkspace[];
-  activeWorkspaceId: string | null;
-}
-
 interface IUseKeyboardShortcutsOptions {
   layout: ILayoutActions;
-  ws: IWorkspaceActions;
   onSelectWorkspace: (workspaceId: string) => void;
 }
 
@@ -48,20 +43,16 @@ const getSortedTabs = (pane: IPaneNode): ITab[] =>
 
 const useKeyboardShortcuts = ({
   layout,
-  ws,
   onSelectWorkspace,
 }: IUseKeyboardShortcutsOptions) => {
   const layoutRef = useRef(layout);
-  const wsRef = useRef(ws);
   const onSelectWorkspaceRef = useRef(onSelectWorkspace);
 
   useEffect(() => {
     layoutRef.current = layout;
-    wsRef.current = ws;
     onSelectWorkspaceRef.current = onSelectWorkspace;
   });
 
-  // ⌘D / Ctrl+D — 수직 분할
   useHotkeys(
     KEY_MAP.SPLIT_VERTICAL,
     () => {
@@ -72,7 +63,6 @@ const useKeyboardShortcuts = ({
     HOTKEY_OPTIONS,
   );
 
-  // ⌘⇧D / Ctrl+Shift+D — 수평 분할
   useHotkeys(
     KEY_MAP.SPLIT_HORIZONTAL,
     () => {
@@ -83,7 +73,6 @@ const useKeyboardShortcuts = ({
     HOTKEY_OPTIONS,
   );
 
-  // ⌥⌘ + 방향키 — 방향별 Pane 포커스 이동
   const focusDirection = useCallback(
     (direction: TDirection) => {
       const l = layoutRef.current;
@@ -103,7 +92,6 @@ const useKeyboardShortcuts = ({
   useHotkeys(KEY_MAP.FOCUS_UP, () => focusDirection('up'), HOTKEY_OPTIONS);
   useHotkeys(KEY_MAP.FOCUS_DOWN, () => focusDirection('down'), HOTKEY_OPTIONS);
 
-  // ⌘T / Ctrl+T — 새 탭
   useHotkeys(
     KEY_MAP.NEW_TAB,
     () => {
@@ -114,7 +102,6 @@ const useKeyboardShortcuts = ({
     HOTKEY_OPTIONS,
   );
 
-  // ⌘W / Ctrl+W — 탭 닫기
   useHotkeys(
     KEY_MAP.CLOSE_TAB,
     () => {
@@ -132,7 +119,6 @@ const useKeyboardShortcuts = ({
     HOTKEY_OPTIONS,
   );
 
-  // ⌘⇧[ — 이전 탭 (끝에서 멈춤, 순환 없음)
   useHotkeys(
     KEY_MAP.PREV_TAB,
     () => {
@@ -148,7 +134,6 @@ const useKeyboardShortcuts = ({
     HOTKEY_OPTIONS,
   );
 
-  // ⌘⇧] — 다음 탭 (끝에서 멈춤, 순환 없음)
   useHotkeys(
     KEY_MAP.NEXT_TAB,
     () => {
@@ -164,10 +149,8 @@ const useKeyboardShortcuts = ({
     HOTKEY_OPTIONS,
   );
 
-  // ⌘K / Ctrl+K — 터미널 클리어 (preventDefault만 담당, 실제 clear는 xterm handler에서 처리)
   useHotkeys(KEY_MAP.CLEAR_TERMINAL, () => {}, HOTKEY_OPTIONS);
 
-  // ⌃1~8 / Alt+1~8 — N번째 탭, ⌃9 / Alt+9 — 마지막 탭
   useHotkeys(
     TAB_NUMBER_KEYS,
     (event) => {
@@ -187,19 +170,18 @@ const useKeyboardShortcuts = ({
     HOTKEY_OPTIONS,
   );
 
-  // ⌘1~9 / Ctrl+1~9 — Workspace 번호로 전환
   useHotkeys(
     WORKSPACE_NUMBER_KEYS,
     (event) => {
-      const w = wsRef.current;
+      const { workspaces, activeWorkspaceId } = useWorkspaceStore.getState();
       const digit = parseInt(event.code.replace('Digit', ''), 10);
       if (isNaN(digit) || digit < 1 || digit > 9) return;
 
       const workspace =
         digit === 9
-          ? w.workspaces[w.workspaces.length - 1]
-          : w.workspaces[digit - 1];
-      if (workspace && workspace.id !== w.activeWorkspaceId) {
+          ? workspaces[workspaces.length - 1]
+          : workspaces[digit - 1];
+      if (workspace && workspace.id !== activeWorkspaceId) {
         onSelectWorkspaceRef.current(workspace.id);
       }
     },
