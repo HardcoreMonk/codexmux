@@ -285,7 +285,7 @@ export const deletePane = async (
   console.log(`[layout] pane 삭제: ${paneId} (세션 ${sessions.length}개 종료)`);
 };
 
-export const addTabToPane = async (wsId: string, paneId: string, name?: string): Promise<ITab | null> =>
+export const addTabToPane = async (wsId: string, paneId: string, name?: string, cwd?: string): Promise<ITab | null> =>
   withLock(async () => {
     const filePath = resolveLayoutFile(wsId);
     const layout = await readLayoutFile(filePath);
@@ -296,7 +296,7 @@ export const addTabToPane = async (wsId: string, paneId: string, name?: string):
 
     const tabId = generateTabId();
     const sessionName = workspaceSessionName(wsId, paneId, tabId);
-    await createSession(sessionName, 80, 24);
+    await createSession(sessionName, 80, 24, cwd);
 
     const nextOrder = pane.tabs.length > 0 ? Math.max(...pane.tabs.map((t) => t.order)) + 1 : 0;
     const tabName = name?.trim() || nextTabName(pane.tabs);

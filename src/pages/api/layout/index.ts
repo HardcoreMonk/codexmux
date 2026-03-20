@@ -3,15 +3,15 @@ import { getLayout, updateLayout } from '@/lib/layout-store';
 import { getActiveWorkspaceId, getWorkspaceById } from '@/lib/workspace-store';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
-  const wsId = (req.query.workspace as string) || getActiveWorkspaceId();
+  const wsId = (req.query.workspace as string) || await getActiveWorkspaceId();
   if (!wsId) {
     return res.status(400).json({ error: 'Workspace가 없습니다' });
   }
 
   if (req.method === 'GET') {
     try {
-      const ws = getWorkspaceById(wsId);
-      const layout = await getLayout(wsId, ws?.directory);
+      const ws = await getWorkspaceById(wsId);
+      const layout = await getLayout(wsId, ws?.directories[0]);
       return res.status(200).json(layout);
     } catch (err) {
       console.log(`[layout] GET failed: ${err instanceof Error ? err.message : err}`);

@@ -42,7 +42,7 @@ const WorkspaceItem = ({
     const trimmed = editValue.trim();
     setIsEditing(false);
     if (!trimmed) {
-      const dirName = workspace.directory.split('/').filter(Boolean).pop() || workspace.name;
+      const dirName = (workspace.directories[0] ?? '').split('/').filter(Boolean).pop() || workspace.name;
       if (dirName !== workspace.name) {
         onRename(workspace.id, dirName);
       }
@@ -52,7 +52,7 @@ const WorkspaceItem = ({
     if (trimmed !== workspace.name) {
       onRename(workspace.id, trimmed);
     }
-  }, [editValue, workspace.id, workspace.name, workspace.directory, onRename]);
+  }, [editValue, workspace.id, workspace.name, workspace.directories, onRename]);
 
   const cancelRename = useCallback(() => {
     setIsEditing(false);

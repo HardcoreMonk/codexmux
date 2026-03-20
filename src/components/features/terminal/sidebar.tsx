@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { IWorkspace } from '@/types/terminal';
 import WorkspaceItem from '@/components/features/terminal/workspace-item';
-import CreateWorkspaceDialog from '@/components/features/terminal/create-workspace-dialog';
 import SettingsDialog from '@/components/features/terminal/settings-dialog';
 
 interface ISidebarProps {
@@ -39,16 +38,11 @@ interface ISidebarProps {
   onDeleteWorkspace: (workspaceId: string) => Promise<boolean>;
   onRemoveWorkspace: (workspaceId: string) => void;
   onRenameWorkspace: (workspaceId: string, name: string) => Promise<boolean>;
-  onValidateDirectory: (directory: string) => Promise<{
-    valid: boolean;
-    error?: string;
-    suggestedName?: string;
-  }>;
   onRetry: () => void;
 }
 
 const MIN_WIDTH = 160;
-const MAX_WIDTH = 320;
+const MAX_WIDTH = 480;
 
 const Sidebar = ({
   workspaces,
@@ -64,16 +58,15 @@ const Sidebar = ({
   onDeleteWorkspace,
   onRemoveWorkspace,
   onRenameWorkspace,
-  onValidateDirectory,
   onRetry,
 }: ISidebarProps) => {
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<IWorkspace | null>(null);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [fadingOutIds, setFadingOutIds] = useState<Set<string>>(new Set());
 
+  const [isDragging, setIsDragging] = useState(false);
   const isResizing = useRef(false);
   const startX = useRef(0);
   const startWidth = useRef(width);
@@ -82,6 +75,7 @@ const Sidebar = ({
     (e: React.MouseEvent) => {
       e.preventDefault();
       isResizing.current = true;
+      setIsDragging(true);
       startX.current = e.clientX;
       startWidth.current = width;
 
@@ -94,6 +88,7 @@ const Sidebar = ({
 
       const handleMouseUp = () => {
         isResizing.current = false;
+        setIsDragging(false);
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
         document.body.style.cursor = '';
@@ -108,21 +103,17 @@ const Sidebar = ({
     [width, onWidthChange],
   );
 
-  const handleCreateSubmit = useCallback(
-    async (directory: string) => {
-      setIsCreating(true);
-      try {
-        const ws = await onCreateWorkspace(directory);
-        if (ws) {
-          setCreateDialogOpen(false);
-          onSelectWorkspace(ws.id);
-        }
-      } finally {
-        setIsCreating(false);
+  const handleCreateWorkspace = useCallback(async () => {
+    setIsCreating(true);
+    try {
+      const ws = await onCreateWorkspace('');
+      if (ws) {
+        onSelectWorkspace(ws.id);
       }
-    },
-    [onCreateWorkspace, onSelectWorkspace],
-  );
+    } finally {
+      setIsCreating(false);
+    }
+  }, [onCreateWorkspace, onSelectWorkspace]);
 
   const handleDeleteRequest = useCallback(
     (workspaceId: string) => {
@@ -196,7 +187,7 @@ const Sidebar = ({
           minWidth: collapsed ? 0 : MIN_WIDTH,
           maxWidth: MAX_WIDTH,
           borderRightStyle: collapsed ? 'none' : undefined,
-          transition: 'width 200ms ease, min-width 200ms ease',
+          transition: isDragging ? 'none' : 'width 200ms ease, min-width 200ms ease',
         }}
         role="navigation"
         aria-label="Workspace 목록"
@@ -278,7 +269,7 @@ const Sidebar = ({
           {/* Add button */}
           <button
             className="flex h-9 w-full items-center gap-2 px-3 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent disabled:opacity-50"
-            onClick={() => !isCreating && setCreateDialogOpen(true)}
+            onClick={handleCreateWorkspace}
             disabled={isCreating}
             aria-label="Workspace 추가"
           >
@@ -350,14 +341,6 @@ const Sidebar = ({
           <ChevronsRight className="h-3.5 w-3.5" />
         </button>
       )}
-
-      {/* Create dialog */}
-      <CreateWorkspaceDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onSubmit={handleCreateSubmit}
-        onValidate={onValidateDirectory}
-      />
 
       {/* Settings dialog */}
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />

@@ -4,11 +4,11 @@ import { getWorkspaces, createWorkspace } from '@/lib/workspace-store';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
-    let data = getWorkspaces();
+    let data = await getWorkspaces();
     if (data.workspaces.length === 0) {
       try {
         await createWorkspace(os.homedir());
-        data = getWorkspaces();
+        data = await getWorkspaces();
       } catch {
         // 자동 생성 실패 시 빈 목록 반환
       }
@@ -18,12 +18,11 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   if (req.method === 'POST') {
     const { directory, name } = req.body ?? {};
-    if (!directory || typeof directory !== 'string') {
-      return res.status(400).json({ error: 'directory 필드 필수' });
-    }
+    const resolvedDirectory =
+      directory && typeof directory === 'string' ? directory : os.homedir();
 
     try {
-      const workspace = await createWorkspace(directory, name);
+      const workspace = await createWorkspace(resolvedDirectory, name);
       return res.status(200).json(workspace);
     } catch (err) {
       const message = err instanceof Error ? err.message : '알 수 없는 오류';

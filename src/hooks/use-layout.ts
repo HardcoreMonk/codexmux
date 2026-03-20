@@ -387,10 +387,25 @@ const useLayout = ({ workspaceId, onFetchError }: IUseLayoutOptions) => {
   const createTabInPane = useCallback(
     async (paneId: string): Promise<ITab | null> => {
       try {
+        let cwd: string | undefined;
+        const current = layoutRef.current;
+        if (current) {
+          const pane = findPane(current.root, paneId);
+          const activeTab = pane?.tabs.find((t) => t.id === pane.activeTabId);
+          if (activeTab) {
+            try {
+              const cwdRes = await fetch(wsQuery(`/api/layout/cwd?session=${activeTab.sessionName}`));
+              if (cwdRes.ok) cwd = (await cwdRes.json()).cwd;
+            } catch {
+              /* fallback to no cwd */
+            }
+          }
+        }
+
         const res = await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs`), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
+          body: JSON.stringify({ cwd }),
         });
         if (!res.ok) throw new Error();
         const newTab: ITab = await res.json();

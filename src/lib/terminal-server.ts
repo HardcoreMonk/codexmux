@@ -7,7 +7,6 @@ import {
   killSession,
   defaultSessionName,
 } from './tmux';
-import { removeTabBySession } from './tab-store';
 
 const MSG_STDIN = 0x00;
 const MSG_STDOUT = 0x01;
@@ -55,9 +54,6 @@ const cleanup = (conn: IActiveConnection, sessionExited = false) => {
   clearInterval(conn.heartbeatTimer);
 
   if (sessionExited) {
-    removeTabBySession(conn.sessionName).catch((err) => {
-      console.log(`[tabs] removeTabBySession failed: ${err instanceof Error ? err.message : err}`);
-    });
     if (conn.ws.readyState === WebSocket.OPEN) {
       conn.ws.close(1000, 'Session exited');
     }
@@ -191,9 +187,6 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
     const exists = await hasSession(sessionId);
     if (!exists) {
       console.log(`[terminal] session not found: ${sessionName}`);
-      removeTabBySession(sessionName).catch((err) => {
-        console.log(`[tabs] removeTabBySession failed: ${err instanceof Error ? err.message : err}`);
-      });
       ws.close(1011, 'Session not found');
       return;
     }

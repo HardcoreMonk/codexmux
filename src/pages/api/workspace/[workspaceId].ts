@@ -18,7 +18,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(400).json({ error: 'name 필드 필수' });
     }
 
-    const ws = renameWorkspace(workspaceId, name.trim());
+    const ws = await renameWorkspace(workspaceId, name.trim());
     if (!ws) {
       return res.status(404).json({ error: 'Workspace를 찾을 수 없습니다' });
     }

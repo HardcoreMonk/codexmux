@@ -114,7 +114,6 @@ const TerminalPage = () => {
         onDeleteWorkspace={ws.deleteWorkspace}
         onRemoveWorkspace={ws.removeWorkspace}
         onRenameWorkspace={ws.renameWorkspace}
-        onValidateDirectory={ws.validateDirectory}
         onRetry={ws.retry}
       />
 

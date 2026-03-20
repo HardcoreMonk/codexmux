@@ -39,7 +39,7 @@ export interface ILayoutData {
 export interface IWorkspace {
   id: string;
   name: string;
-  directory: string;
+  directories: string[];
   order: number;
 }
 

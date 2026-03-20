@@ -19,37 +19,31 @@ const WORKSPACES_FILE = path.join(BASE_DIR, 'workspaces.json');
 const LEGACY_LAYOUT_FILE = path.join(BASE_DIR, 'layout.json');
 const LEGACY_TABS_FILE = path.join(BASE_DIR, 'tabs.json');
 
-let store: IWorkspacesData = {
+const g = globalThis as unknown as { __ptWorkspaceLock?: Promise<void> };
+if (!g.__ptWorkspaceLock) g.__ptWorkspaceLock = Promise.resolve();
+
+const withLock = async <T>(fn: () => Promise<T>): Promise<T> => {
+  let release: () => void;
+  const next = new Promise<void>((r) => {
+    release = r;
+  });
+  const prev = g.__ptWorkspaceLock!;
+  g.__ptWorkspaceLock = next;
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    release!();
+  }
+};
+
+const emptyState = (): IWorkspacesData => ({
   workspaces: [],
   activeWorkspaceId: null,
   sidebarCollapsed: false,
   sidebarWidth: 200,
   updatedAt: new Date().toISOString(),
-};
-
-let writeTimer: ReturnType<typeof setTimeout> | null = null;
-const DEBOUNCE_MS = 300;
-
-const flushWorkspacesFile = async (): Promise<void> => {
-  if (writeTimer) {
-    clearTimeout(writeTimer);
-    writeTimer = null;
-  }
-  store.updatedAt = new Date().toISOString();
-  const tmpFile = WORKSPACES_FILE + '.tmp';
-  await fs.writeFile(tmpFile, JSON.stringify(store, null, 2));
-  await fs.rename(tmpFile, WORKSPACES_FILE);
-};
-
-const scheduleWrite = () => {
-  if (writeTimer) clearTimeout(writeTimer);
-  writeTimer = setTimeout(() => {
-    writeTimer = null;
-    flushWorkspacesFile().catch((err) => {
-      console.log(`[workspace] workspaces.json 저장 실패: ${err instanceof Error ? err.message : err}`);
-    });
-  }, DEBOUNCE_MS);
-};
+});
 
 const readWorkspacesFile = async (): Promise<IWorkspacesData | null> => {
   let raw: string;
@@ -60,7 +54,15 @@ const readWorkspacesFile = async (): Promise<IWorkspacesData | null> => {
   }
 
   try {
-    return JSON.parse(raw) as IWorkspacesData;
+    const data = JSON.parse(raw) as IWorkspacesData;
+    for (const ws of data.workspaces) {
+      const legacy = ws as unknown as { directory?: string };
+      if (!ws.directories && legacy.directory) {
+        ws.directories = [legacy.directory];
+        delete legacy.directory;
+      }
+    }
+    return data;
   } catch {
     console.log('[workspace] workspaces.json 파싱 실패, 빈 상태로 시작합니다');
     try {
@@ -70,19 +72,26 @@ const readWorkspacesFile = async (): Promise<IWorkspacesData | null> => {
   }
 };
 
-const migrateFromPhase4 = async (): Promise<boolean> => {
+const writeWorkspacesFile = async (data: IWorkspacesData): Promise<void> => {
+  data.updatedAt = new Date().toISOString();
+  const tmpFile = WORKSPACES_FILE + '.tmp';
+  await fs.writeFile(tmpFile, JSON.stringify(data, null, 2));
+  await fs.rename(tmpFile, WORKSPACES_FILE);
+};
+
+const migrateFromPhase4 = async (): Promise<IWorkspacesData | null> => {
   const legacyLayout = await readLayoutFile(LEGACY_LAYOUT_FILE);
-  if (!legacyLayout) return false;
+  if (!legacyLayout) return null;
 
   const wsId = 'ws-default';
   await fs.mkdir(resolveLayoutDir(wsId), { recursive: true });
   await writeLayoutFile(legacyLayout, resolveLayoutFile(wsId));
 
-  store = {
+  const data: IWorkspacesData = {
     workspaces: [{
       id: wsId,
       name: 'default',
-      directory: os.homedir(),
+      directories: [os.homedir()],
       order: 0,
     }],
     activeWorkspaceId: wsId,
@@ -91,16 +100,16 @@ const migrateFromPhase4 = async (): Promise<boolean> => {
     updatedAt: legacyLayout.updatedAt || new Date().toISOString(),
   };
 
-  await flushWorkspacesFile();
+  await writeWorkspacesFile(data);
   console.log(`[purple-terminal] Phase 4 layout.json → Workspace 'default' 마이그레이션 완료`);
-  return true;
+  return data;
 };
 
-const migrateFromTabs = async (): Promise<boolean> => {
+const migrateFromTabs = async (): Promise<IWorkspacesData | null> => {
   try {
     const raw = await fs.readFile(LEGACY_TABS_FILE, 'utf-8');
     const data = JSON.parse(raw);
-    if (!Array.isArray(data.tabs) || data.tabs.length === 0) return false;
+    if (!Array.isArray(data.tabs) || data.tabs.length === 0) return null;
 
     const paneId = `pane-${nanoid(6)}`;
     const legacyLayout: ILayoutData = {
@@ -114,7 +123,6 @@ const migrateFromTabs = async (): Promise<boolean> => {
       updatedAt: new Date().toISOString(),
     };
 
-    // Write as legacy layout.json first, then migrate to workspace
     const tmpFile = LEGACY_LAYOUT_FILE + '.tmp';
     await fs.writeFile(tmpFile, JSON.stringify(legacyLayout, null, 2));
     await fs.rename(tmpFile, LEGACY_LAYOUT_FILE);
@@ -122,7 +130,7 @@ const migrateFromTabs = async (): Promise<boolean> => {
 
     return await migrateFromPhase4();
   } catch {
-    return false;
+    return null;
   }
 };
 
@@ -131,46 +139,44 @@ export const initWorkspaceStore = async (): Promise<void> => {
 
   console.log('[purple-terminal] workspaces.json 로드 중...');
 
-  const data = await readWorkspacesFile();
+  let data = await readWorkspacesFile();
 
-  if (data) {
-    store = data;
-  } else {
+  if (!data) {
     const layoutExists = await fs.access(LEGACY_LAYOUT_FILE).then(() => true).catch(() => false);
     if (layoutExists) {
-      await migrateFromPhase4();
+      data = await migrateFromPhase4();
     } else {
       const tabsExists = await fs.access(LEGACY_TABS_FILE).then(() => true).catch(() => false);
       if (tabsExists) {
-        await migrateFromTabs();
-      } else {
-        console.log('[purple-terminal] 파일 없음, 빈 상태로 대기');
-        return;
+        data = await migrateFromTabs();
       }
     }
   }
 
-  if (store.workspaces.length === 0) return;
+  if (!data) {
+    console.log('[purple-terminal] 파일 없음, 빈 상태로 대기');
+    return;
+  }
+
+  if (data.workspaces.length === 0) return;
 
   const allTmuxSessions = await listSessions();
-  const allLayoutSessions = new Set<string>();
 
-  for (const ws of store.workspaces) {
+  for (const ws of data.workspaces) {
     const layoutFile = resolveLayoutFile(ws.id);
     let layout = await readLayoutFile(layoutFile);
 
     if (!layout) {
       console.log(`[purple-terminal] Workspace '${ws.name}': layout.json 손상, 기본 Pane으로 초기화`);
-      layout = await createDefaultLayout(ws.id, ws.directory);
+      layout = await createDefaultLayout(ws.id, ws.directories[0]);
       await writeLayoutFile(layout, layoutFile);
-      collectAllTabs(layout.root).forEach((t) => allLayoutSessions.add(t.sessionName));
+      collectAllTabs(layout.root).forEach((t) => console.log(`  - ${t.sessionName}`));
       console.log(`[purple-terminal] Workspace '${ws.name}': tmux 정합성 체크 — 1 세션 확인, 0 orphan`);
       continue;
     }
 
     const wsTabs = collectAllTabs(layout.root);
     const wsSessionNames = wsTabs.map((t) => t.sessionName);
-    wsSessionNames.forEach((s) => allLayoutSessions.add(s));
 
     const wsPrefix = `pt-${ws.id}-`;
     const relevantTmuxSessions = allTmuxSessions.filter(
@@ -178,7 +184,7 @@ export const initWorkspaceStore = async (): Promise<void> => {
     );
 
     try {
-      const changed = await crossCheckLayout(layout, relevantTmuxSessions, ws.id, ws.directory);
+      const changed = await crossCheckLayout(layout, relevantTmuxSessions, ws.id, ws.directories[0]);
       if (changed) {
         await writeLayoutFile(layout, layoutFile);
       }
@@ -191,115 +197,131 @@ export const initWorkspaceStore = async (): Promise<void> => {
     console.log(`[purple-terminal] Workspace '${ws.name}': tmux 정합성 체크 — ${finalTabs.length} 세션 확인, ${orphanCount} orphan`);
   }
 
-  console.log(`[purple-terminal] Workspace ${store.workspaces.length}개 로드 완료`);
-  const activeWs = store.workspaces.find((w) => w.id === store.activeWorkspaceId);
+  console.log(`[purple-terminal] Workspace ${data.workspaces.length}개 로드 완료`);
+  const activeWs = data.workspaces.find((w) => w.id === data!.activeWorkspaceId);
   if (activeWs) {
     console.log(`[purple-terminal] 준비 완료 (활성 Workspace: ${activeWs.name})`);
   }
 };
 
-export const getWorkspaces = (): {
+export const getWorkspaces = async (): Promise<{
   workspaces: IWorkspace[];
   activeWorkspaceId: string | null;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
-} => ({
-  workspaces: store.workspaces,
-  activeWorkspaceId: store.activeWorkspaceId,
-  sidebarCollapsed: store.sidebarCollapsed,
-  sidebarWidth: store.sidebarWidth,
-});
-
-export const getActiveWorkspaceId = (): string | null => store.activeWorkspaceId;
-
-export const getWorkspaceById = (wsId: string): IWorkspace | undefined =>
-  store.workspaces.find((w) => w.id === wsId);
-
-export const createWorkspace = async (directory: string, name?: string): Promise<IWorkspace> => {
-  let stat;
-  try {
-    stat = await fs.stat(directory);
-  } catch {
-    throw new Error('디렉토리가 존재하지 않습니다');
-  }
-
-  if (!stat.isDirectory()) {
-    throw new Error('파일이 아닌 디렉토리 경로를 입력하세요');
-  }
-
-  if (store.workspaces.some((w) => w.directory === directory)) {
-    throw new Error('이미 등록된 디렉토리입니다');
-  }
-
-  const wsId = `ws-${nanoid(6)}`;
-  const wsName = name?.trim() || path.basename(directory);
-  const order = store.workspaces.length;
-
-  const layout = await createDefaultLayout(wsId, directory);
-  await fs.mkdir(resolveLayoutDir(wsId), { recursive: true });
-  await writeLayoutFile(layout, resolveLayoutFile(wsId));
-
-  const workspace: IWorkspace = { id: wsId, name: wsName, directory, order };
-  store.workspaces.push(workspace);
-  scheduleWrite();
-
-  console.log(`[workspace] 생성: ${wsId} (${wsName}, ${directory})`);
-  return workspace;
+}> => {
+  const data = await readWorkspacesFile();
+  if (!data) return { workspaces: [], activeWorkspaceId: null, sidebarCollapsed: false, sidebarWidth: 200 };
+  return {
+    workspaces: data.workspaces,
+    activeWorkspaceId: data.activeWorkspaceId,
+    sidebarCollapsed: data.sidebarCollapsed,
+    sidebarWidth: data.sidebarWidth,
+  };
 };
 
-export const deleteWorkspace = async (workspaceId: string): Promise<boolean> => {
-  const idx = store.workspaces.findIndex((w) => w.id === workspaceId);
-  if (idx === -1) return false;
+export const getActiveWorkspaceId = async (): Promise<string | null> => {
+  const data = await readWorkspacesFile();
+  return data?.activeWorkspaceId ?? null;
+};
 
-  const ws = store.workspaces[idx];
+export const getWorkspaceById = async (wsId: string): Promise<IWorkspace | undefined> => {
+  const data = await readWorkspacesFile();
+  return data?.workspaces.find((w) => w.id === wsId);
+};
 
-  const layout = await readLayoutFile(resolveLayoutFile(workspaceId));
-  if (layout) {
-    const tabs = collectAllTabs(layout.root);
-    for (const tab of tabs) {
-      try {
-        await killSession(tab.sessionName);
-      } catch {}
+export const createWorkspace = async (directory: string, name?: string): Promise<IWorkspace> =>
+  withLock(async () => {
+    let stat;
+    try {
+      stat = await fs.stat(directory);
+    } catch {
+      throw new Error('디렉토리가 존재하지 않습니다');
     }
-  }
 
-  try {
-    await fs.rm(resolveLayoutDir(workspaceId), { recursive: true, force: true });
-  } catch {}
+    if (!stat.isDirectory()) {
+      throw new Error('파일이 아닌 디렉토리 경로를 입력하세요');
+    }
 
-  store.workspaces.splice(idx, 1);
-  store.workspaces.forEach((w, i) => { w.order = i; });
+    const data = (await readWorkspacesFile()) ?? emptyState();
 
-  if (store.activeWorkspaceId === workspaceId) {
-    store.activeWorkspaceId = store.workspaces[0]?.id ?? null;
-  }
+    const wsId = `ws-${nanoid(6)}`;
+    const wsName = name?.trim() || path.basename(directory);
+    const order = data.workspaces.length;
 
-  scheduleWrite();
-  console.log(`[workspace] 삭제: ${workspaceId} (${ws.name})`);
-  return true;
-};
+    const layout = await createDefaultLayout(wsId, directory);
+    await fs.mkdir(resolveLayoutDir(wsId), { recursive: true });
+    await writeLayoutFile(layout, resolveLayoutFile(wsId));
 
-export const renameWorkspace = (workspaceId: string, name: string): IWorkspace | null => {
-  const ws = store.workspaces.find((w) => w.id === workspaceId);
-  if (!ws) return null;
+    const workspace: IWorkspace = { id: wsId, name: wsName, directories: [directory], order };
+    data.workspaces.push(workspace);
+    await writeWorkspacesFile(data);
 
-  ws.name = name;
-  scheduleWrite();
+    console.log(`[workspace] 생성: ${wsId} (${wsName}, ${directory})`);
+    return workspace;
+  });
 
-  console.log(`[workspace] 이름 변경: ${workspaceId} → "${name}"`);
-  return { ...ws };
-};
+export const deleteWorkspace = async (workspaceId: string): Promise<boolean> =>
+  withLock(async () => {
+    const data = (await readWorkspacesFile()) ?? emptyState();
+    const idx = data.workspaces.findIndex((w) => w.id === workspaceId);
+    if (idx === -1) return false;
 
-export const updateActive = (updates: {
+    const ws = data.workspaces[idx];
+
+    const layout = await readLayoutFile(resolveLayoutFile(workspaceId));
+    if (layout) {
+      const tabs = collectAllTabs(layout.root);
+      for (const tab of tabs) {
+        try {
+          await killSession(tab.sessionName);
+        } catch {}
+      }
+    }
+
+    try {
+      await fs.rm(resolveLayoutDir(workspaceId), { recursive: true, force: true });
+    } catch {}
+
+    data.workspaces.splice(idx, 1);
+    data.workspaces.forEach((w, i) => { w.order = i; });
+
+    if (data.activeWorkspaceId === workspaceId) {
+      data.activeWorkspaceId = data.workspaces[0]?.id ?? null;
+    }
+
+    await writeWorkspacesFile(data);
+    console.log(`[workspace] 삭제: ${workspaceId} (${ws.name})`);
+    return true;
+  });
+
+export const renameWorkspace = async (workspaceId: string, name: string): Promise<IWorkspace | null> =>
+  withLock(async () => {
+    const data = await readWorkspacesFile();
+    if (!data) return null;
+
+    const ws = data.workspaces.find((w) => w.id === workspaceId);
+    if (!ws) return null;
+
+    ws.name = name;
+    await writeWorkspacesFile(data);
+
+    console.log(`[workspace] 이름 변경: ${workspaceId} → "${name}"`);
+    return { ...ws };
+  });
+
+export const updateActive = async (updates: {
   activeWorkspaceId?: string;
   sidebarCollapsed?: boolean;
   sidebarWidth?: number;
-}): void => {
-  if (updates.activeWorkspaceId !== undefined) store.activeWorkspaceId = updates.activeWorkspaceId;
-  if (updates.sidebarCollapsed !== undefined) store.sidebarCollapsed = updates.sidebarCollapsed;
-  if (updates.sidebarWidth !== undefined) store.sidebarWidth = updates.sidebarWidth;
-  scheduleWrite();
-};
+}): Promise<void> =>
+  withLock(async () => {
+    const data = (await readWorkspacesFile()) ?? emptyState();
+    if (updates.activeWorkspaceId !== undefined) data.activeWorkspaceId = updates.activeWorkspaceId;
+    if (updates.sidebarCollapsed !== undefined) data.sidebarCollapsed = updates.sidebarCollapsed;
+    if (updates.sidebarWidth !== undefined) data.sidebarWidth = updates.sidebarWidth;
+    await writeWorkspacesFile(data);
+  });
 
 export const validateDirectory = async (directory: string): Promise<{
   valid: boolean;
@@ -315,13 +337,5 @@ export const validateDirectory = async (directory: string): Promise<{
     return { valid: false, error: '디렉토리가 존재하지 않습니다' };
   }
 
-  if (store.workspaces.some((w) => w.directory === directory)) {
-    return { valid: false, error: '이미 등록된 디렉토리입니다' };
-  }
-
   return { valid: true, suggestedName: path.basename(directory) };
-};
-
-export const flushWorkspaceStore = async (): Promise<void> => {
-  await flushWorkspacesFile();
 };

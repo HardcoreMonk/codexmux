@@ -3,7 +3,7 @@ import { removeTabFromPane, renameTabInPane } from '@/lib/layout-store';
 import { getActiveWorkspaceId } from '@/lib/workspace-store';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
-  const wsId = (req.query.workspace as string) || getActiveWorkspaceId();
+  const wsId = (req.query.workspace as string) || await getActiveWorkspaceId();
   if (!wsId) {
     return res.status(400).json({ error: 'Workspace가 없습니다' });
   }

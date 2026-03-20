@@ -8,7 +8,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   const { activeWorkspaceId, sidebarCollapsed, sidebarWidth } = req.body ?? {};
-  updateActive({ activeWorkspaceId, sidebarCollapsed, sidebarWidth });
+  await updateActive({ activeWorkspaceId, sidebarCollapsed, sidebarWidth });
   return res.status(200).json({ ok: true });
 };
 

@@ -102,16 +102,18 @@
 #### Graceful Shutdown 단순화
 
 - `flushWorkspaceStore()` 호출 제거 (모든 변경이 이미 파일에 반영)
-- `flushToDisk()` 호출 제거 (레거시)
+- `flushToDisk()` 호출 제거, `initTabStore()` 호출 제거, `tab-store.ts` import 제거
+- `tab-store.ts` 파일 완전 삭제
 - shutdown 시 WebSocket 정리 (`gracefulShutdown()`) + `process.exit(0)`만 수행
 
 ### 클라이언트 — `use-workspace.ts` 변경
 
-#### 디바운스 제거
+#### 디바운스 제거 + 사이드바 리사이즈 저장 시점 변경
 
 - `saveActiveTimer` ref 제거
 - `saveActive()` 내부의 `setTimeout` 300ms 디바운스 제거
 - 변경 즉시 `PATCH /api/workspace/active` 호출
+- **사이드바 리사이즈**: `setSidebarWidth()`는 드래그 중 매 프레임 호출되므로, 로컬 state만 갱신하고 서버 저장은 onDragEnd 시점에만 수행. `toggleSidebar()`, `switchWorkspace()` 등 다른 변경은 즉시 저장
 
 ### 서버 시작 시 전체 복원 (기존 유지)
 
@@ -149,10 +151,10 @@
 - **원자적 쓰기**: tmp 파일 → rename 패턴으로 쓰기 중 크래시에도 파일 손상 방지 (기존 패턴 유지)
 - **파싱 실패 복구**: `workspaces.json` 파싱 실패 시 `.bak` 파일로 백업 후 빈 상태로 시작 (기존 로직 유지)
 - **파일 I/O 빈도**: Workspace 메타데이터 변경 빈도는 낮음 (생성/삭제/전환/사이드바 토글). 파일 직접 읽기/쓰기의 성능 영향 무시할 수 있는 수준
-- **사이드바 리사이즈**: `use-workspace.ts`의 `setSidebarWidth()`가 드래그 중 빈번하게 호출됨. 클라이언트에서 리사이즈 완료 시점(onDragEnd)에만 서버에 저장하도록 조정 필요 — 이 부분만 예외적으로 최종 값만 저장
-- **`initWorkspaceStore()` 변경**: 서버 시작 시 파일 로드 + 크로스 체크 로직은 유지. 다만 크로스 체크 결과를 메모리가 아닌 파일에 즉시 반영하도록 조정 (현재도 `writeLayoutFile()`로 즉시 쓰고 있으므로 사실상 동일)
+- **사이드바 리사이즈**: `setSidebarWidth()`는 드래그 중 로컬 state만 갱신, onDragEnd 시점에만 서버 저장. 파일 I/O를 최소화하면서 최종 값은 확실히 반영
+- **`initWorkspaceStore()` 초기화**: 서버 시작 시 `workspaces.json`을 한 번만 읽고, 각 Workspace의 `layout.json` 로드 + tmux 크로스 체크까지 수행. 초기화 완료 전 API 요청은 서버가 `app.prepare()` 이후에 listen하므로 자연스럽게 차단됨
 - **tmux 세션 네이밍**: `pt-{workspaceId}-{paneId}-{tabId}` 패턴 유지
-- **레거시 코드 정리**: `tab-store.ts`의 `initTabStore()`, `flushToDisk()`는 Phase 5에서 이미 역할이 없어짐. server.ts에서 호출 제거 고려
+- **레거시 코드 정리**: `tab-store.ts` 파일 완전 제거. server.ts에서 `initTabStore()`, `flushToDisk()` import 및 호출 제거
 - **Phase 2/3/4 정책 유지**: detaching 플래그, close code 정책, 바이너리 프로토콜 변경 없음
 
 ## 검증 시나리오
@@ -191,7 +193,7 @@
 | `workspace-store.ts` | `let store` 제거, `scheduleWrite()` 제거, 모든 함수를 파일 직접 읽기/쓰기로 전환, 글로벌 lock 추가 |
 | `server.ts` | `flushWorkspaceStore()` 호출 제거, `flushToDisk()` 호출 제거, shutdown 단순화 |
 | `use-workspace.ts` | `saveActiveTimer` 디바운스 제거, 사이드바 리사이즈는 onDragEnd 시점에 저장 |
-| `tab-store.ts` (정리) | server.ts에서 `initTabStore()` / `flushToDisk()` 호출 제거 검토 |
+| `tab-store.ts` | 파일 완전 삭제 |
 
 ## 확정된 결정사항
 
@@ -204,9 +206,14 @@
 | 서버 종료 시 tmux | 세션 유지 (kill하지 않음) | tmux 특성 활용, 세션 영속성 |
 | 복원 트리거 | 브라우저 접속 시 API fetch → 렌더링 | SSR이 아닌 CSR 기반 복원 |
 | 크로스 체크 시점 | 서버 시작 시 1회 | 런타임 중에는 API 요청 시 개별 검증 |
+| `tab-store.ts` | 완전 삭제 | Phase 5에서 이미 역할 없음, 레거시 코드 정리 |
+| 사이드바 리사이즈 저장 | onDragEnd 시점에만 서버 저장 | 드래그 중 파일 I/O 방지, 최종 값만 반영 |
+| `initWorkspaceStore()` | 파일 1회 읽기 + 크로스 체크 | 서버 listen 전 초기화 완료, API 요청 자연 차단 |
 
 ## 미확인 사항
 
-- [ ] `tab-store.ts` 완전 제거 여부 — Phase 5에서 이미 역할이 없어졌으나, 하위 호환을 위해 유지 중. Phase 6에서 정리할지 확인 필요
-- [ ] 사이드바 리사이즈 저장 시점 — 드래그 중 매 프레임 저장 vs onDragEnd 시점만 저장. 현재 `setSidebarWidth()`가 드래그 중 연속 호출되므로 파일 I/O 빈도 확인 필요
-- [ ] `initWorkspaceStore()` 비동기 읽기 방식 — 파일 직접 읽기 전환 시, 서버 시작 시점의 초기화 로직에서 파일을 한 번만 읽고 크로스 체크까지 수행하는 것이 효율적. 초기화 완료 전 API 요청이 들어오는 경우의 처리 방식 확인 필요
+(모두 확인 완료)
+
+- [x] ~~`tab-store.ts` 완전 제거 여부~~ → 완전 삭제로 확정. Phase 5에서 이미 역할 없음
+- [x] ~~사이드바 리사이즈 저장 시점~~ → onDragEnd 시점에만 서버 저장으로 확정. 드래그 중은 로컬 state만 갱신
+- [x] ~~`initWorkspaceStore()` 비동기 읽기 방식~~ → 서버 시작 시 파일을 한 번만 읽고 크로스 체크까지 수행. `initWorkspaceStore()` → `app.prepare()` → `server.listen()` 순서로 초기화 완료 전 API 요청 자연 차단
