@@ -64,6 +64,7 @@ interface IPaneContainerProps {
   onReorderTabs: (paneId: string, tabIds: string[]) => void;
   onRemoveTabLocally: (paneId: string, tabId: string) => void;
   onUpdateTabTitles: (paneId: string, titles: Record<string, string>) => void;
+  onUpdateTabCwd: (paneId: string, tabId: string, cwd: string) => void;
   onUpdateTabPanelType: (paneId: string, tabId: string, panelType: TPanelType) => void;
   onEqualizeRatios: () => void;
 }
@@ -91,6 +92,7 @@ const PaneContainer = ({
   onReorderTabs,
   onRemoveTabLocally,
   onUpdateTabTitles,
+  onUpdateTabCwd,
   onUpdateTabPanelType,
   onEqualizeRatios,
 }: IPaneContainerProps) => {
@@ -133,19 +135,33 @@ const PaneContainer = ({
     tabTitlesRef.current = tabTitles;
   });
 
+  const fetchAndUpdateCwd = useCallback(async () => {
+    const tabId = activeTabIdRef.current;
+    const tab = tabId ? tabsRef.current.find((t) => t.id === tabId) : null;
+    if (!tab) return;
+    try {
+      const res = await fetch(`/api/layout/cwd?session=${tab.sessionName}`);
+      if (!res.ok) return;
+      const { cwd } = await res.json();
+      if (cwd) onUpdateTabCwd(paneId, tab.id, cwd);
+    } catch {
+      /* ignore */
+    }
+  }, [paneId, onUpdateTabCwd]);
+
   const scheduleTitleSave = useCallback(() => {
     if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current);
     titleDebounceRef.current = setTimeout(() => {
       titleDebounceRef.current = null;
-      onUpdateTabTitles(paneId, tabTitlesRef.current);
+      fetchAndUpdateCwd().then(() => {
+        onUpdateTabTitles(paneId, tabTitlesRef.current);
+      });
     }, TITLE_DEBOUNCE_MS);
-  }, [paneId, onUpdateTabTitles]);
+  }, [paneId, onUpdateTabTitles, fetchAndUpdateCwd]);
 
   useEffect(() => {
     return () => {
-      if (titleDebounceRef.current) {
-        clearTimeout(titleDebounceRef.current);
-      }
+      if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current);
     };
   }, []);
 
@@ -232,6 +248,7 @@ const PaneContainer = ({
       const { cols, rows } = termActionsRef.current.fit();
       wsActionsRef.current.sendResize(cols, rows);
       termActionsRef.current.focus();
+      fetchAndUpdateCwd();
     },
     onSessionEnded: handleSessionEnded,
   });

@@ -355,6 +355,10 @@ const useLayout = ({ workspaceId, onFetchError }: IUseLayoutOptions) => {
         await updateAndSave((data) => {
           const existingPane = findPane(data.root, paneId);
           if (!existingPane) return data;
+          if (cwd && activeTab) {
+            const srcTab = existingPane.tabs.find((t) => t.id === activeTab.id);
+            if (srcTab) srcTab.cwd = cwd;
+          }
           const splitNode: TLayoutNode = {
             type: 'split',
             orientation,
@@ -475,11 +479,13 @@ const useLayout = ({ workspaceId, onFetchError }: IUseLayoutOptions) => {
     async (paneId: string): Promise<ITab | null> => {
       try {
         let cwd: string | undefined;
+        let sourceTabId: string | undefined;
         const current = layoutRef.current;
         if (current) {
           const pane = findPane(current.root, paneId);
           const activeTab = pane?.tabs.find((t) => t.id === pane.activeTabId);
           if (activeTab) {
+            sourceTabId = activeTab.id;
             try {
               const cwdRes = await fetch(wsQuery(`/api/layout/cwd?session=${activeTab.sessionName}`));
               if (cwdRes.ok) cwd = (await cwdRes.json()).cwd;
@@ -500,6 +506,10 @@ const useLayout = ({ workspaceId, onFetchError }: IUseLayoutOptions) => {
         updateAndSave((data) => {
           const pane = findPane(data.root, paneId);
           if (pane) {
+            if (cwd && sourceTabId) {
+              const srcTab = pane.tabs.find((t) => t.id === sourceTabId);
+              if (srcTab) srcTab.cwd = cwd;
+            }
             pane.tabs.push(newTab);
             pane.activeTabId = newTab.id;
           }
@@ -628,6 +638,19 @@ const useLayout = ({ workspaceId, onFetchError }: IUseLayoutOptions) => {
     [updateAndSave],
   );
 
+  const updateTabCwdInPane = useCallback(
+    (paneId: string, tabId: string, cwd: string) => {
+      updateAndSave((data) => {
+        const pane = findPane(data.root, paneId);
+        if (!pane) return data;
+        const tab = pane.tabs.find((t) => t.id === tabId);
+        if (tab && tab.cwd !== cwd) tab.cwd = cwd;
+        return data;
+      });
+    },
+    [updateAndSave],
+  );
+
   const equalizeRatios = useCallback(() => {
     updateAndSave((data) => {
       data.root = equalizeNode(data.root);
@@ -684,6 +707,7 @@ const useLayout = ({ workspaceId, onFetchError }: IUseLayoutOptions) => {
     reorderTabsInPane,
     removeTabLocally,
     updateTabTitlesInPane,
+    updateTabCwdInPane,
     equalizeRatios,
     updateTabPanelType,
     saveCurrentLayout,

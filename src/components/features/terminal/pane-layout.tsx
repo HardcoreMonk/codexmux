@@ -23,6 +23,7 @@ interface IPaneLayoutProps {
   onReorderTabs: (paneId: string, tabIds: string[]) => void;
   onRemoveTabLocally: (paneId: string, tabId: string) => void;
   onUpdateTabTitles: (paneId: string, titles: Record<string, string>) => void;
+  onUpdateTabCwd: (paneId: string, tabId: string, cwd: string) => void;
   onUpdateTabPanelType: (paneId: string, tabId: string, panelType: TPanelType) => void;
   onEqualizeRatios: () => void;
 }
@@ -46,6 +47,7 @@ const PaneLayout = (props: IPaneLayoutProps) => {
     onReorderTabs,
     onRemoveTabLocally,
     onUpdateTabTitles,
+    onUpdateTabCwd,
     onUpdateTabPanelType,
     onEqualizeRatios,
   } = props;
@@ -201,6 +203,7 @@ const PaneLayout = (props: IPaneLayoutProps) => {
             onReorderTabs={onReorderTabs}
             onRemoveTabLocally={onRemoveTabLocally}
             onUpdateTabTitles={onUpdateTabTitles}
+            onUpdateTabCwd={onUpdateTabCwd}
             onUpdateTabPanelType={onUpdateTabPanelType}
             onEqualizeRatios={handleEqualizeRatios}
           />,

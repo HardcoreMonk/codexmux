@@ -15,6 +15,7 @@ export interface ITab {
   name: string;
   order: number;
   title?: string;
+  cwd?: string;
   panelType?: TPanelType;
 }
 

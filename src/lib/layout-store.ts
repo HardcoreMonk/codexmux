@@ -34,19 +34,21 @@ export const resolveLayoutDir = (wsId: string): string =>
 export const resolveLayoutFile = (wsId: string): string =>
   path.join(resolveLayoutDir(wsId), 'layout.json');
 
-const createDefaultTab = (wsId: string, paneId: string, order = 0): ITab => {
+const createDefaultTab = (wsId: string, paneId: string, order = 0, cwd?: string): ITab => {
   const tabId = generateTabId();
-  return {
+  const tab: ITab = {
     id: tabId,
     sessionName: workspaceSessionName(wsId, paneId, tabId),
     name: 'Terminal 1',
     order,
   };
+  if (cwd) tab.cwd = cwd;
+  return tab;
 };
 
-const createDefaultPaneNode = (wsId: string): { pane: IPaneNode; tab: ITab } => {
+const createDefaultPaneNode = (wsId: string, cwd?: string): { pane: IPaneNode; tab: ITab } => {
   const paneId = generatePaneId();
-  const tab = createDefaultTab(wsId, paneId);
+  const tab = createDefaultTab(wsId, paneId, 0, cwd);
   return {
     pane: { type: 'pane', id: paneId, tabs: [tab], activeTabId: tab.id },
     tab,
@@ -147,7 +149,7 @@ export const crossCheckLayout = async (
     changed = true;
     if (panes.length === 1 && emptyPanes.length === 1) {
       const pane = emptyPanes[0];
-      const tab = createDefaultTab(wsId, pane.id);
+      const tab = createDefaultTab(wsId, pane.id, 0, defaultCwd);
       await createSession(tab.sessionName, 80, 24, defaultCwd);
       pane.tabs.push(tab);
       pane.activeTabId = tab.id;
@@ -171,7 +173,7 @@ export const crossCheckLayout = async (
 };
 
 export const createDefaultLayout = async (wsId: string, cwd: string): Promise<ILayoutData> => {
-  const { pane, tab } = createDefaultPaneNode(wsId);
+  const { pane, tab } = createDefaultPaneNode(wsId, cwd);
   await createSession(tab.sessionName, 80, 24, cwd);
   return {
     root: pane,
@@ -227,7 +229,7 @@ export const getLayout = async (wsId: string, defaultCwd?: string): Promise<ILay
     const existing = await readLayoutFile(filePath);
     if (existing) return existing;
 
-    const { pane, tab } = createDefaultPaneNode(wsId);
+    const { pane, tab } = createDefaultPaneNode(wsId, defaultCwd);
     await createSession(tab.sessionName, 80, 24, defaultCwd);
 
     const layout: ILayoutData = {
@@ -266,7 +268,7 @@ export const createPane = async (wsId: string, cwd?: string): Promise<{ paneId: 
 
   await createSession(sessionName, 80, 24, cwd);
 
-  const tab: ITab = { id: tabId, sessionName, name: 'Terminal 1', order: 0 };
+  const tab: ITab = { id: tabId, sessionName, name: 'Terminal 1', order: 0, ...(cwd ? { cwd } : {}) };
   console.log(`[layout] pane 생성: ${paneId}, tab: ${tabId}, session: ${sessionName}`);
   return { paneId, tab };
 };
@@ -300,7 +302,7 @@ export const addTabToPane = async (wsId: string, paneId: string, name?: string, 
 
     const nextOrder = pane.tabs.length > 0 ? Math.max(...pane.tabs.map((t) => t.order)) + 1 : 0;
     const tabName = name?.trim() || nextTabName(pane.tabs);
-    const tab: ITab = { id: tabId, sessionName, name: tabName, order: nextOrder };
+    const tab: ITab = { id: tabId, sessionName, name: tabName, order: nextOrder, ...(cwd ? { cwd } : {}) };
 
     pane.tabs.push(tab);
     pane.activeTabId = tabId;

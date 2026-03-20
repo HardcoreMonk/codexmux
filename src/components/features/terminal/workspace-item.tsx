@@ -87,12 +87,15 @@ const WorkspaceItem = ({
     [commitRename, cancelRename],
   );
 
+  const displayDirs = workspace.directories
+    .map((d) => d.replace(/^\/Users\/[^/]+/, '~'));
+
   return (
     <ContextMenu>
       <ContextMenuTrigger
         className={cn(
-          'flex h-9 cursor-pointer items-center border-l-2 px-3 text-sm transition-colors duration-75',
-          'overflow-hidden text-ellipsis whitespace-nowrap',
+          'flex cursor-pointer flex-col justify-center border-l-2 px-3 py-1.5 transition-colors duration-75',
+          'overflow-hidden',
           isActive
             ? 'border-l-ui-purple bg-accent text-foreground'
             : 'border-l-transparent text-muted-foreground hover:bg-sidebar-accent',
@@ -118,9 +121,16 @@ const WorkspaceItem = ({
             onBlur={commitRename}
           />
         ) : (
-          <span className="overflow-hidden text-ellipsis whitespace-nowrap">
-            {workspace.name}
-          </span>
+          <>
+            <span className="truncate text-sm leading-tight">
+              {workspace.name}
+            </span>
+            {displayDirs.map((dir, i) => (
+              <span key={dir} className={cn('truncate text-[10px] leading-tight text-muted-foreground/70', i === 0 && 'mt-1')}>
+                {dir}
+              </span>
+            ))}
+          </>
         )}
       </ContextMenuTrigger>
       <ContextMenuContent>

@@ -352,6 +352,18 @@ export const updateActive = async (updates: {
     await writeWorkspacesFile(data);
   });
 
+export const updateWorkspaceDirectories = async (workspaceId: string, directories: string[]): Promise<void> =>
+  withLock(async () => {
+    const data = await readWorkspacesFile();
+    if (!data) return;
+    const ws = data.workspaces.find((w) => w.id === workspaceId);
+    if (!ws) return;
+    const current = JSON.stringify(ws.directories);
+    if (current === JSON.stringify(directories)) return;
+    ws.directories = directories;
+    await writeWorkspacesFile(data);
+  });
+
 export const validateDirectory = async (directory: string): Promise<{
   valid: boolean;
   error?: string;

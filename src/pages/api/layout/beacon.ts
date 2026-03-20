@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { updateLayout } from '@/lib/layout-store';
-import { getActiveWorkspaceId } from '@/lib/workspace-store';
+import { updateLayout, collectAllTabs } from '@/lib/layout-store';
+import { getActiveWorkspaceId, updateWorkspaceDirectories } from '@/lib/workspace-store';
 
 export const config = {
   api: { bodyParser: true },
@@ -22,7 +22,17 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(400).json({ error: 'root 필드 필수' });
   }
 
-  await updateLayout(wsId, root, focusedPaneId ?? null);
+  const result = await updateLayout(wsId, root, focusedPaneId ?? null);
+  if (!('error' in result)) {
+    const cwds = [...new Set(
+      collectAllTabs(result.root)
+        .map((t) => t.cwd)
+        .filter((c): c is string => !!c),
+    )];
+    if (cwds.length > 0) {
+      updateWorkspaceDirectories(wsId, cwds).catch(() => {});
+    }
+  }
   return res.status(200).json({ ok: true });
 };
 
