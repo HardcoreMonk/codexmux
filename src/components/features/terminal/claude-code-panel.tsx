@@ -32,9 +32,14 @@ const ClaudeCodePanel = ({ sessionName, className }: IClaudeCodePanelProps) => {
   const {
     entries,
     sessionStatus,
+    wsStatus,
     isAutoScrollEnabled,
     setAutoScrollEnabled,
     isLoading,
+    error,
+    loadMore,
+    hasMore,
+    retrySession,
   } = useTimeline({
     sessionName,
     workspaceId: workspaceId ?? '',
@@ -80,9 +85,14 @@ const ClaudeCodePanel = ({ sessionName, className }: IClaudeCodePanelProps) => {
           <TimelineView
             entries={entries}
             sessionStatus={sessionStatus}
+            wsStatus={wsStatus}
             isLoading={isLoading}
+            error={error}
             isAutoScrollEnabled={isAutoScrollEnabled}
             onAutoScrollChange={setAutoScrollEnabled}
+            onRetry={retrySession}
+            onLoadMore={loadMore}
+            hasMore={hasMore}
           />
         </Panel>
 

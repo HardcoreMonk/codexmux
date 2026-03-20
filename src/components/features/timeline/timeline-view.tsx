@@ -1,7 +1,7 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { MessageSquare } from 'lucide-react';
-import type { ITimelineEntry, TSessionStatus } from '@/types/timeline';
+import { MessageSquare, RefreshCw, Loader2 } from 'lucide-react';
+import type { ITimelineEntry, TSessionStatus, TTimelineConnectionStatus } from '@/types/timeline';
 import UserMessageItem from '@/components/features/timeline/user-message-item';
 import AssistantMessageItem from '@/components/features/timeline/assistant-message-item';
 import ToolCallItem from '@/components/features/timeline/tool-call-item';
@@ -11,9 +11,14 @@ import ScrollToBottomButton from '@/components/features/timeline/scroll-to-botto
 interface ITimelineViewProps {
   entries: ITimelineEntry[];
   sessionStatus: TSessionStatus;
+  wsStatus: TTimelineConnectionStatus;
   isLoading: boolean;
+  error: string | null;
   isAutoScrollEnabled: boolean;
   onAutoScrollChange: (enabled: boolean) => void;
+  onRetry: () => void;
+  onLoadMore: () => Promise<void>;
+  hasMore: boolean;
 }
 
 const SCROLL_THRESHOLD = 10;
@@ -46,6 +51,31 @@ const SkeletonLoader = () => (
   </div>
 );
 
+const ErrorState = ({ error, onRetry }: { error: string; onRetry: () => void }) => (
+  <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
+    <MessageSquare size={32} className="opacity-40" />
+    <div className="text-center">
+      <p className="text-sm font-medium">연결 오류</p>
+      <p className="mt-1 text-xs">{error}</p>
+    </div>
+    <button
+      type="button"
+      className="mt-2 flex items-center gap-1.5 rounded-md border bg-background px-3 py-1.5 text-xs transition-colors hover:bg-muted"
+      onClick={onRetry}
+    >
+      <RefreshCw size={12} />
+      다시 시도
+    </button>
+  </div>
+);
+
+const ReconnectBanner = () => (
+  <div className="flex items-center justify-center gap-2 border-b bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
+    <Loader2 size={12} className="animate-spin" />
+    연결이 끊어졌습니다. 재연결 중...
+  </div>
+);
+
 const EmptyState = ({ sessionStatus }: { sessionStatus: TSessionStatus }) => {
   if (sessionStatus === 'not-installed') {
     return (
@@ -75,9 +105,14 @@ const EmptyState = ({ sessionStatus }: { sessionStatus: TSessionStatus }) => {
 const TimelineView = ({
   entries,
   sessionStatus,
+  wsStatus,
   isLoading,
+  error,
   isAutoScrollEnabled,
   onAutoScrollChange,
+  onRetry,
+  onLoadMore,
+  hasMore,
 }: ITimelineViewProps) => {
   const parentRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -158,20 +193,38 @@ const TimelineView = ({
     setShowScrollButton(false);
   }, [scrollToBottom, onAutoScrollChange]);
 
+  const handleScrollForLoadMore = useCallback(() => {
+    const el = parentRef.current;
+    if (!el || !hasMore) return;
+    if (el.scrollTop < 100) {
+      onLoadMore();
+    }
+  }, [hasMore, onLoadMore]);
+
   if (isLoading) {
     return <SkeletonLoader />;
+  }
+
+  if (error) {
+    return <ErrorState error={error} onRetry={onRetry} />;
   }
 
   if (displayEntries.length === 0) {
     return <EmptyState sessionStatus={sessionStatus} />;
   }
 
+  const isReconnecting = wsStatus === 'reconnecting';
+
   return (
-    <div className="relative h-full">
+    <div className="relative flex h-full flex-col">
+      {isReconnecting && <ReconnectBanner />}
       <div
         ref={parentRef}
-        className="h-full overflow-y-auto"
-        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto"
+        onScroll={(e) => {
+          handleScroll();
+          handleScrollForLoadMore();
+        }}
         tabIndex={0}
         role="log"
         aria-label="Claude Code 타임라인"
