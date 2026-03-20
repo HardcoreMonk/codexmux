@@ -91,6 +91,12 @@ const useTerminal = ({ onInput, onResize }: IUseTerminalOptions = {}) => {
     return { cols: terminal.cols, rows: terminal.rows };
   }, []);
 
+  const reset = useCallback(() => {
+    writeQueueRef.current = [];
+    isWritingRef.current = false;
+    terminalInstance.current?.reset();
+  }, []);
+
   const focus = useCallback(() => {
     terminalInstance.current?.focus();
   }, []);
@@ -195,7 +201,7 @@ const useTerminal = ({ onInput, onResize }: IUseTerminalOptions = {}) => {
     };
   }, []);
 
-  return { terminalRef, write, clear, fit, focus, isReady };
+  return { terminalRef, write, clear, reset, fit, focus, isReady };
 };
 
 export default useTerminal;

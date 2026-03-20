@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { Loader2, WifiOff, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -18,13 +17,6 @@ const ConnectionStatus = ({
   onReconnect,
 }: IConnectionStatusProps) => {
   const isVisible = status !== 'connected' && status !== 'session-ended';
-  const [displayStatus, setDisplayStatus] = useState(status);
-
-  useEffect(() => {
-    if (isVisible) {
-      setDisplayStatus(status);
-    }
-  }, [status, isVisible]);
 
   return (
     <div
@@ -33,14 +25,14 @@ const ConnectionStatus = ({
         isVisible ? 'opacity-100' : 'pointer-events-none opacity-0',
       )}
     >
-      {displayStatus === 'connecting' && (
+      {status === 'connecting' && (
         <>
           <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
           <span className="text-zinc-400">연결 중...</span>
         </>
       )}
 
-      {displayStatus === 'reconnecting' && (
+      {status === 'reconnecting' && (
         <>
           <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
           <span className="text-zinc-400">
@@ -49,7 +41,7 @@ const ConnectionStatus = ({
         </>
       )}
 
-      {displayStatus === 'disconnected' && (
+      {status === 'disconnected' && (
         <>
           <WifiOff className="h-4 w-4 text-zinc-500" />
           <span className="text-zinc-400">

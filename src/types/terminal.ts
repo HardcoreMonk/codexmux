@@ -6,3 +6,10 @@ export type TConnectionStatus =
   | 'session-ended';
 
 export type TDisconnectReason = 'max-connections' | 'pty-error' | null;
+
+export interface ITab {
+  id: string;
+  sessionName: string;
+  name: string;
+  order: number;
+}
