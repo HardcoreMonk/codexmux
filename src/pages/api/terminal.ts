@@ -10,33 +10,72 @@ const MSG_RESIZE = 0x02;
 const MSG_HEARTBEAT = 0x03;
 
 const MAX_CONNECTIONS = 10;
-let activeConnections = 0;
+const HEARTBEAT_INTERVAL = 30_000;
+const HEARTBEAT_TIMEOUT = 90_000;
+const BACKPRESSURE_HIGH = 1024 * 1024; // 1MB
+const BACKPRESSURE_LOW = 256 * 1024; // 256KB
+
+interface IActiveConnection {
+  ws: WebSocket;
+  pty: pty.IPty;
+  heartbeatTimer: ReturnType<typeof setInterval>;
+  cleaned: boolean;
+}
 
 interface IExtendedServer {
   _terminalWss?: WebSocketServer;
+  _terminalUpgradeRegistered?: boolean;
+  _terminalShutdownRegistered?: boolean;
 }
 
+const connections = new Map<WebSocket, IActiveConnection>();
+
+const cleanup = (conn: IActiveConnection) => {
+  if (conn.cleaned) return;
+  conn.cleaned = true;
+
+  clearInterval(conn.heartbeatTimer);
+
+  try {
+    conn.pty.kill();
+  } catch {
+    // PTY already exited
+  }
+
+  if (conn.ws.readyState === WebSocket.OPEN) {
+    conn.ws.close();
+  }
+
+  connections.delete(conn.ws);
+  console.log(`[terminal] client disconnected (active: ${connections.size})`);
+};
+
+const gracefulShutdown = () => {
+  connections.forEach((conn) => {
+    if (conn.ws.readyState === WebSocket.OPEN) {
+      conn.ws.close(1001, 'Server shutting down');
+    }
+    cleanup(conn);
+  });
+};
+
 const handleConnection = (ws: WebSocket) => {
-  if (activeConnections >= MAX_CONNECTIONS) {
+  if (connections.size >= MAX_CONNECTIONS) {
+    console.log(`[terminal] connection rejected: max connections (${MAX_CONNECTIONS}) reached`);
     ws.close(1013, 'Max connections exceeded');
     return;
   }
 
-  activeConnections++;
-  let cleaned = false;
-  const releaseConnection = () => {
-    if (cleaned) return;
-    cleaned = true;
-    activeConnections--;
-  };
-
   const shell = process.env.SHELL || '/bin/zsh';
+  const cols = 80;
+  const rows = 24;
+
   let ptyProcess: pty.IPty;
   try {
     ptyProcess = pty.spawn(shell, [], {
       name: 'xterm-256color',
-      cols: 80,
-      rows: 24,
+      cols,
+      rows,
       cwd: process.env.HOME || '/',
       env: {
         ...process.env,
@@ -44,31 +83,62 @@ const handleConnection = (ws: WebSocket) => {
         COLORTERM: 'truecolor',
       } as Record<string, string>,
     });
-  } catch {
-    releaseConnection();
-    ws.close(1011, 'PTY creation failed');
+  } catch (err) {
+    console.log(`[terminal] pty spawn failed: ${err instanceof Error ? err.message : err}`);
+    ws.close(1011, 'PTY spawn failed');
     return;
   }
 
-  let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  console.log(`[terminal] pty spawned: ${shell} (pid: ${ptyProcess.pid}, cols: ${cols}, rows: ${rows})`);
+
   let lastHeartbeat = Date.now();
+  let paused = false;
+
+  const heartbeatTimer = setInterval(() => {
+    if (Date.now() - lastHeartbeat > HEARTBEAT_TIMEOUT) {
+      console.log(`[terminal] heartbeat timeout (pid: ${ptyProcess.pid})`);
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close(1001, 'Heartbeat timeout');
+      }
+      cleanup(conn);
+    }
+  }, HEARTBEAT_INTERVAL);
+
+  const conn: IActiveConnection = {
+    ws,
+    pty: ptyProcess,
+    heartbeatTimer,
+    cleaned: false,
+  };
+
+  connections.set(ws, conn);
+  console.log(`[terminal] client connected (active: ${connections.size})`);
 
   ptyProcess.onData((data: string) => {
     if (ws.readyState !== WebSocket.OPEN) return;
+
     const encoder = new TextEncoder();
     const payload = encoder.encode(data);
     const frame = new Uint8Array(1 + payload.length);
     frame[0] = MSG_STDOUT;
     frame.set(payload, 1);
     ws.send(frame);
+
+    if (ws.bufferedAmount > BACKPRESSURE_HIGH && !paused) {
+      paused = true;
+      ptyProcess.pause();
+    } else if (ws.bufferedAmount < BACKPRESSURE_LOW && paused) {
+      paused = false;
+      ptyProcess.resume();
+    }
   });
 
-  ptyProcess.onExit(() => {
-    if (heartbeatTimer) clearInterval(heartbeatTimer);
+  ptyProcess.onExit(({ exitCode, signal }) => {
+    console.log(`[terminal] pty exited (pid: ${ptyProcess.pid}, code: ${exitCode}, signal: ${signal})`);
     if (ws.readyState === WebSocket.OPEN) {
       ws.close(1000, 'PTY exited');
     }
-    releaseConnection();
+    cleanup(conn);
   });
 
   ws.on('message', (raw: Buffer | ArrayBuffer) => {
@@ -89,43 +159,43 @@ const handleConnection = (ws: WebSocket) => {
       case MSG_RESIZE: {
         if (payload.length >= 4) {
           const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
-          const cols = view.getUint16(0);
-          const rows = view.getUint16(2);
-          if (cols > 0 && rows > 0) {
-            ptyProcess.resize(cols, rows);
+          const newCols = view.getUint16(0);
+          const newRows = view.getUint16(2);
+          if (newCols > 0 && newRows > 0) {
+            ptyProcess.resize(newCols, newRows);
           }
         }
         break;
       }
       case MSG_HEARTBEAT: {
         lastHeartbeat = Date.now();
-        const pong = new Uint8Array([MSG_HEARTBEAT]);
-        ws.send(pong);
+        ws.send(new Uint8Array([MSG_HEARTBEAT]));
         break;
       }
     }
   });
 
   ws.on('close', () => {
-    if (heartbeatTimer) clearInterval(heartbeatTimer);
-    try {
-      ptyProcess.kill();
-    } catch {
-      // PTY already exited
-    }
-    releaseConnection();
+    cleanup(conn);
   });
 
-  heartbeatTimer = setInterval(() => {
-    if (Date.now() - lastHeartbeat > 90_000) {
-      ws.close(1001, 'Heartbeat timeout');
-    }
-  }, 30_000);
-
-  lastHeartbeat = Date.now();
+  ws.on('error', (err) => {
+    console.log(`[terminal] websocket error (pid: ${ptyProcess.pid}): ${err.message}`);
+    cleanup(conn);
+  });
 };
 
 const handler = (req: NextApiRequest, res: NextApiResponse) => {
+  if (req.method !== 'GET') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  if (!req.headers.upgrade || req.headers.upgrade.toLowerCase() !== 'websocket') {
+    res.status(426).json({ error: 'WebSocket connection required' });
+    return;
+  }
+
   const server = (res.socket as unknown as { server: IExtendedServer })?.server;
 
   if (!server) {
@@ -134,21 +204,28 @@ const handler = (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   if (!server._terminalWss) {
-    const wss = new WebSocketServer({ noServer: true });
-    server._terminalWss = wss;
+    server._terminalWss = new WebSocketServer({ noServer: true });
+    server._terminalWss.on('connection', handleConnection);
+  }
 
+  if (!server._terminalUpgradeRegistered) {
     (server as unknown as import('http').Server).on(
       'upgrade',
       (request: IncomingMessage, socket: Duplex, head: Buffer) => {
         if (request.url === '/api/terminal') {
-          wss.handleUpgrade(request, socket, head, (ws) => {
-            wss.emit('connection', ws, request);
+          server._terminalWss!.handleUpgrade(request, socket, head, (ws) => {
+            server._terminalWss!.emit('connection', ws, request);
           });
         }
       },
     );
+    server._terminalUpgradeRegistered = true;
+  }
 
-    wss.on('connection', handleConnection);
+  if (!server._terminalShutdownRegistered) {
+    process.on('SIGTERM', gracefulShutdown);
+    process.on('SIGINT', gracefulShutdown);
+    server._terminalShutdownRegistered = true;
   }
 
   res.end();
