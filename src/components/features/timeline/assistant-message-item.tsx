@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import dayjs from 'dayjs';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -10,16 +10,19 @@ interface IAssistantMessageItemProps {
   entry: ITimelineAssistantMessage;
 }
 
-const MAX_COLLAPSED_LINES = 10;
+const MAX_COLLAPSED_HEIGHT = 200;
 
 const AssistantMessageItem = ({ entry }: IAssistantMessageItemProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
-  const lines = useMemo(() => (entry.markdown ?? '').split('\n'), [entry.markdown]);
-  const isLong = lines.length > MAX_COLLAPSED_LINES;
-  const displayText = isLong && !isExpanded
-    ? lines.slice(0, MAX_COLLAPSED_LINES).join('\n')
-    : entry.markdown ?? '';
+  useEffect(() => {
+    const el = contentRef.current;
+    if (el) {
+      setIsOverflowing(el.scrollHeight > MAX_COLLAPSED_HEIGHT);
+    }
+  }, [entry.markdown]);
 
   return (
     <div className="animate-in fade-in duration-150">
@@ -27,12 +30,16 @@ const AssistantMessageItem = ({ entry }: IAssistantMessageItemProps) => {
         {dayjs(entry.timestamp).format('HH:mm')}
       </span>
       <div className="mt-1 border-l-2 border-ui-purple bg-ui-purple/5 px-4 py-3">
-        <div className="prose prose-sm dark:prose-invert max-w-none text-sm [&_pre]:bg-muted [&_pre]:rounded-md [&_pre]:p-3 [&_code]:text-xs [&_code]:font-mono">
+        <div
+          ref={contentRef}
+          className="prose prose-sm dark:prose-invert max-w-none text-sm overflow-hidden [&_pre]:bg-muted [&_pre]:rounded-md [&_pre]:p-3 [&_code]:text-xs [&_code]:font-mono"
+          style={!isExpanded && isOverflowing ? { maxHeight: MAX_COLLAPSED_HEIGHT } : undefined}
+        >
           <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-            {displayText}
+            {entry.markdown ?? ''}
           </ReactMarkdown>
         </div>
-        {isLong && (
+        {isOverflowing && (
           <Button
             variant="ghost"
             size="xs"

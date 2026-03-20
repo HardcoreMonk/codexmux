@@ -106,7 +106,7 @@ Claude Code Panel 상단 영역은 세 가지 상태 중 하나를 표시한다:
 
 ### 데이터 페칭
 
-- 컴포넌트 마운트 시 `GET /api/timeline/sessions?workspace={id}` 호출
+- 컴포넌트 마운트 시 `GET /api/timeline/sessions?tmuxSession={name}` 호출 (Panel의 tmux 세션명 전달 → 서버에서 cwd 조회)
 - 응답을 상태로 관리 (`useState` 또는 `useSWR` 등)
 - 새로고침 버튼: 수동 refetch
 - 뷰 전환 시 (타임라인 → 목록): 자동 refetch (최신 목록 반영)

@@ -18,6 +18,22 @@ assignee: ''
 
 Claude Code Panel이 연결된 세션 ID를 Surface 단위로 layout.json에 저장한다. 서버 재시작 시, 이전에 Claude Code를 실행 중이던 Surface를 식별하고, Claude 프로세스가 없으면 자동으로 `--resume`을 실행하여 작업을 이어간다.
 
+## 왜 세션 ID를 저장하는가
+
+Claude가 실행 중일 때는 tmux PID → `~/.claude/sessions/{PID}.json` → sessionId 경로로 세션 ID를 알 수 있다. 하지만 **서버를 재시작하면 Claude 프로세스가 종료**되고, PID 파일도 정리된다. 이 시점에서 세션 ID를 알 방법이 없다.
+
+세션 ID를 저장하지 않으면:
+```
+서버 재시작 → Claude 죽어있음 → 어떤 세션이었는지 모름 → 세션 목록에서 수동 선택 필요
+```
+
+세션 ID를 저장하면:
+```
+서버 재시작 → Claude 죽어있음 → layout.json에서 세션 ID 읽음 → 자동 resume → 이전 상태 복원
+```
+
+이는 프로젝트의 핵심 가치(**서버를 껐다 켜도 모든 것이 그대로 복원**)를 Claude Code 세션까지 확장하는 것이다. 사용자 개입 없이, 서버 재시작 전과 동일한 작업 환경이 자동으로 복원된다.
+
 ## 주요 기능
 
 ### Surface 데이터 확장

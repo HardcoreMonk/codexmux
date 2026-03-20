@@ -16,15 +16,16 @@ assignee: ''
 
 ## 개요
 
-프로젝트별 Claude Code 과거 세션 목록을 조회하는 서버 API. `~/.claude/projects/` 하위에서 현재 Workspace에 해당하는 `.jsonl` 파일들을 탐색하고, 각 파일에서 메타정보를 경량 파싱하여 최신순으로 반환한다.
+Panel(tmux 세션)의 현재 작업 디렉토리(cwd)를 기준으로 Claude Code 과거 세션 목록을 조회하는 서버 API. `~/.claude/projects/` 하위에서 해당 cwd에 매핑되는 `.jsonl` 파일들을 탐색하고, 각 파일에서 메타정보를 경량 파싱하여 최신순으로 반환한다.
 
 기존 `GET /api/timeline/session`(단수)은 현재 활성 세션 1건을 반환하는 API로 유지하고, 이 기능은 별도 엔드포인트 `GET /api/timeline/sessions`(복수)로 제공한다.
 
 ## 주요 기능
 
-### 세션 파일 탐색
+### cwd 기반 세션 파일 탐색
 
-- Workspace의 프로젝트 디렉토리를 기반으로 `~/.claude/projects/{변환된 경로}/` 하위 `.jsonl` 파일을 스캔
+- Panel의 tmux 세션에서 현재 작업 디렉토리(cwd)를 조회: `tmux display-message -t {session} -p "#{pane_current_path}"`
+- cwd를 기반으로 `~/.claude/projects/{변환된 경로}/` 하위 `.jsonl` 파일을 스캔
 - 경로 변환 규칙은 기존 `session-detection.ts`의 로직을 재활용: `/` → `-` 치환
 - `agent-*.jsonl` 패턴은 제외 (서브에이전트 파일 필터링)
 - 파일 목록 조회는 `fs.readdir`로 수행 — glob 불필요
@@ -52,7 +53,7 @@ assignee: ''
 
 - `lastActivityAt` 기준 내림차순 (최신순)
 - 기본 limit: 50건, offset 기반 페이지네이션
-- 쿼리 파라미터: `?workspace={id}&limit={n}&offset={n}`
+- 쿼리 파라미터: `?tmuxSession={name}&limit={n}&offset={n}`
 
 ### 병렬 처리
 
@@ -64,7 +65,8 @@ assignee: ''
 
 - 프로젝트 디렉토리에 해당하는 Claude 경로가 없음 → 빈 배열 반환 (에러 아님)
 - 개별 파일 파싱 실패 → 해당 세션만 건너뜀, 나머지는 정상 반환
-- Workspace를 찾을 수 없음 → 404 응답
+- tmux 세션을 찾을 수 없음 → 404 응답
+- cwd 조회 실패 → 500 응답
 
 ### 캐싱
 
