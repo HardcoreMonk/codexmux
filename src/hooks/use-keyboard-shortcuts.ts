@@ -67,7 +67,7 @@ const useKeyboardShortcuts = ({
     () => {
       const l = layoutRef.current;
       if (!l.layout?.focusedPaneId || !l.canSplit) return;
-      l.splitPane(l.layout.focusedPaneId, 'vertical');
+      l.splitPane(l.layout.focusedPaneId, 'horizontal');
     },
     HOTKEY_OPTIONS,
   );
@@ -78,7 +78,7 @@ const useKeyboardShortcuts = ({
     () => {
       const l = layoutRef.current;
       if (!l.layout?.focusedPaneId || !l.canSplit) return;
-      l.splitPane(l.layout.focusedPaneId, 'horizontal');
+      l.splitPane(l.layout.focusedPaneId, 'vertical');
     },
     HOTKEY_OPTIONS,
   );

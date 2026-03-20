@@ -60,7 +60,7 @@ export const findAdjacentPaneInDirection = (
   if (!buildPath(root)) return null;
 
   const targetOrientation =
-    direction === 'left' || direction === 'right' ? 'vertical' : 'horizontal';
+    direction === 'left' || direction === 'right' ? 'horizontal' : 'vertical';
   const fromChildIndex = direction === 'left' || direction === 'up' ? 1 : 0;
 
   for (let i = path.length - 1; i >= 0; i--) {
