@@ -23,6 +23,7 @@ import {
 import type { IWorkspace } from '@/types/terminal';
 import WorkspaceItem from '@/components/features/terminal/workspace-item';
 import CreateWorkspaceDialog from '@/components/features/terminal/create-workspace-dialog';
+import SettingsDialog from '@/components/features/terminal/settings-dialog';
 
 interface ISidebarProps {
   workspaces: IWorkspace[];
@@ -67,6 +68,7 @@ const Sidebar = ({
   onRetry,
 }: ISidebarProps) => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<IWorkspace | null>(null);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
@@ -200,16 +202,14 @@ const Sidebar = ({
         aria-label="Workspace 목록"
       >
         {/* Header */}
-        <div className="flex h-9 shrink-0 items-center justify-end border-b border-sidebar-border px-2">
-          <button
-            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
-            onClick={onToggleCollapse}
-            aria-label="사이드바 접기"
-            aria-expanded="true"
-          >
-            <ChevronsLeft className="h-3.5 w-3.5" />
-          </button>
-        </div>
+        <button
+          className="flex h-[30px] w-full shrink-0 items-center justify-end border-b border-sidebar-border px-2 text-muted-foreground transition-colors hover:bg-sidebar-accent"
+          onClick={onToggleCollapse}
+          aria-label="사이드바 접기"
+          aria-expanded="true"
+        >
+          <ChevronsLeft className="h-3.5 w-3.5" />
+        </button>
 
         {/* Workspace list */}
         <div
@@ -290,7 +290,7 @@ const Sidebar = ({
           <div className="flex items-center justify-between px-2 pb-2">
             <button
               className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
-              onClick={() => toast.info('추후 구현 예정')}
+              onClick={() => setSettingsOpen(true)}
               aria-label="설정"
             >
               <Settings className="h-3.5 w-3.5" />
@@ -341,16 +341,14 @@ const Sidebar = ({
 
       {/* Expand button (collapsed state) */}
       {collapsed && (
-        <div className="flex shrink-0 items-start border-r border-sidebar-border bg-sidebar px-1 pt-1.5">
-          <button
-            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent"
-            onClick={onToggleCollapse}
-            aria-label="사이드바 펼치기"
-            aria-expanded="false"
-          >
-            <ChevronsRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
+        <button
+          className="flex shrink-0 items-center border-r border-sidebar-border bg-sidebar px-1 text-muted-foreground transition-colors hover:bg-sidebar-accent"
+          onClick={onToggleCollapse}
+          aria-label="사이드바 펼치기"
+          aria-expanded="false"
+        >
+          <ChevronsRight className="h-3.5 w-3.5" />
+        </button>
       )}
 
       {/* Create dialog */}
@@ -360,6 +358,9 @@ const Sidebar = ({
         onSubmit={handleCreateSubmit}
         onValidate={onValidateDirectory}
       />
+
+      {/* Settings dialog */}
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 
       {/* Delete confirmation */}
       <AlertDialog

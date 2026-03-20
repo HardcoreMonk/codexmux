@@ -308,7 +308,7 @@ const PaneContainer = ({
         onRetry={() => {}}
       />
 
-      <div role="tabpanel" className="relative min-h-0 flex-1">
+      <div role="tabpanel" className="relative min-h-0 flex-1" style={{ backgroundColor: '#1e1f29' }}>
         <TerminalContainer
           ref={terminalRef}
           className={cn(
