@@ -66,7 +66,7 @@ const useTabs = (): IUseTabs => {
     } finally {
       setIsLoading(false);
     }
-  }, [saveActiveTab]);
+  }, []);
 
   useEffect(() => {
     fetchTabs();
