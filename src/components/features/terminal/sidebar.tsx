@@ -33,6 +33,7 @@ interface ISidebarProps {
   error: string | null;
   onToggleCollapse: () => void;
   onWidthChange: (width: number) => void;
+  onWidthDragEnd: (width: number) => void;
   onSelectWorkspace: (workspaceId: string) => void;
   onCreateWorkspace: (directory: string, name?: string) => Promise<IWorkspace | null>;
   onDeleteWorkspace: (workspaceId: string) => Promise<boolean>;
@@ -53,6 +54,7 @@ const Sidebar = ({
   error,
   onToggleCollapse,
   onWidthChange,
+  onWidthDragEnd,
   onSelectWorkspace,
   onCreateWorkspace,
   onDeleteWorkspace,
@@ -83,8 +85,11 @@ const Sidebar = ({
         if (!isResizing.current) return;
         const delta = ev.clientX - startX.current;
         const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth.current + delta));
+        lastWidth = newWidth;
         onWidthChange(newWidth);
       };
+
+      let lastWidth = startWidth.current;
 
       const handleMouseUp = () => {
         isResizing.current = false;
@@ -93,6 +98,7 @@ const Sidebar = ({
         document.removeEventListener('mouseup', handleMouseUp);
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
+        onWidthDragEnd(lastWidth);
       };
 
       document.addEventListener('mousemove', handleMouseMove);
@@ -100,7 +106,7 @@ const Sidebar = ({
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
     },
-    [width, onWidthChange],
+    [width, onWidthChange, onWidthDragEnd],
   );
 
   const handleCreateWorkspace = useCallback(async () => {
@@ -313,10 +319,14 @@ const Sidebar = ({
             const step = e.shiftKey ? 20 : 4;
             if (e.key === 'ArrowLeft') {
               e.preventDefault();
-              onWidthChange(Math.max(MIN_WIDTH, width - step));
+              const newWidth = Math.max(MIN_WIDTH, width - step);
+              onWidthChange(newWidth);
+              onWidthDragEnd(newWidth);
             } else if (e.key === 'ArrowRight') {
               e.preventDefault();
-              onWidthChange(Math.min(MAX_WIDTH, width + step));
+              const newWidth = Math.min(MAX_WIDTH, width + step);
+              onWidthChange(newWidth);
+              onWidthDragEnd(newWidth);
             }
           }}
           role="separator"

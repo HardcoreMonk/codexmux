@@ -1,10 +1,11 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Loader2, Plus, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { ITab, TDisconnectReason } from '@/types/terminal';
 import useTerminal from '@/hooks/use-terminal';
 import useTerminalWebSocket from '@/hooks/use-terminal-websocket';
+import useTabTitles from '@/hooks/use-tab-titles';
 import TerminalContainer from '@/components/features/terminal/terminal-container';
 import ConnectionStatus from '@/components/features/terminal/connection-status';
 import PaneTabBar from '@/components/features/terminal/pane-tab-bar';
@@ -82,6 +83,9 @@ const PaneContainer = ({
   onReorderTabs,
   onRemoveTabLocally,
 }: IPaneContainerProps) => {
+  const sessions = useMemo(() => tabs.map((t) => t.sessionName), [tabs]);
+  const tabTitles = useTabTitles(sessions);
+
   const [hasEverConnected, setHasEverConnected] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -289,6 +293,7 @@ const PaneContainer = ({
         paneId={paneId}
         tabs={tabs}
         activeTabId={activeTabId}
+        tabTitles={tabTitles}
         isLoading={false}
         error={null}
         isCreating={isCreating}

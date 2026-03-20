@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import type { IWorkspace } from '@/types/terminal';
 
@@ -22,6 +22,7 @@ interface IUseWorkspace {
   renameWorkspace: (workspaceId: string, name: string) => Promise<boolean>;
   toggleSidebar: () => void;
   setSidebarWidth: (width: number) => void;
+  saveSidebarWidth: (width: number) => void;
   validateDirectory: (directory: string) => Promise<IValidateResponse>;
   retry: () => void;
 }
@@ -34,22 +35,17 @@ const useWorkspace = (): IUseWorkspace => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const saveActiveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const saveActive = useCallback(
     (updates: {
       activeWorkspaceId?: string;
       sidebarCollapsed?: boolean;
       sidebarWidth?: number;
     }) => {
-      if (saveActiveTimer.current) clearTimeout(saveActiveTimer.current);
-      saveActiveTimer.current = setTimeout(() => {
-        fetch('/api/workspace/active', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updates),
-        }).catch(() => {});
-      }, 300);
+      fetch('/api/workspace/active', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      }).catch(() => {});
     },
     [],
   );
@@ -170,9 +166,12 @@ const useWorkspace = (): IUseWorkspace => {
     });
   }, [saveActive]);
 
-  const setSidebarWidth = useCallback(
+  const setSidebarWidth = useCallback((width: number) => {
+    setSidebarWidthState(width);
+  }, []);
+
+  const saveSidebarWidth = useCallback(
     (width: number) => {
-      setSidebarWidthState(width);
       saveActive({ sidebarWidth: width });
     },
     [saveActive],
@@ -207,6 +206,7 @@ const useWorkspace = (): IUseWorkspace => {
     renameWorkspace: renameWorkspaceAction,
     toggleSidebar,
     setSidebarWidth,
+    saveSidebarWidth,
     validateDirectory,
     retry: fetchWorkspaces,
   };

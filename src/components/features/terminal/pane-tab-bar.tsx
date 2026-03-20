@@ -13,10 +13,13 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { ITab } from '@/types/terminal';
 
+const DEFAULT_TAB_NAME_RE = /^Terminal \d+$/;
+
 interface IPaneTabBarProps {
   paneId: string;
   tabs: ITab[];
   activeTabId: string | null;
+  tabTitles?: Record<string, string>;
   isLoading: boolean;
   error: string | null;
   isCreating: boolean;
@@ -40,6 +43,7 @@ const PaneTabBar = ({
   paneId,
   tabs,
   activeTabId,
+  tabTitles,
   isLoading,
   error,
   isCreating,
@@ -72,6 +76,11 @@ const PaneTabBar = ({
   const [isDragOverFromOther, setIsDragOverFromOther] = useState(false);
   const dragEnterCountRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const getDisplayName = (tab: ITab): string => {
+    if (!DEFAULT_TAB_NAME_RE.test(tab.name)) return tab.name;
+    return tabTitles?.[tab.sessionName] ?? tab.name;
+  };
 
   const sortedTabs = [...tabs].sort((a, b) => a.order - b.order);
 
@@ -319,7 +328,7 @@ const PaneTabBar = ({
                 e.dataTransfer.setData(`application/x-pane/${paneId}`, '');
 
                 const ghost = document.createElement('div');
-                ghost.textContent = tab.name;
+                ghost.textContent = getDisplayName(tab);
                 ghost.style.cssText =
                   'position:fixed;left:-9999px;padding:4px 12px;background:var(--card);color:var(--foreground);border-radius:4px;font-size:12px;opacity:0.6;transform:scale(0.9);white-space:nowrap;';
                 document.body.appendChild(ghost);
@@ -355,7 +364,7 @@ const PaneTabBar = ({
                   onClick={(e) => e.stopPropagation()}
                 />
               ) : (
-                <span className="truncate">{tab.name}</span>
+                <span className="truncate">{getDisplayName(tab)}</span>
               )}
 
               <button

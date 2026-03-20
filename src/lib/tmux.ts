@@ -124,6 +124,31 @@ export const scanSessions = async (): Promise<void> => {
   }
 };
 
+export interface ISessionInfo {
+  command: string;
+  cwd: string;
+}
+
+export const getSessionsInfo = async (): Promise<Map<string, ISessionInfo>> => {
+  try {
+    const { stdout } = await execFile(
+      'tmux',
+      ['-L', TMUX_SOCKET, 'list-panes', '-a', '-F', '#{session_name}\t#{pane_current_command}\t#{pane_current_path}'],
+      { timeout: CMD_TIMEOUT },
+    );
+    const result = new Map<string, ISessionInfo>();
+    for (const line of stdout.trim().split('\n')) {
+      const parts = line.split('\t');
+      if (parts.length >= 3) {
+        result.set(parts[0], { command: parts[1], cwd: parts[2] });
+      }
+    }
+    return result;
+  } catch {
+    return new Map();
+  }
+};
+
 export const getSessionCwd = async (sessionName: string): Promise<string | null> => {
   try {
     const { stdout } = await execFile(

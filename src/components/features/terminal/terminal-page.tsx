@@ -109,6 +109,7 @@ const TerminalPage = () => {
         error={null}
         onToggleCollapse={ws.toggleSidebar}
         onWidthChange={ws.setSidebarWidth}
+        onWidthDragEnd={ws.saveSidebarWidth}
         onSelectWorkspace={handleSelectWorkspace}
         onCreateWorkspace={ws.createWorkspace}
         onDeleteWorkspace={ws.deleteWorkspace}
