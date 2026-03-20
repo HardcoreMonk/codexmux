@@ -108,11 +108,82 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage) 
     return;
   }
 
-  const cols = 80;
-  const rows = 24;
+  const pending = { resize: null as { cols: number; rows: number } | null };
+  let ptyProcess: pty.IPty | null = null;
+  let conn: IActiveConnection | null = null;
+  let lastHeartbeat = Date.now();
+  let paused = false;
+  let sessionName = '';
 
-  let sessionName: string;
+  const parseMessage = (raw: Buffer | ArrayBuffer) => {
+    const data = new Uint8Array(
+      raw instanceof ArrayBuffer ? raw : raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength),
+    );
+    if (data.length === 0) return;
+    return { type: data[0], payload: data.slice(1) };
+  };
+
+  const handleMessage = (raw: Buffer | ArrayBuffer) => {
+    const msg = parseMessage(raw);
+    if (!msg) return;
+
+    if (!ptyProcess) {
+      if (msg.type === MSG_RESIZE && msg.payload.length >= 4) {
+        const view = new DataView(msg.payload.buffer, msg.payload.byteOffset, msg.payload.byteLength);
+        pending.resize = { cols: view.getUint16(0), rows: view.getUint16(2) };
+      }
+      return;
+    }
+
+    switch (msg.type) {
+      case MSG_STDIN: {
+        const decoder = new TextDecoder();
+        ptyProcess.write(decoder.decode(msg.payload));
+        break;
+      }
+      case MSG_RESIZE: {
+        if (msg.payload.length >= 4) {
+          const view = new DataView(msg.payload.buffer, msg.payload.byteOffset, msg.payload.byteLength);
+          const newCols = view.getUint16(0);
+          const newRows = view.getUint16(2);
+          if (newCols > 0 && newRows > 0) {
+            ptyProcess.resize(newCols, newRows);
+          }
+        }
+        break;
+      }
+      case MSG_HEARTBEAT: {
+        lastHeartbeat = Date.now();
+        ws.send(new Uint8Array([MSG_HEARTBEAT]));
+        break;
+      }
+      case MSG_KILL_SESSION: {
+        console.log(`[terminal] kill session requested: ${sessionName}`);
+        killSession(sessionName).catch((err) => {
+          console.log(`[terminal] kill session failed: ${err instanceof Error ? err.message : err}`);
+        });
+        break;
+      }
+    }
+  };
+
+  ws.on('message', handleMessage);
+  ws.on('close', () => {
+    if (!conn) return;
+    conn.detaching = true;
+    cleanup(conn);
+  });
+  ws.on('error', (err) => {
+    console.log(`[terminal] websocket error: ${err.message}`);
+    if (!conn) return;
+    conn.detaching = true;
+    cleanup(conn);
+  });
+
   const sessions = await listSessions();
+
+  const cols = pending.resize?.cols || 80;
+  const rows = pending.resize?.rows || 24;
 
   if (sessions.length > 0) {
     sessionName = sessions[0];
@@ -128,7 +199,6 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage) 
     }
   }
 
-  let ptyProcess: pty.IPty;
   try {
     ptyProcess = attachToSession(sessionName, cols, rows);
   } catch (err) {
@@ -144,14 +214,15 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage) 
     }
   }
 
+  if (pending.resize && pending.resize.cols > 0 && pending.resize.rows > 0) {
+    ptyProcess.resize(pending.resize.cols, pending.resize.rows);
+  }
+
   console.log(`[terminal] attached to tmux session: ${sessionName} (pid: ${ptyProcess.pid})`);
 
-  let lastHeartbeat = Date.now();
-  let paused = false;
-
   const heartbeatTimer = setInterval(() => {
-    if (Date.now() - lastHeartbeat > HEARTBEAT_TIMEOUT) {
-      console.log(`[terminal] heartbeat timeout (pid: ${ptyProcess.pid})`);
+    if (conn && Date.now() - lastHeartbeat > HEARTBEAT_TIMEOUT) {
+      console.log(`[terminal] heartbeat timeout (pid: ${ptyProcess!.pid})`);
       conn.detaching = true;
       if (ws.readyState === WebSocket.OPEN) {
         ws.close(1001, 'Heartbeat timeout');
@@ -160,7 +231,7 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage) 
     }
   }, HEARTBEAT_INTERVAL);
 
-  const conn: IActiveConnection = {
+  conn = {
     ws,
     pty: ptyProcess,
     sessionName,
@@ -185,69 +256,17 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage) 
 
     if (ws.bufferedAmount > BACKPRESSURE_HIGH && !paused) {
       paused = true;
-      ptyProcess.pause();
+      ptyProcess!.pause();
     } else if (ws.bufferedAmount < BACKPRESSURE_LOW && paused) {
       paused = false;
-      ptyProcess.resume();
+      ptyProcess!.resume();
     }
   });
 
   ptyProcess.onExit(({ exitCode, signal }) => {
     console.log(
-      `[terminal] pty exited (pid: ${ptyProcess.pid}, code: ${exitCode}, signal: ${signal}, detaching: ${conn.detaching})`,
+      `[terminal] pty exited (pid: ${ptyProcess!.pid}, code: ${exitCode}, signal: ${signal}, detaching: ${conn.detaching})`,
     );
-    cleanup(conn);
-  });
-
-  ws.on('message', (raw: Buffer | ArrayBuffer) => {
-    const data = new Uint8Array(
-      raw instanceof ArrayBuffer ? raw : raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength),
-    );
-    if (data.length === 0) return;
-
-    const type = data[0];
-    const payload = data.slice(1);
-
-    switch (type) {
-      case MSG_STDIN: {
-        const decoder = new TextDecoder();
-        ptyProcess.write(decoder.decode(payload));
-        break;
-      }
-      case MSG_RESIZE: {
-        if (payload.length >= 4) {
-          const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
-          const newCols = view.getUint16(0);
-          const newRows = view.getUint16(2);
-          if (newCols > 0 && newRows > 0) {
-            ptyProcess.resize(newCols, newRows);
-          }
-        }
-        break;
-      }
-      case MSG_HEARTBEAT: {
-        lastHeartbeat = Date.now();
-        ws.send(new Uint8Array([MSG_HEARTBEAT]));
-        break;
-      }
-      case MSG_KILL_SESSION: {
-        console.log(`[terminal] kill session requested: ${sessionName}`);
-        killSession(sessionName).catch((err) => {
-          console.log(`[terminal] kill session failed: ${err instanceof Error ? err.message : err}`);
-        });
-        break;
-      }
-    }
-  });
-
-  ws.on('close', () => {
-    conn.detaching = true;
-    cleanup(conn);
-  });
-
-  ws.on('error', (err) => {
-    console.log(`[terminal] websocket error (pid: ${ptyProcess.pid}): ${err.message}`);
-    conn.detaching = true;
     cleanup(conn);
   });
 };

@@ -22,6 +22,7 @@ interface ITermActions {
 }
 
 interface IWsActions {
+  sendStdin: (data: string) => void;
   sendResize: (cols: number, rows: number) => void;
 }
 
@@ -33,6 +34,7 @@ const NOOP_TERM_ACTIONS: ITermActions = {
 };
 
 const NOOP_WS_ACTIONS: IWsActions = {
+  sendStdin: () => {},
   sendResize: () => {},
 };
 
@@ -44,8 +46,14 @@ const TerminalPage = () => {
   const wsActionsRef = useRef<IWsActions>(NOOP_WS_ACTIONS);
   const newSessionRef = useRef(false);
 
+  const { terminalRef, write, clear, fit, focus, isReady } = useTerminal({
+    onInput: (data) => wsActionsRef.current.sendStdin(data),
+    onResize: (cols, rows) => wsActionsRef.current.sendResize(cols, rows),
+  });
+
   const { status, retryCount, disconnectReason, sendStdin, sendResize, sendKillSession, reconnect } =
     useTerminalWebSocket({
+      enabled: isReady,
       onData: (data) => termActionsRef.current.write(data),
       onConnected: () => {
         setHasConnected(true);
@@ -61,28 +69,18 @@ const TerminalPage = () => {
       onSessionEnded: () => setSessionEnded(true),
     });
 
-  const { terminalRef, write, clear, fit, focus, isReady } = useTerminal({
-    onInput: sendStdin,
-    onResize: (cols, rows) => wsActionsRef.current.sendResize(cols, rows),
-  });
-
   useEffect(() => {
     termActionsRef.current = { write, clear, fit, focus };
-    wsActionsRef.current = { sendResize };
+    wsActionsRef.current = { sendStdin, sendResize };
   });
-
-  useEffect(() => {
-    if (isReady && status === 'connected') {
-      const { cols, rows } = fit();
-      sendResize(cols, rows);
-    }
-  }, [isReady, status, fit, sendResize]);
 
   const handleNewSession = useCallback(() => {
     newSessionRef.current = true;
     setSessionEnded(false);
     reconnect();
   }, [reconnect]);
+
+  const ready = isReady && hasConnected;
 
   return (
     <div
@@ -93,14 +91,14 @@ const TerminalPage = () => {
         ref={terminalRef}
         className={cn(
           'transition-opacity duration-150',
-          hasConnected ? 'opacity-100' : 'opacity-0',
+          ready ? 'opacity-100' : 'opacity-0',
         )}
       />
 
       <div
         className={cn(
           'absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 transition-opacity duration-150',
-          hasConnected ? 'pointer-events-none opacity-0' : 'opacity-100',
+          ready ? 'pointer-events-none opacity-0' : 'opacity-100',
         )}
       >
         {(status === 'connecting' || status === 'reconnecting') && (
@@ -123,7 +121,7 @@ const TerminalPage = () => {
         )}
       </div>
 
-      {hasConnected && status === 'connected' && (
+      {ready && status === 'connected' && (
         <Button
           variant="ghost"
           size="icon"
@@ -135,7 +133,7 @@ const TerminalPage = () => {
         </Button>
       )}
 
-      {hasConnected && (
+      {ready && (
         <ConnectionStatus
           status={status}
           retryCount={retryCount}

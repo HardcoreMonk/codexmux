@@ -186,6 +186,7 @@ const useTerminal = ({ onInput, onResize }: IUseTerminalOptions = {}) => {
 
     return () => {
       disposed = true;
+      setIsReady(false);
       resizeObserver?.disconnect();
       clearTimeout(resizeTimer);
       terminalInstance.current?.dispose();

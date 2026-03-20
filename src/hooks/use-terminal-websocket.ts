@@ -16,12 +16,14 @@ const MAX_RETRIES = 5;
 const HEARTBEAT_INTERVAL = 30_000;
 
 interface IUseTerminalWebSocketOptions {
+  enabled?: boolean;
   onData?: (data: Uint8Array) => void;
   onConnected?: () => void;
   onSessionEnded?: () => void;
 }
 
 const useTerminalWebSocket = ({
+  enabled = true,
   onData,
   onConnected,
   onSessionEnded,
@@ -172,6 +174,7 @@ const useTerminalWebSocket = ({
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     connectRef.current();
     return () => {
       clearTimers();
@@ -180,7 +183,7 @@ const useTerminalWebSocket = ({
         wsRef.current = null;
       }
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { status, retryCount, disconnectReason, sendStdin, sendResize, sendKillSession, reconnect };
 };
