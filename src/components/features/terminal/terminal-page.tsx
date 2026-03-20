@@ -16,7 +16,6 @@ const TerminalPage = ({ initialWorkspace }: ITerminalPageProps) => {
   const ws = useWorkspace(initialWorkspace);
   const prevWorkspaceIdRef = useRef<string | null>(null);
   const switchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const switchDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [fadeOut, setFadeOut] = useState(false);
 
   const handleFetchError = useCallback(() => {
@@ -70,15 +69,11 @@ const TerminalPage = ({ initialWorkspace }: ITerminalPageProps) => {
       layout.saveCurrentLayout();
 
       if (switchTimeoutRef.current) clearTimeout(switchTimeoutRef.current);
-      if (switchDelayRef.current) clearTimeout(switchDelayRef.current);
       setFadeOut(true);
       switchTimeoutRef.current = setTimeout(() => {
         layout.clearLayout();
-        // WebSocket close 프레임이 서버에 도달할 시간을 확보한 뒤 새 워크스페이스 연결
-        switchDelayRef.current = setTimeout(() => {
-          ws.switchWorkspace(workspaceId);
-          setFadeOut(false);
-        }, 50);
+        ws.switchWorkspace(workspaceId);
+        setFadeOut(false);
       }, 100);
     },
     [ws, layout],

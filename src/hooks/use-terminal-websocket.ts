@@ -191,9 +191,10 @@ const useTerminalWebSocket = ({
 
   useEffect(() => {
     return () => {
+      connectIdRef.current++;
       clearTimers();
       if (wsRef.current) {
-        wsRef.current.close();
+        wsRef.current.close(1000);
         wsRef.current = null;
       }
     };
