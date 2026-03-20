@@ -7,15 +7,26 @@ const extractBasename = (path: string): string => {
   return parts[parts.length - 1] || path;
 };
 
+export const parseCurrentCommand = (raw: string): string | null => {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const pipeIdx = trimmed.indexOf('|');
+  if (pipeIdx > 0) return trimmed.slice(0, pipeIdx);
+  return null;
+};
+
+export const isClaudeProcess = (raw: string): boolean => {
+  const cmd = parseCurrentCommand(raw);
+  return cmd === 'claude';
+};
+
 export const formatTabTitle = (raw: string): string => {
   const trimmed = raw.trim();
   if (!trimmed) return '';
 
-  // tmux set-titles-string: "#{pane_current_command}|#{pane_current_path}"
-  const pipeIdx = trimmed.indexOf('|');
-  if (pipeIdx > 0) {
-    const cmd = trimmed.slice(0, pipeIdx);
-    const path = trimmed.slice(pipeIdx + 1);
+  const cmd = parseCurrentCommand(raw);
+  if (cmd !== null) {
+    const path = trimmed.slice(trimmed.indexOf('|') + 1);
     if (SHELL_NAMES.has(cmd)) return extractBasename(path);
     return cmd;
   }
@@ -32,10 +43,10 @@ export const formatTabTitle = (raw: string): string => {
   }
 
   // command/process name
-  const cmd = trimmed.split(/\s+/)[0];
-  if (SHELL_NAMES.has(cmd)) return '';
+  const fallbackCmd = trimmed.split(/\s+/)[0];
+  if (SHELL_NAMES.has(fallbackCmd)) return '';
 
-  return cmd || '';
+  return fallbackCmd || '';
 };
 
 export const isAutoTabName = (name: string): boolean =>

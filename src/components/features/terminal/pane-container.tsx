@@ -10,7 +10,7 @@ import TerminalContainer from '@/components/features/terminal/terminal-container
 import ClaudeCodePanel from '@/components/features/terminal/claude-code-panel';
 import ConnectionStatus from '@/components/features/terminal/connection-status';
 import PaneTabBar from '@/components/features/terminal/pane-tab-bar';
-import { formatTabTitle } from '@/lib/tab-title';
+import { formatTabTitle, isClaudeProcess } from '@/lib/tab-title';
 import { isAppShortcut, isClearShortcut } from '@/lib/keyboard-shortcuts';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
 
@@ -149,6 +149,7 @@ const PaneContainer = ({
   }, []);
 
   const clearRef = useRef<() => void>(() => {});
+  const manualToggleCooldownRef = useRef<Record<string, number>>({});
 
   const handleCustomKeyEvent = useCallback((event: KeyboardEvent): boolean => {
     if (isAppShortcut(event)) {
@@ -173,6 +174,17 @@ const PaneContainer = ({
         return { ...prev, [tabId]: formatted };
       });
       scheduleTitleSave();
+
+      if (isClaudeProcess(title)) {
+        const cooldownTime = manualToggleCooldownRef.current[tabId];
+        const isCoolingDown = cooldownTime && Date.now() - cooldownTime < 10_000;
+        if (!isCoolingDown) {
+          const tab = tabsRef.current.find((t) => t.id === tabId);
+          if (tab?.panelType !== 'claude-code') {
+            onUpdateTabPanelType(paneId, tabId, 'claude-code');
+          }
+        }
+      }
     },
     customKeyEventHandler: handleCustomKeyEvent,
   });
@@ -364,6 +376,11 @@ const PaneContainer = ({
     const activeTab = tabs.find((t) => t.id === activeTabId);
     const current = activeTab?.panelType ?? 'terminal';
     const next: TPanelType = current === 'terminal' ? 'claude-code' : 'terminal';
+
+    if (current === 'claude-code' && next === 'terminal') {
+      manualToggleCooldownRef.current[activeTabId] = Date.now();
+    }
+
     onUpdateTabPanelType(paneId, activeTabId, next);
   }, [paneId, activeTabId, tabs, onUpdateTabPanelType]);
 

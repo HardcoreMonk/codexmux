@@ -7,5 +7,5 @@
 | session-parser | Phase 1 | P0 | ✅ | ✅ 2/true | 2026-03-20 02:58 |
 | session-detection | Phase 1 | P0 | ✅ | ✅ 2/true | 2026-03-20 03:11 |
 | realtime-watch | Phase 1 | P0 | ✅ | ✅ 3/true | 2026-03-20 03:45 |
-| claude-detection | Phase 1 | P1 | ⬜ | ⬜ | |
+| claude-detection | Phase 1 | P1 | ✅ | ⬜ | 2026-03-20 03:49 |
 | panel-toggle | Phase 1 | P1 | ⬜ | ⬜ | |
