@@ -63,6 +63,8 @@ Pane 분할 상태를 트리 구조로 관리한다.
   - **내부 노드**: 분할 컨테이너 (방향 + 비율 정보)
 - 분할 컨테이너는 방향(horizontal/vertical)과 분할 비율을 가진다
 - 초기 상태는 단일 Pane (루트 = 리프 노드)
+- **최대 Pane 수: 3개** — 리프 노드가 3개에 도달하면 추가 분할을 비활성화한다
+- **최소 Pane 크기**: 너비 200px, 높이 120px
 - Phase 3의 단일 Pane 레이아웃과 하위 호환: Pane이 1개인 경우 Phase 3과 동일한 UX
 
 ### REQ-2: Pane 분할
@@ -75,16 +77,18 @@ Pane 분할 상태를 트리 구조로 관리한다.
 - 새 Pane은 기본 탭 1개("Terminal 1")와 새 tmux 세션으로 시작한다
 - 새 Pane의 터미널은 원래 Pane의 현재 작업 디렉토리를 유지한다
 - 분할 시 초기 비율은 50:50으로 설정한다
-- 분할은 UI 버튼 또는 단축키로 실행한다
+- 분할은 UI 버튼으로 실행한다
+- Pane이 이미 3개이면 분할 버튼을 비활성화한다
 
 ### REQ-3: Pane 리사이즈
 
-분할선을 드래그하여 Pane 크기를 조절한다.
+`react-resizable-panels` 라이브러리를 사용하여 분할선 드래그로 Pane 크기를 조절한다.
 
-- 인접 Pane 사이의 분할선(divider)을 드래그하여 크기를 변경한다
-- 분할 비율의 최솟값을 설정하여 Pane이 너무 작아지지 않게 한다 (최소 비율: 10%)
+- `PanelGroup` + `Panel` + `PanelResizeHandle` 컴포넌트 기반 구현
+- `PanelResizeHandle`이 히트 영역 및 드래그 인터랙션을 자동 처리 (마우스, 터치, 키보드)
+- `Panel`의 `minSize` prop으로 최소 비율 10% 하한 설정
 - 리사이즈 시 해당 Pane의 xterm.js와 tmux 세션 크기를 동기화한다 (resize 메시지 전송)
-- 드래그 중에는 실시간으로 레이아웃이 갱신된다
+- `PanelGroup`의 `onLayout` 콜백으로 비율 변경 감지 → `layout.json`에 저장 (디바운스)
 
 ### REQ-4: Pane 닫기
 

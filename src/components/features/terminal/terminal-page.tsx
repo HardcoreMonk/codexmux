@@ -240,8 +240,6 @@ const TerminalPage = () => {
         {noTabs && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3">
             <Button
-              variant="outline"
-              size="sm"
               className="gap-1.5"
               onClick={handleCreateTab}
               disabled={isCreating}

@@ -71,6 +71,8 @@ Phase 4 (목표):
   - **내부 노드**: 분할 컨테이너 (방향 `horizontal`/`vertical` + 분할 비율)
 - 초기 상태는 단일 리프 노드 (Phase 3과 동일한 UX)
 - 트리를 재귀적으로 렌더링하여 중첩 분할을 지원한다
+- **최대 Pane 수: 3개** — 분할 시 Pane이 3개에 도달하면 추가 분할을 비활성화한다
+- **최소 Pane 크기**: 너비 200px, 높이 120px — 브라우저 창이 좁아져도 이 크기 이하로 축소되지 않는다
 
 #### Pane 분할
 
@@ -80,8 +82,9 @@ Phase 4 (목표):
 - 새 Pane의 터미널은 **원래 Pane의 현재 작업 디렉토리(CWD)를 유지**한다
   - CWD 조회: `tmux -L purple display-message -p -t {session} '#{pane_current_path}'`
 - 초기 분할 비율: 50:50
-- 분할 트리거: 탭 바 영역의 분할 버튼 (수평/수직 아이콘) 또는 단축키
+- 분할 트리거: 탭 바 영역의 분할 버튼 (수평/수직 아이콘)
 - 새 Pane 생성 시 자동으로 포커스 이동
+- Pane이 이미 3개이면 분할 버튼을 비활성화하고 시각적으로 표시한다
 
 #### Pane별 독립 터미널
 
@@ -101,11 +104,13 @@ Phase 4 (목표):
 
 #### Pane 리사이즈
 
-- 인접 Pane 사이의 **분할선(divider)을 드래그**하여 크기를 변경한다
-- 최소 비율 제한: 10% (너무 작은 Pane 방지)
+- **`react-resizable-panels`** (bvaughn) 라이브러리를 사용하여 분할/리사이즈를 구현한다
+  - `PanelGroup` + `Panel` + `PanelResizeHandle` 컴포넌트 기반
+  - 마우스, 터치, 키보드 리사이즈 지원 (접근성 내장)
+  - `PanelResizeHandle`이 히트 영역 및 드래그 인터랙션을 처리
+- 최소 비율 제한: `Panel`의 `minSize` prop으로 10% 하한 설정
 - 리사이즈 시 영향 받는 Pane의 xterm.js + tmux 세션 크기 동기화 (resize 메시지 전송)
-- 드래그 중 실시간 레이아웃 갱신
-- 리사이즈 완료 시 비율을 `layout.json`에 저장 (디바운스)
+- `PanelGroup`의 `onLayout` 콜백으로 비율 변경 감지 → `layout.json`에 저장 (디바운스)
 
 #### Pane 닫기
 
@@ -121,8 +126,16 @@ Phase 4 (목표):
 - Pane 영역 클릭 시 해당 Pane에 포커스 설정
 - 포커스된 Pane만 키 입력을 수신
 - 포커스된 Pane은 **시각적으로 구분** (보더 하이라이트 — Muted 팔레트 `ui-blue` 또는 `ui-purple` 계열)
-- 단축키로 포커스를 인접 Pane으로 이동 (상/하/좌/우)
 - 비포커스 Pane의 터미널은 출력만 표시 (키 입력 불가)
+- Pane 포커스 이동 단축키는 Phase 7에서 구현 (Phase 4에서는 클릭으로만 이동)
+
+#### Pane 간 탭 이동
+
+- 탭을 다른 Pane으로 **드래그 앤 드롭**하여 이동할 수 있다
+- 탭을 드래그하여 다른 Pane의 탭 바 위에 놓으면 해당 Pane으로 탭이 이동한다
+- 이동 시 탭의 tmux 세션은 유지되며, 소속 Pane만 변경된다
+- 이동 후 원래 Pane의 탭이 비면: Pane이 1개뿐이면 새 탭 자동 생성, 복수 Pane이면 빈 Pane 닫기
+- 드래그 중 드롭 대상 Pane의 탭 바에 시각적 드롭 인디케이터를 표시한다
 
 ### 서버 — WebSocket (`/api/terminal`)
 
@@ -214,8 +227,9 @@ Phase 4 (목표):
 
 | 항목 | 요구사항 |
 |---|---|
-| 분할/리사이즈 성능 | Pane 분할과 리사이즈가 즉각적으로 느껴져야 함. 리사이즈 중 터미널 렌더링이 끊기지 않아야 함. 리사이즈 시 xterm.js `fit()` + tmux `resize-window`를 디바운스/스로틀하여 과도한 호출 방지 |
-| 다중 Pane 메모리 | Pane당 xterm.js 인스턴스(WebGL 렌더러 포함) + WebSocket 연결을 유지하므로 메모리 증가. 4~6개 Pane에서 문제 없어야 함 |
+| 분할/리사이즈 성능 | Pane 분할과 리사이즈가 즉각적으로 느껴져야 함. 리사이즈 중 터미널 렌더링이 끊기지 않아야 함. `react-resizable-panels`의 `onLayout` 콜백에서 xterm.js `fit()` + tmux `resize-window`를 스로틀하여 과도한 호출 방지 |
+| 다중 Pane 메모리 | Pane당 xterm.js 인스턴스(WebGL 렌더러 포함) + WebSocket 연결을 유지하므로 메모리 증가. 최대 3개 Pane이므로 관리 가능 |
+| 최소 Pane 크기 | Pane의 최소 너비 200px, 최소 높이 120px. 브라우저 창이 좁아져도 이 크기 이하로 축소되지 않아야 함. `react-resizable-panels`의 `minSize` prop으로 제어 |
 | 독립 세션 유지 | 각 Pane의 모든 tmux 세션(활성/비활성 탭)이 백그라운드에서 독립 실행. Pane 간 세션 간섭 없음 |
 | Phase 3 호환 | 단일 Pane 상태에서 Phase 3과 동일한 UX. 탭 관리 동작 변경 없음 |
 | 레이아웃 정합성 | 서버 재시작/새로고침 후 Pane 분할 구조, 비율, 각 Pane의 탭 목록, 활성 탭, 포커스 상태가 정확하게 복원 |
@@ -262,7 +276,7 @@ Browser                                    Server (Custom)                  tmux
 | `tab-store.ts` (서버) | `tabs.json` → `layout.json` 트리 구조 저장으로 전환 |
 | `server.ts` | MAX_CONNECTIONS 상향, `/api/layout` 라우팅 추가 |
 | `terminal-server.ts` | MAX_CONNECTIONS 상향 |
-| 신규: `pane-layout.tsx` | Pane 트리 렌더러, 분할 컨테이너, 분할선(divider) 컴포넌트 |
+| 신규: `pane-layout.tsx` | `react-resizable-panels` 기반 Pane 트리 렌더러 (`PanelGroup`/`Panel`/`PanelResizeHandle`) |
 | 신규: `layout-store.ts` (서버) | `layout.json` 관리, 마이그레이션 로직 |
 | 신규: `/api/layout/*.ts` | 레이아웃 CRUD API 엔드포인트 |
 
@@ -276,17 +290,20 @@ Browser                                    Server (Custom)                  tmux
 6. **Pane 닫기**: Pane 닫기 시 모든 세션이 종료되고 나머지 Pane이 영역을 채운다
 7. **마지막 Pane 보호**: 마지막 남은 Pane은 닫을 수 없다
 8. **포커스 이동 (클릭)**: Pane 클릭 시 포커스가 이동하고 키 입력은 포커스된 Pane에만 전달된다
-9. **포커스 이동 (단축키)**: 단축키로 상/하/좌/우 인접 Pane으로 포커스가 이동한다
-10. **작업 디렉토리 유지**: `~/projects/my-app`에서 분할 시 새 Pane의 터미널이 같은 디렉토리에서 시작된다
-11. **서버 재시작 복원**: 서버 재시작 후 Pane 분할 구조, 비율, 각 Pane의 탭, 포커스 상태가 모두 복원된다
-12. **새로고침 복원**: 브라우저 새로고침 후 레이아웃이 그대로 복원된다
-13. **다중 Pane 동시 실행**: 여러 Pane에서 각각 빌드/테스트 등 프로세스 실행 중 모두 독립적으로 동작한다
-14. **단일 Pane 호환**: Pane이 1개인 상태에서 Phase 3과 동일한 UX가 제공된다
-15. **tabs.json 마이그레이션**: Phase 3에서 업그레이드 시 기존 탭이 단일 Pane 레이아웃으로 정상 복원된다
-16. **Pane 내 exit (복수 Pane)**: 복수 Pane에서 마지막 탭에 exit 실행 시 해당 Pane이 닫힌다
-17. **Pane 내 exit (단일 Pane)**: 단일 Pane에서 마지막 탭에 exit 실행 시 새 탭이 자동 생성된다
-18. **포커스 시각 표시**: 포커스된 Pane의 보더 하이라이트가 Muted 팔레트에 맞게 표시된다
-19. **브라우저 리사이즈**: 브라우저 창 크기 변경 시 모든 Pane의 터미널이 올바르게 리사이즈된다
+9. **Pane 간 탭 이동**: 탭을 드래그하여 다른 Pane의 탭 바에 드롭하면 탭이 이동한다
+10. **탭 이동 후 빈 Pane**: 탭 이동으로 원래 Pane의 탭이 비면 해당 Pane이 닫힌다 (복수 Pane 시)
+11. **작업 디렉토리 유지**: `~/projects/my-app`에서 분할 시 새 Pane의 터미널이 같은 디렉토리에서 시작된다
+12. **서버 재시작 복원**: 서버 재시작 후 Pane 분할 구조, 비율, 각 Pane의 탭, 포커스 상태가 모두 복원된다
+13. **새로고침 복원**: 브라우저 새로고침 후 레이아웃이 그대로 복원된다
+14. **다중 Pane 동시 실행**: 여러 Pane에서 각각 빌드/테스트 등 프로세스 실행 중 모두 독립적으로 동작한다
+15. **단일 Pane 호환**: Pane이 1개인 상태에서 Phase 3과 동일한 UX가 제공된다
+16. **tabs.json 마이그레이션**: Phase 3에서 업그레이드 시 기존 탭이 단일 Pane 레이아웃으로 정상 복원된다
+17. **Pane 내 exit (복수 Pane)**: 복수 Pane에서 마지막 탭에 exit 실행 시 해당 Pane이 닫힌다
+18. **Pane 내 exit (단일 Pane)**: 단일 Pane에서 마지막 탭에 exit 실행 시 새 탭이 자동 생성된다
+19. **포커스 시각 표시**: 포커스된 Pane의 보더 하이라이트가 Muted 팔레트에 맞게 표시된다
+20. **브라우저 리사이즈**: 브라우저 창 크기 변경 시 모든 Pane의 터미널이 올바르게 리사이즈된다
+21. **최대 Pane 제한**: Pane이 3개인 상태에서 분할 버튼이 비활성화된다
+22. **최소 Pane 크기**: 브라우저 창을 극단적으로 줄여도 Pane이 200×120px 이하로 축소되지 않는다
 
 ## 범위 제외 (Phase 4에서 하지 않는 것)
 
@@ -294,21 +311,24 @@ Browser                                    Server (Custom)                  tmux
 |---|---|
 | 프로젝트(Workspace) 관리 | Phase 5 |
 | Workspace별 레이아웃 분리 | Phase 6 |
-| 전체 단축키 체계 (cmux 호환) | Phase 7 |
+| 전체 단축키 체계 (cmux 호환, Pane 포커스 이동 단축키 포함) | Phase 7 |
 | Claude Code 연동 | Phase 8 |
-| Pane 간 탭 이동 (드래그 앤 드롭) | 추후 |
 | Pane 최대화/최소화 토글 | 추후 |
 | 인증/보안 | 추후 |
 
 ## 제약 조건 / 참고 사항
 
-- **Pane당 독립 xterm.js**: Phase 3의 단일 인스턴스 재활용 방식은 동시 표시에 사용할 수 없다. Pane당 인스턴스를 생성하되, WebGL 렌더러가 GPU 리소스를 소비하므로 과도한 Pane 수(8개 이상)에서 성능 저하 가능. 필요 시 WebGL → Canvas 렌더러 폴백 로직 검토
-- **동시 WebSocket 연결**: Pane당 1개 WebSocket(활성 탭)이므로, 3개 Pane = 3개 동시 WebSocket. 서버의 MAX_CONNECTIONS(현재 10)을 상향해야 함. Pane 수 제한은 별도로 두지 않되, 합리적 범위(4~6개) 내에서 테스트
-- **리사이즈 디바운스**: 분할선 드래그 중 xterm.js `fit()` + tmux `resize-window`가 과도하게 호출되면 성능 저하. `requestAnimationFrame` 또는 `throttle`(16ms)로 제어
+- **Pane당 독립 xterm.js**: Phase 3의 단일 인스턴스 재활용 방식은 동시 표시에 사용할 수 없다. Pane당 인스턴스를 생성한다. 최대 3개 Pane이므로 WebGL 렌더러 GPU 리소스는 문제없을 것으로 판단 (기존 WebGL + Canvas 폴백 로직 유지)
+- **최대 Pane 수 제한: 3개**: 분할 트리의 리프 노드가 3개에 도달하면 추가 분할을 차단한다. 3개 이상 필요한 케이스는 Phase 7 단축키 체계 이후 재검토
+- **동시 WebSocket 연결**: Pane당 1개 WebSocket(활성 탭)이므로, 최대 3개 동시 WebSocket. 서버의 MAX_CONNECTIONS(현재 10)을 상향 (20~30)
+- **react-resizable-panels**: Pane 분할/리사이즈에 `react-resizable-panels` (bvaughn, MIT, 5.1k stars) 라이브러리를 사용한다. `PanelGroup`/`Panel`/`PanelResizeHandle` 컴포넌트가 히트 영역, 드래그, 접근성(키보드/터치)을 처리
+- **리사이즈 스로틀**: `onLayout` 콜백에서 xterm.js `fit()` + tmux `resize-window` 호출을 `requestAnimationFrame` 또는 `throttle`(16ms)로 제어
+- **최소 Pane 크기**: 너비 200px, 높이 120px. `react-resizable-panels`의 `minSize` prop으로 제어. 브라우저 창이 좁아져도 이 크기 이하로 축소 방지
 - **레이아웃 트리 정합성**: 트리 조작(분할, 닫기) 시 무효한 상태(빈 내부 노드, 자식 1개인 내부 노드 등)가 발생하지 않도록 정규화 로직 필요
 - **tabs.json 마이그레이션**: `layout.json`이 없고 `tabs.json`이 있으면 자동 변환. 변환 후 `tabs.json`은 보존(롤백용). `layout.json`이 존재하면 `tabs.json`은 무시
-- **분할선 디자인**: Muted 팔레트에 맞게 분할선은 얇고 낮은 투명도 (`oklch` 기반, `0.5px` ~ `2px`). 호버 시 약간 밝아지는 피드백. STYLE.md의 "장식 요소 최소화" 원칙 준수
+- **분할선(PanelResizeHandle) 디자인**: `react-resizable-panels`의 `PanelResizeHandle` 컴포넌트를 커스텀 스타일링. Muted 팔레트에 맞게 얇고 낮은 투명도 (`oklch` 기반). 호버 시 약간 밝아지는 피드백. STYLE.md의 "장식 요소 최소화" 원칙 준수. 히트 영역은 라이브러리가 자동 처리
 - **포커스 보더**: 포커스된 Pane의 보더는 `ui-purple` 또는 `ui-blue` 계열, 얇은 보더(1~2px). 비포커스 Pane은 보더 없음 또는 매우 연한 보더
+- **Pane 간 탭 이동**: 탭 드래그 앤 드롭 시 tmux 세션을 종료하지 않고 소속 Pane 정보만 `layout.json`에서 변경한다. 이동 후 원래 Pane 탭이 비면 트리 재구성
 - **Phase 2 정책 유지**: detaching 플래그, close code 정책(1000/1001/1011/1013) 그대로 유지. Pane 닫기 시 해당 Pane의 WebSocket 연결은 "의도적 detach"로 처리
 - **Phase 3 탭 API 호환**: `/api/tabs`를 즉시 폐기하지 않고, `/api/layout`이 안정화될 때까지 병행 가능. 단, 새 레이아웃 시스템이 주(primary) 데이터 소스
 
@@ -317,20 +337,22 @@ Browser                                    Server (Custom)                  tmux
 | 항목 | 결정 | 근거 |
 |---|---|---|
 | 레이아웃 구조 | 이진 트리 (리프=Pane, 내부=분할 컨테이너) | 수평/수직 중첩 분할을 자연스럽게 표현, VS Code/tmux와 동일한 모델 |
+| 분할/리사이즈 라이브러리 | `react-resizable-panels` (bvaughn) | 5.1k stars, 주간 550만 DL, 접근성 내장, 히트 영역 자동 처리 |
 | xterm.js 전략 | Pane당 독립 인스턴스 | 동시 표시를 위해 필수 |
 | WebSocket 전략 | Pane당 독립 연결 (활성 탭) | 각 Pane이 독립적으로 터미널 표시 |
 | 상태 저장 | `~/.purple-terminal/layout.json` (트리 구조) | 플랫 배열로는 분할 구조 표현 불가 |
 | tabs.json 마이그레이션 | layout.json 없을 시 자동 변환 | Phase 3 → Phase 4 무중단 업그레이드 |
 | 분할 초기 비율 | 50:50 | 가장 자연스러운 기본값 |
+| 최대 Pane 수 | 3개 | 메모리/GPU 리소스 관리, UX 복잡도 제한 |
+| 최소 Pane 크기 | 너비 200px, 높이 120px | 터미널 최소 cols/rows 확보 |
 | 새 Pane CWD | 원래 Pane의 활성 세션 CWD 유지 | 같은 프로젝트 디렉토리에서 작업 연속성 |
-| 최소 Pane 비율 | 10% | 너무 작은 Pane 방지, 최소 cols/rows 확보 |
+| 최소 Pane 비율 | 10% | 너무 작은 Pane 방지 |
 | MAX_CONNECTIONS | 10 → 20~30으로 상향 | 다중 Pane 동시 WebSocket 지원 |
+| Pane 간 탭 이동 | Phase 4 범위에 포함 | 드래그 앤 드롭으로 탭의 소속 Pane 변경 |
+| Pane 포커스 이동 단축키 | Phase 7로 보류 | Phase 4에서는 클릭으로만 포커스 이동 |
 
 ## 미확인 사항
 
-- [ ] Pane 분할 최대 깊이 제한이 필요한가? (예: 트리 깊이 4~5 수준으로 제한하여 너무 작은 Pane 방지)
-- [ ] WebGL 렌더러를 다수 Pane에서 동시에 사용할 때 GPU 리소스 한계 확인 필요 — 특정 Pane 수 이상에서 Canvas 렌더러로 자동 전환하는 것이 나은지?
-- [ ] 분할선(divider)의 최적 히트 영역(hit area) 크기 확인 필요 — 시각적으로는 1~2px이지만 드래그를 위해 6~8px 정도의 투명 히트 영역이 필요할 수 있음
-- [ ] Pane 간 탭 이동(드래그 앤 드롭) 기능을 Phase 4에 포함할지 추후로 미룰지 확정 필요
-- [ ] 브라우저 창이 매우 좁아졌을 때(모바일 등) 분할 레이아웃의 최소 너비/높이 정책 확인 필요
-- [ ] 키보드 단축키 체계: Phase 4에서 최소한의 Pane 이동 단축키만 구현할지, Phase 7까지 완전히 미룰지 확정 필요
+- [ ] Pane 간 탭 이동 드래그 앤 드롭의 구체적 UX: 드래그 중 반투명 탭 고스트를 표시할지, 드롭 대상 표시를 어떤 형태로 할지 (인디케이터 라인 vs 탭 바 하이라이트)
+- [ ] `react-resizable-panels`의 `minSize`가 픽셀 단위가 아닌 퍼센트 기반인 경우, 최소 200×120px을 정확하게 보장하는 방법 확인 필요
+- [ ] Pane 3개 제한에서 "탭 이동으로 빈 Pane이 닫히면 다시 2개가 되어 분할이 가능해지는" 흐름이 자연스러운지 UX 관점에서 검증 필요
