@@ -8,7 +8,7 @@ interface IUseTabs {
   isLoading: boolean;
   error: string | null;
   isCreating: boolean;
-  createTab: (name?: string) => Promise<ITab | null>;
+  createTab: (name?: string, activate?: boolean) => Promise<ITab | null>;
   deleteTab: (tabId: string) => Promise<void>;
   switchTab: (tabId: string) => void;
   renameTab: (tabId: string, name: string) => Promise<void>;
@@ -27,6 +27,11 @@ const useTabs = (): IUseTabs => {
   const [isCreating, setIsCreating] = useState(false);
 
   const activeTabTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeTabIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    activeTabIdRef.current = activeTabId;
+  }, [activeTabId]);
 
   const saveActiveTab = useCallback((tabId: string) => {
     if (activeTabTimerRef.current) clearTimeout(activeTabTimerRef.current);
@@ -86,8 +91,9 @@ const useTabs = (): IUseTabs => {
   }, []);
 
   const createTab = useCallback(
-    async (name?: string): Promise<ITab | null> => {
+    async (name?: string, activate = true): Promise<ITab | null> => {
       setIsCreating(true);
+      const prevActiveTabId = activeTabIdRef.current;
       try {
         const res = await fetch('/api/tabs', {
           method: 'POST',
@@ -97,8 +103,12 @@ const useTabs = (): IUseTabs => {
         if (!res.ok) throw new Error();
         const newTab: ITab = await res.json();
         setTabs((prev) => [...prev, newTab]);
-        setActiveTabId(newTab.id);
-        saveActiveTab(newTab.id);
+        const shouldActivate =
+          activate && activeTabIdRef.current === prevActiveTabId;
+        if (shouldActivate) {
+          setActiveTabId(newTab.id);
+          saveActiveTab(newTab.id);
+        }
         return newTab;
       } catch {
         toast.error('탭을 생성할 수 없습니다');
@@ -142,7 +152,9 @@ const useTabs = (): IUseTabs => {
   }, []);
 
   const reorderTabs = useCallback(async (tabIds: string[]) => {
+    let snapshot: ITab[] = [];
     setTabs((prev) => {
+      snapshot = prev;
       const map = new Map(prev.map((t) => [t.id, t]));
       return tabIds
         .map((id, i) => {
@@ -159,6 +171,7 @@ const useTabs = (): IUseTabs => {
       });
       if (!res.ok) throw new Error();
     } catch {
+      setTabs(snapshot);
       toast.error('탭 순서 변경에 실패했습니다');
     }
   }, []);

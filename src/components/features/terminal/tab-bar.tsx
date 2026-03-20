@@ -101,8 +101,17 @@ const TabBar = ({
   const confirmRename = (tabId: string) => {
     const trimmed = editName.trim();
     setEditingTabId(null);
+    if (!trimmed) {
+      const maxNum = tabs
+        .map((t) => t.name)
+        .filter((n) => /^Terminal \d+$/.test(n))
+        .map((n) => parseInt(n.replace('Terminal ', ''), 10))
+        .reduce((max, n) => Math.max(max, n), 0);
+      onRenameTab(tabId, `Terminal ${maxNum + 1}`);
+      return;
+    }
     const original = tabs.find((t) => t.id === tabId);
-    if (trimmed && trimmed !== original?.name) {
+    if (trimmed !== original?.name) {
       onRenameTab(tabId, trimmed);
     }
   };
@@ -193,6 +202,7 @@ const TabBar = ({
 
       <div
         ref={scrollRef}
+        role="tablist"
         className="flex flex-1 items-stretch overflow-x-auto"
         style={{ scrollbarWidth: 'none' }}
         onWheel={handleWheel}
@@ -312,7 +322,7 @@ const TabBar = ({
 
       <button
         className={cn(
-          'flex w-[30px] shrink-0 items-center justify-center text-zinc-500 hover:text-zinc-300',
+          'flex w-[30px] shrink-0 items-center justify-center text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300',
           isCreating && 'pointer-events-none opacity-50',
         )}
         style={{

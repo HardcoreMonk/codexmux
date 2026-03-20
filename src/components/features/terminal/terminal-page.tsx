@@ -46,6 +46,7 @@ const TerminalPage = () => {
   const connectedSessionRef = useRef<string | null>(null);
   const tabsRef = useRef<ReturnType<typeof useTabs> | null>(null);
   const activeTabIdRef = useRef<string | null>(null);
+  const prevConnectedTabIdRef = useRef<string | null>(null);
 
   const {
     tabs,
@@ -115,6 +116,7 @@ const TerminalPage = () => {
     onData: (data) => termActionsRef.current.write(data),
     onConnected: () => {
       setHasEverConnected(true);
+      prevConnectedTabIdRef.current = activeTabIdRef.current;
       const { cols, rows } = termActionsRef.current.fit();
       wsActionsRef.current.sendResize(cols, rows);
       termActionsRef.current.focus();
@@ -142,6 +144,19 @@ const TerminalPage = () => {
     connectedSessionRef.current = tab.sessionName;
     connect(tab.sessionName);
   }, [isReady, tabsLoading, activeTabId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (
+      status === 'disconnected' &&
+      hasEverConnected &&
+      prevConnectedTabIdRef.current &&
+      prevConnectedTabIdRef.current !== activeTabId &&
+      tabs.some((t) => t.id === prevConnectedTabIdRef.current)
+    ) {
+      connectedSessionRef.current = null;
+      switchTab(prevConnectedTabIdRef.current);
+    }
+  }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSwitchTab = useCallback(
     (tabId: string) => {
@@ -216,7 +231,7 @@ const TerminalPage = () => {
         onRetry={retryTabs}
       />
 
-      <div className="relative min-h-0 flex-1">
+      <div role="tabpanel" className="relative min-h-0 flex-1">
         <TerminalContainer
           ref={terminalRef}
           className={cn(
