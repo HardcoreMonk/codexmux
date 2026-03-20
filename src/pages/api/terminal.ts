@@ -190,6 +190,10 @@ const handleConnection = (ws: WebSocket) => {
         ws.send(new Uint8Array([MSG_HEARTBEAT]));
         break;
       }
+      default: {
+        console.log(`[terminal] unknown message type: 0x${type.toString(16).padStart(2, '0')}`);
+        break;
+      }
     }
   });
 
