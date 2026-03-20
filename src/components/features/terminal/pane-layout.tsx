@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useRef, useLayoutEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import type { TLayoutNode, ITab } from '@/types/terminal';
 import { collectPanes } from '@/hooks/use-layout';
@@ -48,6 +49,9 @@ const PaneLayout = (props: IPaneLayoutProps) => {
     onRemoveTabLocally,
   } = props;
 
+  const rootRef = useRef<HTMLDivElement>(null);
+  const stableContainersRef = useRef(new Map<string, HTMLDivElement>());
+
   const [closingPaneIds, setClosingPaneIds] = useState<Set<string>>(new Set());
 
   const handleClosePane = useCallback(
@@ -65,35 +69,31 @@ const PaneLayout = (props: IPaneLayoutProps) => {
     [onClosePane],
   );
 
+  const panes = collectPanes(root);
+
   const paneNumbers = new Map<string, number>();
-  collectPanes(root).forEach((p, i) => {
+  panes.forEach((p, i) => {
     paneNumbers.set(p.id, i + 1);
   });
+
+  const getStableContainer = (paneId: string) => {
+    let container = stableContainersRef.current.get(paneId);
+    if (!container) {
+      container = document.createElement('div');
+      container.style.height = '100%';
+      container.style.width = '100%';
+      stableContainersRef.current.set(paneId, container);
+    }
+    return container;
+  };
 
   const renderNode = (node: TLayoutNode, path: number[]): React.ReactNode => {
     if (node.type === 'pane') {
       return (
-        <PaneContainer
-          key={node.id}
-          paneId={node.id}
-          paneNumber={paneNumbers.get(node.id) ?? 1}
-          tabs={node.tabs}
-          activeTabId={node.activeTabId}
-          isFocused={node.id === focusedPaneId}
-          paneCount={paneCount}
-          canSplit={canSplit}
-          isSplitting={isSplitting}
-          isClosing={closingPaneIds.has(node.id)}
-          onSplitPane={onSplitPane}
-          onClosePane={handleClosePane}
-          onFocusPane={onFocusPane}
-          onMoveTab={onMoveTab}
-          onCreateTab={onCreateTab}
-          onDeleteTab={onDeleteTab}
-          onSwitchTab={onSwitchTab}
-          onRenameTab={onRenameTab}
-          onReorderTabs={onReorderTabs}
-          onRemoveTabLocally={onRemoveTabLocally}
+        <div
+          key={`slot-${node.id}`}
+          data-pane-slot={node.id}
+          style={{ height: '100%', width: '100%' }}
         />
       );
     }
@@ -139,9 +139,57 @@ const PaneLayout = (props: IPaneLayoutProps) => {
     );
   };
 
+  useLayoutEffect(() => {
+    if (!rootRef.current) return;
+
+    const currentIds = new Set(panes.map((p) => p.id));
+    for (const [id, container] of stableContainersRef.current) {
+      if (!currentIds.has(id)) {
+        container.remove();
+        stableContainersRef.current.delete(id);
+      }
+    }
+
+    panes.forEach((pane) => {
+      const slot = rootRef.current!.querySelector(
+        `[data-pane-slot="${pane.id}"]`,
+      );
+      const container = getStableContainer(pane.id);
+      if (slot && container.parentElement !== slot) {
+        slot.appendChild(container);
+      }
+    });
+  });
+
   return (
-    <div className="h-full w-full" style={{ backgroundColor: '#1e1f29' }}>
+    <div ref={rootRef} className="h-full w-full" style={{ backgroundColor: '#1e1f29' }}>
       {renderNode(root, [])}
+      {panes.map((pane) =>
+        createPortal(
+          <PaneContainer
+            paneId={pane.id}
+            paneNumber={paneNumbers.get(pane.id) ?? 1}
+            tabs={pane.tabs}
+            activeTabId={pane.activeTabId}
+            isFocused={pane.id === focusedPaneId}
+            paneCount={paneCount}
+            canSplit={canSplit}
+            isSplitting={isSplitting}
+            isClosing={closingPaneIds.has(pane.id)}
+            onSplitPane={onSplitPane}
+            onClosePane={handleClosePane}
+            onFocusPane={onFocusPane}
+            onMoveTab={onMoveTab}
+            onCreateTab={onCreateTab}
+            onDeleteTab={onDeleteTab}
+            onSwitchTab={onSwitchTab}
+            onRenameTab={onRenameTab}
+            onReorderTabs={onReorderTabs}
+            onRemoveTabLocally={onRemoveTabLocally}
+          />,
+          getStableContainer(pane.id),
+        ),
+      )}
     </div>
   );
 };

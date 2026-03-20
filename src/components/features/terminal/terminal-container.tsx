@@ -7,7 +7,9 @@ interface ITerminalContainerProps {
 
 const TerminalContainer = forwardRef<HTMLDivElement, ITerminalContainerProps>(
   ({ className }, ref) => (
-    <div ref={ref} className={cn('h-full w-full px-3 py-2', className)} />
+    <div className={cn('h-full w-full px-3 py-2', className)}>
+      <div ref={ref} className="h-full w-full" />
+    </div>
   ),
 );
 
