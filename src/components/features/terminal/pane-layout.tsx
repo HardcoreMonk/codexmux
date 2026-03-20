@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import type { TLayoutNode, ITab } from '@/types/terminal';
 import { collectPanes } from '@/hooks/use-layout';
@@ -47,6 +48,23 @@ const PaneLayout = (props: IPaneLayoutProps) => {
     onRemoveTabLocally,
   } = props;
 
+  const [closingPaneIds, setClosingPaneIds] = useState<Set<string>>(new Set());
+
+  const handleClosePane = useCallback(
+    (paneId: string) => {
+      setClosingPaneIds((prev) => new Set(prev).add(paneId));
+      setTimeout(() => {
+        setClosingPaneIds((prev) => {
+          const next = new Set(prev);
+          next.delete(paneId);
+          return next;
+        });
+        onClosePane(paneId);
+      }, 150);
+    },
+    [onClosePane],
+  );
+
   const paneNumbers = new Map<string, number>();
   collectPanes(root).forEach((p, i) => {
     paneNumbers.set(p.id, i + 1);
@@ -65,8 +83,9 @@ const PaneLayout = (props: IPaneLayoutProps) => {
           paneCount={paneCount}
           canSplit={canSplit}
           isSplitting={isSplitting}
+          isClosing={closingPaneIds.has(node.id)}
           onSplitPane={onSplitPane}
-          onClosePane={onClosePane}
+          onClosePane={handleClosePane}
           onFocusPane={onFocusPane}
           onMoveTab={onMoveTab}
           onCreateTab={onCreateTab}

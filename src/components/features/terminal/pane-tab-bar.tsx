@@ -269,12 +269,12 @@ const PaneTabBar = ({
 
   return (
     <div
-      className="flex h-[30px] shrink-0 items-stretch border-b"
+      className="flex h-[30px] shrink-0 items-stretch"
       style={{
         backgroundColor: isDragOverFromOther
-          ? 'oklch(0.20 0.012 243.5 / 0.3)'
+          ? 'oklch(0.20 0.012 243.5 / 0.1)'
           : TAB_BAR_BG,
-        borderColor: 'oklch(0.35 0.006 286)',
+        borderBottom: '0.5px solid oklch(0.35 0.006 286)',
         transition: 'background-color 150ms',
       }}
       onDragEnter={handleTabBarDragEnter}

@@ -48,6 +48,7 @@ interface IPaneContainerProps {
   paneCount: number;
   canSplit: boolean;
   isSplitting: boolean;
+  isClosing?: boolean;
   onSplitPane: (paneId: string, orientation: 'horizontal' | 'vertical') => void;
   onClosePane: (paneId: string) => void;
   onFocusPane: (paneId: string) => void;
@@ -69,6 +70,7 @@ const PaneContainer = ({
   paneCount,
   canSplit,
   isSplitting,
+  isClosing,
   onSplitPane,
   onClosePane,
   onFocusPane,
@@ -82,6 +84,12 @@ const PaneContainer = ({
 }: IPaneContainerProps) => {
   const [hasEverConnected, setHasEverConnected] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
   const termActionsRef = useRef<ITermActions>(NOOP_TERM_ACTIONS);
   const wsActionsRef = useRef<IWsActions>(NOOP_WS_ACTIONS);
   const connectedSessionRef = useRef<string | null>(null);
@@ -180,6 +188,16 @@ const PaneContainer = ({
     }
   }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Re-fit terminal when pane count changes (split/close)
+  useEffect(() => {
+    if (!isReady || status !== 'connected') return;
+    const timer = setTimeout(() => {
+      const { cols, rows } = fit();
+      wsActionsRef.current.sendResize(cols, rows);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [paneCount]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Auto-focus xterm when pane gets focus
   useEffect(() => {
     if (isFocused && isReady && status === 'connected') {
@@ -253,8 +271,14 @@ const PaneContainer = ({
     <div
       className={cn('flex h-full flex-col overflow-hidden')}
       style={{
-        opacity: paneCount > 1 ? (isFocused ? 1.0 : 0.3) : undefined,
-        transition: 'opacity 150ms',
+        opacity: isClosing ? 0 : !mounted ? 0 : undefined,
+        border:
+          paneCount > 1
+            ? isFocused
+              ? '1px solid oklch(0.71 0.051 289)'
+              : '1px solid transparent'
+            : undefined,
+        transition: 'opacity 200ms ease-out, border-color 150ms',
       }}
       role="region"
       aria-label={`Pane ${paneNumber}`}
