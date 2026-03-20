@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import { Loader2, WifiOff, RefreshCw } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { TConnectionStatus, TDisconnectReason } from '@/types/terminal';
 
@@ -15,20 +17,30 @@ const ConnectionStatus = ({
   disconnectReason,
   onReconnect,
 }: IConnectionStatusProps) => {
-  if (status === 'connected' || status === 'session-ended') return null;
+  const isVisible = status !== 'connected' && status !== 'session-ended';
+  const [displayStatus, setDisplayStatus] = useState(status);
+
+  useEffect(() => {
+    if (isVisible) {
+      setDisplayStatus(status);
+    }
+  }, [status, isVisible]);
 
   return (
     <div
-      className="absolute top-3 right-3 z-10 flex items-center gap-2 rounded-md bg-[#1e1f29]/90 px-3 py-2 text-sm transition-opacity duration-150"
+      className={cn(
+        'absolute top-3 right-3 z-10 flex items-center gap-2 rounded-md bg-[#1e1f29]/90 px-3 py-2 text-sm transition-opacity duration-150',
+        isVisible ? 'opacity-100' : 'pointer-events-none opacity-0',
+      )}
     >
-      {status === 'connecting' && (
+      {displayStatus === 'connecting' && (
         <>
           <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
           <span className="text-zinc-400">연결 중...</span>
         </>
       )}
 
-      {status === 'reconnecting' && (
+      {displayStatus === 'reconnecting' && (
         <>
           <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
           <span className="text-zinc-400">
@@ -37,7 +49,7 @@ const ConnectionStatus = ({
         </>
       )}
 
-      {status === 'disconnected' && (
+      {displayStatus === 'disconnected' && (
         <>
           <WifiOff className="h-4 w-4 text-zinc-500" />
           <span className="text-zinc-400">
