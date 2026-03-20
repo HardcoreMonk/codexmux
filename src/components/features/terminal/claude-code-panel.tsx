@@ -1,28 +1,14 @@
-import { useState, useEffect, useRef, useCallback, type MutableRefObject } from 'react';
-import { Group, Panel, Separator } from 'react-resizable-panels';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import useTimeline from '@/hooks/use-timeline';
 import TimelineView from '@/components/features/timeline/timeline-view';
-import TerminalContainer from '@/components/features/terminal/terminal-container';
-import useTerminal from '@/hooks/use-terminal';
-
-const TERMINAL_SCALE = 0.7;
 
 interface IClaudeCodePanelProps {
   sessionName: string;
-  secondaryWriteRef: MutableRefObject<((data: Uint8Array) => void) | null>;
-  sendStdin: (data: string) => void;
-  sendResize: (cols: number, rows: number) => void;
   className?: string;
 }
 
-const ClaudeCodePanel = ({
-  sessionName,
-  secondaryWriteRef,
-  sendStdin,
-  sendResize,
-  className,
-}: IClaudeCodePanelProps) => {
+const ClaudeCodePanel = ({ sessionName, className }: IClaudeCodePanelProps) => {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,75 +40,20 @@ const ClaudeCodePanel = ({
     enabled: !!workspaceId,
   });
 
-  const wsActionsRef = useRef({ sendStdin, sendResize });
-  useEffect(() => {
-    wsActionsRef.current = { sendStdin, sendResize };
-  });
-
-  const { terminalRef, write, fit, focus } = useTerminal({
-    onInput: (data) => wsActionsRef.current.sendStdin(data),
-    onResize: (cols, rows) => wsActionsRef.current.sendResize(cols, rows),
-  });
-
-  useEffect(() => {
-    secondaryWriteRef.current = write;
-    return () => {
-      secondaryWriteRef.current = null;
-    };
-  }, [write, secondaryWriteRef]);
-
-  useEffect(() => {
-    fit();
-    focus();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleTerminalClick = useCallback(() => {
-    focus();
-  }, [focus]);
-
   return (
-    <div className={cn('flex h-full w-full flex-col', className)}>
-      <Group orientation="vertical" className="h-full">
-        <Panel id="timeline" defaultSize={70} minSize={30}>
-          <TimelineView
-            entries={entries}
-            sessionStatus={sessionStatus}
-            wsStatus={wsStatus}
-            isLoading={isLoading}
-            error={error}
-            isAutoScrollEnabled={isAutoScrollEnabled}
-            onAutoScrollChange={setAutoScrollEnabled}
-            onRetry={retrySession}
-            onLoadMore={loadMore}
-            hasMore={hasMore}
-          />
-        </Panel>
-
-        <Separator className="group flex h-2 items-center justify-center">
-          <div className="h-px w-16 rounded-full bg-border transition-colors group-hover:bg-muted-foreground group-data-[resize-handle-active]:bg-muted-foreground" />
-        </Separator>
-
-        <Panel id="terminal" defaultSize={30} minSize={10}>
-          <div
-            className="h-full w-full overflow-hidden"
-            onClick={handleTerminalClick}
-            role="presentation"
-          >
-            <div className="h-full overflow-hidden rounded-lg">
-              <div
-                style={{
-                  transform: `scale(${TERMINAL_SCALE})`,
-                  transformOrigin: 'top left',
-                  width: `${100 / TERMINAL_SCALE}%`,
-                  height: `${100 / TERMINAL_SCALE}%`,
-                }}
-              >
-                <TerminalContainer ref={terminalRef} />
-              </div>
-            </div>
-          </div>
-        </Panel>
-      </Group>
+    <div className={cn('h-full w-full', className)}>
+      <TimelineView
+        entries={entries}
+        sessionStatus={sessionStatus}
+        wsStatus={wsStatus}
+        isLoading={isLoading}
+        error={error}
+        isAutoScrollEnabled={isAutoScrollEnabled}
+        onAutoScrollChange={setAutoScrollEnabled}
+        onRetry={retrySession}
+        onLoadMore={loadMore}
+        hasMore={hasMore}
+      />
     </div>
   );
 };

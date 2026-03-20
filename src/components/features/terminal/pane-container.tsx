@@ -111,7 +111,6 @@ const PaneContainer = ({
   }, []);
   const termActionsRef = useRef<ITermActions>(NOOP_TERM_ACTIONS);
   const wsActionsRef = useRef<IWsActions>(NOOP_WS_ACTIONS);
-  const secondaryWriteRef = useRef<((data: Uint8Array) => void) | null>(null);
   const connectedSessionRef = useRef<string | null>(null);
   const prevConnectedTabIdRef = useRef<string | null>(null);
 
@@ -205,10 +204,7 @@ const PaneContainer = ({
     sendStdin,
     sendResize,
   } = useTerminalWebSocket({
-    onData: (data) => {
-      termActionsRef.current.write(data);
-      secondaryWriteRef.current?.(data);
-    },
+    onData: (data) => termActionsRef.current.write(data),
     onConnected: () => {
       setHasEverConnected(true);
       prevConnectedTabIdRef.current = activeTabIdRef.current;
@@ -417,25 +413,36 @@ const PaneContainer = ({
         onTogglePanelType={handleTogglePanelType}
       />
 
-      <div role="tabpanel" className="relative min-h-0 flex-1" style={{ backgroundColor: terminalTheme.colors.background }}>
-        <TerminalContainer
-          ref={terminalRef}
-          className={cn(
-            'transition-opacity duration-150',
-            activePanelType !== 'terminal' && 'hidden',
-            ready ? 'opacity-100' : 'opacity-0',
-          )}
-        />
-
+      <div role="tabpanel" className="relative min-h-0 flex-1 flex flex-col" style={{ backgroundColor: terminalTheme.colors.background }}>
         {activePanelType === 'claude-code' && activeTab && (
           <ClaudeCodePanel
             sessionName={activeTab.sessionName}
-            secondaryWriteRef={secondaryWriteRef}
-            sendStdin={sendStdin}
-            sendResize={sendResize}
-            className="transition-opacity duration-150 opacity-100"
+            className="min-h-0 flex-[7]"
           />
         )}
+
+        <div className={cn(
+          'min-h-0',
+          activePanelType === 'terminal' ? 'flex-1' : 'flex-[3]',
+        )}>
+          <div
+            className="h-full w-full"
+            style={activePanelType === 'claude-code' ? {
+              transform: 'scale(0.7)',
+              transformOrigin: 'top left',
+              width: `${100 / 0.7}%`,
+              height: `${100 / 0.7}%`,
+            } : undefined}
+          >
+            <TerminalContainer
+              ref={terminalRef}
+              className={cn(
+                'transition-opacity duration-150',
+                ready ? 'opacity-100' : 'opacity-0',
+              )}
+            />
+          </div>
+        </div>
 
         {noTabs && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3">
