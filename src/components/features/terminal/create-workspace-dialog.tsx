@@ -91,33 +91,23 @@ const CreateWorkspaceDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-md"
-        style={{
-          backgroundColor: 'oklch(0.18 0.006 286)',
-          borderColor: 'oklch(0.30 0.006 286)',
-        }}
-      >
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Workspace 추가</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col gap-2">
-          <label className="text-sm text-zinc-400">프로젝트 디렉토리</label>
+          <label className="text-sm text-muted-foreground">프로젝트 디렉토리</label>
           <Input
             placeholder="디렉토리 경로 입력"
             value={directory}
             onChange={(e) => handleDirectoryChange(e.target.value)}
             onKeyDown={handleKeyDown}
             autoFocus
-            style={{
-              backgroundColor: 'oklch(0.15 0.006 286)',
-              borderColor: 'oklch(0.30 0.006 286)',
-            }}
           />
           <div className="min-h-5">
             {isValidating && (
-              <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Loader2 className="h-3 w-3 animate-spin" />
                 검증 중...
               </div>

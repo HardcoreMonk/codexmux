@@ -36,6 +36,7 @@ interface ISidebarProps {
   onSelectWorkspace: (workspaceId: string) => void;
   onCreateWorkspace: (directory: string, name?: string) => Promise<IWorkspace | null>;
   onDeleteWorkspace: (workspaceId: string) => Promise<boolean>;
+  onRemoveWorkspace: (workspaceId: string) => void;
   onRenameWorkspace: (workspaceId: string, name: string) => Promise<boolean>;
   onValidateDirectory: (directory: string) => Promise<{
     valid: boolean;
@@ -60,6 +61,7 @@ const Sidebar = ({
   onSelectWorkspace,
   onCreateWorkspace,
   onDeleteWorkspace,
+  onRemoveWorkspace,
   onRenameWorkspace,
   onValidateDirectory,
   onRetry,
@@ -68,6 +70,7 @@ const Sidebar = ({
   const [isCreating, setIsCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<IWorkspace | null>(null);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [fadingOutIds, setFadingOutIds] = useState<Set<string>>(new Set());
 
   const isResizing = useRef(false);
   const startX = useRef(0);
@@ -145,16 +148,34 @@ const Sidebar = ({
 
     const success = await onDeleteWorkspace(id);
 
+    if (!success) {
+      setDeletingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      return;
+    }
+
+    setFadingOutIds((prev) => new Set(prev).add(id));
+    await new Promise<void>((resolve) => setTimeout(resolve, 150));
+
+    onRemoveWorkspace(id);
     setDeletingIds((prev) => {
       const next = new Set(prev);
       next.delete(id);
       return next;
     });
+    setFadingOutIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
 
-    if (success && workspaces.length <= 1) {
+    if (workspaces.length <= 1) {
       onRetry();
     }
-  }, [deleteTarget, activeWorkspaceId, workspaces, onSelectWorkspace, onDeleteWorkspace, onRetry]);
+  }, [deleteTarget, activeWorkspaceId, workspaces, onSelectWorkspace, onDeleteWorkspace, onRemoveWorkspace, onRetry]);
 
   const handleRename = useCallback(
     (workspaceId: string, name: string) => {
@@ -167,38 +188,26 @@ const Sidebar = ({
     <>
       {/* Sidebar panel */}
       <div
-        className="relative flex shrink-0 flex-col overflow-hidden"
+        className="relative flex shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar"
         style={{
           width: collapsed ? 0 : width,
           minWidth: collapsed ? 0 : MIN_WIDTH,
           maxWidth: MAX_WIDTH,
-          backgroundColor: 'oklch(0.15 0.006 286)',
-          borderRight: collapsed ? 'none' : '0.5px solid oklch(0.25 0.006 286)',
+          borderRightStyle: collapsed ? 'none' : undefined,
           transition: 'width 200ms ease, min-width 200ms ease',
         }}
         role="navigation"
         aria-label="Workspace 목록"
       >
         {/* Header */}
-        <div
-          className="flex h-9 shrink-0 items-center justify-end px-2"
-          style={{ borderBottom: '0.5px solid oklch(0.25 0.006 286 / 0.4)' }}
-        >
+        <div className="flex h-9 shrink-0 items-center justify-end border-b border-sidebar-border px-2">
           <button
-            className="flex h-6 w-6 items-center justify-center rounded"
-            style={{ transition: 'background-color 100ms' }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor =
-                'oklch(0.22 0.006 286)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor = '';
-            }}
+            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
             onClick={onToggleCollapse}
             aria-label="사이드바 접기"
             aria-expanded="true"
           >
-            <ChevronsLeft className="h-3.5 w-3.5 text-zinc-500" />
+            <ChevronsLeft className="h-3.5 w-3.5" />
           </button>
         </div>
 
@@ -212,8 +221,7 @@ const Sidebar = ({
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="h-9 animate-pulse rounded"
-                  style={{ backgroundColor: 'oklch(0.20 0.006 286)' }}
+                  className="h-9 animate-pulse rounded bg-secondary"
                 />
               ))}
             </div>
@@ -222,7 +230,7 @@ const Sidebar = ({
           {!isLoading && error && (
             <div className="flex flex-col items-center gap-2 p-4">
               <AlertTriangle className="h-4 w-4 text-ui-amber" />
-              <span className="text-center text-xs text-zinc-500">오류</span>
+              <span className="text-center text-xs text-muted-foreground">오류</span>
               <Button
                 variant="outline"
                 size="sm"
@@ -237,7 +245,7 @@ const Sidebar = ({
 
           {!isLoading && !error && workspaces.length === 0 && (
             <div className="flex flex-col items-center gap-2 p-4">
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-muted-foreground">
                 Workspace가 없습니다
               </span>
             </div>
@@ -246,39 +254,30 @@ const Sidebar = ({
           {!isLoading &&
             !error &&
             workspaces.map((ws) => (
-              <WorkspaceItem
+              <div
                 key={ws.id}
-                workspace={ws}
-                isActive={ws.id === activeWorkspaceId}
-                isDeleting={deletingIds.has(ws.id)}
-                onSelect={onSelectWorkspace}
-                onRename={handleRename}
-                onDelete={handleDeleteRequest}
-              />
+                style={{
+                  opacity: fadingOutIds.has(ws.id) ? 0 : undefined,
+                  transition: 'opacity 150ms ease-out',
+                }}
+              >
+                <WorkspaceItem
+                  workspace={ws}
+                  isActive={ws.id === activeWorkspaceId}
+                  isDeleting={deletingIds.has(ws.id)}
+                  onSelect={onSelectWorkspace}
+                  onRename={handleRename}
+                  onDelete={handleDeleteRequest}
+                />
+              </div>
             ))}
         </div>
 
         {/* Footer */}
-        <div
-          className="shrink-0"
-          style={{ borderTop: '0.5px solid oklch(0.25 0.006 286 / 0.15)' }}
-        >
+        <div className="shrink-0 border-t border-sidebar-border">
           {/* Add button */}
           <button
-            className="flex h-9 w-full items-center gap-2 px-3 text-sm text-zinc-400"
-            style={{
-              transition: 'background-color 100ms, opacity 100ms',
-              opacity: isCreating ? 0.5 : 1,
-            }}
-            onMouseEnter={(e) => {
-              if (!isCreating) {
-                (e.currentTarget as HTMLElement).style.backgroundColor =
-                  'oklch(0.20 0.006 286)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor = '';
-            }}
+            className="flex h-9 w-full items-center gap-2 px-3 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent disabled:opacity-50"
             onClick={() => !isCreating && setCreateDialogOpen(true)}
             disabled={isCreating}
             aria-label="Workspace 추가"
@@ -290,34 +289,18 @@ const Sidebar = ({
           {/* Settings / Info mock */}
           <div className="flex items-center justify-between px-2 pb-2">
             <button
-              className="flex h-7 w-7 items-center justify-center rounded"
-              style={{ transition: 'background-color 100ms' }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.backgroundColor =
-                  'oklch(0.22 0.006 286)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.backgroundColor = '';
-              }}
+              className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
               onClick={() => toast.info('추후 구현 예정')}
               aria-label="설정"
             >
-              <Settings className="h-3.5 w-3.5 text-zinc-500" />
+              <Settings className="h-3.5 w-3.5" />
             </button>
             <button
-              className="flex h-7 w-7 items-center justify-center rounded"
-              style={{ transition: 'background-color 100ms' }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.backgroundColor =
-                  'oklch(0.22 0.006 286)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.backgroundColor = '';
-              }}
+              className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
               onClick={() => toast.info('추후 구현 예정')}
               aria-label="정보"
             >
-              <Info className="h-3.5 w-3.5 text-zinc-500" />
+              <Info className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
@@ -352,42 +335,20 @@ const Sidebar = ({
           aria-valuemax={MAX_WIDTH}
           tabIndex={0}
         >
-          <div
-            className="absolute left-1/2 top-0 h-full -translate-x-1/2 group-hover:!bg-[oklch(0.40_0.006_286)] group-active:!bg-[oklch(0.50_0.010_286)]"
-            style={{
-              width: '1px',
-              backgroundColor: 'oklch(0.25 0.006 286)',
-              transition: 'background-color 100ms',
-            }}
-          />
+          <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border transition-colors group-hover:bg-muted-foreground/50 group-active:bg-muted-foreground" />
         </div>
       )}
 
       {/* Expand button (collapsed state) */}
       {collapsed && (
-        <div
-          className="absolute left-0 top-0 z-20 flex h-9 items-center opacity-0 transition-opacity duration-150 hover:opacity-100"
-          style={{ paddingLeft: '4px' }}
-        >
+        <div className="absolute left-0 top-0 z-20 flex h-9 items-center pl-1 opacity-0 transition-opacity duration-150 hover:opacity-100">
           <button
-            className="flex h-6 w-6 items-center justify-center rounded"
-            style={{
-              backgroundColor: 'oklch(0.20 0.006 286 / 0.8)',
-              transition: 'background-color 100ms',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor =
-                'oklch(0.28 0.006 286)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor =
-                'oklch(0.20 0.006 286 / 0.8)';
-            }}
+            className="flex h-6 w-6 items-center justify-center rounded bg-secondary/80 text-muted-foreground transition-colors hover:bg-accent"
             onClick={onToggleCollapse}
             aria-label="사이드바 펼치기"
             aria-expanded="false"
           >
-            <ChevronsRight className="h-3.5 w-3.5 text-zinc-500" />
+            <ChevronsRight className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
@@ -407,12 +368,7 @@ const Sidebar = ({
           if (!open) setDeleteTarget(null);
         }}
       >
-        <AlertDialogContent
-          style={{
-            backgroundColor: 'oklch(0.18 0.006 286)',
-            borderColor: 'oklch(0.30 0.006 286)',
-          }}
-        >
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Workspace 삭제</AlertDialogTitle>
             <AlertDialogDescription>

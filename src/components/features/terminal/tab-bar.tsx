@@ -18,10 +18,6 @@ interface ITabBarProps {
   onRetry: () => void;
 }
 
-const TAB_BAR_BG = 'oklch(0.18 0.006 286)';
-const TAB_ACTIVE_BG = 'oklch(0.21 0.006 286)';
-const TAB_HOVER_BG = 'oklch(0.24 0.006 286)';
-
 const TabBar = ({
   tabs,
   activeTabId,
@@ -149,16 +145,13 @@ const TabBar = ({
 
   if (error) {
     return (
-      <div
-        className="flex h-[30px] shrink-0 items-center gap-2 px-3"
-        style={{ backgroundColor: TAB_BAR_BG }}
-      >
+      <div className="flex h-[30px] shrink-0 items-center gap-2 bg-card px-3">
         <AlertTriangle className="h-3.5 w-3.5 text-ui-amber" />
-        <span className="text-xs text-zinc-400">{error}</span>
+        <span className="text-xs text-muted-foreground">{error}</span>
         <Button
           variant="ghost"
           size="xs"
-          className="h-5 px-2 text-xs text-zinc-300 hover:text-zinc-100"
+          className="h-5 px-2 text-xs text-foreground hover:text-foreground"
           onClick={onRetry}
         >
           재시도
@@ -169,15 +162,11 @@ const TabBar = ({
 
   if (isLoading) {
     return (
-      <div
-        className="flex h-[30px] shrink-0 items-center gap-1.5 px-2"
-        style={{ backgroundColor: TAB_BAR_BG }}
-      >
+      <div className="flex h-[30px] shrink-0 items-center gap-1.5 bg-card px-2">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-4 w-16 animate-pulse rounded"
-            style={{ backgroundColor: 'oklch(0.24 0.006 286)' }}
+            className="h-4 w-16 animate-pulse rounded bg-muted"
           />
         ))}
       </div>
@@ -185,16 +174,10 @@ const TabBar = ({
   }
 
   return (
-    <div
-      className="flex h-[30px] shrink-0 items-stretch border-b"
-      style={{
-        backgroundColor: TAB_BAR_BG,
-        borderColor: 'oklch(0.35 0.006 286)',
-      }}
-    >
+    <div className="flex h-[30px] shrink-0 items-stretch border-b border-border bg-card">
       {showLeftArrow && (
         <button
-          className="flex w-5 shrink-0 items-center justify-center text-zinc-500 hover:text-zinc-300"
+          className="flex w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
           onClick={() => scrollBy(-120)}
         >
           <ChevronLeft className="h-3.5 w-3.5" />
@@ -226,31 +209,13 @@ const TabBar = ({
               aria-selected={isActive}
               tabIndex={isActive ? 0 : -1}
               className={cn(
-                'group relative flex min-w-[80px] max-w-[180px] cursor-pointer items-center gap-1 px-3 text-xs transition-opacity duration-150 select-none',
-                isActive && 'text-zinc-200',
-                !isActive && 'text-zinc-400 hover:text-zinc-200',
+                'group relative flex min-w-[80px] max-w-[180px] cursor-pointer items-center gap-1 border-b-2 px-3 text-xs transition-colors duration-150 select-none',
+                isActive
+                  ? 'border-b-accent-color bg-secondary text-foreground'
+                  : 'border-b-transparent text-muted-foreground hover:bg-accent hover:text-foreground',
                 isDragging && 'opacity-70',
                 tab.id === closingTabId && 'pointer-events-none opacity-0',
               )}
-              style={{
-                backgroundColor: isActive
-                  ? TAB_ACTIVE_BG
-                  : undefined,
-                borderBottom: isActive
-                  ? '2px solid var(--ui-blue)'
-                  : '2px solid transparent',
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive && !isDragging) {
-                  (e.currentTarget as HTMLElement).style.backgroundColor =
-                    TAB_HOVER_BG;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  (e.currentTarget as HTMLElement).style.backgroundColor = '';
-                }
-              }}
               onClick={() => {
                 if (!isEditing && !isActive) onSwitchTab(tab.id);
               }}
@@ -275,7 +240,7 @@ const TabBar = ({
               {isEditing ? (
                 <input
                   ref={inputRef}
-                  className="w-full min-w-0 border-b border-ui-blue bg-transparent text-xs text-zinc-200 outline-none"
+                  className="w-full min-w-0 border-b border-accent-color bg-transparent text-xs text-foreground outline-none"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   onKeyDown={(e) => {
@@ -291,7 +256,7 @@ const TabBar = ({
 
               <button
                 className={cn(
-                  'ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-600 hover:text-zinc-200',
+                  'ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground',
                   isActive
                     ? 'visible'
                     : 'invisible group-hover:visible',
@@ -320,7 +285,7 @@ const TabBar = ({
 
       {showRightArrow && (
         <button
-          className="flex w-5 shrink-0 items-center justify-center text-zinc-500 hover:text-zinc-300"
+          className="flex w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
           onClick={() => scrollBy(120)}
         >
           <ChevronRight className="h-3.5 w-3.5" />
@@ -329,12 +294,9 @@ const TabBar = ({
 
       <button
         className={cn(
-          'flex w-[30px] shrink-0 items-center justify-center text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300',
+          'flex w-[30px] shrink-0 items-center justify-center border-l border-border text-muted-foreground hover:bg-accent hover:text-foreground',
           isCreating && 'pointer-events-none opacity-50',
         )}
-        style={{
-          borderLeft: '1px solid oklch(0.35 0.006 286)',
-        }}
         onClick={onCreateTab}
         disabled={isCreating}
         aria-label="새 탭"

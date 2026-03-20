@@ -271,15 +271,13 @@ const PaneContainer = ({
 
   return (
     <div
-      className={cn('flex h-full flex-col overflow-hidden')}
+      className={cn(
+        'flex h-full flex-col overflow-hidden',
+        paneCount > 1 && 'border',
+        paneCount > 1 && isFocused ? 'border-ui-purple' : 'border-transparent',
+      )}
       style={{
         opacity: isClosing ? 0 : !mounted ? 0 : undefined,
-        border:
-          paneCount > 1
-            ? isFocused
-              ? '1px solid oklch(0.71 0.051 289)'
-              : '1px solid transparent'
-            : undefined,
         transition: 'opacity 200ms ease-out, border-color 150ms',
       }}
       role="region"
@@ -334,15 +332,15 @@ const PaneContainer = ({
 
         {showInitialLoading && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
-            <span className="text-sm text-zinc-500">연결 중...</span>
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">연결 중...</span>
           </div>
         )}
 
         {!noTabs && status === 'disconnected' && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3">
-            <WifiOff className="h-5 w-5 text-zinc-500" />
-            <span className="text-sm text-zinc-400">
+            <WifiOff className="h-5 w-5 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
               {(disconnectReason && DISCONNECT_MESSAGES[disconnectReason]) ??
                 '서버에 연결할 수 없습니다'}
             </span>

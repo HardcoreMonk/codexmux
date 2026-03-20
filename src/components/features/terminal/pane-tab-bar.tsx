@@ -36,10 +36,6 @@ interface IPaneTabBarProps {
   onRetry: () => void;
 }
 
-const TAB_BAR_BG = 'oklch(0.18 0.006 286)';
-const TAB_ACTIVE_BG = 'oklch(0.21 0.006 286)';
-const TAB_HOVER_BG = 'oklch(0.24 0.006 286)';
-
 const PaneTabBar = ({
   paneId,
   tabs,
@@ -232,16 +228,13 @@ const PaneTabBar = ({
 
   if (error) {
     return (
-      <div
-        className="flex h-[30px] shrink-0 items-center gap-2 px-3"
-        style={{ backgroundColor: TAB_BAR_BG }}
-      >
+      <div className="flex h-[30px] shrink-0 items-center gap-2 bg-card px-3">
         <AlertTriangle className="h-3.5 w-3.5 text-ui-amber" />
-        <span className="text-xs text-zinc-400">{error}</span>
+        <span className="text-xs text-muted-foreground">{error}</span>
         <Button
           variant="ghost"
           size="xs"
-          className="h-5 px-2 text-xs text-zinc-300 hover:text-zinc-100"
+          className="h-5 px-2 text-xs text-foreground hover:text-foreground"
           onClick={onRetry}
         >
           재시도
@@ -252,15 +245,11 @@ const PaneTabBar = ({
 
   if (isLoading) {
     return (
-      <div
-        className="flex h-[30px] shrink-0 items-center gap-1.5 px-2"
-        style={{ backgroundColor: TAB_BAR_BG }}
-      >
+      <div className="flex h-[30px] shrink-0 items-center gap-1.5 bg-card px-2">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-4 w-16 animate-pulse rounded"
-            style={{ backgroundColor: 'oklch(0.24 0.006 286)' }}
+            className="h-4 w-16 animate-pulse rounded bg-muted"
           />
         ))}
       </div>
@@ -269,14 +258,10 @@ const PaneTabBar = ({
 
   return (
     <div
-      className="flex h-[30px] shrink-0 items-stretch"
-      style={{
-        backgroundColor: isDragOverFromOther
-          ? 'oklch(0.20 0.012 243.5 / 0.1)'
-          : TAB_BAR_BG,
-        borderBottom: '0.5px solid oklch(0.35 0.006 286)',
-        transition: 'background-color 150ms',
-      }}
+      className={cn(
+        'flex h-[30px] shrink-0 items-stretch border-b border-border transition-colors',
+        isDragOverFromOther ? 'bg-accent-color/10' : 'bg-card',
+      )}
       onDragEnter={handleTabBarDragEnter}
       onDragLeave={handleTabBarDragLeave}
       onDragOver={(e) => e.preventDefault()}
@@ -284,7 +269,7 @@ const PaneTabBar = ({
     >
       {showLeftArrow && (
         <button
-          className="flex w-5 shrink-0 items-center justify-center text-zinc-500 hover:text-zinc-300"
+          className="flex w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
           onClick={() => scrollBy(-120)}
         >
           <ChevronLeft className="h-3.5 w-3.5" />
@@ -314,28 +299,13 @@ const PaneTabBar = ({
               aria-selected={isActive}
               tabIndex={isActive ? 0 : -1}
               className={cn(
-                'group relative flex min-w-[80px] max-w-[180px] cursor-pointer items-center gap-1 px-3 text-xs transition-opacity duration-150 select-none',
-                isActive && 'text-zinc-200',
-                !isActive && 'text-zinc-400 hover:text-zinc-200',
+                'group relative flex min-w-[80px] max-w-[180px] cursor-pointer items-center gap-1 border-b-2 px-3 text-xs transition-colors duration-150 select-none',
+                isActive
+                  ? 'border-b-accent-color bg-secondary text-foreground'
+                  : 'border-b-transparent text-muted-foreground hover:bg-accent hover:text-foreground',
                 isDragging && 'opacity-30',
                 tab.id === closingTabId && 'pointer-events-none opacity-0',
               )}
-              style={{
-                backgroundColor: isActive ? TAB_ACTIVE_BG : undefined,
-                borderBottom: isActive
-                  ? '2px solid var(--ui-blue)'
-                  : '2px solid transparent',
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive && !isDragging) {
-                  (e.currentTarget as HTMLElement).style.backgroundColor = TAB_HOVER_BG;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  (e.currentTarget as HTMLElement).style.backgroundColor = '';
-                }
-              }}
               onClick={() => {
                 if (!isEditing && !isActive) onSwitchTab(tab.id);
                 onFocusPane();
@@ -351,7 +321,7 @@ const PaneTabBar = ({
                 const ghost = document.createElement('div');
                 ghost.textContent = tab.name;
                 ghost.style.cssText =
-                  'position:fixed;left:-9999px;padding:4px 12px;background:oklch(0.21 0.006 286);color:#e4e4e4;border-radius:4px;font-size:12px;opacity:0.6;transform:scale(0.9);white-space:nowrap;';
+                  'position:fixed;left:-9999px;padding:4px 12px;background:var(--card);color:var(--foreground);border-radius:4px;font-size:12px;opacity:0.6;transform:scale(0.9);white-space:nowrap;';
                 document.body.appendChild(ghost);
                 e.dataTransfer.setDragImage(ghost, 0, 0);
                 requestAnimationFrame(() => ghost.remove());
@@ -374,7 +344,7 @@ const PaneTabBar = ({
               {isEditing ? (
                 <input
                   ref={inputRef}
-                  className="w-full min-w-0 border-b border-ui-blue bg-transparent text-xs text-zinc-200 outline-none"
+                  className="w-full min-w-0 border-b border-accent-color bg-transparent text-xs text-foreground outline-none"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   onKeyDown={(e) => {
@@ -390,7 +360,7 @@ const PaneTabBar = ({
 
               <button
                 className={cn(
-                  'ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-600 hover:text-zinc-200',
+                  'ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground',
                   isActive ? 'visible' : 'invisible group-hover:visible',
                 )}
                 onClick={(e) => {
@@ -417,21 +387,18 @@ const PaneTabBar = ({
 
       {showRightArrow && (
         <button
-          className="flex w-5 shrink-0 items-center justify-center text-zinc-500 hover:text-zinc-300"
+          className="flex w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
           onClick={() => scrollBy(120)}
         >
           <ChevronRight className="h-3.5 w-3.5" />
         </button>
       )}
 
-      <div
-        className="flex shrink-0 items-center"
-        style={{ borderLeft: '1px solid oklch(0.35 0.006 286)' }}
-      >
+      <div className="flex shrink-0 items-center border-l border-border">
         {/* Add tab */}
         <button
           className={cn(
-            'flex h-full w-[28px] items-center justify-center text-zinc-500 hover:text-zinc-300',
+            'flex h-full w-[28px] items-center justify-center text-muted-foreground hover:text-foreground',
             isCreating && 'pointer-events-none opacity-50',
           )}
           onClick={onCreateTab}
@@ -446,12 +413,12 @@ const PaneTabBar = ({
           )}
         </button>
 
-        {/* Split horizontal (panels side by side, vertical divider ┃) */}
+        {/* Split horizontal */}
         <button
           className={cn(
-            'flex h-6 w-6 items-center justify-center rounded-full text-zinc-500',
+            'flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground',
             canSplit
-              ? 'hover:bg-[oklch(0.24_0.006_286)] hover:text-zinc-300'
+              ? 'hover:bg-accent hover:text-foreground'
               : 'cursor-not-allowed opacity-30',
           )}
           onClick={canSplit ? onSplitHorizontal : undefined}
@@ -467,12 +434,12 @@ const PaneTabBar = ({
           )}
         </button>
 
-        {/* Split vertical (panels stacked, horizontal divider ━) */}
+        {/* Split vertical */}
         <button
           className={cn(
-            'flex h-6 w-6 items-center justify-center rounded-full text-zinc-500',
+            'flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground',
             canSplit
-              ? 'hover:bg-[oklch(0.24_0.006_286)] hover:text-zinc-300'
+              ? 'hover:bg-accent hover:text-foreground'
               : 'cursor-not-allowed opacity-30',
           )}
           onClick={canSplit ? onSplitVertical : undefined}
@@ -488,24 +455,14 @@ const PaneTabBar = ({
           )}
         </button>
 
-        {/* Close pane — only visible when 2+ panes, disabled during splitting */}
+        {/* Close pane */}
         {paneCount >= 2 && (
           <button
             className={cn(
-              'flex h-full w-[24px] items-center justify-center text-zinc-500',
-              isSplitting ? 'pointer-events-none opacity-30' : 'hover:text-zinc-300',
+              'flex h-full w-[24px] items-center justify-center rounded-none text-muted-foreground',
+              isSplitting ? 'pointer-events-none opacity-30' : 'hover:bg-destructive/20 hover:text-foreground',
             )}
-            style={{
-              borderRadius: 0,
-            }}
             disabled={isSplitting}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor =
-                'oklch(0.28 0.02 20)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor = '';
-            }}
             onClick={(e) => {
               e.stopPropagation();
               onClosePane();

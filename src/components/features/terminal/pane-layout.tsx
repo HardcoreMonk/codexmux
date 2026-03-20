@@ -46,6 +46,7 @@ const PaneLayout = (props: IPaneLayoutProps) => {
 
   const rootRef = useRef<HTMLDivElement>(null);
   const stableContainersRef = useRef(new Map<string, HTMLDivElement>());
+  const [portalContainers, setPortalContainers] = useState<Map<string, HTMLDivElement>>(new Map());
 
   const [closingPaneIds, setClosingPaneIds] = useState<Set<string>>(new Set());
 
@@ -117,7 +118,7 @@ const PaneLayout = (props: IPaneLayoutProps) => {
           {renderNode(node.children[0], [...path, 0])}
         </Panel>
         <Separator
-          className="relative flex shrink-0 items-center justify-center bg-[oklch(0.30_0.006_286)] transition-colors duration-100 hover:bg-[oklch(0.40_0.006_286)] active:bg-[oklch(0.50_0.010_286)]"
+          className="relative flex shrink-0 items-center justify-center bg-border transition-colors duration-100 hover:bg-muted-foreground/50 active:bg-muted-foreground"
           style={{
             width: isHorizontal ? '1px' : undefined,
             height: isHorizontal ? undefined : '1px',
@@ -145,6 +146,7 @@ const PaneLayout = (props: IPaneLayoutProps) => {
       }
     }
 
+    let changed = false;
     panes.forEach((pane) => {
       const slot = rootRef.current!.querySelector(
         `[data-pane-slot="${pane.id}"]`,
@@ -153,14 +155,27 @@ const PaneLayout = (props: IPaneLayoutProps) => {
       if (slot && container.parentElement !== slot) {
         slot.appendChild(container);
       }
+      if (!portalContainers.has(pane.id) || portalContainers.get(pane.id) !== container) {
+        changed = true;
+      }
     });
+
+    if (changed || portalContainers.size !== panes.length) {
+      const next = new Map<string, HTMLDivElement>();
+      panes.forEach((pane) => {
+        next.set(pane.id, getStableContainer(pane.id));
+      });
+      setPortalContainers(next);
+    }
   }, [panes.map((p) => p.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div ref={rootRef} className="h-full w-full" style={{ backgroundColor: '#1e1f29' }}>
+    <div ref={rootRef} className="h-full w-full bg-terminal-bg">
       {renderNode(root, [])}
-      {panes.map((pane) =>
-        createPortal(
+      {panes.map((pane) => {
+        const container = portalContainers.get(pane.id);
+        if (!container) return null;
+        return createPortal(
           <PaneContainer
             paneId={pane.id}
             paneNumber={paneNumbers.get(pane.id) ?? 1}
@@ -182,9 +197,9 @@ const PaneLayout = (props: IPaneLayoutProps) => {
             onReorderTabs={onReorderTabs}
             onRemoveTabLocally={onRemoveTabLocally}
           />,
-          getStableContainer(pane.id),
-        ),
-      )}
+          container,
+        );
+      })}
     </div>
   );
 };

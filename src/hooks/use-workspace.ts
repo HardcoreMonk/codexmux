@@ -17,6 +17,7 @@ interface IUseWorkspace {
   error: string | null;
   createWorkspace: (directory: string, name?: string) => Promise<IWorkspace | null>;
   deleteWorkspace: (workspaceId: string) => Promise<boolean>;
+  removeWorkspace: (workspaceId: string) => void;
   switchWorkspace: (workspaceId: string) => void;
   renameWorkspace: (workspaceId: string, name: string) => Promise<boolean>;
   toggleSidebar: () => void;
@@ -114,17 +115,18 @@ const useWorkspace = (): IUseWorkspace => {
           method: 'DELETE',
         });
         if (!res.ok && res.status !== 204) throw new Error();
-
-        setWorkspaces((prev) => {
-          const next = prev.filter((w) => w.id !== workspaceId);
-          return next;
-        });
-
         return true;
       } catch {
         toast.error('삭제할 수 없습니다');
         return false;
       }
+    },
+    [],
+  );
+
+  const removeWorkspace = useCallback(
+    (workspaceId: string) => {
+      setWorkspaces((prev) => prev.filter((w) => w.id !== workspaceId));
     },
     [],
   );
@@ -200,6 +202,7 @@ const useWorkspace = (): IUseWorkspace => {
     error,
     createWorkspace: createWorkspaceAction,
     deleteWorkspace: deleteWorkspaceAction,
+    removeWorkspace,
     switchWorkspace,
     renameWorkspace: renameWorkspaceAction,
     toggleSidebar,

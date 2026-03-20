@@ -1,0 +1,10 @@
+/* Snazzy terminal theme — independent of Tailwind/shadcn base theme */
+:root {
+  --terminal-bg: #1e1f29;
+  --terminal-fg: #ebece6;
+}
+
+@theme inline {
+  --color-terminal-bg: var(--terminal-bg);
+  --color-terminal-fg: var(--terminal-fg);
+}

@@ -42,13 +42,17 @@ const WorkspaceItem = ({
     const trimmed = editValue.trim();
     setIsEditing(false);
     if (!trimmed) {
-      setEditValue(workspace.name);
+      const dirName = workspace.directory.split('/').filter(Boolean).pop() || workspace.name;
+      if (dirName !== workspace.name) {
+        onRename(workspace.id, dirName);
+      }
+      setEditValue(dirName);
       return;
     }
     if (trimmed !== workspace.name) {
       onRename(workspace.id, trimmed);
     }
-  }, [editValue, workspace.id, workspace.name, onRename]);
+  }, [editValue, workspace.id, workspace.name, workspace.directory, onRename]);
 
   const cancelRename = useCallback(() => {
     setIsEditing(false);
@@ -87,32 +91,15 @@ const WorkspaceItem = ({
     <ContextMenu>
       <ContextMenuTrigger
         className={cn(
-          'flex h-9 cursor-pointer items-center px-3 text-sm transition-colors duration-75',
+          'flex h-9 cursor-pointer items-center border-l-2 px-3 text-sm transition-colors duration-75',
           'overflow-hidden text-ellipsis whitespace-nowrap',
+          isActive
+            ? 'border-l-ui-purple bg-accent text-foreground'
+            : 'border-l-transparent text-muted-foreground hover:bg-sidebar-accent',
         )}
         style={{
-          backgroundColor: isActive
-            ? 'oklch(0.20 0.008 286)'
-            : undefined,
-          borderLeft: isActive
-            ? '2px solid oklch(0.71 0.051 289)'
-            : '2px solid transparent',
           opacity: isDeleting ? 0.5 : 1,
-          color: isActive
-            ? 'oklch(0.87 0.006 286)'
-            : 'oklch(0.63 0.006 286)',
           transition: 'opacity 150ms, background-color 75ms',
-        }}
-        onMouseEnter={(e) => {
-          if (!isActive) {
-            (e.currentTarget as HTMLElement).style.backgroundColor =
-              'oklch(0.18 0.006 286)';
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!isActive) {
-            (e.currentTarget as HTMLElement).style.backgroundColor = '';
-          }
         }}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
@@ -124,11 +111,7 @@ const WorkspaceItem = ({
         {isEditing ? (
           <input
             ref={inputRef}
-            className="w-full bg-transparent text-sm outline-none"
-            style={{
-              borderBottom: '1px solid oklch(0.69 0.056 243.5)',
-              color: 'oklch(0.87 0.006 286)',
-            }}
+            className="w-full border-b border-accent-color bg-transparent text-sm text-foreground outline-none"
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
