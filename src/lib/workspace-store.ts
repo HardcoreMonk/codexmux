@@ -14,6 +14,19 @@ import {
 } from '@/lib/layout-store';
 import type { IWorkspace, IWorkspacesData, ILayoutData } from '@/types/terminal';
 
+const WORKSPACE_PREFIX = 'Workspace ';
+
+const nextWorkspaceName = (workspaces: IWorkspace[]): string => {
+  let max = 0;
+  for (const ws of workspaces) {
+    if (ws.name.startsWith(WORKSPACE_PREFIX)) {
+      const n = parseInt(ws.name.slice(WORKSPACE_PREFIX.length), 10);
+      if (n > max) max = n;
+    }
+  }
+  return `${WORKSPACE_PREFIX}${max + 1}`;
+};
+
 const BASE_DIR = path.join(os.homedir(), '.purple-terminal');
 const WORKSPACES_FILE = path.join(BASE_DIR, 'workspaces.json');
 const LEGACY_LAYOUT_FILE = path.join(BASE_DIR, 'layout.json');
@@ -246,7 +259,7 @@ export const createWorkspace = async (directory: string, name?: string): Promise
     const data = (await readWorkspacesFile()) ?? emptyState();
 
     const wsId = `ws-${nanoid(6)}`;
-    const wsName = name?.trim() || path.basename(directory);
+    const wsName = name?.trim() || nextWorkspaceName(data.workspaces);
     const order = data.workspaces.length;
 
     const layout = await createDefaultLayout(wsId, directory);
