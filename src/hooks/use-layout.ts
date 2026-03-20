@@ -83,7 +83,11 @@ const updateRatioAtPath = (
 const cloneLayout = (data: ILayoutData): ILayoutData =>
   JSON.parse(JSON.stringify(data));
 
-const useLayout = () => {
+interface IUseLayoutOptions {
+  workspaceId: string | null;
+}
+
+const useLayout = ({ workspaceId }: IUseLayoutOptions) => {
   const [layout, setLayout] = useState<ILayoutData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,14 +95,29 @@ const useLayout = () => {
 
   const layoutRef = useRef<ILayoutData | null>(null);
   const retryCountRef = useRef(0);
+  const workspaceIdRef = useRef(workspaceId);
 
   useEffect(() => {
     layoutRef.current = layout;
   }, [layout]);
 
+  useEffect(() => {
+    workspaceIdRef.current = workspaceId;
+  }, [workspaceId]);
+
+  const wsQuery = useCallback(
+    (base: string) => {
+      const wsId = workspaceIdRef.current;
+      if (!wsId) return base;
+      const sep = base.includes('?') ? '&' : '?';
+      return `${base}${sep}workspace=${wsId}`;
+    },
+    [],
+  );
+
   const saveToServer = useCallback(async (data: ILayoutData) => {
     try {
-      await fetch('/api/layout', {
+      await fetch(wsQuery('/api/layout'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -109,7 +128,7 @@ const useLayout = () => {
     } catch {
       // silently retry on next change
     }
-  }, []);
+  }, [wsQuery]);
 
   const updateAndSave = useCallback(
     (updater: (data: ILayoutData) => ILayoutData) => {
@@ -128,7 +147,7 @@ const useLayout = () => {
 
   const createFallbackLayout = useCallback(async (): Promise<boolean> => {
     try {
-      const res = await fetch('/api/layout/pane', {
+      const res = await fetch(wsQuery('/api/layout/pane'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
@@ -146,7 +165,7 @@ const useLayout = () => {
         updatedAt: new Date().toISOString(),
       };
       setLayout(fallback);
-      fetch('/api/layout', {
+      fetch(wsQuery('/api/layout'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ root: fallback.root, focusedPaneId: fallback.focusedPaneId }),
@@ -157,13 +176,17 @@ const useLayout = () => {
     } catch {
       return false;
     }
-  }, []);
+  }, [wsQuery]);
 
-  const fetchLayout = useCallback(async () => {
+  const fetchLayout = useCallback(async (wsId?: string | null) => {
+    const targetWsId = wsId ?? workspaceIdRef.current;
+    if (!targetWsId) return;
+
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/layout');
+      const url = `/api/layout?workspace=${targetWsId}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error();
       const data: ILayoutData = await res.json();
       setLayout(data);
@@ -181,8 +204,11 @@ const useLayout = () => {
   }, [createFallbackLayout]);
 
   useEffect(() => {
-    fetchLayout();
-  }, [fetchLayout]);
+    if (workspaceId) {
+      retryCountRef.current = 0;
+      fetchLayout(workspaceId);
+    }
+  }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   const paneCount = layout ? collectPanes(layout.root).length : 0;
@@ -201,14 +227,14 @@ const useLayout = () => {
         const activeTab = pane?.tabs.find((t) => t.id === pane.activeTabId);
         if (activeTab) {
           try {
-            const res = await fetch(`/api/layout/cwd?session=${activeTab.sessionName}`);
+            const res = await fetch(wsQuery(`/api/layout/cwd?session=${activeTab.sessionName}`));
             if (res.ok) cwd = (await res.json()).cwd;
           } catch {
             /* fallback to no cwd */
           }
         }
 
-        const res = await fetch('/api/layout/pane', {
+        const res = await fetch(wsQuery('/api/layout/pane'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ cwd }),
@@ -242,7 +268,7 @@ const useLayout = () => {
         setIsSplitting(false);
       }
     },
-    [isSplitting, updateAndSave],
+    [isSplitting, updateAndSave, wsQuery],
   );
 
   const closePane = useCallback(
@@ -255,7 +281,7 @@ const useLayout = () => {
       const sessions = pane?.tabs.map((t) => t.sessionName) ?? [];
 
       try {
-        await fetch(`/api/layout/pane/${paneId}`, {
+        await fetch(wsQuery(`/api/layout/pane/${paneId}`), {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sessions }),
@@ -270,7 +296,7 @@ const useLayout = () => {
         return data;
       });
     },
-    [updateAndSave],
+    [updateAndSave, wsQuery],
   );
 
   const updateRatio = useCallback(
@@ -336,16 +362,16 @@ const useLayout = () => {
       });
 
       if (shouldClosePane) {
-        fetch(`/api/layout/pane/${fromPaneId}`, { method: 'DELETE' }).catch(() => {});
+        fetch(wsQuery(`/api/layout/pane/${fromPaneId}`), { method: 'DELETE' }).catch(() => {});
       }
     },
-    [updateAndSave],
+    [updateAndSave, wsQuery],
   );
 
   const createTabInPane = useCallback(
     async (paneId: string): Promise<ITab | null> => {
       try {
-        const res = await fetch(`/api/layout/pane/${paneId}/tabs`, {
+        const res = await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs`), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({}),
@@ -367,7 +393,7 @@ const useLayout = () => {
         return null;
       }
     },
-    [updateAndSave],
+    [updateAndSave, wsQuery],
   );
 
   const deleteTabInPane = useCallback(
@@ -385,12 +411,12 @@ const useLayout = () => {
         return data;
       });
       try {
-        await fetch(`/api/layout/pane/${paneId}/tabs/${tabId}`, { method: 'DELETE' });
+        await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`), { method: 'DELETE' });
       } catch {
         toast.error('탭 삭제 중 오류가 발생했습니다');
       }
     },
-    [updateAndSave],
+    [updateAndSave, wsQuery],
   );
 
   const switchTabInPane = useCallback(
@@ -415,7 +441,7 @@ const useLayout = () => {
         return data;
       });
       try {
-        await fetch(`/api/layout/pane/${paneId}/tabs/${tabId}`, {
+        await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`), {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name }),
@@ -424,7 +450,7 @@ const useLayout = () => {
         toast.error('탭 이름 변경에 실패했습니다');
       }
     },
-    [updateAndSave],
+    [updateAndSave, wsQuery],
   );
 
   const reorderTabsInPane = useCallback(
@@ -469,6 +495,23 @@ const useLayout = () => {
     [updateAndSave],
   );
 
+  const saveCurrentLayout = useCallback(() => {
+    const current = layoutRef.current;
+    if (!current) return;
+    fetch(wsQuery('/api/layout'), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        root: current.root,
+        focusedPaneId: current.focusedPaneId,
+      }),
+    }).catch(() => {});
+  }, [wsQuery]);
+
+  const clearLayout = useCallback(() => {
+    setLayout(null);
+  }, []);
+
   return {
     layout,
     isLoading,
@@ -487,6 +530,8 @@ const useLayout = () => {
     renameTabInPane,
     reorderTabsInPane,
     removeTabLocally,
+    saveCurrentLayout,
+    clearLayout,
     retry: fetchLayout,
   };
 };
