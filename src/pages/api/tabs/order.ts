@@ -12,7 +12,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(400).json({ error: 'Invalid request body' });
   }
 
-  const tabs = reorderTabs(tabIds);
+  const tabs = await reorderTabs(tabIds);
   if (!tabs) {
     return res.status(400).json({ error: 'Invalid request body' });
   }

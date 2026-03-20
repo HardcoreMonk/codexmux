@@ -3,8 +3,7 @@ import { getTabs, addTab } from '@/lib/tab-store';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
-    const { tabs, activeTabId } = getTabs();
-    console.log(`[tabs] list: ${tabs.length} tabs`);
+    const { tabs, activeTabId } = await getTabs();
     return res.status(200).json({ tabs, activeTabId });
   }
 

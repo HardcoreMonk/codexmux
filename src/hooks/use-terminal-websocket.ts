@@ -105,9 +105,15 @@ const useTerminalWebSocket = ({
         clearTimers();
         wsRef.current = null;
 
-        if (event.code === 1000 || event.code === 1011) {
+        if (event.code === 1000) {
           setStatus('session-ended');
           callbacksRef.current.onSessionEnded?.();
+          return;
+        }
+
+        if (event.code === 1011) {
+          setDisconnectReason('session-not-found');
+          setStatus('disconnected');
           return;
         }
 

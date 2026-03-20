@@ -13,6 +13,7 @@ import TabBar from '@/components/features/terminal/tab-bar';
 const DISCONNECT_MESSAGES: Record<NonNullable<TDisconnectReason>, string> = {
   'max-connections': '동시 접속 수를 초과했습니다. 다른 탭을 닫아주세요.',
   'pty-error': '터미널을 시작할 수 없습니다',
+  'session-not-found': '세션을 찾을 수 없습니다',
 };
 
 interface ITermActions {
@@ -268,9 +269,15 @@ const TerminalPage = () => {
               {(disconnectReason && DISCONNECT_MESSAGES[disconnectReason]) ??
                 '서버에 연결할 수 없습니다'}
             </span>
-            <Button variant="outline" size="sm" onClick={reconnect}>
-              다시 연결
-            </Button>
+            {disconnectReason === 'session-not-found' && activeTabId ? (
+              <Button variant="outline" size="sm" onClick={() => handleDeleteTab(activeTabId)}>
+                탭 닫기
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={reconnect}>
+                다시 연결
+              </Button>
+            )}
           </div>
         )}
 

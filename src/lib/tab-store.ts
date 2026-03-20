@@ -2,14 +2,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { nanoid } from 'nanoid';
-import { listSessions, createSession, killSession } from '@/lib/tmux';
-
-interface ITab {
-  id: string;
-  sessionName: string;
-  name: string;
-  order: number;
-}
+import { listSessions, createSession, killSession, defaultSessionName } from '@/lib/tmux';
+import type { ITab } from '@/types/terminal';
 
 interface ITabStore {
   tabs: ITab[];
@@ -24,48 +18,26 @@ interface ITabsFile {
 
 const TABS_DIR = path.join(os.homedir(), '.purple-terminal');
 const TABS_FILE = path.join(TABS_DIR, 'tabs.json');
-const SAVE_DEBOUNCE = 300;
 
-let store: ITabStore = { tabs: [], activeTabId: null };
-let saveTimer: ReturnType<typeof setTimeout> | null = null;
+const g = globalThis as unknown as { __ptTabLock?: Promise<void> };
+if (!g.__ptTabLock) g.__ptTabLock = Promise.resolve();
 
-const scheduleSave = () => {
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(async () => {
-    saveTimer = null;
-    try {
-      await fs.mkdir(TABS_DIR, { recursive: true });
-      const data: ITabsFile = {
-        ...store,
-        updatedAt: new Date().toISOString(),
-      };
-      await fs.writeFile(TABS_FILE, JSON.stringify(data, null, 2));
-      console.log(`[tabs] saved: ${TABS_FILE}`);
-    } catch (err) {
-      console.log(`[tabs] save failed: ${err instanceof Error ? err.message : err}`);
-    }
-  }, SAVE_DEBOUNCE);
-};
-
-export const flushToDisk = async () => {
-  if (saveTimer) {
-    clearTimeout(saveTimer);
-    saveTimer = null;
-  }
+const withLock = async <T>(fn: () => Promise<T>): Promise<T> => {
+  let release: () => void;
+  const next = new Promise<void>((r) => {
+    release = r;
+  });
+  const prev = g.__ptTabLock!;
+  g.__ptTabLock = next;
+  await prev;
   try {
-    await fs.mkdir(TABS_DIR, { recursive: true });
-    const data: ITabsFile = {
-      ...store,
-      updatedAt: new Date().toISOString(),
-    };
-    await fs.writeFile(TABS_FILE, JSON.stringify(data, null, 2));
-    console.log(`[tabs] saved: ${TABS_FILE}`);
-  } catch (err) {
-    console.log(`[tabs] flush failed: ${err instanceof Error ? err.message : err}`);
+    return await fn();
+  } finally {
+    release!();
   }
 };
 
-const loadFromDisk = async (): Promise<ITabStore> => {
+const readStore = async (): Promise<ITabStore> => {
   try {
     const raw = await fs.readFile(TABS_FILE, 'utf-8');
     const data = JSON.parse(raw) as ITabsFile;
@@ -74,54 +46,60 @@ const loadFromDisk = async (): Promise<ITabStore> => {
       activeTabId: data.activeTabId ?? null,
     };
   } catch {
-    console.log('[tabs] tabs.json parse failed, starting fresh');
     return { tabs: [], activeTabId: null };
   }
 };
 
-const syncWithTmux = async () => {
+const writeStore = async (store: ITabStore): Promise<void> => {
+  const data: ITabsFile = { ...store, updatedAt: new Date().toISOString() };
+  const tmpFile = TABS_FILE + '.tmp';
+  await fs.writeFile(tmpFile, JSON.stringify(data, null, 2));
+  await fs.rename(tmpFile, TABS_FILE);
+};
+
+const fixActiveTab = (store: ITabStore, removedTabId: string): void => {
+  if (store.tabs.length === 0) {
+    store.activeTabId = null;
+  } else if (store.activeTabId === removedTabId) {
+    store.activeTabId = store.tabs[0]?.id ?? null;
+  }
+};
+
+export const flushToDisk = async () => {};
+
+export const initTabStore = async () => {
+  await fs.mkdir(TABS_DIR, { recursive: true });
+
+  const store = await readStore();
   const tmuxSessions = await listSessions();
   const tabSessions = new Set(store.tabs.map((t) => t.sessionName));
 
   const staleTabs = store.tabs.filter((tab) => !tmuxSessions.includes(tab.sessionName));
   store.tabs = store.tabs.filter((tab) => tmuxSessions.includes(tab.sessionName));
 
-  let recoveredCount = 0;
-  for (const session of tmuxSessions) {
-    if (!tabSessions.has(session)) {
-      store.tabs.push({
-        id: `tab-${nanoid(6)}`,
-        sessionName: session,
-        name: `Recovered ${store.tabs.length + 1}`,
-        order: store.tabs.length,
-      });
-      recoveredCount++;
-    }
-  }
+  const orphans = tmuxSessions.filter((s) => !tabSessions.has(s));
+  const results = await Promise.allSettled(orphans.map((s) => killSession(s)));
+  const killedCount = results.filter((r) => r.status === 'fulfilled').length;
 
   if (store.activeTabId && !store.tabs.some((t) => t.id === store.activeTabId)) {
     store.activeTabId = store.tabs[0]?.id ?? null;
   }
 
-  console.log(`[tabs] sync: removed ${staleTabs.length} stale, recovered ${recoveredCount} orphan`);
-};
-
-export const initTabStore = async () => {
-  store = await loadFromDisk();
-  await syncWithTmux();
-  if (store.tabs.length > 0 || store.activeTabId) {
-    scheduleSave();
-  }
+  await writeStore(store);
+  console.log(`[tabs] sync: removed ${staleTabs.length} stale, killed ${killedCount} orphan`);
   console.log(`[tabs] list: ${store.tabs.length} tabs`);
 };
 
-export const getTabs = (): { tabs: ITab[]; activeTabId: string | null } => ({
-  tabs: [...store.tabs].sort((a, b) => a.order - b.order),
-  activeTabId: store.activeTabId,
-});
+export const getTabs = async (): Promise<{ tabs: ITab[]; activeTabId: string | null }> => {
+  const store = await readStore();
+  return {
+    tabs: [...store.tabs].sort((a, b) => a.order - b.order),
+    activeTabId: store.activeTabId,
+  };
+};
 
-const nextTabName = (): string => {
-  const existing = store.tabs
+const nextTabName = (tabs: ITab[]): string => {
+  const existing = tabs
     .map((t) => t.name)
     .filter((n) => /^Terminal \d+$/.test(n))
     .map((n) => parseInt(n.replace('Terminal ', ''), 10));
@@ -131,87 +109,109 @@ const nextTabName = (): string => {
 
 export const addTab = async (name?: string): Promise<ITab> => {
   const tabId = `tab-${nanoid(6)}`;
-  const sessionName = `pt-${nanoid(6)}-${nanoid(6)}-${nanoid(6)}`;
-  const tabName = name?.trim() || nextTabName();
-  const order = store.tabs.length > 0 ? Math.max(...store.tabs.map((t) => t.order)) + 1 : 0;
+  const sessionName = defaultSessionName();
+
+  const store = await withLock(async () => {
+    const s = await readStore();
+    return {
+      tabName: name?.trim() || nextTabName(s.tabs),
+      order: s.tabs.length > 0 ? Math.max(...s.tabs.map((t) => t.order)) + 1 : 0,
+    };
+  });
 
   await createSession(sessionName, 80, 24);
 
-  const tab: ITab = { id: tabId, sessionName, name: tabName, order };
-  store.tabs.push(tab);
-  scheduleSave();
+  return withLock(async () => {
+    const s = await readStore();
+    const tab: ITab = { id: tabId, sessionName, name: store.tabName, order: store.order };
+    s.tabs.push(tab);
+    s.activeTabId = tabId;
+    await writeStore(s);
 
-  console.log(`[tabs] created: ${tabId} (session: ${sessionName})`);
-  return tab;
+    console.log(`[tabs] created: ${tabId} (session: ${sessionName})`);
+    return tab;
+  });
 };
 
 export const removeTab = async (tabId: string): Promise<boolean> => {
-  const idx = store.tabs.findIndex((t) => t.id === tabId);
-  if (idx === -1) return false;
+  const sessionName = await withLock(async () => {
+    const store = await readStore();
+    const idx = store.tabs.findIndex((t) => t.id === tabId);
+    if (idx === -1) return null;
 
-  const tab = store.tabs[idx];
+    const tab = store.tabs[idx];
+    store.tabs.splice(idx, 1);
+    fixActiveTab(store, tabId);
+    await writeStore(store);
+
+    console.log(`[tabs] deleted: ${tabId}`);
+    return tab.sessionName;
+  });
+
+  if (sessionName === null) return false;
+
   try {
-    await killSession(tab.sessionName);
+    await killSession(sessionName);
   } catch {
     // session already gone
   }
-
-  store.tabs.splice(idx, 1);
-  if (store.activeTabId === tabId) {
-    store.activeTabId = store.tabs[0]?.id ?? null;
-  }
-  scheduleSave();
-
-  console.log(`[tabs] deleted: ${tabId}`);
   return true;
 };
 
-export const removeTabBySession = (sessionName: string): boolean => {
-  const idx = store.tabs.findIndex((t) => t.sessionName === sessionName);
-  if (idx === -1) return false;
+export const removeTabBySession = async (sessionName: string): Promise<boolean> =>
+  withLock(async () => {
+    const store = await readStore();
+    const idx = store.tabs.findIndex((t) => t.sessionName === sessionName);
+    if (idx === -1) return false;
 
-  const tab = store.tabs[idx];
-  store.tabs.splice(idx, 1);
-  if (store.activeTabId === tab.id) {
-    store.activeTabId = store.tabs[0]?.id ?? null;
-  }
-  scheduleSave();
+    const tab = store.tabs[idx];
+    store.tabs.splice(idx, 1);
+    fixActiveTab(store, tab.id);
+    await writeStore(store);
 
-  console.log(`[tabs] deleted by session exit: ${tab.id}`);
-  return true;
-};
+    console.log(`[tabs] deleted by session exit: ${tab.id}`);
+    return true;
+  });
 
-export const renameTab = (tabId: string, name: string): ITab | null => {
-  const tab = store.tabs.find((t) => t.id === tabId);
-  if (!tab) return null;
+export const renameTab = async (tabId: string, name: string): Promise<ITab | null> =>
+  withLock(async () => {
+    const store = await readStore();
+    const tab = store.tabs.find((t) => t.id === tabId);
+    if (!tab) return null;
 
-  tab.name = name;
-  scheduleSave();
+    tab.name = name;
+    await writeStore(store);
 
-  console.log(`[tabs] renamed: ${tabId} → "${name}"`);
-  return { ...tab };
-};
+    console.log(`[tabs] renamed: ${tabId} → "${name}"`);
+    return { ...tab };
+  });
 
-export const reorderTabs = (tabIds: string[]): ITab[] | null => {
-  const currentIds = new Set(store.tabs.map((t) => t.id));
-  const newIds = new Set(tabIds);
+export const reorderTabs = async (tabIds: string[]): Promise<ITab[] | null> =>
+  withLock(async () => {
+    const store = await readStore();
+    const currentIds = new Set(store.tabs.map((t) => t.id));
+    const newIds = new Set(tabIds);
 
-  if (currentIds.size !== newIds.size || ![...currentIds].every((id) => newIds.has(id))) {
-    return null;
-  }
+    if (currentIds.size !== newIds.size || ![...currentIds].every((id) => newIds.has(id))) {
+      return null;
+    }
 
-  for (let i = 0; i < tabIds.length; i++) {
-    const tab = store.tabs.find((t) => t.id === tabIds[i]);
-    if (tab) tab.order = i;
-  }
+    for (let i = 0; i < tabIds.length; i++) {
+      const tab = store.tabs.find((t) => t.id === tabIds[i]);
+      if (tab) tab.order = i;
+    }
 
-  scheduleSave();
-  console.log(`[tabs] reordered: ${store.tabs.length} tabs`);
+    await writeStore(store);
+    console.log(`[tabs] reordered: ${store.tabs.length} tabs`);
 
-  return [...store.tabs].sort((a, b) => a.order - b.order);
-};
+    return [...store.tabs].sort((a, b) => a.order - b.order);
+  });
 
-export const setActiveTab = (tabId: string): void => {
-  store.activeTabId = tabId;
-  scheduleSave();
-};
+export const setActiveTab = async (tabId: string): Promise<void> =>
+  withLock(async () => {
+    const store = await readStore();
+    if (store.activeTabId === tabId) return;
+    if (!store.tabs.some((t) => t.id === tabId)) return;
+    store.activeTabId = tabId;
+    await writeStore(store);
+  });

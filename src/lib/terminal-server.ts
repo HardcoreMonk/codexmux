@@ -48,17 +48,19 @@ const attachToSession = (sessionName: string, cols: number, rows: number): pty.I
     } as Record<string, string>,
   });
 
-const cleanup = (conn: IActiveConnection) => {
+const cleanup = (conn: IActiveConnection, sessionExited = false) => {
   if (conn.cleaned) return;
   conn.cleaned = true;
 
   clearInterval(conn.heartbeatTimer);
 
-  if (!conn.detaching) {
+  if (sessionExited) {
+    removeTabBySession(conn.sessionName).catch((err) => {
+      console.log(`[tabs] removeTabBySession failed: ${err instanceof Error ? err.message : err}`);
+    });
     if (conn.ws.readyState === WebSocket.OPEN) {
       conn.ws.close(1000, 'Session exited');
     }
-    removeTabBySession(conn.sessionName);
     console.log(`[terminal] tmux session ended: ${conn.sessionName}`);
   } else {
     console.log(`[terminal] tab switch detach: ${conn.sessionName}`);
@@ -172,13 +174,11 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
   ws.on('message', handleMessage);
   ws.on('close', () => {
     if (!conn) return;
-    conn.detaching = true;
     cleanup(conn);
   });
   ws.on('error', (err) => {
     console.log(`[terminal] websocket error: ${err.message}`);
     if (!conn) return;
-    conn.detaching = true;
     cleanup(conn);
   });
 
@@ -191,7 +191,9 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
     const exists = await hasSession(sessionId);
     if (!exists) {
       console.log(`[terminal] session not found: ${sessionName}`);
-      removeTabBySession(sessionName);
+      removeTabBySession(sessionName).catch((err) => {
+        console.log(`[tabs] removeTabBySession failed: ${err instanceof Error ? err.message : err}`);
+      });
       ws.close(1011, 'Session not found');
       return;
     }
@@ -268,6 +270,6 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
     console.log(
       `[terminal] pty exited (pid: ${ptyProcess!.pid}, code: ${exitCode}, signal: ${signal}, detaching: ${conn.detaching})`,
     );
-    cleanup(conn);
+    cleanup(conn, !conn.detaching);
   });
 };

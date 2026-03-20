@@ -18,7 +18,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(400).json({ error: 'Invalid request body' });
     }
 
-    const tab = renameTab(tabId, name.trim());
+    const tab = await renameTab(tabId, name.trim());
     if (!tab) {
       return res.status(404).json({ error: 'Tab not found' });
     }

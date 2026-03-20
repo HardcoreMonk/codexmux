@@ -104,13 +104,16 @@ Phase 4 (목표):
 
 #### Pane 리사이즈
 
-- **`react-resizable-panels`** (bvaughn) 라이브러리를 사용하여 분할/리사이즈를 구현한다
-  - `PanelGroup` + `Panel` + `PanelResizeHandle` 컴포넌트 기반
-  - 마우스, 터치, 키보드 리사이즈 지원 (접근성 내장)
-  - `PanelResizeHandle`이 히트 영역 및 드래그 인터랙션을 처리
-- 최소 비율 제한: `Panel`의 `minSize` prop으로 10% 하한 설정
+- **`react-resizable-panels` v4** (bvaughn) 라이브러리를 사용하여 분할/리사이즈를 구현한다
+  - v4 API: `Group` + `Panel` + `Separator` 컴포넌트 기반 (`orientation` prop으로 방향 지정)
+  - 마우스, 터치, 키보드 리사이즈 지원 (접근성 내장, ARIA 자동 처리)
+  - `Separator`가 히트 영역 및 드래그 인터랙션을 자동 처리
+- **최소 크기 제한 (픽셀 기반)**: v4는 숫자 = 픽셀을 네이티브 지원 → `<Panel minSize={200}>` (수평), `<Panel minSize={120}>` (수직)
+  - 퍼센트 기반 하한도 병행: `minSize="10%"` 또는 두 조건 중 큰 값을 사용
+  - 참고: tmux는 2×2 셀 하드코딩, VS Code는 250px 픽셀 기반. Purple Terminal은 200×120px 채택
 - 리사이즈 시 영향 받는 Pane의 xterm.js + tmux 세션 크기 동기화 (resize 메시지 전송)
-- `PanelGroup`의 `onLayout` 콜백으로 비율 변경 감지 → `layout.json`에 저장 (디바운스)
+- `Panel`의 `onResize` 콜백 (`{ asPercentage, inPixels }`)으로 비율 변경 감지 → `layout.json`에 저장 (디바운스)
+- 분할 시 Pane 공간이 최소 크기의 2배 미만이면 분할을 거부한다 (tmux "no space for new pane" 패턴 참고)
 
 #### Pane 닫기
 
@@ -134,8 +137,11 @@ Phase 4 (목표):
 - 탭을 다른 Pane으로 **드래그 앤 드롭**하여 이동할 수 있다
 - 탭을 드래그하여 다른 Pane의 탭 바 위에 놓으면 해당 Pane으로 탭이 이동한다
 - 이동 시 탭의 tmux 세션은 유지되며, 소속 Pane만 변경된다
-- 이동 후 원래 Pane의 탭이 비면: Pane이 1개뿐이면 새 탭 자동 생성, 복수 Pane이면 빈 Pane 닫기
-- 드래그 중 드롭 대상 Pane의 탭 바에 시각적 드롭 인디케이터를 표시한다
+- 이동 후 원래 Pane의 탭이 비면: Pane이 1개뿐이면 새 탭 자동 생성, 복수 Pane이면 빈 Pane 닫기 (Pane 수가 줄어 다시 분할 가능해지는 자연스러운 흐름)
+- **드래그 UX**:
+  - 드래그 중 **반투명 탭 고스트**(원본 탭의 축소 복제본)를 커서 근처에 표시한다
+  - 드롭 대상 Pane의 **탭 바 전체가 하이라이트**되어 드롭 가능 영역을 표시한다
+  - 탭 바 내 삽입 위치에 인디케이터 라인을 표시한다
 
 ### 서버 — WebSocket (`/api/terminal`)
 
@@ -227,9 +233,9 @@ Phase 4 (목표):
 
 | 항목 | 요구사항 |
 |---|---|
-| 분할/리사이즈 성능 | Pane 분할과 리사이즈가 즉각적으로 느껴져야 함. 리사이즈 중 터미널 렌더링이 끊기지 않아야 함. `react-resizable-panels`의 `onLayout` 콜백에서 xterm.js `fit()` + tmux `resize-window`를 스로틀하여 과도한 호출 방지 |
+| 분할/리사이즈 성능 | Pane 분할과 리사이즈가 즉각적으로 느껴져야 함. 리사이즈 중 터미널 렌더링이 끊기지 않아야 함. `Panel`의 `onResize` 콜백에서 xterm.js `fit()` + tmux `resize-window`를 스로틀하여 과도한 호출 방지 |
 | 다중 Pane 메모리 | Pane당 xterm.js 인스턴스(WebGL 렌더러 포함) + WebSocket 연결을 유지하므로 메모리 증가. 최대 3개 Pane이므로 관리 가능 |
-| 최소 Pane 크기 | Pane의 최소 너비 200px, 최소 높이 120px. 브라우저 창이 좁아져도 이 크기 이하로 축소되지 않아야 함. `react-resizable-panels`의 `minSize` prop으로 제어 |
+| 최소 Pane 크기 | Pane의 최소 너비 200px, 최소 높이 120px. 브라우저 창이 좁아져도 이 크기 이하로 축소되지 않아야 함. v4의 `<Panel minSize={200}>` (픽셀 네이티브)으로 제어 |
 | 독립 세션 유지 | 각 Pane의 모든 tmux 세션(활성/비활성 탭)이 백그라운드에서 독립 실행. Pane 간 세션 간섭 없음 |
 | Phase 3 호환 | 단일 Pane 상태에서 Phase 3과 동일한 UX. 탭 관리 동작 변경 없음 |
 | 레이아웃 정합성 | 서버 재시작/새로고침 후 Pane 분할 구조, 비율, 각 Pane의 탭 목록, 활성 탭, 포커스 상태가 정확하게 복원 |
@@ -276,7 +282,7 @@ Browser                                    Server (Custom)                  tmux
 | `tab-store.ts` (서버) | `tabs.json` → `layout.json` 트리 구조 저장으로 전환 |
 | `server.ts` | MAX_CONNECTIONS 상향, `/api/layout` 라우팅 추가 |
 | `terminal-server.ts` | MAX_CONNECTIONS 상향 |
-| 신규: `pane-layout.tsx` | `react-resizable-panels` 기반 Pane 트리 렌더러 (`PanelGroup`/`Panel`/`PanelResizeHandle`) |
+| 신규: `pane-layout.tsx` | `react-resizable-panels` v4 기반 Pane 트리 렌더러 (`Group`/`Panel`/`Separator`) |
 | 신규: `layout-store.ts` (서버) | `layout.json` 관리, 마이그레이션 로직 |
 | 신규: `/api/layout/*.ts` | 레이아웃 CRUD API 엔드포인트 |
 
@@ -321,12 +327,14 @@ Browser                                    Server (Custom)                  tmux
 - **Pane당 독립 xterm.js**: Phase 3의 단일 인스턴스 재활용 방식은 동시 표시에 사용할 수 없다. Pane당 인스턴스를 생성한다. 최대 3개 Pane이므로 WebGL 렌더러 GPU 리소스는 문제없을 것으로 판단 (기존 WebGL + Canvas 폴백 로직 유지)
 - **최대 Pane 수 제한: 3개**: 분할 트리의 리프 노드가 3개에 도달하면 추가 분할을 차단한다. 3개 이상 필요한 케이스는 Phase 7 단축키 체계 이후 재검토
 - **동시 WebSocket 연결**: Pane당 1개 WebSocket(활성 탭)이므로, 최대 3개 동시 WebSocket. 서버의 MAX_CONNECTIONS(현재 10)을 상향 (20~30)
-- **react-resizable-panels**: Pane 분할/리사이즈에 `react-resizable-panels` (bvaughn, MIT, 5.1k stars) 라이브러리를 사용한다. `PanelGroup`/`Panel`/`PanelResizeHandle` 컴포넌트가 히트 영역, 드래그, 접근성(키보드/터치)을 처리
-- **리사이즈 스로틀**: `onLayout` 콜백에서 xterm.js `fit()` + tmux `resize-window` 호출을 `requestAnimationFrame` 또는 `throttle`(16ms)로 제어
-- **최소 Pane 크기**: 너비 200px, 높이 120px. `react-resizable-panels`의 `minSize` prop으로 제어. 브라우저 창이 좁아져도 이 크기 이하로 축소 방지
+- **react-resizable-panels v4**: Pane 분할/리사이즈에 `react-resizable-panels` v4 (bvaughn, MIT, 5.1k stars) 라이브러리를 사용한다. **v4 API**: `Group`/`Panel`/`Separator` 컴포넌트 (`PanelGroup`/`PanelResizeHandle`는 v3 API로 deprecated). `orientation` prop으로 방향 지정 (`direction`은 v3). 히트 영역, 드래그, 접근성(키보드/터치/ARIA)을 자동 처리
+- **최소 Pane 크기 (픽셀 네이티브)**: v4는 숫자값을 픽셀로 해석 → `<Panel minSize={200}>` 형태로 200px 최소 크기를 직접 지정 가능. 퍼센트는 문자열로 지정 (`minSize="10%"`). 별도 ResizeObserver 워크어라운드 불필요
+  - 참고: tmux 2×2 셀 하드코딩 + "no space for new pane" 에러, VS Code 250px 픽셀 기반 + 토스트 경고, Zellij 스택 레이아웃 폴백
+- **리사이즈 스로틀**: `Panel`의 `onResize` 콜백(`{ asPercentage, inPixels }`)에서 xterm.js `fit()` + tmux `resize-window` 호출을 `requestAnimationFrame` 또는 `throttle`(16ms)로 제어
+- **분할 공간 검증**: 분할 시 결과 Pane이 최소 크기(200×120px) 미만이면 분할을 거부한다. tmux의 "no space for new pane" 패턴과 동일한 접근
 - **레이아웃 트리 정합성**: 트리 조작(분할, 닫기) 시 무효한 상태(빈 내부 노드, 자식 1개인 내부 노드 등)가 발생하지 않도록 정규화 로직 필요
 - **tabs.json 마이그레이션**: `layout.json`이 없고 `tabs.json`이 있으면 자동 변환. 변환 후 `tabs.json`은 보존(롤백용). `layout.json`이 존재하면 `tabs.json`은 무시
-- **분할선(PanelResizeHandle) 디자인**: `react-resizable-panels`의 `PanelResizeHandle` 컴포넌트를 커스텀 스타일링. Muted 팔레트에 맞게 얇고 낮은 투명도 (`oklch` 기반). 호버 시 약간 밝아지는 피드백. STYLE.md의 "장식 요소 최소화" 원칙 준수. 히트 영역은 라이브러리가 자동 처리
+- **분할선(Separator) 디자인**: v4의 `Separator` 컴포넌트를 커스텀 스타일링. Muted 팔레트에 맞게 얇고 낮은 투명도 (`oklch` 기반). 호버 시 약간 밝아지는 피드백. STYLE.md의 "장식 요소 최소화" 원칙 준수. 히트 영역은 라이브러리가 자동 처리
 - **포커스 보더**: 포커스된 Pane의 보더는 `ui-purple` 또는 `ui-blue` 계열, 얇은 보더(1~2px). 비포커스 Pane은 보더 없음 또는 매우 연한 보더
 - **Pane 간 탭 이동**: 탭 드래그 앤 드롭 시 tmux 세션을 종료하지 않고 소속 Pane 정보만 `layout.json`에서 변경한다. 이동 후 원래 Pane 탭이 비면 트리 재구성
 - **Phase 2 정책 유지**: detaching 플래그, close code 정책(1000/1001/1011/1013) 그대로 유지. Pane 닫기 시 해당 Pane의 WebSocket 연결은 "의도적 detach"로 처리
@@ -337,7 +345,7 @@ Browser                                    Server (Custom)                  tmux
 | 항목 | 결정 | 근거 |
 |---|---|---|
 | 레이아웃 구조 | 이진 트리 (리프=Pane, 내부=분할 컨테이너) | 수평/수직 중첩 분할을 자연스럽게 표현, VS Code/tmux와 동일한 모델 |
-| 분할/리사이즈 라이브러리 | `react-resizable-panels` (bvaughn) | 5.1k stars, 주간 550만 DL, 접근성 내장, 히트 영역 자동 처리 |
+| 분할/리사이즈 라이브러리 | `react-resizable-panels` v4 (bvaughn) | 5.1k stars, v4 API (`Group`/`Panel`/`Separator`), 픽셀 minSize 네이티브 지원 |
 | xterm.js 전략 | Pane당 독립 인스턴스 | 동시 표시를 위해 필수 |
 | WebSocket 전략 | Pane당 독립 연결 (활성 탭) | 각 Pane이 독립적으로 터미널 표시 |
 | 상태 저장 | `~/.purple-terminal/layout.json` (트리 구조) | 플랫 배열로는 분할 구조 표현 불가 |
@@ -353,6 +361,8 @@ Browser                                    Server (Custom)                  tmux
 
 ## 미확인 사항
 
-- [ ] Pane 간 탭 이동 드래그 앤 드롭의 구체적 UX: 드래그 중 반투명 탭 고스트를 표시할지, 드롭 대상 표시를 어떤 형태로 할지 (인디케이터 라인 vs 탭 바 하이라이트)
-- [ ] `react-resizable-panels`의 `minSize`가 픽셀 단위가 아닌 퍼센트 기반인 경우, 최소 200×120px을 정확하게 보장하는 방법 확인 필요
-- [ ] Pane 3개 제한에서 "탭 이동으로 빈 Pane이 닫히면 다시 2개가 되어 분할이 가능해지는" 흐름이 자연스러운지 UX 관점에서 검증 필요
+(모두 확인 완료 — 해결 내역 기록)
+
+- [x] ~~Pane 간 탭 이동 드래그 앤 드롭 UX~~ → 반투명 탭 고스트 + 탭 바 하이라이트 + 삽입 위치 인디케이터 라인으로 확정
+- [x] ~~`react-resizable-panels` minSize 픽셀 지원~~ → v4에서 숫자 = 픽셀 네이티브 지원. `<Panel minSize={200}>` 형태로 직접 사용 가능. 별도 워크어라운드 불필요
+- [x] ~~탭 이동 → 빈 Pane 닫기 → 분할 재활성화 흐름~~ → 자연스러운 UX로 확정. Pane 수가 줄어 분할이 다시 가능해지는 순환이 직관적
