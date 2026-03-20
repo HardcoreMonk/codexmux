@@ -1,3 +1,4 @@
+import { IncomingMessage } from 'http';
 import { WebSocket } from 'ws';
 import * as pty from 'node-pty';
 import {
@@ -25,6 +26,7 @@ interface IActiveConnection {
   ws: WebSocket;
   pty: pty.IPty;
   sessionName: string;
+  clientId: string | null;
   heartbeatTimer: ReturnType<typeof setInterval>;
   cleaned: boolean;
   detaching: boolean;
@@ -80,12 +82,25 @@ export const gracefulShutdown = () => {
   });
 };
 
-export const handleConnection = async (ws: WebSocket) => {
+export const handleConnection = async (ws: WebSocket, request: IncomingMessage) => {
+  const url = new URL(request.url || '', 'http://localhost');
+  const clientId = url.searchParams.get('clientId');
+
   connections.forEach((conn, key) => {
     if (key.readyState === WebSocket.CLOSED || key.readyState === WebSocket.CLOSING) {
       cleanup(conn);
     }
   });
+
+  if (clientId) {
+    connections.forEach((conn) => {
+      if (conn.clientId === clientId && !conn.cleaned) {
+        console.log(`[terminal] replacing existing connection for clientId: ${clientId}`);
+        conn.detaching = true;
+        cleanup(conn);
+      }
+    });
+  }
 
   if (connections.size >= MAX_CONNECTIONS) {
     console.log(`[terminal] connection rejected: max connections (${MAX_CONNECTIONS}) reached`);
@@ -149,6 +164,7 @@ export const handleConnection = async (ws: WebSocket) => {
     ws,
     pty: ptyProcess,
     sessionName,
+    clientId,
     heartbeatTimer,
     cleaned: false,
     detaching: false,

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { nanoid } from 'nanoid';
 import type { TConnectionStatus, TDisconnectReason } from '@/types/terminal';
 import {
   MSG_STDOUT,
@@ -30,6 +31,7 @@ const useTerminalWebSocket = ({
   const [disconnectReason, setDisconnectReason] =
     useState<TDisconnectReason>(null);
 
+  const clientIdRef = useRef(nanoid());
   const wsRef = useRef<WebSocket | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,7 +66,9 @@ const useTerminalWebSocket = ({
     setStatus(retryCountRef.current > 0 ? 'reconnecting' : 'connecting');
 
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${location.host}/api/terminal`);
+    const ws = new WebSocket(
+      `${protocol}//${location.host}/api/terminal?clientId=${clientIdRef.current}`,
+    );
     ws.binaryType = 'arraybuffer';
     wsRef.current = ws;
     isNormalCloseRef.current = false;
