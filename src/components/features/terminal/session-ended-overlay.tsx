@@ -12,7 +12,7 @@ const SessionEndedOverlay = ({
 }: ISessionEndedOverlayProps) => (
   <div
     className={cn(
-      'absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-3 bg-zinc-900/90 pb-8 pt-6 transition-opacity duration-150',
+      'absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-3 bg-[#1e1f29]/90 pb-8 pt-6 transition-opacity duration-150',
       visible ? 'opacity-100' : 'pointer-events-none opacity-0',
     )}
   >

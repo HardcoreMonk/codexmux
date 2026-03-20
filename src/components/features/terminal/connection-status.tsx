@@ -19,7 +19,7 @@ const ConnectionStatus = ({
 
   return (
     <div
-      className="absolute top-3 right-3 z-10 flex items-center gap-2 rounded-md bg-zinc-900/90 px-3 py-2 text-sm transition-opacity duration-150"
+      className="absolute top-3 right-3 z-10 flex items-center gap-2 rounded-md bg-[#1e1f29]/90 px-3 py-2 text-sm transition-opacity duration-150"
     >
       {status === 'connecting' && (
         <>

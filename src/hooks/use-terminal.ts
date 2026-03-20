@@ -1,31 +1,32 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
-import { Terminal } from '@xterm/xterm';
-import { FitAddon } from '@xterm/addon-fit';
-import { WebglAddon } from '@xterm/addon-webgl';
-import { WebLinksAddon } from '@xterm/addon-web-links';
+import { useEffect, useRef, useCallback, useState } from "react";
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import { WebglAddon } from "@xterm/addon-webgl";
+import { WebLinksAddon } from "@xterm/addon-web-links";
 
 const XTERM_THEME = {
-  background: '#18181b',
-  foreground: '#d4d4d8',
-  cursor: '#7c9fc7',
-  cursorAccent: '#18181b',
-  selectionBackground: 'rgba(140, 120, 180, 0.3)',
-  black: '#27272a',
-  red: '#c47070',
-  green: '#7caa7c',
-  yellow: '#b8a46c',
-  blue: '#7c9fc7',
-  magenta: '#a88cb8',
-  cyan: '#7cb8b0',
-  white: '#d4d4d8',
-  brightBlack: '#52525b',
-  brightRed: '#d4898a',
-  brightGreen: '#9ac09a',
-  brightYellow: '#ccbc8a',
-  brightBlue: '#99b5d4',
-  brightMagenta: '#bda4c8',
-  brightCyan: '#9accc6',
-  brightWhite: '#fafafa',
+  background: "#1e1f29",
+  foreground: "#ebece6",
+  cursor: "#e4e4e4",
+  cursorAccent: "#1e1f29",
+  selectionBackground: "#81aec6",
+  selectionForeground: "#000000",
+  black: "#000000",
+  red: "#fc4346",
+  green: "#50fb7c",
+  yellow: "#f0fb8c",
+  blue: "#49baff",
+  magenta: "#fc4cb4",
+  cyan: "#8be9fe",
+  white: "#ededec",
+  brightBlack: "#555555",
+  brightRed: "#fc4346",
+  brightGreen: "#50fb7c",
+  brightYellow: "#f0fb8c",
+  brightBlue: "#49baff",
+  brightMagenta: "#fc4cb4",
+  brightCyan: "#8be9fe",
+  brightWhite: "#ededec",
 };
 
 interface IUseTerminalOptions {
@@ -98,64 +99,96 @@ const useTerminal = ({ onInput, onResize }: IUseTerminalOptions = {}) => {
     const container = terminalRef.current;
     if (!container) return;
 
-    const terminal = new Terminal({
-      fontFamily:
-        "'MesloLGLDZ', 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
-      fontSize: 14,
-      lineHeight: 1.2,
-      scrollback: 5000,
-      cursorBlink: true,
-      cursorStyle: 'block',
-      allowTransparency: false,
-      allowProposedApi: true,
-      screenReaderMode: true,
-      theme: XTERM_THEME,
-    });
+    let disposed = false;
+    let resizeTimer: number;
+    let resizeObserver: ResizeObserver | null = null;
 
-    const fitAddon = new FitAddon();
-    terminal.loadAddon(fitAddon);
-    terminal.loadAddon(new WebLinksAddon());
+    const FONT_FAMILY =
+      "'MesloLGLDZ', 'Apple SD Gothic Neo', 'Pretendard', 'Menlo', 'Monaco', 'Courier New', monospace";
 
-    terminal.open(container);
+    const loadFonts = async () => {
+      const fontsToLoad = [
+        new FontFace(
+          "MesloLGLDZ",
+          "url('/fonts/MesloLGLDZNerdFont-Regular.ttf')",
+          { weight: "400", style: "normal" },
+        ),
+        new FontFace(
+          "MesloLGLDZ",
+          "url('/fonts/MesloLGLDZNerdFont-Bold.ttf')",
+          { weight: "700", style: "normal" },
+        ),
+      ];
 
-    try {
-      const webglAddon = new WebglAddon();
-      webglAddon.onContextLoss(() => {
-        webglAddon.dispose();
+      await Promise.all(
+        fontsToLoad.map(async (font) => {
+          await font.load();
+          document.fonts.add(font);
+        }),
+      );
+    };
+
+    loadFonts().then(() => {
+      if (disposed) return;
+
+      const terminal = new Terminal({
+        fontFamily: FONT_FAMILY,
+        fontWeight: "400",
+        fontWeightBold: "600",
+        fontSize: 12,
+        lineHeight: 1.1,
+        letterSpacing: 0,
+        scrollback: 5000,
+        cursorBlink: false,
+        cursorStyle: "bar",
+        allowTransparency: false,
+        allowProposedApi: true,
+        theme: XTERM_THEME,
       });
-      terminal.loadAddon(webglAddon);
-    } catch {
-      // WebGL not supported, canvas fallback
-    }
 
-    terminalInstance.current = terminal;
-    fitAddonRef.current = fitAddon;
+      const fitAddon = new FitAddon();
+      terminal.loadAddon(fitAddon);
+      terminal.loadAddon(new WebLinksAddon());
 
-    terminal.onData((data) => {
-      callbacksRef.current.onInput?.(data);
-    });
+      terminal.open(container);
 
-    document.fonts.ready.then(() => {
+      try {
+        const webglAddon = new WebglAddon();
+        webglAddon.onContextLoss(() => {
+          webglAddon.dispose();
+        });
+        terminal.loadAddon(webglAddon);
+      } catch {
+        // WebGL not supported, canvas fallback
+      }
+
+      terminalInstance.current = terminal;
+      fitAddonRef.current = fitAddon;
+
+      terminal.onData((data) => {
+        callbacksRef.current.onInput?.(data);
+      });
+
       fitAddon.fit();
       callbacksRef.current.onResize?.(terminal.cols, terminal.rows);
       setIsReady(true);
-    });
 
-    let resizeTimer: number;
-    const resizeObserver = new ResizeObserver(() => {
-      clearTimeout(resizeTimer);
-      resizeTimer = window.setTimeout(() => {
-        fitAddon.fit();
-        callbacksRef.current.onResize?.(terminal.cols, terminal.rows);
-      }, 100);
-    });
+      resizeObserver = new ResizeObserver(() => {
+        clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(() => {
+          fitAddon.fit();
+          callbacksRef.current.onResize?.(terminal.cols, terminal.rows);
+        }, 100);
+      });
 
-    resizeObserver.observe(container);
+      resizeObserver.observe(container);
+    });
 
     return () => {
-      resizeObserver.disconnect();
+      disposed = true;
+      resizeObserver?.disconnect();
       clearTimeout(resizeTimer);
-      terminal.dispose();
+      terminalInstance.current?.dispose();
       terminalInstance.current = null;
       fitAddonRef.current = null;
     };

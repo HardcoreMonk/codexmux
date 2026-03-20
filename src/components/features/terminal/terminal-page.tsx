@@ -75,7 +75,7 @@ const TerminalPage = () => {
   return (
     <div
       className="relative h-screen w-screen overflow-hidden"
-      style={{ backgroundColor: '#18181b' }}
+      style={{ backgroundColor: '#1e1f29' }}
     >
       <TerminalContainer
         ref={terminalRef}
