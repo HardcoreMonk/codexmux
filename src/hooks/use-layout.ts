@@ -1,0 +1,443 @@
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { toast } from 'sonner';
+import type { ILayoutData, TLayoutNode, IPaneNode, ITab } from '@/types/terminal';
+
+const SAVE_DEBOUNCE = 300;
+
+export const collectPanes = (node: TLayoutNode): IPaneNode[] => {
+  if (node.type === 'pane') return [node];
+  return [...collectPanes(node.children[0]), ...collectPanes(node.children[1])];
+};
+
+const findPane = (node: TLayoutNode, paneId: string): IPaneNode | null => {
+  if (node.type === 'pane') return node.id === paneId ? node : null;
+  return findPane(node.children[0], paneId) || findPane(node.children[1], paneId);
+};
+
+const replacePane = (
+  node: TLayoutNode,
+  paneId: string,
+  replacement: TLayoutNode,
+): TLayoutNode => {
+  if (node.type === 'pane') return node.id === paneId ? replacement : node;
+  return {
+    ...node,
+    children: [
+      replacePane(node.children[0], paneId, replacement),
+      replacePane(node.children[1], paneId, replacement),
+    ],
+  };
+};
+
+const removePane = (node: TLayoutNode, paneId: string): TLayoutNode | null => {
+  if (node.type === 'pane') return null;
+  const [left, right] = node.children;
+  if (left.type === 'pane' && left.id === paneId) return right;
+  if (right.type === 'pane' && right.id === paneId) return left;
+  const leftResult = removePane(left, paneId);
+  if (leftResult) return { ...node, children: [leftResult, right] };
+  const rightResult = removePane(right, paneId);
+  if (rightResult) return { ...node, children: [left, rightResult] };
+  return null;
+};
+
+const updateRatioAtPath = (
+  node: TLayoutNode,
+  path: number[],
+  ratio: number,
+): TLayoutNode => {
+  if (node.type !== 'split') return node;
+  if (path.length === 0) return { ...node, ratio };
+  const [head, ...rest] = path;
+  const children: [TLayoutNode, TLayoutNode] = [node.children[0], node.children[1]];
+  children[head] = updateRatioAtPath(node.children[head], rest, ratio);
+  return { ...node, children };
+};
+
+const cloneLayout = (data: ILayoutData): ILayoutData =>
+  JSON.parse(JSON.stringify(data));
+
+const useLayout = () => {
+  const [layout, setLayout] = useState<ILayoutData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSplitting, setIsSplitting] = useState(false);
+
+  const layoutRef = useRef<ILayoutData | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    layoutRef.current = layout;
+  }, [layout]);
+
+  const scheduleSave = useCallback(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      const current = layoutRef.current;
+      if (!current) return;
+      try {
+        await fetch('/api/layout', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            root: current.root,
+            focusedPaneId: current.focusedPaneId,
+          }),
+        });
+      } catch {
+        // background save — silently retry on next change
+      }
+    }, SAVE_DEBOUNCE);
+  }, []);
+
+  const updateAndSave = useCallback(
+    (updater: (data: ILayoutData) => ILayoutData) => {
+      setLayout((prev) => {
+        if (!prev) return prev;
+        const next = updater(cloneLayout(prev));
+        next.updatedAt = new Date().toISOString();
+        return next;
+      });
+      scheduleSave();
+    },
+    [scheduleSave],
+  );
+
+  const fetchLayout = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/layout');
+      if (!res.ok) throw new Error();
+      const data: ILayoutData = await res.json();
+      setLayout(data);
+    } catch {
+      setError('레이아웃을 불러올 수 없습니다');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLayout();
+  }, [fetchLayout]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
+
+  const paneCount = layout ? collectPanes(layout.root).length : 0;
+  const canSplit = paneCount < 3 && !isSplitting;
+
+  const splitPane = useCallback(
+    async (paneId: string, orientation: 'horizontal' | 'vertical') => {
+      const current = layoutRef.current;
+      if (!current || isSplitting) return;
+      if (collectPanes(current.root).length >= 3) return;
+
+      setIsSplitting(true);
+      try {
+        let cwd: string | undefined;
+        const pane = findPane(current.root, paneId);
+        const activeTab = pane?.tabs.find((t) => t.id === pane.activeTabId);
+        if (activeTab) {
+          try {
+            const res = await fetch(`/api/layout/cwd?session=${activeTab.sessionName}`);
+            if (res.ok) cwd = (await res.json()).cwd;
+          } catch {
+            /* fallback to no cwd */
+          }
+        }
+
+        const res = await fetch('/api/layout/pane', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cwd }),
+        });
+        if (!res.ok) throw new Error();
+        const { paneId: newPaneId, tab } = await res.json();
+
+        const newPane: IPaneNode = {
+          type: 'pane',
+          id: newPaneId,
+          tabs: [tab],
+          activeTabId: tab.id,
+        };
+
+        updateAndSave((data) => {
+          const existingPane = findPane(data.root, paneId);
+          if (!existingPane) return data;
+          const splitNode: TLayoutNode = {
+            type: 'split',
+            orientation,
+            ratio: 50,
+            children: [{ ...existingPane }, newPane],
+          };
+          data.root = replacePane(data.root, paneId, splitNode);
+          data.focusedPaneId = newPaneId;
+          return data;
+        });
+      } catch {
+        toast.error('분할할 수 없습니다');
+      } finally {
+        setIsSplitting(false);
+      }
+    },
+    [isSplitting, updateAndSave],
+  );
+
+  const closePane = useCallback(
+    async (paneId: string) => {
+      const current = layoutRef.current;
+      if (!current) return;
+      if (collectPanes(current.root).length <= 1) return;
+
+      try {
+        await fetch(`/api/layout/pane/${paneId}`, { method: 'DELETE' });
+      } catch {
+        toast.error('Pane을 닫을 수 없습니다');
+        return;
+      }
+
+      updateAndSave((data) => {
+        const result = removePane(data.root, paneId);
+        if (result) data.root = result;
+        if (data.focusedPaneId === paneId) {
+          const remaining = collectPanes(data.root);
+          data.focusedPaneId = remaining[0]?.id ?? null;
+        }
+        return data;
+      });
+    },
+    [updateAndSave],
+  );
+
+  const updateRatio = useCallback(
+    (path: number[], ratio: number) => {
+      updateAndSave((data) => {
+        data.root = updateRatioAtPath(data.root, path, ratio);
+        return data;
+      });
+    },
+    [updateAndSave],
+  );
+
+  const focusPane = useCallback(
+    (paneId: string) => {
+      updateAndSave((data) => {
+        data.focusedPaneId = paneId;
+        return data;
+      });
+    },
+    [updateAndSave],
+  );
+
+  const moveTab = useCallback(
+    (tabId: string, fromPaneId: string, toPaneId: string, toIndex: number) => {
+      if (fromPaneId === toPaneId) return;
+
+      const current = layoutRef.current;
+      if (!current) return;
+
+      const from = findPane(current.root, fromPaneId);
+      const willBeEmpty = from ? from.tabs.length === 1 : false;
+      const shouldClosePane = willBeEmpty && collectPanes(current.root).length > 1;
+
+      updateAndSave((data) => {
+        const fromPane = findPane(data.root, fromPaneId);
+        const toPane = findPane(data.root, toPaneId);
+        if (!fromPane || !toPane) return data;
+
+        const tabIdx = fromPane.tabs.findIndex((t) => t.id === tabId);
+        if (tabIdx === -1) return data;
+
+        const [tab] = fromPane.tabs.splice(tabIdx, 1);
+        if (fromPane.activeTabId === tabId) {
+          fromPane.activeTabId = fromPane.tabs[0]?.id ?? null;
+        }
+        fromPane.tabs.forEach((t, i) => {
+          t.order = i;
+        });
+
+        toPane.tabs.splice(toIndex, 0, tab);
+        toPane.tabs.forEach((t, i) => {
+          t.order = i;
+        });
+        toPane.activeTabId = tabId;
+
+        if (shouldClosePane) {
+          const result = removePane(data.root, fromPaneId);
+          if (result) data.root = result;
+        }
+
+        data.focusedPaneId = toPaneId;
+        return data;
+      });
+
+      if (shouldClosePane) {
+        fetch(`/api/layout/pane/${fromPaneId}`, { method: 'DELETE' }).catch(() => {});
+      }
+    },
+    [updateAndSave],
+  );
+
+  const createTabInPane = useCallback(
+    async (paneId: string): Promise<ITab | null> => {
+      try {
+        const res = await fetch(`/api/layout/pane/${paneId}/tabs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        if (!res.ok) throw new Error();
+        const newTab: ITab = await res.json();
+
+        updateAndSave((data) => {
+          const pane = findPane(data.root, paneId);
+          if (pane) {
+            pane.tabs.push(newTab);
+            pane.activeTabId = newTab.id;
+          }
+          return data;
+        });
+        return newTab;
+      } catch {
+        toast.error('탭을 생성할 수 없습니다');
+        return null;
+      }
+    },
+    [updateAndSave],
+  );
+
+  const deleteTabInPane = useCallback(
+    async (paneId: string, tabId: string) => {
+      updateAndSave((data) => {
+        const pane = findPane(data.root, paneId);
+        if (!pane) return data;
+        pane.tabs = pane.tabs.filter((t) => t.id !== tabId);
+        if (pane.activeTabId === tabId) {
+          pane.activeTabId = pane.tabs[0]?.id ?? null;
+        }
+        pane.tabs.forEach((t, i) => {
+          t.order = i;
+        });
+        return data;
+      });
+      try {
+        await fetch(`/api/layout/pane/${paneId}/tabs/${tabId}`, { method: 'DELETE' });
+      } catch {
+        toast.error('탭 삭제 중 오류가 발생했습니다');
+      }
+    },
+    [updateAndSave],
+  );
+
+  const switchTabInPane = useCallback(
+    (paneId: string, tabId: string) => {
+      updateAndSave((data) => {
+        const pane = findPane(data.root, paneId);
+        if (pane) pane.activeTabId = tabId;
+        return data;
+      });
+    },
+    [updateAndSave],
+  );
+
+  const renameTabInPane = useCallback(
+    async (paneId: string, tabId: string, name: string) => {
+      updateAndSave((data) => {
+        const pane = findPane(data.root, paneId);
+        if (pane) {
+          const tab = pane.tabs.find((t) => t.id === tabId);
+          if (tab) tab.name = name;
+        }
+        return data;
+      });
+      try {
+        await fetch(`/api/layout/pane/${paneId}/tabs/${tabId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        });
+      } catch {
+        toast.error('탭 이름 변경에 실패했습니다');
+      }
+    },
+    [updateAndSave],
+  );
+
+  const reorderTabsInPane = useCallback(
+    (paneId: string, tabIds: string[]) => {
+      updateAndSave((data) => {
+        const pane = findPane(data.root, paneId);
+        if (!pane) return data;
+        const tabMap = new Map(pane.tabs.map((t) => [t.id, t]));
+        pane.tabs = tabIds
+          .map((id, i) => {
+            const tab = tabMap.get(id);
+            return tab ? { ...tab, order: i } : null;
+          })
+          .filter((t): t is ITab => t !== null);
+        return data;
+      });
+    },
+    [updateAndSave],
+  );
+
+  const removeTabLocally = useCallback(
+    (paneId: string, tabId: string) => {
+      updateAndSave((data) => {
+        const pane = findPane(data.root, paneId);
+        if (!pane) return data;
+
+        pane.tabs = pane.tabs.filter((t) => t.id !== tabId);
+        if (pane.activeTabId === tabId) {
+          pane.activeTabId = pane.tabs[0]?.id ?? null;
+        }
+        pane.tabs.forEach((t, i) => {
+          t.order = i;
+        });
+
+        if (pane.tabs.length === 0) {
+          const panes = collectPanes(data.root);
+          if (panes.length > 1) {
+            const result = removePane(data.root, paneId);
+            if (result) data.root = result;
+            if (data.focusedPaneId === paneId) {
+              const remaining = collectPanes(data.root);
+              data.focusedPaneId = remaining[0]?.id ?? null;
+            }
+          }
+        }
+
+        return data;
+      });
+    },
+    [updateAndSave],
+  );
+
+  return {
+    layout,
+    isLoading,
+    error,
+    isSplitting,
+    splitPane,
+    closePane,
+    updateRatio,
+    focusPane,
+    moveTab,
+    paneCount,
+    canSplit,
+    createTabInPane,
+    deleteTabInPane,
+    switchTabInPane,
+    renameTabInPane,
+    reorderTabsInPane,
+    removeTabLocally,
+    retry: fetchLayout,
+  };
+};
+
+export default useLayout;
