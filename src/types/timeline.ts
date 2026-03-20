@@ -28,7 +28,7 @@ export interface ITimelineAssistantMessage {
   id: string;
   type: 'assistant-message';
   timestamp: number;
-  text: string;
+  markdown: string;
 }
 
 export type TToolName = 'Read' | 'Edit' | 'Write' | 'Bash' | 'Grep' | 'Glob' | 'Agent' | string;

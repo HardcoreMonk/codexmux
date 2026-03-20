@@ -196,7 +196,7 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
           id: nanoid(),
           type: 'assistant-message',
           timestamp,
-          text: (content as { text: string }).text,
+          markdown: (content as { text: string }).text,
         } satisfies ITimelineAssistantMessage);
       } else if (content.type === 'tool_use' && 'id' in content && 'name' in content) {
         const input = ('input' in content ? content.input : {}) as Record<string, unknown>;
