@@ -2,5 +2,5 @@
 
 | feature | phase | priority | build | verify | updated |
 |---|---|---|---|---|---|
-| web-terminal | Phase 2 | P0 | ✅ | ⬜ | 2026-03-20 14:37 |
+| web-terminal | Phase 2 | P0 | ✅ | ✅ 3/false | 2026-03-20 14:52 |
 | tmux-backend | Phase 2 | P0 | ⬜ | ⬜ | |
