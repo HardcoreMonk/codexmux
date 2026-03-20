@@ -45,6 +45,7 @@ const TabBar = ({
     id: string;
     side: 'left' | 'right';
   } | null>(null);
+  const [closingTabId, setClosingTabId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const sortedTabs = [...tabs].sort((a, b) => a.order - b.order);
@@ -225,10 +226,11 @@ const TabBar = ({
               aria-selected={isActive}
               tabIndex={isActive ? 0 : -1}
               className={cn(
-                'group relative flex min-w-[80px] max-w-[180px] cursor-pointer items-center gap-1 px-3 text-xs select-none',
+                'group relative flex min-w-[80px] max-w-[180px] cursor-pointer items-center gap-1 px-3 text-xs transition-opacity duration-150 select-none',
                 isActive && 'text-zinc-200',
                 !isActive && 'text-zinc-400 hover:text-zinc-200',
-                isDragging && 'opacity-50',
+                isDragging && 'opacity-70',
+                tab.id === closingTabId && 'pointer-events-none opacity-0',
               )}
               style={{
                 backgroundColor: isActive
@@ -296,7 +298,12 @@ const TabBar = ({
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onDeleteTab(tab.id);
+                  if (closingTabId) return;
+                  setClosingTabId(tab.id);
+                  setTimeout(() => {
+                    setClosingTabId(null);
+                    onDeleteTab(tab.id);
+                  }, 150);
                 }}
                 aria-label="탭 닫기"
               >
