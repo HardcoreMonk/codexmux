@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import useLayout, { collectPanes } from '@/hooks/use-layout';
 import useWorkspace, { type IWorkspaceInitialData } from '@/hooks/use-workspace';
+import useKeyboardShortcuts from '@/hooks/use-keyboard-shortcuts';
 import PaneLayout from '@/components/features/terminal/pane-layout';
 import Sidebar from '@/components/features/terminal/sidebar';
 
@@ -77,6 +78,8 @@ const TerminalPage = ({ initialWorkspace }: ITerminalPageProps) => {
     },
     [ws, layout],
   );
+
+  useKeyboardShortcuts({ layout, ws, onSelectWorkspace: handleSelectWorkspace });
 
   // Loading: workspace list not loaded yet
   if (ws.isLoading) {
@@ -200,6 +203,7 @@ const TerminalPage = ({ initialWorkspace }: ITerminalPageProps) => {
               onReorderTabs={layout.reorderTabsInPane}
               onRemoveTabLocally={layout.removeTabLocally}
               onUpdateTabTitles={layout.updateTabTitlesInPane}
+              onEqualizeRatios={layout.equalizeRatios}
             />
           </div>
         )}

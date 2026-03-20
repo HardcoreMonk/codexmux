@@ -80,6 +80,23 @@ const updateRatioAtPath = (
   return { ...node, children };
 };
 
+const countLeaves = (node: TLayoutNode): number => {
+  if (node.type === 'pane') return 1;
+  return countLeaves(node.children[0]) + countLeaves(node.children[1]);
+};
+
+const equalizeNode = (node: TLayoutNode): TLayoutNode => {
+  if (node.type === 'pane') return node;
+  const leftCount = countLeaves(node.children[0]);
+  const rightCount = countLeaves(node.children[1]);
+  const ratio = Math.round((leftCount / (leftCount + rightCount)) * 10000) / 100;
+  return {
+    ...node,
+    ratio,
+    children: [equalizeNode(node.children[0]), equalizeNode(node.children[1])],
+  };
+};
+
 const cloneLayout = (data: ILayoutData): ILayoutData =>
   JSON.parse(JSON.stringify(data));
 
@@ -571,6 +588,13 @@ const useLayout = ({ workspaceId, onFetchError }: IUseLayoutOptions) => {
     [updateAndSave],
   );
 
+  const equalizeRatios = useCallback(() => {
+    updateAndSave((data) => {
+      data.root = equalizeNode(data.root);
+      return data;
+    });
+  }, [updateAndSave]);
+
   const saveCurrentLayout = useCallback(() => {
     const current = layoutRef.current;
     if (!current) return;
@@ -607,6 +631,7 @@ const useLayout = ({ workspaceId, onFetchError }: IUseLayoutOptions) => {
     reorderTabsInPane,
     removeTabLocally,
     updateTabTitlesInPane,
+    equalizeRatios,
     saveCurrentLayout,
     clearLayout,
     retry: fetchLayout,

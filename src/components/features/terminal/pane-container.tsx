@@ -9,6 +9,7 @@ import TerminalContainer from '@/components/features/terminal/terminal-container
 import ConnectionStatus from '@/components/features/terminal/connection-status';
 import PaneTabBar from '@/components/features/terminal/pane-tab-bar';
 import { formatTabTitle } from '@/lib/tab-title';
+import { isAppShortcut, isClearShortcut } from '@/lib/keyboard-shortcuts';
 
 const DISCONNECT_MESSAGES: Record<NonNullable<TDisconnectReason>, string> = {
   'max-connections': '동시 접속 수를 초과했습니다. 다른 탭을 닫아주세요.',
@@ -61,6 +62,7 @@ interface IPaneContainerProps {
   onReorderTabs: (paneId: string, tabIds: string[]) => void;
   onRemoveTabLocally: (paneId: string, tabId: string) => void;
   onUpdateTabTitles: (paneId: string, titles: Record<string, string>) => void;
+  onEqualizeRatios: () => void;
 }
 
 const TITLE_DEBOUNCE_MS = 3000;
@@ -86,6 +88,7 @@ const PaneContainer = ({
   onReorderTabs,
   onRemoveTabLocally,
   onUpdateTabTitles,
+  onEqualizeRatios,
 }: IPaneContainerProps) => {
   const [hasEverConnected, setHasEverConnected] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -136,7 +139,18 @@ const PaneContainer = ({
     };
   }, []);
 
-  const { terminalRef, write, reset, fit, focus, isReady } = useTerminal({
+  const clearRef = useRef<() => void>(() => {});
+
+  const handleCustomKeyEvent = useCallback((event: KeyboardEvent): boolean => {
+    if (isAppShortcut(event)) {
+      event.preventDefault();
+      if (isClearShortcut(event)) clearRef.current();
+      return false;
+    }
+    return true;
+  }, []);
+
+  const { terminalRef, write, clear, reset, fit, focus, isReady } = useTerminal({
     onInput: (data) => wsActionsRef.current.sendStdin(data),
     onResize: (cols, rows) => wsActionsRef.current.sendResize(cols, rows),
     onTitleChange: (title) => {
@@ -149,6 +163,11 @@ const PaneContainer = ({
       });
       scheduleTitleSave();
     },
+    customKeyEventHandler: handleCustomKeyEvent,
+  });
+
+  useEffect(() => {
+    clearRef.current = clear;
   });
 
   const handleSessionEnded = useCallback(async () => {
@@ -355,6 +374,7 @@ const PaneContainer = ({
         onMoveTab={handleMoveTab}
         onFocusPane={handleFocusPane}
         onRetry={() => {}}
+        onEqualizeRatios={onEqualizeRatios}
       />
 
       <div role="tabpanel" className="relative min-h-0 flex-1" style={{ backgroundColor: '#1e1f29' }}>

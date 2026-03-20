@@ -6,6 +6,7 @@ import {
   ChevronRight,
   AlertTriangle,
   Loader2,
+  Equal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -48,6 +49,7 @@ interface IPaneTabBarProps {
   onMoveTab: (tabId: string, fromPaneId: string, toIndex: number) => void;
   onFocusPane: () => void;
   onRetry: () => void;
+  onEqualizeRatios: () => void;
 }
 
 const PaneTabBar = ({
@@ -72,6 +74,7 @@ const PaneTabBar = ({
   onMoveTab,
   onFocusPane,
   onRetry,
+  onEqualizeRatios,
 }: IPaneTabBarProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -473,6 +476,18 @@ const PaneTabBar = ({
             <SplitHorizontalIcon className="h-3 w-3" />
           )}
         </button>
+
+        {/* Equalize panes */}
+        {paneCount >= 2 && (
+          <button
+            className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+            onClick={onEqualizeRatios}
+            aria-label="균등 분할"
+            title="균등 분할"
+          >
+            <Equal className="h-3 w-3" />
+          </button>
+        )}
 
         {/* Close pane */}
         {paneCount >= 2 && (

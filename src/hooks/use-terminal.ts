@@ -33,9 +33,10 @@ interface IUseTerminalOptions {
   onInput?: (data: string) => void;
   onResize?: (cols: number, rows: number) => void;
   onTitleChange?: (title: string) => void;
+  customKeyEventHandler?: (event: KeyboardEvent) => boolean;
 }
 
-const useTerminal = ({ onInput, onResize, onTitleChange }: IUseTerminalOptions = {}) => {
+const useTerminal = ({ onInput, onResize, onTitleChange, customKeyEventHandler }: IUseTerminalOptions = {}) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const terminalInstance = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -43,10 +44,10 @@ const useTerminal = ({ onInput, onResize, onTitleChange }: IUseTerminalOptions =
   const isWritingRef = useRef(false);
   const [isReady, setIsReady] = useState(false);
 
-  const callbacksRef = useRef({ onInput, onResize, onTitleChange });
+  const callbacksRef = useRef({ onInput, onResize, onTitleChange, customKeyEventHandler });
 
   useEffect(() => {
-    callbacksRef.current = { onInput, onResize, onTitleChange };
+    callbacksRef.current = { onInput, onResize, onTitleChange, customKeyEventHandler };
   });
 
   const write = useCallback((data: Uint8Array) => {
@@ -179,6 +180,10 @@ const useTerminal = ({ onInput, onResize, onTitleChange }: IUseTerminalOptions =
 
       terminal.onTitleChange((title) => {
         callbacksRef.current.onTitleChange?.(title);
+      });
+
+      terminal.attachCustomKeyEventHandler((event) => {
+        return callbacksRef.current.customKeyEventHandler?.(event) ?? true;
       });
 
       const doFit = () => {
