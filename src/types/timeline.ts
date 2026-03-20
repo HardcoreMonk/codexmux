@@ -36,6 +36,7 @@ export type TToolName = 'Read' | 'Edit' | 'Write' | 'Bash' | 'Grep' | 'Glob' | '
 export type TToolStatus = 'pending' | 'success' | 'error';
 
 export interface ITimelineDiff {
+  filePath: string;
   oldString: string;
   newString: string;
 }
@@ -67,7 +68,7 @@ export interface ITimelineAgentGroup {
   timestamp: number;
   agentType: string;
   description: string;
-  stepCount: number;
+  entryCount: number;
 }
 
 export type ITimelineEntry =
@@ -119,3 +120,16 @@ export interface ITimelineUnsubscribeMessage {
 export type TTimelineClientMessage =
   | ITimelineSubscribeMessage
   | ITimelineUnsubscribeMessage;
+
+export interface IParseResult {
+  entries: ITimelineEntry[];
+  lastOffset: number;
+  totalLines: number;
+  errorCount: number;
+}
+
+export interface IIncrementalResult {
+  newEntries: ITimelineEntry[];
+  newOffset: number;
+  pendingBuffer: string;
+}

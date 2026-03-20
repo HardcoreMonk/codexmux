@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { parseJsonlFile } from '@/lib/session-parser';
+import { parseSessionFile } from '@/lib/session-parser';
 
 const DEFAULT_LIMIT = 200;
 
@@ -17,9 +17,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const offset = parseInt(req.query.offset as string, 10) || 0;
   const limit = parseInt(req.query.limit as string, 10) || DEFAULT_LIMIT;
 
-  const allEntries = await parseJsonlFile(jsonlPath);
-  const total = allEntries.length;
-  const sliced = allEntries.slice(offset, offset + limit);
+  const result = await parseSessionFile(jsonlPath);
+  const total = result.entries.length;
+  const sliced = result.entries.slice(offset, offset + limit);
   const hasMore = offset + limit < total;
 
   return res.status(200).json({

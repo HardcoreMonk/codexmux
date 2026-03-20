@@ -2,7 +2,7 @@ import { IncomingMessage } from 'http';
 import { WebSocket } from 'ws';
 import { watch, type FSWatcher } from 'fs';
 import { detectSession, watchSessionDir, type ISessionWatcher } from './session-detection';
-import { parseJsonlFile, parseJsonlIncremental } from './session-parser';
+import { parseSessionFile, parseIncremental } from './session-parser';
 import { getWorkspaceById } from './workspace-store';
 import type { TTimelineServerMessage } from '@/types/timeline';
 
@@ -26,6 +26,7 @@ interface IFileWatcher {
   watcher: FSWatcher | null;
   jsonlPath: string;
   offset: number;
+  pendingBuffer: string;
   connections: Set<WebSocket>;
   debounceTimer: ReturnType<typeof setTimeout> | null;
   retryCount: number;
@@ -54,6 +55,7 @@ const createFileWatcher = (jsonlPath: string): IFileWatcher => {
     watcher: null,
     jsonlPath,
     offset: 0,
+    pendingBuffer: '',
     connections: new Set(),
     debounceTimer: null,
     retryCount: 0,
@@ -64,10 +66,11 @@ const createFileWatcher = (jsonlPath: string): IFileWatcher => {
       fw.watcher = watch(jsonlPath, () => {
         if (fw.debounceTimer) clearTimeout(fw.debounceTimer);
         fw.debounceTimer = setTimeout(async () => {
-          const { entries, newOffset } = await parseJsonlIncremental(jsonlPath, fw.offset);
-          if (entries.length > 0) {
+          const { newEntries, newOffset, pendingBuffer } = await parseIncremental(jsonlPath, fw.offset, fw.pendingBuffer);
+          fw.pendingBuffer = pendingBuffer;
+          if (newEntries.length > 0) {
             fw.offset = newOffset;
-            broadcastToWatcher(jsonlPath, { type: 'timeline:append', entries });
+            broadcastToWatcher(jsonlPath, { type: 'timeline:append', entries: newEntries });
           }
         }, DEBOUNCE_MS);
       });
@@ -110,14 +113,14 @@ const subscribeToFile = async (ws: WebSocket, jsonlPath: string): Promise<void> 
 
   fw.connections.add(ws);
 
-  const entries = await parseJsonlFile(jsonlPath);
-  fw.offset = await getFileSize(jsonlPath);
+  const result = await parseSessionFile(jsonlPath);
+  fw.offset = result.lastOffset;
 
   sendJson(ws, {
     type: 'timeline:init',
-    entries,
+    entries: result.entries,
     sessionId: '',
-    totalEntries: entries.length,
+    totalEntries: result.entries.length,
   });
 };
 
@@ -127,16 +130,6 @@ const unsubscribeFromFile = (ws: WebSocket, jsonlPath: string) => {
   fw.connections.delete(ws);
   if (fw.connections.size === 0) {
     removeFileWatcher(jsonlPath);
-  }
-};
-
-const getFileSize = async (filePath: string): Promise<number> => {
-  try {
-    const { default: fs } = await import('fs/promises');
-    const stat = await fs.stat(filePath);
-    return stat.size;
-  } catch {
-    return 0;
   }
 };
 

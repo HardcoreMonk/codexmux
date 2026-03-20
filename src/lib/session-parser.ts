@@ -7,7 +7,10 @@ import type {
   ITimelineAssistantMessage,
   ITimelineToolCall,
   ITimelineToolResult,
+  ITimelineAgentGroup,
   ITimelineDiff,
+  IParseResult,
+  IIncrementalResult,
   TToolStatus,
 } from '@/types/timeline';
 
@@ -16,14 +19,21 @@ const EXCLUDED_TYPES = new Set([
   'queue-operation', 'summary', 'custom-title', 'agent-name',
 ]);
 
+const TAIL_THRESHOLD = 1_048_576; // 1MB
+
+// --- Zod Schemas ---
+
 const BaseEntrySchema = z.object({
   uuid: z.string().optional(),
-  parentUuid: z.string().optional(),
+  parentUuid: z.string().nullable().optional(),
   timestamp: z.string().optional(),
   sessionId: z.string().optional(),
   cwd: z.string().optional(),
   isSidechain: z.boolean().optional(),
   type: z.string(),
+  userType: z.literal('external').optional(),
+  version: z.string().optional(),
+  gitBranch: z.string().optional(),
 });
 
 const TextContentSchema = z.object({
@@ -65,93 +75,117 @@ const UserContentSchema = z.union([
 const AssistantEntrySchema = BaseEntrySchema.extend({
   type: z.literal('assistant'),
   message: z.object({
+    role: z.literal('assistant').optional(),
+    model: z.string().optional(),
     content: z.array(z.union([AssistantContentSchema, z.object({ type: z.string() }).passthrough()])),
+    stop_reason: z.string().nullable().optional(),
+    usage: z.object({
+      input_tokens: z.number(),
+      output_tokens: z.number(),
+    }).passthrough().optional(),
   }),
 });
 
 const UserEntrySchema = BaseEntrySchema.extend({
   type: z.literal('user'),
   message: z.object({
-    content: z.array(UserContentSchema),
+    role: z.literal('user').optional(),
+    content: z.union([
+      z.string(),
+      z.array(UserContentSchema),
+    ]),
   }),
 });
 
-const summarizeToolInput = (toolName: string, input: Record<string, unknown> = {}): {
-  summary: string;
-  filePath?: string;
-  diff?: ITimelineDiff;
-} => {
-  switch (toolName) {
+// --- Tool Summarization ---
+
+export const summarizeToolCall = (name: string, input: Record<string, unknown> = {}): string => {
+  switch (name) {
     case 'Read': {
       const fp = String(input.file_path ?? input.path ?? '');
-      return { summary: `Read ${fp}`, filePath: fp };
+      return `Read ${fp}`;
     }
     case 'Edit': {
       const fp = String(input.file_path ?? '');
       const oldStr = String(input.old_string ?? '');
       const newStr = String(input.new_string ?? '');
-      const oldLines = oldStr.split('\n').length;
-      const newLines = newStr.split('\n').length;
-      const added = Math.max(0, newLines - oldLines);
-      const removed = Math.max(0, oldLines - newLines);
-      const diff: ITimelineDiff | undefined = (oldStr || newStr)
-        ? { oldString: oldStr, newString: newStr }
-        : undefined;
-      return {
-        summary: `Edit ${fp} (+${added + (newLines > 0 ? newLines : 0) - (oldLines > 0 ? oldLines : 0) > 0 ? newLines - oldLines : 0}, -${removed + (oldLines > 0 ? oldLines : 0) - (newLines > 0 ? newLines : 0) > 0 ? oldLines - newLines : 0})`.replace(/\+0, -0/, '+0, -0'),
-        filePath: fp,
-        diff,
-      };
+      const oldLines = oldStr ? oldStr.split('\n').length : 0;
+      const newLines = newStr ? newStr.split('\n').length : 0;
+      return `Edit ${fp} (+${newLines}, -${oldLines})`;
     }
-    case 'Write': {
-      const fp = String(input.file_path ?? '');
-      return { summary: `Write ${fp}`, filePath: fp };
-    }
+    case 'Write':
+      return `Write ${String(input.file_path ?? '')}`;
     case 'Bash': {
       const cmd = String(input.command ?? '').split('\n')[0].slice(0, 80);
-      return { summary: `$ ${cmd}` };
+      return `$ ${cmd}`;
     }
     case 'Grep':
     case 'Glob': {
       const pattern = String(input.pattern ?? '');
-      return { summary: `${toolName} "${pattern}"` };
+      return `${name} "${pattern}"`;
     }
     default: {
       const firstKey = Object.keys(input)[0];
       const firstVal = firstKey ? String(input[firstKey]).slice(0, 60) : '';
-      return { summary: `${toolName}${firstVal ? ` ${firstVal}` : ''}` };
+      return `${name}${firstVal ? ` ${firstVal}` : ''}`;
     }
   }
 };
 
-const computeEditDiff = (input: Record<string, unknown> = {}): ITimelineDiff | undefined => {
-  const oldStr = String(input.old_string ?? '');
-  const newStr = String(input.new_string ?? '');
-  if (!oldStr && !newStr) return undefined;
-  return { oldString: oldStr, newString: newStr };
+export const summarizeToolResult = (content: string | unknown[], isError: boolean): string => {
+  if (isError) return '오류 발생';
+
+  if (typeof content === 'string') {
+    const lines = content.split('\n');
+    return lines.length > 1 ? `${lines.length}줄 출력` : lines[0].slice(0, 100);
+  }
+
+  if (Array.isArray(content)) {
+    const textItems = content.filter(
+      (item): item is { type: 'text'; text: string } =>
+        typeof item === 'object' && item !== null && (item as Record<string, unknown>).type === 'text',
+    );
+    if (textItems.length > 0) {
+      const text = String(textItems[0].text ?? '');
+      const lines = text.split('\n');
+      return lines.length > 1 ? `${lines.length}줄 출력` : lines[0].slice(0, 100);
+    }
+  }
+
+  return '';
 };
 
-const computeEditSummary = (input: Record<string, unknown> = {}): string => {
-  const fp = String(input.file_path ?? '');
-  const oldStr = String(input.old_string ?? '');
-  const newStr = String(input.new_string ?? '');
-  const oldLines = oldStr ? oldStr.split('\n').length : 0;
-  const newLines = newStr ? newStr.split('\n').length : 0;
-  return `Edit ${fp} (+${newLines}, -${oldLines})`;
+// --- Internal Helpers ---
+
+const extractDiff = (toolName: string, input: Record<string, unknown> = {}): { filePath?: string; diff?: ITimelineDiff } => {
+  if (toolName === 'Edit') {
+    const fp = String(input.file_path ?? '');
+    const oldStr = String(input.old_string ?? '');
+    const newStr = String(input.new_string ?? '');
+    if (!oldStr && !newStr) return { filePath: fp };
+    return { filePath: fp, diff: { filePath: fp, oldString: oldStr, newString: newStr } };
+  }
+  if (toolName === 'Write') {
+    const fp = String(input.file_path ?? '');
+    const content = String(input.content ?? '');
+    if (!content) return { filePath: fp };
+    return { filePath: fp, diff: { filePath: fp, oldString: '', newString: content } };
+  }
+  if (toolName === 'Read') {
+    return { filePath: String(input.file_path ?? input.path ?? '') };
+  }
+  return {};
 };
 
-const parseSingleEntry = (raw: unknown): ITimelineEntry[] => {
-  const base = BaseEntrySchema.safeParse(raw);
-  if (!base.success) return [];
+interface IRawEntry {
+  base: z.infer<typeof BaseEntrySchema>;
+  raw: unknown;
+}
 
-  const data = base.data;
-  if (EXCLUDED_TYPES.has(data.type)) return [];
+const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): ITimelineEntry[] => {
+  const timestamp = base.timestamp ? new Date(base.timestamp).getTime() : Date.now();
 
-  const timestamp = data.timestamp ? new Date(data.timestamp).getTime() : Date.now();
-
-  if (data.isSidechain) return [];
-
-  if (data.type === 'assistant') {
+  if (base.type === 'assistant') {
     const parsed = AssistantEntrySchema.safeParse(raw);
     if (!parsed.success) return [];
 
@@ -162,27 +196,14 @@ const parseSingleEntry = (raw: unknown): ITimelineEntry[] => {
           id: nanoid(),
           type: 'assistant-message',
           timestamp,
-          text: String((content as { text: string }).text),
+          text: (content as { text: string }).text,
         } satisfies ITimelineAssistantMessage);
       } else if (content.type === 'tool_use' && 'id' in content && 'name' in content) {
         const input = ('input' in content ? content.input : {}) as Record<string, unknown>;
         const toolName = (content as { name: string }).name;
         const toolUseId = (content as { id: string }).id;
-
-        let summary: string;
-        let filePath: string | undefined;
-        let diff: ITimelineDiff | undefined;
-
-        if (toolName === 'Edit') {
-          summary = computeEditSummary(input);
-          filePath = String(input.file_path ?? '');
-          diff = computeEditDiff(input);
-        } else {
-          const result = summarizeToolInput(toolName, input);
-          summary = result.summary;
-          filePath = result.filePath;
-          diff = result.diff;
-        }
+        const summary = summarizeToolCall(toolName, input);
+        const { filePath, diff } = extractDiff(toolName, input);
 
         entries.push({
           id: nanoid(),
@@ -200,35 +221,39 @@ const parseSingleEntry = (raw: unknown): ITimelineEntry[] => {
     return entries;
   }
 
-  if (data.type === 'user') {
+  if (base.type === 'user') {
     const parsed = UserEntrySchema.safeParse(raw);
     if (!parsed.success) return [];
 
     const entries: ITimelineEntry[] = [];
-    for (const content of parsed.data.message.content) {
-      if (content.type === 'text' && 'text' in content) {
+    const content = parsed.data.message.content;
+
+    if (typeof content === 'string') {
+      if (content.trim()) {
         entries.push({
           id: nanoid(),
           type: 'user-message',
           timestamp,
-          text: (content as { text: string }).text,
+          text: content,
         } satisfies ITimelineUserMessage);
-      } else if (content.type === 'tool_result' && 'tool_use_id' in content) {
-        const c = content as { tool_use_id: string; is_error?: boolean; content?: unknown };
-        let summaryText = '';
-        if (typeof c.content === 'string') {
-          const lines = c.content.split('\n');
-          summaryText = lines.length > 1 ? `${lines.length}줄 출력` : lines[0].slice(0, 100);
-        } else if (Array.isArray(c.content)) {
-          const textItems = c.content.filter((item: unknown) =>
-            typeof item === 'object' && item !== null && (item as Record<string, unknown>).type === 'text',
-          );
-          if (textItems.length > 0) {
-            const text = String((textItems[0] as Record<string, unknown>).text ?? '');
-            const lines = text.split('\n');
-            summaryText = lines.length > 1 ? `${lines.length}줄 출력` : lines[0].slice(0, 100);
-          }
-        }
+      }
+      return entries;
+    }
+
+    for (const item of content) {
+      if (item.type === 'text' && 'text' in item) {
+        entries.push({
+          id: nanoid(),
+          type: 'user-message',
+          timestamp,
+          text: (item as { text: string }).text,
+        } satisfies ITimelineUserMessage);
+      } else if (item.type === 'tool_result' && 'tool_use_id' in item) {
+        const c = item as { tool_use_id: string; is_error?: boolean; content?: unknown };
+        const summaryText = summarizeToolResult(
+          c.content as string | unknown[],
+          c.is_error ?? false,
+        );
 
         entries.push({
           id: nanoid(),
@@ -246,21 +271,55 @@ const parseSingleEntry = (raw: unknown): ITimelineEntry[] => {
   return [];
 };
 
-export const parseJsonlContent = (content: string): ITimelineEntry[] => {
-  const lines = content.split('\n').filter((line) => line.trim());
-  const entries: ITimelineEntry[] = [];
+const createAgentGroup = (
+  entries: IRawEntry[],
+  agentHint: { agentType: string; description: string } | null,
+): ITimelineAgentGroup => {
+  const first = entries[0].base;
+  const timestamp = first.timestamp ? new Date(first.timestamp).getTime() : Date.now();
 
-  for (const line of lines) {
-    try {
-      const raw = JSON.parse(line);
-      const parsed = parseSingleEntry(raw);
-      entries.push(...parsed);
-    } catch {
-      // graceful: skip invalid lines
+  if (agentHint) {
+    return {
+      id: nanoid(),
+      type: 'agent-group',
+      timestamp,
+      agentType: agentHint.agentType,
+      description: agentHint.description,
+      entryCount: entries.length,
+    };
+  }
+
+  let description = '';
+  for (const { raw } of entries) {
+    const r = raw as Record<string, unknown>;
+    if (r.type === 'user' && r.message) {
+      const msg = r.message as Record<string, unknown>;
+      const c = msg.content;
+      if (typeof c === 'string') {
+        description = c.slice(0, 100);
+        break;
+      }
+      if (Array.isArray(c)) {
+        for (const ci of c) {
+          const item = ci as Record<string, unknown>;
+          if (item.type === 'text' && typeof item.text === 'string') {
+            description = item.text.slice(0, 100);
+            break;
+          }
+        }
+        if (description) break;
+      }
     }
   }
 
-  return mergeToolResults(entries);
+  return {
+    id: nanoid(),
+    type: 'agent-group',
+    timestamp,
+    agentType: 'Unknown',
+    description: description || '서브에이전트 실행',
+    entryCount: entries.length,
+  };
 };
 
 const mergeToolResults = (entries: ITimelineEntry[]): ITimelineEntry[] => {
@@ -275,6 +334,16 @@ const mergeToolResults = (entries: ITimelineEntry[]): ITimelineEntry[] => {
       const toolCall = toolCallMap.get(entry.toolUseId);
       if (toolCall) {
         toolCall.status = entry.isError ? 'error' : 'success';
+
+        if (entry.summary && !entry.isError) {
+          const linesMatch = entry.summary.match(/^(\d+)줄 출력$/);
+          if (toolCall.toolName === 'Bash' && linesMatch) {
+            toolCall.summary = `${toolCall.summary} → ${linesMatch[1]}줄 출력`;
+          } else if (toolCall.toolName === 'Grep' || toolCall.toolName === 'Glob') {
+            const count = linesMatch ? linesMatch[1] : '1';
+            toolCall.summary = `${toolCall.summary} → ${count}건`;
+          }
+        }
       }
       result.push(entry);
     } else {
@@ -285,39 +354,179 @@ const mergeToolResults = (entries: ITimelineEntry[]): ITimelineEntry[] => {
   return result;
 };
 
-export const parseJsonlFile = async (filePath: string): Promise<ITimelineEntry[]> => {
+// --- Core Parsing ---
+
+const parseContent = (content: string): IParseResult => {
+  const lines = content.split('\n').filter((line) => line.trim());
+  const rawEntries: IRawEntry[] = [];
+  let errorCount = 0;
+
+  for (const line of lines) {
+    try {
+      const raw = JSON.parse(line);
+      const base = BaseEntrySchema.safeParse(raw);
+      if (!base.success) {
+        errorCount++;
+        continue;
+      }
+      if (EXCLUDED_TYPES.has(base.data.type)) continue;
+      rawEntries.push({ base: base.data, raw });
+    } catch {
+      errorCount++;
+    }
+  }
+
+  const entries: ITimelineEntry[] = [];
+  let lastAgentHint: { agentType: string; description: string } | null = null;
+  let i = 0;
+
+  while (i < rawEntries.length) {
+    const { base, raw } = rawEntries[i];
+
+    if (base.isSidechain) {
+      const group: IRawEntry[] = [];
+      while (i < rawEntries.length && rawEntries[i].base.isSidechain) {
+        group.push(rawEntries[i]);
+        i++;
+      }
+      entries.push(createAgentGroup(group, lastAgentHint));
+      lastAgentHint = null;
+      continue;
+    }
+
+    const parsed = parseSingleEntry(raw, base);
+
+    for (const entry of parsed) {
+      if (entry.type === 'tool-call' && entry.toolName === 'Agent') {
+        const assistantParsed = AssistantEntrySchema.safeParse(raw);
+        if (assistantParsed.success) {
+          for (const c of assistantParsed.data.message.content) {
+            if (c.type === 'tool_use' && 'name' in c && (c as { name: string }).name === 'Agent') {
+              const input = ('input' in c ? c.input : {}) as Record<string, unknown>;
+              lastAgentHint = {
+                agentType: String(input.subagent_type ?? input.type ?? 'Agent'),
+                description: String(input.description ?? input.prompt ?? '').slice(0, 100),
+              };
+            }
+          }
+        }
+      }
+    }
+
+    entries.push(...parsed);
+    i++;
+  }
+
+  return {
+    entries: mergeToolResults(entries),
+    lastOffset: Buffer.byteLength(content, 'utf-8'),
+    totalLines: lines.length,
+    errorCount,
+  };
+};
+
+// --- Exported Functions ---
+
+export const parseSessionFile = async (filePath: string): Promise<IParseResult> => {
   try {
+    const stat = await fs.stat(filePath);
+    if (stat.size === 0) {
+      return { entries: [], lastOffset: 0, totalLines: 0, errorCount: 0 };
+    }
+
+    if (stat.size > TAIL_THRESHOLD) {
+      return parseTailMode(filePath, stat.size);
+    }
+
     const content = await fs.readFile(filePath, 'utf-8');
-    return parseJsonlContent(content);
+    const result = parseContent(content);
+    result.lastOffset = stat.size;
+    return result;
   } catch {
-    return [];
+    return { entries: [], lastOffset: 0, totalLines: 0, errorCount: 0 };
   }
 };
 
-export const parseJsonlIncremental = async (
+const parseTailMode = async (filePath: string, fileSize: number): Promise<IParseResult> => {
+  const readSize = Math.min(fileSize, 512_000);
+  const handle = await fs.open(filePath, 'r');
+  try {
+    const buffer = Buffer.alloc(readSize);
+    const offset = fileSize - readSize;
+    await handle.read(buffer, 0, readSize, offset);
+
+    const content = buffer.toString('utf-8');
+    const firstNewline = content.indexOf('\n');
+    const validContent = firstNewline >= 0 ? content.slice(firstNewline + 1) : content;
+
+    const result = parseContent(validContent);
+    result.lastOffset = fileSize;
+    return result;
+  } finally {
+    await handle.close();
+  }
+};
+
+export const parseIncremental = async (
   filePath: string,
   fromOffset: number,
-): Promise<{ entries: ITimelineEntry[]; newOffset: number }> => {
+  pendingBuffer: string = '',
+): Promise<IIncrementalResult> => {
   try {
     const handle = await fs.open(filePath, 'r');
     const stat = await handle.stat();
     const size = stat.size;
 
+    if (size < fromOffset) {
+      await handle.close();
+      const content = await fs.readFile(filePath, 'utf-8');
+      const result = parseContent(content);
+      return { newEntries: result.entries, newOffset: size, pendingBuffer: '' };
+    }
+
     if (fromOffset >= size) {
       await handle.close();
-      return { entries: [], newOffset: fromOffset };
+      return { newEntries: [], newOffset: fromOffset, pendingBuffer };
     }
 
     const buffer = Buffer.alloc(size - fromOffset);
     await handle.read(buffer, 0, buffer.length, fromOffset);
     await handle.close();
 
-    const content = buffer.toString('utf-8');
-    const entries = parseJsonlContent(content);
-    return { entries, newOffset: size };
+    const rawContent = pendingBuffer + buffer.toString('utf-8');
+    const endsWithNewline = rawContent.endsWith('\n');
+    const segments = rawContent.split('\n');
+    const newPending = endsWithNewline ? '' : (segments.pop() ?? '');
+    const completeContent = segments.join('\n');
+    const result = parseContent(completeContent);
+
+    return {
+      newEntries: result.entries,
+      newOffset: size,
+      pendingBuffer: newPending,
+    };
   } catch {
-    return { entries: [], newOffset: fromOffset };
+    return { newEntries: [], newOffset: fromOffset, pendingBuffer };
   }
+};
+
+// Backwards-compatible wrappers
+
+export const parseJsonlFile = async (filePath: string): Promise<ITimelineEntry[]> => {
+  const result = await parseSessionFile(filePath);
+  return result.entries;
+};
+
+export const parseJsonlIncremental = async (
+  filePath: string,
+  fromOffset: number,
+): Promise<{ entries: ITimelineEntry[]; newOffset: number }> => {
+  const result = await parseIncremental(filePath, fromOffset);
+  return { entries: result.newEntries, newOffset: result.newOffset };
+};
+
+export const parseJsonlContent = (content: string): ITimelineEntry[] => {
+  return parseContent(content).entries;
 };
 
 export const countJsonlEntries = async (filePath: string): Promise<number> => {

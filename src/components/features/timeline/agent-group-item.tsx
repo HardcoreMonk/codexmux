@@ -15,7 +15,7 @@ const AgentGroupItem = ({ entry }: IAgentGroupItemProps) => (
         ▸ Agent: {entry.agentType} — {entry.description}
       </div>
       <div className="mt-0.5 text-xs text-muted-foreground">
-        ({entry.stepCount} 단계 완료)
+        ({entry.entryCount} 단계 완료)
       </div>
     </div>
   </div>
