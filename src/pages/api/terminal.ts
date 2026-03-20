@@ -23,6 +23,12 @@ const handleConnection = (ws: WebSocket) => {
   }
 
   activeConnections++;
+  let cleaned = false;
+  const releaseConnection = () => {
+    if (cleaned) return;
+    cleaned = true;
+    activeConnections--;
+  };
 
   const shell = process.env.SHELL || '/bin/zsh';
   let ptyProcess: pty.IPty;
@@ -39,7 +45,7 @@ const handleConnection = (ws: WebSocket) => {
       } as Record<string, string>,
     });
   } catch {
-    activeConnections--;
+    releaseConnection();
     ws.close(1011, 'PTY creation failed');
     return;
   }
@@ -62,7 +68,7 @@ const handleConnection = (ws: WebSocket) => {
     if (ws.readyState === WebSocket.OPEN) {
       ws.close(1000, 'PTY exited');
     }
-    activeConnections--;
+    releaseConnection();
   });
 
   ws.on('message', (raw: Buffer | ArrayBuffer) => {
@@ -107,10 +113,9 @@ const handleConnection = (ws: WebSocket) => {
     } catch {
       // PTY already exited
     }
-    activeConnections--;
+    releaseConnection();
   });
 
-  // 90초 동안 하트비트 미수신 시 연결 종료
   heartbeatTimer = setInterval(() => {
     if (Date.now() - lastHeartbeat > 90_000) {
       ws.close(1001, 'Heartbeat timeout');
