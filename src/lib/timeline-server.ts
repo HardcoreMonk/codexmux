@@ -125,6 +125,7 @@ const subscribeToFile = async (ws: WebSocket, jsonlPath: string, sessionId?: str
   fw.connections.add(ws);
 
   const result = await parseSessionFile(jsonlPath);
+  console.log('[timeline] parsed entries:', result.entries.length, 'errors:', result.errorCount, 'types:', result.entries.map((e) => e.type));
 
   if (result.errorCount > 0) {
     sendJson(ws, {

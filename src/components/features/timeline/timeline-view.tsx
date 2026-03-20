@@ -1,5 +1,4 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
 import { Terminal, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ITimelineEntry, TSessionStatus, TTimelineConnectionStatus } from '@/types/timeline';
@@ -126,17 +125,8 @@ const TimelineView = ({
   const [showScrollButton, setShowScrollButton] = useState(false);
   const isUserScrollingRef = useRef(false);
   const prevEntryCountRef = useRef(entries.length);
-  const newEntryStartIndexRef = useRef<number | null>(null);
 
   const displayEntries = entries.filter((e) => e.type !== 'tool-result');
-
-  // eslint-disable-next-line react-hooks/incompatible-library -- virtualizer is consumed locally, not passed to memoized children
-  const virtualizer = useVirtualizer({
-    count: displayEntries.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 80,
-    overscan: 5,
-  });
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     const el = parentRef.current;
@@ -187,7 +177,6 @@ const TimelineView = ({
   useEffect(() => {
     const prevCount = prevEntryCountRef.current;
     if (entries.length > prevCount) {
-      newEntryStartIndexRef.current = prevCount;
       if (isAutoScrollEnabled) {
         requestAnimationFrame(() => scrollToBottom('smooth'));
       }
@@ -247,38 +236,11 @@ const TimelineView = ({
         role="log"
         aria-label="Claude Code 타임라인"
       >
-        <div
-          style={{
-            height: `${virtualizer.getTotalSize()}px`,
-            width: '100%',
-            position: 'relative',
-          }}
-        >
-          {virtualizer.getVirtualItems().map((virtualItem) => {
-            const entry = displayEntries[virtualItem.index];
-            const isNew = newEntryStartIndexRef.current !== null
-              && virtualItem.index >= newEntryStartIndexRef.current;
-            return (
-              <div
-                key={virtualItem.key}
-                data-index={virtualItem.index}
-                ref={virtualizer.measureElement}
-                className={isNew ? 'animate-timeline-fade-in' : undefined}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  transform: `translateY(${virtualItem.start}px)`,
-                }}
-              >
-                <div className="px-4 py-2">
-                  <TimelineEntryRenderer entry={entry} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {displayEntries.map((entry) => (
+          <div key={entry.id} className="px-4 py-2">
+            <TimelineEntryRenderer entry={entry} />
+          </div>
+        ))}
       </div>
       {isReconnecting && <ReconnectBanner />}
       {isDisconnected && <DisconnectedBanner onRetry={onRetry} />}
