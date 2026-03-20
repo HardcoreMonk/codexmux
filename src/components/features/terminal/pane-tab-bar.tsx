@@ -351,7 +351,7 @@ const PaneTabBar = ({
                 const ghost = document.createElement('div');
                 ghost.textContent = tab.name;
                 ghost.style.cssText =
-                  'position:fixed;left:-9999px;padding:4px 12px;background:oklch(0.21 0.006 286);color:#e4e4e4;border-radius:4px;font-size:12px;opacity:0.9;transform:scale(0.9);white-space:nowrap;';
+                  'position:fixed;left:-9999px;padding:4px 12px;background:oklch(0.21 0.006 286);color:#e4e4e4;border-radius:4px;font-size:12px;opacity:0.6;transform:scale(0.9);white-space:nowrap;';
                 document.body.appendChild(ghost);
                 e.dataTransfer.setDragImage(ghost, 0, 0);
                 requestAnimationFrame(() => ghost.remove());
@@ -488,13 +488,17 @@ const PaneTabBar = ({
           )}
         </button>
 
-        {/* Close pane — only visible when 2+ panes */}
+        {/* Close pane — only visible when 2+ panes, disabled during splitting */}
         {paneCount >= 2 && (
           <button
-            className="flex h-full w-[24px] items-center justify-center text-zinc-500 hover:text-zinc-300"
+            className={cn(
+              'flex h-full w-[24px] items-center justify-center text-zinc-500',
+              isSplitting ? 'pointer-events-none opacity-30' : 'hover:text-zinc-300',
+            )}
             style={{
               borderRadius: 0,
             }}
+            disabled={isSplitting}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLElement).style.backgroundColor =
                 'oklch(0.28 0.02 20)';

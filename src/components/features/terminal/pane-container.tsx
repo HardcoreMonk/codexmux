@@ -253,14 +253,8 @@ const PaneContainer = ({
     <div
       className={cn('flex h-full flex-col overflow-hidden')}
       style={{
-        border:
-          paneCount > 1
-            ? isFocused
-              ? '1px solid oklch(0.71 0.051 289)'
-              : '1px solid transparent'
-            : undefined,
-        padding: paneCount > 1 ? undefined : undefined,
-        transition: 'border-color 150ms',
+        opacity: paneCount > 1 ? (isFocused ? 1.0 : 0.3) : undefined,
+        transition: 'opacity 150ms',
       }}
       role="region"
       aria-label={`Pane ${paneNumber}`}
