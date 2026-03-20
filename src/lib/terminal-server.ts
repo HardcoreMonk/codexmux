@@ -35,7 +35,7 @@ interface IActiveConnection {
 const connections = new Map<WebSocket, IActiveConnection>();
 
 const attachToSession = (sessionName: string, cols: number, rows: number): pty.IPty =>
-  pty.spawn('tmux', ['-L', TMUX_SOCKET, 'attach-session', '-t', sessionName], {
+  pty.spawn('tmux', ['-L', TMUX_SOCKET, 'attach-session', '-d', '-t', sessionName], {
     name: 'xterm-256color',
     cols,
     rows,
@@ -100,6 +100,23 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
         cleanup(conn);
       }
     });
+  }
+
+  if (connections.size >= MAX_CONNECTIONS) {
+    // 워크스페이스 전환 시 close 프레임이 지연 도착하면 일시적으로 한도 초과 가능.
+    // 가장 오래된 연결부터 정리하여 새 연결을 수용한다.
+    const toEvict = connections.size - MAX_CONNECTIONS + 1;
+    let evicted = 0;
+    for (const [oldWs, oldConn] of connections) {
+      if (evicted >= toEvict) break;
+      console.log(`[terminal] evicting stale connection for session: ${oldConn.sessionName}`);
+      oldConn.detaching = true;
+      cleanup(oldConn);
+      if (oldWs.readyState === WebSocket.OPEN || oldWs.readyState === WebSocket.CONNECTING) {
+        oldWs.close(1001, 'Replaced by new connection');
+      }
+      evicted++;
+    }
   }
 
   if (connections.size >= MAX_CONNECTIONS) {
@@ -178,9 +195,6 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
     cleanup(conn);
   });
 
-  const cols = pending.resize?.cols || 80;
-  const rows = pending.resize?.rows || 24;
-
   if (sessionId) {
     sessionName = sessionId;
     console.log(`[terminal] session requested: ${sessionName}`);
@@ -190,6 +204,8 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
       ws.close(1011, 'Session not found');
       return;
     }
+    const cols = pending.resize?.cols || 80;
+    const rows = pending.resize?.rows || 24;
     try {
       ptyProcess = attachToSession(sessionName, cols, rows);
     } catch (err) {
@@ -200,6 +216,8 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
   } else {
     console.log('[terminal] no session param, creating new session');
     sessionName = defaultSessionName();
+    const cols = pending.resize?.cols || 80;
+    const rows = pending.resize?.rows || 24;
     try {
       await createSession(sessionName, cols, rows);
       ptyProcess = attachToSession(sessionName, cols, rows);
