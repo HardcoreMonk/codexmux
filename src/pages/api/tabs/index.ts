@@ -1,8 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getTabs, addTab } from '@/lib/tab-store';
+import { getFirstPaneTabs } from '@/lib/layout-store';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
+    try {
+      const result = await getFirstPaneTabs();
+      if (result.tabs.length > 0) {
+        return res.status(200).json(result);
+      }
+    } catch {
+      // layout-store 실패 시 기존 tab-store로 폴백
+    }
     const { tabs, activeTabId } = await getTabs();
     return res.status(200).json({ tabs, activeTabId });
   }

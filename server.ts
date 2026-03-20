@@ -4,6 +4,7 @@ import { WebSocketServer } from 'ws';
 import { handleConnection, gracefulShutdown } from './src/lib/terminal-server';
 import { checkTmux, scanSessions } from './src/lib/tmux';
 import { initTabStore, flushToDisk } from './src/lib/tab-store';
+import { initLayoutStore, flushLayoutToDisk } from './src/lib/layout-store';
 
 const port = parseInt(process.env.PORT || '3000', 10);
 const dev = process.env.NODE_ENV !== 'production';
@@ -13,6 +14,7 @@ const handle = app.getRequestHandler();
 const start = async () => {
   await checkTmux();
   await scanSessions();
+  await initLayoutStore();
   await initTabStore();
   await app.prepare();
 
@@ -39,6 +41,7 @@ const start = async () => {
 
   const shutdown = async () => {
     gracefulShutdown();
+    await flushLayoutToDisk();
     await flushToDisk();
     process.exit(0);
   };

@@ -13,3 +13,25 @@ export interface ITab {
   name: string;
   order: number;
 }
+
+export interface ISplitNode {
+  type: 'split';
+  orientation: 'horizontal' | 'vertical';
+  ratio: number;
+  children: [TLayoutNode, TLayoutNode];
+}
+
+export interface IPaneNode {
+  type: 'pane';
+  id: string;
+  tabs: ITab[];
+  activeTabId: string | null;
+}
+
+export type TLayoutNode = ISplitNode | IPaneNode;
+
+export interface ILayoutData {
+  root: TLayoutNode;
+  focusedPaneId: string | null;
+  updatedAt: string;
+}

@@ -51,6 +51,7 @@ export const createSession = async (
   name: string,
   cols: number,
   rows: number,
+  cwd?: string,
 ): Promise<void> => {
   const shell = process.env.SHELL || '/bin/zsh';
   await execFile(
@@ -71,7 +72,7 @@ export const createSession = async (
         TERM: 'xterm-256color',
         COLORTERM: 'truecolor',
       },
-      cwd: process.env.HOME || '/',
+      cwd: cwd || process.env.HOME || '/',
     },
   );
   console.log(`[terminal] tmux session created: ${name} (cols: ${cols}, rows: ${rows})`);
@@ -120,6 +121,19 @@ export const scanSessions = async (): Promise<void> => {
     sessions.forEach((name) => {
       console.log(`[terminal] existing tmux session found: ${name}`);
     });
+  }
+};
+
+export const getSessionCwd = async (sessionName: string): Promise<string | null> => {
+  try {
+    const { stdout } = await execFile(
+      'tmux',
+      ['-L', TMUX_SOCKET, 'display-message', '-p', '-t', sessionName, '#{pane_current_path}'],
+      { timeout: CMD_TIMEOUT },
+    );
+    return stdout.trim() || null;
+  } catch {
+    return null;
   }
 };
 
