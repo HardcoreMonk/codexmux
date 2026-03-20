@@ -35,3 +35,18 @@ export interface ILayoutData {
   focusedPaneId: string | null;
   updatedAt: string;
 }
+
+export interface IWorkspace {
+  id: string;
+  name: string;
+  directory: string;
+  order: number;
+}
+
+export interface IWorkspacesData {
+  workspaces: IWorkspace[];
+  activeWorkspaceId: string | null;
+  sidebarCollapsed: boolean;
+  sidebarWidth: number;
+  updatedAt: string;
+}

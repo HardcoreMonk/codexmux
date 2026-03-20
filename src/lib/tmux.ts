@@ -139,3 +139,6 @@ export const getSessionCwd = async (sessionName: string): Promise<string | null>
 
 export const defaultSessionName = (): string =>
   `pt-${nanoid(6)}-${nanoid(6)}-${nanoid(6)}`;
+
+export const workspaceSessionName = (wsId: string, paneId: string, tabId: string): string =>
+  `pt-${wsId}-${paneId}-${tabId}`;
