@@ -127,12 +127,9 @@ const PaneContainer = ({
     } else if (currentPaneCount > 1) {
       onClosePane(paneId);
     } else {
-      const newTab = await onCreateTab(paneId);
-      if (newTab) {
-        onRemoveTabLocally(paneId, currentActiveTabId);
-      }
+      onRemoveTabLocally(paneId, currentActiveTabId);
     }
-  }, [paneId, onSwitchTab, onRemoveTabLocally, onClosePane, onCreateTab]);
+  }, [paneId, onSwitchTab, onRemoveTabLocally, onClosePane]);
 
   const {
     status,

@@ -27,8 +27,6 @@ const withLock = async <T>(fn: () => Promise<T>): Promise<T> => {
   }
 };
 
-let memoryStore: ILayoutData | null = null;
-
 const generatePaneId = (): string => `pane-${nanoid(6)}`;
 const generateTabId = (): string => `tab-${nanoid(6)}`;
 
@@ -48,7 +46,7 @@ const createDefaultPaneNode = (tab: ITab): IPaneNode => ({
 
 const BACKUP_FILE = path.join(LAYOUT_DIR, '.layout.json.bak');
 
-const readLayoutFile = async (): Promise<ILayoutData | null> => {
+const readLayout = async (): Promise<ILayoutData | null> => {
   let raw: string;
   try {
     raw = await fs.readFile(LAYOUT_FILE, 'utf-8');
@@ -81,19 +79,10 @@ const readTabsFile = async (): Promise<{ tabs: ITab[]; activeTabId: string | nul
   }
 };
 
-const writeLayoutFile = async (data: ILayoutData): Promise<void> => {
+const writeLayout = async (data: ILayoutData): Promise<void> => {
   const tmpFile = LAYOUT_FILE + '.tmp';
   await fs.writeFile(tmpFile, JSON.stringify(data, null, 2));
   await fs.rename(tmpFile, LAYOUT_FILE);
-};
-
-const saveToFile = async () => {
-  if (!memoryStore) return;
-  try {
-    await writeLayoutFile(memoryStore);
-  } catch (err) {
-    console.log(`[layout] save failed: ${err instanceof Error ? err.message : err}`);
-  }
 };
 
 const collectPanes = (node: TLayoutNode): IPaneNode[] => {
@@ -101,10 +90,8 @@ const collectPanes = (node: TLayoutNode): IPaneNode[] => {
   return [...collectPanes(node.children[0]), ...collectPanes(node.children[1])];
 };
 
-const collectAllTabs = (node: TLayoutNode): ITab[] => {
-  const panes = collectPanes(node);
-  return panes.flatMap((p) => p.tabs);
-};
+const collectAllTabs = (node: TLayoutNode): ITab[] =>
+  collectPanes(node).flatMap((p) => p.tabs);
 
 const normalizeTree = (node: TLayoutNode): TLayoutNode => {
   if (node.type === 'pane') return node;
@@ -218,7 +205,7 @@ export const initLayoutStore = async (): Promise<void> => {
 
   console.log('[layout] layout.json 로드 중...');
 
-  let layout = await readLayoutFile();
+  let layout = await readLayout();
 
   if (!layout) {
     const backupExists = await fs.access(LAYOUT_FILE).then(() => true).catch(() => false);
@@ -231,35 +218,33 @@ export const initLayoutStore = async (): Promise<void> => {
     try {
       const changed = await crossCheckWithTmux(layout);
       if (changed) {
-        await writeLayoutFile(layout);
+        await writeLayout(layout);
       }
-      memoryStore = layout;
     } catch (err) {
       console.log(`[layout] tmux 정합성 체크 실패, layout.json 그대로 사용: ${err instanceof Error ? err.message : err}`);
-      memoryStore = layout;
     }
   } else {
     console.log('[layout] 레이아웃 없음, 첫 GET 요청 시 기본 Pane 생성 대기');
-    memoryStore = null;
   }
 };
 
 export const getLayout = async (): Promise<ILayoutData> =>
   withLock(async () => {
-    if (memoryStore) return memoryStore;
+    const existing = await readLayout();
+    if (existing) return existing;
 
     const tab = createDefaultTab();
     await createSession(tab.sessionName, 80, 24);
 
     const pane = createDefaultPaneNode(tab);
-    memoryStore = {
+    const layout: ILayoutData = {
       root: pane,
       focusedPaneId: pane.id,
       updatedAt: new Date().toISOString(),
     };
-    await writeLayoutFile(memoryStore);
+    await writeLayout(layout);
     console.log(`[layout] 기본 레이아웃 생성 (pane: ${pane.id}, tab: ${tab.id})`);
-    return memoryStore;
+    return layout;
   });
 
 export interface ILayoutValidationError {
@@ -287,7 +272,6 @@ const validateTree = (root: TLayoutNode, focusedPaneId: string | null): ILayoutV
       paneIds.add(node.id);
 
       if (!Array.isArray(node.tabs)) return 'pane 노드에 tabs 필드 필수';
-      if (node.tabs.length === 0) return 'pane 노드는 최소 1개 탭 필수';
 
       for (const tab of node.tabs) {
         if (tabIds.has(tab.id)) return '중복 탭 ID';
@@ -320,13 +304,13 @@ export const updateLayout = async (
     if (validationError) return validationError;
 
     const normalized = normalizeTree(root);
-    memoryStore = {
+    const layout: ILayoutData = {
       root: normalized,
       focusedPaneId,
       updatedAt: new Date().toISOString(),
     };
-    await saveToFile();
-    return memoryStore;
+    await writeLayout(layout);
+    return layout;
   });
 
 export const createPane = async (cwd?: string): Promise<{ paneId: string; tab: ITab }> => {
@@ -343,39 +327,25 @@ export const createPane = async (cwd?: string): Promise<{ paneId: string; tab: I
 
 export const deletePane = async (
   paneId: string,
-  fallbackSessions: string[] = [],
-): Promise<void> =>
-  withLock(async () => {
-    const sessionsToKill: string[] = [];
-
-    if (memoryStore) {
-      const pane = collectPanes(memoryStore.root).find((p) => p.id === paneId);
-      if (pane) {
-        sessionsToKill.push(...pane.tabs.map((t) => t.sessionName));
-      }
+  sessions: string[] = [],
+): Promise<void> => {
+  for (const session of sessions) {
+    try {
+      await killSession(session);
+    } catch {
+      // session already gone
     }
+  }
 
-    if (sessionsToKill.length === 0 && fallbackSessions.length > 0) {
-      sessionsToKill.push(...fallbackSessions);
-    }
-
-    for (const session of sessionsToKill) {
-      try {
-        await killSession(session);
-      } catch {
-        // session already gone
-      }
-    }
-
-    console.log(`[layout] pane 삭제: ${paneId} (세션 ${sessionsToKill.length}개 종료)`);
-  });
+  console.log(`[layout] pane 삭제: ${paneId} (세션 ${sessions.length}개 종료)`);
+};
 
 export const addTabToPane = async (paneId: string, name?: string): Promise<ITab | null> =>
   withLock(async () => {
-    if (!memoryStore) return null;
+    const layout = await readLayout();
+    if (!layout) return null;
 
-    const panes = collectPanes(memoryStore.root);
-    const pane = panes.find((p) => p.id === paneId);
+    const pane = collectPanes(layout.root).find((p) => p.id === paneId);
     if (!pane) return null;
 
     const tabId = generateTabId();
@@ -388,8 +358,8 @@ export const addTabToPane = async (paneId: string, name?: string): Promise<ITab 
 
     pane.tabs.push(tab);
     pane.activeTabId = tabId;
-    memoryStore.updatedAt = new Date().toISOString();
-    await saveToFile();
+    layout.updatedAt = new Date().toISOString();
+    await writeLayout(layout);
 
     console.log(`[layout] 탭 추가: pane=${paneId}, tab=${tabId}, session=${sessionName}`);
     return tab;
@@ -397,10 +367,10 @@ export const addTabToPane = async (paneId: string, name?: string): Promise<ITab 
 
 export const removeTabFromPane = async (paneId: string, tabId: string): Promise<boolean> =>
   withLock(async () => {
-    if (!memoryStore) return false;
+    const layout = await readLayout();
+    if (!layout) return false;
 
-    const panes = collectPanes(memoryStore.root);
-    const pane = panes.find((p) => p.id === paneId);
+    const pane = collectPanes(layout.root).find((p) => p.id === paneId);
     if (!pane) return false;
 
     const idx = pane.tabs.findIndex((t) => t.id === tabId);
@@ -420,8 +390,8 @@ export const removeTabFromPane = async (paneId: string, tabId: string): Promise<
     }
 
     pane.tabs.forEach((t, i) => { t.order = i; });
-    memoryStore.updatedAt = new Date().toISOString();
-    await saveToFile();
+    layout.updatedAt = new Date().toISOString();
+    await writeLayout(layout);
 
     console.log(`[layout] 탭 삭제: pane=${paneId}, tab=${tabId}`);
     return true;
@@ -429,33 +399,34 @@ export const removeTabFromPane = async (paneId: string, tabId: string): Promise<
 
 export const renameTabInPane = async (paneId: string, tabId: string, name: string): Promise<ITab | null> =>
   withLock(async () => {
-    if (!memoryStore) return null;
+    const layout = await readLayout();
+    if (!layout) return null;
 
-    const panes = collectPanes(memoryStore.root);
-    const pane = panes.find((p) => p.id === paneId);
+    const pane = collectPanes(layout.root).find((p) => p.id === paneId);
     if (!pane) return null;
 
     const tab = pane.tabs.find((t) => t.id === tabId);
     if (!tab) return null;
 
     tab.name = name;
-    memoryStore.updatedAt = new Date().toISOString();
-    await saveToFile();
+    layout.updatedAt = new Date().toISOString();
+    await writeLayout(layout);
 
     console.log(`[layout] 탭 이름 변경: pane=${paneId}, tab=${tabId} → "${name}"`);
     return { ...tab };
   });
 
-export const getFirstPaneTabs = async (): Promise<{ tabs: ITab[]; activeTabId: string | null }> => {
-  if (!memoryStore) return { tabs: [], activeTabId: null };
-  const panes = collectPanes(memoryStore.root);
-  const first = panes[0];
-  if (!first) return { tabs: [], activeTabId: null };
-  return {
-    tabs: [...first.tabs].sort((a, b) => a.order - b.order),
-    activeTabId: first.activeTabId,
-  };
-};
+export const getFirstPaneTabs = async (): Promise<{ tabs: ITab[]; activeTabId: string | null }> =>
+  withLock(async () => {
+    const layout = await readLayout();
+    if (!layout) return { tabs: [], activeTabId: null };
+    const first = collectPanes(layout.root)[0];
+    if (!first) return { tabs: [], activeTabId: null };
+    return {
+      tabs: [...first.tabs].sort((a, b) => a.order - b.order),
+      activeTabId: first.activeTabId,
+    };
+  });
 
 const nextTabName = (tabs: ITab[]): string => {
   const existing = tabs

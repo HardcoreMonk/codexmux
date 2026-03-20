@@ -2,7 +2,7 @@ import { useRef, useLayoutEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import type { TLayoutNode, ITab } from '@/types/terminal';
-import { collectPanes } from '@/hooks/use-layout';
+import { collectPanes, getFirstPaneId } from '@/hooks/use-layout';
 import PaneContainer from '@/components/features/terminal/pane-container';
 
 interface IPaneLayoutProps {
@@ -23,11 +23,6 @@ interface IPaneLayoutProps {
   onReorderTabs: (paneId: string, tabIds: string[]) => void;
   onRemoveTabLocally: (paneId: string, tabId: string) => void;
 }
-
-const getFirstPaneId = (node: TLayoutNode): string => {
-  if (node.type === 'pane') return node.id;
-  return getFirstPaneId(node.children[0]);
-};
 
 const PaneLayout = (props: IPaneLayoutProps) => {
   const {
@@ -159,7 +154,7 @@ const PaneLayout = (props: IPaneLayoutProps) => {
         slot.appendChild(container);
       }
     });
-  });
+  }, [panes.map((p) => p.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div ref={rootRef} className="h-full w-full" style={{ backgroundColor: '#1e1f29' }}>

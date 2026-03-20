@@ -28,6 +28,33 @@ const replacePane = (
   };
 };
 
+export const getFirstPaneId = (node: TLayoutNode): string => {
+  if (node.type === 'pane') return node.id;
+  return getFirstPaneId(node.children[0]);
+};
+
+const getLastPaneId = (node: TLayoutNode): string => {
+  if (node.type === 'pane') return node.id;
+  return getLastPaneId(node.children[1]);
+};
+
+const findAdjacentPaneId = (node: TLayoutNode, paneId: string): string | null => {
+  if (node.type === 'pane') return null;
+  const [left, right] = node.children;
+  if (left.type === 'pane' && left.id === paneId) return getFirstPaneId(right);
+  if (right.type === 'pane' && right.id === paneId) return getLastPaneId(left);
+  return findAdjacentPaneId(left, paneId) || findAdjacentPaneId(right, paneId);
+};
+
+const removePaneWithFocus = (data: ILayoutData, paneId: string) => {
+  const adjacent = findAdjacentPaneId(data.root, paneId);
+  const result = removePane(data.root, paneId);
+  if (result) data.root = result;
+  if (data.focusedPaneId === paneId) {
+    data.focusedPaneId = adjacent ?? collectPanes(data.root)[0]?.id ?? null;
+  }
+};
+
 const removePane = (node: TLayoutNode, paneId: string): TLayoutNode | null => {
   if (node.type === 'pane') return null;
   const [left, right] = node.children;
@@ -239,12 +266,7 @@ const useLayout = () => {
       }
 
       updateAndSave((data) => {
-        const result = removePane(data.root, paneId);
-        if (result) data.root = result;
-        if (data.focusedPaneId === paneId) {
-          const remaining = collectPanes(data.root);
-          data.focusedPaneId = remaining[0]?.id ?? null;
-        }
+        removePaneWithFocus(data, paneId);
         return data;
       });
     },
@@ -263,12 +285,12 @@ const useLayout = () => {
 
   const focusPane = useCallback(
     (paneId: string) => {
-      updateAndSave((data) => {
-        data.focusedPaneId = paneId;
-        return data;
+      setLayout((prev) => {
+        if (!prev || prev.focusedPaneId === paneId) return prev;
+        return { ...prev, focusedPaneId: paneId };
       });
     },
-    [updateAndSave],
+    [],
   );
 
   const moveTab = useCallback(
@@ -437,16 +459,8 @@ const useLayout = () => {
           t.order = i;
         });
 
-        if (pane.tabs.length === 0) {
-          const panes = collectPanes(data.root);
-          if (panes.length > 1) {
-            const result = removePane(data.root, paneId);
-            if (result) data.root = result;
-            if (data.focusedPaneId === paneId) {
-              const remaining = collectPanes(data.root);
-              data.focusedPaneId = remaining[0]?.id ?? null;
-            }
-          }
+        if (pane.tabs.length === 0 && collectPanes(data.root).length > 1) {
+          removePaneWithFocus(data, paneId);
         }
 
         return data;
