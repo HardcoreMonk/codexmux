@@ -111,6 +111,7 @@ const PaneContainer = ({
   }, []);
   const termActionsRef = useRef<ITermActions>(NOOP_TERM_ACTIONS);
   const wsActionsRef = useRef<IWsActions>(NOOP_WS_ACTIONS);
+  const secondaryWriteRef = useRef<((data: Uint8Array) => void) | null>(null);
   const connectedSessionRef = useRef<string | null>(null);
   const prevConnectedTabIdRef = useRef<string | null>(null);
 
@@ -204,7 +205,10 @@ const PaneContainer = ({
     sendStdin,
     sendResize,
   } = useTerminalWebSocket({
-    onData: (data) => termActionsRef.current.write(data),
+    onData: (data) => {
+      termActionsRef.current.write(data);
+      secondaryWriteRef.current?.(data);
+    },
     onConnected: () => {
       setHasEverConnected(true);
       prevConnectedTabIdRef.current = activeTabIdRef.current;
@@ -426,6 +430,9 @@ const PaneContainer = ({
         {activePanelType === 'claude-code' && activeTab && (
           <ClaudeCodePanel
             sessionName={activeTab.sessionName}
+            secondaryWriteRef={secondaryWriteRef}
+            sendStdin={sendStdin}
+            sendResize={sendResize}
             className="transition-opacity duration-150 opacity-100"
           />
         )}

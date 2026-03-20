@@ -1,20 +1,28 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, type MutableRefObject } from 'react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import { cn } from '@/lib/utils';
 import useTimeline from '@/hooks/use-timeline';
 import TimelineView from '@/components/features/timeline/timeline-view';
 import TerminalContainer from '@/components/features/terminal/terminal-container';
 import useTerminal from '@/hooks/use-terminal';
-import useTerminalWebSocket from '@/hooks/use-terminal-websocket';
 
 const TERMINAL_SCALE = 0.5;
 
 interface IClaudeCodePanelProps {
   sessionName: string;
+  secondaryWriteRef: MutableRefObject<((data: Uint8Array) => void) | null>;
+  sendStdin: (data: string) => void;
+  sendResize: (cols: number, rows: number) => void;
   className?: string;
 }
 
-const ClaudeCodePanel = ({ sessionName, className }: IClaudeCodePanelProps) => {
+const ClaudeCodePanel = ({
+  sessionName,
+  secondaryWriteRef,
+  sendStdin,
+  sendResize,
+  className,
+}: IClaudeCodePanelProps) => {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -46,33 +54,27 @@ const ClaudeCodePanel = ({ sessionName, className }: IClaudeCodePanelProps) => {
     enabled: !!workspaceId,
   });
 
-  const wsActionsRef = useRef({
-    sendStdin: (() => {}) as (data: string) => void,
-    sendResize: (() => {}) as (cols: number, rows: number) => void,
-  });
-
-  const { terminalRef, write, fit, focus, isReady } = useTerminal({
-    onInput: (data) => wsActionsRef.current.sendStdin(data),
-    onResize: (cols, rows) => wsActionsRef.current.sendResize(cols, rows),
-  });
-
-  const { connect, sendStdin, sendResize } = useTerminalWebSocket({
-    onData: (data) => write(data),
-    onConnected: () => {
-      fit();
-      focus();
-    },
-  });
-
+  const wsActionsRef = useRef({ sendStdin, sendResize });
   useEffect(() => {
     wsActionsRef.current = { sendStdin, sendResize };
   });
 
+  const { terminalRef, write, fit, focus } = useTerminal({
+    onInput: (data) => wsActionsRef.current.sendStdin(data),
+    onResize: (cols, rows) => wsActionsRef.current.sendResize(cols, rows),
+  });
+
   useEffect(() => {
-    if (isReady && sessionName) {
-      connect(sessionName);
-    }
-  }, [isReady, sessionName]); // eslint-disable-line react-hooks/exhaustive-deps
+    secondaryWriteRef.current = write;
+    return () => {
+      secondaryWriteRef.current = null;
+    };
+  }, [write, secondaryWriteRef]);
+
+  useEffect(() => {
+    fit();
+    focus();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTerminalClick = useCallback(() => {
     focus();
