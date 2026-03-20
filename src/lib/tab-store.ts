@@ -65,6 +65,10 @@ const fixActiveTab = (store: ITabStore, removedTabId: string): void => {
   }
 };
 
+const reindex = (tabs: ITab[]): void => {
+  tabs.sort((a, b) => a.order - b.order).forEach((t, i) => { t.order = i; });
+};
+
 export const flushToDisk = async () => {};
 
 export const initTabStore = async () => {
@@ -142,6 +146,7 @@ export const removeTab = async (tabId: string): Promise<boolean> => {
     const tab = store.tabs[idx];
     store.tabs.splice(idx, 1);
     fixActiveTab(store, tabId);
+    reindex(store.tabs);
     await writeStore(store);
 
     console.log(`[tabs] deleted: ${tabId}`);
@@ -167,6 +172,7 @@ export const removeTabBySession = async (sessionName: string): Promise<boolean> 
     const tab = store.tabs[idx];
     store.tabs.splice(idx, 1);
     fixActiveTab(store, tab.id);
+    reindex(store.tabs);
     await writeStore(store);
 
     console.log(`[tabs] deleted by session exit: ${tab.id}`);
