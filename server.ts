@@ -23,7 +23,7 @@ const start = async () => {
   wss.on('connection', handleConnection);
 
   server.on('upgrade', (request, socket, head) => {
-    if (request.url === '/api/terminal') {
+    if (request.url?.startsWith('/api/terminal')) {
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit('connection', ws, request);
       });
