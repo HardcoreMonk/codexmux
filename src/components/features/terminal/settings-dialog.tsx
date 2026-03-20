@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useTheme } from 'next-themes';
-import { Monitor, Moon, Settings, Sun, X } from 'lucide-react';
+import { Monitor, Moon, Settings, Sun, Terminal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import useTerminalTheme from '@/hooks/use-terminal-theme';
+import type { ITerminalThemeColors } from '@/lib/terminal-themes';
 
-type TSettingsTab = 'general';
+type TSettingsTab = 'general' | 'terminal';
 
 interface ISettingsItem {
   id: TSettingsTab;
@@ -19,6 +21,11 @@ const settingsItems: ISettingsItem[] = [
     id: 'general',
     label: '일반',
     icon: <Settings className="h-4 w-4" />,
+  },
+  {
+    id: 'terminal',
+    label: '터미널',
+    icon: <Terminal className="h-4 w-4" />,
   },
 ];
 
@@ -51,6 +58,53 @@ const GeneralTab = () => {
   );
 };
 
+const previewColors = (colors: ITerminalThemeColors) => [
+  colors.red, colors.green, colors.yellow, colors.blue,
+  colors.magenta, colors.cyan, colors.white,
+];
+
+const TerminalTab = () => {
+  const { themeId, setTerminalTheme, themes } = useTerminalTheme();
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="text-sm font-medium">터미널 테마</p>
+        <p className="text-sm text-muted-foreground">터미널 색상 테마를 선택합니다.</p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {themes.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTerminalTheme(t.id)}
+            className={cn(
+              'flex flex-col gap-2 rounded-lg border p-3 text-left transition-colors',
+              themeId === t.id
+                ? 'border-primary bg-accent'
+                : 'border-border hover:border-muted-foreground/50',
+            )}
+          >
+            <span className="text-xs font-medium">{t.name}</span>
+            <div
+              className="flex h-5 items-center gap-1 rounded px-2"
+              style={{ backgroundColor: t.colors.background }}
+            >
+              {previewColors(t.colors).map((color, i) => (
+                <div
+                  key={i}
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 interface ISettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -67,7 +121,7 @@ const SettingsDialog = ({ open, onOpenChange }: ISettingsDialogProps) => {
         className="w-[calc(100%-2rem)] gap-0 overflow-hidden p-0 md:min-w-3xl md:max-w-3xl"
         showCloseButton={false}
       >
-        <div className="flex h-[320px] flex-col md:flex-row">
+        <div className="flex h-[420px] flex-col md:flex-row">
           <div className="flex shrink-0 flex-col border-b bg-muted/30 p-3 md:w-48 md:border-b-0 md:border-r">
             <div className="mb-4 flex items-center justify-between px-2">
               <DialogTitle className="text-base font-semibold">설정</DialogTitle>
@@ -104,6 +158,7 @@ const SettingsDialog = ({ open, onOpenChange }: ISettingsDialogProps) => {
           <div className="min-h-0 flex-1 overflow-y-auto p-6">
             <h2 className="mb-6 text-lg font-semibold">{activeItem?.label}</h2>
             {activeTab === 'general' && <GeneralTab />}
+            {activeTab === 'terminal' && <TerminalTab />}
           </div>
         </div>
       </DialogContent>

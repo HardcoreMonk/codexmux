@@ -15,13 +15,12 @@ Tailwind 기본 팔레트의 높은 채도/명도를 직접 사용하지 않고,
 
 ## 테마 구성
 
-### Base: Zinc
+### Base: Neutral
 
-shadcn base color로 Zinc를 사용합니다. 쿨 그레이에 살짝 퍼플 틴트가 있어 깔끔하고 무난합니다.
+shadcn base color로 Neutral을 사용합니다. 완전한 무채색(chroma 0)으로 깔끔하고 중립적입니다.
 
-- hue: ~286
-- chroma: 0.005~0.016 (거의 무채색)
-- Primary: 짙은 Zinc (라이트) / 밝은 Zinc (다크) — 튀지 않는 무채색
+- chroma: 0 (순수 무채색)
+- Primary: 짙은 Neutral (라이트) / 밝은 Neutral (다크) — 튀지 않는 무채색
 
 ### Radius: 0.5rem (8px)
 

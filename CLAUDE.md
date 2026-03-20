@@ -195,7 +195,17 @@ toast.success('저장되었습니다');
 - xterm.js 기반 터미널 렌더링, 버퍼 관리, 키 바인딩 처리 등 VSCode가 채택한 패턴을 우선 참고합니다
 - 터미널 관련 기능 설계 시 VSCode 소스코드(`vscode/src/vs/workbench/contrib/terminal/`)를 레퍼런스로 활용합니다
 
-### 14. Git 커밋 메시지
+### 14. 설정 저장
+
+앱 설정(워크스페이스, 사용자 설정 등)은 **`~/.purple-terminal/workspaces.json`** 파일에 저장합니다:
+
+```
+✅ ~/.purple-terminal/workspaces.json (파일 시스템)
+❌ 메모리(변수, 전역 상태만으로 관리)
+❌ localStorage (브라우저 의존)
+```
+
+### 15. Git 커밋 메시지
 
 커밋 메시지는 **한글**로 작성합니다:
 

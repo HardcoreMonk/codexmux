@@ -52,5 +52,6 @@ export interface IWorkspacesData {
   activeWorkspaceId: string | null;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
+  terminalTheme?: { light: string; dark: string };
   updatedAt: string;
 }

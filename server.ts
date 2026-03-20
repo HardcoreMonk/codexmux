@@ -2,6 +2,7 @@ import { createServer } from 'http';
 import next from 'next';
 import { WebSocketServer } from 'ws';
 import { handleConnection, gracefulShutdown } from './src/lib/terminal-server';
+import { handleTimelineConnection, gracefulTimelineShutdown } from './src/lib/timeline-server';
 import { checkTmux, scanSessions, applyConfig } from './src/lib/tmux';
 import { initWorkspaceStore } from './src/lib/workspace-store';
 
@@ -25,6 +26,9 @@ const start = async () => {
   const wss = new WebSocketServer({ noServer: true });
   wss.on('connection', handleConnection);
 
+  const timelineWss = new WebSocketServer({ noServer: true });
+  timelineWss.on('connection', handleTimelineConnection);
+
   server.on('upgrade', (request, socket, head) => {
     const url = new URL(request.url ?? '', `http://localhost:${port}`);
 
@@ -33,6 +37,10 @@ const start = async () => {
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit('connection', ws, request, sessionId);
       });
+    } else if (url.pathname === '/api/timeline') {
+      timelineWss.handleUpgrade(request, socket, head, (ws) => {
+        timelineWss.emit('connection', ws, request);
+      });
     } else {
       upgrade(request, socket, head);
     }
@@ -40,6 +48,7 @@ const start = async () => {
 
   const shutdown = async () => {
     gracefulShutdown();
+    gracefulTimelineShutdown();
     process.exit(0);
   };
 

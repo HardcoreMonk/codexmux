@@ -3,40 +3,17 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { WebLinksAddon } from "@xterm/addon-web-links";
-
-const XTERM_THEME = {
-  background: "#1e1f29",
-  foreground: "#ebece6",
-  cursor: "#e4e4e4",
-  cursorAccent: "#1e1f29",
-  selectionBackground: "#81aec6",
-  selectionForeground: "#000000",
-  black: "#000000",
-  red: "#fc4346",
-  green: "#50fb7c",
-  yellow: "#f0fb8c",
-  blue: "#49baff",
-  magenta: "#fc4cb4",
-  cyan: "#8be9fe",
-  white: "#ededec",
-  brightBlack: "#555555",
-  brightRed: "#fc4346",
-  brightGreen: "#50fb7c",
-  brightYellow: "#f0fb8c",
-  brightBlue: "#49baff",
-  brightMagenta: "#fc4cb4",
-  brightCyan: "#8be9fe",
-  brightWhite: "#ededec",
-};
+import type { ITerminalThemeColors } from "@/lib/terminal-themes";
 
 interface IUseTerminalOptions {
+  theme?: ITerminalThemeColors;
   onInput?: (data: string) => void;
   onResize?: (cols: number, rows: number) => void;
   onTitleChange?: (title: string) => void;
   customKeyEventHandler?: (event: KeyboardEvent) => boolean;
 }
 
-const useTerminal = ({ onInput, onResize, onTitleChange, customKeyEventHandler }: IUseTerminalOptions = {}) => {
+const useTerminal = ({ theme, onInput, onResize, onTitleChange, customKeyEventHandler }: IUseTerminalOptions = {}) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const terminalInstance = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -44,10 +21,10 @@ const useTerminal = ({ onInput, onResize, onTitleChange, customKeyEventHandler }
   const isWritingRef = useRef(false);
   const [isReady, setIsReady] = useState(false);
 
-  const callbacksRef = useRef({ onInput, onResize, onTitleChange, customKeyEventHandler });
+  const callbacksRef = useRef({ theme, onInput, onResize, onTitleChange, customKeyEventHandler });
 
   useEffect(() => {
-    callbacksRef.current = { onInput, onResize, onTitleChange, customKeyEventHandler };
+    callbacksRef.current = { theme, onInput, onResize, onTitleChange, customKeyEventHandler };
   });
 
   const write = useCallback((data: Uint8Array) => {
@@ -152,7 +129,7 @@ const useTerminal = ({ onInput, onResize, onTitleChange, customKeyEventHandler }
         cursorStyle: "bar",
         allowTransparency: false,
         allowProposedApi: true,
-        theme: XTERM_THEME,
+        theme: callbacksRef.current.theme,
       });
 
       const fitAddon = new FitAddon();
@@ -222,6 +199,12 @@ const useTerminal = ({ onInput, onResize, onTitleChange, customKeyEventHandler }
       fitAddonRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (terminalInstance.current && theme) {
+      terminalInstance.current.options.theme = theme;
+    }
+  }, [theme]);
 
   return { terminalRef, write, clear, reset, fit, focus, isReady };
 };

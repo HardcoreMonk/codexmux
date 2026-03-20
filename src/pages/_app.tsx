@@ -1,10 +1,23 @@
 import "@/styles/globals.css";
-import "@/styles/terminal-snazzy.css";
 import "pretendard/dist/web/static/pretendard.css";
 import "@xterm/xterm/css/xterm.css";
+import { useEffect } from "react";
 import type { AppProps } from "next/app";
 import { ThemeProvider, useTheme } from "next-themes";
 import { Toaster } from "sonner";
+import useTerminalTheme from "@/hooks/use-terminal-theme";
+
+const TerminalThemeSync = () => {
+  const { theme } = useTerminalTheme();
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--terminal-bg', theme.colors.background);
+    root.style.setProperty('--terminal-fg', theme.colors.foreground);
+  }, [theme]);
+
+  return null;
+};
 
 const ThemedToaster = () => {
   const { resolvedTheme } = useTheme();
@@ -16,6 +29,7 @@ export default function App({ Component, pageProps }: AppProps) {
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
       <main className="font-sans antialiased">
         <Component {...pageProps} />
+        <TerminalThemeSync />
         <ThemedToaster />
       </main>
     </ThemeProvider>

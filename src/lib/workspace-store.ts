@@ -222,14 +222,28 @@ export const getWorkspaces = async (): Promise<{
   activeWorkspaceId: string | null;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
+  terminalTheme: { light: string; dark: string } | null;
 }> => {
   const data = await readWorkspacesFile();
-  if (!data) return { workspaces: [], activeWorkspaceId: null, sidebarCollapsed: false, sidebarWidth: 200 };
+  if (!data) return { workspaces: [], activeWorkspaceId: null, sidebarCollapsed: false, sidebarWidth: 200, terminalTheme: null };
+
+  let theme = data.terminalTheme ?? null;
+
+  // Migration: terminalThemeId (string) → terminalTheme (object)
+  const legacy = data as unknown as { terminalThemeId?: string };
+  if (!theme && legacy.terminalThemeId) {
+    theme = { light: 'catppuccin-latte', dark: legacy.terminalThemeId };
+    data.terminalTheme = theme;
+    delete legacy.terminalThemeId;
+    await writeWorkspacesFile(data);
+  }
+
   return {
     workspaces: data.workspaces,
     activeWorkspaceId: data.activeWorkspaceId,
     sidebarCollapsed: data.sidebarCollapsed,
     sidebarWidth: data.sidebarWidth,
+    terminalTheme: theme,
   };
 };
 
@@ -327,12 +341,14 @@ export const updateActive = async (updates: {
   activeWorkspaceId?: string;
   sidebarCollapsed?: boolean;
   sidebarWidth?: number;
+  terminalTheme?: { light: string; dark: string };
 }): Promise<void> =>
   withLock(async () => {
     const data = (await readWorkspacesFile()) ?? emptyState();
     if (updates.activeWorkspaceId !== undefined) data.activeWorkspaceId = updates.activeWorkspaceId;
     if (updates.sidebarCollapsed !== undefined) data.sidebarCollapsed = updates.sidebarCollapsed;
     if (updates.sidebarWidth !== undefined) data.sidebarWidth = updates.sidebarWidth;
+    if (updates.terminalTheme !== undefined) data.terminalTheme = updates.terminalTheme;
     await writeWorkspacesFile(data);
   });
 
