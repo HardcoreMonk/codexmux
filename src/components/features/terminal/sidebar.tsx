@@ -185,10 +185,10 @@ const Sidebar = ({
   );
 
   return (
-    <>
+    <div className="relative flex shrink-0">
       {/* Sidebar panel */}
       <div
-        className="relative flex shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar"
+        className="flex shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar"
         style={{
           width: collapsed ? 0 : width,
           minWidth: collapsed ? 0 : MIN_WIDTH,
@@ -341,9 +341,9 @@ const Sidebar = ({
 
       {/* Expand button (collapsed state) */}
       {collapsed && (
-        <div className="absolute left-0 top-0 z-20 flex h-9 items-center pl-1 opacity-0 transition-opacity duration-150 hover:opacity-100">
+        <div className="flex shrink-0 items-start border-r border-sidebar-border bg-sidebar px-1 pt-1.5">
           <button
-            className="flex h-6 w-6 items-center justify-center rounded bg-secondary/80 text-muted-foreground transition-colors hover:bg-accent"
+            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent"
             onClick={onToggleCollapse}
             aria-label="사이드바 펼치기"
             aria-expanded="false"
@@ -386,7 +386,7 @@ const Sidebar = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 };
 
