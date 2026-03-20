@@ -141,12 +141,12 @@ const useTimelineWebSocket = ({
     doConnect(id);
 
     return () => {
-      // Invalidate this connection generation so stale handlers are ignored.
-      // We use the captured `id` instead of reading connectIdRef.current
-      // to avoid accessing a ref value that may have changed by cleanup time.
       connectIdRef.current = id + 1;
       clearTimers();
       if (wsRef.current) {
+        if (wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({ type: 'timeline:unsubscribe' }));
+        }
         wsRef.current.close(1000);
         wsRef.current = null;
       }

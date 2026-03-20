@@ -68,14 +68,14 @@ const ErrorState = ({ error, onRetry }: { error: string; onRetry: () => void }) 
 );
 
 const ReconnectBanner = () => (
-  <div className="flex items-center justify-center gap-2 border-b bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
+  <div className="flex items-center justify-center gap-2 border-t bg-muted px-3 py-1.5 text-xs text-muted-foreground">
     <Loader2 size={12} className="animate-spin" />
     연결이 끊어졌습니다. 재연결 중...
   </div>
 );
 
 const DisconnectedBanner = ({ onRetry }: { onRetry: () => void }) => (
-  <div className="flex items-center justify-center gap-2 border-b bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
+  <div className="flex items-center justify-center gap-2 border-t bg-muted px-3 py-1.5 text-xs text-muted-foreground">
     <span>연결 실패</span>
     <Button variant="outline" size="xs" className="h-5 px-2 text-xs" onClick={onRetry}>
       다시 시도
@@ -126,6 +126,7 @@ const TimelineView = ({
   const [showScrollButton, setShowScrollButton] = useState(false);
   const isUserScrollingRef = useRef(false);
   const prevEntryCountRef = useRef(entries.length);
+  const newEntryStartIndexRef = useRef<number | null>(null);
 
   const displayEntries = entries.filter((e) => e.type !== 'tool-result');
 
@@ -183,8 +184,12 @@ const TimelineView = ({
   }, []);
 
   useEffect(() => {
-    if (entries.length > prevEntryCountRef.current && isAutoScrollEnabled) {
-      requestAnimationFrame(() => scrollToBottom('smooth'));
+    const prevCount = prevEntryCountRef.current;
+    if (entries.length > prevCount) {
+      newEntryStartIndexRef.current = prevCount;
+      if (isAutoScrollEnabled) {
+        requestAnimationFrame(() => scrollToBottom('smooth'));
+      }
     }
     prevEntryCountRef.current = entries.length;
   }, [entries.length, isAutoScrollEnabled, scrollToBottom]);
@@ -226,13 +231,14 @@ const TimelineView = ({
 
   return (
     <div className="relative flex h-full flex-col">
-      {isReconnecting && <ReconnectBanner />}
-      {isDisconnected && <DisconnectedBanner onRetry={onRetry} />}
       <div
         ref={parentRef}
-        className="flex-1 overflow-y-auto transition-opacity duration-100"
-        style={{ opacity: isSessionTransitioning ? 0 : 1 }}
-        onScroll={(e) => {
+        className="flex-1 overflow-y-auto transition-opacity"
+        style={{
+          opacity: isSessionTransitioning ? 0 : 1,
+          transitionDuration: isSessionTransitioning ? '100ms' : '150ms',
+        }}
+        onScroll={() => {
           handleScroll();
           handleScrollForLoadMore();
         }}
@@ -249,11 +255,14 @@ const TimelineView = ({
         >
           {virtualizer.getVirtualItems().map((virtualItem) => {
             const entry = displayEntries[virtualItem.index];
+            const isNew = newEntryStartIndexRef.current !== null
+              && virtualItem.index >= newEntryStartIndexRef.current;
             return (
               <div
                 key={virtualItem.key}
                 data-index={virtualItem.index}
                 ref={virtualizer.measureElement}
+                className={isNew ? 'animate-timeline-fade-in' : undefined}
                 style={{
                   position: 'absolute',
                   top: 0,
@@ -270,6 +279,8 @@ const TimelineView = ({
           })}
         </div>
       </div>
+      {isReconnecting && <ReconnectBanner />}
+      {isDisconnected && <DisconnectedBanner onRetry={onRetry} />}
       <ScrollToBottomButton
         visible={showScrollButton}
         onClick={handleScrollToBottomClick}

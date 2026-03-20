@@ -221,6 +221,21 @@ body {
   }
 }
 
+@keyframes timeline-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-timeline-fade-in {
+  animation: timeline-fade-in 150ms ease-out both;
+}
+
 /* highlight.js syntax highlighting — muted palette */
 .hljs {
   color: var(--foreground);
