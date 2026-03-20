@@ -449,9 +449,9 @@ const PaneTabBar = ({
         {/* Split horizontal (panels side by side, vertical divider ┃) */}
         <button
           className={cn(
-            'flex h-full w-[24px] items-center justify-center text-zinc-500',
+            'flex h-6 w-6 items-center justify-center rounded-full text-zinc-500',
             canSplit
-              ? 'hover:text-zinc-300'
+              ? 'hover:bg-[oklch(0.24_0.006_286)] hover:text-zinc-300'
               : 'cursor-not-allowed opacity-30',
           )}
           onClick={canSplit ? onSplitHorizontal : undefined}
@@ -470,9 +470,9 @@ const PaneTabBar = ({
         {/* Split vertical (panels stacked, horizontal divider ━) */}
         <button
           className={cn(
-            'flex h-full w-[24px] items-center justify-center text-zinc-500',
+            'flex h-6 w-6 items-center justify-center rounded-full text-zinc-500',
             canSplit
-              ? 'hover:text-zinc-300'
+              ? 'hover:bg-[oklch(0.24_0.006_286)] hover:text-zinc-300'
               : 'cursor-not-allowed opacity-30',
           )}
           onClick={canSplit ? onSplitVertical : undefined}

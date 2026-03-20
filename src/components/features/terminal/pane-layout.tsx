@@ -1,5 +1,6 @@
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import type { TLayoutNode, ITab } from '@/types/terminal';
+import { collectPanes } from '@/hooks/use-layout';
 import PaneContainer from '@/components/features/terminal/pane-container';
 
 interface IPaneLayoutProps {
@@ -26,11 +27,6 @@ const getFirstPaneId = (node: TLayoutNode): string => {
   return getFirstPaneId(node.children[0]);
 };
 
-const SEPARATOR_STYLE = {
-  backgroundColor: 'oklch(0.30 0.006 286 / 0.6)',
-  transition: 'background-color 100ms',
-};
-
 const PaneLayout = (props: IPaneLayoutProps) => {
   const {
     root,
@@ -51,12 +47,18 @@ const PaneLayout = (props: IPaneLayoutProps) => {
     onRemoveTabLocally,
   } = props;
 
+  const paneNumbers = new Map<string, number>();
+  collectPanes(root).forEach((p, i) => {
+    paneNumbers.set(p.id, i + 1);
+  });
+
   const renderNode = (node: TLayoutNode, path: number[]): React.ReactNode => {
     if (node.type === 'pane') {
       return (
         <PaneContainer
           key={node.id}
           paneId={node.id}
+          paneNumber={paneNumbers.get(node.id) ?? 1}
           tabs={node.tabs}
           activeTabId={node.activeTabId}
           isFocused={node.id === focusedPaneId}
@@ -101,9 +103,8 @@ const PaneLayout = (props: IPaneLayoutProps) => {
           {renderNode(node.children[0], [...path, 0])}
         </Panel>
         <Separator
-          className="relative flex shrink-0 items-center justify-center"
+          className="relative flex shrink-0 items-center justify-center bg-[oklch(0.30_0.006_286)] transition-colors duration-100 hover:bg-[oklch(0.40_0.006_286)] active:bg-[oklch(0.50_0.010_286)]"
           style={{
-            ...SEPARATOR_STYLE,
             width: isHorizontal ? '1px' : undefined,
             height: isHorizontal ? undefined : '1px',
           }}

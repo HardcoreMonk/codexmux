@@ -65,6 +65,7 @@ const useLayout = () => {
 
   const layoutRef = useRef<ILayoutData | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryCountRef = useRef(0);
 
   useEffect(() => {
     layoutRef.current = layout;
@@ -103,6 +104,39 @@ const useLayout = () => {
     [scheduleSave],
   );
 
+  const createFallbackLayout = useCallback(async (): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/layout/pane', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) return false;
+      const { paneId, tab } = await res.json();
+      const fallback: ILayoutData = {
+        root: {
+          type: 'pane',
+          id: paneId,
+          tabs: [tab],
+          activeTabId: tab.id,
+        },
+        focusedPaneId: paneId,
+        updatedAt: new Date().toISOString(),
+      };
+      setLayout(fallback);
+      fetch('/api/layout', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ root: fallback.root, focusedPaneId: fallback.focusedPaneId }),
+      }).catch(() => {});
+      toast.info('기본 레이아웃으로 시작합니다');
+      retryCountRef.current = 0;
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
   const fetchLayout = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -111,12 +145,18 @@ const useLayout = () => {
       if (!res.ok) throw new Error();
       const data: ILayoutData = await res.json();
       setLayout(data);
+      retryCountRef.current = 0;
     } catch {
+      retryCountRef.current += 1;
+      if (retryCountRef.current >= 3) {
+        const ok = await createFallbackLayout();
+        if (ok) return;
+      }
       setError('레이아웃을 불러올 수 없습니다');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [createFallbackLayout]);
 
   useEffect(() => {
     fetchLayout();

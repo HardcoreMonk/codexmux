@@ -41,6 +41,7 @@ const NOOP_WS_ACTIONS: IWsActions = {
 
 interface IPaneContainerProps {
   paneId: string;
+  paneNumber: number;
   tabs: ITab[];
   activeTabId: string | null;
   isFocused: boolean;
@@ -61,6 +62,7 @@ interface IPaneContainerProps {
 
 const PaneContainer = ({
   paneId,
+  paneNumber,
   tabs,
   activeTabId,
   isFocused,
@@ -261,7 +263,7 @@ const PaneContainer = ({
         transition: 'border-color 150ms',
       }}
       role="region"
-      aria-label={`Pane`}
+      aria-label={`Pane ${paneNumber}`}
       aria-current={isFocused ? 'true' : undefined}
       onClick={handleFocusPane}
     >
