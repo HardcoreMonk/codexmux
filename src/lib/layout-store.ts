@@ -8,7 +8,6 @@ import type { ITab, TLayoutNode, IPaneNode, ILayoutData } from '@/types/terminal
 const LAYOUT_DIR = path.join(os.homedir(), '.purple-terminal');
 const LAYOUT_FILE = path.join(LAYOUT_DIR, 'layout.json');
 const TABS_FILE = path.join(LAYOUT_DIR, 'tabs.json');
-const DEBOUNCE_MS = 300;
 
 const g = globalThis as unknown as { __ptLayoutLock?: Promise<void> };
 if (!g.__ptLayoutLock) g.__ptLayoutLock = Promise.resolve();
@@ -29,8 +28,6 @@ const withLock = async <T>(fn: () => Promise<T>): Promise<T> => {
 };
 
 let memoryStore: ILayoutData | null = null;
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-let pendingWrite = false;
 
 const generatePaneId = (): string => `pane-${nanoid(6)}`;
 const generateTabId = (): string => `tab-${nanoid(6)}`;
@@ -90,34 +87,12 @@ const writeLayoutFile = async (data: ILayoutData): Promise<void> => {
   await fs.rename(tmpFile, LAYOUT_FILE);
 };
 
-const scheduleSave = () => {
-  pendingWrite = true;
-  if (debounceTimer) clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(async () => {
-    debounceTimer = null;
-    if (memoryStore) {
-      try {
-        await writeLayoutFile(memoryStore);
-        pendingWrite = false;
-      } catch (err) {
-        console.log(`[layout] save failed: ${err instanceof Error ? err.message : err}`);
-      }
-    }
-  }, DEBOUNCE_MS);
-};
-
-export const flushLayoutToDisk = async (): Promise<void> => {
-  if (debounceTimer) {
-    clearTimeout(debounceTimer);
-    debounceTimer = null;
-  }
-  if (pendingWrite && memoryStore) {
-    try {
-      await writeLayoutFile(memoryStore);
-      pendingWrite = false;
-    } catch (err) {
-      console.log(`[layout] flush failed: ${err instanceof Error ? err.message : err}`);
-    }
+const saveToFile = async () => {
+  if (!memoryStore) return;
+  try {
+    await writeLayoutFile(memoryStore);
+  } catch (err) {
+    console.log(`[layout] save failed: ${err instanceof Error ? err.message : err}`);
   }
 };
 
@@ -327,7 +302,7 @@ const validateTree = (root: TLayoutNode, focusedPaneId: string | null): ILayoutV
   const err = walk(root);
   if (err) return { error: err };
 
-  if (paneCount > 3) return { error: '최대 Pane 수(3개) 초과' };
+  if (paneCount > 10) return { error: '최대 Pane 수(10개) 초과' };
 
   if (focusedPaneId && !paneIds.has(focusedPaneId)) {
     return { error: '유효하지 않은 focusedPaneId' };
@@ -350,7 +325,7 @@ export const updateLayout = async (
       focusedPaneId,
       updatedAt: new Date().toISOString(),
     };
-    scheduleSave();
+    await saveToFile();
     return memoryStore;
   });
 
@@ -366,24 +341,33 @@ export const createPane = async (cwd?: string): Promise<{ paneId: string; tab: I
   return { paneId, tab };
 };
 
-export const deletePane = async (paneId: string): Promise<{ found: boolean }> =>
+export const deletePane = async (
+  paneId: string,
+  fallbackSessions: string[] = [],
+): Promise<void> =>
   withLock(async () => {
-    if (!memoryStore) return { found: false };
+    const sessionsToKill: string[] = [];
 
-    const panes = collectPanes(memoryStore.root);
-    const pane = panes.find((p) => p.id === paneId);
-    if (!pane) return { found: false };
+    if (memoryStore) {
+      const pane = collectPanes(memoryStore.root).find((p) => p.id === paneId);
+      if (pane) {
+        sessionsToKill.push(...pane.tabs.map((t) => t.sessionName));
+      }
+    }
 
-    for (const tab of pane.tabs) {
+    if (sessionsToKill.length === 0 && fallbackSessions.length > 0) {
+      sessionsToKill.push(...fallbackSessions);
+    }
+
+    for (const session of sessionsToKill) {
       try {
-        await killSession(tab.sessionName);
+        await killSession(session);
       } catch {
         // session already gone
       }
     }
 
-    console.log(`[layout] pane 삭제: ${paneId} (탭 ${pane.tabs.length}개 종료)`);
-    return { found: true };
+    console.log(`[layout] pane 삭제: ${paneId} (세션 ${sessionsToKill.length}개 종료)`);
   });
 
 export const addTabToPane = async (paneId: string, name?: string): Promise<ITab | null> =>
@@ -405,7 +389,7 @@ export const addTabToPane = async (paneId: string, name?: string): Promise<ITab 
     pane.tabs.push(tab);
     pane.activeTabId = tabId;
     memoryStore.updatedAt = new Date().toISOString();
-    scheduleSave();
+    await saveToFile();
 
     console.log(`[layout] 탭 추가: pane=${paneId}, tab=${tabId}, session=${sessionName}`);
     return tab;
@@ -437,7 +421,7 @@ export const removeTabFromPane = async (paneId: string, tabId: string): Promise<
 
     pane.tabs.forEach((t, i) => { t.order = i; });
     memoryStore.updatedAt = new Date().toISOString();
-    scheduleSave();
+    await saveToFile();
 
     console.log(`[layout] 탭 삭제: pane=${paneId}, tab=${tabId}`);
     return true;
@@ -456,7 +440,7 @@ export const renameTabInPane = async (paneId: string, tabId: string, name: strin
 
     tab.name = name;
     memoryStore.updatedAt = new Date().toISOString();
-    scheduleSave();
+    await saveToFile();
 
     console.log(`[layout] 탭 이름 변경: pane=${paneId}, tab=${tabId} → "${name}"`);
     return { ...tab };

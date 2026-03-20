@@ -2,7 +2,6 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import type { ILayoutData, TLayoutNode, IPaneNode, ITab } from '@/types/terminal';
 
-const SAVE_DEBOUNCE = 300;
 
 export const collectPanes = (node: TLayoutNode): IPaneNode[] => {
   if (node.type === 'pane') return [node];
@@ -64,44 +63,40 @@ const useLayout = () => {
   const [isSplitting, setIsSplitting] = useState(false);
 
   const layoutRef = useRef<ILayoutData | null>(null);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryCountRef = useRef(0);
 
   useEffect(() => {
     layoutRef.current = layout;
   }, [layout]);
 
-  const scheduleSave = useCallback(() => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
-      const current = layoutRef.current;
-      if (!current) return;
-      try {
-        await fetch('/api/layout', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            root: current.root,
-            focusedPaneId: current.focusedPaneId,
-          }),
-        });
-      } catch {
-        // background save — silently retry on next change
-      }
-    }, SAVE_DEBOUNCE);
+  const saveToServer = useCallback(async (data: ILayoutData) => {
+    try {
+      await fetch('/api/layout', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          root: data.root,
+          focusedPaneId: data.focusedPaneId,
+        }),
+      });
+    } catch {
+      // silently retry on next change
+    }
   }, []);
 
   const updateAndSave = useCallback(
     (updater: (data: ILayoutData) => ILayoutData) => {
+      let saved: ILayoutData | null = null;
       setLayout((prev) => {
         if (!prev) return prev;
         const next = updater(cloneLayout(prev));
         next.updatedAt = new Date().toISOString();
+        saved = next;
         return next;
       });
-      scheduleSave();
+      if (saved) saveToServer(saved);
     },
-    [scheduleSave],
+    [saveToServer],
   );
 
   const createFallbackLayout = useCallback(async (): Promise<boolean> => {
@@ -162,20 +157,15 @@ const useLayout = () => {
     fetchLayout();
   }, [fetchLayout]);
 
-  useEffect(() => {
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    };
-  }, []);
 
   const paneCount = layout ? collectPanes(layout.root).length : 0;
-  const canSplit = paneCount < 3 && !isSplitting;
+  const canSplit = paneCount < 10 && !isSplitting;
 
   const splitPane = useCallback(
     async (paneId: string, orientation: 'horizontal' | 'vertical') => {
       const current = layoutRef.current;
       if (!current || isSplitting) return;
-      if (collectPanes(current.root).length >= 3) return;
+      if (collectPanes(current.root).length >= 10) return;
 
       setIsSplitting(true);
       try {
@@ -234,8 +224,15 @@ const useLayout = () => {
       if (!current) return;
       if (collectPanes(current.root).length <= 1) return;
 
+      const pane = findPane(current.root, paneId);
+      const sessions = pane?.tabs.map((t) => t.sessionName) ?? [];
+
       try {
-        await fetch(`/api/layout/pane/${paneId}`, { method: 'DELETE' });
+        await fetch(`/api/layout/pane/${paneId}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessions }),
+        });
       } catch {
         toast.error('Pane을 닫을 수 없습니다');
         return;

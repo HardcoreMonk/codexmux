@@ -221,6 +221,11 @@ const PaneContainer = ({
 
   const handleDeleteTab = useCallback(
     async (tabId: string) => {
+      const isLastTab = tabs.length === 1;
+      if (isLastTab && paneCount > 1) {
+        onClosePane(paneId);
+        return;
+      }
       const isActive = tabId === activeTabId;
       if (isActive) {
         const sorted = [...tabs].sort((a, b) => a.order - b.order);
@@ -232,7 +237,7 @@ const PaneContainer = ({
       }
       await onDeleteTab(paneId, tabId);
     },
-    [paneId, activeTabId, tabs, onSwitchTab, onDeleteTab],
+    [paneId, activeTabId, tabs, paneCount, onSwitchTab, onDeleteTab, onClosePane],
   );
 
   const handleRenameTab = useCallback(

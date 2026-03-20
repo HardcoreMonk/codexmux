@@ -8,10 +8,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   const paneId = req.query.paneId as string;
-  const { found } = await deletePane(paneId);
-  if (!found) {
-    return res.status(404).json({ error: 'Pane을 찾을 수 없습니다' });
-  }
+  const sessions: string[] = req.body?.sessions ?? [];
+  await deletePane(paneId, sessions);
 
   return res.status(204).end();
 };
