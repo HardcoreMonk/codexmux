@@ -13,6 +13,7 @@ export interface IWorkspaceInitialData {
   activeWorkspaceId: string | null;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
+  terminalTheme: { light: string; dark: string } | null;
 }
 
 interface IWorkspaceState {

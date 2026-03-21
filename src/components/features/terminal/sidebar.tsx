@@ -5,11 +5,8 @@ import {
   Plus,
   Settings,
   Info,
-  AlertTriangle,
-  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -182,7 +179,7 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
           className="flex h-[30px] w-full shrink-0 items-center justify-end border-b border-sidebar-border px-2 text-muted-foreground transition-colors hover:bg-sidebar-accent"
           onClick={handleToggleCollapse}
           aria-label="사이드바 접기"
-          aria-expanded="true"
+          aria-expanded={!collapsed}
         >
           <ChevronsLeft className="h-3.5 w-3.5" />
         </button>
@@ -266,12 +263,15 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
               e.preventDefault();
               const newWidth = Math.max(MIN_WIDTH, width - step);
               useWorkspaceStore.getState().setSidebarWidth(newWidth);
-              useWorkspaceStore.getState().saveSidebarWidth(newWidth);
             } else if (e.key === 'ArrowRight') {
               e.preventDefault();
               const newWidth = Math.min(MAX_WIDTH, width + step);
               useWorkspaceStore.getState().setSidebarWidth(newWidth);
-              useWorkspaceStore.getState().saveSidebarWidth(newWidth);
+            }
+          }}
+          onKeyUp={(e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+              useWorkspaceStore.getState().saveSidebarWidth(useWorkspaceStore.getState().sidebarWidth);
             }
           }}
           role="separator"

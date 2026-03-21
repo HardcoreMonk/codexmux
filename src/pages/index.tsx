@@ -4,6 +4,7 @@ import type { GetServerSideProps } from 'next';
 import { getWorkspaces } from '@/lib/workspace-store';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
 import type { IWorkspaceInitialData } from '@/hooks/use-workspace-store';
+import { initTerminalTheme } from '@/hooks/use-terminal-theme';
 import { useEffect, useRef } from 'react';
 
 const TerminalPage = dynamic(
@@ -21,6 +22,9 @@ const Index = ({ initialWorkspace }: IIndexProps) => {
     if (!hydratedRef.current) {
       hydratedRef.current = true;
       useWorkspaceStore.getState().hydrate(initialWorkspace);
+      if (initialWorkspace.terminalTheme) {
+        initTerminalTheme(initialWorkspace.terminalTheme);
+      }
     }
   }, [initialWorkspace]);
 

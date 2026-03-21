@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { collectPanes } from '@/hooks/use-layout';
+import { collectPanes, useLayoutStore } from '@/hooks/use-layout';
+import useWorkspaceStore from '@/hooks/use-workspace-store';
 
 interface ITabMetadata {
   title?: string;
@@ -23,11 +24,10 @@ let _prevCwdsKey = '';
 
 const scheduleSyncToLayout = () => {
   if (_syncTimer) clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(async () => {
+  _syncTimer = setTimeout(() => {
     _syncTimer = null;
     const { metadata } = useTabMetadataStore.getState();
 
-    const { useLayoutStore } = await import('@/hooks/use-layout');
     useLayoutStore.getState().updateAndSave((data) => {
       for (const pane of collectPanes(data.root)) {
         for (const tab of pane.tabs) {
@@ -48,7 +48,6 @@ const scheduleSyncToLayout = () => {
     const key = cwds.join('\0');
     if (key !== _prevCwdsKey) {
       _prevCwdsKey = key;
-      const { default: useWorkspaceStore } = await import('@/hooks/use-workspace-store');
       const { activeWorkspaceId, updateDirectories } = useWorkspaceStore.getState();
       if (activeWorkspaceId && cwds.length > 0) {
         updateDirectories(activeWorkspaceId, cwds);
@@ -99,7 +98,6 @@ const useTabMetadataStore = create<ITabMetadataState>((set) => ({
       }
       return { metadata: next };
     });
-    scheduleSyncToLayout();
   },
 
   reset: () => {

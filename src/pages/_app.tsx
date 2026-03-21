@@ -5,14 +5,10 @@ import { useEffect } from "react";
 import type { AppProps } from "next/app";
 import { ThemeProvider, useTheme } from "next-themes";
 import { Toaster } from "sonner";
-import useTerminalTheme, { initTerminalTheme } from "@/hooks/use-terminal-theme";
+import useTerminalTheme from "@/hooks/use-terminal-theme";
 
 const TerminalThemeSync = () => {
   const { theme } = useTerminalTheme();
-
-  useEffect(() => {
-    initTerminalTheme();
-  }, []);
 
   useEffect(() => {
     const root = document.documentElement;

@@ -100,6 +100,7 @@ const useTimeline = ({
   const [isSessionTransitioning, setIsSessionTransitioning] = useState(false);
 
   const handleSessionChanged = useCallback(() => {
+    setSessionStatus('active');
     setIsSessionTransitioning(true);
     setTimeout(() => {
       setEntries([]);
@@ -137,7 +138,7 @@ const useTimeline = ({
     console.warn(`[timeline] WebSocket error: ${err.code} — ${err.message}`);
   }, []);
 
-  const shouldConnect = enabled && sessionStatus === 'active';
+  const shouldConnect = enabled && sessionStatus !== 'not-installed';
 
   const { status: wsStatus, reconnect } = useTimelineWebSocket({
     sessionName,

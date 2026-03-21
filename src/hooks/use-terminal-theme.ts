@@ -29,15 +29,10 @@ const useThemeIdStore = create<IThemeIdState>((set) => ({
   },
 }));
 
-export const initTerminalTheme = () => {
-  fetch('/api/workspace')
-    .then((res) => res.json())
-    .then((data) => {
-      if (data.terminalTheme) {
-        useThemeIdStore.getState().hydrate(data.terminalTheme);
-      }
-    })
-    .catch(() => {});
+export const initTerminalTheme = (theme?: { light: string; dark: string }) => {
+  if (theme) {
+    useThemeIdStore.getState().hydrate(theme);
+  }
 };
 
 const useTerminalTheme = () => {

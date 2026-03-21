@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { toast } from 'sonner';
 import type { ILayoutData, TLayoutNode, IPaneNode, ITab, TPanelType } from '@/types/terminal';
 
-// --- Pure utility functions (exported for use by other modules) ---
 
 export const collectPanes = (node: TLayoutNode): IPaneNode[] => {
   if (node.type === 'pane') return [node];
@@ -142,14 +142,13 @@ export const equalizeNode = (node: TLayoutNode): TLayoutNode => {
 const cloneLayout = (data: ILayoutData): ILayoutData =>
   JSON.parse(JSON.stringify(data));
 
-// --- Zustand store ---
-
 interface ILayoutState {
   layout: ILayoutData | null;
   isLoading: boolean;
   error: string | null;
   isSplitting: boolean;
   workspaceId: string | null;
+  retryCount: number;
   paneCount: number;
   canSplit: boolean;
 
@@ -173,7 +172,6 @@ interface ILayoutState {
   clearLayout: () => void;
 }
 
-let _retryCount = 0;
 let _abortController: AbortController | null = null;
 let _pendingSave: Promise<void> | null = null;
 let _onFetchError: (() => void) | null = null;
@@ -211,6 +209,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
   error: null,
   isSplitting: false,
   workspaceId: null,
+  retryCount: 0,
   paneCount: 0,
   canSplit: false,
 
@@ -228,16 +227,16 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
 
     set({ isLoading: true, error: null });
     try {
-      const res = await fetch(`/api/layout?workspace=${targetWsId}`, { signal: controller.signal });
+      const res = await fetch(wsQuery('/api/layout', targetWsId), { signal: controller.signal });
       if (!res.ok) throw new Error();
       const data: ILayoutData = await res.json();
       if (controller.signal.aborted) return;
-      set({ layout: data, ...updateDerived(data, get().isSplitting) });
-      _retryCount = 0;
+      set({ layout: data, retryCount: 0, ...updateDerived(data, get().isSplitting) });
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      _retryCount += 1;
-      if (_retryCount >= 3) {
+      const retryCount = get().retryCount + 1;
+      set({ retryCount });
+      if (retryCount >= 3) {
         try {
           const res = await fetch(wsQuery('/api/layout/pane', targetWsId), {
             method: 'POST',
@@ -258,7 +257,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
               body: JSON.stringify({ root: fallback.root, focusedPaneId: fallback.focusedPaneId }),
             }).catch(() => {});
             toast.info('기본 레이아웃으로 시작합니다');
-            _retryCount = 0;
+            set({ retryCount: 0 });
             return;
           }
         } catch { /* fallthrough */ }
@@ -577,7 +576,6 @@ export const setOnFetchError = (fn: (() => void) | null): void => {
   _onFetchError = fn;
 };
 
-// --- React hook wrapper (handles lifecycle: workspace switch, beforeunload) ---
 
 const useLayout = ({ workspaceId, onFetchError }: { workspaceId: string | null; onFetchError?: () => void }) => {
   useEffect(() => {
@@ -586,9 +584,9 @@ const useLayout = ({ workspaceId, onFetchError }: { workspaceId: string | null; 
 
   useEffect(() => {
     if (workspaceId) {
-      _retryCount = 0;
-      useLayoutStore.getState().setWorkspaceId(workspaceId);
-      useLayoutStore.getState().fetchLayout(workspaceId);
+      const store = useLayoutStore.getState();
+      store.setWorkspaceId(workspaceId);
+      store.fetchLayout(workspaceId);
     }
   }, [workspaceId]);
 
@@ -606,7 +604,31 @@ const useLayout = ({ workspaceId, onFetchError }: { workspaceId: string | null; 
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
 
-  return useLayoutStore();
+  return useLayoutStore(useShallow((s) => ({
+    layout: s.layout,
+    isLoading: s.isLoading,
+    error: s.error,
+    isSplitting: s.isSplitting,
+    paneCount: s.paneCount,
+    canSplit: s.canSplit,
+    splitPane: s.splitPane,
+    closePane: s.closePane,
+    focusPane: s.focusPane,
+    updateRatio: s.updateRatio,
+    moveTab: s.moveTab,
+    createTabInPane: s.createTabInPane,
+    deleteTabInPane: s.deleteTabInPane,
+    switchTabInPane: s.switchTabInPane,
+    renameTabInPane: s.renameTabInPane,
+    reorderTabsInPane: s.reorderTabsInPane,
+    removeTabLocally: s.removeTabLocally,
+    equalizeRatios: s.equalizeRatios,
+    updateTabPanelType: s.updateTabPanelType,
+    updateAndSave: s.updateAndSave,
+    saveCurrentLayout: s.saveCurrentLayout,
+    clearLayout: s.clearLayout,
+    fetchLayout: s.fetchLayout,
+  })));
 };
 
 export { useLayoutStore };

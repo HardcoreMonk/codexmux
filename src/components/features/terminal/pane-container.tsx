@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Group, Panel, Separator, type GroupImperativeHandle } from 'react-resizable-panels';
-import { Loader2, Plus, WifiOff } from 'lucide-react';
+import { Loader2, Plus, TerminalSquare, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { ITab, TDisconnectReason, TPanelType } from '@/types/terminal';
@@ -113,6 +113,10 @@ const PaneContainer = ({
       }
       return result;
     }),
+  );
+
+  const activeTabCwd = useTabMetadataStore(
+    (state) => (activeTabId ? state.metadata[activeTabId]?.cwd : undefined),
   );
 
   useEffect(() => {
@@ -481,11 +485,22 @@ const PaneContainer = ({
           </Separator>
 
           <Panel id="terminal-area" minSize={10}>
-            <div className="h-full w-full">
+            <div className="flex h-full w-full flex-col">
+              {isClaudeCode && (
+                <div className="flex h-6 shrink-0 items-center gap-1.5 border-t border-border px-2 pt-1 mt-2 text-muted-foreground">
+                  <TerminalSquare className="h-3 w-3" />
+                  <span className="text-[11px] font-medium">Terminal</span>
+                  {activeTabCwd && (
+                    <span className="truncate text-[11px] opacity-60">
+                      {activeTabCwd.replace(/^\/Users\/[^/]+/, '~')}
+                    </span>
+                  )}
+                </div>
+              )}
               <TerminalContainer
                 ref={terminalRef}
                 className={cn(
-                  'transition-opacity duration-150',
+                  'min-h-0 flex-1 transition-opacity duration-150',
                   ready ? 'opacity-100' : 'opacity-0',
                 )}
               />

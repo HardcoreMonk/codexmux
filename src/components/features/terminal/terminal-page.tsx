@@ -11,7 +11,10 @@ import PaneLayout from '@/components/features/terminal/pane-layout';
 import Sidebar from '@/components/features/terminal/sidebar';
 
 const TerminalPage = () => {
-  const ws = useWorkspaceStore();
+  const isLoading = useWorkspaceStore((s) => s.isLoading);
+  const error = useWorkspaceStore((s) => s.error);
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const workspaceCount = useWorkspaceStore((s) => s.workspaces.length);
   const prevWorkspaceIdRef = useRef<string | null>(null);
   const switchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [fadeOut, setFadeOut] = useState(false);
@@ -25,7 +28,7 @@ const TerminalPage = () => {
   }, []);
 
   const layout = useLayout({
-    workspaceId: ws.activeWorkspaceId,
+    workspaceId: activeWorkspaceId,
     onFetchError: handleFetchError,
   });
 
@@ -51,7 +54,7 @@ const TerminalPage = () => {
       }
     }
     useTabMetadataStore.getState().hydrate(metadata);
-  }, [layout.layout, layoutUpdatedAt]);
+  }, [layoutUpdatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cleanup stale tab metadata
   useEffect(() => {
@@ -103,7 +106,7 @@ const TerminalPage = () => {
 
   useKeyboardShortcuts({ layout, onSelectWorkspace: handleSelectWorkspace });
 
-  if (ws.isLoading) {
+  if (isLoading) {
     return (
       <div className="flex h-screen w-screen overflow-hidden bg-terminal-bg">
         <div className="flex w-[200px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
@@ -138,12 +141,12 @@ const TerminalPage = () => {
     );
   }
 
-  if (ws.error && !ws.workspaces.length) {
+  if (error && !workspaceCount) {
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 overflow-hidden bg-terminal-bg">
         <AlertTriangle className="h-5 w-5 text-ui-amber" />
-        <span className="text-sm text-muted-foreground">{ws.error}</span>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={ws.fetchWorkspaces}>
+        <span className="text-sm text-muted-foreground">{error}</span>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={useWorkspaceStore.getState().fetchWorkspaces}>
           <RefreshCw className="h-3.5 w-3.5" />
           재시도
         </Button>
@@ -151,7 +154,7 @@ const TerminalPage = () => {
     );
   }
 
-  const showSwitching = !layout.layout && layout.isLoading && ws.activeWorkspaceId;
+  const showSwitching = !layout.layout && layout.isLoading && activeWorkspaceId;
 
   return (
     <div className="relative flex h-screen w-screen overflow-hidden bg-terminal-bg">
@@ -179,7 +182,7 @@ const TerminalPage = () => {
 
         {layout.layout && !layout.isLoading && (
           <div
-            key={ws.activeWorkspaceId}
+            key={activeWorkspaceId}
             className={`h-full ${fadeOut ? '' : 'animate-in fade-in-0 duration-100'}`}
             style={fadeOut ? { opacity: 0, transition: 'opacity 100ms ease-out' } : undefined}
           >
@@ -206,7 +209,7 @@ const TerminalPage = () => {
           </div>
         )}
 
-        {!ws.activeWorkspaceId && !ws.isLoading && !ws.error && (
+        {!activeWorkspaceId && !isLoading && !error && (
           <div className="flex h-full items-center justify-center">
             <Button
               variant="outline"
