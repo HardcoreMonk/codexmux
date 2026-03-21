@@ -93,6 +93,7 @@ interface IUseStatsReturn extends IStatsState {
   period: TPeriod;
   setPeriod: (p: TPeriod) => void;
   refetch: () => void;
+  initializing: boolean;
 }
 
 const fetchJson = async <T>(url: string, signal: AbortSignal): Promise<T> => {
@@ -105,6 +106,7 @@ const useStats = (): IUseStatsReturn => {
   const [period, setPeriod] = useState<TPeriod>('7d');
   const [state, dispatch] = useReducer(reducer, initialState);
   const [fetchKey, setFetchKey] = useState(0);
+  const [initializing, setInitializing] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -113,9 +115,14 @@ const useStats = (): IUseStatsReturn => {
 
     dispatch({ type: 'FETCH_START' });
 
+    fetch('/api/stats/cache-status', { signal })
+      .then((r) => r.json() as Promise<{ exists: boolean }>)
+      .then((d) => { if (!signal.aborted) setInitializing(!d.exists); })
+      .catch(() => {});
+
     fetchJson<IOverviewResponse>(`/api/stats/overview${q}`, signal)
-      .then((data) => dispatch({ type: 'OVERVIEW_OK', data }))
-      .catch((e) => { if (!signal.aborted) dispatch({ type: 'OVERVIEW_ERR', error: e.message }); });
+      .then((data) => { setInitializing(false); dispatch({ type: 'OVERVIEW_OK', data }); })
+      .catch((e) => { if (!signal.aborted) { setInitializing(false); dispatch({ type: 'OVERVIEW_ERR', error: e.message }); } });
 
     fetchJson<IProjectsResponse>(`/api/stats/projects${q}`, signal)
       .then((data) => dispatch({ type: 'PROJECTS_OK', data }))
@@ -145,6 +152,7 @@ const useStats = (): IUseStatsReturn => {
     setPeriod,
     ...state,
     refetch,
+    initializing,
   };
 };
 

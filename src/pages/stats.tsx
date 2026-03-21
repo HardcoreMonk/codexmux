@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { BarChart3, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
+import { BarChart3, ArrowLeft, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AppHeader from '@/components/layout/app-header';
 import useStats from '@/hooks/use-stats';
@@ -43,6 +43,7 @@ const StatsPage = () => {
     projectsError,
     sessionsError,
     refetch,
+    initializing,
   } = useStats();
 
   return (
@@ -72,6 +73,16 @@ const StatsPage = () => {
                 <PeriodFilter value={period} onChange={setPeriod} />
               </div>
             </div>
+
+            {initializing && (
+              <div className="mb-6 flex items-center gap-3 rounded-xl bg-card px-5 py-4 ring-1 ring-foreground/10">
+                <Loader2 className="h-4 w-4 animate-spin text-ui-purple" />
+                <div>
+                  <p className="text-sm font-medium">초기 데이터를 수집하고 있습니다</p>
+                  <p className="text-xs text-muted-foreground">세션 기록을 분석 중입니다. 잠시만 기다려주세요...</p>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-8">
               <SectionErrorBoundary sectionName="개요">

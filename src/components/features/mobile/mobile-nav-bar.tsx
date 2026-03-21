@@ -20,7 +20,7 @@ const MobileNavBar = ({
 
   return (
     <div
-      className="flex h-11 shrink-0 items-center border-b bg-background"
+      className="flex shrink-0 items-center border-b bg-background"
       style={{
         borderBottomWidth: '0.5px',
         paddingTop: 'env(safe-area-inset-top)',
