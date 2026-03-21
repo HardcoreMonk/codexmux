@@ -239,6 +239,14 @@ const handleResumeMessage = async (
       sessionId,
       jsonlPath,
     });
+
+    if (jsonlPath) {
+      if (conn.currentJsonlPath) {
+        unsubscribeFromFile(ws, conn.currentJsonlPath);
+      }
+      conn.currentJsonlPath = jsonlPath;
+      await subscribeToFile(ws, jsonlPath, sessionId);
+    }
   } catch (err) {
     sendJson(ws, {
       type: 'timeline:resume-error',

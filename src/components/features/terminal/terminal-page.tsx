@@ -108,7 +108,7 @@ const TerminalPage = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen w-screen overflow-hidden bg-terminal-bg">
+      <div className="flex h-full w-full overflow-hidden bg-terminal-bg">
         <div className="flex w-[200px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
           <div className="flex h-9 shrink-0 items-center justify-end border-b border-sidebar-border px-2" />
           <div className="flex flex-col gap-0.5 p-2">
@@ -143,7 +143,7 @@ const TerminalPage = () => {
 
   if (error && !workspaceCount) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 overflow-hidden bg-terminal-bg">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-3 overflow-hidden bg-terminal-bg">
         <AlertTriangle className="h-5 w-5 text-ui-amber" />
         <span className="text-sm text-muted-foreground">{error}</span>
         <Button variant="outline" size="sm" className="gap-1.5" onClick={useWorkspaceStore.getState().fetchWorkspaces}>
@@ -157,7 +157,7 @@ const TerminalPage = () => {
   const showSwitching = !layout.layout && layout.isLoading && activeWorkspaceId;
 
   return (
-    <div className="relative flex h-screen w-screen overflow-hidden bg-terminal-bg">
+    <div className="relative flex h-full w-full overflow-hidden bg-terminal-bg">
       <Sidebar onSelectWorkspace={handleSelectWorkspace} />
 
       <div className="relative min-w-0 flex-1">

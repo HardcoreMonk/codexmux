@@ -45,8 +45,8 @@ const SkeletonLoader = () => (
   <div className="flex flex-col gap-4 p-4">
     {[48, 36, 40].map((w, i) => (
       <div key={i} className="flex flex-col gap-2">
-        <div className="h-4 animate-pulse rounded bg-muted" style={{ width: `${w}%` }} />
-        <div className="h-4 animate-pulse rounded bg-muted" style={{ width: `${w - 10}%` }} />
+        <div className="h-4 animate-pulse rounded bg-ui-purple/20" style={{ width: `${w}%` }} />
+        <div className="h-4 animate-pulse rounded bg-ui-purple/20" style={{ width: `${w - 10}%` }} />
       </div>
     ))}
   </div>

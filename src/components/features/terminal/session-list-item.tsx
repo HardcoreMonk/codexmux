@@ -95,7 +95,10 @@ const SessionListItem = ({
           </span>
         </div>
         <Tooltip>
-          <TooltipTrigger className="shrink-0 text-xs text-muted-foreground">
+          <TooltipTrigger
+            className="shrink-0 text-xs text-muted-foreground"
+            render={<span />}
+          >
             {relativeTime}
           </TooltipTrigger>
           <TooltipContent side="left">
@@ -105,7 +108,10 @@ const SessionListItem = ({
       </div>
       <div className="mt-1 flex items-center justify-between gap-2 pl-[18px]">
         <Tooltip>
-          <TooltipTrigger className="min-w-0 truncate text-sm text-left">
+          <TooltipTrigger
+            className="min-w-0 truncate text-sm text-left"
+            render={<span />}
+          >
             {displayMessage}
           </TooltipTrigger>
           <TooltipContent side="bottom" align="start" className="max-w-[300px]">
