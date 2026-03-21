@@ -13,7 +13,7 @@ import ClaudeCodePanel from '@/components/features/terminal/claude-code-panel';
 import WebInputBar from '@/components/features/terminal/web-input-bar';
 import ConnectionStatus from '@/components/features/terminal/connection-status';
 import PaneTabBar from '@/components/features/terminal/pane-tab-bar';
-import { formatTabTitle, isClaudeProcess, isShellProcess } from '@/lib/tab-title';
+import { formatTabTitle, isShellProcess } from '@/lib/tab-title';
 import { isAppShortcut, isClearShortcut, isFocusInputShortcut } from '@/lib/keyboard-shortcuts';
 import type { TCliState } from '@/types/timeline';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
@@ -124,7 +124,10 @@ const PaneContainer = ({
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
-    return () => cancelAnimationFrame(id);
+    return () => {
+      cancelAnimationFrame(id);
+      if (claudeCheckTimerRef.current) clearTimeout(claudeCheckTimerRef.current);
+    };
   }, []);
   const termActionsRef = useRef<ITermActions>(NOOP_TERM_ACTIONS);
   const wsActionsRef = useRef<IWsActions>(NOOP_WS_ACTIONS);
@@ -159,6 +162,42 @@ const PaneContainer = ({
   const focusInputRef = useRef<(() => void) | undefined>(undefined);
   const processHintRef = useRef<((isClaudeRunning: boolean) => void) | undefined>(undefined);
   const manualToggleCooldownRef = useRef<Record<string, number>>({});
+  const claudeCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const checkClaudeSession = useCallback(async (tabId: string) => {
+    const tab = tabsRef.current.find((t) => t.id === tabId);
+    if (!tab || tab.panelType === 'claude-code') {
+      console.log('[claude-detect] checkClaudeSession skip: no tab or already claude-code');
+      return;
+    }
+
+    const cooldownTime = manualToggleCooldownRef.current[tabId];
+    if (cooldownTime && Date.now() - cooldownTime < 10_000) {
+      console.log('[claude-detect] checkClaudeSession skip: cooldown active');
+      return;
+    }
+
+    try {
+      console.log('[claude-detect] checkClaudeSession calling API for session:', tab.sessionName);
+      const res = await fetch(`/api/timeline/session?session=${tab.sessionName}`);
+      if (!res.ok) {
+        console.log('[claude-detect] checkClaudeSession API error:', res.status);
+        return;
+      }
+      const data = await res.json();
+      console.log('[claude-detect] checkClaudeSession API result:', data);
+      if (data.status === 'active') {
+        const currentTab = tabsRef.current.find((t) => t.id === tabId);
+        if (currentTab?.panelType !== 'claude-code') {
+          console.log('[claude-detect] switching to claude-code mode');
+          setIsPanelTransitioning(true);
+          onUpdateTabPanelType(paneId, tabId, 'claude-code');
+        }
+      }
+    } catch (err) {
+      console.log('[claude-detect] checkClaudeSession error:', err);
+    }
+  }, [paneId, onUpdateTabPanelType]);
 
   const [claudeCliState, setClaudeCliState] = useState<TCliState>('inactive');
   const [claudeInputVisible, setClaudeInputVisible] = useState(false);
@@ -193,21 +232,18 @@ const PaneContainer = ({
       useTabMetadataStore.getState().setTitle(tabId, formatted);
       fetchAndUpdateCwd();
 
-      if (isShellProcess(title)) {
+      const isShell = isShellProcess(title);
+      console.log('[claude-detect] title:', title, '| isShell:', isShell, '| panelType:', tabsRef.current.find((t) => t.id === tabId)?.panelType);
+
+      if (isShell) {
         processHintRef.current?.(false);
       } else {
         processHintRef.current?.(true);
-      }
 
-      if (isClaudeProcess(title)) {
-        const cooldownTime = manualToggleCooldownRef.current[tabId];
-        const isCoolingDown = cooldownTime && Date.now() - cooldownTime < 10_000;
-        if (!isCoolingDown) {
-          const tab = tabsRef.current.find((t) => t.id === tabId);
-          if (tab?.panelType !== 'claude-code') {
-            setIsPanelTransitioning(true);
-            onUpdateTabPanelType(paneId, tabId, 'claude-code');
-          }
+        const tab = tabsRef.current.find((t) => t.id === tabId);
+        if (tab?.panelType !== 'claude-code') {
+          if (claudeCheckTimerRef.current) clearTimeout(claudeCheckTimerRef.current);
+          claudeCheckTimerRef.current = setTimeout(() => checkClaudeSession(tabId), 500);
         }
       }
     },

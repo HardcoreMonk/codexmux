@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { BarChart3, ArrowLeft } from 'lucide-react';
+import { BarChart3, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AppHeader from '@/components/layout/app-header';
 import useStats from '@/hooks/use-stats';
@@ -12,6 +12,17 @@ import TokenSection from '@/components/features/stats/token-section';
 import ActivitySection from '@/components/features/stats/activity-section';
 import ProjectSection from '@/components/features/stats/project-section';
 import SessionSection from '@/components/features/stats/session-section';
+
+const SectionError = ({ onRetry }: { onRetry: () => void }) => (
+  <div className="flex flex-col items-center justify-center gap-3 rounded-xl bg-card py-12 ring-1 ring-foreground/10">
+    <AlertCircle className="h-5 w-5 text-muted-foreground" />
+    <p className="text-sm text-muted-foreground">데이터를 불러올 수 없습니다</p>
+    <Button variant="outline" size="sm" onClick={onRetry}>
+      <RefreshCw className="mr-1.5 h-3 w-3" />
+      재시도
+    </Button>
+  </div>
+);
 
 const StatsPage = () => {
   const router = useRouter();
@@ -28,6 +39,10 @@ const StatsPage = () => {
     sessionsLoading,
     facetsLoading,
     historyLoading,
+    overviewError,
+    projectsError,
+    sessionsError,
+    refetch,
   } = useStats();
 
   return (
@@ -59,6 +74,8 @@ const StatsPage = () => {
               <SectionErrorBoundary sectionName="개요">
                 {overviewLoading ? (
                   <SectionSkeleton cardCount={4} hasChart />
+                ) : overviewError ? (
+                  <SectionError onRetry={refetch} />
                 ) : overview ? (
                   <OverviewSection data={overview} />
                 ) : null}
@@ -67,6 +84,8 @@ const StatsPage = () => {
               <SectionErrorBoundary sectionName="토큰">
                 {overviewLoading ? (
                   <SectionSkeleton hasChart />
+                ) : overviewError ? (
+                  <SectionError onRetry={refetch} />
                 ) : overview ? (
                   <TokenSection data={overview} />
                 ) : null}
@@ -75,6 +94,8 @@ const StatsPage = () => {
               <SectionErrorBoundary sectionName="활동 패턴">
                 {overviewLoading ? (
                   <SectionSkeleton hasChart />
+                ) : overviewError ? (
+                  <SectionError onRetry={refetch} />
                 ) : overview ? (
                   <ActivitySection data={overview} />
                 ) : null}
@@ -83,6 +104,8 @@ const StatsPage = () => {
               <SectionErrorBoundary sectionName="프로젝트">
                 {projectsLoading ? (
                   <SectionSkeleton hasChart />
+                ) : projectsError ? (
+                  <SectionError onRetry={refetch} />
                 ) : projects ? (
                   <ProjectSection data={projects} />
                 ) : null}
@@ -91,6 +114,8 @@ const StatsPage = () => {
               <SectionErrorBoundary sectionName="세션">
                 {sessionsLoading ? (
                   <SectionSkeleton cardCount={3} hasChart />
+                ) : sessionsError ? (
+                  <SectionError onRetry={refetch} />
                 ) : sessions ? (
                   <SessionSection
                     sessions={sessions}

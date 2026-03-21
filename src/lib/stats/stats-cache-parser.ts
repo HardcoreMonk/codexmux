@@ -154,9 +154,19 @@ export const buildOverview = (cache: IStatsCache, period: TPeriod): IOverviewRes
     }
   }
 
+  const totalInput = Object.values(cache.modelUsage).reduce((s, u) => s + u.inputTokens, 0);
+  const totalOutput = Object.values(cache.modelUsage).reduce((s, u) => s + u.outputTokens, 0);
+  const totalAll = totalInput + totalOutput;
+  const inputRatio = totalAll > 0 ? totalInput / totalAll : 0.7;
+  const outputRatio = totalAll > 0 ? totalOutput / totalAll : 0.3;
+
   const dailyTokens = filteredTokens.map((d) => {
     const total = Object.values(d.tokensByModel).reduce((sum, t) => sum + t, 0);
-    return { date: d.date, input: total, output: 0 };
+    return {
+      date: d.date,
+      input: Math.round(total * inputRatio),
+      output: Math.round(total * outputRatio),
+    };
   });
 
   return {
