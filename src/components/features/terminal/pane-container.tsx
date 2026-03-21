@@ -166,36 +166,24 @@ const PaneContainer = ({
 
   const checkClaudeSession = useCallback(async (tabId: string) => {
     const tab = tabsRef.current.find((t) => t.id === tabId);
-    if (!tab || tab.panelType === 'claude-code') {
-      console.log('[claude-detect] checkClaudeSession skip: no tab or already claude-code');
-      return;
-    }
+    if (!tab || tab.panelType === 'claude-code') return;
 
     const cooldownTime = manualToggleCooldownRef.current[tabId];
-    if (cooldownTime && Date.now() - cooldownTime < 10_000) {
-      console.log('[claude-detect] checkClaudeSession skip: cooldown active');
-      return;
-    }
+    if (cooldownTime && Date.now() - cooldownTime < 10_000) return;
 
     try {
-      console.log('[claude-detect] checkClaudeSession calling API for session:', tab.sessionName);
       const res = await fetch(`/api/timeline/session?session=${tab.sessionName}`);
-      if (!res.ok) {
-        console.log('[claude-detect] checkClaudeSession API error:', res.status);
-        return;
-      }
+      if (!res.ok) return;
       const data = await res.json();
-      console.log('[claude-detect] checkClaudeSession API result:', data);
       if (data.status === 'active') {
         const currentTab = tabsRef.current.find((t) => t.id === tabId);
         if (currentTab?.panelType !== 'claude-code') {
-          console.log('[claude-detect] switching to claude-code mode');
           setIsPanelTransitioning(true);
           onUpdateTabPanelType(paneId, tabId, 'claude-code');
         }
       }
-    } catch (err) {
-      console.log('[claude-detect] checkClaudeSession error:', err);
+    } catch {
+      /* ignore */
     }
   }, [paneId, onUpdateTabPanelType]);
 
@@ -232,10 +220,7 @@ const PaneContainer = ({
       useTabMetadataStore.getState().setTitle(tabId, formatted);
       fetchAndUpdateCwd();
 
-      const isShell = isShellProcess(title);
-      console.log('[claude-detect] title:', title, '| isShell:', isShell, '| panelType:', tabsRef.current.find((t) => t.id === tabId)?.panelType);
-
-      if (isShell) {
+      if (isShellProcess(title)) {
         processHintRef.current?.(false);
       } else {
         processHintRef.current?.(true);
@@ -574,6 +559,7 @@ const PaneContainer = ({
                   claudeSessionId={activeTab.claudeSessionId}
                   onCliStateChange={handleCliStateChange}
                   onInputVisibleChange={handleInputVisibleChange}
+                  onClose={handleTogglePanelType}
                   processHintRef={processHintRef}
                 />
               )}

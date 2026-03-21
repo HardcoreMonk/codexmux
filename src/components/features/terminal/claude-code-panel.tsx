@@ -16,6 +16,7 @@ interface IClaudeCodePanelProps {
   className?: string;
   onCliStateChange?: (state: TCliState) => void;
   onInputVisibleChange?: (visible: boolean) => void;
+  onClose?: () => void;
   processHintRef?: React.MutableRefObject<((isClaudeRunning: boolean) => void) | undefined>;
 }
 
@@ -25,6 +26,7 @@ const ClaudeCodePanel = ({
   className,
   onCliStateChange,
   onInputVisibleChange,
+  onClose,
   processHintRef,
 }: IClaudeCodePanelProps) => {
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(null);
@@ -138,7 +140,7 @@ const ClaudeCodePanel = ({
   if (view === 'empty') {
     return (
       <div className={cn('h-full w-full', className)}>
-        <SessionEmptyView />
+        <SessionEmptyView onClose={onClose} />
       </div>
     );
   }
@@ -157,6 +159,7 @@ const ClaudeCodePanel = ({
           onSelectSession={handleSelectSession}
           onRefresh={refetchSessions}
           onLoadMore={loadMoreSessions}
+          onClose={onClose}
         />
       </div>
     );

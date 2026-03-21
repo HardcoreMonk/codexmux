@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import SessionListItem from '@/components/features/terminal/session-list-item';
@@ -16,6 +16,7 @@ interface ISessionListViewProps {
   onSelectSession: (sessionId: string) => void;
   onRefresh: () => Promise<void>;
   onLoadMore: () => Promise<void>;
+  onClose?: () => void;
 }
 
 const SessionListSkeleton = () => (
@@ -61,6 +62,7 @@ const SessionListView = ({
   onSelectSession,
   onRefresh,
   onLoadMore,
+  onClose,
 }: ISessionListViewProps) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -88,19 +90,32 @@ const SessionListView = ({
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b px-4 py-2">
         <span className="text-sm font-medium">Claude Code 세션</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0 text-muted-foreground"
-          onClick={handleRefresh}
-          disabled={isLoading || isRefreshing}
-          aria-label="새로고침"
-        >
-          <RefreshCw
-            size={14}
-            className={isRefreshing ? 'animate-spin' : undefined}
-          />
-        </Button>
+        <div className="flex items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0 text-muted-foreground"
+            onClick={handleRefresh}
+            disabled={isLoading || isRefreshing}
+            aria-label="새로고침"
+          >
+            <RefreshCw
+              size={14}
+              className={isRefreshing ? 'animate-spin' : undefined}
+            />
+          </Button>
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-muted-foreground"
+              onClick={onClose}
+              aria-label="닫기"
+            >
+              <X size={14} />
+            </Button>
+          )}
+        </div>
       </div>
 
       {isLoading ? (

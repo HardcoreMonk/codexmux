@@ -1,7 +1,23 @@
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
-const SessionEmptyView = () => (
-  <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+interface ISessionEmptyViewProps {
+  onClose?: () => void;
+}
+
+const SessionEmptyView = ({ onClose }: ISessionEmptyViewProps) => (
+  <div className="relative flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+    {onClose && (
+      <Button
+        variant="ghost"
+        size="sm"
+        className="absolute top-2 right-2 h-7 w-7 p-0 text-muted-foreground"
+        onClick={onClose}
+        aria-label="닫기"
+      >
+        <X size={14} />
+      </Button>
+    )}
     <MessageSquare size={32} className="opacity-50" />
     <div className="text-center">
       <p className="text-sm font-medium">세션 없음</p>

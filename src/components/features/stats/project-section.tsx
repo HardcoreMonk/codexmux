@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { ChartConfig } from '@/components/ui/chart';
@@ -92,7 +92,7 @@ const ProjectSection = ({ data }: IProjectSectionProps) => {
               />
               <Bar dataKey="totalTokens" radius={[0, 4, 4, 0]}>
                 {barData.map((entry, i) => (
-                  <rect key={i} fill={entry.fill} />
+                  <Cell key={i} fill={entry.fill} />
                 ))}
               </Bar>
             </BarChart>
