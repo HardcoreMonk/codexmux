@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import useTimeline from '@/hooks/use-timeline';
@@ -9,6 +10,8 @@ import SessionEmptyView from '@/components/features/terminal/session-empty-view'
 import SessionNavBar from '@/components/features/terminal/session-nav-bar';
 import TimelineView from '@/components/features/timeline/timeline-view';
 
+const AUTO_RESUME_TIMEOUT_MS = 10_000;
+
 interface IClaudeCodePanelProps {
   sessionName: string;
   claudeSessionId?: string | null;
@@ -17,6 +20,7 @@ interface IClaudeCodePanelProps {
 
 const ClaudeCodePanel = ({ sessionName, claudeSessionId, className }: IClaudeCodePanelProps) => {
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(null);
+  const [isAutoResuming, setIsAutoResuming] = useState(!!claudeSessionId);
   const navigateToTimelineRef = useRef<() => void>(() => {});
 
   const handleResumeStarted = useCallback(
@@ -77,7 +81,7 @@ const ClaudeCodePanel = ({ sessionName, claudeSessionId, className }: IClaudeCod
     loadMore: loadMoreSessions,
   } = useSessionList({
     tmuxSession: sessionName,
-    enabled: !!sessionName && sessionStatus !== 'active',
+    enabled: !!sessionName && sessionStatus !== 'active' && !isAutoResuming,
   });
 
   const { view, navigateToList, navigateToTimeline } = useSessionView(
@@ -89,6 +93,17 @@ const ClaudeCodePanel = ({ sessionName, claudeSessionId, className }: IClaudeCod
   useEffect(() => {
     navigateToTimelineRef.current = navigateToTimeline;
   });
+
+  useEffect(() => {
+    if (!isAutoResuming) return;
+
+    const delay = sessionStatus === 'active' ? 0 : AUTO_RESUME_TIMEOUT_MS;
+    const timer = setTimeout(() => {
+      setIsAutoResuming(false);
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [isAutoResuming, sessionStatus]);
 
   const handleSelectSession = useCallback(
     (sessionId: string) => {
@@ -104,6 +119,17 @@ const ClaudeCodePanel = ({ sessionName, claudeSessionId, className }: IClaudeCod
     refetchSessions();
     navigateToList();
   }, [resumingSessionId, refetchSessions, navigateToList]);
+
+  if (isAutoResuming) {
+    return (
+      <div className={cn('flex h-full w-full items-center justify-center', className)}>
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">이전 세션을 복원하는 중...</span>
+        </div>
+      </div>
+    );
+  }
 
   if (view === 'empty') {
     return (

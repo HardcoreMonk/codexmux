@@ -552,7 +552,12 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
       const pane = findPane(data.root, paneId);
       if (!pane) return data;
       const tab = pane.tabs.find((t) => t.id === tabId);
-      if (tab) tab.panelType = panelType;
+      if (tab) {
+        tab.panelType = panelType;
+        if (panelType === 'terminal') {
+          tab.claudeSessionId = null;
+        }
+      }
       return data;
     });
   },

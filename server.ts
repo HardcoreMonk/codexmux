@@ -5,6 +5,7 @@ import { handleConnection, gracefulShutdown } from './src/lib/terminal-server';
 import { handleTimelineConnection, gracefulTimelineShutdown } from './src/lib/timeline-server';
 import { checkTmux, scanSessions, applyConfig } from './src/lib/tmux';
 import { initWorkspaceStore } from './src/lib/workspace-store';
+import { autoResumeOnStartup } from './src/lib/auto-resume';
 
 const port = parseInt(process.env.PORT || '3000', 10);
 const dev = process.env.NODE_ENV !== 'production';
@@ -16,6 +17,7 @@ const start = async () => {
   await scanSessions();
   await applyConfig();
   await initWorkspaceStore();
+  await autoResumeOnStartup();
   await app.prepare();
 
   const upgrade = app.getUpgradeHandler();

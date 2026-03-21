@@ -328,6 +328,10 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
   if (sessionInfo.jsonlPath) {
     conn.currentJsonlPath = sessionInfo.jsonlPath;
     await subscribeToFile(ws, sessionInfo.jsonlPath, sessionInfo.sessionId ?? undefined);
+
+    if (sessionInfo.sessionId) {
+      await updateTabClaudeSessionId(conn.sessionName, sessionInfo.sessionId).catch(() => {});
+    }
   } else {
     sendJson(ws, {
       type: 'timeline:init',
@@ -341,6 +345,10 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
   const wsKey = sessionName;
   if (!sessionWatchers.has(wsKey)) {
     const sw = watchSessionsDir(panePid, async (newInfo) => {
+      if (newInfo.sessionId) {
+        await updateTabClaudeSessionId(sessionName, newInfo.sessionId).catch(() => {});
+      }
+
       const wsConns = getSessionConnections(sessionName);
       for (const c of wsConns) {
         if (newInfo.jsonlPath && newInfo.jsonlPath !== c.currentJsonlPath) {
