@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Group, Panel, Separator, type GroupImperativeHandle } from 'react-resizable-panels';
-import { Loader2, Plus, TerminalSquare, WifiOff } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, Plus, TerminalSquare, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { ITab, TDisconnectReason, TPanelType } from '@/types/terminal';
@@ -385,10 +385,30 @@ const PaneContainer = ({
   }, [paneId, activeTabId, tabs, onUpdateTabPanelType]);
 
   const splitGroupRef = useRef<GroupImperativeHandle>(null);
+  const [isTerminalCollapsed, setIsTerminalCollapsed] = useState(false);
+
+  const handleToggleTerminal = useCallback(() => {
+    if (!splitGroupRef.current) return;
+    setIsPanelTransitioning(true);
+    const next = !isTerminalCollapsed;
+    setIsTerminalCollapsed(next);
+    splitGroupRef.current.setLayout(
+      next
+        ? { timeline: 100, 'terminal-area': 0 }
+        : { timeline: 70, 'terminal-area': 30 },
+    );
+    setTimeout(() => {
+      setIsPanelTransitioning(false);
+      if (!isReady || status !== 'connected') return;
+      const { cols, rows } = fit();
+      wsActionsRef.current.sendResize(cols, rows);
+    }, 150);
+  }, [isTerminalCollapsed, isReady, status, fit]);
 
   useEffect(() => {
     if (!splitGroupRef.current) return;
     if (isClaudeCode) {
+      setIsTerminalCollapsed(false);
       splitGroupRef.current.setLayout({ timeline: 70, 'terminal-area': 30 });
     } else {
       splitGroupRef.current.setLayout({ timeline: 0, 'terminal-area': 100 });
@@ -452,7 +472,7 @@ const PaneContainer = ({
         onTogglePanelType={handleTogglePanelType}
       />
 
-      <div role="tabpanel" className="relative min-h-0 flex-1" style={{ backgroundColor: terminalTheme.colors.background }}>
+      <div role="tabpanel" className="relative min-h-0 flex-1 flex flex-col" style={{ backgroundColor: terminalTheme.colors.background }}>
         <Group
           groupRef={splitGroupRef}
           orientation="vertical"
@@ -460,7 +480,7 @@ const PaneContainer = ({
             ? { timeline: 70, 'terminal-area': 30 }
             : { timeline: 0, 'terminal-area': 100 }
           }
-          className={cn('h-full', isPanelTransitioning && '[&>[data-panel]]:[transition:flex-grow_150ms_ease-out]')}
+          className={cn('min-h-0 flex-1', isPanelTransitioning && '[&>[data-panel]]:[transition:flex-grow_150ms_ease-out]')}
         >
           <Panel
             id="timeline"
@@ -477,34 +497,39 @@ const PaneContainer = ({
           <Separator
             className={cn(
               'group flex items-center justify-center',
-              isClaudeCode ? 'h-2' : 'h-0',
+              isClaudeCode && !isTerminalCollapsed ? 'h-2' : 'h-0',
             )}
-            disabled={!isClaudeCode}
+            disabled={!isClaudeCode || isTerminalCollapsed}
           >
             <div className="h-px w-16 rounded-full bg-border transition-colors group-hover:bg-muted-foreground group-data-[resize-handle-active]:bg-muted-foreground" />
           </Separator>
 
-          <Panel id="terminal-area" minSize={10}>
-            <div className="flex h-full w-full flex-col">
-              {isClaudeCode && (
-                <div className="flex h-6 shrink-0 items-center gap-1.5 border-t border-border px-2 pt-1 mt-2 text-muted-foreground">
-                  <TerminalSquare className="h-3 w-3" />
-                  <span className="text-[11px] font-medium">Terminal</span>
-                  {activeTabCwd && (
-                    <span className="truncate text-[11px] opacity-60">
-                      {activeTabCwd.replace(/^\/Users\/[^/]+/, '~')}
-                    </span>
-                  )}
-                </div>
+          {isClaudeCode && (
+            <div className="flex h-6 shrink-0 items-center gap-1.5 border-t border-border px-2 text-muted-foreground">
+              <TerminalSquare className="h-3 w-3" />
+              <span className="text-[11px] font-medium">Terminal</span>
+              {activeTabCwd && (
+                <span className="min-w-0 truncate text-[11px] opacity-60">
+                  {activeTabCwd.replace(/^\/Users\/[^/]+/, '~')}
+                </span>
               )}
-              <TerminalContainer
-                ref={terminalRef}
-                className={cn(
-                  'min-h-0 flex-1 transition-opacity duration-150',
-                  ready ? 'opacity-100' : 'opacity-0',
-                )}
-              />
+              <button
+                className="ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded text-muted-foreground/60 transition-colors hover:text-foreground"
+                onClick={handleToggleTerminal}
+              >
+                {isTerminalCollapsed ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
             </div>
+          )}
+
+          <Panel id="terminal-area" minSize={0} collapsible collapsedSize={0}>
+            <TerminalContainer
+              ref={terminalRef}
+              className={cn(
+                'min-h-0 flex-1 transition-opacity duration-150',
+                ready ? 'opacity-100' : 'opacity-0',
+              )}
+            />
           </Panel>
         </Group>
 
