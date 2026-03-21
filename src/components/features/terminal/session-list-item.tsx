@@ -65,7 +65,7 @@ const SessionListItem = ({
       type="button"
       className={cn(
         'w-full cursor-pointer border-b border-border/50 px-4 py-3 text-left transition-colors',
-        isHighlighted ? 'bg-ui-purple/5' : 'hover:bg-muted',
+        isHighlighted ? 'bg-ui-purple/5' : 'hover:bg-ui-purple/5',
         isDisabled && !isResuming && 'pointer-events-none opacity-50',
         isResuming && 'bg-ui-purple/5',
       )}
