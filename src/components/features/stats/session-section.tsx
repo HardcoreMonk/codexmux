@@ -1,0 +1,296 @@
+import { useMemo } from 'react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Cell,
+  Pie,
+  PieChart,
+} from 'recharts';
+import { Clock, Maximize2, Terminal } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import type { ChartConfig } from '@/components/ui/chart';
+import type { ISessionsResponse, IFacetsResponse, IHistoryResponse } from '@/types/stats';
+import { formatNumber, formatDuration } from '@/components/features/stats/stats-utils';
+import SectionSkeleton from '@/components/features/stats/section-skeleton';
+
+interface ISessionSectionProps {
+  sessions: ISessionsResponse;
+  facets: IFacetsResponse | null;
+  history: IHistoryResponse | null;
+  facetsLoading: boolean;
+  historyLoading: boolean;
+}
+
+const CATEGORY_COLORS = [
+  'var(--ui-purple)',
+  'var(--ui-coral)',
+  'var(--ui-pink)',
+  'var(--ui-amber)',
+  'var(--ui-blue)',
+  'var(--ui-teal)',
+  'var(--ui-green)',
+  'var(--ui-gray)',
+];
+
+const OUTCOME_COLORS: Record<string, string> = {
+  success: 'var(--ui-teal)',
+  partial: 'var(--ui-amber)',
+  failure: 'var(--ui-red)',
+};
+
+const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoading }: ISessionSectionProps) => {
+  const cards = [
+    {
+      label: '평균 세션 길이',
+      value: formatDuration(sessions.averageDurationMs),
+      icon: Clock,
+    },
+    {
+      label: '최장 세션',
+      value: sessions.longestSession
+        ? formatDuration(sessions.longestSession.duration)
+        : '-',
+      icon: Maximize2,
+    },
+    {
+      label: '총 세션 수',
+      value: formatNumber(sessions.totalSessions),
+      icon: Terminal,
+    },
+  ];
+
+  const categoryDonutData = useMemo(() => {
+    if (!facets) return [];
+    return Object.entries(facets.categoryDistribution)
+      .map(([name, value], i) => ({
+        name,
+        value,
+        fill: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+      }))
+      .filter((d) => d.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [facets]);
+
+  const categoryConfig: ChartConfig = useMemo(() => {
+    const cfg: ChartConfig = {};
+    categoryDonutData.forEach((d) => {
+      cfg[d.name] = { label: d.name, color: d.fill };
+    });
+    return cfg;
+  }, [categoryDonutData]);
+
+  const outcomeData = useMemo(() => {
+    if (!facets) return [];
+    return Object.entries(facets.outcomeDistribution)
+      .map(([name, value]) => ({
+        name,
+        value,
+        fill: OUTCOME_COLORS[name] ?? 'var(--ui-gray)',
+      }))
+      .filter((d) => d.value > 0);
+  }, [facets]);
+
+  const outcomeConfig: ChartConfig = useMemo(() => {
+    const cfg: ChartConfig = {};
+    outcomeData.forEach((d) => {
+      cfg[d.name] = { label: d.name, color: d.fill };
+    });
+    return cfg;
+  }, [outcomeData]);
+
+  const commandData = useMemo(() => {
+    if (!history) return [];
+    return history.topCommands.slice(0, 10);
+  }, [history]);
+
+  const commandConfig: ChartConfig = {
+    count: { label: '횟수', color: 'var(--ui-purple)' },
+  };
+
+  const inputDistData = useMemo(() => {
+    if (!history) return [];
+    return history.inputLengthDistribution;
+  }, [history]);
+
+  const inputDistConfig: ChartConfig = {
+    count: { label: '건수', color: 'var(--ui-blue)' },
+  };
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-sm font-medium text-muted-foreground">세션 분석</h2>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        {cards.map((card) => (
+          <Card key={card.label} size="sm">
+            <CardContent className="flex items-center gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
+                <card.icon className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{card.label}</p>
+                <p className="text-xl font-semibold tabular-nums">{card.value}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {facetsLoading ? (
+        <SectionSkeleton hasChart />
+      ) : (
+        facets && (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {categoryDonutData.length > 0 && (
+              <Card size="sm">
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">카테고리 분포</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer config={categoryConfig} className="aspect-auto h-48 w-full">
+                    <PieChart>
+                      <ChartTooltip
+                        content={<ChartTooltipContent hideLabel />}
+                        formatter={(value: number) => formatNumber(value)}
+                      />
+                      <Pie
+                        data={categoryDonutData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={50}
+                        outerRadius={72}
+                        strokeWidth={2}
+                        stroke="var(--background)"
+                      >
+                        {categoryDonutData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <text
+                        x="50%"
+                        y="48%"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        className="fill-foreground text-lg font-semibold"
+                      >
+                        {formatNumber(facets.totalFacets)}
+                      </text>
+                      <text
+                        x="50%"
+                        y="60%"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        className="fill-muted-foreground text-xs"
+                      >
+                        총 세션
+                      </text>
+                    </PieChart>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            )}
+
+            {outcomeData.length > 0 && (
+              <Card size="sm">
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">목표 달성도</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer config={outcomeConfig} className="aspect-auto h-48 w-full">
+                    <BarChart
+                      data={outcomeData}
+                      layout="vertical"
+                      margin={{ top: 0, right: 4, bottom: 0, left: 0 }}
+                    >
+                      <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+                      <XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+                      <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={60} />
+                      <ChartTooltip
+                        content={<ChartTooltipContent />}
+                        formatter={(value: number) => formatNumber(value)}
+                      />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                        {outcomeData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )
+      )}
+
+      {historyLoading ? (
+        <SectionSkeleton hasChart />
+      ) : (
+        history && (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {commandData.length > 0 && (
+              <Card size="sm">
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">자주 사용하는 명령어 TOP 10</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer config={commandConfig} className="aspect-auto h-64 w-full">
+                    <BarChart
+                      data={commandData}
+                      layout="vertical"
+                      margin={{ top: 0, right: 4, bottom: 0, left: 0 }}
+                    >
+                      <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+                      <XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+                      <YAxis
+                        type="category"
+                        dataKey="command"
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fontSize: 10 }}
+                        width={100}
+                      />
+                      <ChartTooltip
+                        content={<ChartTooltipContent />}
+                        formatter={(value: number) => formatNumber(value)}
+                      />
+                      <Bar dataKey="count" fill="var(--ui-purple)" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            )}
+
+            {inputDistData.length > 0 && (
+              <Card size="sm">
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">입력 길이 분포</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer config={inputDistConfig} className="aspect-auto h-64 w-full">
+                    <BarChart data={inputDistData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                      <XAxis dataKey="bucket" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                      <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={32} />
+                      <ChartTooltip
+                        content={<ChartTooltipContent />}
+                        formatter={(value: number) => formatNumber(value)}
+                      />
+                      <Bar dataKey="count" fill="var(--ui-blue)" radius={[2, 2, 0, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )
+      )}
+    </section>
+  );
+};
+
+export default SessionSection;

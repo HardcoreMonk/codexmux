@@ -5,7 +5,9 @@ import {
   Plus,
   Settings,
   Info,
+  BarChart3,
 } from 'lucide-react';
+import { useRouter } from 'next/router';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -30,6 +32,7 @@ const MIN_WIDTH = 160;
 const MAX_WIDTH = 480;
 
 const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
+  const router = useRouter();
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const collapsed = useWorkspaceStore((s) => s.sidebarCollapsed);
@@ -228,13 +231,22 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
           </button>
 
           <div className="flex items-center justify-between px-2 pb-2">
-            <button
-              className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
-              onClick={() => setSettingsOpen(true)}
-              aria-label="설정"
-            >
-              <Settings className="h-3.5 w-3.5" />
-            </button>
+            <div className="flex items-center gap-0.5">
+              <button
+                className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
+                onClick={() => setSettingsOpen(true)}
+                aria-label="설정"
+              >
+                <Settings className="h-3.5 w-3.5" />
+              </button>
+              <button
+                className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
+                onClick={() => router.push('/stats')}
+                aria-label="사용량 통계"
+              >
+                <BarChart3 className="h-3.5 w-3.5" />
+              </button>
+            </div>
             <button
               className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
               onClick={() => toast.info('추후 구현 예정')}

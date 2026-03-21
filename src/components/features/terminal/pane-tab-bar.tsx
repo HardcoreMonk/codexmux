@@ -29,6 +29,7 @@ const SplitHorizontalIcon = ({ className }: { className?: string }) => (
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ITab, TPanelType } from '@/types/terminal';
+import type { TCliState } from '@/types/timeline';
 import { isAutoTabName } from '@/lib/tab-title';
 
 interface IPaneTabBarProps {
@@ -56,6 +57,7 @@ interface IPaneTabBarProps {
   onEqualizeRatios: () => void;
   activeTabCwd?: string;
   activePanelType: TPanelType;
+  activeTabCliState?: TCliState;
   onTogglePanelType: () => void;
 }
 
@@ -84,6 +86,7 @@ const PaneTabBar = ({
   onRetry,
   onEqualizeRatios,
   activePanelType,
+  activeTabCliState,
   onTogglePanelType,
 }: IPaneTabBarProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -395,7 +398,11 @@ const PaneTabBar = ({
               ) : (
                 <>
                   {tab.panelType === 'claude-code' ? (
-                    <BotMessageSquare className="h-3 w-3 shrink-0 text-ui-purple" />
+                    isActive && activeTabCliState === 'busy' ? (
+                      <Loader2 className="h-3 w-3 shrink-0 animate-spin text-ui-purple" />
+                    ) : (
+                      <BotMessageSquare className="h-3 w-3 shrink-0 text-ui-purple" />
+                    )
                   ) : (
                     <Terminal className="h-3 w-3 shrink-0 text-muted-foreground" />
                   )}

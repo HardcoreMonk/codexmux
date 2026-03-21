@@ -510,6 +510,7 @@ const PaneContainer = ({
         onRetry={() => {}}
         onEqualizeRatios={onEqualizeRatios}
         activePanelType={activePanelType}
+        activeTabCliState={claudeCliState}
         onTogglePanelType={handleTogglePanelType}
       />
 
