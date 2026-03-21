@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
-import { Terminal, RefreshCw, Loader2 } from 'lucide-react';
+import { Terminal, RefreshCw, Loader2, OctagonX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type {
   ITimelineEntry,
@@ -68,6 +68,13 @@ const groupTimelineEntries = (entries: ITimelineEntry[]): TGroupedItem[] => {
   return result;
 };
 
+const InterruptItem = () => (
+  <div className="flex items-center justify-end gap-1.5 py-1 text-xs text-muted-foreground/60">
+    <OctagonX size={12} />
+    <span>요청 취소됨</span>
+  </div>
+);
+
 const TimelineEntryRenderer = ({ entry }: { entry: ITimelineEntry }) => {
   switch (entry.type) {
     case 'user-message':
@@ -76,6 +83,8 @@ const TimelineEntryRenderer = ({ entry }: { entry: ITimelineEntry }) => {
       return <AssistantMessageItem entry={entry} />;
     case 'agent-group':
       return <AgentGroupItem entry={entry} />;
+    case 'interrupt':
+      return <InterruptItem />;
     default:
       return null;
   }
@@ -303,6 +312,11 @@ const TimelineView = ({
             )}
           </div>
         ))}
+        {sessionStatus === 'active' && entries.length > 0 && entries[entries.length - 1].type !== 'assistant-message' && entries[entries.length - 1].type !== 'interrupt' && (
+          <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
+            <Loader2 size={12} className="animate-spin text-ui-purple" />
+          </div>
+        )}
       </div>
       {isReconnecting && <ReconnectBanner />}
       {isDisconnected && <DisconnectedBanner onRetry={onRetry} />}

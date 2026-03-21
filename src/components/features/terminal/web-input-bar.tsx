@@ -3,6 +3,7 @@ import { SendHorizontal, Square } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import useWebInput from '@/hooks/use-web-input';
+import useIsMobileDevice from '@/hooks/use-is-mobile-device';
 import InterruptDialog from '@/components/features/terminal/interrupt-dialog';
 import type { TCliState } from '@/types/timeline';
 
@@ -34,6 +35,7 @@ const WebInputBar = ({
     sendStdin,
     terminalWsConnected,
   );
+  const isMobileDevice = useIsMobileDevice();
 
   const [interruptDialogOpen, setInterruptDialogOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -75,7 +77,8 @@ const WebInputBar = ({
       return;
     }
 
-    if (e.key === 'Enter' && e.metaKey) {
+    if (e.key === 'Enter' && !isMobileDevice) {
+      if (e.shiftKey) return;
       e.preventDefault();
       send();
       return;
@@ -132,7 +135,7 @@ const WebInputBar = ({
               placeholder={
                 mode === 'disabled'
                   ? 'Claude Code가 실행 중이 아닙니다'
-                  : '메시지를 입력하세요... (⌘+Enter 전송)'
+                  : '메시지를 입력하세요...'
               }
               aria-label="Claude Code 메시지 입력"
               className={cn(

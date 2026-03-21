@@ -1,11 +1,12 @@
-import { MessageSquare, X } from 'lucide-react';
+import { MessageSquare, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ISessionEmptyViewProps {
   onClose?: () => void;
+  onNewSession?: () => void;
 }
 
-const SessionEmptyView = ({ onClose }: ISessionEmptyViewProps) => (
+const SessionEmptyView = ({ onClose, onNewSession }: ISessionEmptyViewProps) => (
   <div className="relative flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
     {onClose && (
       <Button
@@ -27,15 +28,27 @@ const SessionEmptyView = ({ onClose }: ISessionEmptyViewProps) => (
         새 세션을 시작하세요
       </p>
     </div>
-    {onClose && (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onClose}
-      >
-        닫기
-      </Button>
-    )}
+    <div className="flex gap-2">
+      {onNewSession && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onNewSession}
+        >
+          <Plus size={14} />
+          새 대화
+        </Button>
+      )}
+      {onClose && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onClose}
+        >
+          닫기
+        </Button>
+      )}
+    </div>
   </div>
 );
 

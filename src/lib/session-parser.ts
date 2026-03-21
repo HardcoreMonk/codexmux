@@ -8,6 +8,7 @@ import type {
   ITimelineToolCall,
   ITimelineToolResult,
   ITimelineAgentGroup,
+  ITimelineInterrupt,
   ITimelineDiff,
   IParseResult,
   IIncrementalResult,
@@ -269,6 +270,20 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
         } satisfies ITimelineUserMessage);
       }
       return entries;
+    }
+
+    // Detect interrupt: content is array with single text "[Request interrupted by user]"
+    if (
+      content.length === 1 &&
+      content[0].type === 'text' &&
+      'text' in content[0] &&
+      (content[0] as { text: string }).text === '[Request interrupted by user]'
+    ) {
+      return [{
+        id: nanoid(),
+        type: 'interrupt',
+        timestamp,
+      } satisfies ITimelineInterrupt];
     }
 
     for (const item of content) {

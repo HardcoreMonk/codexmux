@@ -91,19 +91,21 @@ const findJsonlPath = async (projectDir: string, sessionId: string): Promise<str
   }
 };
 
-export const detectActiveSession = async (panePid: number): Promise<ISessionInfo> => {
+export const detectActiveSession = async (panePid: number, trigger?: string): Promise<ISessionInfo> => {
+  const label = `[session-detection] (trigger: ${trigger ?? 'unknown'})`;
 
   try {
     await fs.access(CLAUDE_DIR);
   } catch {
-
-    return { status: 'not-installed', sessionId: null, jsonlPath: null, pid: null, startedAt: null };
+    console.log(`${label} status=not-installed panePid=${panePid}`);
+    return { status: 'not-installed', sessionId: null, jsonlPath: null, pid: null, startedAt: null, cwd: null };
   }
 
   const childPids = await getChildPids(panePid);
 
   if (childPids.length === 0) {
-    return { status: 'none', sessionId: null, jsonlPath: null, pid: null, startedAt: null };
+    console.log(`${label} status=none panePid=${panePid} reason=no-child-pids`);
+    return { status: 'none', sessionId: null, jsonlPath: null, pid: null, startedAt: null, cwd: null };
   }
 
   const childPidSet = new Set(childPids);
@@ -126,12 +128,14 @@ export const detectActiveSession = async (panePid: number): Promise<ISessionInfo
       const projectName = toClaudeProjectName(data.cwd);
       const projectDir = path.join(PROJECTS_DIR, projectName);
       const jsonlPath = await findJsonlPath(projectDir, data.sessionId);
+      console.log(`${label} status=active panePid=${panePid} pid=${data.pid} sessionId=${data.sessionId} method=pid-file jsonlPath=${jsonlPath ?? 'null'}`);
       return {
         status: 'active',
         sessionId: data.sessionId,
         jsonlPath,
         pid: data.pid,
         startedAt: data.startedAt,
+        cwd: data.cwd,
       };
     }
   } catch {
@@ -145,28 +149,21 @@ export const detectActiveSession = async (panePid: number): Promise<ISessionInfo
       const projectName = toClaudeProjectName(cwd);
       const projectDir = path.join(PROJECTS_DIR, projectName);
       const jsonlPath = await findJsonlPath(projectDir, fromArgs.sessionId);
+      console.log(`${label} status=active panePid=${panePid} pid=${fromArgs.pid} sessionId=${fromArgs.sessionId} method=process-args jsonlPath=${jsonlPath ?? 'null'}`);
       return {
         status: 'active',
         sessionId: fromArgs.sessionId,
         jsonlPath,
         pid: fromArgs.pid,
         startedAt: null,
+        cwd,
       };
     }
   }
 
-  return { status: 'none', sessionId: null, jsonlPath: null, pid: null, startedAt: null };
+  console.log(`${label} status=none panePid=${panePid} reason=no-match childPids=[${childPids.join(',')}]`);
+  return { status: 'none', sessionId: null, jsonlPath: null, pid: null, startedAt: null, cwd: null };
 };
-
-export const startEndDetectionPolling = (
-  pid: number,
-  onEnd: () => void,
-  intervalMs: number = PID_POLL_INTERVAL,
-): NodeJS.Timeout =>
-  setInterval(async () => {
-    const running = await isProcessRunning(pid);
-    if (!running) onEnd();
-  }, intervalMs);
 
 export interface ISessionWatcher {
   stop: () => void;
@@ -175,6 +172,7 @@ export interface ISessionWatcher {
 export const watchSessionsDir = (
   panePid: number,
   onChange: (info: ISessionInfo) => void,
+  options?: { skipInitial?: boolean },
 ): ISessionWatcher => {
   let watcher: FSWatcher | null = null;
   let pidPollTimer: ReturnType<typeof setInterval> | null = null;
@@ -188,7 +186,7 @@ export const watchSessionsDir = (
     const running = await isProcessRunning(currentPid);
     if (!running && !stopped) {
       currentPid = null;
-      const info = await detectActiveSession(panePid);
+      const info = await detectActiveSession(panePid, '2:pid-poll');
       onChange(info);
     }
   };
@@ -198,7 +196,7 @@ export const watchSessionsDir = (
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(async () => {
       if (stopped) return;
-      const info = await detectActiveSession(panePid);
+      const info = await detectActiveSession(panePid, '1:fs-watch');
       if (info.pid) currentPid = info.pid;
       onChange(info);
     }, SESSION_DIR_DEBOUNCE);
@@ -220,7 +218,7 @@ export const watchSessionsDir = (
           try {
             await fs.access(SESSIONS_DIR);
             tryWatch();
-            const info = await detectActiveSession(panePid);
+            const info = await detectActiveSession(panePid, '4:install-check');
             if (info.pid) currentPid = info.pid;
             onChange(info);
           } catch {}
@@ -232,11 +230,13 @@ export const watchSessionsDir = (
   tryWatch();
   pidPollTimer = setInterval(pollPid, PID_POLL_INTERVAL);
 
-  detectActiveSession(panePid).then((info) => {
-    if (stopped) return;
-    if (info.pid) currentPid = info.pid;
-    onChange(info);
-  });
+  if (!options?.skipInitial) {
+    detectActiveSession(panePid, '0:initial').then((info) => {
+      if (stopped) return;
+      if (info.pid) currentPid = info.pid;
+      onChange(info);
+    });
+  }
 
   return {
     stop: () => {

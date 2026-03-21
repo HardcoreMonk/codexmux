@@ -21,7 +21,7 @@ const deriveCliState = (
   }
 
   const lastEntry = entries[entries.length - 1];
-  if (lastEntry.type === 'assistant-message') {
+  if (lastEntry.type === 'assistant-message' || lastEntry.type === 'interrupt') {
     return 'idle';
   }
 
@@ -144,10 +144,12 @@ const useTimeline = ({
     }
     setSessionId(newSessionId || null);
     setSessionStatus('active');
-    setEntries([]);
-    setSessionSummary(undefined);
-    setHasMore(false);
-    setIsLoading(true);
+    if (reason !== 'session-waiting') {
+      setEntries([]);
+      setSessionSummary(undefined);
+      setHasMore(false);
+      setIsLoading(true);
+    }
     setAutoScrollEnabled(true);
   }, []);
 

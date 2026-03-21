@@ -10,6 +10,7 @@ export interface ISessionInfo {
   jsonlPath: string | null;
   pid: number | null;
   startedAt: number | null;
+  cwd: string | null;
 }
 
 export type TTimelineEntryType =
@@ -17,7 +18,8 @@ export type TTimelineEntryType =
   | 'assistant-message'
   | 'tool-call'
   | 'tool-result'
-  | 'agent-group';
+  | 'agent-group'
+  | 'interrupt';
 
 export interface ITimelineUserMessage {
   id: string;
@@ -80,12 +82,19 @@ export interface ITimelineAgentGroup {
   entryCount: number;
 }
 
+export interface ITimelineInterrupt {
+  id: string;
+  type: 'interrupt';
+  timestamp: number;
+}
+
 export type ITimelineEntry =
   | ITimelineUserMessage
   | ITimelineAssistantMessage
   | ITimelineToolCall
   | ITimelineToolResult
-  | ITimelineAgentGroup;
+  | ITimelineAgentGroup
+  | ITimelineInterrupt;
 
 export interface ITimelineInitMessage {
   type: 'timeline:init';

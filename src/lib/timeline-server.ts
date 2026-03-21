@@ -39,13 +39,14 @@ interface IFileWatcher {
   retryCount: number;
 }
 
-const JSONL_RETRY_DELAY = 500;
-const JSONL_RETRY_MAX_ATTEMPTS = 10;
-
 const connections = new Map<WebSocket, ITimelineConnection>();
 const fileWatchers = new Map<string, IFileWatcher>();
 const sessionWatchers = new Map<string, ISessionWatcher>();
-const pendingJsonlRetries = new Map<string, ReturnType<typeof setTimeout>>();
+
+interface IJsonlWatcher {
+  stop: () => void;
+}
+const pendingJsonlWatchers = new Map<string, IJsonlWatcher>();
 
 const sendJson = (ws: WebSocket, msg: TTimelineServerMessage) => {
   if (ws.readyState === WebSocket.OPEN) {
@@ -182,54 +183,108 @@ const getSessionConnections = (sessionName: string): ITimelineConnection[] => {
   return result;
 };
 
-const cancelJsonlRetry = (sessionName: string) => {
-  const timer = pendingJsonlRetries.get(sessionName);
-  if (timer) {
-    clearTimeout(timer);
-    pendingJsonlRetries.delete(sessionName);
+const cancelJsonlWatcher = (sessionName: string) => {
+  const w = pendingJsonlWatchers.get(sessionName);
+  if (w) {
+    console.log(`[jsonl-watcher] stop sessionName=${sessionName}`);
+    w.stop();
+    pendingJsonlWatchers.delete(sessionName);
   }
 };
 
-const scheduleJsonlRetry = (
+const watchForJsonlFile = (
   sessionName: string,
-  panePid: number,
-  attempt = 0,
+  sessionId: string,
+  cwd: string,
 ) => {
-  if (attempt >= JSONL_RETRY_MAX_ATTEMPTS) return;
-  if (pendingJsonlRetries.has(sessionName)) return;
+  cancelJsonlWatcher(sessionName);
 
-  const timer = setTimeout(async () => {
-    pendingJsonlRetries.delete(sessionName);
+  const projectDir = cwdToProjectPath(cwd);
+  const jsonlFilename = `${sessionId}.jsonl`;
+  const expectedJsonlPath = path.join(projectDir, jsonlFilename);
 
-    const info = await detectActiveSession(panePid);
-    if (info.status !== 'active') return;
-    if (!info.jsonlPath) {
-      scheduleJsonlRetry(sessionName, panePid, attempt + 1);
-      return;
-    }
+  let dirWatcher: FSWatcher | null = null;
+  let parentWatcher: FSWatcher | null = null;
+  let stopped = false;
 
-    if (info.sessionId) {
-      await updateTabClaudeSessionId(sessionName, info.sessionId).catch(() => {});
-    }
+  const stop = () => {
+    if (stopped) return;
+    stopped = true;
+    if (dirWatcher) { dirWatcher.close(); dirWatcher = null; }
+    if (parentWatcher) { parentWatcher.close(); parentWatcher = null; }
+  };
+
+  const onJsonlFound = async () => {
+    console.log(`[jsonl-watcher] found sessionName=${sessionName} path=${expectedJsonlPath}`);
+    stop();
+    pendingJsonlWatchers.delete(sessionName);
+
+    await updateTabClaudeSessionId(sessionName, sessionId).catch(() => {});
 
     const wsConns = getSessionConnections(sessionName);
     for (const c of wsConns) {
-      if (info.jsonlPath !== c.currentJsonlPath) {
+      if (expectedJsonlPath !== c.currentJsonlPath) {
         if (c.currentJsonlPath) {
           unsubscribeFromFile(c.ws, c.currentJsonlPath);
         }
-        c.currentJsonlPath = info.jsonlPath;
+        c.currentJsonlPath = expectedJsonlPath;
         sendJson(c.ws, {
           type: 'timeline:session-changed',
-          newSessionId: info.sessionId ?? '',
+          newSessionId: sessionId,
           reason: 'new-session-started',
         });
-        await subscribeToFile(c.ws, info.jsonlPath, info.sessionId ?? undefined);
+        await subscribeToFile(c.ws, expectedJsonlPath, sessionId);
       }
     }
-  }, JSONL_RETRY_DELAY);
+  };
 
-  pendingJsonlRetries.set(sessionName, timer);
+  const watchProjectDir = () => {
+    if (stopped) return;
+    console.log(`[jsonl-watcher] watch-dir sessionName=${sessionName} dir=${projectDir}`);
+    try {
+      dirWatcher = watch(projectDir, (_event, filename) => {
+        if (stopped) return;
+        if (filename === jsonlFilename && existsSync(expectedJsonlPath)) {
+          onJsonlFound();
+        }
+      });
+      dirWatcher.on('error', () => {});
+    } catch {
+      console.log(`[jsonl-watcher] watch-dir failed sessionName=${sessionName} dir=${projectDir}`);
+    }
+  };
+
+  if (existsSync(expectedJsonlPath)) {
+    onJsonlFound();
+    return;
+  }
+
+  if (existsSync(projectDir)) {
+    watchProjectDir();
+  } else {
+    const projectsDir = path.dirname(projectDir);
+    const projectDirName = path.basename(projectDir);
+    console.log(`[jsonl-watcher] watch-parent sessionName=${sessionName} dir=${projectsDir} waiting=${projectDirName}`);
+    try {
+      parentWatcher = watch(projectsDir, (_event, filename) => {
+        if (stopped) return;
+        if (filename === projectDirName && existsSync(projectDir)) {
+          console.log(`[jsonl-watcher] project-dir-created sessionName=${sessionName} dir=${projectDir}`);
+          if (parentWatcher) { parentWatcher.close(); parentWatcher = null; }
+          if (existsSync(expectedJsonlPath)) {
+            onJsonlFound();
+          } else {
+            watchProjectDir();
+          }
+        }
+      });
+      parentWatcher.on('error', () => {});
+    } catch {
+      console.log(`[jsonl-watcher] watch-parent failed sessionName=${sessionName} dir=${projectsDir}`);
+    }
+  }
+
+  pendingJsonlWatchers.set(sessionName, { stop });
 };
 
 const cleanup = (conn: ITimelineConnection) => {
@@ -246,6 +301,7 @@ const cleanup = (conn: ITimelineConnection) => {
   const wsKey = conn.sessionName;
   const hasOtherConn = getSessionConnections(conn.sessionName).length > 0;
   if (!hasOtherConn) {
+    cancelJsonlWatcher(wsKey);
     const sw = sessionWatchers.get(wsKey);
     if (sw) {
       sw.stop();
@@ -399,7 +455,7 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
   ws.on('error', () => cleanup(conn));
 
   const claudeSessionId = url.searchParams.get('claudeSessionId');
-  const sessionInfo = await detectActiveSession(panePid);
+  const sessionInfo = await detectActiveSession(panePid, '3:ws-connect');
 
   if (claudeSessionId && sessionInfo.status === 'none') {
     await updateTabClaudeSessionId(conn.sessionName, null).catch(() => {});
@@ -439,7 +495,7 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
       const wsConns = getSessionConnections(sessionName);
       for (const c of wsConns) {
         if (newInfo.jsonlPath && newInfo.jsonlPath !== c.currentJsonlPath) {
-          cancelJsonlRetry(sessionName);
+          cancelJsonlWatcher(sessionName);
           if (c.currentJsonlPath) {
             unsubscribeFromFile(c.ws, c.currentJsonlPath);
           }
@@ -457,6 +513,7 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
 
           await subscribeToFile(c.ws, newInfo.jsonlPath, newInfo.sessionId ?? undefined);
         } else if (!newInfo.jsonlPath && newInfo.status === 'none') {
+          cancelJsonlWatcher(sessionName);
           await updateTabClaudeSessionId(sessionName, null).catch(() => {});
           sendJson(c.ws, {
             type: 'timeline:session-changed',
@@ -467,10 +524,23 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
       }
 
       if (newInfo.status === 'active' && !newInfo.jsonlPath) {
-        scheduleJsonlRetry(sessionName, panePid);
+        for (const c of wsConns) {
+          sendJson(c.ws, {
+            type: 'timeline:session-changed',
+            newSessionId: newInfo.sessionId ?? '',
+            reason: 'session-waiting',
+          });
+        }
+        if (newInfo.sessionId && newInfo.cwd) {
+          watchForJsonlFile(sessionName, newInfo.sessionId, newInfo.cwd);
+        }
       }
-    });
+    }, { skipInitial: true });
     sessionWatchers.set(wsKey, sw);
+  }
+
+  if (sessionInfo.status === 'active' && !sessionInfo.jsonlPath && sessionInfo.sessionId && sessionInfo.cwd) {
+    watchForJsonlFile(sessionName, sessionInfo.sessionId, sessionInfo.cwd);
   }
 };
 
@@ -485,8 +555,8 @@ export const gracefulTimelineShutdown = () => {
     sw.stop();
   }
   sessionWatchers.clear();
-  for (const [name] of pendingJsonlRetries) {
-    cancelJsonlRetry(name);
+  for (const [name] of pendingJsonlWatchers) {
+    cancelJsonlWatcher(name);
   }
   for (const [jsonlPath] of fileWatchers) {
     removeFileWatcher(jsonlPath);

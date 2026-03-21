@@ -132,7 +132,7 @@ const ClaudeCodePanel = ({
   if (view === 'empty') {
     return (
       <div className={cn('h-full w-full', className)}>
-        <SessionEmptyView onClose={onClose} />
+        <SessionEmptyView onClose={onClose} onNewSession={onNewSession} />
       </div>
     );
   }
@@ -160,7 +160,7 @@ const ClaudeCodePanel = ({
 
   return (
     <div className={cn('flex min-h-0 w-full flex-1 flex-col', className)}>
-      <SessionMetaBar entries={entries} sessionName={sessionName} sessionSummary={sessionSummary} />
+      <SessionMetaBar entries={entries} sessionName={sessionName} sessionId={sessionId} sessionSummary={sessionSummary} />
       <div className="min-h-0 flex-1">
         <TimelineView
           entries={entries}

@@ -16,6 +16,7 @@ dayjs.locale('ko');
 interface ISessionMetaBarProps {
   entries: ITimelineEntry[];
   sessionName: string;
+  sessionId: string | null;
   sessionSummary?: string;
 }
 
@@ -108,6 +109,7 @@ const formatModelName = (model: string): string => {
 
 const MetaBarDetail = ({
   title,
+  sessionId,
   createdAt,
   updatedAt,
   userCount,
@@ -121,6 +123,7 @@ const MetaBarDetail = ({
   isBranchLoading,
 }: {
   title: string;
+  sessionId: string | null;
   createdAt: string | null;
   updatedAt: string | null;
   userCount: number;
@@ -139,6 +142,9 @@ const MetaBarDetail = ({
   return (
     <div className="flex flex-col gap-1">
       <span className="max-h-20 overflow-y-auto text-sm font-medium text-foreground">{title}</span>
+      {sessionId && (
+        <span className="font-mono text-xs text-muted-foreground/50">{sessionId}</span>
+      )}
 
       <div className="mt-1 flex flex-col gap-1">
         {isBranchLoading && (
@@ -222,7 +228,7 @@ const MetaBarDetail = ({
   );
 };
 
-const SessionMetaBar = ({ entries, sessionName, sessionSummary }: ISessionMetaBarProps) => {
+const SessionMetaBar = ({ entries, sessionName, sessionId, sessionSummary }: ISessionMetaBarProps) => {
   const { meta, isExpanded, toggleExpanded, collapse } = useSessionMeta(entries, sessionSummary);
   const { branch, isLoading: isBranchLoading } = useGitBranch(sessionName);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -298,6 +304,7 @@ const SessionMetaBar = ({ entries, sessionName, sessionSummary }: ISessionMetaBa
         <div className="px-4 py-3">
           <MetaBarDetail
             title={meta.title}
+            sessionId={sessionId}
             createdAt={meta.createdAt}
             updatedAt={meta.updatedAt}
             userCount={meta.userCount}

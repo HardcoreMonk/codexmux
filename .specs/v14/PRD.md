@@ -3,83 +3,79 @@
 ## 출처
 
 - `.specs/v14/requirements/overview.md` — 프로젝트 개요 및 로드맵
-- `.specs/v14/requirements/phase14-skill.md` — Phase 14 스킬 시스템 PRD
+- `.specs/v14/requirements/phase14-skill.md` — Phase 14 원본 (스킬 → Quick Prompts로 변경)
 
 ## 페이지 목록 (도출)
 
-v14는 기존 Claude Code Panel의 입력창에 스킬 시스템을 추가하고, 설정 페이지에 스킬 관리 UI를 제공한다.
+v14는 기존 입력창 위에 Quick Prompts(빠른 프롬프트) suggestion 버튼을 추가한다.
 
 | 페이지 | 설명 | 우선순위 |
 |---|---|---|
-| Suggest UI | 입력창 위에 스킬 버튼을 노출하는 suggest 바 | P0 |
-| 스킬 실행 엔진 | 스킬 파일 파싱 + `!command` 치환 + 프롬프트 생성 서버 API | P0 |
-| 스킬 설정 | 설정 페이지에서 스킬 on/off 토글 관리 | P0 |
+| Quick Prompts UI | 입력창 위에 빠른 프롬프트 버튼을 suggestion 형태로 노출 | P0 |
+| Quick Prompts 설정 | 설정에서 프롬프트 목록 관리 (추가/수정/삭제/on/off) | P1 |
 
 ---
 
 ## 주요 요구사항
 
-### 스킬 정의 포맷
+### Quick Prompts 정의
 
-- 마크다운 파일 1개 = 스킬 1개
-- YAML front matter: `name`, `description`, `allowed-tools` (선택적)
-- 본문: 프롬프트 텍스트 + `` !`command` `` 동적 컨텍스트 문법
-- `` !`command` `` → 서버에서 실행 → 결과로 치환 (프롬프트에 인라인 삽입)
-- Claude Code 플러그인 포맷 호환
+Quick Prompt는 **이름 + 전송할 문자열** 한 쌍이다. 서버 로직 없이 클라이언트에서 문자열을 PTY에 전송한다.
 
-### 빌트인 스킬 — "커밋하기"
-
-1차 구현에서는 빌트인 스킬 1개만 탑재:
-
-```markdown
----
-name: 커밋하기
-description: 변경사항을 분석하고 커밋합니다
-allowed-tools: [Bash, Read]
----
-다음 변경사항을 분석하고 적절한 커밋 메시지를 작성하여 커밋해주세요.
-!`git status`
-!`git diff HEAD`
-!`git log --oneline -10`
+```json
+// ~/.purple-terminal/quick-prompts.json
+[
+  { "name": "커밋하기", "prompt": "/commit-commands:commit", "enabled": true },
+  { "name": "코드 리뷰", "prompt": "현재 변경사항을 리뷰해주세요.", "enabled": true }
+]
 ```
 
-- 서버에 내장 (별도 설치 불필요)
-- git 상태 자동 수집 → Claude Code가 분석 + 스테이징 + 커밋
+- `name`: UI에 표시할 이름
+- `prompt`: PTY에 전송할 문자열 (슬래시 명령이든, 일반 프롬프트든 상관없음)
+- `enabled`: on/off 토글
 
-### Suggest UI
+### 빌트인 Quick Prompt — "커밋하기"
 
-- 위치: 입력창 바로 위, 가로 나열
-- 각 버튼: 스킬 이름 텍스트 (pill 형태)
-- 표시 조건: Claude Code `idle` 상태일 때만 (busy/inactive에서는 숨김)
-- 비활성화(off)된 스킬은 숨김
-- 클릭 → 스킬 실행 → 프롬프트 생성 → 입력창에 표시 또는 즉시 전송
+기본으로 "커밋하기" 1개를 탑재한다.
+
+- `prompt`: `/commit-commands:commit` — Claude Code의 커밋 플러그인 슬래시 명령
+- 플러그인이 설치되어 있으면 Claude Code가 슬래시 명령으로 처리
+- 플러그인이 없으면 Claude Code가 일반 텍스트로 해석하여 적절히 처리
+- 사용자가 prompt 내용을 자유롭게 수정 가능
+
+### Suggestion UI
+
+입력창 바로 위에 Quick Prompt 버튼을 가로로 나열한다.
+
+- 위치: 입력창 바로 위
+- 각 버튼: pill 형태, 스킬 이름 텍스트
+- 표시 조건: `panelType === 'claude-code'` + 타임라인 뷰이면 **항상 표시** (깜빡임 방지)
+  - `idle`: 버튼 활성 (클릭 가능)
+  - `busy`/`inactive`: 버튼 비활성 (`opacity-50`, `pointer-events-none`)
+- `enabled: false`인 프롬프트는 숨김
+- 클릭 → `prompt` 문자열을 입력창에 채움 (전송하지 않음) → 사용자가 확인/수정 후 Enter로 전송
 - 모바일에서도 동일하게 표시
 
-### 스킬 실행 엔진 (서버)
+### 실행 흐름
 
-- REST API: `POST /api/skills/execute`
-  - 요청: `{ skillId, tmuxSession }` (tmuxSession으로 cwd 조회)
-  - 서버: 스킬 마크다운 읽기 → `` !`command` ``를 cwd에서 실행 → 결과 치환
-  - 응답: `{ prompt }` (완성된 프롬프트 텍스트)
-- `` !`command` `` 실행은 해당 tmux 세션의 cwd에서 수행
-- 명령어 실행 타임아웃: 10초
-- 실패 시: 해당 `` !`command` `` 영역에 에러 메시지 삽입 (전체 실패 아님)
+```
+버튼 클릭
+├── prompt 문자열 읽기
+├── encodeStdin(prompt + '\r')
+├── 터미널 WebSocket으로 전송
+└── 끝 (서버 로직 없음)
+```
 
-### 스킬 설정 관리
+- 서버 API 불필요 — 클라이언트에서 직접 PTY write
+- 기존 Web 입력창의 전송 로직과 동일한 경로
 
-- 설정 페이지(또는 설정 모달)에서 스킬 목록 표시
-- 각 스킬: 이름 + 설명 + on/off 토글 (shadcn/ui `Switch`)
-- 설정 저장: `~/.purple-terminal/skills.json`
-- 기본값: 모든 빌트인 스킬 `enabled: true`
-- 스킬 목록 조회: `GET /api/skills` (빌트인 목록 + 활성 상태)
+### 설정 관리
 
-### 프롬프트 전송 방식
-
-스킬 실행 후 생성된 프롬프트를 Claude Code에 전달하는 방식:
-
-- **옵션 A: 입력창에 표시 후 사용자 확인** — 프롬프트가 입력창에 채워지고, 사용자가 확인/수정 후 Enter로 전송
-- **옵션 B: 즉시 전송** — 프롬프트를 바로 PTY에 전송 (확인 없이)
-- 1차 구현: **옵션 B (즉시 전송)** — 빌트인 스킬은 신뢰할 수 있으므로 확인 불필요. 추후 커스텀 스킬에서는 옵션 A 고려
+- Quick Prompts 목록: 이름 + prompt + on/off 토글
+- 추가/수정/삭제 가능
+- 설정 저장: `~/.purple-terminal/quick-prompts.json`
+- 서버 API: `GET /api/quick-prompts`, `PUT /api/quick-prompts` (목록 조회/저장)
+- 기본값: 빌트인 "커밋하기" 1개 (enabled: true)
 
 ---
 
@@ -87,26 +83,22 @@ allowed-tools: [Bash, Read]
 
 ### 기술적 제약
 
-- **`` !`command` `` 보안**: 빌트인 스킬만 존재하므로 1차에서는 위험 없음. 추후 커스텀 스킬 허용 시 실행 가능 명령어 화이트리스트 또는 샌드박싱 필요
-- **cwd 의존**: `` !`command` ``는 해당 Surface의 tmux 세션 cwd에서 실행. cwd가 변경되면 결과가 달라짐
-- **프롬프트 크기**: git diff가 매우 큰 경우 프롬프트가 수천 줄이 될 수 있음. Claude Code의 입력 제한에 주의. 필요 시 truncate
+- **단순 문자열 전송**: Quick Prompts는 서버 실행 엔진이 없다. 문자열을 그대로 PTY에 보내는 것이 전부
+- **슬래시 명령 의존성**: `/commit-commands:commit` 같은 슬래시 명령은 해당 Claude Code 플러그인이 설치되어 있어야 동작. 미설치 시 Claude Code가 일반 텍스트로 처리
 
 ### UX 고려사항
 
-- **Suggest 버튼 스타일**: pill 형태, `variant="outline" size="sm"`, `text-xs`, `border-dashed`
-- **스킬 실행 중 피드백**: suggest 버튼 클릭 후 → 버튼에 스피너 표시 (`` !`command` `` 실행 중) → 완료 후 전송
-- **에러 표시**: 스킬 실행 실패 시 sonner 토스트로 에러 메시지 (예: "git이 설치되지 않았습니다")
+- **버튼 스타일**: pill 형태, `variant="outline" size="sm"`, `text-xs`, `border-dashed`
+- **클릭 피드백**: 클릭 → 입력창에 텍스트 채워짐 + 포커스 이동 → 사용자가 확인/수정 후 Enter 전송
+- **빈 상태**: Quick Prompts가 0개(전부 off 또는 삭제)이면 suggestion 바 숨김
 
 ### 성능
 
-- `` !`command` `` 치환은 `git status`, `git diff`, `git log` 정도 — 각각 수 ms
-- 전체 스킬 실행: 100ms 이내 (네트워크 포함)
-- 스킬 목록 로드: 서버 시작 시 빌트인 파일 읽기 (1회)
+- 클라이언트 전용 — 서버 API 호출 없이 PTY write만
+- 설정 로드: 페이지 진입 시 1회
 
 ---
 
 ## 미확인 사항
 
-- [ ] 프롬프트가 매우 긴 경우 (git diff 수천 줄) — Claude Code 입력 제한과의 상호작용. truncate 기준 필요
-- [ ] 설정 UI를 기존 설정 페이지에 섹션으로 추가할지, 별도 모달로 할지
-- [ ] 모바일에서 suggest 버튼이 입력창 위에 겹치면서 화면을 차지하는 정도 — 모바일은 suggest를 접히는 형태로 변경할 수 있음
+(모두 확정됨 — 미확인 사항 없음)
