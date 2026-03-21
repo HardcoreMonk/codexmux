@@ -157,6 +157,9 @@ const useTimeline = ({
       if (payload.jsonlPath) {
         jsonlPathRef.current = payload.jsonlPath;
       }
+      setSessionStatus('active');
+      setEntries([]);
+      setIsLoading(true);
       resumeCallbacksRef.current?.onResumeStarted?.(payload);
     },
     [],
