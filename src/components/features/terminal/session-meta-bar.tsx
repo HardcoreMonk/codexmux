@@ -28,20 +28,13 @@ const Separator = () => (
 
 const MetaBarCompact = ({
   title,
-  updatedAt,
-  userCount,
-  totalTokens,
   totalCost,
   branch,
 }: {
   title: string;
-  updatedAt: string | null;
-  userCount: number;
-  totalTokens: number;
   totalCost: number | null;
   branch: string | null;
 }) => {
-  const relativeTime = updatedAt ? dayjs(updatedAt).fromNow() : '-';
   const truncatedTitle = title.length > 30 ? `${title.slice(0, 30)}…` : title;
 
   return (
@@ -65,12 +58,6 @@ const MetaBarCompact = ({
           </div>
         </>
       )}
-      <Separator />
-      <span className="text-muted-foreground">{userCount}턴</span>
-      <Separator />
-      <span className="font-mono text-muted-foreground">
-        {formatTokenCount(totalTokens)}
-      </span>
       {totalCost !== null && (
         <>
           <Separator />
@@ -79,17 +66,6 @@ const MetaBarCompact = ({
           </span>
         </>
       )}
-      <Separator />
-      <Tooltip>
-        <TooltipTrigger className="text-muted-foreground">
-          {relativeTime}
-        </TooltipTrigger>
-        {updatedAt && (
-          <TooltipContent side="bottom">
-            <p className="text-xs">{dayjs(updatedAt).format('YYYY-MM-DD HH:mm:ss')}</p>
-          </TooltipContent>
-        )}
-      </Tooltip>
     </div>
   );
 };
@@ -140,90 +116,85 @@ const MetaBarDetail = ({
   const updatedRelative = updatedAt ? dayjs(updatedAt).fromNow() : '';
 
   return (
-    <div className="flex flex-col gap-1">
-      <span className="max-h-20 overflow-y-auto text-sm font-medium text-foreground">{title}</span>
-      {sessionId && (
+    <div className="flex flex-col gap-1 px-4 py-3">
+      <div className="flex items-center justify-between">
         <span className="font-mono text-xs text-muted-foreground/50">{sessionId}</span>
-      )}
+        <div className="flex items-center gap-1">
+          {isBranchLoading && (
+            <span className="text-xs text-muted-foreground/50">...</span>
+          )}
+          {!isBranchLoading && branch && (
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <GitBranch size={12} />
+              <span className="font-mono text-xs">{branch}</span>
+            </div>
+          )}
+        </div>
+      </div>
 
-      <div className="mt-1 flex flex-col gap-1">
-        {isBranchLoading && (
-          <div className="flex items-center gap-2">
-            <span className="w-12 shrink-0 text-xs text-muted-foreground/70" />
-            <span className="text-xs text-muted-foreground/50">로드 중...</span>
+      <span className="max-h-20 overflow-y-auto text-sm font-medium text-foreground">{title}</span>
+
+        <div className="mt-1 flex flex-col gap-1">
+          <div className="flex items-baseline gap-2">
+            <span className="w-12 shrink-0 text-xs text-muted-foreground/70">메시지</span>
+            <span className="text-xs text-muted-foreground">
+              사용자 {userCount} / 어시스턴트 {assistantCount}
+            </span>
           </div>
-        )}
 
-        {!isBranchLoading && branch && (
-          <div className="flex items-center gap-2">
-            <span className="w-12 shrink-0 text-xs text-muted-foreground/70" />
-            <div className="flex items-center gap-1">
-              <GitBranch size={12} className="text-muted-foreground" />
-              <span className="font-mono text-xs text-muted-foreground">{branch}</span>
+          <div className="flex items-baseline gap-2">
+            <span className="w-12 shrink-0 text-xs text-muted-foreground/70">토큰</span>
+            <div className="flex flex-col gap-0.5">
+              <span className="font-mono text-xs text-muted-foreground">
+                입력 {formatTokenDetail(inputTokens)} / 출력 {formatTokenDetail(outputTokens)} / 총 {formatTokenDetail(totalTokens)}
+              </span>
+              {tokensByModel.map((m) => (
+                <span key={m.model} className="font-mono text-xs text-muted-foreground/60">
+                  {formatModelName(m.model)}
+                  {tokensByModel.length > 1 ? `: ${formatTokenCount(m.totalTokens)}` : ''}
+                  {m.cost !== null ? ` (${formatCost(m.cost)})` : ''}
+                </span>
+              ))}
             </div>
           </div>
-        )}
 
-        <div className="flex items-baseline gap-2">
-          <span className="w-12 shrink-0 text-xs text-muted-foreground/70">메시지</span>
-          <span className="text-xs text-muted-foreground">
-            사용자 {userCount} / 어시스턴트 {assistantCount}
-          </span>
-        </div>
-
-        <div className="flex items-baseline gap-2">
-          <span className="w-12 shrink-0 text-xs text-muted-foreground/70">토큰</span>
-          <div className="flex flex-col gap-0.5">
-            <span className="font-mono text-xs text-muted-foreground">
-              입력 {formatTokenDetail(inputTokens)} / 출력 {formatTokenDetail(outputTokens)} / 총 {formatTokenDetail(totalTokens)}
-            </span>
-            {tokensByModel.map((m) => (
-              <span key={m.model} className="font-mono text-xs text-muted-foreground/60">
-                {formatModelName(m.model)}
-                {tokensByModel.length > 1 ? `: ${formatTokenCount(m.totalTokens)}` : ''}
-                {m.cost !== null ? ` (${formatCost(m.cost)})` : ''}
+          {totalCost !== null && (
+            <div className="flex items-baseline gap-2">
+              <span className="w-12 shrink-0 text-xs text-muted-foreground/70">비용</span>
+              <span className="font-mono text-xs text-muted-foreground">
+                {formatCost(totalCost)}
               </span>
-            ))}
-          </div>
+            </div>
+          )}
+
+          {createdAt && (
+            <div className="flex items-baseline gap-2">
+              <span className="w-12 shrink-0 text-xs text-muted-foreground/70">생성</span>
+              <Tooltip>
+                <TooltipTrigger className="text-xs text-muted-foreground">
+                  {dayjs(createdAt).format('MM/DD HH:mm')} ({createdRelative})
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p className="text-xs">{dayjs(createdAt).format('YYYY-MM-DD HH:mm:ss')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          )}
+
+          {updatedAt && (
+            <div className="flex items-baseline gap-2">
+              <span className="w-12 shrink-0 text-xs text-muted-foreground/70">수정</span>
+              <Tooltip>
+                <TooltipTrigger className="text-xs text-muted-foreground">
+                  {dayjs(updatedAt).format('MM/DD HH:mm')} ({updatedRelative})
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p className="text-xs">{dayjs(updatedAt).format('YYYY-MM-DD HH:mm:ss')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          )}
         </div>
-
-        {totalCost !== null && (
-          <div className="flex items-baseline gap-2">
-            <span className="w-12 shrink-0 text-xs text-muted-foreground/70">비용</span>
-            <span className="font-mono text-xs text-muted-foreground">
-              {formatCost(totalCost)}
-            </span>
-          </div>
-        )}
-
-        {createdAt && (
-          <div className="flex items-baseline gap-2">
-            <span className="w-12 shrink-0 text-xs text-muted-foreground/70">생성</span>
-            <Tooltip>
-              <TooltipTrigger className="text-xs text-muted-foreground">
-                {dayjs(createdAt).format('MM/DD HH:mm')} ({createdRelative})
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p className="text-xs">{dayjs(createdAt).format('YYYY-MM-DD HH:mm:ss')}</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        )}
-
-        {updatedAt && (
-          <div className="flex items-baseline gap-2">
-            <span className="w-12 shrink-0 text-xs text-muted-foreground/70">수정</span>
-            <Tooltip>
-              <TooltipTrigger className="text-xs text-muted-foreground">
-                {dayjs(updatedAt).format('MM/DD HH:mm')} ({updatedRelative})
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p className="text-xs">{dayjs(updatedAt).format('YYYY-MM-DD HH:mm:ss')}</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        )}
-      </div>
     </div>
   );
 };
@@ -278,9 +249,6 @@ const SessionMetaBar = ({ entries, sessionName, sessionId, sessionSummary }: ISe
       >
         <MetaBarCompact
           title={meta.title}
-          updatedAt={meta.updatedAt}
-          userCount={meta.userCount}
-          totalTokens={meta.totalTokens}
           totalCost={meta.totalCost}
           branch={branch}
         />
@@ -299,25 +267,22 @@ const SessionMetaBar = ({ entries, sessionName, sessionId, sessionSummary }: ISe
             ? 'scale-y-100 opacity-100'
             : 'pointer-events-none scale-y-95 opacity-0',
         )}
-        onClick={toggleExpanded}
       >
-        <div className="px-4 py-3">
-          <MetaBarDetail
-            title={meta.title}
-            sessionId={sessionId}
-            createdAt={meta.createdAt}
-            updatedAt={meta.updatedAt}
-            userCount={meta.userCount}
-            assistantCount={meta.assistantCount}
-            inputTokens={meta.inputTokens}
-            outputTokens={meta.outputTokens}
-            totalTokens={meta.totalTokens}
-            totalCost={meta.totalCost}
-            tokensByModel={meta.tokensByModel}
-            branch={branch}
-            isBranchLoading={isBranchLoading}
-          />
-        </div>
+        <MetaBarDetail
+          title={meta.title}
+          sessionId={sessionId}
+          createdAt={meta.createdAt}
+          updatedAt={meta.updatedAt}
+          userCount={meta.userCount}
+          assistantCount={meta.assistantCount}
+          inputTokens={meta.inputTokens}
+          outputTokens={meta.outputTokens}
+          totalTokens={meta.totalTokens}
+          totalCost={meta.totalCost}
+          tokensByModel={meta.tokensByModel}
+          branch={branch}
+          isBranchLoading={isBranchLoading}
+        />
       </div>
     </div>
   );

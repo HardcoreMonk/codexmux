@@ -20,7 +20,6 @@ interface IPaneLayoutProps {
   onSwitchTab: (paneId: string, tabId: string) => void;
   onRenameTab: (paneId: string, tabId: string, name: string) => Promise<void>;
   onReorderTabs: (paneId: string, tabIds: string[]) => void;
-  onRemoveTabLocally: (paneId: string, tabId: string) => void;
   onUpdateTabPanelType: (paneId: string, tabId: string, panelType: TPanelType) => void;
   onEqualizeRatios: () => void;
   equalizeRef?: MutableRefObject<(() => void) | null>;
@@ -42,7 +41,6 @@ const PaneLayout = (props: IPaneLayoutProps) => {
     onSwitchTab,
     onRenameTab,
     onReorderTabs,
-    onRemoveTabLocally,
     onUpdateTabPanelType,
     onEqualizeRatios,
     equalizeRef,
@@ -201,7 +199,6 @@ const PaneLayout = (props: IPaneLayoutProps) => {
             onSwitchTab={onSwitchTab}
             onRenameTab={onRenameTab}
             onReorderTabs={onReorderTabs}
-            onRemoveTabLocally={onRemoveTabLocally}
             onUpdateTabPanelType={onUpdateTabPanelType}
           />,
           getStableContainer(pane.id),

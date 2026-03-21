@@ -122,7 +122,7 @@ const WorkspaceItem = ({
           />
         ) : (
           <>
-            <span className="truncate text-sm leading-tight">
+            <span className="truncate text-sm font-medium leading-tight">
               {workspace.name}
             </span>
             {displayDirs.map((dir, i) => (

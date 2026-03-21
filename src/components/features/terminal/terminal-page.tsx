@@ -219,7 +219,6 @@ const TerminalPage = () => {
               onSwitchTab={layout.switchTabInPane}
               onRenameTab={layout.renameTabInPane}
               onReorderTabs={layout.reorderTabsInPane}
-              onRemoveTabLocally={layout.removeTabLocally}
               onUpdateTabPanelType={layout.updateTabPanelType}
               onEqualizeRatios={layout.equalizeRatios}
               equalizeRef={equalizeRef}

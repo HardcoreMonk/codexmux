@@ -100,7 +100,7 @@ const SessionListItem = ({
       <div className="mt-1 flex items-center justify-between gap-2 pl-[12px]">
         <Tooltip>
           <TooltipTrigger
-            className="min-w-0 truncate text-sm text-left"
+            className="min-w-0 truncate text-sm font-medium text-left"
             render={<span />}
           >
             {displayMessage}

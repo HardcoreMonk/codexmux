@@ -68,7 +68,6 @@ interface IPaneContainerProps {
   onSwitchTab: (paneId: string, tabId: string) => void;
   onRenameTab: (paneId: string, tabId: string, name: string) => Promise<void>;
   onReorderTabs: (paneId: string, tabIds: string[]) => void;
-  onRemoveTabLocally: (paneId: string, tabId: string) => void;
   onUpdateTabPanelType: (paneId: string, tabId: string, panelType: TPanelType) => void;
 }
 
@@ -91,7 +90,6 @@ const PaneContainer = ({
   onSwitchTab,
   onRenameTab,
   onReorderTabs,
-  onRemoveTabLocally,
   onUpdateTabPanelType,
 }: IPaneContainerProps) => {
   const activeTab = tabs.find((t) => t.id === activeTabId);
@@ -227,19 +225,26 @@ const PaneContainer = ({
 
     if (!currentActiveTabId) return;
 
+    const isLastTab = currentTabs.length === 1;
+    if (isLastTab && currentPaneCount > 1) {
+      onClosePane(paneId);
+      return;
+    }
+
     const sorted = [...currentTabs].sort((a, b) => a.order - b.order);
     const idx = sorted.findIndex((t) => t.id === currentActiveTabId);
     const adjacent = sorted[idx + 1] || sorted[idx - 1];
-
     if (adjacent) {
       onSwitchTab(paneId, adjacent.id);
-      onRemoveTabLocally(paneId, currentActiveTabId);
-    } else if (currentPaneCount > 1) {
-      onClosePane(paneId);
-    } else {
-      onRemoveTabLocally(paneId, currentActiveTabId);
     }
-  }, [paneId, onSwitchTab, onRemoveTabLocally, onClosePane]);
+
+    setClosingTabId(currentActiveTabId);
+    try {
+      await onDeleteTab(paneId, currentActiveTabId);
+    } finally {
+      setClosingTabId(null);
+    }
+  }, [paneId, onSwitchTab, onDeleteTab, onClosePane]);
 
   const {
     status,
@@ -619,7 +624,7 @@ const PaneContainer = ({
         )}
 
         {closingTabId && (
-          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-background/80">
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-background/80 animate-[fadeIn_400ms_ease-out_200ms_both]">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             <span className="text-sm text-muted-foreground">프로세스 정리 중...</span>
           </div>

@@ -121,9 +121,13 @@ const ClaudeCodePanel = ({
 
   const isInputVisible = view === 'timeline';
 
+  const effectiveCliState = effectiveSessionStatus === 'none' && cliState !== 'inactive'
+    ? 'inactive' as const
+    : cliState;
+
   useEffect(() => {
-    onCliStateChange?.(cliState);
-  }, [cliState, onCliStateChange]);
+    onCliStateChange?.(effectiveCliState);
+  }, [effectiveCliState, onCliStateChange]);
 
   useEffect(() => {
     onInputVisibleChange?.(isInputVisible);
