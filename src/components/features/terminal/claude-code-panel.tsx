@@ -14,6 +14,7 @@ interface IClaudeCodePanelProps {
   sessionName: string;
   claudeSessionId?: string | null;
   isClaudeRunning?: boolean;
+  cwd?: string;
   className?: string;
   onCliStateChange?: (state: TCliState) => void;
   onInputVisibleChange?: (visible: boolean) => void;
@@ -25,6 +26,7 @@ const ClaudeCodePanel = ({
   sessionName,
   claudeSessionId,
   isClaudeRunning,
+  cwd,
   className,
   onCliStateChange,
   onInputVisibleChange,
@@ -101,6 +103,7 @@ const ClaudeCodePanel = ({
   } = useSessionList({
     tmuxSession: sessionName,
     enabled: !!sessionName && effectiveSessionStatus !== 'active',
+    cwd,
   });
 
   const { view, navigateToTimeline } = useSessionView(

@@ -105,18 +105,21 @@ const PaneTabBar = ({
     }
   }, [editingTabId]);
 
-  const handleWheel = (e: React.WheelEvent) => {
+  useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollLeft += e.deltaY || e.deltaX;
-    checkOverflow();
-  };
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      el.scrollBy({ left: (e.deltaY || e.deltaX) * 0.4, behavior: 'smooth' });
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
 
   const scrollBy = (delta: number) => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollBy({ left: delta, behavior: 'smooth' });
-    setTimeout(checkOverflow, 300);
   };
 
   const startEditing = (tab: ITab) => {
@@ -228,7 +231,7 @@ const PaneTabBar = ({
 
   if (error) {
     return (
-      <div className="flex h-[36px] shrink-0 items-center gap-2 bg-card px-3">
+      <div className="flex h-[36px] shrink-0 items-center gap-2 bg-background px-3">
         <AlertTriangle className="h-3.5 w-3.5 text-ui-amber" />
         <span className="text-xs text-muted-foreground">{error}</span>
         <Button
@@ -245,7 +248,7 @@ const PaneTabBar = ({
 
   if (isLoading) {
     return (
-      <div className="flex h-[36px] shrink-0 items-center gap-1.5 bg-card px-2">
+      <div className="flex h-[36px] shrink-0 items-center gap-1.5 bg-background px-2">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
@@ -260,7 +263,7 @@ const PaneTabBar = ({
     <div
       className={cn(
         'flex h-[36px] shrink-0 items-stretch border-b border-border transition-colors',
-        isDragOverFromOther ? 'bg-accent-color/10' : 'bg-card',
+        isDragOverFromOther ? 'bg-accent-color/10' : 'bg-background',
       )}
       onDragEnter={handleTabBarDragEnter}
       onDragLeave={handleTabBarDragLeave}
@@ -270,7 +273,7 @@ const PaneTabBar = ({
       {showLeftArrow && (
         <button
           className="flex w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
-          onClick={() => scrollBy(-120)}
+          onClick={() => scrollBy(-200)}
         >
           <ChevronLeft className="h-3.5 w-3.5" />
         </button>
@@ -281,7 +284,6 @@ const PaneTabBar = ({
         role="tablist"
         className="flex flex-1 items-stretch overflow-x-auto"
         style={{ scrollbarWidth: 'none' }}
-        onWheel={handleWheel}
         onScroll={checkOverflow}
       >
         {sortedTabs.map((tab) => {
@@ -303,7 +305,7 @@ const PaneTabBar = ({
               aria-selected={isActive}
               tabIndex={isActive ? 0 : -1}
               className={cn(
-                'group relative flex min-w-[80px] max-w-[180px] cursor-pointer items-center gap-1 border-b-2 px-3 text-xs select-none',
+                'group relative flex min-w-[120px] max-w-[180px] cursor-pointer items-center gap-1 border-b-2 px-3 text-xs select-none',
                 isActive
                   ? 'border-b-accent-color bg-secondary text-foreground'
                   : 'border-b-transparent text-muted-foreground hover:bg-accent hover:text-foreground',
@@ -404,7 +406,7 @@ const PaneTabBar = ({
       {showRightArrow && (
         <button
           className="flex w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
-          onClick={() => scrollBy(120)}
+          onClick={() => scrollBy(200)}
         >
           <ChevronRight className="h-3.5 w-3.5" />
         </button>
@@ -435,7 +437,7 @@ const PaneTabBar = ({
           </div>
 
           {paneCount >= 2 && (
-            <div className="flex items-center pl-0.5">
+            <div className="flex items-center px-0.5">
               <Tooltip>
                 <TooltipTrigger
                   className={cn(

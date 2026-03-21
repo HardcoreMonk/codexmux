@@ -144,7 +144,7 @@ const TabBar = ({
 
   if (error) {
     return (
-      <div className="flex h-[30px] shrink-0 items-center gap-2 bg-card px-3">
+      <div className="flex h-[30px] shrink-0 items-center gap-2 bg-background px-3">
         <AlertTriangle className="h-3.5 w-3.5 text-ui-amber" />
         <span className="text-xs text-muted-foreground">{error}</span>
         <Button
@@ -161,7 +161,7 @@ const TabBar = ({
 
   if (isLoading) {
     return (
-      <div className="flex h-[30px] shrink-0 items-center gap-1.5 bg-card px-2">
+      <div className="flex h-[30px] shrink-0 items-center gap-1.5 bg-background px-2">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
@@ -173,7 +173,7 @@ const TabBar = ({
   }
 
   return (
-    <div className="flex h-[30px] shrink-0 items-stretch border-b border-border bg-card">
+    <div className="flex h-[30px] shrink-0 items-stretch border-b border-border bg-background">
       {showLeftArrow && (
         <button
           className="flex w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"

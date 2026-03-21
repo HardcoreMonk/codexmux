@@ -6,6 +6,7 @@ const DEFAULT_LIMIT = 50;
 interface IUseSessionListOptions {
   tmuxSession: string;
   enabled: boolean;
+  cwd?: string;
 }
 
 interface IUseSessionListReturn {
@@ -22,6 +23,7 @@ interface IUseSessionListReturn {
 const useSessionList = ({
   tmuxSession,
   enabled,
+  cwd,
 }: IUseSessionListOptions): IUseSessionListReturn => {
   const [sessions, setSessions] = useState<ISessionMeta[]>([]);
   const [total, setTotal] = useState(0);
@@ -58,6 +60,16 @@ const useSessionList = ({
       fetchSessions();
     }
   }, [enabled, fetchSessions]);
+
+  const prevCwdRef = useRef(cwd);
+  useEffect(() => {
+    if (prevCwdRef.current !== cwd) {
+      prevCwdRef.current = cwd;
+      if (enabled) {
+        fetchSessions();
+      }
+    }
+  }, [cwd, enabled, fetchSessions]);
 
   const refetch = useCallback(async () => {
     await fetchSessions();

@@ -126,7 +126,7 @@ const TerminalPage = () => {
         </div>
 
         <div className="flex flex-1 flex-col">
-          <div className="flex h-[30px] shrink-0 items-center gap-1.5 border-b border-border bg-card px-2">
+          <div className="flex h-[30px] shrink-0 items-center gap-1.5 border-b border-border bg-background px-2">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}

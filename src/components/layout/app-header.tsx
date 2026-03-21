@@ -25,7 +25,7 @@ const handleLogout = async () => {
 
 const AppHeader = ({ onMenuOpen }: IAppHeaderProps) => {
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border bg-card px-3">
+    <header className="flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border bg-background px-3">
       <div className="flex items-center gap-1.5">
         {onMenuOpen && (
           <button

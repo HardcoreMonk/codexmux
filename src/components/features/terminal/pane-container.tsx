@@ -529,12 +529,13 @@ const PaneContainer = ({
             collapsedSize={0}
             disabled={!isClaudeCode}
           >
-            <div className={cn('flex h-full flex-col bg-muted', isTerminalCollapsed && 'pb-3')}>
+            <div className={cn('flex h-full flex-col bg-card', isTerminalCollapsed && 'pb-3')}>
               {isClaudeCode && activeTab && (
                 <ClaudeCodePanel
                   sessionName={activeTab.sessionName}
                   claudeSessionId={activeTab.claudeSessionId}
                   isClaudeRunning={isClaudeRunning}
+                  cwd={activeTabCwd}
                   onCliStateChange={handleCliStateChange}
                   onInputVisibleChange={handleInputVisibleChange}
                   onClose={handleTogglePanelType}
