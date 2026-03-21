@@ -394,6 +394,11 @@ const PaneTabBar = ({
                 />
               ) : (
                 <>
+                  {tab.panelType === 'claude-code' ? (
+                    <BotMessageSquare className="h-3 w-3 shrink-0 text-ui-purple" />
+                  ) : (
+                    <Terminal className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  )}
                   <span
                     className={cn(
                       'truncate',
@@ -402,9 +407,6 @@ const PaneTabBar = ({
                   >
                     {displayName}
                   </span>
-                  {tab.panelType === 'claude-code' && (
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-ui-purple" />
-                  )}
                 </>
               )}
 
