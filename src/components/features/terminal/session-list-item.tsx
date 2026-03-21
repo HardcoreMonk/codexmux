@@ -12,6 +12,18 @@ interface ISessionListItemProps {
   onSelect: (sessionId: string) => void;
 }
 
+const handleArrowNavigation = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    const next = e.currentTarget.nextElementSibling as HTMLElement | null;
+    next?.focus();
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    const prev = e.currentTarget.previousElementSibling as HTMLElement | null;
+    prev?.focus();
+  }
+};
+
 const formatRelativeTime = (dateStr: string): string => {
   const now = dayjs();
   const target = dayjs(dateStr);
@@ -58,6 +70,7 @@ const SessionListItem = ({
         isResuming && 'bg-ui-purple/5',
       )}
       onClick={() => onSelect(session.sessionId)}
+      onKeyDown={handleArrowNavigation}
       disabled={isDisabled}
       aria-label={`세션: ${displayMessage}`}
     >
