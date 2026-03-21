@@ -7,7 +7,7 @@ import PaneContainer from '@/components/features/terminal/pane-container';
 
 interface IPaneLayoutProps {
   root: TLayoutNode;
-  focusedPaneId: string | null;
+  activePaneId: string | null;
   paneCount: number;
   isSplitting: boolean;
   onSplitPane: (paneId: string, orientation: 'horizontal' | 'vertical') => void;
@@ -29,7 +29,7 @@ interface IPaneLayoutProps {
 const PaneLayout = (props: IPaneLayoutProps) => {
   const {
     root,
-    focusedPaneId,
+    activePaneId,
     paneCount,
     isSplitting,
     onSplitPane,
@@ -189,7 +189,7 @@ const PaneLayout = (props: IPaneLayoutProps) => {
             paneNumber={paneNumbers.get(pane.id) ?? 1}
             tabs={pane.tabs}
             activeTabId={pane.activeTabId}
-            isFocused={pane.id === focusedPaneId}
+            isFocused={pane.id === activePaneId}
             paneCount={paneCount}
             isSplitting={isSplitting}
             onSplitPane={onSplitPane}

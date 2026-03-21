@@ -17,12 +17,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(400).json({ error: 'Workspace가 없습니다' });
   }
 
-  const { root, focusedPaneId } = req.body ?? {};
+  const { root, activePaneId } = req.body ?? {};
   if (!root) {
     return res.status(400).json({ error: 'root 필드 필수' });
   }
 
-  await updateLayout(wsId, root, focusedPaneId ?? null);
+  await updateLayout(wsId, root, activePaneId ?? null);
   return res.status(200).json({ ok: true });
 };
 

@@ -33,9 +33,9 @@ const HOTKEY_OPTIONS = {
 };
 
 const getFocusedPane = (layout: ILayoutData | null): IPaneNode | null => {
-  if (!layout?.focusedPaneId) return null;
+  if (!layout?.activePaneId) return null;
   const panes = collectPanes(layout.root);
-  return panes.find((p) => p.id === layout.focusedPaneId) ?? null;
+  return panes.find((p) => p.id === layout.activePaneId) ?? null;
 };
 
 const getSortedTabs = (pane: IPaneNode): ITab[] =>
@@ -57,8 +57,8 @@ const useKeyboardShortcuts = ({
     KEY_MAP.SPLIT_VERTICAL,
     () => {
       const l = layoutRef.current;
-      if (!l.layout?.focusedPaneId || !l.canSplit) return;
-      l.splitPane(l.layout.focusedPaneId, 'horizontal');
+      if (!l.layout?.activePaneId || !l.canSplit) return;
+      l.splitPane(l.layout.activePaneId, 'horizontal');
     },
     HOTKEY_OPTIONS,
   );
@@ -67,8 +67,8 @@ const useKeyboardShortcuts = ({
     KEY_MAP.SPLIT_HORIZONTAL,
     () => {
       const l = layoutRef.current;
-      if (!l.layout?.focusedPaneId || !l.canSplit) return;
-      l.splitPane(l.layout.focusedPaneId, 'vertical');
+      if (!l.layout?.activePaneId || !l.canSplit) return;
+      l.splitPane(l.layout.activePaneId, 'vertical');
     },
     HOTKEY_OPTIONS,
   );
@@ -76,10 +76,10 @@ const useKeyboardShortcuts = ({
   const focusDirection = useCallback(
     (direction: TDirection) => {
       const l = layoutRef.current;
-      if (!l.layout?.focusedPaneId) return;
+      if (!l.layout?.activePaneId) return;
       const targetId = findAdjacentPaneInDirection(
         l.layout.root,
-        l.layout.focusedPaneId,
+        l.layout.activePaneId,
         direction,
       );
       if (targetId) l.focusPane(targetId);
@@ -96,8 +96,8 @@ const useKeyboardShortcuts = ({
     KEY_MAP.NEW_TAB,
     () => {
       const l = layoutRef.current;
-      if (!l.layout?.focusedPaneId) return;
-      l.createTabInPane(l.layout.focusedPaneId);
+      if (!l.layout?.activePaneId) return;
+      l.createTabInPane(l.layout.activePaneId);
     },
     HOTKEY_OPTIONS,
   );
@@ -106,7 +106,7 @@ const useKeyboardShortcuts = ({
     KEY_MAP.CLOSE_TAB,
     () => {
       const l = layoutRef.current;
-      if (!l.layout?.focusedPaneId) return;
+      if (!l.layout?.activePaneId) return;
       const pane = getFocusedPane(l.layout);
       if (!pane?.activeTabId) return;
 

@@ -203,8 +203,8 @@ export const crossCheckLayout = async (
   if (changed) {
     layout.updatedAt = new Date().toISOString();
     const finalPanes = collectPanes(layout.root);
-    if (layout.focusedPaneId && !finalPanes.some((p) => p.id === layout.focusedPaneId)) {
-      layout.focusedPaneId = finalPanes[0]?.id ?? null;
+    if (layout.activePaneId && !finalPanes.some((p) => p.id === layout.activePaneId)) {
+      layout.activePaneId = finalPanes[0]?.id ?? null;
     }
   }
 
@@ -216,7 +216,7 @@ export const createDefaultLayout = async (wsId: string, cwd: string): Promise<IL
   await createSession(tab.sessionName, 80, 24, cwd);
   return {
     root: pane,
-    focusedPaneId: pane.id,
+    activePaneId: pane.id,
     updatedAt: new Date().toISOString(),
   };
 };
@@ -225,7 +225,7 @@ export interface ILayoutValidationError {
   error: string;
 }
 
-const validateTree = (root: TLayoutNode, focusedPaneId: string | null): ILayoutValidationError | null => {
+const validateTree = (root: TLayoutNode, activePaneId: string | null): ILayoutValidationError | null => {
   const paneIds = new Set<string>();
   const tabIds = new Set<string>();
   let paneCount = 0;
@@ -256,8 +256,8 @@ const validateTree = (root: TLayoutNode, focusedPaneId: string | null): ILayoutV
   const err = walk(root);
   if (err) return { error: err };
   if (paneCount > 10) return { error: '최대 Pane 수(10개) 초과' };
-  if (focusedPaneId && !paneIds.has(focusedPaneId)) {
-    return { error: '유효하지 않은 focusedPaneId' };
+  if (activePaneId && !paneIds.has(activePaneId)) {
+    return { error: '유효하지 않은 activePaneId' };
   }
   return null;
 };
@@ -273,7 +273,7 @@ export const getLayout = async (wsId: string, defaultCwd?: string): Promise<ILay
 
     const layout: ILayoutData = {
       root: pane,
-      focusedPaneId: pane.id,
+      activePaneId: pane.id,
       updatedAt: new Date().toISOString(),
     };
     await writeLayoutFile(layout, filePath);
@@ -284,10 +284,10 @@ export const getLayout = async (wsId: string, defaultCwd?: string): Promise<ILay
 export const updateLayout = async (
   wsId: string,
   root: TLayoutNode,
-  focusedPaneId: string | null,
+  activePaneId: string | null,
 ): Promise<ILayoutData | ILayoutValidationError> =>
   withLock(async () => {
-    const validationError = validateTree(root, focusedPaneId);
+    const validationError = validateTree(root, activePaneId);
     if (validationError) return validationError;
 
     const normalized = normalizeTree(root);
@@ -306,7 +306,7 @@ export const updateLayout = async (
     }
     const layout: ILayoutData = {
       root: normalized,
-      focusedPaneId,
+      activePaneId,
       updatedAt: new Date().toISOString(),
     };
     await writeLayoutFile(layout, filePath);

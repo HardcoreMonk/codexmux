@@ -20,12 +20,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   if (req.method === 'PUT') {
-    const { root, focusedPaneId } = req.body ?? {};
+    const { root, activePaneId } = req.body ?? {};
     if (!root) {
       return res.status(400).json({ error: 'root 필드 필수' });
     }
 
-    const result = await updateLayout(wsId, root, focusedPaneId ?? null);
+    const result = await updateLayout(wsId, root, activePaneId ?? null);
     if ('error' in result) {
       return res.status(400).json(result);
     }

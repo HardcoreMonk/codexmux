@@ -91,8 +91,8 @@ const removePaneWithFocus = (data: ILayoutData, paneId: string) => {
   const adjacent = findAdjacentPaneId(data.root, paneId);
   const result = removePaneNode(data.root, paneId);
   if (result) data.root = result;
-  if (data.focusedPaneId === paneId) {
-    data.focusedPaneId = adjacent ?? collectPanes(data.root)[0]?.id ?? null;
+  if (data.activePaneId === paneId) {
+    data.activePaneId = adjacent ?? collectPanes(data.root)[0]?.id ?? null;
   }
 };
 
@@ -188,7 +188,7 @@ const saveToServer = async (data: ILayoutData, wsId: string | null) => {
     const res = await fetch(wsQuery('/api/layout', wsId), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ root: data.root, focusedPaneId: data.focusedPaneId }),
+      body: JSON.stringify({ root: data.root, activePaneId: data.activePaneId }),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
@@ -260,14 +260,14 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
             const { paneId, tab } = await res.json();
             const fallback: ILayoutData = {
               root: { type: 'pane', id: paneId, tabs: [tab], activeTabId: tab.id },
-              focusedPaneId: paneId,
+              activePaneId: paneId,
               updatedAt: new Date().toISOString(),
             };
             set({ layout: fallback, ...updateDerived(fallback, get().isSplitting) });
             fetch(wsQuery('/api/layout', targetWsId), {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ root: fallback.root, focusedPaneId: fallback.focusedPaneId }),
+              body: JSON.stringify({ root: fallback.root, activePaneId: fallback.activePaneId }),
             }).catch(() => {});
             toast.info('기본 레이아웃으로 시작합니다');
             set({ retryCount: 0 });
@@ -338,7 +338,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
           children: [{ ...existingPane }, newPane],
         };
         data.root = replacePane(data.root, paneId, splitNode);
-        data.focusedPaneId = newPaneId;
+        data.activePaneId = newPaneId;
         return data;
       });
     } catch {
@@ -374,9 +374,9 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
   },
 
   focusPane: (paneId) => {
-    set((s) => {
-      if (!s.layout || s.layout.focusedPaneId === paneId) return s;
-      return { layout: { ...s.layout, focusedPaneId: paneId } };
+    get().updateAndSave((data) => {
+      data.activePaneId = paneId;
+      return data;
     });
   },
 
@@ -419,7 +419,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
         if (result) data.root = result;
       }
 
-      data.focusedPaneId = toPaneId;
+      data.activePaneId = toPaneId;
       return data;
     });
 
@@ -583,7 +583,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
     fetch(wsQuery('/api/layout', workspaceId), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ root: layout.root, focusedPaneId: layout.focusedPaneId }),
+      body: JSON.stringify({ root: layout.root, activePaneId: layout.activePaneId }),
     }).catch(() => {});
   },
 
@@ -616,7 +616,7 @@ const useLayout = ({ workspaceId, onFetchError }: { workspaceId: string | null; 
       const { layout, workspaceId: wsId } = useLayoutStore.getState();
       if (!layout) return;
       const blob = new Blob(
-        [JSON.stringify({ root: layout.root, focusedPaneId: layout.focusedPaneId })],
+        [JSON.stringify({ root: layout.root, activePaneId: layout.activePaneId })],
         { type: 'application/json' },
       );
       navigator.sendBeacon(wsQuery('/api/layout/beacon', wsId), blob);

@@ -145,7 +145,7 @@ const migrateFromTabs = async (): Promise<IWorkspacesData | null> => {
         tabs: data.tabs,
         activeTabId: data.activeTabId ?? null,
       },
-      focusedPaneId: paneId,
+      activePaneId: paneId,
       updatedAt: new Date().toISOString(),
     };
 

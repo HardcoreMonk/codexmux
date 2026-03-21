@@ -167,7 +167,7 @@ const TerminalPage = () => {
       <div className="relative flex min-w-0 flex-1 flex-col">
         {layout.layout && !layout.isLoading && (
           <ContentHeader
-            focusedPaneId={layout.layout.focusedPaneId}
+            activePaneId={layout.layout.activePaneId}
             root={layout.layout.root}
             paneCount={layout.paneCount}
             canSplit={layout.canSplit}
@@ -206,7 +206,7 @@ const TerminalPage = () => {
             >
               <PaneLayout
               root={layout.layout.root}
-              focusedPaneId={layout.layout.focusedPaneId}
+              activePaneId={layout.layout.activePaneId}
               paneCount={layout.paneCount}
               isSplitting={layout.isSplitting}
               onSplitPane={layout.splitPane}

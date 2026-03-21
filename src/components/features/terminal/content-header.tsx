@@ -21,7 +21,7 @@ const SplitHorizontalIcon = ({ className }: { className?: string }) => (
 );
 
 interface IContentHeaderProps {
-  focusedPaneId: string | null;
+  activePaneId: string | null;
   root: TLayoutNode;
   paneCount: number;
   canSplit: boolean;
@@ -32,7 +32,7 @@ interface IContentHeaderProps {
 }
 
 const ContentHeader = ({
-  focusedPaneId,
+  activePaneId,
   root,
   paneCount,
   canSplit,
@@ -44,7 +44,7 @@ const ContentHeader = ({
   const [isToggling, setIsToggling] = useState(false);
 
   const panes = collectPanes(root);
-  const focusedPane = panes.find((p) => p.id === focusedPaneId) ?? panes[0];
+  const focusedPane = panes.find((p) => p.id === activePaneId) ?? panes[0];
   const activeTab = focusedPane?.tabs.find((t) => t.id === focusedPane.activeTabId);
   const activePanelType: TPanelType = activeTab?.panelType ?? 'terminal';
 

@@ -93,9 +93,9 @@ const MobileTerminalPage = () => {
   useEffect(() => {
     if (!layout.layout || panes.length === 0) return;
 
-    const focusedPaneId = layout.layout.focusedPaneId;
-    const focusedPane = focusedPaneId
-      ? panes.find((p) => p.id === focusedPaneId)
+    const activePaneId = layout.layout.activePaneId;
+    const focusedPane = activePaneId
+      ? panes.find((p) => p.id === activePaneId)
       : null;
     const firstPane = focusedPane ?? panes[0];
 

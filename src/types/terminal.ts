@@ -39,7 +39,7 @@ export type TLayoutNode = ISplitNode | IPaneNode;
 
 export interface ILayoutData {
   root: TLayoutNode;
-  focusedPaneId: string | null;
+  activePaneId: string | null;
   updatedAt: string;
 }
 
