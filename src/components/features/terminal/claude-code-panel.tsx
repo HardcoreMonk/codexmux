@@ -62,6 +62,7 @@ const ClaudeCodePanel = ({
   const {
     entries,
     cliState,
+    sessionId,
     sessionStatus,
     wsStatus,
     isAutoScrollEnabled,
@@ -189,6 +190,7 @@ const ClaudeCodePanel = ({
       <div className="min-h-0 flex-1">
         <TimelineView
           entries={entries}
+          sessionId={sessionId}
           sessionStatus={sessionStatus}
           wsStatus={wsStatus}
           isLoading={isTimelineLoading}

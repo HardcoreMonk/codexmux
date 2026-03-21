@@ -43,6 +43,7 @@ interface IUseTimelineOptions {
 interface IUseTimelineReturn {
   entries: ITimelineEntry[];
   cliState: TCliState;
+  sessionId: string | null;
   sessionStatus: TSessionStatus;
   wsStatus: TTimelineConnectionStatus;
   isAutoScrollEnabled: boolean;
@@ -68,6 +69,7 @@ const useTimeline = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const entriesRef = useRef(entries);
   useEffect(() => {
@@ -87,6 +89,7 @@ const useTimeline = ({
       if (!res.ok) throw new Error('세션 정보를 불러올 수 없습니다');
       const info: ISessionInfo = await res.json();
       setSessionStatus(info.status);
+      setSessionId(info.sessionId);
       jsonlPathRef.current = info.jsonlPath;
       if (info.status !== 'active') {
         setIsLoading(false);
@@ -129,12 +132,13 @@ const useTimeline = ({
     });
   }, []);
 
-  const handleSessionChanged = useCallback((_newSessionId: string, reason: string) => {
+  const handleSessionChanged = useCallback((newSessionId: string, reason: string) => {
     if (reason === 'session-ended') {
       setSessionStatus('none');
       setIsLoading(false);
       return;
     }
+    setSessionId(newSessionId || null);
     setSessionStatus('active');
     setEntries([]);
     setHasMore(false);
@@ -229,6 +233,7 @@ const useTimeline = ({
   return {
     entries,
     cliState,
+    sessionId,
     sessionStatus,
     wsStatus,
     isAutoScrollEnabled,

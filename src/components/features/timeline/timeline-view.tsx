@@ -16,6 +16,7 @@ import ScrollToBottomButton from '@/components/features/timeline/scroll-to-botto
 
 interface ITimelineViewProps {
   entries: ITimelineEntry[];
+  sessionId: string | null;
   sessionStatus: TSessionStatus;
   wsStatus: TTimelineConnectionStatus;
   isLoading: boolean;
@@ -80,8 +81,15 @@ const TimelineEntryRenderer = ({ entry }: { entry: ITimelineEntry }) => {
   }
 };
 
-const SkeletonLoader = () => (
+const SkeletonLoader = ({ sessionId }: { sessionId?: string | null }) => (
   <div className="flex flex-col gap-4 p-4">
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <Loader2 size={12} className="animate-spin" />
+      <span>타임라인을 불러오는 중...</span>
+    </div>
+    {sessionId && (
+      <p className="text-xs text-muted-foreground/60">({sessionId})</p>
+    )}
     {[48, 36, 40].map((w, i) => (
       <div key={i} className="flex flex-col gap-2">
         <div className="h-4 animate-pulse rounded bg-ui-purple/20" style={{ width: `${w}%` }} />
@@ -137,8 +145,8 @@ const EmptyState = ({ sessionStatus }: { sessionStatus: TSessionStatus }) => {
   if (sessionStatus === 'active') {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
-        <Loader2 size={24} className="animate-spin opacity-40" />
-        <p className="text-xs">타임라인을 불러오는 중...</p>
+        <Terminal size={32} className="opacity-40" />
+        <p className="text-xs">메시지를 입력하면 타임라인이 표시됩니다</p>
       </div>
     );
   }
@@ -158,6 +166,7 @@ const EmptyState = ({ sessionStatus }: { sessionStatus: TSessionStatus }) => {
 
 const TimelineView = ({
   entries,
+  sessionId,
   sessionStatus,
   wsStatus,
   isLoading,
@@ -254,7 +263,7 @@ const TimelineView = ({
   }, [hasMore, onLoadMore]);
 
   if (isLoading) {
-    return <SkeletonLoader />;
+    return <SkeletonLoader sessionId={sessionId} />;
   }
 
   if (error) {

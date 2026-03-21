@@ -35,13 +35,6 @@ const MetaBarCompact = ({
   userCount: number;
   totalTokens: number;
 }) => {
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => setTick((t) => t + 1), RELATIVE_TIME_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, []);
-
   const relativeTime = updatedAt ? dayjs(updatedAt).fromNow() : '-';
   const truncatedTitle = title.length > 30 ? `${title.slice(0, 30)}…` : title;
 
@@ -101,13 +94,6 @@ const MetaBarDetail = ({
   branch: string | null;
   isBranchLoading: boolean;
 }) => {
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => setTick((t) => t + 1), RELATIVE_TIME_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, []);
-
   const createdRelative = createdAt ? dayjs(createdAt).fromNow() : '';
   const updatedRelative = updatedAt ? dayjs(updatedAt).fromNow() : '';
 
@@ -183,6 +169,12 @@ const SessionMetaBar = ({ entries, sessionName }: ISessionMetaBarProps) => {
   const { meta, isExpanded, toggleExpanded, collapse } = useSessionMeta(entries);
   const { branch, isLoading: isBranchLoading } = useGitBranch(sessionName);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTick((t) => t + 1), RELATIVE_TIME_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!isExpanded) return;
@@ -211,7 +203,7 @@ const SessionMetaBar = ({ entries, sessionName }: ISessionMetaBarProps) => {
     <div
       ref={containerRef}
       className={cn(
-        'shrink-0 border-b transition-all duration-150 ease-out',
+        'shrink-0 border-b transition-colors duration-150 ease-out',
         isExpanded ? 'bg-muted/30' : 'cursor-pointer hover:bg-muted/30',
       )}
       role="button"
@@ -224,35 +216,50 @@ const SessionMetaBar = ({ entries, sessionName }: ISessionMetaBarProps) => {
         }
       }}
     >
-      {isExpanded ? (
-        <div className="px-4 py-3">
-          <div className="flex items-start justify-between">
-            <MetaBarDetail
+      <div
+        className={cn(
+          'grid transition-[grid-template-rows] duration-150 ease-out',
+          isExpanded ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]',
+        )}
+      >
+        <div className="overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-1.5">
+            <MetaBarCompact
               title={meta.title}
-              createdAt={meta.createdAt}
               updatedAt={meta.updatedAt}
               userCount={meta.userCount}
-              assistantCount={meta.assistantCount}
-              inputTokens={meta.inputTokens}
-              outputTokens={meta.outputTokens}
               totalTokens={meta.totalTokens}
-              branch={branch}
-              isBranchLoading={isBranchLoading}
             />
-            <ChevronUp size={14} className="mt-0.5 shrink-0 text-muted-foreground" />
+            <ChevronDown size={14} className="shrink-0 text-muted-foreground" />
           </div>
         </div>
-      ) : (
-        <div className="flex items-center justify-between px-4 py-1.5">
-          <MetaBarCompact
-            title={meta.title}
-            updatedAt={meta.updatedAt}
-            userCount={meta.userCount}
-            totalTokens={meta.totalTokens}
-          />
-          <ChevronDown size={14} className="shrink-0 text-muted-foreground" />
+      </div>
+      <div
+        className={cn(
+          'grid transition-[grid-template-rows] duration-150 ease-out',
+          isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+        )}
+      >
+        <div className="overflow-hidden">
+          <div className="px-4 py-3">
+            <div className="flex items-start justify-between">
+              <MetaBarDetail
+                title={meta.title}
+                createdAt={meta.createdAt}
+                updatedAt={meta.updatedAt}
+                userCount={meta.userCount}
+                assistantCount={meta.assistantCount}
+                inputTokens={meta.inputTokens}
+                outputTokens={meta.outputTokens}
+                totalTokens={meta.totalTokens}
+                branch={branch}
+                isBranchLoading={isBranchLoading}
+              />
+              <ChevronUp size={14} className="mt-0.5 shrink-0 text-muted-foreground" />
+            </div>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
