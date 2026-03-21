@@ -126,7 +126,7 @@ const WorkspaceItem = ({
               {workspace.name}
             </span>
             {displayDirs.map((dir, i) => (
-              <span key={dir} className={cn('truncate text-[10px] leading-tight text-muted-foreground/70', i === 0 && 'mt-1')}>
+              <span key={dir} className={cn('truncate text-xs leading-tight text-muted-foreground/70', i === 0 && 'mt-1')}>
                 {dir}
               </span>
             ))}

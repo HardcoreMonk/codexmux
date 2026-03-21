@@ -11,7 +11,6 @@ interface ISessionListViewProps {
   isLoadingMore: boolean;
   hasMore: boolean;
   error: string | null;
-  highlightedSessionId: string | null;
   resumingSessionId: string | null;
   onSelectSession: (sessionId: string) => void;
   onRefresh: () => Promise<void>;
@@ -58,7 +57,6 @@ const SessionListView = ({
   isLoadingMore,
   hasMore,
   error,
-  highlightedSessionId,
   resumingSessionId,
   onSelectSession,
   onRefresh,
@@ -148,7 +146,6 @@ const SessionListView = ({
               <SessionListItem
                 key={session.sessionId}
                 session={session}
-                isHighlighted={session.sessionId === highlightedSessionId}
                 isResuming={session.sessionId === resumingSessionId}
                 isDisabled={isResumeInProgress}
                 onSelect={onSelectSession}

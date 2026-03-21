@@ -6,7 +6,6 @@ import type { ISessionMeta } from '@/types/timeline';
 
 interface ISessionListItemProps {
   session: ISessionMeta;
-  isHighlighted: boolean;
   isResuming: boolean;
   isDisabled: boolean;
   onSelect: (sessionId: string) => void;
@@ -50,7 +49,6 @@ const formatRelativeTime = (dateStr: string): string => {
 
 const SessionListItem = ({
   session,
-  isHighlighted,
   isResuming,
   isDisabled,
   onSelect,
@@ -64,8 +62,7 @@ const SessionListItem = ({
     <button
       type="button"
       className={cn(
-        'w-full cursor-pointer border-b border-border/50 py-3 pl-1 pr-4 text-left transition-colors',
-        isHighlighted ? 'bg-ui-purple/5' : 'hover:bg-ui-purple/5',
+        'w-full cursor-pointer border-b border-border/50 py-3 pl-1 pr-4 text-left transition-colors hover:bg-ui-purple/5',
         isDisabled && !isResuming && 'pointer-events-none opacity-50',
         isResuming && 'bg-ui-purple/5',
       )}
@@ -81,16 +78,10 @@ const SessionListItem = ({
               size={14}
               className="shrink-0 animate-spin text-ui-purple"
             />
-          ) : isHighlighted ? (
-            <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-ui-purple" />
           ) : (
             <span className="inline-block h-1.5 w-1.5 shrink-0" />
           )}
-          <span
-            className={cn(
-              isHighlighted ? 'text-ui-purple' : 'text-muted-foreground',
-            )}
-          >
+          <span className="text-muted-foreground">
             {absoluteTime}
           </span>
         </div>

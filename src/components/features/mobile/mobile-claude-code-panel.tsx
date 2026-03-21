@@ -175,7 +175,6 @@ const MobileClaudeCodePanel = ({
           isLoadingMore={isSessionListLoadingMore}
           hasMore={sessionListHasMore}
           error={sessionListError}
-          highlightedSessionId={claudeSessionId ?? null}
           resumingSessionId={resumingSessionId}
           onSelectSession={handleSelectSession}
           onRefresh={refetchSessions}
