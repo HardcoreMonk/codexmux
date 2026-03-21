@@ -169,6 +169,13 @@ export const buildOverview = (cache: IStatsCache, period: TPeriod): IOverviewRes
     };
   });
 
+  const today = dayjs().format('YYYY-MM-DD');
+  const startOfMonth = dayjs().startOf('month').format('YYYY-MM-DD');
+  const todayMessages = cache.dailyActivity.find((d) => d.date === today)?.messageCount ?? 0;
+  const thisMonthMessages = cache.dailyActivity
+    .filter((d) => d.date >= startOfMonth)
+    .reduce((sum, d) => sum + d.messageCount, 0);
+
   return {
     totalSessions,
     totalMessages,
@@ -178,9 +185,12 @@ export const buildOverview = (cache: IStatsCache, period: TPeriod): IOverviewRes
     dailyActivity: filteredDaily,
     modelTokens,
     dailyTokens,
+    todayMessages,
+    thisMonthMessages,
     hourlyDistribution: cache.hourCounts,
     firstSessionDate: cache.firstSessionDate,
     lastComputedDate: cache.lastComputedDate,
+    computedAt: new Date().toISOString(),
   };
 };
 

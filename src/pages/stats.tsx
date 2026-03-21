@@ -85,15 +85,25 @@ const StatsPage = () => {
             )}
 
             <div className="space-y-8">
-              <SectionErrorBoundary sectionName="개요">
-                {overviewLoading ? (
-                  <SectionSkeleton cardCount={4} hasChart />
-                ) : overviewError ? (
-                  <SectionError onRetry={refetch} />
-                ) : overview ? (
-                  <OverviewSection data={overview} />
-                ) : null}
-              </SectionErrorBoundary>
+              <section className="space-y-3">
+                <div className="flex items-baseline gap-2">
+                  <h2 className="text-sm font-medium text-muted-foreground">개요</h2>
+                  {overview?.computedAt && (
+                    <span className="text-xs text-muted-foreground/60">
+                      {new Date(overview.computedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })} 기준
+                    </span>
+                  )}
+                </div>
+                <SectionErrorBoundary sectionName="개요">
+                  {overviewLoading ? (
+                    <SectionSkeleton cardCount={4} hasChart />
+                  ) : overviewError ? (
+                    <SectionError onRetry={refetch} />
+                  ) : overview ? (
+                    <OverviewSection data={overview} />
+                  ) : null}
+                </SectionErrorBoundary>
+              </section>
 
               <SectionErrorBoundary sectionName="토큰">
                 {overviewLoading ? (

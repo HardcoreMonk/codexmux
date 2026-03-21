@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { ChartConfig } from '@/components/ui/chart';
 import type { IOverviewResponse } from '@/types/stats';
-import { formatNumber, formatDate, getChangeRate } from '@/components/features/stats/stats-utils';
+import { formatNumber, formatDate, formatAxisTick, getChangeRate } from '@/components/features/stats/stats-utils';
 
 interface IOverviewSectionProps {
   data: IOverviewResponse;
@@ -18,19 +18,6 @@ const chartConfig: ChartConfig = {
 };
 
 const OverviewSection = ({ data }: IOverviewSectionProps) => {
-  const todayActivity = useMemo(() => {
-    const today = dayjs().format('YYYY-MM-DD');
-    const entry = data.dailyActivity.find((d) => d.date === today);
-    return entry?.messageCount ?? 0;
-  }, [data.dailyActivity]);
-
-  const thisMonthActivity = useMemo(() => {
-    const startOfMonth = dayjs().startOf('month');
-    return data.dailyActivity
-      .filter((d) => dayjs(d.date).isAfter(startOfMonth) || dayjs(d.date).isSame(startOfMonth))
-      .reduce((sum, d) => sum + d.messageCount, 0);
-  }, [data.dailyActivity]);
-
   const chartData = useMemo(() => {
     return data.dailyActivity
       .slice(-30)
@@ -47,14 +34,12 @@ const OverviewSection = ({ data }: IOverviewSectionProps) => {
   const cards = [
     { label: '총 세션 수', value: formatNumber(data.totalSessions), icon: Activity, change: sessionChange },
     { label: '총 메시지 수', value: formatNumber(data.totalMessages), icon: MessageSquare, change: messageChange },
-    { label: '오늘 사용량', value: formatNumber(todayActivity), icon: CalendarDays, change: null },
-    { label: '이번 달 사용량', value: formatNumber(thisMonthActivity), icon: TrendingUp, change: null },
+    { label: '오늘 사용량', value: formatNumber(data.todayMessages), icon: CalendarDays, change: null },
+    { label: '이번 달 사용량', value: formatNumber(data.thisMonthMessages), icon: TrendingUp, change: null },
   ];
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-medium text-muted-foreground">개요</h2>
-
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {cards.map((card) => (
           <Card key={card.label} size="sm">
@@ -103,7 +88,8 @@ const OverviewSection = ({ data }: IOverviewSectionProps) => {
                   tickLine={false}
                   axisLine={false}
                   tick={{ fontSize: 11 }}
-                  width={32}
+                  tickFormatter={formatAxisTick}
+                  width={48}
                 />
                 <ChartTooltip
                   content={<ChartTooltipContent />}

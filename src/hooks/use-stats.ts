@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useReducer } from 'react';
+import { useRouter } from 'next/router';
 import type { TPeriod, IOverviewResponse, IProjectsResponse, ISessionsResponse, IFacetsResponse, IHistoryResponse } from '@/types/stats';
 
 interface IStatsState {
@@ -102,11 +103,30 @@ const fetchJson = async <T>(url: string, signal: AbortSignal): Promise<T> => {
   return res.json() as Promise<T>;
 };
 
+const VALID_PERIODS: TPeriod[] = ['today', '7d', '30d', 'all'];
+const DEFAULT_PERIOD: TPeriod = '7d';
+
+const parsePeriodParam = (value: unknown): TPeriod => {
+  if (typeof value === 'string' && VALID_PERIODS.includes(value as TPeriod)) return value as TPeriod;
+  return DEFAULT_PERIOD;
+};
+
 const useStats = (): IUseStatsReturn => {
-  const [period, setPeriod] = useState<TPeriod>('7d');
+  const router = useRouter();
+  const [period, setPeriodState] = useState<TPeriod>(() => parsePeriodParam(router.query.period));
   const [state, dispatch] = useReducer(reducer, initialState);
   const [fetchKey, setFetchKey] = useState(0);
   const [initializing, setInitializing] = useState(false);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    setPeriodState(parsePeriodParam(router.query.period));
+  }, [router.isReady, router.query.period]);
+
+  const setPeriod = useCallback((p: TPeriod) => {
+    setPeriodState(p);
+    router.replace({ pathname: router.pathname, query: { period: p } }, undefined, { shallow: true });
+  }, [router]);
 
   useEffect(() => {
     const controller = new AbortController();

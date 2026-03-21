@@ -173,12 +173,29 @@ const MobileTerminalPage = () => {
   );
   const surfaceName = currentTab?.name || tabMetadata?.title || `Tab ${(currentTab?.order ?? 0) + 1}`;
 
+  const navigationSheet = (
+    <MobileNavigationSheet
+      open={menuOpen}
+      onOpenChange={setMenuOpen}
+      workspaces={workspaces}
+      activeWorkspaceId={activeWorkspaceId}
+      panes={panes}
+      activePaneId={selectedPaneId}
+      activeTabId={selectedTabId}
+      onSelectWorkspace={handleSelectWorkspace}
+      onSelectSurface={handleSelectSurface}
+      onCreateTab={layout.createTabInPane}
+      onDeleteTab={layout.deleteTabInPane}
+    />
+  );
+
   // Loading state
   if (isLoading) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center bg-terminal-bg">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         <span className="mt-3 text-sm text-muted-foreground">연결 중...</span>
+        {navigationSheet}
       </div>
     );
   }
@@ -198,6 +215,7 @@ const MobileTerminalPage = () => {
           <RefreshCw className="h-3.5 w-3.5" />
           재시도
         </Button>
+        {navigationSheet}
       </div>
     );
   }
@@ -211,6 +229,7 @@ const MobileTerminalPage = () => {
         <span className="text-sm text-muted-foreground">
           데스크톱에서 Workspace를 생성하세요
         </span>
+        {navigationSheet}
       </div>
     );
   }
@@ -220,6 +239,7 @@ const MobileTerminalPage = () => {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center bg-terminal-bg">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        {navigationSheet}
       </div>
     );
   }
@@ -239,6 +259,7 @@ const MobileTerminalPage = () => {
           <RefreshCw className="h-3.5 w-3.5" />
           재시도
         </Button>
+        {navigationSheet}
       </div>
     );
   }
@@ -279,19 +300,7 @@ const MobileTerminalPage = () => {
 
       <div style={{ height: 'env(safe-area-inset-bottom)' }} className="shrink-0 bg-background" />
 
-      <MobileNavigationSheet
-        open={menuOpen}
-        onOpenChange={setMenuOpen}
-        workspaces={workspaces}
-        activeWorkspaceId={activeWorkspaceId}
-        panes={panes}
-        activePaneId={selectedPaneId}
-        activeTabId={selectedTabId}
-        onSelectWorkspace={handleSelectWorkspace}
-        onSelectSurface={handleSelectSurface}
-        onCreateTab={layout.createTabInPane}
-        onDeleteTab={layout.deleteTabInPane}
-      />
+      {navigationSheet}
     </div>
   );
 };

@@ -58,8 +58,11 @@ export interface IOverviewResponse {
   modelTokens: Record<string, { input: number; output: number; cache: number; cost: number }>;
   dailyTokens: { date: string; input: number; output: number }[];
   hourlyDistribution: Record<string, number>;
+  todayMessages: number;
+  thisMonthMessages: number;
   firstSessionDate: string;
   lastComputedDate: string;
+  computedAt: string;
 }
 
 export interface IProjectStats {

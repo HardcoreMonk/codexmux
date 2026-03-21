@@ -236,6 +236,11 @@ const writeCache = async (cache: IPtCache): Promise<void> => {
   await fs.writeFile(CACHE_PATH, JSON.stringify(cache), 'utf-8');
 };
 
+// --- In-memory cache for hot path ---
+
+const MEMORY_TTL = 300_000;
+let memoryCache: { data: IStatsCache; expiresAt: number } | null = null;
+
 // --- Main: build or update cache, return IStatsCache ---
 
 const findFirstDate = async (): Promise<string | null> => {
@@ -292,6 +297,10 @@ const computeMissingDays = async (targetDates: Set<string>): Promise<Map<string,
 };
 
 export const getStatsCache = async (): Promise<IStatsCache> => {
+  if (memoryCache && Date.now() < memoryCache.expiresAt) {
+    return memoryCache.data;
+  }
+
   const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
   const today = dayjs().format('YYYY-MM-DD');
 
@@ -337,7 +346,10 @@ export const getStatsCache = async (): Promise<IStatsCache> => {
   await writeCache(cache);
 
   const todayData = newDays.get(today) ?? null;
-  return buildStatsCacheFromPt(cache, today, todayData);
+  const result = buildStatsCacheFromPt(cache, today, todayData);
+
+  memoryCache = { data: result, expiresAt: Date.now() + MEMORY_TTL };
+  return result;
 };
 
 const buildStatsCacheFromPt = (
