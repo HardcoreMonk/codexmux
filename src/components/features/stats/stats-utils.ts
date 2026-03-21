@@ -6,6 +6,10 @@ export const formatNumber = (n: number): string => {
   return n.toLocaleString();
 };
 
+export const formatNumberWithComma = (n: number): string => n.toLocaleString();
+
+export const formatAxisTick = (value: number): string => formatNumber(value);
+
 export const formatDuration = (ms: number): string => {
   const minutes = Math.floor(ms / 60_000);
   if (minutes < 60) return `${minutes}분`;

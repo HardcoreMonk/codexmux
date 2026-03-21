@@ -34,8 +34,8 @@ const OverviewSection = ({ data }: IOverviewSectionProps) => {
   const cards = [
     { label: '총 세션 수', value: formatNumber(data.totalSessions), icon: Activity, change: sessionChange },
     { label: '총 메시지 수', value: formatNumber(data.totalMessages), icon: MessageSquare, change: messageChange },
-    { label: '오늘 사용량', value: formatNumber(data.todayMessages), icon: CalendarDays, change: null },
-    { label: '이번 달 사용량', value: formatNumber(data.thisMonthMessages), icon: TrendingUp, change: null },
+    { label: '오늘 메시지 수', value: formatNumber(data.todayMessages), icon: CalendarDays, change: null },
+    { label: '이번 달 메시지 수', value: formatNumber(data.thisMonthMessages), icon: TrendingUp, change: null },
   ];
 
   return (

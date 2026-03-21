@@ -16,27 +16,39 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { ChartConfig } from '@/components/ui/chart';
 import type { IOverviewResponse } from '@/types/stats';
-import { formatNumber, formatDate } from '@/components/features/stats/stats-utils';
+import { formatNumber, formatDate, formatAxisTick } from '@/components/features/stats/stats-utils';
 
 interface ITokenSectionProps {
   data: IOverviewResponse;
 }
 
-const MODEL_COLORS: Record<string, string> = {
-  opus: 'var(--ui-purple)',
-  sonnet: 'var(--ui-blue)',
-  haiku: 'var(--ui-teal)',
+const MODEL_COLOR_MAP: Record<string, string> = {
+  'claude-opus-4-6': 'var(--ui-purple)',
+  'claude-opus-4-5-20251101': 'var(--ui-pink)',
+  'claude-sonnet-4-6': 'var(--ui-coral)',
+  'claude-sonnet-4-5-20241022': 'var(--ui-amber)',
+  'claude-haiku-4-5-20251001': 'var(--ui-teal)',
 };
 
 const getModelColor = (model: string): string => {
+  if (MODEL_COLOR_MAP[model]) return MODEL_COLOR_MAP[model];
   const lower = model.toLowerCase();
-  if (lower.includes('opus')) return MODEL_COLORS.opus;
-  if (lower.includes('sonnet')) return MODEL_COLORS.sonnet;
-  if (lower.includes('haiku')) return MODEL_COLORS.haiku;
+  if (lower.includes('opus')) return 'var(--ui-purple)';
+  if (lower.includes('sonnet')) return 'var(--ui-coral)';
+  if (lower.includes('haiku')) return 'var(--ui-teal)';
   return 'var(--ui-gray)';
 };
 
+const MODEL_LABEL_MAP: Record<string, string> = {
+  'claude-opus-4-6': 'Opus 4.6',
+  'claude-opus-4-5-20251101': 'Opus 4.5',
+  'claude-sonnet-4-6': 'Sonnet 4.6',
+  'claude-sonnet-4-5-20241022': 'Sonnet 4.5',
+  'claude-haiku-4-5-20251001': 'Haiku 4.5',
+};
+
 const getModelLabel = (model: string): string => {
+  if (MODEL_LABEL_MAP[model]) return MODEL_LABEL_MAP[model];
   const lower = model.toLowerCase();
   if (lower.includes('opus')) return 'Opus';
   if (lower.includes('sonnet')) return 'Sonnet';
@@ -111,14 +123,16 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
                 >
                   <CartesianGrid horizontal={false} strokeDasharray="3 3" />
                   <XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} tickFormatter={(v: number) => formatNumber(v)} />
-                  <YAxis type="category" dataKey="model" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={52} />
+                  <YAxis type="category" dataKey="model" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={100} />
                   <ChartTooltip
                     content={<ChartTooltipContent />}
                     formatter={(value: number) => formatNumber(value)}
                   />
-                  <Bar dataKey="input" stackId="a" fill="var(--ui-blue)" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="cache" stackId="a" fill="var(--ui-amber)" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="output" stackId="a" fill="var(--ui-teal)" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="total" radius={[0, 4, 4, 0]}>
+                    {modelBarData.map((entry) => (
+                      <Cell key={entry.model} fill={entry.color} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ChartContainer>
             </CardContent>
@@ -134,7 +148,7 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
               <ChartContainer config={donutConfig} className="aspect-auto h-48 w-full">
                 <PieChart>
                   <ChartTooltip
-                    content={<ChartTooltipContent hideLabel />}
+                    content={<ChartTooltipContent />}
                     formatter={(value: number) => formatNumber(value)}
                   />
                   <Pie
@@ -206,8 +220,8 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
                   tickLine={false}
                   axisLine={false}
                   tick={{ fontSize: 11 }}
-                  width={40}
-                  tickFormatter={(v: number) => formatNumber(v)}
+                  width={48}
+                  tickFormatter={formatAxisTick}
                 />
                 <ChartTooltip
                   content={<ChartTooltipContent />}

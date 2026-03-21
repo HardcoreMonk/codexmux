@@ -6,7 +6,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import type { ChartConfig } from '@/components/ui/chart';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { IOverviewResponse } from '@/types/stats';
-import { WEEKDAY_LABELS, formatDate, formatNumber } from '@/components/features/stats/stats-utils';
+import { WEEKDAY_LABELS, formatDate, formatNumber, formatAxisTick } from '@/components/features/stats/stats-utils';
 
 interface IActivitySectionProps {
   data: IOverviewResponse;
@@ -181,7 +181,7 @@ const ActivitySection = ({ data }: IActivitySectionProps) => {
                     tick={{ fontSize: 11 }}
                     interval="preserveStartEnd"
                   />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={32} />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} tickFormatter={formatAxisTick} width={48} />
                   <ChartTooltip
                     content={<ChartTooltipContent />}
                     labelFormatter={(v) => dayjs(v).format('YYYY-MM-DD')}
@@ -204,7 +204,7 @@ const ActivitySection = ({ data }: IActivitySectionProps) => {
               <BarChart data={weekdayData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                 <CartesianGrid vertical={false} strokeDasharray="3 3" />
                 <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={32} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} tickFormatter={formatAxisTick} width={48} />
                 <ChartTooltip
                   content={<ChartTooltipContent />}
                   formatter={(value: number) => formatNumber(value)}

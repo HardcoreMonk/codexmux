@@ -95,6 +95,7 @@ interface IUseStatsReturn extends IStatsState {
   setPeriod: (p: TPeriod) => void;
   refetch: () => void;
   initializing: boolean;
+  fileCount: number;
 }
 
 const fetchJson = async <T>(url: string, signal: AbortSignal): Promise<T> => {
@@ -117,6 +118,7 @@ const useStats = (): IUseStatsReturn => {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [fetchKey, setFetchKey] = useState(0);
   const [initializing, setInitializing] = useState(false);
+  const [fileCount, setFileCount] = useState(0);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -136,8 +138,8 @@ const useStats = (): IUseStatsReturn => {
     dispatch({ type: 'FETCH_START' });
 
     fetch('/api/stats/cache-status', { signal })
-      .then((r) => r.json() as Promise<{ exists: boolean }>)
-      .then((d) => { if (!signal.aborted) setInitializing(!d.exists); })
+      .then((r) => r.json() as Promise<{ exists: boolean; fileCount: number }>)
+      .then((d) => { if (!signal.aborted) { setInitializing(!d.exists); setFileCount(d.fileCount); } })
       .catch(() => {});
 
     fetchJson<IOverviewResponse>(`/api/stats/overview${q}`, signal)
@@ -173,6 +175,7 @@ const useStats = (): IUseStatsReturn => {
     ...state,
     refetch,
     initializing,
+    fileCount,
   };
 };
 

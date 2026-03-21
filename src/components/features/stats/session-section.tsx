@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { ChartConfig } from '@/components/ui/chart';
 import type { ISessionsResponse, IFacetsResponse, IHistoryResponse } from '@/types/stats';
-import { formatNumber, formatDuration } from '@/components/features/stats/stats-utils';
+import { formatNumber, formatDuration, formatAxisTick } from '@/components/features/stats/stats-utils';
 import SectionSkeleton from '@/components/features/stats/section-skeleton';
 
 interface ISessionSectionProps {
@@ -276,7 +276,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
                     <BarChart data={inputDistData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                       <CartesianGrid vertical={false} strokeDasharray="3 3" />
                       <XAxis dataKey="bucket" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
-                      <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={32} />
+                      <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} tickFormatter={formatAxisTick} width={48} />
                       <ChartTooltip
                         content={<ChartTooltipContent />}
                         formatter={(value: number) => formatNumber(value)}

@@ -174,16 +174,16 @@ const MobileNavigationSheet = ({
   const renderAddTabButton = (paneId: string, indent: string) => (
     <button
       className={cn(
-        'flex w-full items-center gap-1.5 py-1.5 pr-4 text-left text-xs text-muted-foreground/70 transition-colors hover:text-muted-foreground',
+        'flex h-11 w-full items-center gap-1.5 pr-4 text-left text-xs text-muted-foreground/70 transition-colors hover:text-muted-foreground',
         indent,
       )}
       onClick={() => handleCreateTab(paneId)}
       disabled={!!creatingPaneId}
     >
       {creatingPaneId === paneId ? (
-        <Loader2 size={12} className="animate-spin" />
+        <Loader2 size={16} className="animate-spin" />
       ) : (
-        <Plus size={12} />
+        <Plus size={16} />
       )}
       새 탭
     </button>
@@ -225,9 +225,9 @@ const MobileNavigationSheet = ({
                 aria-label="새 탭 추가"
               >
                 {creatingPaneId === pane.id ? (
-                  <Loader2 size={14} className="animate-spin" />
+                  <Loader2 size={16} className="animate-spin" />
                 ) : (
-                  <Plus size={14} />
+                  <Plus size={16} />
                 )}
               </button>
             </div>
@@ -243,8 +243,15 @@ const MobileNavigationSheet = ({
 
   return (
     <Sheet open={open} onOpenChange={handleSheetOpenChange}>
-      <SheetContent side="left" className="w-72 gap-0 p-0">
-        <SheetHeader className="border-b px-4 py-3">
+      <SheetContent side="left" className="w-72 gap-0 p-0" showCloseButton={false}>
+        <SheetHeader className="relative flex-row items-center justify-center border-b px-4 py-3">
+          <button
+            className="absolute left-2 flex h-11 w-11 items-center justify-center text-muted-foreground"
+            onClick={() => onOpenChange(false)}
+            aria-label="메뉴 닫기"
+          >
+            <X size={20} />
+          </button>
           <SheetTitle className="text-sm font-medium">Workspaces</SheetTitle>
         </SheetHeader>
 

@@ -44,6 +44,7 @@ const StatsPage = () => {
     sessionsError,
     refetch,
     initializing,
+    fileCount,
   } = useStats();
 
   return (
@@ -74,12 +75,16 @@ const StatsPage = () => {
               </div>
             </div>
 
-            {initializing && (
+            {overviewLoading && fileCount > 0 && (
               <div className="mb-6 flex items-center gap-3 rounded-xl bg-card px-5 py-4 ring-1 ring-foreground/10">
                 <Loader2 className="h-4 w-4 animate-spin text-ui-purple" />
                 <div>
-                  <p className="text-sm font-medium">초기 데이터를 수집하고 있습니다</p>
-                  <p className="text-xs text-muted-foreground">세션 기록을 분석 중입니다. 잠시만 기다려주세요...</p>
+                  <p className="text-sm font-medium">
+                    {initializing ? '초기 데이터를 수집하고 있습니다' : '오늘 데이터를 수집하고 있습니다'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    총 {fileCount.toLocaleString()}건의 세션 데이터를 분석하고 있습니다
+                  </p>
                 </div>
               </div>
             )}
