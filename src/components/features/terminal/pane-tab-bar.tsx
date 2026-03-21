@@ -330,7 +330,7 @@ const PaneTabBar = ({
           const isDropRight = dropTarget?.id === tab.id && dropTarget.side === 'right';
           const dynamicTitle = tabTitles?.[tab.id];
           const displayName = isAutoTabName(tab.name)
-            ? (dynamicTitle || '')
+            ? (dynamicTitle || tab.name)
             : tab.name;
 
           return (

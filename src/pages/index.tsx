@@ -43,7 +43,7 @@ const Index = ({ initialWorkspace }: IIndexProps) => {
           <title>Purple Terminal</title>
           <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         </Head>
-        <div style={{ backgroundColor: '#18181b' }} className="flex h-screen w-screen flex-col">
+        <div style={{ backgroundColor: '#18181b' }} className="flex h-dvh w-full flex-col overflow-hidden">
           <MobileTerminalPage />
         </div>
       </>

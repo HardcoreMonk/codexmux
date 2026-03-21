@@ -220,6 +220,11 @@ body {
   [role="button"]:not([disabled]) {
     cursor: pointer;
   }
+
+  /* iOS Safari auto-zoom 방지: 16px 미만 input 포커스 시 페이지 확대 */
+  .xterm-helper-textarea {
+    font-size: 16px !important;
+  }
 }
 
 @keyframes shimmer {

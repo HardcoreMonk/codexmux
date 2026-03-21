@@ -175,6 +175,7 @@ interface ILayoutState {
 let _abortController: AbortController | null = null;
 let _pendingSave: Promise<void> | null = null;
 let _onFetchError: (() => void) | null = null;
+let _dirty = false;
 
 const wsQuery = (base: string, wsId: string | null): string => {
   if (!wsId) return base;
@@ -192,6 +193,8 @@ const saveToServer = async (data: ILayoutData, wsId: string | null) => {
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       console.error('[layout] 저장 실패:', res.status, body);
+    } else {
+      _dirty = false;
     }
   } catch (err) {
     console.error('[layout] 저장 중 네트워크 오류:', err);
@@ -277,6 +280,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
     const next = updater(cloneLayout(prev));
     next.updatedAt = new Date().toISOString();
     set({ layout: next, ...updateDerived(next, get().isSplitting) });
+    _dirty = true;
     const promise = saveToServer(next, get().workspaceId);
     _pendingSave = promise;
     promise.finally(() => {
@@ -598,6 +602,7 @@ const useLayout = ({ workspaceId, onFetchError }: { workspaceId: string | null; 
 
   useEffect(() => {
     const handleBeforeUnload = () => {
+      if (!_dirty) return;
       const { layout, workspaceId: wsId } = useLayoutStore.getState();
       if (!layout) return;
       const blob = new Blob(

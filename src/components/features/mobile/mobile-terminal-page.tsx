@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Loader2, AlertTriangle, RefreshCw, Monitor } from 'lucide-react';
+import { Loader2, AlertTriangle, RefreshCw, Monitor, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import useLayout, { collectPanes } from '@/hooks/use-layout';
@@ -237,9 +237,18 @@ const MobileTerminalPage = () => {
       <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-terminal-bg px-6 text-center">
         <Monitor className="h-8 w-8 text-muted-foreground" />
         <span className="text-sm font-medium text-muted-foreground">Workspace 없음</span>
-        <span className="text-sm text-muted-foreground">
-          데스크톱에서 Workspace를 생성하세요
-        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={async () => {
+            const created = await useWorkspaceStore.getState().createWorkspace('');
+            if (created) useWorkspaceStore.getState().switchWorkspace(created.id);
+          }}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          새 Workspace 만들기
+        </Button>
         {navigationSheet}
       </div>
     );
@@ -276,7 +285,7 @@ const MobileTerminalPage = () => {
   }
 
   return (
-    <div className="flex h-full w-full flex-col bg-terminal-bg">
+    <div className="flex h-full w-full flex-col overflow-hidden bg-terminal-bg">
       <MobileNavBar
         workspaceName={workspaceName}
         surfaceName={surfaceName}

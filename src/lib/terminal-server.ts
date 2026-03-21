@@ -35,7 +35,7 @@ interface IActiveConnection {
 const connections = new Map<WebSocket, IActiveConnection>();
 
 const attachToSession = (sessionName: string, cols: number, rows: number): pty.IPty =>
-  pty.spawn('tmux', ['-L', TMUX_SOCKET, 'attach-session', '-d', '-t', sessionName], {
+  pty.spawn('tmux', ['-L', TMUX_SOCKET, 'attach-session', '-t', sessionName], {
     name: 'xterm-256color',
     cols,
     rows,
