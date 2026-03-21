@@ -10,6 +10,7 @@ import { updateTabClaudeSessionId } from './layout-store';
 import { getDangerouslySkipPermissions } from './workspace-store';
 import type { TTimelineServerMessage } from '@/types/timeline';
 import path from 'path';
+import { isAllowedJsonlPath } from './path-validation';
 
 const HEARTBEAT_INTERVAL = 30_000;
 const HEARTBEAT_TIMEOUT = 90_000;
@@ -436,6 +437,10 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
     try {
       const msg = JSON.parse(raw.toString());
       if (msg.type === 'timeline:subscribe' && msg.jsonlPath) {
+        if (!isAllowedJsonlPath(msg.jsonlPath)) {
+          sendJson(ws, { type: 'timeline:error', code: 'forbidden-path', message: 'Not allowed path' });
+          return;
+        }
         if (conn.currentJsonlPath) {
           unsubscribeFromFile(ws, conn.currentJsonlPath);
         }
@@ -496,6 +501,13 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
   const wsKey = sessionName;
   if (!sessionWatchers.has(wsKey)) {
     const sw = watchSessionsDir(panePid, async (newInfo) => {
+      if (newInfo.status === 'active') {
+        const { isSafe } = await checkTerminalProcess(sessionName);
+        if (isSafe) {
+          console.log(`[timeline-server] watcher-callback sessionName=${sessionName} status=active overridden to none (tmux shows shell)`);
+          newInfo = { ...newInfo, status: 'none', sessionId: null, jsonlPath: null, pid: null, cwd: null };
+        }
+      }
       const wsConns = getSessionConnections(sessionName);
       console.log(`[timeline-server] watcher-callback sessionName=${sessionName} status=${newInfo.status} jsonlPath=${newInfo.jsonlPath ?? 'null'} connections=${wsConns.length}`);
       for (const c of wsConns) {

@@ -64,7 +64,7 @@ const QuickPromptBar = ({ prompts, cliState, visible, onSelect }: IQuickPromptBa
           tabIndex={0}
           disabled={isDisabled}
           className={cn(
-            'shrink-0 rounded-full border-dashed px-3 py-1 text-xs text-muted-foreground hover:border-foreground/30 hover:text-foreground',
+            'shrink-0 rounded-full px-3 py-1 text-xs text-muted-foreground hover:border-foreground/30 hover:text-foreground',
             isDisabled && 'pointer-events-none opacity-50',
           )}
           onClick={() => handleClick(p.prompt)}

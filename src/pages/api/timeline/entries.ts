@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { parseSessionFile } from '@/lib/session-parser';
+import { isAllowedJsonlPath } from '@/lib/path-validation';
 
 const DEFAULT_LIMIT = 200;
 
@@ -12,6 +13,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const jsonlPath = req.query.jsonlPath as string;
   if (!jsonlPath) {
     return res.status(400).json({ error: 'jsonlPath 파라미터가 필요합니다' });
+  }
+
+  if (!isAllowedJsonlPath(jsonlPath)) {
+    return res.status(403).json({ error: '허용되지 않는 경로입니다' });
   }
 
   const offset = parseInt(req.query.offset as string, 10) || 0;

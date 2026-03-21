@@ -187,7 +187,7 @@ const SettingsDialog = ({ open, onOpenChange }: ISettingsDialogProps) => {
         className="w-[calc(100%-2rem)] gap-0 overflow-hidden p-0 md:min-w-3xl md:max-w-3xl"
         showCloseButton={false}
       >
-        <div className="flex h-[420px] flex-col md:flex-row">
+        <div className="flex h-[520px] flex-col md:flex-row">
           <div className="flex shrink-0 flex-col border-b bg-muted/30 p-3 md:w-48 md:border-b-0 md:border-r">
             <div className="mb-4 flex items-center justify-between px-2">
               <DialogTitle className="text-base font-semibold">설정</DialogTitle>

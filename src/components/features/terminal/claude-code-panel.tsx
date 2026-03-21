@@ -13,6 +13,7 @@ import type { TCliState } from '@/types/timeline';
 interface IClaudeCodePanelProps {
   sessionName: string;
   claudeSessionId?: string | null;
+  isClaudeRunning?: boolean;
   className?: string;
   onCliStateChange?: (state: TCliState) => void;
   onInputVisibleChange?: (visible: boolean) => void;
@@ -23,6 +24,7 @@ interface IClaudeCodePanelProps {
 const ClaudeCodePanel = ({
   sessionName,
   claudeSessionId,
+  isClaudeRunning,
   className,
   onCliStateChange,
   onInputVisibleChange,
@@ -84,6 +86,10 @@ const ClaudeCodePanel = ({
     },
   });
 
+  const effectiveSessionStatus = sessionStatus === 'active' && isClaudeRunning === false
+    ? 'none' as const
+    : sessionStatus;
+
   const {
     sessions,
     hasMore: sessionListHasMore,
@@ -94,11 +100,11 @@ const ClaudeCodePanel = ({
     loadMore: loadMoreSessions,
   } = useSessionList({
     tmuxSession: sessionName,
-    enabled: !!sessionName && sessionStatus !== 'active',
+    enabled: !!sessionName && effectiveSessionStatus !== 'active',
   });
 
   const { view, navigateToTimeline } = useSessionView(
-    sessionStatus,
+    effectiveSessionStatus,
     sessions,
     isSessionListLoading,
     sessionListError,

@@ -1,18 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { readQuickPrompts, writeQuickPrompts } from '@/lib/quick-prompts-store';
+import type { IQuickPromptsFile } from '@/lib/quick-prompts-store';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
-    const prompts = await readQuickPrompts();
-    return res.status(200).json(prompts);
+    const data = await readQuickPrompts();
+    return res.status(200).json(data);
   }
 
   if (req.method === 'PUT') {
-    const prompts = req.body;
-    if (!Array.isArray(prompts)) {
-      return res.status(400).json({ error: 'Body must be an array' });
+    const body = req.body as IQuickPromptsFile;
+    if (!Array.isArray(body.custom) || !Array.isArray(body.disabledBuiltinIds)) {
+      return res.status(400).json({ error: 'Invalid format' });
     }
-    await writeQuickPrompts(prompts);
+    await writeQuickPrompts(body);
     return res.status(200).json({ success: true });
   }
 

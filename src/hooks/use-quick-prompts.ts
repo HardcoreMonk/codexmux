@@ -8,15 +8,23 @@ interface IQuickPrompt {
   enabled: boolean;
 }
 
+interface IQuickPromptsData {
+  builtins: IQuickPrompt[];
+  custom: IQuickPrompt[];
+}
+
 interface IUseQuickPromptsReturn {
   prompts: IQuickPrompt[];
-  allPrompts: IQuickPrompt[];
+  builtinPrompts: IQuickPrompt[];
+  customPrompts: IQuickPrompt[];
   isLoading: boolean;
-  save: (prompts: IQuickPrompt[]) => Promise<void>;
+  toggleBuiltin: (id: string, enabled: boolean) => Promise<void>;
+  saveCustom: (prompts: IQuickPrompt[]) => Promise<void>;
+  resetAll: () => Promise<void>;
 }
 
 const useQuickPrompts = (): IUseQuickPromptsReturn => {
-  const [allPrompts, setAllPrompts] = useState<IQuickPrompt[]>([]);
+  const [data, setData] = useState<IQuickPromptsData>({ builtins: [], custom: [] });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -25,8 +33,8 @@ const useQuickPrompts = (): IUseQuickPromptsReturn => {
       try {
         const res = await fetch('/api/quick-prompts');
         if (!res.ok) throw new Error('fetch failed');
-        const data = await res.json();
-        if (!cancelled) setAllPrompts(data);
+        const result = await res.json();
+        if (!cancelled) setData(result);
       } catch {
         // fallback handled by server
       } finally {
@@ -40,17 +48,17 @@ const useQuickPrompts = (): IUseQuickPromptsReturn => {
   }, []);
 
   const prompts = useMemo(
-    () => allPrompts.filter((p) => p.enabled),
-    [allPrompts],
+    () => [...data.builtins, ...data.custom].filter((p) => p.enabled),
+    [data],
   );
 
-  const save = useCallback(async (next: IQuickPrompt[]) => {
-    setAllPrompts(next);
+  const persist = useCallback(async (builtins: IQuickPrompt[], custom: IQuickPrompt[]) => {
+    const disabledBuiltinIds = builtins.filter((b) => !b.enabled).map((b) => b.id);
     try {
       const res = await fetch('/api/quick-prompts', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(next),
+        body: JSON.stringify({ custom, disabledBuiltinIds }),
       });
       if (!res.ok) throw new Error('save failed');
     } catch {
@@ -58,7 +66,38 @@ const useQuickPrompts = (): IUseQuickPromptsReturn => {
     }
   }, []);
 
-  return { prompts, allPrompts, isLoading, save };
+  const toggleBuiltin = useCallback(async (id: string, enabled: boolean) => {
+    setData((prev) => {
+      const nextBuiltins = prev.builtins.map((b) => (b.id === id ? { ...b, enabled } : b));
+      persist(nextBuiltins, prev.custom);
+      return { ...prev, builtins: nextBuiltins };
+    });
+  }, [persist]);
+
+  const saveCustom = useCallback(async (custom: IQuickPrompt[]) => {
+    setData((prev) => {
+      persist(prev.builtins, custom);
+      return { ...prev, custom };
+    });
+  }, [persist]);
+
+  const resetAll = useCallback(async () => {
+    setData((prev) => {
+      const nextBuiltins = prev.builtins.map((b) => ({ ...b, enabled: true }));
+      persist(nextBuiltins, []);
+      return { builtins: nextBuiltins, custom: [] };
+    });
+  }, [persist]);
+
+  return {
+    prompts,
+    builtinPrompts: data.builtins,
+    customPrompts: data.custom,
+    isLoading,
+    toggleBuiltin,
+    saveCustom,
+    resetAll,
+  };
 };
 
 export default useQuickPrompts;

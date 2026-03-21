@@ -16,7 +16,7 @@ import QuickPromptBar from '@/components/features/terminal/quick-prompt-bar';
 import ConnectionStatus from '@/components/features/terminal/connection-status';
 import useQuickPrompts from '@/hooks/use-quick-prompts';
 import PaneTabBar from '@/components/features/terminal/pane-tab-bar';
-import { formatTabTitle } from '@/lib/tab-title';
+import { formatTabTitle, isClaudeProcess } from '@/lib/tab-title';
 import { isAppShortcut, isClearShortcut, isFocusInputShortcut } from '@/lib/keyboard-shortcuts';
 import type { TCliState } from '@/types/timeline';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
@@ -162,6 +162,7 @@ const PaneContainer = ({
 
   const [claudeCliState, setClaudeCliState] = useState<TCliState>('inactive');
   const [claudeInputVisible, setClaudeInputVisible] = useState(false);
+  const [isClaudeRunning, setIsClaudeRunning] = useState(false);
 
   const { prompts: quickPrompts } = useQuickPrompts();
 
@@ -198,6 +199,7 @@ const PaneContainer = ({
       if (!tabId) return;
       const formatted = formatTabTitle(title);
       useTabMetadataStore.getState().setTitle(tabId, formatted);
+      setIsClaudeRunning(isClaudeProcess(title));
       fetchAndUpdateCwd();
     },
     customKeyEventHandler: handleCustomKeyEvent,
@@ -532,6 +534,7 @@ const PaneContainer = ({
                 <ClaudeCodePanel
                   sessionName={activeTab.sessionName}
                   claudeSessionId={activeTab.claudeSessionId}
+                  isClaudeRunning={isClaudeRunning}
                   onCliStateChange={handleCliStateChange}
                   onInputVisibleChange={handleInputVisibleChange}
                   onClose={handleTogglePanelType}
