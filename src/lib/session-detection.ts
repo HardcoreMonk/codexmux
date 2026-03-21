@@ -41,6 +41,22 @@ const getChildPids = async (parentPid: number): Promise<number[]> => {
   }
 };
 
+const getClaudeSessionFromArgs = async (
+  childPids: number[],
+): Promise<{ pid: number; sessionId: string } | null> => {
+  for (const pid of childPids) {
+    try {
+      const { stdout } = await execFile('ps', ['-p', String(pid), '-o', 'args=']);
+      const args = stdout.trim();
+      const match = args.match(/claude\s+--resume\s+([0-9a-f-]{36})/);
+      if (match) return { pid, sessionId: match[1] };
+    } catch {
+      continue;
+    }
+  }
+  return null;
+};
+
 const readPidFile = async (filePath: string): Promise<IPidFileData | null> => {
   try {
     const raw = await fs.readFile(filePath, 'utf-8');

@@ -195,7 +195,49 @@ toast.success('저장되었습니다');
 - xterm.js 기반 터미널 렌더링, 버퍼 관리, 키 바인딩 처리 등 VSCode가 채택한 패턴을 우선 참고합니다
 - 터미널 관련 기능 설계 시 VSCode 소스코드(`vscode/src/vs/workbench/contrib/terminal/`)를 레퍼런스로 활용합니다
 
-### 14. 설정 저장
+### 14. 터미널 프로세스/경로 감지
+
+터미널의 프로세스명, 경로, Claude 세션 상태를 다룰 때는 **기존 유틸리티를 반드시 재사용**합니다. 직접 `pgrep`, `ps`, `lsof` 등을 호출하지 않습니다.
+
+#### tmux 타이틀 형식
+
+tmux가 `"#{pane_current_command}|#{pane_current_path}"` 형식으로 타이틀을 전송합니다 (`src/config/tmux.conf`). 이 값이 xterm.js `onTitleChange`를 통해 실시간으로 전달됩니다.
+
+#### 클라이언트 (브라우저)
+
+| 함수 | 파일 | 용도 |
+| --- | --- | --- |
+| `parseCurrentCommand(raw)` | `lib/tab-title.ts` | 타이틀에서 프로세스명 추출 |
+| `isClaudeProcess(raw)` | `lib/tab-title.ts` | Claude 실행 여부 판별 |
+| `formatTabTitle(raw)` | `lib/tab-title.ts` | 탭 표시용 이름 변환 |
+| `onTitleChange` | `hooks/use-terminal.ts` | 타이틀 변경 이벤트 수신 |
+
+#### 서버 (Node.js)
+
+| 함수 | 파일 | 용도 |
+| --- | --- | --- |
+| `getPaneCurrentCommand(session)` | `lib/tmux.ts` | 포그라운드 프로세스명 조회 |
+| `getSessionCwd(session)` | `lib/tmux.ts` | 현재 작업 디렉토리 조회 |
+| `getSessionPanePid(session)` | `lib/tmux.ts` | pane의 셸 PID 조회 |
+| `checkTerminalProcess(session)` | `lib/tmux.ts` | 셸 여부 안전 검사 (resume 전 사용) |
+| `detectActiveSession(panePid)` | `lib/session-detection.ts` | Claude 세션 감지 (`active`/`none`/`not-installed`) |
+| `watchSessionsDir(panePid, cb)` | `lib/session-detection.ts` | 세션 시작/종료 감시 |
+| `isProcessRunning(pid)` | `lib/session-detection.ts` | PID 생존 확인 |
+
+```
+✅ 기존 함수 사용:
+- 프로세스 확인 → getPaneCurrentCommand() 또는 onTitleChange + parseCurrentCommand()
+- 경로 확인 → getSessionCwd()
+- Claude 감지 → isClaudeProcess() (클라이언트) / detectActiveSession() (서버)
+- 셸 안전 검사 → checkTerminalProcess()
+
+❌ 직접 구현 금지:
+- child_process로 ps, pgrep, lsof 직접 호출
+- tmux 명령어를 새로 작성 (lib/tmux.ts의 기존 함수 사용)
+- 프로세스 폴링 로직 중복 구현
+```
+
+### 15. 설정 저장
 
 앱 설정(워크스페이스, 사용자 설정 등)은 **`~/.purple-terminal/workspaces.json`** 파일에 저장합니다:
 
@@ -205,7 +247,7 @@ toast.success('저장되었습니다');
 ❌ localStorage (브라우저 의존)
 ```
 
-### 15. Git 커밋 메시지
+### 16. Git 커밋 메시지
 
 커밋 메시지는 **한글**로 작성합니다:
 
