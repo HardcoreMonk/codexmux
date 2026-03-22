@@ -4,5 +4,5 @@
 |---|---|---|---|---|---|
 | status-server | Phase 1 | P0 | ✅ | ✅ 3/true | 2026-03-22 13:17 |
 | tab-indicator | Phase 1 | P0 | ✅ | ✅ 2/true | 2026-03-22 13:33 |
-| sidebar-indicator | Phase 1 | P0 | ✅ | ⬜ | 2026-03-22 13:36 |
+| sidebar-indicator | Phase 1 | P0 | ✅ | ✅ 2/true | 2026-03-22 13:44 |
 | global-status | Phase 1 | P1 | ⬜ | ⬜ | |
