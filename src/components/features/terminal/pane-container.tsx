@@ -20,6 +20,7 @@ import { formatTabTitle, isClaudeProcess } from '@/lib/tab-title';
 import { isAppShortcut, isClearShortcut, isFocusInputShortcut, isShiftEnter } from '@/lib/keyboard-shortcuts';
 import type { TCliState } from '@/types/timeline';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
+import useClaudeStatus from '@/hooks/use-claude-status';
 
 const DISCONNECT_MESSAGES: Record<NonNullable<TDisconnectReason>, string> = {
   'max-connections': '동시 접속 수를 초과했습니다. 다른 탭을 닫아주세요.',
@@ -166,6 +167,18 @@ const PaneContainer = ({
   const [isRestarting, setIsRestarting] = useState(false);
 
   const { prompts: quickPrompts } = useQuickPrompts();
+  const { reportActiveTab, dismissTab: dismissStatusTab } = useClaudeStatus();
+
+  useEffect(() => {
+    if (!activeTabId || !isClaudeCode) return;
+    reportActiveTab(activeTabId, claudeCliState);
+  }, [activeTabId, claudeCliState, isClaudeCode, reportActiveTab]);
+
+  useEffect(() => {
+    if (activeTabId && isFocused) {
+      dismissStatusTab(activeTabId);
+    }
+  }, [activeTabId, isFocused, dismissStatusTab]);
 
   const handleSelectQuickPrompt = useCallback((prompt: string) => {
     setInputValueRef.current?.(prompt);

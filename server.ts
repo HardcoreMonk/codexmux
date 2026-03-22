@@ -4,6 +4,8 @@ import { WebSocketServer } from 'ws';
 import { handleConnection, gracefulShutdown } from './src/lib/terminal-server';
 import { handleTimelineConnection, gracefulTimelineShutdown } from './src/lib/timeline-server';
 import { handleSyncConnection, gracefulSyncShutdown } from './src/lib/sync-server';
+import { handleStatusConnection, gracefulStatusShutdown } from './src/lib/status-server';
+import { getStatusManager } from './src/lib/status-manager';
 import { scanSessions, applyConfig } from './src/lib/tmux';
 import { initWorkspaceStore } from './src/lib/workspace-store';
 import { autoResumeOnStartup } from './src/lib/auto-resume';
@@ -33,6 +35,7 @@ const start = async () => {
   await applyConfig();
   await initWorkspaceStore();
   await autoResumeOnStartup();
+  await getStatusManager().init();
   await app.prepare();
 
   const upgrade = app.getUpgradeHandler();
@@ -48,6 +51,9 @@ const start = async () => {
 
   const syncWss = new WebSocketServer({ noServer: true });
   syncWss.on('connection', handleSyncConnection);
+
+  const statusWss = new WebSocketServer({ noServer: true });
+  statusWss.on('connection', handleStatusConnection);
 
   server.on('upgrade', (request, socket, head) => {
     const url = new URL(request.url ?? '', `http://localhost:${port}`);
@@ -77,6 +83,10 @@ const start = async () => {
       syncWss.handleUpgrade(request, socket, head, (ws) => {
         syncWss.emit('connection', ws);
       });
+    } else if (url.pathname === '/api/status') {
+      statusWss.handleUpgrade(request, socket, head, (ws) => {
+        statusWss.emit('connection', ws);
+      });
     } else {
       upgrade(request, socket, head);
     }
@@ -86,6 +96,7 @@ const start = async () => {
     gracefulShutdown();
     gracefulTimelineShutdown();
     gracefulSyncShutdown();
+    gracefulStatusShutdown();
     process.exit(0);
   };
 

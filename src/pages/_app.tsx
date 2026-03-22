@@ -6,6 +6,7 @@ import type { AppProps } from "next/app";
 import { ThemeProvider, useTheme } from "next-themes";
 import { Toaster } from "sonner";
 import useTerminalTheme from "@/hooks/use-terminal-theme";
+import useClaudeStatus from "@/hooks/use-claude-status";
 
 const TerminalThemeSync = () => {
   const { theme } = useTerminalTheme();
@@ -16,6 +17,11 @@ const TerminalThemeSync = () => {
     root.style.setProperty('--terminal-fg', theme.colors.foreground);
   }, [theme]);
 
+  return null;
+};
+
+const ClaudeStatusProvider = () => {
+  useClaudeStatus();
   return null;
 };
 
@@ -30,6 +36,7 @@ export default function App({ Component, pageProps }: AppProps) {
       <main className="font-sans antialiased">
         <Component {...pageProps} />
         <TerminalThemeSync />
+        <ClaudeStatusProvider />
         <ThemedToaster />
       </main>
     </ThemeProvider>
