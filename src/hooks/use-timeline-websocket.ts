@@ -26,7 +26,7 @@ interface IUseTimelineWebSocketOptions {
   sessionName: string;
   claudeSessionId?: string | null;
   enabled: boolean;
-  onInit: (entries: ITimelineEntry[], totalEntries: number, summary?: string) => void;
+  onInit: (entries: ITimelineEntry[], totalEntries: number, sessionId: string, summary?: string) => void;
   onAppend: (entries: ITimelineEntry[]) => void;
   onSessionChanged: (newSessionId: string, reason: string) => void;
   onError?: (error: { code: string; message: string }) => void;
@@ -113,7 +113,7 @@ const useTimelineWebSocket = ({
           const msg = JSON.parse(event.data) as TTimelineServerMessage;
           switch (msg.type) {
             case 'timeline:init':
-              callbacksRef.current.onInit(msg.entries, msg.totalEntries, msg.summary);
+              callbacksRef.current.onInit(msg.entries, msg.totalEntries, msg.sessionId, msg.summary);
               break;
             case 'timeline:append':
               callbacksRef.current.onAppend(msg.entries);

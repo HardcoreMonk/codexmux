@@ -245,7 +245,7 @@ const MobileSurfaceView = ({
   const handleRestartClaudeSession = useCallback(() => {
     if (status !== 'connected') return;
     pendingRestartRef.current = true;
-    sendStdin('/exit\n');
+    sendStdin('/exit\r');
   }, [status, sendStdin]);
 
   useEffect(() => {
@@ -254,7 +254,7 @@ const MobileSurfaceView = ({
     if (status !== 'connected') return;
     const dangerous = useWorkspaceStore.getState().dangerouslySkipPermissions;
     const cmd = dangerous ? 'claude --dangerously-skip-permissions' : 'claude';
-    sendStdin(`${cmd}\n`);
+    sendStdin(`${cmd}\r`);
   }, [isClaudeRunning, status, sendStdin]);
 
   const noTabs = tabs.length === 0;

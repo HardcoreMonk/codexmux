@@ -108,11 +108,14 @@ const useTimeline = ({
     fetchSession();
   }, [fetchSession]);
 
-  const handleInit = useCallback((newEntries: ITimelineEntry[], totalEntries: number, summary?: string) => {
+  const handleInit = useCallback((newEntries: ITimelineEntry[], totalEntries: number, initSessionId: string, summary?: string) => {
     setEntries(newEntries);
     totalEntriesRef.current = totalEntries;
     setHasMore(newEntries.length < totalEntries);
     setSessionSummary(summary);
+    if (initSessionId) {
+      setSessionId(initSessionId);
+    }
     setIsLoading(false);
     setError(null);
   }, []);
@@ -193,6 +196,7 @@ const useTimeline = ({
       if (payload.jsonlPath) {
         jsonlPathRef.current = payload.jsonlPath;
       }
+      setSessionId(payload.sessionId);
       setSessionStatus('active');
       setEntries([]);
       setIsLoading(true);
