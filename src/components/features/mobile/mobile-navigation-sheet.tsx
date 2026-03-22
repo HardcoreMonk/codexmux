@@ -149,18 +149,17 @@ const MobileNavigationSheet = ({
 
     return panes.map((pane, index) => {
       const sortedTabs = [...pane.tabs].sort((a, b) => a.order - b.order);
-      const surfaceIndent = isMultiPane ? 'pl-12' : 'pl-10';
 
       return (
         <div key={pane.id} className="pb-1">
           {isMultiPane && (
-            <div className="flex items-center py-1.5 pl-8 pr-2">
+            <div className="flex items-center py-1.5 pl-10 pr-2">
               <span className="text-xs text-muted-foreground">
                 Pane {index + 1}
               </span>
             </div>
           )}
-          {sortedTabs.map((tab) => renderSurfaceItem(workspaceId, pane, tab, surfaceIndent))}
+          {sortedTabs.map((tab) => renderSurfaceItem(workspaceId, pane, tab, 'pl-10'))}
         </div>
       );
     });
@@ -209,11 +208,22 @@ const MobileNavigationSheet = ({
                       className="shrink-0 text-muted-foreground"
                     />
                   )}
-                  <span className="truncate">{ws.name}</span>
-                  <WorkspaceStatusIndicator workspaceId={ws.id} />
+                  <div className="min-w-0 flex-1">
+                    <span className="block truncate">{ws.name}</span>
+                    {!isExpanded && (
+                      <WorkspaceStatusIndicator workspaceId={ws.id} />
+                    )}
+                  </div>
                 </button>
 
-                {isExpanded && renderPaneTree(ws.id)}
+                <div
+                  className="grid transition-[grid-template-rows] duration-200 ease-in-out"
+                  style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}
+                >
+                  <div className="overflow-hidden">
+                    {renderPaneTree(ws.id)}
+                  </div>
+                </div>
               </div>
             );
           })}
