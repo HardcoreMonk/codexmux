@@ -7,6 +7,7 @@ import type { ITab, TDisconnectReason, TPanelType } from '@/types/terminal';
 import useTerminal from '@/hooks/use-terminal';
 import useTerminalWebSocket from '@/hooks/use-terminal-websocket';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
+import { useLayoutStore } from '@/hooks/use-layout';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
 import { useShallow } from 'zustand/react/shallow';
 import TerminalContainer from '@/components/features/terminal/terminal-container';
@@ -408,6 +409,14 @@ const PaneContainer = ({
     [paneId, activeTabId, tabs, paneCount, closingTabId, onSwitchTab, onDeleteTab, onClosePane],
   );
 
+  const handleRestartTab = useCallback(
+    async (tabId: string) => {
+      const ok = await useLayoutStore.getState().restartTabInPane(paneId, tabId);
+      if (ok) reconnect();
+    },
+    [paneId, reconnect],
+  );
+
   const handleRenameTab = useCallback(
     (tabId: string, name: string) => {
       onRenameTab(paneId, tabId, name);
@@ -690,13 +699,22 @@ const PaneContainer = ({
                 '서버에 연결할 수 없습니다'}
             </span>
             {disconnectReason === 'session-not-found' && activeTabId ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleDeleteTab(activeTabId)}
-              >
-                탭 닫기
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRestartTab(activeTabId)}
+                >
+                  다시 시작
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDeleteTab(activeTabId)}
+                >
+                  탭 닫기
+                </Button>
+              </div>
             ) : (
               <Button variant="outline" size="sm" onClick={reconnect}>
                 다시 연결

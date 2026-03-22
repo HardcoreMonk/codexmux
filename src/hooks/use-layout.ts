@@ -162,6 +162,7 @@ interface ILayoutState {
   moveTab: (tabId: string, fromPaneId: string, toPaneId: string, toIndex: number) => void;
   createTabInPane: (paneId: string) => Promise<ITab | null>;
   deleteTabInPane: (paneId: string, tabId: string) => Promise<void>;
+  restartTabInPane: (paneId: string, tabId: string) => Promise<boolean>;
   switchTabInPane: (paneId: string, tabId: string) => void;
   renameTabInPane: (paneId: string, tabId: string, name: string) => Promise<void>;
   reorderTabsInPane: (paneId: string, tabIds: string[]) => void;
@@ -496,6 +497,16 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
     });
   },
 
+  restartTabInPane: async (paneId, tabId) => {
+    const { workspaceId } = get();
+    try {
+      const res = await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`, workspaceId), { method: 'POST' });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+
   switchTabInPane: (paneId, tabId) => {
     get().updateAndSave((data) => {
       const pane = findPane(data.root, paneId);
@@ -643,6 +654,7 @@ const useLayout = ({ workspaceId, onFetchError }: { workspaceId: string | null; 
     moveTab: s.moveTab,
     createTabInPane: s.createTabInPane,
     deleteTabInPane: s.deleteTabInPane,
+    restartTabInPane: s.restartTabInPane,
     switchTabInPane: s.switchTabInPane,
     renameTabInPane: s.renameTabInPane,
     reorderTabsInPane: s.reorderTabsInPane,

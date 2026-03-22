@@ -13,6 +13,7 @@ import { formatTabTitle, isClaudeProcess } from '@/lib/tab-title';
 import { isAppShortcut, isClearShortcut, isFocusInputShortcut, isShiftEnter } from '@/lib/keyboard-shortcuts';
 import type { TCliState } from '@/types/timeline';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
+import { useLayoutStore } from '@/hooks/use-layout';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
 
 const DISCONNECT_MESSAGES: Record<NonNullable<TDisconnectReason>, string> = {
@@ -342,13 +343,25 @@ const MobileSurfaceView = ({
               '서버에 연결할 수 없습니다'}
           </span>
           {disconnectReason === 'session-not-found' && activeTabId ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onDeleteTab(paneId, activeTabId)}
-            >
-              탭 닫기
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  const ok = await useLayoutStore.getState().restartTabInPane(paneId, activeTabId);
+                  if (ok) reconnect();
+                }}
+              >
+                다시 시작
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onDeleteTab(paneId, activeTabId)}
+              >
+                탭 닫기
+              </Button>
+            </div>
           ) : (
             <Button variant="outline" size="sm" onClick={reconnect}>
               다시 연결
