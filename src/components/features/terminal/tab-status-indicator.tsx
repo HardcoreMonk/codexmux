@@ -19,18 +19,24 @@ const TabStatusIndicator = ({ tabId, isActive, panelType }: ITabStatusIndicatorP
 
   if (status === 'busy') {
     return (
-      <Loader2
-        className="h-3 w-3 shrink-0 animate-spin text-muted-foreground"
-        aria-hidden="true"
-      />
+      <>
+        <Loader2
+          className="h-3 w-3 shrink-0 animate-spin text-muted-foreground"
+          aria-hidden="true"
+        />
+        <span className="sr-only">처리 중,</span>
+      </>
     );
   }
 
   return (
-    <span
-      className="h-1.5 w-1.5 shrink-0 rounded-full bg-ui-red"
-      aria-hidden="true"
-    />
+    <>
+      <span
+        className="h-1.5 w-1.5 shrink-0 rounded-full bg-ui-red"
+        aria-hidden="true"
+      />
+      <span className="sr-only">확인 필요,</span>
+    </>
   );
 };
 

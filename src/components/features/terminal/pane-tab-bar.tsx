@@ -311,7 +311,7 @@ const PaneTabBar = ({
               aria-selected={isActive}
               tabIndex={isActive ? 0 : -1}
               className={cn(
-                'group relative flex min-w-[120px] max-w-[180px] cursor-pointer items-center gap-1 border-b-2 px-3 text-xs select-none',
+                'group relative flex min-w-[120px] max-w-[180px] cursor-pointer items-center gap-1.5 border-b-2 px-3 text-xs select-none',
                 isActive
                   ? 'border-b-accent-color bg-secondary text-foreground'
                   : 'border-b-transparent text-muted-foreground hover:bg-accent hover:text-foreground',
@@ -329,10 +329,11 @@ const PaneTabBar = ({
                 e.dataTransfer.setData('text/pane-id', paneId);
                 e.dataTransfer.setData(`application/x-pane/${paneId}`, '');
 
-                const ghost = document.createElement('div');
-                ghost.textContent = displayName;
+                const ghost = e.currentTarget.cloneNode(true) as HTMLElement;
+                ghost.querySelector('[aria-label="탭 닫기"]')?.remove();
+                ghost.querySelectorAll('.sr-only').forEach((el) => el.remove());
                 ghost.style.cssText =
-                  'position:fixed;left:-9999px;padding:4px 12px;background:var(--card);color:var(--foreground);border-radius:4px;font-size:12px;opacity:0.6;transform:scale(0.9);white-space:nowrap;';
+                  'position:fixed;left:-9999px;display:flex;align-items:center;gap:6px;padding:4px 12px;background:var(--card);color:var(--foreground);border:none;border-radius:4px;font-size:12px;opacity:0.6;transform:scale(0.9);white-space:nowrap;';
                 document.body.appendChild(ghost);
                 e.dataTransfer.setDragImage(ghost, 0, 0);
                 requestAnimationFrame(() => ghost.remove());
