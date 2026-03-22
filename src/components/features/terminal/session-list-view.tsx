@@ -90,7 +90,9 @@ const SessionListView = ({
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b px-4 py-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">세션</span>
+          <span className="text-sm font-medium">
+            세션{sessions.length > 0 && `(${sessions.length})`}
+          </span>
           {onNewSession && (
             <Button
               variant="ghost"

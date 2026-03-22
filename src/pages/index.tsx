@@ -1,7 +1,10 @@
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import type { GetServerSideProps } from 'next';
+import { SWRConfig } from 'swr';
 import { getWorkspaces } from '@/lib/workspace-store';
+import { readQuickPrompts } from '@/lib/quick-prompts-store';
+import type { IQuickPromptsData } from '@/lib/quick-prompts-store';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
 import type { IWorkspaceInitialData } from '@/hooks/use-workspace-store';
 import { initTerminalTheme } from '@/hooks/use-terminal-theme';
@@ -20,9 +23,10 @@ const MobileTerminalPage = dynamic(
 
 interface IIndexProps {
   initialWorkspace: IWorkspaceInitialData;
+  initialQuickPrompts: IQuickPromptsData;
 }
 
-const Index = ({ initialWorkspace }: IIndexProps) => {
+const Index = ({ initialWorkspace, initialQuickPrompts }: IIndexProps) => {
   const isMobile = useIsMobile();
   const hydratedRef = useRef(false);
   useEffect(() => {
@@ -35,21 +39,17 @@ const Index = ({ initialWorkspace }: IIndexProps) => {
     }
   }, [initialWorkspace]);
 
-  if (isMobile) {
-    return (
-      <>
-        <Head>
-          <title>Purple Terminal</title>
-          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-        </Head>
-        <div style={{ backgroundColor: '#18181b' }} className="flex h-dvh w-full flex-col overflow-hidden">
-          <MobileTerminalPage />
-        </div>
-      </>
-    );
-  }
-
-  return (
+  const content = isMobile ? (
+    <>
+      <Head>
+        <title>Purple Terminal</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+      </Head>
+      <div style={{ backgroundColor: '#18181b' }} className="flex h-dvh w-full flex-col overflow-hidden">
+        <MobileTerminalPage />
+      </div>
+    </>
+  ) : (
     <>
       <Head>
         <title>Purple Terminal</title>
@@ -59,11 +59,17 @@ const Index = ({ initialWorkspace }: IIndexProps) => {
       </div>
     </>
   );
+
+  return (
+    <SWRConfig value={{ fallback: { '/api/quick-prompts': initialQuickPrompts } }}>
+      {content}
+    </SWRConfig>
+  );
 };
 
 export const getServerSideProps: GetServerSideProps<IIndexProps> = async () => {
-  const data = await getWorkspaces();
-  return { props: { initialWorkspace: data } };
+  const [data, quickPrompts] = await Promise.all([getWorkspaces(), readQuickPrompts()]);
+  return { props: { initialWorkspace: data, initialQuickPrompts: quickPrompts } };
 };
 
 export default Index;
