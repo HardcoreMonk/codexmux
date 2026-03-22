@@ -288,13 +288,6 @@ const TimelineView = ({
   }, [entries.length, isAutoScrollEnabled, scrollToBottom]);
 
   useEffect(() => {
-    if (entries.length > 0 && isAutoScrollEnabled) {
-      isInitialLoadRef.current = false;
-      requestAnimationFrame(() => scrollToBottom('instant'));
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
     setSkipAnimation(true);
     isInitialLoadRef.current = true;
   }, [sessionId]);
