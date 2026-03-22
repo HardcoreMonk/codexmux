@@ -433,11 +433,13 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
     try {
       let cwd: string | undefined;
       let sourceTabId: string | undefined;
+      let sourcePanelType: TPanelType | undefined;
       if (layout) {
         const pane = findPane(layout.root, paneId);
         const activeTab = pane?.tabs.find((t) => t.id === pane.activeTabId);
         if (activeTab) {
           sourceTabId = activeTab.id;
+          sourcePanelType = activeTab.panelType;
           try {
             const cwdRes = await fetch(wsQuery(`/api/layout/cwd?session=${activeTab.sessionName}`, workspaceId));
             if (cwdRes.ok) cwd = (await cwdRes.json()).cwd;
@@ -452,6 +454,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
       });
       if (!res.ok) throw new Error();
       const newTab: ITab = await res.json();
+      if (sourcePanelType) newTab.panelType = sourcePanelType;
 
       uas((data) => {
         const pane = findPane(data.root, paneId);
