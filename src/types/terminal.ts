@@ -58,7 +58,6 @@ export interface IWorkspace {
 
 export interface IWorkspacesData {
   workspaces: IWorkspace[];
-  activeWorkspaceId: string | null;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
   terminalTheme?: { light: string; dark: string };

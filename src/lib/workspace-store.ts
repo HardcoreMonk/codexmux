@@ -57,7 +57,6 @@ const withLock = async <T>(fn: () => Promise<T>): Promise<T> => {
 
 const emptyState = (): IWorkspacesData => ({
   workspaces: [],
-  activeWorkspaceId: null,
   sidebarCollapsed: false,
   sidebarWidth: 200,
   updatedAt: new Date().toISOString(),
@@ -91,8 +90,8 @@ const readWorkspacesFile = async (): Promise<IWorkspacesData | null> => {
 };
 
 const writeWorkspacesFile = async (data: IWorkspacesData): Promise<void> => {
-  const { workspaces, activeWorkspaceId, sidebarCollapsed, sidebarWidth, terminalTheme, dangerouslySkipPermissions, editorUrl, authPassword, authSecret } = data;
-  const contentKey = JSON.stringify({ workspaces, activeWorkspaceId, sidebarCollapsed, sidebarWidth, terminalTheme, dangerouslySkipPermissions, editorUrl, authPassword, authSecret });
+  const { workspaces, sidebarCollapsed, sidebarWidth, terminalTheme, dangerouslySkipPermissions, editorUrl, authPassword, authSecret } = data;
+  const contentKey = JSON.stringify({ workspaces, sidebarCollapsed, sidebarWidth, terminalTheme, dangerouslySkipPermissions, editorUrl, authPassword, authSecret });
 
   if (g.__ptWorkspacesContentCache === contentKey) return;
 
@@ -120,7 +119,6 @@ const migrateFromPhase4 = async (): Promise<IWorkspacesData | null> => {
       directories: [os.homedir()],
       order: 0,
     }],
-    activeWorkspaceId: wsId,
     sidebarCollapsed: false,
     sidebarWidth: 200,
     updatedAt: legacyLayout.updatedAt || new Date().toISOString(),
@@ -230,15 +228,10 @@ export const initWorkspaceStore = async (): Promise<void> => {
   }
 
   console.log(`[purple-terminal] Workspace ${data.workspaces.length}개 로드 완료`);
-  const activeWs = data.workspaces.find((w) => w.id === data!.activeWorkspaceId);
-  if (activeWs) {
-    console.log(`[purple-terminal] 준비 완료 (활성 Workspace: ${activeWs.name})`);
-  }
 };
 
 export const getWorkspaces = async (): Promise<{
   workspaces: IWorkspace[];
-  activeWorkspaceId: string | null;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
   terminalTheme: { light: string; dark: string } | null;
@@ -248,7 +241,7 @@ export const getWorkspaces = async (): Promise<{
   authSecret: string;
 }> => {
   const data = await readWorkspacesFile();
-  if (!data) return { workspaces: [], activeWorkspaceId: null, sidebarCollapsed: false, sidebarWidth: 200, terminalTheme: null, dangerouslySkipPermissions: false, editorUrl: '', authPassword: '', authSecret: '' };
+  if (!data) return { workspaces: [], sidebarCollapsed: false, sidebarWidth: 200, terminalTheme: null, dangerouslySkipPermissions: false, editorUrl: '', authPassword: '', authSecret: '' };
 
   let theme = data.terminalTheme ?? null;
 
@@ -263,7 +256,6 @@ export const getWorkspaces = async (): Promise<{
 
   return {
     workspaces: data.workspaces,
-    activeWorkspaceId: data.activeWorkspaceId,
     sidebarCollapsed: data.sidebarCollapsed,
     sidebarWidth: data.sidebarWidth,
     terminalTheme: theme,
@@ -276,7 +268,7 @@ export const getWorkspaces = async (): Promise<{
 
 export const getActiveWorkspaceId = async (): Promise<string | null> => {
   const data = await readWorkspacesFile();
-  return data?.activeWorkspaceId ?? null;
+  return data?.workspaces[0]?.id ?? null;
 };
 
 export const getWorkspaceById = async (wsId: string): Promise<IWorkspace | undefined> => {
@@ -341,10 +333,6 @@ export const deleteWorkspace = async (workspaceId: string): Promise<boolean> =>
     data.workspaces.splice(idx, 1);
     data.workspaces.forEach((w, i) => { w.order = i; });
 
-    if (data.activeWorkspaceId === workspaceId) {
-      data.activeWorkspaceId = data.workspaces[0]?.id ?? null;
-    }
-
     await writeWorkspacesFile(data);
     console.log(`[workspace] 삭제: ${workspaceId} (${ws.name})`);
     return true;
@@ -366,7 +354,6 @@ export const renameWorkspace = async (workspaceId: string, name: string): Promis
   });
 
 export const updateActive = async (updates: {
-  activeWorkspaceId?: string;
   sidebarCollapsed?: boolean;
   sidebarWidth?: number;
   terminalTheme?: { light: string; dark: string };
@@ -377,7 +364,6 @@ export const updateActive = async (updates: {
 }): Promise<void> =>
   withLock(async () => {
     const data = (await readWorkspacesFile()) ?? emptyState();
-    if (updates.activeWorkspaceId !== undefined) data.activeWorkspaceId = updates.activeWorkspaceId;
     if (updates.sidebarCollapsed !== undefined) data.sidebarCollapsed = updates.sidebarCollapsed;
     if (updates.sidebarWidth !== undefined) data.sidebarWidth = updates.sidebarWidth;
     if (updates.terminalTheme !== undefined) data.terminalTheme = updates.terminalTheme;

@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
 import useClaudeStatusStore, { getTabStatus } from '@/hooks/use-claude-status-store';
-import { useLayoutStore, collectPanes } from '@/hooks/use-layout';
 import type { TTabDisplayStatus } from '@/types/status';
 
 interface IWorkspaceStatusIndicatorProps {
@@ -43,24 +42,17 @@ const DotByStatus = ({ status }: { status: TTabDisplayStatus }) => {
 
 const WorkspaceStatusIndicator = ({ workspaceId }: IWorkspaceStatusIndicatorProps) => {
   const tabs = useClaudeStatusStore((state) => state.tabs);
-  const layout = useLayoutStore((state) => state.layout);
+  const tabOrder = useClaudeStatusStore((state) => state.tabOrders[workspaceId]);
 
   const tabEntries = useMemo(() => {
-    const layoutTabIds: string[] = [];
-    if (layout?.root) {
-      for (const pane of collectPanes(layout.root)) {
-        for (const tab of pane.tabs) {
-          layoutTabIds.push(tab.id);
-        }
-      }
-    }
-
     const statusTabIds = new Set<string>();
     for (const [tabId, entry] of Object.entries(tabs)) {
       if (entry.workspaceId === workspaceId) statusTabIds.add(tabId);
     }
 
-    const ordered = layoutTabIds.filter((id) => statusTabIds.has(id));
+    const ordered = tabOrder
+      ? tabOrder.filter((id) => statusTabIds.has(id))
+      : [];
     for (const id of statusTabIds) {
       if (!ordered.includes(id)) ordered.push(id);
     }
@@ -69,7 +61,7 @@ const WorkspaceStatusIndicator = ({ workspaceId }: IWorkspaceStatusIndicatorProp
       tabId,
       status: getTabStatus(tabs, tabId),
     }));
-  }, [tabs, layout, workspaceId]);
+  }, [tabs, tabOrder, workspaceId]);
 
   if (tabEntries.length === 0) return null;
 

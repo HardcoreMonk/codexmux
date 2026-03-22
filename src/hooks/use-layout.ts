@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { toast } from 'sonner';
 import type { ILayoutData, TLayoutNode, IPaneNode, ITab, TPanelType } from '@/types/terminal';
 import { clearInputDraft } from '@/hooks/use-web-input';
+import useClaudeStatusStore from '@/hooks/use-claude-status-store';
 
 
 export const collectPanes = (node: TLayoutNode): IPaneNode[] => {
@@ -627,6 +628,15 @@ const useLayout = ({ workspaceId, onFetchError }: { workspaceId: string | null; 
       store.fetchLayout(workspaceId);
     }
   }, [workspaceId]);
+
+  useEffect(() => {
+    return useLayoutStore.subscribe((state) => {
+      const wsId = state.workspaceId;
+      if (!wsId || !state.layout?.root) return;
+      const tabIds = collectPanes(state.layout.root).flatMap((p) => p.tabs.map((t) => t.id));
+      useClaudeStatusStore.getState().setTabOrder(wsId, tabIds);
+    });
+  }, []);
 
   useEffect(() => {
     const handleBeforeUnload = () => {

@@ -4,6 +4,7 @@ import type { TCliState } from '@/types/timeline';
 
 interface IClaudeStatusState {
   tabs: Record<string, IClientTabStatusEntry>;
+  tabOrders: Record<string, string[]>;
   wsConnected: boolean;
 
   setConnected: (connected: boolean) => void;
@@ -11,10 +12,12 @@ interface IClaudeStatusState {
   updateTab: (tabId: string, update: IClientTabStatusEntry | null) => void;
   dismissTabLocal: (tabId: string) => void;
   updateCliStateLocal: (tabId: string, cliState: TCliState) => void;
+  setTabOrder: (workspaceId: string, tabIds: string[]) => void;
 }
 
 const useClaudeStatusStore = create<IClaudeStatusState>((set) => ({
   tabs: {},
+  tabOrders: {},
   wsConnected: false,
 
   setConnected: (connected) => set({ wsConnected: connected }),
@@ -43,6 +46,13 @@ const useClaudeStatusStore = create<IClaudeStatusState>((set) => ({
           [tabId]: { ...entry, dismissed: true },
         },
       };
+    }),
+
+  setTabOrder: (workspaceId, tabIds) =>
+    set((state) => {
+      const prev = state.tabOrders[workspaceId];
+      if (prev && prev.length === tabIds.length && prev.every((id, i) => id === tabIds[i])) return state;
+      return { tabOrders: { ...state.tabOrders, [workspaceId]: tabIds } };
     }),
 
   updateCliStateLocal: (tabId, cliState) =>
