@@ -60,6 +60,6 @@ export interface IWorkspacesData {
   dangerouslySkipPermissions?: boolean;
   editorUrl?: string;
   authPassword?: string;
-  authToken?: string;
+  authSecret?: string;
   updatedAt: string;
 }

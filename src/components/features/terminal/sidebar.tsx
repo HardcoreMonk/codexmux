@@ -8,6 +8,7 @@ import {
   Bell,
   LogOut,
 } from 'lucide-react';
+import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { toast } from 'sonner';
 import {
@@ -33,9 +34,8 @@ interface ISidebarProps {
 const MIN_WIDTH = 160;
 const MAX_WIDTH = 480;
 
-const handleLogout = async () => {
-  await fetch('/api/auth/logout', { method: 'POST' });
-  window.location.href = '/login';
+const handleLogout = () => {
+  signOut({ callbackUrl: '/login' });
 };
 
 const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {

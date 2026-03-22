@@ -3,6 +3,7 @@ import "pretendard/dist/web/static/pretendard.css";
 import "@xterm/xterm/css/xterm.css";
 import { useEffect } from "react";
 import type { AppProps } from "next/app";
+import { SessionProvider } from "next-auth/react";
 import { ThemeProvider, useTheme } from "next-themes";
 import { Toaster } from "sonner";
 import useTerminalTheme from "@/hooks/use-terminal-theme";
@@ -30,15 +31,17 @@ const ThemedToaster = () => {
   return <Toaster position="bottom-right" theme={resolvedTheme as 'light' | 'dark'} />;
 };
 
-export default function App({ Component, pageProps }: AppProps) {
+export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-      <main className="font-sans antialiased">
-        <Component {...pageProps} />
-        <TerminalThemeSync />
-        <ClaudeStatusProvider />
-        <ThemedToaster />
-      </main>
-    </ThemeProvider>
+    <SessionProvider session={session}>
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+        <main className="font-sans antialiased">
+          <Component {...pageProps} />
+          <TerminalThemeSync />
+          <ClaudeStatusProvider />
+          <ThemedToaster />
+        </main>
+      </ThemeProvider>
+    </SessionProvider>
   );
 }

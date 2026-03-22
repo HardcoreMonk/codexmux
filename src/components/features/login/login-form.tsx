@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, Check, Lock, Terminal, X } from 'lucide-react';
+import { signIn } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 
 interface IToolStatus {
@@ -111,13 +112,9 @@ export const LoginForm = ({ className, ...props }: React.ComponentProps<'div'>) 
     setIsLoading(true);
     setError('');
 
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
-    });
+    const result = await signIn('credentials', { password, redirect: false });
 
-    if (!res.ok) {
+    if (result?.error) {
       setError('비밀번호가 올바르지 않습니다.');
       setIsLoading(false);
     } else {

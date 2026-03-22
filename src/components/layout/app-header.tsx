@@ -1,4 +1,5 @@
 import { Terminal, Bell, LogOut, Menu } from 'lucide-react';
+import { signOut } from 'next-auth/react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -19,9 +20,8 @@ interface IAppHeaderProps {
   onMenuOpen?: () => void;
 }
 
-const handleLogout = async () => {
-  await fetch('/api/auth/logout', { method: 'POST' });
-  window.location.href = '/login';
+const handleLogout = () => {
+  signOut({ callbackUrl: '/login' });
 };
 
 const AppHeader = ({ onMenuOpen }: IAppHeaderProps) => {

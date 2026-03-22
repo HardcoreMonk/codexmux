@@ -1,6 +1,7 @@
 import { createServer } from 'http';
 import next from 'next';
 import { WebSocketServer } from 'ws';
+import { getToken } from 'next-auth/jwt';
 import { handleConnection, gracefulShutdown } from './src/lib/terminal-server';
 import { handleTimelineConnection, gracefulTimelineShutdown } from './src/lib/timeline-server';
 import { handleSyncConnection, gracefulSyncShutdown } from './src/lib/sync-server';
@@ -10,26 +11,26 @@ import { scanSessions, applyConfig } from './src/lib/tmux';
 import { initWorkspaceStore } from './src/lib/workspace-store';
 import { autoResumeOnStartup } from './src/lib/auto-resume';
 import { initAuthCredentials } from './src/lib/auth-credentials';
+import type { IncomingMessage } from 'http';
 
 const port = parseInt(process.env.PORT || '3000', 10);
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
 const handle = app.getRequestHandler();
 
-const parseCookies = (cookieHeader: string | undefined): Record<string, string> => {
-  if (!cookieHeader) return {};
-  return Object.fromEntries(
-    cookieHeader.split(';').map((c) => {
-      const [key, ...val] = c.trim().split('=');
-      return [key, val.join('=')];
-    }),
-  );
+const verifyWebSocketAuth = async (request: IncomingMessage): Promise<boolean> => {
+  const token = await getToken({
+    req: request as never,
+    secret: process.env.NEXTAUTH_SECRET,
+    cookieName: 'next-auth.session-token',
+  });
+  return !!token;
 };
 
 const start = async () => {
   const credentials = initAuthCredentials();
   process.env.AUTH_PASSWORD = credentials.password;
-  process.env.AUTH_TOKEN = credentials.token;
+  process.env.NEXTAUTH_SECRET = credentials.secret;
 
   await scanSessions();
   await applyConfig();
@@ -55,16 +56,16 @@ const start = async () => {
   const statusWss = new WebSocketServer({ noServer: true });
   statusWss.on('connection', handleStatusConnection);
 
-  server.on('upgrade', (request, socket, head) => {
+  server.on('upgrade', async (request, socket, head) => {
     const url = new URL(request.url ?? '', `http://localhost:${port}`);
-    const cookies = parseCookies(request.headers.cookie);
 
     if (dev && url.pathname.startsWith('/_next/')) {
       upgrade(request, socket, head);
       return;
     }
 
-    if (cookies['auth-token'] !== process.env.AUTH_TOKEN) {
+    const authenticated = await verifyWebSocketAuth(request);
+    if (!authenticated) {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
       socket.destroy();
       return;

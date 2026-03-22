@@ -17,7 +17,7 @@ export interface IWorkspaceInitialData {
   dangerouslySkipPermissions: boolean;
   editorUrl: string;
   authPassword: string;
-  authToken: string;
+  authSecret: string;
 }
 
 interface IWorkspaceState {
@@ -28,7 +28,7 @@ interface IWorkspaceState {
   dangerouslySkipPermissions: boolean;
   editorUrl: string;
   authPassword: string;
-  authToken: string;
+  authSecret: string;
   isLoading: boolean;
   error: string | null;
 
@@ -47,7 +47,7 @@ interface IWorkspaceState {
   saveSidebarWidth: (width: number) => void;
   setDangerouslySkipPermissions: (enabled: boolean) => void;
   setEditorUrl: (url: string) => void;
-  setAuthCredentials: (password: string, token: string) => void;
+  setAuthCredentials: (password: string, secret: string) => void;
   validateDirectory: (directory: string) => Promise<IValidateResponse>;
 }
 
@@ -58,7 +58,7 @@ const saveActive = (updates: {
   dangerouslySkipPermissions?: boolean;
   editorUrl?: string;
   authPassword?: string;
-  authToken?: string;
+  authSecret?: string;
 }) => {
   fetch('/api/workspace/active', {
     method: 'PATCH',
@@ -75,7 +75,7 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
   dangerouslySkipPermissions: false,
   editorUrl: '',
   authPassword: '',
-  authToken: '',
+  authSecret: '',
   isLoading: true,
   error: null,
 
@@ -88,7 +88,7 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
       dangerouslySkipPermissions: data.dangerouslySkipPermissions,
       editorUrl: data.editorUrl,
       authPassword: data.authPassword,
-      authToken: data.authToken,
+      authSecret: data.authSecret,
       isLoading: false,
       error: null,
     });
@@ -108,7 +108,7 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
         dangerouslySkipPermissions: data.dangerouslySkipPermissions ?? false,
         editorUrl: data.editorUrl ?? '',
         authPassword: data.authPassword ?? '',
-        authToken: data.authToken ?? '',
+        authSecret: data.authSecret ?? '',
         isLoading: false,
       });
     } catch {
@@ -249,9 +249,9 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
     saveActive({ editorUrl: url });
   },
 
-  setAuthCredentials: (password, token) => {
-    set({ authPassword: password, authToken: token });
-    saveActive({ authPassword: password, authToken: token });
+  setAuthCredentials: (password, secret) => {
+    set({ authPassword: password, authSecret: secret });
+    saveActive({ authPassword: password, authSecret: secret });
   },
 
   validateDirectory: async (directory) => {

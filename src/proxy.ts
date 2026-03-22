@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
-export const proxy = (request: NextRequest) => {
-  const token = request.cookies.get('auth-token')?.value;
+export const proxy = async (request: NextRequest) => {
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+    cookieName: 'next-auth.session-token',
+  });
 
-  if (token !== process.env.AUTH_TOKEN) {
+  if (!token) {
     if (request.nextUrl.pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

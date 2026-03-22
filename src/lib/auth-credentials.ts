@@ -5,63 +5,68 @@ import os from 'os';
 
 interface IAuthCredentials {
   password: string;
-  token: string;
-  parentPid: number;
+  secret: string;
 }
 
 const BASE_DIR = path.join(os.homedir(), '.purple-terminal');
-const CREDENTIALS_PATH = path.join(BASE_DIR, '.auth-credentials');
 const WORKSPACES_FILE = path.join(BASE_DIR, 'workspaces.json');
 
 const generateRandomString = (length: number): string =>
   crypto.randomBytes(length).toString('hex').slice(0, length);
 
-const readFixedAuth = (): { password: string; token: string } | null => {
-  // 1. 환경변수 우선
-  if (process.env.AUTH_PASSWORD && process.env.AUTH_TOKEN) {
-    return { password: process.env.AUTH_PASSWORD, token: process.env.AUTH_TOKEN };
-  }
-
-  // 2. workspaces.json에 저장된 고정 인증 정보
+const readWorkspacesAuth = (): { password: string; secret: string } | null => {
   try {
     const data = JSON.parse(fs.readFileSync(WORKSPACES_FILE, 'utf-8'));
-    if (data.authPassword && data.authToken) {
-      return { password: data.authPassword, token: data.authToken };
+    if (data.authPassword && data.authSecret) {
+      return { password: data.authPassword, secret: data.authSecret };
     }
   } catch {
     // ignore
   }
-
   return null;
 };
 
-export const initAuthCredentials = (): IAuthCredentials & { fixed: boolean } => {
-  const fixed = readFixedAuth();
-  if (fixed) {
-    return { ...fixed, parentPid: process.ppid, fixed: true };
-  }
-
-  const parentPid = process.ppid;
-
+const saveWorkspacesAuth = (credentials: IAuthCredentials): void => {
   try {
-    const existing: IAuthCredentials = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf-8'));
-    if (existing.parentPid === parentPid) {
-      return { ...existing, fixed: false };
+    let data: Record<string, unknown> = {};
+    try {
+      data = JSON.parse(fs.readFileSync(WORKSPACES_FILE, 'utf-8'));
+    } catch {
+      // 파일 없으면 빈 객체
     }
-  } catch {
-    // ignore
+
+    data.authPassword = credentials.password;
+    data.authSecret = credentials.secret;
+    data.updatedAt = new Date().toISOString();
+
+    fs.mkdirSync(BASE_DIR, { recursive: true });
+
+    const tmpFile = WORKSPACES_FILE + '.tmp';
+    fs.writeFileSync(tmpFile, JSON.stringify(data, null, 2));
+    fs.renameSync(tmpFile, WORKSPACES_FILE);
+  } catch (err) {
+    console.error('[auth] workspaces.json 저장 실패:', err);
+  }
+};
+
+export const initAuthCredentials = (): IAuthCredentials & { fixed: boolean } => {
+  // 1. 환경변수 우선
+  if (process.env.AUTH_PASSWORD && process.env.NEXTAUTH_SECRET) {
+    return { password: process.env.AUTH_PASSWORD, secret: process.env.NEXTAUTH_SECRET, fixed: true };
   }
 
+  // 2. workspaces.json에 저장된 인증 정보
+  const stored = readWorkspacesAuth();
+  if (stored) {
+    return { ...stored, fixed: true };
+  }
+
+  // 3. 신규 생성 → workspaces.json에 영구 저장
   const credentials: IAuthCredentials = {
     password: generateRandomString(8),
-    token: generateRandomString(32),
-    parentPid,
+    secret: generateRandomString(64),
   };
 
-  if (!fs.existsSync(BASE_DIR)) {
-    fs.mkdirSync(BASE_DIR, { recursive: true });
-  }
-
-  fs.writeFileSync(CREDENTIALS_PATH, JSON.stringify(credentials));
+  saveWorkspacesAuth(credentials);
   return { ...credentials, fixed: false };
 };
