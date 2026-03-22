@@ -231,6 +231,7 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
   },
 
   setEditorUrl: (url) => {
+    if (get().editorUrl === url) return;
     set({ editorUrl: url });
     saveActive({ editorUrl: url });
   },

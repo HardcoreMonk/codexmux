@@ -118,3 +118,6 @@ export const isFocusInputShortcut = (event: KeyboardEvent): boolean => {
   const modKey = isMac ? event.metaKey : event.ctrlKey;
   return modKey && !event.shiftKey && !event.altKey && event.code === 'KeyI';
 };
+
+export const isShiftEnter = (event: KeyboardEvent): boolean =>
+  event.type === 'keydown' && event.key === 'Enter' && event.shiftKey;

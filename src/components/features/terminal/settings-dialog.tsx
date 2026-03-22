@@ -170,7 +170,8 @@ const TerminalTab = () => {
 };
 
 const EditorTab = () => {
-  const { editorUrl, setEditorUrl } = useWorkspaceStore();
+  const editorUrl = useWorkspaceStore((state) => state.editorUrl);
+  const setEditorUrl = useWorkspaceStore((state) => state.setEditorUrl);
   const [localEditorUrl, setLocalEditorUrl] = useState(editorUrl);
 
   const handleEditorUrlBlur = () => {

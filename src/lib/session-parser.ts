@@ -180,10 +180,14 @@ const stripProtocolTags = (text: string): string => {
 };
 
 const COMMAND_NAME_RE = /<command-name>\s*(.*?)\s*<\/command-name>/;
+const COMMAND_ARGS_RE = /<command-args>\s*(.*?)\s*<\/command-args>/;
 
 const extractCommandName = (text: string): string | null => {
   const match = text.match(COMMAND_NAME_RE);
-  return match ? match[1] : null;
+  if (!match) return null;
+  const name = match[1];
+  const argsMatch = text.match(COMMAND_ARGS_RE);
+  return argsMatch ? `${name} ${argsMatch[1]}` : name;
 };
 
 // --- Internal Helpers ---

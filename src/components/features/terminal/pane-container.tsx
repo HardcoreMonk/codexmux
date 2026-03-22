@@ -17,7 +17,7 @@ import ConnectionStatus from '@/components/features/terminal/connection-status';
 import useQuickPrompts from '@/hooks/use-quick-prompts';
 import PaneTabBar from '@/components/features/terminal/pane-tab-bar';
 import { formatTabTitle, isClaudeProcess } from '@/lib/tab-title';
-import { isAppShortcut, isClearShortcut, isFocusInputShortcut } from '@/lib/keyboard-shortcuts';
+import { isAppShortcut, isClearShortcut, isFocusInputShortcut, isShiftEnter } from '@/lib/keyboard-shortcuts';
 import type { TCliState } from '@/types/timeline';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
 
@@ -187,7 +187,7 @@ const PaneContainer = ({
       if (isFocusInputShortcut(event)) focusInputRef.current?.();
       return false;
     }
-    if (event.key === 'Enter' && event.shiftKey && event.type === 'keydown') {
+    if (isShiftEnter(event)) {
       event.preventDefault();
       wsActionsRef.current.sendStdin('\n');
       return false;

@@ -88,7 +88,7 @@ const ContentHeader = ({
               className="flex h-7 items-center px-2 text-[11px] font-medium tracking-wide text-muted-foreground hover:text-foreground"
               onClick={() => {
                 if (!editorUrl) {
-                  toast.info('에디터 URL이 설정되지 않았습니다. 설정 > 일반에서 에디터 URL을 입력해주세요.');
+                  toast.info('에디터 URL이 설정되지 않았습니다. 설정 > 에디터에서 URL을 입력해주세요.');
                   return;
                 }
                 const folder = activeTabCwd || '/';
