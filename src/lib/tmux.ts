@@ -252,6 +252,19 @@ export const checkTerminalProcess = async (
   };
 };
 
+export const getPaneTitle = async (sessionName: string): Promise<string | null> => {
+  try {
+    const { stdout } = await execFile(
+      'tmux',
+      ['-L', TMUX_SOCKET, 'display-message', '-p', '-t', sessionName, '#{pane_title}'],
+      { timeout: CMD_TIMEOUT },
+    );
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+};
+
 export const exitCopyMode = async (sessionName: string): Promise<void> => {
   await execFile(
     'tmux',

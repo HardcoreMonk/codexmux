@@ -4,7 +4,7 @@ import { watch, type FSWatcher } from 'fs';
 import { existsSync } from 'fs';
 import { detectActiveSession, watchSessionsDir, type ISessionWatcher } from './session-detection';
 import { parseSessionFile, parseIncremental } from './session-parser';
-import { getSessionPanePid, checkTerminalProcess, sendKeys, getSessionCwd } from './tmux';
+import { getSessionPanePid, checkTerminalProcess, sendKeys, getSessionCwd, getPaneTitle } from './tmux';
 import { cwdToProjectPath } from './session-list';
 import { updateTabClaudeSessionId, updateTabClaudeSummary } from './layout-store';
 import { getDangerouslySkipPermissions } from './workspace-store';
@@ -19,6 +19,23 @@ const MAX_WATCHERS = 32;
 const MAX_CONNECTIONS = 32;
 const MAX_WATCHER_RETRIES = 3;
 const MAX_INIT_ENTRIES = 200;
+
+const CLAUDE_TITLE_RE = /^[✳⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⠐⠈]\s+/;
+
+const parseClaudePaneTitle = (paneTitle: string | null): string | null => {
+  if (!paneTitle) return null;
+  if (!CLAUDE_TITLE_RE.test(paneTitle)) return null;
+  const cleaned = paneTitle.replace(CLAUDE_TITLE_RE, '').trim();
+  return cleaned || null;
+};
+
+const resolveClaudeSummary = async (
+  sessionName: string,
+  jsonlSummary: string | null | undefined,
+): Promise<string | null> => {
+  const paneTitle = await getPaneTitle(sessionName);
+  return parseClaudePaneTitle(paneTitle) ?? jsonlSummary ?? null;
+};
 
 interface ITimelineConnection {
   ws: WebSocket;
@@ -234,10 +251,9 @@ const watchForJsonlFile = (
           newSessionId: sessionId,
           reason: 'new-session-started',
         });
-        const summary = await subscribeToFile(c.ws, expectedJsonlPath, sessionId);
-        if (summary) {
-          await updateTabClaudeSummary(sessionName, summary).catch(() => {});
-        }
+        const jsonlSummary = await subscribeToFile(c.ws, expectedJsonlPath, sessionId);
+        const summary = await resolveClaudeSummary(sessionName, jsonlSummary);
+        await updateTabClaudeSummary(sessionName, summary).catch(() => {});
       }
     }
   };
@@ -360,8 +376,9 @@ const handleResumeMessage = async (
         unsubscribeFromFile(ws, conn.currentJsonlPath);
       }
       conn.currentJsonlPath = jsonlPath;
-      const summary = await subscribeToFile(ws, jsonlPath, sessionId);
-      await updateTabClaudeSummary(conn.sessionName, summary ?? null).catch(() => {});
+      const jsonlSummary = await subscribeToFile(ws, jsonlPath, sessionId);
+      const summary = await resolveClaudeSummary(conn.sessionName, jsonlSummary);
+      await updateTabClaudeSummary(conn.sessionName, summary).catch(() => {});
     } else {
       sendJson(ws, {
         type: 'timeline:init',
@@ -476,17 +493,19 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
 
   if (sessionInfo.jsonlPath) {
     conn.currentJsonlPath = sessionInfo.jsonlPath;
-    const summary = await subscribeToFile(ws, sessionInfo.jsonlPath, sessionInfo.sessionId ?? undefined);
+    const jsonlSummary = await subscribeToFile(ws, sessionInfo.jsonlPath, sessionInfo.sessionId ?? undefined);
     if (sessionInfo.sessionId) {
       await updateTabClaudeSessionId(conn.sessionName, sessionInfo.sessionId).catch(() => {});
     }
-    await updateTabClaudeSummary(conn.sessionName, summary ?? null).catch(() => {});
+    const summary = await resolveClaudeSummary(conn.sessionName, jsonlSummary);
+    await updateTabClaudeSummary(conn.sessionName, summary).catch(() => {});
   } else if (effectiveSessionId) {
     const jsonlPath = await resolveJsonlPath(sessionName, effectiveSessionId);
     if (jsonlPath) {
       conn.currentJsonlPath = jsonlPath;
-      const summary = await subscribeToFile(ws, jsonlPath, effectiveSessionId);
-      await updateTabClaudeSummary(conn.sessionName, summary ?? null).catch(() => {});
+      const jsonlSummary = await subscribeToFile(ws, jsonlPath, effectiveSessionId);
+      const summary = await resolveClaudeSummary(conn.sessionName, jsonlSummary);
+      await updateTabClaudeSummary(conn.sessionName, summary).catch(() => {});
     } else {
       sendJson(ws, { type: 'timeline:init', entries: [], sessionId: effectiveSessionId, totalEntries: 0 });
     }
@@ -528,10 +547,9 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
             reason: 'new-session-started',
           });
 
-          const summary = await subscribeToFile(c.ws, newInfo.jsonlPath, newInfo.sessionId ?? undefined);
-          if (summary) {
-            await updateTabClaudeSummary(sessionName, summary).catch(() => {});
-          }
+          const jsonlSummary = await subscribeToFile(c.ws, newInfo.jsonlPath, newInfo.sessionId ?? undefined);
+          const summary = await resolveClaudeSummary(sessionName, jsonlSummary);
+          await updateTabClaudeSummary(sessionName, summary).catch(() => {});
         } else if (!newInfo.jsonlPath && newInfo.status === 'none') {
           cancelJsonlWatcher(sessionName);
           if (c.currentJsonlPath) {
