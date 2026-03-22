@@ -9,27 +9,6 @@ const TMUX_SOCKET = 'purple';
 const TMUX_CONFIG_PATH = path.join(process.cwd(), 'src', 'config', 'tmux.conf');
 const CMD_TIMEOUT = 5000;
 
-export const checkTmux = async (): Promise<{ version: string }> => {
-  try {
-    const { stdout } = await execFile('tmux', ['-V'], { timeout: CMD_TIMEOUT });
-    const match = stdout.trim().match(/(\d+\.\d+)/);
-    if (!match) {
-      console.log('[terminal] tmux version could not be parsed');
-      process.exit(1);
-    }
-    const version = match[1];
-    if (parseFloat(version) < 2.9) {
-      console.log(`[terminal] tmux version ${version} < 2.9, exiting`);
-      process.exit(1);
-    }
-    console.log(`[terminal] tmux version: ${version} (>= 2.9 required)`);
-    return { version };
-  } catch {
-    console.log('[terminal] tmux not found or version < 2.9, exiting');
-    process.exit(1);
-  }
-};
-
 export const listSessions = async (): Promise<string[]> => {
   try {
     const { stdout } = await execFile(

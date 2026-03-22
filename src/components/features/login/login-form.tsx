@@ -2,13 +2,107 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { Lock, Terminal } from 'lucide-react';
-import { useState } from 'react';
+import { AlertTriangle, Check, Lock, Terminal, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+interface IToolStatus {
+  installed: boolean;
+  version: string | null;
+}
+
+interface IPreflightResult {
+  tmux: IToolStatus & { compatible: boolean };
+  git: IToolStatus;
+  claude: IToolStatus;
+}
+
+interface IToolCheck {
+  name: string;
+  ok: boolean;
+  version: string | null;
+  install: string;
+}
+
+const getToolChecks = (status: IPreflightResult): IToolCheck[] => [
+  {
+    name: 'tmux',
+    ok: status.tmux.installed && status.tmux.compatible,
+    version: status.tmux.version,
+    install: status.tmux.installed && !status.tmux.compatible ? 'brew upgrade tmux' : 'brew install tmux',
+  },
+  {
+    name: 'git',
+    ok: status.git.installed,
+    version: status.git.version,
+    install: 'brew install git',
+  },
+  {
+    name: 'claude',
+    ok: status.claude.installed,
+    version: status.claude.version,
+    install: 'npm install -g @anthropic-ai/claude-code',
+  },
+];
+
+const PreflightError = ({ checks }: { checks: IToolCheck[] }) => {
+  const failedChecks = checks.filter((c) => !c.ok);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2 text-amber-400">
+        <AlertTriangle className="h-5 w-5 shrink-0" />
+        <p className="text-sm font-medium">필수 도구가 누락되었습니다</p>
+      </div>
+      <div className="space-y-1.5">
+        {checks.map((check) => (
+          <div key={check.name} className="flex items-center gap-2 text-sm">
+            {check.ok ? (
+              <Check className="h-4 w-4 shrink-0 text-green-400" />
+            ) : (
+              <X className="h-4 w-4 shrink-0 text-red-400" />
+            )}
+            <span className={check.ok ? 'text-muted-foreground' : 'text-foreground font-medium'}>
+              {check.name}
+            </span>
+            {check.version && (
+              <span className="text-xs text-muted-foreground">({check.version})</span>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="rounded-md bg-muted p-3 font-mono text-xs leading-relaxed">
+        <p className="text-muted-foreground/60"># 설치</p>
+        {failedChecks.map((check) => (
+          <p key={check.name}>{check.install}</p>
+        ))}
+        <p className="mt-2 text-muted-foreground/60"># 설치 후 서버 재시작</p>
+        <p>pnpm start</p>
+      </div>
+    </div>
+  );
+};
 
 export const LoginForm = ({ className, ...props }: React.ComponentProps<'div'>) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [toolChecks, setToolChecks] = useState<IToolCheck[] | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const res = await fetch('/api/auth/preflight');
+        const data: IPreflightResult = await res.json();
+        setToolChecks(getToolChecks(data));
+      } catch {
+        // preflight 실패 시 로그인 폼 표시
+      } finally {
+        setChecking(false);
+      }
+    };
+    check();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -40,31 +134,39 @@ export const LoginForm = ({ className, ...props }: React.ComponentProps<'div'>) 
             Purple Terminal
           </span>
         </div>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="password">비밀번호</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="비밀번호를 입력하세요"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setError('');
-              }}
-              autoFocus
-              className="h-12 text-base"
-            />
-            {error && <p className="text-destructive text-sm">{error}</p>}
+        {checking ? (
+          <div className="flex justify-center py-4">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
           </div>
-          <Button type="submit" disabled={isLoading || !password} size="lg" className="h-12 w-full">
-            <Lock className="size-4" />
-            {isLoading ? '로그인 중...' : '로그인'}
-          </Button>
-          <p className="text-center text-muted-foreground text-xs">
-            비밀번호는 서버 로그에서 확인할 수 있습니다
-          </p>
-        </form>
+        ) : toolChecks?.some((c) => !c.ok) ? (
+          <PreflightError checks={toolChecks} />
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="password">비밀번호</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="비밀번호를 입력하세요"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError('');
+                }}
+                autoFocus
+                className="h-12 text-base"
+              />
+              {error && <p className="text-destructive text-sm">{error}</p>}
+            </div>
+            <Button type="submit" disabled={isLoading || !password} size="lg" className="h-12 w-full">
+              <Lock className="size-4" />
+              {isLoading ? '로그인 중...' : '로그인'}
+            </Button>
+            <p className="text-center text-muted-foreground text-xs">
+              비밀번호는 서버 로그에서 확인할 수 있습니다
+            </p>
+          </form>
+        )}
       </div>
     </div>
   );

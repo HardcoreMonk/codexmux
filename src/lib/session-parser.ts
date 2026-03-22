@@ -448,10 +448,21 @@ const parseContent = (content: string): IParseResult => {
         errorCount++;
         continue;
       }
-      if (base.data.type === 'summary') {
-        const rawObj = raw as Record<string, unknown>;
-        if (typeof rawObj.summary === 'string' && rawObj.summary) {
-          sessionSummary = rawObj.summary;
+      if (!sessionSummary && base.data.type === 'user') {
+        const userParsed = UserEntrySchema.safeParse(raw);
+        if (userParsed.success) {
+          const content = userParsed.data.message.content;
+          if (typeof content === 'string') {
+            const cleaned = stripProtocolTags(content);
+            if (cleaned) sessionSummary = cleaned;
+          } else if (Array.isArray(content)) {
+            for (const item of content) {
+              if (item.type === 'text' && 'text' in item) {
+                const cleaned = stripProtocolTags((item as { text: string }).text);
+                if (cleaned) { sessionSummary = cleaned; break; }
+              }
+            }
+          }
         }
       }
       if (base.data.type === 'system') {

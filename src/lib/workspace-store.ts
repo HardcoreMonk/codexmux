@@ -180,7 +180,13 @@ export const initWorkspaceStore = async (): Promise<void> => {
   }
 
   if (!data) {
-    console.log('[purple-terminal] 파일 없음, 빈 상태로 대기');
+    const initial = emptyState();
+    if (process.env.AUTH_PASSWORD && process.env.AUTH_TOKEN) {
+      initial.authPassword = process.env.AUTH_PASSWORD;
+      initial.authToken = process.env.AUTH_TOKEN;
+    }
+    await writeWorkspacesFile(initial);
+    console.log('[purple-terminal] 초기 workspaces.json 생성 (auth 포함)');
     return;
   }
 

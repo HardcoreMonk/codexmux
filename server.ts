@@ -4,7 +4,7 @@ import { WebSocketServer } from 'ws';
 import { handleConnection, gracefulShutdown } from './src/lib/terminal-server';
 import { handleTimelineConnection, gracefulTimelineShutdown } from './src/lib/timeline-server';
 import { handleSyncConnection, gracefulSyncShutdown } from './src/lib/sync-server';
-import { checkTmux, scanSessions, applyConfig } from './src/lib/tmux';
+import { scanSessions, applyConfig } from './src/lib/tmux';
 import { initWorkspaceStore } from './src/lib/workspace-store';
 import { autoResumeOnStartup } from './src/lib/auto-resume';
 import { initAuthCredentials } from './src/lib/auth-credentials';
@@ -29,7 +29,6 @@ const start = async () => {
   process.env.AUTH_PASSWORD = credentials.password;
   process.env.AUTH_TOKEN = credentials.token;
 
-  await checkTmux();
   await scanSessions();
   await applyConfig();
   await initWorkspaceStore();
