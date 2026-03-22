@@ -9,6 +9,7 @@ import type {
   ITimelineToolResult,
   ITimelineAgentGroup,
   ITimelineInterrupt,
+  ITimelineTurnEnd,
   ITimelineDiff,
   IParseResult,
   IIncrementalResult,
@@ -177,6 +178,13 @@ const stripProtocolTags = (text: string): string => {
   return text.replace(PROTOCOL_TAG_RE, '').trim();
 };
 
+const COMMAND_NAME_RE = /<command-name>\s*(.*?)\s*<\/command-name>/;
+
+const extractCommandName = (text: string): string | null => {
+  const match = text.match(COMMAND_NAME_RE);
+  return match ? match[1] : null;
+};
+
 // --- Internal Helpers ---
 
 const extractDiff = (toolName: string, input: Record<string, unknown> = {}): { filePath?: string; diff?: ITimelineDiff } => {
@@ -260,6 +268,16 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
     const content = parsed.data.message.content;
 
     if (typeof content === 'string') {
+      const commandName = extractCommandName(content);
+      if (commandName) {
+        entries.push({
+          id: nanoid(),
+          type: 'user-message',
+          timestamp,
+          text: commandName,
+        } satisfies ITimelineUserMessage);
+        return entries;
+      }
       const cleaned = stripProtocolTags(content);
       if (cleaned) {
         entries.push({
@@ -424,6 +442,13 @@ const parseContent = (content: string): IParseResult => {
           sessionSummary = rawObj.summary;
         }
       }
+      if (base.data.type === 'system') {
+        const rawObj = raw as Record<string, unknown>;
+        if (rawObj.subtype === 'stop_hook_summary') {
+          rawEntries.push({ base: base.data, raw });
+        }
+        continue;
+      }
       if (EXCLUDED_TYPES.has(base.data.type)) continue;
       rawEntries.push({ base: base.data, raw });
     } catch {
@@ -433,10 +458,22 @@ const parseContent = (content: string): IParseResult => {
 
   const entries: ITimelineEntry[] = [];
   let lastAgentHint: { agentType: string; description: string } | null = null;
+  let skipNextUser = false;
   let i = 0;
 
   while (i < rawEntries.length) {
     const { base, raw } = rawEntries[i];
+
+    if (base.type === 'system') {
+      const timestamp = base.timestamp ? new Date(base.timestamp).getTime() : Date.now();
+      entries.push({
+        id: nanoid(),
+        type: 'turn-end',
+        timestamp,
+      } satisfies ITimelineTurnEnd);
+      i++;
+      continue;
+    }
 
     if (base.isSidechain) {
       const group: IRawEntry[] = [];
@@ -449,9 +486,18 @@ const parseContent = (content: string): IParseResult => {
       continue;
     }
 
+    if (base.type === 'user' && skipNextUser) {
+      skipNextUser = false;
+      i++;
+      continue;
+    }
+
     const parsed = parseSingleEntry(raw, base);
 
     for (const entry of parsed) {
+      if (entry.type === 'user-message' && entry.text.startsWith('/')) {
+        skipNextUser = true;
+      }
       if (entry.type === 'tool-call' && entry.toolName === 'Agent') {
         const assistantParsed = AssistantEntrySchema.safeParse(raw);
         if (assistantParsed.success) {

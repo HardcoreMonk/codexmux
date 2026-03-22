@@ -327,7 +327,11 @@ const PaneContainer = ({
     if (isFocused && isReady && status === 'connected') {
       const { cols, rows } = fit();
       wsActionsRef.current.sendResize(cols, rows);
-      focus();
+      if (isClaudeCode && claudeInputVisible) {
+        focusInputRef.current?.();
+      } else {
+        focus();
+      }
     }
   }, [isFocused]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -548,14 +552,6 @@ const PaneContainer = ({
                 />
               )}
               {isClaudeCode && (
-                <QuickPromptBar
-                  prompts={quickPrompts}
-                  cliState={claudeCliState}
-                  visible={claudeInputVisible}
-                  onSelect={handleSelectQuickPrompt}
-                />
-              )}
-              {isClaudeCode && (
                 <WebInputBar
                   cliState={claudeCliState}
                   sendStdin={sendStdin}
@@ -564,6 +560,14 @@ const PaneContainer = ({
                   focusTerminal={focus}
                   focusInputRef={focusInputRef}
                   setInputValueRef={setInputValueRef}
+                />
+              )}
+              {isClaudeCode && (
+                <QuickPromptBar
+                  prompts={quickPrompts}
+                  cliState={claudeCliState}
+                  visible={claudeInputVisible}
+                  onSelect={handleSelectQuickPrompt}
                 />
               )}
             </div>

@@ -121,6 +121,15 @@ const MobileTerminalPage = () => {
       const sorted = [...currentPane.tabs].sort((a, b) => a.order - b.order);
       const adjacent = sorted[0];
       setSelectedTabId(adjacent?.id ?? currentPane.activeTabId);
+      return;
+    }
+
+    if (
+      currentPane.activeTabId &&
+      currentPane.activeTabId !== selectedTabId &&
+      currentPane.tabs.some((t) => t.id === currentPane.activeTabId)
+    ) {
+      setSelectedTabId(currentPane.activeTabId);
     }
   }, [layout.layout, panes]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -175,10 +184,7 @@ const MobileTerminalPage = () => {
 
   const handleCreateTab = useCallback(async () => {
     if (!currentPane) return;
-    const newTab = await layout.createTabInPane(currentPane.id);
-    if (newTab) {
-      setSelectedTabId(newTab.id);
-    }
+    await layout.createTabInPane(currentPane.id);
   }, [currentPane, layout]);
 
   const handleCloseTab = useCallback(() => {
@@ -282,6 +288,7 @@ const MobileTerminalPage = () => {
       <>
         {currentPane && selectedTabId && (
           <MobileTabHeader
+            key={selectedTabId}
             tabName={currentTabName}
             panelType={currentPanelType}
             onToggleClaude={handleToggleClaude}

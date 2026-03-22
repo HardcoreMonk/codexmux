@@ -177,6 +177,7 @@ const ClaudeCodePanel = ({
         <TimelineView
           entries={entries}
           sessionId={sessionId}
+          cliState={effectiveCliState}
           sessionStatus={sessionStatus}
           wsStatus={wsStatus}
           isLoading={isTimelineLoading}

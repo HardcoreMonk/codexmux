@@ -19,7 +19,8 @@ export type TTimelineEntryType =
   | 'tool-call'
   | 'tool-result'
   | 'agent-group'
-  | 'interrupt';
+  | 'interrupt'
+  | 'turn-end';
 
 export interface ITimelineUserMessage {
   id: string;
@@ -88,13 +89,20 @@ export interface ITimelineInterrupt {
   timestamp: number;
 }
 
+export interface ITimelineTurnEnd {
+  id: string;
+  type: 'turn-end';
+  timestamp: number;
+}
+
 export type ITimelineEntry =
   | ITimelineUserMessage
   | ITimelineAssistantMessage
   | ITimelineToolCall
   | ITimelineToolResult
   | ITimelineAgentGroup
-  | ITimelineInterrupt;
+  | ITimelineInterrupt
+  | ITimelineTurnEnd;
 
 export interface ITimelineInitMessage {
   type: 'timeline:init';

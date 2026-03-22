@@ -5,6 +5,7 @@ import type {
   ITimelineEntry,
   ITimelineToolCall,
   ITimelineToolResult,
+  TCliState,
   TSessionStatus,
   TTimelineConnectionStatus,
 } from '@/types/timeline';
@@ -17,6 +18,7 @@ import ScrollToBottomButton from '@/components/features/timeline/scroll-to-botto
 interface ITimelineViewProps {
   entries: ITimelineEntry[];
   sessionId: string | null;
+  cliState: TCliState;
   sessionStatus: TSessionStatus;
   wsStatus: TTimelineConnectionStatus;
   isLoading: boolean;
@@ -192,6 +194,7 @@ const EmptyState = ({ sessionStatus }: { sessionStatus: TSessionStatus }) => {
 const TimelineView = ({
   entries,
   sessionId,
+  cliState,
   sessionStatus,
   wsStatus,
   isLoading,
@@ -332,7 +335,7 @@ const TimelineView = ({
             )}
           </div>
         ))}
-        {sessionStatus === 'active' && entries.length > 0 && entries[entries.length - 1].type !== 'assistant-message' && entries[entries.length - 1].type !== 'interrupt' && (
+        {cliState === 'busy' && (
           <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
             <Loader2 size={12} className="animate-spin text-ui-purple" />
             <ElapsedTime since={entries[entries.length - 1].timestamp} />

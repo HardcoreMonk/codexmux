@@ -213,6 +213,7 @@ const MobileClaudeCodePanel = ({
         <TimelineView
           entries={entries}
           sessionId={sessionId}
+          cliState={cliState}
           sessionStatus={sessionStatus}
           wsStatus={wsStatus}
           isLoading={isTimelineLoading}
@@ -227,12 +228,6 @@ const MobileClaudeCodePanel = ({
       </div>
 
       <div className="shrink-0 pb-3">
-        <QuickPromptBar
-          prompts={quickPrompts}
-          cliState={cliState}
-          visible={isInputVisible}
-          onSelect={handleSelectQuickPrompt}
-        />
         <WebInputBar
           cliState={cliState}
           sendStdin={sendStdin}
@@ -242,6 +237,12 @@ const MobileClaudeCodePanel = ({
           focusInputRef={focusInputRef}
           setInputValueRef={setInputValueRef}
           maxRows={3}
+        />
+        <QuickPromptBar
+          prompts={quickPrompts}
+          cliState={cliState}
+          visible={isInputVisible}
+          onSelect={handleSelectQuickPrompt}
         />
       </div>
 
