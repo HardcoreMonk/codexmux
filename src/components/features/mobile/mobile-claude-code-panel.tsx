@@ -1,9 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
-import 'dayjs/locale/ko';
 import useTimeline from '@/hooks/use-timeline';
 import useSessionList from '@/hooks/use-session-list';
 import useSessionView from '@/hooks/use-session-view';
@@ -15,12 +13,10 @@ import SessionEmptyView from '@/components/features/terminal/session-empty-view'
 import TimelineView from '@/components/features/timeline/timeline-view';
 import WebInputBar from '@/components/features/terminal/web-input-bar';
 import QuickPromptBar from '@/components/features/terminal/quick-prompt-bar';
+import { MetaCompact } from '@/components/features/terminal/session-meta-content';
 import MobileMetaSheet from './mobile-meta-sheet';
 import useQuickPrompts from '@/hooks/use-quick-prompts';
 import type { TCliState } from '@/types/timeline';
-
-dayjs.extend(relativeTime);
-dayjs.locale('ko');
 
 interface IMobileClaudeCodePanelProps {
   sessionName: string;
@@ -37,8 +33,6 @@ interface IMobileClaudeCodePanelProps {
   isRestarting?: boolean;
   onRestartComplete?: () => void;
 }
-
-const RELATIVE_TIME_INTERVAL_MS = 60_000;
 
 const MobileClaudeCodePanel = ({
   sessionName,
@@ -59,12 +53,6 @@ const MobileClaudeCodePanel = ({
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(null);
   const [metaSheetOpen, setMetaSheetOpen] = useState(false);
   const navigateToTimelineRef = useRef<() => void>(() => {});
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => setTick((t) => t + 1), RELATIVE_TIME_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, []);
 
   const handleResumeStarted = useCallback(() => {
     setResumingSessionId(null);
@@ -211,12 +199,10 @@ const MobileClaudeCodePanel = ({
     );
   }
 
-  const relativeTimeStr = meta.updatedAt ? dayjs(meta.updatedAt).fromNow() : '-';
-
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-muted">
       <div
-        className="flex shrink-0 cursor-pointer items-center border-b px-4 py-1.5 hover:bg-muted/30"
+        className="flex shrink-0 cursor-pointer items-center justify-between border-b px-4 py-1.5 hover:bg-muted/30"
         role="button"
         tabIndex={0}
         onClick={() => setMetaSheetOpen(true)}
@@ -227,11 +213,15 @@ const MobileClaudeCodePanel = ({
           }
         }}
       >
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 text-xs">
-          <span className="truncate text-sm font-medium text-foreground">{meta.title}</span>
-          <span className="text-muted-foreground/50">·</span>
-          <span className="shrink-0 text-muted-foreground">{relativeTimeStr}</span>
-        </div>
+        <MetaCompact
+          title={meta.title}
+          totalCost={meta.totalCost}
+          branch={branch}
+        />
+        <ChevronDown
+          size={14}
+          className="shrink-0 text-muted-foreground"
+        />
       </div>
 
       <div className="min-h-0 flex-1">
@@ -275,16 +265,7 @@ const MobileClaudeCodePanel = ({
       <MobileMetaSheet
         open={metaSheetOpen}
         onOpenChange={setMetaSheetOpen}
-        title={meta.title}
-        createdAt={meta.createdAt}
-        updatedAt={meta.updatedAt}
-        userCount={meta.userCount}
-        assistantCount={meta.assistantCount}
-        inputTokens={meta.inputTokens}
-        outputTokens={meta.outputTokens}
-        totalTokens={meta.totalTokens}
-        totalCost={meta.totalCost}
-        tokensByModel={meta.tokensByModel}
+        meta={meta}
         branch={branch}
         isBranchLoading={isBranchLoading}
         sessionId={sessionId}
