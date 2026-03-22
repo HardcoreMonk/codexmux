@@ -9,6 +9,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import type { IWorkspace } from '@/types/terminal';
+import WorkspaceStatusIndicator from '@/components/features/terminal/workspace-status-indicator';
 
 interface IWorkspaceItemProps {
   workspace: IWorkspace;
@@ -122,8 +123,11 @@ const WorkspaceItem = ({
           />
         ) : (
           <>
-            <span className="truncate text-sm font-medium leading-tight">
-              {workspace.name}
+            <span className="flex items-center gap-1.5">
+              <span className="truncate text-sm font-medium leading-tight">
+                {workspace.name}
+              </span>
+              <WorkspaceStatusIndicator workspaceId={workspace.id} />
             </span>
             {displayDirs.map((dir, i) => (
               <span key={dir} className={cn('truncate text-xs leading-tight text-muted-foreground/70', i === 0 && 'mt-1')}>
