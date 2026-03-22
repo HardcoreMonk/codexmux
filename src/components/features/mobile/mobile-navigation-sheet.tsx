@@ -19,6 +19,8 @@ import {
 import type { IWorkspace, IPaneNode, ITab } from '@/types/terminal';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import { formatTabTitle, isAutoTabName } from '@/lib/tab-title';
+import TabStatusIndicator from '@/components/features/terminal/tab-status-indicator';
+import WorkspaceStatusIndicator from '@/components/features/terminal/workspace-status-indicator';
 
 interface IMobileNavigationSheetProps {
   open: boolean;
@@ -116,6 +118,11 @@ const MobileNavigationSheet = ({
           onTouchCancel={handleLongPressEnd}
           onContextMenu={(e) => e.preventDefault()}
         >
+          <TabStatusIndicator
+            tabId={tab.id}
+            isActive={isTabActive}
+            panelType={panelType}
+          />
           {isClaudeCode ? (
             <BotMessageSquare size={14} className={cn('shrink-0 mt-0.5', isTabActive ? 'text-ui-purple' : 'text-muted-foreground')} />
           ) : (
@@ -203,6 +210,7 @@ const MobileNavigationSheet = ({
                     />
                   )}
                   <span className="truncate">{ws.name}</span>
+                  <WorkspaceStatusIndicator workspaceId={ws.id} />
                 </button>
 
                 {isExpanded && renderPaneTree(ws.id)}

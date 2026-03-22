@@ -12,6 +12,7 @@ const LINE_HEIGHT = 20;
 const PADDING_Y = 16;
 
 interface IWebInputBarProps {
+  tabId?: string;
   cliState: TCliState;
   sendStdin: (data: string) => void;
   terminalWsConnected: boolean;
@@ -24,6 +25,7 @@ interface IWebInputBarProps {
 }
 
 const WebInputBar = ({
+  tabId,
   cliState,
   sendStdin,
   terminalWsConnected,
@@ -38,7 +40,7 @@ const WebInputBar = ({
     cliState,
     sendStdin,
     terminalWsConnected,
-    { onRestartSession },
+    { tabId, onRestartSession },
   );
   const isMobileDevice = useIsMobileDevice();
 
@@ -119,7 +121,7 @@ const WebInputBar = ({
     <>
       <div
         className={cn(
-          'grid bg-muted',
+          'grid',
           visible ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
         )}
       >

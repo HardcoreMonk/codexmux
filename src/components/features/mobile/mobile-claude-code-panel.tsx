@@ -19,6 +19,7 @@ import useQuickPrompts from '@/hooks/use-quick-prompts';
 import type { TCliState } from '@/types/timeline';
 
 interface IMobileClaudeCodePanelProps {
+  tabId?: string;
   sessionName: string;
   claudeSessionId?: string | null;
   sendStdin: (data: string) => void;
@@ -35,6 +36,7 @@ interface IMobileClaudeCodePanelProps {
 }
 
 const MobileClaudeCodePanel = ({
+  tabId,
   sessionName,
   claudeSessionId,
   sendStdin,
@@ -244,6 +246,7 @@ const MobileClaudeCodePanel = ({
 
       <div className="shrink-0 pb-3">
         <WebInputBar
+          tabId={tabId}
           cliState={cliState}
           sendStdin={sendStdin}
           terminalWsConnected={terminalWsConnected}

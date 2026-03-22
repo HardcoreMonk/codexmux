@@ -96,7 +96,7 @@ const GeneralTab = () => {
           <p className="mt-2 text-muted-foreground/60"># 실행</p>
           <p>pnpm start</p>
           <p className="mt-2 text-muted-foreground/60"># Tailscale로 외부 접속 (선택)</p>
-          <p>tailscale serve --bg --https=443 http://localhost:3000</p>
+          <p>tailscale serve --bg --https=443 http://localhost:8022</p>
         </div>
       </div>
     </div>
@@ -270,15 +270,15 @@ const randomHex = (length: number): string => {
 
 const AuthTab = () => {
   const authPassword = useWorkspaceStore((state) => state.authPassword);
-  const authToken = useWorkspaceStore((state) => state.authToken);
+  const authSecret = useWorkspaceStore((state) => state.authSecret);
   const setAuthCredentials = useWorkspaceStore((state) => state.setAuthCredentials);
   const [localPassword, setLocalPassword] = useState(authPassword);
-  const [localToken, setLocalToken] = useState(authToken);
+  const [localSecret, setLocalSecret] = useState(authSecret);
 
-  const isDirty = localPassword.trim() !== authPassword || localToken.trim() !== authToken;
+  const isDirty = localPassword.trim() !== authPassword || localSecret.trim() !== authSecret;
 
   const handleSave = () => {
-    setAuthCredentials(localPassword.trim(), localToken.trim());
+    setAuthCredentials(localPassword.trim(), localSecret.trim());
     toast.success('저장되었습니다. 서버 재시작 후 적용됩니다.');
   };
 
@@ -301,16 +301,16 @@ const AuthTab = () => {
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="auth-token">토큰</FieldLabel>
-        <FieldDescription>세션 인증에 사용되는 토큰입니다.</FieldDescription>
+        <FieldLabel htmlFor="auth-secret">시크릿</FieldLabel>
+        <FieldDescription>JWT 서명에 사용되는 시크릿입니다.</FieldDescription>
         <div className="flex gap-2">
           <Input
-            id="auth-token"
+            id="auth-secret"
             placeholder="비워두면 랜덤 생성"
-            value={localToken}
-            onChange={(e) => setLocalToken(e.target.value)}
+            value={localSecret}
+            onChange={(e) => setLocalSecret(e.target.value)}
           />
-          <Button variant="outline" size="icon" className="shrink-0" onClick={() => setLocalToken(randomHex(32))}>
+          <Button variant="outline" size="icon" className="shrink-0" onClick={() => setLocalSecret(randomHex(64))}>
             <Dices className="h-4 w-4" />
           </Button>
         </div>

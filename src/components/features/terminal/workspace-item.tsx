@@ -9,6 +9,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import type { IWorkspace } from '@/types/terminal';
+import WorkspaceStatusIndicator from '@/components/features/terminal/workspace-status-indicator';
 
 interface IWorkspaceItemProps {
   workspace: IWorkspace;
@@ -94,7 +95,7 @@ const WorkspaceItem = ({
     <ContextMenu>
       <ContextMenuTrigger
         className={cn(
-          'flex cursor-pointer flex-col justify-center border-l-2 px-3 py-1.5 transition-colors duration-75',
+          'flex cursor-pointer flex-col justify-center border-l-2 px-3 py-2 transition-colors duration-75',
           'overflow-hidden',
           isActive
             ? 'border-l-ui-purple bg-accent text-foreground'
@@ -130,6 +131,7 @@ const WorkspaceItem = ({
                 {dir}
               </span>
             ))}
+            <WorkspaceStatusIndicator workspaceId={workspace.id} />
           </>
         )}
       </ContextMenuTrigger>

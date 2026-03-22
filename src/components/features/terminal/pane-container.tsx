@@ -7,6 +7,7 @@ import type { ITab, TDisconnectReason, TPanelType } from '@/types/terminal';
 import useTerminal from '@/hooks/use-terminal';
 import useTerminalWebSocket from '@/hooks/use-terminal-websocket';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
+import { useLayoutStore } from '@/hooks/use-layout';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
 import { useShallow } from 'zustand/react/shallow';
 import TerminalContainer from '@/components/features/terminal/terminal-container';
@@ -20,6 +21,7 @@ import { formatTabTitle, isClaudeProcess } from '@/lib/tab-title';
 import { isAppShortcut, isClearShortcut, isFocusInputShortcut, isShiftEnter } from '@/lib/keyboard-shortcuts';
 import type { TCliState } from '@/types/timeline';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
+import { reportActiveTab, dismissTab as dismissStatusTab } from '@/hooks/use-claude-status';
 
 const DISCONNECT_MESSAGES: Record<NonNullable<TDisconnectReason>, string> = {
   'max-connections': '동시 접속 수를 초과했습니다. 다른 탭을 닫아주세요.',
@@ -71,7 +73,7 @@ interface IPaneContainerProps {
   onUpdateTabPanelType: (paneId: string, tabId: string, panelType: TPanelType) => void;
 }
 
-const CLAUDE_CODE_FONT_SIZE = 10;
+const CLAUDE_CODE_FONT_SIZE = 11;
 
 const PaneContainer = ({
   paneId,
@@ -148,8 +150,9 @@ const PaneContainer = ({
     try {
       const res = await fetch(`/api/layout/cwd?session=${tab.sessionName}`);
       if (!res.ok) return;
-      const { cwd } = await res.json();
+      const { cwd, lastCommand } = await res.json();
       if (cwd) useTabMetadataStore.getState().setCwd(tab.id, cwd);
+      if (lastCommand) useTabMetadataStore.getState().setLastCommand(tab.id, lastCommand);
     } catch {
       /* ignore */
     }
@@ -166,6 +169,20 @@ const PaneContainer = ({
   const [isRestarting, setIsRestarting] = useState(false);
 
   const { prompts: quickPrompts } = useQuickPrompts();
+
+  useEffect(() => {
+    if (!activeTabId || !isClaudeCode || claudeCliState === 'inactive') return;
+    reportActiveTab(activeTabId, claudeCliState);
+    if (isFocused && claudeCliState === 'idle') {
+      dismissStatusTab(activeTabId);
+    }
+  }, [activeTabId, claudeCliState, isClaudeCode, isFocused]);
+
+  useEffect(() => {
+    if (activeTabId && isFocused) {
+      dismissStatusTab(activeTabId);
+    }
+  }, [activeTabId, isFocused]);
 
   const handleSelectQuickPrompt = useCallback((prompt: string) => {
     setInputValueRef.current?.(prompt);
@@ -396,6 +413,14 @@ const PaneContainer = ({
     [paneId, activeTabId, tabs, paneCount, closingTabId, onSwitchTab, onDeleteTab, onClosePane],
   );
 
+  const handleRestartTab = useCallback(
+    async (tabId: string) => {
+      const ok = await useLayoutStore.getState().restartTabInPane(paneId, tabId);
+      if (ok) reconnect();
+    },
+    [paneId, reconnect],
+  );
+
   const handleRenameTab = useCallback(
     (tabId: string, name: string) => {
       onRenameTab(paneId, tabId, name);
@@ -545,7 +570,6 @@ const PaneContainer = ({
         onMoveTab={handleMoveTab}
         onFocusPane={handleFocusPane}
         onRetry={() => {}}
-        activeTabCliState={claudeCliState}
       />
 
       <div role="tabpanel" className="relative min-h-0 flex-1 flex flex-col" style={{ backgroundColor: terminalTheme.colors.background }}>
@@ -582,10 +606,11 @@ const PaneContainer = ({
               )}
               {isClaudeCode && (
                 <WebInputBar
+                  tabId={activeTabId ?? undefined}
                   cliState={claudeCliState}
                   sendStdin={sendWebStdin}
                   terminalWsConnected={status === 'connected'}
-                  visible={claudeInputVisible}
+                  visible
                   focusTerminal={focus}
                   focusInputRef={focusInputRef}
                   setInputValueRef={setInputValueRef}
@@ -596,7 +621,7 @@ const PaneContainer = ({
                 <QuickPromptBar
                   prompts={quickPrompts}
                   cliState={claudeCliState}
-                  visible={claudeInputVisible}
+                  visible
                   onSelect={handleSelectQuickPrompt}
                 />
               )}
@@ -605,7 +630,7 @@ const PaneContainer = ({
 
           <Separator
             className={cn(
-              'group flex items-center justify-center overflow-hidden bg-muted',
+              'group flex items-center justify-center overflow-hidden bg-card',
               isClaudeCode && !isTerminalCollapsed ? 'h-3' : 'h-0',
             )}
             disabled={!isClaudeCode || isTerminalCollapsed}
@@ -679,13 +704,22 @@ const PaneContainer = ({
                 '서버에 연결할 수 없습니다'}
             </span>
             {disconnectReason === 'session-not-found' && activeTabId ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleDeleteTab(activeTabId)}
-              >
-                탭 닫기
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRestartTab(activeTabId)}
+                >
+                  다시 시작
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDeleteTab(activeTabId)}
+                >
+                  탭 닫기
+                </Button>
+              </div>
             ) : (
               <Button variant="outline" size="sm" onClick={reconnect}>
                 다시 연결

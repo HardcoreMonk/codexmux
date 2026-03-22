@@ -3,6 +3,8 @@ import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { toast } from 'sonner';
 import type { ILayoutData, TLayoutNode, IPaneNode, ITab, TPanelType } from '@/types/terminal';
+import { clearInputDraft } from '@/hooks/use-web-input';
+import useClaudeStatusStore from '@/hooks/use-claude-status-store';
 
 
 export const collectPanes = (node: TLayoutNode): IPaneNode[] => {
@@ -162,6 +164,7 @@ interface ILayoutState {
   moveTab: (tabId: string, fromPaneId: string, toPaneId: string, toIndex: number) => void;
   createTabInPane: (paneId: string) => Promise<ITab | null>;
   deleteTabInPane: (paneId: string, tabId: string) => Promise<void>;
+  restartTabInPane: (paneId: string, tabId: string) => Promise<boolean>;
   switchTabInPane: (paneId: string, tabId: string) => void;
   renameTabInPane: (paneId: string, tabId: string, name: string) => Promise<void>;
   reorderTabsInPane: (paneId: string, tabIds: string[]) => void;
@@ -477,6 +480,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
   },
 
   deleteTabInPane: async (paneId, tabId) => {
+    clearInputDraft(tabId);
     const { workspaceId, updateAndSave: uas } = get();
     try {
       await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`, workspaceId), { method: 'DELETE' });
@@ -494,6 +498,16 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
       pane.tabs.forEach((t, i) => { t.order = i; });
       return data;
     });
+  },
+
+  restartTabInPane: async (paneId, tabId) => {
+    const { workspaceId } = get();
+    try {
+      const res = await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`, workspaceId), { method: 'POST' });
+      return res.ok;
+    } catch {
+      return false;
+    }
   },
 
   switchTabInPane: (paneId, tabId) => {
@@ -541,6 +555,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
   },
 
   removeTabLocally: (paneId, tabId) => {
+    clearInputDraft(tabId);
     get().updateAndSave((data) => {
       const pane = findPane(data.root, paneId);
       if (!pane) return data;
@@ -615,6 +630,15 @@ const useLayout = ({ workspaceId, onFetchError }: { workspaceId: string | null; 
   }, [workspaceId]);
 
   useEffect(() => {
+    return useLayoutStore.subscribe((state) => {
+      const wsId = state.workspaceId;
+      if (!wsId || !state.layout?.root) return;
+      const tabIds = collectPanes(state.layout.root).flatMap((p) => p.tabs.map((t) => t.id));
+      useClaudeStatusStore.getState().setTabOrder(wsId, tabIds);
+    });
+  }, []);
+
+  useEffect(() => {
     const handleBeforeUnload = () => {
       if (!_dirty) return;
       const { layout, workspaceId: wsId } = useLayoutStore.getState();
@@ -643,6 +667,7 @@ const useLayout = ({ workspaceId, onFetchError }: { workspaceId: string | null; 
     moveTab: s.moveTab,
     createTabInPane: s.createTabInPane,
     deleteTabInPane: s.deleteTabInPane,
+    restartTabInPane: s.restartTabInPane,
     switchTabInPane: s.switchTabInPane,
     renameTabInPane: s.renameTabInPane,
     reorderTabsInPane: s.reorderTabsInPane,

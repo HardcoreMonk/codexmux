@@ -2,9 +2,10 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { nanoid } from 'nanoid';
-import { createSession, killSession, workspaceSessionName } from '@/lib/tmux';
+import { createSession, hasSession, killSession, workspaceSessionName } from '@/lib/tmux';
 import { broadcastSync } from '@/lib/sync-server';
 import type { ITab, TLayoutNode, IPaneNode, ILayoutData } from '@/types/terminal';
+import type { TCliState } from '@/types/timeline';
 
 const BASE_DIR = path.join(os.homedir(), '.purple-terminal');
 
@@ -148,15 +149,14 @@ export const crossCheckLayout = async (
   const layoutSessions = new Set<string>();
 
   for (const pane of panes) {
-    const before = pane.tabs.length;
-    pane.tabs = pane.tabs.filter((tab) => {
+    for (const tab of pane.tabs) {
       layoutSessions.add(tab.sessionName);
-      return tmuxSet.has(tab.sessionName);
-    });
-    if (pane.tabs.length !== before) {
-      changed = true;
-      if (pane.activeTabId && !pane.tabs.some((t) => t.id === pane.activeTabId)) {
-        pane.activeTabId = pane.tabs[0]?.id ?? null;
+
+      if (!tmuxSet.has(tab.sessionName) && tab.panelType === 'claude-code') {
+        const cwd = tab.cwd || defaultCwd;
+        console.log(`[crossCheck] Claude 탭 세션 재생성: ${tab.sessionName} (cwd: ${cwd})`);
+        await createSession(tab.sessionName, 80, 24, cwd);
+        changed = true;
       }
     }
   }
@@ -179,23 +179,6 @@ export const crossCheckLayout = async (
       if (!firstPane.activeTabId && firstPane.tabs.length > 0) {
         firstPane.activeTabId = firstPane.tabs[0].id;
       }
-    }
-  }
-
-  const emptyPanes = panes.filter((p) => p.tabs.length === 0);
-  if (emptyPanes.length > 0) {
-    changed = true;
-    if (panes.length === 1 && emptyPanes.length === 1) {
-      const pane = emptyPanes[0];
-      const tab = createDefaultTab(wsId, pane.id, 0, defaultCwd);
-      await createSession(tab.sessionName, 80, 24, defaultCwd);
-      pane.tabs.push(tab);
-      pane.activeTabId = tab.id;
-    } else {
-      for (const emptyPane of emptyPanes) {
-        emptyPane.tabs = [];
-      }
-      layout.root = normalizeTree(layout.root);
     }
   }
 
@@ -301,6 +284,8 @@ export const updateLayout = async (
         if (prev) {
           tab.claudeSessionId = prev.claudeSessionId;
           tab.claudeSummary = prev.claudeSummary;
+          tab.cliState = prev.cliState;
+          tab.dismissed = prev.dismissed;
         }
       }
     }
@@ -431,6 +416,26 @@ export const renameTabInPane = async (wsId: string, paneId: string, tabId: strin
     return { ...tab };
   });
 
+export const restartTabSession = async (wsId: string, paneId: string, tabId: string): Promise<boolean> =>
+  withLock(async () => {
+    const filePath = resolveLayoutFile(wsId);
+    const layout = await readLayoutFile(filePath);
+    if (!layout) return false;
+
+    const pane = collectPanes(layout.root).find((p) => p.id === paneId);
+    if (!pane) return false;
+
+    const tab = pane.tabs.find((t) => t.id === tabId);
+    if (!tab) return false;
+
+    const exists = await hasSession(tab.sessionName);
+    if (exists) return true;
+
+    await createSession(tab.sessionName, 80, 24, tab.cwd);
+    console.log(`[layout] 탭 세션 재시작: pane=${paneId}, tab=${tabId}, session=${tab.sessionName}`);
+    return true;
+  });
+
 export const getFirstPaneTabs = async (wsId: string): Promise<{ tabs: ITab[]; activeTabId: string | null }> =>
   withLock(async () => {
     const layout = await readLayoutFile(resolveLayoutFile(wsId));
@@ -489,6 +494,31 @@ export const updateTabClaudeSummary = async (
 
     if (tab.claudeSummary === claudeSummary) return;
     tab.claudeSummary = claudeSummary;
+    layout.updatedAt = new Date().toISOString();
+    await writeLayoutFile(layout, filePath);
+  });
+};
+
+export const updateTabCliStatus = async (
+  sessionName: string,
+  cliState: TCliState,
+  dismissed: boolean,
+): Promise<void> => {
+  const parsed = parseSessionName(sessionName);
+  if (!parsed) return;
+
+  await withLock(async () => {
+    const filePath = resolveLayoutFile(parsed.wsId);
+    const layout = await readLayoutFile(filePath);
+    if (!layout) return;
+
+    const allTabs = collectAllTabs(layout.root);
+    const tab = allTabs.find((t) => t.sessionName === sessionName);
+    if (!tab) return;
+
+    if (tab.cliState === cliState && tab.dismissed === dismissed) return;
+    tab.cliState = cliState;
+    tab.dismissed = dismissed;
     layout.updatedAt = new Date().toISOString();
     await writeLayoutFile(layout, filePath);
   });

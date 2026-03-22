@@ -1,38 +1,56 @@
 import { createServer } from 'http';
 import next from 'next';
 import { WebSocketServer } from 'ws';
+import { getToken } from 'next-auth/jwt';
 import { handleConnection, gracefulShutdown } from './src/lib/terminal-server';
 import { handleTimelineConnection, gracefulTimelineShutdown } from './src/lib/timeline-server';
 import { handleSyncConnection, gracefulSyncShutdown } from './src/lib/sync-server';
+import { handleStatusConnection, gracefulStatusShutdown } from './src/lib/status-server';
+import { getStatusManager } from './src/lib/status-manager';
 import { scanSessions, applyConfig } from './src/lib/tmux';
 import { initWorkspaceStore } from './src/lib/workspace-store';
 import { autoResumeOnStartup } from './src/lib/auto-resume';
 import { initAuthCredentials } from './src/lib/auth-credentials';
+import type { IncomingMessage } from 'http';
 
-const port = parseInt(process.env.PORT || '3000', 10);
+const port = parseInt(process.env.PORT || '8022', 10);
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
 const handle = app.getRequestHandler();
 
-const parseCookies = (cookieHeader: string | undefined): Record<string, string> => {
-  if (!cookieHeader) return {};
-  return Object.fromEntries(
-    cookieHeader.split(';').map((c) => {
-      const [key, ...val] = c.trim().split('=');
-      return [key, val.join('=')];
-    }),
-  );
+const extractCookie = (header: string, name: string): string | undefined => {
+  for (const part of header.split(';')) {
+    const trimmed = part.trim();
+    const eq = trimmed.indexOf('=');
+    if (eq !== -1 && trimmed.slice(0, eq) === name) {
+      return trimmed.slice(eq + 1);
+    }
+  }
+  return undefined;
+};
+
+const SESSION_COOKIE = 'next-auth.session-token';
+
+const verifyWebSocketAuth = async (request: IncomingMessage): Promise<boolean> => {
+  const value = extractCookie(request.headers.cookie ?? '', SESSION_COOKIE);
+  const token = await getToken({
+    req: { headers: request.headers, cookies: { [SESSION_COOKIE]: value ?? '' } } as never,
+    secret: process.env.NEXTAUTH_SECRET,
+    cookieName: SESSION_COOKIE,
+  });
+  return !!token;
 };
 
 const start = async () => {
   const credentials = initAuthCredentials();
   process.env.AUTH_PASSWORD = credentials.password;
-  process.env.AUTH_TOKEN = credentials.token;
+  process.env.NEXTAUTH_SECRET = credentials.secret;
 
   await scanSessions();
   await applyConfig();
   await initWorkspaceStore();
   await autoResumeOnStartup();
+  await getStatusManager().init();
   await app.prepare();
 
   const upgrade = app.getUpgradeHandler();
@@ -49,16 +67,19 @@ const start = async () => {
   const syncWss = new WebSocketServer({ noServer: true });
   syncWss.on('connection', handleSyncConnection);
 
-  server.on('upgrade', (request, socket, head) => {
+  const statusWss = new WebSocketServer({ noServer: true });
+  statusWss.on('connection', handleStatusConnection);
+
+  server.on('upgrade', async (request, socket, head) => {
     const url = new URL(request.url ?? '', `http://localhost:${port}`);
-    const cookies = parseCookies(request.headers.cookie);
 
     if (dev && url.pathname.startsWith('/_next/')) {
       upgrade(request, socket, head);
       return;
     }
 
-    if (cookies['auth-token'] !== process.env.AUTH_TOKEN) {
+    const authenticated = await verifyWebSocketAuth(request);
+    if (!authenticated) {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
       socket.destroy();
       return;
@@ -77,6 +98,10 @@ const start = async () => {
       syncWss.handleUpgrade(request, socket, head, (ws) => {
         syncWss.emit('connection', ws);
       });
+    } else if (url.pathname === '/api/status') {
+      statusWss.handleUpgrade(request, socket, head, (ws) => {
+        statusWss.emit('connection', ws);
+      });
     } else {
       upgrade(request, socket, head);
     }
@@ -86,6 +111,7 @@ const start = async () => {
     gracefulShutdown();
     gracefulTimelineShutdown();
     gracefulSyncShutdown();
+    gracefulStatusShutdown();
     process.exit(0);
   };
 

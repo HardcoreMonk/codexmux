@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { BarChart3, ArrowLeft, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import useIsMobile from '@/hooks/use-is-mobile';
+import useBrowserTitle from '@/hooks/use-browser-title';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
 import MobileLayout from '@/components/features/mobile/mobile-layout';
 import useStats from '@/hooks/use-stats';
@@ -30,6 +31,7 @@ const SectionError = ({ onRetry }: { onRetry: () => void }) => (
 const StatsPage = () => {
   const router = useRouter();
   const isMobile = useIsMobile();
+  useBrowserTitle('사용량 통계');
 
   const handleSelectWorkspace = useCallback(
     (workspaceId: string) => {

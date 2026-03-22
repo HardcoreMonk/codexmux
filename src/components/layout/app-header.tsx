@@ -1,4 +1,5 @@
 import { Terminal, Bell, LogOut, Menu } from 'lucide-react';
+import { signOut } from 'next-auth/react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -13,14 +14,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import GlobalStatusSummary from '@/components/features/terminal/global-status-summary';
 
 interface IAppHeaderProps {
   onMenuOpen?: () => void;
 }
 
-const handleLogout = async () => {
-  await fetch('/api/auth/logout', { method: 'POST' });
-  window.location.href = '/login';
+const handleLogout = () => {
+  signOut({ callbackUrl: '/login' });
 };
 
 const AppHeader = ({ onMenuOpen }: IAppHeaderProps) => {
@@ -39,6 +40,8 @@ const AppHeader = ({ onMenuOpen }: IAppHeaderProps) => {
         <Terminal className="h-4 w-4 text-ui-purple" />
         <span className="text-sm font-semibold text-ui-purple">PT</span>
       </div>
+
+      <GlobalStatusSummary />
 
       <TooltipProvider>
         <div className="flex items-center gap-1">

@@ -1,5 +1,6 @@
 import { useRef, useCallback, useEffect, useState, useMemo } from 'react';
 import { Terminal, RefreshCw, Loader2, OctagonX, LogOut } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type {
   ITimelineEntry,
@@ -223,6 +224,7 @@ const TimelineView = ({
   const isUserScrollingRef = useRef(false);
   const prevEntryCountRef = useRef(entries.length);
   const isInitialLoadRef = useRef(true);
+  const [skipAnimation, setSkipAnimation] = useState(true);
 
   const groupedItems = useMemo(() => groupTimelineEntries(entries), [entries]);
   const hasDisplayItems = groupedItems.length > 0;
@@ -286,11 +288,18 @@ const TimelineView = ({
   }, [entries.length, isAutoScrollEnabled, scrollToBottom]);
 
   useEffect(() => {
-    if (entries.length > 0 && isAutoScrollEnabled) {
+    setSkipAnimation(true);
+    isInitialLoadRef.current = true;
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (skipAnimation && entries.length > 0) {
+      scrollToBottom('instant');
       isInitialLoadRef.current = false;
-      requestAnimationFrame(() => scrollToBottom('instant'));
+      prevEntryCountRef.current = entries.length;
+      requestAnimationFrame(() => setSkipAnimation(false));
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [skipAnimation, entries.length, scrollToBottom]);
 
   const handleScrollToBottomClick = useCallback(() => {
     scrollToBottom('smooth');
@@ -325,7 +334,10 @@ const TimelineView = ({
     <div className="relative flex h-full flex-col">
       <div
         ref={parentRef}
-        className="flex-1 overflow-y-auto py-2 transition-opacity"
+        className={cn(
+          'flex-1 overflow-y-auto py-2 transition-opacity',
+          skipAnimation && '[&_.animate-in]:!duration-0',
+        )}
         style={{
           opacity: isSessionTransitioning ? 0 : 1,
           transitionDuration: isSessionTransitioning ? '100ms' : '150ms',

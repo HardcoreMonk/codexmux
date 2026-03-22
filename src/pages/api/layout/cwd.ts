@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getSessionCwd, hasSession } from '@/lib/tmux';
+import { getSessionCwd, getLastCommand, hasSession } from '@/lib/tmux';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'GET') {
@@ -18,11 +18,14 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   try {
-    const cwd = await getSessionCwd(session);
+    const [cwd, lastCommand] = await Promise.all([
+      getSessionCwd(session),
+      getLastCommand(session),
+    ]);
     if (!cwd) {
       return res.status(500).json({ error: 'CWD 조회 실패' });
     }
-    return res.status(200).json({ cwd });
+    return res.status(200).json({ cwd, lastCommand });
   } catch (err) {
     console.log(`[layout] cwd query failed: ${err instanceof Error ? err.message : err}`);
     return res.status(500).json({ error: 'CWD 조회 실패' });

@@ -5,12 +5,14 @@ import useWorkspaceStore from '@/hooks/use-workspace-store';
 interface ITabMetadata {
   title?: string;
   cwd?: string;
+  lastCommand?: string;
 }
 
 interface ITabMetadataState {
   metadata: Record<string, ITabMetadata>;
   setTitle: (tabId: string, title: string) => void;
   setCwd: (tabId: string, cwd: string) => void;
+  setLastCommand: (tabId: string, lastCommand: string) => void;
   removeTab: (tabId: string) => void;
   hydrate: (data: Record<string, ITabMetadata>) => void;
   retainOnly: (tabIds: Set<string>) => void;
@@ -35,6 +37,7 @@ const scheduleSyncToLayout = () => {
           if (!meta) continue;
           if (meta.title !== undefined) tab.title = meta.title;
           if (meta.cwd !== undefined) tab.cwd = meta.cwd;
+          if (meta.lastCommand !== undefined) tab.lastCommand = meta.lastCommand;
         }
       }
       return data;
@@ -73,6 +76,15 @@ const useTabMetadataStore = create<ITabMetadataState>((set) => ({
       const prev = state.metadata[tabId];
       if (prev?.cwd === cwd) return state;
       return { metadata: { ...state.metadata, [tabId]: { ...prev, cwd } } };
+    });
+    scheduleSyncToLayout();
+  },
+
+  setLastCommand: (tabId, lastCommand) => {
+    set((state) => {
+      const prev = state.metadata[tabId];
+      if (prev?.lastCommand === lastCommand) return state;
+      return { metadata: { ...state.metadata, [tabId]: { ...prev, lastCommand } } };
     });
     scheduleSyncToLayout();
   },

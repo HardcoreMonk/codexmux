@@ -10,14 +10,13 @@ interface IValidateResponse {
 
 export interface IWorkspaceInitialData {
   workspaces: IWorkspace[];
-  activeWorkspaceId: string | null;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
   terminalTheme: { light: string; dark: string } | null;
   dangerouslySkipPermissions: boolean;
   editorUrl: string;
   authPassword: string;
-  authToken: string;
+  authSecret: string;
 }
 
 interface IWorkspaceState {
@@ -28,7 +27,7 @@ interface IWorkspaceState {
   dangerouslySkipPermissions: boolean;
   editorUrl: string;
   authPassword: string;
-  authToken: string;
+  authSecret: string;
   isLoading: boolean;
   error: string | null;
 
@@ -47,18 +46,43 @@ interface IWorkspaceState {
   saveSidebarWidth: (width: number) => void;
   setDangerouslySkipPermissions: (enabled: boolean) => void;
   setEditorUrl: (url: string) => void;
-  setAuthCredentials: (password: string, token: string) => void;
+  setAuthCredentials: (password: string, secret: string) => void;
   validateDirectory: (directory: string) => Promise<IValidateResponse>;
 }
 
+const STORAGE_KEY = 'pt-active-workspace-id';
+
+const getStoredActiveWorkspaceId = (): string | null => {
+  try {
+    return localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+};
+
+const setStoredActiveWorkspaceId = (id: string | null) => {
+  try {
+    if (id) {
+      localStorage.setItem(STORAGE_KEY, id);
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  } catch {}
+};
+
+const resolveActiveWorkspaceId = (workspaces: IWorkspace[]): string | null => {
+  const stored = getStoredActiveWorkspaceId();
+  if (stored && workspaces.some((w) => w.id === stored)) return stored;
+  return workspaces[0]?.id ?? null;
+};
+
 const saveActive = (updates: {
-  activeWorkspaceId?: string;
   sidebarCollapsed?: boolean;
   sidebarWidth?: number;
   dangerouslySkipPermissions?: boolean;
   editorUrl?: string;
   authPassword?: string;
-  authToken?: string;
+  authSecret?: string;
 }) => {
   fetch('/api/workspace/active', {
     method: 'PATCH',
@@ -75,20 +99,22 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
   dangerouslySkipPermissions: false,
   editorUrl: '',
   authPassword: '',
-  authToken: '',
+  authSecret: '',
   isLoading: true,
   error: null,
 
   hydrate: (data) => {
+    const activeWorkspaceId = resolveActiveWorkspaceId(data.workspaces);
+    setStoredActiveWorkspaceId(activeWorkspaceId);
     set({
       workspaces: data.workspaces,
-      activeWorkspaceId: data.activeWorkspaceId,
+      activeWorkspaceId,
       sidebarCollapsed: data.sidebarCollapsed,
       sidebarWidth: data.sidebarWidth,
       dangerouslySkipPermissions: data.dangerouslySkipPermissions,
       editorUrl: data.editorUrl,
       authPassword: data.authPassword,
-      authToken: data.authToken,
+      authSecret: data.authSecret,
       isLoading: false,
       error: null,
     });
@@ -100,15 +126,17 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
       const res = await fetch('/api/workspace');
       if (!res.ok) throw new Error();
       const data = await res.json();
+      const activeWorkspaceId = resolveActiveWorkspaceId(data.workspaces);
+      setStoredActiveWorkspaceId(activeWorkspaceId);
       set({
         workspaces: data.workspaces,
-        activeWorkspaceId: data.activeWorkspaceId,
+        activeWorkspaceId,
         sidebarCollapsed: data.sidebarCollapsed ?? false,
         sidebarWidth: data.sidebarWidth ?? 200,
         dangerouslySkipPermissions: data.dangerouslySkipPermissions ?? false,
         editorUrl: data.editorUrl ?? '',
         authPassword: data.authPassword ?? '',
-        authToken: data.authToken ?? '',
+        authSecret: data.authSecret ?? '',
         isLoading: false,
       });
     } catch {
@@ -160,15 +188,18 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
   },
 
   removeWorkspace: (workspaceId) => {
-    set((state) => ({
-      workspaces: state.workspaces.filter((w) => w.id !== workspaceId),
-      activeWorkspaceId: state.activeWorkspaceId === workspaceId ? null : state.activeWorkspaceId,
-    }));
+    set((state) => {
+      const remaining = state.workspaces.filter((w) => w.id !== workspaceId);
+      const needSwitch = state.activeWorkspaceId === workspaceId;
+      const activeWorkspaceId = needSwitch ? (remaining[0]?.id ?? null) : state.activeWorkspaceId;
+      if (needSwitch) setStoredActiveWorkspaceId(activeWorkspaceId);
+      return { workspaces: remaining, activeWorkspaceId };
+    });
   },
 
   switchWorkspace: (workspaceId) => {
     set({ activeWorkspaceId: workspaceId });
-    saveActive({ activeWorkspaceId: workspaceId });
+    setStoredActiveWorkspaceId(workspaceId);
   },
 
   renameWorkspace: async (workspaceId, name) => {
@@ -249,9 +280,9 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
     saveActive({ editorUrl: url });
   },
 
-  setAuthCredentials: (password, token) => {
-    set({ authPassword: password, authToken: token });
-    saveActive({ authPassword: password, authToken: token });
+  setAuthCredentials: (password, secret) => {
+    set({ authPassword: password, authSecret: secret });
+    saveActive({ authPassword: password, authSecret: secret });
   },
 
   validateDirectory: async (directory) => {

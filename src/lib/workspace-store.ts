@@ -57,7 +57,6 @@ const withLock = async <T>(fn: () => Promise<T>): Promise<T> => {
 
 const emptyState = (): IWorkspacesData => ({
   workspaces: [],
-  activeWorkspaceId: null,
   sidebarCollapsed: false,
   sidebarWidth: 200,
   updatedAt: new Date().toISOString(),
@@ -91,8 +90,8 @@ const readWorkspacesFile = async (): Promise<IWorkspacesData | null> => {
 };
 
 const writeWorkspacesFile = async (data: IWorkspacesData): Promise<void> => {
-  const { workspaces, activeWorkspaceId, sidebarCollapsed, sidebarWidth, terminalTheme, dangerouslySkipPermissions, editorUrl, authPassword, authToken } = data;
-  const contentKey = JSON.stringify({ workspaces, activeWorkspaceId, sidebarCollapsed, sidebarWidth, terminalTheme, dangerouslySkipPermissions, editorUrl, authPassword, authToken });
+  const { workspaces, sidebarCollapsed, sidebarWidth, terminalTheme, dangerouslySkipPermissions, editorUrl, authPassword, authSecret } = data;
+  const contentKey = JSON.stringify({ workspaces, sidebarCollapsed, sidebarWidth, terminalTheme, dangerouslySkipPermissions, editorUrl, authPassword, authSecret });
 
   if (g.__ptWorkspacesContentCache === contentKey) return;
 
@@ -120,7 +119,6 @@ const migrateFromPhase4 = async (): Promise<IWorkspacesData | null> => {
       directories: [os.homedir()],
       order: 0,
     }],
-    activeWorkspaceId: wsId,
     sidebarCollapsed: false,
     sidebarWidth: 200,
     updatedAt: legacyLayout.updatedAt || new Date().toISOString(),
@@ -181,9 +179,9 @@ export const initWorkspaceStore = async (): Promise<void> => {
 
   if (!data) {
     const initial = emptyState();
-    if (process.env.AUTH_PASSWORD && process.env.AUTH_TOKEN) {
+    if (process.env.AUTH_PASSWORD && process.env.NEXTAUTH_SECRET) {
       initial.authPassword = process.env.AUTH_PASSWORD;
-      initial.authToken = process.env.AUTH_TOKEN;
+      initial.authSecret = process.env.NEXTAUTH_SECRET;
     }
     await writeWorkspacesFile(initial);
     console.log('[purple-terminal] 초기 workspaces.json 생성 (auth 포함)');
@@ -230,25 +228,20 @@ export const initWorkspaceStore = async (): Promise<void> => {
   }
 
   console.log(`[purple-terminal] Workspace ${data.workspaces.length}개 로드 완료`);
-  const activeWs = data.workspaces.find((w) => w.id === data!.activeWorkspaceId);
-  if (activeWs) {
-    console.log(`[purple-terminal] 준비 완료 (활성 Workspace: ${activeWs.name})`);
-  }
 };
 
 export const getWorkspaces = async (): Promise<{
   workspaces: IWorkspace[];
-  activeWorkspaceId: string | null;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
   terminalTheme: { light: string; dark: string } | null;
   dangerouslySkipPermissions: boolean;
   editorUrl: string;
   authPassword: string;
-  authToken: string;
+  authSecret: string;
 }> => {
   const data = await readWorkspacesFile();
-  if (!data) return { workspaces: [], activeWorkspaceId: null, sidebarCollapsed: false, sidebarWidth: 200, terminalTheme: null, dangerouslySkipPermissions: false, editorUrl: '', authPassword: '', authToken: '' };
+  if (!data) return { workspaces: [], sidebarCollapsed: false, sidebarWidth: 200, terminalTheme: null, dangerouslySkipPermissions: false, editorUrl: '', authPassword: '', authSecret: '' };
 
   let theme = data.terminalTheme ?? null;
 
@@ -263,20 +256,19 @@ export const getWorkspaces = async (): Promise<{
 
   return {
     workspaces: data.workspaces,
-    activeWorkspaceId: data.activeWorkspaceId,
     sidebarCollapsed: data.sidebarCollapsed,
     sidebarWidth: data.sidebarWidth,
     terminalTheme: theme,
     dangerouslySkipPermissions: data.dangerouslySkipPermissions ?? false,
     editorUrl: data.editorUrl ?? '',
     authPassword: data.authPassword ?? '',
-    authToken: data.authToken ?? '',
+    authSecret: data.authSecret ?? '',
   };
 };
 
 export const getActiveWorkspaceId = async (): Promise<string | null> => {
   const data = await readWorkspacesFile();
-  return data?.activeWorkspaceId ?? null;
+  return data?.workspaces[0]?.id ?? null;
 };
 
 export const getWorkspaceById = async (wsId: string): Promise<IWorkspace | undefined> => {
@@ -341,10 +333,6 @@ export const deleteWorkspace = async (workspaceId: string): Promise<boolean> =>
     data.workspaces.splice(idx, 1);
     data.workspaces.forEach((w, i) => { w.order = i; });
 
-    if (data.activeWorkspaceId === workspaceId) {
-      data.activeWorkspaceId = data.workspaces[0]?.id ?? null;
-    }
-
     await writeWorkspacesFile(data);
     console.log(`[workspace] 삭제: ${workspaceId} (${ws.name})`);
     return true;
@@ -366,25 +354,23 @@ export const renameWorkspace = async (workspaceId: string, name: string): Promis
   });
 
 export const updateActive = async (updates: {
-  activeWorkspaceId?: string;
   sidebarCollapsed?: boolean;
   sidebarWidth?: number;
   terminalTheme?: { light: string; dark: string };
   dangerouslySkipPermissions?: boolean;
   editorUrl?: string;
   authPassword?: string;
-  authToken?: string;
+  authSecret?: string;
 }): Promise<void> =>
   withLock(async () => {
     const data = (await readWorkspacesFile()) ?? emptyState();
-    if (updates.activeWorkspaceId !== undefined) data.activeWorkspaceId = updates.activeWorkspaceId;
     if (updates.sidebarCollapsed !== undefined) data.sidebarCollapsed = updates.sidebarCollapsed;
     if (updates.sidebarWidth !== undefined) data.sidebarWidth = updates.sidebarWidth;
     if (updates.terminalTheme !== undefined) data.terminalTheme = updates.terminalTheme;
     if (updates.dangerouslySkipPermissions !== undefined) data.dangerouslySkipPermissions = updates.dangerouslySkipPermissions;
     if (updates.editorUrl !== undefined) data.editorUrl = updates.editorUrl;
     if (updates.authPassword !== undefined) data.authPassword = updates.authPassword || undefined;
-    if (updates.authToken !== undefined) data.authToken = updates.authToken || undefined;
+    if (updates.authSecret !== undefined) data.authSecret = updates.authSecret || undefined;
     await writeWorkspacesFile(data);
   });
 

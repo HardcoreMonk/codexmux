@@ -10,6 +10,7 @@ import type { IWorkspaceInitialData } from '@/hooks/use-workspace-store';
 import { initTerminalTheme } from '@/hooks/use-terminal-theme';
 import { useEffect, useRef } from 'react';
 import useIsMobile from '@/hooks/use-is-mobile';
+import useBrowserTitle from '@/hooks/use-browser-title';
 
 const TerminalPage = dynamic(
   () => import('@/components/features/terminal/terminal-page'),
@@ -28,6 +29,7 @@ interface IIndexProps {
 
 const Index = ({ initialWorkspace, initialQuickPrompts }: IIndexProps) => {
   const isMobile = useIsMobile();
+  useBrowserTitle('Purple Terminal');
   const hydratedRef = useRef(false);
   useEffect(() => {
     if (!hydratedRef.current) {

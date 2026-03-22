@@ -1,3 +1,5 @@
+import type { TCliState } from '@/types/timeline';
+
 export type TConnectionStatus =
   | 'connecting'
   | 'connected'
@@ -20,6 +22,9 @@ export interface ITab {
   claudeSessionId?: string | null;
   claudeJsonlPath?: string | null;
   claudeSummary?: string | null;
+  lastCommand?: string | null;
+  cliState?: TCliState;
+  dismissed?: boolean;
 }
 
 export interface ISplitNode {
@@ -53,13 +58,12 @@ export interface IWorkspace {
 
 export interface IWorkspacesData {
   workspaces: IWorkspace[];
-  activeWorkspaceId: string | null;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
   terminalTheme?: { light: string; dark: string };
   dangerouslySkipPermissions?: boolean;
   editorUrl?: string;
   authPassword?: string;
-  authToken?: string;
+  authSecret?: string;
   updatedAt: string;
 }

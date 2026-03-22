@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { removeTabFromPane, renameTabInPane } from '@/lib/layout-store';
+import { removeTabFromPane, renameTabInPane, restartTabSession } from '@/lib/layout-store';
 import { getActiveWorkspaceId } from '@/lib/workspace-store';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -19,6 +19,19 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(204).end();
   }
 
+  if (req.method === 'POST') {
+    try {
+      const ok = await restartTabSession(wsId, paneId, tabId);
+      if (!ok) {
+        return res.status(404).json({ error: '탭을 찾을 수 없습니다' });
+      }
+      return res.status(200).json({ ok: true });
+    } catch (err) {
+      console.log(`[layout] tab restart failed: ${err instanceof Error ? err.message : err}`);
+      return res.status(500).json({ error: 'Failed to restart session' });
+    }
+  }
+
   if (req.method === 'PATCH') {
     const { name } = req.body ?? {};
     if (!name || typeof name !== 'string' || !name.trim()) {
@@ -32,7 +45,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(200).json(tab);
   }
 
-  res.setHeader('Allow', 'DELETE, PATCH');
+  res.setHeader('Allow', 'POST, DELETE, PATCH');
   return res.status(405).json({ error: 'Method not allowed' });
 };
 

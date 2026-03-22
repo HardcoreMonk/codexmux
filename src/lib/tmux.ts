@@ -210,6 +210,33 @@ export const getPaneCurrentCommand = async (
   }
 };
 
+export interface IPaneInfo {
+  command: string;
+  pid: number;
+}
+
+export const getAllPanesInfo = async (): Promise<Map<string, IPaneInfo>> => {
+  try {
+    const { stdout } = await execFile(
+      'tmux',
+      ['-L', TMUX_SOCKET, 'list-panes', '-a', '-F', '#{session_name}\t#{pane_current_command}\t#{pane_pid}'],
+      { timeout: CMD_TIMEOUT },
+    );
+    const result = new Map<string, IPaneInfo>();
+    for (const line of stdout.trim().split('\n')) {
+      if (!line) continue;
+      const [session, command, pidStr] = line.split('\t');
+      if (session && command) {
+        const pid = parseInt(pidStr, 10);
+        result.set(session, { command, pid: Number.isNaN(pid) ? 0 : pid });
+      }
+    }
+    return result;
+  } catch {
+    return new Map();
+  }
+};
+
 const SAFE_SHELLS = new Set(['bash', 'zsh', 'fish', 'sh', 'dash']);
 
 export const checkTerminalProcess = async (
@@ -223,6 +250,19 @@ export const checkTerminalProcess = async (
     isSafe: SAFE_SHELLS.has(command),
     processName: command,
   };
+};
+
+export const getPaneTitle = async (sessionName: string): Promise<string | null> => {
+  try {
+    const { stdout } = await execFile(
+      'tmux',
+      ['-L', TMUX_SOCKET, 'display-message', '-p', '-t', sessionName, '#{pane_title}'],
+      { timeout: CMD_TIMEOUT },
+    );
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
 };
 
 export const exitCopyMode = async (sessionName: string): Promise<void> => {
@@ -243,4 +283,45 @@ export const sendKeys = async (
     ['-L', TMUX_SOCKET, 'send-keys', '-t', sessionName, command, 'Enter'],
     { timeout: CMD_TIMEOUT },
   );
+};
+
+const INTERPRETERS = new Set(['node', 'python', 'python3', 'ruby', 'perl', 'deno', 'bun']);
+
+const cleanCommandLine = (raw: string): string => {
+  const parts = raw.split(/\s+/);
+  if (parts.length === 0) return raw;
+
+  parts[0] = path.basename(parts[0]);
+
+  if (INTERPRETERS.has(parts[0]) && parts.length > 1) {
+    const scriptName = path.basename(parts[1]).replace(/\.(c|m)?js$/, '');
+    parts.splice(0, 2, scriptName);
+  }
+
+  return parts.join(' ');
+};
+
+export const getLastCommand = async (sessionName: string): Promise<string | null> => {
+  const shellPid = await getSessionPanePid(sessionName);
+  if (!shellPid) return null;
+
+  try {
+    const { stdout: pgrepOut } = await execFile(
+      'pgrep', ['-n', '-P', String(shellPid)],
+      { timeout: CMD_TIMEOUT },
+    );
+    const childPid = pgrepOut.trim();
+    if (!childPid) return null;
+
+    const { stdout: psOut } = await execFile(
+      'ps', ['-o', 'args=', '-p', childPid],
+      { timeout: CMD_TIMEOUT },
+    );
+    const args = psOut.trim();
+    if (!args) return null;
+
+    return cleanCommandLine(args);
+  } catch {
+    return null;
+  }
 };
