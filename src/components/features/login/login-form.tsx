@@ -57,7 +57,7 @@ export const LoginForm = ({ className, ...props }: React.ComponentProps<'div'>) 
             />
             {error && <p className="text-destructive text-sm">{error}</p>}
           </div>
-          <Button type="submit" disabled={isLoading || !password} className="w-full h-12 text-base">
+          <Button type="submit" disabled={isLoading || !password} size="lg" className="w-full">
             <Lock className="size-4" />
             {isLoading ? '로그인 중...' : '로그인'}
           </Button>
