@@ -300,6 +300,7 @@ export const updateLayout = async (
         const prev = prevTabs.get(tab.sessionName);
         if (prev) {
           tab.claudeSessionId = prev.claudeSessionId;
+          tab.claudeSummary = prev.claudeSummary;
         }
       }
     }
@@ -465,6 +466,29 @@ export const updateTabClaudeSessionId = async (
     if (!tab) return;
 
     tab.claudeSessionId = claudeSessionId;
+    layout.updatedAt = new Date().toISOString();
+    await writeLayoutFile(layout, filePath);
+  });
+};
+
+export const updateTabClaudeSummary = async (
+  sessionName: string,
+  claudeSummary: string | null,
+): Promise<void> => {
+  const parsed = parseSessionName(sessionName);
+  if (!parsed) return;
+
+  await withLock(async () => {
+    const filePath = resolveLayoutFile(parsed.wsId);
+    const layout = await readLayoutFile(filePath);
+    if (!layout) return;
+
+    const allTabs = collectAllTabs(layout.root);
+    const tab = allTabs.find((t) => t.sessionName === sessionName);
+    if (!tab) return;
+
+    if (tab.claudeSummary === claudeSummary) return;
+    tab.claudeSummary = claudeSummary;
     layout.updatedAt = new Date().toISOString();
     await writeLayoutFile(layout, filePath);
   });

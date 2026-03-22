@@ -117,11 +117,18 @@ const MobileNavigationSheet = ({
           onContextMenu={(e) => e.preventDefault()}
         >
           {isClaudeCode ? (
-            <BotMessageSquare size={14} className={cn('shrink-0', isTabActive ? 'text-ui-purple' : 'text-muted-foreground')} />
+            <BotMessageSquare size={14} className={cn('shrink-0 mt-0.5', isTabActive ? 'text-ui-purple' : 'text-muted-foreground')} />
           ) : (
             <Terminal size={14} className={cn('shrink-0', isTabActive ? 'text-foreground' : 'text-muted-foreground')} />
           )}
-          <span className="truncate">{getTabDisplayName(tab)}</span>
+          <div className="min-w-0 flex-1">
+            <span className="block truncate">{getTabDisplayName(tab)}</span>
+            {isClaudeCode && tab.claudeSummary && (
+              <span className="block truncate text-xs text-muted-foreground/70">
+                {tab.claudeSummary}
+              </span>
+            )}
+          </div>
         </button>
       </div>
     );

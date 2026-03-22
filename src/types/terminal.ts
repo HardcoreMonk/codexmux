@@ -19,6 +19,7 @@ export interface ITab {
   panelType?: TPanelType;
   claudeSessionId?: string | null;
   claudeJsonlPath?: string | null;
+  claudeSummary?: string | null;
 }
 
 export interface ISplitNode {
