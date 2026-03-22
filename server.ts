@@ -18,11 +18,25 @@ const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
 const handle = app.getRequestHandler();
 
+const extractCookie = (header: string, name: string): string | undefined => {
+  for (const part of header.split(';')) {
+    const trimmed = part.trim();
+    const eq = trimmed.indexOf('=');
+    if (eq !== -1 && trimmed.slice(0, eq) === name) {
+      return trimmed.slice(eq + 1);
+    }
+  }
+  return undefined;
+};
+
+const SESSION_COOKIE = 'next-auth.session-token';
+
 const verifyWebSocketAuth = async (request: IncomingMessage): Promise<boolean> => {
+  const value = extractCookie(request.headers.cookie ?? '', SESSION_COOKIE);
   const token = await getToken({
-    req: request as never,
+    req: { headers: request.headers, cookies: { [SESSION_COOKIE]: value ?? '' } } as never,
     secret: process.env.NEXTAUTH_SECRET,
-    cookieName: 'next-auth.session-token',
+    cookieName: SESSION_COOKIE,
   });
   return !!token;
 };
