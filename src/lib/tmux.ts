@@ -231,6 +231,11 @@ export const sendKeys = async (
 ): Promise<void> => {
   await execFile(
     'tmux',
+    ['-L', TMUX_SOCKET, 'copy-mode', '-q', '-t', sessionName],
+    { timeout: CMD_TIMEOUT },
+  ).catch(() => {});
+  await execFile(
+    'tmux',
     ['-L', TMUX_SOCKET, 'send-keys', '-t', sessionName, command, 'Enter'],
     { timeout: CMD_TIMEOUT },
   );

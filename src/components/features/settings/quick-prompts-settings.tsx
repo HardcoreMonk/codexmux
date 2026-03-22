@@ -1,5 +1,16 @@
 import { useState, useCallback } from 'react';
 import { nanoid } from 'nanoid';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type Modifier,
+} from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,12 +35,65 @@ interface IFormState {
   prompt: string;
 }
 
+const restrictToVerticalAxis: Modifier = ({ transform }) => ({ ...transform, x: 0 });
+
+interface ISortablePromptItemProps {
+  prompt: IQuickPrompt;
+  onEdit: (p: IQuickPrompt) => void;
+  onDelete: (id: string) => void;
+  onToggle: (id: string, enabled: boolean) => void;
+}
+
+const SortablePromptItem = ({ prompt: p, onEdit, onDelete, onToggle }: ISortablePromptItemProps) => {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+    id: p.id,
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    zIndex: isDragging ? 1 : undefined,
+    position: isDragging ? ('relative' as const) : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} className="flex items-center gap-1 bg-background px-1 py-2.5" style={style}>
+      <div
+        ref={setActivatorNodeRef}
+        {...attributes}
+        {...listeners}
+        className="flex shrink-0 cursor-grab items-center text-muted-foreground/50 active:cursor-grabbing"
+      >
+        <GripVertical className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium">{p.name}</p>
+        <p className="truncate font-mono text-xs text-muted-foreground">{p.prompt}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => onEdit(p)}>
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0 text-ui-red hover:text-ui-red/80"
+          onClick={() => onDelete(p.id)}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+        <Switch checked={p.enabled} onCheckedChange={(v) => onToggle(p.id, v)} />
+      </div>
+    </div>
+  );
+};
+
 const QuickPromptsSettings = () => {
   const { builtinPrompts, customPrompts, toggleBuiltin, saveCustom, resetAll } = useQuickPrompts();
   const [form, setForm] = useState<IFormState | null>(null);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [dropIndex, setDropIndex] = useState<number | null>(null);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const handleCustomToggle = useCallback(
     (id: string, enabled: boolean) => {
@@ -80,45 +144,18 @@ const QuickPromptsSettings = () => {
     setResetDialogOpen(false);
   }, [resetAll]);
 
-  const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
-    setDragIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', String(index));
-    requestAnimationFrame(() => {
-      (e.target as HTMLElement).style.opacity = '0.4';
-    });
-  }, []);
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
 
-  const handleDragEnd = useCallback((e: React.DragEvent) => {
-    (e.target as HTMLElement).style.opacity = '';
-    setDragIndex(null);
-    setDropIndex(null);
-  }, []);
+      const oldIndex = customPrompts.findIndex((p) => p.id === active.id);
+      const newIndex = customPrompts.findIndex((p) => p.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
 
-  const handleDragOver = useCallback(
-    (e: React.DragEvent, index: number) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      if (dragIndex !== null && index !== dragIndex) {
-        setDropIndex(index);
-      }
+      saveCustom(arrayMove(customPrompts, oldIndex, newIndex));
     },
-    [dragIndex],
-  );
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent, toIndex: number) => {
-      e.preventDefault();
-      if (dragIndex !== null && dragIndex !== toIndex) {
-        const next = [...customPrompts];
-        const [moved] = next.splice(dragIndex, 1);
-        next.splice(toIndex, 0, moved);
-        saveCustom(next);
-      }
-      setDragIndex(null);
-      setDropIndex(null);
-    },
-    [dragIndex, customPrompts, saveCustom],
+    [customPrompts, saveCustom],
   );
 
   const isFormValid = form ? form.name.trim().length > 0 && form.prompt.trim().length > 0 : false;
@@ -127,9 +164,7 @@ const QuickPromptsSettings = () => {
     <div className="space-y-6">
       <div>
         <p className="text-sm font-medium">빠른 프롬프트</p>
-        <p className="text-sm text-muted-foreground">
-          입력창 위에 표시할 프롬프트 버튼을 관리합니다.
-        </p>
+        <p className="text-sm text-muted-foreground">입력창 위에 표시할 프롬프트 버튼을 관리합니다.</p>
       </div>
 
       {builtinPrompts.length > 0 && (
@@ -152,58 +187,31 @@ const QuickPromptsSettings = () => {
       <div className="space-y-2">
         <p className="text-xs font-medium text-muted-foreground">사용자 프롬프트</p>
         {customPrompts.length > 0 && (
-          <div className="divide-y divide-border rounded-lg border">
-            {customPrompts.map((p, i) => (
-              <div
-                key={p.id}
-                onDragOver={(e) => handleDragOver(e, i)}
-                onDrop={(e) => handleDrop(e, i)}
-                className="flex items-center gap-1 px-1 py-2.5"
-                style={{
-                  boxShadow:
-                    dropIndex === i && dragIndex !== null
-                      ? dragIndex > i
-                        ? 'inset 0 2px 0 0 var(--ui-purple)'
-                        : 'inset 0 -2px 0 0 var(--ui-purple)'
-                      : undefined,
-                }}
-              >
-                <div
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, i)}
-                  onDragEnd={handleDragEnd}
-                  className="flex shrink-0 cursor-grab items-center text-muted-foreground/50 active:cursor-grabbing"
-                >
-                  <GripVertical className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{p.name}</p>
-                  <p className="truncate font-mono text-xs text-muted-foreground">{p.prompt}</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleEdit(p)}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 text-ui-red hover:text-ui-red/80"
-                    onClick={() => handleDelete(p.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                  <Switch checked={p.enabled} onCheckedChange={(v) => handleCustomToggle(p.id, v)} />
-                </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            modifiers={[restrictToVerticalAxis]}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={customPrompts.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+              <div className="overflow-hidden rounded-lg border">
+                {customPrompts.map((p) => (
+                  <SortablePromptItem
+                    key={p.id}
+                    prompt={p}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onToggle={handleCustomToggle}
+                  />
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
         )}
 
         {form && (
           <div className="space-y-3 rounded-lg border p-3">
-            <p className="text-sm font-medium">
-              {form.mode === 'add' ? '프롬프트 추가' : '프롬프트 수정'}
-            </p>
+            <p className="text-sm font-medium">{form.mode === 'add' ? '프롬프트 추가' : '프롬프트 수정'}</p>
             <div className="space-y-2">
               <label className="text-xs text-muted-foreground">이름</label>
               <Input
