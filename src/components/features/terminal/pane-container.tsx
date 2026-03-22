@@ -171,7 +171,7 @@ const PaneContainer = ({
   const { prompts: quickPrompts } = useQuickPrompts();
 
   useEffect(() => {
-    if (!activeTabId || !isClaudeCode) return;
+    if (!activeTabId || !isClaudeCode || claudeCliState === 'inactive') return;
     reportActiveTab(activeTabId, claudeCliState);
     if (isFocused && claudeCliState === 'idle') {
       dismissStatusTab(activeTabId);
