@@ -8,15 +8,13 @@ import {
   XAxis,
   YAxis,
   Cell,
-  Pie,
-  PieChart,
 } from 'recharts';
 import dayjs from 'dayjs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { ChartConfig } from '@/components/ui/chart';
 import type { IOverviewResponse } from '@/types/stats';
-import { formatNumber, formatDate, formatAxisTick } from '@/components/features/stats/stats-utils';
+import { formatNumber, formatNumberWithComma, formatDate, formatAxisTick, formatCostWithComma } from '@/components/features/stats/stats-utils';
 
 interface ITokenSectionProps {
   data: IOverviewResponse;
@@ -57,9 +55,7 @@ const getModelLabel = (model: string): string => {
 };
 
 const barChartConfig: ChartConfig = {
-  input: { label: '입력', color: 'var(--ui-blue)' },
-  output: { label: '출력', color: 'var(--ui-teal)' },
-  cache: { label: '캐시', color: 'var(--ui-amber)' },
+  total: { label: '토큰', color: 'var(--ui-blue)' },
 };
 
 const trendChartConfig: ChartConfig = {
@@ -86,40 +82,17 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
     return modelBarData.reduce((sum, d) => sum + d.cost, 0);
   }, [modelBarData]);
 
-  const donutData = useMemo(() => {
-    return Object.entries(data.modelTokens)
-      .map(([model, tokens]) => ({
-        name: getModelLabel(model),
-        value: tokens.input + tokens.output,
-        fill: getModelColor(model),
-      }))
-      .filter((d) => d.value > 0)
-      .sort((a, b) => b.value - a.value);
-  }, [data.modelTokens]);
-
-  const totalTokens = useMemo(() => {
-    return donutData.reduce((sum, d) => sum + d.value, 0);
-  }, [donutData]);
-
-  const donutConfig: ChartConfig = useMemo(() => {
-    const cfg: ChartConfig = {};
-    donutData.forEach((d) => {
-      cfg[d.name] = { label: d.name, color: d.fill };
-    });
-    return cfg;
-  }, [donutData]);
-
   return (
     <section className="space-y-3">
       <h2 className="text-sm font-medium text-muted-foreground">토큰 사용량</h2>
 
-      <div className="grid gap-3 lg:grid-cols-2">
-        {modelBarData.length > 0 && (
-          <Card size="sm">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-muted-foreground">모델별 토큰</CardTitle>
-            </CardHeader>
-            <CardContent>
+      {modelBarData.length > 0 && (
+        <Card size="sm">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">모델별 토큰</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
               <ChartContainer config={barChartConfig} className="aspect-auto h-48 w-full">
                 <BarChart
                   data={modelBarData}
@@ -131,7 +104,7 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
                   <YAxis type="category" dataKey="model" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={100} />
                   <ChartTooltip
                     content={<ChartTooltipContent />}
-                    formatter={(value: number) => formatNumber(value)}
+                    formatter={(value: number) => formatNumberWithComma(value)}
                   />
                   <Bar dataKey="total" radius={[0, 4, 4, 0]}>
                     {modelBarData.map((entry) => (
@@ -140,83 +113,25 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
                   </Bar>
                 </BarChart>
               </ChartContainer>
-              <div className="mt-3 space-y-1.5 border-t border-foreground/5 pt-3">
+              <div className="flex flex-col justify-center space-y-1.5 lg:min-w-[180px]">
                 {modelBarData.map((d) => (
-                  <div key={d.model} className="flex items-center justify-between text-xs">
+                  <div key={d.model} className="flex items-center justify-between gap-4 text-xs">
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: d.color }} />
                       <span>{d.model}</span>
                     </div>
-                    <span className="tabular-nums font-medium">${d.cost < 1 ? d.cost.toFixed(2) : d.cost.toFixed(1)}</span>
+                    <span className="tabular-nums font-medium">{formatCostWithComma(d.cost)}</span>
                   </div>
                 ))}
-                <div className="flex items-center justify-between border-t border-foreground/5 pt-1.5 text-xs font-medium">
+                <div className="flex items-center justify-between gap-4 border-t border-foreground/5 pt-1.5 text-xs font-medium">
                   <span className="text-muted-foreground">합계</span>
-                  <span className="tabular-nums">${totalCost < 1 ? totalCost.toFixed(2) : totalCost.toFixed(1)}</span>
+                  <span className="tabular-nums">{formatCostWithComma(totalCost)}</span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {donutData.length > 0 && (
-          <Card size="sm">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-muted-foreground">모델별 비율</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={donutConfig} className="aspect-auto h-48 w-full">
-                <PieChart>
-                  <ChartTooltip
-                    content={<ChartTooltipContent />}
-                    formatter={(value: number) => formatNumber(value)}
-                  />
-                  <Pie
-                    data={donutData}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={50}
-                    outerRadius={72}
-                    strokeWidth={2}
-                    stroke="var(--background)"
-                  >
-                    {donutData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <text
-                    x="50%"
-                    y="46%"
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className="fill-foreground text-lg font-semibold"
-                  >
-                    {formatNumber(totalTokens)}
-                  </text>
-                  <text
-                    x="50%"
-                    y="60%"
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className="fill-muted-foreground text-xs"
-                  >
-                    총 토큰
-                  </text>
-                </PieChart>
-              </ChartContainer>
-              <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 pt-1">
-                {donutData.map((d) => (
-                  <div key={d.name} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: d.fill }} />
-                    <span>{d.name}</span>
-                    <span className="tabular-nums">({((d.value / totalTokens) * 100).toFixed(0)}%)</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {data.dailyTokens.length > 0 && (
         <Card size="sm">
@@ -225,7 +140,7 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
           </CardHeader>
           <CardContent>
             <ChartContainer config={trendChartConfig} className="aspect-auto h-48 w-full">
-              <AreaChart data={data.dailyTokens} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+              <AreaChart data={data.dailyTokens} margin={{ top: 4, right: 4, bottom: 0, left: 8 }}>
                 <defs>
                   <linearGradient id="fillInput" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--ui-blue)" stopOpacity={0.3} />

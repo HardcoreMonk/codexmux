@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { nanoid } from 'nanoid';
-import { Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { GripVertical, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -28,6 +28,8 @@ const QuickPromptsSettings = () => {
   const { builtinPrompts, customPrompts, toggleBuiltin, saveCustom, resetAll } = useQuickPrompts();
   const [form, setForm] = useState<IFormState | null>(null);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
 
   const handleCustomToggle = useCallback(
     (id: string, enabled: boolean) => {
@@ -78,6 +80,47 @@ const QuickPromptsSettings = () => {
     setResetDialogOpen(false);
   }, [resetAll]);
 
+  const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
+    setDragIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
+    requestAnimationFrame(() => {
+      (e.target as HTMLElement).style.opacity = '0.4';
+    });
+  }, []);
+
+  const handleDragEnd = useCallback((e: React.DragEvent) => {
+    (e.target as HTMLElement).style.opacity = '';
+    setDragIndex(null);
+    setDropIndex(null);
+  }, []);
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent, index: number) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (dragIndex !== null && index !== dragIndex) {
+        setDropIndex(index);
+      }
+    },
+    [dragIndex],
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent, toIndex: number) => {
+      e.preventDefault();
+      if (dragIndex !== null && dragIndex !== toIndex) {
+        const next = [...customPrompts];
+        const [moved] = next.splice(dragIndex, 1);
+        next.splice(toIndex, 0, moved);
+        saveCustom(next);
+      }
+      setDragIndex(null);
+      setDropIndex(null);
+    },
+    [dragIndex, customPrompts, saveCustom],
+  );
+
   const isFormValid = form ? form.name.trim().length > 0 && form.prompt.trim().length > 0 : false;
 
   return (
@@ -110,8 +153,29 @@ const QuickPromptsSettings = () => {
         <p className="text-xs font-medium text-muted-foreground">사용자 프롬프트</p>
         {customPrompts.length > 0 && (
           <div className="divide-y divide-border rounded-lg border">
-            {customPrompts.map((p) => (
-              <div key={p.id} className="flex items-center gap-3 px-3 py-2.5">
+            {customPrompts.map((p, i) => (
+              <div
+                key={p.id}
+                onDragOver={(e) => handleDragOver(e, i)}
+                onDrop={(e) => handleDrop(e, i)}
+                className="flex items-center gap-1 px-1 py-2.5"
+                style={{
+                  boxShadow:
+                    dropIndex === i && dragIndex !== null
+                      ? dragIndex > i
+                        ? 'inset 0 2px 0 0 var(--ui-purple)'
+                        : 'inset 0 -2px 0 0 var(--ui-purple)'
+                      : undefined,
+                }}
+              >
+                <div
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, i)}
+                  onDragEnd={handleDragEnd}
+                  className="flex shrink-0 cursor-grab items-center text-muted-foreground/50 active:cursor-grabbing"
+                >
+                  <GripVertical className="h-4 w-4" />
+                </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">{p.name}</p>
                   <p className="truncate font-mono text-xs text-muted-foreground">{p.prompt}</p>

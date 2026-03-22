@@ -32,7 +32,21 @@ export const getChangeRate = (current: number, previous: number): string | null 
   if (previous === 0) return null;
   const rate = ((current - previous) / previous) * 100;
   const sign = rate >= 0 ? '+' : '';
-  return `${sign}${rate.toFixed(0)}%`;
+  return `${sign}${Math.round(rate).toLocaleString()}%`;
+};
+
+export const formatCompactNumber = (n: number): string => {
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString();
+};
+
+export const formatCostWithComma = (cost: number): string => {
+  if (cost < 1) return `$${cost.toFixed(2)}`;
+  const fixed = cost.toFixed(1);
+  const [int, dec] = fixed.split('.');
+  return `$${Number(int).toLocaleString()}.${dec}`;
 };
 
 export const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];

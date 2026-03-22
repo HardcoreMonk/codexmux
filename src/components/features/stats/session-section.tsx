@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { ChartConfig } from '@/components/ui/chart';
 import type { ISessionsResponse, IFacetsResponse, IHistoryResponse } from '@/types/stats';
-import { formatNumber, formatDuration, formatAxisTick } from '@/components/features/stats/stats-utils';
+import { formatNumberWithComma, formatDuration, formatAxisTick } from '@/components/features/stats/stats-utils';
 import SectionSkeleton from '@/components/features/stats/section-skeleton';
 
 interface ISessionSectionProps {
@@ -59,7 +59,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
     },
     {
       label: '총 도구 호출 수',
-      value: formatNumber(totalToolCalls),
+      value: formatNumberWithComma(totalToolCalls),
       icon: Wrench,
     },
   ];
@@ -156,7 +156,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
                     <PieChart>
                       <ChartTooltip
                         content={<ChartTooltipContent hideLabel />}
-                        formatter={(value: number) => formatNumber(value)}
+                        formatter={(value: number) => formatNumberWithComma(value)}
                       />
                       <Pie
                         data={categoryDonutData}
@@ -178,7 +178,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
                         dominantBaseline="middle"
                         className="fill-foreground text-lg font-semibold"
                       >
-                        {formatNumber(facets.totalFacets)}
+                        {formatNumberWithComma(facets.totalFacets)}
                       </text>
                       <text
                         x="50%"
@@ -212,7 +212,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
                       <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={60} />
                       <ChartTooltip
                         content={<ChartTooltipContent />}
-                        formatter={(value: number) => formatNumber(value)}
+                        formatter={(value: number) => formatNumberWithComma(value)}
                       />
                       <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                         {outcomeData.map((entry) => (
@@ -257,7 +257,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
                       />
                       <ChartTooltip
                         content={<ChartTooltipContent />}
-                        formatter={(value: number) => formatNumber(value)}
+                        formatter={(value: number) => formatNumberWithComma(value)}
                       />
                       <Bar dataKey="count" fill="var(--ui-purple)" radius={[0, 4, 4, 0]} />
                     </BarChart>
@@ -279,7 +279,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
                       <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} tickFormatter={formatAxisTick} width={48} />
                       <ChartTooltip
                         content={<ChartTooltipContent />}
-                        formatter={(value: number) => formatNumber(value)}
+                        formatter={(value: number) => formatNumberWithComma(value)}
                       />
                       <Bar dataKey="count" fill="var(--ui-blue)" radius={[2, 2, 0, 0]} />
                     </BarChart>

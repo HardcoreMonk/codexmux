@@ -4,16 +4,19 @@ import type { TPeriod, IOverviewResponse, IProjectsResponse, ISessionsResponse, 
 
 interface IStatsState {
   overview: IOverviewResponse | null;
+  allOverview: IOverviewResponse | null;
   projects: IProjectsResponse | null;
   sessions: ISessionsResponse | null;
   facets: IFacetsResponse | null;
   history: IHistoryResponse | null;
   overviewLoading: boolean;
+  allOverviewLoading: boolean;
   projectsLoading: boolean;
   sessionsLoading: boolean;
   facetsLoading: boolean;
   historyLoading: boolean;
   overviewError: string | null;
+  allOverviewError: string | null;
   projectsError: string | null;
   sessionsError: string | null;
   facetsError: string | null;
@@ -24,6 +27,8 @@ type TStatsAction =
   | { type: 'FETCH_START' }
   | { type: 'OVERVIEW_OK'; data: IOverviewResponse }
   | { type: 'OVERVIEW_ERR'; error: string }
+  | { type: 'ALL_OVERVIEW_OK'; data: IOverviewResponse }
+  | { type: 'ALL_OVERVIEW_ERR'; error: string }
   | { type: 'PROJECTS_OK'; data: IProjectsResponse }
   | { type: 'PROJECTS_ERR'; error: string }
   | { type: 'SESSIONS_OK'; data: ISessionsResponse }
@@ -35,16 +40,19 @@ type TStatsAction =
 
 const initialState: IStatsState = {
   overview: null,
+  allOverview: null,
   projects: null,
   sessions: null,
   facets: null,
   history: null,
   overviewLoading: true,
+  allOverviewLoading: true,
   projectsLoading: true,
   sessionsLoading: true,
   facetsLoading: true,
   historyLoading: true,
   overviewError: null,
+  allOverviewError: null,
   projectsError: null,
   sessionsError: null,
   facetsError: null,
@@ -57,11 +65,13 @@ const reducer = (state: IStatsState, action: TStatsAction): IStatsState => {
       return {
         ...state,
         overviewLoading: true,
+        allOverviewLoading: true,
         projectsLoading: true,
         sessionsLoading: true,
         facetsLoading: true,
         historyLoading: true,
         overviewError: null,
+        allOverviewError: null,
         projectsError: null,
         sessionsError: null,
         facetsError: null,
@@ -71,6 +81,10 @@ const reducer = (state: IStatsState, action: TStatsAction): IStatsState => {
       return { ...state, overview: action.data, overviewLoading: false };
     case 'OVERVIEW_ERR':
       return { ...state, overviewError: action.error, overviewLoading: false };
+    case 'ALL_OVERVIEW_OK':
+      return { ...state, allOverview: action.data, allOverviewLoading: false };
+    case 'ALL_OVERVIEW_ERR':
+      return { ...state, allOverviewError: action.error, allOverviewLoading: false };
     case 'PROJECTS_OK':
       return { ...state, projects: action.data, projectsLoading: false };
     case 'PROJECTS_ERR':
@@ -145,8 +159,18 @@ const useStats = (): IUseStatsReturn => {
       .catch(() => {});
 
     fetchJson<IOverviewResponse>(`/api/stats/overview${q}`, signal)
-      .then((data) => { setInitializing(false); dispatch({ type: 'OVERVIEW_OK', data }); })
+      .then((data) => {
+        setInitializing(false);
+        dispatch({ type: 'OVERVIEW_OK', data });
+        if (period === 'all') dispatch({ type: 'ALL_OVERVIEW_OK', data });
+      })
       .catch((e) => { if (!signal.aborted) { setInitializing(false); dispatch({ type: 'OVERVIEW_ERR', error: e.message }); } });
+
+    if (period !== 'all') {
+      fetchJson<IOverviewResponse>('/api/stats/overview?period=all', signal)
+        .then((data) => dispatch({ type: 'ALL_OVERVIEW_OK', data }))
+        .catch((e) => { if (!signal.aborted) dispatch({ type: 'ALL_OVERVIEW_ERR', error: e.message }); });
+    }
 
     fetchJson<IProjectsResponse>(`/api/stats/projects${q}`, signal)
       .then((data) => dispatch({ type: 'PROJECTS_OK', data }))

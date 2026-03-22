@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { ChartConfig } from '@/components/ui/chart';
 import type { IProjectsResponse } from '@/types/stats';
-import { formatNumber } from '@/components/features/stats/stats-utils';
+import { formatNumber, formatNumberWithComma } from '@/components/features/stats/stats-utils';
 
 interface IProjectSectionProps {
   data: IProjectsResponse;
@@ -105,9 +105,9 @@ const ProjectSection = ({ data }: IProjectSectionProps) => {
           <Card key={project.name} size="sm">
             <CardContent>
               <p className="truncate text-xs text-muted-foreground">{project.name}</p>
-              <p className="text-lg font-semibold tabular-nums">{formatNumber(project.totalTokens)}</p>
+              <p className="text-lg font-semibold tabular-nums">{formatNumberWithComma(project.totalTokens)}</p>
               <p className="text-xs text-muted-foreground">
-                {project.sessionCount}세션 · {project.messageCount}메시지
+                {formatNumberWithComma(project.sessionCount)}세션 · {formatNumberWithComma(project.messageCount)}메시지
               </p>
             </CardContent>
           </Card>

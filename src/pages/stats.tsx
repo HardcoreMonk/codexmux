@@ -42,16 +42,19 @@ const StatsPage = () => {
     period,
     setPeriod,
     overview,
+    allOverview,
     projects,
     sessions,
     facets,
     history,
     overviewLoading,
+    allOverviewLoading,
     projectsLoading,
     sessionsLoading,
     facetsLoading,
     historyLoading,
     overviewError,
+    allOverviewError,
     projectsError,
     sessionsError,
     refetch,
@@ -126,12 +129,12 @@ const StatsPage = () => {
           </SectionErrorBoundary>
 
           <SectionErrorBoundary sectionName="활동 패턴">
-            {overviewLoading ? (
+            {allOverviewLoading ? (
               <SectionSkeleton hasChart />
-            ) : overviewError ? (
+            ) : allOverviewError ? (
               <SectionError onRetry={refetch} />
-            ) : overview ? (
-              <ActivitySection data={overview} />
+            ) : allOverview ? (
+              <ActivitySection data={allOverview} />
             ) : null}
           </SectionErrorBoundary>
 
