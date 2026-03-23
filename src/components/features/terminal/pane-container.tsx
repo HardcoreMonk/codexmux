@@ -610,7 +610,6 @@ const PaneContainer = ({
                   isRestarting={isRestarting}
                   onRestartComplete={() => setIsRestarting(false)}
                   scrollToBottomRef={scrollToBottomRef}
-                  isConnecting={showInitialLoading}
                 />
               )}
               {isClaudeCode && (
