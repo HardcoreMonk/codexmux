@@ -133,6 +133,7 @@ const useTerminal = ({ theme, fontSize = DEFAULT_FONT_SIZE, onInput, onResize, o
         cursorStyle: "bar",
         allowTransparency: false,
         allowProposedApi: true,
+        macOptionIsMeta: true,
         theme: callbacksRef.current.theme,
       });
 
@@ -169,6 +170,18 @@ const useTerminal = ({ theme, fontSize = DEFAULT_FONT_SIZE, onInput, onResize, o
       });
 
       terminal.attachCustomKeyEventHandler((event) => {
+        // macOptionIsMeta가 이중 ESC를 보내는 키만 직접 매핑
+        if (event.altKey && event.type === 'keydown') {
+          const seq: Record<string, string> = {
+            ArrowLeft: '\x1bb',
+            ArrowRight: '\x1bf',
+            Backspace: '\x1b\x7f',
+          };
+          if (seq[event.code]) {
+            callbacksRef.current.onInput?.(seq[event.code]);
+            return false;
+          }
+        }
         return callbacksRef.current.customKeyEventHandler?.(event) ?? true;
       });
 
