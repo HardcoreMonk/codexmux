@@ -151,18 +151,22 @@ const ErrorState = ({ error, onRetry }: { error: string; onRetry: () => void }) 
 );
 
 const ReconnectBanner = () => (
-  <div className="flex items-center justify-center gap-2 border-t bg-muted px-3 py-1.5 text-xs text-muted-foreground">
-    <Loader2 size={12} className="animate-spin" />
-    연결이 끊어졌습니다. 재연결 중...
+  <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
+    <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground shadow-sm">
+      <Loader2 size={12} className="animate-spin" />
+      연결이 끊어졌습니다. 재연결 중...
+    </div>
   </div>
 );
 
 const DisconnectedBanner = ({ onRetry }: { onRetry: () => void }) => (
-  <div className="flex items-center justify-center gap-2 border-t bg-muted px-3 py-1.5 text-xs text-muted-foreground">
-    <span>연결 실패</span>
-    <Button variant="outline" size="xs" className="h-5 px-2 text-xs" onClick={onRetry}>
-      다시 시도
-    </Button>
+  <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
+    <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground shadow-sm">
+      <span>연결 실패</span>
+      <Button variant="outline" size="xs" className="h-5 rounded-full px-2 text-xs" onClick={onRetry}>
+        다시 시도
+      </Button>
+    </div>
   </div>
 );
 
