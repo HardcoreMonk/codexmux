@@ -1,7 +1,7 @@
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/ko';
-import { GitBranch, CircleDot, FilePen, FileQuestion, ArrowUp, ArrowDown, Archive, Terminal, FolderOpen, Cpu, Hash, RectangleHorizontal } from 'lucide-react';
+import { GitBranch, CircleDot, FilePen, FileQuestion, ArrowUp, ArrowDown, Archive } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatTokenCount, formatTokenDetail, formatCost } from '@/lib/format-tokens';
 import type { IGitStatus } from '@/lib/git-status';
