@@ -516,7 +516,7 @@ const parseContent = (content: string): IParseResult => {
       }
       if (base.data.type === 'system') {
         const rawObj = raw as Record<string, unknown>;
-        if (rawObj.subtype === 'stop_hook_summary') {
+        if (rawObj.subtype === 'stop_hook_summary' || rawObj.subtype === 'turn_duration') {
           rawEntries.push({ base: base.data, raw });
         }
         continue;
