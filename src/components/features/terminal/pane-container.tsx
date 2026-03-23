@@ -713,33 +713,36 @@ const PaneContainer = ({
                 '서버에 연결할 수 없습니다'}
             </span>
             {disconnectReason === 'session-not-found' && activeTabId ? (
-              <div className="flex flex-col items-center gap-2">
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleRestartTab(activeTabId)}
-                  >
-                    다시 시작
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteTab(activeTabId)}
-                  >
-                    탭 닫기
-                  </Button>
-                </div>
-                {activeTab?.lastCommand && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                    onClick={() => handleRestartTab(activeTabId, activeTab.lastCommand!)}
-                  >
-                    {activeTab.lastCommand} 실행하며 다시 시작
-                  </Button>
+              <div className="flex flex-col items-center gap-3">
+                {activeTab?.cwd && (
+                  <span className="max-w-72 truncate text-xs text-muted-foreground/60">{activeTab.cwd.replace(/^\/Users\/[^/]+/, '~')}</span>
                 )}
+                {activeTab?.lastCommand && (
+                  <div className="flex flex-col items-center gap-2">
+                    <code className="max-w-64 truncate rounded bg-muted px-2 py-1 text-xs">{activeTab.lastCommand}</code>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRestartTab(activeTabId, activeTab.lastCommand!)}
+                    >
+                      이 커맨드로 시작
+                    </Button>
+                  </div>
+                )}
+                {activeTab?.lastCommand && (
+                  <div className="flex w-40 items-center gap-2 text-muted-foreground/40">
+                    <div className="h-px flex-1 bg-current" />
+                    <span className="text-[11px]">또는</span>
+                    <div className="h-px flex-1 bg-current" />
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRestartTab(activeTabId)}
+                >
+                  새 터미널로 시작
+                </Button>
               </div>
             ) : (
               <Button variant="outline" size="sm" onClick={reconnect}>
@@ -749,7 +752,7 @@ const PaneContainer = ({
           </div>
         )}
 
-        {!noTabs && (
+        {!noTabs && disconnectReason !== 'session-not-found' && (
           <ConnectionStatus
             status={status}
             retryCount={retryCount}
