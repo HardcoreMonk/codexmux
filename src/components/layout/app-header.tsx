@@ -41,7 +41,7 @@ const AppHeader = ({ onMenuOpen }: IAppHeaderProps) => {
         <span className="text-sm font-semibold text-ui-purple">PT</span>
       </div>
 
-      <GlobalStatusSummary />
+      {!onMenuOpen && <GlobalStatusSummary />}
 
       <TooltipProvider>
         <div className="flex items-center gap-1">

@@ -10,7 +10,6 @@ import type { TPanelType } from '@/types/terminal';
 import MobileLayout from '@/components/features/mobile/mobile-layout';
 import MobileTabHeader from '@/components/features/mobile/mobile-tab-header';
 import MobileSurfaceView from '@/components/features/mobile/mobile-surface-view';
-import MobileTabIndicator from '@/components/features/mobile/mobile-tab-indicator';
 import { formatTabTitle, isAutoTabName } from '@/lib/tab-title';
 import { dismissTab, reportActiveTab } from '@/hooks/use-claude-status';
 import type { TCliState } from '@/types/timeline';
@@ -141,21 +140,22 @@ const MobileTerminalPage = () => {
     [layout],
   );
 
+  const handleSurfaceSelected = useCallback(
+    (workspaceId: string, paneId: string, tabId: string) => {
+      if (workspaceId === activeWorkspaceId) {
+        setSelectedPaneId(paneId);
+        setSelectedTabId(tabId);
+        layout.switchTabInPane(paneId, tabId);
+      }
+    },
+    [activeWorkspaceId, layout],
+  );
+
   const [claudeCliState, setClaudeCliState] = useState<TCliState>('inactive');
 
   const handleCliStateChange = useCallback((state: TCliState) => {
     setClaudeCliState(state);
   }, []);
-
-  const handleSelectSurface = useCallback(
-    (paneId: string, tabId: string) => {
-      setSelectedPaneId(paneId);
-      setSelectedTabId(tabId);
-      layout.switchTabInPane(paneId, tabId);
-    },
-    [layout],
-  );
-
 
   const currentPane = panes.find((p) => p.id === selectedPaneId);
   const currentTab = currentPane?.tabs.find((t) => t.id === selectedTabId);
@@ -200,23 +200,6 @@ const MobileTerminalPage = () => {
     if (!currentPane || !selectedTabId) return;
     layout.deleteTabInPane(currentPane.id, selectedTabId);
   }, [currentPane, selectedTabId, layout]);
-
-  const sortedTabs = useMemo(() => {
-    if (!currentPane) return [];
-    return [...currentPane.tabs].sort((a, b) => a.order - b.order);
-  }, [currentPane]);
-
-  const activeTabIndex = sortedTabs.findIndex((t) => t.id === selectedTabId);
-
-  const handleTabIndicatorSelect = useCallback(
-    (index: number) => {
-      const tab = sortedTabs[index];
-      if (tab && currentPane) {
-        handleSelectSurface(currentPane.id, tab.id);
-      }
-    },
-    [sortedTabs, currentPane, handleSelectSurface],
-  );
 
   const renderContent = () => {
     if (isLoading) {
@@ -325,20 +308,18 @@ const MobileTerminalPage = () => {
           />
         )}
 
-        <MobileTabIndicator
-          count={sortedTabs.length}
-          activeIndex={activeTabIndex >= 0 ? activeTabIndex : 0}
-          onSelect={handleTabIndicatorSelect}
-        />
-
-        <div style={{ height: 'env(safe-area-inset-bottom)' }} className="shrink-0 bg-background" />
       </>
     );
   };
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-terminal-bg">
-      <MobileLayout onSelectWorkspace={handleSelectWorkspace}>
+      <MobileLayout
+        onSelectWorkspace={handleSelectWorkspace}
+        onSelectSurface={handleSurfaceSelected}
+        selectedPaneId={selectedPaneId}
+        selectedTabId={selectedTabId}
+      >
         {renderContent()}
       </MobileLayout>
     </div>

@@ -1,0 +1,110 @@
+import { useRef, useEffect, useMemo } from 'react';
+import { Loader2 } from 'lucide-react';
+import useClaudeStatusStore, { getTabStatus } from '@/hooks/use-claude-status-store';
+import type { IWorkspace, IPaneNode } from '@/types/terminal';
+
+interface IMobileWorkspaceTabBarProps {
+  workspaces: IWorkspace[];
+  activeWorkspaceId: string | null;
+  workspaceLayouts: Record<string, IPaneNode[]>;
+  selectedPaneId: string | null;
+  selectedTabId: string | null;
+  onSelect: (workspaceId: string, paneId: string, tabId: string) => void;
+}
+
+interface ITabDot {
+  workspaceId: string;
+  paneId: string;
+  tabId: string;
+}
+
+const MobileWorkspaceTabBar = ({
+  workspaces,
+  activeWorkspaceId,
+  workspaceLayouts,
+  selectedPaneId,
+  selectedTabId,
+  onSelect,
+}: IMobileWorkspaceTabBarProps) => {
+  const activeRef = useRef<HTMLButtonElement>(null);
+  const statusTabs = useClaudeStatusStore((s) => s.tabs);
+
+  const items = useMemo(() => {
+    const result: (ITabDot | 'divider')[] = [];
+
+    for (const ws of workspaces) {
+      const panes = workspaceLayouts[ws.id] ?? [];
+      const wsTabs: ITabDot[] = [];
+
+      for (const pane of panes) {
+        const sorted = [...pane.tabs].sort((a, b) => a.order - b.order);
+        for (const tab of sorted) {
+          wsTabs.push({ workspaceId: ws.id, paneId: pane.id, tabId: tab.id });
+        }
+      }
+
+      if (wsTabs.length > 0) {
+        if (result.length > 0) result.push('divider');
+        result.push(...wsTabs);
+      }
+    }
+
+    return result;
+  }, [workspaces, workspaceLayouts]);
+
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }, [selectedTabId]);
+
+  const totalTabs = items.filter((i) => i !== 'divider').length;
+  if (totalTabs === 0) return null;
+
+  return (
+    <div className="shrink-0 border-t bg-background">
+      <div
+        className="flex h-10 items-center justify-center gap-1.5 overflow-x-auto px-4"
+        style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+      >
+        {items.map((item, i) => {
+          if (item === 'divider') {
+            return (
+              <span
+                key={`d-${i}`}
+                className="mx-0.5 h-3 w-px shrink-0 bg-border"
+              />
+            );
+          }
+
+          const isActive =
+            item.workspaceId === activeWorkspaceId &&
+            item.paneId === selectedPaneId &&
+            item.tabId === selectedTabId;
+          const status = getTabStatus(statusTabs, item.tabId);
+
+          return (
+            <button
+              key={item.tabId}
+              ref={isActive ? activeRef : undefined}
+              className="flex h-6 w-6 shrink-0 items-center justify-center"
+              onClick={() => onSelect(item.workspaceId, item.paneId, item.tabId)}
+              aria-current={isActive ? 'true' : undefined}
+            >
+              {isActive ? (
+                <span className="h-2 w-2 rounded-full bg-foreground" />
+              ) : status === 'busy' ? (
+                <Loader2 className="h-2.5 w-2.5 animate-spin text-muted-foreground" />
+              ) : status === 'needs-attention' ? (
+                <span className="h-2 w-2 rounded-full bg-ui-purple" />
+              ) : (
+                <span className="h-2 w-2 rounded-full border border-muted-foreground/40" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ height: 'env(safe-area-inset-bottom)' }} />
+    </div>
+  );
+};
+
+export default MobileWorkspaceTabBar;

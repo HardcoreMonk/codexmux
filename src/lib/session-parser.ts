@@ -695,7 +695,18 @@ export const parseIncremental = async (
     const rawContent = pendingBuffer + buffer.toString('utf-8');
     const endsWithNewline = rawContent.endsWith('\n');
     const segments = rawContent.split('\n');
-    const newPending = endsWithNewline ? '' : (segments.pop() ?? '');
+    let newPending = '';
+    if (!endsWithNewline) {
+      const lastSegment = segments.pop() ?? '';
+      if (lastSegment) {
+        try {
+          JSON.parse(lastSegment);
+          segments.push(lastSegment);
+        } catch {
+          newPending = lastSegment;
+        }
+      }
+    }
     const completeContent = segments.join('\n');
     const result = parseContent(completeContent);
 

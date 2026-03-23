@@ -43,6 +43,7 @@ const DotByStatus = ({ status }: { status: TTabDisplayStatus }) => {
 const WorkspaceStatusIndicator = ({ workspaceId }: IWorkspaceStatusIndicatorProps) => {
   const tabs = useClaudeStatusStore((state) => state.tabs);
   const tabOrder = useClaudeStatusStore((state) => state.tabOrders[workspaceId]);
+  const wsConnected = useClaudeStatusStore((state) => state.wsConnected);
 
   const tabEntries = useMemo(() => {
     const statusTabIds = new Set<string>();
@@ -63,7 +64,7 @@ const WorkspaceStatusIndicator = ({ workspaceId }: IWorkspaceStatusIndicatorProp
     }));
   }, [tabs, tabOrder, workspaceId]);
 
-  if (tabEntries.length === 0) return null;
+  if (wsConnected && tabEntries.length === 0) return null;
 
   return (
     <span className="mt-0.5 flex h-3 items-center gap-0.5" aria-label="탭 상태">

@@ -1,7 +1,8 @@
-import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useRouter } from 'next/router';
 import AppHeader from '@/components/layout/app-header';
 import MobileNavigationSheet from '@/components/features/mobile/mobile-navigation-sheet';
+import MobileWorkspaceTabBar from '@/components/features/mobile/mobile-workspace-tab-bar';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
 import { useLayoutStore, collectPanes } from '@/hooks/use-layout';
 import type { ILayoutData, IPaneNode } from '@/types/terminal';
@@ -9,11 +10,17 @@ import type { ILayoutData, IPaneNode } from '@/types/terminal';
 interface IMobileLayoutProps {
   children: ReactNode;
   onSelectWorkspace: (workspaceId: string) => void;
+  onSelectSurface?: (workspaceId: string, paneId: string, tabId: string) => void;
+  selectedPaneId?: string | null;
+  selectedTabId?: string | null;
 }
 
 const MobileLayout = ({
   children,
   onSelectWorkspace,
+  onSelectSurface,
+  selectedPaneId,
+  selectedTabId,
 }: IMobileLayoutProps) => {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -39,7 +46,41 @@ const MobileLayout = ({
     setLayoutCache((prev) => ({ ...prev, [storeWorkspaceId]: storeLayout }));
   }
 
-  // 메뉴 열릴 때 모든 workspace 레이아웃 fetch
+  // 초기 로드 시 모든 workspace 레이아웃 fetch (하단 탭 바용)
+  const initialFetchDone = useRef(false);
+  useEffect(() => {
+    if (initialFetchDone.current || workspaces.length === 0) return;
+    initialFetchDone.current = true;
+
+    let cancelled = false;
+    const fetchAll = async () => {
+      const results = await Promise.all(
+        workspaces.map(async (ws) => {
+          try {
+            const res = await fetch(`/api/layout?workspace=${ws.id}`);
+            if (!res.ok) return null;
+            const data: ILayoutData = await res.json();
+            return { id: ws.id, data };
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      if (cancelled) return;
+      setLayoutCache((prev) => {
+        const next = { ...prev };
+        for (const r of results) {
+          if (r) next[r.id] = r.data;
+        }
+        return next;
+      });
+    };
+    fetchAll();
+    return () => { cancelled = true; };
+  }, [workspaces]);
+
+  // 메뉴 열릴 때 모든 workspace 레이아웃 refresh
   useEffect(() => {
     if (!menuOpen) return;
     let cancelled = false;
@@ -117,12 +158,14 @@ const MobileLayout = ({
         onSelectWorkspace(workspaceId);
       }
 
+      onSelectSurface?.(workspaceId, paneId, tabId);
+
       setMenuOpen(false);
       if (router.pathname !== '/') {
         router.push('/');
       }
     },
-    [activeWorkspaceId, onSelectWorkspace, router],
+    [activeWorkspaceId, onSelectWorkspace, onSelectSurface, router],
   );
 
   const handleCreateWorkspace = useCallback(async () => {
@@ -139,14 +182,22 @@ const MobileLayout = ({
         <AppHeader onMenuOpen={() => setMenuOpen(true)} />
       </div>
       {children}
+      <MobileWorkspaceTabBar
+        workspaces={workspaces}
+        activeWorkspaceId={activeWorkspaceId}
+        workspaceLayouts={workspaceLayouts}
+        selectedPaneId={selectedPaneId ?? activePaneId}
+        selectedTabId={selectedTabId ?? activeTabId}
+        onSelect={handleSelectSurface}
+      />
       <MobileNavigationSheet
         open={menuOpen}
         onOpenChange={setMenuOpen}
         workspaces={workspaces}
         activeWorkspaceId={activeWorkspaceId}
         workspaceLayouts={workspaceLayouts}
-        activePaneId={activePaneId}
-        activeTabId={activeTabId}
+        activePaneId={selectedPaneId ?? activePaneId}
+        activeTabId={selectedTabId ?? activeTabId}
         onSelectSurface={handleSelectSurface}
         onCreateWorkspace={handleCreateWorkspace}
       />
