@@ -21,7 +21,7 @@ const deriveCliState = (
   }
 
   const lastEntry = entries[entries.length - 1];
-  if (lastEntry.type === 'assistant-message' || lastEntry.type === 'interrupt' || lastEntry.type === 'session-exit' || lastEntry.type === 'turn-end') {
+  if (lastEntry.type === 'turn-end' || lastEntry.type === 'interrupt' || lastEntry.type === 'session-exit') {
     return 'idle';
   }
 
