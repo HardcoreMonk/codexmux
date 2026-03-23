@@ -22,6 +22,8 @@ interface IMobileClaudeCodePanelProps {
   tabId?: string;
   sessionName: string;
   claudeSessionId?: string | null;
+  isClaudeRunning?: boolean;
+  cwd?: string;
   sendStdin: (data: string) => void;
   terminalWsConnected: boolean;
   focusTerminal: () => void;
@@ -39,6 +41,8 @@ const MobileClaudeCodePanel = ({
   tabId,
   sessionName,
   claudeSessionId,
+  isClaudeRunning,
+  cwd,
   sendStdin,
   terminalWsConnected,
   focusTerminal,
@@ -104,6 +108,21 @@ const MobileClaudeCodePanel = ({
     },
   });
 
+  const prevClaudeRunningRef = useRef(isClaudeRunning);
+
+  useEffect(() => {
+    const wasRunning = prevClaudeRunningRef.current;
+    prevClaudeRunningRef.current = isClaudeRunning;
+
+    if (!wasRunning && isClaudeRunning && sessionStatus !== 'active') {
+      retrySession();
+    }
+  }, [isClaudeRunning, sessionStatus, retrySession]);
+
+  const effectiveSessionStatus = sessionStatus === 'active' && isClaudeRunning === false
+    ? 'none' as const
+    : sessionStatus;
+
   const {
     sessions,
     hasMore: sessionListHasMore,
@@ -114,11 +133,12 @@ const MobileClaudeCodePanel = ({
     loadMore: loadMoreSessions,
   } = useSessionList({
     tmuxSession: sessionName,
-    enabled: !!sessionName && sessionStatus !== 'active',
+    enabled: !!sessionName && effectiveSessionStatus !== 'active',
+    cwd,
   });
 
   const { view, navigateToTimeline } = useSessionView(
-    sessionStatus,
+    effectiveSessionStatus,
     sessions,
     isSessionListLoading,
     sessionListError,
@@ -135,10 +155,10 @@ const MobileClaudeCodePanel = ({
   });
 
   useEffect(() => {
-    if (isRestarting && sessionStatus === 'active') {
+    if (isRestarting && effectiveSessionStatus === 'active') {
       onRestartComplete?.();
     }
-  }, [isRestarting, sessionStatus, onRestartComplete]);
+  }, [isRestarting, effectiveSessionStatus, onRestartComplete]);
 
   const isInputVisible = view === 'timeline';
 
@@ -180,7 +200,7 @@ const MobileClaudeCodePanel = ({
   if (view === 'empty') {
     return (
       <div className="flex min-h-0 flex-1 flex-col bg-muted">
-        <SessionEmptyView />
+        <SessionEmptyView onNewSession={onNewSession} />
       </div>
     );
   }

@@ -9,6 +9,7 @@ import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import TerminalContainer from '@/components/features/terminal/terminal-container';
 import ConnectionStatus from '@/components/features/terminal/connection-status';
 import MobileClaudeCodePanel from '@/components/features/mobile/mobile-claude-code-panel';
+import MobileTerminalToolbar from '@/components/features/mobile/mobile-terminal-toolbar';
 import { formatTabTitle, isClaudeProcess } from '@/lib/tab-title';
 import { isAppShortcut, isClearShortcut, isFocusInputShortcut, isShiftEnter } from '@/lib/keyboard-shortcuts';
 import type { TCliState } from '@/types/timeline';
@@ -74,6 +75,10 @@ const MobileSurfaceView = ({
 }: IMobileSurfaceViewProps) => {
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const isClaudeCode = panelType === 'claude-code';
+
+  const activeTabCwd = useTabMetadataStore(
+    (state) => (activeTabId ? state.metadata[activeTabId]?.cwd : undefined),
+  );
 
   const { theme: terminalTheme } = useTerminalTheme();
   const [hasEverConnected, setHasEverConnected] = useState(false);
@@ -235,7 +240,7 @@ const MobileSurfaceView = ({
   }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (isClaudeCode && isReady && status === 'connected') {
+    if (isReady && status === 'connected') {
       const timer = setTimeout(() => {
         const { cols, rows } = fit();
         wsActionsRef.current.sendResize(cols, rows);
@@ -292,6 +297,8 @@ const MobileSurfaceView = ({
           tabId={activeTabId ?? undefined}
           sessionName={activeTab.sessionName}
           claudeSessionId={activeTab.claudeSessionId}
+          isClaudeRunning={isClaudeRunning}
+          cwd={activeTabCwd}
           sendStdin={sendWebStdin}
           terminalWsConnected={status === 'connected'}
           focusTerminal={focus}
@@ -315,6 +322,10 @@ const MobileSurfaceView = ({
           !isClaudeCode && !ready ? 'opacity-0' : '',
         )}
       />
+
+      {!isClaudeCode && ready && (
+        <MobileTerminalToolbar sendStdin={sendStdin} />
+      )}
 
       {noTabs && (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3">
