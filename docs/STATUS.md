@@ -60,9 +60,17 @@ noise 엔트리(`file-history-snapshot`, `progress`, `last-prompt`)는 스킵하
 | `user` (텍스트 또는 tool_result) | busy | 요청/도구결과 전송, 응답 대기 |
 | 파일 비어있음 | idle | 아직 요청 전 |
 
+#### Staleness fallback (서버만 적용)
+
+위 규칙에서 `busy`로 판정되더라도, JSONL 파일의 mtime이 **30초 이상** 경과했으면 `idle`로 전환한다.
+Claude CLI가 최종 엔트리(`assistant(end_turn)`, `system(turn_duration)`)를 기록하지 않고 턴이 종료된 경우를 보완한다.
+TTFT(Time To First Token)가 긴 경우(P95 ~18초, P99 ~49초) 일시적 오판이 발생할 수 있으나,
+다음 폴링 주기에 assistant 엔트리가 도착하면 즉시 busy로 복구된다.
+
 #### 서버 구현 (`checkJsonlIdle` in `status-manager.ts`)
 
 JSONL 파일의 끝 8KB를 읽고 raw 엔트리를 역순 탐색. noise 타입은 어떤 조건에도 매칭되지 않아 자동 스킵.
+`busy` 판정 시 `stat.mtimeMs` 기반 staleness를 추가 확인하여 30초 초과 시 `idle` 반환.
 
 #### 클라이언트 구현 (`deriveCliState` in `use-timeline.ts`)
 

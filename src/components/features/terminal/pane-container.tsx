@@ -513,17 +513,19 @@ const PaneContainer = ({
       if (!isReady || status !== 'connected') return;
       const { cols, rows } = fit();
       wsActionsRef.current.sendResize(cols, rows);
-      if (isClaudeCode) {
-        if (claudeInputVisible) focusInputRef.current?.();
-      } else {
-        focus();
+      if (isFocused) {
+        if (isClaudeCode) {
+          if (claudeInputVisible) focusInputRef.current?.();
+        } else {
+          focus();
+        }
       }
     }, 150);
     return () => clearTimeout(timer);
   }, [isClaudeCode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (isClaudeCode && claudeInputVisible) {
+    if (isFocused && isClaudeCode && claudeInputVisible) {
       focusInputRef.current?.();
     }
   }, [claudeInputVisible]); // eslint-disable-line react-hooks/exhaustive-deps

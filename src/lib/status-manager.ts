@@ -3,7 +3,7 @@ import { getWorkspaces } from '@/lib/workspace-store';
 import { readLayoutFile, resolveLayoutFile, collectAllTabs, updateTabCliStatus } from '@/lib/layout-store';
 import { getAllPanesInfo } from '@/lib/tmux';
 import { detectActiveSession } from '@/lib/session-detection';
-import { INTERRUPT_TEXT } from '@/lib/session-parser';
+import { INTERRUPT_PREFIX } from '@/lib/session-parser';
 import type { IPaneInfo } from '@/lib/tmux';
 import type { TCliState } from '@/types/timeline';
 import type { ITabStatusEntry, IClientTabStatusEntry, IStatusUpdateMessage } from '@/types/status';
@@ -15,6 +15,7 @@ const POLL_INTERVAL_LARGE = 15_000;
 const TAB_COUNT_MEDIUM = 11;
 const TAB_COUNT_LARGE = 21;
 const JSONL_TAIL_SIZE = 8192;
+const JSONL_STALE_MS = 30_000;
 
 const CLAUDE_COMMANDS = new Set(['claude']);
 const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
@@ -33,6 +34,7 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<boolean> => {
       const buffer = Buffer.alloc(readSize);
       await handle.read(buffer, 0, readSize, stat.size - readSize);
 
+      const stale = Date.now() - stat.mtimeMs > JSONL_STALE_MS;
       const lines = buffer.toString('utf-8').split('\n').filter((l) => l.trim());
 
       for (let i = lines.length - 1; i >= 0; i--) {
@@ -45,16 +47,16 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<boolean> => {
 
           if (entry.type === 'assistant') {
             const stopReason = entry.message?.stop_reason;
-            if (!stopReason) return false;
+            if (!stopReason) return stale;
             return stopReason !== 'tool_use';
           }
 
           if (entry.type === 'user') {
             const content = entry.message?.content;
-            if (Array.isArray(content) && content.length === 1 && content[0]?.text === INTERRUPT_TEXT) {
+            if (Array.isArray(content) && content.length === 1 && typeof content[0]?.text === 'string' && content[0].text.startsWith(INTERRUPT_PREFIX)) {
               return true;
             }
-            return false;
+            return stale;
           }
         } catch {
           continue;

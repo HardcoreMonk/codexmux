@@ -18,7 +18,7 @@ import type {
   TToolStatus,
 } from '@/types/timeline';
 
-export const INTERRUPT_TEXT = '[Request interrupted by user]';
+export const INTERRUPT_PREFIX = '[Request interrupted by user';
 
 const EXCLUDED_TYPES = new Set([
   'progress', 'system', 'file-history-snapshot',
@@ -365,12 +365,11 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
       return entries;
     }
 
-    // Detect interrupt: content is array with single text "[Request interrupted by user]"
     if (
       content.length === 1 &&
       content[0].type === 'text' &&
       'text' in content[0] &&
-      (content[0] as { text: string }).text === INTERRUPT_TEXT
+      (content[0] as { text: string }).text.startsWith(INTERRUPT_PREFIX)
     ) {
       return [{
         id: nanoid(),
