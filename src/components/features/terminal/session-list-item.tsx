@@ -1,7 +1,7 @@
 import dayjs from 'dayjs';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+
 import type { ISessionMeta } from '@/types/timeline';
 
 interface ISessionListItemProps {
@@ -54,7 +54,6 @@ const SessionListItem = ({
   onSelect,
 }: ISessionListItemProps) => {
   const absoluteTime = dayjs(session.lastActivityAt).format('MM/DD HH:mm');
-  const fullTime = dayjs(session.lastActivityAt).format('YYYY-MM-DD HH:mm:ss');
   const relativeTime = formatRelativeTime(session.lastActivityAt);
   const displayMessage = session.firstMessage || '(메시지 없음)';
 
@@ -85,30 +84,14 @@ const SessionListItem = ({
             {absoluteTime}
           </span>
         </div>
-        <Tooltip>
-          <TooltipTrigger
-            className="shrink-0 text-xs text-muted-foreground"
-            render={<span />}
-          >
+        <span className="shrink-0 text-xs text-muted-foreground">
             {relativeTime}
-          </TooltipTrigger>
-          <TooltipContent side="left">
-            <p className="text-xs">{fullTime}</p>
-          </TooltipContent>
-        </Tooltip>
+          </span>
       </div>
       <div className="mt-1 flex items-center justify-between gap-2 pl-[12px]">
-        <Tooltip>
-          <TooltipTrigger
-            className="min-w-0 truncate text-sm font-medium text-left"
-            render={<span />}
-          >
+        <span className="min-w-0 truncate text-sm font-medium text-left">
             {displayMessage}
-          </TooltipTrigger>
-          <TooltipContent side="bottom" align="start" className="max-w-[300px]">
-            <p className="text-xs whitespace-pre-wrap break-words">{displayMessage}</p>
-          </TooltipContent>
-        </Tooltip>
+          </span>
         <span className="shrink-0 text-xs text-muted-foreground">
           {session.turnCount}턴
         </span>
