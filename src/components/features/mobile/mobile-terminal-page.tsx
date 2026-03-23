@@ -12,6 +12,7 @@ import MobileTabHeader from '@/components/features/mobile/mobile-tab-header';
 import MobileSurfaceView from '@/components/features/mobile/mobile-surface-view';
 import { formatTabTitle, isAutoTabName } from '@/lib/tab-title';
 import { dismissTab, reportActiveTab } from '@/hooks/use-claude-status';
+import useClaudeStatusStore from '@/hooks/use-claude-status-store';
 import type { TCliState } from '@/types/timeline';
 import useSync from '@/hooks/use-sync';
 
@@ -172,6 +173,18 @@ const MobileTerminalPage = () => {
       dismissTab(selectedTabId);
     }
   }, [selectedTabId, claudeCliState, currentPanelType]);
+
+  const currentTabNeedsAttention = useClaudeStatusStore((s) => {
+    if (!selectedTabId) return false;
+    const entry = s.tabs[selectedTabId];
+    return entry?.cliState === 'idle' && !entry.dismissed;
+  });
+
+  useEffect(() => {
+    if (currentTabNeedsAttention && selectedTabId) {
+      dismissTab(selectedTabId);
+    }
+  }, [currentTabNeedsAttention, selectedTabId]);
 
   const tabMetadata = useTabMetadataStore((s) =>
     selectedTabId ? s.metadata[selectedTabId] : undefined,

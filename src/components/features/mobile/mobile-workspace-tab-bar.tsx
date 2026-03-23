@@ -90,7 +90,7 @@ const MobileWorkspaceTabBar = ({
               aria-current={isActive ? 'true' : undefined}
             >
               {isActive ? (
-                <span className="h-2 w-2 rounded-full bg-foreground" />
+                <span className="h-2 w-2 rounded-[2px] bg-foreground" />
               ) : status === 'busy' ? (
                 <Loader2 className="h-2.5 w-2.5 animate-spin text-muted-foreground" />
               ) : status === 'needs-attention' ? (

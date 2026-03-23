@@ -5,6 +5,7 @@ import { MetaCompact, MetaDetail } from '@/components/features/terminal/session-
 import useSessionMeta from '@/hooks/use-session-meta';
 import useGitBranch from '@/hooks/use-git-branch';
 import useGitStatus from '@/hooks/use-git-status';
+import useTmuxInfo from '@/hooks/use-tmux-info';
 import type { ITimelineEntry } from '@/types/timeline';
 
 interface ISessionMetaBarProps {
@@ -20,6 +21,7 @@ const SessionMetaBar = ({ entries, sessionName, sessionId, sessionSummary }: ISe
   const { meta, isExpanded, toggleExpanded, collapse } = useSessionMeta(entries, sessionSummary);
   const { branch, isLoading: isBranchLoading } = useGitBranch(sessionName);
   const { status: gitStatus } = useGitStatus(sessionName, isExpanded);
+  const tmuxInfo = useTmuxInfo(sessionName, isExpanded);
   const containerRef = useRef<HTMLDivElement>(null);
   const [, setTick] = useState(0);
 
@@ -102,6 +104,7 @@ const SessionMetaBar = ({ entries, sessionName, sessionId, sessionSummary }: ISe
             branch={branch}
             isBranchLoading={isBranchLoading}
             gitStatus={gitStatus}
+            tmuxInfo={tmuxInfo}
           />
         </div>
       </div>

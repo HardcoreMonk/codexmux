@@ -1,7 +1,7 @@
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/ko';
-import { GitBranch, CircleDot, FilePen, FileQuestion, ArrowUp, ArrowDown, Archive } from 'lucide-react';
+import { GitBranch, CircleDot, FilePen, FileQuestion, ArrowUp, ArrowDown, Archive, Terminal, FolderOpen, Cpu, Hash, RectangleHorizontal } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatTokenCount, formatTokenDetail, formatCost } from '@/lib/format-tokens';
 import type { IGitStatus } from '@/lib/git-status';
@@ -70,6 +70,17 @@ export const MetaCompact = ({
   );
 };
 
+export interface ITmuxInfo {
+  cwd: string | null;
+  command: string | null;
+  lastCommand: string | null;
+  pid: number | null;
+  width: number | null;
+  height: number | null;
+  sessionCreated: number | null;
+  sessionName: string;
+}
+
 export interface IMetaDetailProps {
   title: string;
   sessionId: string | null;
@@ -85,7 +96,17 @@ export interface IMetaDetailProps {
   branch: string | null;
   isBranchLoading: boolean;
   gitStatus: IGitStatus | null;
+  tmuxInfo?: ITmuxInfo | null;
 }
+
+const shortenPath = (p: string): string => {
+  const home = typeof window === 'undefined' ? '' : '';
+  if (!home) {
+    const match = p.match(/^\/Users\/[^/]+(.*)$/);
+    if (match) return `~${match[1]}`;
+  }
+  return p;
+};
 
 export const MetaDetail = ({
   title,
@@ -102,6 +123,7 @@ export const MetaDetail = ({
   branch,
   isBranchLoading,
   gitStatus,
+  tmuxInfo,
 }: IMetaDetailProps) => {
   const createdRelative = createdAt ? dayjs(createdAt).fromNow() : '';
   const updatedRelative = updatedAt ? dayjs(updatedAt).fromNow() : '';
@@ -186,6 +208,54 @@ export const MetaDetail = ({
           </div>
         )}
       </div>
+
+      {tmuxInfo && (
+        <div className="mt-1 border-t border-border pt-2">
+          <div className="flex flex-col gap-1">
+            {tmuxInfo.cwd && (
+              <div className="flex items-baseline gap-2">
+                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">경로</span>
+                <Tooltip>
+                  <TooltipTrigger className="min-w-0 truncate font-mono text-xs text-muted-foreground">
+                    {shortenPath(tmuxInfo.cwd)}
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p className="text-xs">{tmuxInfo.cwd}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            )}
+            {tmuxInfo.lastCommand && (
+              <div className="flex items-baseline gap-2">
+                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">프로세스</span>
+                <span className="font-mono text-xs text-muted-foreground">{tmuxInfo.lastCommand}</span>
+              </div>
+            )}
+            {!tmuxInfo.lastCommand && tmuxInfo.command && (
+              <div className="flex items-baseline gap-2">
+                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">프로세스</span>
+                <span className="font-mono text-xs text-muted-foreground">{tmuxInfo.command}</span>
+              </div>
+            )}
+            {tmuxInfo.pid && (
+              <div className="flex items-baseline gap-2">
+                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">PID</span>
+                <span className="font-mono text-xs text-muted-foreground">{tmuxInfo.pid}</span>
+              </div>
+            )}
+            {tmuxInfo.width && tmuxInfo.height && (
+              <div className="flex items-baseline gap-2">
+                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">크기</span>
+                <span className="font-mono text-xs text-muted-foreground">{tmuxInfo.width} × {tmuxInfo.height}</span>
+              </div>
+            )}
+            <div className="flex items-baseline gap-2">
+              <span className="w-12 shrink-0 text-xs text-muted-foreground/70">세션</span>
+              <span className="min-w-0 truncate font-mono text-xs text-muted-foreground/50">{tmuxInfo.sessionName}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {gitStatus && (
         <div className="mt-1 border-t border-border pt-2">

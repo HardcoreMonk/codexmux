@@ -287,6 +287,42 @@ export const sendKeys = async (
   );
 };
 
+export interface IPaneDetailInfo {
+  cwd: string | null;
+  command: string | null;
+  pid: number | null;
+  width: number | null;
+  height: number | null;
+  sessionCreated: number | null;
+}
+
+export const getPaneDetailInfo = async (
+  sessionName: string,
+): Promise<IPaneDetailInfo> => {
+  try {
+    const { stdout } = await execFile(
+      'tmux',
+      [
+        '-L', TMUX_SOCKET,
+        'display-message', '-p', '-t', sessionName,
+        '#{pane_current_path}\t#{pane_current_command}\t#{pane_pid}\t#{pane_width}\t#{pane_height}\t#{session_created}',
+      ],
+      { timeout: CMD_TIMEOUT },
+    );
+    const [cwdStr, command, pidStr, widthStr, heightStr, createdStr] = stdout.trim().split('\t');
+    return {
+      cwd: cwdStr || null,
+      command: command || null,
+      pid: pidStr ? parseInt(pidStr, 10) || null : null,
+      width: widthStr ? parseInt(widthStr, 10) || null : null,
+      height: heightStr ? parseInt(heightStr, 10) || null : null,
+      sessionCreated: createdStr ? parseInt(createdStr, 10) || null : null,
+    };
+  } catch {
+    return { cwd: null, command: null, pid: null, width: null, height: null, sessionCreated: null };
+  }
+};
+
 const INTERPRETERS = new Set(['node', 'python', 'python3', 'ruby', 'perl', 'deno', 'bun']);
 
 const cleanCommandLine = (raw: string): string => {

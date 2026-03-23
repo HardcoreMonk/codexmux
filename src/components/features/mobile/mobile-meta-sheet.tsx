@@ -1,6 +1,6 @@
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { MetaDetail } from '@/components/features/terminal/session-meta-content';
-import type { IMetaDetailProps } from '@/components/features/terminal/session-meta-content';
+import type { IMetaDetailProps, ITmuxInfo } from '@/components/features/terminal/session-meta-content';
 import type { IGitStatus } from '@/lib/git-status';
 
 interface ISessionMetaData {
@@ -24,6 +24,7 @@ interface IMobileMetaSheetProps {
   isBranchLoading: boolean;
   sessionId: string | null;
   gitStatus: IGitStatus | null;
+  tmuxInfo?: ITmuxInfo | null;
 }
 
 const MobileMetaSheet = ({
@@ -34,6 +35,7 @@ const MobileMetaSheet = ({
   isBranchLoading,
   sessionId,
   gitStatus,
+  tmuxInfo,
 }: IMobileMetaSheetProps) => (
   <Sheet open={open} onOpenChange={onOpenChange}>
     <SheetContent side="bottom" showCloseButton={false} className="rounded-t-xl">
@@ -54,6 +56,7 @@ const MobileMetaSheet = ({
           branch={branch}
           isBranchLoading={isBranchLoading}
           gitStatus={gitStatus}
+          tmuxInfo={tmuxInfo}
         />
       </div>
     </SheetContent>
