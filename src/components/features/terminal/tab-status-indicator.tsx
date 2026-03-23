@@ -4,11 +4,10 @@ import type { TPanelType } from '@/types/terminal';
 
 interface ITabStatusIndicatorProps {
   tabId: string;
-  isActive: boolean;
   panelType?: TPanelType;
 }
 
-const TabStatusIndicator = ({ tabId, isActive, panelType }: ITabStatusIndicatorProps) => {
+const TabStatusIndicator = ({ tabId, panelType }: ITabStatusIndicatorProps) => {
   const status = useClaudeStatusStore(
     (state) => getTabStatus(state.tabs, tabId),
   );

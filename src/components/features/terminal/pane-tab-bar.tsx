@@ -370,7 +370,6 @@ const PaneTabBar = ({
                 <>
                   <TabStatusIndicator
                     tabId={tab.id}
-                    isActive={isActive}
                     panelType={tab.panelType}
                   />
                   {tab.panelType === 'claude-code' ? (

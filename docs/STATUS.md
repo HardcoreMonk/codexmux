@@ -43,19 +43,38 @@ detectTabCliState(tmuxSession, paneInfo)
             └─ busy → busy
 ```
 
-### JSONL 기반 busy/idle 판별 (`checkJsonlIdle`)
+### JSONL 기반 busy/idle 판별 (통일 기준)
 
-JSONL 파일의 끝 8KB를 읽고 마지막 의미 있는 엔트리를 역순 탐색:
+서버(`checkJsonlIdle`)와 클라이언트(`deriveCliState`)가 동일한 규칙을 따른다.
+noise 엔트리(`file-history-snapshot`, `progress`, `last-prompt`)는 스킵하고 마지막 의미 있는 엔트리로 판별:
 
 | 마지막 엔트리 | 판정 | 이유 |
 | --- | --- | --- |
 | `system` + `subtype: 'stop_hook_summary'` | idle | 턴 종료 |
+| `system` + `subtype: 'turn_duration'` | idle | 턴 종료 |
 | `assistant` + `stop_reason: 'end_turn'` | idle | 응답 완료 |
 | `assistant` + `stop_reason: 'max_tokens'` | idle | 토큰 제한 도달 |
 | `assistant` + `stop_reason: 'tool_use'` | busy | 도구 실행 중 |
 | `assistant` + `stop_reason: null` | busy | 응답 스트리밍 중 |
+| `user` + `[Request interrupted by user]` | idle | 사용자 중단 |
 | `user` (텍스트 또는 tool_result) | busy | 요청/도구결과 전송, 응답 대기 |
 | 파일 비어있음 | idle | 아직 요청 전 |
+
+#### 서버 구현 (`checkJsonlIdle` in `status-manager.ts`)
+
+JSONL 파일의 끝 8KB를 읽고 raw 엔트리를 역순 탐색. noise 타입은 어떤 조건에도 매칭되지 않아 자동 스킵.
+
+#### 클라이언트 구현 (`deriveCliState` in `use-timeline.ts`)
+
+`session-parser.ts`가 파싱한 `ITimelineEntry[]`의 마지막 엔트리 타입으로 판별:
+
+| 타임라인 엔트리 타입 | 판정 | raw JSONL 대응 |
+| --- | --- | --- |
+| `turn-end` | idle | `system(stop_hook_summary\|turn_duration)` |
+| `interrupt` | idle | `user([Request interrupted by user])` |
+| `session-exit` | idle | `user(/exit)` |
+| `assistant-message` + `stopReason ≠ 'tool_use'` | idle | `assistant(end_turn\|max_tokens)` |
+| 그 외 | busy | — |
 
 ### Claude JSONL 엔트리 흐름 예시
 
@@ -64,7 +83,7 @@ user     → 사용자 메시지 전송          → busy
 assistant (stop_reason: tool_use)     → busy (도구 호출 중)
 user     → tool_result 전송            → busy
 assistant (stop_reason: end_turn)     → idle (응답 완료)
-system   (stop_hook_summary)          → idle (턴 종료 확정)
+system   (turn_duration)              → idle (턴 종료 확정)
 ```
 
 ---

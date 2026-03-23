@@ -3,6 +3,7 @@ import { getWorkspaces } from '@/lib/workspace-store';
 import { readLayoutFile, resolveLayoutFile, collectAllTabs, updateTabCliStatus } from '@/lib/layout-store';
 import { getAllPanesInfo } from '@/lib/tmux';
 import { detectActiveSession } from '@/lib/session-detection';
+import { INTERRUPT_TEXT } from '@/lib/session-parser';
 import type { IPaneInfo } from '@/lib/tmux';
 import type { TCliState } from '@/types/timeline';
 import type { ITabStatusEntry, IClientTabStatusEntry, IStatusUpdateMessage } from '@/types/status';
@@ -38,7 +39,7 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<boolean> => {
         try {
           const entry = JSON.parse(lines[i]);
 
-          if (entry.type === 'system' && entry.subtype === 'stop_hook_summary') {
+          if (entry.type === 'system' && (entry.subtype === 'stop_hook_summary' || entry.subtype === 'turn_duration')) {
             return true;
           }
 
@@ -49,6 +50,10 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<boolean> => {
           }
 
           if (entry.type === 'user') {
+            const content = entry.message?.content;
+            if (Array.isArray(content) && content.length === 1 && content[0]?.text === INTERRUPT_TEXT) {
+              return true;
+            }
             return false;
           }
         } catch {

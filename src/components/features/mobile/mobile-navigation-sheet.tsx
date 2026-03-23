@@ -120,7 +120,6 @@ const MobileNavigationSheet = ({
         >
           <TabStatusIndicator
             tabId={tab.id}
-            isActive={isTabActive}
             panelType={panelType}
           />
           {isClaudeCode ? (

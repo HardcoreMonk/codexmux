@@ -219,13 +219,15 @@ const TimelineView = ({
     initial: 'instant',
   });
   const [skipAnimation, setSkipAnimation] = useState(true);
+  const [prevSessionId, setPrevSessionId] = useState(sessionId);
+
+  if (prevSessionId !== sessionId) {
+    setPrevSessionId(sessionId);
+    setSkipAnimation(true);
+  }
 
   const groupedItems = useMemo(() => groupTimelineEntries(entries), [entries]);
   const hasDisplayItems = groupedItems.length > 0;
-
-  useEffect(() => {
-    setSkipAnimation(true);
-  }, [sessionId]);
 
   useEffect(() => {
     if (skipAnimation && entries.length > 0) {

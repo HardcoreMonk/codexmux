@@ -25,6 +25,10 @@ const deriveCliState = (
     return 'idle';
   }
 
+  if (lastEntry.type === 'assistant-message' && lastEntry.stopReason && lastEntry.stopReason !== 'tool_use') {
+    return 'idle';
+  }
+
   return 'busy';
 };
 

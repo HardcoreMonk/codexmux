@@ -36,6 +36,7 @@ export interface ITimelineAssistantMessage {
   type: 'assistant-message';
   timestamp: number;
   markdown: string;
+  stopReason?: string | null;
   model?: string;
   usage?: {
     input_tokens: number;

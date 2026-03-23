@@ -18,6 +18,8 @@ import type {
   TToolStatus,
 } from '@/types/timeline';
 
+export const INTERRUPT_TEXT = '[Request interrupted by user]';
+
 const EXCLUDED_TYPES = new Set([
   'progress', 'system', 'file-history-snapshot',
   'queue-operation', 'summary', 'custom-title', 'agent-name',
@@ -308,6 +310,18 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
         } satisfies ITimelineToolCall);
       }
     }
+
+    const stopReason = parsed.data.message.stop_reason;
+    if (stopReason !== undefined) {
+      for (let i = entries.length - 1; i >= 0; i--) {
+        const entry = entries[i];
+        if (entry.type === 'assistant-message') {
+          entry.stopReason = stopReason;
+          break;
+        }
+      }
+    }
+
     return entries;
   }
 
@@ -356,7 +370,7 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
       content.length === 1 &&
       content[0].type === 'text' &&
       'text' in content[0] &&
-      (content[0] as { text: string }).text === '[Request interrupted by user]'
+      (content[0] as { text: string }).text === INTERRUPT_TEXT
     ) {
       return [{
         id: nanoid(),
