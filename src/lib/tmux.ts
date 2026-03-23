@@ -48,7 +48,7 @@ export const createSession = async (
       timeout: CMD_TIMEOUT,
       env: {
         ...Object.fromEntries(
-          Object.entries(process.env).filter(([key]) => !key.startsWith('npm_')),
+          Object.entries(process.env).filter(([key]) => !key.startsWith('npm_') && !key.startsWith('NODE_')),
         ) as NodeJS.ProcessEnv,
         TERM: 'xterm-256color',
         COLORTERM: 'truecolor',
