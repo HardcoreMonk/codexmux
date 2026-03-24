@@ -233,7 +233,10 @@ const TimelineView = ({
 
   useEffect(() => {
     if (!scrollToBottomRef) return;
-    scrollToBottomRef.current = () => scrollToBottom('smooth');
+    scrollToBottomRef.current = () => {
+      scrollToBottom('smooth');
+      setTimeout(() => scrollToBottom('smooth'), 300);
+    };
     return () => { scrollToBottomRef.current = undefined; };
   }, [scrollToBottomRef, scrollToBottom]);
 
