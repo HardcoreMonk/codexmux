@@ -37,7 +37,10 @@ const readFile = async (filePath: string): Promise<IHistoryEntry[]> => {
     const raw = await fs.readFile(filePath, 'utf-8');
     const parsed = JSON.parse(raw) as IMessageHistoryFile;
     return Array.isArray(parsed.entries) ? parsed.entries : [];
-  } catch {
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+      console.warn('[message-history] failed to read:', e);
+    }
     return [];
   }
 };
