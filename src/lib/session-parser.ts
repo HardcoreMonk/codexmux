@@ -9,6 +9,7 @@ import type {
   ITimelineToolResult,
   ITimelineAgentGroup,
   ITimelineTaskNotification,
+  ITimelineTaskProgress,
   ITimelinePlan,
   ITimelineAskUserQuestion,
   IAskUserQuestionItem,
@@ -308,7 +309,29 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
           } satisfies ITimelinePlan);
         }
 
-        if (toolName === 'AskUserQuestion' && Array.isArray(input.questions)) {
+        if (toolName === 'TaskCreate') {
+          entries.push({
+            id: nanoid(),
+            type: 'task-progress',
+            timestamp,
+            action: 'create',
+            taskId: '',
+            subject: typeof input.subject === 'string' ? input.subject : '',
+            description: typeof input.description === 'string' ? input.description : undefined,
+            status: 'pending',
+          } satisfies ITimelineTaskProgress);
+        } else if (toolName === 'TaskUpdate') {
+          entries.push({
+            id: nanoid(),
+            type: 'task-progress',
+            timestamp,
+            action: 'update',
+            taskId: typeof input.taskId === 'string' ? input.taskId : String(input.taskId ?? ''),
+            status: (input.status === 'in_progress' || input.status === 'completed')
+              ? input.status
+              : 'pending',
+          } satisfies ITimelineTaskProgress);
+        } else if (toolName === 'AskUserQuestion' && Array.isArray(input.questions)) {
           const questions = (input.questions as Record<string, unknown>[]).map((q) => ({
             question: String(q.question ?? ''),
             header: String(q.header ?? ''),

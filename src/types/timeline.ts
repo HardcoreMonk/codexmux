@@ -13,6 +13,15 @@ export interface ISessionInfo {
   cwd: string | null;
 }
 
+export type TTaskStatus = 'pending' | 'in_progress' | 'completed';
+
+export interface ITaskItem {
+  taskId: string;
+  subject: string;
+  description?: string;
+  status: TTaskStatus;
+}
+
 export type TTimelineEntryType =
   | 'user-message'
   | 'assistant-message'
@@ -20,6 +29,7 @@ export type TTimelineEntryType =
   | 'tool-result'
   | 'agent-group'
   | 'task-notification'
+  | 'task-progress'
   | 'plan'
   | 'ask-user-question'
   | 'interrupt'
@@ -103,6 +113,17 @@ export interface ITimelineTaskNotification {
   };
 }
 
+export interface ITimelineTaskProgress {
+  id: string;
+  type: 'task-progress';
+  timestamp: number;
+  action: 'create' | 'update';
+  taskId: string;
+  subject?: string;
+  description?: string;
+  status: TTaskStatus;
+}
+
 export interface ITimelinePlan {
   id: string;
   type: 'plan';
@@ -158,6 +179,7 @@ export type ITimelineEntry =
   | ITimelineToolResult
   | ITimelineAgentGroup
   | ITimelineTaskNotification
+  | ITimelineTaskProgress
   | ITimelinePlan
   | ITimelineAskUserQuestion
   | ITimelineInterrupt
