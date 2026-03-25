@@ -42,12 +42,15 @@ const MessageHistoryPopover = ({
   trigger,
 }: IMessageHistoryPopoverProps) => {
   const [search, setSearch] = useState('');
+  const [prevOpen, setPrevOpen] = useState(false);
+
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) setSearch('');
+  }
 
   useEffect(() => {
-    if (open) {
-      onFetch();
-      setSearch('');
-    }
+    if (open) onFetch();
   }, [open, onFetch]);
 
   const handleSelect = (entry: IHistoryEntry) => {
