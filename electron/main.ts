@@ -67,7 +67,7 @@ const bootstrap = async () => {
 
   process.env.NODE_ENV = 'production';
   process.env.__PT_ELECTRON = '1';
-  process.env.__PT_APP_DIR = isDev ? process.cwd() : path.join(app.getAppPath(), '..');
+  process.env.__PT_APP_DIR = isDev ? process.cwd() : app.getAppPath();
 
   const port = await findFreePort(8022);
   const { start } = await import(path.join(process.env.__PT_APP_DIR, 'dist', 'server.js'));
