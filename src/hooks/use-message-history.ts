@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import type { IHistoryEntry } from '@/types/message-history';
 
@@ -89,6 +89,10 @@ const useMessageHistory = ({ wsId }: IUseMessageHistoryOptions): IUseMessageHist
       setEntries(backup);
     }
   }, [wsId]);
+
+  useEffect(() => {
+    if (wsId) fetchHistory();
+  }, [wsId, fetchHistory]);
 
   return { entries, isLoading, isError, fetchHistory, addHistory, deleteHistory };
 };
