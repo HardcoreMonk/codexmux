@@ -221,6 +221,16 @@ body {
     cursor: pointer;
   }
 
+  /* prose 내 table 모바일 대응 */
+  .prose :where(table) {
+    display: block;
+    overflow-x: auto;
+  }
+
+  .prose :where(td, th) {
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
 }
 
 @keyframes shimmer {

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/ko';
@@ -47,8 +47,13 @@ const MessageHistoryDrawer = ({
   onDelete,
   trigger,
 }: IMessageHistoryDrawerProps) => {
+  const [search, setSearch] = useState('');
+
   useEffect(() => {
-    if (open) onFetch();
+    if (open) {
+      onFetch();
+      setSearch('');
+    }
   }, [open, onFetch]);
 
   const handleSelect = (entry: IHistoryEntry) => {
@@ -71,7 +76,7 @@ const MessageHistoryDrawer = ({
         </DrawerHeader>
         <Command className="rounded-none" shouldFilter>
           <div className="p-2 pb-0">
-            <CommandInput placeholder="히스토리 검색..." />
+            <CommandInput placeholder="히스토리 검색..." value={search} onValueChange={setSearch} />
           </div>
           <CommandList className="max-h-[50vh] p-2">
             {isLoading ? (
@@ -87,7 +92,7 @@ const MessageHistoryDrawer = ({
               </div>
             ) : (
               <>
-                <CommandEmpty>히스토리가 없습니다</CommandEmpty>
+                <CommandEmpty>{search ? '검색 결과가 없습니다' : '히스토리가 없습니다'}</CommandEmpty>
                 <CommandGroup>
                   {entries.map((entry) => (
                     <CommandItem

@@ -127,10 +127,13 @@ const WebInputBar = ({
   const handleHistorySelect = useCallback(
     (message: string) => {
       setValue(message);
-      setTimeout(() => textareaRef.current?.focus(), 0);
     },
-    [setValue, textareaRef],
+    [setValue],
   );
+
+  const handleHistoryClose = useCallback(() => {
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  }, [textareaRef]);
 
   const isDisabled = mode === 'disabled';
   const hasValue = value.trim().length > 0;
@@ -165,6 +168,7 @@ const WebInputBar = ({
               onFetch={fetchHistory}
               onSelect={handleHistorySelect}
               onDelete={deleteHistory}
+              onClose={handleHistoryClose}
             />
 
             <textarea

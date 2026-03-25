@@ -15,6 +15,7 @@ interface IMessageHistoryPickerProps {
   onFetch: () => void;
   onSelect: (message: string) => void;
   onDelete: (id: string) => void;
+  onClose?: () => void;
 }
 
 const MessageHistoryPicker = ({
@@ -25,6 +26,7 @@ const MessageHistoryPicker = ({
   onFetch,
   onSelect,
   onDelete,
+  onClose,
 }: IMessageHistoryPickerProps) => {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobileDevice();
@@ -46,9 +48,14 @@ const MessageHistoryPicker = ({
     </Button>
   );
 
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (!newOpen) onClose?.();
+  };
+
   const sharedProps = {
     open,
-    onOpenChange: setOpen,
+    onOpenChange: handleOpenChange,
     entries,
     isLoading,
     isError,
