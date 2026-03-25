@@ -140,7 +140,9 @@ const useTimelineWebSocket = ({
               callbacksRef.current.onResumeError?.({ message: msg.message });
               break;
           }
-        } catch {}
+        } catch (err) {
+          console.log(`[timeline-ws] message parse error: ${err instanceof Error ? err.message : err}`);
+        }
       };
 
       ws.onclose = () => {
@@ -160,7 +162,9 @@ const useTimelineWebSocket = ({
         }
       };
 
-      ws.onerror = () => {};
+      ws.onerror = () => {
+        console.log('[timeline-ws] connection error');
+      };
     },
     [sessionName, claudeSessionId, clearTimers],
   );

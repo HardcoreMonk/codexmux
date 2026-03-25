@@ -67,7 +67,9 @@ const setStoredActiveWorkspaceId = (id: string | null) => {
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }
-  } catch {}
+  } catch (err) {
+    console.log(`[workspace-store] localStorage write error: ${err instanceof Error ? err.message : err}`);
+  }
 };
 
 const resolveActiveWorkspaceId = (workspaces: IWorkspace[]): string | null => {
@@ -88,7 +90,9 @@ const saveActive = (updates: {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
-  }).catch(() => {});
+  }).catch((err) => {
+    console.log(`[workspace-store] active update failed: ${err instanceof Error ? err.message : err}`);
+  });
 };
 
 const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
@@ -152,7 +156,9 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
       const current = get().workspaces;
       if (JSON.stringify(current) === JSON.stringify(data.workspaces)) return;
       set({ workspaces: data.workspaces });
-    } catch {}
+    } catch (err) {
+      console.log(`[workspace-store] sync error: ${err instanceof Error ? err.message : err}`);
+    }
   },
 
   createWorkspace: async (directory, name?) => {

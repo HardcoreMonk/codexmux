@@ -337,6 +337,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
       });
       return res.ok;
     } catch {
+      toast.error('세션을 재시작할 수 없습니다');
       return false;
     }
   },
@@ -408,7 +409,9 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
 
     fetch(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`, workspaceId), { method: 'DELETE' })
       .then(() => get().fetchLayout())
-      .catch(() => {});
+      .catch(() => {
+        console.log('[layout] removeTabLocally failed');
+      });
   },
 
   equalizeRatios: () => {

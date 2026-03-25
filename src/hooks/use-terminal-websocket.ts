@@ -140,7 +140,9 @@ const useTerminalWebSocket = ({
         }
       };
 
-      ws.onerror = () => {};
+      ws.onerror = () => {
+        console.log('[terminal-ws] connection error');
+      };
     },
     [clearTimers],
   );

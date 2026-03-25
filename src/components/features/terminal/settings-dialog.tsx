@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
-import { Bot, Code, Dices, Lock, Monitor, Moon, Settings, Sun, Terminal, X, Zap } from 'lucide-react';
+import { Bot, Code, Dices, Globe, Lock, Monitor, Moon, Settings, Sun, Terminal, X, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Input } from '@/components/ui/input';
@@ -16,8 +16,9 @@ import useWorkspaceStore from '@/hooks/use-workspace-store';
 import { TERMINAL_THEMES } from '@/lib/terminal-themes';
 import type { ITerminalThemeColors } from '@/lib/terminal-themes';
 import QuickPromptsSettings from '@/components/features/settings/quick-prompts-settings';
+import TailscaleSettings from '@/components/features/settings/tailscale-settings';
 
-type TSettingsTab = 'general' | 'terminal' | 'editor' | 'claude' | 'auth' | 'quick-prompts';
+type TSettingsTab = 'general' | 'terminal' | 'editor' | 'claude' | 'auth' | 'tailscale' | 'quick-prompts';
 
 interface ISettingsItem {
   id: TSettingsTab;
@@ -50,6 +51,11 @@ const settingsItems: ISettingsItem[] = [
     id: 'auth',
     label: '인증',
     icon: <Lock className="h-4 w-4" />,
+  },
+  {
+    id: 'tailscale',
+    label: 'Tailscale',
+    icon: <Globe className="h-4 w-4" />,
   },
   {
     id: 'quick-prompts',
@@ -386,6 +392,7 @@ const SettingsDialog = ({ open, onOpenChange }: ISettingsDialogProps) => {
             {activeTab === 'editor' && <EditorTab />}
             {activeTab === 'claude' && <ClaudeTab />}
             {activeTab === 'auth' && <AuthTab />}
+            {activeTab === 'tailscale' && <TailscaleSettings />}
             {activeTab === 'quick-prompts' && <QuickPromptsSettings />}
           </div>
         </div>

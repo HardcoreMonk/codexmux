@@ -39,7 +39,8 @@ export const handleStatusConnection = (ws: WebSocket) => {
     manager.removeClient(ws);
   });
 
-  ws.on('error', () => {
+  ws.on('error', (err) => {
+    console.log(`[status-ws] error: ${err.message}`);
     manager.removeClient(ws);
   });
 };

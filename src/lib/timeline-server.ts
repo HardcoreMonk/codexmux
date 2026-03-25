@@ -509,11 +509,16 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
           tmuxSession: msg.tmuxSession,
         });
       }
-    } catch {}
+    } catch (err) {
+      console.log(`[timeline] message handler error: ${err instanceof Error ? err.message : err}`);
+    }
   });
 
   ws.on('close', () => cleanup(conn));
-  ws.on('error', () => cleanup(conn));
+  ws.on('error', (err) => {
+    console.log(`[timeline-ws] error: ${err.message}`);
+    cleanup(conn);
+  });
 
   const claudeSessionId = url.searchParams.get('claudeSessionId');
   const sessionInfo = await detectActiveSession(panePid);

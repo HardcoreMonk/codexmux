@@ -12,7 +12,10 @@ const clients = g.__ptSyncClients;
 export const handleSyncConnection = (ws: WebSocket) => {
   clients.add(ws);
   ws.on('close', () => clients.delete(ws));
-  ws.on('error', () => clients.delete(ws));
+  ws.on('error', (err) => {
+    console.log(`[sync-ws] error: ${err.message}`);
+    clients.delete(ws);
+  });
 };
 
 export const broadcastSync = (event: TSyncEvent) => {

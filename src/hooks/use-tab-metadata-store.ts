@@ -47,7 +47,9 @@ const scheduleSyncToLayout = () => {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(patch),
-          }).catch(() => {});
+          }).catch((err) => {
+            console.log(`[tab-metadata] sync failed: ${err instanceof Error ? err.message : err}`);
+          });
         }
       }
     }

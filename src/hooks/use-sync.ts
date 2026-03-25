@@ -32,7 +32,9 @@ const useSync = () => {
               useLayoutStore.getState().fetchLayout(activeWsId);
             }
           }
-        } catch {}
+        } catch (err) {
+          console.log(`[sync-ws] message parse error: ${err instanceof Error ? err.message : err}`);
+        }
       };
 
       ws.onclose = () => {

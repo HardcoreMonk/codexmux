@@ -25,12 +25,12 @@ const StatusIcon = ({ status }: { status: TTaskStatus }) => {
 };
 
 const TaskChecklist = ({ tasks, cliState }: ITaskChecklistProps) => {
-  const [collapsed, setCollapsed] = useState(false);
-  const [prevTasks, setPrevTasks] = useState(tasks);
-
   const completedCount = tasks.filter((t) => t.status === 'completed').length;
   const allCompleted = tasks.length > 0 && completedCount === tasks.length;
   const hasInProgress = tasks.some((t) => t.status === 'in_progress');
+
+  const [collapsed, setCollapsed] = useState(allCompleted);
+  const [prevTasks, setPrevTasks] = useState(tasks);
 
   if (tasks !== prevTasks) {
     const changed =
