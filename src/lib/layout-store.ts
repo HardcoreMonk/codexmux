@@ -303,6 +303,10 @@ export const removeTabFromPane = async (wsId: string, paneId: string, tabId: str
       pane.activeTabId = pane.tabs[0]?.id ?? null;
     }
 
+    if (pane.tabs.length === 0 && collectPanes(layout.root).length > 1) {
+      removePaneWithFocus(layout, paneId);
+    }
+
     pane.tabs.forEach((t, i) => { t.order = i; });
     layout.updatedAt = new Date().toISOString();
     await writeLayoutFile(layout, filePath);
