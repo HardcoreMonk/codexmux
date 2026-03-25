@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Equal, Loader2 } from 'lucide-react';
+import { Equal, ExternalLink, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -82,10 +82,7 @@ const ContentHeader = ({
               <TabsTrigger value="terminal" className="h-full px-2.5 text-[11px] tracking-wide">
                 TERMINAL
               </TabsTrigger>
-              <TabsTrigger
-                value="claude-code"
-                className="h-full px-2.5 text-[11px] tracking-wide data-active:bg-ui-purple data-active:text-white dark:data-active:border-ui-purple dark:data-active:bg-ui-purple dark:data-active:text-white"
-              >
+              <TabsTrigger value="claude-code" className="h-full px-2.5 text-[11px] tracking-wide">
                 CLAUDE
               </TabsTrigger>
             </TabsList>
@@ -105,6 +102,7 @@ const ContentHeader = ({
             aria-label="code-server 열기"
           >
             EDITOR
+            <ExternalLink className="-mt-1 ml-1 h-3 w-3" />
           </button>
 
           <Tooltip>
