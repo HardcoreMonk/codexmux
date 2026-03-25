@@ -245,7 +245,8 @@ const TimelineView = ({
 
   useEffect(() => {
     if (skipAnimation && entries.length > 0) {
-      Promise.resolve(scrollToBottom('instant')).then(() => setSkipAnimation(false));
+      const timeout = new Promise<void>((resolve) => setTimeout(resolve, 100));
+      Promise.race([scrollToBottom('instant'), timeout]).then(() => setSkipAnimation(false));
     }
   }, [skipAnimation, entries.length, scrollToBottom]);
 
@@ -281,7 +282,7 @@ const TimelineView = ({
           skipAnimation && '[&_.animate-in]:!duration-0',
         )}
         style={{
-          opacity: isSessionTransitioning ? 0 : 1,
+          opacity: isSessionTransitioning || skipAnimation ? 0 : 1,
           transitionDuration: isSessionTransitioning ? '100ms' : '150ms',
         }}
         onScroll={handleScroll}

@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Equal, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { TLayoutNode, TPanelType } from '@/types/terminal';
 import { collectPanes } from '@/hooks/use-layout';
@@ -56,13 +57,14 @@ const ContentHeader = ({
 
   const editorUrl = useWorkspaceStore((state) => state.editorUrl);
 
-  const handleToggle = useCallback(() => {
+  const handlePanelSwitch = (value: string) => {
     if (isToggling || !focusedPane || !activeTab) return;
+    const next = value as TPanelType;
+    if (next === activePanelType) return;
     setIsToggling(true);
-    const next: TPanelType = activePanelType === 'terminal' ? 'claude-code' : 'terminal';
     onUpdateTabPanelType(focusedPane.id, activeTab.id, next);
     setTimeout(() => setIsToggling(false), 150);
-  }, [isToggling, focusedPane, activeTab, activePanelType, onUpdateTabPanelType]);
+  };
 
   const paneId = focusedPane?.id;
 
@@ -71,36 +73,39 @@ const ContentHeader = ({
       <div />
       <TooltipProvider>
         <div className="flex items-center gap-1">
-          <div className="flex items-center gap-0.5 border-r border-border pr-2">
-            <button
-              className={cn(
-                'flex h-7 items-center px-2 text-[11px] font-medium tracking-wide text-muted-foreground hover:text-foreground',
-                activePanelType === 'claude-code' && 'text-ui-purple',
-                isToggling && 'pointer-events-none opacity-80',
-              )}
-              onClick={handleToggle}
-              disabled={isToggling || !activeTab}
-              aria-label={activePanelType === 'terminal' ? 'Claude Code 모드로 전환' : '터미널 모드로 전환'}
-            >
-              CLAUDE
-            </button>
-            <button
-              className="flex h-7 items-center px-2 text-[11px] font-medium tracking-wide text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                if (!editorUrl) {
-                  toast.info('에디터 URL이 설정되지 않았습니다. 설정 > 에디터에서 URL을 입력해주세요.');
-                  return;
-                }
-                const folder = activeTabCwd || '/';
-                const separator = editorUrl.includes('?') ? '&' : '?';
-                const url = `${editorUrl}${separator}folder=${encodeURIComponent(folder)}`;
-                window.open(url, '_blank');
-              }}
-              aria-label="code-server 열기"
-            >
-              EDITOR
-            </button>
-          </div>
+          <Tabs
+            value={activePanelType}
+            onValueChange={handlePanelSwitch}
+            className={cn('gap-0 border-r border-border pr-2', isToggling && 'pointer-events-none opacity-80')}
+          >
+            <TabsList className="h-7">
+              <TabsTrigger value="terminal" className="h-full px-2.5 text-[11px] tracking-wide">
+                TERMINAL
+              </TabsTrigger>
+              <TabsTrigger
+                value="claude-code"
+                className="h-full px-2.5 text-[11px] tracking-wide data-active:bg-ui-purple data-active:text-white dark:data-active:border-ui-purple dark:data-active:bg-ui-purple dark:data-active:text-white"
+              >
+                CLAUDE
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <button
+            className="flex h-7 items-center border-r border-border pr-2 pl-1 text-[11px] font-medium tracking-wide text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              if (!editorUrl) {
+                toast.info('에디터 URL이 설정되지 않았습니다. 설정 > 에디터에서 URL을 입력해주세요.');
+                return;
+              }
+              const folder = activeTabCwd || '/';
+              const separator = editorUrl.includes('?') ? '&' : '?';
+              const url = `${editorUrl}${separator}folder=${encodeURIComponent(folder)}`;
+              window.open(url, '_blank');
+            }}
+            aria-label="code-server 열기"
+          >
+            EDITOR
+          </button>
 
           <Tooltip>
             <TooltipTrigger
