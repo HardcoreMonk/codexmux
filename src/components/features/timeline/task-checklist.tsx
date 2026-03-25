@@ -51,7 +51,7 @@ const TaskChecklist = ({ tasks, cliState }: ITaskChecklistProps) => {
 
   const currentSubject = collapsed
     ? (tasks.find((t) => t.status === 'in_progress')?.subject ??
-      tasks.find((t) => t.status === 'pending')?.subject)
+      tasks.findLast((t) => t.status === 'pending')?.subject)
     : undefined;
 
   const borderColor = allCompleted
@@ -106,6 +106,7 @@ const TaskChecklist = ({ tasks, cliState }: ITaskChecklistProps) => {
           role="list"
           aria-label="Task 진행 상황"
           className="mt-1.5 max-h-[240px] overflow-y-auto"
+          style={{ scrollbarWidth: 'thin' }}
         >
           {tasks.map((task) => (
             <div
