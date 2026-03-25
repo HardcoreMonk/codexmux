@@ -102,7 +102,7 @@ const ContentHeader = ({
             aria-label="code-server 열기"
           >
             EDITOR
-            <ExternalLink className="-mt-1 ml-1 h-3 w-3" />
+            <ExternalLink className="-mt-0.5 ml-1 h-3 w-3" />
           </button>
 
           <Tooltip>
