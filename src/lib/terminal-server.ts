@@ -23,6 +23,7 @@ const BACKPRESSURE_HIGH = 1024 * 1024;
 const BACKPRESSURE_LOW = 256 * 1024;
 
 const TMUX_SOCKET = 'purple';
+const textEncoder = new TextEncoder();
 
 interface IActiveConnection {
   ws: WebSocket;
@@ -273,8 +274,7 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
   ptyProcess.onData((data: string) => {
     if (ws.readyState !== WebSocket.OPEN) return;
 
-    const encoder = new TextEncoder();
-    const payload = encoder.encode(data);
+    const payload = textEncoder.encode(data);
     const frame = new Uint8Array(1 + payload.length);
     frame[0] = MSG_STDOUT;
     frame.set(payload, 1);

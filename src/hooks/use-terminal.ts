@@ -45,15 +45,18 @@ const useTerminal = ({ theme, fontSize = DEFAULT_FONT_SIZE, onInput, onResize, o
           }
 
           const startTime = performance.now();
-          while (queue.length > 0 && performance.now() - startTime < 12) {
-            const chunk = queue.shift()!;
-            terminal.write(chunk);
+          let consumed = 0;
+          while (consumed < queue.length && performance.now() - startTime < 12) {
+            terminal.write(queue[consumed]);
+            consumed++;
           }
 
-          if (queue.length > 0) {
-            flush();
-          } else {
+          if (consumed >= queue.length) {
+            queue.length = 0;
             isWritingRef.current = false;
+          } else {
+            writeQueueRef.current = queue.slice(consumed);
+            flush();
           }
         });
       };

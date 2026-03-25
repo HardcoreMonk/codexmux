@@ -77,8 +77,11 @@ const sendJson = (ws: WebSocket, msg: TTimelineServerMessage) => {
 const broadcastToWatcher = (watcherKey: string, msg: TTimelineServerMessage) => {
   const fw = fileWatchers.get(watcherKey);
   if (!fw) return;
+  const str = JSON.stringify(msg);
   for (const ws of fw.connections) {
-    sendJson(ws, msg);
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(str);
+    }
   }
 };
 

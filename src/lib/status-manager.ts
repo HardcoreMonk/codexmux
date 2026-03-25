@@ -23,13 +23,30 @@ const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
 const isClaudeCommand = (cmd: string): boolean =>
   CLAUDE_COMMANDS.has(cmd) || VERSION_PATTERN.test(cmd);
 
+interface IJsonlIdleCache {
+  mtimeMs: number;
+  idle: boolean;
+  needsStaleRecheck: boolean;
+}
+
+const jsonlIdleCache = new Map<string, IJsonlIdleCache>();
+
 const checkJsonlIdle = async (jsonlPath: string): Promise<boolean> => {
   try {
+    const stat = await fs.stat(jsonlPath);
+    if (stat.size === 0) return true;
+
+    const cached = jsonlIdleCache.get(jsonlPath);
+    if (cached && cached.mtimeMs === stat.mtimeMs) {
+      if (cached.idle) return true;
+      if (cached.needsStaleRecheck) {
+        return Date.now() - stat.mtimeMs > JSONL_STALE_MS;
+      }
+      return false;
+    }
+
     const handle = await fs.open(jsonlPath, 'r');
     try {
-      const stat = await handle.stat();
-      if (stat.size === 0) return true;
-
       const readSize = Math.min(stat.size, JSONL_TAIL_SIZE);
       const buffer = Buffer.alloc(readSize);
       await handle.read(buffer, 0, readSize, stat.size - readSize);
@@ -37,33 +54,46 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<boolean> => {
       const stale = Date.now() - stat.mtimeMs > JSONL_STALE_MS;
       const lines = buffer.toString('utf-8').split('\n').filter((l) => l.trim());
 
+      let result = stale;
+      let needsStaleRecheck = false;
+
       for (let i = lines.length - 1; i >= 0; i--) {
         try {
           const entry = JSON.parse(lines[i]);
 
           if (entry.type === 'system' && (entry.subtype === 'stop_hook_summary' || entry.subtype === 'turn_duration')) {
-            return true;
+            result = true;
+            break;
           }
 
           if (entry.type === 'assistant') {
             const stopReason = entry.message?.stop_reason;
-            if (!stopReason) return stale;
-            return stopReason !== 'tool_use';
+            if (!stopReason) {
+              result = stale;
+              needsStaleRecheck = !stale;
+            } else {
+              result = stopReason !== 'tool_use';
+            }
+            break;
           }
 
           if (entry.type === 'user') {
             const content = entry.message?.content;
             if (Array.isArray(content) && content.length === 1 && typeof content[0]?.text === 'string' && content[0].text.startsWith(INTERRUPT_PREFIX)) {
-              return true;
+              result = true;
+            } else {
+              result = stale;
+              needsStaleRecheck = !stale;
             }
-            return stale;
+            break;
           }
         } catch {
           continue;
         }
       }
 
-      return stale;
+      jsonlIdleCache.set(jsonlPath, { mtimeMs: stat.mtimeMs, idle: result, needsStaleRecheck });
+      return result;
     } finally {
       await handle.close();
     }
