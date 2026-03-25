@@ -222,7 +222,7 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
         aria-label="Workspace 목록"
       >
         {isElectron && (
-          <div className="h-[38px] shrink-0" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
+          <div className="h-7 shrink-0" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
         )}
         <div className="flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
           <div className="flex items-center gap-1.5">
@@ -388,7 +388,7 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
       {collapsed && (
         <div className="flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
           {isElectron && (
-            <div className="h-[38px] shrink-0" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
+            <div className="h-7 shrink-0" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
           )}
           <button
             className="flex flex-col items-center px-1.5 pt-3.5 text-muted-foreground transition-colors hover:bg-sidebar-accent"
