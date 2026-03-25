@@ -1,4 +1,4 @@
-import { X, Plus } from 'lucide-react';
+import { X, Plus, BotMessageSquare, Terminal } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +31,11 @@ const MobileTabHeader = ({
   return (
     <div className="flex h-10 shrink-0 items-center border-b border-border/50 bg-background">
       <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
+        {panelType === 'claude-code' ? (
+          <BotMessageSquare size={14} className="shrink-0 text-muted-foreground" />
+        ) : (
+          <Terminal size={14} className="shrink-0 text-muted-foreground" />
+        )}
         <span className="truncate text-xs text-foreground">{tabName}</span>
       </div>
 
