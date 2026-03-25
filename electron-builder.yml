@@ -1,0 +1,44 @@
+appId: com.subicura.purple-terminal
+productName: Purple Terminal
+directories:
+  buildResources: build-resources
+  output: release
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+  icon: build-resources/icon.icns
+  hardenedRuntime: true
+  entitlements: build-resources/entitlements.mac.plist
+  entitlementsInherit: build-resources/entitlements.mac.plist
+
+dmg:
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+files:
+  - dist-electron/**/*
+  - dist/**/*
+  - .next/BUILD_ID
+  - .next/*.json
+  - .next/server/**/*
+  - .next/static/**/*
+  - public/**/*
+  - src/config/tmux.conf
+  - "!node_modules/.cache"
+  - "!node_modules/.pnpm"
+  - "!**/*.map"
+
+asar: false
+
+extraMetadata:
+  main: dist-electron/main.js

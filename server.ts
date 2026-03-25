@@ -13,11 +13,7 @@ import { autoResumeOnStartup } from './src/lib/auto-resume';
 import { initAuthCredentials } from './src/lib/auth-credentials';
 import type { IncomingMessage } from 'http';
 
-const port = parseInt(process.env.PORT || '8022', 10);
 const dev = process.env.NODE_ENV !== 'production';
-const appDir = process.env.__PT_APP_DIR || process.cwd();
-const app = next({ dev, dir: appDir });
-const handle = app.getRequestHandler();
 
 const extractCookie = (header: string, name: string): string | undefined => {
   for (const part of header.split(';')) {
@@ -42,7 +38,21 @@ const verifyWebSocketAuth = async (request: IncomingMessage): Promise<boolean> =
   return !!token;
 };
 
-const start = async () => {
+interface IStartOptions {
+  port?: number;
+}
+
+interface IStartResult {
+  port: number;
+  shutdown: () => Promise<void>;
+}
+
+export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
+  const port = opts?.port ?? parseInt(process.env.PORT || '8022', 10);
+  const appDir = process.env.__PT_APP_DIR || process.cwd();
+  const app = next({ dev, dir: appDir });
+  const handle = app.getRequestHandler();
+
   const credentials = initAuthCredentials();
   process.env.AUTH_PASSWORD = credentials.password;
   process.env.NEXTAUTH_SECRET = credentials.secret;
@@ -113,16 +123,29 @@ const start = async () => {
     gracefulTimelineShutdown();
     gracefulSyncShutdown();
     gracefulStatusShutdown();
-    process.exit(0);
+    server.close();
   };
 
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT', shutdown);
-
-  server.listen(port, () => {
-    console.log(`> Server listening at http://localhost:${port} as ${dev ? 'development' : process.env.NODE_ENV}`);
-    console.log(`> Auth password: ${credentials.password}${credentials.fixed ? ' (fixed)' : ''}`);
+  process.on('SIGTERM', async () => {
+    await shutdown();
+    process.exit(0);
   });
+  process.on('SIGINT', async () => {
+    await shutdown();
+    process.exit(0);
+  });
+
+  await new Promise<void>((resolve) => {
+    server.listen(port, () => {
+      console.log(`> Server listening at http://localhost:${port} as ${dev ? 'development' : process.env.NODE_ENV}`);
+      console.log(`> Auth password: ${credentials.password}${credentials.fixed ? ' (fixed)' : ''}`);
+      resolve();
+    });
+  });
+
+  return { port, shutdown };
 };
 
-start();
+if (!process.env.__PT_ELECTRON) {
+  start();
+}

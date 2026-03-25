@@ -2,6 +2,7 @@
   "name": "purple-terminal",
   "version": "0.1.0",
   "license": "MIT",
+  "main": "dist-electron/main.js",
   "bin": {
     "pt": "./bin/pt.js"
   },
@@ -19,6 +20,10 @@
     "dev": "tsx watch server.ts",
     "build": "next build && tsup",
     "build:server": "tsup",
+    "build:electron:main": "tsup --config electron/tsup.config.ts",
+    "build:electron": "pnpm build && pnpm build:electron:main",
+    "dev:electron": "ELECTRON_DEV_URL=http://localhost:8022 electron .",
+    "pack:electron": "pnpm build:electron && electron-builder --mac",
     "start": "NODE_ENV=production tsx server.ts",
     "lint": "eslint",
     "ralph": "node ralph-loop.js",
@@ -69,12 +74,15 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/ws": "^8.18.1",
     "chalk": "^5.6.2",
+    "electron": "^41.0.4",
+    "electron-builder": "^26.8.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.0",
     "tailwindcss": "^4",
@@ -84,6 +92,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "electron",
       "node-pty"
     ]
   }
