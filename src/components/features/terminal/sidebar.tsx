@@ -36,7 +36,7 @@ const MIN_WIDTH = 160;
 const MAX_WIDTH = 480;
 
 const handleLogout = () => {
-  signOut({ callbackUrl: '/login' });
+  signOut({ callbackUrl: `${window.location.origin}/login` });
 };
 
 const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {

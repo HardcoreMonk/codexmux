@@ -20,7 +20,7 @@ interface IAppHeaderProps {
 }
 
 const handleLogout = () => {
-  signOut({ callbackUrl: '/login' });
+  signOut({ callbackUrl: `${window.location.origin}/login` });
 };
 
 const AppHeader = ({ onMenuOpen }: IAppHeaderProps) => {
