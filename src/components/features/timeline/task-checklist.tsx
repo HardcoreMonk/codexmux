@@ -81,10 +81,10 @@ const TaskChecklist = ({ tasks, cliState }: ITaskChecklistProps) => {
           <ListChecks size={14} className="shrink-0 text-ui-purple" />
         )}
         <span
-          className="text-xs font-medium tabular-nums"
+          className="text-xs leading-none font-medium tabular-nums"
           aria-live="polite"
         >
-          {completedCount} / {tasks.length}
+          TASK {completedCount} / {tasks.length}
         </span>
         {collapsed && currentSubject && (
           <span className="ml-1 min-w-0 flex-1 truncate text-left text-xs text-muted-foreground">

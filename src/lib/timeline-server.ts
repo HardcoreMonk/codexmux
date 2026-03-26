@@ -3,7 +3,8 @@ import { WebSocket } from 'ws';
 import { watch, type FSWatcher } from 'fs';
 import { existsSync } from 'fs';
 import { detectActiveSession, watchSessionsDir, type ISessionWatcher } from './session-detection';
-import { parseSessionFile, parseIncremental } from './session-parser';
+import { parseSessionFile, parseIncremental, parseJsonlContent } from './session-parser';
+import { open as fsOpen } from 'fs/promises';
 import { getSessionPanePid, checkTerminalProcess, sendKeys, getSessionCwd, getPaneTitle } from './tmux';
 import { cwdToProjectPath } from './session-list';
 import { updateTabClaudeSessionId, updateTabClaudeSummary } from './layout-store';
@@ -88,6 +89,21 @@ const broadcastToWatcher = (watcherKey: string, msg: TTimelineServerMessage) => 
   }
 };
 
+const readBoundedEntries = async (
+  filePath: string, from: number, to: number,
+): Promise<import('@/types/timeline').ITimelineEntry[]> => {
+  const readSize = to - from;
+  if (readSize <= 0) return [];
+  const handle = await fsOpen(filePath, 'r');
+  try {
+    const buf = Buffer.alloc(readSize);
+    await handle.read(buf, 0, readSize, from);
+    return parseJsonlContent(buf.toString('utf-8'));
+  } finally {
+    await handle.close();
+  }
+};
+
 const processFileChange = async (fw: IFileWatcher) => {
   if (fw.processing) {
     fw.pendingChange = true;
@@ -95,6 +111,7 @@ const processFileChange = async (fw: IFileWatcher) => {
   }
   fw.processing = true;
   try {
+    const prevOffset = fw.offset;
     const { newEntries, newOffset, pendingBuffer } = await parseIncremental(
       fw.jsonlPath, fw.offset, fw.pendingBuffer,
     );
@@ -112,6 +129,17 @@ const processFileChange = async (fw: IFileWatcher) => {
             continue;
           }
           fw.initOffsets.delete(ws);
+          if (prevOffset < initOffset) {
+            readBoundedEntries(fw.jsonlPath, initOffset, newOffset)
+              .then((entries) => {
+                if (entries.length > 0 && ws.readyState === WebSocket.OPEN) {
+                  const partialMsg: TTimelineServerMessage = { type: 'timeline:append', entries };
+                  ws.send(JSON.stringify(partialMsg));
+                }
+              })
+              .catch(() => {});
+            continue;
+          }
         }
         ws.send(str);
       }

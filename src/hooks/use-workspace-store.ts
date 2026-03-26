@@ -54,7 +54,7 @@ const STORAGE_KEY = 'pt-active-workspace-id';
 
 const getStoredActiveWorkspaceId = (): string | null => {
   try {
-    return localStorage.getItem(STORAGE_KEY);
+    return sessionStorage.getItem(STORAGE_KEY);
   } catch {
     return null;
   }
@@ -63,12 +63,12 @@ const getStoredActiveWorkspaceId = (): string | null => {
 const setStoredActiveWorkspaceId = (id: string | null) => {
   try {
     if (id) {
-      localStorage.setItem(STORAGE_KEY, id);
+      sessionStorage.setItem(STORAGE_KEY, id);
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(STORAGE_KEY);
     }
   } catch (err) {
-    console.log(`[workspace-store] localStorage write error: ${err instanceof Error ? err.message : err}`);
+    console.log(`[workspace-store] sessionStorage write error: ${err instanceof Error ? err.message : err}`);
   }
 };
 
