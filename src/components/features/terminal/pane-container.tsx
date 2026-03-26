@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Group, Panel, Separator, type GroupImperativeHandle } from 'react-resizable-panels';
-import { ChevronDown, ChevronUp, Loader2, Plus, TerminalSquare, WifiOff } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, Plus, TerminalSquare, WifiOff, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { ITab, TDisconnectReason, TPanelType } from '@/types/terminal';
@@ -173,6 +173,9 @@ const PaneContainer = ({
   const [isRestarting, setIsRestarting] = useState(false);
 
   const { prompts: quickPrompts } = useQuickPrompts();
+
+  const claudeModeShownTabsRef = useRef<Set<string>>(new Set());
+  const [showClaudeModePrompt, setShowClaudeModePrompt] = useState(false);
 
   useEffect(() => {
     if (!activeTabId || !isClaudeCode || claudeCliState === 'inactive') return;
@@ -467,6 +470,17 @@ const PaneContainer = ({
     onUpdateTabPanelType(paneId, activeTabId, next);
   }, [paneId, activeTabId, tabs, onUpdateTabPanelType]);
 
+  useEffect(() => {
+    if (!activeTabId || !isClaudeRunning || activePanelType !== 'terminal') {
+      setShowClaudeModePrompt(false);
+      return;
+    }
+    if (claudeModeShownTabsRef.current.has(activeTabId)) return;
+
+    claudeModeShownTabsRef.current.add(activeTabId);
+    setShowClaudeModePrompt(true);
+  }, [activeTabId, isClaudeRunning, activePanelType]);
+
   const handleNewClaudeSession = useCallback(() => {
     if (status !== 'connected') return;
     const dangerous = useWorkspaceStore.getState().dangerouslySkipPermissions;
@@ -750,6 +764,30 @@ const PaneContainer = ({
                 새 터미널로 시작
               </Button>
             </div>
+          </div>
+        )}
+
+        {showClaudeModePrompt && (
+          <div className="absolute right-3 bottom-3 z-20 flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 shadow-lg animate-[fadeIn_200ms_ease-out]">
+            <span className="text-xs text-muted-foreground">CLAUDE 모드로 전환할까요?</span>
+            <Button
+              variant="default"
+              size="sm"
+              className="h-6 px-2 text-[11px]"
+              onClick={() => {
+                setShowClaudeModePrompt(false);
+                handleTogglePanelType();
+              }}
+            >
+              전환
+            </Button>
+            <button
+              className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+              onClick={() => setShowClaudeModePrompt(false)}
+              aria-label="닫기"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
           </div>
         )}
 
