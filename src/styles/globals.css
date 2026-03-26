@@ -38,6 +38,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --titlebar-height: 20px;
   --terminal-bg: #1e1f29;
   --terminal-fg: #ebece6;
   --radius: 0.5rem;
@@ -200,6 +201,7 @@
   --radius-4xl: calc(var(--radius) + 16px);
   --color-terminal-bg: var(--terminal-bg);
   --color-terminal-fg: var(--terminal-fg);
+  --spacing-titlebar: var(--titlebar-height);
 }
 
 body {

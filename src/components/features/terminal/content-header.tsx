@@ -72,7 +72,7 @@ const ContentHeader = ({
   return (
     <div className="shrink-0 border-b border-border bg-background">
       {isElectron && (
-        <div className="h-7" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
+        <div className="h-titlebar" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
       )}
       <div className="flex h-12 items-center justify-between px-3">
       <div />
