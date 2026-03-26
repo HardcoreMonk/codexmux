@@ -171,7 +171,7 @@ const PaneContainer = ({
 
   const [claudeCliState, setClaudeCliState] = useState<TCliState>('inactive');
   const [claudeInputVisible, setClaudeInputVisible] = useState(false);
-  const [isClaudeRunning, setIsClaudeRunning] = useState(false);
+  const [isClaudeRunning, setIsClaudeRunning] = useState<boolean | undefined>(undefined);
   const scrollToBottomRef = useRef<(() => void) | undefined>(undefined);
   const pendingRestartRef = useRef(false);
   const [isRestarting, setIsRestarting] = useState(false);
@@ -547,7 +547,8 @@ const PaneContainer = ({
     if (status !== 'connected') return;
     setIsRestarting(true);
     const dangerous = useWorkspaceStore.getState().dangerouslySkipPermissions;
-    const cmd = dangerous ? 'claude --dangerously-skip-permissions' : 'claude';
+    const settings = '--settings ~/.purplemux/hooks.json';
+    const cmd = dangerous ? `claude ${settings} --dangerously-skip-permissions` : `claude ${settings}`;
     sendStdin(`${cmd}\r`);
   }, [status, sendStdin]);
 
@@ -563,7 +564,8 @@ const PaneContainer = ({
     pendingRestartRef.current = false;
     if (status !== 'connected') return;
     const dangerous = useWorkspaceStore.getState().dangerouslySkipPermissions;
-    const cmd = dangerous ? 'claude --dangerously-skip-permissions' : 'claude';
+    const settings = '--settings ~/.purplemux/hooks.json';
+    const cmd = dangerous ? `claude ${settings} --dangerously-skip-permissions` : `claude ${settings}`;
     sendStdin(`${cmd}\r`);
   }, [isClaudeRunning, status, sendStdin]);
 

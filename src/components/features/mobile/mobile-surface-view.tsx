@@ -114,7 +114,7 @@ const MobileSurfaceView = ({
   const focusInputRef = useRef<(() => void) | undefined>(undefined);
   const setInputValueRef = useRef<((v: string) => void) | undefined>(undefined);
 
-  const [isClaudeRunning, setIsClaudeRunning] = useState(false);
+  const [isClaudeRunning, setIsClaudeRunning] = useState<boolean | undefined>(undefined);
   const pendingRestartRef = useRef(false);
   const [isRestarting, setIsRestarting] = useState(false);
 
@@ -260,7 +260,8 @@ const MobileSurfaceView = ({
     if (status !== 'connected') return;
     setIsRestarting(true);
     const dangerous = useWorkspaceStore.getState().dangerouslySkipPermissions;
-    const cmd = dangerous ? 'claude --dangerously-skip-permissions' : 'claude';
+    const settings = '--settings ~/.purplemux/hooks.json';
+    const cmd = dangerous ? `claude ${settings} --dangerously-skip-permissions` : `claude ${settings}`;
     sendStdin(`${cmd}\r`);
   }, [status, sendStdin]);
 
@@ -276,7 +277,8 @@ const MobileSurfaceView = ({
     pendingRestartRef.current = false;
     if (status !== 'connected') return;
     const dangerous = useWorkspaceStore.getState().dangerouslySkipPermissions;
-    const cmd = dangerous ? 'claude --dangerously-skip-permissions' : 'claude';
+    const settings = '--settings ~/.purplemux/hooks.json';
+    const cmd = dangerous ? `claude ${settings} --dangerously-skip-permissions` : `claude ${settings}`;
     sendStdin(`${cmd}\r`);
   }, [isClaudeRunning, status, sendStdin]);
 

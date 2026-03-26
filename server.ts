@@ -7,6 +7,7 @@ import { handleTimelineConnection, gracefulTimelineShutdown } from './src/lib/ti
 import { handleSyncConnection, gracefulSyncShutdown } from './src/lib/sync-server';
 import { handleStatusConnection, gracefulStatusShutdown } from './src/lib/status-server';
 import { getStatusManager } from './src/lib/status-manager';
+import { ensureHookSettings } from './src/lib/hook-settings';
 import { scanSessions, applyConfig } from './src/lib/tmux';
 import { initWorkspaceStore } from './src/lib/workspace-store';
 import { autoResumeOnStartup } from './src/lib/auto-resume';
@@ -61,6 +62,7 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   await applyConfig();
   await initWorkspaceStore();
   await autoResumeOnStartup();
+  await ensureHookSettings();
   await getStatusManager().init();
   await app.prepare();
 

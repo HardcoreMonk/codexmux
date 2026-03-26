@@ -9,6 +9,7 @@ import { getSessionPanePid, checkTerminalProcess, sendKeys, getSessionCwd, getPa
 import { cwdToProjectPath } from './session-list';
 import { updateTabClaudeSessionId, updateTabClaudeSummary } from './layout-store';
 import { getDangerouslySkipPermissions } from './workspace-store';
+import { HOOK_SETTINGS_PATH } from './hook-settings';
 import type { TTimelineServerMessage } from '@/types/timeline';
 import path from 'path';
 import { isAllowedJsonlPath } from './path-validation';
@@ -121,6 +122,7 @@ const processFileChange = async (fw: IFileWatcher) => {
 
       const msg: TTimelineServerMessage = { type: 'timeline:append', entries: newEntries };
       const str = JSON.stringify(msg);
+      const partialReads: Promise<void>[] = [];
       for (const ws of fw.connections) {
         if (ws.readyState !== WebSocket.OPEN) continue;
         const initOffset = fw.initOffsets.get(ws);
@@ -130,18 +132,23 @@ const processFileChange = async (fw: IFileWatcher) => {
           }
           fw.initOffsets.delete(ws);
           if (prevOffset < initOffset) {
-            readBoundedEntries(fw.jsonlPath, initOffset, newOffset)
-              .then((entries) => {
-                if (entries.length > 0 && ws.readyState === WebSocket.OPEN) {
-                  const partialMsg: TTimelineServerMessage = { type: 'timeline:append', entries };
-                  ws.send(JSON.stringify(partialMsg));
-                }
-              })
-              .catch(() => {});
+            partialReads.push(
+              readBoundedEntries(fw.jsonlPath, initOffset, newOffset)
+                .then((entries) => {
+                  if (entries.length > 0 && ws.readyState === WebSocket.OPEN) {
+                    const partialMsg: TTimelineServerMessage = { type: 'timeline:append', entries };
+                    ws.send(JSON.stringify(partialMsg));
+                  }
+                })
+                .catch(() => {}),
+            );
             continue;
           }
         }
         ws.send(str);
+      }
+      if (partialReads.length > 0) {
+        await Promise.all(partialReads);
       }
 
       if (!fw.summaryResolved && fw.sessionName && newEntries.some((e) => e.type === 'assistant-message')) {
@@ -440,9 +447,10 @@ const handleResumeMessage = async (
     }
 
     const skipPerms = await getDangerouslySkipPermissions();
+    const settings = `--settings ${HOOK_SETTINGS_PATH}`;
     const resumeCmd = skipPerms
-      ? `claude --resume ${sessionId} --dangerously-skip-permissions`
-      : `claude --resume ${sessionId}`;
+      ? `claude --resume ${sessionId} ${settings} --dangerously-skip-permissions`
+      : `claude --resume ${sessionId} ${settings}`;
     await sendKeys(tmuxSession, resumeCmd);
 
     await updateTabClaudeSessionId(conn.sessionName, sessionId).catch(() => {});

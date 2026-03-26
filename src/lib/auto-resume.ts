@@ -1,6 +1,7 @@
 import { readLayoutFile, resolveLayoutFile, collectAllTabs } from '@/lib/layout-store';
 import { hasSession, createSession, getPaneCurrentCommand, sendKeys } from '@/lib/tmux';
 import { getWorkspaces, getDangerouslySkipPermissions } from '@/lib/workspace-store';
+import { HOOK_SETTINGS_PATH } from '@/lib/hook-settings';
 
 const RESUME_INTERVAL_MS = 2_000;
 const SHELL_READY_DELAY_MS = 1_000;
@@ -67,9 +68,10 @@ const resumeSingleSurface = async (target: IAutoResumeTarget): Promise<boolean> 
     await sleep(SHELL_READY_DELAY_MS);
 
     const skipPerms = await getDangerouslySkipPermissions();
+    const settings = `--settings ${HOOK_SETTINGS_PATH}`;
     const resumeCmd = skipPerms
-      ? `claude --resume ${target.claudeSessionId} --dangerously-skip-permissions`
-      : `claude --resume ${target.claudeSessionId}`;
+      ? `claude --resume ${target.claudeSessionId} ${settings} --dangerously-skip-permissions`
+      : `claude --resume ${target.claudeSessionId} ${settings}`;
     console.log(`[auto-resume] resume 전송: ${target.tmuxSession} → ${target.claudeSessionId}${skipPerms ? ' (skip-permissions)' : ''}`);
     await sendKeys(target.tmuxSession, resumeCmd);
 

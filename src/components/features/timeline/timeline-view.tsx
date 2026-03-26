@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { Terminal, RefreshCw, Loader2, OctagonX, LogOut } from 'lucide-react';
 import { useStickToBottom } from 'use-stick-to-bottom';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type {
   ITimelineEntry,
@@ -252,8 +251,8 @@ const TimelineView = ({
 
   useEffect(() => {
     if (skipAnimation && entries.length > 0) {
-      const timeout = new Promise<void>((resolve) => setTimeout(resolve, 100));
-      Promise.race([scrollToBottom('instant'), timeout]).then(() => setSkipAnimation(false));
+      scrollToBottom('instant');
+      setSkipAnimation(false);
     }
   }, [skipAnimation, entries.length, scrollToBottom]);
 
@@ -284,10 +283,7 @@ const TimelineView = ({
     <div className="relative flex h-full flex-col">
       <div
         ref={scrollRef}
-        className={cn(
-          'flex-1 overflow-y-auto py-2 transition-opacity',
-          skipAnimation && '[&_.animate-in]:!duration-0',
-        )}
+        className="flex-1 overflow-y-auto py-2 transition-opacity"
         style={{
           opacity: isSessionTransitioning || skipAnimation ? 0 : 1,
           transitionDuration: isSessionTransitioning ? '100ms' : '150ms',
