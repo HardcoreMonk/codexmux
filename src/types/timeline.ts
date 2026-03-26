@@ -25,6 +25,7 @@ export interface ITaskItem {
 export type TTimelineEntryType =
   | 'user-message'
   | 'assistant-message'
+  | 'thinking'
   | 'tool-call'
   | 'tool-result'
   | 'agent-group'
@@ -56,6 +57,13 @@ export interface ITimelineAssistantMessage {
     cache_creation_input_tokens?: number;
     cache_read_input_tokens?: number;
   };
+}
+
+export interface ITimelineThinking {
+  id: string;
+  type: 'thinking';
+  timestamp: number;
+  thinking: string;
 }
 
 export type TToolName = 'Read' | 'Edit' | 'Write' | 'Bash' | 'Grep' | 'Glob' | 'Agent' | string;
@@ -176,6 +184,7 @@ export interface ITimelineTurnEnd {
 export type ITimelineEntry =
   | ITimelineUserMessage
   | ITimelineAssistantMessage
+  | ITimelineThinking
   | ITimelineToolCall
   | ITimelineToolResult
   | ITimelineAgentGroup
