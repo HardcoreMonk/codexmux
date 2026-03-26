@@ -282,16 +282,13 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
     let usageAttached = false;
     const entries: ITimelineEntry[] = [];
     for (const content of parsed.data.message.content) {
-      if (content.type === 'thinking' && 'thinking' in content) {
-        const thinkingText = (content as { thinking?: string }).thinking;
-        if (thinkingText) {
-          entries.push({
-            id: nanoid(),
-            type: 'thinking',
-            timestamp,
-            thinking: thinkingText,
-          } satisfies ITimelineThinking);
-        }
+      if (content.type === 'thinking') {
+        entries.push({
+          id: nanoid(),
+          type: 'thinking',
+          timestamp,
+          thinking: (content as { thinking?: string }).thinking ?? '',
+        } satisfies ITimelineThinking);
       } else if (content.type === 'text' && 'text' in content) {
         const entry: ITimelineAssistantMessage = {
           id: nanoid(),
