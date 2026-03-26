@@ -18,6 +18,32 @@ export type { TDirection } from '@/lib/layout-tree';
 const cloneLayout = (data: ILayoutData): ILayoutData =>
   JSON.parse(JSON.stringify(data));
 
+const SESSION_PANE_PREFIX = 'pt-active-pane-';
+const SESSION_TAB_PREFIX = 'pt-active-tab-';
+
+const getSessionActivePaneId = (wsId: string): string | null => {
+  try { return sessionStorage.getItem(`${SESSION_PANE_PREFIX}${wsId}`); }
+  catch { return null; }
+};
+
+const getSessionActiveTabId = (paneId: string): string | null => {
+  try { return sessionStorage.getItem(`${SESSION_TAB_PREFIX}${paneId}`); }
+  catch { return null; }
+};
+
+const saveSessionActiveState = (wsId: string, layout: ILayoutData) => {
+  try {
+    if (layout.activePaneId) {
+      sessionStorage.setItem(`${SESSION_PANE_PREFIX}${wsId}`, layout.activePaneId);
+    }
+    for (const pane of collectPanes(layout.root)) {
+      if (pane.activeTabId) {
+        sessionStorage.setItem(`${SESSION_TAB_PREFIX}${pane.id}`, pane.activeTabId);
+      }
+    }
+  } catch { /* */ }
+};
+
 interface ILayoutState {
   layout: ILayoutData | null;
   isLoading: boolean;
@@ -30,7 +56,7 @@ interface ILayoutState {
 
   setWorkspaceId: (id: string | null) => void;
   setLayout: (data: ILayoutData) => void;
-  fetchLayout: (wsId?: string | null) => Promise<void>;
+  fetchLayout: (wsId?: string | null, preserveActive?: boolean) => Promise<void>;
   splitPane: (paneId: string, orientation: 'horizontal' | 'vertical') => Promise<void>;
   closePane: (paneId: string) => Promise<void>;
   focusPane: (paneId: string) => void;
@@ -99,9 +125,10 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
     applyLayout(set, get, data);
   },
 
-  fetchLayout: async (wsId?) => {
+  fetchLayout: async (wsId?, preserveActive?) => {
     const targetWsId = wsId ?? get().workspaceId;
     if (!targetWsId) return;
+    const shouldPreserve = preserveActive !== false;
 
     _abortController?.abort();
     const controller = new AbortController();
@@ -115,7 +142,35 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
       if (!res.ok) throw new Error();
       const data: ILayoutData = await res.json();
       if (controller.signal.aborted) return;
+
       const current = get().layout;
+
+      if (shouldPreserve) {
+        const fetchedPanes = collectPanes(data.root);
+        if (current) {
+          if (current.activePaneId && fetchedPanes.some((p) => p.id === current.activePaneId)) {
+            data.activePaneId = current.activePaneId;
+          }
+          for (const pane of fetchedPanes) {
+            const localPane = findPane(current.root, pane.id);
+            if (localPane?.activeTabId && pane.tabs.some((t) => t.id === localPane.activeTabId)) {
+              pane.activeTabId = localPane.activeTabId;
+            }
+          }
+        } else {
+          const storedPaneId = getSessionActivePaneId(targetWsId);
+          if (storedPaneId && fetchedPanes.some((p) => p.id === storedPaneId)) {
+            data.activePaneId = storedPaneId;
+          }
+          for (const pane of fetchedPanes) {
+            const storedTabId = getSessionActiveTabId(pane.id);
+            if (storedTabId && pane.tabs.some((t) => t.id === storedTabId)) {
+              pane.activeTabId = storedTabId;
+            }
+          }
+        }
+      }
+
       if (current) {
         const currentContent = { root: current.root, activePaneId: current.activePaneId };
         const fetchedContent = { root: data.root, activePaneId: data.activePaneId };
@@ -273,9 +328,9 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
         const data: ILayoutData = await res.json();
         applyLayout(set, get, data);
       } else {
-        await get().fetchLayout();
+        await get().fetchLayout(undefined, false);
       }
-    }).catch(() => get().fetchLayout());
+    }).catch(() => get().fetchLayout(undefined, false));
   },
 
   createTabInPane: async (paneId) => {
@@ -303,7 +358,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
       if (!res.ok) throw new Error();
       const newTab: ITab = await res.json();
 
-      await get().fetchLayout();
+      await get().fetchLayout(undefined, false);
       return newTab;
     } catch {
       toast.error('탭을 생성할 수 없습니다');
@@ -447,6 +502,12 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
     set({ layout: null, paneCount: 0, canSplit: false });
   },
 }));
+
+useLayoutStore.subscribe((state, prevState) => {
+  if (!state.layout || !state.workspaceId) return;
+  if (state.layout === prevState.layout) return;
+  saveSessionActiveState(state.workspaceId, state.layout);
+});
 
 export const setOnFetchError = (fn: (() => void) | null): void => {
   _onFetchError = fn;

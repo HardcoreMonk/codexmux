@@ -117,12 +117,6 @@ const MobileTerminalPage = () => {
       const sorted = [...currentPane.tabs].sort((a, b) => a.order - b.order);
       const adjacent = sorted[0];
       setSelectedTabId(adjacent?.id ?? currentPane.activeTabId);
-    } else if (
-      currentPane.activeTabId &&
-      currentPane.activeTabId !== selectedTabId &&
-      currentPane.tabs.some((t) => t.id === currentPane.activeTabId)
-    ) {
-      setSelectedTabId(currentPane.activeTabId);
     }
   }
 
