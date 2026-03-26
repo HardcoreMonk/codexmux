@@ -13,10 +13,6 @@ import useTimelineWebSocket from '@/hooks/use-timeline-websocket';
 // status-manager.ts의 JSONL_STALE_MS와 동일한 기준
 const STALE_BUSY_MS = 30_000;
 
-// 빈 세션 init 수신 후 "미실행" 표시까지 유예 시간
-// Claude CLI 시작 직후 PID 파일 생성 전에 감지될 수 있는 레이스 컨디션 방지
-const INIT_GRACE_MS = 2_000;
-
 const deriveCliState = (
   sessionStatus: TSessionStatus,
   entries: ITimelineEntry[],
@@ -104,8 +100,6 @@ const useTimeline = ({
     claudeSessionIdRef.current = claudeSessionId;
   });
 
-  const initGraceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const fetchSession = useCallback(async () => {
     if (!enabled || !sessionName) return;
     try {
@@ -118,12 +112,7 @@ const useTimeline = ({
       setSessionStatus(info.status);
       jsonlPathRef.current = info.jsonlPath;
       if (info.status !== 'active' && !claudeSessionIdRef.current) {
-        if (!initGraceTimerRef.current) {
-          initGraceTimerRef.current = setTimeout(() => {
-            initGraceTimerRef.current = null;
-            setIsLoading(false);
-          }, INIT_GRACE_MS);
-        }
+        setIsLoading(false);
       }
       setError(null);
     } catch (err) {
@@ -135,15 +124,8 @@ const useTimeline = ({
   }, [enabled, sessionName]);
 
   useEffect(() => {
-    if (!enabled) {
-      if (initGraceTimerRef.current) {
-        clearTimeout(initGraceTimerRef.current);
-        initGraceTimerRef.current = null;
-      }
-      return;
-    }
     fetchSession();
-  }, [fetchSession, enabled]);
+  }, [fetchSession]);
 
   const handleInit = useCallback((newEntries: ITimelineEntry[], _totalEntries: number, initSessionId: string, summary?: string, meta?: IInitMeta, startByteOffset?: number, hasMoreInit?: boolean) => {
     wsInitReceivedRef.current = true;
@@ -156,18 +138,7 @@ const useTimeline = ({
       setSessionId(initSessionId);
     }
 
-    if (initSessionId || newEntries.length > 0) {
-      if (initGraceTimerRef.current) {
-        clearTimeout(initGraceTimerRef.current);
-        initGraceTimerRef.current = null;
-      }
-      setIsLoading(false);
-    } else if (!initGraceTimerRef.current) {
-      initGraceTimerRef.current = setTimeout(() => {
-        initGraceTimerRef.current = null;
-        setIsLoading(false);
-      }, INIT_GRACE_MS);
-    }
+    setIsLoading(false);
     setError(null);
   }, []);
 
@@ -200,10 +171,6 @@ const useTimeline = ({
   }, []);
 
   const handleSessionChanged = useCallback((newSessionId: string, reason: string) => {
-    if (initGraceTimerRef.current) {
-      clearTimeout(initGraceTimerRef.current);
-      initGraceTimerRef.current = null;
-    }
     if (reason === 'session-ended') {
       setSessionStatus('none');
       setIsLoading(false);
@@ -254,10 +221,6 @@ const useTimeline = ({
 
   const handleResumeStarted = useCallback(
     (payload: { sessionId: string; jsonlPath: string | null }) => {
-      if (initGraceTimerRef.current) {
-        clearTimeout(initGraceTimerRef.current);
-        initGraceTimerRef.current = null;
-      }
       if (payload.jsonlPath) {
         jsonlPathRef.current = payload.jsonlPath;
       }

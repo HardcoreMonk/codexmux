@@ -7,7 +7,7 @@ import { readTailEntries, parseIncremental, parseJsonlContent } from './session-
 import { open as fsOpen } from 'fs/promises';
 import { createReadStream } from 'fs';
 import { createInterface } from 'readline';
-import { getSessionPanePid, checkTerminalProcess, sendKeys, getSessionCwd, getPaneTitle } from './tmux';
+import { getSessionPanePid, checkTerminalProcess, sendKeys, getSessionCwd, getPaneTitle, getPaneCurrentCommand } from './tmux';
 import { cwdToProjectPath } from './session-list';
 import { updateTabClaudeSessionId, updateTabClaudeSummary } from './layout-store';
 import { getDangerouslySkipPermissions } from './workspace-store';
@@ -25,6 +25,7 @@ const MAX_CONNECTIONS = 32;
 const MAX_WATCHER_RETRIES = 3;
 const MAX_INIT_ENTRIES = 64;
 
+const CLAUDE_CMD_RE = /^(?:claude|\d+\.\d+\.\d+)$/;
 const CLAUDE_TITLE_RE = /^[✳⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⠐⠈]\s+/;
 
 const parseClaudePaneTitle = (paneTitle: string | null): string | null => {
@@ -689,10 +690,24 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
     await updateTabClaudeSummary(conn.sessionName, null).catch(() => {});
   }
 
+  // PID 파일 생성 전이지만 pane에서 claude 프로세스가 실행 중인지 확인
+  const isClaudeStarting = sessionInfo.status === 'none'
+    && !claudeSessionId
+    && await getPaneCurrentCommand(sessionName).then(
+      (cmd) => cmd !== null && CLAUDE_CMD_RE.test(cmd),
+      () => false,
+    );
+
   if (sessionInfo.status === 'active' && sessionInfo.sessionId) {
     sendJson(ws, {
       type: 'timeline:session-changed',
       newSessionId: sessionInfo.sessionId,
+      reason: 'session-waiting',
+    });
+  } else if (isClaudeStarting) {
+    sendJson(ws, {
+      type: 'timeline:session-changed',
+      newSessionId: '',
       reason: 'session-waiting',
     });
   }
@@ -717,7 +732,7 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
     } else {
       sendJson(ws, { type: 'timeline:init', entries: [], sessionId: effectiveSessionId, totalEntries: 0, startByteOffset: 0, hasMore: false });
     }
-  } else {
+  } else if (!isClaudeStarting) {
     sendJson(ws, {
       type: 'timeline:init',
       entries: [],

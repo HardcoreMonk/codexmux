@@ -200,7 +200,10 @@ const MobileTerminalPage = () => {
 
   const handleCreateTab = useCallback(async () => {
     if (!currentPane) return;
-    await layout.createTabInPane(currentPane.id);
+    const newTab = await layout.createTabInPane(currentPane.id);
+    if (newTab) {
+      setSelectedTabId(newTab.id);
+    }
   }, [currentPane, layout]);
 
   const handleCloseTab = useCallback(() => {

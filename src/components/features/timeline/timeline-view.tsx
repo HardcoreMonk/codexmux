@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { Terminal, RefreshCw, Loader2, OctagonX, LogOut } from 'lucide-react';
 import { useStickToBottom } from 'use-stick-to-bottom';
 import { Button } from '@/components/ui/button';
@@ -254,13 +254,30 @@ const TimelineView = ({
     }
   }, [skipAnimation, entries.length, scrollToBottom]);
 
+  const isLoadingMoreRef = useRef(false);
+  const prevScrollHeightRef = useRef(0);
+
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
-    if (!el || !hasMore) return;
+    if (!el || !hasMore || isLoadingMoreRef.current) return;
     if (el.scrollTop < 100) {
-      onLoadMore();
+      isLoadingMoreRef.current = true;
+      prevScrollHeightRef.current = el.scrollHeight;
+      onLoadMore().finally(() => {
+        isLoadingMoreRef.current = false;
+      });
     }
   }, [scrollRef, hasMore, onLoadMore]);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el || prevScrollHeightRef.current === 0) return;
+    const heightDiff = el.scrollHeight - prevScrollHeightRef.current;
+    if (heightDiff > 0) {
+      el.scrollTop += heightDiff;
+    }
+    prevScrollHeightRef.current = 0;
+  }, [groupedItems]);
 
   if (isLoading) {
     return <SkeletonLoader />;
