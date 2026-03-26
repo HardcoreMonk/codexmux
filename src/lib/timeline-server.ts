@@ -594,9 +594,7 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
     });
   }
 
-  const effectiveSessionId = sessionInfo.jsonlPath
-    ? sessionInfo.sessionId
-    : (claudeSessionId ?? sessionInfo.sessionId);
+  const effectiveSessionId = sessionInfo.sessionId ?? claudeSessionId;
 
   if (sessionInfo.jsonlPath) {
     conn.currentJsonlPath = sessionInfo.jsonlPath;
