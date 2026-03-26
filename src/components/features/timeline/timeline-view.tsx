@@ -18,7 +18,6 @@ import TaskNotificationItem from '@/components/features/timeline/task-notificati
 import ToolGroupItem from '@/components/features/timeline/tool-group-item';
 import PlanItem from '@/components/features/timeline/plan-item';
 import AskUserQuestionItem from '@/components/features/timeline/ask-user-question-item';
-import ThinkingItem from '@/components/features/timeline/thinking-item';
 import TaskChecklist from '@/components/features/timeline/task-checklist';
 import TaskProgressItem from '@/components/features/timeline/task-progress-item';
 import ScrollToBottomButton from '@/components/features/timeline/scroll-to-bottom-button';
@@ -111,8 +110,6 @@ const TimelineEntryRenderer = ({ entry }: { entry: ITimelineEntry }) => {
       return <UserMessageItem entry={entry} />;
     case 'assistant-message':
       return <AssistantMessageItem entry={entry} />;
-    case 'thinking':
-      return <ThinkingItem entry={entry} />;
     case 'agent-group':
       return <AgentGroupItem entry={entry} />;
     case 'task-notification':
