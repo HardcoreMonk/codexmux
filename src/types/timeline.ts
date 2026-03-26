@@ -221,6 +221,8 @@ export interface ITimelineInitMessage {
   entries: ITimelineEntry[];
   sessionId: string;
   totalEntries: number;
+  startByteOffset: number;
+  hasMore: boolean;
   summary?: string;
   meta?: IInitMeta;
 }
@@ -287,6 +289,15 @@ export type TTimelineClientMessage =
   | ITimelineSubscribeMessage
   | ITimelineUnsubscribeMessage
   | ITimelineResumeMessage;
+
+export interface IChunkReadResult {
+  entries: ITimelineEntry[];
+  startByteOffset: number;
+  fileSize: number;
+  hasMore: boolean;
+  errorCount: number;
+  summary?: string;
+}
 
 export interface IParseResult {
   entries: ITimelineEntry[];

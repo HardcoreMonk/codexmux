@@ -3,8 +3,8 @@ import { WebSocket } from 'ws';
 import { watch, type FSWatcher } from 'fs';
 import { existsSync } from 'fs';
 import { detectActiveSession, watchSessionsDir, type ISessionWatcher } from './session-detection';
-import { parseSessionFile, parseIncremental, parseJsonlContent } from './session-parser';
-import { open as fsOpen, stat as fsStat } from 'fs/promises';
+import { readTailEntries, parseIncremental, parseJsonlContent } from './session-parser';
+import { open as fsOpen } from 'fs/promises';
 import { createReadStream } from 'fs';
 import { createInterface } from 'readline';
 import { getSessionPanePid, checkTerminalProcess, sendKeys, getSessionCwd, getPaneTitle } from './tmux';
@@ -23,7 +23,7 @@ const DEBOUNCE_MS = 50;
 const MAX_WATCHERS = 32;
 const MAX_CONNECTIONS = 32;
 const MAX_WATCHER_RETRIES = 3;
-const MAX_INIT_ENTRIES = 200;
+const MAX_INIT_ENTRIES = 64;
 
 const CLAUDE_TITLE_RE = /^[✳⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⠐⠈]\s+/;
 
@@ -306,7 +306,7 @@ const computeInitMeta = (entries: ITimelineEntry[], fileSize: number, createdAtO
 
 const subscribeToFile = async (ws: WebSocket, jsonlPath: string, sessionId?: string, sessionName?: string): Promise<string | undefined> => {
   if (!existsSync(jsonlPath)) {
-    sendJson(ws, { type: 'timeline:init', entries: [], sessionId: sessionId ?? '', totalEntries: 0 });
+    sendJson(ws, { type: 'timeline:init', entries: [], sessionId: sessionId ?? '', totalEntries: 0, startByteOffset: 0, hasMore: false });
     return undefined;
   }
 
@@ -340,7 +340,7 @@ const subscribeToFile = async (ws: WebSocket, jsonlPath: string, sessionId?: str
     fw.sessionName = sessionName;
   }
 
-  const result = await parseSessionFile(jsonlPath);
+  const result = await readTailEntries(jsonlPath, MAX_INIT_ENTRIES);
 
   if (result.errorCount > 0) {
     sendJson(ws, {
@@ -350,37 +350,27 @@ const subscribeToFile = async (ws: WebSocket, jsonlPath: string, sessionId?: str
     });
   }
 
-  // Only set offset and start watcher for new file watchers — avoids
-  // overwriting the offset when a second client subscribes to the same file
   if (isNewWatcher) {
-    fw.offset = result.lastOffset;
+    fw.offset = result.fileSize;
     startFileWatch(fw);
   }
 
-  // Limit init entries for large files (spec: 200 max for 1MB+ files)
-  const entries = result.entries.length > MAX_INIT_ENTRIES
-    ? result.entries.slice(-MAX_INIT_ENTRIES)
-    : result.entries;
-
-  // Compute metadata from ALL parsed entries (before truncation)
-  // For tail-mode files, read the first line separately for real createdAt
-  const needsFirstLine = result.entries.length > MAX_INIT_ENTRIES;
-  const firstTimestamp = needsFirstLine ? await readFirstTimestamp(jsonlPath) : null;
-  let fileSize = 0;
-  try { fileSize = (await fsStat(jsonlPath)).size; } catch { /* ignore */ }
-  const meta = computeInitMeta(result.entries, fileSize, firstTimestamp);
+  const firstTimestamp = result.hasMore ? await readFirstTimestamp(jsonlPath) : null;
+  const meta = computeInitMeta(result.entries, result.fileSize, firstTimestamp);
 
   sendJson(ws, {
     type: 'timeline:init',
-    entries,
+    entries: result.entries,
     sessionId: sessionId ?? '',
     totalEntries: result.entries.length,
+    startByteOffset: result.startByteOffset,
+    hasMore: result.hasMore,
     summary: result.summary,
     meta,
   });
 
   if (!isNewWatcher) {
-    fw.initOffsets.set(ws, result.lastOffset);
+    fw.initOffsets.set(ws, result.fileSize);
   }
 
   return result.summary;
@@ -588,6 +578,8 @@ const handleResumeMessage = async (
         entries: [],
         sessionId,
         totalEntries: 0,
+        startByteOffset: 0,
+        hasMore: false,
       });
       const cwd = await getSessionCwd(tmuxSession);
       if (cwd) {
@@ -618,7 +610,7 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
 
   const panePid = await getSessionPanePid(sessionName);
   if (!panePid) {
-    sendJson(ws, { type: 'timeline:init', entries: [], sessionId: '', totalEntries: 0 });
+    sendJson(ws, { type: 'timeline:init', entries: [], sessionId: '', totalEntries: 0, startByteOffset: 0, hasMore: false });
     ws.close(1000, 'Cannot resolve pane pid');
     return;
   }
@@ -723,7 +715,7 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
       const summary = await resolveClaudeSummary(conn.sessionName, jsonlSummary);
       await updateTabClaudeSummary(conn.sessionName, summary).catch(() => {});
     } else {
-      sendJson(ws, { type: 'timeline:init', entries: [], sessionId: effectiveSessionId, totalEntries: 0 });
+      sendJson(ws, { type: 'timeline:init', entries: [], sessionId: effectiveSessionId, totalEntries: 0, startByteOffset: 0, hasMore: false });
     }
   } else {
     sendJson(ws, {
@@ -731,6 +723,8 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
       entries: [],
       sessionId: '',
       totalEntries: 0,
+      startByteOffset: 0,
+      hasMore: false,
     });
   }
 

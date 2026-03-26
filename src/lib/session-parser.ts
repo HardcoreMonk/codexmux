@@ -20,6 +20,7 @@ import type {
   ITimelineDiff,
   IParseResult,
   IIncrementalResult,
+  IChunkReadResult,
   TToolStatus,
 } from '@/types/timeline';
 
@@ -746,6 +747,112 @@ const parseTailMode = async (filePath: string, fileSize: number): Promise<IParse
     return result;
   } finally {
     await handle.close();
+  }
+};
+
+const CHUNK_SIZE = 256_000; // 256KB
+const SMALL_FILE_THRESHOLD = CHUNK_SIZE;
+
+const readChunk = async (
+  filePath: string, from: number, to: number,
+): Promise<{ content: string; validFrom: number }> => {
+  const readSize = to - from;
+  if (readSize <= 0) return { content: '', validFrom: from };
+  const handle = await fs.open(filePath, 'r');
+  try {
+    const buffer = Buffer.alloc(readSize);
+    await handle.read(buffer, 0, readSize, from);
+    const raw = buffer.toString('utf-8');
+    if (from === 0) return { content: raw, validFrom: 0 };
+    const firstNewline = raw.indexOf('\n');
+    if (firstNewline < 0) return { content: '', validFrom: to };
+    const validFrom = from + Buffer.byteLength(raw.slice(0, firstNewline + 1), 'utf-8');
+    return { content: raw.slice(firstNewline + 1), validFrom };
+  } finally {
+    await handle.close();
+  }
+};
+
+export const readTailEntries = async (
+  filePath: string, maxEntries: number,
+): Promise<IChunkReadResult> => {
+  const empty: IChunkReadResult = {
+    entries: [], startByteOffset: 0, fileSize: 0, hasMore: false, errorCount: 0,
+  };
+  try {
+    const stat = await fs.stat(filePath);
+    const fileSize = stat.size;
+    if (fileSize === 0) return empty;
+
+    if (fileSize <= SMALL_FILE_THRESHOLD) {
+      const content = await fs.readFile(filePath, 'utf-8');
+      const result = parseContent(content);
+      const entries = result.entries.length > maxEntries
+        ? result.entries.slice(-maxEntries)
+        : result.entries;
+      return {
+        entries,
+        startByteOffset: 0,
+        fileSize,
+        hasMore: result.entries.length > maxEntries,
+        errorCount: result.errorCount,
+        summary: result.summary,
+      };
+    }
+
+    let chunkSize = CHUNK_SIZE;
+    while (chunkSize < fileSize * 2) {
+      const from = Math.max(0, fileSize - chunkSize);
+      const { content, validFrom } = await readChunk(filePath, from, fileSize);
+      if (!content) { chunkSize *= 2; continue; }
+      const result = parseContent(content);
+      if (result.entries.length >= maxEntries || from === 0) {
+        const entries = result.entries.length > maxEntries
+          ? result.entries.slice(-maxEntries)
+          : result.entries;
+        return {
+          entries,
+          startByteOffset: from === 0 ? 0 : validFrom,
+          fileSize,
+          hasMore: from > 0 || result.entries.length > maxEntries,
+          errorCount: result.errorCount,
+          summary: result.summary,
+        };
+      }
+      chunkSize *= 2;
+    }
+
+    return empty;
+  } catch {
+    return empty;
+  }
+};
+
+export const readEntriesBefore = async (
+  filePath: string, beforeByte: number, maxEntries: number,
+): Promise<IChunkReadResult> => {
+  const empty: IChunkReadResult = {
+    entries: [], startByteOffset: 0, fileSize: 0, hasMore: false, errorCount: 0,
+  };
+  try {
+    if (beforeByte <= 0) return empty;
+    const stat = await fs.stat(filePath);
+    const from = Math.max(0, beforeByte - CHUNK_SIZE);
+    const { content, validFrom } = await readChunk(filePath, from, beforeByte);
+    if (!content) return empty;
+    const result = parseContent(content);
+    const entries = result.entries.length > maxEntries
+      ? result.entries.slice(-maxEntries)
+      : result.entries;
+    return {
+      entries,
+      startByteOffset: from === 0 ? 0 : validFrom,
+      fileSize: stat.size,
+      hasMore: (from === 0 ? 0 : validFrom) > 0,
+      errorCount: result.errorCount,
+    };
+  } catch {
+    return empty;
   }
 };
 

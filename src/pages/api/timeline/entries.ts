@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { parseSessionFile } from '@/lib/session-parser';
+import { readEntriesBefore } from '@/lib/session-parser';
 import { isAllowedJsonlPath } from '@/lib/path-validation';
 
-const DEFAULT_LIMIT = 200;
+const DEFAULT_LIMIT = 64;
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'GET') {
@@ -19,18 +19,19 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(403).json({ error: '허용되지 않는 경로입니다' });
   }
 
-  const offset = parseInt(req.query.offset as string, 10) || 0;
+  const beforeByte = parseInt(req.query.beforeByte as string, 10);
+  if (isNaN(beforeByte) || beforeByte < 0) {
+    return res.status(400).json({ error: 'beforeByte 파라미터가 필요합니다' });
+  }
+
   const limit = parseInt(req.query.limit as string, 10) || DEFAULT_LIMIT;
 
-  const result = await parseSessionFile(jsonlPath);
-  const total = result.entries.length;
-  const sliced = result.entries.slice(offset, offset + limit);
-  const hasMore = offset + limit < total;
+  const result = await readEntriesBefore(jsonlPath, beforeByte, limit);
 
   return res.status(200).json({
-    entries: sliced,
-    total,
-    hasMore,
+    entries: result.entries,
+    startByteOffset: result.startByteOffset,
+    hasMore: result.hasMore,
   });
 };
 

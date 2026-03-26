@@ -66,50 +66,52 @@ const TaskChecklist = ({ tasks, cliState }: ITaskChecklistProps) => {
   return (
     <div
       className={cn(
-        'sticky top-0 z-10 mx-4 mb-2 border-l-2 bg-muted/80 px-4 py-2 pr-8 relative',
+        'sticky top-0 z-10 mx-4 mb-2 border-l-2 bg-muted/80 px-4 py-2',
         'animate-in fade-in slide-in-from-top-1 duration-200',
         borderColor,
       )}
     >
-      <button
-        type="button"
-        className="flex w-full cursor-pointer items-center gap-2"
-        onClick={() => setCollapsed((v) => !v)}
-        aria-expanded={!collapsed}
-        aria-controls="task-list"
-      >
-        {allCompleted ? (
-          <CheckCircle2 size={14} className="shrink-0 text-positive" />
-        ) : (
-          <ListChecks size={14} className="shrink-0 text-ui-purple" />
-        )}
-        <span
-          className="text-xs leading-none font-medium tabular-nums"
-          aria-live="polite"
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-2"
+          onClick={() => setCollapsed((v) => !v)}
+          aria-expanded={!collapsed}
+          aria-controls="task-list"
         >
-          TASK {completedCount} / {tasks.length}
-        </span>
-        {collapsed && currentSubject && (
-          <span className="ml-1 min-w-0 flex-1 truncate text-left text-xs text-muted-foreground">
-            {currentSubject}
-          </span>
-        )}
-        <ChevronDown
-          size={14}
-          className={cn(
-            'ml-auto shrink-0 text-muted-foreground transition-transform duration-200',
-            collapsed && '-rotate-90',
+          {allCompleted ? (
+            <CheckCircle2 size={14} className="shrink-0 text-positive" />
+          ) : (
+            <ListChecks size={14} className="shrink-0 text-ui-purple" />
           )}
-        />
-      </button>
-      <button
-        type="button"
-        className="absolute top-2 right-2 flex h-5 w-5 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
-        onClick={() => setDismissed(true)}
-        aria-label="닫기"
-      >
-        <X size={12} />
-      </button>
+          <span
+            className="text-xs leading-none font-medium tabular-nums"
+            aria-live="polite"
+          >
+            TASK {completedCount} / {tasks.length}
+          </span>
+          {collapsed && currentSubject && (
+            <span className="ml-1 min-w-0 flex-1 truncate text-left text-xs text-muted-foreground">
+              {currentSubject}
+            </span>
+          )}
+          <ChevronDown
+            size={14}
+            className={cn(
+              'shrink-0 text-muted-foreground transition-transform duration-200',
+              collapsed && '-rotate-90',
+            )}
+          />
+        </button>
+        <button
+          type="button"
+          className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center self-start rounded-sm text-muted-foreground hover:text-foreground"
+          onClick={() => setDismissed(true)}
+          aria-label="닫기"
+        >
+          <X size={12} />
+        </button>
+      </div>
 
       <div
         className={cn(
