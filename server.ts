@@ -44,7 +44,7 @@ interface IStartOptions {
 
 interface IStartResult {
   port: number;
-  shutdown: () => Promise<void>;
+  shutdown: () => void;
 }
 
 export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
@@ -118,20 +118,20 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
     }
   });
 
-  const shutdown = async () => {
-    await gracefulShutdown();
+  const shutdown = () => {
+    gracefulShutdown();
     gracefulTimelineShutdown();
     gracefulSyncShutdown();
     gracefulStatusShutdown();
     server.close();
   };
 
-  process.on('SIGTERM', async () => {
-    await shutdown();
+  process.on('SIGTERM', () => {
+    shutdown();
     process.exit(0);
   });
-  process.on('SIGINT', async () => {
-    await shutdown();
+  process.on('SIGINT', () => {
+    shutdown();
     process.exit(0);
   });
 

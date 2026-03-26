@@ -140,10 +140,10 @@ input.onkeydown=function(e){
 // --- State ---
 
 let mainWindow: BrowserWindow | null = null;
-let serverShutdown: (() => Promise<void>) | null = null;
+let serverShutdown: (() => void) | null = null;
 let serverConfig: IServerConfig = { mode: 'local' };
 let localPort: number | null = null;
-let cachedStart: ((opts: { port: number }) => Promise<{ port: number; shutdown: () => Promise<void> }>) | null = null;
+let cachedStart: ((opts: { port: number }) => Promise<{ port: number; shutdown: () => void }>) | null = null;
 
 // --- Local Server ---
 
@@ -159,9 +159,9 @@ const startLocalServer = async (): Promise<number> => {
   return result.port;
 };
 
-const stopLocalServer = async () => {
+const stopLocalServer = () => {
   if (serverShutdown) {
-    await serverShutdown();
+    serverShutdown();
     serverShutdown = null;
     localPort = null;
   }
@@ -326,14 +326,14 @@ app.on('activate', () => {
   }
 });
 
-app.on('window-all-closed', async () => {
+app.on('window-all-closed', () => {
   if (serverShutdown) {
-    await serverShutdown();
+    serverShutdown();
   }
-  // app.quit() triggers FreeEnvironment → CleanupHandles which crashes
+  // app.exit() still runs FreeEnvironment → CleanupHandles, which crashes
   // when node-pty's native ThreadSafeFunction fires during teardown.
-  // app.exit() skips that cleanup and exits immediately.
-  app.exit(0);
+  // process.exit() bypasses all Node.js/Electron cleanup entirely.
+  process.exit(0);
 });
 
 app.requestSingleInstanceLock();
