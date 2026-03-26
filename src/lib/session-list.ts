@@ -13,6 +13,7 @@ const PROJECTS_DIR = path.join(
   'projects',
 );
 const MAX_CONCURRENCY = 10;
+const MAX_FIRST_MESSAGE_LENGTH = 200;
 
 const metaCache = createMetaCache();
 
@@ -45,6 +46,11 @@ const runWithConcurrency = async <T>(
   return results;
 };
 
+const truncateMessage = (text: string): string =>
+  text.length <= MAX_FIRST_MESSAGE_LENGTH
+    ? text
+    : text.slice(0, MAX_FIRST_MESSAGE_LENGTH) + '…';
+
 const extractFirstHumanMessage = async (filePath: string): Promise<string> => {
   const stream = createReadStream(filePath, { encoding: 'utf-8' });
   const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
@@ -57,14 +63,14 @@ const extractFirstHumanMessage = async (filePath: string): Promise<string> => {
         if ((entry.type === 'human' || entry.type === 'user') && !entry.isMeta) {
           const msg = entry.message;
           if (!msg) continue;
-          if (typeof msg === 'string') return msg;
+          if (typeof msg === 'string') return truncateMessage(msg);
           if (Array.isArray(msg.content)) {
             const textBlock = msg.content.find(
               (b: { type: string; text?: string }) => b.type === 'text' && b.text,
             );
-            if (textBlock) return textBlock.text;
+            if (textBlock) return truncateMessage(textBlock.text);
           }
-          if (typeof msg.content === 'string') return msg.content;
+          if (typeof msg.content === 'string') return truncateMessage(msg.content);
         }
       } catch {
         continue;
