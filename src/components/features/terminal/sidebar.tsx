@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import {
   ChevronsLeft,
+  ChevronsRight,
   Plus,
   Settings,
   BarChart3,
@@ -392,12 +393,12 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
             <div className="h-titlebar shrink-0" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
           )}
           <button
-            className="flex flex-col items-center px-1.5 pt-3.5 text-muted-foreground transition-colors hover:bg-sidebar-accent"
+            className="flex flex-1 items-center justify-center text-muted-foreground transition-colors hover:bg-sidebar-accent"
             onClick={handleToggleCollapse}
             aria-label="사이드바 펼치기"
             aria-expanded="false"
           >
-            <Terminal className="h-4 w-4 text-ui-purple" />
+            <ChevronsRight className="h-4 w-4" />
           </button>
         </div>
       )}

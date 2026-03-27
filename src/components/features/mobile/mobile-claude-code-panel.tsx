@@ -159,8 +159,22 @@ const MobileClaudeCodePanel = ({
     navigateToTimelineRef.current = navigateToTimeline;
   });
 
+  const restartNeedsExitRef = useRef(false);
+  const prevIsRestartingRef = useRef(false);
+
   useEffect(() => {
-    if (isRestarting && effectiveSessionStatus === 'active') {
+    if (isRestarting && !prevIsRestartingRef.current) {
+      restartNeedsExitRef.current = effectiveSessionStatus === 'active';
+    }
+    prevIsRestartingRef.current = !!isRestarting;
+
+    if (!isRestarting) return;
+
+    if (restartNeedsExitRef.current && effectiveSessionStatus !== 'active') {
+      restartNeedsExitRef.current = false;
+    }
+
+    if (effectiveSessionStatus === 'active' && !restartNeedsExitRef.current) {
       onRestartComplete?.();
     }
   }, [isRestarting, effectiveSessionStatus, onRestartComplete]);
@@ -193,7 +207,7 @@ const MobileClaudeCodePanel = ({
     [resumingSessionId, sendResume, sessionName],
   );
 
-  if (isRestarting && view !== 'timeline') {
+  if (isRestarting) {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-muted">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

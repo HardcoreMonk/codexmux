@@ -138,11 +138,25 @@ const ClaudeCodePanel = ({
     navigateToTimelineRef.current = navigateToTimeline;
   });
 
+  const restartNeedsExitRef = useRef(false);
+  const prevIsRestartingRef = useRef(false);
+
   useEffect(() => {
-    if (isRestarting && effectiveSessionStatus === 'active' && !isTimelineLoading) {
+    if (isRestarting && !prevIsRestartingRef.current) {
+      restartNeedsExitRef.current = effectiveSessionStatus === 'active';
+    }
+    prevIsRestartingRef.current = !!isRestarting;
+
+    if (!isRestarting) return;
+
+    if (restartNeedsExitRef.current && effectiveSessionStatus !== 'active') {
+      restartNeedsExitRef.current = false;
+    }
+
+    if (effectiveSessionStatus === 'active' && !restartNeedsExitRef.current) {
       onRestartComplete?.();
     }
-  }, [isRestarting, effectiveSessionStatus, isTimelineLoading, onRestartComplete]);
+  }, [isRestarting, effectiveSessionStatus, onRestartComplete]);
 
   const isInputVisible = view === 'timeline';
 
@@ -167,7 +181,7 @@ const ClaudeCodePanel = ({
     [resumingSessionId, sendResume, sessionName],
   );
 
-  if (isRestarting && (view !== 'timeline' || isTimelineLoading)) {
+  if (isRestarting) {
     return (
       <div className={cn('flex h-full w-full flex-col items-center justify-center', className)}>
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
