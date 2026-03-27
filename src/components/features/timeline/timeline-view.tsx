@@ -256,6 +256,7 @@ const TimelineView = ({
 
   const isLoadingMoreRef = useRef(false);
   const prevScrollHeightRef = useRef(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -263,9 +264,11 @@ const TimelineView = ({
     if (el.scrollTop < 100) {
       isLoadingMoreRef.current = true;
       prevScrollHeightRef.current = el.scrollHeight;
+      setIsLoadingMore(true);
       onLoadMore().finally(() => {
         requestAnimationFrame(() => {
           isLoadingMoreRef.current = false;
+          setIsLoadingMore(false);
         });
       });
     }
@@ -279,7 +282,6 @@ const TimelineView = ({
       el.scrollTop += heightDiff;
     }
     prevScrollHeightRef.current = 0;
-    isLoadingMoreRef.current = false;
   }, [groupedItems]);
 
   if (isLoading) {
@@ -312,6 +314,11 @@ const TimelineView = ({
         aria-label="Claude Code 타임라인"
       >
         <div ref={contentRef}>
+          {isLoadingMore && (
+            <div className="flex items-center justify-center py-3">
+              <Loader2 size={14} className="animate-spin text-muted-foreground" />
+            </div>
+          )}
           {tasks.length > 0 && (
             <TaskChecklist tasks={tasks} cliState={cliState} />
           )}

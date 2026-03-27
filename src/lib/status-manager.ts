@@ -57,7 +57,7 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<boolean> => {
       const elapsed = Date.now() - stat.mtimeMs;
 
       let result = elapsed > STALE_MS_AWAITING_API;
-      let needsStaleRecheck = false;
+      let needsStaleRecheck = !result;
       let staleMs = STALE_MS_AWAITING_API;
 
       for (let i = lines.length - 1; i >= 0; i--) {
