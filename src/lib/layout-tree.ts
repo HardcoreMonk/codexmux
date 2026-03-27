@@ -98,6 +98,21 @@ export const equalizeNode = (node: TLayoutNode): TLayoutNode => {
   };
 };
 
+export const updatePaneInTree = (
+  node: TLayoutNode,
+  paneId: string,
+  updater: (pane: IPaneNode) => IPaneNode,
+): TLayoutNode => {
+  if (node.type === 'pane') {
+    return node.id === paneId ? updater(node) : node;
+  }
+  const left = updatePaneInTree(node.children[0], paneId, updater);
+  if (left !== node.children[0]) return { ...node, children: [left, node.children[1]] };
+  const right = updatePaneInTree(node.children[1], paneId, updater);
+  if (right !== node.children[1]) return { ...node, children: [node.children[0], right] };
+  return node;
+};
+
 export const normalizeTree = (node: TLayoutNode): TLayoutNode => {
   if (node.type === 'pane') return node;
   const left = normalizeTree(node.children[0]);

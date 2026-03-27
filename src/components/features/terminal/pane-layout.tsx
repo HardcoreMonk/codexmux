@@ -1,26 +1,13 @@
 import { useRef, useLayoutEffect, useCallback, useEffect, type MutableRefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { Group, Panel, Separator, type GroupImperativeHandle } from 'react-resizable-panels';
-import type { TLayoutNode, ITab, TPanelType } from '@/types/terminal';
+import type { TLayoutNode } from '@/types/terminal';
 import { collectPanes, getFirstPaneId, equalizeNode } from '@/hooks/use-layout';
 import PaneContainer from '@/components/features/terminal/pane-container';
 
 interface IPaneLayoutProps {
   root: TLayoutNode;
-  activePaneId: string | null;
-  paneCount: number;
-  isSplitting: boolean;
-  onSplitPane: (paneId: string, orientation: 'horizontal' | 'vertical') => void;
-  onClosePane: (paneId: string) => void;
-  onFocusPane: (paneId: string) => void;
   onUpdateRatio: (path: number[], ratio: number) => void;
-  onMoveTab: (tabId: string, fromPaneId: string, toPaneId: string, toIndex: number) => void;
-  onCreateTab: (paneId: string) => Promise<ITab | null>;
-  onDeleteTab: (paneId: string, tabId: string) => Promise<void>;
-  onSwitchTab: (paneId: string, tabId: string) => void;
-  onRenameTab: (paneId: string, tabId: string, name: string) => Promise<void>;
-  onReorderTabs: (paneId: string, tabIds: string[]) => void;
-  onUpdateTabPanelType: (paneId: string, tabId: string, panelType: TPanelType) => void;
   onEqualizeRatios: () => void;
   equalizeRef?: MutableRefObject<(() => void) | null>;
 }
@@ -28,20 +15,7 @@ interface IPaneLayoutProps {
 const PaneLayout = (props: IPaneLayoutProps) => {
   const {
     root,
-    activePaneId,
-    paneCount,
-    isSplitting,
-    onSplitPane,
-    onClosePane,
-    onFocusPane,
     onUpdateRatio,
-    onMoveTab,
-    onCreateTab,
-    onDeleteTab,
-    onSwitchTab,
-    onRenameTab,
-    onReorderTabs,
-    onUpdateTabPanelType,
     onEqualizeRatios,
     equalizeRef,
   } = props;
@@ -185,21 +159,6 @@ const PaneLayout = (props: IPaneLayoutProps) => {
           <PaneContainer
             paneId={pane.id}
             paneNumber={paneNumbers.get(pane.id) ?? 1}
-            tabs={pane.tabs}
-            activeTabId={pane.activeTabId}
-            isFocused={pane.id === activePaneId}
-            paneCount={paneCount}
-            isSplitting={isSplitting}
-            onSplitPane={onSplitPane}
-            onClosePane={onClosePane}
-            onFocusPane={onFocusPane}
-            onMoveTab={onMoveTab}
-            onCreateTab={onCreateTab}
-            onDeleteTab={onDeleteTab}
-            onSwitchTab={onSwitchTab}
-            onRenameTab={onRenameTab}
-            onReorderTabs={onReorderTabs}
-            onUpdateTabPanelType={onUpdateTabPanelType}
           />,
           getStableContainer(pane.id),
         ),

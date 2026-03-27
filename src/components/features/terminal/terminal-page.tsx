@@ -198,20 +198,7 @@ const TerminalPage = () => {
             >
               <PaneLayout
               root={layout.layout.root}
-              activePaneId={layout.layout.activePaneId}
-              paneCount={layout.paneCount}
-              isSplitting={layout.isSplitting}
-              onSplitPane={layout.splitPane}
-              onClosePane={layout.closePane}
-              onFocusPane={layout.focusPane}
               onUpdateRatio={layout.updateRatio}
-              onMoveTab={layout.moveTab}
-              onCreateTab={layout.createTabInPane}
-              onDeleteTab={layout.deleteTabInPane}
-              onSwitchTab={layout.switchTabInPane}
-              onRenameTab={layout.renameTabInPane}
-              onReorderTabs={layout.reorderTabsInPane}
-              onUpdateTabPanelType={layout.updateTabPanelType}
               onEqualizeRatios={layout.equalizeRatios}
               equalizeRef={equalizeRef}
             />

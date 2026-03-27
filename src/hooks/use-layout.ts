@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { toast } from 'sonner';
-import type { ILayoutData, ITab, TPanelType } from '@/types/terminal';
+import type { ILayoutData, ITab, IPaneNode, TPanelType } from '@/types/terminal';
 import { clearInputDraft } from '@/hooks/use-web-input';
 import useClaudeStatusStore from '@/hooks/use-claude-status-store';
 import {
@@ -10,6 +10,7 @@ import {
   findPane,
   removePaneWithFocus,
   updateRatioAtPath,
+  updatePaneInTree,
 } from '@/lib/layout-tree';
 
 export { collectPanes, equalizeNode, getFirstPaneId, findAdjacentPaneInDirection } from '@/lib/layout-tree';
@@ -91,6 +92,20 @@ const updateDerived = (layout: ILayoutData | null, isSplitting: boolean) => {
 
 const applyLayout = (set: (s: Partial<ILayoutState>) => void, get: () => ILayoutState, data: ILayoutData) => {
   set({ layout: data, ...updateDerived(data, get().isSplitting) });
+};
+
+const applyPaneUpdate = (
+  set: (s: Partial<ILayoutState>) => void,
+  get: () => ILayoutState,
+  paneId: string,
+  updater: (pane: IPaneNode) => IPaneNode,
+) => {
+  const { layout } = get();
+  if (!layout) return;
+  const newRoot = updatePaneInTree(layout.root, paneId, updater);
+  if (newRoot !== layout.root) {
+    applyLayout(set, get, { ...layout, root: newRoot });
+  }
 };
 
 const patchApi = async (url: string, body: Record<string, unknown>): Promise<ILayoutData | null> => {
@@ -398,35 +413,21 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
   },
 
   switchTabInPane: (paneId, tabId) => {
-    const { layout, workspaceId } = get();
-    if (!layout) return;
+    applyPaneUpdate(set, get, paneId, (pane) => ({ ...pane, activeTabId: tabId }));
 
-    const clone = cloneLayout(layout);
-    const pane = findPane(clone.root, paneId);
-    if (pane) {
-      pane.activeTabId = tabId;
-      applyLayout(set, get, clone);
-    }
-
+    const { workspaceId } = get();
     patchApi(wsQuery(`/api/layout/pane/${paneId}`, workspaceId), { activeTabId: tabId }).then((data) => {
       if (data) applyLayout(set, get, data);
     });
   },
 
   renameTabInPane: async (paneId, tabId, name) => {
-    const { layout, workspaceId } = get();
+    applyPaneUpdate(set, get, paneId, (pane) => ({
+      ...pane,
+      tabs: pane.tabs.map((t) => (t.id === tabId ? { ...t, name } : t)),
+    }));
 
-
-    if (layout) {
-      const clone: ILayoutData = cloneLayout(layout);
-      const pane = findPane(clone.root, paneId);
-      if (pane) {
-        const tab = pane.tabs.find((t) => t.id === tabId);
-        if (tab) tab.name = name;
-        applyLayout(set, get, clone);
-      }
-    }
-
+    const { workspaceId } = get();
     const data = await patchApi(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`, workspaceId), { name });
     if (data) {
       applyLayout(set, get, data);
@@ -436,23 +437,18 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
   },
 
   reorderTabsInPane: (paneId, tabIds) => {
-    const { layout, workspaceId } = get();
-    if (!layout) return;
-
-
-    const clone: ILayoutData = cloneLayout(layout);
-    const pane = findPane(clone.root, paneId);
-    if (pane) {
+    applyPaneUpdate(set, get, paneId, (pane) => {
       const tabMap = new Map(pane.tabs.map((t) => [t.id, t]));
-      pane.tabs = tabIds
+      const newTabs = tabIds
         .map((id, i) => {
           const tab = tabMap.get(id);
           return tab ? { ...tab, order: i } : null;
         })
         .filter((t): t is ITab => t !== null);
-      applyLayout(set, get, clone);
-    }
+      return { ...pane, tabs: newTabs };
+    });
 
+    const { workspaceId } = get();
     patchApi(wsQuery(`/api/layout/pane/${paneId}/tabs/order`, workspaceId), { tabIds }).then((data) => {
       if (data) applyLayout(set, get, data);
     });
@@ -478,21 +474,17 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
   },
 
   updateTabPanelType: (paneId, tabId, panelType) => {
-    const { layout, workspaceId } = get();
-    if (!layout) return;
+    applyPaneUpdate(set, get, paneId, (pane) => ({
+      ...pane,
+      tabs: pane.tabs.map((t) => {
+        if (t.id !== tabId) return t;
+        const updated: ITab = { ...t, panelType };
+        if (panelType === 'terminal') updated.claudeSessionId = null;
+        return updated;
+      }),
+    }));
 
-
-    const clone: ILayoutData = cloneLayout(layout);
-    const pane = findPane(clone.root, paneId);
-    if (pane) {
-      const tab = pane.tabs.find((t) => t.id === tabId);
-      if (tab) {
-        tab.panelType = panelType;
-        if (panelType === 'terminal') tab.claudeSessionId = null;
-      }
-      applyLayout(set, get, clone);
-    }
-
+    const { workspaceId } = get();
     patchApi(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`, workspaceId), { panelType }).then((data) => {
       if (data) applyLayout(set, get, data);
     });

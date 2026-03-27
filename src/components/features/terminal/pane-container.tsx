@@ -1,9 +1,10 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react';
 import { Group, Panel, Separator, type GroupImperativeHandle } from 'react-resizable-panels';
 import { ChevronDown, ChevronUp, Loader2, Plus, TerminalSquare, WifiOff, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { ITab, TDisconnectReason, TPanelType } from '@/types/terminal';
+import { findPane } from '@/lib/layout-tree';
 import useTerminal from '@/hooks/use-terminal';
 import useTerminalWebSocket from '@/hooks/use-terminal-websocket';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
@@ -60,43 +61,29 @@ const NOOP_WS_ACTIONS: IWsActions = {
 interface IPaneContainerProps {
   paneId: string;
   paneNumber: number;
-  tabs: ITab[];
-  activeTabId: string | null;
-  isFocused: boolean;
-  paneCount: number;
-  isSplitting: boolean;
-  onSplitPane: (paneId: string, orientation: 'horizontal' | 'vertical') => void;
-  onClosePane: (paneId: string) => void;
-  onFocusPane: (paneId: string) => void;
-  onMoveTab: (tabId: string, fromPaneId: string, toPaneId: string, toIndex: number) => void;
-  onCreateTab: (paneId: string) => Promise<ITab | null>;
-  onDeleteTab: (paneId: string, tabId: string) => Promise<void>;
-  onSwitchTab: (paneId: string, tabId: string) => void;
-  onRenameTab: (paneId: string, tabId: string, name: string) => Promise<void>;
-  onReorderTabs: (paneId: string, tabIds: string[]) => void;
-  onUpdateTabPanelType: (paneId: string, tabId: string, panelType: TPanelType) => void;
 }
 
 const CLAUDE_CODE_FONT_SIZE = 11;
+const EMPTY_TABS: ITab[] = [];
 
-const PaneContainer = ({
-  paneId,
-  paneNumber,
-  tabs,
-  activeTabId,
-  isFocused,
-  paneCount,
-  isSplitting,
-  onClosePane,
-  onFocusPane,
-  onMoveTab,
-  onCreateTab,
-  onDeleteTab,
-  onSwitchTab,
-  onRenameTab,
-  onReorderTabs,
-  onUpdateTabPanelType,
-}: IPaneContainerProps) => {
+const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
+  const pane = useLayoutStore((s) => (s.layout ? findPane(s.layout.root, paneId) : null));
+  const tabs = pane?.tabs ?? EMPTY_TABS;
+  const activeTabId = pane?.activeTabId ?? null;
+  const isFocused = useLayoutStore((s) => s.layout?.activePaneId === paneId);
+  const paneCount = useLayoutStore((s) => s.paneCount);
+  const isSplitting = useLayoutStore((s) => s.isSplitting);
+
+  const switchTabInPane = useLayoutStore((s) => s.switchTabInPane);
+  const createTabInPane = useLayoutStore((s) => s.createTabInPane);
+  const deleteTabInPane = useLayoutStore((s) => s.deleteTabInPane);
+  const closePane = useLayoutStore((s) => s.closePane);
+  const focusPane = useLayoutStore((s) => s.focusPane);
+  const moveTab = useLayoutStore((s) => s.moveTab);
+  const renameTabInPane = useLayoutStore((s) => s.renameTabInPane);
+  const reorderTabsInPane = useLayoutStore((s) => s.reorderTabsInPane);
+  const updateTabPanelType = useLayoutStore((s) => s.updateTabPanelType);
+
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const activePanelType: TPanelType = activeTab?.panelType ?? 'terminal';
   const isClaudeCode = activePanelType === 'claude-code';
@@ -267,7 +254,7 @@ const PaneContainer = ({
 
     const isLastTab = currentTabs.length === 1;
     if (isLastTab && currentPaneCount > 1) {
-      onClosePane(paneId);
+      closePane(paneId);
       return;
     }
 
@@ -275,16 +262,16 @@ const PaneContainer = ({
     const idx = sorted.findIndex((t) => t.id === currentActiveTabId);
     const adjacent = sorted[idx + 1] || sorted[idx - 1];
     if (adjacent) {
-      onSwitchTab(paneId, adjacent.id);
+      switchTabInPane(paneId, adjacent.id);
     }
 
     setClosingTabId(currentActiveTabId);
     try {
-      await onDeleteTab(paneId, currentActiveTabId);
+      await deleteTabInPane(paneId, currentActiveTabId);
     } finally {
       setClosingTabId(null);
     }
-  }, [paneId, onSwitchTab, onDeleteTab, onClosePane]);
+  }, [paneId, switchTabInPane, deleteTabInPane, closePane]);
 
   const {
     status,
@@ -345,7 +332,7 @@ const PaneContainer = ({
       tabs.some((t) => t.id === prevConnectedTabIdRef.current)
     ) {
       connectedSessionRef.current = null;
-      onSwitchTab(paneId, prevConnectedTabIdRef.current);
+      switchTabInPane(paneId, prevConnectedTabIdRef.current);
     }
   }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -384,14 +371,14 @@ const PaneContainer = ({
   const handleSwitchTab = useCallback(
     (tabId: string) => {
       if (tabId === activeTabId) return;
-      onSwitchTab(paneId, tabId);
+      switchTabInPane(paneId, tabId);
     },
-    [paneId, activeTabId, onSwitchTab],
+    [paneId, activeTabId, switchTabInPane],
   );
 
   const handleCreateTab = useCallback(async () => {
     setIsCreating(true);
-    const newTab = await onCreateTab(paneId);
+    const newTab = await createTabInPane(paneId);
     if (newTab) {
       const currentTabId = activeTabIdRef.current;
       const currentTitle = currentTabId
@@ -402,14 +389,14 @@ const PaneContainer = ({
       }
     }
     setIsCreating(false);
-  }, [paneId, onCreateTab]);
+  }, [paneId, createTabInPane]);
 
   const handleDeleteTab = useCallback(
     async (tabId: string) => {
       if (closingTabId) return;
       const isLastTab = tabs.length === 1;
       if (isLastTab && paneCount > 1) {
-        onClosePane(paneId);
+        closePane(paneId);
         return;
       }
       const isActive = tabId === activeTabId;
@@ -418,17 +405,17 @@ const PaneContainer = ({
         const idx = sorted.findIndex((t) => t.id === tabId);
         const adjacent = sorted[idx + 1] || sorted[idx - 1];
         if (adjacent) {
-          onSwitchTab(paneId, adjacent.id);
+          switchTabInPane(paneId, adjacent.id);
         }
       }
       setClosingTabId(tabId);
       try {
-        await onDeleteTab(paneId, tabId);
+        await deleteTabInPane(paneId, tabId);
       } finally {
         setClosingTabId(null);
       }
     },
-    [paneId, activeTabId, tabs, paneCount, closingTabId, onSwitchTab, onDeleteTab, onClosePane],
+    [paneId, activeTabId, tabs, paneCount, closingTabId, switchTabInPane, deleteTabInPane, closePane],
   );
 
   const handleRestartTab = useCallback(
@@ -441,28 +428,28 @@ const PaneContainer = ({
 
   const handleRenameTab = useCallback(
     (tabId: string, name: string) => {
-      onRenameTab(paneId, tabId, name);
+      renameTabInPane(paneId, tabId, name);
     },
-    [paneId, onRenameTab],
+    [paneId, renameTabInPane],
   );
 
   const handleReorderTabs = useCallback(
     (tabIds: string[]) => {
-      onReorderTabs(paneId, tabIds);
+      reorderTabsInPane(paneId, tabIds);
     },
-    [paneId, onReorderTabs],
+    [paneId, reorderTabsInPane],
   );
 
   const handleMoveTab = useCallback(
     (tabId: string, fromPaneId: string, toIndex: number) => {
-      onMoveTab(tabId, fromPaneId, paneId, toIndex);
+      moveTab(tabId, fromPaneId, paneId, toIndex);
     },
-    [paneId, onMoveTab],
+    [paneId, moveTab],
   );
 
   const handleFocusPane = useCallback(() => {
-    onFocusPane(paneId);
-  }, [paneId, onFocusPane]);
+    focusPane(paneId);
+  }, [paneId, focusPane]);
 
   const handleTogglePanelType = useCallback(() => {
     if (!activeTabId) return;
@@ -471,8 +458,8 @@ const PaneContainer = ({
     const next: TPanelType = current === 'terminal' ? 'claude-code' : 'terminal';
 
     setIsPanelTransitioning(true);
-    onUpdateTabPanelType(paneId, activeTabId, next);
-  }, [paneId, activeTabId, tabs, onUpdateTabPanelType]);
+    updateTabPanelType(paneId, activeTabId, next);
+  }, [paneId, activeTabId, tabs, updateTabPanelType]);
 
   useEffect(() => {
     if (!activeTabId || !isClaudeRunning || activePanelType !== 'terminal') {
@@ -658,7 +645,7 @@ const PaneContainer = ({
         onDeleteTab={handleDeleteTab}
         onRenameTab={handleRenameTab}
         onReorderTabs={handleReorderTabs}
-        onClosePane={() => onClosePane(paneId)}
+        onClosePane={() => closePane(paneId)}
         onMoveTab={handleMoveTab}
         onFocusPane={handleFocusPane}
         onRetry={() => {}}
@@ -907,6 +894,7 @@ const PaneContainer = ({
       </div>
     </div>
   );
-};
+});
+PaneContainer.displayName = 'PaneContainer';
 
 export default PaneContainer;
