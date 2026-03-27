@@ -153,10 +153,10 @@ const ClaudeCodePanel = ({
       restartNeedsExitRef.current = false;
     }
 
-    if (effectiveSessionStatus === 'active' && !restartNeedsExitRef.current) {
+    if (cliState === 'idle' && !restartNeedsExitRef.current) {
       onRestartComplete?.();
     }
-  }, [isRestarting, effectiveSessionStatus, onRestartComplete]);
+  }, [isRestarting, effectiveSessionStatus, cliState, onRestartComplete]);
 
   const isInputVisible = view === 'timeline';
 
