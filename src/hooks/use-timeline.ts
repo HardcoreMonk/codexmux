@@ -3,7 +3,6 @@ import type {
   ITimelineEntry,
   IInitMeta,
   ITaskItem,
-  ISessionInfo,
   TSessionStatus,
   TTimelineConnectionStatus,
   TCliState,
@@ -79,7 +78,7 @@ const useTimeline = ({
 }: IUseTimelineOptions): IUseTimelineReturn => {
   const [entries, setEntries] = useState<ITimelineEntry[]>([]);
   const [sessionStatus, setSessionStatus] = useState<TSessionStatus>('none');
-  const [isLoading, setIsLoading] = useState(true);
+  const [wsInitReceived, setWsInitReceived] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -94,58 +93,27 @@ const useTimeline = ({
   const jsonlPathRef = useRef<string | null>(null);
   const startByteOffsetRef = useRef(0);
   const isLoadingMoreRef = useRef(false);
-  const wsInitReceivedRef = useRef(false);
-  const claudeSessionIdRef = useRef(claudeSessionId);
-  useEffect(() => {
-    claudeSessionIdRef.current = claudeSessionId;
-  });
 
-  const fetchSession = useCallback(async () => {
-    if (!enabled || !sessionName) return;
-    try {
-      const res = await fetch(
-        `/api/timeline/session?session=${encodeURIComponent(sessionName)}`,
-      );
-      if (!res.ok) throw new Error('세션 정보를 불러올 수 없습니다');
-      const info: ISessionInfo = await res.json();
-      if (wsInitReceivedRef.current) return;
-      setSessionStatus(info.status);
-      jsonlPathRef.current = info.jsonlPath;
-      if (info.status !== 'active' && !claudeSessionIdRef.current) {
-        setIsLoading(false);
-      }
-      setError(null);
-    } catch (err) {
-      if (wsInitReceivedRef.current) return;
-      setError(err instanceof Error ? err.message : '세션 정보를 불러올 수 없습니다');
-      setSessionStatus('none');
-      setIsLoading(false);
-    }
-  }, [enabled, sessionName]);
+  const isLoading = !wsInitReceived;
 
-  useEffect(() => {
-    fetchSession();
-  }, [fetchSession]);
-
-  const handleInit = useCallback((newEntries: ITimelineEntry[], _totalEntries: number, initSessionId: string, summary?: string, meta?: IInitMeta, startByteOffset?: number, hasMoreInit?: boolean) => {
-    wsInitReceivedRef.current = true;
+  const handleInit = useCallback((newEntries: ITimelineEntry[], _totalEntries: number, initSessionId: string, summary?: string, meta?: IInitMeta, startByteOffset?: number, hasMoreInit?: boolean, jsonlPath?: string | null) => {
+    setWsInitReceived(true);
     setEntries(newEntries);
     startByteOffsetRef.current = startByteOffset ?? 0;
     setHasMore(hasMoreInit ?? false);
     setSessionSummary(summary);
     setInitMeta(meta);
+    if (jsonlPath) {
+      jsonlPathRef.current = jsonlPath;
+    }
     if (initSessionId) {
       setSessionId(initSessionId);
-    }
-
-    if (newEntries.length > 0 || !initSessionId) {
-      setIsLoading(false);
+      setSessionStatus('active');
     }
     setError(null);
   }, []);
 
   const handleAppend = useCallback((newEntries: ITimelineEntry[]) => {
-    setIsLoading(false);
     setEntries((prev) => {
       const updated = [...prev];
       for (const entry of newEntries) {
@@ -176,7 +144,7 @@ const useTimeline = ({
   const handleSessionChanged = useCallback((newSessionId: string, reason: string) => {
     if (reason === 'session-ended') {
       setSessionStatus('none');
-      setIsLoading(false);
+      setWsInitReceived(true);
       setEntries([]);
       setSessionSummary(undefined);
       setInitMeta(undefined);
@@ -185,7 +153,7 @@ const useTimeline = ({
     }
     if (reason === 'session-waiting') {
       setSessionStatus('active');
-      setIsLoading(true);
+      setWsInitReceived(false);
       if (newSessionId) setSessionId(newSessionId);
       return;
     }
@@ -195,7 +163,7 @@ const useTimeline = ({
     setSessionSummary(undefined);
     setInitMeta(undefined);
     setHasMore(false);
-    setIsLoading(true);
+    setWsInitReceived(false);
   }, []);
 
   const loadMore = useCallback(async () => {
@@ -220,6 +188,10 @@ const useTimeline = ({
   }, [hasMore]);
 
   const handleError = useCallback((err: { code: string; message: string }) => {
+    if (err.code === 'not-installed') {
+      setSessionStatus('not-installed');
+      return;
+    }
     console.warn(`[timeline] WebSocket error: ${err.code} — ${err.message}`);
   }, []);
 
@@ -236,7 +208,7 @@ const useTimeline = ({
       setSessionId(payload.sessionId);
       setSessionStatus('active');
       setEntries([]);
-      setIsLoading(true);
+      setWsInitReceived(false);
       resumeCallbacksRef.current?.onResumeStarted?.(payload);
     },
     [],
@@ -256,12 +228,10 @@ const useTimeline = ({
     [],
   );
 
-  const shouldConnect = enabled && sessionStatus !== 'not-installed';
-
   const { status: wsStatus, reconnect, sendResume } = useTimelineWebSocket({
     sessionName,
     claudeSessionId,
-    enabled: shouldConnect,
+    enabled,
     onInit: handleInit,
     onAppend: handleAppend,
     onSessionChanged: handleSessionChanged,
@@ -271,11 +241,10 @@ const useTimeline = ({
     onResumeError: handleResumeError,
   });
 
-  const retrySession = useCallback(async () => {
+  const retrySession = useCallback(() => {
     setError(null);
-    await fetchSession();
     reconnect();
-  }, [fetchSession, reconnect]);
+  }, [reconnect]);
 
   const rawCliState = useMemo(
     () => isLoading ? 'inactive' as const : deriveCliState(sessionStatus, entries),

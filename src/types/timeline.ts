@@ -223,6 +223,7 @@ export interface ITimelineInitMessage {
   totalEntries: number;
   startByteOffset: number;
   hasMore: boolean;
+  jsonlPath?: string | null;
   summary?: string;
   meta?: IInitMeta;
 }

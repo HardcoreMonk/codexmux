@@ -307,7 +307,7 @@ const computeInitMeta = (entries: ITimelineEntry[], fileSize: number, createdAtO
 
 const subscribeToFile = async (ws: WebSocket, jsonlPath: string, sessionId?: string, sessionName?: string): Promise<string | undefined> => {
   if (!existsSync(jsonlPath)) {
-    sendJson(ws, { type: 'timeline:init', entries: [], sessionId: sessionId ?? '', totalEntries: 0, startByteOffset: 0, hasMore: false });
+    sendJson(ws, { type: 'timeline:init', entries: [], sessionId: sessionId ?? '', totalEntries: 0, startByteOffset: 0, hasMore: false, jsonlPath });
     return undefined;
   }
 
@@ -366,6 +366,7 @@ const subscribeToFile = async (ws: WebSocket, jsonlPath: string, sessionId?: str
     totalEntries: result.entries.length,
     startByteOffset: result.startByteOffset,
     hasMore: result.hasMore,
+    jsonlPath,
     summary: result.summary,
     meta,
   });
@@ -684,6 +685,12 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
   const sessionInfo = await detectActiveSession(panePid);
 
   if (conn.cleaned) return;
+
+  if (sessionInfo.status === 'not-installed') {
+    sendJson(ws, { type: 'timeline:error', code: 'not-installed', message: 'Claude CLI is not installed' });
+    sendJson(ws, { type: 'timeline:init', entries: [], sessionId: '', totalEntries: 0, startByteOffset: 0, hasMore: false });
+    return;
+  }
 
   if (claudeSessionId && sessionInfo.status === 'none') {
     await updateTabClaudeSessionId(conn.sessionName, null).catch(() => {});
