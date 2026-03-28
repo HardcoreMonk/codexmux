@@ -484,6 +484,10 @@ const watchForJsonlFile = (
 
   if (existsSync(projectDir)) {
     watchProjectDir();
+    // watch 설정 후 재확인: existsSync → watch() 사이에 파일이 생성된 경우 대응
+    if (!stopped && existsSync(expectedJsonlPath)) {
+      onJsonlFound();
+    }
   } else {
     const projectsDir = path.dirname(projectDir);
     const projectDirName = path.basename(projectDir);
@@ -496,6 +500,9 @@ const watchForJsonlFile = (
             onJsonlFound();
           } else {
             watchProjectDir();
+            if (!stopped && existsSync(expectedJsonlPath)) {
+              onJsonlFound();
+            }
           }
         }
       });

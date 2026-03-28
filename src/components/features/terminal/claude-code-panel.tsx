@@ -159,6 +159,13 @@ const ClaudeCodePanel = ({
   }
 
   if (view === 'inactive' && sessions.length === 0) {
+    if (isSessionListLoading) {
+      return (
+        <div className={cn('flex h-full w-full flex-col items-center justify-center', className)}>
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      );
+    }
     return (
       <div className={cn('h-full w-full', className)}>
         <SessionEmptyView onClose={onClose} onNewSession={onNewSession} />
