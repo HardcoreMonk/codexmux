@@ -24,6 +24,7 @@ const KEYS: IKeyDef[] = [
   { label: 'Esc', value: '\x1b' },
   { label: 'Ctrl', value: CTRL_TOGGLE },
   { label: 'Shift', value: SHIFT_TOGGLE },
+  { label: '↵', value: '\r' },
   { label: '↑', value: '\x1b[A' },
   { label: '↓', value: '\x1b[B' },
   { label: '←', value: '\x1b[D' },
