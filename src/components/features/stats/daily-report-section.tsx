@@ -85,15 +85,20 @@ const DailyReportSection = ({ days, cache, onCacheUpdate }: IDailyReportSectionP
                 </div>
                 <div className="flex items-center gap-1.5">
                   {report && (
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => handleGenerate(day.date, true)}
-                      disabled={generating !== null}
-                      className="text-muted-foreground"
-                    >
-                      <RefreshCw className={`h-3 w-3${isGenerating ? ' animate-spin' : ''}`} />
-                    </Button>
+                    <>
+                      {isGenerating && (
+                        <span className="text-xs text-muted-foreground">생성 중...</span>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => handleGenerate(day.date, true)}
+                        disabled={generating !== null}
+                        className="text-muted-foreground"
+                      >
+                        <RefreshCw className={`h-3 w-3${isGenerating ? ' animate-spin' : ''}`} />
+                      </Button>
+                    </>
                   )}
                   <span className="text-xs tabular-nums text-muted-foreground">
                     세션 {day.sessionCount} · {formatCostWithComma(day.cost)}
@@ -122,12 +127,6 @@ const DailyReportSection = ({ days, cache, onCacheUpdate }: IDailyReportSectionP
 
               {report && (
                 <>
-                  {isGenerating && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      <span>요약 생성 중...</span>
-                    </div>
-                  )}
                   <div className={isGenerating ? 'opacity-40' : undefined}>
                     <div className={markdownClass}>
                     <ReactMarkdown>{report.brief}</ReactMarkdown>
