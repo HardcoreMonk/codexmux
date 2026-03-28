@@ -145,40 +145,6 @@ const MobileClaudeCodePanel = ({
 
   const view = useTabStore((s) => tabId ? selectSessionView(s.tabs, tabId) : 'empty' as const);
 
-  // 로딩 화면 보완: 500ms 간격 체크, 최대 10회 후 강제 종료 (WS 정상인데 init 누락 시)
-  const [loadingFallbackDone, setLoadingFallbackDone] = useState(false);
-  const loadingRetryCountRef = useRef(0);
-
-  const isInLoadingView = view === 'loading' || claudeStatusFromTimeline === 'unknown' || (view === 'inactive' && sessions.length === 0 && isSessionListLoading);
-
-  useEffect(() => {
-    setLoadingFallbackDone(false);
-    loadingRetryCountRef.current = 0;
-  }, [tabId, sessionName]);
-
-  useEffect(() => {
-    if (!isInLoadingView) {
-      loadingRetryCountRef.current = 0;
-      return;
-    }
-    if (loadingFallbackDone) return;
-
-    const timer = setInterval(() => {
-      loadingRetryCountRef.current++;
-      if (loadingRetryCountRef.current >= 10) {
-        if (tabId) {
-          useTabStore.getState().setTimelineLoading(tabId, false);
-          if (claudeStatusFromTimeline === 'unknown') {
-            useTabStore.getState().setClaudeStatus(tabId, 'not-running', Date.now());
-          }
-        }
-        setLoadingFallbackDone(true);
-      }
-    }, 500);
-
-    return () => clearInterval(timer);
-  }, [isInLoadingView, loadingFallbackDone, tabId, claudeStatusFromTimeline]);
-
   const { meta } = useSessionMeta(entries, sessionSummary, initMeta);
   const { branch, isLoading: isBranchLoading } = useGitBranch(sessionName);
   const { status: gitStatus } = useGitStatus(sessionName, metaSheetOpen);
@@ -241,7 +207,7 @@ const MobileClaudeCodePanel = ({
     );
   }
 
-  if (!loadingFallbackDone && isInLoadingView) {
+  if (view === 'loading' || (view === 'inactive' && sessions.length === 0 && isSessionListLoading)) {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-muted">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

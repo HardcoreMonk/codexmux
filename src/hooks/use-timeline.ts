@@ -175,7 +175,6 @@ const useTimeline = ({
     }
     if (reason === 'session-waiting') {
       setClaudeSession('running');
-      setWsInitReceived(false);
       if (newSessionId) setSessionId(newSessionId);
       return;
     }
