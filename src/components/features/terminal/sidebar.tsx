@@ -229,7 +229,7 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
         <div className="flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
           <div className="flex items-center gap-1.5">
             <Terminal className="h-4 w-4 text-ui-purple" />
-            <span className="text-sm font-semibold text-ui-purple">purplemux</span>
+            <span className="text-sm text-ui-purple"><span className="font-bold">purple</span><span className="font-normal">mux</span></span>
           </div>
           <div className="flex items-center gap-0.5">
             <button
