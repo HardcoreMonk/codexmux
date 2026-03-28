@@ -388,7 +388,7 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
       )}
 
       {collapsed && (
-        <div className="flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
+        <div className="flex w-8 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
           {isElectron && (
             <div className="h-titlebar shrink-0" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
           )}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Equal, ExternalLink, Loader2 } from 'lucide-react';
+import { ExternalLink, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,6 +9,13 @@ import { collectPanes } from '@/hooks/use-layout';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
 import isElectron from '@/hooks/use-is-electron';
+
+const EqualizeIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="8" y1="4" x2="8" y2="20" />
+    <line x1="16" y1="4" x2="16" y2="20" />
+  </svg>
+);
 
 const SplitVerticalIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -159,7 +166,7 @@ const ContentHeader = ({
                 onClick={onEqualizeRatios}
                 aria-label="균등 분할"
               >
-                <Equal className="h-3.5 w-3.5" />
+                <EqualizeIcon className="h-3.5 w-3.5" />
               </TooltipTrigger>
               <TooltipContent side="bottom">균등 분할</TooltipContent>
             </Tooltip>
