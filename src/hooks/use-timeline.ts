@@ -102,6 +102,21 @@ const useTimeline = ({
   const startByteOffsetRef = useRef(0);
   const isLoadingMoreRef = useRef(false);
 
+  const [prevSessionName, setPrevSessionName] = useState(sessionName);
+  if (sessionName !== prevSessionName) {
+    setPrevSessionName(sessionName);
+    setWsInitReceived(false);
+    setClaudeSession('unknown');
+    setEntries([]);
+    setError(null);
+    setHasMore(false);
+    setSessionId(null);
+    setSessionSummary(undefined);
+    setInitMeta(undefined);
+    jsonlPathRef.current = null;
+    startByteOffsetRef.current = 0;
+  }
+
   const isLoading = !wsInitReceived;
 
   const handleInit = useCallback((newEntries: ITimelineEntry[], _totalEntries: number, initSessionId: string, summary?: string, meta?: IInitMeta, startByteOffset?: number, hasMoreInit?: boolean, jsonlPath?: string | null) => {
@@ -117,6 +132,8 @@ const useTimeline = ({
     if (initSessionId) {
       setSessionId(initSessionId);
       setClaudeSession('running');
+    } else {
+      setClaudeSession('not-running');
     }
     setError(null);
   }, []);

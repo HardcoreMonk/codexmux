@@ -207,7 +207,7 @@ const MobileClaudeCodePanel = ({
     );
   }
 
-  if (view === 'loading' || (view === 'inactive' && sessions.length === 0 && isSessionListLoading)) {
+  if (view === 'loading' || claudeStatusFromTimeline === 'unknown' || (view === 'inactive' && sessions.length === 0 && isSessionListLoading)) {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-muted">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

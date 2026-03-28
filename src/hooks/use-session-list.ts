@@ -34,6 +34,16 @@ const useSessionList = ({
 
   const isLoadingMoreRef = useRef(false);
 
+  const [prevTmuxSession, setPrevTmuxSession] = useState(tmuxSession);
+  if (tmuxSession !== prevTmuxSession) {
+    setPrevTmuxSession(tmuxSession);
+    setSessions([]);
+    setTotal(0);
+    setHasMore(false);
+    setIsLoading(true);
+    setError(null);
+  }
+
   const fetchSessions = useCallback(async () => {
     if (!tmuxSession) return;
     setIsLoading(true);

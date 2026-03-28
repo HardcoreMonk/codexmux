@@ -101,7 +101,7 @@ const SessionListView = ({
         )}
       </div>
 
-      {isLoading ? (
+      {isLoading && sessions.length === 0 ? (
         <SessionListSkeleton />
       ) : error ? (
         <SessionListError error={error} onRetry={handleRefresh} />

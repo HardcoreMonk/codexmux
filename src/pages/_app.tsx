@@ -33,7 +33,7 @@ const ThemedToaster = () => {
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   return (
-    <SessionProvider session={session}>
+    <SessionProvider session={session} refetchInterval={3600}>
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
         <main className="font-sans antialiased">
           <Component {...pageProps} />
