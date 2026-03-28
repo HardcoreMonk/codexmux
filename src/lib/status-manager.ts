@@ -41,6 +41,8 @@ const scanLines = (lines: string[], elapsed: number): IScanResult => {
     try {
       const entry = JSON.parse(lines[i]);
 
+      if (entry.isSidechain) continue;
+
       if (entry.type === 'system' && (entry.subtype === 'stop_hook_summary' || entry.subtype === 'turn_duration')) {
         return { matched: true, idle: true, needsStaleRecheck: false, staleMs: 0 };
       }
