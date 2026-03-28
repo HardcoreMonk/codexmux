@@ -269,6 +269,7 @@ const extractDiff = (toolName: string, input: Record<string, unknown> = {}): { f
 interface IRawEntry {
   base: z.infer<typeof BaseEntrySchema>;
   raw: unknown;
+  lineOffset: number;
 }
 
 const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): ITimelineEntry[] => {
@@ -595,14 +596,20 @@ const mergeToolResults = (entries: ITimelineEntry[]): ITimelineEntry[] => {
 // --- Core Parsing ---
 
 const parseContent = (content: string): IParseResult => {
-  const lines = content.split('\n').filter((line) => line.trim());
+  const splitLines = content.split('\n');
   const rawEntries: IRawEntry[] = [];
   let errorCount = 0;
   let sessionSummary: string | undefined;
+  let lineCount = 0;
 
-  for (const line of lines) {
+  let bytePos = 0;
+  for (const rawLine of splitLines) {
+    const lineByteOffset = bytePos;
+    bytePos += Buffer.byteLength(rawLine, 'utf-8') + 1;
+    if (!rawLine.trim()) continue;
+    lineCount++;
     try {
-      const raw = JSON.parse(line);
+      const raw = JSON.parse(rawLine);
       const base = BaseEntrySchema.safeParse(raw);
       if (!base.success) {
         errorCount++;
@@ -628,24 +635,25 @@ const parseContent = (content: string): IParseResult => {
       if (base.data.type === 'system') {
         const rawObj = raw as Record<string, unknown>;
         if (rawObj.subtype === 'stop_hook_summary' || rawObj.subtype === 'turn_duration') {
-          rawEntries.push({ base: base.data, raw });
+          rawEntries.push({ base: base.data, raw, lineOffset: lineByteOffset });
         }
         continue;
       }
       if (EXCLUDED_TYPES.has(base.data.type)) continue;
-      rawEntries.push({ base: base.data, raw });
+      rawEntries.push({ base: base.data, raw, lineOffset: lineByteOffset });
     } catch {
       errorCount++;
     }
   }
 
   const entries: ITimelineEntry[] = [];
+  const entryLineOffsets: number[] = [];
   let lastAgentHint: { agentType: string; description: string } | null = null;
   let skipNextUser = false;
   let i = 0;
 
   while (i < rawEntries.length) {
-    const { base, raw } = rawEntries[i];
+    const { base, raw, lineOffset } = rawEntries[i];
 
     if (base.type === 'system') {
       const timestamp = base.timestamp ? new Date(base.timestamp).getTime() : Date.now();
@@ -654,17 +662,20 @@ const parseContent = (content: string): IParseResult => {
         type: 'turn-end',
         timestamp,
       } satisfies ITimelineTurnEnd);
+      entryLineOffsets.push(lineOffset);
       i++;
       continue;
     }
 
     if (base.isSidechain) {
       const group: IRawEntry[] = [];
+      const groupOffset = rawEntries[i].lineOffset;
       while (i < rawEntries.length && rawEntries[i].base.isSidechain) {
         group.push(rawEntries[i]);
         i++;
       }
       entries.push(createAgentGroup(group, lastAgentHint));
+      entryLineOffsets.push(groupOffset);
       lastAgentHint = null;
       continue;
     }
@@ -697,14 +708,18 @@ const parseContent = (content: string): IParseResult => {
       }
     }
 
-    entries.push(...parsed);
+    for (const entry of parsed) {
+      entries.push(entry);
+      entryLineOffsets.push(lineOffset);
+    }
     i++;
   }
 
   return {
     entries: mergeToolResults(entries),
+    entryLineOffsets,
     lastOffset: Buffer.byteLength(content, 'utf-8'),
-    totalLines: lines.length,
+    totalLines: lineCount,
     errorCount,
     summary: sessionSummary,
   };
@@ -716,7 +731,7 @@ export const parseSessionFile = async (filePath: string): Promise<IParseResult> 
   try {
     const stat = await fs.stat(filePath);
     if (stat.size === 0) {
-      return { entries: [], lastOffset: 0, totalLines: 0, errorCount: 0 };
+      return { entries: [], entryLineOffsets: [], lastOffset: 0, totalLines: 0, errorCount: 0 };
     }
 
     if (stat.size > TAIL_THRESHOLD) {
@@ -726,7 +741,7 @@ export const parseSessionFile = async (filePath: string): Promise<IParseResult> 
     const content = await fs.readFile(filePath, 'utf-8');
     return parseContent(content);
   } catch {
-    return { entries: [], lastOffset: 0, totalLines: 0, errorCount: 0 };
+    return { entries: [], entryLineOffsets: [], lastOffset: 0, totalLines: 0, errorCount: 0 };
   }
 };
 
@@ -787,14 +802,14 @@ export const readTailEntries = async (
     if (fileSize <= SMALL_FILE_THRESHOLD) {
       const content = await fs.readFile(filePath, 'utf-8');
       const result = parseContent(content);
-      const entries = result.entries.length > maxEntries
-        ? result.entries.slice(-maxEntries)
-        : result.entries;
+      const sliced = result.entries.length > maxEntries;
+      const sliceStart = sliced ? result.entries.length - maxEntries : 0;
+      const entries = sliced ? result.entries.slice(-maxEntries) : result.entries;
       return {
         entries,
-        startByteOffset: 0,
+        startByteOffset: sliced ? result.entryLineOffsets[sliceStart] : 0,
         fileSize,
-        hasMore: result.entries.length > maxEntries,
+        hasMore: sliced,
         errorCount: result.errorCount,
         summary: result.summary,
       };
@@ -807,14 +822,17 @@ export const readTailEntries = async (
       if (!content) { chunkSize *= 2; continue; }
       const result = parseContent(content);
       if (result.entries.length >= maxEntries || from === 0) {
-        const entries = result.entries.length > maxEntries
-          ? result.entries.slice(-maxEntries)
-          : result.entries;
+        const sliced = result.entries.length > maxEntries;
+        const sliceStart = sliced ? result.entries.length - maxEntries : 0;
+        const entries = sliced ? result.entries.slice(-maxEntries) : result.entries;
+        const startByteOffset = sliced
+          ? validFrom + result.entryLineOffsets[sliceStart]
+          : (from === 0 ? 0 : validFrom);
         return {
           entries,
-          startByteOffset: from === 0 ? 0 : validFrom,
+          startByteOffset,
           fileSize,
-          hasMore: from > 0 || result.entries.length > maxEntries,
+          hasMore: startByteOffset > 0,
           errorCount: result.errorCount,
           summary: result.summary,
         };
@@ -841,14 +859,17 @@ export const readEntriesBefore = async (
     const { content, validFrom } = await readChunk(filePath, from, beforeByte);
     if (!content) return empty;
     const result = parseContent(content);
-    const entries = result.entries.length > maxEntries
-      ? result.entries.slice(-maxEntries)
-      : result.entries;
+    const sliced = result.entries.length > maxEntries;
+    const sliceStart = sliced ? result.entries.length - maxEntries : 0;
+    const entries = sliced ? result.entries.slice(-maxEntries) : result.entries;
+    const startByteOffset = sliced
+      ? validFrom + result.entryLineOffsets[sliceStart]
+      : (from === 0 ? 0 : validFrom);
     return {
       entries,
-      startByteOffset: from === 0 ? 0 : validFrom,
+      startByteOffset,
       fileSize: stat.size,
-      hasMore: (from === 0 ? 0 : validFrom) > 0,
+      hasMore: startByteOffset > 0,
       errorCount: result.errorCount,
     };
   } catch {

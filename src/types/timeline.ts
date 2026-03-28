@@ -302,6 +302,7 @@ export interface IChunkReadResult {
 
 export interface IParseResult {
   entries: ITimelineEntry[];
+  entryLineOffsets: number[];
   lastOffset: number;
   totalLines: number;
   errorCount: number;

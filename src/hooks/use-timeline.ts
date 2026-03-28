@@ -9,9 +9,6 @@ import type {
 } from '@/types/timeline';
 import useTimelineWebSocket from '@/hooks/use-timeline-websocket';
 
-// status-manager.ts의 JSONL_STALE_MS와 동일한 기준
-const STALE_BUSY_MS = 30_000;
-
 const deriveCliState = (
   claudeStatus: TClaudeStatus,
   entries: ITimelineEntry[],
@@ -271,30 +268,10 @@ const useTimeline = ({
     reconnect();
   }, [reconnect]);
 
-  const rawCliState = useMemo(
+  const cliState = useMemo(
     () => deriveCliState(claudeStatus, entries),
     [claudeStatus, entries],
   );
-
-  const lastEntryTs = entries.length > 0 ? entries[entries.length - 1].timestamp : 0;
-  const [staleBusy, setStaleBusy] = useState(false);
-
-  useEffect(() => {
-    if (rawCliState !== 'busy' || lastEntryTs === 0) {
-      setStaleBusy(false);
-      return;
-    }
-    const age = Date.now() - lastEntryTs;
-    if (age >= STALE_BUSY_MS) {
-      setStaleBusy(true);
-      return;
-    }
-    const timer = setTimeout(() => setStaleBusy(true), STALE_BUSY_MS - age);
-    return () => clearTimeout(timer);
-  }, [rawCliState, lastEntryTs]);
-
-  const isStaleBusy = staleBusy || (rawCliState === 'busy' && lastEntryTs > 0 && Date.now() - lastEntryTs >= STALE_BUSY_MS);
-  const cliState = isStaleBusy ? 'idle' as const : rawCliState;
 
   const onSyncRef = useRef(onSync);
   useEffect(() => { onSyncRef.current = onSync; });

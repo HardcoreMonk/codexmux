@@ -390,6 +390,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   const handleSwitchTab = useCallback(
     (tabId: string) => {
       if (tabId === activeTabId) return;
+      dismissStatusTab(tabId);
       switchTabInPane(paneId, tabId);
     },
     [paneId, activeTabId, switchTabInPane],
