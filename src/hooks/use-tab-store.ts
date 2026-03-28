@@ -10,10 +10,12 @@ export type TSessionView =
   | 'list'
   | 'empty';
 
+export type TClaudeProcess = 'unknown' | 'running' | 'not-running';
+
 export interface ITabState {
   // 터미널 WS
   terminalConnected: boolean;
-  isClaudeRunning: boolean;
+  claudeProcess: TClaudeProcess;
 
   // 타임라인 WS
   sessionStatus: TSessionStatus;
@@ -36,7 +38,7 @@ export interface ITabState {
 
 const DEFAULT_TAB_STATE: ITabState = {
   terminalConnected: false,
-  isClaudeRunning: false,
+  claudeProcess: 'unknown',
   sessionStatus: 'none',
   cliState: 'inactive',
   isTimelineLoading: true,
@@ -60,7 +62,7 @@ interface ITabStore {
 
   // 터미널 WS
   setTerminalConnected: (tabId: string, connected: boolean) => void;
-  setClaudeRunning: (tabId: string, running: boolean) => void;
+  setClaudeProcess: (tabId: string, status: TClaudeProcess) => void;
 
   // 타임라인 WS
   setSessionStatus: (tabId: string, status: TSessionStatus) => void;
@@ -132,11 +134,11 @@ const useTabStore = create<ITabStore>((set) => ({
       return { tabs: updateTab(state.tabs, tabId, { terminalConnected: connected }) };
     }),
 
-  setClaudeRunning: (tabId, running) =>
+  setClaudeProcess: (tabId, status) =>
     set((state) => {
       const prev = state.tabs[tabId];
-      if (!prev || prev.isClaudeRunning === running) return state;
-      return { tabs: updateTab(state.tabs, tabId, { isClaudeRunning: running }) };
+      if (!prev || prev.claudeProcess === status) return state;
+      return { tabs: updateTab(state.tabs, tabId, { claudeProcess: status }) };
     }),
 
   setSessionStatus: (tabId, status) =>
@@ -261,7 +263,7 @@ const useTabStore = create<ITabStore>((set) => ({
 
 const isEffectivelyActive = (tab: ITabState): boolean =>
   tab.sessionStatus === 'active'
-  && !(tab.isClaudeRunning === false && tab.terminalConnected);
+  && tab.claudeProcess !== 'not-running';
 
 export const selectEffectiveSessionStatus = (tabs: Record<string, ITabState>, tabId: string): 'active' | 'none' | 'not-installed' => {
   const tab = tabs[tabId];
@@ -292,16 +294,6 @@ export const selectTabDisplayStatus = (tabs: Record<string, ITabState>, tabId: s
   if (tab.cliState === 'busy') return 'busy';
   if (tab.cliState === 'idle' && !tab.dismissed) return 'needs-attention';
   return 'idle';
-};
-
-export const selectCanInput = (tabs: Record<string, ITabState>, tabId: string): boolean => {
-  const tab = tabs[tabId];
-  if (!tab) return false;
-
-  return isEffectivelyActive(tab)
-    && tab.terminalConnected
-    && !tab.isTimelineLoading
-    && !tab.isRestarting;
 };
 
 export const selectWorkspaceStatus = (

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 
 interface IMobileTerminalToolbarProps {
   sendStdin: (data: string) => void;
+  terminalConnected: boolean;
 }
 
 interface IKeyDef {
@@ -31,7 +32,7 @@ const KEYS: IKeyDef[] = [
   { label: '~', value: '~' },
 ];
 
-const MobileTerminalToolbar = ({ sendStdin }: IMobileTerminalToolbarProps) => {
+const MobileTerminalToolbar = ({ sendStdin, terminalConnected }: IMobileTerminalToolbarProps) => {
   const [value, setValue] = useState('');
   const [ctrlActive, setCtrlActive] = useState(false);
   const [shiftActive, setShiftActive] = useState(false);
@@ -50,10 +51,11 @@ const MobileTerminalToolbar = ({ sendStdin }: IMobileTerminalToolbarProps) => {
   }, [value, adjustHeight]);
 
   const handleSend = useCallback(() => {
+    if (!terminalConnected) return;
     if (value) sendStdin(value);
     sendStdin('\r');
     setValue('');
-  }, [value, sendStdin]);
+  }, [value, sendStdin, terminalConnected]);
 
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {

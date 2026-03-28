@@ -117,7 +117,7 @@ const MobileSurfaceView = ({
   const setInputValueRef = useRef<((v: string) => void) | undefined>(undefined);
 
   const pendingRestartRef = useRef(false);
-  const isClaudeRunning = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.isClaudeRunning ?? false : false);
+  const claudeProcess = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.claudeProcess ?? 'unknown' : 'unknown');
   const isRestarting = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.isRestarting ?? false : false);
 
   const handleCliStateChange = useCallback((state: TCliState) => {
@@ -152,7 +152,7 @@ const MobileSurfaceView = ({
       if (!tabId) return;
       const formatted = formatTabTitle(title);
       useTabMetadataStore.getState().setTitle(tabId, formatted);
-      useTabStore.getState().setClaudeRunning(tabId, isClaudeProcess(title));
+      useTabStore.getState().setClaudeProcess(tabId, isClaudeProcess(title) ? 'running' : 'not-running');
       fetchAndUpdateCwd();
     },
     customKeyEventHandler: handleCustomKeyEvent,
@@ -194,6 +194,8 @@ const MobileSurfaceView = ({
       setHasEverConnected(true);
       setAttemptedTabId(activeTabIdRef.current);
       prevConnectedTabIdRef.current = activeTabIdRef.current;
+      const tabId = activeTabIdRef.current;
+      if (tabId) useTabStore.getState().setTerminalConnected(tabId, true);
       const { cols, rows } = termActionsRef.current.fit();
       wsActionsRef.current.sendResize(cols, rows);
       fetchAndUpdateCwd();
@@ -217,9 +219,26 @@ const MobileSurfaceView = ({
     if (connectedSessionRef.current === tab.sessionName) return;
 
     if (connectedSessionRef.current !== null) reset();
+
+    useTabStore.getState().initTab(activeTabId, {
+      cliState: tab.cliState ?? 'inactive',
+      dismissed: tab.dismissed ?? true,
+      terminalConnected: false,
+      claudeProcess: 'unknown',
+    });
+
     connectedSessionRef.current = tab.sessionName;
     connect(tab.sessionName);
   }, [isReady, activeTabId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const tabId = activeTabIdRef.current;
+    if (!tabId) return;
+    useTabStore.getState().setTerminalConnected(tabId, status === 'connected');
+    if (status !== 'connected') {
+      useTabStore.getState().setClaudeProcess(tabId, 'unknown');
+    }
+  }, [status]);
 
   useEffect(() => {
     if (status === 'disconnected' && hasEverConnected) {
@@ -282,14 +301,14 @@ const MobileSurfaceView = ({
   }, [status, sendStdin, activeTabId]);
 
   useEffect(() => {
-    if (!pendingRestartRef.current || isClaudeRunning) return;
+    if (!pendingRestartRef.current || claudeProcess === 'running') return;
     pendingRestartRef.current = false;
     if (status !== 'connected') return;
     const dangerous = useWorkspaceStore.getState().dangerouslySkipPermissions;
     const settings = '--settings ~/.purplemux/hooks.json';
     const cmd = dangerous ? `claude ${settings} --dangerously-skip-permissions` : `claude ${settings}`;
     sendStdin(`${cmd}\r`);
-  }, [isClaudeRunning, status, sendStdin]);
+  }, [claudeProcess, status, sendStdin]);
 
   const noTabs = tabs.length === 0;
   const ready = isReady && status === 'connected' && !noTabs;
@@ -338,8 +357,8 @@ const MobileSurfaceView = ({
         )}
       />
 
-      {!isClaudeCode && ready && (
-        <MobileTerminalToolbar sendStdin={sendWebStdin} />
+      {!isClaudeCode && status === 'connected' && (
+        <MobileTerminalToolbar sendStdin={sendWebStdin} terminalConnected={status === 'connected'} />
       )}
 
       {noTabs && (

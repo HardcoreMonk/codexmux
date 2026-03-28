@@ -34,7 +34,7 @@ const ClaudeCodePanel = ({
 }: IClaudeCodePanelProps) => {
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(null);
 
-  const isClaudeRunning = useTabStore((s) => s.tabs[tabId]?.isClaudeRunning ?? false);
+  const claudeProcess = useTabStore((s) => s.tabs[tabId]?.claudeProcess ?? 'unknown');
   const isRestarting = useTabStore((s) => s.tabs[tabId]?.isRestarting ?? false);
   const view = useTabStore((s) => selectSessionView(s.tabs, tabId));
 
@@ -112,7 +112,7 @@ const ClaudeCodePanel = ({
     isTimelineLoading,
     wsStatus,
     sessionsCount: sessions.length,
-    isClaudeRunning,
+    claudeProcess,
     retrySession,
   });
 

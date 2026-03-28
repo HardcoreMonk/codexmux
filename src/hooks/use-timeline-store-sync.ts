@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import useTabStore from '@/hooks/use-tab-store';
+import type { TClaudeProcess } from '@/hooks/use-tab-store';
 import type { TCliState, TSessionStatus, TTimelineConnectionStatus } from '@/types/timeline';
 
 interface ITimelineStoreSyncOptions {
@@ -9,7 +10,7 @@ interface ITimelineStoreSyncOptions {
   isTimelineLoading: boolean;
   wsStatus: TTimelineConnectionStatus;
   sessionsCount: number;
-  isClaudeRunning: boolean;
+  claudeProcess: TClaudeProcess;
   retrySession: () => void;
 }
 
@@ -20,7 +21,7 @@ const useTimelineStoreSync = ({
   isTimelineLoading,
   wsStatus,
   sessionsCount,
-  isClaudeRunning,
+  claudeProcess,
   retrySession,
 }: ITimelineStoreSyncOptions) => {
   useEffect(() => {
@@ -48,17 +49,16 @@ const useTimelineStoreSync = ({
     useTabStore.getState().setHasSessions(tabId, sessionsCount > 0);
   }, [tabId, sessionsCount]);
 
-  // Claude 프로세스 시작 시 타임라인 재연결
-  const prevClaudeRunningRef = useRef(isClaudeRunning);
+  const prevClaudeProcessRef = useRef(claudeProcess);
 
   useEffect(() => {
-    const wasRunning = prevClaudeRunningRef.current;
-    prevClaudeRunningRef.current = isClaudeRunning;
+    const prev = prevClaudeProcessRef.current;
+    prevClaudeProcessRef.current = claudeProcess;
 
-    if (!wasRunning && isClaudeRunning && sessionStatus !== 'active') {
+    if (prev !== 'running' && claudeProcess === 'running' && sessionStatus !== 'active') {
       retrySession();
     }
-  }, [isClaudeRunning, sessionStatus, retrySession]);
+  }, [claudeProcess, sessionStatus, retrySession]);
 };
 
 export default useTimelineStoreSync;

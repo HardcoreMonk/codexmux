@@ -160,7 +160,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   const pendingRestartRef = useRef(false);
 
   const claudeCliState = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.cliState ?? 'inactive' : 'inactive');
-  const isClaudeRunning = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.isClaudeRunning ?? false : false);
+  const claudeProcess = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.claudeProcess ?? 'unknown' : 'unknown');
   const sessionView = useTabStore((s) => activeTabId ? selectSessionView(s.tabs, activeTabId) : 'empty');
   const claudeInputVisible = sessionView === 'timeline';
 
@@ -217,7 +217,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
       if (!tabId) return;
       const formatted = formatTabTitle(title);
       useTabMetadataStore.getState().setTitle(tabId, formatted);
-      useTabStore.getState().setClaudeRunning(tabId, isClaudeProcess(title));
+      useTabStore.getState().setClaudeProcess(tabId, isClaudeProcess(title) ? 'running' : 'not-running');
       fetchAndUpdateCwd();
     },
     customKeyEventHandler: handleCustomKeyEvent,
@@ -318,7 +318,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
       cliState: tab.cliState ?? 'inactive',
       dismissed: tab.dismissed ?? true,
       terminalConnected: false,
-      isClaudeRunning: false,
+      claudeProcess: 'unknown',
     });
 
     connectedSessionRef.current = tab.sessionName;
@@ -328,8 +328,10 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
 
   useEffect(() => {
     const tabId = activeTabIdRef.current;
-    if (tabId) {
-      useTabStore.getState().setTerminalConnected(tabId, status === 'connected');
+    if (!tabId) return;
+    useTabStore.getState().setTerminalConnected(tabId, status === 'connected');
+    if (status !== 'connected') {
+      useTabStore.getState().setClaudeProcess(tabId, 'unknown');
     }
   }, [status]);
 
@@ -472,7 +474,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   }, [paneId, activeTabId, tabs, updateTabPanelType]);
 
   useEffect(() => {
-    if (!activeTabId || !isClaudeRunning || activePanelType !== 'terminal') {
+    if (!activeTabId || claudeProcess !== 'running' || activePanelType !== 'terminal') {
       setShowClaudeModePrompt(false);
       return;
     }
@@ -480,7 +482,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
 
     claudeModeShownTabsRef.current.add(activeTabId);
     setShowClaudeModePrompt(true);
-  }, [activeTabId, isClaudeRunning, activePanelType]);
+  }, [activeTabId, claudeProcess, activePanelType]);
 
   const [showPathInput, setShowPathInput] = useState(false);
   const [droppedFileHint, setDroppedFileHint] = useState('');
@@ -557,14 +559,14 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   }, [status, sendStdin, activeTabId]);
 
   useEffect(() => {
-    if (!pendingRestartRef.current || isClaudeRunning) return;
+    if (!pendingRestartRef.current || claudeProcess === 'running') return;
     pendingRestartRef.current = false;
     if (status !== 'connected') return;
     const dangerous = useWorkspaceStore.getState().dangerouslySkipPermissions;
     const settings = '--settings ~/.purplemux/hooks.json';
     const cmd = dangerous ? `claude ${settings} --dangerously-skip-permissions` : `claude ${settings}`;
     sendStdin(`${cmd}\r`);
-  }, [isClaudeRunning, status, sendStdin]);
+  }, [claudeProcess, status, sendStdin]);
 
   const splitGroupRef = useRef<GroupImperativeHandle>(null);
   const [isTerminalCollapsed, setIsTerminalCollapsed] = useState(false);

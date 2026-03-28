@@ -62,7 +62,7 @@ const MobileClaudeCodePanel = ({
   const [metaSheetOpen, setMetaSheetOpen] = useState(false);
   const scrollToBottomRef = useRef<(() => void) | undefined>(undefined);
 
-  const isClaudeRunning = useTabStore((s) => tabId ? s.tabs[tabId]?.isClaudeRunning ?? false : false);
+  const claudeProcess = useTabStore((s) => tabId ? s.tabs[tabId]?.claudeProcess ?? 'unknown' : 'unknown');
 
   const handleResumeStarted = useCallback(() => {
     setResumingSessionId(null);
@@ -135,7 +135,7 @@ const MobileClaudeCodePanel = ({
     isTimelineLoading,
     wsStatus,
     sessionsCount: sessions.length,
-    isClaudeRunning,
+    claudeProcess,
     retrySession,
   });
 
