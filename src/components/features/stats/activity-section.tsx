@@ -99,7 +99,7 @@ const ActivitySection = ({ data }: IActivitySectionProps) => {
               <div className="flex gap-[3px]">
                 <div className="w-6 shrink-0" />
                 {HOURS.map((h) => (
-                  <div key={h} className="flex h-[11px] w-[11px] items-center justify-center">
+                  <div key={h} className="flex h-[11px] w-[11px] shrink-0 items-center justify-center md:w-auto md:flex-1">
                     {h % 3 === 0 && (
                       <span className="text-[9px] text-muted-foreground">{h}</span>
                     )}
@@ -117,7 +117,7 @@ const ActivitySection = ({ data }: IActivitySectionProps) => {
                         <TooltipTrigger
                           render={
                             <div
-                              className={`h-[11px] w-[11px] rounded-[2px] ${getIntensityClass(cell.count, maxCount)}`}
+                              className={`h-[11px] w-[11px] shrink-0 rounded-[2px] md:h-3 md:w-auto md:flex-1 md:rounded-sm ${getIntensityClass(cell.count, maxCount)}`}
                             />
                           }
                         />
