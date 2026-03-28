@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { IQuickPrompt } from '@/hooks/use-quick-prompts';
 import type { TCliState } from '@/types/timeline';
+import { isCliIdle } from '@/hooks/use-tab-store';
 
 interface IQuickPromptBarProps {
   prompts: IQuickPrompt[];
@@ -13,7 +14,7 @@ interface IQuickPromptBarProps {
 
 const QuickPromptBar = ({ prompts, cliState, visible, onSelect }: IQuickPromptBarProps) => {
   const barRef = useRef<HTMLDivElement>(null);
-  const isDisabled = cliState !== 'idle';
+  const isDisabled = !isCliIdle(cliState);
   const hasPrompts = prompts.length > 0;
 
   const handleClick = useCallback(

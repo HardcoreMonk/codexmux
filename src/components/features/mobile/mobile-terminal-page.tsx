@@ -170,7 +170,7 @@ const MobileTerminalPage = () => {
   const currentTabNeedsAttention = useTabStore((s) => {
     if (!selectedTabId) return false;
     const entry = s.tabs[selectedTabId];
-    return entry?.cliState === 'idle' && !entry?.dismissed;
+    return entry?.cliState === 'needs-attention';
   });
 
   useEffect(() => {

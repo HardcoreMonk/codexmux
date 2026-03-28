@@ -3,7 +3,6 @@ import { getWorkspaces } from '@/lib/workspace-store';
 import { readLayoutFile, resolveLayoutFile, collectAllTabs, updateTabCliStatus } from '@/lib/layout-store';
 import { getAllPanesInfo } from '@/lib/tmux';
 import { detectActiveSession, isClaudeRunning } from '@/lib/session-detection';
-import { resolveDismissed } from '@/lib/resolve-dismissed';
 import { INTERRUPT_PREFIX } from '@/lib/session-parser';
 import type { IPaneInfo } from '@/lib/tmux';
 import type { TCliState } from '@/types/timeline';
@@ -142,13 +141,12 @@ class StatusManager {
 
       const tabs = collectAllTabs(layout.root);
       for (const tab of tabs) {
-        const cliState = await this.detectTabCliState(tab.sessionName, panesInfo.get(tab.sessionName));
-        const dismissed = cliState === 'inactive'
-          ? true
-          : (tab.dismissed ?? false);
+        const detectedState = await this.detectTabCliState(tab.sessionName, panesInfo.get(tab.sessionName));
+        const cliState = tab.cliState === 'needs-attention' && detectedState === 'idle'
+          ? 'needs-attention' as const
+          : detectedState;
         this.tabs.set(tab.id, {
           cliState,
-          dismissed,
           workspaceId: ws.id,
           tabName: tab.name,
           tmuxSession: tab.sessionName,
@@ -213,12 +211,8 @@ class StatusManager {
         const newCliState = await this.detectTabCliState(tab.sessionName, panesInfo.get(tab.sessionName));
 
         if (!existing) {
-          const dismissed = newCliState === 'inactive'
-            ? true
-            : (tab.dismissed ?? false);
           const entry: ITabStatusEntry = {
             cliState: newCliState,
-            dismissed,
             workspaceId: ws.id,
             tabName: tab.name,
             tmuxSession: tab.sessionName,
@@ -232,13 +226,17 @@ class StatusManager {
         existing.tabName = tab.name;
         existing.workspaceId = ws.id;
 
+        // needs-attention 보호: 폴링이 idle을 감지해도 needs-attention 유지
+        if (existing.cliState === 'needs-attention' && newCliState === 'idle') continue;
+
         if (existing.cliState !== newCliState) {
           const prevState = existing.cliState;
-          existing.cliState = newCliState;
-          existing.dismissed = resolveDismissed(prevState, newCliState, existing.dismissed);
+          // busy→idle 승격
+          existing.cliState = (prevState === 'busy' && newCliState === 'idle')
+            ? 'needs-attention'
+            : newCliState;
 
           this.persistToLayout(existing);
-
           this.broadcastUpdate(tab.id, existing);
         }
       }
@@ -267,7 +265,6 @@ class StatusManager {
     for (const [tabId, entry] of this.tabs) {
       result[tabId] = {
         cliState: entry.cliState,
-        dismissed: entry.dismissed,
         workspaceId: entry.workspaceId,
         tabName: entry.tabName,
       };
@@ -281,9 +278,11 @@ class StatusManager {
 
     const prevState = entry.cliState;
     if (prevState === cliState) return;
+    if (prevState === 'needs-attention' && cliState === 'idle') return;
 
-    entry.cliState = cliState;
-    entry.dismissed = resolveDismissed(prevState, cliState, entry.dismissed);
+    entry.cliState = (prevState === 'busy' && cliState === 'idle')
+      ? 'needs-attention'
+      : cliState;
 
     this.persistToLayout(entry);
     this.broadcastUpdate(tabId, entry, exclude);
@@ -291,9 +290,9 @@ class StatusManager {
 
   dismissTab(tabId: string, exclude?: WebSocket): void {
     const entry = this.tabs.get(tabId);
-    if (!entry || entry.dismissed) return;
+    if (!entry || entry.cliState !== 'needs-attention') return;
 
-    entry.dismissed = true;
+    entry.cliState = 'idle';
     this.persistToLayout(entry);
     this.broadcastUpdate(tabId, entry, exclude);
   }
@@ -317,7 +316,7 @@ class StatusManager {
   }
 
   private persistToLayout(entry: ITabStatusEntry): void {
-    updateTabCliStatus(entry.tmuxSession, entry.cliState, entry.dismissed).catch(() => {});
+    updateTabCliStatus(entry.tmuxSession, entry.cliState).catch(() => {});
   }
 
   private broadcastUpdate(tabId: string, entry: ITabStatusEntry, exclude?: WebSocket): void {
@@ -325,7 +324,6 @@ class StatusManager {
       type: 'status:update',
       tabId,
       cliState: entry.cliState,
-      dismissed: entry.dismissed,
       workspaceId: entry.workspaceId,
       tabName: entry.tabName,
     };
@@ -337,7 +335,6 @@ class StatusManager {
       type: 'status:update',
       tabId,
       cliState: null,
-      dismissed: true,
       workspaceId: '',
       tabName: '',
     };

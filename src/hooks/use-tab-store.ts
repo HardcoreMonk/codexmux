@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { resolveDismissed } from '@/lib/resolve-dismissed';
 import type { TCliState, TClaudeStatus } from '@/types/timeline';
 import type { TTabDisplayStatus } from '@/types/status';
 
@@ -17,7 +16,6 @@ export interface ITabState {
   cliState: TCliState;
   isTimelineLoading: boolean;
   isRestarting: boolean;
-  dismissed: boolean;
   manualView: 'list' | 'timeline' | null;
   workspaceId: string;
   tabName: string;
@@ -30,7 +28,6 @@ const DEFAULT_TAB_STATE: ITabState = {
   cliState: 'inactive',
   isTimelineLoading: true,
   isRestarting: false,
-  dismissed: true,
   manualView: null,
   workspaceId: '',
   tabName: '',
@@ -48,17 +45,15 @@ interface ITabStore {
   setClaudeStatus: (tabId: string, status: TClaudeStatus, checkedAt: number) => void;
   setCliState: (tabId: string, state: TCliState) => void;
   setTimelineLoading: (tabId: string, loading: boolean) => void;
-
-
   setRestarting: (tabId: string, restarting: boolean) => void;
-  setDismissed: (tabId: string, dismissed: boolean) => void;
+  dismissTab: (tabId: string) => void;
   navigateToList: (tabId: string) => void;
   navigateToTimeline: (tabId: string) => void;
   setTabMeta: (tabId: string, workspaceId: string, tabName: string) => void;
   setTabOrder: (workspaceId: string, tabIds: string[]) => void;
   setStatusWsConnected: (connected: boolean) => void;
-  syncAllFromServer: (serverTabs: Record<string, { cliState: TCliState; dismissed: boolean; workspaceId: string; tabName: string }>) => void;
-  updateFromServer: (tabId: string, update: { cliState: TCliState | null; dismissed: boolean; workspaceId: string; tabName: string }) => void;
+  syncAllFromServer: (serverTabs: Record<string, { cliState: TCliState; workspaceId: string; tabName: string }>) => void;
+  updateFromServer: (tabId: string, update: { cliState: TCliState | null; workspaceId: string; tabName: string }) => void;
 }
 
 const updateTab = (
@@ -109,12 +104,14 @@ const useTabStore = create<ITabStore>((set) => ({
       return { tabs: updateTab(state.tabs, tabId, patch) };
     }),
 
+  // 로컬 경로 (onSync에서 호출): busy→idle 시 needs-attention 승격, needs-attention 보호
   setCliState: (tabId, cliState) =>
     set((state) => {
       const prev = state.tabs[tabId];
       if (!prev || prev.cliState === cliState) return state;
-      const dismissed = resolveDismissed(prev.cliState, cliState, prev.dismissed);
-      return { tabs: updateTab(state.tabs, tabId, { cliState, dismissed }) };
+      if (prev.cliState === 'needs-attention' && cliState === 'idle') return state;
+      const effective = (prev.cliState === 'busy' && cliState === 'idle') ? 'needs-attention' as const : cliState;
+      return { tabs: updateTab(state.tabs, tabId, { cliState: effective }) };
     }),
 
   setTimelineLoading: (tabId, loading) =>
@@ -124,8 +121,6 @@ const useTabStore = create<ITabStore>((set) => ({
       return { tabs: updateTab(state.tabs, tabId, { isTimelineLoading: loading }) };
     }),
 
-
-
   setRestarting: (tabId, restarting) =>
     set((state) => {
       const prev = state.tabs[tabId];
@@ -133,11 +128,11 @@ const useTabStore = create<ITabStore>((set) => ({
       return { tabs: updateTab(state.tabs, tabId, { isRestarting: restarting }) };
     }),
 
-  setDismissed: (tabId, dismissed) =>
+  dismissTab: (tabId) =>
     set((state) => {
       const prev = state.tabs[tabId];
-      if (!prev || prev.dismissed === dismissed) return state;
-      return { tabs: updateTab(state.tabs, tabId, { dismissed }) };
+      if (!prev || prev.cliState !== 'needs-attention') return state;
+      return { tabs: updateTab(state.tabs, tabId, { cliState: 'idle' }) };
     }),
 
   navigateToList: (tabId) =>
@@ -170,15 +165,16 @@ const useTabStore = create<ITabStore>((set) => ({
 
   setStatusWsConnected: (connected) => set({ statusWsConnected: connected }),
 
+  // 서버 경로: 서버가 authority, 직접 patch (promotion/guard 없음)
   syncAllFromServer: (serverTabs) =>
     set((state) => {
       const next = { ...state.tabs };
       for (const [tabId, entry] of Object.entries(serverTabs)) {
         const existing = next[tabId];
         if (existing) {
-          next[tabId] = { ...existing, cliState: entry.cliState, dismissed: entry.dismissed, workspaceId: entry.workspaceId, tabName: entry.tabName };
+          next[tabId] = { ...existing, cliState: entry.cliState, workspaceId: entry.workspaceId, tabName: entry.tabName };
         } else {
-          next[tabId] = { ...DEFAULT_TAB_STATE, cliState: entry.cliState, dismissed: entry.dismissed, workspaceId: entry.workspaceId, tabName: entry.tabName };
+          next[tabId] = { ...DEFAULT_TAB_STATE, cliState: entry.cliState, workspaceId: entry.workspaceId, tabName: entry.tabName };
         }
       }
       return { tabs: next };
@@ -192,16 +188,21 @@ const useTabStore = create<ITabStore>((set) => ({
       }
       const existing = state.tabs[tabId];
       if (existing) {
-        return { tabs: updateTab(state.tabs, tabId, { cliState: update.cliState, dismissed: update.dismissed, workspaceId: update.workspaceId, tabName: update.tabName }) };
+        return { tabs: updateTab(state.tabs, tabId, { cliState: update.cliState, workspaceId: update.workspaceId, tabName: update.tabName }) };
       }
       return {
         tabs: {
           ...state.tabs,
-          [tabId]: { ...DEFAULT_TAB_STATE, cliState: update.cliState, dismissed: update.dismissed, workspaceId: update.workspaceId, tabName: update.tabName },
+          [tabId]: { ...DEFAULT_TAB_STATE, cliState: update.cliState, workspaceId: update.workspaceId, tabName: update.tabName },
         },
       };
     }),
 }));
+
+// --- helpers ---
+
+export const isCliIdle = (cliState: TCliState): boolean =>
+  cliState === 'idle' || cliState === 'needs-attention';
 
 // --- 파생 selectors ---
 
@@ -226,7 +227,7 @@ export const selectTabDisplayStatus = (tabs: Record<string, ITabState>, tabId: s
   const tab = tabs[tabId];
   if (!tab || tab.cliState === 'inactive') return 'idle';
   if (tab.cliState === 'busy') return 'busy';
-  if (tab.cliState === 'idle' && !tab.dismissed) return 'needs-attention';
+  if (tab.cliState === 'needs-attention') return 'needs-attention';
   return 'idle';
 };
 
@@ -239,7 +240,7 @@ export const selectWorkspaceStatus = (
   for (const entry of Object.values(tabs)) {
     if (entry.workspaceId !== wsId) continue;
     if (entry.cliState === 'busy') busyCount++;
-    else if (entry.cliState === 'idle' && !entry.dismissed) attentionCount++;
+    else if (entry.cliState === 'needs-attention') attentionCount++;
   }
   return { busyCount, attentionCount };
 };
@@ -251,7 +252,7 @@ export const selectGlobalStatus = (
   let attentionCount = 0;
   for (const entry of Object.values(tabs)) {
     if (entry.cliState === 'busy') busyCount++;
-    else if (entry.cliState === 'idle' && !entry.dismissed) attentionCount++;
+    else if (entry.cliState === 'needs-attention') attentionCount++;
   }
   return { busyCount, attentionCount };
 };

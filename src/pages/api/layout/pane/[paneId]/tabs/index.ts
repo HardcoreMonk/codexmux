@@ -24,7 +24,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     getStatusManager().registerTab(tab.id, {
       cliState: 'inactive',
-      dismissed: true,
       workspaceId: wsId,
       tabName: tab.name,
       tmuxSession: tab.sessionName,

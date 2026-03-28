@@ -23,10 +23,6 @@ export const handleStatusConnection = (ws: WebSocket) => {
           manager.dismissTab(msg.tabId, ws);
           break;
 
-        case 'status:tab-active-report':
-          manager.updateTab(msg.tabId, msg.cliState, ws);
-          break;
-
         default:
           console.warn('[status] 알 수 없는 이벤트:', (msg as { type: string }).type);
       }

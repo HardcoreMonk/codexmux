@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import useTimeline from '@/hooks/use-timeline';
 import useSessionList from '@/hooks/use-session-list';
-import useTabStore, { selectSessionView } from '@/hooks/use-tab-store';
+import useTabStore, { selectSessionView, isCliIdle } from '@/hooks/use-tab-store';
 import useSessionMeta from '@/hooks/use-session-meta';
 import useGitBranch from '@/hooks/use-git-branch';
 import useGitStatus from '@/hooks/use-git-status';
@@ -165,7 +165,7 @@ const MobileClaudeCodePanel = ({
       restartNeedsExitRef.current = false;
     }
 
-    if (cliState === 'idle' && !restartNeedsExitRef.current) {
+    if (isCliIdle(cliState) && !restartNeedsExitRef.current) {
       onRestartComplete?.();
     }
   }, [isRestarting, effectiveClaudeStatus, cliState, onRestartComplete]);

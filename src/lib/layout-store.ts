@@ -426,7 +426,6 @@ export const updateTabClaudeSummary = async (
 export const updateTabCliStatus = async (
   sessionName: string,
   cliState: TCliState,
-  dismissed: boolean,
 ): Promise<void> => {
   const parsed = parseSessionName(sessionName);
   if (!parsed) return;
@@ -440,9 +439,8 @@ export const updateTabCliStatus = async (
     const tab = allTabs.find((t) => t.sessionName === sessionName);
     if (!tab) return;
 
-    if (tab.cliState === cliState && tab.dismissed === dismissed) return;
+    if (tab.cliState === cliState) return;
     tab.cliState = cliState;
-    tab.dismissed = dismissed;
     layout.updatedAt = new Date().toISOString();
     await writeLayoutFile(layout, filePath);
   });

@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import useTimeline from '@/hooks/use-timeline';
 import useSessionList from '@/hooks/use-session-list';
-import useTabStore, { selectSessionView } from '@/hooks/use-tab-store';
+import useTabStore, { selectSessionView, isCliIdle } from '@/hooks/use-tab-store';
 import SessionListView from '@/components/features/terminal/session-list-view';
 import SessionEmptyView from '@/components/features/terminal/session-empty-view';
 import TimelineView from '@/components/features/timeline/timeline-view';
@@ -131,7 +131,7 @@ const ClaudeCodePanel = ({
       restartNeedsExitRef.current = false;
     }
 
-    if (cliState === 'idle' && !restartNeedsExitRef.current) {
+    if (isCliIdle(cliState) && !restartNeedsExitRef.current) {
       useTabStore.getState().setRestarting(tabId, false);
     }
   }, [isRestarting, claudeStatus, cliState, tabId]);

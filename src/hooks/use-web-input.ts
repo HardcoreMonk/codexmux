@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
 import type { TCliState } from '@/types/timeline';
+import { isCliIdle } from '@/hooks/use-tab-store';
 
 type TWebInputMode = 'input' | 'interrupt' | 'disabled';
 
@@ -63,7 +64,7 @@ const useWebInput = (
   const [value, setValue] = useState(() => (tabId ? loadDraft(tabId) : ''));
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const mode: TWebInputMode = useMemo(() => {
-    if (cliState === 'idle') return 'input';
+    if (isCliIdle(cliState)) return 'input';
     if (cliState === 'busy') return 'interrupt';
     return 'disabled';
   }, [cliState]);

@@ -8,7 +8,7 @@ const RECONNECT_MAX = 30_000;
 let sharedWs: WebSocket | null = null;
 
 export const dismissTab = (tabId: string) => {
-  useTabStore.getState().setDismissed(tabId, true);
+  useTabStore.getState().dismissTab(tabId);
   if (sharedWs?.readyState === WebSocket.OPEN) {
     sharedWs.send(JSON.stringify({ type: 'status:tab-dismissed', tabId }));
   }
@@ -48,7 +48,6 @@ const useClaudeStatus = () => {
             case 'status:update':
               useTabStore.getState().updateFromServer(msg.tabId, {
                 cliState: msg.cliState,
-                dismissed: msg.dismissed,
                 workspaceId: msg.workspaceId,
                 tabName: msg.tabName,
               });

@@ -21,7 +21,7 @@ import PaneTabBar from '@/components/features/terminal/pane-tab-bar';
 import { formatTabTitle } from '@/lib/tab-title';
 import { isAppShortcut, isClearShortcut, isFocusInputShortcut, isShiftEnter } from '@/lib/keyboard-shortcuts';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
-import useTabStore, { selectSessionView } from '@/hooks/use-tab-store';
+import useTabStore, { selectSessionView, isCliIdle } from '@/hooks/use-tab-store';
 import { dismissTab as dismissStatusTab } from '@/hooks/use-claude-status';
 import isElectron from '@/hooks/use-is-electron';
 
@@ -172,7 +172,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
 
   useEffect(() => {
     if (!activeTabId || !isClaudeCode) return;
-    if (isFocused && claudeCliState === 'idle') {
+    if (isFocused && isCliIdle(claudeCliState)) {
       dismissStatusTab(activeTabId);
     }
   }, [activeTabId, claudeCliState, isClaudeCode, isFocused]);
@@ -327,7 +327,6 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
     // 탭 전환 시 스토어 초기화 (layout.json 값 + 터미널 리셋)
     useTabStore.getState().initTab(activeTabId, {
       cliState: tab.cliState ?? 'inactive',
-      dismissed: tab.dismissed ?? true,
       terminalConnected: false,
       claudeStatus: 'unknown',
     });

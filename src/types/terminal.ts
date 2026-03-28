@@ -24,7 +24,6 @@ export interface ITab {
   claudeSummary?: string | null;
   lastCommand?: string | null;
   cliState?: TCliState;
-  dismissed?: boolean;
 }
 
 export interface ISplitNode {
