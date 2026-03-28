@@ -3,6 +3,7 @@ import { Plus, X, ChevronLeft, ChevronRight, AlertTriangle, Loader2 } from 'luci
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { ITab } from '@/types/terminal';
+import TabStatusIndicator from '@/components/features/terminal/tab-status-indicator';
 
 interface ITabBarProps {
   tabs: ITab[];
@@ -249,7 +250,13 @@ const TabBar = ({
                   onClick={(e) => e.stopPropagation()}
                 />
               ) : (
-                <span className="truncate">{tab.name}</span>
+                <>
+                  <TabStatusIndicator
+                    tabId={tab.id}
+                    panelType={tab.panelType}
+                  />
+                  <span className="truncate">{tab.name}</span>
+                </>
               )}
 
               <button
