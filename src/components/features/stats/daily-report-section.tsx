@@ -26,13 +26,13 @@ const DailyReportSection = ({ days, cache, onCacheUpdate }: IDailyReportSectionP
   const [generating, setGenerating] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  const handleGenerate = useCallback(async (date: string) => {
+  const handleGenerate = useCallback(async (date: string, force = false) => {
     setGenerating(date);
     try {
       const res = await fetch('/api/stats/daily-report/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date }),
+        body: JSON.stringify({ date, force }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ message: 'unknown error' }));
@@ -83,9 +83,22 @@ const DailyReportSection = ({ days, cache, onCacheUpdate }: IDailyReportSectionP
                     </span>
                   )}
                 </div>
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  세션 {day.sessionCount} · {formatCostWithComma(day.cost)}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  {report && !isGenerating && (
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => handleGenerate(day.date)}
+                      disabled={generating !== null}
+                      className="text-muted-foreground"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                    </Button>
+                  )}
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    세션 {day.sessionCount} · {formatCostWithComma(day.cost)}
+                  </span>
+                </div>
               </div>
 
               {isGenerating && (
@@ -114,30 +127,18 @@ const DailyReportSection = ({ days, cache, onCacheUpdate }: IDailyReportSectionP
                   </div>
                   {report.detail && (
                     <>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => toggleExpand(day.date)}
-                          className="text-muted-foreground"
-                        >
-                          {isExpanded ? (
-                            <><ChevronDown className="h-3 w-3" />접기</>
-                          ) : (
-                            <><ChevronRight className="h-3 w-3" />더보기</>
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => handleGenerate(day.date)}
-                          disabled={generating !== null}
-                          className="text-muted-foreground"
-                        >
-                          <RefreshCw className="h-3 w-3" />
-                          새로 만들기
-                        </Button>
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => toggleExpand(day.date)}
+                        className="text-muted-foreground"
+                      >
+                        {isExpanded ? (
+                          <><ChevronDown className="h-3 w-3" />접기</>
+                        ) : (
+                          <><ChevronRight className="h-3 w-3" />더보기</>
+                        )}
+                      </Button>
                       {isExpanded && (
                         <div className="border-t pt-2">
                           <div className={markdownClass}>

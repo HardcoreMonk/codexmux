@@ -118,7 +118,11 @@ const useWebInput = (
   }, [sendStdin, terminalWsConnected]);
 
   const focusInput = useCallback(() => {
-    textareaRef.current?.focus();
+    const el = textareaRef.current;
+    if (!el) return;
+    el.focus();
+    const len = el.value.length;
+    el.setSelectionRange(len, len);
   }, []);
 
   const [prevMode, setPrevMode] = useState(mode);

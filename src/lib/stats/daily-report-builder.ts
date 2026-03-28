@@ -212,9 +212,11 @@ const parseSummaryResponse = (response: string): { brief: string; detail: string
 
 // --- Public API ---
 
-export const generateDailyReport = async (date: string): Promise<IDailyReportDay> => {
-  const existing = await readCachedReport(date);
-  if (existing) return existing;
+export const generateDailyReport = async (date: string, force = false): Promise<IDailyReportDay> => {
+  if (!force) {
+    const existing = await readCachedReport(date);
+    if (existing) return existing;
+  }
 
   const sessions = await extractSessionsForDate(date);
   if (sessions.length === 0) {
