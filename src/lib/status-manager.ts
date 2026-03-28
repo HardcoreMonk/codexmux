@@ -3,6 +3,7 @@ import { getWorkspaces } from '@/lib/workspace-store';
 import { readLayoutFile, resolveLayoutFile, collectAllTabs, updateTabCliStatus } from '@/lib/layout-store';
 import { getAllPanesInfo } from '@/lib/tmux';
 import { detectActiveSession, isClaudeRunning } from '@/lib/session-detection';
+import { resolveDismissed } from '@/lib/resolve-dismissed';
 import { INTERRUPT_PREFIX } from '@/lib/session-parser';
 import type { IPaneInfo } from '@/lib/tmux';
 import type { TCliState } from '@/types/timeline';
@@ -113,13 +114,6 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<boolean> => {
   }
 };
 
-const resolveDismissed = (prevState: TCliState, newState: TCliState, currentDismissed: boolean): boolean => {
-  if (newState === 'inactive') return true;
-  if (newState === 'busy') return false;
-  if (prevState === 'busy' && newState === 'idle') return false;
-  return currentDismissed;
-};
-
 const g = globalThis as unknown as { __ptStatusManager?: StatusManager };
 
 class StatusManager {
@@ -164,9 +158,10 @@ class StatusManager {
   }
 
   private async detectTabCliState(tmuxSession: string, paneInfo?: IPaneInfo): Promise<TCliState> {
-    if (!paneInfo) return 'inactive';
-    if (!isClaudeCommand(paneInfo.command)) return 'inactive';
-    if (!paneInfo.pid) return 'inactive';
+    if (!paneInfo || !paneInfo.pid) return 'inactive';
+
+    const claudeRunning = await isClaudeRunning(paneInfo.pid);
+    if (!claudeRunning) return 'inactive';
 
     const session = await detectActiveSession(paneInfo.pid);
     if (session.status !== 'active') return 'idle';

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { resolveDismissed } from '@/lib/resolve-dismissed';
 import type { TCliState, TSessionStatus, TTimelineConnectionStatus } from '@/types/timeline';
 import type { TTabDisplayStatus } from '@/types/status';
 
@@ -99,13 +100,6 @@ const updateTab = (
   const prev = tabs[tabId];
   if (!prev) return tabs;
   return { ...tabs, [tabId]: { ...prev, ...patch } };
-};
-
-const resolveDismissed = (prevCliState: TCliState, newCliState: TCliState, currentDismissed: boolean): boolean => {
-  if (newCliState === 'inactive') return true;
-  if (newCliState === 'busy') return false;
-  if (prevCliState === 'busy' && newCliState === 'idle') return false;
-  return currentDismissed;
 };
 
 const useTabStore = create<ITabStore>((set) => ({

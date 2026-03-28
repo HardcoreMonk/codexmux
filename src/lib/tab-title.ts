@@ -15,15 +15,6 @@ export const parseCurrentCommand = (raw: string): string | null => {
   return null;
 };
 
-export const isClaudeProcess = (raw: string): boolean => {
-  const cmd = parseCurrentCommand(raw);
-  if (cmd === 'claude') return true;
-  const versionPattern = /^\d+\.\d+\.\d+$/;
-  if (cmd && versionPattern.test(cmd)) return true;
-  if (versionPattern.test(raw.trim())) return true;
-  return false;
-};
-
 export const isShellProcess = (raw: string): boolean => {
   const cmd = parseCurrentCommand(raw);
   return cmd !== null && SHELL_NAMES.has(cmd);
