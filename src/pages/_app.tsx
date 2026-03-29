@@ -1,5 +1,5 @@
 import "@/styles/globals.css";
-import "pretendard/dist/web/static/pretendard.css";
+import "@/styles/pretendard.css";
 import "@xterm/xterm/css/xterm.css";
 import { useEffect } from "react";
 import type { AppProps } from "next/app";
