@@ -130,7 +130,7 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
 
   const exitGracefully = async () => {
     await shutdown();
-    process.exit(0);
+    (process as NodeJS.Process & { _exit: (code: number) => never })._exit(0);
   };
   process.on('SIGTERM', exitGracefully);
   process.on('SIGINT', exitGracefully);
