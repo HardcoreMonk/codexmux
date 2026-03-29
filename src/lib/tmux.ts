@@ -9,6 +9,15 @@ const TMUX_SOCKET = 'purple';
 const TMUX_CONFIG_PATH = path.join(process.env.__PMUX_APP_DIR || process.cwd(), 'src', 'config', 'tmux.conf');
 const CMD_TIMEOUT = 5000;
 
+const SENSITIVE_KEYS = new Set(['AUTH_PASSWORD', 'NEXTAUTH_SECRET']);
+
+export const sanitizedEnv = (): Record<string, string> =>
+  Object.fromEntries(
+    Object.entries(process.env).filter(
+      ([key]) => !key.startsWith('npm_') && !key.startsWith('NODE_') && !SENSITIVE_KEYS.has(key),
+    ),
+  ) as Record<string, string>;
+
 export const listSessions = async (): Promise<string[]> => {
   try {
     const { stdout } = await execFile(
@@ -47,9 +56,7 @@ export const createSession = async (
     {
       timeout: CMD_TIMEOUT,
       env: {
-        ...Object.fromEntries(
-          Object.entries(process.env).filter(([key]) => !key.startsWith('npm_') && !key.startsWith('NODE_') && key !== 'AUTH_PASSWORD'),
-        ) as NodeJS.ProcessEnv,
+        ...sanitizedEnv(),
         TERM: 'xterm-256color',
         COLORTERM: 'truecolor',
       },

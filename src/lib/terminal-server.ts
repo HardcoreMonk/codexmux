@@ -7,6 +7,7 @@ import {
   killSession,
   defaultSessionName,
   exitCopyMode,
+  sanitizedEnv,
 } from './tmux';
 
 const MSG_STDIN = 0x00;
@@ -50,10 +51,10 @@ const attachToSession = (sessionName: string, cols: number, rows: number): pty.I
     rows,
     cwd: process.env.HOME || '/',
     env: {
-      ...process.env,
+      ...sanitizedEnv(),
       TERM: 'xterm-256color',
       COLORTERM: 'truecolor',
-    } as Record<string, string>,
+    },
   });
 
 const cleanup = (conn: IActiveConnection, sessionExited = false) => {
