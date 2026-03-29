@@ -6,6 +6,7 @@ export default defineConfig({
   target: 'node20',
   outDir: 'dist',
   clean: true,
+  external: ['next', 'react', 'react-dom'],
   esbuildOptions(options) {
     options.alias = {
       '@': './src',

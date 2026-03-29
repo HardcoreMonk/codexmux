@@ -10,16 +10,13 @@
   "files": [
     "bin/",
     "dist/",
-    ".next/BUILD_ID",
-    ".next/*.json",
-    ".next/server/",
-    ".next/static/",
+    ".next/standalone/",
     "public/",
     "src/config/tmux.conf"
   ],
   "scripts": {
     "dev": "tsx watch server.ts",
-    "build": "next build && tsup",
+    "build": "next build && node scripts/post-build.js && tsup",
     "build:server": "tsup",
     "build:electron:main": "tsup --config electron/tsup.config.ts",
     "build:electron": "pnpm build && pnpm build:electron:main && node electron/resolve-symlinks.js",

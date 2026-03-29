@@ -1,4 +1,7 @@
-import { createServer } from 'http';
+import { createServer, request as httpRequest } from 'http';
+import type { IncomingMessage, ServerResponse } from 'http';
+import { createConnection } from 'net';
+import path from 'path';
 import next from 'next';
 import { WebSocketServer } from 'ws';
 import { getToken } from 'next-auth/jwt';
@@ -12,7 +15,6 @@ import { scanSessions, applyConfig } from './src/lib/tmux';
 import { initWorkspaceStore } from './src/lib/workspace-store';
 import { autoResumeOnStartup } from './src/lib/auto-resume';
 import { initAuthCredentials } from './src/lib/auth-credentials';
-import type { IncomingMessage } from 'http';
 
 const dev = process.env.NODE_ENV !== 'production';
 
@@ -39,38 +41,9 @@ const verifyWebSocketAuth = async (request: IncomingMessage): Promise<boolean> =
   return !!token;
 };
 
-interface IStartOptions {
-  port?: number;
-}
+const WS_PATHS = new Set(['/api/terminal', '/api/timeline', '/api/sync', '/api/status']);
 
-interface IStartResult {
-  port: number;
-  shutdown: () => Promise<void>;
-}
-
-export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
-  const port = opts?.port ?? parseInt(process.env.PORT || '8022', 10);
-  const appDir = process.env.__PMUX_APP_DIR || process.cwd();
-  const app = next({ dev, dir: appDir });
-  const handle = app.getRequestHandler();
-
-  const credentials = initAuthCredentials();
-  process.env.AUTH_PASSWORD = credentials.password;
-  process.env.NEXTAUTH_SECRET = credentials.secret;
-
-  await scanSessions();
-  await applyConfig();
-  await initWorkspaceStore();
-  await autoResumeOnStartup();
-  await ensureHookSettings();
-  await getStatusManager().init();
-  await app.prepare();
-
-  const upgrade = app.getUpgradeHandler();
-  const server = createServer((req, res) => {
-    handle(req, res);
-  });
-
+const createWsServers = () => {
   const wss = new WebSocketServer({ noServer: true });
   wss.on('connection', handleConnection);
 
@@ -83,10 +56,139 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   const statusWss = new WebSocketServer({ noServer: true });
   statusWss.on('connection', handleStatusConnection);
 
+  return { wss, timelineWss, syncWss, statusWss };
+};
+
+const handleWsUpgrade = (
+  { wss, timelineWss, syncWss, statusWss }: ReturnType<typeof createWsServers>,
+  request: IncomingMessage,
+  socket: import('stream').Duplex,
+  head: Buffer,
+  port: number,
+) => {
+  const url = new URL(request.url ?? '', `http://localhost:${port}`);
+
+  if (url.pathname === '/api/terminal') {
+    const sessionId = url.searchParams.get('session');
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request, sessionId);
+    });
+  } else if (url.pathname === '/api/timeline') {
+    timelineWss.handleUpgrade(request, socket, head, (ws) => {
+      timelineWss.emit('connection', ws, request);
+    });
+  } else if (url.pathname === '/api/sync') {
+    syncWss.handleUpgrade(request, socket, head, (ws) => {
+      syncWss.emit('connection', ws);
+    });
+  } else if (url.pathname === '/api/status') {
+    statusWss.handleUpgrade(request, socket, head, (ws) => {
+      statusWss.emit('connection', ws);
+    });
+  }
+};
+
+const shutdownWs = async () => {
+  gracefulTimelineShutdown();
+  gracefulSyncShutdown();
+  gracefulStatusShutdown();
+  await gracefulShutdown();
+};
+
+// --- Production: HTTP proxy to Next.js standalone ---
+
+const proxyRequest = (req: IncomingMessage, res: ServerResponse, internalPort: number) => {
+  const proxyReq = httpRequest(
+    {
+      hostname: '127.0.0.1',
+      port: internalPort,
+      path: req.url,
+      method: req.method,
+      headers: req.headers,
+    },
+    (proxyRes) => {
+      res.writeHead(proxyRes.statusCode!, proxyRes.headers);
+      proxyRes.pipe(res);
+    },
+  );
+  proxyReq.on('error', () => {
+    if (!res.headersSent) {
+      res.writeHead(502);
+      res.end('Bad Gateway');
+    }
+  });
+  req.pipe(proxyReq);
+};
+
+const proxyUpgrade = (req: IncomingMessage, socket: import('stream').Duplex, head: Buffer, internalPort: number) => {
+  const proxySocket = createConnection({ host: '127.0.0.1', port: internalPort }, () => {
+    const reqLine = `${req.method} ${req.url} HTTP/1.1\r\n`;
+    const headers = Object.entries(req.headers)
+      .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+      .join('\r\n');
+    proxySocket.write(reqLine + headers + '\r\n\r\n');
+    if (head.length > 0) proxySocket.write(head);
+    socket.pipe(proxySocket).pipe(socket);
+  });
+  proxySocket.on('error', () => socket.destroy());
+  socket.on('error', () => proxySocket.destroy());
+};
+
+const findFreePort = (startPort: number): Promise<number> =>
+  new Promise((resolve) => {
+    const srv = createServer();
+    srv.listen(startPort, '127.0.0.1', () => {
+      srv.close(() => resolve(startPort));
+    });
+    srv.on('error', () => resolve(findFreePort(startPort + 1)));
+  });
+
+const waitForPort = (port: number, timeoutMs = 10_000): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const deadline = Date.now() + timeoutMs;
+    const check = () => {
+      if (Date.now() > deadline) {
+        reject(new Error(`Standalone server failed to start on port ${port}`));
+        return;
+      }
+      const sock = createConnection({ host: '127.0.0.1', port });
+      sock.on('connect', () => {
+        sock.destroy();
+        resolve();
+      });
+      sock.on('error', () => setTimeout(check, 50));
+    };
+    check();
+  });
+
+// --- Start ---
+
+interface IStartOptions {
+  port?: number;
+}
+
+interface IStartResult {
+  port: number;
+  shutdown: () => Promise<void>;
+}
+
+const startDev = async (port: number, appDir: string): Promise<IStartResult> => {
+  const app = next({ dev: true, dir: appDir });
+  const handle = app.getRequestHandler();
+
+  await app.prepare();
+
+  const upgrade = app.getUpgradeHandler();
+  const server = createServer((req, res) => {
+    handle(req, res);
+  });
+
+  const wsServers = createWsServers();
+
   server.on('upgrade', async (request, socket, head) => {
     const url = new URL(request.url ?? '', `http://localhost:${port}`);
 
-    if (dev && url.pathname.startsWith('/_next/')) {
+    if (url.pathname.startsWith('/_next/')) {
       upgrade(request, socket, head);
       return;
     }
@@ -98,34 +200,16 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
       return;
     }
 
-    if (url.pathname === '/api/terminal') {
-      const sessionId = url.searchParams.get('session');
-      wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit('connection', ws, request, sessionId);
-      });
-    } else if (url.pathname === '/api/timeline') {
-      timelineWss.handleUpgrade(request, socket, head, (ws) => {
-        timelineWss.emit('connection', ws, request);
-      });
-    } else if (url.pathname === '/api/sync') {
-      syncWss.handleUpgrade(request, socket, head, (ws) => {
-        syncWss.emit('connection', ws);
-      });
-    } else if (url.pathname === '/api/status') {
-      statusWss.handleUpgrade(request, socket, head, (ws) => {
-        statusWss.emit('connection', ws);
-      });
+    if (WS_PATHS.has(url.pathname)) {
+      handleWsUpgrade(wsServers, request, socket, head, port);
     } else {
       upgrade(request, socket, head);
     }
   });
 
   const shutdown = async () => {
-    gracefulTimelineShutdown();
-    gracefulSyncShutdown();
-    gracefulStatusShutdown();
     server.close();
-    await gracefulShutdown();
+    await shutdownWs();
   };
 
   const exitGracefully = async () => {
@@ -136,14 +220,89 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   process.on('SIGINT', exitGracefully);
 
   await new Promise<void>((resolve) => {
-    server.listen(port, () => {
-      console.log(`> Server listening at http://localhost:${port} as ${dev ? 'development' : process.env.NODE_ENV}`);
-      console.log(`> Auth password: ${credentials.password}${credentials.fixed ? ' (fixed)' : ''}`);
-      resolve();
-    });
+    server.listen(port, () => resolve());
   });
 
   return { port, shutdown };
+};
+
+const startProd = async (port: number, appDir: string): Promise<IStartResult> => {
+  const internalPort = await findFreePort(port + 10000);
+
+  const savedPort = process.env.PORT;
+  process.env.PORT = String(internalPort);
+  process.env.HOSTNAME = '127.0.0.1';
+
+  const standalonePath = path.join(appDir, '.next', 'standalone', 'server.js');
+  require(standalonePath); // eslint-disable-line @typescript-eslint/no-require-imports
+
+  process.env.PORT = savedPort;
+
+  await waitForPort(internalPort);
+
+  const server = createServer((req, res) => {
+    proxyRequest(req, res, internalPort);
+  });
+
+  const wsServers = createWsServers();
+
+  server.on('upgrade', async (request, socket, head) => {
+    const url = new URL(request.url ?? '', `http://localhost:${port}`);
+
+    const authenticated = await verifyWebSocketAuth(request);
+    if (!authenticated) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    if (WS_PATHS.has(url.pathname)) {
+      handleWsUpgrade(wsServers, request, socket, head, port);
+    } else {
+      proxyUpgrade(request, socket, head, internalPort);
+    }
+  });
+
+  const shutdown = async () => {
+    server.close();
+    await shutdownWs();
+  };
+
+  const exitGracefully = async () => {
+    await shutdown();
+    process.exit(0);
+  };
+  process.on('SIGTERM', exitGracefully);
+  process.on('SIGINT', exitGracefully);
+
+  await new Promise<void>((resolve) => {
+    server.listen(port, () => resolve());
+  });
+
+  return { port, shutdown };
+};
+
+export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
+  const port = opts?.port ?? parseInt(process.env.PORT || '8022', 10);
+  const appDir = process.env.__PMUX_APP_DIR || process.cwd();
+
+  const credentials = initAuthCredentials();
+  process.env.AUTH_PASSWORD = credentials.password;
+  process.env.NEXTAUTH_SECRET = credentials.secret;
+
+  await scanSessions();
+  await applyConfig();
+  await initWorkspaceStore();
+  await autoResumeOnStartup();
+  await ensureHookSettings();
+  await getStatusManager().init();
+
+  const result = dev ? await startDev(port, appDir) : await startProd(port, appDir);
+
+  console.log(`> Server listening at http://localhost:${result.port} as ${dev ? 'development' : process.env.NODE_ENV}`);
+  console.log(`> Auth password: ${credentials.password}${credentials.fixed ? ' (fixed)' : ''}`);
+
+  return result;
 };
 
 if (!process.env.__PMUX_ELECTRON) {

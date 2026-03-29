@@ -30,11 +30,7 @@ dmg:
 files:
   - dist-electron/**/*
   - dist/**/*
-  - .next/BUILD_ID
-  - .next/*.json
-  - .next/server/**/*
-  - .next/static/**/*
-  - .next/node_modules/**/*
+  - .next/standalone/**/*
   - public/**/*
   - src/config/tmux.conf
   - "!node_modules/.cache"

@@ -1,10 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 
-const dir = path.join(__dirname, '..', '.next', 'node_modules');
+const dir = path.join(__dirname, '..', '.next', 'standalone', 'node_modules');
 
 if (!fs.existsSync(dir)) {
-  console.log('[resolve-symlinks] .next/node_modules not found, skipping');
+  console.log('[resolve-symlinks] .next/standalone/node_modules not found, skipping');
   process.exit(0);
 }
 
