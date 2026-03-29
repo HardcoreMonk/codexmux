@@ -92,6 +92,17 @@ const cleanup = (conn: IActiveConnection, sessionExited = false) => {
   console.log(`[terminal] client disconnected (active: ${connections.size})`);
 };
 
+export const detachAll = (): void => {
+  connections.forEach((conn) => {
+    if (conn.cleaned) return;
+    conn.detaching = true;
+    cleanup(conn);
+    if (conn.ws.readyState === WebSocket.OPEN) {
+      conn.ws.close(1001, 'tmux reset');
+    }
+  });
+};
+
 export const gracefulShutdown = (): Promise<void> => {
   if (connections.size === 0) return Promise.resolve();
 
