@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
-import { Bot, Code, Dices, Globe, Lock, Monitor, Moon, Settings, Sun, Terminal, X, Zap } from 'lucide-react';
+import { Bot, Code, Dices, Globe, Loader2, Lock, Monitor, Moon, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,17 @@ import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
@@ -18,7 +29,7 @@ import type { ITerminalThemeColors } from '@/lib/terminal-themes';
 import QuickPromptsSettings from '@/components/features/settings/quick-prompts-settings';
 import TailscaleSettings from '@/components/features/settings/tailscale-settings';
 
-type TSettingsTab = 'general' | 'terminal' | 'editor' | 'claude' | 'auth' | 'tailscale' | 'quick-prompts';
+type TSettingsTab = 'general' | 'terminal' | 'editor' | 'claude' | 'auth' | 'tailscale' | 'quick-prompts' | 'system';
 
 interface ISettingsItem {
   id: TSettingsTab;
@@ -61,6 +72,11 @@ const settingsItems: ISettingsItem[] = [
     id: 'quick-prompts',
     label: '빠른 프롬프트',
     icon: <Zap className="h-4 w-4" />,
+  },
+  {
+    id: 'system',
+    label: '시스템',
+    icon: <Wrench className="h-4 w-4" />,
   },
 ];
 
@@ -335,6 +351,64 @@ const AuthTab = () => {
   );
 };
 
+const SystemTab = () => {
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleReset = async () => {
+    setIsResetting(true);
+    try {
+      const res = await fetch('/api/tmux/reset', { method: 'POST' });
+      if (!res.ok) throw new Error();
+      toast.success('tmux가 초기화되었습니다. 페이지를 새로고침합니다.');
+      setTimeout(() => window.location.reload(), 500);
+    } catch {
+      toast.error('tmux 초기화에 실패했습니다.');
+      setIsResetting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-medium">tmux 초기화</p>
+          <p className="text-sm text-muted-foreground">
+            tmux 세션을 모두 종료하고 서버를 재시작합니다.
+            설정 변경 후 적용이 필요할 때 사용합니다.
+          </p>
+        </div>
+        <AlertDialog>
+          <AlertDialogTrigger
+            render={
+              <Button variant="destructive" size="sm" className="gap-1.5 shrink-0" disabled={isResetting}>
+                {isResetting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                초기화
+              </Button>
+            }
+          />
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>tmux 초기화</AlertDialogTitle>
+              <AlertDialogDescription>
+                실행 중인 모든 터미널 프로세스가 종료됩니다. 계속하시겠습니까?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-ui-red hover:bg-ui-red/80"
+                onClick={handleReset}
+              >
+                초기화
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </div>
+  );
+};
+
 interface ISettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -394,6 +468,7 @@ const SettingsDialog = ({ open, onOpenChange }: ISettingsDialogProps) => {
             {activeTab === 'auth' && <AuthTab />}
             {activeTab === 'tailscale' && <TailscaleSettings />}
             {activeTab === 'quick-prompts' && <QuickPromptsSettings />}
+            {activeTab === 'system' && <SystemTab />}
           </div>
         </div>
       </DialogContent>

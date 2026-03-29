@@ -362,6 +362,19 @@ const cleanCommandLine = (raw: string): string => {
   return parts.join(' ');
 };
 
+export const killServer = async (): Promise<void> => {
+  try {
+    await execFile(
+      'tmux',
+      ['-L', TMUX_SOCKET, 'kill-server'],
+      { timeout: CMD_TIMEOUT },
+    );
+    console.log('[terminal] tmux server killed');
+  } catch {
+    // Server may not be running
+  }
+};
+
 export const getLastCommand = async (sessionName: string): Promise<string | null> => {
   const shellPid = await getSessionPanePid(sessionName);
   if (!shellPid) return null;

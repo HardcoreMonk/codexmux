@@ -152,6 +152,14 @@ const useKeyboardShortcuts = ({
   useHotkeys(KEY_MAP.CLEAR_TERMINAL, () => {}, HOTKEY_OPTIONS);
 
   useHotkeys(
+    KEY_MAP.SETTINGS,
+    () => {
+      window.dispatchEvent(new Event('open-settings'));
+    },
+    HOTKEY_OPTIONS,
+  );
+
+  useHotkeys(
     TAB_NUMBER_KEYS,
     (event) => {
       const l = layoutRef.current;
