@@ -32,6 +32,7 @@ const PlanItem = ({ entry }: IPlanItemProps) => {
         className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-muted/50"
       >
         <ClipboardList size={14} className="shrink-0 text-ui-purple" />
+        <span className="shrink-0 font-semibold uppercase text-ui-purple">Plan</span>
         <span className="flex-1 truncate">{title}</span>
         <Eye size={12} className="shrink-0 opacity-0 transition-opacity group-hover:opacity-60" />
       </button>
