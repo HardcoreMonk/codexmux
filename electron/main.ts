@@ -176,10 +176,10 @@ input.onkeydown=function(e){
 // --- State ---
 
 let mainWindow: BrowserWindow | null = null;
-let serverShutdown: (() => void) | null = null;
+let serverShutdown: (() => Promise<void>) | null = null;
 let serverConfig: IServerConfig = { mode: 'local' };
 let localPort: number | null = null;
-let cachedStart: ((opts: { port: number }) => Promise<{ port: number; shutdown: () => void }>) | null = null;
+let cachedStart: ((opts: { port: number }) => Promise<{ port: number; shutdown: () => Promise<void> }>) | null = null;
 
 // --- Local Server ---
 
@@ -195,9 +195,9 @@ const startLocalServer = async (): Promise<number> => {
   return result.port;
 };
 
-const stopLocalServer = () => {
+const stopLocalServer = async () => {
   if (serverShutdown) {
-    serverShutdown();
+    await serverShutdown();
     serverShutdown = null;
     localPort = null;
   }
@@ -409,22 +409,27 @@ app.on('activate', () => {
   }
 });
 
-app.on('window-all-closed', () => {
+app.on('window-all-closed', async () => {
+  // 안전장치: 전체 종료가 3초 이내에 완료되지 않으면 SIGKILL
+  const forceKill = setTimeout(() => process.kill(process.pid, 'SIGKILL'), 3000);
+
+  // 1) PTY onExit 콜백이 완료될 때까지 대기 → native ThreadSafeFunction drain
   if (serverShutdown) {
-    serverShutdown();
+    await serverShutdown();
     serverShutdown = null;
   }
-  // 세션 쿠키를 디스크에 flush한 뒤 SIGKILL로 종료.
-  // flush 없이 SIGKILL하면 Chromium 쿠키 DB가 기록되지 않아 로그인이 풀림.
-  session.defaultSession.cookies.flushStore().finally(() => {
-    setTimeout(() => process.kill(process.pid, 'SIGKILL'), 100);
-  });
+
+  // 2) 쿠키 flush
+  await session.defaultSession.cookies.flushStore().catch(() => {});
+
+  // 3) 모든 native 콜백이 처리된 후 안전하게 종료
+  clearTimeout(forceKill);
+  process.exit(0);
 });
 
-// Electron의 will-quit → process exit → FreeEnvironment → CleanupHandles 과정에서
-// node-pty의 pending ThreadSafeFunction 콜백이 이미 해제 중인 환경에서 JS 예외를
-// throw → C++ abort() 발생. preventDefault()로 Electron의 정상 종료 경로를 차단하여
-// 위의 SIGKILL 타이머가 확실히 먼저 실행되도록 보장.
+// will-quit 도달 시 FreeEnvironment 실행 방지.
+// 정상 경로에서는 위의 process.exit(0)가 먼저 실행되어 여기에 도달하지 않지만,
+// Cmd+Q 등 예외 경로를 대비한 안전장치.
 app.on('will-quit', (event) => {
   event.preventDefault();
 });

@@ -45,7 +45,7 @@ interface IStartOptions {
 
 interface IStartResult {
   port: number;
-  shutdown: () => void;
+  shutdown: () => Promise<void>;
 }
 
 export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
@@ -120,17 +120,17 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
     }
   });
 
-  const shutdown = () => {
-    gracefulShutdown();
+  const shutdown = async () => {
     gracefulTimelineShutdown();
     gracefulSyncShutdown();
     gracefulStatusShutdown();
     server.close();
+    await gracefulShutdown();
   };
 
-  const exitGracefully = () => {
-    shutdown();
-    setTimeout(() => process.kill(process.pid, 'SIGKILL'), 100);
+  const exitGracefully = async () => {
+    await shutdown();
+    process.exit(0);
   };
   process.on('SIGTERM', exitGracefully);
   process.on('SIGINT', exitGracefully);

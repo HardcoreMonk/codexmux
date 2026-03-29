@@ -20,7 +20,7 @@ interface IDailyReportSectionProps {
   onCacheUpdate: (date: string, report: IDailyReportDay) => void;
 }
 
-const markdownClass = 'prose prose-sm prose-invert max-w-none text-foreground/80 [&_h2]:mt-4 [&_h2]:mb-1 [&_h2]:text-xs [&_h2]:font-semibold [&_h2]:text-foreground [&_h3]:mt-2 [&_h3]:mb-0.5 [&_h3]:text-xs [&_h3]:font-medium [&_h3]:text-foreground/80 [&_ul]:my-0.5 [&_ul]:pl-4 [&_li]:my-0 [&_li]:text-xs [&_p]:text-xs [&_p]:my-1 [&_p]:leading-relaxed';
+const markdownClass = 'prose prose-sm prose-invert max-w-none text-foreground/80 [&_h2]:mt-4 [&_h2]:mb-1 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-foreground [&_h3]:mt-2 [&_h3]:mb-0.5 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:text-foreground/80 [&_ul]:my-0.5 [&_ul]:pl-4 [&_li]:my-0 [&_li]:text-sm [&_p]:text-sm [&_p]:my-1 [&_p]:leading-relaxed';
 
 const DailyReportSection = ({ days, cache, onCacheUpdate }: IDailyReportSectionProps) => {
   const [generating, setGenerating] = useState<string | null>(null);

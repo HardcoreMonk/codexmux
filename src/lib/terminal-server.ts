@@ -91,35 +91,55 @@ const cleanup = (conn: IActiveConnection, sessionExited = false) => {
   console.log(`[terminal] client disconnected (active: ${connections.size})`);
 };
 
-export const gracefulShutdown = () => {
-  connections.forEach((conn) => {
-    if (conn.cleaned) return;
-    conn.cleaned = true;
-    conn.detaching = true;
-    terminalOutputTimestamps.delete(conn.sessionName);
+export const gracefulShutdown = (): Promise<void> => {
+  if (connections.size === 0) return Promise.resolve();
 
-    clearInterval(conn.heartbeatTimer);
-
-    for (const d of conn.disposables) {
-      d.dispose();
-    }
-    conn.disposables = [];
-
-    if (conn.ws.readyState === WebSocket.OPEN) {
-      conn.ws.close(1001, 'Server shutting down');
-    }
-
-    try {
-      if ('destroy' in conn.pty) {
-        (conn.pty as pty.IPty & { destroy: () => void }).destroy();
-      } else {
-        conn.pty.kill();
+  return new Promise<void>((resolve) => {
+    let remaining = 0;
+    const timer = setTimeout(resolve, 2000);
+    const done = () => {
+      if (--remaining <= 0) {
+        clearTimeout(timer);
+        resolve();
       }
-    } catch {
-      // PTY already exited
-    }
+    };
 
-    connections.delete(conn.ws);
+    connections.forEach((conn) => {
+      if (conn.cleaned) return;
+      conn.cleaned = true;
+      conn.detaching = true;
+      terminalOutputTimestamps.delete(conn.sessionName);
+
+      clearInterval(conn.heartbeatTimer);
+
+      if (conn.ws.readyState === WebSocket.OPEN) {
+        conn.ws.close(1001, 'Server shutting down');
+      }
+
+      remaining++;
+      // onExit 콜백이 호출될 때까지 대기 — native ThreadSafeFunction이 완전히 drain됨
+      conn.pty.onExit(() => done());
+
+      // 기존 disposable(onData, onExit)을 dispose하지 않고 PTY를 kill.
+      // kill → native exit event → 위의 onExit 콜백 → done.
+      // 기존 onData disposable은 cleaned=true로 인해 무시됨.
+      try {
+        if ('destroy' in conn.pty) {
+          (conn.pty as pty.IPty & { destroy: () => void }).destroy();
+        } else {
+          conn.pty.kill();
+        }
+      } catch {
+        done();
+      }
+
+      connections.delete(conn.ws);
+    });
+
+    if (remaining === 0) {
+      clearTimeout(timer);
+      resolve();
+    }
   });
 };
 
