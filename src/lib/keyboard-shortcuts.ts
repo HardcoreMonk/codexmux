@@ -20,7 +20,7 @@ export const KEY_MAP = {
   NEXT_TAB: `${mod}+shift+BracketRight`,
   CLEAR_TERMINAL: `${mod}+k`,
   FOCUS_INPUT: `${mod}+i`,
-  SETTINGS: `${mod}+,`,
+  SETTINGS: `${mod}+comma`,
 } as const;
 
 export const TAB_NUMBER_KEYS = Array.from(
