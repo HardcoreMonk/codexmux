@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import dayjs from 'dayjs';
 import ReactMarkdown from 'react-markdown';
-import { Loader2, Sparkles, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
+import { Loader2, Sparkles, ChevronDown, ChevronRight, RefreshCw, Play, Square } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,20 +25,26 @@ const markdownClass = 'prose prose-sm prose-invert max-w-none text-foreground/80
 const DailyReportSection = ({ days, cache, onCacheUpdate }: IDailyReportSectionProps) => {
   const [generating, setGenerating] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [batchRunning, setBatchRunning] = useState(false);
+  const batchStopRef = useRef(false);
+
+  const generateOne = useCallback(async (date: string, force = false) => {
+    const res = await fetch('/api/stats/daily-report/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, force }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'unknown error' }));
+      throw new Error(err.message ?? `HTTP ${res.status}`);
+    }
+    return (await res.json()) as IDailyReportDay;
+  }, []);
 
   const handleGenerate = useCallback(async (date: string, force = false) => {
     setGenerating(date);
     try {
-      const res = await fetch('/api/stats/daily-report/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, force }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: 'unknown error' }));
-        throw new Error(err.message ?? `HTTP ${res.status}`);
-      }
-      const report = (await res.json()) as IDailyReportDay;
+      const report = await generateOne(date, force);
       onCacheUpdate(date, report);
       toast.success('요약이 생성되었습니다');
     } catch (err) {
@@ -46,7 +52,38 @@ const DailyReportSection = ({ days, cache, onCacheUpdate }: IDailyReportSectionP
     } finally {
       setGenerating(null);
     }
-  }, [onCacheUpdate]);
+  }, [generateOne, onCacheUpdate]);
+
+  const handleBatch = useCallback(async () => {
+    batchStopRef.current = false;
+    setBatchRunning(true);
+    let generated = 0;
+    try {
+      for (const day of days) {
+        if (batchStopRef.current) break;
+        if (cache?.days[day.date]) continue;
+        setGenerating(day.date);
+        try {
+          const report = await generateOne(day.date);
+          onCacheUpdate(day.date, report);
+          generated++;
+        } catch {
+          toast.error(`${day.date} 요약 생성 실패`);
+          break;
+        }
+      }
+    } finally {
+      setGenerating(null);
+      setBatchRunning(false);
+      if (generated > 0) {
+        toast.success(`${generated}개 요약 생성 완료`);
+      }
+    }
+  }, [days, cache, generateOne, onCacheUpdate]);
+
+  const handleBatchStop = useCallback(() => {
+    batchStopRef.current = true;
+  }, []);
 
   const toggleExpand = useCallback((date: string) => {
     setExpanded((prev) => {
@@ -58,9 +95,30 @@ const DailyReportSection = ({ days, cache, onCacheUpdate }: IDailyReportSectionP
   }, []);
 
   const today = dayjs().format('YYYY-MM-DD');
+  const unreportedCount = days.filter((d) => !cache?.days[d.date]).length;
 
   return (
     <div className="space-y-2">
+      {unreportedCount > 0 && (
+        <div className="flex items-center gap-2">
+          {batchRunning ? (
+            <Button variant="outline" size="xs" onClick={handleBatchStop}>
+              <Square className="h-3 w-3" />
+              중지
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="xs"
+              onClick={handleBatch}
+              disabled={generating !== null}
+            >
+              <Play className="h-3 w-3" />
+              일괄 생성 ({unreportedCount}개)
+            </Button>
+          )}
+        </div>
+      )}
       {days.map((day) => {
         const d = dayjs(day.date);
         const weekday = WEEKDAY_LABELS[d.day()];
