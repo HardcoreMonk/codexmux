@@ -36,7 +36,9 @@ files:
   - "!node_modules"
   - "!**/*.map"
 
-asar: false
+asar: true
+asarUnpack:
+  - "node_modules/node-pty/**"
 
 extraMetadata:
   main: dist-electron/main.js
