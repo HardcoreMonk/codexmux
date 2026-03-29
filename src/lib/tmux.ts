@@ -11,12 +11,12 @@ const CMD_TIMEOUT = 5000;
 
 const SENSITIVE_KEYS = new Set(['AUTH_PASSWORD', 'NEXTAUTH_SECRET']);
 
-export const sanitizedEnv = (): Record<string, string> =>
+export const sanitizedEnv = (): NodeJS.ProcessEnv =>
   Object.fromEntries(
     Object.entries(process.env).filter(
       ([key]) => !key.startsWith('npm_') && !key.startsWith('NODE_') && !SENSITIVE_KEYS.has(key),
     ),
-  ) as Record<string, string>;
+  ) as NodeJS.ProcessEnv;
 
 export const listSessions = async (): Promise<string[]> => {
   try {
