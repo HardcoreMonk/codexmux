@@ -411,7 +411,7 @@ app.on('activate', () => {
 
 app.on('window-all-closed', async () => {
   // 안전장치: 전체 종료가 3초 이내에 완료되지 않으면 강제 종료
-  const forceExit = setTimeout(() => process._exit(1), 3000);
+  const forceExit = setTimeout(() => app.exit(1), 3000);
 
   // 1) PTY onExit 콜백이 완료될 때까지 대기 → native ThreadSafeFunction drain
   if (serverShutdown) {
@@ -423,17 +423,17 @@ app.on('window-all-closed', async () => {
   await session.defaultSession.cookies.flushStore().catch(() => {});
 
   // 3) 모든 cleanup 완료 후 종료.
-  //    process._exit()는 FreeEnvironment를 건너뛰어
+  //    app.exit()는 FreeEnvironment를 건너뛰어
   //    node-pty ThreadSafeFunction release 시 abort() 방지.
   clearTimeout(forceExit);
-  process._exit(0);
+  app.exit(0);
 });
 
 // Cmd+Q 등으로 will-quit이 먼저 도달하는 경우,
 // window-all-closed와 동일한 graceful shutdown 수행.
 app.on('will-quit', async (event) => {
   event.preventDefault();
-  const forceExit = setTimeout(() => process._exit(1), 3000);
+  const forceExit = setTimeout(() => app.exit(1), 3000);
 
   if (serverShutdown) {
     await serverShutdown();
@@ -442,7 +442,7 @@ app.on('will-quit', async (event) => {
 
   await session.defaultSession.cookies.flushStore().catch(() => {});
   clearTimeout(forceExit);
-  process._exit(0);
+  app.exit(0);
 });
 
 app.requestSingleInstanceLock();
