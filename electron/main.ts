@@ -185,7 +185,11 @@ let cachedStart: ((opts: { port: number }) => Promise<{ port: number; shutdown: 
 
 const startLocalServer = async (): Promise<number> => {
   if (!cachedStart) {
-    const mod = await import(path.join(process.env.__PMUX_APP_DIR!, 'dist', 'server.js'));
+    const appDir = process.env.__PMUX_APP_DIR!;
+    const standaloneMods = path.join(appDir, '.next', 'standalone', 'node_modules');
+    process.env.NODE_PATH = [standaloneMods, process.env.NODE_PATH].filter(Boolean).join(':');
+    require('module').Module._initPaths(); // eslint-disable-line @typescript-eslint/no-require-imports
+    const mod = await import(path.join(appDir, 'dist', 'server.js'));
     cachedStart = mod.start;
   }
   const port = await findFreePort(8022);

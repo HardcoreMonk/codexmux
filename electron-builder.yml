@@ -33,7 +33,7 @@ files:
   - .next/standalone/**/*
   - public/**/*
   - src/config/tmux.conf
-  - "!node_modules/.cache"
+  - "!node_modules"
   - "!**/*.map"
 
 asar: false
