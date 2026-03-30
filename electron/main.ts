@@ -198,6 +198,7 @@ const startLocalServer = async (): Promise<number> => {
   const result = await cachedStart!({ port });
   serverShutdown = result.shutdown;
   localPort = result.port;
+  process.title = 'purplemux';
   return result.port;
 };
 
