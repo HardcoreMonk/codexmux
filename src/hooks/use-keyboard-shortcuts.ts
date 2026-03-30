@@ -124,12 +124,22 @@ const useKeyboardShortcuts = ({
     () => {
       const l = layoutRef.current;
       if (!l.layout) return;
-      const pane = getFocusedPane(l.layout);
-      if (!pane || pane.tabs.length <= 1) return;
+      const panes = collectPanes(l.layout.root);
+      const pane = panes.find((p) => p.id === l.layout!.activePaneId);
+      if (!pane) return;
       const sorted = getSortedTabs(pane);
       const idx = sorted.findIndex((t) => t.id === pane.activeTabId);
-      if (idx <= 0) return;
-      l.switchTabInPane(pane.id, sorted[idx - 1].id);
+      if (idx > 0) {
+        l.switchTabInPane(pane.id, sorted[idx - 1].id);
+      } else {
+        const paneIdx = panes.indexOf(pane);
+        if (paneIdx > 0) {
+          const prevPane = panes[paneIdx - 1];
+          const prevSorted = getSortedTabs(prevPane);
+          l.focusPane(prevPane.id);
+          l.switchTabInPane(prevPane.id, prevSorted[prevSorted.length - 1].id);
+        }
+      }
     },
     HOTKEY_OPTIONS,
   );
@@ -139,12 +149,22 @@ const useKeyboardShortcuts = ({
     () => {
       const l = layoutRef.current;
       if (!l.layout) return;
-      const pane = getFocusedPane(l.layout);
-      if (!pane || pane.tabs.length <= 1) return;
+      const panes = collectPanes(l.layout.root);
+      const pane = panes.find((p) => p.id === l.layout!.activePaneId);
+      if (!pane) return;
       const sorted = getSortedTabs(pane);
       const idx = sorted.findIndex((t) => t.id === pane.activeTabId);
-      if (idx >= sorted.length - 1) return;
-      l.switchTabInPane(pane.id, sorted[idx + 1].id);
+      if (idx < sorted.length - 1) {
+        l.switchTabInPane(pane.id, sorted[idx + 1].id);
+      } else {
+        const paneIdx = panes.indexOf(pane);
+        if (paneIdx < panes.length - 1) {
+          const nextPane = panes[paneIdx + 1];
+          const nextSorted = getSortedTabs(nextPane);
+          l.focusPane(nextPane.id);
+          l.switchTabInPane(nextPane.id, nextSorted[0].id);
+        }
+      }
     },
     HOTKEY_OPTIONS,
   );

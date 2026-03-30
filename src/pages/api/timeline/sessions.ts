@@ -23,8 +23,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const limit = Math.max(1, parseInt(req.query.limit as string, 10) || DEFAULT_LIMIT);
   const offset = Math.max(0, parseInt(req.query.offset as string, 10) || 0);
 
+  const cwdHint = req.query.cwd as string | undefined;
+
   try {
-    const allSessions = await listSessions(tmuxSession);
+    const allSessions = await listSessions(tmuxSession, cwdHint);
     const total = allSessions.length;
     const sliced = allSessions.slice(offset, offset + limit);
     const hasMore = offset + limit < total;

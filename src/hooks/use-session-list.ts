@@ -44,15 +44,20 @@ const useSessionList = ({
     setError(null);
   }
 
+  const cwdRef = useRef(cwd);
+  cwdRef.current = cwd;
+
   const fetchSessions = useCallback(async () => {
     if (!tmuxSession) return;
     setIsLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(
-        `/api/timeline/sessions?tmuxSession=${encodeURIComponent(tmuxSession)}&limit=${DEFAULT_LIMIT}&offset=0`,
-      );
+      let url = `/api/timeline/sessions?tmuxSession=${encodeURIComponent(tmuxSession)}&limit=${DEFAULT_LIMIT}&offset=0`;
+      if (cwdRef.current) {
+        url += `&cwd=${encodeURIComponent(cwdRef.current)}`;
+      }
+      const res = await fetch(url);
       if (!res.ok) throw new Error('세션 목록을 불러올 수 없습니다');
       const data = await res.json();
       setSessions(data.sessions);

@@ -337,6 +337,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
 
     if (connectedSessionRef.current !== null) {
       reset();
+      lastTitleRef.current = '';
     }
 
     // 탭 전환 시 스토어 초기화 (layout.json 값 + 터미널 리셋)
@@ -716,7 +717,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
                   tabId={activeTabId}
                   sessionName={activeTab.sessionName}
                   claudeSessionId={activeTab.claudeSessionId}
-                  cwd={activeTabCwd}
+                  cwd={activeTabCwd || activeTab.cwd}
                   onClose={handleTogglePanelType}
                   onNewSession={handleNewClaudeSession}
                   scrollToBottomRef={scrollToBottomRef}

@@ -168,8 +168,8 @@ export const parseSessionMeta = async (jsonlPath: string): Promise<ISessionMeta 
   }
 };
 
-export const listSessions = async (tmuxSession: string): Promise<ISessionMeta[]> => {
-  const cwd = await getSessionCwd(tmuxSession);
+export const listSessions = async (tmuxSession: string, cwdHint?: string): Promise<ISessionMeta[]> => {
+  const cwd = cwdHint || await getSessionCwd(tmuxSession);
   if (!cwd) throw new Error('cwd-lookup-failed');
 
   const projectDir = cwdToProjectPath(cwd);
