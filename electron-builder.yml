@@ -41,5 +41,7 @@ asarUnpack:
   - "**/node-pty/**"
   - ".next/standalone/**"
 
+afterPack: "./scripts/after-pack.js"
+
 extraMetadata:
   main: dist-electron/main.js
