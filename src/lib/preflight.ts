@@ -1,8 +1,24 @@
-import { execFile as execFileCb } from 'child_process';
+import { execFile as execFileCb, execFileSync } from 'child_process';
+import os from 'os';
 import { promisify } from 'util';
 
 const execFile = promisify(execFileCb);
 const CMD_TIMEOUT = 5000;
+
+const getShellPath = (): string => {
+  const shell = os.userInfo().shell || process.env.SHELL || '/bin/zsh';
+  try {
+    const stdout = execFileSync(shell, ['-ilc', 'echo -n "$PATH"'], {
+      timeout: CMD_TIMEOUT,
+      env: { NODE_ENV: process.env.NODE_ENV, DISABLE_AUTO_UPDATE: 'true', ZSH_TMUX_AUTOSTARTED: 'true' },
+    });
+    return stdout.toString().trim();
+  } catch {
+    return process.env.PATH || '';
+  }
+};
+
+const shellPath = getShellPath();
 const MIN_TMUX_VERSION = 2.9;
 
 interface IToolStatus {
@@ -22,7 +38,7 @@ const checkTool = async (
   parseVersion: (stdout: string) => string | null,
 ): Promise<IToolStatus> => {
   try {
-    const { stdout } = await execFile(cmd, args, { timeout: CMD_TIMEOUT });
+    const { stdout } = await execFile(cmd, args, { timeout: CMD_TIMEOUT, env: { ...process.env, PATH: shellPath } });
     return { installed: true, version: parseVersion(stdout) };
   } catch {
     return { installed: false, version: null };
