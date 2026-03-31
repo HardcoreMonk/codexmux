@@ -1,4 +1,4 @@
-import { Terminal, Bell, LogOut, Menu } from 'lucide-react';
+import { Bell, LogOut, Menu } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import useTabStore, { selectGlobalStatus } from '@/hooks/use-tab-store';
+import AppLogo from '@/components/layout/app-logo';
 
 interface IAppHeaderProps {
   onMenuOpen?: () => void;
@@ -26,6 +28,8 @@ const handleLogout = async () => {
 };
 
 const AppHeader = ({ onMenuOpen, workspaceName }: IAppHeaderProps) => {
+  const hasBusy = useTabStore((s) => selectGlobalStatus(s.tabs).busyCount > 0);
+
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border bg-background px-3">
       <div className="flex min-w-0 items-center gap-1.5">
@@ -38,8 +42,7 @@ const AppHeader = ({ onMenuOpen, workspaceName }: IAppHeaderProps) => {
             <Menu className="h-5 w-5" />
           </button>
         )}
-        <Terminal className="h-4 w-4 shrink-0 text-ui-purple" />
-        <span className="shrink-0 text-sm text-ui-purple"><span className="font-bold">purple</span><span className="font-normal">mux</span></span>
+        <AppLogo shimmer={hasBusy} />
         {workspaceName && (
           <>
             <span className="text-muted-foreground/40 text-sm">/</span>

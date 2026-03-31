@@ -6,11 +6,12 @@ import {
   Settings,
   BarChart3,
   FileText,
-  Terminal,
   Bell,
   LogOut,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
+import useTabStore, { selectGlobalStatus } from '@/hooks/use-tab-store';
+import AppLogo from '@/components/layout/app-logo';
 import { useRouter } from 'next/router';
 import { toast } from 'sonner';
 import {
@@ -48,6 +49,7 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const collapsed = useWorkspaceStore((s) => s.sidebarCollapsed);
   const width = useWorkspaceStore((s) => s.sidebarWidth);
+  const hasBusy = useTabStore((s) => selectGlobalStatus(s.tabs).busyCount > 0);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -235,10 +237,7 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
           <div className="h-titlebar shrink-0" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
         )}
         <div className="flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
-          <div className="flex items-center gap-1.5">
-            <Terminal className="h-4 w-4 text-ui-purple" />
-            <span className="text-sm text-ui-purple"><span className="font-bold">purple</span><span className="font-normal">mux</span></span>
-          </div>
+          <AppLogo shimmer={hasBusy} />
           <div className="flex items-center gap-0.5">
             <button
               className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"

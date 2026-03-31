@@ -247,6 +247,12 @@ body {
 }
 
 .animate-shimmer {
+  display: inline-block;
+  background: linear-gradient(90deg, var(--color-ui-purple) calc(50% - 4em), var(--color-foreground) 50%, var(--color-ui-purple) calc(50% + 4em)) no-repeat;
+  background-size: 400% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
   animation: shimmer 3s linear infinite;
 }
 

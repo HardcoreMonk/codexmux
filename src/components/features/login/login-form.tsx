@@ -2,8 +2,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, Check, Lock, Terminal, X } from 'lucide-react';
+import { AlertTriangle, Check, Lock, X } from 'lucide-react';
 import { signIn } from 'next-auth/react';
+import AppLogo from '@/components/layout/app-logo';
 import { useEffect, useState } from 'react';
 
 interface IToolStatus {
@@ -125,12 +126,7 @@ export const LoginForm = ({ className, ...props }: React.ComponentProps<'div'>) 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <div className="flex flex-col gap-14">
-        <div className="flex items-center justify-center gap-2.5">
-          <Terminal className="h-6 w-6 text-ui-purple" />
-          <span className="animate-shimmer inline-block bg-[length:400%_200%] bg-clip-text text-xl text-transparent bg-[linear-gradient(90deg,var(--color-ui-purple)_calc(50%-4em),var(--color-foreground)_50%,var(--color-ui-purple)_calc(50%+4em))] bg-no-repeat">
-            <span className="font-bold">purple</span><span className="font-normal">mux</span>
-          </span>
-        </div>
+        <AppLogo shimmer size="xl" className="justify-center" />
         {checking ? (
           <div className="flex justify-center py-4">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
