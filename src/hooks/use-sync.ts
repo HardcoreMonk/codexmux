@@ -51,11 +51,22 @@ const useSync = () => {
 
     connect();
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return;
+      useWorkspaceStore.getState().syncWorkspaces();
+      const activeWsId = useWorkspaceStore.getState().activeWorkspaceId;
+      if (activeWsId) {
+        useLayoutStore.getState().fetchLayout(activeWsId);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       mountedRef.current = false;
       if (timerRef.current) clearTimeout(timerRef.current);
       wsRef.current?.close();
       wsRef.current = null;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 };
