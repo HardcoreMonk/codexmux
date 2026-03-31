@@ -34,8 +34,8 @@ const buildHookSettings = (port: number) => ({
   },
 });
 
-export const ensureHookSettings = async (): Promise<void> => {
-  const port = parseInt(process.env.PORT || '8022', 10);
+export const ensureHookSettings = async (actualPort?: number): Promise<void> => {
+  const port = actualPort ?? parseInt(process.env.PORT || '8022', 10);
   const settings = buildHookSettings(port);
   const content = JSON.stringify(settings, null, 2) + '\n';
 

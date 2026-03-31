@@ -177,6 +177,8 @@ let cachedStart: ((opts: { port: number }) => Promise<{ port: number; shutdown: 
 
 // --- Local Server ---
 
+const DEFAULT_PORT = 8022;
+
 const startLocalServer = async (): Promise<number> => {
   if (!cachedStart) {
     const appDir = process.env.__PMUX_APP_DIR!;
@@ -187,7 +189,12 @@ const startLocalServer = async (): Promise<number> => {
     const mod = await import(path.join(appDir, 'dist', 'server.js'));
     cachedStart = mod.start;
   }
-  const result = await cachedStart!({ port: 0 });
+  let result;
+  try {
+    result = await cachedStart!({ port: DEFAULT_PORT });
+  } catch {
+    result = await cachedStart!({ port: 0 });
+  }
   serverShutdown = result.shutdown;
   localPort = result.port;
   process.title = 'purplemux';

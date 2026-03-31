@@ -221,7 +221,8 @@ const startDev = async (port: number, appDir: string): Promise<IStartResult> => 
   process.on('SIGTERM', exitGracefully);
   process.on('SIGINT', exitGracefully);
 
-  await new Promise<void>((resolve) => {
+  await new Promise<void>((resolve, reject) => {
+    server.on('error', reject);
     server.listen(port, () => resolve());
   });
 
@@ -279,7 +280,8 @@ const startProd = async (port: number, appDir: string): Promise<IStartResult> =>
   process.on('SIGTERM', exitGracefully);
   process.on('SIGINT', exitGracefully);
 
-  await new Promise<void>((resolve) => {
+  await new Promise<void>((resolve, reject) => {
+    server.on('error', reject);
     server.listen(port, () => resolve());
   });
 
@@ -287,8 +289,10 @@ const startProd = async (port: number, appDir: string): Promise<IStartResult> =>
   return { port: actualPort, shutdown };
 };
 
+export const DEFAULT_PORT = 8022;
+
 export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
-  const port = opts?.port ?? parseInt(process.env.PORT || '8022', 10);
+  const port = opts?.port ?? parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
   const appDir = process.env.__PMUX_APP_DIR || process.cwd();
 
   await initConfigStore();
@@ -303,10 +307,14 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   await applyConfig();
   await initWorkspaceStore();
   await autoResumeOnStartup();
-  await ensureHookSettings();
+  await ensureHookSettings(port);
   await getStatusManager().init();
 
   const result = dev ? await startDev(port, appDir) : await startProd(port, appDir);
+
+  if (result.port !== port) {
+    await ensureHookSettings(result.port);
+  }
 
   console.log(`> Server listening at http://localhost:${result.port} as ${dev ? 'development' : process.env.NODE_ENV}`);
   console.log(`> Auth: ${credentials ? 'configured' : '온보딩 대기 (http://localhost:' + result.port + '/login)'}`);
