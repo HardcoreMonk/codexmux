@@ -105,6 +105,7 @@ const TerminalPage = () => {
     return (
       <div className="flex h-full w-full overflow-hidden bg-background">
         <div className="flex w-[200px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
+          <div className="h-titlebar shrink-0" />
           <div className="flex h-9 shrink-0 items-center justify-end border-b border-sidebar-border px-2" />
           <div className="flex flex-col gap-0.5 p-2">
             {[1, 2, 3].map((i) => (

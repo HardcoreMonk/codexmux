@@ -145,6 +145,7 @@ const ReportsPage = () => {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
       </Head>
       <div className="flex h-screen w-screen flex-col bg-background">
+        <div className="h-titlebar shrink-0" />
         {isMobile ? (
           <MobileLayout onSelectWorkspace={handleSelectWorkspace}>
             {content}

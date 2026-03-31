@@ -232,6 +232,7 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
         role="navigation"
         aria-label="Workspace 목록"
       >
+        <div className="h-titlebar shrink-0" />
         <div className="flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
           <AppLogo shimmer={hasBusy} />
           <div className="flex items-center gap-0.5">
@@ -399,6 +400,7 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
 
       {collapsed && (
         <div className="flex w-8 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
+          <div className="h-titlebar shrink-0" />
           <button
             className="flex flex-1 items-center justify-center text-muted-foreground transition-colors hover:bg-sidebar-accent"
             onClick={handleToggleCollapse}

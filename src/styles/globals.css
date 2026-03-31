@@ -38,7 +38,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --titlebar-height: 24px;
+  --titlebar-height: 0px;
   --terminal-bg: #eff1f5;
   --terminal-fg: #4c4f69;
   --radius: 0.5rem;

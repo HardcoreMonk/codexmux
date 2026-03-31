@@ -77,6 +77,7 @@ const ContentHeader = ({
 
   return (
     <div className="shrink-0 border-b border-border bg-background">
+      <div className="h-titlebar" />
       <div className="flex h-12 items-center justify-between px-3">
       <div />
       <TooltipProvider>
