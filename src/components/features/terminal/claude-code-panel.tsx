@@ -200,6 +200,7 @@ const ClaudeCodePanel = ({
           entries={entries}
           tasks={tasks}
           sessionId={sessionId}
+          sessionName={sessionName}
           cliState={effectiveCliState}
           claudeStatus={claudeStatusFromTimeline}
           wsStatus={wsStatus}

@@ -271,6 +271,7 @@ const MobileClaudeCodePanel = ({
           entries={entries}
           tasks={tasks}
           sessionId={sessionId}
+          sessionName={sessionName}
           cliState={cliState}
           claudeStatus={claudeStatusFromTimeline}
           wsStatus={wsStatus}

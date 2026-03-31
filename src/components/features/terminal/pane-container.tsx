@@ -337,6 +337,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
     if (!tab) return;
     if (tab.panelType === 'web-browser') {
       connectedSessionRef.current = null;
+      lastTitleRef.current = '';
       return;
     }
     if (connectedSessionRef.current === tab.sessionName) return;
@@ -418,10 +419,13 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
     [paneId, activeTabId, switchTabInPane],
   );
 
-  const handleCreateTab = useCallback(async (panelType?: TPanelType) => {
+  const handleCreateTab = useCallback(async (panelType?: TPanelType, options?: { command?: string }) => {
     setIsCreating(true);
-    const newTab = await createTabInPane(paneId, panelType);
+    const newTab = await createTabInPane(paneId, panelType, options?.command);
     if (newTab) {
+      if (options?.command) {
+        useTabStore.getState().setRestarting(newTab.id, true);
+      }
       const currentTabId = activeTabIdRef.current;
       const currentTitle = currentTabId
         ? useTabMetadataStore.getState().metadata[currentTabId]?.title
@@ -931,7 +935,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
           </div>
         )}
 
-        {!noTabs && (
+        {!noTabs && !isWebBrowser && (
           <ConnectionStatus
             status={status}
             retryCount={retryCount}

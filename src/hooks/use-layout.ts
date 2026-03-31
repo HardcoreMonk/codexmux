@@ -63,7 +63,7 @@ interface ILayoutState {
   focusPane: (paneId: string) => void;
   updateRatio: (path: number[], ratio: number) => void;
   moveTab: (tabId: string, fromPaneId: string, toPaneId: string, toIndex: number) => void;
-  createTabInPane: (paneId: string, panelType?: TPanelType) => Promise<ITab | null>;
+  createTabInPane: (paneId: string, panelType?: TPanelType, command?: string) => Promise<ITab | null>;
   deleteTabInPane: (paneId: string, tabId: string) => Promise<void>;
   restartTabInPane: (paneId: string, tabId: string, command?: string) => Promise<boolean>;
   switchTabInPane: (paneId: string, tabId: string) => void;
@@ -348,7 +348,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
     }).catch(() => get().fetchLayout(undefined, false));
   },
 
-  createTabInPane: async (paneId, explicitPanelType?) => {
+  createTabInPane: async (paneId, explicitPanelType?, command?) => {
     const { layout, workspaceId } = get();
     try {
       let cwd: string | undefined;
@@ -368,7 +368,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
       const res = await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs`, workspaceId), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cwd, panelType }),
+        body: JSON.stringify({ cwd, panelType, command }),
       });
       if (!res.ok) throw new Error();
       const newTab: ITab = await res.json();

@@ -17,7 +17,7 @@ interface ILayoutActions {
   splitPane: (paneId: string, orientation: 'horizontal' | 'vertical') => Promise<void>;
   closePane: (paneId: string) => Promise<void>;
   focusPane: (paneId: string) => void;
-  createTabInPane: (paneId: string, panelType?: TPanelType) => Promise<ITab | null>;
+  createTabInPane: (paneId: string, panelType?: TPanelType, command?: string) => Promise<ITab | null>;
   deleteTabInPane: (paneId: string, tabId: string) => Promise<void>;
   switchTabInPane: (paneId: string, tabId: string) => void;
 }

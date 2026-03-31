@@ -26,6 +26,7 @@ interface ITimelineViewProps {
   entries: ITimelineEntry[];
   tasks: ITaskItem[];
   sessionId: string | null;
+  sessionName?: string;
   cliState: TCliState;
   claudeStatus: TClaudeStatus;
   wsStatus: TTimelineConnectionStatus;
@@ -104,7 +105,7 @@ const SessionExitItem = () => (
   </div>
 );
 
-const TimelineEntryRenderer = ({ entry }: { entry: ITimelineEntry }) => {
+const TimelineEntryRenderer = ({ entry, sessionName }: { entry: ITimelineEntry; sessionName?: string }) => {
   switch (entry.type) {
     case 'user-message':
       return <UserMessageItem entry={entry} />;
@@ -115,9 +116,9 @@ const TimelineEntryRenderer = ({ entry }: { entry: ITimelineEntry }) => {
     case 'task-notification':
       return <TaskNotificationItem entry={entry} />;
     case 'plan':
-      return <PlanItem entry={entry} />;
+      return <PlanItem entry={entry} sessionName={sessionName} />;
     case 'ask-user-question':
-      return <AskUserQuestionItem entry={entry} />;
+      return <AskUserQuestionItem entry={entry} sessionName={sessionName} />;
     case 'task-progress':
       return <TaskProgressItem entry={entry} />;
     case 'interrupt':
@@ -213,6 +214,7 @@ const TimelineView = ({
   entries,
   tasks,
   sessionId,
+  sessionName,
   cliState,
   claudeStatus,
   wsStatus,
@@ -328,7 +330,7 @@ const TimelineView = ({
               {item.type === 'tool-group' ? (
                 <ToolGroupItem toolCalls={item.toolCalls} toolResults={item.toolResults} />
               ) : (
-                <TimelineEntryRenderer entry={item.entry} />
+                <TimelineEntryRenderer entry={item.entry} sessionName={sessionName} />
               )}
             </div>
           ))}

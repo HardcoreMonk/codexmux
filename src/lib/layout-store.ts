@@ -144,6 +144,7 @@ export const crossCheckLayout = async (
 
   for (const pane of panes) {
     for (const tab of pane.tabs) {
+      if (tab.panelType === 'web-browser') continue;
       layoutSessions.add(tab.sessionName);
 
       if (!tmuxSet.has(tab.sessionName) && tab.panelType === 'claude-code') {
@@ -242,7 +243,7 @@ export const deletePane = async (
   console.log(`[layout] pane 삭제: ${paneId} (세션 ${sessions.length}개 종료)`);
 };
 
-export const addTabToPane = async (wsId: string, paneId: string, name?: string, cwd?: string, panelType?: string): Promise<ITab | null> =>
+export const addTabToPane = async (wsId: string, paneId: string, name?: string, cwd?: string, panelType?: string, command?: string): Promise<ITab | null> =>
   withLock(async () => {
     const filePath = resolveLayoutFile(wsId);
     const layout = await readLayoutFile(filePath);
@@ -256,6 +257,9 @@ export const addTabToPane = async (wsId: string, paneId: string, name?: string, 
     const sessionName = workspaceSessionName(wsId, paneId, tabId);
     if (!isWebBrowser) {
       await createSession(sessionName, 80, 24, cwd);
+      if (command) {
+        await sendKeys(sessionName, command);
+      }
     }
 
     const nextOrder = pane.tabs.length > 0 ? Math.max(...pane.tabs.map((t) => t.order)) + 1 : 0;
@@ -573,7 +577,7 @@ export const closePaneInLayout = async (wsId: string, paneId: string): Promise<I
     if (!pane) return null;
     if (collectPanes(layout.root).length <= 1) return null;
 
-    sessions = pane.tabs.map((t) => t.sessionName);
+    sessions = pane.tabs.filter((t) => t.panelType !== 'web-browser').map((t) => t.sessionName);
     removePaneWithFocus(layout, paneId);
     layout.updatedAt = new Date().toISOString();
     await writeLayoutFile(layout, filePath);

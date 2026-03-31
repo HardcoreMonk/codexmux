@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import type { ITab, TPanelType } from '@/types/terminal';
 import { isAutoTabName } from '@/lib/tab-title';
 import TabStatusIndicator from '@/components/features/terminal/tab-status-indicator';
+import useConfigStore from '@/hooks/use-config-store';
 
 interface IPaneTabBarProps {
   paneId: string;
@@ -29,7 +30,7 @@ interface IPaneTabBarProps {
   paneCount: number;
   isSplitting: boolean;
   onSwitchTab: (tabId: string) => void;
-  onCreateTab: (panelType?: TPanelType) => void;
+  onCreateTab: (panelType?: TPanelType, options?: { command?: string }) => void;
   onDeleteTab: (tabId: string) => void;
   onRenameTab: (tabId: string, name: string) => void;
   onReorderTabs: (tabIds: string[]) => void;
@@ -73,6 +74,7 @@ const PaneTabBar = ({
   const [isDragOverFromOther, setIsDragOverFromOther] = useState(false);
   const dragEnterCountRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [newTabOpen, setNewTabOpen] = useState(false);
 
   const sortedTabs = useMemo(() => [...tabs].sort((a, b) => a.order - b.order), [tabs]);
 
@@ -431,7 +433,7 @@ const PaneTabBar = ({
         <div className="flex shrink-0 items-stretch">
           {/* 탭 추가 */}
           <div className="flex items-center border-l border-r border-border px-0.5">
-            <Popover>
+            <Popover open={newTabOpen} onOpenChange={setNewTabOpen}>
               <PopoverTrigger
                 className={cn(
                   'flex h-7 w-7 items-center justify-center text-muted-foreground hover:text-foreground',
@@ -446,16 +448,27 @@ const PaneTabBar = ({
                   <Plus className="h-3.5 w-3.5" />
                 )}
               </PopoverTrigger>
-              <PopoverContent side="bottom" align="start" className="w-40 p-1">
+              <PopoverContent side="bottom" align="start" className="w-44 gap-0 p-0.5">
                 {([
-                  { type: 'terminal' as const, icon: <Terminal className="h-3.5 w-3.5 text-muted-foreground" />, label: 'Terminal' },
-                  { type: 'claude-code' as const, icon: <ClaudeCodeIcon className="h-3.5 w-3.5" />, label: 'Claude' },
-                  { type: 'web-browser' as const, icon: <Globe className="h-3.5 w-3.5 text-muted-foreground" />, label: 'Web Browser' },
+                  { key: 'claude-new', type: 'claude-code' as const, icon: <ClaudeCodeIcon className="h-3.5 w-3.5" />, label: 'Claude 새 대화', startClaude: true },
+                  { key: 'claude', type: 'claude-code' as const, icon: <ClaudeCodeIcon className="h-3.5 w-3.5" />, label: 'Claude 세션 목록' },
+                  { key: 'terminal', type: 'terminal' as const, icon: <Terminal className="h-3.5 w-3.5 text-muted-foreground" />, label: 'Terminal' },
+                  { key: 'web-browser', type: 'web-browser' as const, icon: <Globe className="h-3.5 w-3.5 text-muted-foreground" />, label: 'Web Browser' },
                 ] as const).map((item) => (
                   <button
-                    key={item.type}
-                    className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-foreground hover:bg-accent"
-                    onClick={() => onCreateTab(item.type)}
+                    key={item.key}
+                    className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-xs text-foreground hover:bg-accent"
+                    onClick={() => {
+                      setNewTabOpen(false);
+                      if ('startClaude' in item && item.startClaude) {
+                        const dangerous = useConfigStore.getState().dangerouslySkipPermissions;
+                        const settings = '--settings ~/.purplemux/hooks.json';
+                        const cmd = dangerous ? `claude ${settings} --dangerously-skip-permissions` : `claude ${settings}`;
+                        onCreateTab(item.type, { command: cmd });
+                      } else {
+                        onCreateTab(item.type);
+                      }
+                    }}
                   >
                     {item.icon}
                     {item.label}

@@ -15,10 +15,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   const paneId = req.query.paneId as string;
-  const { name, cwd, panelType } = req.body ?? {};
+  const { name, cwd, panelType, command } = req.body ?? {};
 
   try {
-    const tab = await addTabToPane(wsId, paneId, name, cwd, panelType);
+    const tab = await addTabToPane(wsId, paneId, name, cwd, panelType, command);
     if (!tab) {
       return res.status(404).json({ error: 'Pane을 찾을 수 없습니다' });
     }

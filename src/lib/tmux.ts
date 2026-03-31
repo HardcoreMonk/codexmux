@@ -311,6 +311,18 @@ export const sendKeys = async (
   );
 };
 
+export const sendRawKeys = async (
+  sessionName: string,
+  keys: string,
+): Promise<void> => {
+  await exitCopyMode(sessionName);
+  await execFile(
+    'tmux',
+    ['-L', TMUX_SOCKET, 'send-keys', '-t', sessionName, keys],
+    { timeout: CMD_TIMEOUT },
+  );
+};
+
 export interface IPaneDetailInfo {
   cwd: string | null;
   command: string | null;
@@ -373,6 +385,19 @@ export const killServer = async (): Promise<void> => {
     console.log('[terminal] tmux server killed');
   } catch {
     // Server may not be running
+  }
+};
+
+export const capturePaneContent = async (sessionName: string): Promise<string | null> => {
+  try {
+    const { stdout } = await execFile(
+      'tmux',
+      ['-L', TMUX_SOCKET, 'capture-pane', '-p', '-t', sessionName],
+      { timeout: CMD_TIMEOUT },
+    );
+    return stdout;
+  } catch {
+    return null;
   }
 };
 

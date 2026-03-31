@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, RotateCw, Globe } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface IWebBrowserPanelProps {
   initialUrl?: string | null;
@@ -16,15 +17,44 @@ const ensureProtocol = (input: string): string => {
   return `https://${trimmed}`;
 };
 
+const checkSameOrigin = (iframe: HTMLIFrameElement): boolean => {
+  try {
+    // cross-origin이면 접근 시 예외 발생
+    const href = iframe.contentWindow?.location.href;
+    return href !== undefined && href !== 'about:blank';
+  } catch {
+    return false;
+  }
+};
+
 const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => {
   const [url, setUrl] = useState(initialUrl || '');
   const [addressValue, setAddressValue] = useState(initialUrl || '');
+  const [canNavigate, setCanNavigate] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     if (!iframeRef.current || !url) return;
     iframeRef.current.src = url;
   }, [url]);
+
+  const handleIframeLoad = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const sameOrigin = checkSameOrigin(iframe);
+    setCanNavigate(sameOrigin);
+
+    if (sameOrigin) {
+      try {
+        const currentHref = iframe.contentWindow?.location.href;
+        if (currentHref && currentHref !== 'about:blank') {
+          setAddressValue(currentHref);
+          onUrlChange?.(currentHref);
+        }
+      } catch { /* cross-origin 전환 시 발생 가능 */ }
+    }
+  }, [onUrlChange]);
 
   const navigate = useCallback((targetUrl: string) => {
     const full = ensureProtocol(targetUrl);
@@ -67,32 +97,39 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => 
   return (
     <div className="flex h-full flex-col bg-background">
       <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2">
-        <button
-          className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-          onClick={handleGoBack}
-          aria-label="뒤로"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-        </button>
-        <button
-          className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-          onClick={handleGoForward}
-          aria-label="앞으로"
-        >
-          <ArrowRight className="h-3.5 w-3.5" />
-        </button>
-        <button
-          className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-          onClick={handleRefresh}
-          aria-label="새로고침"
-        >
-          <RotateCw className="h-3.5 w-3.5" />
-        </button>
+        {canNavigate && (
+          <>
+            <button
+              className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+              onClick={handleGoBack}
+              aria-label="뒤로"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+            </button>
+            <button
+              className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+              onClick={handleGoForward}
+              aria-label="앞으로"
+            >
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+            <button
+              className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+              onClick={handleRefresh}
+              aria-label="새로고침"
+            >
+              <RotateCw className="h-3.5 w-3.5" />
+            </button>
+          </>
+        )}
 
         <div className="ml-1 flex flex-1 items-center gap-2 rounded-md border border-border bg-secondary px-2.5 py-1">
           <Globe className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <input
-            className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground/50"
+            className={cn(
+              'min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/50',
+              canNavigate ? 'text-foreground' : 'text-muted-foreground',
+            )}
             placeholder="URL을 입력하세요"
             value={addressValue}
             onChange={(e) => setAddressValue(e.target.value)}
@@ -109,6 +146,7 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => 
           sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
           allow="clipboard-read; clipboard-write"
           title="Web Browser"
+          onLoad={handleIframeLoad}
         />
       ) : (
         <div className="flex flex-1 items-center justify-center">
