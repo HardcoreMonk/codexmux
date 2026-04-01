@@ -311,6 +311,18 @@ export const sendRawKeys = async (
   );
 };
 
+export const sendKeySequence = async (
+  sessionName: string,
+  keys: string[],
+): Promise<void> => {
+  await exitCopyMode(sessionName);
+  await execFile(
+    'tmux',
+    ['-L', TMUX_SOCKET, 'send-keys', '-t', sessionName, ...keys],
+    { timeout: CMD_TIMEOUT },
+  );
+};
+
 export interface IPaneDetailInfo {
   cwd: string | null;
   command: string | null;

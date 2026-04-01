@@ -94,7 +94,7 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [darkTheme, setDarkTheme] = useState(DEFAULT_THEME_IDS.dark);
   const [lightTheme, setLightTheme] = useState(DEFAULT_THEME_IDS.light);
-  const [skipPermissions, setSkipPermissions] = useState(false);
+  const [skipPermissions, setSkipPermissions] = useState(true);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 

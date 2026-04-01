@@ -328,7 +328,7 @@ const TimelineView = ({
           {groupedItems.map((item) => (
             <div key={item.id} className="px-4 py-1.5">
               {item.type === 'tool-group' ? (
-                <ToolGroupItem toolCalls={item.toolCalls} toolResults={item.toolResults} />
+                <ToolGroupItem toolCalls={item.toolCalls} toolResults={item.toolResults} sessionName={sessionName} />
               ) : (
                 <TimelineEntryRenderer entry={item.entry} sessionName={sessionName} />
               )}
