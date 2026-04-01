@@ -1,41 +1,22 @@
-import { useState, memo, useCallback } from 'react';
+import { useState, useEffect, memo, useCallback } from 'react';
 import { ShieldCheck, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-interface IPermissionOption {
-  label: string;
-  description?: string;
-}
-
-const TOOL_OPTIONS: Record<string, IPermissionOption[]> = {
-  Edit: [
-    { label: 'Yes' },
-    { label: 'Yes, allow all edits this session' },
-    { label: 'No' },
-  ],
-  Write: [
-    { label: 'Yes' },
-    { label: 'Yes, allow all writes this session' },
-    { label: 'No' },
-  ],
-  Bash: [
-    { label: 'Yes' },
-    { label: 'Yes, allow all commands this session' },
-    { label: 'No' },
-  ],
-};
-
-const DEFAULT_OPTIONS: IPermissionOption[] = [
-  { label: 'Yes' },
-  { label: 'Yes, allow all this session' },
-  { label: 'No' },
-];
-
 interface IPermissionPromptItemProps {
   sessionName: string;
-  toolName: string;
 }
+
+const fetchPermissionOptions = async (session: string): Promise<string[]> => {
+  try {
+    const res = await fetch(`/api/tmux/permission-options?session=${encodeURIComponent(session)}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.options ?? [];
+  } catch {
+    return [];
+  }
+};
 
 const sendSelection = async (session: string, optionIndex: number): Promise<boolean> => {
   try {
@@ -50,11 +31,37 @@ const sendSelection = async (session: string, optionIndex: number): Promise<bool
   }
 };
 
-const PermissionPromptItem = ({ sessionName, toolName }: IPermissionPromptItemProps) => {
+const stripNumberPrefix = (label: string) => label.replace(/^\d+\.\s+/, '');
+
+const PermissionPromptItem = ({ sessionName }: IPermissionPromptItemProps) => {
   const [localSelected, setLocalSelected] = useState<number | null>(null);
   const [resolved, setResolved] = useState(false);
+  const [options, setOptions] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const options = TOOL_OPTIONS[toolName] ?? DEFAULT_OPTIONS;
+  useEffect(() => {
+    let cancelled = false;
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const poll = async () => {
+      const fetched = await fetchPermissionOptions(sessionName);
+      if (cancelled) return;
+      if (fetched.length > 0) {
+        setOptions(fetched);
+        setLoading(false);
+        if (interval) clearInterval(interval);
+      }
+    };
+
+    poll();
+    interval = setInterval(poll, 500);
+
+    return () => {
+      cancelled = true;
+      if (interval) clearInterval(interval);
+    };
+  }, [sessionName]);
+
   const isSelectable = localSelected === null && !resolved;
 
   const handleSelect = useCallback(
@@ -73,6 +80,20 @@ const PermissionPromptItem = ({ sessionName, toolName }: IPermissionPromptItemPr
     [sessionName, localSelected, resolved],
   );
 
+  if (loading || options.length === 0) {
+    return (
+      <div className="animate-in fade-in duration-150 mt-2">
+        <div className="rounded-lg border border-ui-purple/20 bg-ui-purple/5 px-4 py-3">
+          <div className="flex items-center gap-2 text-xs font-medium text-ui-purple">
+            <ShieldCheck size={14} />
+            <span>권한 승인 필요</span>
+            <Loader2 size={12} className="animate-spin ml-1" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-in fade-in duration-150 mt-2">
       <div className="rounded-lg border border-ui-purple/20 bg-ui-purple/5 px-4 py-3">
@@ -82,7 +103,7 @@ const PermissionPromptItem = ({ sessionName, toolName }: IPermissionPromptItemPr
         </div>
 
         <div className="flex flex-col gap-1.5">
-          {options.map((option, idx) => {
+          {options.map((label, idx) => {
             const isSelected = localSelected === idx;
             const isLocalPending = isSelected && !resolved;
             const dimmed = (localSelected !== null || resolved) && !isSelected;
@@ -119,7 +140,7 @@ const PermissionPromptItem = ({ sessionName, toolName }: IPermissionPromptItemPr
                     idx + 1
                   )}
                 </span>
-                <span className="min-w-0 flex-1 font-medium">{option.label}</span>
+                <span className="min-w-0 flex-1 font-medium">{stripNumberPrefix(label)}</span>
               </button>
             );
           })}

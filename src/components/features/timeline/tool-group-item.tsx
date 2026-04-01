@@ -33,10 +33,9 @@ const ToolGroupItem = ({ toolCalls, toolResults, sessionName }: IToolGroupItemPr
   const hasPending = toolCalls.some((t) => t.status === 'pending');
   const [isExpanded, setIsExpanded] = useState(hasPending);
 
-  const pendingToolName = hasPending
-    ? toolCalls.find((t) => t.status === 'pending' && PERMISSION_TOOL_NAMES.has(t.toolName))?.toolName
-    : undefined;
-  const showPermissionPrompt = !!pendingToolName && !!sessionName;
+  const hasPendingPermissionTool = hasPending
+    && toolCalls.some((t) => t.status === 'pending' && PERMISSION_TOOL_NAMES.has(t.toolName));
+  const showPermissionPrompt = hasPendingPermissionTool && !!sessionName;
 
   const resultMap = useMemo(() => new Map(toolResults.map((r) => [r.toolUseId, r])), [toolResults]);
 
@@ -71,7 +70,6 @@ const ToolGroupItem = ({ toolCalls, toolResults, sessionName }: IToolGroupItemPr
           {showPermissionPrompt && (
             <PermissionPromptItem
               sessionName={sessionName}
-              toolName={pendingToolName}
             />
           )}
         </div>

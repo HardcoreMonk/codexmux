@@ -1,0 +1,35 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { hasSession, capturePaneContent } from '@/lib/tmux';
+import { parsePermissionOptions } from '@/lib/permission-prompt';
+
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET');
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const session = req.query.session as string | undefined;
+  if (!session) {
+    return res.status(400).json({ error: 'session 파라미터 필수' });
+  }
+
+  const exists = await hasSession(session);
+  if (!exists) {
+    return res.status(404).json({ error: '세션을 찾을 수 없습니다' });
+  }
+
+  try {
+    const content = await capturePaneContent(session);
+    if (!content) {
+      return res.status(200).json({ options: [] });
+    }
+
+    const { options } = parsePermissionOptions(content);
+    return res.status(200).json({ options });
+  } catch (err) {
+    console.log(`[tmux] permission-options query failed: ${err instanceof Error ? err.message : err}`);
+    return res.status(500).json({ error: '터미널 캡처 실패' });
+  }
+};
+
+export default handler;
