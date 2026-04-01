@@ -328,9 +328,6 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
   conn.disposables.push(
     ptyProcess.onData((data: string) => {
       if (conn.cleaned || ws.readyState !== WebSocket.OPEN) return;
-      if (data.includes('\x1b[?996n')) {
-        ptyProcess!.write(`\x1b[?997;1;${ptyProcess!.rows};${ptyProcess!.cols}n`);
-      }
       terminalOutputTimestamps.set(sessionName, Date.now());
 
       const payload = textEncoder.encode(data);
