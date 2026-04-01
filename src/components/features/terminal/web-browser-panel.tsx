@@ -207,7 +207,7 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => 
               disabled={isElectron && !canGoBack}
               aria-label="뒤로"
             >
-              <ArrowLeft className="h-3.5 w-3.5" />
+              <ArrowLeft className="h-4 w-4" />
             </button>
             <button
               className={cn(
@@ -218,14 +218,14 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => 
               disabled={isElectron && !canGoForward}
               aria-label="앞으로"
             >
-              <ArrowRight className="h-3.5 w-3.5" />
+              <ArrowRight className="h-4 w-4" />
             </button>
             <button
               className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
               onClick={handleRefresh}
               aria-label="새로고침"
             >
-              <RotateCw className="h-3.5 w-3.5" />
+              <RotateCw className="h-4 w-4" />
             </button>
           </>
         )}
