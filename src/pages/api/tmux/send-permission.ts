@@ -1,54 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { hasSession, capturePaneContent, sendKeySequence } from '@/lib/tmux';
-
-const FOCUSED_RE = /^\s*[❯›>]\s+/;
-const INDICATOR_RE = /^\s*(?:[❯›>]\s+)?(.+)$/;
-const PERMISSION_KEYWORDS = ['Yes', 'Yes,', 'No'];
-const NUMBER_PREFIX_RE = /^\d+\.\s+/;
-
-const findFocusedIndex = (paneContent: string): { focusedIndex: number; totalOptions: number } => {
-  const lines = paneContent.split('\n');
-  let focusedIndex = 0;
-  let optionCount = 0;
-  let foundFirst = false;
-
-  for (const line of lines) {
-    if (!line.trim()) {
-      if (foundFirst) break;
-      continue;
-    }
-
-    const isFocused = FOCUSED_RE.test(line);
-    const isIndented = /^\s+\S/.test(line);
-
-    if (!isFocused && !isIndented) {
-      if (foundFirst) break;
-      continue;
-    }
-
-    const match = line.match(INDICATOR_RE);
-    if (!match) continue;
-    const label = match[1].trim();
-    const stripped = label.replace(NUMBER_PREFIX_RE, '');
-
-    if (!foundFirst) {
-      if (PERMISSION_KEYWORDS.some((kw) => stripped.startsWith(kw))) {
-        if (isFocused) focusedIndex = optionCount;
-        optionCount++;
-        foundFirst = true;
-      }
-    } else {
-      if (PERMISSION_KEYWORDS.some((kw) => stripped.startsWith(kw))) {
-        if (isFocused) focusedIndex = optionCount;
-        optionCount++;
-      } else {
-        break;
-      }
-    }
-  }
-
-  return { focusedIndex, totalOptions: optionCount };
-};
+import { hasSession, sendRawKeys } from '@/lib/tmux';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -68,32 +19,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   try {
-    const content = await capturePaneContent(session);
-    if (!content) {
-      return res.status(400).json({ error: '터미널 내용을 읽을 수 없습니다' });
-    }
-
-    const { focusedIndex, totalOptions } = findFocusedIndex(content);
-    if (totalOptions === 0) {
-      return res.status(400).json({ error: 'permission 선택지를 찾을 수 없습니다' });
-    }
-
-    if (targetIndex < 0 || targetIndex >= totalOptions) {
-      return res.status(400).json({ error: '유효하지 않은 옵션 인덱스' });
-    }
-
-    const delta = targetIndex - focusedIndex;
-    const keys: string[] = [];
-
-    if (delta > 0) {
-      for (let i = 0; i < delta; i++) keys.push('Down');
-    } else if (delta < 0) {
-      for (let i = 0; i < -delta; i++) keys.push('Up');
-    }
-
-    keys.push('Enter');
-    await sendKeySequence(session, keys);
-
+    await sendRawKeys(session, String(targetIndex + 1));
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.log(`[tmux] send-permission failed: ${err instanceof Error ? err.message : err}`);
