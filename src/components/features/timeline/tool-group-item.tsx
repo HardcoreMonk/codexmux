@@ -32,10 +32,11 @@ const PERMISSION_TOOL_NAMES = new Set(['Edit', 'Write', 'Bash', 'Read', 'Glob', 
 const ToolGroupItem = ({ toolCalls, toolResults, sessionName }: IToolGroupItemProps) => {
   const hasPending = toolCalls.some((t) => t.status === 'pending');
   const [isExpanded, setIsExpanded] = useState(hasPending);
-  const [permissionResolved, setPermissionResolved] = useState(false);
 
-  const showPermissionPrompt = hasPending && !!sessionName && !permissionResolved &&
-    toolCalls.some((t) => t.status === 'pending' && PERMISSION_TOOL_NAMES.has(t.toolName));
+  const pendingToolName = hasPending
+    ? toolCalls.find((t) => t.status === 'pending' && PERMISSION_TOOL_NAMES.has(t.toolName))?.toolName
+    : undefined;
+  const showPermissionPrompt = !!pendingToolName && !!sessionName;
 
   const resultMap = useMemo(() => new Map(toolResults.map((r) => [r.toolUseId, r])), [toolResults]);
 
@@ -70,7 +71,7 @@ const ToolGroupItem = ({ toolCalls, toolResults, sessionName }: IToolGroupItemPr
           {showPermissionPrompt && (
             <PermissionPromptItem
               sessionName={sessionName}
-              onResolved={() => setPermissionResolved(true)}
+              toolName={pendingToolName}
             />
           )}
         </div>

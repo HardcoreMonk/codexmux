@@ -19,7 +19,7 @@ const DotByStatus = ({ status }: { status: TTabDisplayStatus }) => {
     );
   }
 
-  if (status === 'needs-attention') {
+  if (status === 'needs-attention' || status === 'needs-input') {
     return (
       <span className="flex h-3 w-3 items-center justify-center">
         <span

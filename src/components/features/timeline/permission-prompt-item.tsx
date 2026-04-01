@@ -1,40 +1,48 @@
-import { useState, useEffect, memo, useCallback } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { ShieldCheck, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-interface IPermissionPromptItemProps {
-  sessionName: string;
-  onResolved?: () => void;
+interface IPermissionOption {
+  label: string;
+  description?: string;
 }
 
-const fetchPermissionOptions = async (
-  sessionName: string,
-): Promise<{ options: string[]; focusedIndex: number }> => {
-  try {
-    const res = await fetch(
-      `/api/tmux/permission-options?session=${encodeURIComponent(sessionName)}`,
-    );
-    if (!res.ok) return { options: [], focusedIndex: 0 };
-    const data = await res.json();
-    return {
-      options: Array.isArray(data.options) ? data.options : [],
-      focusedIndex: typeof data.focusedIndex === 'number' ? data.focusedIndex : 0,
-    };
-  } catch {
-    return { options: [], focusedIndex: 0 };
-  }
+const TOOL_OPTIONS: Record<string, IPermissionOption[]> = {
+  Edit: [
+    { label: 'Yes' },
+    { label: 'Yes, allow all edits this session' },
+    { label: 'No' },
+  ],
+  Write: [
+    { label: 'Yes' },
+    { label: 'Yes, allow all writes this session' },
+    { label: 'No' },
+  ],
+  Bash: [
+    { label: 'Yes' },
+    { label: 'Yes, allow all commands this session' },
+    { label: 'No' },
+  ],
 };
 
-const sendPermissionSelection = async (
-  session: string,
-  targetIndex: number,
-): Promise<boolean> => {
+const DEFAULT_OPTIONS: IPermissionOption[] = [
+  { label: 'Yes' },
+  { label: 'Yes, allow all this session' },
+  { label: 'No' },
+];
+
+interface IPermissionPromptItemProps {
+  sessionName: string;
+  toolName: string;
+}
+
+const sendSelection = async (session: string, optionIndex: number): Promise<boolean> => {
   try {
-    const res = await fetch('/api/tmux/send-permission', {
+    const res = await fetch('/api/tmux/send-input', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session, targetIndex }),
+      body: JSON.stringify({ session, input: String(optionIndex + 1) }),
     });
     return res.ok;
   } catch {
@@ -42,50 +50,28 @@ const sendPermissionSelection = async (
   }
 };
 
-const PermissionPromptItem = ({ sessionName, onResolved }: IPermissionPromptItemProps) => {
-  const [options, setOptions] = useState<string[]>([]);
+const PermissionPromptItem = ({ sessionName, toolName }: IPermissionPromptItemProps) => {
   const [localSelected, setLocalSelected] = useState<number | null>(null);
   const [resolved, setResolved] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const tryFetch = async () => {
-      await new Promise((r) => setTimeout(r, 500));
-      if (cancelled) return;
-
-      const result = await fetchPermissionOptions(sessionName);
-      if (!cancelled && result.options.length > 0) {
-        setOptions(result.options);
-      }
-    };
-
-    tryFetch();
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionName]);
+  const options = TOOL_OPTIONS[toolName] ?? DEFAULT_OPTIONS;
+  const isSelectable = localSelected === null && !resolved;
 
   const handleSelect = useCallback(
     async (idx: number) => {
       if (localSelected !== null || resolved) return;
 
       setLocalSelected(idx);
-      const ok = await sendPermissionSelection(sessionName, idx);
+      const ok = await sendSelection(sessionName, idx);
       if (!ok) {
         setLocalSelected(null);
         toast.error('선택 전송에 실패했습니다');
         return;
       }
       setResolved(true);
-      onResolved?.();
     },
-    [sessionName, localSelected, resolved, onResolved],
+    [sessionName, localSelected, resolved],
   );
-
-  if (options.length === 0) return null;
-
-  const isSelectable = localSelected === null && !resolved;
 
   return (
     <div className="animate-in fade-in duration-150 mt-2">
@@ -96,7 +82,7 @@ const PermissionPromptItem = ({ sessionName, onResolved }: IPermissionPromptItem
         </div>
 
         <div className="flex flex-col gap-1.5">
-          {options.map((label, idx) => {
+          {options.map((option, idx) => {
             const isSelected = localSelected === idx;
             const isLocalPending = isSelected && !resolved;
             const dimmed = (localSelected !== null || resolved) && !isSelected;
@@ -133,7 +119,7 @@ const PermissionPromptItem = ({ sessionName, onResolved }: IPermissionPromptItem
                     idx + 1
                   )}
                 </span>
-                <span className="min-w-0 flex-1 font-medium">{label}</span>
+                <span className="min-w-0 flex-1 font-medium">{option.label}</span>
               </button>
             );
           })}

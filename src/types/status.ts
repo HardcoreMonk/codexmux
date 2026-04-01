@@ -7,7 +7,7 @@ export interface ITabStatusEntry {
   tmuxSession: string;
 }
 
-export type TTabDisplayStatus = 'busy' | 'needs-attention' | 'idle';
+export type TTabDisplayStatus = 'busy' | 'needs-attention' | 'needs-input' | 'idle';
 
 export type IClientTabStatusEntry = Omit<ITabStatusEntry, 'tmuxSession'>;
 

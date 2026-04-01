@@ -171,7 +171,7 @@ const MobileTerminalPage = () => {
   const currentTabNeedsAttention = useTabStore((s) => {
     if (!selectedTabId) return false;
     const entry = s.tabs[selectedTabId];
-    return entry?.cliState === 'needs-attention';
+    return entry?.cliState === 'needs-attention' || entry?.cliState === 'needs-input';
   });
 
   useEffect(() => {

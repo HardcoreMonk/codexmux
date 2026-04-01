@@ -101,12 +101,13 @@ const useTabStore = create<ITabStore>((set) => ({
       return { tabs: updateTab(state.tabs, tabId, patch) };
     }),
 
-  // 로컬 경로 (onSync에서 호출): busy→idle 시 needs-attention 승격, needs-attention 보호
+  // 로컬 경로 (onSync에서 호출): busy→idle 시 needs-attention 승격, needs-attention/needs-input 보호
   setCliState: (tabId, cliState) =>
     set((state) => {
       const prev = state.tabs[tabId];
       if (!prev || prev.cliState === cliState) return state;
       if (prev.cliState === 'needs-attention' && cliState === 'idle') return state;
+      if (prev.cliState === 'needs-input') return state;
       const effective = (prev.cliState === 'busy' && cliState === 'idle') ? 'needs-attention' as const : cliState;
       return { tabs: updateTab(state.tabs, tabId, { cliState: effective }) };
     }),
@@ -217,6 +218,7 @@ export const selectTabDisplayStatus = (tabs: Record<string, ITabState>, tabId: s
   if (!tab || tab.cliState === 'inactive') return 'idle';
   if (tab.cliState === 'busy') return 'busy';
   if (tab.cliState === 'needs-attention') return 'needs-attention';
+  if (tab.cliState === 'needs-input') return 'needs-input';
   return 'idle';
 };
 

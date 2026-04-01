@@ -31,13 +31,13 @@ const TabStatusIndicator = ({ tabId, panelType }: ITabStatusIndicatorProps) => {
           className="h-3 w-3 shrink-0 animate-spin text-muted-foreground"
           aria-hidden="true"
         />
-      ) : status === 'needs-attention' ? (
+      ) : status === 'needs-attention' || status === 'needs-input' ? (
         <span
           className="h-2 w-2 shrink-0 rounded-full bg-ui-purple animate-pulse"
           aria-hidden="true"
         />
       ) : null}
-      {visible && <span className="sr-only">{status === 'busy' ? '처리 중,' : '확인 필요,'}</span>}
+      {visible && <span className="sr-only">{status === 'busy' ? '처리 중,' : status === 'needs-input' ? '입력 대기,' : '확인 필요,'}</span>}
     </span>
   );
 };

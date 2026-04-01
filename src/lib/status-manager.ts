@@ -1,8 +1,9 @@
 import { WebSocket } from 'ws';
 import { getWorkspaces } from '@/lib/workspace-store';
 import { readLayoutFile, resolveLayoutFile, collectAllTabs, updateTabCliStatus } from '@/lib/layout-store';
-import { getAllPanesInfo } from '@/lib/tmux';
+import { getAllPanesInfo, capturePaneContent } from '@/lib/tmux';
 import { detectActiveSession, isClaudeRunning } from '@/lib/session-detection';
+import { hasPermissionPrompt } from '@/lib/permission-prompt';
 import { getLastTerminalOutput } from '@/lib/terminal-server';
 import { INTERRUPT_PREFIX } from '@/lib/session-parser';
 import type { IPaneInfo } from '@/lib/tmux';
@@ -180,18 +181,26 @@ class StatusManager {
 
     const { idle: jsonlIdle, stale } = await checkJsonlIdle(session.jsonlPath);
 
-    if (!stale) return jsonlIdle ? 'idle' : 'busy';
-
-    const lastOutput = getLastTerminalOutput(tmuxSession);
-    if (lastOutput !== undefined) {
-      return Date.now() - lastOutput < TERMINAL_OUTPUT_STALE_MS ? 'busy' : 'idle';
+    let state: TCliState;
+    if (!stale) {
+      state = jsonlIdle ? 'idle' : 'busy';
+    } else {
+      const lastOutput = getLastTerminalOutput(tmuxSession);
+      if (lastOutput !== undefined) {
+        state = Date.now() - lastOutput < TERMINAL_OUTPUT_STALE_MS ? 'busy' : 'idle';
+      } else if (paneInfo?.windowActivity) {
+        state = Date.now() - paneInfo.windowActivity * 1000 < WINDOW_ACTIVITY_STALE_MS ? 'busy' : 'idle';
+      } else {
+        state = jsonlIdle ? 'idle' : 'busy';
+      }
     }
 
-    if (paneInfo?.windowActivity) {
-      return Date.now() - paneInfo.windowActivity * 1000 < WINDOW_ACTIVITY_STALE_MS ? 'busy' : 'idle';
+    if (state === 'busy') {
+      const paneContent = await capturePaneContent(tmuxSession);
+      if (paneContent && hasPermissionPrompt(paneContent)) return 'needs-input';
     }
 
-    return jsonlIdle ? 'idle' : 'busy';
+    return state;
   }
 
   private getPollingInterval(): number {
