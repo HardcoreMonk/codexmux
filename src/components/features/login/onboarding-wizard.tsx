@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Lock, Terminal, Bot } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Lock, Terminal, Bot, Sun, Moon, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,16 +11,24 @@ import { TERMINAL_THEMES, DEFAULT_THEME_IDS } from '@/lib/terminal-themes';
 import type { ITerminalThemeColors } from '@/lib/terminal-themes';
 import AppLogo from '@/components/layout/app-logo';
 
-type TStep = 'password' | 'theme' | 'claude' | 'complete';
+type TStep = 'password' | 'appearance' | 'theme' | 'claude' | 'complete';
+type TAppTheme = 'dark' | 'light' | 'system';
 
-const STEPS: TStep[] = ['password', 'theme', 'claude', 'complete'];
+const STEPS: TStep[] = ['password', 'appearance', 'theme', 'claude', 'complete'];
 
 const STEP_INFO: Record<TStep, { icon: React.ReactNode; title: string }> = {
   password: { icon: <Lock className="h-5 w-5" />, title: '비밀번호 설정' },
+  appearance: { icon: <Sun className="h-5 w-5" />, title: '화면 테마' },
   theme: { icon: <Terminal className="h-5 w-5" />, title: '터미널 테마' },
   claude: { icon: <Bot className="h-5 w-5" />, title: 'Claude 설정' },
   complete: { icon: <Check className="h-5 w-5" />, title: '설정 완료' },
 };
+
+const APP_THEME_OPTIONS: { value: TAppTheme; icon: React.ReactNode; label: string }[] = [
+  { value: 'dark', icon: <Moon className="h-4 w-4" />, label: '다크' },
+  { value: 'light', icon: <Sun className="h-4 w-4" />, label: '라이트' },
+  { value: 'system', icon: <Monitor className="h-4 w-4" />, label: '시스템' },
+];
 
 const previewColors = (colors: ITerminalThemeColors) => [
   colors.red, colors.green, colors.yellow, colors.blue,
@@ -88,10 +97,12 @@ interface IOnboardingWizardProps {
 }
 
 const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
+  const { theme: currentTheme, setTheme: setNextTheme } = useTheme();
   const [step, setStep] = useState<TStep>('password');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [appTheme, setAppTheme] = useState<TAppTheme>((currentTheme as TAppTheme) ?? 'dark');
   const [darkTheme, setDarkTheme] = useState(DEFAULT_THEME_IDS.dark);
   const [lightTheme, setLightTheme] = useState(DEFAULT_THEME_IDS.light);
   const [skipPermissions, setSkipPermissions] = useState(true);
@@ -139,6 +150,7 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           authPassword: password,
+          appTheme,
           terminalTheme: { light: lightTheme, dark: darkTheme },
           dangerouslySkipPermissions: skipPermissions,
         }),
@@ -223,6 +235,40 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
         </div>
       )}
 
+      {step === 'appearance' && (
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-muted-foreground">앱 전체의 화면 테마를 선택합니다.</p>
+          <div className="grid grid-cols-3 gap-2">
+            {APP_THEME_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { setAppTheme(opt.value); setNextTheme(opt.value); }}
+                className={cn(
+                  'flex flex-col items-center gap-2 rounded-lg border p-4 transition-colors',
+                  appTheme === opt.value
+                    ? 'border-primary bg-accent'
+                    : 'border-border hover:border-muted-foreground/50',
+                )}
+              >
+                {opt.icon}
+                <span className="text-xs font-medium">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="lg" className="h-12" onClick={goBack}>
+              <ArrowLeft className="mr-1 h-4 w-4" />
+              이전
+            </Button>
+            <Button size="lg" className="h-12 flex-1" onClick={goNext}>
+              다음
+              <ArrowRight className="ml-1 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       {step === 'theme' && (
         <div className="flex flex-col gap-4">
           <Tabs defaultValue="dark">
@@ -283,6 +329,10 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
             <div className="flex justify-between">
               <span className="text-muted-foreground">비밀번호</span>
               <span className="font-mono">{'*'.repeat(password.length)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">화면 테마</span>
+              <span>{APP_THEME_OPTIONS.find((o) => o.value === appTheme)?.label}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">다크 테마</span>

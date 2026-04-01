@@ -9,8 +9,6 @@ const LoginPage = () => {
   const [mode, setMode] = useState<TMode>('loading');
 
   useEffect(() => {
-    document.body.classList.add('dark');
-
     const checkSetup = async () => {
       try {
         const res = await fetch('/api/auth/setup');
@@ -21,10 +19,6 @@ const LoginPage = () => {
       }
     };
     checkSetup();
-
-    return () => {
-      document.body.classList.remove('dark');
-    };
   }, []);
 
   return (

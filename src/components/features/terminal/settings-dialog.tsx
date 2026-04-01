@@ -80,8 +80,21 @@ const settingsItems: ISettingsItem[] = [
   },
 ];
 
+const saveAppTheme = (value: string) => {
+  fetch('/api/config', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ appTheme: value }),
+  }).catch(() => {});
+};
+
 const GeneralTab = () => {
   const { theme, setTheme } = useTheme();
+
+  const handleThemeChange = (value: string) => {
+    setTheme(value);
+    saveAppTheme(value);
+  };
 
   return (
     <div className="space-y-6">
@@ -91,15 +104,15 @@ const GeneralTab = () => {
           <p className="text-sm text-muted-foreground">화면 테마를 선택합니다.</p>
         </div>
         <ButtonGroup>
-          <Button variant={theme === 'light' ? 'default' : 'outline'} size="sm" onClick={() => setTheme('light')}>
+          <Button variant={theme === 'light' ? 'default' : 'outline'} size="sm" onClick={() => handleThemeChange('light')}>
             <Sun className="h-4 w-4" />
             라이트
           </Button>
-          <Button variant={theme === 'dark' ? 'default' : 'outline'} size="sm" onClick={() => setTheme('dark')}>
+          <Button variant={theme === 'dark' ? 'default' : 'outline'} size="sm" onClick={() => handleThemeChange('dark')}>
             <Moon className="h-4 w-4" />
             다크
           </Button>
-          <Button variant={theme === 'system' ? 'default' : 'outline'} size="sm" onClick={() => setTheme('system')}>
+          <Button variant={theme === 'system' ? 'default' : 'outline'} size="sm" onClick={() => handleThemeChange('system')}>
             <Monitor className="h-4 w-4" />
             시스템
           </Button>

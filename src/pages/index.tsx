@@ -12,6 +12,7 @@ import useConfigStore from '@/hooks/use-config-store';
 import type { IConfigInitialData } from '@/hooks/use-config-store';
 import { initTerminalTheme } from '@/hooks/use-terminal-theme';
 import { useEffect, useRef } from 'react';
+import { useTheme } from 'next-themes';
 import useIsMobile from '@/hooks/use-is-mobile';
 import useBrowserTitle from '@/hooks/use-browser-title';
 
@@ -33,6 +34,7 @@ interface IIndexProps {
 
 const Index = ({ initialWorkspace, initialConfig, initialQuickPrompts }: IIndexProps) => {
   const isMobile = useIsMobile();
+  const { setTheme } = useTheme();
   useBrowserTitle('purplemux');
   const hydratedRef = useRef(false);
   useEffect(() => {
@@ -40,11 +42,14 @@ const Index = ({ initialWorkspace, initialConfig, initialQuickPrompts }: IIndexP
       hydratedRef.current = true;
       useWorkspaceStore.getState().hydrate(initialWorkspace);
       useConfigStore.getState().hydrate(initialConfig);
+      if (initialConfig.appTheme) {
+        setTheme(initialConfig.appTheme);
+      }
       if (initialConfig.terminalTheme) {
         initTerminalTheme(initialConfig.terminalTheme);
       }
     }
-  }, [initialWorkspace, initialConfig]);
+  }, [initialWorkspace, initialConfig, setTheme]);
 
   const content = isMobile ? (
     <>

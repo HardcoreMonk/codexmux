@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 export interface IConfigInitialData {
+  appTheme?: string | null;
   terminalTheme?: { light: string; dark: string } | null;
   dangerouslySkipPermissions?: boolean;
   editorUrl?: string;

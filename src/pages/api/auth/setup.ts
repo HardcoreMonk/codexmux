@@ -13,7 +13,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(400).json({ error: '이미 설정이 완료되었습니다.' });
     }
 
-    const { authPassword, terminalTheme, dangerouslySkipPermissions } = req.body ?? {};
+    const { authPassword, appTheme, terminalTheme, dangerouslySkipPermissions } = req.body ?? {};
     if (!authPassword || typeof authPassword !== 'string') {
       return res.status(400).json({ error: '비밀번호를 입력해주세요.' });
     }
@@ -24,6 +24,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     await updateConfig({
       authPassword: hashedPassword,
       authSecret,
+      appTheme: appTheme || 'dark',
       terminalTheme,
       dangerouslySkipPermissions: dangerouslySkipPermissions ?? false,
     });

@@ -7,6 +7,7 @@ import { broadcastSync } from '@/lib/sync-server';
 export interface IConfigData {
   authPassword?: string;
   authSecret?: string;
+  appTheme?: string;
   terminalTheme?: { light: string; dark: string };
   dangerouslySkipPermissions?: boolean;
   editorUrl?: string;

@@ -3,7 +3,7 @@ import { getConfig, updateConfig, hashPassword, generateSecret } from '@/lib/con
 import type { IConfigData } from '@/lib/config-store';
 
 const ALLOWED_FIELDS: (keyof Omit<IConfigData, 'updatedAt' | 'authSecret'>)[] = [
-  'terminalTheme', 'dangerouslySkipPermissions', 'editorUrl', 'authPassword',
+  'appTheme', 'terminalTheme', 'dangerouslySkipPermissions', 'editorUrl', 'authPassword',
 ];
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
