@@ -212,6 +212,9 @@ const MobileTerminalPage = () => {
     }
     const newTab = await layout.createTabInPane(currentPane.id, panelType, cmd);
     if (newTab) {
+      if (options?.command === 'claude-new') {
+        useTabStore.getState().setRestarting(newTab.id, true);
+      }
       setSelectedTabId(newTab.id);
     }
   }, [currentPane, layout]);
