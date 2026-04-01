@@ -10,10 +10,12 @@ import type { TPanelType } from '@/types/terminal';
 import MobileLayout from '@/components/features/mobile/mobile-layout';
 import MobileTabHeader from '@/components/features/mobile/mobile-tab-header';
 import MobileSurfaceView from '@/components/features/mobile/mobile-surface-view';
+import MobileNewTabDialog from '@/components/features/mobile/mobile-new-tab-dialog';
 import { formatTabTitle, isAutoTabName } from '@/lib/tab-title';
 import { dismissTab } from '@/hooks/use-claude-status';
 import useTabStore from '@/hooks/use-tab-store';
 import type { TCliState } from '@/types/timeline';
+import useConfigStore from '@/hooks/use-config-store';
 import useSync from '@/hooks/use-sync';
 
 const MobileTerminalPage = () => {
@@ -144,6 +146,7 @@ const MobileTerminalPage = () => {
     [activeWorkspaceId, layout],
   );
 
+  const [newTabDialogOpen, setNewTabDialogOpen] = useState(false);
   const [claudeCliState, setClaudeCliState] = useState<TCliState>('inactive');
 
   const handleCliStateChange = useCallback((state: TCliState) => {
@@ -195,9 +198,19 @@ const MobileTerminalPage = () => {
     layout.updateTabPanelType(currentPane.id, selectedTabId, nextType);
   }, [currentPane, selectedTabId, currentPanelType, layout]);
 
-  const handleCreateTab = useCallback(async () => {
+  const handleOpenNewTabDialog = useCallback(() => {
+    setNewTabDialogOpen(true);
+  }, []);
+
+  const handleCreateTab = useCallback(async (panelType?: TPanelType, options?: { command?: string }) => {
     if (!currentPane) return;
-    const newTab = await layout.createTabInPane(currentPane.id);
+    let cmd: string | undefined;
+    if (options?.command === 'claude-new') {
+      const dangerous = useConfigStore.getState().dangerouslySkipPermissions;
+      const settings = '--settings ~/.purplemux/hooks.json';
+      cmd = dangerous ? `claude ${settings} --dangerously-skip-permissions` : `claude ${settings}`;
+    }
+    const newTab = await layout.createTabInPane(currentPane.id, panelType, cmd);
     if (newTab) {
       setSelectedTabId(newTab.id);
     }
@@ -292,7 +305,7 @@ const MobileTerminalPage = () => {
             tabName={currentTabName}
             panelType={currentPanelType}
             onToggleClaude={handleToggleClaude}
-            onCreateTab={handleCreateTab}
+            onCreateTab={handleOpenNewTabDialog}
             onClose={handleCloseTab}
           />
         )}
@@ -313,6 +326,7 @@ const MobileTerminalPage = () => {
             onRemoveTabLocally={layout.removeTabLocally}
             onUpdateTabPanelType={layout.updateTabPanelType}
             onCliStateChange={handleCliStateChange}
+            onOpenNewTabDialog={handleOpenNewTabDialog}
           />
         )}
 
@@ -330,6 +344,11 @@ const MobileTerminalPage = () => {
       >
         {renderContent()}
       </MobileLayout>
+      <MobileNewTabDialog
+        open={newTabDialogOpen}
+        onOpenChange={setNewTabDialogOpen}
+        onCreateTab={handleCreateTab}
+      />
     </div>
   );
 };

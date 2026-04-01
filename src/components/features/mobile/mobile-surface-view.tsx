@@ -59,6 +59,7 @@ interface IMobileSurfaceViewProps {
   onRemoveTabLocally: (paneId: string, tabId: string) => void;
   onUpdateTabPanelType: (paneId: string, tabId: string, panelType: TPanelType) => void;
   onCliStateChange?: (state: TCliState) => void;
+  onOpenNewTabDialog?: () => void;
 }
 
 const MOBILE_FONT_SIZE = 11;
@@ -73,6 +74,7 @@ const MobileSurfaceView = ({
   onSwitchTab,
   onRemoveTabLocally,
   onCliStateChange,
+  onOpenNewTabDialog,
 }: IMobileSurfaceViewProps) => {
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const isClaudeCode = panelType === 'claude-code';
@@ -411,7 +413,7 @@ const MobileSurfaceView = ({
 
       {noTabs && (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3">
-          <Button className="gap-1.5" onClick={handleCreateTab} disabled={isCreating}>
+          <Button className="gap-1.5" onClick={onOpenNewTabDialog ?? handleCreateTab} disabled={isCreating}>
             {isCreating ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
