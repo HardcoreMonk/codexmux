@@ -3,6 +3,7 @@ import { Loader2, Plus, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { ITab, TDisconnectReason, TPanelType } from '@/types/terminal';
+import WebBrowserPanel from '@/components/features/terminal/web-browser-panel';
 import useTerminal from '@/hooks/use-terminal';
 import useTerminalWebSocket from '@/hooks/use-terminal-websocket';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
@@ -78,6 +79,7 @@ const MobileSurfaceView = ({
 }: IMobileSurfaceViewProps) => {
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const isClaudeCode = panelType === 'claude-code';
+  const isWebBrowser = panelType === 'web-browser';
 
   const activeTabCwd = useTabMetadataStore(
     (state) => (activeTabId ? state.metadata[activeTabId]?.cwd : undefined),
@@ -257,6 +259,11 @@ const MobileSurfaceView = ({
     if (!isReady || !activeTabId) return;
     const tab = tabs.find((t) => t.id === activeTabId);
     if (!tab) return;
+    if (tab.panelType === 'web-browser') {
+      connectedSessionRef.current = null;
+      lastTitleRef.current = '';
+      return;
+    }
     if (connectedSessionRef.current === tab.sessionName) return;
 
     if (connectedSessionRef.current !== null) reset();
@@ -360,12 +367,22 @@ const MobileSurfaceView = ({
     sendStdin(`${cmd}\r`);
   }, [claudeStatus, status, sendStdin]);
 
+  const handleWebUrlChange = useCallback((url: string) => {
+    if (!activeTabId || !layoutWsId) return;
+    fetch(`/api/layout/pane/${paneId}/tabs/${activeTabId}?workspace=${layoutWsId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ webUrl: url }),
+    }).catch(() => {});
+  }, [activeTabId, paneId, layoutWsId]);
+
   const noTabs = tabs.length === 0;
-  const ready = isReady && status === 'connected' && !noTabs;
+  const ready = isWebBrowser || (isReady && status === 'connected' && !noTabs);
   const isFirstConnectionForTab =
     activeTabId !== null && attemptedTabId !== activeTabId;
   const showInitialLoading =
     !noTabs &&
+    !isWebBrowser &&
     (!isReady || (isReady && isFirstConnectionForTab && status !== 'connected'));
 
   return (
@@ -376,6 +393,14 @@ const MobileSurfaceView = ({
         overscrollBehavior: 'none',
       }}
     >
+      {isWebBrowser && activeTabId && (
+        <WebBrowserPanel
+          key={activeTabId}
+          initialUrl={activeTab?.webUrl}
+          onUrlChange={handleWebUrlChange}
+        />
+      )}
+
       {isClaudeCode && activeTab && (
         <MobileClaudeCodePanel
           tabId={activeTabId ?? undefined}
@@ -397,17 +422,19 @@ const MobileSurfaceView = ({
         />
       )}
 
-      <TerminalContainer
-        ref={terminalRef}
-        className={cn(
-          !isClaudeCode && 'transition-opacity duration-150',
-          isClaudeCode ? 'absolute inset-0 pointer-events-none opacity-0' : 'min-h-0 flex-1',
-          !isClaudeCode && ready && showTerminal ? 'opacity-100' : '',
-          !isClaudeCode && (!ready || !showTerminal) ? 'opacity-0' : '',
-        )}
-      />
+      {!isWebBrowser && (
+        <TerminalContainer
+          ref={terminalRef}
+          className={cn(
+            !isClaudeCode && 'transition-opacity duration-150',
+            isClaudeCode ? 'absolute inset-0 pointer-events-none opacity-0' : 'min-h-0 flex-1',
+            !isClaudeCode && ready && showTerminal ? 'opacity-100' : '',
+            !isClaudeCode && (!ready || !showTerminal) ? 'opacity-0' : '',
+          )}
+        />
+      )}
 
-      {!isClaudeCode && status === 'connected' && (
+      {!isClaudeCode && !isWebBrowser && status === 'connected' && (
         <MobileTerminalToolbar sendStdin={sendWebStdin} terminalConnected={status === 'connected'} />
       )}
 
@@ -425,7 +452,7 @@ const MobileSurfaceView = ({
       )}
 
 
-      {!noTabs && status === 'disconnected' && !isFirstConnectionForTab && (
+      {!noTabs && !isWebBrowser && status === 'disconnected' && !isFirstConnectionForTab && (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3">
           <WifiOff className="h-5 w-5 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">
@@ -460,7 +487,7 @@ const MobileSurfaceView = ({
         </div>
       )}
 
-      {!noTabs && (
+      {!noTabs && !isWebBrowser && (
         <ConnectionStatus
           status={status}
           retryCount={retryCount}
