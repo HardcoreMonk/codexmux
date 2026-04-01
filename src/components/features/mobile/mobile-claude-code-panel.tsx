@@ -165,10 +165,10 @@ const MobileClaudeCodePanel = ({
       restartNeedsExitRef.current = false;
     }
 
-    if (isCliIdle(cliState) && !restartNeedsExitRef.current && effectiveClaudeStatus === 'running') {
+    if (isCliIdle(cliState) && !restartNeedsExitRef.current && effectiveClaudeStatus === 'running' && !isTimelineLoading) {
       onRestartComplete?.();
     }
-  }, [isRestarting, effectiveClaudeStatus, cliState, onRestartComplete]);
+  }, [isRestarting, effectiveClaudeStatus, cliState, isTimelineLoading, onRestartComplete]);
 
   const isInputVisible = view === 'timeline';
 
