@@ -158,7 +158,6 @@ const ActivitySection = ({ data }: IActivitySectionProps) => {
                     axisLine={false}
                     tickFormatter={formatDate}
                     tick={{ fontSize: 11 }}
-                    interval="preserveStartEnd"
                   />
                   <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} tickFormatter={formatAxisTick} width={48} />
                   <ChartTooltip
@@ -186,7 +185,7 @@ const ActivitySection = ({ data }: IActivitySectionProps) => {
                 <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} tickFormatter={formatAxisTick} width={48} />
                 <ChartTooltip
                   content={<ChartTooltipContent />}
-                  formatter={(value: number) => formatNumber(value)}
+                  formatter={(value) => formatNumber(Number(value))}
                 />
                 <Bar dataKey="average" fill="var(--ui-purple)" radius={[2, 2, 0, 0]} />
               </BarChart>

@@ -82,7 +82,6 @@ const OverviewSection = ({ data }: IOverviewSectionProps) => {
                   axisLine={false}
                   tickFormatter={formatDate}
                   tick={{ fontSize: 11 }}
-                  interval="preserveStartEnd"
                 />
                 <YAxis
                   tickLine={false}

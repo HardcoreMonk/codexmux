@@ -102,7 +102,7 @@ const useTabMetadataStore = create<ITabMetadataState>((set) => ({
 
   removeTab: (tabId) => {
     set((state) => {
-      const { [tabId]: _removed, ...rest } = state.metadata; // eslint-disable-line @typescript-eslint/no-unused-vars
+      const { [tabId]: _removed, ...rest } = state.metadata;  
       return { metadata: rest };
     });
     scheduleSyncToLayout();

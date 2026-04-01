@@ -7,7 +7,6 @@ import {
   CartesianGrid,
   XAxis,
   YAxis,
-  Cell,
 } from 'recharts';
 import dayjs from 'dayjs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -73,7 +72,7 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
         cache: tokens.cache,
         total: tokens.input + tokens.output + tokens.cache,
         cost: tokens.cost,
-        color: getModelColor(model),
+        fill: getModelColor(model),
       }))
       .sort((a, b) => b.total - a.total);
   }, [data.modelTokens]);
@@ -104,20 +103,16 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
                   <YAxis type="category" dataKey="model" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={100} />
                   <ChartTooltip
                     content={<ChartTooltipContent />}
-                    formatter={(value: number) => formatNumberWithComma(value)}
+                    formatter={(value) => formatNumberWithComma(Number(value))}
                   />
-                  <Bar dataKey="total" radius={[0, 4, 4, 0]}>
-                    {modelBarData.map((entry) => (
-                      <Cell key={entry.model} fill={entry.color} />
-                    ))}
-                  </Bar>
+                  <Bar dataKey="total" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ChartContainer>
               <div className="flex flex-col justify-center space-y-1.5 lg:min-w-[180px]">
                 {modelBarData.map((d) => (
                   <div key={d.model} className="flex items-center justify-between gap-4 text-xs">
                     <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: d.color }} />
+                      <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: d.fill }} />
                       <span>{d.model}</span>
                     </div>
                     <span className="tabular-nums font-medium">{formatCostWithComma(d.cost)}</span>
@@ -158,7 +153,6 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
                   axisLine={false}
                   tickFormatter={formatDate}
                   tick={{ fontSize: 11 }}
-                  interval="preserveStartEnd"
                 />
                 <YAxis
                   tickLine={false}

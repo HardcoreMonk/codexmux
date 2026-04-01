@@ -5,7 +5,6 @@ import {
   CartesianGrid,
   XAxis,
   YAxis,
-  Cell,
   Pie,
   PieChart,
 } from 'recharts';
@@ -156,7 +155,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
                     <PieChart>
                       <ChartTooltip
                         content={<ChartTooltipContent hideLabel />}
-                        formatter={(value: number) => formatNumberWithComma(value)}
+                        formatter={(value) => formatNumberWithComma(Number(value))}
                       />
                       <Pie
                         data={categoryDonutData}
@@ -166,11 +165,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
                         outerRadius={72}
                         strokeWidth={2}
                         stroke="var(--background)"
-                      >
-                        {categoryDonutData.map((entry) => (
-                          <Cell key={entry.name} fill={entry.fill} />
-                        ))}
-                      </Pie>
+                      />
                       <text
                         x="50%"
                         y="48%"
@@ -212,13 +207,9 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
                       <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={60} />
                       <ChartTooltip
                         content={<ChartTooltipContent />}
-                        formatter={(value: number) => formatNumberWithComma(value)}
+                        formatter={(value) => formatNumberWithComma(Number(value))}
                       />
-                      <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                        {outcomeData.map((entry) => (
-                          <Cell key={entry.name} fill={entry.fill} />
-                        ))}
-                      </Bar>
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ChartContainer>
                 </CardContent>
@@ -257,7 +248,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
                       />
                       <ChartTooltip
                         content={<ChartTooltipContent />}
-                        formatter={(value: number) => formatNumberWithComma(value)}
+                        formatter={(value) => formatNumberWithComma(Number(value))}
                       />
                       <Bar dataKey="count" fill="var(--ui-purple)" radius={[0, 4, 4, 0]} />
                     </BarChart>
@@ -279,7 +270,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
                       <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} tickFormatter={formatAxisTick} width={48} />
                       <ChartTooltip
                         content={<ChartTooltipContent />}
-                        formatter={(value: number) => formatNumberWithComma(value)}
+                        formatter={(value) => formatNumberWithComma(Number(value))}
                       />
                       <Bar dataKey="count" fill="var(--ui-blue)" radius={[2, 2, 0, 0]} />
                     </BarChart>

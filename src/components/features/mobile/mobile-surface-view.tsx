@@ -133,7 +133,7 @@ const MobileSurfaceView = ({
     onCliStateChange?.(state);
   }, [onCliStateChange]);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   const handleInputVisibleChange = useCallback((_visible: boolean) => {}, []);
 
   const handleCustomKeyEvent = useCallback((event: KeyboardEvent): boolean => {

@@ -78,7 +78,7 @@ const useTabStore = create<ITabStore>((set) => ({
 
   removeTab: (tabId) =>
     set((state) => {
-      const { [tabId]: _removed, ...rest } = state.tabs; // eslint-disable-line @typescript-eslint/no-unused-vars
+      const { [tabId]: _removed, ...rest } = state.tabs;  
       return { tabs: rest };
     }),
 
@@ -173,7 +173,7 @@ const useTabStore = create<ITabStore>((set) => ({
   updateFromServer: (tabId, update) =>
     set((state) => {
       if (update.cliState === null) {
-        const { [tabId]: _removed, ...rest } = state.tabs; // eslint-disable-line @typescript-eslint/no-unused-vars
+        const { [tabId]: _removed, ...rest } = state.tabs;  
         return { tabs: rest };
       }
       const existing = state.tabs[tabId];
