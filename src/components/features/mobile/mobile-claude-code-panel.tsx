@@ -165,7 +165,7 @@ const MobileClaudeCodePanel = ({
       restartNeedsExitRef.current = false;
     }
 
-    if (isCliIdle(cliState) && !restartNeedsExitRef.current) {
+    if (isCliIdle(cliState) && !restartNeedsExitRef.current && effectiveClaudeStatus === 'running') {
       onRestartComplete?.();
     }
   }, [isRestarting, effectiveClaudeStatus, cliState, onRestartComplete]);
