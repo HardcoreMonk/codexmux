@@ -33,11 +33,13 @@ const sendSelection = async (session: string, optionIndex: number): Promise<bool
 
 const stripNumberPrefix = (label: string) => label.replace(/^\d+\.\s+/, '');
 
+const POLL_INTERVAL = 500;
+const POLL_TIMEOUT = 3_000;
+
 const PermissionPromptItem = ({ sessionName }: IPermissionPromptItemProps) => {
   const [localSelected, setLocalSelected] = useState<number | null>(null);
   const [resolved, setResolved] = useState(false);
   const [options, setOptions] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,17 +50,27 @@ const PermissionPromptItem = ({ sessionName }: IPermissionPromptItemProps) => {
       if (cancelled) return;
       if (fetched.length > 0) {
         setOptions(fetched);
-        setLoading(false);
-        if (interval) clearInterval(interval);
+        if (interval) {
+          clearInterval(interval);
+          interval = null;
+        }
       }
     };
 
     poll();
-    interval = setInterval(poll, 500);
+    interval = setInterval(poll, POLL_INTERVAL);
+
+    const timeout = setTimeout(() => {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    }, POLL_TIMEOUT);
 
     return () => {
       cancelled = true;
       if (interval) clearInterval(interval);
+      clearTimeout(timeout);
     };
   }, [sessionName]);
 
@@ -80,19 +92,7 @@ const PermissionPromptItem = ({ sessionName }: IPermissionPromptItemProps) => {
     [sessionName, localSelected, resolved],
   );
 
-  if (loading || options.length === 0) {
-    return (
-      <div className="animate-in fade-in duration-150 mt-2">
-        <div className="rounded-lg border border-ui-purple/20 bg-ui-purple/5 px-4 py-3">
-          <div className="flex items-center gap-2 text-xs font-medium text-ui-purple">
-            <ShieldCheck size={14} />
-            <span>권한 승인 필요</span>
-            <Loader2 size={12} className="animate-spin ml-1" />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (options.length === 0) return null;
 
   return (
     <div className="animate-in fade-in duration-150 mt-2">
