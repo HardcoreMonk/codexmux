@@ -120,6 +120,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   const wsActionsRef = useRef<IWsActions>(NOOP_WS_ACTIONS);
   const connectedSessionRef = useRef<string | null>(null);
   const prevConnectedTabIdRef = useRef<string | null>(null);
+  const closingTabIdRef = useRef<string | null>(null);
 
   const tabsRef = useRef(tabs);
   const activeTabIdRef = useRef(activeTabId);
@@ -262,6 +263,8 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   }, [isFocused]);
 
   const handleSessionEnded = useCallback(async () => {
+    if (closingTabIdRef.current) return;
+
     const currentTabs = tabsRef.current;
     const currentActiveTabId = activeTabIdRef.current;
     const currentPaneCount = paneCountRef.current;
@@ -449,10 +452,12 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
           switchTabInPane(paneId, adjacent.id);
         }
       }
+      closingTabIdRef.current = tabId;
       setClosingTabId(tabId);
       try {
         await deleteTabInPane(paneId, tabId);
       } finally {
+        closingTabIdRef.current = null;
         setClosingTabId(null);
       }
     },

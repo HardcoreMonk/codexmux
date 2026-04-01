@@ -25,6 +25,7 @@ const BACKPRESSURE_LOW = 256 * 1024;
 
 const TMUX_SOCKET = 'purple';
 const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
 
 interface IActiveConnection {
   ws: WebSocket;
@@ -213,13 +214,11 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
 
     switch (msg.type) {
       case MSG_STDIN: {
-        const decoder = new TextDecoder();
-        ptyProcess.write(decoder.decode(msg.payload));
+        ptyProcess.write(textDecoder.decode(msg.payload));
         break;
       }
       case MSG_WEB_STDIN: {
-        const decoder = new TextDecoder();
-        const data = decoder.decode(msg.payload);
+        const data = textDecoder.decode(msg.payload);
         exitCopyMode(sessionName).finally(() => {
           ptyProcess?.write(data);
         });
