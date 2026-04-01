@@ -3,7 +3,7 @@ import path from 'path';
 import os from 'os';
 import { createReadStream } from 'fs';
 import readline from 'readline';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { shellPath } from '@/lib/preflight';
 import { collectJsonlFiles } from './pt-stats-cache';
 import type { IDailyReportDay } from '@/types/stats';
@@ -168,8 +168,9 @@ const buildPromptData = (sessions: ISessionData[]): string => {
 
 const callClaudeCli = (input: string, systemPrompt: string): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const child = exec(
-      'claude -p',
+    const child = execFile(
+      'claude',
+      ['-p'],
       { timeout: 120_000, maxBuffer: 1024 * 1024, env: { ...process.env, PATH: shellPath } },
       (error, stdout) => {
         if (error) {

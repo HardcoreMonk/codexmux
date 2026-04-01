@@ -122,18 +122,16 @@ const WorkspaceItem = ({
             onBlur={commitRename}
           />
         ) : (
-          <>
-            <span className="truncate text-sm font-medium leading-tight">
-              {workspace.name}
-            </span>
-            {displayDirs.map((dir, i) => (
-              <span key={dir} className={cn('truncate text-xs leading-tight text-muted-foreground/70', i === 0 && 'mt-1')}>
-                {dir}
-              </span>
-            ))}
-            <WorkspaceStatusIndicator workspaceId={workspace.id} />
-          </>
+          <span className="truncate border-b border-transparent text-sm font-medium leading-tight">
+            {workspace.name}
+          </span>
         )}
+        {displayDirs.map((dir, i) => (
+          <span key={dir} className={cn('truncate text-xs leading-tight text-muted-foreground/70', i === 0 && 'mt-1')}>
+            {dir}
+          </span>
+        ))}
+        <WorkspaceStatusIndicator workspaceId={workspace.id} />
       </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem onClick={startEditing}>
