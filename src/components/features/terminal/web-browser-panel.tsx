@@ -52,7 +52,7 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => 
   const webviewRef = useRef<IElectronWebview | null>(null);
   const webviewContainerRef = useRef<HTMLDivElement>(null);
   const onUrlChangeRef = useRef(onUrlChange);
-  onUrlChangeRef.current = onUrlChange;
+  useEffect(() => { onUrlChangeRef.current = onUrlChange; });
 
   // Electron webview: 생성 및 이벤트 바인딩
   useEffect(() => {

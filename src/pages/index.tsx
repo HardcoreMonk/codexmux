@@ -76,7 +76,7 @@ const Index = ({ initialWorkspace, initialConfig, initialQuickPrompts }: IIndexP
 
 export const getServerSideProps: GetServerSideProps<IIndexProps> = async () => {
   const [data, configData, quickPrompts] = await Promise.all([getWorkspaces(), getConfig(), readQuickPrompts()]);
-  const { authPassword, authSecret: _, ...safeConfig } = configData;
+  const { authPassword, authSecret: _authSecret, ...safeConfig } = configData;
   return { props: { initialWorkspace: data, initialConfig: { ...safeConfig, hasAuthPassword: !!authPassword }, initialQuickPrompts: quickPrompts } };
 };
 

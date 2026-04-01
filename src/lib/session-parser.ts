@@ -130,7 +130,7 @@ export const summarizeToolCall = (name: string, input: Record<string, unknown> =
     case 'Write':
       return `Write ${String(input.file_path ?? '')}`;
     case 'Bash': {
-      const cmd = String(input.command ?? '').split('\n')[0].slice(0, 80);
+      const cmd = String(input.command ?? '').split('\n')[0];
       return `$ ${cmd}`;
     }
     case 'Grep':

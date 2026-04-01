@@ -51,7 +51,7 @@ export const readConfig = async (): Promise<IConfigData | null> => {
 };
 
 export const writeConfig = async (data: IConfigData): Promise<void> => {
-  const { updatedAt: _, ...rest } = data;
+  const { updatedAt: _updatedAt, ...rest } = data;
   const contentKey = JSON.stringify(rest);
   if (g.__ptConfigContentCache === contentKey) return;
 

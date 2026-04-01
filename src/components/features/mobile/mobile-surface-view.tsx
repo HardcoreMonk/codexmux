@@ -314,15 +314,14 @@ const MobileSurfaceView = ({
 
   useEffect(() => {
     if (isClaudeCode) {
-      setShowTerminal(false);
       waitingForResizeRef.current = false;
       if (showTimerRef.current) clearTimeout(showTimerRef.current);
       fetchAndUpdateCwd();
       return;
     }
     if (isReady && status === 'connected') {
-      setShowTerminal(false);
       waitingForResizeRef.current = true;
+      queueMicrotask(() => setShowTerminal(false));
       showTimerRef.current = setTimeout(() => {
         waitingForResizeRef.current = false;
         setShowTerminal(true);
@@ -332,7 +331,7 @@ const MobileSurfaceView = ({
         waitingForResizeRef.current = false;
       };
     }
-    setShowTerminal(true);
+    queueMicrotask(() => setShowTerminal(true));
   }, [isClaudeCode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreateTab = useCallback(async () => {
@@ -380,11 +379,6 @@ const MobileSurfaceView = ({
   const ready = isWebBrowser || (isReady && status === 'connected' && !noTabs);
   const isFirstConnectionForTab =
     activeTabId !== null && attemptedTabId !== activeTabId;
-  const showInitialLoading =
-    !noTabs &&
-    !isWebBrowser &&
-    (!isReady || (isReady && isFirstConnectionForTab && status !== 'connected'));
-
   return (
     <div
       className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"

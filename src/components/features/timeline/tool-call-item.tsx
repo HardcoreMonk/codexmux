@@ -72,7 +72,7 @@ const ToolCallItem = ({ entry, result }: IToolCallItemProps) => {
           {renderToolIcon(entry.toolName, 12)}
         </span>
         <div className="min-w-0 flex-1">
-          <span className="text-xs font-mono truncate block">{entry.summary}</span>
+          <span className="text-xs font-mono break-all block">{entry.summary}</span>
           {result && result.summary && (
             <p
               className={cn(

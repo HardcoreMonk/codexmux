@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
-import { Bot, Code, Dices, Globe, Loader2, Lock, Monitor, Moon, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
+import { Bot, Code, Dices, Globe, Lock, Monitor, Moon, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Input } from '@/components/ui/input';

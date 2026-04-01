@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo, useEffect, type RefObject } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
 import type { TCliState } from '@/types/timeline';
 import { isCliIdle } from '@/hooks/use-tab-store';

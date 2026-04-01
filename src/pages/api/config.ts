@@ -8,7 +8,7 @@ const ALLOWED_FIELDS: (keyof Omit<IConfigData, 'updatedAt' | 'authSecret'>)[] = 
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
-    const { authPassword, authSecret: _, ...safe } = await getConfig();
+    const { authPassword, authSecret: _authSecret, ...safe } = await getConfig();
     return res.status(200).json({ ...safe, hasAuthPassword: !!authPassword });
   }
 
