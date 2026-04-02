@@ -23,7 +23,7 @@ import PanePathInputOverlay from '@/components/features/terminal/pane-path-input
 import useQuickPrompts from '@/hooks/use-quick-prompts';
 import useFileDrop from '@/hooks/use-file-drop';
 import PaneTabBar from '@/components/features/terminal/pane-tab-bar';
-import { formatTabTitle } from '@/lib/tab-title';
+import { formatTabTitle, parseCurrentCommand } from '@/lib/tab-title';
 import { isAppShortcut, isClearShortcut, isFocusInputShortcut, isShiftEnter } from '@/lib/keyboard-shortcuts';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
 import useTabStore, { selectSessionView, isCliIdle } from '@/hooks/use-tab-store';
@@ -99,6 +99,17 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
       for (const id of tabIds) {
         const t = state.metadata[id]?.title;
         if (t) result[id] = t;
+      }
+      return result;
+    }),
+  );
+
+  const tabProcesses = useTabMetadataStore(
+    useShallow((state) => {
+      const result: Record<string, string> = {};
+      for (const id of tabIds) {
+        const p = state.metadata[id]?.currentProcess;
+        if (p) result[id] = p;
       }
       return result;
     }),
@@ -251,7 +262,10 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
       if (title === lastTitleRef.current) return;
       lastTitleRef.current = title;
       const formatted = formatTabTitle(title);
-      useTabMetadataStore.getState().setTitle(tabId, formatted);
+      const process = parseCurrentCommand(title);
+      const store = useTabMetadataStore.getState();
+      store.setTitle(tabId, formatted);
+      store.setCurrentProcess(tabId, process);
       const tab = tabsRef.current.find((t) => t.id === tabId);
       if (tab) {
         const prevCheckedAt = useTabStore.getState().tabs[tabId]?.claudeStatusCheckedAt ?? 0;
@@ -684,6 +698,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
         tabs={tabs}
         activeTabId={activeTabId}
         tabTitles={tabTitles}
+        tabProcesses={tabProcesses}
         isLoading={false}
         error={null}
         isCreating={isCreating}

@@ -13,6 +13,7 @@ interface IPaneTabBarProps {
   tabs: ITab[];
   activeTabId: string | null;
   tabTitles?: Record<string, string>;
+  tabProcesses?: Record<string, string>;
   isLoading: boolean;
   error: string | null;
   isCreating: boolean;
@@ -34,6 +35,7 @@ const PaneTabBar = ({
   tabs,
   activeTabId,
   tabTitles,
+  tabProcesses,
   isLoading,
   error,
   isCreating,
@@ -190,6 +192,7 @@ const PaneTabBar = ({
             isDragging={tab.id === draggedTabId}
             dropSide={dropTarget?.id === tab.id ? dropTarget.side : null}
             displayTitle={tabTitles?.[tab.id]}
+            currentProcess={tabProcesses?.[tab.id]}
             onSwitch={() => onSwitchTab(tab.id)}
             onDelete={() => onDeleteTab(tab.id)}
             onRename={(name) => handleRenameTab(tab.id, name)}

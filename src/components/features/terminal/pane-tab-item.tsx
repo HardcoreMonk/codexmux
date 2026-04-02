@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Terminal, Globe } from 'lucide-react';
+import { X, Globe } from 'lucide-react';
 import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
 import { cn } from '@/lib/utils';
 import type { ITab } from '@/types/terminal';
 import { isAutoTabName } from '@/lib/tab-title';
+import { getProcessIcon } from '@/lib/process-icon';
 import TabStatusIndicator from '@/components/features/terminal/tab-status-indicator';
 
 interface IPaneTabItemProps {
@@ -12,6 +13,7 @@ interface IPaneTabItemProps {
   isDragging: boolean;
   dropSide: 'left' | 'right' | null;
   displayTitle?: string;
+  currentProcess?: string;
   onSwitch: () => void;
   onDelete: () => void;
   onRename: (name: string) => void;
@@ -28,6 +30,7 @@ const PaneTabItem = ({
   isDragging,
   dropSide,
   displayTitle,
+  currentProcess,
   onSwitch,
   onDelete,
   onRename,
@@ -117,7 +120,9 @@ const PaneTabItem = ({
           ) : tab.panelType === 'web-browser' ? (
             <Globe className="h-3 w-3 shrink-0 text-muted-foreground" />
           ) : (
-            <Terminal className="h-3 w-3 shrink-0 text-muted-foreground" />
+            <span className="shrink-0 text-xs leading-none text-muted-foreground" style={{ fontFamily: 'MesloLGLDZ, monospace' }}>
+              {getProcessIcon(currentProcess)}
+            </span>
           )}
           <span
             className={cn(
