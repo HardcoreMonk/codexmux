@@ -576,7 +576,11 @@ export const closePaneInLayout = async (wsId: string, paneId: string): Promise<I
     if (collectPanes(layout.root).length <= 1) return null;
 
     sessions = pane.tabs.filter((t) => t.panelType !== 'web-browser').map((t) => t.sessionName);
+    const wasEqualized = isEqualized(layout.root);
     removePaneWithFocus(layout, paneId);
+    if (wasEqualized) {
+      layout.root = equalizeNode(layout.root);
+    }
     layout.updatedAt = new Date().toISOString();
     await writeLayoutFile(layout, filePath);
     syncWorkspaceDirectories(wsId, layout.root);
