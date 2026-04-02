@@ -5,6 +5,7 @@ import os from 'os';
 import readline from 'readline';
 import type { IProjectStats, ISessionStats, TPeriod } from '@/types/stats';
 import { isWithinPeriod } from './period-filter';
+import { shortenCwd } from './daily-report-builder';
 
 const PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
 const CONCURRENCY_LIMIT = 10;
@@ -49,6 +50,7 @@ const parseJsonlStream = async (
   period: TPeriod,
 ): Promise<IRawSessionAgg[]> => {
   const sessions = new Map<string, IRawSessionAgg>();
+  let cwd = '';
 
   try {
     const stream = createReadStream(filePath, { encoding: 'utf-8' });
@@ -59,6 +61,11 @@ const parseJsonlStream = async (
       try {
         const entry = JSON.parse(line) as Record<string, unknown>;
         const timestamp = String(entry.timestamp ?? '');
+
+        if (!cwd && typeof entry.cwd === 'string') {
+          cwd = entry.cwd;
+        }
+
         if (!timestamp || !isWithinPeriod(timestamp, period)) continue;
 
         const sessionId = String(entry.sessionId ?? '');
@@ -108,6 +115,13 @@ const parseJsonlStream = async (
     }
   } catch {
     // file read error
+  }
+
+  if (cwd) {
+    const resolvedProject = shortenCwd(cwd);
+    for (const agg of sessions.values()) {
+      agg.project = resolvedProject;
+    }
   }
 
   return Array.from(sessions.values());

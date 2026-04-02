@@ -53,7 +53,7 @@ interface ISessionData {
   firstMessage: string;
 }
 
-const shortenCwd = (cwd: string): string => {
+export const shortenCwd = (cwd: string): string => {
   const home = os.homedir();
   const rel = cwd.startsWith(home) ? cwd.slice(home.length + 1) : cwd;
   return rel

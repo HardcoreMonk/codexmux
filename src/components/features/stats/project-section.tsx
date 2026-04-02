@@ -30,9 +30,8 @@ const ProjectSection = ({ data }: IProjectSectionProps) => {
     return data.projects
       .slice(0, 10)
       .map((p, i) => {
-        const segments = p.project.split('/');
         return {
-          name: segments[segments.length - 1] || p.project,
+          name: p.project,
           totalTokens: p.totalTokens,
           sessionCount: p.sessionCount,
           messageCount: p.messageCount,
