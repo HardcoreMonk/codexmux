@@ -1,8 +1,10 @@
 import { useState, useEffect, memo } from 'react';
-import { ClipboardList, Eye, TerminalSquare, Check } from 'lucide-react';
+import { ClipboardList, Eye, TerminalSquare, Check, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -31,13 +33,28 @@ const fetchPlanOptions = async (sessionName: string): Promise<string[]> => {
   }
 };
 
+const sendSelection = async (session: string, optionIndex: number): Promise<boolean> => {
+  try {
+    const res = await fetch('/api/tmux/send-input', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session, input: String(optionIndex + 1) }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+};
+
 const PlanItem = ({ entry, sessionName }: IPlanItemProps) => {
   const [open, setOpen] = useState(false);
   const [terminalOptions, setTerminalOptions] = useState<string[]>([]);
+  const [localSelected, setLocalSelected] = useState<number | null>(null);
   const firstLine = entry.markdown.split('\n').find((l) => l.replace(/^#+\s*/, '').trim()) ?? 'Plan';
   const title = firstLine.replace(/^#+\s*/, '').trim();
   const isPending = entry.status === 'pending';
   const isApproved = entry.status === 'success';
+  const isSelectable = isPending && localSelected === null && !!sessionName;
 
   useEffect(() => {
     if (!isPending || !sessionName) return;
@@ -61,6 +78,17 @@ const PlanItem = ({ entry, sessionName }: IPlanItemProps) => {
 
   const displayOptions = terminalOptions.length > 0 ? terminalOptions : null;
 
+  const handleSelect = async (idx: number) => {
+    if (!isSelectable) return;
+
+    setLocalSelected(idx);
+    const ok = await sendSelection(sessionName, idx);
+    if (!ok) {
+      setLocalSelected(null);
+      toast.error('선택 전송에 실패했습니다');
+    }
+  };
+
   return (
     <div className="animate-in fade-in duration-150">
       {isPending ? (
@@ -82,17 +110,46 @@ const PlanItem = ({ entry, sessionName }: IPlanItemProps) => {
 
           {displayOptions ? (
             <div className="mb-2.5 flex flex-col gap-1.5">
-              {displayOptions.map((label, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-start gap-2.5 rounded-md border border-border/50 px-3 py-2 text-sm"
-                >
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">
-                    {idx + 1}
-                  </span>
-                  <span className="min-w-0 flex-1">{label}</span>
-                </div>
-              ))}
+              {displayOptions.map((label, idx) => {
+                const isSelected = localSelected === idx;
+                const dimmed = localSelected !== null && !isSelected;
+
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    disabled={!isSelectable}
+                    onClick={() => handleSelect(idx)}
+                    className={cn(
+                      'flex items-start gap-2.5 rounded-md border px-3 py-2 text-left text-sm transition-colors',
+                      isSelected
+                        ? 'border-ui-purple/40 bg-ui-purple/10'
+                        : dimmed
+                          ? 'border-border/30 opacity-50'
+                          : 'border-border/50',
+                      isSelectable && 'cursor-pointer hover:border-ui-purple/30 hover:bg-ui-purple/5',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs font-medium',
+                        isSelected
+                          ? 'bg-ui-purple text-white'
+                          : 'bg-muted text-muted-foreground',
+                      )}
+                    >
+                      {isSelected && !isApproved ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : isSelected ? (
+                        <Check size={12} />
+                      ) : (
+                        idx + 1
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1">{label}</span>
+                  </button>
+                );
+              })}
             </div>
           ) : entry.allowedPrompts && entry.allowedPrompts.length > 0 ? (
             <div className="mb-2.5 flex flex-col gap-1 text-xs text-muted-foreground">
@@ -105,10 +162,12 @@ const PlanItem = ({ entry, sessionName }: IPlanItemProps) => {
             </div>
           ) : null}
 
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <TerminalSquare size={12} />
-            <span>터미널에서 승인하세요</span>
-          </div>
+          {!displayOptions && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <TerminalSquare size={12} />
+              <span>터미널에서 승인하세요</span>
+            </div>
+          )}
         </div>
       ) : (
         <button
