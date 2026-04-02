@@ -4,8 +4,7 @@ import { getWorkspaces } from '@/lib/workspace-store';
 import { getDangerouslySkipPermissions } from '@/lib/config-store';
 import { HOOK_SETTINGS_PATH } from '@/lib/hook-settings';
 
-const RESUME_INTERVAL_MS = 2_000;
-const SHELL_READY_DELAY_MS = 1_000;
+const SHELL_READY_DELAY_MS = 500;
 const SAFE_SHELLS = new Set(['bash', 'zsh', 'fish', 'sh', 'dash']);
 
 interface IAutoResumeTarget {
@@ -42,15 +41,8 @@ const findAutoResumeTargets = async (): Promise<IAutoResumeTarget[]> => {
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
-const resumeSingleSurface = async (target: IAutoResumeTarget): Promise<boolean> => {
+const sendResumeKeys = async (target: IAutoResumeTarget, skipPerms: boolean): Promise<boolean> => {
   try {
-    const sessionExists = await hasSession(target.tmuxSession);
-
-    if (!sessionExists) {
-      console.log(`[auto-resume] tmux 세션 없음, 새로 생성: ${target.tmuxSession}`);
-      await createSession(target.tmuxSession, 80, 24);
-    }
-
     const command = await getPaneCurrentCommand(target.tmuxSession);
     if (!command) {
       console.log(`[auto-resume] 프로세스 확인 불가: ${target.tmuxSession}`);
@@ -66,9 +58,6 @@ const resumeSingleSurface = async (target: IAutoResumeTarget): Promise<boolean> 
       return false;
     }
 
-    await sleep(SHELL_READY_DELAY_MS);
-
-    const skipPerms = await getDangerouslySkipPermissions();
     const settings = `--settings ${HOOK_SETTINGS_PATH}`;
     const resumeCmd = skipPerms
       ? `claude --resume ${target.claudeSessionId} ${settings} --dangerously-skip-permissions`
@@ -84,14 +73,24 @@ const resumeSingleSurface = async (target: IAutoResumeTarget): Promise<boolean> 
 };
 
 export const executeAutoResume = async (targets: IAutoResumeTarget[]): Promise<void> => {
-  for (let i = 0; i < targets.length; i++) {
-    const target = targets[i];
-    await resumeSingleSurface(target);
-
-    if (i < targets.length - 1) {
-      await sleep(RESUME_INTERVAL_MS);
+  // Phase 1: 세션 생성 (순차 — 첫 createSession이 tmux 서버를 cold-start하므로 race 방지)
+  let hasNewSession = false;
+  for (const target of targets) {
+    if (!(await hasSession(target.tmuxSession))) {
+      console.log(`[auto-resume] tmux 세션 없음, 새로 생성: ${target.tmuxSession}`);
+      await createSession(target.tmuxSession, 80, 24);
+      hasNewSession = true;
     }
   }
+
+  // Phase 2: 새 세션이 있으면 셸 초기화 대기 (한 번만)
+  if (hasNewSession) {
+    await sleep(SHELL_READY_DELAY_MS);
+  }
+
+  // Phase 3: resume 명령 병렬 전송
+  const skipPerms = await getDangerouslySkipPermissions();
+  await Promise.allSettled(targets.map((target) => sendResumeKeys(target, skipPerms)));
 };
 
 export const autoResumeOnStartup = async (): Promise<void> => {
