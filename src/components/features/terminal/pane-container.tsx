@@ -143,7 +143,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
       if (!res.ok) return;
       const { cwd, lastCommand } = await res.json();
       if (cwd) useTabMetadataStore.getState().setCwd(tab.id, cwd);
-      if (lastCommand) useTabMetadataStore.getState().setLastCommand(tab.id, lastCommand);
+      useTabMetadataStore.getState().setLastCommand(tab.id, lastCommand ?? null);
     } catch {
       /* ignore */
     }

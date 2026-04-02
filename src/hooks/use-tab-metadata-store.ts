@@ -5,14 +5,14 @@ import useWorkspaceStore from '@/hooks/use-workspace-store';
 interface ITabMetadata {
   title?: string;
   cwd?: string;
-  lastCommand?: string;
+  lastCommand?: string | null;
 }
 
 interface ITabMetadataState {
   metadata: Record<string, ITabMetadata>;
   setTitle: (tabId: string, title: string) => void;
   setCwd: (tabId: string, cwd: string) => void;
-  setLastCommand: (tabId: string, lastCommand: string) => void;
+  setLastCommand: (tabId: string, lastCommand: string | null) => void;
   removeTab: (tabId: string) => void;
   hydrate: (data: Record<string, ITabMetadata>) => void;
   retainOnly: (tabIds: Set<string>) => void;
@@ -38,10 +38,10 @@ const scheduleSyncToLayout = () => {
       for (const tab of pane.tabs) {
         const meta = metadata[tab.id];
         if (!meta) continue;
-        const patch: Record<string, string | undefined> = {};
+        const patch: Record<string, string | null | undefined> = {};
         if (meta.title !== undefined && meta.title !== tab.title) patch.title = meta.title;
         if (meta.cwd !== undefined && meta.cwd !== tab.cwd) patch.cwd = meta.cwd;
-        if (meta.lastCommand !== undefined && meta.lastCommand !== tab.lastCommand) patch.lastCommand = meta.lastCommand;
+        if (meta.lastCommand !== undefined && (meta.lastCommand ?? null) !== (tab.lastCommand ?? null)) patch.lastCommand = meta.lastCommand ?? null;
         if (Object.keys(patch).length > 0) {
           fetch(`/api/layout/pane/${pane.id}/tabs/${tab.id}${wsParam}`, {
             method: 'PATCH',
