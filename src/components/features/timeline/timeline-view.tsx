@@ -258,26 +258,34 @@ const TimelineView = ({
 
   const isLoadingMoreRef = useRef(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const triggerLoadMore = useCallback(() => {
     if (!hasMore || isLoadingMoreRef.current) return;
     isLoadingMoreRef.current = true;
     setIsLoadingMore(true);
     onLoadMore().finally(() => {
-      requestAnimationFrame(() => {
-        isLoadingMoreRef.current = false;
-        setIsLoadingMore(false);
-      });
+      isLoadingMoreRef.current = false;
+      setIsLoadingMore(false);
     });
   }, [hasMore, onLoadMore]);
 
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el || !hasMore || isLoadingMoreRef.current) return;
-    if (el.scrollTop < 200) {
-      triggerLoadMore();
-    }
-  }, [scrollRef, hasMore, triggerLoadMore]);
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    const root = scrollRef.current;
+    if (!sentinel || !root) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          triggerLoadMore();
+        }
+      },
+      { root, rootMargin: '200px 0px 0px 0px' },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [scrollRef, triggerLoadMore]);
 
   if (isLoading) {
     return <SkeletonLoader />;
@@ -303,12 +311,12 @@ const TimelineView = ({
           opacity: skipAnimation ? 0 : 1,
           transitionDuration: '300ms',
         }}
-        onScroll={handleScroll}
         tabIndex={0}
         role="log"
         aria-label="Claude Code 타임라인"
       >
         <div ref={contentRef}>
+          {hasMore && <div ref={sentinelRef} className="h-px" />}
           {hasMore && !isLoadingMore && (
             <div className="flex justify-center py-2">
               <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={triggerLoadMore}>
@@ -318,8 +326,13 @@ const TimelineView = ({
             </div>
           )}
           {isLoadingMore && (
-            <div className="flex items-center justify-center py-2">
-              <Loader2 size={14} className="animate-spin text-muted-foreground" />
+            <div className="flex flex-col gap-3 px-4 py-3">
+              {[44, 32, 48].map((w, i) => (
+                <div key={i} className="flex flex-col gap-1.5">
+                  <div className="h-3.5 animate-pulse rounded bg-muted/60" style={{ width: `${w}%` }} />
+                  <div className="h-3.5 animate-pulse rounded bg-muted/60" style={{ width: `${w - 12}%` }} />
+                </div>
+              ))}
             </div>
           )}
           {tasks.length > 0 && (
