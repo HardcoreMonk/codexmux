@@ -1,6 +1,8 @@
 import { useRef, useEffect, useMemo } from 'react';
-import { Loader2, SquareTerminal, Globe } from 'lucide-react';
+import { Loader2, Globe } from 'lucide-react';
 import useTabStore, { selectTabDisplayStatus } from '@/hooks/use-tab-store';
+import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
+import { getProcessIcon } from '@/lib/process-icon';
 import type { IWorkspace, IPaneNode, TPanelType } from '@/types/terminal';
 
 interface IMobileWorkspaceTabBarProps {
@@ -29,6 +31,7 @@ const MobileWorkspaceTabBar = ({
 }: IMobileWorkspaceTabBarProps) => {
   const activeRef = useRef<HTMLButtonElement>(null);
   const statusTabs = useTabStore((s) => s.tabs);
+  const metadata = useTabMetadataStore((s) => s.metadata);
 
   const items = useMemo(() => {
     const result: (ITabDot | 'divider')[] = [];
@@ -83,6 +86,10 @@ const MobileWorkspaceTabBar = ({
           const isClaude = item.panelType === 'claude-code';
           const status = selectTabDisplayStatus(statusTabs, item.tabId);
           const termStatus = statusTabs[item.tabId]?.terminalStatus;
+          const meta = metadata[item.tabId];
+          const process = meta?.currentProcess ?? meta?.title;
+          const nerdIcon = getProcessIcon(process);
+          const nerdStyle = { fontFamily: 'MesloLGLDZ, monospace' } as const;
 
           return (
             <button
@@ -103,11 +110,11 @@ const MobileWorkspaceTabBar = ({
               ) : item.panelType === 'web-browser' ? (
                 <Globe className="h-2.5 w-2.5 text-muted-foreground/50" />
               ) : termStatus === 'server' ? (
-                <SquareTerminal className="h-2.5 w-2.5 text-ui-green animate-pulse" />
+                <span className="text-[10px] leading-none text-ui-green animate-pulse" style={nerdStyle} aria-hidden="true">{nerdIcon}</span>
               ) : termStatus === 'running' ? (
-                <SquareTerminal className="h-2.5 w-2.5 text-ui-blue" />
+                <span className="text-[10px] leading-none text-ui-blue" style={nerdStyle} aria-hidden="true">{nerdIcon}</span>
               ) : (
-                <SquareTerminal className="h-2.5 w-2.5 text-muted-foreground/50" />
+                <span className="text-[10px] leading-none text-muted-foreground/50" style={nerdStyle} aria-hidden="true">{nerdIcon}</span>
               )}
             </button>
           );

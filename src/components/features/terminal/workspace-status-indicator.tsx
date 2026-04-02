@@ -1,6 +1,8 @@
 import { useMemo, memo } from 'react';
-import { Loader2, SquareTerminal, Globe } from 'lucide-react';
+import { Loader2, Globe } from 'lucide-react';
 import useTabStore, { selectTabDisplayStatus } from '@/hooks/use-tab-store';
+import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
+import { getProcessIcon } from '@/lib/process-icon';
 import type { TTabDisplayStatus, TTerminalStatus } from '@/types/status';
 import type { TPanelType } from '@/types/terminal';
 
@@ -8,7 +10,15 @@ interface IWorkspaceStatusIndicatorProps {
   workspaceId: string;
 }
 
-const DotByStatus = ({ status, panelType, terminalStatus }: { status: TTabDisplayStatus; panelType?: TPanelType; terminalStatus?: TTerminalStatus }) => {
+const NERD_FONT_STYLE = { fontFamily: 'MesloLGLDZ, monospace' };
+
+const TerminalNerdIcon = ({ className, process }: { className: string; process?: string | null }) => (
+  <span className={`text-[10px] leading-none ${className}`} style={NERD_FONT_STYLE} aria-hidden="true">
+    {getProcessIcon(process)}
+  </span>
+);
+
+const DotByStatus = ({ status, panelType, terminalStatus, process }: { status: TTabDisplayStatus; panelType?: TPanelType; terminalStatus?: TTerminalStatus; process?: string | null }) => {
   let inner: React.ReactNode;
 
   if (panelType === 'claude-code') {
@@ -22,11 +32,11 @@ const DotByStatus = ({ status, panelType, terminalStatus }: { status: TTabDispla
   } else if (panelType === 'web-browser') {
     inner = <Globe className="h-2.5 w-2.5 text-muted-foreground/50" aria-hidden="true" />;
   } else if (terminalStatus === 'server') {
-    inner = <SquareTerminal className="h-2.5 w-2.5 text-ui-green animate-pulse" aria-hidden="true" />;
+    inner = <TerminalNerdIcon className="text-ui-green animate-pulse" process={process} />;
   } else if (terminalStatus === 'running') {
-    inner = <SquareTerminal className="h-2.5 w-2.5 text-ui-blue" aria-hidden="true" />;
+    inner = <TerminalNerdIcon className="text-ui-blue" process={process} />;
   } else {
-    inner = <SquareTerminal className="h-2.5 w-2.5 text-muted-foreground/50" aria-hidden="true" />;
+    inner = <TerminalNerdIcon className="text-muted-foreground/50" process={process} />;
   }
 
   return (
@@ -40,6 +50,7 @@ const WorkspaceStatusIndicator = ({ workspaceId }: IWorkspaceStatusIndicatorProp
   const tabs = useTabStore((state) => state.tabs);
   const tabOrder = useTabStore((state) => state.tabOrders[workspaceId]);
   const wsConnected = useTabStore((state) => state.statusWsConnected);
+  const metadata = useTabMetadataStore((state) => state.metadata);
 
   const tabEntries = useMemo(() => {
     const statusTabIds = new Set<string>();
@@ -54,20 +65,24 @@ const WorkspaceStatusIndicator = ({ workspaceId }: IWorkspaceStatusIndicatorProp
       if (!ordered.includes(id)) ordered.push(id);
     }
 
-    return ordered.map((tabId) => ({
-      tabId,
-      status: selectTabDisplayStatus(tabs, tabId),
-      panelType: tabs[tabId]?.panelType,
-      terminalStatus: tabs[tabId]?.terminalStatus,
-    }));
-  }, [tabs, tabOrder, workspaceId]);
+    return ordered.map((tabId) => {
+      const meta = metadata[tabId];
+      return {
+        tabId,
+        status: selectTabDisplayStatus(tabs, tabId),
+        panelType: tabs[tabId]?.panelType,
+        terminalStatus: tabs[tabId]?.terminalStatus,
+        process: meta?.currentProcess ?? meta?.title,
+      };
+    });
+  }, [tabs, tabOrder, workspaceId, metadata]);
 
   if (wsConnected && tabEntries.length === 0) return null;
 
   return (
     <span className="mt-1 flex h-3 items-center gap-0.5" aria-label="탭 상태">
-      {tabEntries.map(({ tabId, status, panelType, terminalStatus }) => (
-        <DotByStatus key={tabId} status={status} panelType={panelType} terminalStatus={terminalStatus} />
+      {tabEntries.map(({ tabId, status, panelType, terminalStatus, process }) => (
+        <DotByStatus key={tabId} status={status} panelType={panelType} terminalStatus={terminalStatus} process={process} />
       ))}
     </span>
   );

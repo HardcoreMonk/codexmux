@@ -121,7 +121,7 @@ const PaneTabItem = ({
             <Globe className="h-3 w-3 shrink-0 text-muted-foreground" />
           ) : (
             <span className="shrink-0 text-xs leading-none text-muted-foreground" style={{ fontFamily: 'MesloLGLDZ, monospace' }}>
-              {getProcessIcon(currentProcess)}
+              {getProcessIcon(currentProcess ?? displayTitle)}
             </span>
           )}
           <span
