@@ -30,7 +30,7 @@ const WorkspacePortsLabel = ({ workspaceId }: { workspaceId: string }) => {
     (state) => selectWorkspacePortsLabel(state.tabs, workspaceId),
   );
   if (!label) return null;
-  return <span className="block truncate text-xs text-ui-green/80">{label}</span>;
+  return <span className="mt-1 block truncate text-xs text-ui-green/80">{label}</span>;
 };
 
 interface IMobileNavigationSheetProps {

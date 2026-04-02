@@ -22,7 +22,7 @@ const DotByStatus = ({ status, panelType, terminalStatus }: { status: TTabDispla
   } else if (panelType === 'web-browser') {
     inner = <Globe className="h-2.5 w-2.5 text-muted-foreground/50" aria-hidden="true" />;
   } else if (terminalStatus === 'server') {
-    inner = <span className="h-2 w-2 rounded-full bg-ui-green" aria-hidden="true" />;
+    inner = <SquareTerminal className="h-2.5 w-2.5 text-ui-green animate-pulse" aria-hidden="true" />;
   } else if (terminalStatus === 'running') {
     inner = <SquareTerminal className="h-2.5 w-2.5 text-ui-blue" aria-hidden="true" />;
   } else {

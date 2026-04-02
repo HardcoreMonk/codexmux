@@ -137,7 +137,7 @@ const WorkspaceItem = ({
           </span>
         ))}
         {portsLabel && (
-          <span className="truncate text-xs leading-tight text-ui-green/80">
+          <span className="mt-1 truncate text-xs leading-tight text-ui-green/80">
             {portsLabel}
           </span>
         )}
