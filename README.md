@@ -78,3 +78,36 @@ tailscale serve --bg 8022
 ```bash
 tailscale serve --bg off 8022
 ```
+
+## 보안
+
+### 초기 비밀번호 설정
+
+최초 접속 시 온보딩 화면에서 비밀번호를 설정합니다. 설정된 비밀번호는 scrypt로 해싱되어 `~/.purplemux/config.json`에 저장됩니다.
+
+환경변수로 직접 지정할 수도 있습니다:
+
+```bash
+AUTH_PASSWORD=<비밀번호> NEXTAUTH_SECRET=<시크릿> pnpm start
+```
+
+환경변수가 설정되면 config.json보다 우선 적용됩니다.
+
+### HTTPS 역프록시
+
+purplemux는 기본적으로 HTTP로 동작합니다. 외부 네트워크에 노출할 경우 반드시 HTTPS를 적용하세요.
+
+- **Tailscale Serve** — 위 [외부 접속](#외부-접속-tailscale-serve) 섹션 참고. 별도 인증서 관리 없이 HTTPS가 자동 적용됩니다.
+- **Nginx / Caddy 등** — 역프록시 설정 시 WebSocket 업그레이드 헤더(`Upgrade`, `Connection`)를 반드시 전달해야 합니다.
+
+### 데이터 디렉토리 (`~/.purplemux/`)
+
+앱 설정과 데이터는 `~/.purplemux/` 디렉토리에 저장됩니다:
+
+| 파일 | 설명 |
+| --- | --- |
+| `config.json` | 인증 정보(해싱된 비밀번호, 시크릿), 앱 설정 |
+| `workspaces.json` | 워크스페이스 레이아웃, 탭, 디렉토리 |
+| `hooks/` | 사용자 정의 훅 스크립트 |
+
+이 디렉토리에 민감한 인증 정보가 포함되므로, 다른 사용자에게 읽기 권한을 부여하지 않도록 주의하세요.
