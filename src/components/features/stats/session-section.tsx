@@ -244,7 +244,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
                         tickLine={false}
                         axisLine={false}
                         tick={{ fontSize: 10 }}
-                        width={100}
+                        width={140}
                       />
                       <ChartTooltip
                         content={<ChartTooltipContent />}

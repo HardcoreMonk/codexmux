@@ -84,7 +84,7 @@ const ProjectSection = ({ data }: IProjectSectionProps) => {
                 tickLine={false}
                 axisLine={false}
                 tick={{ fontSize: 11 }}
-                width={100}
+                width={140}
               />
               <ChartTooltip
                 content={<ChartTooltipContent />}
