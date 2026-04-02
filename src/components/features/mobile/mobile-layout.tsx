@@ -79,9 +79,8 @@ const MobileLayout = ({
     fetchAll();
   }, [workspaces]);
 
-  // 메뉴 열릴 때 모든 workspace 레이아웃 refresh
+  // 모든 workspace 레이아웃 fetch (초기 로드 + 메뉴 열릴 때 refresh)
   useEffect(() => {
-    if (!menuOpen) return;
     let cancelled = false;
 
     const fetchAll = async () => {
