@@ -70,9 +70,11 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   const paneCount = useLayoutStore((s) => s.paneCount);
   const isSplitting = useLayoutStore((s) => s.isSplitting);
 
+  const canSplit = useLayoutStore((s) => s.canSplit);
   const switchTabInPane = useLayoutStore((s) => s.switchTabInPane);
   const createTabInPane = useLayoutStore((s) => s.createTabInPane);
   const deleteTabInPane = useLayoutStore((s) => s.deleteTabInPane);
+  const splitPane = useLayoutStore((s) => s.splitPane);
   const closePane = useLayoutStore((s) => s.closePane);
   const focusPane = useLayoutStore((s) => s.focusPane);
   const moveTab = useLayoutStore((s) => s.moveTab);
@@ -688,6 +690,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
         error={null}
         isCreating={isCreating}
         paneCount={paneCount}
+        canSplit={canSplit}
         isSplitting={isSplitting}
         onSwitchTab={handleSwitchTab}
         onCreateTab={handleCreateTab}
@@ -695,6 +698,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
         onRenameTab={handleRenameTab}
         onReorderTabs={handleReorderTabs}
         onClosePane={() => closePane(paneId)}
+        onSplitPane={(orientation) => splitPane(paneId, orientation)}
         onMoveTab={handleMoveTab}
         onFocusPane={handleFocusPane}
         onRetry={() => {}}

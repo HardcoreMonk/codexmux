@@ -12,6 +12,7 @@ import {
   removePaneWithFocus,
   updateRatioAtPath,
   equalizeNode,
+  isEqualized,
 } from '@/lib/layout-tree';
 import type { ITab, TLayoutNode, IPaneNode, ILayoutData } from '@/types/terminal';
 import type { TCliState } from '@/types/timeline';
@@ -536,6 +537,7 @@ export const splitPaneInLayout = async (
   const result = await mutate(wsId, (layout) => {
     const existing = findPane(layout.root, sourcePaneId);
     if (!existing) return null;
+    const wasEqualized = isEqualized(layout.root);
     if (cwd) {
       const activeTab = existing.tabs.find((t) => t.id === existing.activeTabId);
       if (activeTab) activeTab.cwd = cwd;
@@ -547,6 +549,9 @@ export const splitPaneInLayout = async (
       children: [{ ...existing }, newPane],
     };
     layout.root = replacePane(layout.root, sourcePaneId, splitNode);
+    if (wasEqualized) {
+      layout.root = equalizeNode(layout.root);
+    }
     layout.activePaneId = paneId;
     return layout;
   });

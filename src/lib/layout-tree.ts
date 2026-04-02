@@ -86,6 +86,15 @@ const countUnits = (node: TLayoutNode, orientation: string): number => {
   return countUnits(node.children[0], orientation) + countUnits(node.children[1], orientation);
 };
 
+export const isEqualized = (node: TLayoutNode): boolean => {
+  if (node.type === 'pane') return true;
+  const leftCount = countUnits(node.children[0], node.orientation);
+  const rightCount = countUnits(node.children[1], node.orientation);
+  const expectedRatio = (leftCount / (leftCount + rightCount)) * 100;
+  if (Math.abs(node.ratio - expectedRatio) > 1) return false;
+  return isEqualized(node.children[0]) && isEqualized(node.children[1]);
+};
+
 export const equalizeNode = (node: TLayoutNode): TLayoutNode => {
   if (node.type === 'pane') return node;
   const leftCount = countUnits(node.children[0], node.orientation);
