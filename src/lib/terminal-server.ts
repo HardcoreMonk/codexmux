@@ -191,6 +191,7 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
   let lastHeartbeat = Date.now();
   let paused = false;
   let sessionName = '';
+  let webStdinQueue = Promise.resolve();
 
   const parseMessage = (raw: Buffer | ArrayBuffer) => {
     const data = new Uint8Array(
@@ -219,9 +220,10 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
       }
       case MSG_WEB_STDIN: {
         const data = textDecoder.decode(msg.payload);
-        exitCopyMode(sessionName).finally(() => {
-          ptyProcess?.write(data);
-        });
+        webStdinQueue = webStdinQueue
+          .then(() => exitCopyMode(sessionName))
+          .catch(() => {})
+          .then(() => { ptyProcess?.write(data); });
         break;
       }
       case MSG_RESIZE: {

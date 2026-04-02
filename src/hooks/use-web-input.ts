@@ -102,9 +102,11 @@ const useWebInput = (
       return;
     }
 
-    sendStdin(value + '\r');
     if (value.includes('\n')) {
+      sendStdin(`\x1b[200~${value}\x1b[201~\r`);
       setTimeout(() => sendStdin('\r'), 500);
+    } else {
+      sendStdin(value + '\r');
     }
 
     if (!value.trim().startsWith('/')) {
