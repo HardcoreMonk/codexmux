@@ -12,6 +12,7 @@ import {
 import { signOut } from 'next-auth/react';
 import useTabStore, { selectGlobalStatus } from '@/hooks/use-tab-store';
 import AppLogo from '@/components/layout/app-logo';
+import { isMac } from '@/lib/keyboard-shortcuts';
 import { useRouter } from 'next/router';
 import { toast } from 'sonner';
 import {
@@ -51,11 +52,51 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
   const hasBusy = useTabStore((s) => selectGlobalStatus(s.tabs).busyCount > 0);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const modTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const handler = () => setSettingsOpen(true);
     window.addEventListener('open-settings', handler);
     return () => window.removeEventListener('open-settings', handler);
+  }, []);
+
+  useEffect(() => {
+    const modKey = isMac ? 'Meta' : 'Control';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== modKey || modTimerRef.current) return;
+      modTimerRef.current = setTimeout(() => {
+        setShowShortcuts(true);
+      }, 1000);
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key !== modKey) return;
+      if (modTimerRef.current) {
+        clearTimeout(modTimerRef.current);
+        modTimerRef.current = null;
+      }
+      setShowShortcuts(false);
+    };
+
+    const handleBlur = () => {
+      if (modTimerRef.current) {
+        clearTimeout(modTimerRef.current);
+        modTimerRef.current = null;
+      }
+      setShowShortcuts(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+      if (modTimerRef.current) clearTimeout(modTimerRef.current);
+    };
   }, []);
 
   const [isCreating, setIsCreating] = useState(false);
@@ -305,6 +346,8 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
                 workspace={ws}
                 isActive={ws.id === activeWorkspaceId}
                 isDeleting={deletingIds.has(ws.id)}
+                shortcutLabel={i < 8 ? `⌘${i + 1}` : i === workspaces.length - 1 ? '⌘9' : undefined}
+                showShortcut={showShortcuts}
                 onSelect={onSelectWorkspace}
                 onRename={handleRename}
                 onDelete={handleDeleteRequest}
@@ -328,10 +371,10 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
             <div className="flex items-center gap-0.5">
               <button
                 className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
-                onClick={() => setSettingsOpen(true)}
-                aria-label="설정"
+                onClick={() => router.push('/reports')}
+                aria-label="데일리 노트"
               >
-                <Settings className="h-3.5 w-3.5" />
+                <FileText className="h-3.5 w-3.5" />
               </button>
               <button
                 className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
@@ -342,10 +385,10 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
               </button>
               <button
                 className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
-                onClick={() => router.push('/reports')}
-                aria-label="일별 보고"
+                onClick={() => setSettingsOpen(true)}
+                aria-label="설정"
               >
-                <FileText className="h-3.5 w-3.5" />
+                <Settings className="h-3.5 w-3.5" />
               </button>
             </div>
             <button

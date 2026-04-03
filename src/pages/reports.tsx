@@ -16,7 +16,7 @@ const PAGE_SIZE = 10;
 const ReportsPage = () => {
   const router = useRouter();
   const isMobile = useIsMobile();
-  useBrowserTitle('일별 보고');
+  useBrowserTitle('데일리 노트');
 
   const handleSelectWorkspace = useCallback(
     (workspaceId: string) => {
@@ -93,13 +93,13 @@ const ReportsPage = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <FileText className="h-4 w-4 text-ui-purple" />
-          <h1 className="text-sm font-semibold">일별 보고</h1>
+          <h1 className="text-sm font-semibold">데일리 노트</h1>
           {!loading && total > 0 && (
             <span className="text-xs text-muted-foreground">{total}일</span>
           )}
         </div>
 
-        <SectionErrorBoundary sectionName="일별 보고">
+        <SectionErrorBoundary sectionName="데일리 노트">
           {loading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -141,7 +141,7 @@ const ReportsPage = () => {
   return (
     <>
       <Head>
-        <title>일별 보고 — purplemux</title>
+        <title>데일리 노트 — purplemux</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
       </Head>
       <div className="flex h-screen w-screen flex-col bg-background">

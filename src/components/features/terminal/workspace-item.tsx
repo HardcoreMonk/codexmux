@@ -16,6 +16,8 @@ interface IWorkspaceItemProps {
   workspace: IWorkspace;
   isActive: boolean;
   isDeleting: boolean;
+  shortcutLabel?: string;
+  showShortcut: boolean;
   onSelect: (workspaceId: string) => void;
   onRename: (workspaceId: string, name: string) => void;
   onDelete: (workspaceId: string) => void;
@@ -25,6 +27,8 @@ const WorkspaceItem = ({
   workspace,
   isActive,
   isDeleting,
+  shortcutLabel,
+  showShortcut,
   onSelect,
   onRename,
   onDelete,
@@ -100,7 +104,7 @@ const WorkspaceItem = ({
     <ContextMenu>
       <ContextMenuTrigger
         className={cn(
-          'flex cursor-pointer flex-col justify-center border-l-2 px-3 py-2 transition-colors duration-75',
+          'relative flex cursor-pointer flex-col justify-center border-l-2 px-3 py-2 transition-colors duration-75',
           'overflow-hidden',
           isActive
             ? 'border-l-ui-purple bg-accent text-foreground'
@@ -117,6 +121,16 @@ const WorkspaceItem = ({
         tabIndex={0}
         render={<div />}
       >
+        {shortcutLabel && (
+          <span
+            className={cn(
+              'absolute right-1.5 top-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-medium leading-none text-muted-foreground transition-opacity duration-200',
+              showShortcut ? 'opacity-100' : 'opacity-0',
+            )}
+          >
+            {shortcutLabel}
+          </span>
+        )}
         {isEditing ? (
           <input
             ref={inputRef}

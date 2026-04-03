@@ -254,21 +254,21 @@ const MobileNavigationSheet = ({
             className="flex w-full items-center gap-2 px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-accent"
             onClick={() => {
               onOpenChange(false);
-              router.push('/stats');
+              router.push('/reports');
             }}
           >
-            <BarChart3 size={16} />
-            통계
+            <FileText size={16} />
+            데일리 노트
           </button>
           <button
             className="flex w-full items-center gap-2 px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-accent"
             onClick={() => {
               onOpenChange(false);
-              router.push('/reports');
+              router.push('/stats');
             }}
           >
-            <FileText size={16} />
-            보고
+            <BarChart3 size={16} />
+            통계
           </button>
           <button
             className="flex w-full items-center gap-2 px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-accent"
