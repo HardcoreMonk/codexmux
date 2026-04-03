@@ -18,7 +18,7 @@ const PAGE_SIZE = 10;
 const ReportsPage = () => {
   const router = useRouter();
   const isMobile = useIsMobile();
-  useBrowserTitle('데일리 노트');
+  useBrowserTitle('노트');
 
   const handleSelectWorkspace = useCallback(
     (workspaceId: string) => {
@@ -102,8 +102,10 @@ const ReportsPage = () => {
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            {!loading && total > 0 && (
-              <span className="text-xs text-muted-foreground">{total}일</span>
+            {!loading && days.length > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {dayjs(days[days.length - 1].date).format('M.D')}~{dayjs(days[0].date).format('M.D')}
+              </span>
             )}
           </div>
           <div className="text-2xl font-light tabular-nums tracking-tight">
@@ -114,7 +116,7 @@ const ReportsPage = () => {
           </div>
         </div>
 
-        <SectionErrorBoundary sectionName="데일리 노트">
+        <SectionErrorBoundary sectionName="노트">
           {loading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -156,7 +158,7 @@ const ReportsPage = () => {
   return (
     <>
       <Head>
-        <title>데일리 노트 — purplemux</title>
+        <title>노트 — purplemux</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
       </Head>
       <div className="flex h-screen w-screen flex-col bg-background">

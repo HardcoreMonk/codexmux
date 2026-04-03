@@ -12,13 +12,14 @@ interface IWorkspaceStatusIndicatorProps {
 const NERD_FONT_STYLE = { fontFamily: 'MesloLGLDZ, monospace' };
 
 const TerminalNerdIcon = ({ className, process }: { className: string; process?: string | null }) => (
-  <span className={`text-xs leading-none ${className}`} style={NERD_FONT_STYLE} aria-hidden="true">
+  <span className={`text-sm leading-none ${className}`} style={NERD_FONT_STYLE} aria-hidden="true">
     {getProcessIcon(process)}
   </span>
 );
 
 const DotByStatus = ({ status, panelType, terminalStatus, process }: { status: TTabDisplayStatus; panelType?: TPanelType; terminalStatus?: TTerminalStatus; process?: string | null }) => {
   let inner: React.ReactNode;
+  let isNerd = false;
 
   if (panelType === 'claude-code') {
     if (status === 'busy') {
@@ -31,15 +32,18 @@ const DotByStatus = ({ status, panelType, terminalStatus, process }: { status: T
   } else if (panelType === 'web-browser') {
     inner = <Globe className="h-2.5 w-2.5 text-muted-foreground/50" aria-hidden="true" />;
   } else if (terminalStatus === 'server') {
+    isNerd = true;
     inner = <TerminalNerdIcon className="text-ui-green animate-pulse" process={process} />;
   } else if (terminalStatus === 'running') {
+    isNerd = true;
     inner = <TerminalNerdIcon className="text-ui-blue" process={process} />;
   } else {
+    isNerd = true;
     inner = <TerminalNerdIcon className="text-muted-foreground/50" process={process} />;
   }
 
   return (
-    <span className="flex h-3 w-3 items-center justify-center">
+    <span className={`flex h-3 ${isNerd ? 'w-3.5' : 'w-3'} items-center justify-center`}>
       {inner}
     </span>
   );

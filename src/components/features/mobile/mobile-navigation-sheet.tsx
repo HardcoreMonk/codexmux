@@ -7,7 +7,6 @@ import {
   FileText,
   Settings,
   X,
-  Terminal,
 } from 'lucide-react';
 import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
 import { useRouter } from 'next/router';
@@ -22,6 +21,7 @@ import type { IWorkspace, IPaneNode, ITab } from '@/types/terminal';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import useTabStore, { selectWorkspacePortsLabel } from '@/hooks/use-tab-store';
 import { formatTabTitle, isAutoTabName } from '@/lib/tab-title';
+import { getProcessIcon } from '@/lib/process-icon';
 import TabStatusIndicator from '@/components/features/terminal/tab-status-indicator';
 import WorkspaceStatusIndicator from '@/components/features/terminal/workspace-status-indicator';
 
@@ -103,6 +103,17 @@ const MobileNavigationSheet = ({
     return `Tab ${tab.order + 1}`;
   };
 
+  const tabs = useTabStore((s) => s.tabs);
+
+  const getTabProcessIcon = (tab: ITab) => getProcessIcon(tabs[tab.id]?.currentProcess);
+
+  const getTabNerdColor = (tab: ITab) => {
+    const terminalStatus = tabs[tab.id]?.terminalStatus;
+    if (terminalStatus === 'server') return 'text-ui-green';
+    if (terminalStatus === 'running') return 'text-ui-blue';
+    return 'text-muted-foreground/50';
+  };
+
   const renderSurfaceItem = (workspaceId: string, pane: IPaneNode, tab: ITab, indent: string) => {
     const isCurrentWs = workspaceId === activeWorkspaceId;
     const isTabActive = isCurrentWs && pane.id === activePaneId && tab.id === activeTabId;
@@ -138,11 +149,17 @@ const MobileNavigationSheet = ({
           {isClaudeCode ? (
             <ClaudeCodeIcon size={16} className="mt-0.5" />
           ) : (
-            <Terminal size={14} className={cn('shrink-0', isTabActive ? 'text-foreground' : 'text-muted-foreground')} />
+            <span
+              className={cn('mt-0.5 shrink-0 text-sm leading-none', getTabNerdColor(tab))}
+              style={{ fontFamily: 'MesloLGLDZ, monospace' }}
+              aria-hidden="true"
+            >
+              {getTabProcessIcon(tab)}
+            </span>
           )}
           <div className="min-w-0 flex-1">
             <span className="block truncate">{getTabDisplayName(tab)}</span>
-            {isClaudeCode && tab.claudeSummary && (
+            {panelType === 'claude-code' && tab.claudeSummary && (
               <span className="block truncate text-xs text-muted-foreground/70">
                 {tab.claudeSummary}
               </span>
@@ -258,7 +275,7 @@ const MobileNavigationSheet = ({
             }}
           >
             <FileText size={16} />
-            데일리 노트
+            노트
           </button>
           <button
             className="flex w-full items-center gap-2 px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-accent"

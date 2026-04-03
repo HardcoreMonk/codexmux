@@ -1,6 +1,8 @@
-import { X, Plus, Terminal } from 'lucide-react';
+import { X, Plus } from 'lucide-react';
 import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
 import TabStatusIndicator from '@/components/features/terminal/tab-status-indicator';
+import useTabStore from '@/hooks/use-tab-store';
+import { getProcessIcon } from '@/lib/process-icon';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +34,14 @@ const MobileTabHeader = ({
   onCreateTab,
   onClose,
 }: IMobileTabHeaderProps) => {
+  const tabEntry = useTabStore((s) => s.tabs[tabId]);
+  const processIcon = getProcessIcon(tabEntry?.currentProcess);
+  const nerdColor = tabEntry?.terminalStatus === 'server'
+    ? 'text-ui-green'
+    : tabEntry?.terminalStatus === 'running'
+      ? 'text-ui-blue'
+      : 'text-muted-foreground/50';
+
   return (
     <div className="flex h-10 shrink-0 items-center border-b border-border/50 bg-background">
       <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
@@ -39,7 +49,13 @@ const MobileTabHeader = ({
         {panelType === 'claude-code' ? (
           <ClaudeCodeIcon size={16} />
         ) : (
-          <Terminal size={14} className="shrink-0 text-muted-foreground" />
+          <span
+            className={`mt-0.5 shrink-0 text-sm leading-none ${nerdColor}`}
+            style={{ fontFamily: 'MesloLGLDZ, monospace' }}
+            aria-hidden="true"
+          >
+            {processIcon}
+          </span>
         )}
         <span className="truncate text-xs text-foreground">{tabName}</span>
       </div>

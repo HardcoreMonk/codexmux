@@ -372,7 +372,7 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
               <button
                 className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
                 onClick={() => router.push('/reports')}
-                aria-label="데일리 노트"
+                aria-label="노트"
               >
                 <FileText className="h-3.5 w-3.5" />
               </button>
