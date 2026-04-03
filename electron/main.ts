@@ -35,6 +35,7 @@ interface IWindowState {
   height: number;
   isMaximized?: boolean;
   isFullScreen?: boolean;
+  displayId?: number;
 }
 
 interface IAppConfig {
@@ -299,15 +300,34 @@ const handleSwitchToRemote = async () => {
 
 // --- Window ---
 
+const getRestorePosition = (saved: IWindowState): { x?: number; y?: number } => {
+  const hasPosition = saved.x != null && saved.y != null;
+  if (hasPosition && isVisibleOnAnyDisplay({ x: saved.x!, y: saved.y!, width: saved.width, height: saved.height })) {
+    return { x: saved.x, y: saved.y };
+  }
+
+  if (saved.displayId != null) {
+    const target = screen.getAllDisplays().find((d) => d.id === saved.displayId);
+    if (target) {
+      const { x, y, width, height } = target.workArea;
+      return {
+        x: x + Math.floor((width - saved.width) / 2),
+        y: y + Math.floor((height - saved.height) / 2),
+      };
+    }
+  }
+
+  return {};
+};
+
 const createWindow = (url: string) => {
   const saved = readWindowState();
-  const hasPosition = saved.x != null && saved.y != null;
-  const positionValid = hasPosition && isVisibleOnAnyDisplay({ x: saved.x!, y: saved.y!, width: saved.width, height: saved.height });
+  const pos = getRestorePosition(saved);
 
   mainWindow = new BrowserWindow({
     width: saved.width,
     height: saved.height,
-    ...(positionValid ? { x: saved.x, y: saved.y } : {}),
+    ...pos,
     minWidth: 800,
     minHeight: 500,
     titleBarStyle: 'hiddenInset',
@@ -345,6 +365,7 @@ const createWindow = (url: string) => {
     saveTimer = setTimeout(() => {
       if (!mainWindow) return;
       const bounds = mainWindow.getNormalBounds();
+      const currentDisplay = screen.getDisplayMatching(mainWindow.getBounds());
       writeWindowState({
         x: bounds.x,
         y: bounds.y,
@@ -352,6 +373,7 @@ const createWindow = (url: string) => {
         height: bounds.height,
         isMaximized: mainWindow.isMaximized(),
         isFullScreen: mainWindow.isFullScreen(),
+        displayId: currentDisplay.id,
       });
     }, 500);
   };
@@ -367,6 +389,7 @@ const createWindow = (url: string) => {
     if (!mainWindow) return;
     if (saveTimer) clearTimeout(saveTimer);
     const bounds = mainWindow.getNormalBounds();
+    const currentDisplay = screen.getDisplayMatching(mainWindow.getBounds());
     writeWindowState({
       x: bounds.x,
       y: bounds.y,
@@ -374,6 +397,7 @@ const createWindow = (url: string) => {
       height: bounds.height,
       isMaximized: mainWindow.isMaximized(),
       isFullScreen: mainWindow.isFullScreen(),
+      displayId: currentDisplay.id,
     });
 
     if (process.platform === 'darwin' && !isQuitting) {
