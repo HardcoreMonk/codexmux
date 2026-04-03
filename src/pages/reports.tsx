@@ -1,8 +1,8 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import dayjs from 'dayjs';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Sparkles, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WEEKDAY_LABELS } from '@/components/features/stats/stats-utils';
 import useIsMobile from '@/hooks/use-is-mobile';
@@ -88,6 +88,9 @@ const ReportsPage = () => {
   };
 
   const hasMore = days.length < total;
+  const unreportedCount = days.filter((d) => !d.report).length;
+  const batchActionsRef = useRef({ start: () => {}, stop: () => {} });
+  const [batchRunning, setBatchRunning] = useState(false);
 
   const content = (
     <div className="min-h-0 flex-1 overflow-y-auto">
@@ -102,17 +105,25 @@ const ReportsPage = () => {
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            {!loading && days.length > 0 && (
-              <span className="text-xs text-muted-foreground">
-                {dayjs(days[days.length - 1].date).format('M.D')}~{dayjs(days[0].date).format('M.D')}
-              </span>
+            {!loading && unreportedCount > 0 && (
+              batchRunning ? (
+                <Button variant="outline" size="xs" onClick={() => batchActionsRef.current.stop()}>
+                  <Square className="h-3 w-3" />
+                  중지
+                </Button>
+              ) : (
+                <Button variant="outline" size="xs" onClick={() => batchActionsRef.current.start()}>
+                  <Sparkles className="h-3 w-3" />
+                  작업 요약 ({unreportedCount})
+                </Button>
+              )
             )}
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {now.format('M')}월 {now.format('D')}일 {WEEKDAY_LABELS[now.day()]}요일
           </div>
           <div className="text-2xl font-light tabular-nums tracking-tight">
             {now.format('HH:mm')}
-          </div>
-          <div className="text-sm text-muted-foreground">
-            {WEEKDAY_LABELS[now.day()]}요일, {now.format('M')}월 {now.format('D')}일
           </div>
         </div>
 
@@ -135,6 +146,8 @@ const ReportsPage = () => {
                 days={daysMeta}
                 cache={cache}
                 onCacheUpdate={handleCacheUpdate}
+                batchActions={batchActionsRef.current}
+                onBatchRunningChange={setBatchRunning}
               />
               {hasMore && (
                 <div className="mt-3 flex justify-center">

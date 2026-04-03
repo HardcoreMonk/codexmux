@@ -1,7 +1,7 @@
-import { useState, useCallback, useRef, memo } from 'react';
+import { useState, useCallback, useRef, useEffect, memo } from 'react';
 import dayjs from 'dayjs';
 import ReactMarkdown from 'react-markdown';
-import { Loader2, Sparkles, ChevronDown, ChevronRight, RefreshCw, Play, Square } from 'lucide-react';
+import { Loader2, Sparkles, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,15 +14,22 @@ interface IDayMeta {
   cost: number;
 }
 
+interface IBatchActions {
+  start: () => void;
+  stop: () => void;
+}
+
 interface IDailyReportSectionProps {
   days: IDayMeta[];
   cache: IDailyReportCacheResponse | null;
   onCacheUpdate: (date: string, report: IDailyReportDay) => void;
+  batchActions?: IBatchActions;
+  onBatchRunningChange?: (running: boolean) => void;
 }
 
 const markdownClass = 'prose prose-sm prose-invert max-w-none text-foreground/80 [&_h2]:mt-4 [&_h2]:mb-1 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-foreground [&_h3]:mt-2 [&_h3]:mb-0.5 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:text-foreground/80 [&_ul]:my-0.5 [&_ul]:pl-4 [&_li]:my-0 [&_li]:text-sm [&_p]:text-sm [&_p]:my-1 [&_p]:leading-relaxed';
 
-const DailyReportSection = ({ days, cache, onCacheUpdate }: IDailyReportSectionProps) => {
+const DailyReportSection = ({ days, cache, onCacheUpdate, batchActions, onBatchRunningChange }: IDailyReportSectionProps) => {
   const [generating, setGenerating] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [batchRunning, setBatchRunning] = useState(false);
@@ -95,30 +102,20 @@ const DailyReportSection = ({ days, cache, onCacheUpdate }: IDailyReportSectionP
   }, []);
 
   const today = dayjs().format('YYYY-MM-DD');
-  const unreportedCount = days.filter((d) => !cache?.days[d.date]).length;
+
+  useEffect(() => {
+    if (batchActions) {
+      batchActions.start = handleBatch;
+      batchActions.stop = handleBatchStop;
+    }
+  }, [batchActions, handleBatch, handleBatchStop]);
+
+  useEffect(() => {
+    onBatchRunningChange?.(batchRunning);
+  }, [batchRunning, onBatchRunningChange]);
 
   return (
-    <div className="space-y-2">
-      {unreportedCount > 0 && (
-        <div className="flex items-center gap-2">
-          {batchRunning ? (
-            <Button variant="outline" size="xs" onClick={handleBatchStop}>
-              <Square className="h-3 w-3" />
-              중지
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="xs"
-              onClick={handleBatch}
-              disabled={generating !== null}
-            >
-              <Play className="h-3 w-3" />
-              일괄 생성 ({unreportedCount}개)
-            </Button>
-          )}
-        </div>
-      )}
+    <div className="space-y-4">
       {days.map((day) => {
         const d = dayjs(day.date);
         const weekday = WEEKDAY_LABELS[d.day()];
@@ -128,41 +125,42 @@ const DailyReportSection = ({ days, cache, onCacheUpdate }: IDailyReportSectionP
         const isExpanded = expanded.has(day.date);
 
         return (
-          <Card key={day.date} size="sm">
-            <CardContent className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">
-                    {day.date} ({weekday})
+          <div key={day.date} className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {day.date} ({weekday})
+                </span>
+                {isToday && (
+                  <span className="rounded bg-ui-teal/15 px-1.5 py-0.5 text-[10px] font-medium text-ui-teal">
+                    오늘
                   </span>
-                  {isToday && (
-                    <span className="rounded bg-ui-teal/15 px-1.5 py-0.5 text-[10px] font-medium text-ui-teal">
-                      오늘
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {report && (
-                    <>
-                      {isGenerating && (
-                        <span className="text-xs text-muted-foreground">생성 중...</span>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => handleGenerate(day.date, true)}
-                        disabled={generating !== null}
-                        className="text-muted-foreground"
-                      >
-                        <RefreshCw className={`h-3 w-3${isGenerating ? ' animate-spin' : ''}`} />
-                      </Button>
-                    </>
-                  )}
-                  <span className="text-xs tabular-nums text-muted-foreground">
-                    세션 {day.sessionCount} · {formatCostWithComma(day.cost)}
-                  </span>
-                </div>
+                )}
               </div>
+              <div className="flex items-center gap-1.5">
+                {report && (
+                  <>
+                    {isGenerating && (
+                      <span className="text-xs text-muted-foreground">생성 중...</span>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => handleGenerate(day.date, true)}
+                      disabled={generating !== null}
+                      className="text-muted-foreground"
+                    >
+                      <RefreshCw className={`h-3 w-3${isGenerating ? ' animate-spin' : ''}`} />
+                    </Button>
+                  </>
+                )}
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  세션 {day.sessionCount} · {formatCostWithComma(day.cost)}
+                </span>
+              </div>
+            </div>
+          <Card size="sm">
+            <CardContent className="space-y-2">
 
               {!report && !isGenerating && (
                 <Button
@@ -218,6 +216,7 @@ const DailyReportSection = ({ days, cache, onCacheUpdate }: IDailyReportSectionP
               )}
             </CardContent>
           </Card>
+          </div>
         );
       })}
 
