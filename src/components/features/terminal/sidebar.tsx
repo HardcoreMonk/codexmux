@@ -68,7 +68,7 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
       if (e.key !== modKey || modTimerRef.current) return;
       modTimerRef.current = setTimeout(() => {
         setShowShortcuts(true);
-      }, 1000);
+      }, 500);
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
