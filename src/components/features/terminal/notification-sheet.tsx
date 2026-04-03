@@ -77,7 +77,10 @@ const NotificationItem = ({
   onDismiss?: (tabId: string) => void;
   onNavigate?: (workspaceId: string, tabId: string) => void;
 }) => (
-  <div className="flex items-start gap-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2.5">
+  <div
+    className="flex items-start gap-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2.5 transition-colors hover:bg-muted/50 cursor-pointer"
+    onClick={() => onNavigate?.(item.workspaceId, item.tabId)}
+  >
     <span className="mt-1 shrink-0">
       {showActions ? (
         <span className="block h-2 w-2 rounded-full bg-ui-purple" />
@@ -107,7 +110,7 @@ const NotificationItem = ({
             variant="outline"
             size="sm"
             className="h-6 px-2 text-xs"
-            onClick={() => onDismiss?.(item.tabId)}
+            onClick={(e) => { e.stopPropagation(); onDismiss?.(item.tabId); }}
           >
             <Check className="mr-1 h-3 w-3" />
             확인
@@ -116,7 +119,7 @@ const NotificationItem = ({
             variant="ghost"
             size="sm"
             className="h-6 px-2 text-xs"
-            onClick={() => onNavigate?.(item.workspaceId, item.tabId)}
+            onClick={(e) => { e.stopPropagation(); onNavigate?.(item.workspaceId, item.tabId); }}
           >
             <ArrowRight className="mr-1 h-3 w-3" />
             이동
