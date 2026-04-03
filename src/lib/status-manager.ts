@@ -156,8 +156,8 @@ class StatusManager {
       for (const tab of tabs) {
         const paneInfo = panesInfo.get(tab.sessionName);
         const detectedState = await this.detectTabCliState(tab.sessionName, paneInfo);
-        const cliState = tab.cliState === 'needs-attention' && detectedState === 'idle'
-          ? 'needs-attention' as const
+        const cliState = tab.cliState === 'ready-for-review' && detectedState === 'idle'
+          ? 'ready-for-review' as const
           : detectedState;
         const { terminalStatus, listeningPorts } = tab.panelType === 'claude-code'
           ? { terminalStatus: 'idle' as const, listeningPorts: [] as number[] }
@@ -302,15 +302,15 @@ class StatusManager {
           existing.listeningPorts = listeningPorts;
         }
 
-        // needs-attention 보호: 폴링이 idle을 감지해도 needs-attention 유지
+        // ready-for-review 보호: 폴링이 idle을 감지해도 ready-for-review 유지
         const cliChanged = existing.cliState !== newCliState
-          && !(existing.cliState === 'needs-attention' && newCliState === 'idle');
+          && !(existing.cliState === 'ready-for-review' && newCliState === 'idle');
 
         if (cliChanged) {
           const prevState = existing.cliState;
           // busy→idle 승격
           existing.cliState = (prevState === 'busy' && newCliState === 'idle')
-            ? 'needs-attention'
+            ? 'ready-for-review'
             : newCliState;
         }
 
@@ -361,10 +361,10 @@ class StatusManager {
 
     const prevState = entry.cliState;
     if (prevState === cliState) return;
-    if (prevState === 'needs-attention' && cliState === 'idle') return;
+    if (prevState === 'ready-for-review' && cliState === 'idle') return;
 
     entry.cliState = (prevState === 'busy' && cliState === 'idle')
-      ? 'needs-attention'
+      ? 'ready-for-review'
       : cliState;
 
     this.persistToLayout(entry);
@@ -373,7 +373,7 @@ class StatusManager {
 
   dismissTab(tabId: string, exclude?: WebSocket): void {
     const entry = this.tabs.get(tabId);
-    if (!entry || entry.cliState !== 'needs-attention') return;
+    if (!entry || entry.cliState !== 'ready-for-review') return;
 
     entry.cliState = 'idle';
     this.persistToLayout(entry);

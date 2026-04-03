@@ -24,7 +24,7 @@ const DotByStatus = ({ status, panelType, terminalStatus, process }: { status: T
   if (panelType === 'claude-code') {
     if (status === 'busy') {
       inner = <Loader2 className="h-2 w-2 animate-spin text-muted-foreground" aria-hidden="true" />;
-    } else if (status === 'needs-attention' || status === 'needs-input') {
+    } else if (status === 'ready-for-review' || status === 'needs-input') {
       inner = <span className="h-2 w-2 rounded-full bg-ui-purple animate-pulse" aria-hidden="true" />;
     } else {
       inner = <span className="h-2 w-2 rounded-full border border-muted-foreground/40" aria-hidden="true" />;

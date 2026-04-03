@@ -1,6 +1,6 @@
 export type TClaudeStatus = 'unknown' | 'running' | 'not-running' | 'not-installed';
 
-export type TCliState = 'idle' | 'busy' | 'inactive' | 'needs-attention' | 'needs-input';
+export type TCliState = 'idle' | 'busy' | 'inactive' | 'ready-for-review' | 'needs-input';
 
 export type TTimelineConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
 

@@ -108,14 +108,14 @@ const useTabStore = create<ITabStore>((set) => ({
       return { tabs: updateTab(state.tabs, tabId, patch) };
     }),
 
-  // 로컬 경로 (onSync에서 호출): busy→idle 시 needs-attention 승격, needs-attention/needs-input 보호
+  // 로컬 경로 (onSync에서 호출): busy→idle 시 ready-for-review 승격, ready-for-review/needs-input 보호
   setCliState: (tabId, cliState) =>
     set((state) => {
       const prev = state.tabs[tabId];
       if (!prev || prev.cliState === cliState) return state;
-      if (prev.cliState === 'needs-attention' && cliState === 'idle') return state;
+      if (prev.cliState === 'ready-for-review' && cliState === 'idle') return state;
       if (prev.cliState === 'needs-input') return state;
-      const effective = (prev.cliState === 'busy' && cliState === 'idle') ? 'needs-attention' as const : cliState;
+      const effective = (prev.cliState === 'busy' && cliState === 'idle') ? 'ready-for-review' as const : cliState;
       return { tabs: updateTab(state.tabs, tabId, { cliState: effective }) };
     }),
 
@@ -136,7 +136,7 @@ const useTabStore = create<ITabStore>((set) => ({
   dismissTab: (tabId) =>
     set((state) => {
       const prev = state.tabs[tabId];
-      if (!prev || prev.cliState !== 'needs-attention') return state;
+      if (!prev || prev.cliState !== 'ready-for-review') return state;
       return { tabs: updateTab(state.tabs, tabId, { cliState: 'idle' }) };
     }),
 
@@ -223,7 +223,7 @@ const shouldAcceptServerProcess = (existing: ITabState, serverProcess?: string):
 // --- helpers ---
 
 export const isCliIdle = (cliState: TCliState): boolean =>
-  cliState === 'idle' || cliState === 'needs-attention';
+  cliState === 'idle' || cliState === 'ready-for-review';
 
 // --- 파생 selectors ---
 
@@ -247,7 +247,7 @@ export const selectTabDisplayStatus = (tabs: Record<string, ITabState>, tabId: s
   const tab = tabs[tabId];
   if (!tab || tab.cliState === 'inactive') return 'idle';
   if (tab.cliState === 'busy') return 'busy';
-  if (tab.cliState === 'needs-attention') return 'needs-attention';
+  if (tab.cliState === 'ready-for-review') return 'ready-for-review';
   if (tab.cliState === 'needs-input') return 'needs-input';
   return 'idle';
 };
@@ -261,7 +261,7 @@ export const selectWorkspaceStatus = (
   for (const entry of Object.values(tabs)) {
     if (entry.workspaceId !== wsId) continue;
     if (entry.cliState === 'busy') busyCount++;
-    else if (entry.cliState === 'needs-attention') attentionCount++;
+    else if (entry.cliState === 'ready-for-review') attentionCount++;
   }
   return { busyCount, attentionCount };
 };
@@ -288,7 +288,7 @@ export const selectGlobalStatus = (
   let attentionCount = 0;
   for (const entry of Object.values(tabs)) {
     if (entry.cliState === 'busy') busyCount++;
-    else if (entry.cliState === 'needs-attention') attentionCount++;
+    else if (entry.cliState === 'ready-for-review') attentionCount++;
   }
   return { busyCount, attentionCount };
 };

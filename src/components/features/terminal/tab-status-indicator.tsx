@@ -31,7 +31,7 @@ const TabStatusIndicator = ({ tabId, panelType }: ITabStatusIndicatorProps) => {
           className="h-3 w-3 shrink-0 animate-spin text-muted-foreground"
           aria-hidden="true"
         />
-      ) : status === 'needs-attention' || status === 'needs-input' ? (
+      ) : status === 'ready-for-review' || status === 'needs-input' ? (
         <span
           className="h-2 w-2 shrink-0 rounded-full bg-ui-purple animate-pulse"
           aria-hidden="true"

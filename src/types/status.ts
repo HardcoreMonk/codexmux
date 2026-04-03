@@ -14,7 +14,7 @@ export interface ITabStatusEntry {
   listeningPorts?: number[];
 }
 
-export type TTabDisplayStatus = 'busy' | 'needs-attention' | 'needs-input' | 'idle';
+export type TTabDisplayStatus = 'busy' | 'ready-for-review' | 'needs-input' | 'idle';
 
 export type IClientTabStatusEntry = Omit<ITabStatusEntry, 'tmuxSession'>;
 
