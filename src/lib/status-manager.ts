@@ -288,6 +288,7 @@ class StatusManager {
           continue;
         }
 
+        const tabTitleChanged = existing.tabTitle !== tab.title;
         existing.tabName = tab.name;
         existing.tabTitle = tab.title;
         existing.workspaceId = ws.id;
@@ -313,7 +314,7 @@ class StatusManager {
             : newCliState;
         }
 
-        if (cliChanged || terminalChanged) {
+        if (cliChanged || terminalChanged || tabTitleChanged) {
           if (cliChanged) this.persistToLayout(existing);
           this.broadcastUpdate(tab.id, existing);
         }
