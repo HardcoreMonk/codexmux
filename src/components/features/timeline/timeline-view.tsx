@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import { Terminal, RefreshCw, Loader2, OctagonX, LogOut } from 'lucide-react';
+import { Terminal, RefreshCw, Loader2, OctagonX, LogOut, Copy, Check } from 'lucide-react';
 import { useStickToBottom } from 'use-stick-to-bottom';
+import { toast } from 'sonner';
+import dayjs from 'dayjs';
 import { Button } from '@/components/ui/button';
 import type {
   ITimelineEntry,
@@ -210,6 +212,68 @@ const EmptyState = ({ claudeStatus }: { claudeStatus: TClaudeStatus }) => {
   );
 };
 
+const getItemTimestamp = (item: TGroupedItem): number => {
+  if (item.type === 'tool-group') return item.toolCalls[0].timestamp;
+  return item.entry.timestamp;
+};
+
+const getItemCopyContent = (item: TGroupedItem): string | null => {
+  if (item.type === 'tool-group') {
+    return item.toolCalls.map((tc) => tc.summary).join('\n');
+  }
+  const { entry } = item;
+  switch (entry.type) {
+    case 'user-message':
+      return entry.text;
+    case 'assistant-message':
+      return entry.markdown ?? '';
+    case 'plan':
+      return entry.markdown;
+    case 'task-notification':
+      return entry.summary;
+    case 'agent-group':
+      return entry.description;
+    default:
+      return null;
+  }
+};
+
+const TimelineItemHover = ({ item, children }: { item: TGroupedItem; children: React.ReactNode }) => {
+  const [copied, setCopied] = useState(false);
+  const ts = getItemTimestamp(item);
+  const content = getItemCopyContent(item);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!content) return;
+    navigator.clipboard.writeText(content).then(() => {
+      setCopied(true);
+      toast.success('복사되었습니다');
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  return (
+    <div className="group/hover relative">
+      {children}
+      <div className="flex items-center gap-1.5 pt-0.5 opacity-0 transition-opacity duration-150 group-hover/hover:opacity-100">
+        <span className="text-[10px] tabular-nums text-muted-foreground/50">
+          {dayjs(ts).format('HH:mm:ss')}
+        </span>
+        {content && (
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="text-muted-foreground/40 transition-colors hover:text-muted-foreground/70"
+          >
+            {copied ? <Check size={11} /> : <Copy size={11} />}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const TimelineView = ({
   entries,
   tasks,
@@ -340,11 +404,13 @@ const TimelineView = ({
           )}
           {groupedItems.map((item) => (
             <div key={item.id} className="px-4 py-1.5">
-              {item.type === 'tool-group' ? (
-                <ToolGroupItem toolCalls={item.toolCalls} toolResults={item.toolResults} sessionName={sessionName} />
-              ) : (
-                <TimelineEntryRenderer entry={item.entry} sessionName={sessionName} />
-              )}
+              <TimelineItemHover item={item}>
+                {item.type === 'tool-group' ? (
+                  <ToolGroupItem toolCalls={item.toolCalls} toolResults={item.toolResults} sessionName={sessionName} />
+                ) : (
+                  <TimelineEntryRenderer entry={item.entry} sessionName={sessionName} />
+                )}
+              </TimelineItemHover>
             </div>
           ))}
           {cliState === 'busy' && (
