@@ -140,6 +140,7 @@ const NotificationSheet = ({ open, onOpenChange, onNavigate }: INotificationShee
   const handleNavigate = useCallback(
     (workspaceId: string, tabId: string) => {
       onNavigate?.(workspaceId, tabId);
+      window.dispatchEvent(new CustomEvent('navigate-to-tab', { detail: { workspaceId, tabId } }));
       onOpenChange(false);
     },
     [onNavigate, onOpenChange],

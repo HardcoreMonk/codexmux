@@ -99,6 +99,44 @@ const TerminalPage = () => {
     [layout],
   );
 
+  const pendingTabRef = useRef<string | null>(null);
+
+  const focusTab = useCallback(
+    (tabId: string) => {
+      if (!layout.layout) return false;
+      for (const pane of collectPanes(layout.layout.root)) {
+        if (pane.tabs.some((t) => t.id === tabId)) {
+          layout.focusPane(pane.id);
+          layout.switchTabInPane(pane.id, tabId);
+          return true;
+        }
+      }
+      return false;
+    },
+    [layout],
+  );
+
+  useEffect(() => {
+    if (!pendingTabRef.current || !layout.layout || layout.isLoading) return;
+    const tabId = pendingTabRef.current;
+    pendingTabRef.current = null;
+    focusTab(tabId);
+  }, [layout.layout, layout.isLoading, focusTab]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { workspaceId, tabId } = (e as CustomEvent).detail;
+      const currentWsId = useWorkspaceStore.getState().activeWorkspaceId;
+      if (workspaceId === currentWsId) {
+        focusTab(tabId);
+      } else {
+        pendingTabRef.current = tabId;
+      }
+    };
+    window.addEventListener('navigate-to-tab', handler);
+    return () => window.removeEventListener('navigate-to-tab', handler);
+  }, [focusTab]);
+
   useKeyboardShortcuts({ layout, onSelectWorkspace: handleSelectWorkspace });
 
   if (isLoading) {
