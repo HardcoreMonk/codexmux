@@ -3,6 +3,9 @@ import { listSessions, killServer, scanSessions, applyConfig } from '@/lib/tmux'
 import { initWorkspaceStore } from '@/lib/workspace-store';
 import { autoResumeOnStartup } from '@/lib/auto-resume';
 import { getStatusManager } from '@/lib/status-manager';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('terminal');
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -12,7 +15,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   try {
     const sessions = await listSessions();
-    console.log(`[terminal] tmux reset requested — killing ${sessions.length} session(s)`);
+    log.info(`tmux reset requested — killing ${sessions.length} session(s)`);
     await killServer();
 
     await scanSessions();
@@ -21,10 +24,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     await autoResumeOnStartup();
     await getStatusManager().rescan();
 
-    console.log('[terminal] tmux re-initialized after reset');
+    log.info('tmux re-initialized after reset');
     return res.status(200).json({ killed: sessions.length });
   } catch (err) {
-    console.error(`[terminal] tmux reset failed: ${err instanceof Error ? err.message : err}`);
+    log.error(`tmux reset failed: ${err instanceof Error ? err.message : err}`);
     return res.status(500).json({ error: 'tmux 초기화 실패' });
   }
 };

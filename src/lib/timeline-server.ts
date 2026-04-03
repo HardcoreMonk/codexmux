@@ -16,6 +16,9 @@ import { calculateCost } from './format-tokens';
 import type { TTimelineServerMessage, IInitMeta, ITimelineEntry } from '@/types/timeline';
 import path from 'path';
 import { isAllowedJsonlPath } from './path-validation';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('timeline');
 
 const HEARTBEAT_INTERVAL = 30_000;
 const HEARTBEAT_TIMEOUT = 90_000;
@@ -710,13 +713,13 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
         });
       }
     } catch (err) {
-      console.log(`[timeline] message handler error: ${err instanceof Error ? err.message : err}`);
+      log.error(`message handler error: ${err instanceof Error ? err.message : err}`);
     }
   });
 
   ws.on('close', () => cleanup(conn));
   ws.on('error', (err) => {
-    console.log(`[timeline-ws] error: ${err.message}`);
+    log.error(`websocket error: ${err.message}`);
     cleanup(conn);
   });
 

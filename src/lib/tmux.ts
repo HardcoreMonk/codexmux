@@ -2,6 +2,9 @@ import { execFile as execFileCb } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
 import { nanoid } from 'nanoid';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('terminal');
 
 const execFile = promisify(execFileCb);
 
@@ -65,7 +68,7 @@ export const createSession = async (
     },
   );
   await applyConfig();
-  console.log(`[terminal] tmux session created: ${name} (cols: ${cols}, rows: ${rows})`);
+  log.info(`tmux session created: ${name} (cols: ${cols}, rows: ${rows})`);
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -73,11 +76,11 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 export const killSession = async (name: string): Promise<void> => {
   if (!(await hasSession(name))) return;
 
-  console.log(`[terminal] killSession start: ${name}`);
+  log.info(`killSession start: ${name}`);
   const panePid = await getSessionPanePid(name);
   if (panePid) {
     try {
-      console.log(`[terminal] SIGTERM → process group ${panePid}: ${name}`);
+      log.info(`SIGTERM → process group ${panePid}: ${name}`);
       process.kill(-panePid, 'SIGTERM');
     } catch {
       // process group already gone
@@ -96,17 +99,17 @@ export const killSession = async (name: string): Promise<void> => {
 
   for (let i = 0; i < 5; i++) {
     if (!(await hasSession(name))) {
-      console.log(`[terminal] killSession done (SIGTERM): ${name}`);
+      log.info(`killSession done (SIGTERM): ${name}`);
       return;
     }
     await sleep(200);
   }
 
   // 아직 살아있으면 SIGKILL로 강제 종료
-  console.log(`[terminal] session survived SIGTERM, escalating to SIGKILL: ${name}`);
+  log.warn(`session survived SIGTERM, escalating to SIGKILL: ${name}`);
   if (panePid) {
     try {
-      console.log(`[terminal] SIGKILL → process group ${panePid}: ${name}`);
+      log.info(`SIGKILL → process group ${panePid}: ${name}`);
       process.kill(-panePid, 'SIGKILL');
     } catch {
       // already gone
@@ -124,13 +127,13 @@ export const killSession = async (name: string): Promise<void> => {
 
   for (let i = 0; i < 3; i++) {
     if (!(await hasSession(name))) {
-      console.log(`[terminal] killSession done (SIGKILL): ${name}`);
+      log.info(`killSession done (SIGKILL): ${name}`);
       return;
     }
     await sleep(200);
   }
 
-  console.warn(`[terminal] tmux session still alive after kill: ${name}`);
+  log.warn(`tmux session still alive after kill: ${name}`);
 };
 
 export const hasSession = async (name: string): Promise<boolean> => {
@@ -154,7 +157,7 @@ export const scanSessions = async (): Promise<void> => {
   const sessions = await listSessions();
   if (sessions.length > 0) {
     sessions.forEach((name) => {
-      console.log(`[terminal] existing tmux session found: ${name}`);
+      log.info(`existing tmux session found: ${name}`);
     });
   }
 };
@@ -372,7 +375,7 @@ export const killServer = async (): Promise<void> => {
       ['-L', TMUX_SOCKET, 'kill-server'],
       { timeout: CMD_TIMEOUT },
     );
-    console.log('[terminal] tmux server killed');
+    log.info('tmux server killed');
   } catch {
     // Server may not be running
   }

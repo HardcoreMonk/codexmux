@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { readMessageHistory, addMessageHistory, deleteMessageHistory } from '@/lib/message-history-store';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('message-history');
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
@@ -19,7 +22,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const entry = await addMessageHistory(wsId, message);
       return res.status(201).json({ entry });
     } catch (e) {
-      console.error('[message-history] write failed:', e);
+      log.error({ err: e }, 'write failed');
       return res.status(500).json({ error: 'Failed to save' });
     }
   }
@@ -33,7 +36,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const success = await deleteMessageHistory(wsId, id);
       return res.status(200).json({ success });
     } catch (e) {
-      console.error('[message-history] delete failed:', e);
+      log.error({ err: e }, 'delete failed');
       return res.status(500).json({ error: 'Failed to save' });
     }
   }

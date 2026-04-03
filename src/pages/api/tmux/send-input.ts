@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { hasSession, sendRawKeys } from '@/lib/tmux';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('tmux');
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -22,7 +25,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     await sendRawKeys(session, input);
     return res.status(200).json({ ok: true });
   } catch (err) {
-    console.log(`[tmux] send-input failed: ${err instanceof Error ? err.message : err}`);
+    log.error(`send-input failed: ${err instanceof Error ? err.message : err}`);
     return res.status(500).json({ error: '입력 전송 실패' });
   }
 };

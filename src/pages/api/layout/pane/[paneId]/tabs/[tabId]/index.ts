@@ -2,7 +2,10 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { removeTabFromPane, restartTabSession, patchTab } from '@/lib/layout-store';
 import { getActiveWorkspaceId } from '@/lib/workspace-store';
 import { getStatusManager } from '@/lib/status-manager';
+import { createLogger } from '@/lib/logger';
 import type { ITab } from '@/types/terminal';
+
+const log = createLogger('layout');
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const wsId = (req.query.workspace as string) || await getActiveWorkspaceId();
@@ -31,7 +34,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       }
       return res.status(200).json({ ok: true });
     } catch (err) {
-      console.log(`[layout] tab restart failed: ${err instanceof Error ? err.message : err}`);
+      log.error(`tab restart failed: ${err instanceof Error ? err.message : err}`);
       return res.status(500).json({ error: 'Failed to restart session' });
     }
   }

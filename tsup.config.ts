@@ -6,7 +6,7 @@ export default defineConfig({
   target: 'node20',
   outDir: 'dist',
   clean: true,
-  external: ['next', 'react', 'react-dom'],
+  external: ['next', 'react', 'react-dom', 'pino', 'pino-roll', 'pino-pretty'],
   esbuildOptions(options) {
     options.alias = {
       '@': './src',

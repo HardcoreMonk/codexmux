@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getSessionCwd, getLastCommand, hasSession } from '@/lib/tmux';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('layout');
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'GET') {
@@ -27,7 +30,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     return res.status(200).json({ cwd, lastCommand });
   } catch (err) {
-    console.log(`[layout] cwd query failed: ${err instanceof Error ? err.message : err}`);
+    log.error(`cwd query failed: ${err instanceof Error ? err.message : err}`);
     return res.status(500).json({ error: 'CWD 조회 실패' });
   }
 };

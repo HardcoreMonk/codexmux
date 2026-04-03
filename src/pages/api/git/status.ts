@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getGitStatus } from '@/lib/git-status';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('git');
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'GET') {
@@ -22,7 +25,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(404).json({ error: 'tmux-session-not-found' });
     }
 
-    console.log(`[git] status query failed: ${message}`);
+    log.error(`status query failed: ${message}`);
     return res.status(500).json({ error: 'git-error' });
   }
 };

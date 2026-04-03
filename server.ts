@@ -16,8 +16,10 @@ import { initWorkspaceStore } from './src/lib/workspace-store';
 import { autoResumeOnStartup } from './src/lib/auto-resume';
 import { initAuthCredentials } from './src/lib/auth-credentials';
 import { initConfigStore } from './src/lib/config-store';
+import { createLogger } from './src/lib/logger';
 import pkg from './package.json';
 
+const log = createLogger('server');
 const dev = process.env.NODE_ENV !== 'production';
 
 const extractCookie = (header: string, name: string): string | undefined => {
@@ -150,7 +152,7 @@ const listenWithFallback = (server: import('http').Server, port: number): Promis
   new Promise((resolve, reject) => {
     const onError = (err: NodeJS.ErrnoException) => {
       if (err.code === 'EADDRINUSE') {
-        console.log(`> Port ${port} is in use, finding an available port...`);
+        log.warn(`Port ${port} is in use, finding an available port...`);
         server.removeListener('error', onError);
         server.on('error', reject);
         server.listen(0, () => {

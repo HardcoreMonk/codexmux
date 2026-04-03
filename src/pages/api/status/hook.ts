@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getStatusManager } from '@/lib/status-manager';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('hooks');
 
 const isLocalRequest = (req: NextApiRequest): boolean => {
   const forwarded = req.headers['x-forwarded-for'];
@@ -20,7 +23,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   getStatusManager().poll().catch((err) => {
-    console.error('[hook] poll 트리거 실패:', err);
+    log.error({ err }, 'poll 트리거 실패');
   });
 
   return res.status(204).end();

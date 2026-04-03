@@ -4,8 +4,11 @@ import path from 'path';
 import readline from 'readline';
 import { toClaudeProjectName } from '@/lib/session-detection';
 import { getSessionCwd } from '@/lib/tmux';
+import { createLogger } from '@/lib/logger';
 import { createMetaCache } from '@/lib/session-meta-cache';
 import type { ISessionMeta } from '@/types/timeline';
+
+const log = createLogger('session-list');
 
 const PROJECTS_DIR = path.join(
   process.env.HOME || process.env.USERPROFILE || '/',
@@ -163,7 +166,7 @@ export const parseSessionMeta = async (jsonlPath: string): Promise<ISessionMeta 
     metaCache.set(sessionId, meta, stat.mtimeMs);
     return meta;
   } catch (err) {
-    console.warn(`[session-list] failed to parse session meta: ${jsonlPath}`, err);
+    log.warn({ err }, `failed to parse session meta: ${jsonlPath}`);
     return null;
   }
 };

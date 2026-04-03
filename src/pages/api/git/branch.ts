@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getGitBranch } from '@/lib/git-branch';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('git');
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'GET') {
@@ -22,7 +25,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(404).json({ error: 'tmux-session-not-found' });
     }
 
-    console.log(`[git] branch query failed: ${message}`);
+    log.error(`branch query failed: ${message}`);
     return res.status(500).json({ error: 'git-error' });
   }
 };

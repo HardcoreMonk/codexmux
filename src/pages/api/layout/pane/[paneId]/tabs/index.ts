@@ -2,6 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { addTabToPane } from '@/lib/layout-store';
 import { getActiveWorkspaceId } from '@/lib/workspace-store';
 import { getStatusManager } from '@/lib/status-manager';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('layout');
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -32,7 +35,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     return res.status(200).json(tab);
   } catch (err) {
-    console.log(`[layout] tab creation failed: ${err instanceof Error ? err.message : err}`);
+    log.error(`tab creation failed: ${err instanceof Error ? err.message : err}`);
     return res.status(500).json({ error: 'Failed to create tab' });
   }
 };

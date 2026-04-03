@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { hasSession, capturePaneContent } from '@/lib/tmux';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('tmux');
 
 // 선택지 줄 패턴: `❯ label`, `  label`, `❯ 1. label`, `  2. label`
 const INDICATOR_RE = /^\s*(?:[❯›>]\s+)?(?:\d+\.\s+)?(.+)$/;
@@ -70,7 +73,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const options = parsePlanOptions(content);
     return res.status(200).json({ options });
   } catch (err) {
-    console.log(`[tmux] plan-options query failed: ${err instanceof Error ? err.message : err}`);
+    log.error(`plan-options query failed: ${err instanceof Error ? err.message : err}`);
     return res.status(500).json({ error: '터미널 캡처 실패' });
   }
 };

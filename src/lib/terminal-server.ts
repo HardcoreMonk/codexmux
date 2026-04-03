@@ -9,6 +9,9 @@ import {
   exitCopyMode,
   sanitizedEnv,
 } from './tmux';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('terminal');
 
 const MSG_STDIN = 0x00;
 const MSG_STDOUT = 0x01;
@@ -155,7 +158,7 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
   if (clientId) {
     connections.forEach((conn) => {
       if (conn.clientId === clientId && !conn.cleaned) {
-        console.log(`[terminal] replacing existing connection for clientId: ${clientId}`);
+        log.info(`replacing existing connection for clientId: ${clientId}`);
         conn.detaching = true;
         cleanup(conn);
       }
@@ -169,7 +172,7 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
     let evicted = 0;
     for (const [oldWs, oldConn] of connections) {
       if (evicted >= toEvict) break;
-      console.log(`[terminal] evicting stale connection for session: ${oldConn.sessionName}`);
+      log.info(`evicting stale connection for session: ${oldConn.sessionName}`);
       oldConn.detaching = true;
       cleanup(oldConn);
       if (oldWs.readyState === WebSocket.OPEN || oldWs.readyState === WebSocket.CONNECTING) {
@@ -180,7 +183,7 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
   }
 
   if (connections.size >= MAX_CONNECTIONS) {
-    console.log(`[terminal] connection rejected: max connections (${MAX_CONNECTIONS}) reached`);
+    log.warn(`connection rejected: max connections (${MAX_CONNECTIONS}) reached`);
     ws.close(1013, 'Max connections exceeded');
     return;
   }
@@ -243,9 +246,9 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
         break;
       }
       case MSG_KILL_SESSION: {
-        console.log(`[terminal] kill session requested: ${sessionName}`);
+        log.info(`kill session requested: ${sessionName}`);
         killSession(sessionName).catch((err) => {
-          console.log(`[terminal] kill session failed: ${err instanceof Error ? err.message : err}`);
+          log.error(`kill session failed: ${err instanceof Error ? err.message : err}`);
         });
         break;
       }
@@ -259,7 +262,7 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
     cleanup(conn);
   });
   ws.on('error', (err) => {
-    console.log(`[terminal] websocket error: ${err.message}`);
+    log.error(`websocket error: ${err.message}`);
     if (!conn) return;
     conn.detaching = true;
     cleanup(conn);
@@ -269,7 +272,7 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
     sessionName = sessionId;
     const exists = await hasSession(sessionId);
     if (!exists) {
-      console.log(`[terminal] session not found: ${sessionName}`);
+      log.warn(`session not found: ${sessionName}`);
       ws.close(1011, 'Session not found');
       return;
     }
@@ -279,7 +282,7 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
     try {
       ptyProcess = attachToSession(sessionName, cols, rows);
     } catch (err) {
-      console.log(`[terminal] tmux attach failed: ${err instanceof Error ? err.message : err}`);
+      log.error(`tmux attach failed: ${err instanceof Error ? err.message : err}`);
       ws.close(1011, 'Session attach failed');
       return;
     }
@@ -292,7 +295,7 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
       if (ws.readyState !== WebSocket.OPEN) return;
       ptyProcess = attachToSession(sessionName, cols, rows);
     } catch (err) {
-      console.log(`[terminal] tmux session creation failed: ${err instanceof Error ? err.message : err}`);
+      log.error(`tmux session creation failed: ${err instanceof Error ? err.message : err}`);
       ws.close(1011, 'Session create failed');
       return;
     }
@@ -349,8 +352,8 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
   conn.disposables.push(
     ptyProcess.onExit(({ exitCode, signal }) => {
       if (conn.cleaned) return;
-      console.log(
-        `[terminal] pty exited (pid: ${ptyProcess!.pid}, code: ${exitCode}, signal: ${signal}, detaching: ${conn.detaching})`,
+      log.info(
+        `pty exited (pid: ${ptyProcess!.pid}, code: ${exitCode}, signal: ${signal}, detaching: ${conn.detaching})`,
       );
       cleanup(conn, !conn.detaching);
     }),

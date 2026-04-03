@@ -1,6 +1,9 @@
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('hooks');
 
 const BASE_DIR = path.join(os.homedir(), '.purplemux');
 const HOOKS_FILE = path.join(BASE_DIR, 'hooks.json');
@@ -50,5 +53,5 @@ export const ensureHookSettings = async (actualPort?: number): Promise<void> => 
 
   await fs.mkdir(BASE_DIR, { recursive: true });
   await fs.writeFile(HOOKS_FILE, content, 'utf-8');
-  console.log(`[hooks] ${HOOKS_FILE} 생성 완료`);
+  log.info(`${HOOKS_FILE} 생성 완료`);
 };

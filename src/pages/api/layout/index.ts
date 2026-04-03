@@ -1,6 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getLayout, patchLayout } from '@/lib/layout-store';
 import { getActiveWorkspaceId, getWorkspaceById } from '@/lib/workspace-store';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('layout');
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const wsId = (req.query.workspace as string) || await getActiveWorkspaceId();
@@ -14,7 +17,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const layout = await getLayout(wsId, ws?.directories[0]);
       return res.status(200).json(layout);
     } catch (err) {
-      console.log(`[layout] GET failed: ${err instanceof Error ? err.message : err}`);
+      log.error(`GET failed: ${err instanceof Error ? err.message : err}`);
       return res.status(500).json({ error: 'Failed to load layout' });
     }
   }

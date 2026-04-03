@@ -3,6 +3,7 @@ import path from 'path';
 import os from 'os';
 import { nanoid } from 'nanoid';
 import { listSessions, killSession } from '@/lib/tmux';
+import { createLogger } from '@/lib/logger';
 import { broadcastSync } from '@/lib/sync-server';
 import {
   readLayoutFile,
@@ -15,6 +16,8 @@ import {
   clearLayoutCache,
 } from '@/lib/layout-store';
 import type { IWorkspace, IWorkspacesData, ILayoutData } from '@/types/terminal';
+
+const log = createLogger('workspace');
 
 const WORKSPACE_PREFIX = 'Workspace ';
 
@@ -81,7 +84,7 @@ const readWorkspacesFile = async (): Promise<IWorkspacesData | null> => {
     }
     return data;
   } catch {
-    console.log('[workspace] workspaces.json 파싱 실패, 빈 상태로 시작합니다');
+    log.warn('workspaces.json 파싱 실패, 빈 상태로 시작합니다');
     try {
       await fs.copyFile(WORKSPACES_FILE, WORKSPACES_FILE.replace(/\.json$/, '.json.bak'));
     } catch {}
@@ -125,7 +128,7 @@ const migrateFromPhase4 = async (): Promise<IWorkspacesData | null> => {
   };
 
   await writeWorkspacesFile(data);
-  console.log(`[purplemux] Phase 4 layout.json → Workspace 'default' 마이그레이션 완료`);
+  log.info(`Phase 4 layout.json → Workspace 'default' 마이그레이션 완료`);
   return data;
 };
 
@@ -150,7 +153,7 @@ const migrateFromTabs = async (): Promise<IWorkspacesData | null> => {
     const tmpFile = LEGACY_LAYOUT_FILE + '.tmp';
     await fs.writeFile(tmpFile, JSON.stringify(legacyLayout, null, 2));
     await fs.rename(tmpFile, LEGACY_LAYOUT_FILE);
-    console.log(`[purplemux] tabs.json → layout.json 마이그레이션 완료`);
+    log.info('tabs.json → layout.json 마이그레이션 완료');
 
     return await migrateFromPhase4();
   } catch {
@@ -177,7 +180,7 @@ export const initWorkspaceStore = async (): Promise<void> => {
 
   if (!data) {
     await writeWorkspacesFile(emptyState());
-    console.log('[purplemux] 초기 workspaces.json 생성');
+    log.info('초기 workspaces.json 생성');
     return;
   }
 
@@ -190,7 +193,7 @@ export const initWorkspaceStore = async (): Promise<void> => {
     let layout = await readLayoutFile(layoutFile);
 
     if (!layout) {
-      console.log(`[purplemux] Workspace '${ws.name}': layout.json 손상, 기본 Pane으로 초기화`);
+      log.warn(`Workspace '${ws.name}': layout.json 손상, 기본 Pane으로 초기화`);
       layout = await createDefaultLayout(ws.id, ws.directories[0]);
       await writeLayoutFile(layout, layoutFile);
       continue;
@@ -210,7 +213,7 @@ export const initWorkspaceStore = async (): Promise<void> => {
         await writeLayoutFile(layout, layoutFile);
       }
     } catch (err) {
-      console.log(`[purplemux] Workspace '${ws.name}': tmux 정합성 체크 실패: ${err instanceof Error ? err.message : err}`);
+      log.error(`Workspace '${ws.name}': tmux 정합성 체크 실패: ${err instanceof Error ? err.message : err}`);
     }
 
   }
@@ -268,7 +271,7 @@ export const createWorkspace = async (directory: string, name?: string): Promise
     data.workspaces.push(workspace);
     await writeWorkspacesFile(data);
 
-    console.log(`[workspace] 생성: ${wsId} (${wsName}, ${directory})`);
+    log.info(`생성: ${wsId} (${wsName}, ${directory})`);
     return workspace;
   });
 
@@ -299,7 +302,7 @@ export const deleteWorkspace = async (workspaceId: string): Promise<boolean> =>
     data.workspaces.forEach((w, i) => { w.order = i; });
 
     await writeWorkspacesFile(data);
-    console.log(`[workspace] 삭제: ${workspaceId} (${ws.name})`);
+    log.info(`삭제: ${workspaceId} (${ws.name})`);
     return true;
   });
 
@@ -314,7 +317,7 @@ export const renameWorkspace = async (workspaceId: string, name: string): Promis
     ws.name = name;
     await writeWorkspacesFile(data);
 
-    console.log(`[workspace] 이름 변경: ${workspaceId} → "${name}"`);
+    log.info(`이름 변경: ${workspaceId} → "${name}"`);
     return { ...ws };
   });
 

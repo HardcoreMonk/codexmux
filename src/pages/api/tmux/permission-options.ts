@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { hasSession, capturePaneContent } from '@/lib/tmux';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('tmux');
 import { parsePermissionOptions } from '@/lib/permission-prompt';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -27,7 +30,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const { options } = parsePermissionOptions(content);
     return res.status(200).json({ options });
   } catch (err) {
-    console.log(`[tmux] permission-options query failed: ${err instanceof Error ? err.message : err}`);
+    log.error(`permission-options query failed: ${err instanceof Error ? err.message : err}`);
     return res.status(500).json({ error: '터미널 캡처 실패' });
   }
 };

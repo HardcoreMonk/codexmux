@@ -2,7 +2,10 @@ import fs from 'fs/promises';
 import path from 'path';
 import { nanoid } from 'nanoid';
 import { resolveLayoutDir } from '@/lib/layout-store';
+import { createLogger } from '@/lib/logger';
 import type { IHistoryEntry, IMessageHistoryFile } from '@/types/message-history';
+
+const log = createLogger('message-history');
 
 const MAX_ENTRIES = 500;
 
@@ -39,7 +42,7 @@ const readFile = async (filePath: string): Promise<IHistoryEntry[]> => {
     return Array.isArray(parsed.entries) ? parsed.entries : [];
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
-      console.warn('[message-history] failed to read:', e);
+      log.warn({ err: e }, 'failed to read');
     }
     return [];
   }

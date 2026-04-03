@@ -1,6 +1,9 @@
 import { WebSocket } from 'ws';
 import { getStatusManager } from '@/lib/status-manager';
+import { createLogger } from '@/lib/logger';
 import type { TStatusClientMessage, IStatusSyncMessage } from '@/types/status';
+
+const log = createLogger('status');
 
 export const handleStatusConnection = (ws: WebSocket) => {
   const manager = getStatusManager();
@@ -28,7 +31,7 @@ export const handleStatusConnection = (ws: WebSocket) => {
           break;
 
         default:
-          console.warn('[status] 알 수 없는 이벤트:', (msg as { type: string }).type);
+          log.warn(`알 수 없는 이벤트: ${(msg as { type: string }).type}`);
       }
     } catch {
       // invalid message
@@ -40,7 +43,7 @@ export const handleStatusConnection = (ws: WebSocket) => {
   });
 
   ws.on('error', (err) => {
-    console.log(`[status-ws] error: ${err.message}`);
+    log.error(`websocket error: ${err.message}`);
     manager.removeClient(ws);
   });
 };

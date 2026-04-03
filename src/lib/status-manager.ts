@@ -6,10 +6,13 @@ import { detectActiveSession, isClaudeRunning } from '@/lib/session-detection';
 import { hasPermissionPrompt } from '@/lib/permission-prompt';
 import { getLastTerminalOutput } from '@/lib/terminal-server';
 import { INTERRUPT_PREFIX } from '@/lib/session-parser';
+import { createLogger } from '@/lib/logger';
 import type { IPaneInfo } from '@/lib/tmux';
 import type { TCliState } from '@/types/timeline';
 import type { TTerminalStatus, ITabStatusEntry, IClientTabStatusEntry, IStatusUpdateMessage } from '@/types/status';
 import fs from 'fs/promises';
+
+const log = createLogger('status');
 
 const POLL_INTERVAL_SMALL = 5_000;
 const POLL_INTERVAL_MEDIUM = 8_000;
@@ -243,7 +246,7 @@ class StatusManager {
     const interval = this.getPollingInterval();
     this.pollingTimer = setInterval(() => {
       this.poll().catch((err) => {
-        console.error('[status] 폴링 중 오류:', err);
+        log.error({ err }, '폴링 중 오류');
       });
     }, interval);
   }
@@ -343,7 +346,7 @@ class StatusManager {
       this.stopPolling();
       this.pollingTimer = setInterval(() => {
         this.poll().catch((err) => {
-          console.error('[status] 폴링 중 오류:', err);
+          log.error({ err }, '폴링 중 오류');
         });
       }, newInterval);
     }

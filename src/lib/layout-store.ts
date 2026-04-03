@@ -4,6 +4,7 @@ import os from 'os';
 import { nanoid } from 'nanoid';
 import { createSession, hasSession, killSession, sendKeys, workspaceSessionName } from '@/lib/tmux';
 import { broadcastSync } from '@/lib/sync-server';
+import { createLogger } from '@/lib/logger';
 import {
   collectPanes,
   collectAllTabs,
@@ -16,6 +17,8 @@ import {
 } from '@/lib/layout-tree';
 import type { ITab, TLayoutNode, IPaneNode, ILayoutData } from '@/types/terminal';
 import type { TCliState } from '@/types/timeline';
+
+const log = createLogger('layout');
 
 const BASE_DIR = path.join(os.homedir(), '.purplemux');
 
@@ -82,7 +85,7 @@ export const readLayoutFile = async (filePath: string): Promise<ILayoutData | nu
   try {
     return JSON.parse(raw) as ILayoutData;
   } catch {
-    console.log(`[layout] ${filePath} 파싱 실패`);
+    log.warn(`${filePath} 파싱 실패`);
     try {
       await fs.copyFile(filePath, filePath.replace(/\.json$/, '.json.bak'));
     } catch {}
@@ -150,7 +153,7 @@ export const crossCheckLayout = async (
 
       if (!tmuxSet.has(tab.sessionName) && tab.panelType === 'claude-code') {
         const cwd = tab.cwd || defaultCwd;
-        console.log(`[crossCheck] Claude 탭 세션 재생성: ${tab.sessionName} (cwd: ${cwd})`);
+        log.info(`crossCheck: Claude 탭 세션 재생성: ${tab.sessionName} (cwd: ${cwd})`);
         await createSession(tab.sessionName, 80, 24, cwd);
         changed = true;
       }

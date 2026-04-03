@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { hasSession, getPaneDetailInfo, getLastCommand } from '@/lib/tmux';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('tmux');
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'GET') {
@@ -28,7 +31,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       sessionName: session,
     });
   } catch (err) {
-    console.log(`[tmux] info query failed: ${err instanceof Error ? err.message : err}`);
+    log.error(`info query failed: ${err instanceof Error ? err.message : err}`);
     return res.status(500).json({ error: 'tmux 정보 조회 실패' });
   }
 };

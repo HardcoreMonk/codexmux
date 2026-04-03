@@ -3,6 +3,9 @@ import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
 import { broadcastSync } from '@/lib/sync-server';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('config');
 
 export interface IConfigData {
   authPassword?: string;
@@ -123,12 +126,12 @@ export const initConfigStore = async (): Promise<void> => {
 
   const existing = await readConfig();
   if (existing) {
-    console.log('[purplemux] config.json 로드 완료');
+    log.info('config.json 로드 완료');
     return;
   }
 
   await writeConfig(emptyConfig());
-  console.log('[purplemux] 초기 config.json 생성 (온보딩 필요)');
+  log.info('초기 config.json 생성 (온보딩 필요)');
 };
 
 export const getDangerouslySkipPermissions = async (): Promise<boolean> => {

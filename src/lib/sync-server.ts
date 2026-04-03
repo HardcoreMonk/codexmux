@@ -1,4 +1,7 @@
 import { WebSocket } from 'ws';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('sync');
 
 type TSyncEvent =
   | { type: 'workspace' }
@@ -14,7 +17,7 @@ export const handleSyncConnection = (ws: WebSocket) => {
   clients.add(ws);
   ws.on('close', () => clients.delete(ws));
   ws.on('error', (err) => {
-    console.log(`[sync-ws] error: ${err.message}`);
+    log.error(`websocket error: ${err.message}`);
     clients.delete(ws);
   });
 };

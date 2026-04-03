@@ -1,6 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createPane, splitPaneInLayout } from '@/lib/layout-store';
 import { getActiveWorkspaceId } from '@/lib/workspace-store';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('layout');
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -27,7 +30,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const result = await createPane(wsId, cwd);
     return res.status(200).json(result);
   } catch (err) {
-    console.log(`[layout] pane creation failed: ${err instanceof Error ? err.message : err}`);
+    log.error(`pane creation failed: ${err instanceof Error ? err.message : err}`);
     return res.status(500).json({ error: 'Failed to create pane' });
   }
 };

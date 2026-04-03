@@ -3,6 +3,9 @@ import { hasSession, createSession, getPaneCurrentCommand, sendKeys } from '@/li
 import { getWorkspaces } from '@/lib/workspace-store';
 import { getDangerouslySkipPermissions } from '@/lib/config-store';
 import { HOOK_SETTINGS_PATH } from '@/lib/hook-settings';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('auto-resume');
 
 const SHELL_READY_DELAY_MS = 500;
 const SAFE_SHELLS = new Set(['bash', 'zsh', 'fish', 'sh', 'dash']);
@@ -45,16 +48,16 @@ const sendResumeKeys = async (target: IAutoResumeTarget, skipPerms: boolean): Pr
   try {
     const command = await getPaneCurrentCommand(target.tmuxSession);
     if (!command) {
-      console.log(`[auto-resume] 프로세스 확인 불가: ${target.tmuxSession}`);
+      log.warn(`프로세스 확인 불가: ${target.tmuxSession}`);
       return false;
     }
 
     if (!SAFE_SHELLS.has(command)) {
       if (command === 'claude' || command === 'node') {
-        console.log(`[auto-resume] Claude 이미 실행 중, skip: ${target.tmuxSession}`);
+        log.info(`Claude 이미 실행 중, skip: ${target.tmuxSession}`);
         return true;
       }
-      console.log(`[auto-resume] 셸이 아닌 프로세스 실행 중 (${command}), skip: ${target.tmuxSession}`);
+      log.info(`셸이 아닌 프로세스 실행 중 (${command}), skip: ${target.tmuxSession}`);
       return false;
     }
 
@@ -62,12 +65,12 @@ const sendResumeKeys = async (target: IAutoResumeTarget, skipPerms: boolean): Pr
     const resumeCmd = skipPerms
       ? `claude --resume ${target.claudeSessionId} ${settings} --dangerously-skip-permissions`
       : `claude --resume ${target.claudeSessionId} ${settings}`;
-    console.log(`[auto-resume] resume 전송: ${target.tmuxSession} → ${target.claudeSessionId}${skipPerms ? ' (skip-permissions)' : ''}`);
+    log.info(`resume 전송: ${target.tmuxSession} → ${target.claudeSessionId}${skipPerms ? ' (skip-permissions)' : ''}`);
     await sendKeys(target.tmuxSession, resumeCmd);
 
     return true;
   } catch (err) {
-    console.log(`[auto-resume] 실패: ${target.tmuxSession} — ${err instanceof Error ? err.message : err}`);
+    log.error(`실패: ${target.tmuxSession} — ${err instanceof Error ? err.message : err}`);
     return false;
   }
 };
@@ -77,7 +80,7 @@ export const executeAutoResume = async (targets: IAutoResumeTarget[]): Promise<v
   let hasNewSession = false;
   for (const target of targets) {
     if (!(await hasSession(target.tmuxSession))) {
-      console.log(`[auto-resume] tmux 세션 없음, 새로 생성: ${target.tmuxSession}`);
+      log.info(`tmux 세션 없음, 새로 생성: ${target.tmuxSession}`);
       await createSession(target.tmuxSession, 80, 24);
       hasNewSession = true;
     }
@@ -97,10 +100,10 @@ export const autoResumeOnStartup = async (): Promise<void> => {
   const targets = await findAutoResumeTargets();
   if (targets.length === 0) return;
 
-  console.log(`[auto-resume] ${targets.length}개 Surface 자동 resume 시작`);
+  log.info(`${targets.length}개 Surface 자동 resume 시작`);
   executeAutoResume(targets).then(() => {
-    console.log(`[auto-resume] 자동 resume 완료`);
+    log.info('자동 resume 완료');
   }).catch((err) => {
-    console.log(`[auto-resume] 자동 resume 중 오류: ${err instanceof Error ? err.message : err}`);
+    log.error(`자동 resume 중 오류: ${err instanceof Error ? err.message : err}`);
   });
 };
