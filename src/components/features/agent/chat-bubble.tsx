@@ -46,17 +46,17 @@ const ChatBubble = ({ message, isFailed, approvalResolved, onResend, onApproval 
   if (isUser) {
     return (
       <div className="animate-in fade-in duration-150 flex justify-end" role="article" aria-label={`사용자 메시지, ${time}`}>
-        <div className="flex max-w-[80%] flex-col items-end gap-1">
-          <div className="rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-sm text-primary-foreground">
-            <p className="whitespace-pre-wrap">{message.content}</p>
+        <div className="flex max-w-[85%] flex-col items-end gap-1">
+          <div className="rounded-lg bg-ui-blue/10 px-4 py-2.5 text-sm">
+            <p className="whitespace-pre-wrap break-words">{message.content}</p>
             <div className="mt-1 flex items-center justify-end gap-1">
               {isQueued && (
-                <span className="flex items-center gap-0.5 text-[10px] text-primary-foreground/40">
+                <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/60">
                   <Clock className="h-2.5 w-2.5" />
                   큐잉됨
                 </span>
               )}
-              <span className="text-[10px] text-primary-foreground/60">{time}</span>
+              <span className="text-[10px] text-muted-foreground/60">{time}</span>
             </div>
           </div>
           {isFailed && (

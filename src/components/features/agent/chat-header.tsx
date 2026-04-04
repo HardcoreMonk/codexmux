@@ -6,6 +6,7 @@ import type { IAgentInfo, TAgentStatus } from '@/types/agent';
 interface IChatHeaderProps {
   agent: IAgentInfo | null;
   onSettingsClick: () => void;
+  onBack?: () => void;
 }
 
 const statusConfig: Record<TAgentStatus, { className: string; label: string }> = {
@@ -15,7 +16,7 @@ const statusConfig: Record<TAgentStatus, { className: string; label: string }> =
   offline: { className: 'bg-muted-foreground/10', label: '오프라인' },
 };
 
-const ChatHeader = ({ agent, onSettingsClick }: IChatHeaderProps) => {
+const ChatHeader = ({ agent, onSettingsClick, onBack }: IChatHeaderProps) => {
   const router = useRouter();
 
   if (!agent) return null;
@@ -27,7 +28,7 @@ const ChatHeader = ({ agent, onSettingsClick }: IChatHeaderProps) => {
       <Button
         variant="ghost"
         size="icon"
-        onClick={() => router.push('/agents')}
+        onClick={onBack ?? (() => router.push('/agents'))}
         aria-label="에이전트 목록으로 돌아가기"
       >
         <ArrowLeft className="h-4 w-4" />

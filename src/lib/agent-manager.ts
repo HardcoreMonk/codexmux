@@ -16,7 +16,6 @@ import {
   getPaneCurrentCommand,
   listSessions,
   capturePaneContent,
-  workspaceSessionName,
 } from '@/lib/tmux';
 import { detectActiveSession } from '@/lib/session-detection';
 import {
@@ -35,7 +34,6 @@ import {
   removeTabFromPane,
   readLayoutFile,
   resolveLayoutFile,
-  collectAllTabs,
 } from '@/lib/layout-store';
 import { collectPanes } from '@/lib/layout-tree';
 import { getWorkspaceById } from '@/lib/workspace-store';
@@ -48,6 +46,8 @@ import type {
   IAgentStatusUpdate,
   IAgentChatMessage,
   IAgentWorkspaceResponse,
+  IProjectGroup,
+  TAgentTabStatus,
   TWorkspaceServerMessage,
   IAgentExecTab,
   TAgentExecTabStatus,
@@ -201,7 +201,7 @@ class AgentManager {
     }));
   }
 
-  getWorkspace(agentId: string): IAgentWorkspaceResponse | null {
+  async getWorkspace(agentId: string): Promise<IAgentWorkspaceResponse | null> {
     const runtime = this.agents.get(agentId);
     if (!runtime) return null;
 
@@ -216,6 +216,37 @@ class AgentManager {
       if (tr.tab.status === 'completed') completedTasks++;
     }
 
+    const execToTabStatus = (s: TAgentExecTabStatus): TAgentTabStatus => {
+      if (s === 'working') return 'running';
+      if (s === 'error') return 'failed';
+      return s;
+    };
+
+    const groupMap = new Map<string, { tabs: IProjectGroup['tabs']; wsId: string }>();
+    for (const tr of runtime.tabs.values()) {
+      const wsId = tr.tab.workspaceId;
+      if (!groupMap.has(wsId)) {
+        groupMap.set(wsId, { tabs: [], wsId });
+      }
+      groupMap.get(wsId)!.tabs.push({
+        tabId: tr.tab.tabId,
+        tabName: tr.tab.taskTitle || 'Agent Task',
+        taskTitle: tr.tab.taskTitle,
+        status: execToTabStatus(tr.tab.status),
+      });
+    }
+
+    const projectGroups: IProjectGroup[] = [];
+    for (const { tabs, wsId } of groupMap.values()) {
+      const ws = await getWorkspaceById(wsId);
+      projectGroups.push({
+        workspaceId: wsId,
+        workspaceName: ws?.name ?? wsId,
+        projectPath: ws?.directories[0] ?? '',
+        tabs,
+      });
+    }
+
     return {
       agentId,
       brainSession: {
@@ -227,7 +258,7 @@ class AgentManager {
         completedTasks,
         uptimeSeconds: runtime.status !== 'offline' ? uptimeSeconds : 0,
       },
-      projectGroups: [],
+      projectGroups,
       recentActivity: [],
     };
   }

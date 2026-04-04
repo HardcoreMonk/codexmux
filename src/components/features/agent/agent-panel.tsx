@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/router';
 import { useShallow } from 'zustand/react/shallow';
 import { Plus, Bot, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,7 @@ import AgentCard from '@/components/features/agent/agent-card';
 import AgentCreateDialog from '@/components/features/agent/agent-create-dialog';
 import AgentSettingsSheet from '@/components/features/agent/agent-settings-sheet';
 import AgentDeleteDialog from '@/components/features/agent/agent-delete-dialog';
+import AgentChatPanel from '@/components/features/agent/agent-chat-panel';
 import useAgentStore, { selectAgentList } from '@/hooks/use-agent-store';
 import useAgentStatus from '@/hooks/use-agent-status';
 import type { IAgentInfo } from '@/types/agent';
@@ -42,13 +42,13 @@ const EmptyState = ({ onCreateClick }: { onCreateClick: () => void }) => (
 );
 
 const AgentPanel = () => {
-  const router = useRouter();
   const agents = useAgentStore(useShallow(selectAgentList));
   const isLoading = useAgentStore((s) => s.isLoading);
   const error = useAgentStore((s) => s.error);
   const fetchAgents = useAgentStore((s) => s.fetchAgents);
   const deleteAgent = useAgentStore((s) => s.deleteAgent);
 
+  const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [settingsAgent, setSettingsAgent] = useState<IAgentInfo | null>(null);
   const [deleteAgent_, setDeleteAgent] = useState<IAgentInfo | null>(null);
@@ -60,19 +60,17 @@ const AgentPanel = () => {
     fetchAgents();
   }, [fetchAgents]);
 
-  const handleCardClick = useCallback(
-    (agent: IAgentInfo) => {
-      router.push(`/agents/${agent.id}/chat`);
-    },
-    [router],
-  );
+  const handleCardClick = useCallback((agent: IAgentInfo) => {
+    setActiveAgentId(agent.id);
+  }, []);
 
-  const handleCreated = useCallback(
-    (agentId: string) => {
-      router.push(`/agents/${agentId}/chat`);
-    },
-    [router],
-  );
+  const handleCreated = useCallback((agentId: string) => {
+    setActiveAgentId(agentId);
+  }, []);
+
+  const handleBackToList = useCallback(() => {
+    setActiveAgentId(null);
+  }, []);
 
   const handleSettingsClick = useCallback((agent: IAgentInfo) => {
     setSettingsAgent(agent);
@@ -101,6 +99,10 @@ const AgentPanel = () => {
   const handleRetry = useCallback(() => {
     fetchAgents();
   }, [fetchAgents]);
+
+  if (activeAgentId) {
+    return <AgentChatPanel agentId={activeAgentId} onBack={handleBackToList} />;
+  }
 
   return (
     <>

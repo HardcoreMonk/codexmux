@@ -1,11 +1,9 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import dayjs from 'dayjs';
 import { useStickToBottom } from 'use-stick-to-bottom';
-import { AlertCircle, Bot, Loader2, WifiOff } from 'lucide-react';
+import { AlertCircle, Bot, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import ChatBubble from '@/components/features/agent/chat-bubble';
-import TypingIndicator from '@/components/features/agent/typing-indicator';
 import ScrollToBottomButton from '@/components/features/timeline/scroll-to-bottom-button';
 import type { IChatMessage, TAgentStatus } from '@/types/agent';
 
@@ -26,16 +24,13 @@ interface IMessageListProps {
 }
 
 const SkeletonMessages = () => (
-  <div className="space-y-4 p-4">
-    <div className="flex justify-start">
-      <Skeleton className="h-12 w-48 rounded-2xl rounded-bl-md" />
-    </div>
-    <div className="flex justify-end">
-      <Skeleton className="h-10 w-40 rounded-2xl rounded-br-md" />
-    </div>
-    <div className="flex justify-start">
-      <Skeleton className="h-14 w-56 rounded-2xl rounded-bl-md" />
-    </div>
+  <div className="flex flex-col gap-4 p-4">
+    {[48, 36, 40].map((w, i) => (
+      <div key={i} className="flex flex-col gap-2">
+        <div className="h-4 animate-pulse rounded bg-ui-purple/20" style={{ width: `${w}%` }} />
+        <div className="h-4 animate-pulse rounded bg-ui-purple/20" style={{ width: `${w - 10}%` }} />
+      </div>
+    ))}
   </div>
 );
 
@@ -173,19 +168,6 @@ const MessageList = ({
 
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">
-      {connectionError && (
-        <div className="flex items-center gap-2 bg-negative/10 px-4 py-2 text-xs text-negative">
-          <WifiOff className="h-3 w-3" />
-          연결할 수 없습니다. 새로고침해주세요
-        </div>
-      )}
-      {!isConnected && !connectionError && (
-        <div className="flex items-center gap-2 bg-negative/10 px-4 py-2 text-xs text-negative">
-          <WifiOff className="h-3 w-3" />
-          연결이 끊어졌습니다. 재연결 중...
-        </div>
-      )}
-
       {messages.length === 0 ? (
         <EmptyState />
       ) : (
@@ -233,11 +215,34 @@ const MessageList = ({
               );
             })}
 
-            {agentStatus === 'working' && <TypingIndicator />}
+            {agentStatus === 'working' && (
+              <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
+                <Loader2 size={12} className="animate-spin text-ui-purple" />
+                <span>응답 대기 중...</span>
+              </div>
+            )}
           </div>
         </div>
       )}
 
+      {!isConnected && !connectionError && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
+          <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground shadow-sm">
+            <Loader2 size={12} className="animate-spin" />
+            연결이 끊어졌습니다. 재연결 중...
+          </div>
+        </div>
+      )}
+      {connectionError && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
+          <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground shadow-sm">
+            <span>연결 실패</span>
+            <Button variant="outline" size="xs" className="h-5 rounded-full px-2 text-xs" onClick={onRetry}>
+              다시 시도
+            </Button>
+          </div>
+        </div>
+      )}
       <ScrollToBottomButton
         visible={!isAtBottom}
         onClick={() => scrollToBottom('smooth')}

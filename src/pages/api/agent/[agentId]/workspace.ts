@@ -20,7 +20,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   try {
-    const workspace = manager.getWorkspace(agentId);
+    const workspace = await manager.getWorkspace(agentId);
     if (!workspace) {
       return res.status(404).json({ error: 'Workspace not found' });
     }
