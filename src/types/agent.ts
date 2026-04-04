@@ -123,6 +123,56 @@ export interface IAgentTab {
   status: TAgentTabStatus;
 }
 
+// Agent tab execution types
+
+export type TAgentExecTabStatus = 'idle' | 'working' | 'completed' | 'error';
+
+export interface IAgentExecTab {
+  tabId: string;
+  agentId: string;
+  workspaceId: string;
+  tmuxSession: string;
+  paneId: string;
+  taskTitle?: string;
+  status: TAgentExecTabStatus;
+  createdAt: string;
+  lastActivity?: string;
+}
+
+export interface IAgentTabsFile {
+  tabs: IAgentExecTab[];
+}
+
+export interface ICreateTabRequest {
+  workspaceId: string;
+  taskTitle?: string;
+}
+
+export interface ICreateTabResponse {
+  tabId: string;
+  workspaceId: string;
+  tmuxSession: string;
+}
+
+export interface ITabSendRequest {
+  content: string;
+}
+
+export interface ITabSendResponse {
+  status: 'sent' | 'queued';
+}
+
+export interface ITabStatusResponse {
+  tabId: string;
+  status: TAgentExecTabStatus;
+  lastActivity?: string;
+}
+
+export interface ITabResultResponse {
+  content: string;
+  source: 'file' | 'jsonl' | 'buffer';
+}
+
 export interface IProjectGroup {
   workspaceId: string;
   workspaceName: string;

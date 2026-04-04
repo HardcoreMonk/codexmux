@@ -13,6 +13,8 @@ import {
   getSessionPanePid,
   getPaneCurrentCommand,
   listSessions,
+  capturePaneContent,
+  workspaceSessionName,
 } from '@/lib/tmux';
 import { detectActiveSession } from '@/lib/session-detection';
 import {
@@ -25,6 +27,15 @@ import {
   removeAgentDir,
   writeChatIndex,
 } from '@/lib/agent-chat';
+import {
+  addTabToPane,
+  removeTabFromPane,
+  readLayoutFile,
+  resolveLayoutFile,
+  collectAllTabs,
+} from '@/lib/layout-store';
+import { collectPanes } from '@/lib/layout-tree';
+import { getWorkspaceById } from '@/lib/workspace-store';
 import type {
   TAgentStatus,
   IAgentConfig,
@@ -35,6 +46,9 @@ import type {
   IAgentChatMessage,
   IAgentWorkspaceResponse,
   TWorkspaceServerMessage,
+  IAgentExecTab,
+  TAgentExecTabStatus,
+  IAgentTabsFile,
 } from '@/types/agent';
 import type { IMission, IBlockReasonResponse } from '@/types/mission';
 
@@ -47,6 +61,16 @@ const MAX_RESTART_ATTEMPTS = 3;
 const STATUS_POLL_INTERVAL = 5_000;
 const TMUX_COLS = 200;
 const TMUX_ROWS = 50;
+const MAX_CONCURRENT_TABS = 5;
+const TAB_POLL_INTERVAL = 5_000;
+const TAB_MESSAGE_QUEUE_MAX = 5;
+const JSONL_TAIL_SIZE = 8192;
+
+interface ITabRuntime {
+  tab: IAgentExecTab;
+  messageQueue: string[];
+  prevStatus: TAgentExecTabStatus;
+}
 
 interface IAgentRuntime {
   info: IAgentInfo;
@@ -56,6 +80,8 @@ interface IAgentRuntime {
   restartCount: number;
   statusTimer: ReturnType<typeof setInterval> | null;
   relaySetAt: number;
+  tabs: Map<string, ITabRuntime>;
+  tabPollTimer: ReturnType<typeof setInterval> | null;
 }
 
 const g = globalThis as unknown as { __ptAgentManager?: AgentManager };
@@ -145,6 +171,8 @@ class AgentManager {
       restartCount: 0,
       statusTimer: null,
       relaySetAt: 0,
+      tabs: new Map(),
+      tabPollTimer: null,
     };
     this.agents.set(id, runtime);
 
@@ -186,6 +214,13 @@ class AgentManager {
     const createdMs = new Date(runtime.info.createdAt).getTime();
     const uptimeSeconds = Math.floor((now - createdMs) / 1000);
 
+    let runningTasks = 0;
+    let completedTasks = 0;
+    for (const tr of runtime.tabs.values()) {
+      if (tr.tab.status === 'working') runningTasks++;
+      if (tr.tab.status === 'completed') completedTasks++;
+    }
+
     return {
       agentId,
       brainSession: {
@@ -193,8 +228,8 @@ class AgentManager {
         status: runtime.status,
       },
       stats: {
-        runningTasks: 0,
-        completedTasks: 0,
+        runningTasks,
+        completedTasks,
         uptimeSeconds: runtime.status !== 'offline' ? uptimeSeconds : 0,
       },
       projectGroups: [],
@@ -247,6 +282,12 @@ class AgentManager {
     if (!runtime) return false;
 
     this.stopStatusPolling(runtime);
+    this.stopTabPolling(runtime);
+
+    for (const tr of runtime.tabs.values()) {
+      await this.closeTabInternal(runtime, tr.tab.tabId).catch(() => {});
+    }
+
     await killSession(runtime.info.tmuxSession);
     await removeAgentDir(agentId);
     this.agents.delete(agentId);
@@ -337,12 +378,38 @@ class AgentManager {
 
   // --- Session lifecycle ---
 
+  private async buildWorkspaceMapping(projects: string[]): Promise<Array<{ projectPath: string; workspaceId: string }>> {
+    try {
+      const { getWorkspaces } = await import('@/lib/workspace-store');
+      const { workspaces } = await getWorkspaces();
+      const mapping: Array<{ projectPath: string; workspaceId: string }> = [];
+
+      for (const project of projects) {
+        const ws = workspaces.find((w) =>
+          w.directories.some((d) => d === project || project.startsWith(d + '/')),
+        );
+        if (ws) {
+          mapping.push({ projectPath: project, workspaceId: ws.id });
+        }
+      }
+
+      return mapping;
+    } catch {
+      return [];
+    }
+  }
+
   private async writeAgentClaudeMd(runtime: IAgentRuntime): Promise<void> {
     const port = process.env.PORT || '8022';
     const { info } = runtime;
     const projectPaths = info.projects.length > 0
       ? info.projects.map((p) => `- ${p}`).join('\n')
       : '- (none)';
+
+    const wsMapping = await this.buildWorkspaceMapping(info.projects);
+    const wsMappingText = wsMapping.length > 0
+      ? wsMapping.map((m) => `- ${m.projectPath} → workspaceId: ${m.workspaceId}`).join('\n')
+      : '- (no workspace mappings found — ask user to create workspaces)';
 
     const content = [
       '# Agent Instructions',
@@ -354,15 +421,63 @@ class AgentManager {
       'You are responsible for the following project directories:',
       projectPaths,
       '',
-      'Always work within these directories when reading or modifying code.',
+      'Workspace mappings:',
+      wsMappingText,
       '',
-      '## Communication (CRITICAL)',
+      '## Tab Control API (localhost:' + port + ')',
+      '',
+      'You do NOT modify code directly. Instead, create tabs in project workspaces',
+      'and delegate work to Claude Code sessions running in those tabs.',
+      '',
+      '### Create a tab',
+      '',
+      '```bash',
+      `curl -s -X POST http://localhost:${port}/api/agent/${info.id}/tab \\`,
+      '  -H "Content-Type: application/json" \\',
+      '  -d \'{"workspaceId":"WORKSPACE_ID","taskTitle":"TASK_TITLE"}\'',
+      '```',
+      '',
+      'Response: `{ "tabId": "...", "workspaceId": "...", "tmuxSession": "..." }`',
+      '',
+      '### Send instructions to a tab',
+      '',
+      '```bash',
+      `curl -s -X POST http://localhost:${port}/api/agent/${info.id}/tab/TAB_ID/send \\`,
+      '  -H "Content-Type: application/json" \\',
+      '  -d \'{"content":"YOUR_INSTRUCTION"}\'',
+      '```',
+      '',
+      'Response: `{ "status": "sent" | "queued" }`',
+      '',
+      '### Check tab status',
+      '',
+      '```bash',
+      `curl -s http://localhost:${port}/api/agent/${info.id}/tab/TAB_ID/status`,
+      '```',
+      '',
+      'Response: `{ "tabId": "...", "status": "idle" | "working" | "completed" | "error" }`',
+      '',
+      '### Read tab result',
+      '',
+      '```bash',
+      `curl -s http://localhost:${port}/api/agent/${info.id}/tab/TAB_ID/result`,
+      '```',
+      '',
+      'Response: `{ "content": "...", "source": "file" | "jsonl" | "buffer" }`',
+      '',
+      '### Close a tab',
+      '',
+      '```bash',
+      `curl -s -X DELETE http://localhost:${port}/api/agent/${info.id}/tab/TAB_ID`,
+      '```',
+      '',
+      '## Communication API',
       '',
       'The user communicates with you through a chat UI, NOT the terminal.',
       'Your terminal output is invisible to the user.',
       'The ONLY way the user sees your responses is through the relay API below.',
       '',
-      '**You MUST call this API for EVERY response**, whether it is a simple reply, progress update, question, or completion notice.',
+      '**You MUST call this API for EVERY response.**',
       '',
       '```bash',
       `curl -s -X POST http://localhost:${port}/api/agent/message \\`,
@@ -380,12 +495,25 @@ class AgentManager {
       '| `error` | Unrecoverable failure |',
       '| `approval` | Need user approval for a risky action |',
       '',
+      '## Workflow',
+      '',
+      '1. Receive a mission from the user',
+      '2. Break it into tasks',
+      '3. For each task, create a tab in the appropriate project workspace',
+      '4. Send Claude Code instructions to the tab (one step at a time)',
+      '5. Wait for `[TAB_COMPLETE]` or `[TAB_ERROR]` notification',
+      '6. Read the tab result and verify',
+      '7. Send progress/completion reports to the user via the relay API',
+      '8. Close the tab when done',
+      '',
       '## Rules',
       '',
-      '- ALWAYS relay your response via the API above. The user cannot see terminal output.',
+      '- ALWAYS relay your response via the Communication API. The user cannot see terminal output.',
       '- For long tasks, send periodic `report` messages so the user knows progress.',
       '- Use `question` when you need input — this blocks you until the user replies.',
-      '- Always send `done` or `error` when a task is finished.',
+      '- Always send `done` or `error` when a mission is finished.',
+      '- Tab notifications arrive as `[TAB_COMPLETE] tabId=xxx status=completed` or `[TAB_ERROR] tabId=xxx status=error`.',
+      '- You can run multiple tabs in parallel for independent tasks.',
       '',
     ].join('\n');
 
@@ -687,14 +815,19 @@ class AgentManager {
         chatSessionId,
         restartCount: 0,
         statusTimer: null,
-      relaySetAt: 0,
+        relaySetAt: 0,
+        tabs: new Map(),
+        tabPollTimer: null,
       };
 
       this.agents.set(entry, runtime);
 
+      await this.recoverTabs(runtime);
+
       if (agentSessions.has(tmuxSession)) {
         this.setStatus(runtime, 'idle');
         this.startStatusPolling(runtime);
+        if (runtime.tabs.size > 0) this.startTabPolling(runtime);
         log.info(`recovered agent session: ${entry} (${tmuxSession})`);
       } else {
         await this.startAgentSession(runtime);
@@ -732,11 +865,455 @@ class AgentManager {
     }
   }
 
+  // --- Tab management ---
+
+  async createTab(agentId: string, workspaceId: string, taskTitle?: string): Promise<IAgentExecTab> {
+    const runtime = this.agents.get(agentId);
+    if (!runtime) throw new Error('Agent not found');
+
+    const ws = await getWorkspaceById(workspaceId);
+    if (!ws) {
+      const { getWorkspaces } = await import('@/lib/workspace-store');
+      const { workspaces } = await getWorkspaces();
+      const available = workspaces.map((w) => ({ id: w.id, name: w.name }));
+      const err = new Error('Workspace not found') as Error & { available?: unknown[] };
+      err.available = available;
+      throw err;
+    }
+
+    const activeTabs = Array.from(runtime.tabs.values()).filter(
+      (tr) => tr.tab.status !== 'completed' && tr.tab.status !== 'error',
+    );
+    if (activeTabs.length >= MAX_CONCURRENT_TABS) {
+      const err = new Error('Max concurrent tabs reached') as Error & { limit?: number };
+      err.limit = MAX_CONCURRENT_TABS;
+      throw err;
+    }
+
+    const layout = await readLayoutFile(resolveLayoutFile(workspaceId));
+    if (!layout) throw new Error('Workspace layout not found');
+
+    const panes = collectPanes(layout.root);
+    const targetPane = panes[0];
+    if (!targetPane) throw new Error('No pane in workspace');
+
+    const cwd = ws.directories[0];
+    const tabName = taskTitle || 'Agent Task';
+    const newTab = await addTabToPane(workspaceId, targetPane.id, tabName, cwd);
+    if (!newTab) throw new Error('Failed to create tab session');
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await sendKeys(newTab.sessionName, 'claude --dangerously-skip-permissions');
+
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await sendRawKeys(newTab.sessionName, 'Enter');
+
+    const now = new Date().toISOString();
+    const execTab: IAgentExecTab = {
+      tabId: newTab.id,
+      agentId,
+      workspaceId,
+      tmuxSession: newTab.sessionName,
+      paneId: targetPane.id,
+      taskTitle,
+      status: 'idle',
+      createdAt: now,
+      lastActivity: now,
+    };
+
+    runtime.tabs.set(newTab.id, {
+      tab: execTab,
+      messageQueue: [],
+      prevStatus: 'idle',
+    });
+
+    await this.persistTabs(runtime);
+    this.startTabPolling(runtime);
+
+    this.broadcast({
+      type: 'workspace:tab-added',
+      agentId,
+      workspaceId,
+      tab: {
+        tabId: newTab.id,
+        tabName,
+        taskTitle,
+        status: 'idle',
+      },
+    });
+
+    log.info(`agent ${agentId} created tab ${newTab.id} in workspace ${workspaceId}`);
+    return execTab;
+  }
+
+  async sendToTab(agentId: string, tabId: string, content: string): Promise<{ status: 'sent' | 'queued' }> {
+    const runtime = this.agents.get(agentId);
+    if (!runtime) throw new Error('Agent not found');
+
+    const tr = runtime.tabs.get(tabId);
+    if (!tr) throw new Error('Tab not found');
+    if (tr.tab.agentId !== agentId) throw new Error('Tab not owned by this agent');
+
+    const alive = await hasSession(tr.tab.tmuxSession);
+    if (!alive) throw new Error('Tab session is dead');
+
+    if (tr.tab.status === 'idle') {
+      const escaped = content.replace(/'/g, "'\\''");
+      await sendKeys(tr.tab.tmuxSession, escaped);
+      tr.tab.status = 'working';
+      tr.tab.lastActivity = new Date().toISOString();
+      await this.persistTabs(runtime);
+      this.broadcastTabStatus(agentId, tabId, 'working');
+      return { status: 'sent' };
+    }
+
+    if (tr.messageQueue.length >= TAB_MESSAGE_QUEUE_MAX) {
+      tr.messageQueue.shift();
+    }
+    tr.messageQueue.push(content);
+    return { status: 'queued' };
+  }
+
+  async getTabStatus(agentId: string, tabId: string): Promise<{ tabId: string; status: TAgentExecTabStatus; lastActivity?: string }> {
+    const runtime = this.agents.get(agentId);
+    if (!runtime) throw new Error('Agent not found');
+
+    const tr = runtime.tabs.get(tabId);
+    if (!tr) throw new Error('Tab not found');
+
+    const freshStatus = await this.detectTabStatus(tr);
+    if (freshStatus !== tr.tab.status) {
+      tr.tab.status = freshStatus;
+      tr.tab.lastActivity = new Date().toISOString();
+      await this.persistTabs(runtime);
+    }
+
+    return {
+      tabId: tr.tab.tabId,
+      status: tr.tab.status,
+      lastActivity: tr.tab.lastActivity,
+    };
+  }
+
+  async getTabResult(agentId: string, tabId: string): Promise<{ content: string; source: 'file' | 'jsonl' | 'buffer' }> {
+    const runtime = this.agents.get(agentId);
+    if (!runtime) throw new Error('Agent not found');
+
+    const tr = runtime.tabs.get(tabId);
+    if (!tr) throw new Error('Tab not found');
+
+    if (tr.tab.status === 'working') throw new Error('Tab is still working');
+
+    const cwd = await this.getTabCwd(tr);
+
+    if (cwd) {
+      const resultFile = path.join(cwd, '.task-result.md');
+      try {
+        const content = await fs.readFile(resultFile, 'utf-8');
+        return { content, source: 'file' };
+      } catch {
+        // file doesn't exist, try next source
+      }
+    }
+
+    const panePid = await getSessionPanePid(tr.tab.tmuxSession);
+    if (panePid) {
+      const sessionInfo = await detectActiveSession(panePid);
+      if (sessionInfo.jsonlPath) {
+        const content = await this.readLastAssistantFromJsonl(sessionInfo.jsonlPath);
+        if (content) return { content, source: 'jsonl' };
+      }
+    }
+
+    const buffer = await capturePaneContent(tr.tab.tmuxSession);
+    if (buffer) {
+      const lines = buffer.split('\n');
+      const tail = lines.slice(-50).join('\n').trim();
+      if (tail) return { content: tail, source: 'buffer' };
+    }
+
+    throw new Error('No result available');
+  }
+
+  async closeTab(agentId: string, tabId: string): Promise<void> {
+    const runtime = this.agents.get(agentId);
+    if (!runtime) throw new Error('Agent not found');
+
+    await this.closeTabInternal(runtime, tabId);
+  }
+
+  private async closeTabInternal(runtime: IAgentRuntime, tabId: string): Promise<void> {
+    const tr = runtime.tabs.get(tabId);
+    if (!tr) return;
+
+    const { workspaceId, paneId, tmuxSession } = tr.tab;
+
+    await removeTabFromPane(workspaceId, paneId, tabId).catch(() => {});
+    await killSession(tmuxSession).catch(() => {});
+
+    runtime.tabs.delete(tabId);
+    await this.persistTabs(runtime);
+
+    if (runtime.tabs.size === 0) {
+      this.stopTabPolling(runtime);
+    }
+
+    this.broadcast({
+      type: 'workspace:tab-removed',
+      agentId: runtime.info.id,
+      tabId,
+    });
+
+    log.info(`agent ${runtime.info.id} closed tab ${tabId}`);
+  }
+
+  // --- Tab status detection ---
+
+  private async detectTabStatus(tr: ITabRuntime): Promise<TAgentExecTabStatus> {
+    const alive = await hasSession(tr.tab.tmuxSession);
+    if (!alive) return 'error';
+
+    const panePid = await getSessionPanePid(tr.tab.tmuxSession);
+    if (!panePid) return 'error';
+
+    const sessionInfo = await detectActiveSession(panePid);
+
+    if (sessionInfo.status !== 'running') {
+      const command = await getPaneCurrentCommand(tr.tab.tmuxSession);
+      if (command && ['zsh', 'bash', 'fish', 'sh'].includes(command)) {
+        return 'idle';
+      }
+      return 'error';
+    }
+
+    if (!sessionInfo.jsonlPath) return 'idle';
+
+    const isIdle = await this.checkTabJsonlIdle(sessionInfo.jsonlPath);
+
+    if (isIdle) {
+      const cwd = sessionInfo.cwd || await this.getTabCwd(tr);
+      if (cwd) {
+        try {
+          await fs.access(path.join(cwd, '.task-result.md'));
+          return 'completed';
+        } catch {
+          // no result file
+        }
+      }
+      return 'idle';
+    }
+
+    return 'working';
+  }
+
+  private async checkTabJsonlIdle(jsonlPath: string): Promise<boolean> {
+    try {
+      const stat = await fs.stat(jsonlPath);
+      if (stat.size === 0) return true;
+
+      const fd = await fs.open(jsonlPath, 'r');
+      const tailSize = Math.min(JSONL_TAIL_SIZE, stat.size);
+      const buffer = Buffer.alloc(tailSize);
+      await fd.read(buffer, 0, tailSize, stat.size - tailSize);
+      await fd.close();
+
+      const lines = buffer.toString('utf-8').split('\n').filter(Boolean);
+
+      for (let i = lines.length - 1; i >= 0; i--) {
+        try {
+          const entry = JSON.parse(lines[i]);
+          if (entry.isSidechain) continue;
+
+          if (entry.type === 'system' && (entry.subtype === 'stop_hook_summary' || entry.subtype === 'turn_duration')) {
+            return true;
+          }
+          if (entry.type === 'assistant') {
+            const stopReason = entry.message?.stop_reason;
+            if (!stopReason || stopReason === 'tool_use') return false;
+            return true;
+          }
+          if (entry.type === 'user') {
+            return false;
+          }
+        } catch {
+          continue;
+        }
+      }
+
+      return true;
+    } catch {
+      return true;
+    }
+  }
+
+  private async readLastAssistantFromJsonl(jsonlPath: string): Promise<string | null> {
+    try {
+      const stat = await fs.stat(jsonlPath);
+      if (stat.size === 0) return null;
+
+      const fd = await fs.open(jsonlPath, 'r');
+      const tailSize = Math.min(JSONL_TAIL_SIZE, stat.size);
+      const buffer = Buffer.alloc(tailSize);
+      await fd.read(buffer, 0, tailSize, stat.size - tailSize);
+      await fd.close();
+
+      const lines = buffer.toString('utf-8').split('\n').filter(Boolean);
+
+      for (let i = lines.length - 1; i >= 0; i--) {
+        try {
+          const entry = JSON.parse(lines[i]);
+          if (entry.type === 'assistant' && entry.message?.content) {
+            const content = entry.message.content;
+            if (Array.isArray(content)) {
+              const textParts = content
+                .filter((c: { type: string }) => c.type === 'text')
+                .map((c: { text: string }) => c.text);
+              if (textParts.length > 0) return textParts.join('\n');
+            }
+            if (typeof content === 'string') return content;
+          }
+        } catch {
+          continue;
+        }
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async getTabCwd(tr: ITabRuntime): Promise<string | null> {
+    try {
+      const { getSessionCwd } = await import('@/lib/tmux');
+      return await getSessionCwd(tr.tab.tmuxSession);
+    } catch {
+      return null;
+    }
+  }
+
+  // --- Tab polling ---
+
+  private startTabPolling(runtime: IAgentRuntime): void {
+    if (runtime.tabPollTimer) return;
+    runtime.tabPollTimer = setInterval(() => {
+      this.pollTabStatuses(runtime).catch((err) => {
+        log.error(`tab poll error for ${runtime.info.id}: ${err instanceof Error ? err.message : err}`);
+      });
+    }, TAB_POLL_INTERVAL);
+  }
+
+  private stopTabPolling(runtime: IAgentRuntime): void {
+    if (runtime.tabPollTimer) {
+      clearInterval(runtime.tabPollTimer);
+      runtime.tabPollTimer = null;
+    }
+  }
+
+  private async pollTabStatuses(runtime: IAgentRuntime): Promise<void> {
+    for (const tr of runtime.tabs.values()) {
+      if (tr.tab.status === 'completed' || tr.tab.status === 'error') continue;
+
+      const newStatus = await this.detectTabStatus(tr);
+
+      if (newStatus !== tr.prevStatus) {
+        tr.tab.status = newStatus;
+        tr.tab.lastActivity = new Date().toISOString();
+        this.broadcastTabStatus(runtime.info.id, tr.tab.tabId, newStatus);
+
+        if ((newStatus === 'completed' || newStatus === 'error') && tr.prevStatus === 'working') {
+          await this.notifyAgentTabComplete(runtime, tr.tab.tabId, newStatus);
+        }
+
+        if (newStatus === 'idle' && tr.prevStatus === 'working' && tr.messageQueue.length > 0) {
+          const next = tr.messageQueue.shift()!;
+          const escaped = next.replace(/'/g, "'\\''");
+          await sendKeys(tr.tab.tmuxSession, escaped);
+          tr.tab.status = 'working';
+          this.broadcastTabStatus(runtime.info.id, tr.tab.tabId, 'working');
+        }
+
+        tr.prevStatus = newStatus;
+      }
+    }
+
+    await this.persistTabs(runtime);
+  }
+
+  private async notifyAgentTabComplete(runtime: IAgentRuntime, tabId: string, status: TAgentExecTabStatus): Promise<void> {
+    const prefix = status === 'completed' ? '[TAB_COMPLETE]' : '[TAB_ERROR]';
+    const message = `${prefix} tabId=${tabId} status=${status}`;
+    try {
+      const alive = await hasSession(runtime.info.tmuxSession);
+      if (alive) {
+        await sendRawKeys(runtime.info.tmuxSession, message);
+      }
+    } catch (err) {
+      log.error(`failed to notify agent ${runtime.info.id}: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  private broadcastTabStatus(agentId: string, tabId: string, status: TAgentExecTabStatus): void {
+    this.broadcast({
+      type: 'workspace:tab-updated',
+      agentId,
+      tabId,
+      status: status === 'working' ? 'running' : status === 'error' ? 'failed' : status,
+    });
+  }
+
+  // --- Tab persistence ---
+
+  private async persistTabs(runtime: IAgentRuntime): Promise<void> {
+    const agentDir = getAgentDir(runtime.info.id);
+    const tabsFile = path.join(agentDir, 'tabs.json');
+    const data: IAgentTabsFile = {
+      tabs: Array.from(runtime.tabs.values()).map((tr) => tr.tab),
+    };
+    try {
+      const tmpFile = tabsFile + '.tmp';
+      await fs.writeFile(tmpFile, JSON.stringify(data, null, 2));
+      await fs.rename(tmpFile, tabsFile);
+    } catch (err) {
+      log.error(`failed to persist tabs for ${runtime.info.id}: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  private async recoverTabs(runtime: IAgentRuntime): Promise<void> {
+    const agentDir = getAgentDir(runtime.info.id);
+    const tabsFile = path.join(agentDir, 'tabs.json');
+    try {
+      const raw = await fs.readFile(tabsFile, 'utf-8');
+      const data = JSON.parse(raw) as IAgentTabsFile;
+
+      for (const tab of data.tabs) {
+        const alive = await hasSession(tab.tmuxSession);
+        if (alive) {
+          runtime.tabs.set(tab.tabId, {
+            tab,
+            messageQueue: [],
+            prevStatus: tab.status,
+          });
+          log.info(`recovered agent tab: ${tab.tabId} (${tab.tmuxSession})`);
+        } else {
+          log.info(`agent tab session dead, removing: ${tab.tabId}`);
+        }
+      }
+
+      if (runtime.tabs.size !== data.tabs.length) {
+        await this.persistTabs(runtime);
+      }
+    } catch {
+      // no tabs.json or parse error — start fresh
+    }
+  }
+
   // --- Shutdown ---
 
   shutdown(): void {
     for (const runtime of this.agents.values()) {
       this.stopStatusPolling(runtime);
+      this.stopTabPolling(runtime);
     }
     for (const ws of this.clients) {
       if (ws.readyState === WebSocket.OPEN) {
