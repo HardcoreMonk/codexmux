@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { Loader2, AlertTriangle, RefreshCw, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -19,13 +20,19 @@ const TerminalPage = () => {
   const error = useWorkspaceStore((s) => s.error);
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const workspaceCount = useWorkspaceStore((s) => s.workspaces.length);
+  const router = useRouter();
+  const agentPanelOpen = router.query.panel === 'agent';
   const prevWorkspaceIdRef = useRef<string | null>(null);
   const equalizeRef = useRef<(() => void) | null>(null);
-  const [agentPanelOpen, setAgentPanelOpen] = useState(false);
 
   const handleAgentToggle = useCallback(() => {
-    setAgentPanelOpen((prev) => !prev);
-  }, []);
+    const { panel, agentId, ...rest } = router.query;
+    if (agentPanelOpen) {
+      router.push({ pathname: router.pathname, query: rest }, undefined, { shallow: true });
+    } else {
+      router.push({ pathname: router.pathname, query: { ...router.query, panel: 'agent' } }, undefined, { shallow: true });
+    }
+  }, [agentPanelOpen, router]);
 
   const handleFetchError = useCallback(() => {
     const prevId = prevWorkspaceIdRef.current;

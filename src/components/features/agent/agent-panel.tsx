@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/router';
 import { useShallow } from 'zustand/react/shallow';
 import { Plus, Bot, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,13 +43,14 @@ const EmptyState = ({ onCreateClick }: { onCreateClick: () => void }) => (
 );
 
 const AgentPanel = () => {
+  const router = useRouter();
+  const activeAgentId = (router.query.agentId as string) || null;
   const agents = useAgentStore(useShallow(selectAgentList));
   const isLoading = useAgentStore((s) => s.isLoading);
   const error = useAgentStore((s) => s.error);
   const fetchAgents = useAgentStore((s) => s.fetchAgents);
   const deleteAgent = useAgentStore((s) => s.deleteAgent);
 
-  const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [settingsAgent, setSettingsAgent] = useState<IAgentInfo | null>(null);
   const [deleteAgent_, setDeleteAgent] = useState<IAgentInfo | null>(null);
@@ -61,16 +63,25 @@ const AgentPanel = () => {
   }, [fetchAgents]);
 
   const handleCardClick = useCallback((agent: IAgentInfo) => {
-    setActiveAgentId(agent.id);
-  }, []);
+    router.push(
+      { pathname: router.pathname, query: { ...router.query, agentId: agent.id } },
+      undefined,
+      { shallow: true },
+    );
+  }, [router]);
 
   const handleCreated = useCallback((agentId: string) => {
-    setActiveAgentId(agentId);
-  }, []);
+    router.push(
+      { pathname: router.pathname, query: { ...router.query, agentId } },
+      undefined,
+      { shallow: true },
+    );
+  }, [router]);
 
   const handleBackToList = useCallback(() => {
-    setActiveAgentId(null);
-  }, []);
+    const { agentId, ...rest } = router.query;
+    router.push({ pathname: router.pathname, query: rest }, undefined, { shallow: true });
+  }, [router]);
 
   const handleSettingsClick = useCallback((agent: IAgentInfo) => {
     setSettingsAgent(agent);
