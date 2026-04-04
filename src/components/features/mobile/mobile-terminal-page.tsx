@@ -30,6 +30,7 @@ const MobileTerminalPage = () => {
 
   const [selectedPaneId, setSelectedPaneId] = useState<string | null>(null);
   const [selectedTabId, setSelectedTabId] = useState<string | null>(null);
+  const pendingSurfaceRef = useRef<{ paneId: string; tabId: string } | null>(null);
 
   const handleFetchError = useCallback(() => {
     const prevId = prevWorkspaceIdRef.current;
@@ -137,6 +138,9 @@ const MobileTerminalPage = () => {
 
   const handleSurfaceSelected = useCallback(
     (workspaceId: string, paneId: string, tabId: string) => {
+      if (workspaceId !== activeWorkspaceId) {
+        pendingSurfaceRef.current = { paneId, tabId };
+      }
       setSelectedPaneId(paneId);
       setSelectedTabId(tabId);
       if (workspaceId === activeWorkspaceId) {
@@ -150,6 +154,15 @@ const MobileTerminalPage = () => {
   useEffect(() => {
     return useLayoutStore.subscribe((state, prev) => {
       if (!state.layout || state.layout === prev.layout) return;
+
+      const pending = pendingSurfaceRef.current;
+      if (pending) {
+        pendingSurfaceRef.current = null;
+        setSelectedPaneId(pending.paneId);
+        setSelectedTabId(pending.tabId);
+        return;
+      }
+
       const activePaneId = state.layout.activePaneId;
       if (!activePaneId) return;
       const pane = findPane(state.layout.root, activePaneId);
