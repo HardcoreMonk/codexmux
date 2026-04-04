@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
-import { useLayoutStore } from '@/hooks/use-layout';
+import { useLayoutStore, collectPanes } from '@/hooks/use-layout';
+import useTabStore from '@/hooks/use-tab-store';
+import type { ILayoutData } from '@/types/terminal';
 
 const RECONNECT_DELAY = 3000;
 
@@ -30,6 +32,15 @@ const useSync = () => {
             const activeWsId = useWorkspaceStore.getState().activeWorkspaceId;
             if (data.workspaceId === activeWsId) {
               useLayoutStore.getState().fetchLayout(activeWsId);
+            } else if (data.workspaceId) {
+              fetch(`/api/layout?workspace=${data.workspaceId}`)
+                .then((res) => (res.ok ? res.json() : null))
+                .then((layout: ILayoutData | null) => {
+                  if (!layout?.root) return;
+                  const tabIds = collectPanes(layout.root).flatMap((p) => p.tabs.map((t) => t.id));
+                  useTabStore.getState().setTabOrder(data.workspaceId, tabIds);
+                })
+                .catch(() => {});
             }
           }
         } catch (err) {
