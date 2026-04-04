@@ -315,6 +315,30 @@ export const sendRawKeys = async (
   );
 };
 
+/** 브라켓 페이스트 모드로 텍스트를 전송하고 Enter를 두 번 입력 (Claude Code 긴 입력 확인 대응) */
+export const sendBracketedPaste = async (
+  sessionName: string,
+  content: string,
+): Promise<void> => {
+  await exitCopyMode(sessionName);
+  await execFile(
+    'tmux',
+    ['-L', TMUX_SOCKET, 'send-keys', '-t', sessionName, '-l', `\x1b[200~${content}\x1b[201~`],
+    { timeout: CMD_TIMEOUT },
+  );
+  await execFile(
+    'tmux',
+    ['-L', TMUX_SOCKET, 'send-keys', '-t', sessionName, 'Enter'],
+    { timeout: CMD_TIMEOUT },
+  );
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  await execFile(
+    'tmux',
+    ['-L', TMUX_SOCKET, 'send-keys', '-t', sessionName, 'Enter'],
+    { timeout: CMD_TIMEOUT },
+  );
+};
+
 
 export interface IPaneDetailInfo {
   cwd: string | null;
