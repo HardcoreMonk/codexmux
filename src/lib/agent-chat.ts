@@ -135,3 +135,127 @@ export const removeAgentDir = async (agentId: string): Promise<void> => {
     log.error(`failed to remove agent dir ${agentId}: ${err instanceof Error ? err.message : err}`);
   }
 };
+
+// --- Memory ---
+
+const getMemoryDir = (agentId: string): string =>
+  path.join(AGENTS_DIR, agentId, 'memory');
+
+export interface IMemoryEntry {
+  id: string;
+  content: string;
+  tags: string[];
+  createdAt: string;
+}
+
+export const ensureMemoryDir = async (agentId: string): Promise<void> => {
+  await fs.mkdir(getMemoryDir(agentId), { recursive: true });
+};
+
+export const saveMemoryEntry = async (
+  agentId: string,
+  content: string,
+  tags: string[],
+): Promise<IMemoryEntry> => {
+  await ensureMemoryDir(agentId);
+  const id = nanoid(12);
+  const entry: IMemoryEntry = {
+    id,
+    content,
+    tags,
+    createdAt: new Date().toISOString(),
+  };
+  const frontmatter = [
+    '---',
+    `id: ${entry.id}`,
+    `tags: ${entry.tags.join(', ')}`,
+    `createdAt: ${entry.createdAt}`,
+    '---',
+    '',
+    entry.content,
+    '',
+  ].join('\n');
+  await fs.writeFile(path.join(getMemoryDir(agentId), `${id}.md`), frontmatter, 'utf-8');
+  return entry;
+};
+
+const parseMemoryFile = (raw: string, fileName: string): IMemoryEntry | null => {
+  const match = raw.match(/^---\n([\s\S]*?)\n---\n\n?([\s\S]*)$/);
+  if (!match) return null;
+
+  const frontmatter = match[1];
+  const content = match[2].trimEnd();
+  let id = fileName.replace(/\.md$/, '');
+  let tags: string[] = [];
+  let createdAt = '';
+
+  for (const line of frontmatter.split('\n')) {
+    if (line.startsWith('id: ')) id = line.slice(4).trim();
+    else if (line.startsWith('tags: ')) tags = line.slice(6).split(',').map((t) => t.trim()).filter(Boolean);
+    else if (line.startsWith('createdAt: ')) createdAt = line.slice(11).trim();
+  }
+
+  return { id, content, tags, createdAt };
+};
+
+export const listMemoryEntries = async (
+  agentId: string,
+  query?: string,
+  tag?: string,
+): Promise<IMemoryEntry[]> => {
+  const dir = getMemoryDir(agentId);
+  let files: string[];
+  try {
+    files = await fs.readdir(dir);
+  } catch {
+    return [];
+  }
+
+  const entries: IMemoryEntry[] = [];
+  const lowerQuery = query?.toLowerCase();
+
+  for (const file of files) {
+    if (!file.endsWith('.md')) continue;
+    try {
+      const raw = await fs.readFile(path.join(dir, file), 'utf-8');
+      const entry = parseMemoryFile(raw, file);
+      if (!entry) continue;
+
+      if (tag && !entry.tags.includes(tag)) continue;
+      if (lowerQuery && !entry.content.toLowerCase().includes(lowerQuery)) continue;
+
+      entries.push(entry);
+    } catch {
+      // skip unreadable
+    }
+  }
+
+  entries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return entries;
+};
+
+export const getMemoryEntry = async (
+  agentId: string,
+  memoryId: string,
+): Promise<IMemoryEntry | null> => {
+  const filePath = path.join(getMemoryDir(agentId), `${memoryId}.md`);
+  try {
+    const raw = await fs.readFile(filePath, 'utf-8');
+    return parseMemoryFile(raw, `${memoryId}.md`);
+  } catch {
+    return null;
+  }
+};
+
+export const deleteMemoryEntry = async (
+  agentId: string,
+  memoryId: string,
+): Promise<boolean> => {
+  const filePath = path.join(getMemoryDir(agentId), `${memoryId}.md`);
+  try {
+    await fs.rm(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+};

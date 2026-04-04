@@ -55,7 +55,7 @@ const Index = ({ initialWorkspace, initialConfig, initialQuickPrompts }: IIndexP
     <>
       <Head>
         <title>purplemux</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+
       </Head>
       <div style={{ backgroundColor: 'var(--terminal-bg)' }} className="flex h-dvh w-full flex-col overflow-hidden">
         <MobileTerminalPage />

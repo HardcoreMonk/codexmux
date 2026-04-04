@@ -1,10 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { SendHorizontal, Loader2 } from 'lucide-react';
+import { SendHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import useIsMobileDevice from '@/hooks/use-is-mobile-device';
 import type { TAgentStatus } from '@/types/agent';
 
-const MAX_ROWS = 5;
+const DESKTOP_MAX_ROWS = 5;
+const MOBILE_MAX_ROWS = 3;
 const LINE_HEIGHT = 20;
 const PADDING_Y = 16;
 
@@ -53,9 +55,11 @@ const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
   const [isFocused, setIsFocused] = useState(false);
+  const isMobileDevice = useIsMobileDevice();
 
   const isDisabled = agentStatus === 'offline' || isSending;
   const hasValue = value.trim().length > 0;
+  const maxRows = isMobileDevice ? MOBILE_MAX_ROWS : DESKTOP_MAX_ROWS;
 
   const placeholder =
     agentStatus === 'offline' ? '에이전트 오프라인' : '메시지를 입력하세요...';
@@ -75,9 +79,9 @@ const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps)
     if (!textarea) return;
     textarea.style.height = 'auto';
     if (!value) return;
-    const maxHeight = LINE_HEIGHT * MAX_ROWS + PADDING_Y;
+    const maxHeight = LINE_HEIGHT * maxRows + PADDING_Y;
     textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
-  }, [value]);
+  }, [value, maxRows]);
 
   useEffect(() => {
     adjustHeight();
@@ -95,12 +99,19 @@ const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps)
     onSend(trimmed);
     setValue('');
     clearDraft(agentId);
-  }, [value, isDisabled, onSend, agentId]);
+
+    if (isMobileDevice) {
+      textareaRef.current?.blur();
+    } else {
+      textareaRef.current?.focus();
+    }
+  }, [value, isDisabled, onSend, agentId, isMobileDevice]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
 
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !isMobileDevice) {
+      if (e.shiftKey) return;
       e.preventDefault();
       handleSubmit();
     }
@@ -119,10 +130,6 @@ const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps)
         onFocusCapture={() => setIsFocused(true)}
         onBlurCapture={() => setIsFocused(false)}
       >
-        {agentStatus === 'working' && (
-          <Loader2 className="mb-1 h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
-        )}
-
         <textarea
           ref={textareaRef}
           value={value}
@@ -138,7 +145,7 @@ const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps)
           rows={1}
           style={{
             lineHeight: `${LINE_HEIGHT}px`,
-            maxHeight: `${LINE_HEIGHT * MAX_ROWS + PADDING_Y}px`,
+            maxHeight: `${LINE_HEIGHT * maxRows + PADDING_Y}px`,
             overflowY: 'auto',
           }}
         />

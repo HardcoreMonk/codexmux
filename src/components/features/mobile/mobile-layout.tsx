@@ -14,7 +14,6 @@ interface IMobileLayoutProps {
   onSelectSurface?: (workspaceId: string, paneId: string, tabId: string) => void;
   selectedPaneId?: string | null;
   selectedTabId?: string | null;
-  hideTabBar?: boolean;
 }
 
 const MobileLayout = ({
@@ -23,7 +22,6 @@ const MobileLayout = ({
   onSelectSurface,
   selectedPaneId,
   selectedTabId,
-  hideTabBar,
 }: IMobileLayoutProps) => {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -50,39 +48,13 @@ const MobileLayout = ({
     setLayoutCache((prev) => ({ ...prev, [storeWorkspaceId]: storeLayout }));
   }
 
-  // 초기 로드 시 모든 workspace 레이아웃 fetch (하단 탭 바용)
+  // workspace 레이아웃 fetch (초기 로드 + 메뉴 열릴 때 refresh)
   const initialFetchDone = useRef(false);
   useEffect(() => {
-    if (initialFetchDone.current || workspaces.length === 0) return;
+    if (workspaces.length === 0) return;
+    if (initialFetchDone.current && !menuOpen) return;
     initialFetchDone.current = true;
 
-    const fetchAll = async () => {
-      const results = await Promise.all(
-        workspaces.map(async (ws) => {
-          try {
-            const res = await fetch(`/api/layout?workspace=${ws.id}`);
-            if (!res.ok) return null;
-            const data: ILayoutData = await res.json();
-            return { id: ws.id, data };
-          } catch {
-            return null;
-          }
-        }),
-      );
-
-      setLayoutCache((prev) => {
-        const next = { ...prev };
-        for (const r of results) {
-          if (r) next[r.id] = r.data;
-        }
-        return next;
-      });
-    };
-    fetchAll();
-  }, [workspaces]);
-
-  // 모든 workspace 레이아웃 fetch (초기 로드 + 메뉴 열릴 때 refresh)
-  useEffect(() => {
     let cancelled = false;
 
     const fetchAll = async () => {
@@ -129,13 +101,15 @@ const MobileLayout = ({
     return map;
   }, [workspaces, storeLayout, storeWorkspaceId, layoutCache]);
 
+  const isWorkspacePage = router.pathname === '/';
+
   const activeLayout = (activeWorkspaceId === storeWorkspaceId && storeLayout)
     ? storeLayout
     : (activeWorkspaceId ? layoutCache[activeWorkspaceId] : null);
   const activePanes = activeWorkspaceId ? (workspaceLayouts[activeWorkspaceId] ?? []) : [];
-  const activePaneId = activeLayout?.activePaneId ?? null;
+  const activePaneId = isWorkspacePage ? (activeLayout?.activePaneId ?? null) : null;
   const activePane = activePanes.find((p) => p.id === activePaneId) ?? activePanes[0];
-  const activeTabId = activePane?.activeTabId ?? null;
+  const activeTabId = isWorkspacePage ? (activePane?.activeTabId ?? null) : null;
 
   const handleSelectSurface = useCallback(
     (workspaceId: string, paneId: string, tabId: string) => {
@@ -175,16 +149,14 @@ const MobileLayout = ({
         />
       </div>
       {children}
-      {!hideTabBar && (
-        <MobileWorkspaceTabBar
-          workspaces={workspaces}
-          activeWorkspaceId={activeWorkspaceId}
-          workspaceLayouts={workspaceLayouts}
-          selectedPaneId={selectedPaneId ?? activePaneId}
-          selectedTabId={selectedTabId ?? activeTabId}
-          onSelect={handleSelectSurface}
-        />
-      )}
+      <MobileWorkspaceTabBar
+        workspaces={workspaces}
+        activeWorkspaceId={activeWorkspaceId}
+        workspaceLayouts={workspaceLayouts}
+        selectedPaneId={selectedPaneId ?? activePaneId}
+        selectedTabId={selectedTabId ?? activeTabId}
+        onSelect={handleSelectSurface}
+      />
       <MobileNavigationSheet
         open={menuOpen}
         onOpenChange={setMenuOpen}

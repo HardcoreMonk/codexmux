@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { ArrowLeft, Zap, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
-import AppHeader from '@/components/layout/app-header';
+import PageShell from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import ActivitySummary from '@/components/features/agent/activity-summary';
@@ -11,9 +11,6 @@ import BrainSessionCard from '@/components/features/agent/brain-session-card';
 import ProjectGroup from '@/components/features/agent/project-group';
 import RecentActivity from '@/components/features/agent/recent-activity';
 import OfflineBanner from '@/components/features/agent/offline-banner';
-import MobileLayout from '@/components/features/mobile/mobile-layout';
-import useIsMobile from '@/hooks/use-is-mobile';
-import useWorkspaceStore from '@/hooks/use-workspace-store';
 import useAgentStore from '@/hooks/use-agent-store';
 import type {
   IAgentWorkspaceResponse,
@@ -99,19 +96,11 @@ const initialState: IWorkspaceState = {
 
 const AgentWorkspacePage = () => {
   const router = useRouter();
-  const isMobile = useIsMobile();
   const agentId = router.query.agentId as string;
 
   const agent = useAgentStore((s) => (agentId ? s.agents[agentId] ?? null : null));
   const fetchAgents = useAgentStore((s) => s.fetchAgents);
   const isStoreLoading = useAgentStore((s) => s.isLoading);
-
-  const handleSelectWorkspace = useCallback(
-    (workspaceId: string) => {
-      useWorkspaceStore.getState().switchWorkspace(workspaceId);
-    },
-    [],
-  );
 
   const [state, setState] = useState<IWorkspaceState>(initialState);
   const [wsError, setWsError] = useState(false);
@@ -403,18 +392,9 @@ const AgentWorkspacePage = () => {
         <title>{title}</title>
       </Head>
 
-      <div className="flex h-dvh flex-col bg-background">
-        {isMobile ? (
-          <MobileLayout onSelectWorkspace={handleSelectWorkspace} hideTabBar>
-            {content}
-          </MobileLayout>
-        ) : (
-          <>
-            <AppHeader />
-            {content}
-          </>
-        )}
-      </div>
+      <PageShell showAppHeader>
+        {content}
+      </PageShell>
     </>
   );
 };

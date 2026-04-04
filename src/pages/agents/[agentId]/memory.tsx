@@ -3,15 +3,12 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { ArrowLeft, FileText, FolderTree, Eye } from 'lucide-react';
 import { toast } from 'sonner';
-import AppHeader from '@/components/layout/app-header';
+import PageShell from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import MemoryTree from '@/components/features/agent/memory-tree';
 import MemoryViewer from '@/components/features/agent/memory-viewer';
 import MemoryStats from '@/components/features/agent/memory-stats';
-import MobileLayout from '@/components/features/mobile/mobile-layout';
-import useIsMobile from '@/hooks/use-is-mobile';
-import useWorkspaceStore from '@/hooks/use-workspace-store';
 import useAgentStore from '@/hooks/use-agent-store';
 import type {
   IMemoryNode,
@@ -89,19 +86,11 @@ const TreeErrorState = ({ onRetry }: { onRetry: () => void }) => (
 
 const MemoryPage = () => {
   const router = useRouter();
-  const isMobile = useIsMobile();
   const agentId = router.query.agentId as string;
 
   const agent = useAgentStore((s) => (agentId ? s.agents[agentId] ?? null : null));
   const fetchAgents = useAgentStore((s) => s.fetchAgents);
   const isStoreLoading = useAgentStore((s) => s.isLoading);
-
-  const handleSelectWorkspace = useCallback(
-    (workspaceId: string) => {
-      useWorkspaceStore.getState().switchWorkspace(workspaceId);
-    },
-    [],
-  );
 
   const [state, setState] = useState<IPageState>(initialState);
   const [mobileTab, setMobileTab] = useState<'tree' | 'viewer'>('tree');
@@ -394,18 +383,9 @@ const MemoryPage = () => {
         <title>{title}</title>
       </Head>
 
-      <div className="flex h-dvh flex-col bg-background">
-        {isMobile ? (
-          <MobileLayout onSelectWorkspace={handleSelectWorkspace} hideTabBar>
-            {content}
-          </MobileLayout>
-        ) : (
-          <>
-            <AppHeader />
-            {content}
-          </>
-        )}
-      </div>
+      <PageShell showAppHeader>
+        {content}
+      </PageShell>
     </>
   );
 };

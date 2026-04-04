@@ -3,10 +3,8 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { ArrowLeft, Sparkles, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import useIsMobile from '@/hooks/use-is-mobile';
 import useBrowserTitle from '@/hooks/use-browser-title';
-import useWorkspaceStore from '@/hooks/use-workspace-store';
-import MobileLayout from '@/components/features/mobile/mobile-layout';
+import PageShell from '@/components/layout/page-shell';
 import SectionErrorBoundary from '@/components/features/stats/section-error-boundary';
 import DailyReportSection from '@/components/features/stats/daily-report-section';
 import type { IDailyReportDay, IDailyReportListItem, IDailyReportListResponse } from '@/types/stats';
@@ -15,15 +13,7 @@ const PAGE_SIZE = 10;
 
 const ReportsPage = () => {
   const router = useRouter();
-  const isMobile = useIsMobile();
   useBrowserTitle('노트');
-
-  const handleSelectWorkspace = useCallback(
-    (workspaceId: string) => {
-      useWorkspaceStore.getState().switchWorkspace(workspaceId);
-    },
-    [],
-  );
 
   const [days, setDays] = useState<IDailyReportListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -157,18 +147,10 @@ const ReportsPage = () => {
     <>
       <Head>
         <title>노트 — purplemux</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
       </Head>
-      <div className="flex h-screen w-screen flex-col bg-background">
-        <div className="h-titlebar shrink-0" />
-        {isMobile ? (
-          <MobileLayout onSelectWorkspace={handleSelectWorkspace}>
-            {content}
-          </MobileLayout>
-        ) : (
-          content
-        )}
-      </div>
+      <PageShell>
+        {content}
+      </PageShell>
     </>
   );
 };

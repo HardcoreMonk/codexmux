@@ -1,34 +1,23 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import AppHeader from '@/components/layout/app-header';
+import PageShell from '@/components/layout/page-shell';
 import ChatHeader from '@/components/features/agent/chat-header';
 import MessageList from '@/components/features/agent/message-list';
 import ChatInput from '@/components/features/agent/chat-input';
 import AgentSettingsSheet from '@/components/features/agent/agent-settings-sheet';
 import AgentDeleteDialog from '@/components/features/agent/agent-delete-dialog';
-import MobileLayout from '@/components/features/mobile/mobile-layout';
-import useIsMobile from '@/hooks/use-is-mobile';
-import useWorkspaceStore from '@/hooks/use-workspace-store';
 import useAgentStore from '@/hooks/use-agent-store';
 import useAgentChat from '@/hooks/use-agent-chat';
 
 const AgentChatPage = () => {
   const router = useRouter();
-  const isMobile = useIsMobile();
   const agentId = router.query.agentId as string;
 
   const agent = useAgentStore((s) => (agentId ? s.agents[agentId] ?? null : null));
   const deleteAgent = useAgentStore((s) => s.deleteAgent);
   const fetchAgents = useAgentStore((s) => s.fetchAgents);
   const isStoreLoading = useAgentStore((s) => s.isLoading);
-
-  const handleSelectWorkspace = useCallback(
-    (workspaceId: string) => {
-      useWorkspaceStore.getState().switchWorkspace(workspaceId);
-    },
-    [],
-  );
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -131,18 +120,9 @@ const AgentChatPage = () => {
         <title>{title}</title>
       </Head>
 
-      <div className="flex h-dvh flex-col bg-background">
-        {isMobile ? (
-          <MobileLayout onSelectWorkspace={handleSelectWorkspace} hideTabBar>
-            {content}
-          </MobileLayout>
-        ) : (
-          <>
-            <AppHeader />
-            {content}
-          </>
-        )}
-      </div>
+      <PageShell showAppHeader>
+        {content}
+      </PageShell>
 
       <AgentSettingsSheet
         agent={agent}

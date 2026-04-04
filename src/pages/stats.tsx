@@ -1,12 +1,9 @@
-import { useCallback } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { BarChart3, ArrowLeft, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import useIsMobile from '@/hooks/use-is-mobile';
 import useBrowserTitle from '@/hooks/use-browser-title';
-import useWorkspaceStore from '@/hooks/use-workspace-store';
-import MobileLayout from '@/components/features/mobile/mobile-layout';
+import PageShell from '@/components/layout/page-shell';
 import useStats from '@/hooks/use-stats';
 import PeriodFilter from '@/components/features/stats/period-filter';
 import SectionErrorBoundary from '@/components/features/stats/section-error-boundary';
@@ -31,15 +28,7 @@ const SectionError = ({ onRetry }: { onRetry: () => void }) => (
 
 const StatsPage = () => {
   const router = useRouter();
-  const isMobile = useIsMobile();
   useBrowserTitle('사용량 통계');
-
-  const handleSelectWorkspace = useCallback(
-    (workspaceId: string) => {
-      useWorkspaceStore.getState().switchWorkspace(workspaceId);
-    },
-    [],
-  );
 
   const {
     period,
@@ -187,18 +176,10 @@ const StatsPage = () => {
     <>
       <Head>
         <title>사용량 통계 — purplemux</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
       </Head>
-      <div className="flex h-screen w-screen flex-col bg-background">
-        <div className="h-titlebar shrink-0" />
-        {isMobile ? (
-          <MobileLayout onSelectWorkspace={handleSelectWorkspace}>
-            {content}
-          </MobileLayout>
-        ) : (
-          content
-        )}
-      </div>
+      <PageShell>
+        {content}
+      </PageShell>
     </>
   );
 };

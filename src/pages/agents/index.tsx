@@ -5,14 +5,11 @@ import { useShallow } from 'zustand/react/shallow';
 import { Plus, Bot, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import AppHeader from '@/components/layout/app-header';
+import PageShell from '@/components/layout/page-shell';
 import AgentCard from '@/components/features/agent/agent-card';
 import AgentCreateDialog from '@/components/features/agent/agent-create-dialog';
 import AgentSettingsSheet from '@/components/features/agent/agent-settings-sheet';
 import AgentDeleteDialog from '@/components/features/agent/agent-delete-dialog';
-import MobileLayout from '@/components/features/mobile/mobile-layout';
-import useIsMobile from '@/hooks/use-is-mobile';
-import useWorkspaceStore from '@/hooks/use-workspace-store';
 import useAgentStore, { selectAgentList } from '@/hooks/use-agent-store';
 import useAgentStatus from '@/hooks/use-agent-status';
 import type { IAgentInfo } from '@/types/agent';
@@ -48,19 +45,11 @@ const EmptyState = ({ onCreateClick }: { onCreateClick: () => void }) => (
 
 const AgentsPage = () => {
   const router = useRouter();
-  const isMobile = useIsMobile();
   const agents = useAgentStore(useShallow(selectAgentList));
   const isLoading = useAgentStore((s) => s.isLoading);
   const error = useAgentStore((s) => s.error);
   const fetchAgents = useAgentStore((s) => s.fetchAgents);
   const deleteAgent = useAgentStore((s) => s.deleteAgent);
-
-  const handleSelectWorkspace = useCallback(
-    (workspaceId: string) => {
-      useWorkspaceStore.getState().switchWorkspace(workspaceId);
-    },
-    [],
-  );
 
   const [createOpen, setCreateOpen] = useState(false);
   const [settingsAgent, setSettingsAgent] = useState<IAgentInfo | null>(null);
@@ -161,18 +150,9 @@ const AgentsPage = () => {
         <title>에이전트 관리 — purplemux</title>
       </Head>
 
-      <div className="flex h-dvh flex-col bg-background">
-        {isMobile ? (
-          <MobileLayout onSelectWorkspace={handleSelectWorkspace} hideTabBar>
-            {content}
-          </MobileLayout>
-        ) : (
-          <>
-            <AppHeader />
-            {content}
-          </>
-        )}
-      </div>
+      <PageShell showAppHeader>
+        {content}
+      </PageShell>
 
       <AgentCreateDialog
         open={createOpen}
