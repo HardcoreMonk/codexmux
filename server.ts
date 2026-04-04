@@ -9,7 +9,9 @@ import { handleConnection, gracefulShutdown } from './src/lib/terminal-server';
 import { handleTimelineConnection, gracefulTimelineShutdown } from './src/lib/timeline-server';
 import { handleSyncConnection, gracefulSyncShutdown } from './src/lib/sync-server';
 import { handleStatusConnection, gracefulStatusShutdown } from './src/lib/status-server';
+import { handleAgentStatusConnection, gracefulAgentStatusShutdown } from './src/lib/agent-status-server';
 import { getStatusManager } from './src/lib/status-manager';
+import { getAgentManager } from './src/lib/agent-manager';
 import { ensureHookSettings } from './src/lib/hook-settings';
 import { scanSessions, applyConfig } from './src/lib/tmux';
 import { initWorkspaceStore } from './src/lib/workspace-store';
@@ -45,7 +47,7 @@ const verifyWebSocketAuth = async (request: IncomingMessage): Promise<boolean> =
   return !!token;
 };
 
-const WS_PATHS = new Set(['/api/terminal', '/api/timeline', '/api/sync', '/api/status']);
+const WS_PATHS = new Set(['/api/terminal', '/api/timeline', '/api/sync', '/api/status', '/api/agent-status']);
 
 const createWsServers = () => {
   const wss = new WebSocketServer({ noServer: true });
@@ -60,11 +62,14 @@ const createWsServers = () => {
   const statusWss = new WebSocketServer({ noServer: true });
   statusWss.on('connection', handleStatusConnection);
 
-  return { wss, timelineWss, syncWss, statusWss };
+  const agentStatusWss = new WebSocketServer({ noServer: true });
+  agentStatusWss.on('connection', handleAgentStatusConnection);
+
+  return { wss, timelineWss, syncWss, statusWss, agentStatusWss };
 };
 
 const handleWsUpgrade = (
-  { wss, timelineWss, syncWss, statusWss }: ReturnType<typeof createWsServers>,
+  { wss, timelineWss, syncWss, statusWss, agentStatusWss }: ReturnType<typeof createWsServers>,
   request: IncomingMessage,
   socket: import('stream').Duplex,
   head: Buffer,
@@ -89,6 +94,10 @@ const handleWsUpgrade = (
     statusWss.handleUpgrade(request, socket, head, (ws) => {
       statusWss.emit('connection', ws);
     });
+  } else if (url.pathname === '/api/agent-status') {
+    agentStatusWss.handleUpgrade(request, socket, head, (ws) => {
+      agentStatusWss.emit('connection', ws);
+    });
   }
 };
 
@@ -96,6 +105,7 @@ const shutdownWs = async () => {
   gracefulTimelineShutdown();
   gracefulSyncShutdown();
   gracefulStatusShutdown();
+  gracefulAgentStatusShutdown();
   await gracefulShutdown();
 };
 
@@ -322,6 +332,7 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   await autoResumeOnStartup();
   await ensureHookSettings(port);
   await getStatusManager().init();
+  await getAgentManager().init();
 
   const result = dev ? await startDev(port, appDir) : await startProd(port, appDir);
 
