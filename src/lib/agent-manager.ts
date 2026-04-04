@@ -785,8 +785,8 @@ class AgentManager {
       const newStatus = await this.deriveStatusFromSession(runtime, sessionInfo.jsonlPath);
 
       if (newStatus !== prevStatus) {
-        if (newStatus === 'idle' && prevStatus === 'blocked') {
-          // blocked → idle means user answered, stay as-is unless explicitly changed
+        if (prevStatus === 'blocked') {
+          // blocked 상태는 relay API(receiveAgentMessage)로만 해제 — 폴링이 덮어쓰지 않음
         } else {
           this.setStatus(runtime, newStatus);
         }
