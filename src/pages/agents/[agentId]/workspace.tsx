@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { ArrowLeft, Zap, WifiOff } from 'lucide-react';
+import { Zap, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 import PageShell from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
@@ -317,15 +317,6 @@ const AgentWorkspacePage = () => {
     <>
       {/* Header */}
       <div className="flex items-center gap-3 border-b px-4 py-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.push('/agents')}
-            aria-label="에이���트 목록으로 돌아가기"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-
           <div className="flex flex-col">
             <span className="text-sm font-medium">{agent?.name ?? '...'}</span>
             {agent?.role && (
@@ -392,7 +383,7 @@ const AgentWorkspacePage = () => {
         <title>{title}</title>
       </Head>
 
-      <PageShell showAppHeader>
+      <PageShell>
         {content}
       </PageShell>
     </>

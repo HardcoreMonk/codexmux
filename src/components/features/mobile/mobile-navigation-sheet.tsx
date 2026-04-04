@@ -267,9 +267,9 @@ const MobileNavigationSheet = ({
             <Plus size={16} />
             Workspace
           </button>
-          <div className="flex">
+          <div className="flex items-center gap-1 px-3 pb-3">
             <button
-              className="flex flex-1 items-center justify-center gap-1.5 py-3 text-sm text-muted-foreground transition-colors hover:bg-accent"
+              className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent"
               onClick={() => {
                 onOpenChange(false);
                 router.push('/reports');
@@ -279,7 +279,7 @@ const MobileNavigationSheet = ({
               노트
             </button>
             <button
-              className="flex flex-1 items-center justify-center gap-1.5 py-3 text-sm text-muted-foreground transition-colors hover:bg-accent"
+              className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent"
               onClick={() => {
                 onOpenChange(false);
                 router.push('/stats');
@@ -289,7 +289,7 @@ const MobileNavigationSheet = ({
               통계
             </button>
             <button
-              className="flex flex-1 items-center justify-center gap-1.5 py-3 text-sm text-muted-foreground transition-colors hover:bg-accent"
+              className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent"
               onClick={() => {
                 onOpenChange(false);
                 onOpenSettings();

@@ -150,7 +150,7 @@ const AgentsPage = () => {
         <title>에이전트 관리 — purplemux</title>
       </Head>
 
-      <PageShell showAppHeader>
+      <PageShell>
         {content}
       </PageShell>
 

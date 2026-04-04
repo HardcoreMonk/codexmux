@@ -8,7 +8,6 @@ import useWorkspaceStore from '@/hooks/use-workspace-store';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import type { ITabMetadata } from '@/hooks/use-tab-metadata-store';
 import type { TPanelType } from '@/types/terminal';
-import MobileLayout from '@/components/features/mobile/mobile-layout';
 import MobileTabHeader from '@/components/features/mobile/mobile-tab-header';
 import MobileSurfaceView from '@/components/features/mobile/mobile-surface-view';
 import MobileNewTabDialog from '@/components/features/mobile/mobile-new-tab-dialog';
@@ -18,6 +17,7 @@ import useTabStore from '@/hooks/use-tab-store';
 import type { TCliState } from '@/types/timeline';
 import useConfigStore from '@/hooks/use-config-store';
 import useSync from '@/hooks/use-sync';
+import useMobileLayoutActions from '@/hooks/use-mobile-layout-actions';
 
 const MobileTerminalPage = () => {
   useSync();
@@ -151,6 +151,20 @@ const MobileTerminalPage = () => {
     [activeWorkspaceId, layout],
   );
 
+  // Register mobile layout actions
+  useEffect(() => {
+    useMobileLayoutActions.getState().register({
+      onSelectWorkspace: handleSelectWorkspace,
+      onSelectSurface: handleSurfaceSelected,
+    });
+    return () => useMobileLayoutActions.getState().unregister();
+  }, [handleSelectWorkspace, handleSurfaceSelected]);
+
+  // Sync selected pane/tab to store
+  useEffect(() => {
+    useMobileLayoutActions.getState().setSelectedSurface(selectedPaneId, selectedTabId);
+  }, [selectedPaneId, selectedTabId]);
+
   useEffect(() => {
     return useLayoutStore.subscribe((state, prev) => {
       if (!state.layout || state.layout === prev.layout) return;
@@ -252,135 +266,120 @@ const MobileTerminalPage = () => {
     layout.deleteTabInPane(currentPane.id, selectedTabId);
   }, [currentPane, selectedTabId, layout]);
 
-  const renderContent = () => {
-    if (isLoading) {
-      return (
-        <div className="flex flex-1 flex-col items-center justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          <span className="mt-3 text-sm text-muted-foreground">연결 중...</span>
-        </div>
-      );
-    }
-
-    if (error && !workspaceCount) {
-      return (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3">
-          <AlertTriangle className="h-5 w-5 text-ui-amber" />
-          <span className="text-sm text-muted-foreground">{error}</span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            onClick={useWorkspaceStore.getState().fetchWorkspaces}
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            재시도
-          </Button>
-        </div>
-      );
-    }
-
-    if (!activeWorkspaceId && !isLoading && !error) {
-      return (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-          <Monitor className="h-8 w-8 text-muted-foreground" />
-          <span className="text-sm font-medium text-muted-foreground">Workspace 없음</span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            onClick={async () => {
-              const created = await useWorkspaceStore.getState().createWorkspace('');
-              if (created) useWorkspaceStore.getState().switchWorkspace(created.id);
-            }}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            새 Workspace 만들기
-          </Button>
-        </div>
-      );
-    }
-
-    if (!layout.layout || layout.isLoading) {
-      return (
-        <div className="flex flex-1 flex-col items-center justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        </div>
-      );
-    }
-
-    if (layout.error && !layout.isLoading) {
-      return (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3">
-          <AlertTriangle className="h-5 w-5 text-ui-amber" />
-          <span className="text-sm text-muted-foreground">{layout.error}</span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            onClick={() => layout.fetchLayout()}
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            재시도
-          </Button>
-        </div>
-      );
-    }
-
+  if (isLoading) {
     return (
-      <>
-        {currentPane && selectedTabId && (
-          <MobileTabHeader
-            key={selectedTabId}
-            tabId={selectedTabId}
-            tabName={currentTabName}
-            panelType={currentPanelType}
-            onToggleClaude={handleToggleClaude}
-            onCreateTab={handleOpenNewTabDialog}
-            onClose={handleCloseTab}
-          />
-        )}
-
-        {currentPane && selectedTabId && (
-          <MobileSurfaceView
-            key={`${selectedPaneId}-${selectedTabId}`}
-            paneId={currentPane.id}
-            tabs={currentPane.tabs}
-            activeTabId={selectedTabId}
-            panelType={currentPanelType}
-            onCreateTab={layout.createTabInPane}
-            onDeleteTab={layout.deleteTabInPane}
-            onSwitchTab={(paneId, tabId) => {
-              layout.switchTabInPane(paneId, tabId);
-              setSelectedTabId(tabId);
-            }}
-            onRemoveTabLocally={layout.removeTabLocally}
-            onUpdateTabPanelType={layout.updateTabPanelType}
-            onCliStateChange={handleCliStateChange}
-            onOpenNewTabDialog={handleOpenNewTabDialog}
-          />
-        )}
-
-      </>
+      <div className="flex flex-1 flex-col items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <span className="mt-3 text-sm text-muted-foreground">연결 중...</span>
+      </div>
     );
-  };
+  }
+
+  if (error && !workspaceCount) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3">
+        <AlertTriangle className="h-5 w-5 text-ui-amber" />
+        <span className="text-sm text-muted-foreground">{error}</span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={useWorkspaceStore.getState().fetchWorkspaces}
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          재시도
+        </Button>
+      </div>
+    );
+  }
+
+  if (!activeWorkspaceId && !isLoading && !error) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+        <Monitor className="h-8 w-8 text-muted-foreground" />
+        <span className="text-sm font-medium text-muted-foreground">Workspace 없음</span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={async () => {
+            const created = await useWorkspaceStore.getState().createWorkspace('');
+            if (created) useWorkspaceStore.getState().switchWorkspace(created.id);
+          }}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          새 Workspace 만들기
+        </Button>
+      </div>
+    );
+  }
+
+  if (!layout.layout || layout.isLoading) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (layout.error && !layout.isLoading) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3">
+        <AlertTriangle className="h-5 w-5 text-ui-amber" />
+        <span className="text-sm text-muted-foreground">{layout.error}</span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={() => layout.fetchLayout()}
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          재시도
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-terminal-bg">
-      <MobileLayout
-        onSelectWorkspace={handleSelectWorkspace}
-        onSelectSurface={handleSurfaceSelected}
-        selectedPaneId={selectedPaneId}
-        selectedTabId={selectedTabId}
-      >
-        {renderContent()}
-      </MobileLayout>
+    <>
+      {currentPane && selectedTabId && (
+        <MobileTabHeader
+          key={selectedTabId}
+          tabId={selectedTabId}
+          tabName={currentTabName}
+          panelType={currentPanelType}
+          onToggleClaude={handleToggleClaude}
+          onCreateTab={handleOpenNewTabDialog}
+          onClose={handleCloseTab}
+        />
+      )}
+
+      {currentPane && selectedTabId && (
+        <MobileSurfaceView
+          key={`${selectedPaneId}-${selectedTabId}`}
+          paneId={currentPane.id}
+          tabs={currentPane.tabs}
+          activeTabId={selectedTabId}
+          panelType={currentPanelType}
+          onCreateTab={layout.createTabInPane}
+          onDeleteTab={layout.deleteTabInPane}
+          onSwitchTab={(paneId, tabId) => {
+            layout.switchTabInPane(paneId, tabId);
+            setSelectedTabId(tabId);
+          }}
+          onRemoveTabLocally={layout.removeTabLocally}
+          onUpdateTabPanelType={layout.updateTabPanelType}
+          onCliStateChange={handleCliStateChange}
+          onOpenNewTabDialog={handleOpenNewTabDialog}
+        />
+      )}
+
       <MobileNewTabDialog
         open={newTabDialogOpen}
         onOpenChange={setNewTabDialogOpen}
         onCreateTab={handleCreateTab}
       />
-    </div>
+    </>
   );
 };
 

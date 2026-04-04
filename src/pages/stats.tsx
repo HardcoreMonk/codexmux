@@ -1,6 +1,5 @@
 import Head from 'next/head';
-import { useRouter } from 'next/router';
-import { BarChart3, ArrowLeft, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { BarChart3, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import useBrowserTitle from '@/hooks/use-browser-title';
 import PageShell from '@/components/layout/page-shell';
@@ -27,7 +26,6 @@ const SectionError = ({ onRetry }: { onRetry: () => void }) => (
 );
 
 const StatsPage = () => {
-  const router = useRouter();
   useBrowserTitle('사용량 통계');
 
   const {
@@ -62,14 +60,6 @@ const StatsPage = () => {
       <div className="mx-auto max-w-5xl px-4 py-6">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => router.push('/')}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
             <BarChart3 className="h-4 w-4 text-ui-purple" />
             <h1 className="text-sm font-semibold">사용량 통계</h1>
           </div>

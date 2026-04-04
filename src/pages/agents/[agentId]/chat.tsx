@@ -120,7 +120,7 @@ const AgentChatPage = () => {
         <title>{title}</title>
       </Head>
 
-      <PageShell showAppHeader>
+      <PageShell>
         {content}
       </PageShell>
 

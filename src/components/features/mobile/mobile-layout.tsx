@@ -6,23 +6,14 @@ import MobileWorkspaceTabBar from '@/components/features/mobile/mobile-workspace
 import useWorkspaceStore from '@/hooks/use-workspace-store';
 import { useLayoutStore, collectPanes } from '@/hooks/use-layout';
 import SettingsDialog from '@/components/features/terminal/settings-dialog';
+import useMobileLayoutActions from '@/hooks/use-mobile-layout-actions';
 import type { ILayoutData, IPaneNode } from '@/types/terminal';
 
 interface IMobileLayoutProps {
   children: ReactNode;
-  onSelectWorkspace: (workspaceId: string) => void;
-  onSelectSurface?: (workspaceId: string, paneId: string, tabId: string) => void;
-  selectedPaneId?: string | null;
-  selectedTabId?: string | null;
 }
 
-const MobileLayout = ({
-  children,
-  onSelectWorkspace,
-  onSelectSurface,
-  selectedPaneId,
-  selectedTabId,
-}: IMobileLayoutProps) => {
+const MobileLayout = ({ children }: IMobileLayoutProps) => {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -32,6 +23,11 @@ const MobileLayout = ({
 
   const storeLayout = useLayoutStore((s) => s.layout);
   const storeWorkspaceId = useLayoutStore((s) => s.workspaceId);
+
+  const registeredSelectWorkspace = useMobileLayoutActions((s) => s.onSelectWorkspace);
+  const registeredSelectSurface = useMobileLayoutActions((s) => s.onSelectSurface);
+  const registeredPaneId = useMobileLayoutActions((s) => s.selectedPaneId);
+  const registeredTabId = useMobileLayoutActions((s) => s.selectedTabId);
 
   const [layoutCache, setLayoutCache] = useState<Record<string, ILayoutData>>({});
 
@@ -48,22 +44,32 @@ const MobileLayout = ({
     setLayoutCache((prev) => ({ ...prev, [storeWorkspaceId]: storeLayout }));
   }
 
-  // workspace 레이아웃 fetch (초기 로드 + 메뉴 열릴 때 refresh)
-  const initialFetchDone = useRef(false);
+  // workspace 레이아웃 fetch (캐시에 없는 워크스페이스 발견 시 + 메뉴 열릴 때 refresh)
+  const wsIds = useMemo(() => workspaces.map((ws) => ws.id).join(','), [workspaces]);
+  const uncachedWsIds = useMemo(() => {
+    return workspaces
+      .filter((ws) => {
+        if (ws.id === storeWorkspaceId && storeLayout) return false;
+        if (layoutCache[ws.id]) return false;
+        return true;
+      })
+      .map((ws) => ws.id)
+      .join(',');
+  }, [workspaces, storeWorkspaceId, storeLayout, layoutCache]);
+
   useEffect(() => {
     if (workspaces.length === 0) return;
-    if (initialFetchDone.current && !menuOpen) return;
-    initialFetchDone.current = true;
+
+    const toFetch = workspaces.filter((ws) => {
+      if (ws.id === storeWorkspaceId && storeLayout) return false;
+      if (!menuOpen && layoutCache[ws.id]) return false;
+      return true;
+    });
+    if (toFetch.length === 0) return;
 
     let cancelled = false;
 
     const fetchAll = async () => {
-      const toFetch = workspaces.filter((ws) => {
-        if (ws.id === storeWorkspaceId && storeLayout) return false;
-        return true;
-      });
-      if (toFetch.length === 0) return;
-
       const results = await Promise.all(
         toFetch.map(async (ws) => {
           try {
@@ -88,7 +94,7 @@ const MobileLayout = ({
     };
     fetchAll();
     return () => { cancelled = true; };
-  }, [menuOpen, workspaces, storeWorkspaceId, storeLayout]);
+  }, [menuOpen, wsIds, uncachedWsIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const workspaceLayouts = useMemo(() => {
     const map: Record<string, IPaneNode[]> = {};
@@ -111,13 +117,22 @@ const MobileLayout = ({
   const activePane = activePanes.find((p) => p.id === activePaneId) ?? activePanes[0];
   const activeTabId = isWorkspacePage ? (activePane?.activeTabId ?? null) : null;
 
+  const defaultSelectWorkspace = useCallback(
+    (workspaceId: string) => {
+      useWorkspaceStore.getState().switchWorkspace(workspaceId);
+    },
+    [],
+  );
+
+  const onSelectWorkspace = registeredSelectWorkspace ?? defaultSelectWorkspace;
+
   const handleSelectSurface = useCallback(
     (workspaceId: string, paneId: string, tabId: string) => {
       if (workspaceId !== activeWorkspaceId) {
         onSelectWorkspace(workspaceId);
       }
 
-      onSelectSurface?.(workspaceId, paneId, tabId);
+      registeredSelectSurface?.(workspaceId, paneId, tabId);
 
       setMenuOpen(false);
       if (router.pathname !== '/') {
@@ -129,7 +144,7 @@ const MobileLayout = ({
         router.push('/');
       }
     },
-    [activeWorkspaceId, onSelectWorkspace, onSelectSurface, router],
+    [activeWorkspaceId, onSelectWorkspace, registeredSelectSurface, router],
   );
 
   const handleCreateWorkspace = useCallback(async () => {
@@ -153,8 +168,8 @@ const MobileLayout = ({
         workspaces={workspaces}
         activeWorkspaceId={activeWorkspaceId}
         workspaceLayouts={workspaceLayouts}
-        selectedPaneId={selectedPaneId ?? activePaneId}
-        selectedTabId={selectedTabId ?? activeTabId}
+        selectedPaneId={registeredPaneId ?? activePaneId}
+        selectedTabId={registeredTabId ?? activeTabId}
         onSelect={handleSelectSurface}
       />
       <MobileNavigationSheet
@@ -163,8 +178,8 @@ const MobileLayout = ({
         workspaces={workspaces}
         activeWorkspaceId={activeWorkspaceId}
         workspaceLayouts={workspaceLayouts}
-        activePaneId={selectedPaneId ?? activePaneId}
-        activeTabId={selectedTabId ?? activeTabId}
+        activePaneId={registeredPaneId ?? activePaneId}
+        activeTabId={registeredTabId ?? activeTabId}
         onSelectSurface={handleSelectSurface}
         onCreateWorkspace={handleCreateWorkspace}
         onOpenSettings={() => setSettingsOpen(true)}

@@ -1,7 +1,6 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
-import { useRouter } from 'next/router';
-import { ArrowLeft, Sparkles, Square } from 'lucide-react';
+import { Sparkles, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import useBrowserTitle from '@/hooks/use-browser-title';
 import PageShell from '@/components/layout/page-shell';
@@ -12,7 +11,6 @@ import type { IDailyReportDay, IDailyReportListItem, IDailyReportListResponse } 
 const PAGE_SIZE = 10;
 
 const ReportsPage = () => {
-  const router = useRouter();
   useBrowserTitle('노트');
 
   const [days, setDays] = useState<IDailyReportListItem[]>([]);
@@ -77,15 +75,7 @@ const ReportsPage = () => {
     <div className="min-h-0 flex-1 overflow-y-auto">
       <div className="mx-auto max-w-5xl px-4 py-6">
         <div className="mb-6">
-          <div className="mb-3 flex items-center justify-between">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => router.push('/')}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+          <div className="mb-3 flex items-center justify-end">
             {!loading && unreportedCount > 0 && (
               batchRunning ? (
                 <Button variant="outline" size="xs" onClick={() => batchActionsRef.current.stop()}>

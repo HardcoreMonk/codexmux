@@ -15,6 +15,7 @@ import { useEffect, useRef } from 'react';
 import { useTheme } from 'next-themes';
 import useIsMobile from '@/hooks/use-is-mobile';
 import useBrowserTitle from '@/hooks/use-browser-title';
+import PageShell from '@/components/layout/page-shell';
 
 const TerminalPage = dynamic(
   () => import('@/components/features/terminal/terminal-page'),
@@ -51,30 +52,14 @@ const Index = ({ initialWorkspace, initialConfig, initialQuickPrompts }: IIndexP
     }
   }, [initialWorkspace, initialConfig, setTheme]);
 
-  const content = isMobile ? (
-    <>
-      <Head>
-        <title>purplemux</title>
-
-      </Head>
-      <div style={{ backgroundColor: 'var(--terminal-bg)' }} className="flex h-dvh w-full flex-col overflow-hidden">
-        <MobileTerminalPage />
-      </div>
-    </>
-  ) : (
-    <>
-      <Head>
-        <title>purplemux</title>
-      </Head>
-      <div style={{ backgroundColor: 'var(--terminal-bg)' }} className="flex h-screen w-screen">
-        <TerminalPage />
-      </div>
-    </>
-  );
-
   return (
     <SWRConfig value={{ fallback: { '/api/quick-prompts': initialQuickPrompts } }}>
-      {content}
+      <Head>
+        <title>purplemux</title>
+      </Head>
+      <PageShell>
+        {isMobile ? <MobileTerminalPage /> : <TerminalPage />}
+      </PageShell>
     </SWRConfig>
   );
 };

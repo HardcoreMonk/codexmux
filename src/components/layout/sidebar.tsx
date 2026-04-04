@@ -8,6 +8,7 @@ import {
   FileText,
   Bell,
   LogOut,
+  Bot,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import useTabStore, { selectGlobalStatus } from '@/hooks/use-tab-store';
@@ -15,6 +16,7 @@ import { useNotificationCount } from '@/components/features/terminal/notificatio
 import AppLogo from '@/components/layout/app-logo';
 import { isMac } from '@/lib/keyboard-shortcuts';
 import { useRouter } from 'next/router';
+import { cn } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,10 +33,8 @@ import useWorkspaceStore from '@/hooks/use-workspace-store';
 import WorkspaceItem from '@/components/features/terminal/workspace-item';
 import SettingsDialog from '@/components/features/terminal/settings-dialog';
 import NotificationSheet from '@/components/features/terminal/notification-sheet';
-
-interface ISidebarProps {
-  onSelectWorkspace: (workspaceId: string) => void;
-}
+import useAgentStore, { selectBlockedCount } from '@/hooks/use-agent-store';
+import { useSelectWorkspace } from '@/hooks/use-sidebar-actions';
 
 const MIN_WIDTH = 160;
 const MAX_WIDTH = 480;
@@ -44,7 +44,7 @@ const handleLogout = async () => {
   window.location.href = '/login';
 };
 
-const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
+const Sidebar = () => {
   const router = useRouter();
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
@@ -53,11 +53,19 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
   const hasBusy = useTabStore((s) => selectGlobalStatus(s.tabs).busyCount > 0);
   const { busyCount, attentionCount } = useNotificationCount();
   const hasActive = busyCount > 0 || attentionCount > 0;
+  const blockedCount = useAgentStore(selectBlockedCount);
+  const selectWorkspace = useSelectWorkspace();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const modTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (workspaces.length === 0) {
+      useWorkspaceStore.getState().fetchWorkspaces();
+    }
+  }, [workspaces.length]);
 
   useEffect(() => {
     const handler = () => setSettingsOpen(true);
@@ -157,12 +165,12 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
     try {
       const ws = await useWorkspaceStore.getState().createWorkspace('');
       if (ws) {
-        onSelectWorkspace(ws.id);
+        selectWorkspace(ws.id);
       }
     } finally {
       setIsCreating(false);
     }
-  }, [onSelectWorkspace]);
+  }, [selectWorkspace]);
 
   const handleDeleteRequest = useCallback(
     (workspaceId: string) => {
@@ -184,7 +192,7 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
       const idx = workspaces.findIndex((w) => w.id === id);
       const adjacent = workspaces[idx + 1] || workspaces[idx - 1];
       if (adjacent) {
-        onSelectWorkspace(adjacent.id);
+        selectWorkspace(adjacent.id);
       }
     }
 
@@ -218,7 +226,7 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
     if (workspaces.length <= 1) {
       store.fetchWorkspaces();
     }
-  }, [deleteTarget, activeWorkspaceId, workspaces, onSelectWorkspace]);
+  }, [deleteTarget, activeWorkspaceId, workspaces, selectWorkspace]);
 
   const handleRename = useCallback(
     (workspaceId: string, name: string) => {
@@ -262,6 +270,8 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
   const handleToggleCollapse = useCallback(() => {
     useWorkspaceStore.getState().toggleSidebar();
   }, []);
+
+  const isNavActive = (path: string) => router.pathname.startsWith(path);
 
   return (
     <div className="relative flex shrink-0">
@@ -353,11 +363,11 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
             >
               <WorkspaceItem
                 workspace={ws}
-                isActive={ws.id === activeWorkspaceId && router.query.panel !== 'agent'}
+                isActive={ws.id === activeWorkspaceId && router.pathname === '/' && router.query.panel !== 'agent'}
                 isDeleting={deletingIds.has(ws.id)}
                 shortcutLabel={i < 8 ? `⌘${i + 1}` : i === workspaces.length - 1 ? '⌘9' : undefined}
                 showShortcut={showShortcuts}
-                onSelect={onSelectWorkspace}
+                onSelect={selectWorkspace}
                 onRename={handleRename}
                 onDelete={handleDeleteRequest}
               />
@@ -379,14 +389,35 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
           <div className="flex items-center justify-between px-2 pb-2">
             <div className="flex items-center gap-0.5">
               <button
-                className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
+                className={cn(
+                  'relative flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',
+                  isNavActive('/agents') ? 'text-foreground' : 'text-muted-foreground',
+                )}
+                onClick={() => router.push('/agents')}
+                aria-label="에이전트"
+              >
+                <Bot className="h-3.5 w-3.5" />
+                {blockedCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-ui-amber px-0.5 text-[9px] font-medium leading-none text-white">
+                    {blockedCount}
+                  </span>
+                )}
+              </button>
+              <button
+                className={cn(
+                  'flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',
+                  isNavActive('/reports') ? 'text-foreground' : 'text-muted-foreground',
+                )}
                 onClick={() => router.push('/reports')}
                 aria-label="노트"
               >
                 <FileText className="h-3.5 w-3.5" />
               </button>
               <button
-                className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
+                className={cn(
+                  'flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',
+                  isNavActive('/stats') ? 'text-foreground' : 'text-muted-foreground',
+                )}
                 onClick={() => router.push('/stats')}
                 aria-label="사용량 통계"
               >

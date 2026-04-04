@@ -4,7 +4,7 @@ import { verifyAgentToken } from '@/lib/agent-token';
 import { createLogger } from '@/lib/logger';
 import type { ICreateTabRequest } from '@/types/agent';
 
-const log = createLogger('api:agent-rpc-tab');
+const log = createLogger('api:agent-rpc:tab');
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'GET' && req.method !== 'POST') {

@@ -9,10 +9,10 @@ import useKeyboardShortcuts from '@/hooks/use-keyboard-shortcuts';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import type { ITabMetadata } from '@/hooks/use-tab-metadata-store';
 import PaneLayout from '@/components/features/terminal/pane-layout';
-import Sidebar from '@/components/features/terminal/sidebar';
 import ContentHeader from '@/components/features/terminal/content-header';
 import AgentPanel from '@/components/features/agent/agent-panel';
 import useSync from '@/hooks/use-sync';
+import useSidebarActions from '@/hooks/use-sidebar-actions';
 
 const TerminalPage = () => {
   useSync();
@@ -24,15 +24,6 @@ const TerminalPage = () => {
   const agentPanelOpen = router.query.panel === 'agent';
   const prevWorkspaceIdRef = useRef<string | null>(null);
   const equalizeRef = useRef<(() => void) | null>(null);
-
-  const handleAgentToggle = useCallback(() => {
-    const { panel, agentId, ...rest } = router.query;
-    if (agentPanelOpen) {
-      router.push({ pathname: router.pathname, query: rest }, undefined, { shallow: true });
-    } else {
-      router.push({ pathname: router.pathname, query: { ...router.query, panel: 'agent' } }, undefined, { shallow: true });
-    }
-  }, [agentPanelOpen, router]);
 
   const handleFetchError = useCallback(() => {
     const prevId = prevWorkspaceIdRef.current;
@@ -119,38 +110,28 @@ const TerminalPage = () => {
     [layout, agentPanelOpen, router],
   );
 
+  useEffect(() => {
+    useSidebarActions.getState().register(handleSelectWorkspace);
+    return () => useSidebarActions.getState().unregister();
+  }, [handleSelectWorkspace]);
+
   useKeyboardShortcuts({ layout, onSelectWorkspace: handleSelectWorkspace });
 
   if (isLoading) {
     return (
-      <div className="flex h-full w-full overflow-hidden bg-background">
-        <div className="flex w-[200px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-          <div className="h-titlebar shrink-0" />
-          <div className="flex h-9 shrink-0 items-center justify-end border-b border-sidebar-border px-2" />
-          <div className="flex flex-col gap-0.5 p-2">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-9 animate-pulse rounded bg-secondary"
-              />
-            ))}
-          </div>
+      <div className="flex h-full w-full flex-col overflow-hidden bg-background">
+        <div className="flex h-12 shrink-0 items-center gap-1.5 border-b border-border bg-background px-2">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-4 w-16 animate-pulse rounded bg-muted"
+            />
+          ))}
         </div>
-
-        <div className="flex flex-1 flex-col">
-          <div className="flex h-[30px] shrink-0 items-center gap-1.5 border-b border-border bg-background px-2">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-4 w-16 animate-pulse rounded bg-muted"
-              />
-            ))}
-          </div>
-          <div className="flex flex-1 items-center justify-center">
-            <div className="flex flex-col items-center gap-3">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">연결 중...</span>
-            </div>
+        <div className="flex flex-1 items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">연결 중...</span>
           </div>
         </div>
       </div>
@@ -173,78 +154,72 @@ const TerminalPage = () => {
   const showSwitching = !layout.layout && layout.isLoading && activeWorkspaceId;
 
   return (
-    <div className="relative flex h-full w-full overflow-hidden bg-background">
-      <Sidebar onSelectWorkspace={handleSelectWorkspace} />
+    <div className="relative flex h-full w-full flex-col overflow-hidden bg-background">
+      {layout.layout && !layout.isLoading && (
+        <ContentHeader
+          activePaneId={layout.layout.activePaneId}
+          root={layout.layout.root}
+          paneCount={layout.paneCount}
+          canSplit={layout.canSplit}
+          isSplitting={layout.isSplitting}
+          onSplitPane={layout.splitPane}
+          onEqualizeRatios={() => equalizeRef.current?.()}
+          onUpdateTabPanelType={layout.updateTabPanelType}
+        />
+      )}
 
-      <div className="relative flex min-w-0 flex-1 flex-col">
-        {layout.layout && !layout.isLoading && (
-          <ContentHeader
-            activePaneId={layout.layout.activePaneId}
-            root={layout.layout.root}
-            paneCount={layout.paneCount}
-            canSplit={layout.canSplit}
-            isSplitting={layout.isSplitting}
-            agentPanelOpen={agentPanelOpen}
-            onSplitPane={layout.splitPane}
-            onEqualizeRatios={() => equalizeRef.current?.()}
-            onUpdateTabPanelType={layout.updateTabPanelType}
-            onAgentToggle={handleAgentToggle}
-          />
+      <div className="relative min-h-0 flex-1">
+        {showSwitching && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-background animate-delayed-fade-in">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
         )}
 
-        <div className="relative min-h-0 flex-1">
-          {showSwitching && (
-            <div className="absolute inset-0 z-30 flex items-center justify-center bg-background animate-delayed-fade-in">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          )}
+        {layout.error && !layout.isLoading && (
+          <div className="flex h-full flex-col items-center justify-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-ui-amber" />
+            <span className="text-sm text-muted-foreground">{layout.error}</span>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => layout.fetchLayout()}>
+              <RefreshCw className="h-3.5 w-3.5" />
+              재시도
+            </Button>
+          </div>
+        )}
 
-          {layout.error && !layout.isLoading && (
-            <div className="flex h-full flex-col items-center justify-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-ui-amber" />
-              <span className="text-sm text-muted-foreground">{layout.error}</span>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => layout.fetchLayout()}>
-                <RefreshCw className="h-3.5 w-3.5" />
-                재시도
-              </Button>
+        {layout.layout && !layout.isLoading && (
+          agentPanelOpen ? (
+            <AgentPanel />
+          ) : (
+            <div
+              key={activeWorkspaceId}
+              className="h-full"
+            >
+              <PaneLayout
+                root={layout.layout.root}
+                onUpdateRatio={layout.updateRatio}
+                onEqualizeRatios={layout.equalizeRatios}
+                equalizeRef={equalizeRef}
+              />
             </div>
-          )}
+          )
+        )}
 
-          {layout.layout && !layout.isLoading && (
-            agentPanelOpen ? (
-              <AgentPanel />
-            ) : (
-              <div
-                key={activeWorkspaceId}
-                className="h-full"
-              >
-                <PaneLayout
-                  root={layout.layout.root}
-                  onUpdateRatio={layout.updateRatio}
-                  onEqualizeRatios={layout.equalizeRatios}
-                  equalizeRef={equalizeRef}
-                />
-              </div>
-            )
-          )}
-
-          {!activeWorkspaceId && !isLoading && !error && (
-            <div className="flex h-full items-center justify-center">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={async () => {
-                  const created = await useWorkspaceStore.getState().createWorkspace('');
-                  if (created) useWorkspaceStore.getState().switchWorkspace(created.id);
-                }}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                새 Workspace 만들기
-              </Button>
-            </div>
-          )}
-        </div>
+        {!activeWorkspaceId && !isLoading && !error && (
+          <div className="flex h-full items-center justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={async () => {
+                const created = await useWorkspaceStore.getState().createWorkspace('');
+                if (created) useWorkspaceStore.getState().switchWorkspace(created.id);
+              }}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              새 Workspace 만들기
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
