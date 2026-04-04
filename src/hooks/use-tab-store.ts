@@ -237,7 +237,7 @@ export const isCliIdle = (cliState: TCliState): boolean =>
 
 export const selectSessionView = (tabs: Record<string, ITabState>, tabId: string): TSessionView => {
   const tab = tabs[tabId];
-  if (!tab) return 'inactive';
+  if (!tab) return 'loading';
 
   if (tab.isRestarting) return 'restarting';
   if (tab.claudeStatus === 'not-installed') return 'not-installed';
