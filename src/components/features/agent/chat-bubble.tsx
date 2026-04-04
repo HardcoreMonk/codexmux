@@ -1,7 +1,14 @@
+import { memo } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
 import { AlertCircle, CheckCircle2, Clock, HelpCircle, ShieldQuestion } from 'lucide-react';
 import dayjs from 'dayjs';
 import ApprovalActions from '@/components/features/agent/approval-actions';
 import type { IChatMessage } from '@/types/agent';
+
+const REMARK_PLUGINS = [remarkGfm];
+const REHYPE_PLUGINS = [rehypeHighlight];
 
 interface IChatBubbleProps {
   message: IChatMessage;
@@ -11,23 +18,23 @@ interface IChatBubbleProps {
   onApproval?: (action: '승인' | '거부') => void;
 }
 
-const agentTypeStyles: Record<string, { icon: React.ReactNode; bg: string }> = {
-  report: { icon: null, bg: 'bg-muted' },
+const agentTypeLabels: Record<string, { icon: React.ReactNode; label: string } | null> = {
+  report: null,
   question: {
-    icon: <HelpCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ui-amber" />,
-    bg: 'bg-ui-amber/10 border border-ui-amber/20',
+    icon: <HelpCircle className="h-3 w-3 text-ui-amber" />,
+    label: '질문',
   },
   done: {
-    icon: <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-positive" />,
-    bg: 'bg-positive/10 border border-positive/20',
+    icon: <CheckCircle2 className="h-3 w-3 text-positive" />,
+    label: '완료',
   },
   error: {
-    icon: <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-negative" />,
-    bg: 'bg-negative/10 border border-negative/20',
+    icon: <AlertCircle className="h-3 w-3 text-negative" />,
+    label: '오류',
   },
   approval: {
-    icon: <ShieldQuestion className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ui-purple" />,
-    bg: 'bg-ui-purple/10 border border-ui-purple/20',
+    icon: <ShieldQuestion className="h-3 w-3 text-ui-purple" />,
+    label: '승인 요청',
   },
 };
 
@@ -38,7 +45,7 @@ const ChatBubble = ({ message, isFailed, approvalResolved, onResend, onApproval 
 
   if (isUser) {
     return (
-      <div className="flex justify-end" role="article" aria-label={`사용자 메시지, ${time}`}>
+      <div className="animate-in fade-in duration-150 flex justify-end" role="article" aria-label={`사용자 메시지, ${time}`}>
         <div className="flex max-w-[80%] flex-col items-end gap-1">
           <div className="rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-sm text-primary-foreground">
             <p className="whitespace-pre-wrap">{message.content}</p>
@@ -66,31 +73,29 @@ const ChatBubble = ({ message, isFailed, approvalResolved, onResend, onApproval 
     );
   }
 
-  const typeStyle = agentTypeStyles[message.type] || agentTypeStyles.report;
+  const typeLabel = agentTypeLabels[message.type] ?? null;
 
   return (
-    <div className="flex justify-start" role="article" aria-label={`에이전트 메시지, ${time}`}>
-      <div className={`max-w-[80%] rounded-2xl rounded-bl-md px-4 py-2.5 text-sm ${typeStyle.bg}`}>
-        <div className="flex gap-2">
-          {typeStyle.icon}
-          <div className="min-w-0 flex-1">
-            <p className="whitespace-pre-wrap">{message.content}</p>
-            {message.type === 'done' && (
-              <span className="mt-1 inline-block rounded bg-positive/20 px-1.5 py-0.5 text-[10px] font-medium text-positive">
-                완료
-              </span>
-            )}
-            {message.type === 'approval' && onApproval && (
-              <ApprovalActions onAction={onApproval} resolvedAs={approvalResolved} />
-            )}
-            <div className="mt-1">
-              <span className="text-[10px] text-muted-foreground">{time}</span>
-            </div>
-          </div>
+    <div className="animate-in fade-in duration-150" role="article" aria-label={`에이전트 메시지, ${time}`}>
+      {typeLabel && (
+        <div className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+          {typeLabel.icon}
+          <span>{typeLabel.label}</span>
         </div>
+      )}
+      <div className="prose prose-sm dark:prose-invert max-w-none break-words text-sm [&_pre]:bg-muted [&_pre]:rounded-md [&_pre]:p-3 [&_pre_code]:text-foreground [&_code]:text-[0.9em] [&_code.hljs]:text-[1em] [&_code]:font-normal [&_code]:font-mono [&_code::before]:content-none [&_code::after]:content-none">
+        <ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS}>
+          {message.content}
+        </ReactMarkdown>
+      </div>
+      {message.type === 'approval' && onApproval && (
+        <ApprovalActions onAction={onApproval} resolvedAs={approvalResolved} />
+      )}
+      <div className="mt-1">
+        <span className="text-[10px] text-muted-foreground">{time}</span>
       </div>
     </div>
   );
 };
 
-export default ChatBubble;
+export default memo(ChatBubble);

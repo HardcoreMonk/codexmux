@@ -1,11 +1,12 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import dayjs from 'dayjs';
+import { useStickToBottom } from 'use-stick-to-bottom';
 import { AlertCircle, Bot, Loader2, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import ChatBubble from '@/components/features/agent/chat-bubble';
 import TypingIndicator from '@/components/features/agent/typing-indicator';
-import NewMessageButton from '@/components/features/agent/new-message-button';
+import ScrollToBottomButton from '@/components/features/timeline/scroll-to-bottom-button';
 import type { IChatMessage, TAgentStatus } from '@/types/agent';
 
 interface IMessageListProps {
@@ -14,16 +15,14 @@ interface IMessageListProps {
   isLoading: boolean;
   isLoadingMore: boolean;
   hasMore: boolean;
-  isAtBottom: boolean;
   isConnected: boolean;
   connectionError: boolean;
   loadError: boolean;
   failedMessageIds: Set<string>;
   onRetry: () => void;
-  onLoadMore: () => void;
+  onLoadMore: () => Promise<void>;
   onResend: (messageId: string) => void;
   onApproval: (action: '승인' | '거부') => void;
-  onAtBottomChange: (val: boolean) => void;
 }
 
 const SkeletonMessages = () => (
@@ -103,7 +102,6 @@ const MessageList = ({
   isLoading,
   isLoadingMore,
   hasMore,
-  isAtBottom,
   isConnected,
   connectionError,
   loadError,
@@ -112,66 +110,50 @@ const MessageList = ({
   onLoadMore,
   onResend,
   onApproval,
-  onAtBottomChange,
 }: IMessageListProps) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const prevScrollHeightRef = useRef(0);
-  const [lastSeenCount, setLastSeenCount] = useState(messages.length);
+  const { scrollRef, contentRef, scrollToBottom, isAtBottom } = useStickToBottom({
+    resize: { damping: 0.8, stiffness: 0.05 },
+    initial: 'instant',
+  });
 
-  // IntersectionObserver for infinite scroll
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const isLoadingMoreRef = useRef(false);
+  const [isLoadingMoreLocal, setIsLoadingMoreLocal] = useState(false);
+  const [skipAnimation, setSkipAnimation] = useState(true);
+
+  useEffect(() => {
+    if (skipAnimation && messages.length > 0) {
+      scrollToBottom('instant');
+      requestAnimationFrame(() => setSkipAnimation(false));
+    }
+  }, [skipAnimation, messages.length, scrollToBottom]);
+
+  const triggerLoadMore = useCallback(() => {
+    if (!hasMore || isLoadingMoreRef.current) return;
+    isLoadingMoreRef.current = true;
+    setIsLoadingMoreLocal(true);
+    onLoadMore().finally(() => {
+      isLoadingMoreRef.current = false;
+      setIsLoadingMoreLocal(false);
+    });
+  }, [hasMore, onLoadMore]);
+
   useEffect(() => {
     const sentinel = sentinelRef.current;
-    if (!sentinel || !hasMore || isLoadingMore) return;
+    const root = scrollRef.current;
+    if (!sentinel || !root) return;
 
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          prevScrollHeightRef.current = scrollRef.current?.scrollHeight ?? 0;
-          onLoadMore();
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          triggerLoadMore();
         }
       },
-      { root: scrollRef.current, threshold: 0.1 },
+      { root, rootMargin: '200px 0px 0px 0px' },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, isLoadingMore, onLoadMore]);
-
-  // Maintain scroll position after loading more
-  useEffect(() => {
-    if (!isLoadingMore && prevScrollHeightRef.current > 0 && scrollRef.current) {
-      const newHeight = scrollRef.current.scrollHeight;
-      scrollRef.current.scrollTop = newHeight - prevScrollHeightRef.current;
-      prevScrollHeightRef.current = 0;
-    }
-  }, [isLoadingMore, messages.length]);
-
-  // Auto-scroll on new messages when at bottom
-  useEffect(() => {
-    if (isAtBottom) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages.length, isAtBottom, agentStatus]);
-
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const threshold = 100;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
-    onAtBottomChange(atBottom);
-    if (atBottom) {
-      setLastSeenCount(messages.length);
-    }
-  }, [onAtBottomChange, messages.length]);
-
-  const handleScrollToBottom = useCallback(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    onAtBottomChange(true);
-    setLastSeenCount(messages.length);
-  }, [onAtBottomChange, messages.length]);
-
-  const hasNewMessage = !isAtBottom && messages.length > lastSeenCount;
+  }, [scrollRef, triggerLoadMore]);
 
   if (isLoading) {
     return (
@@ -209,15 +191,27 @@ const MessageList = ({
       ) : (
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto"
-          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto py-2 transition-opacity"
+          style={{
+            opacity: skipAnimation ? 0 : 1,
+            transitionDuration: '300ms',
+          }}
           role="log"
           aria-live="polite"
         >
-          <div className="space-y-3 p-4">
-            {hasMore && (
-              <div ref={sentinelRef} className="flex justify-center py-2">
-                {isLoadingMore && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          <div ref={contentRef} className="space-y-3 p-4">
+            {hasMore && <div ref={sentinelRef} className="h-px" />}
+            {hasMore && !isLoadingMoreLocal && !isLoadingMore && (
+              <div className="flex justify-center py-2">
+                <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={triggerLoadMore}>
+                  <Loader2 size={12} className="mr-1" />
+                  이전 내용 더보기
+                </Button>
+              </div>
+            )}
+            {(isLoadingMoreLocal || isLoadingMore) && (
+              <div className="flex justify-center py-2">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               </div>
             )}
 
@@ -240,15 +234,14 @@ const MessageList = ({
             })}
 
             {agentStatus === 'working' && <TypingIndicator />}
-
-            <div ref={bottomRef} />
           </div>
         </div>
       )}
 
-      {!isAtBottom && hasNewMessage && (
-        <NewMessageButton onClick={handleScrollToBottom} />
-      )}
+      <ScrollToBottomButton
+        visible={!isAtBottom}
+        onClick={() => scrollToBottom('smooth')}
+      />
     </div>
   );
 };

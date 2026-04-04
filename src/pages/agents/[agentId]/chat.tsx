@@ -28,7 +28,6 @@ const AgentChatPage = () => {
     isLoading,
     isLoadingMore,
     isSending,
-    isAtBottom,
     isConnected,
     connectionError,
     loadError,
@@ -36,7 +35,6 @@ const AgentChatPage = () => {
     sendMessage,
     resendMessage,
     loadMore,
-    setAtBottom,
     fetchHistory,
   } = useAgentChat(agentId || '');
 
@@ -58,13 +56,6 @@ const AgentChatPage = () => {
       sendMessage(action);
     },
     [sendMessage],
-  );
-
-  const handleAtBottomChange = useCallback(
-    (val: boolean) => {
-      setAtBottom(val);
-    },
-    [setAtBottom],
   );
 
   const handleDeleteClick = useCallback(() => {
@@ -100,7 +91,6 @@ const AgentChatPage = () => {
           isLoading={isLoading || (isStoreLoading && !agent)}
           isLoadingMore={isLoadingMore}
           hasMore={hasMore}
-          isAtBottom={isAtBottom}
           isConnected={isConnected}
           connectionError={connectionError}
           loadError={loadError}
@@ -109,10 +99,10 @@ const AgentChatPage = () => {
           onLoadMore={loadMore}
           onResend={resendMessage}
           onApproval={handleApproval}
-          onAtBottomChange={handleAtBottomChange}
         />
 
         <ChatInput
+          agentId={agentId}
           onSend={handleSend}
           agentStatus={agentStatus}
           isSending={isSending}

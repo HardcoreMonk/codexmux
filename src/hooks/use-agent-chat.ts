@@ -15,7 +15,6 @@ interface IChatState {
   isLoading: boolean;
   isLoadingMore: boolean;
   isSending: boolean;
-  isAtBottom: boolean;
   isConnected: boolean;
   connectionError: boolean;
   loadError: boolean;
@@ -33,7 +32,6 @@ type TChatAction =
   | { type: 'SEND_SUCCESS'; payload: { tempId: string; realId: string; status: 'sent' | 'queued' } }
   | { type: 'SEND_FAILURE'; payload: { tempId: string } }
   | { type: 'RECEIVE_MESSAGE'; payload: IChatMessage }
-  | { type: 'SET_AT_BOTTOM'; payload: boolean }
   | { type: 'SET_CONNECTED'; payload: boolean }
   | { type: 'SET_CONNECTION_ERROR'; payload: boolean }
   | { type: 'SET_SENDING'; payload: boolean }
@@ -47,7 +45,6 @@ const initialState: IChatState = {
   isLoading: true,
   isLoadingMore: false,
   isSending: false,
-  isAtBottom: true,
   isConnected: false,
   connectionError: false,
   loadError: false,
@@ -123,8 +120,6 @@ const chatReducer = (state: IChatState, action: TChatAction): IChatState => {
       }
       return { ...state, messages: [...state.messages, action.payload] };
     }
-    case 'SET_AT_BOTTOM':
-      return { ...state, isAtBottom: action.payload };
     case 'SET_CONNECTED':
       return { ...state, isConnected: action.payload, connectionError: false };
     case 'SET_CONNECTION_ERROR':
@@ -242,10 +237,6 @@ const useAgentChat = (agentId: string) => {
     [state.messages, sendMessage],
   );
 
-  const setAtBottom = useCallback((val: boolean) => {
-    dispatch({ type: 'SET_AT_BOTTOM', payload: val });
-  }, []);
-
   // WebSocket connection
   useEffect(() => {
     if (!agentId) return;
@@ -339,7 +330,6 @@ const useAgentChat = (agentId: string) => {
     isLoading: state.isLoading,
     isLoadingMore: state.isLoadingMore,
     isSending: state.isSending,
-    isAtBottom: state.isAtBottom,
     isConnected: state.isConnected,
     connectionError: state.connectionError,
     loadError: state.loadError,
@@ -347,7 +337,6 @@ const useAgentChat = (agentId: string) => {
     sendMessage,
     resendMessage,
     loadMore,
-    setAtBottom,
     fetchHistory,
   };
 };

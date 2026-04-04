@@ -53,7 +53,7 @@ import type {
   TAgentExecTabStatus,
   IAgentTabsFile,
 } from '@/types/agent';
-import type { IMission, IBlockReasonResponse } from '@/types/mission';
+
 
 const log = createLogger('agent-manager');
 
@@ -199,18 +199,6 @@ class AgentManager {
       ...r.info,
       status: r.status,
     }));
-  }
-
-  getMissions(_agentId: string): IMission[] {
-    return [];
-  }
-
-  getBlockReason(
-    _agentId: string,
-    _missionId: string,
-    _taskId: string,
-  ): IBlockReasonResponse | null {
-    return null;
   }
 
   getWorkspace(agentId: string): IAgentWorkspaceResponse | null {
