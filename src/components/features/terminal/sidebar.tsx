@@ -353,7 +353,7 @@ const Sidebar = ({ onSelectWorkspace }: ISidebarProps) => {
             >
               <WorkspaceItem
                 workspace={ws}
-                isActive={ws.id === activeWorkspaceId}
+                isActive={ws.id === activeWorkspaceId && router.query.panel !== 'agent'}
                 isDeleting={deletingIds.has(ws.id)}
                 shortcutLabel={i < 8 ? `⌘${i + 1}` : i === workspaces.length - 1 ? '⌘9' : undefined}
                 showShortcut={showShortcuts}

@@ -102,14 +102,21 @@ const TerminalPage = () => {
   const handleSelectWorkspace = useCallback(
     (workspaceId: string) => {
       const { activeWorkspaceId } = useWorkspaceStore.getState();
-      if (workspaceId === activeWorkspaceId) return;
+
+      if (agentPanelOpen) {
+        const { panel, agentId, ...rest } = router.query;
+        router.push({ pathname: router.pathname, query: rest }, undefined, { shallow: true });
+        if (workspaceId === activeWorkspaceId) return;
+      } else if (workspaceId === activeWorkspaceId) {
+        return;
+      }
 
       prevWorkspaceIdRef.current = activeWorkspaceId;
       useTabMetadataStore.getState().reset();
       layout.clearLayout();
       useWorkspaceStore.getState().switchWorkspace(workspaceId);
     },
-    [layout],
+    [layout, agentPanelOpen, router],
   );
 
   useKeyboardShortcuts({ layout, onSelectWorkspace: handleSelectWorkspace });
