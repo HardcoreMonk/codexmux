@@ -55,6 +55,7 @@ const useAgentStore = create<IAgentState>((set) => ({
       set({ agents, isLoading: false });
     } catch {
       set({ error: '에이전트 목록을 불러올 수 없습니다', isLoading: false });
+      toast.error('에이전트 목록을 불러올 수 없습니다');
     }
   },
 

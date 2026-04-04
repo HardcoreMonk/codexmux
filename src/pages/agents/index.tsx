@@ -53,6 +53,7 @@ const AgentsPage = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [settingsAgent, setSettingsAgent] = useState<IAgentInfo | null>(null);
   const [deleteAgent_, setDeleteAgent] = useState<IAgentInfo | null>(null);
+  const [fadingOutId, setFadingOutId] = useState<string | null>(null);
 
   useAgentStatus();
 
@@ -86,11 +87,16 @@ const AgentsPage = () => {
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteAgent_) return;
-    const success = await deleteAgent(deleteAgent_.id);
-    if (success) {
-      setDeleteAgent(null);
-      setSettingsAgent(null);
-    }
+    const id = deleteAgent_.id;
+
+    setDeleteAgent(null);
+    setSettingsAgent(null);
+
+    setFadingOutId(id);
+    await new Promise((r) => setTimeout(r, 200));
+
+    await deleteAgent(id);
+    setFadingOutId(null);
   }, [deleteAgent_, deleteAgent]);
 
   const handleRetry = useCallback(() => {
@@ -136,6 +142,7 @@ const AgentsPage = () => {
                     agent={agent}
                     onClick={() => handleCardClick(agent)}
                     onSettingsClick={() => handleSettingsClick(agent)}
+                    isFadingOut={fadingOutId === agent.id}
                   />
                 ))}
               </div>

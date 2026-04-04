@@ -6,6 +6,7 @@ interface IAgentCardProps {
   agent: IAgentInfo;
   onClick: () => void;
   onSettingsClick: () => void;
+  isFadingOut?: boolean;
 }
 
 const statusConfig: Record<TAgentStatus, { className: string; label: string }> = {
@@ -15,7 +16,7 @@ const statusConfig: Record<TAgentStatus, { className: string; label: string }> =
   offline: { className: 'bg-muted-foreground/10', label: '오프라인' },
 };
 
-const AgentCard = ({ agent, onClick, onSettingsClick }: IAgentCardProps) => {
+const AgentCard = ({ agent, onClick, onSettingsClick, isFadingOut }: IAgentCardProps) => {
   const status = statusConfig[agent.status];
 
   const handleSettingsClick = (e: React.MouseEvent) => {
@@ -31,7 +32,7 @@ const AgentCard = ({ agent, onClick, onSettingsClick }: IAgentCardProps) => {
     <div
       role="listitem"
       tabIndex={0}
-      className="group relative cursor-pointer rounded-lg border p-4 transition-colors hover:border-foreground/30"
+      className={`group relative cursor-pointer rounded-lg border p-4 transition-all duration-200 hover:border-foreground/30${isFadingOut ? ' scale-95 opacity-0' : ''}`}
       onClick={onClick}
       onKeyDown={handleKeyDown}
     >
