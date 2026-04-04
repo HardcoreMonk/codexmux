@@ -54,15 +54,11 @@ const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps)
   const draftTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
   const [isFocused, setIsFocused] = useState(false);
 
-  const isDisabled = agentStatus === 'working' || agentStatus === 'offline' || isSending;
+  const isDisabled = agentStatus === 'offline' || isSending;
   const hasValue = value.trim().length > 0;
 
   const placeholder =
-    agentStatus === 'working'
-      ? '응답 대기 중...'
-      : agentStatus === 'offline'
-        ? '에이전트 오프라인'
-        : '메시지를 입력하세요...';
+    agentStatus === 'offline' ? '에이전트 오프라인' : '메시지를 입력하세요...';
 
   // Draft auto-save
   useEffect(() => {
