@@ -77,4 +77,35 @@ const completeModules = (baseStandalone, baseSource) => {
 };
 
 completeModules(standaloneModules, sourceModules);
+
+// --- Ensure dynamically loaded packages and their full dependency trees ---
+// pino loads transports in worker threads, so NFT doesn't trace them.
+// Copy each package + all transitive dependencies from source node_modules.
+const ensureWithDeps = (pkgName, visited = new Set()) => {
+  if (visited.has(pkgName)) return;
+  visited.add(pkgName);
+
+  const src = path.join(sourceModules, pkgName);
+  const dst = path.join(standaloneModules, pkgName);
+  if (!fs.existsSync(src)) return;
+
+  if (!fs.existsSync(dst)) {
+    fs.cpSync(src, dst, { recursive: true });
+    console.log(`[post-build] added missing module: ${pkgName}`);
+  }
+
+  const pkgJsonPath = path.join(src, 'package.json');
+  if (!fs.existsSync(pkgJsonPath)) return;
+  const { dependencies = {} } = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8'));
+  for (const dep of Object.keys(dependencies)) {
+    ensureWithDeps(dep, visited);
+  }
+};
+
+const dynamicPackages = ['pino-roll', 'pino-pretty'];
+const visited = new Set();
+for (const pkg of dynamicPackages) {
+  ensureWithDeps(pkg, visited);
+}
+
 console.log('[post-build] node_modules patching done');
