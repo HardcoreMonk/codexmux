@@ -18,6 +18,7 @@ interface IChatState {
   isAtBottom: boolean;
   isConnected: boolean;
   connectionError: boolean;
+  loadError: boolean;
   failedMessageIds: Set<string>;
 }
 
@@ -49,6 +50,7 @@ const initialState: IChatState = {
   isAtBottom: true,
   isConnected: false,
   connectionError: false,
+  loadError: false,
   failedMessageIds: new Set(),
 };
 
@@ -60,12 +62,13 @@ const chatReducer = (state: IChatState, action: TChatAction): IChatState => {
       return {
         ...state,
         isLoading: false,
+        loadError: false,
         messages: action.payload.messages,
         sessionId: action.payload.sessionId,
         hasMore: action.payload.hasMore,
       };
     case 'INIT_ERROR':
-      return { ...state, isLoading: false };
+      return { ...state, isLoading: false, loadError: true };
     case 'LOAD_MORE_START':
       return { ...state, isLoadingMore: true };
     case 'LOAD_MORE_SUCCESS':
@@ -318,6 +321,7 @@ const useAgentChat = (agentId: string) => {
     isAtBottom: state.isAtBottom,
     isConnected: state.isConnected,
     connectionError: state.connectionError,
+    loadError: state.loadError,
     failedMessageIds: state.failedMessageIds,
     sendMessage,
     resendMessage,

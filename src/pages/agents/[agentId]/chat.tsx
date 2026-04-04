@@ -31,11 +31,13 @@ const AgentChatPage = () => {
     isAtBottom,
     isConnected,
     connectionError,
+    loadError,
     failedMessageIds,
     sendMessage,
     resendMessage,
     loadMore,
     setAtBottom,
+    fetchHistory,
   } = useAgentChat(agentId || '');
 
   useEffect(() => {
@@ -101,7 +103,9 @@ const AgentChatPage = () => {
           isAtBottom={isAtBottom}
           isConnected={isConnected}
           connectionError={connectionError}
+          loadError={loadError}
           failedMessageIds={failedMessageIds}
+          onRetry={fetchHistory}
           onLoadMore={loadMore}
           onResend={resendMessage}
           onApproval={handleApproval}

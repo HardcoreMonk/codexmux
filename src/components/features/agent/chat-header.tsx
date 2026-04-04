@@ -33,7 +33,10 @@ const ChatHeader = ({ agent, onSettingsClick }: IChatHeaderProps) => {
         <ArrowLeft className="h-4 w-4" />
       </Button>
 
-      <span className="text-sm font-medium">{agent.name}</span>
+      <div className="flex flex-col">
+        <span className="text-sm font-medium">{agent.name}</span>
+        <span className="text-[10px] text-muted-foreground">{agent.role}</span>
+      </div>
 
       <div className="flex items-center gap-1.5">
         <span

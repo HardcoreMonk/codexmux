@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import dayjs from 'dayjs';
-import { Bot, Loader2, WifiOff } from 'lucide-react';
+import { AlertCircle, Bot, Loader2, WifiOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import ChatBubble from '@/components/features/agent/chat-bubble';
 import TypingIndicator from '@/components/features/agent/typing-indicator';
@@ -16,7 +17,9 @@ interface IMessageListProps {
   isAtBottom: boolean;
   isConnected: boolean;
   connectionError: boolean;
+  loadError: boolean;
   failedMessageIds: Set<string>;
+  onRetry: () => void;
   onLoadMore: () => void;
   onResend: (messageId: string) => void;
   onApproval: (action: '승인' | '거부') => void;
@@ -34,6 +37,16 @@ const SkeletonMessages = () => (
     <div className="flex justify-start">
       <Skeleton className="h-14 w-56 rounded-2xl rounded-bl-md" />
     </div>
+  </div>
+);
+
+const ErrorState = ({ onRetry }: { onRetry: () => void }) => (
+  <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4">
+    <AlertCircle className="h-8 w-8 text-negative/40" />
+    <p className="text-sm text-muted-foreground">채팅 이력을 불러올 수 없습니다</p>
+    <Button variant="outline" size="sm" onClick={onRetry}>
+      다시 시도
+    </Button>
   </div>
 );
 
@@ -78,7 +91,9 @@ const MessageList = ({
   isAtBottom,
   isConnected,
   connectionError,
+  loadError,
   failedMessageIds,
+  onRetry,
   onLoadMore,
   onResend,
   onApproval,
@@ -147,6 +162,14 @@ const MessageList = ({
     return (
       <div className="relative flex-1 overflow-hidden">
         <SkeletonMessages />
+      </div>
+    );
+  }
+
+  if (loadError && messages.length === 0) {
+    return (
+      <div className="relative flex flex-1 flex-col overflow-hidden">
+        <ErrorState onRetry={onRetry} />
       </div>
     );
   }
