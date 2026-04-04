@@ -19,6 +19,7 @@ import useTabStore, { selectGlobalStatus } from '@/hooks/use-tab-store';
 import AppLogo from '@/components/layout/app-logo';
 import NotificationSheet, { useNotificationCount } from '@/components/features/terminal/notification-sheet';
 import useAgentStore, { selectBlockedCount } from '@/hooks/use-agent-store';
+import useConfigStore from '@/hooks/use-config-store';
 
 interface IAppHeaderProps {
   onMenuOpen?: () => void;
@@ -36,6 +37,7 @@ const AppHeader = ({ onMenuOpen, workspaceName }: IAppHeaderProps) => {
   const { busyCount, attentionCount } = useNotificationCount();
   const hasActive = busyCount > 0 || attentionCount > 0;
   const blockedCount = useAgentStore(selectBlockedCount);
+  const agentEnabled = useConfigStore((s) => s.agentEnabled);
   const [notificationOpen, setNotificationOpen] = useState(false);
 
   return (
@@ -61,26 +63,28 @@ const AppHeader = ({ onMenuOpen, workspaceName }: IAppHeaderProps) => {
 
       <TooltipProvider>
         <div className="flex items-center gap-1">
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative h-7 w-7"
-                  onClick={() => router.push('/agents')}
-                />
-              }
-            >
-              <Bot className="h-4 w-4 text-muted-foreground" />
-              {blockedCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-ui-amber px-0.5 text-[10px] font-medium leading-none text-white">
-                  {blockedCount}
-                </span>
-              )}
-            </TooltipTrigger>
-            <TooltipContent>에이전트</TooltipContent>
-          </Tooltip>
+          {agentEnabled && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative h-7 w-7"
+                    onClick={() => router.push('/agents')}
+                  />
+                }
+              >
+                <Bot className="h-4 w-4 text-muted-foreground" />
+                {blockedCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-ui-amber px-0.5 text-[10px] font-medium leading-none text-white">
+                    {blockedCount}
+                  </span>
+                )}
+              </TooltipTrigger>
+              <TooltipContent>에이전트</TooltipContent>
+            </Tooltip>
+          )}
 
           <Tooltip>
             <TooltipTrigger

@@ -5,17 +5,20 @@ export interface IConfigInitialData {
   terminalTheme?: { light: string; dark: string } | null;
   dangerouslySkipPermissions?: boolean;
   editorUrl?: string;
+  agentEnabled?: boolean;
   hasAuthPassword?: boolean;
 }
 
 interface IConfigState {
   dangerouslySkipPermissions: boolean;
   editorUrl: string;
+  agentEnabled: boolean;
   hasAuthPassword: boolean;
 
   hydrate: (data: IConfigInitialData) => void;
   setDangerouslySkipPermissions: (enabled: boolean) => void;
   setEditorUrl: (url: string) => void;
+  setAgentEnabled: (enabled: boolean) => void;
   changePassword: (password: string) => void;
 }
 
@@ -32,12 +35,14 @@ const saveConfig = (updates: Record<string, unknown>) => {
 const useConfigStore = create<IConfigState>((set, get) => ({
   dangerouslySkipPermissions: false,
   editorUrl: '',
+  agentEnabled: false,
   hasAuthPassword: false,
 
   hydrate: (data) => {
     set({
       dangerouslySkipPermissions: data.dangerouslySkipPermissions ?? false,
       editorUrl: data.editorUrl ?? '',
+      agentEnabled: data.agentEnabled ?? false,
       hasAuthPassword: data.hasAuthPassword ?? false,
     });
   },
@@ -51,6 +56,11 @@ const useConfigStore = create<IConfigState>((set, get) => ({
     if (get().editorUrl === url) return;
     set({ editorUrl: url });
     saveConfig({ editorUrl: url });
+  },
+
+  setAgentEnabled: (enabled) => {
+    set({ agentEnabled: enabled });
+    saveConfig({ agentEnabled: enabled });
   },
 
   changePassword: (password) => {

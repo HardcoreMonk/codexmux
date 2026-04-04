@@ -29,7 +29,7 @@ import type { ITerminalThemeColors } from '@/lib/terminal-themes';
 import QuickPromptsSettings from '@/components/features/settings/quick-prompts-settings';
 import TailscaleSettings from '@/components/features/settings/tailscale-settings';
 
-type TSettingsTab = 'general' | 'terminal' | 'editor' | 'claude' | 'auth' | 'tailscale' | 'quick-prompts' | 'system';
+type TSettingsTab = 'general' | 'terminal' | 'editor' | 'claude' | 'auth' | 'tailscale' | 'quick-prompts' | 'agent' | 'system';
 
 interface ISettingsItem {
   id: TSettingsTab;
@@ -72,6 +72,11 @@ const settingsItems: ISettingsItem[] = [
     id: 'quick-prompts',
     label: '빠른 프롬프트',
     icon: <Zap className="h-4 w-4" />,
+  },
+  {
+    id: 'agent',
+    label: '에이전트',
+    icon: <Bot className="h-4 w-4" />,
   },
   {
     id: 'system',
@@ -358,6 +363,36 @@ const AuthTab = () => {
   );
 };
 
+const AgentTab = () => {
+  const agentEnabled = useConfigStore((state) => state.agentEnabled);
+  const setAgentEnabled = useConfigStore((state) => state.setAgentEnabled);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="agent-enabled" className="text-sm font-medium">
+              에이전트 메뉴 활성화
+            </Label>
+            <span className="rounded-full bg-ui-purple/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ui-purple">
+              Beta
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            사이드바에 에이전트 메뉴를 표시합니다. 이 기능은 현재 beta 테스트 중입니다.
+          </p>
+        </div>
+        <Switch
+          id="agent-enabled"
+          checked={agentEnabled}
+          onCheckedChange={setAgentEnabled}
+        />
+      </div>
+    </div>
+  );
+};
+
 const SystemTab = () => {
   const handleReset = () => {
     window.location.href = '/reset';
@@ -464,6 +499,7 @@ const SettingsDialog = ({ open, onOpenChange }: ISettingsDialogProps) => {
             {activeTab === 'auth' && <AuthTab />}
             {activeTab === 'tailscale' && <TailscaleSettings />}
             {activeTab === 'quick-prompts' && <QuickPromptsSettings />}
+            {activeTab === 'agent' && <AgentTab />}
             {activeTab === 'system' && <SystemTab />}
           </div>
         </div>

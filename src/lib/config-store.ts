@@ -14,6 +14,7 @@ export interface IConfigData {
   terminalTheme?: { light: string; dark: string };
   dangerouslySkipPermissions?: boolean;
   editorUrl?: string;
+  agentEnabled?: boolean;
   updatedAt: string;
 }
 

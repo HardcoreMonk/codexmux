@@ -34,6 +34,7 @@ import WorkspaceItem from '@/components/features/terminal/workspace-item';
 import SettingsDialog from '@/components/features/terminal/settings-dialog';
 import NotificationSheet from '@/components/features/terminal/notification-sheet';
 import useAgentStore, { selectBlockedCount } from '@/hooks/use-agent-store';
+import useConfigStore from '@/hooks/use-config-store';
 import { useSelectWorkspace } from '@/hooks/use-sidebar-actions';
 
 const MIN_WIDTH = 160;
@@ -54,6 +55,7 @@ const Sidebar = () => {
   const { busyCount, attentionCount } = useNotificationCount();
   const hasActive = busyCount > 0 || attentionCount > 0;
   const blockedCount = useAgentStore(selectBlockedCount);
+  const agentEnabled = useConfigStore((s) => s.agentEnabled);
   const selectWorkspace = useSelectWorkspace();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -388,21 +390,23 @@ const Sidebar = () => {
 
           <div className="flex items-center justify-between px-2 pb-2">
             <div className="flex items-center gap-0.5">
-              <button
-                className={cn(
-                  'relative flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',
-                  isNavActive('/agents') ? 'text-foreground' : 'text-muted-foreground',
-                )}
-                onClick={() => router.push('/agents')}
-                aria-label="에이전트"
-              >
-                <Bot className="h-3.5 w-3.5" />
-                {blockedCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-ui-amber px-0.5 text-[9px] font-medium leading-none text-white">
-                    {blockedCount}
-                  </span>
-                )}
-              </button>
+              {agentEnabled && (
+                <button
+                  className={cn(
+                    'relative flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',
+                    isNavActive('/agents') ? 'text-foreground' : 'text-muted-foreground',
+                  )}
+                  onClick={() => router.push('/agents')}
+                  aria-label="에이전트"
+                >
+                  <Bot className="h-3.5 w-3.5" />
+                  {blockedCount > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-ui-amber px-0.5 text-[9px] font-medium leading-none text-white">
+                      {blockedCount}
+                    </span>
+                  )}
+                </button>
+              )}
               <button
                 className={cn(
                   'flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',
