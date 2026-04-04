@@ -267,36 +267,38 @@ const MobileNavigationSheet = ({
             <Plus size={16} />
             Workspace
           </button>
-          <button
-            className="flex w-full items-center gap-2 px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-accent"
-            onClick={() => {
-              onOpenChange(false);
-              router.push('/reports');
-            }}
-          >
-            <FileText size={16} />
-            노트
-          </button>
-          <button
-            className="flex w-full items-center gap-2 px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-accent"
-            onClick={() => {
-              onOpenChange(false);
-              router.push('/stats');
-            }}
-          >
-            <BarChart3 size={16} />
-            통계
-          </button>
-          <button
-            className="flex w-full items-center gap-2 px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-accent"
-            onClick={() => {
-              onOpenChange(false);
-              onOpenSettings();
-            }}
-          >
-            <Settings size={16} />
-            설정
-          </button>
+          <div className="flex">
+            <button
+              className="flex flex-1 items-center justify-center gap-1.5 py-3 text-sm text-muted-foreground transition-colors hover:bg-accent"
+              onClick={() => {
+                onOpenChange(false);
+                router.push('/reports');
+              }}
+            >
+              <FileText size={15} />
+              노트
+            </button>
+            <button
+              className="flex flex-1 items-center justify-center gap-1.5 py-3 text-sm text-muted-foreground transition-colors hover:bg-accent"
+              onClick={() => {
+                onOpenChange(false);
+                router.push('/stats');
+              }}
+            >
+              <BarChart3 size={15} />
+              통계
+            </button>
+            <button
+              className="flex flex-1 items-center justify-center gap-1.5 py-3 text-sm text-muted-foreground transition-colors hover:bg-accent"
+              onClick={() => {
+                onOpenChange(false);
+                onOpenSettings();
+              }}
+            >
+              <Settings size={15} />
+              설정
+            </button>
+          </div>
         </div>
       </SheetContent>
     </Sheet>
