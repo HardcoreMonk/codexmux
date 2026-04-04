@@ -33,6 +33,7 @@ import type {
   IAgentStatusUpdate,
   IAgentChatMessage,
 } from '@/types/agent';
+import type { IMission, IBlockReasonResponse } from '@/types/mission';
 
 const log = createLogger('agent-manager');
 
@@ -158,6 +159,18 @@ class AgentManager {
       ...r.info,
       status: r.status,
     }));
+  }
+
+  getMissions(_agentId: string): IMission[] {
+    return [];
+  }
+
+  getBlockReason(
+    _agentId: string,
+    _missionId: string,
+    _taskId: string,
+  ): IBlockReasonResponse | null {
+    return null;
   }
 
   async updateAgent(agentId: string, update: { name?: string; role?: string; projects?: string[] }): Promise<IAgentInfo | null> {
