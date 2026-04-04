@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ChevronRight } from 'lucide-react';
 import TaskNode from '@/components/features/agent/task-node';
 import type { ITask } from '@/types/mission';
@@ -11,9 +11,87 @@ interface ITaskTreeProps {
 }
 
 const COLLAPSE_THRESHOLD = 20;
+const EXIT_DURATION = 300;
+
+interface IExitState {
+  prevTasks: ITask[];
+  mergedTasks: ITask[];
+  exitingIds: Set<string>;
+  pendingClearIds: Set<string>;
+}
+
+const EMPTY_SET = new Set<string>();
+
+const useExitAnimation = (tasks: ITask[]) => {
+  const [exitState, setExitState] = useState<IExitState>({
+    prevTasks: tasks,
+    mergedTasks: tasks,
+    exitingIds: EMPTY_SET,
+    pendingClearIds: EMPTY_SET,
+  });
+
+  if (tasks !== exitState.prevTasks) {
+    const prevMap = new Map(exitState.prevTasks.map((t) => [t.id, t]));
+    const currentIds = new Set(tasks.map((t) => t.id));
+    const removedTasks: ITask[] = [];
+
+    for (const [id, task] of prevMap) {
+      if (!currentIds.has(id)) removedTasks.push(task);
+    }
+
+    if (removedTasks.length > 0) {
+      const removedIds = new Set(removedTasks.map((t) => t.id));
+      const prevOrder = [...prevMap.keys()];
+      const merged: ITask[] = [];
+
+      for (const id of prevOrder) {
+        if (currentIds.has(id)) {
+          merged.push(tasks.find((t) => t.id === id)!);
+        } else if (removedIds.has(id)) {
+          merged.push(prevMap.get(id)!);
+        }
+      }
+      for (const t of tasks) {
+        if (!merged.some((m) => m.id === t.id)) merged.push(t);
+      }
+
+      setExitState({
+        prevTasks: tasks,
+        mergedTasks: merged,
+        exitingIds: removedIds,
+        pendingClearIds: removedIds,
+      });
+    } else {
+      setExitState({
+        prevTasks: tasks,
+        mergedTasks: tasks,
+        exitingIds: EMPTY_SET,
+        pendingClearIds: EMPTY_SET,
+      });
+    }
+  }
+
+  useEffect(() => {
+    if (exitState.pendingClearIds.size === 0) return;
+
+    const timer = setTimeout(() => {
+      setExitState((prev) => ({
+        ...prev,
+        mergedTasks: prev.mergedTasks.filter((t) => !prev.exitingIds.has(t.id)),
+        exitingIds: EMPTY_SET,
+        pendingClearIds: EMPTY_SET,
+      }));
+    }, EXIT_DURATION);
+
+    return () => clearTimeout(timer);
+  }, [exitState.pendingClearIds]);
+
+  return { mergedTasks: exitState.mergedTasks, exitingIds: exitState.exitingIds };
+};
 
 const TaskTree = ({ tasks, agentId, missionId, collapsible }: ITaskTreeProps) => {
-  const completedTasks = tasks.filter((t) => t.status === 'completed');
+  const { mergedTasks, exitingIds } = useExitAnimation(tasks);
+  const completedTasks = mergedTasks.filter((t) => t.status === 'completed');
   const shouldCollapse = collapsible && completedTasks.length >= COLLAPSE_THRESHOLD;
 
   const [completedExpanded, setCompletedExpanded] = useState(false);
@@ -22,23 +100,29 @@ const TaskTree = ({ tasks, agentId, missionId, collapsible }: ITaskTreeProps) =>
     setCompletedExpanded((prev) => !prev);
   }, []);
 
+  const exitClass = (id: string) =>
+    exitingIds.has(id)
+      ? 'opacity-0 transition-opacity duration-300'
+      : 'opacity-100 transition-opacity duration-300';
+
   if (!shouldCollapse) {
     return (
       <div className="ml-2 mt-3" role="tree">
-        {tasks.map((task, idx) => (
-          <TaskNode
-            key={task.id}
-            task={task}
-            agentId={agentId}
-            missionId={missionId}
-            isLast={idx === tasks.length - 1}
-          />
+        {mergedTasks.map((task, idx) => (
+          <div key={task.id} className={exitClass(task.id)}>
+            <TaskNode
+              task={task}
+              agentId={agentId}
+              missionId={missionId}
+              isLast={idx === mergedTasks.length - 1}
+            />
+          </div>
         ))}
       </div>
     );
   }
 
-  const activeTasks = tasks.filter((t) => t.status !== 'completed');
+  const activeTasks = mergedTasks.filter((t) => t.status !== 'completed');
 
   return (
     <div className="ml-2 mt-3" role="tree">
@@ -64,25 +148,27 @@ const TaskTree = ({ tasks, agentId, missionId, collapsible }: ITaskTreeProps) =>
             완료된 Task ({completedTasks.length})
           </button>
           {completedTasks.map((task, idx) => (
-            <TaskNode
-              key={task.id}
-              task={task}
-              agentId={agentId}
-              missionId={missionId}
-              isLast={idx === completedTasks.length - 1 && activeTasks.length === 0}
-            />
+            <div key={task.id} className={exitClass(task.id)}>
+              <TaskNode
+                task={task}
+                agentId={agentId}
+                missionId={missionId}
+                isLast={idx === completedTasks.length - 1 && activeTasks.length === 0}
+              />
+            </div>
           ))}
         </>
       )}
 
       {activeTasks.map((task, idx) => (
-        <TaskNode
-          key={task.id}
-          task={task}
-          agentId={agentId}
-          missionId={missionId}
-          isLast={idx === activeTasks.length - 1}
-        />
+        <div key={task.id} className={exitClass(task.id)}>
+          <TaskNode
+            task={task}
+            agentId={agentId}
+            missionId={missionId}
+            isLast={idx === activeTasks.length - 1}
+          />
+        </div>
       ))}
     </div>
   );
