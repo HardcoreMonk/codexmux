@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import Router from 'next/router';
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { toast } from 'sonner';
@@ -197,6 +198,11 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
         const currentContent = { root: current.root, activePaneId: current.activePaneId };
         const fetchedContent = { root: data.root, activePaneId: data.activePaneId };
         if (JSON.stringify(currentContent) === JSON.stringify(fetchedContent)) {
+          const pendingTabId = get().pendingFocusTabId;
+          if (pendingTabId) {
+            set({ pendingFocusTabId: null });
+            setTimeout(() => get().focusTab(pendingTabId), 0);
+          }
           return;
         }
       }
@@ -595,6 +601,14 @@ export const setOnFetchError = (fn: (() => void) | null): void => {
 
 export const navigateToTab = (workspaceId: string, tabId: string) => {
   const store = useLayoutStore.getState();
+
+  if (Router.pathname !== '/') {
+    useLayoutStore.setState({ pendingFocusTabId: tabId });
+    useWorkspaceStore.getState().switchWorkspace(workspaceId);
+    Router.push('/');
+    return;
+  }
+
   if (workspaceId === store.workspaceId) {
     store.focusTab(tabId);
   } else {

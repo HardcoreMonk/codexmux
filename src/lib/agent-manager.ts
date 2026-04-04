@@ -631,6 +631,8 @@ class AgentManager {
       '## Rules',
       '',
       '- ALWAYS relay your response via the Communication API. The user cannot see terminal output.',
+      '- 코드를 직접 수정하지 않는다. 모든 코드 변경은 반드시 탭을 생성하여 위임한다.',
+      '- 단순한 변경이라도 직접 수정하지 말고 탭에 위임한다. 에이전트의 역할은 조율과 오케스트레이션이다.',
       '- For long tasks, send periodic `report` messages so the user knows progress.',
       '- Use `question` when you need input — this blocks you until the user replies.',
       '- Always send `done` or `error` when a mission is finished.',
