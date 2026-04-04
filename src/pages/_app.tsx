@@ -43,7 +43,7 @@ const ElectronTitlebar = () => {
   if (!isElectron) return null;
   return (
     <div className="fixed top-0 left-0 right-0 z-50 flex h-titlebar items-center justify-end" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
-      <div className="mt-1 pr-3" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <div className="mt-1 mr-1 pr-3" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <SystemResources />
       </div>
     </div>
