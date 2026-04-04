@@ -79,9 +79,9 @@ const ContentHeader = ({
   const paneId = focusedPane?.id;
 
   return (
-    <div className="shrink-0 border-b border-border bg-background">
+    <div className="shrink-0 bg-background">
       <div className="h-titlebar" />
-      <div className="flex h-12 items-center justify-between px-3">
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-3">
       <div />
       <TooltipProvider>
         <div className="flex items-center gap-1">
