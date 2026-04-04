@@ -3,7 +3,6 @@ export type TAgentStatus = 'idle' | 'working' | 'blocked' | 'offline';
 export interface IAgentConfig {
   name: string;
   role: string;
-  projects: string[];
   autonomy: string;
   createdAt: string;
 }
@@ -12,7 +11,6 @@ export interface IAgentInfo {
   id: string;
   name: string;
   role: string;
-  projects: string[];
   status: TAgentStatus;
   createdAt: string;
   tmuxSession: string;
@@ -42,14 +40,12 @@ export interface IChatIndex {
 export interface ICreateAgentRequest {
   name: string;
   role: string;
-  projects: string[];
 }
 
 export interface ICreateAgentResponse {
   id: string;
   name: string;
   role: string;
-  projects: string[];
   status: TAgentStatus;
 }
 
@@ -58,7 +54,6 @@ export interface IAgentListResponse {
     id: string;
     name: string;
     role: string;
-    projects: string[];
     status: TAgentStatus;
   }>;
 }
@@ -67,7 +62,6 @@ export interface IAgentDetailResponse {
   id: string;
   name: string;
   role: string;
-  projects: string[];
   status: TAgentStatus;
   createdAt: string;
 }
@@ -75,7 +69,6 @@ export interface IAgentDetailResponse {
 export interface IUpdateAgentRequest {
   name?: string;
   role?: string;
-  projects?: string[];
 }
 
 export interface ISendMessageRequest {

@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { ArrowLeft, Settings } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { IAgentInfo, TAgentStatus } from '@/types/agent';
 
@@ -46,15 +46,24 @@ const ChatHeader = ({ agent, onSettingsClick }: IChatHeaderProps) => {
         <span className="text-xs text-muted-foreground">{status.label}</span>
       </div>
 
-      <Button
-        variant="ghost"
-        size="icon"
-        className="ml-auto"
-        onClick={onSettingsClick}
-        aria-label="에이전트 설정"
-      >
-        <Settings className="h-4 w-4 text-muted-foreground" />
-      </Button>
+      <div className="ml-auto flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.push(`/agents/${agent.id}/missions`)}
+          aria-label="미션 현황"
+        >
+          <ClipboardList className="h-4 w-4 text-muted-foreground" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onSettingsClick}
+          aria-label="에이전트 설정"
+        >
+          <Settings className="h-4 w-4 text-muted-foreground" />
+        </Button>
+      </div>
     </div>
   );
 };

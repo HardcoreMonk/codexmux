@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { ChevronRight } from 'lucide-react';
 import TaskNode from '@/components/features/agent/task-node';
 import type { ITask } from '@/types/mission';
@@ -13,80 +13,66 @@ interface ITaskTreeProps {
 const COLLAPSE_THRESHOLD = 20;
 const EXIT_DURATION = 300;
 
-interface IExitState {
-  prevTasks: ITask[];
-  mergedTasks: ITask[];
-  exitingIds: Set<string>;
-  pendingClearIds: Set<string>;
-}
-
 const EMPTY_SET = new Set<string>();
 
+interface IExitSnapshot {
+  order: string[];
+  removed: Map<string, ITask>;
+}
+
 const useExitAnimation = (tasks: ITask[]) => {
-  const [exitState, setExitState] = useState<IExitState>({
-    prevTasks: tasks,
-    mergedTasks: tasks,
-    exitingIds: EMPTY_SET,
-    pendingClearIds: EMPTY_SET,
-  });
-
-  if (tasks !== exitState.prevTasks) {
-    const prevMap = new Map(exitState.prevTasks.map((t) => [t.id, t]));
-    const currentIds = new Set(tasks.map((t) => t.id));
-    const removedTasks: ITask[] = [];
-
-    for (const [id, task] of prevMap) {
-      if (!currentIds.has(id)) removedTasks.push(task);
-    }
-
-    if (removedTasks.length > 0) {
-      const removedIds = new Set(removedTasks.map((t) => t.id));
-      const prevOrder = [...prevMap.keys()];
-      const merged: ITask[] = [];
-
-      for (const id of prevOrder) {
-        if (currentIds.has(id)) {
-          merged.push(tasks.find((t) => t.id === id)!);
-        } else if (removedIds.has(id)) {
-          merged.push(prevMap.get(id)!);
-        }
-      }
-      for (const t of tasks) {
-        if (!merged.some((m) => m.id === t.id)) merged.push(t);
-      }
-
-      setExitState({
-        prevTasks: tasks,
-        mergedTasks: merged,
-        exitingIds: removedIds,
-        pendingClearIds: removedIds,
-      });
-    } else {
-      setExitState({
-        prevTasks: tasks,
-        mergedTasks: tasks,
-        exitingIds: EMPTY_SET,
-        pendingClearIds: EMPTY_SET,
-      });
-    }
-  }
+  const prevTasksRef = useRef(tasks);
+  const [snapshot, setSnapshot] = useState<IExitSnapshot | null>(null);
 
   useEffect(() => {
-    if (exitState.pendingClearIds.size === 0) return;
+    const prev = prevTasksRef.current;
+    prevTasksRef.current = tasks;
 
-    const timer = setTimeout(() => {
-      setExitState((prev) => ({
-        ...prev,
-        mergedTasks: prev.mergedTasks.filter((t) => !prev.exitingIds.has(t.id)),
-        exitingIds: EMPTY_SET,
-        pendingClearIds: EMPTY_SET,
-      }));
-    }, EXIT_DURATION);
+    const currentIds = new Set(tasks.map((t) => t.id));
+    const removed = new Map<string, ITask>();
 
+    for (const t of prev) {
+      if (!currentIds.has(t.id)) removed.set(t.id, t);
+    }
+
+    if (removed.size === 0) {
+      setSnapshot((s) => (s === null ? s : null));
+      return;
+    }
+
+    setSnapshot({ order: prev.map((t) => t.id), removed });
+    const timer = setTimeout(() => setSnapshot(null), EXIT_DURATION);
     return () => clearTimeout(timer);
-  }, [exitState.pendingClearIds]);
+  }, [tasks]);
 
-  return { mergedTasks: exitState.mergedTasks, exitingIds: exitState.exitingIds };
+  const mergedTasks = useMemo(() => {
+    if (!snapshot) return tasks;
+
+    const taskMap = new Map(tasks.map((t) => [t.id, t]));
+    const merged: ITask[] = [];
+    const seen = new Set<string>();
+
+    for (const id of snapshot.order) {
+      if (taskMap.has(id)) {
+        merged.push(taskMap.get(id)!);
+        seen.add(id);
+      } else if (snapshot.removed.has(id)) {
+        merged.push(snapshot.removed.get(id)!);
+        seen.add(id);
+      }
+    }
+    for (const t of tasks) {
+      if (!seen.has(t.id)) merged.push(t);
+    }
+    return merged;
+  }, [tasks, snapshot]);
+
+  const exitingIds = useMemo(
+    () => (snapshot ? new Set(snapshot.removed.keys()) : EMPTY_SET),
+    [snapshot],
+  );
+
+  return { mergedTasks, exitingIds };
 };
 
 const TaskTree = ({ tasks, agentId, missionId, collapsible }: ITaskTreeProps) => {

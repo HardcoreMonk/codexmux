@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react';
 import { Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import {
   Dialog,
@@ -14,7 +13,6 @@ import {
 } from '@/components/ui/dialog';
 import { useShallow } from 'zustand/react/shallow';
 import useAgentStore, { selectAgentList } from '@/hooks/use-agent-store';
-import useWorkspaceStore from '@/hooks/use-workspace-store';
 
 interface IAgentCreateDialogProps {
   open: boolean;
@@ -27,18 +25,15 @@ const NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 const AgentCreateDialog = ({ open, onOpenChange, onCreated }: IAgentCreateDialogProps) => {
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
-  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [nameError, setNameError] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
-  const workspaces = useWorkspaceStore((s) => s.workspaces);
   const agents = useAgentStore(useShallow(selectAgentList));
   const createAgent = useAgentStore((s) => s.createAgent);
 
   const resetForm = () => {
     setName('');
     setRole('');
-    setSelectedProjects([]);
     setNameError('');
     setIsCreating(false);
   };
@@ -76,14 +71,6 @@ const AgentCreateDialog = ({ open, onOpenChange, onCreated }: IAgentCreateDialog
     if (name) validateName(name);
   };
 
-  const handleToggleProject = (projectPath: string) => {
-    setSelectedProjects((prev) =>
-      prev.includes(projectPath)
-        ? prev.filter((p) => p !== projectPath)
-        : [...prev, projectPath],
-    );
-  };
-
   const handleSubmit = async () => {
     if (!validateName(name)) return;
     setIsCreating(true);
@@ -93,7 +80,6 @@ const AgentCreateDialog = ({ open, onOpenChange, onCreated }: IAgentCreateDialog
     const agentId = await createAgent({
       name,
       role,
-      projects: selectedProjects,
     });
 
     if (agentId) {
@@ -140,26 +126,6 @@ const AgentCreateDialog = ({ open, onOpenChange, onCreated }: IAgentCreateDialog
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-sm font-medium">담당 프로젝트</Label>
-            {workspaces.length === 0 ? (
-              <p className="text-xs text-muted-foreground">등록된 워크스페이스가 없습니다</p>
-            ) : (
-              <div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border p-3">
-                {workspaces
-                  .filter((ws) => ws.directories.length > 0)
-                  .map((ws) => (
-                    <label key={ws.id} className="flex cursor-pointer items-center gap-2">
-                      <Checkbox
-                        checked={selectedProjects.includes(ws.directories[0])}
-                        onCheckedChange={() => handleToggleProject(ws.directories[0])}
-                      />
-                      <span className="text-sm">{ws.name}</span>
-                    </label>
-                  ))}
-              </div>
-            )}
-          </div>
         </div>
 
         <DialogFooter>

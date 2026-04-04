@@ -128,7 +128,7 @@ class AgentManager {
 
   // --- CRUD ---
 
-  async createAgent(name: string, role: string, projects: string[]): Promise<IAgentInfo> {
+  async createAgent(name: string, role: string): Promise<IAgentInfo> {
     for (const r of this.agents.values()) {
       if (r.info.name === name) {
         throw new Error('Agent name already exists');
@@ -142,7 +142,6 @@ class AgentManager {
     const config: IAgentConfig = {
       name,
       role,
-      projects,
       autonomy: 'conservative',
       createdAt: now,
     };
@@ -157,7 +156,6 @@ class AgentManager {
       id,
       name,
       role,
-      projects,
       status: 'offline',
       createdAt: now,
       tmuxSession,
@@ -250,7 +248,7 @@ class AgentManager {
     this.broadcast(event);
   }
 
-  async updateAgent(agentId: string, update: { name?: string; role?: string; projects?: string[] }): Promise<IAgentInfo | null> {
+  async updateAgent(agentId: string, update: { name?: string; role?: string }): Promise<IAgentInfo | null> {
     const runtime = this.agents.get(agentId);
     if (!runtime) return null;
 
@@ -264,13 +262,11 @@ class AgentManager {
 
     if (update.name) runtime.info.name = update.name;
     if (update.role) runtime.info.role = update.role;
-    if (update.projects) runtime.info.projects = update.projects;
 
     const config = await this.readConfig(agentId);
     if (config) {
       if (update.name) config.name = update.name;
       if (update.role) config.role = update.role;
-      if (update.projects) config.projects = update.projects;
       await this.writeConfig(agentId, config);
     }
 
@@ -378,51 +374,32 @@ class AgentManager {
 
   // --- Session lifecycle ---
 
-  private async buildWorkspaceMapping(projects: string[]): Promise<Array<{ projectPath: string; workspaceId: string }>> {
-    try {
-      const { getWorkspaces } = await import('@/lib/workspace-store');
-      const { workspaces } = await getWorkspaces();
-      const mapping: Array<{ projectPath: string; workspaceId: string }> = [];
-
-      for (const project of projects) {
-        const ws = workspaces.find((w) =>
-          w.directories.some((d) => d === project || project.startsWith(d + '/')),
-        );
-        if (ws) {
-          mapping.push({ projectPath: project, workspaceId: ws.id });
-        }
-      }
-
-      return mapping;
-    } catch {
-      return [];
-    }
-  }
-
   private async writeAgentClaudeMd(runtime: IAgentRuntime): Promise<void> {
     const port = process.env.PORT || '8022';
     const { info } = runtime;
-    const projectPaths = info.projects.length > 0
-      ? info.projects.map((p) => `- ${p}`).join('\n')
-      : '- (none)';
-
-    const wsMapping = await this.buildWorkspaceMapping(info.projects);
-    const wsMappingText = wsMapping.length > 0
-      ? wsMapping.map((m) => `- ${m.projectPath} → workspaceId: ${m.workspaceId}`).join('\n')
-      : '- (no workspace mappings found — ask user to create workspaces)';
 
     const content = [
       '# Agent Instructions',
       '',
-      `You are "${info.name}" — ${info.role}.`,
+      `You are "${info.name}" — ${info.role || 'general-purpose agent'}.`,
       '',
-      '## Projects',
+      '## Workspace Discovery',
       '',
-      'You are responsible for the following project directories:',
-      projectPaths,
+      'You do NOT have pre-assigned projects. Instead, discover available workspaces',
+      'by querying the API below. Use the conversation context to determine which',
+      'workspace is relevant for the current task.',
       '',
-      'Workspace mappings:',
-      wsMappingText,
+      '### List workspaces',
+      '',
+      '```bash',
+      `curl -s http://localhost:${port}/api/agent/workspaces`,
+      '```',
+      '',
+      'Response: `{ "workspaces": [{ "id": "ws-xxx", "name": "...", "directories": ["..."] }] }`',
+      '',
+      'Call this API at the start of every new task to know the current workspace state.',
+      'Match the user\'s request to the appropriate workspace by name or directory path.',
+      'If unclear which workspace to use, ask the user.',
       '',
       '## Tab Control API (localhost:' + port + ')',
       '',
@@ -719,8 +696,6 @@ class AgentManager {
       '---',
       `name: ${config.name}`,
       `role: ${config.role}`,
-      'projects:',
-      ...config.projects.map((p) => `  - ${p}`),
       `autonomy: ${config.autonomy}`,
       `createdAt: ${config.createdAt}`,
       '---',
@@ -735,28 +710,17 @@ class AgentManager {
 
     const frontmatter = match[1];
     const lines = frontmatter.split('\n');
-    const config: Partial<IAgentConfig> = { projects: [] };
+    const config: Partial<IAgentConfig> = {};
 
-    let inProjects = false;
     for (const line of lines) {
       if (line.startsWith('name: ')) {
         config.name = line.slice(6).trim();
-        inProjects = false;
       } else if (line.startsWith('role: ')) {
         config.role = line.slice(6).trim();
-        inProjects = false;
       } else if (line.startsWith('autonomy: ')) {
         config.autonomy = line.slice(10).trim();
-        inProjects = false;
       } else if (line.startsWith('createdAt: ')) {
         config.createdAt = line.slice(11).trim();
-        inProjects = false;
-      } else if (line.trim() === 'projects:') {
-        inProjects = true;
-      } else if (inProjects && line.trim().startsWith('- ')) {
-        config.projects!.push(line.trim().slice(2));
-      } else {
-        inProjects = false;
       }
     }
 
@@ -802,7 +766,6 @@ class AgentManager {
         id: entry,
         name: config.name,
         role: config.role,
-        projects: config.projects,
         status: 'offline',
         createdAt: config.createdAt,
         tmuxSession,
@@ -899,7 +862,7 @@ class AgentManager {
 
     const cwd = ws.directories[0];
     const tabName = taskTitle || 'Agent Task';
-    const newTab = await addTabToPane(workspaceId, targetPane.id, tabName, cwd);
+    const newTab = await addTabToPane(workspaceId, targetPane.id, tabName, cwd, 'claude-code');
     if (!newTab) throw new Error('Failed to create tab session');
 
     await new Promise((resolve) => setTimeout(resolve, 500));

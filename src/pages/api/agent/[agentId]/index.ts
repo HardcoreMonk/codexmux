@@ -17,7 +17,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       id: agent.id,
       name: agent.name,
       role: agent.role,
-      projects: agent.projects,
       status: agent.status,
       createdAt: agent.createdAt,
     });
@@ -34,7 +33,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         id: agent.id,
         name: agent.name,
         role: agent.role,
-        projects: agent.projects,
         status: agent.status,
         createdAt: agent.createdAt,
       });

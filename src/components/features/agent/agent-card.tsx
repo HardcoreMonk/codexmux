@@ -1,4 +1,4 @@
-import { Settings, Folder } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { IAgentInfo, TAgentStatus } from '@/types/agent';
 
@@ -59,16 +59,6 @@ const AgentCard = ({ agent, onClick, onSettingsClick, isFadingOut }: IAgentCardP
         <p className="mt-0.5 text-xs text-muted-foreground">{agent.role}</p>
       )}
 
-      {agent.projects.length > 0 && (
-        <div className="mt-3 space-y-1">
-          {agent.projects.map((project) => (
-            <div key={project} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Folder className="h-3 w-3 text-muted-foreground/60" />
-              <span>{project.split('/').pop() || project}</span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 };

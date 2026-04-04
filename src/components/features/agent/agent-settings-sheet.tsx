@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import {
   Sheet,
@@ -13,7 +12,6 @@ import {
 } from '@/components/ui/sheet';
 import { useShallow } from 'zustand/react/shallow';
 import useAgentStore, { selectAgentList } from '@/hooks/use-agent-store';
-import useWorkspaceStore from '@/hooks/use-workspace-store';
 import type { IAgentInfo } from '@/types/agent';
 
 interface IAgentSettingsSheetProps {
@@ -34,11 +32,9 @@ interface ISettingsFormProps {
 const SettingsForm = ({ agent, onClose, onDeleteClick }: ISettingsFormProps) => {
   const [name, setName] = useState(agent.name);
   const [role, setRole] = useState(agent.role);
-  const [selectedProjects, setSelectedProjects] = useState<string[]>([...agent.projects]);
   const [nameError, setNameError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const workspaces = useWorkspaceStore((s) => s.workspaces);
   const agents = useAgentStore(useShallow(selectAgentList));
   const updateAgent = useAgentStore((s) => s.updateAgent);
 
@@ -66,14 +62,6 @@ const SettingsForm = ({ agent, onClose, onDeleteClick }: ISettingsFormProps) => 
     [agents, agent.id],
   );
 
-  const handleToggleProject = (projectPath: string) => {
-    setSelectedProjects((prev) =>
-      prev.includes(projectPath)
-        ? prev.filter((p) => p !== projectPath)
-        : [...prev, projectPath],
-    );
-  };
-
   const handleSave = async () => {
     if (!validateName(name)) return;
     setIsSaving(true);
@@ -81,7 +69,6 @@ const SettingsForm = ({ agent, onClose, onDeleteClick }: ISettingsFormProps) => 
     const success = await updateAgent(agent.id, {
       name,
       role,
-      projects: selectedProjects,
     });
 
     setIsSaving(false);
@@ -124,26 +111,6 @@ const SettingsForm = ({ agent, onClose, onDeleteClick }: ISettingsFormProps) => 
           />
         </div>
 
-        <div className="space-y-1.5">
-          <Label className="text-sm font-medium">담당 프로젝트</Label>
-          {workspaces.length === 0 ? (
-            <p className="text-xs text-muted-foreground">등록된 워크스페이스가 없습니다</p>
-          ) : (
-            <div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border p-3">
-              {workspaces
-                .filter((ws) => ws.directories.length > 0)
-                .map((ws) => (
-                  <label key={ws.id} className="flex cursor-pointer items-center gap-2">
-                    <Checkbox
-                      checked={selectedProjects.includes(ws.directories[0])}
-                      onCheckedChange={() => handleToggleProject(ws.directories[0])}
-                    />
-                    <span className="text-sm">{ws.name}</span>
-                  </label>
-                ))}
-            </div>
-          )}
-        </div>
       </div>
 
       <div className="flex flex-col gap-3 border-t p-4">
