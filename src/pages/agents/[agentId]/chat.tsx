@@ -22,6 +22,7 @@ const AgentChatPage = () => {
   const agents = useAgentStore(useShallow(selectAgentList));
   const deleteAgent = useAgentStore((s) => s.deleteAgent);
   const fetchAgents = useAgentStore((s) => s.fetchAgents);
+  const markRead = useAgentStore((s) => s.markRead);
   const isStoreLoading = useAgentStore((s) => s.isLoading);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -53,8 +54,9 @@ const AgentChatPage = () => {
   useEffect(() => {
     if (agentId) {
       localStorage.setItem(LAST_AGENT_KEY, agentId);
+      markRead(agentId);
     }
-  }, [agentId]);
+  }, [agentId, markRead]);
 
   const handleSend = useCallback(
     (content: string) => {

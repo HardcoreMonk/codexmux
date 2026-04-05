@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto';
+import { randomBytes, timingSafeEqual } from 'crypto';
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import path from 'path';
 import type { NextApiRequest } from 'next';
@@ -34,5 +34,7 @@ export const getAgentToken = (): string => {
 export const verifyAgentToken = (req: NextApiRequest): boolean => {
   const value = req.headers['x-agent-token'];
   if (!value || typeof value !== 'string') return false;
-  return value === getAgentToken();
+  const expected = getAgentToken();
+  if (value.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(value), Buffer.from(expected));
 };

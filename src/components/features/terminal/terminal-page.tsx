@@ -1,5 +1,4 @@
 import { useCallback, useRef, useEffect } from 'react';
-import { useRouter } from 'next/router';
 import { Loader2, AlertTriangle, RefreshCw, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,6 @@ import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import type { ITabMetadata } from '@/hooks/use-tab-metadata-store';
 import PaneLayout from '@/components/features/terminal/pane-layout';
 import ContentHeader from '@/components/features/terminal/content-header';
-import AgentPanel from '@/components/features/agent/agent-panel';
 import useSidebarActions from '@/hooks/use-sidebar-actions';
 
 const TerminalPage = () => {
@@ -18,8 +16,6 @@ const TerminalPage = () => {
   const error = useWorkspaceStore((s) => s.error);
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
   const workspaceCount = useWorkspaceStore((s) => s.workspaces.length);
-  const router = useRouter();
-  const agentPanelOpen = router.query.panel === 'agent';
   const prevWorkspaceIdRef = useRef<string | null>(null);
   const equalizeRef = useRef<(() => void) | null>(null);
 
@@ -92,20 +88,14 @@ const TerminalPage = () => {
     (workspaceId: string) => {
       const { activeWorkspaceId } = useWorkspaceStore.getState();
 
-      if (agentPanelOpen) {
-        const { panel, agentId, ...rest } = router.query;
-        router.push({ pathname: router.pathname, query: rest }, undefined, { shallow: true });
-        if (workspaceId === activeWorkspaceId) return;
-      } else if (workspaceId === activeWorkspaceId) {
-        return;
-      }
+      if (workspaceId === activeWorkspaceId) return;
 
       prevWorkspaceIdRef.current = activeWorkspaceId;
       useTabMetadataStore.getState().reset();
       layout.clearLayout();
       useWorkspaceStore.getState().switchWorkspace(workspaceId);
     },
-    [layout, agentPanelOpen, router],
+    [layout],
   );
 
   useEffect(() => {
@@ -185,21 +175,17 @@ const TerminalPage = () => {
         )}
 
         {layout.layout && !layout.isLoading && (
-          agentPanelOpen ? (
-            <AgentPanel />
-          ) : (
-            <div
-              key={activeWorkspaceId}
-              className="h-full"
-            >
-              <PaneLayout
-                root={layout.layout.root}
-                onUpdateRatio={layout.updateRatio}
-                onEqualizeRatios={layout.equalizeRatios}
-                equalizeRef={equalizeRef}
-              />
-            </div>
-          )
+          <div
+            key={activeWorkspaceId}
+            className="h-full"
+          >
+            <PaneLayout
+              root={layout.layout.root}
+              onUpdateRatio={layout.updateRatio}
+              onEqualizeRatios={layout.equalizeRatios}
+              equalizeRef={equalizeRef}
+            />
+          </div>
         )}
 
         {!activeWorkspaceId && !isLoading && !error && (
