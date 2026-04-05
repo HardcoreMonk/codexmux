@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Loader2, Plus, WifiOff } from 'lucide-react';
+import { Plus, WifiOff } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { ITab, TDisconnectReason, TPanelType } from '@/types/terminal';
@@ -445,7 +446,7 @@ const MobileSurfaceView = ({
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3">
           <Button className="gap-1.5" onClick={onOpenNewTabDialog ?? handleCreateTab} disabled={isCreating}>
             {isCreating ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Spinner className="h-3 w-3" />
             ) : (
               <Plus className="h-3.5 w-3.5" />
             )}

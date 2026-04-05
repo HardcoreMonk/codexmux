@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ExternalLink, Loader2 } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -129,7 +130,7 @@ const ContentHeader = ({
               aria-label="수직 분할"
             >
               {isSplitting ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Spinner className="h-3 w-3" />
               ) : (
                 <SplitVerticalIcon className="h-3.5 w-3.5" />
               )}
@@ -150,7 +151,7 @@ const ContentHeader = ({
               aria-label="수평 분할"
             >
               {isSplitting ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Spinner className="h-3 w-3" />
               ) : (
                 <SplitHorizontalIcon className="h-3.5 w-3.5" />
               )}

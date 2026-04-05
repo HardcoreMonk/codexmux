@@ -1,5 +1,6 @@
 import { useState, memo } from 'react';
-import { MessageCircleQuestion, Check, Loader2 } from 'lucide-react';
+import { MessageCircleQuestion, Check } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { ITimelineAskUserQuestion } from '@/types/timeline';
@@ -85,7 +86,7 @@ const AskUserQuestionItem = ({ entry, sessionName }: IAskUserQuestionItemProps) 
                   )}
                 >
                   {isLocalPending ? (
-                    <Loader2 size={12} className="animate-spin" />
+                    <Spinner size={10} />
                   ) : isSelected ? (
                     <Check size={12} />
                   ) : (

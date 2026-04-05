@@ -512,6 +512,8 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
       }),
     }));
 
+    useTabStore.getState().setPanelType(tabId, panelType);
+
     const { workspaceId } = get();
     patchApi(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`, workspaceId), { panelType }).then((data) => {
       if (data) applyLayout(set, get, data);

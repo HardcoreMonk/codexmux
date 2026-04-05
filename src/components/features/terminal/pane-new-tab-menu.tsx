@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, Loader2, Terminal, Globe } from 'lucide-react';
+import { Plus, Terminal, Globe } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -42,7 +43,7 @@ const PaneNewTabMenu = ({ isCreating, onCreateTab }: IPaneNewTabMenuProps) => {
             }
           >
             {isCreating ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Spinner className="h-3 w-3" />
             ) : (
               <Plus className="h-3.5 w-3.5" />
             )}

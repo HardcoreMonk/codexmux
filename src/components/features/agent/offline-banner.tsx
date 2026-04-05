@@ -1,4 +1,5 @@
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 
 interface IOfflineBannerProps {
@@ -12,7 +13,7 @@ const OfflineBanner = ({ isRestarting, error, onRestart }: IOfflineBannerProps) 
     <div className="flex items-center gap-2">
       {isRestarting ? (
         <>
-          <Loader2 size={14} className="animate-spin text-muted-foreground" />
+          <Spinner size={12} className="text-muted-foreground" />
           <span className="text-sm text-muted-foreground">재시작 중...</span>
         </>
       ) : (

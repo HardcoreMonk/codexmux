@@ -58,6 +58,7 @@ interface ITabStore {
   dismissTab: (tabId: string) => void;
   setResuming: (tabId: string, resuming: boolean) => void;
   setWorkspaceId: (tabId: string, workspaceId: string) => void;
+  setPanelType: (tabId: string, panelType: TPanelType) => void;
   setCurrentProcess: (tabId: string, process: string | null) => void;
   setTabOrder: (workspaceId: string, tabIds: string[]) => void;
   setStatusWsConnected: (connected: boolean) => void;
@@ -160,6 +161,13 @@ const useTabStore = create<ITabStore>((set) => ({
       const prev = state.tabs[tabId];
       if (!prev || prev.workspaceId === workspaceId) return state;
       return { tabs: updateTab(state.tabs, tabId, { workspaceId }) };
+    }),
+
+  setPanelType: (tabId, panelType) =>
+    set((state) => {
+      const prev = state.tabs[tabId];
+      if (!prev || prev.panelType === panelType) return state;
+      return { tabs: updateTab(state.tabs, tabId, { panelType }) };
     }),
 
   setCurrentProcess: (tabId, process) =>

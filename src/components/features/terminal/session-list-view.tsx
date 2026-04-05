@@ -1,5 +1,6 @@
 import { useCallback, useRef } from 'react';
-import { Loader2, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import SessionListItem from '@/components/features/terminal/session-list-item';
@@ -124,7 +125,7 @@ const SessionListView = ({
           </TooltipProvider>
           {isLoadingMore && (
             <div className="flex items-center justify-center py-3">
-              <Loader2 size={16} className="animate-spin text-muted-foreground" />
+              <Spinner size={14} className="text-muted-foreground" />
             </div>
           )}
         </div>

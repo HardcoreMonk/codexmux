@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { Loader2 } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { toast } from 'sonner';
 import useTimeline from '@/hooks/use-timeline';
 import useSessionList from '@/hooks/use-session-list';
@@ -201,7 +201,7 @@ const MobileClaudeCodePanel = ({
   if (view === 'restarting') {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-muted">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <Spinner className="h-4 w-4 text-muted-foreground" />
         <span className="mt-2 text-sm text-muted-foreground">새 대화 만드는중...</span>
       </div>
     );
@@ -210,7 +210,7 @@ const MobileClaudeCodePanel = ({
   if (view === 'loading' || (view === 'inactive' && sessions.length === 0 && isSessionListLoading)) {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-muted">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <Spinner className="h-4 w-4 text-muted-foreground" />
       </div>
     );
   }

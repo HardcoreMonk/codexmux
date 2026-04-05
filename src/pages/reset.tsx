@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
-import { Loader2, Check, Circle } from 'lucide-react';
+import { Check, Circle } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 
 type TStepStatus = 'pending' | 'running' | 'done' | 'error';
 
@@ -18,7 +19,7 @@ const INITIAL_STEPS: IStep[] = [
 const StepIcon = ({ status }: { status: TStepStatus }) => {
   switch (status) {
     case 'running':
-      return <Loader2 className="h-4 w-4 animate-spin text-purple-400" />;
+      return <Spinner className="h-4 w-4 text-purple-400" />;
     case 'done':
       return <Check className="h-4 w-4 text-green-400" />;
     case 'error':

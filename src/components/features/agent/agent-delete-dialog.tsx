@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -70,7 +70,7 @@ const AgentDeleteDialog = ({ agentName, open, onOpenChange, onConfirm }: IAgentD
           >
             {isDeleting ? (
               <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Spinner className="h-3 w-3" />
                 삭제 중
               </>
             ) : (

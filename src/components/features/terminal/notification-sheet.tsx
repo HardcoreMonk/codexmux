@@ -1,5 +1,6 @@
 import { useMemo, useCallback } from 'react';
-import { Loader2, ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/ko';
@@ -117,7 +118,7 @@ const NotificationItem = ({
       {showActions ? (
         <span className="block h-2 w-2 rounded-full bg-ui-purple" />
       ) : (
-        <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+        <Spinner className="h-3 w-3 text-muted-foreground" />
       )}
     </span>
     <div className="min-w-0 flex-1">

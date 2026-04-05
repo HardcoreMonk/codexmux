@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Loader2, Check, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import {
   Dialog,
   DialogContent,
@@ -108,7 +109,7 @@ const CreateWorkspaceDialog = ({
           <div className="min-h-5">
             {isValidating && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <Spinner className="h-2.5 w-2.5" />
                 검증 중...
               </div>
             )}
@@ -139,7 +140,7 @@ const CreateWorkspaceDialog = ({
             onClick={handleSubmit}
             disabled={!validation?.valid || isSubmitting}
           >
-            {isSubmitting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+            {isSubmitting && <Spinner className="mr-1.5 h-3.5 w-3.5" />}
             추가
           </Button>
         </DialogFooter>

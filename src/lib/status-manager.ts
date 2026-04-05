@@ -273,6 +273,7 @@ class StatusManager {
         const existing = this.tabs.get(tab.id);
         const paneInfo = panesInfo.get(tab.sessionName);
 
+        const prevCliState = existing?.cliState;
         const newCliState = await this.detectTabCliState(tab.sessionName, paneInfo);
         const { terminalStatus, listeningPorts } = tab.panelType === 'claude-code'
           ? { terminalStatus: 'idle' as const, listeningPorts: [] as number[] }
@@ -299,9 +300,11 @@ class StatusManager {
 
         const processChanged = existing.currentProcess !== paneInfo?.command;
         const messageChanged = existing.lastUserMessage !== tab.lastUserMessage;
+        const panelTypeChanged = existing.panelType !== tab.panelType;
         existing.tabName = tab.name;
         existing.currentProcess = paneInfo?.command;
         existing.workspaceId = ws.id;
+        existing.panelType = tab.panelType;
         existing.claudeSummary = tab.claudeSummary;
         existing.lastUserMessage = tab.lastUserMessage;
 
@@ -314,20 +317,19 @@ class StatusManager {
           existing.listeningPorts = listeningPorts;
         }
 
-        // ready-for-review 보호: 폴링이 idle을 감지해도 ready-for-review 유지
-        const cliChanged = existing.cliState !== newCliState
-          && !(existing.cliState === 'ready-for-review' && newCliState === 'idle');
+        const cliModifiedDuringDetect = existing.cliState !== prevCliState;
+        const cliChanged = !cliModifiedDuringDetect
+          && prevCliState !== newCliState
+          && !(prevCliState === 'ready-for-review' && newCliState === 'idle');
 
         if (cliChanged) {
-          const prevState = existing.cliState;
-          // busy→idle 승격
-          const promoted = prevState === 'busy' && newCliState === 'idle';
+          const promoted = prevCliState === 'busy' && newCliState === 'idle';
           existing.cliState = promoted ? 'ready-for-review' : newCliState;
           existing.readyForReviewAt = promoted ? Date.now() : null;
-          existing.busySince = newCliState === 'busy' && prevState !== 'busy' ? Date.now() : (newCliState !== 'busy' ? null : existing.busySince);
+          existing.busySince = newCliState === 'busy' && prevCliState !== 'busy' ? Date.now() : (newCliState !== 'busy' ? null : existing.busySince);
         }
 
-        if (cliChanged || terminalChanged || processChanged || messageChanged) {
+        if (cliChanged || terminalChanged || processChanged || messageChanged || panelTypeChanged) {
           if (cliChanged) this.persistToLayout(existing);
           this.broadcastUpdate(tab.id, existing);
         }

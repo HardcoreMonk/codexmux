@@ -302,6 +302,23 @@ const Sidebar = () => {
         <div className="flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
           <AppLogo shimmer={hasBusy} />
           <div className="flex items-center gap-0.5">
+            {agentEnabled && (
+              <button
+                className={cn(
+                  'relative flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',
+                  isNavActive('/agents') ? 'text-foreground' : hasWorkingAgent ? 'text-ui-teal' : 'text-muted-foreground',
+                )}
+                onClick={() => router.push('/agents')}
+                aria-label="에이전트"
+              >
+                <Bot className={cn('h-3.5 w-3.5', hasWorkingAgent && !isNavActive('/agents') && 'animate-pulse')} />
+                {(unreadCount > 0 || blockedCount > 0) && (
+                  <span className={`absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[9px] font-medium leading-none text-white ${unreadCount > 0 ? 'bg-ui-teal' : 'bg-ui-amber'}`}>
+                    {unreadCount > 0 ? unreadCount : blockedCount}
+                  </span>
+                )}
+              </button>
+            )}
             <button
               className="relative flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
               onClick={() => setNotificationOpen(true)}
@@ -399,23 +416,6 @@ const Sidebar = () => {
 
           <div className="flex items-center justify-between px-2 pb-2">
             <div className="flex items-center gap-0.5">
-              {agentEnabled && (
-                <button
-                  className={cn(
-                    'relative flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',
-                    isNavActive('/agents') ? 'text-foreground' : hasWorkingAgent ? 'text-ui-teal' : 'text-muted-foreground',
-                  )}
-                  onClick={() => router.push('/agents')}
-                  aria-label="에이전트"
-                >
-                  <Bot className={cn('h-3.5 w-3.5', hasWorkingAgent && !isNavActive('/agents') && 'animate-pulse')} />
-                  {(unreadCount > 0 || blockedCount > 0) && (
-                    <span className={`absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[9px] font-medium leading-none text-white ${unreadCount > 0 ? 'bg-ui-teal' : 'bg-ui-amber'}`}>
-                      {unreadCount > 0 ? unreadCount : blockedCount}
-                    </span>
-                  )}
-                </button>
-              )}
               <button
                 className={cn(
                   'flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',

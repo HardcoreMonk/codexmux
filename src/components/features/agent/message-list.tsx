@@ -1,7 +1,8 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import dayjs from 'dayjs';
 import { useStickToBottom } from 'use-stick-to-bottom';
-import { AlertCircle, Bot, Loader2 } from 'lucide-react';
+import { AlertCircle, Bot } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import ChatBubble from '@/components/features/agent/chat-bubble';
 import ScrollToBottomButton from '@/components/features/timeline/scroll-to-bottom-button';
@@ -199,14 +200,14 @@ const MessageList = ({
             {hasMore && !isLoadingMoreLocal && !isLoadingMore && (
               <div className="flex justify-center py-2">
                 <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={triggerLoadMore}>
-                  <Loader2 size={12} className="mr-1" />
+                  <Spinner size={10} className="mr-1" />
                   이전 내용 더보기
                 </Button>
               </div>
             )}
             {(isLoadingMoreLocal || isLoadingMore) && (
               <div className="flex justify-center py-2">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <Spinner className="h-3 w-3 text-muted-foreground" />
               </div>
             )}
 
@@ -230,7 +231,7 @@ const MessageList = ({
 
             {agentStatus === 'working' && lastActivity && (
               <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
-                <Loader2 size={12} className="animate-spin text-ui-purple" />
+                <Spinner size={10} className="text-ui-purple" />
                 <span>{lastActivity}</span>
               </div>
             )}
@@ -241,7 +242,7 @@ const MessageList = ({
       {!isConnected && !connectionError && (
         <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
           <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground shadow-sm">
-            <Loader2 size={12} className="animate-spin" />
+            <Spinner size={10} />
             연결이 끊어졌습니다. 재연결 중...
           </div>
         </div>

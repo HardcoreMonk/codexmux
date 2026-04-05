@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Loader2, Terminal, Globe } from 'lucide-react';
+import { Terminal, Globe } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
 import {
   Dialog,
@@ -50,7 +51,7 @@ const MobileNewTabDialog = ({ open, onOpenChange, onCreateTab }: IMobileNewTabDi
               disabled={isCreating}
               onClick={() => handleSelect(item)}
             >
-              {isCreating ? <Loader2 className="h-5 w-5 animate-spin" /> : item.icon}
+              {isCreating ? <Spinner className="h-4 w-4" /> : item.icon}
               <span className="text-xs">{item.label}</span>
             </button>
           ))}

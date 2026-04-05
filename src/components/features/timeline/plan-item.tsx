@@ -1,5 +1,6 @@
 import { useState, useEffect, memo } from 'react';
-import { ClipboardList, Eye, TerminalSquare, Check, Loader2 } from 'lucide-react';
+import { ClipboardList, Eye, TerminalSquare, Check } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -139,7 +140,7 @@ const PlanItem = ({ entry, sessionName }: IPlanItemProps) => {
                       )}
                     >
                       {isSelected && !isApproved ? (
-                        <Loader2 size={12} className="animate-spin" />
+                        <Spinner size={10} />
                       ) : isSelected ? (
                         <Check size={12} />
                       ) : (

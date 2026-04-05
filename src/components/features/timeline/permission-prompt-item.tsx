@@ -1,5 +1,6 @@
 import { useState, useEffect, memo, useCallback } from 'react';
-import { ShieldCheck, Check, Loader2 } from 'lucide-react';
+import { ShieldCheck, Check } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -133,7 +134,7 @@ const PermissionPromptItem = ({ sessionName }: IPermissionPromptItemProps) => {
                   )}
                 >
                   {isLocalPending ? (
-                    <Loader2 size={12} className="animate-spin" />
+                    <Spinner size={10} />
                   ) : isSelected && resolved ? (
                     <Check size={12} />
                   ) : (

@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Loader2 } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import useTabStore, { selectTabDisplayStatus } from '@/hooks/use-tab-store';
 import type { TPanelType } from '@/types/terminal';
 
@@ -27,10 +27,7 @@ const TabStatusIndicator = ({ tabId, panelType }: ITabStatusIndicatorProps) => {
       }}
     >
       {status === 'busy' ? (
-        <Loader2
-          className="h-3 w-3 shrink-0 animate-spin text-muted-foreground"
-          aria-hidden="true"
-        />
+        <Spinner className="h-2.5 w-2.5 text-muted-foreground" />
       ) : status === 'ready-for-review' || status === 'needs-input' ? (
         <span
           className="h-2 w-2 shrink-0 rounded-full bg-ui-purple animate-pulse"

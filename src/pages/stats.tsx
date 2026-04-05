@@ -1,5 +1,6 @@
 import Head from 'next/head';
-import { BarChart3, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { BarChart3, AlertCircle, RefreshCw } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import useBrowserTitle from '@/hooks/use-browser-title';
 import { getPageShellWithTitlebarLayout } from '@/components/layout/page-shell';
@@ -70,7 +71,7 @@ const StatsPage = () => {
 
         {overviewLoading && fileCount > 0 && (
           <div className="mb-6 flex items-center gap-3 rounded-xl bg-card px-5 py-4 ring-1 ring-foreground/10">
-            <Loader2 className="h-4 w-4 animate-spin text-ui-purple" />
+            <Spinner className="h-3 w-3 text-ui-purple" />
             <div>
               <p className="text-sm font-medium">
                 {initializing ? '초기 데이터를 수집하고 있습니다' : '오늘 데이터를 수집하고 있습니다'}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import { Terminal, RefreshCw, Loader2, OctagonX, LogOut, ChevronsUp } from 'lucide-react';
+import { Terminal, RefreshCw, OctagonX, LogOut, ChevronsUp } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { useStickToBottom } from 'use-stick-to-bottom';
 import { Button } from '@/components/ui/button';
 import type {
@@ -158,7 +159,7 @@ const ErrorState = ({ error, onRetry }: { error: string; onRetry: () => void }) 
 const ReconnectBanner = () => (
   <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
     <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground shadow-sm">
-      <Loader2 size={12} className="animate-spin" />
+      <Spinner size={10} />
       연결이 끊어졌습니다. 재연결 중...
     </div>
   </div>
@@ -349,7 +350,7 @@ const TimelineView = ({
           ))}
           {cliState === 'busy' && (
             <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
-              <Loader2 size={12} className="animate-spin text-ui-purple" />
+              <Spinner size={10} className="text-ui-purple" />
               <ElapsedTime since={entries[entries.length - 1].timestamp} />
             </div>
           )}

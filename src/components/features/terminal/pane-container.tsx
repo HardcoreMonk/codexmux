@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react';
 import { useRouter } from 'next/router';
 import { Group, Panel, Separator, type GroupImperativeHandle } from 'react-resizable-panels';
-import { ChevronDown, ChevronUp, Loader2, Plus, TerminalSquare } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, TerminalSquare } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { ITab, TPanelType } from '@/types/terminal';
@@ -840,7 +841,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3">
             <Button className="gap-1.5" onClick={() => handleCreateTab()} disabled={isCreating}>
               {isCreating ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Spinner className="h-3 w-3" />
               ) : (
                 <Plus className="h-3.5 w-3.5" />
               )}
@@ -851,7 +852,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
 
         {closingTabId && (
           <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-background/80 animate-delayed-fade-in">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <Spinner className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">프로세스 정리 중...</span>
           </div>
         )}

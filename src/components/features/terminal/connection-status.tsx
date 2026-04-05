@@ -1,4 +1,5 @@
-import { Loader2, WifiOff, RefreshCw } from 'lucide-react';
+import { WifiOff, RefreshCw } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { TConnectionStatus, TDisconnectReason } from '@/types/terminal';
@@ -27,14 +28,14 @@ const ConnectionStatus = ({
     >
       {status === 'connecting' && (
         <>
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <Spinner className="h-3 w-3 text-muted-foreground" />
           <span className="text-muted-foreground">연결 중...</span>
         </>
       )}
 
       {status === 'reconnecting' && (
         <>
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <Spinner className="h-3 w-3 text-muted-foreground" />
           <span className="text-muted-foreground">
             재연결 중... ({retryCount}/{5})
           </span>

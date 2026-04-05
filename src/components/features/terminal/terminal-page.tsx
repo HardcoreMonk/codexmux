@@ -1,5 +1,6 @@
 import { useCallback, useRef, useEffect } from 'react';
-import { Loader2, AlertTriangle, RefreshCw, Plus } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Plus } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import useLayout, { collectPanes } from '@/hooks/use-layout';
@@ -118,7 +119,7 @@ const TerminalPage = () => {
         </div>
         <div className="flex flex-1 items-center justify-center">
           <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <Spinner className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">연결 중...</span>
           </div>
         </div>
@@ -159,7 +160,7 @@ const TerminalPage = () => {
       <div className="relative min-h-0 flex-1">
         {showSwitching && (
           <div className="absolute inset-0 z-30 flex items-center justify-center bg-background animate-delayed-fade-in">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <Spinner className="h-4 w-4 text-muted-foreground" />
           </div>
         )}
 

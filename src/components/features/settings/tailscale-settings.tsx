@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import { Check, Copy, ExternalLink, Info, Loader2, Plus, RefreshCw, Trash2, AlertTriangle } from 'lucide-react';
+import { Check, Copy, ExternalLink, Info, Plus, RefreshCw, Trash2, AlertTriangle } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -155,7 +156,7 @@ const TailscaleSettings = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <Spinner className="h-4 w-4 text-muted-foreground" />
       </div>
     );
   }
@@ -284,7 +285,7 @@ const TailscaleSettings = () => {
                           onClick={() => handleRemove(entry.httpsPort)}
                         >
                           {actionLoading === `remove-${entry.httpsPort}` ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            <Spinner className="h-3 w-3" />
                           ) : (
                             <Trash2 className="h-3.5 w-3.5" />
                           )}
@@ -333,7 +334,7 @@ const TailscaleSettings = () => {
             onClick={handleCustomAdd}
           >
             {actionLoading?.startsWith('add-') ? (
-              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              <Spinner className="mr-1.5 h-3 w-3" />
             ) : (
               <Plus className="mr-1.5 h-3.5 w-3.5" />
             )}

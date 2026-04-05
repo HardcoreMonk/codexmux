@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Loader2, AlertTriangle, RefreshCw, Monitor, Plus } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Monitor, Plus } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import useLayout, { collectPanes, useLayoutStore } from '@/hooks/use-layout';
@@ -267,7 +268,7 @@ const MobileTerminalPage = () => {
   if (isLoading) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <Spinner className="h-4 w-4 text-muted-foreground" />
         <span className="mt-3 text-sm text-muted-foreground">연결 중...</span>
       </div>
     );
@@ -315,7 +316,7 @@ const MobileTerminalPage = () => {
   if (!layout.layout || layout.isLoading) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <Spinner className="h-4 w-4 text-muted-foreground" />
       </div>
     );
   }

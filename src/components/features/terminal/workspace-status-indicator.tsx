@@ -1,5 +1,6 @@
 import { memo, useMemo } from 'react';
 import { Globe } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import useTabStore, { selectTabDisplayStatus } from '@/hooks/use-tab-store';
 import { getProcessIcon } from '@/lib/process-icon';
 import type { TTabDisplayStatus, TTerminalStatus } from '@/types/status';
@@ -23,12 +24,7 @@ const DotByStatus = ({ status, panelType, terminalStatus, process }: { status: T
 
   if (panelType === 'claude-code') {
     if (status === 'busy') {
-      inner = (
-        <span className="relative flex h-2 w-2" aria-hidden="true">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ui-purple/40" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-ui-purple" />
-        </span>
-      );
+      inner = <Spinner className="h-2 w-2 text-muted-foreground" />;
     } else if (status === 'ready-for-review' || status === 'needs-input') {
       inner = <span className="h-2 w-2 rounded-full bg-ui-purple animate-pulse" aria-hidden="true" />;
     } else {

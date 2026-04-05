@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -165,7 +166,7 @@ const SettingsForm = ({ agent, onClose, onDeleteClick }: ISettingsFormProps) => 
           <p className="text-xs text-muted-foreground">에이전트의 성격, 행동 방식, 커뮤니케이션 스타일을 정의합니다</p>
           {isLoadingSoul ? (
             <div className="flex h-32 items-center justify-center rounded-md border">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <Spinner className="h-3 w-3 text-muted-foreground" />
             </div>
           ) : (
             <textarea
@@ -197,7 +198,7 @@ const SettingsForm = ({ agent, onClose, onDeleteClick }: ISettingsFormProps) => 
           <Button onClick={handleSave} disabled={!canSave}>
             {isSaving ? (
               <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Spinner className="h-3 w-3" />
                 저장 중
               </>
             ) : (

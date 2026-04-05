@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef, useEffect, memo } from 'react';
 import dayjs from 'dayjs';
 import ReactMarkdown from 'react-markdown';
-import { Loader2, Sparkles, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
+import { Sparkles, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -176,7 +177,7 @@ const DailyReportSection = ({ days, cache, onCacheUpdate, batchActions, onBatchR
 
               {!report && isGenerating && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <Spinner className="h-2.5 w-2.5" />
                   <span>요약 생성 중...</span>
                 </div>
               )}
