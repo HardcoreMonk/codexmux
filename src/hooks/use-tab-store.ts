@@ -191,9 +191,9 @@ const useTabStore = create<ITabStore>((set) => ({
   // 서버 경로: 서버가 authority, 직접 patch (promotion/guard 없음)
   syncAllFromServer: (serverTabs) =>
     set((state) => {
-      const next = { ...state.tabs };
+      const next: Record<string, ITabState> = {};
       for (const [tabId, entry] of Object.entries(serverTabs)) {
-        const existing = next[tabId];
+        const existing = state.tabs[tabId];
         if (existing) {
           const processPatch = shouldAcceptServerProcess(existing, entry.currentProcess)
             ? { currentProcess: entry.currentProcess }
