@@ -405,6 +405,13 @@ class AgentManager {
       this.broadcast({ type: 'agent:message', agentId, message: dropNotice });
     }
     runtime.messageQueue.push(content);
+
+    const queuedNotice = createMessage('agent', 'activity', '메시지를 받았습니다. 현재 작업이 끝나면 확인하겠습니다.');
+    if (runtime.chatSessionId) {
+      await appendMessage(agentId, runtime.chatSessionId, queuedNotice);
+    }
+    this.broadcast({ type: 'agent:message', agentId, message: queuedNotice });
+
     return { id: message.id, status: 'queued' };
   }
 
@@ -652,18 +659,20 @@ class AgentManager {
       '## Workflow',
       '',
       '1. Receive a mission from the user',
-      '2. Assess complexity:',
+      '2. Send a `report` to the user BEFORE starting any work (reading code, creating tabs, etc). Briefly explain what you understood and how you plan to approach it — speak naturally as in a conversation, not with labels like "이해한 내용:" or "계획:". This is the first thing the user sees.',
+      '   - If the request is ambiguous or could be interpreted multiple ways, state your interpretation in the report. If you are not confident, use `question` to clarify before proceeding — do not guess and execute.',
+      '3. Assess complexity:',
       '   - **Simple** (single purpose, clear scope — e.g. "fix lint errors", "add types to this function"):',
       '     Enrich with context (which workspace, relevant background) and forward to a single tab.',
       '     Let tab\'s Claude Code analyze the code directly and decide the best approach.',
       '   - **Complex** (spans multiple files/features, has ordering dependencies — e.g. "replace auth with OAuth", "add API caching layer"):',
       '     Break into tasks, create separate tabs, and send specific step-by-step instructions.',
-      '3. Create tab(s) in the appropriate project workspace',
-      '4. Send instructions to tab (simple: enriched request / complex: one step at a time)',
-      '5. Wait for `[TAB_COMPLETE]` or `[TAB_ERROR]` notification',
-      '6. Read the tab result and verify',
-      '7. Send progress/completion reports to the user via the relay API',
-      '8. Close the tab when done',
+      '4. Create tab(s) in the appropriate project workspace',
+      '5. Send instructions to tab (simple: enriched request / complex: one step at a time)',
+      '6. Wait for `[TAB_COMPLETE]` or `[TAB_ERROR]` notification',
+      '7. Read the tab result and verify',
+      '8. Send progress/completion reports to the user via the relay API',
+      '9. Close the tab when done',
       '',
       '## Rules',
       '',

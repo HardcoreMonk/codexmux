@@ -23,6 +23,7 @@ const AgentChatPage = () => {
   const deleteAgent = useAgentStore((s) => s.deleteAgent);
   const fetchAgents = useAgentStore((s) => s.fetchAgents);
   const markRead = useAgentStore((s) => s.markRead);
+  const hasUnread = useAgentStore((s) => (agentId ? s.unreadAgentIds.has(agentId) : false));
   const isStoreLoading = useAgentStore((s) => s.isLoading);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -57,6 +58,12 @@ const AgentChatPage = () => {
       markRead(agentId);
     }
   }, [agentId, markRead]);
+
+  useEffect(() => {
+    if (agentId && hasUnread) {
+      markRead(agentId);
+    }
+  }, [agentId, hasUnread, markRead]);
 
   const handleSend = useCallback(
     (content: string) => {

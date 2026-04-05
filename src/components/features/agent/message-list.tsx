@@ -128,6 +128,22 @@ const MessageList = ({
     }
   }, [skipAnimation, messages.length, scrollToBottom]);
 
+  // 입력창 높이 변화로 스크롤 컨테이너 뷰포트가 줄어들 때 바닥 유지
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let prevHeight = el.clientHeight;
+    const ro = new ResizeObserver(() => {
+      const h = el.clientHeight;
+      if (h < prevHeight && isAtBottom) {
+        scrollToBottom('instant');
+      }
+      prevHeight = h;
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [scrollRef, isAtBottom, scrollToBottom]);
+
   useEffect(() => {
     if (!scrollToBottomRef) return;
     scrollToBottomRef.current = () => {
