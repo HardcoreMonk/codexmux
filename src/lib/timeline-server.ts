@@ -85,7 +85,7 @@ const sendJson = (ws: WebSocket, msg: TTimelineServerMessage) => {
   }
 };
 
-const sendEmptyInit = (ws: WebSocket, sessionId = '') => {
+const sendEmptyInit = (ws: WebSocket, sessionId = '', isClaudeStarting = false) => {
   sendJson(ws, {
     type: 'timeline:init',
     entries: [],
@@ -93,6 +93,7 @@ const sendEmptyInit = (ws: WebSocket, sessionId = '') => {
     totalEntries: 0,
     startByteOffset: 0,
     hasMore: false,
+    ...(isClaudeStarting && { isClaudeStarting: true }),
   });
 };
 
@@ -870,11 +871,11 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
           newSessionId: recheckInfo.sessionId,
           reason: 'session-waiting',
         });
-        sendEmptyInit(ws, recheckInfo.sessionId);
+        sendEmptyInit(ws, recheckInfo.sessionId, true);
         watchForJsonlFile(sessionName, recheckInfo.sessionId, recheckInfo.cwd);
       }
     } else {
-      sendEmptyInit(ws);
+      sendEmptyInit(ws, '', true);
     }
   }
 };

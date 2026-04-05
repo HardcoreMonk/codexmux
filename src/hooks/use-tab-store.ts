@@ -252,7 +252,7 @@ export const selectSessionView = (tabs: Record<string, ITabState>, tabId: string
   if (tab.isRestarting) return 'restarting';
   if (tab.claudeStatus === 'not-installed') return 'not-installed';
 
-  if (tab.claudeStatus === 'starting') return 'loading';
+  if (tab.claudeStatus === 'unknown' || tab.claudeStatus === 'starting') return 'loading';
 
   if (tab.claudeStatus === 'running') {
     return tab.isTimelineLoading ? 'loading' : 'timeline';

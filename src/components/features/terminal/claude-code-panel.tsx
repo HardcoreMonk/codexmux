@@ -33,6 +33,7 @@ const ClaudeCodePanel = ({
   scrollToBottomRef,
 }: IClaudeCodePanelProps) => {
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(null);
+  const [startingLong, setStartingLong] = useState(false);
 
   const claudeStatus = useTabStore((s) => s.tabs[tabId]?.claudeStatus ?? 'unknown');
   const isRestarting = useTabStore((s) => s.tabs[tabId]?.isRestarting ?? false);
@@ -146,6 +147,15 @@ const ClaudeCodePanel = ({
     ? 'inactive' as const
     : cliState;
 
+  useEffect(() => {
+    if (claudeStatus !== 'starting') {
+      setStartingLong(false);
+      return;
+    }
+    const timer = setTimeout(() => setStartingLong(true), 5000);
+    return () => clearTimeout(timer);
+  }, [claudeStatus]);
+
   const handleSelectSession = useCallback(
     (sid: string) => {
       if (resumingSessionId) return;
@@ -168,6 +178,14 @@ const ClaudeCodePanel = ({
     return (
       <div className={cn('flex h-full w-full flex-col items-center justify-center animate-delayed-fade-in', className)}>
         <Spinner className="h-4 w-4 text-muted-foreground" />
+        {startingLong && (
+          <button
+            className="mt-3 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            onClick={onClose}
+          >
+            터미널을 확인하세요
+          </button>
+        )}
       </div>
     );
   }

@@ -116,7 +116,7 @@ const useTimeline = ({
 
   const isLoading = !wsInitReceived;
 
-  const handleInit = useCallback((newEntries: ITimelineEntry[], _totalEntries: number, initSessionId: string, summary?: string, meta?: IInitMeta, startByteOffset?: number, hasMoreInit?: boolean, jsonlPath?: string | null) => {
+  const handleInit = useCallback((newEntries: ITimelineEntry[], _totalEntries: number, initSessionId: string, summary?: string, meta?: IInitMeta, startByteOffset?: number, hasMoreInit?: boolean, jsonlPath?: string | null, isClaudeStarting?: boolean) => {
     setWsInitReceived(true);
     setEntries(newEntries);
     startByteOffsetRef.current = startByteOffset ?? 0;
@@ -129,7 +129,7 @@ const useTimeline = ({
     if (initSessionId) {
       setSessionId(initSessionId);
       setClaudeSession('running');
-    } else {
+    } else if (!isClaudeStarting) {
       setClaudeSession('not-running');
     }
     setError(null);
@@ -174,8 +174,12 @@ const useTimeline = ({
       return;
     }
     if (reason === 'session-waiting') {
-      setClaudeSession('running');
-      if (newSessionId) setSessionId(newSessionId);
+      if (newSessionId) {
+        setClaudeSession('running');
+        setSessionId(newSessionId);
+      } else {
+        setClaudeSession('starting');
+      }
       return;
     }
     setSessionId(newSessionId || null);

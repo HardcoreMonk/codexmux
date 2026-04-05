@@ -58,6 +58,7 @@ const MobileClaudeCodePanel = ({
 }: IMobileClaudeCodePanelProps) => {
   const { prompts: quickPrompts } = useQuickPrompts();
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(null);
+  const [startingLong, setStartingLong] = useState(false);
   const [metaSheetOpen, setMetaSheetOpen] = useState(false);
   const scrollToBottomRef = useRef<(() => void) | undefined>(undefined);
 
@@ -176,6 +177,15 @@ const MobileClaudeCodePanel = ({
   const isInputVisible = view === 'timeline';
 
   useEffect(() => {
+    if (effectiveClaudeStatus !== 'starting') {
+      setStartingLong(false);
+      return;
+    }
+    const timer = setTimeout(() => setStartingLong(true), 5000);
+    return () => clearTimeout(timer);
+  }, [effectiveClaudeStatus]);
+
+  useEffect(() => {
     onCliStateChange(cliState);
   }, [cliState, onCliStateChange]);
 
@@ -214,6 +224,9 @@ const MobileClaudeCodePanel = ({
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-muted">
         <Spinner className="h-4 w-4 text-muted-foreground" />
+        {startingLong && (
+          <span className="mt-3 text-xs text-muted-foreground">터미널을 확인하세요</span>
+        )}
       </div>
     );
   }

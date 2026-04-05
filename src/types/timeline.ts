@@ -240,6 +240,7 @@ export interface ITimelineInitMessage {
   jsonlPath?: string | null;
   summary?: string;
   meta?: IInitMeta;
+  isClaudeStarting?: boolean;
 }
 
 export interface ITimelineAppendMessage {
