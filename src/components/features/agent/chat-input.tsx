@@ -57,7 +57,8 @@ const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps)
   const [isFocused, setIsFocused] = useState(false);
   const isMobileDevice = useIsMobileDevice();
 
-  const isDisabled = agentStatus === 'offline' || isSending;
+  const isInputDisabled = agentStatus === 'offline';
+  const isSendDisabled = agentStatus === 'offline' || isSending;
   const hasValue = value.trim().length > 0;
   const maxRows = isMobileDevice ? MOBILE_MAX_ROWS : DESKTOP_MAX_ROWS;
 
@@ -89,7 +90,7 @@ const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps)
 
   const handleSubmit = useCallback(() => {
     const trimmed = value.trim();
-    if (!trimmed || isDisabled) return;
+    if (!trimmed || isSendDisabled) return;
 
     if (debounceRef.current) return;
     debounceRef.current = setTimeout(() => {
@@ -105,7 +106,7 @@ const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps)
     } else {
       textareaRef.current?.focus();
     }
-  }, [value, isDisabled, onSend, agentId, isMobileDevice]);
+  }, [value, isSendDisabled, onSend, agentId, isMobileDevice]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
@@ -122,10 +123,10 @@ const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps)
       <div
         className={cn(
           'relative flex items-end gap-2 rounded-lg border px-3 py-2 transition-colors duration-150',
-          isFocused && !isDisabled
+          isFocused && !isInputDisabled
             ? 'border-ring bg-background'
             : 'border-border bg-black/5 dark:bg-white/5',
-          isDisabled && 'opacity-50',
+          isInputDisabled && 'opacity-50',
         )}
         onFocusCapture={() => setIsFocused(true)}
         onBlurCapture={() => setIsFocused(false)}
@@ -136,11 +137,11 @@ const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps)
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          disabled={isDisabled}
+          disabled={isInputDisabled}
           aria-label="메시지 입력"
           className={cn(
             'flex-1 resize-none bg-transparent py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground',
-            isDisabled && 'cursor-not-allowed opacity-70',
+            isInputDisabled && 'cursor-not-allowed opacity-70',
           )}
           rows={1}
           style={{
@@ -155,11 +156,11 @@ const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps)
           size="sm"
           className={cn(
             'h-7 w-7 shrink-0 p-0 text-muted-foreground hover:text-foreground',
-            hasValue && !isDisabled && 'text-ui-purple',
-            isDisabled && 'opacity-30',
+            hasValue && !isSendDisabled && 'text-ui-purple',
+            isSendDisabled && 'opacity-30',
           )}
           onClick={handleSubmit}
-          disabled={isDisabled}
+          disabled={isSendDisabled}
           aria-label="메시지 전송"
         >
           <SendHorizontal size={16} />
