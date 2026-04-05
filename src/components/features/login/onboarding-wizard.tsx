@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Lock, Terminal, Bot, Sun, Moon, Monitor } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, Eye, EyeOff, Lock, Loader2, RefreshCcw, Terminal, Bot, Sun, Moon, Monitor, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,12 +11,26 @@ import { TERMINAL_THEMES, DEFAULT_THEME_IDS } from '@/lib/terminal-themes';
 import type { ITerminalThemeColors } from '@/lib/terminal-themes';
 import AppLogo from '@/components/layout/app-logo';
 
-type TStep = 'password' | 'appearance' | 'theme' | 'claude' | 'complete';
+
+interface IToolStatus {
+  installed: boolean;
+  version: string | null;
+}
+
+interface IPreflightResult {
+  tmux: IToolStatus & { compatible: boolean };
+  git: IToolStatus;
+  claude: IToolStatus;
+  brew: IToolStatus;
+}
+
+type TStep = 'preflight' | 'password' | 'appearance' | 'theme' | 'claude' | 'complete';
 type TAppTheme = 'dark' | 'light' | 'system';
 
-const STEPS: TStep[] = ['password', 'appearance', 'theme', 'claude', 'complete'];
+const STEPS: TStep[] = ['preflight', 'password', 'appearance', 'theme', 'claude', 'complete'];
 
 const STEP_INFO: Record<TStep, { icon: React.ReactNode; title: string }> = {
+  preflight: { icon: <Terminal className="h-5 w-5" />, title: '환경 확인' },
   password: { icon: <Lock className="h-5 w-5" />, title: '비밀번호 설정' },
   appearance: { icon: <Sun className="h-5 w-5" />, title: '화면 테마' },
   theme: { icon: <Terminal className="h-5 w-5" />, title: '터미널 테마' },
@@ -98,7 +112,7 @@ interface IOnboardingWizardProps {
 
 const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
   const { theme: currentTheme, setTheme: setNextTheme } = useTheme();
-  const [step, setStep] = useState<TStep>('password');
+  const [step, setStep] = useState<TStep>('preflight');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -108,6 +122,28 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
   const [skipPermissions, setSkipPermissions] = useState(true);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [preflightStatus, setPreflightStatus] = useState<IPreflightResult | null>(null);
+  const [preflightChecking, setPreflightChecking] = useState(true);
+
+  const runPreflightCheck = async () => {
+    setPreflightChecking(true);
+    try {
+      const res = await fetch('/api/auth/preflight');
+      const data: IPreflightResult = await res.json();
+      setPreflightStatus(data);
+      if (data.tmux.installed && data.tmux.compatible) {
+        setStep('password');
+      }
+    } catch {
+      // 체크 실패 시 수동 진행 허용
+    } finally {
+      setPreflightChecking(false);
+    }
+  };
+
+  useEffect(() => {
+    runPreflightCheck();
+  }, []);
 
   const stepIndex = STEPS.indexOf(step);
   const info = STEP_INFO[step];
@@ -183,6 +219,71 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
         {info.icon}
         <span className="font-medium text-foreground">{info.title}</span>
       </div>
+
+      {step === 'preflight' && (
+        <div className="flex flex-col gap-4">
+          {preflightChecking ? (
+            <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm">환경을 확인하는 중...</span>
+            </div>
+          ) : preflightStatus && !(preflightStatus.tmux.installed && preflightStatus.tmux.compatible) ? (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-2 text-amber-400">
+                <AlertTriangle className="h-5 w-5 shrink-0" />
+                <p className="text-sm font-medium">필수 도구가 누락되었습니다</p>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 text-sm">
+                  {preflightStatus.tmux.installed && preflightStatus.tmux.compatible ? (
+                    <Check className="h-4 w-4 shrink-0 text-green-400" />
+                  ) : (
+                    <X className="h-4 w-4 shrink-0 text-red-400" />
+                  )}
+                  <span className={preflightStatus.tmux.installed && preflightStatus.tmux.compatible ? 'text-muted-foreground' : 'text-foreground font-medium'}>
+                    tmux
+                  </span>
+                  {preflightStatus.tmux.version && (
+                    <span className="text-xs text-muted-foreground">({preflightStatus.tmux.version})</span>
+                  )}
+                </div>
+              </div>
+              <div className="rounded-md bg-muted p-3 font-mono text-xs leading-relaxed">
+                {!preflightStatus.brew.installed ? (
+                  <>
+                    <p className="text-muted-foreground/60"># Homebrew 설치</p>
+                    <p>/bin/bash -c &quot;$(curl -fsSL</p>
+                    <p className="pl-2">https://raw.githubusercontent.com/</p>
+                    <p className="pl-2">Homebrew/install/HEAD/install.sh)&quot;</p>
+                    <p className="mt-2 text-muted-foreground/60"># tmux 설치</p>
+                    <p>brew install tmux</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-muted-foreground/60">
+                      # {preflightStatus.tmux.installed && !preflightStatus.tmux.compatible ? 'tmux 업그레이드' : 'tmux 설치'}
+                    </p>
+                    <p>
+                      {preflightStatus.tmux.installed && !preflightStatus.tmux.compatible
+                        ? 'brew upgrade tmux'
+                        : 'brew install tmux'}
+                    </p>
+                  </>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-12 w-full"
+                onClick={() => window.location.reload()}
+              >
+                <RefreshCcw className="mr-1 h-4 w-4" />
+                새로고침
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {step === 'password' && (
         <div className="flex flex-col gap-4">

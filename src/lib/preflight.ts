@@ -5,7 +5,7 @@ import { promisify } from 'util';
 const execFile = promisify(execFileCb);
 const CMD_TIMEOUT = 5000;
 
-const getShellPath = (): string => {
+const resolveShellPath = (): string => {
   const shell = os.userInfo().shell || process.env.SHELL || '/bin/zsh';
   try {
     const stdout = execFileSync(shell, ['-ilc', 'echo -n "$PATH"'], {
@@ -18,7 +18,7 @@ const getShellPath = (): string => {
   }
 };
 
-export const shellPath = getShellPath();
+export let shellPath = resolveShellPath();
 const MIN_TMUX_VERSION = 2.9;
 
 interface IToolStatus {
@@ -30,6 +30,7 @@ interface IPreflightResult {
   tmux: IToolStatus & { compatible: boolean };
   git: IToolStatus;
   claude: IToolStatus;
+  brew: IToolStatus;
 }
 
 const checkTool = async (
@@ -49,10 +50,12 @@ const parseSemanticVersion = (stdout: string): string | null =>
   stdout.trim().match(/(\d+\.\d+[\d.]*)/)?.[1] ?? null;
 
 export const getPreflightStatus = async (): Promise<IPreflightResult> => {
-  const [tmux, git, claude] = await Promise.all([
+  shellPath = resolveShellPath();
+  const [tmux, git, claude, brew] = await Promise.all([
     checkTool('tmux', ['-V'], parseSemanticVersion),
     checkTool('git', ['--version'], parseSemanticVersion),
     checkTool('claude', ['--version'], parseSemanticVersion),
+    checkTool('brew', ['--version'], parseSemanticVersion),
   ]);
 
   return {
@@ -62,5 +65,6 @@ export const getPreflightStatus = async (): Promise<IPreflightResult> => {
     },
     git,
     claude,
+    brew,
   };
 };

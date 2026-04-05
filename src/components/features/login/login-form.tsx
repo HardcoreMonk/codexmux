@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, Check, HelpCircle, Lock, X } from 'lucide-react';
+import { AlertTriangle, Check, HelpCircle, Lock, RefreshCcw, X } from 'lucide-react';
 import AppLogo from '@/components/layout/app-logo';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useEffect, useState } from 'react';
@@ -17,6 +17,7 @@ interface IPreflightResult {
   tmux: IToolStatus & { compatible: boolean };
   git: IToolStatus;
   claude: IToolStatus;
+  brew: IToolStatus;
 }
 
 interface IToolCheck {
@@ -78,11 +79,16 @@ const PreflightError = ({ checks }: { checks: IToolCheck[] }) => {
         {failedChecks.map((check) => (
           <p key={check.name}>{check.install}</p>
         ))}
-        <p className="mt-2 text-muted-foreground/60">
-          # 설치 후 {isElectron ? '앱 종료 후 재시작' : '서버 재시작'}
-        </p>
-        {!isElectron && <p>pnpm start</p>}
       </div>
+      <Button
+        variant="outline"
+        size="lg"
+        className="h-12 w-full"
+        onClick={() => window.location.reload()}
+      >
+        <RefreshCcw className="mr-1 h-4 w-4" />
+        새로고침
+      </Button>
     </div>
   );
 };
