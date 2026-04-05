@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
@@ -5,6 +6,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { Plus, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PageShell from '@/components/layout/page-shell';
+import type { TNextPageWithLayout } from '@/pages/_app';
 import AgentCreateDialog from '@/components/features/agent/agent-create-dialog';
 import useAgentStore, { selectAgentList } from '@/hooks/use-agent-store';
 import useAgentStatus from '@/hooks/use-agent-status';
@@ -69,9 +71,7 @@ const AgentsPage = () => {
         <title>에이전트 — purplemux</title>
       </Head>
 
-      <PageShell>
-        <EmptyState onCreateClick={() => setCreateOpen(true)} />
-      </PageShell>
+      <EmptyState onCreateClick={() => setCreateOpen(true)} />
 
       <AgentCreateDialog
         open={createOpen}
@@ -81,5 +81,7 @@ const AgentsPage = () => {
     </>
   );
 };
+
+AgentsPage.getLayout = (page: ReactElement) => <PageShell>{page}</PageShell>;
 
 export default AgentsPage;

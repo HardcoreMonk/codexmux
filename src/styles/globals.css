@@ -39,6 +39,7 @@
 
 :root {
   --titlebar-height: 0px;
+  --content-max-width: 64rem;
   --terminal-bg: #eff1f5;
   --terminal-fg: #4c4f69;
   --radius: 0.5rem;
@@ -204,6 +205,7 @@
   --color-terminal-bg: var(--terminal-bg);
   --color-terminal-fg: var(--terminal-fg);
   --spacing-titlebar: var(--titlebar-height);
+  --max-width-content: var(--content-max-width);
 }
 
 body {

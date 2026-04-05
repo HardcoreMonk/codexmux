@@ -1,9 +1,11 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
+import type { ReactElement } from 'react';
 import Head from 'next/head';
 import { Sparkles, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import useBrowserTitle from '@/hooks/use-browser-title';
 import PageShell from '@/components/layout/page-shell';
+import type { TNextPageWithLayout } from '@/pages/_app';
 import SectionErrorBoundary from '@/components/features/stats/section-error-boundary';
 import DailyReportSection from '@/components/features/stats/daily-report-section';
 import type { IDailyReportDay, IDailyReportListItem, IDailyReportListResponse } from '@/types/stats';
@@ -73,7 +75,7 @@ const ReportsPage = () => {
 
   const content = (
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-4 py-6">
+      <div className="mx-auto max-w-content px-4 py-6">
         <div className="mb-6">
           <div className="mb-3 flex items-center justify-end">
             {!loading && unreportedCount > 0 && (
@@ -138,11 +140,11 @@ const ReportsPage = () => {
       <Head>
         <title>노트 — purplemux</title>
       </Head>
-      <PageShell>
-        {content}
-      </PageShell>
+      {content}
     </>
   );
 };
+
+ReportsPage.getLayout = (page: ReactElement) => <PageShell>{page}</PageShell>;
 
 export default ReportsPage;

@@ -1,7 +1,9 @@
 import "@/styles/globals.css";
 import "@/styles/pretendard.css";
 import "@xterm/xterm/css/xterm.css";
+import type { ReactElement, ReactNode } from "react";
 import { useEffect } from "react";
+import type { NextPage } from "next";
 import type { AppProps } from "next/app";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider, useTheme } from "next-themes";
@@ -10,6 +12,14 @@ import useTerminalTheme from "@/hooks/use-terminal-theme";
 import useClaudeStatus from "@/hooks/use-claude-status";
 import isElectron from "@/hooks/use-is-electron";
 import SystemResources from "@/components/layout/system-resources";
+
+export type TNextPageWithLayout<P = object, IP = P> = NextPage<P, IP> & {
+  getLayout?: (page: ReactElement) => ReactNode;
+};
+
+type TAppPropsWithLayout = AppProps & {
+  Component: TNextPageWithLayout;
+};
 
 const TerminalThemeSync = () => {
   const { theme } = useTerminalTheme();
@@ -50,13 +60,15 @@ const ElectronTitlebar = () => {
   );
 };
 
-export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
+export default function App({ Component, pageProps: { session, ...pageProps } }: TAppPropsWithLayout) {
+  const getLayout = Component.getLayout ?? ((page) => page);
+
   return (
     <SessionProvider session={session}>
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
         <main className="font-sans antialiased">
           <ElectronTitlebar />
-          <Component {...pageProps} />
+          {getLayout(<Component {...pageProps} />)}
           <TerminalThemeSync />
           <ClaudeStatusProvider />
           <ThemedToaster />

@@ -1,8 +1,10 @@
+import type { ReactElement } from 'react';
 import Head from 'next/head';
 import { BarChart3, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import useBrowserTitle from '@/hooks/use-browser-title';
 import PageShell from '@/components/layout/page-shell';
+import type { TNextPageWithLayout } from '@/pages/_app';
 import useStats from '@/hooks/use-stats';
 import PeriodFilter from '@/components/features/stats/period-filter';
 import SectionErrorBoundary from '@/components/features/stats/section-error-boundary';
@@ -57,7 +59,7 @@ const StatsPage = () => {
 
   const content = (
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-4 py-6">
+      <div className="mx-auto max-w-content px-4 py-6">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-ui-purple" />
@@ -167,11 +169,11 @@ const StatsPage = () => {
       <Head>
         <title>사용량 통계 — purplemux</title>
       </Head>
-      <PageShell>
-        {content}
-      </PageShell>
+      {content}
     </>
   );
 };
+
+StatsPage.getLayout = (page: ReactElement) => <PageShell>{page}</PageShell>;
 
 export default StatsPage;

@@ -194,7 +194,7 @@ const MessageList = ({
           role="log"
           aria-live="polite"
         >
-          <div ref={contentRef} className="mx-auto max-w-4xl space-y-3 p-4">
+          <div ref={contentRef} className="mx-auto max-w-content space-y-3 p-4">
             {hasMore && <div ref={sentinelRef} className="h-px" />}
             {hasMore && !isLoadingMoreLocal && !isLoadingMore && (
               <div className="flex justify-center py-2">

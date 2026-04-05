@@ -118,7 +118,7 @@ const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps)
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-3 pb-3 pt-0">
+    <div className="mx-auto w-full max-w-content px-3 pb-3 pt-0">
       <div
         className={cn(
           'relative flex items-end gap-2 rounded-lg border px-3 py-2 transition-colors duration-150',

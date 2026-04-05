@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import type { GetServerSideProps } from 'next';
@@ -16,6 +17,7 @@ import { useTheme } from 'next-themes';
 import useIsMobile from '@/hooks/use-is-mobile';
 import useBrowserTitle from '@/hooks/use-browser-title';
 import PageShell from '@/components/layout/page-shell';
+import type { TNextPageWithLayout } from '@/pages/_app';
 
 const TerminalPage = dynamic(
   () => import('@/components/features/terminal/terminal-page'),
@@ -57,12 +59,12 @@ const Index = ({ initialWorkspace, initialConfig, initialQuickPrompts }: IIndexP
       <Head>
         <title>purplemux</title>
       </Head>
-      <PageShell>
-        {isMobile ? <MobileTerminalPage /> : <TerminalPage />}
-      </PageShell>
+      {isMobile ? <MobileTerminalPage /> : <TerminalPage />}
     </SWRConfig>
   );
 };
+
+Index.getLayout = (page: ReactElement) => <PageShell>{page}</PageShell>;
 
 export const getServerSideProps: GetServerSideProps<IIndexProps> = async () => {
   const [data, configData, quickPrompts] = await Promise.all([getWorkspaces(), getConfig(), readQuickPrompts()]);

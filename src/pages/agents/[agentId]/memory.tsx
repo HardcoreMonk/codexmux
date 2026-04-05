@@ -1,9 +1,11 @@
+import type { ReactElement } from 'react';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { FileText, FolderTree, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import PageShell from '@/components/layout/page-shell';
+import type { TNextPageWithLayout } from '@/pages/_app';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import MemoryTree from '@/components/features/agent/memory-tree';
@@ -374,11 +376,11 @@ const MemoryPage = () => {
         <title>{title}</title>
       </Head>
 
-      <PageShell>
-        {content}
-      </PageShell>
+      {content}
     </>
   );
 };
+
+MemoryPage.getLayout = (page: ReactElement) => <PageShell>{page}</PageShell>;
 
 export default MemoryPage;
