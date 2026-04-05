@@ -283,19 +283,19 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
           .then(({ running, checkedAt }) => {
             const current = useTabStore.getState().tabs[tabId];
             if (current && current.claudeStatusCheckedAt !== prevCheckedAt) {
-              if (current.claudeStatus !== (running ? 'running' : 'not-running')) {
+              if (current.claudeStatus !== (running ? 'starting' : 'not-running')) {
                 setTimeout(() => {
                   fetch(`/api/check-claude?session=${tab.sessionName}`)
                     .then((r) => r.json())
                     .then(({ running, checkedAt }) => {
-                      useTabStore.getState().setClaudeStatus(tabId, running ? 'running' : 'not-running', checkedAt);
+                      useTabStore.getState().setClaudeStatus(tabId, running ? 'starting' : 'not-running', checkedAt);
                     })
                     .catch(() => {});
                 }, 500);
               }
               return;
             }
-            useTabStore.getState().setClaudeStatus(tabId, running ? 'running' : 'not-running', checkedAt);
+            useTabStore.getState().setClaudeStatus(tabId, running ? 'starting' : 'not-running', checkedAt);
           })
           .catch(() => {});
       }
@@ -577,7 +577,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   }, [activeTabId, paneId, layoutWsId]);
 
   useEffect(() => {
-    if (!activeTabId || claudeStatus !== 'running' || activePanelType !== 'terminal') {
+    if (!activeTabId || (claudeStatus !== 'running' && claudeStatus !== 'starting') || activePanelType !== 'terminal') {
       setShowClaudeModePrompt(false);
       return;
     }

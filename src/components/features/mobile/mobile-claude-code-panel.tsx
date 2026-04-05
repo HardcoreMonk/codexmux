@@ -110,7 +110,10 @@ const MobileClaudeCodePanel = ({
       onResumeError: handleResumeError,
     },
     onSync: tabId ? (state) => {
-      useTabStore.getState().setClaudeStatus(tabId, state.claudeStatus, Date.now());
+      const current = useTabStore.getState().tabs[tabId];
+      if (!(current?.claudeStatus === 'starting' && state.claudeStatus === 'not-running')) {
+        useTabStore.getState().setClaudeStatus(tabId, state.claudeStatus, Date.now());
+      }
       useTabStore.getState().setCliState(tabId, state.cliState);
       useTabStore.getState().setTimelineLoading(tabId, state.isLoading);
     } : undefined,
@@ -130,7 +133,7 @@ const MobileClaudeCodePanel = ({
     loadMore: loadMoreSessions,
   } = useSessionList({
     tmuxSession: sessionName,
-    enabled: !!sessionName && effectiveClaudeStatus !== 'running',
+    enabled: !!sessionName && effectiveClaudeStatus !== 'running' && effectiveClaudeStatus !== 'starting',
     cwd,
   });
 
@@ -155,17 +158,17 @@ const MobileClaudeCodePanel = ({
 
   useEffect(() => {
     if (isRestarting && !prevIsRestartingRef.current) {
-      restartNeedsExitRef.current = effectiveClaudeStatus === 'running';
+      restartNeedsExitRef.current = effectiveClaudeStatus === 'running' || effectiveClaudeStatus === 'starting';
     }
     prevIsRestartingRef.current = !!isRestarting;
 
     if (!isRestarting) return;
 
-    if (restartNeedsExitRef.current && effectiveClaudeStatus !== 'running') {
+    if (restartNeedsExitRef.current && effectiveClaudeStatus !== 'running' && effectiveClaudeStatus !== 'starting') {
       restartNeedsExitRef.current = false;
     }
 
-    if (isCliIdle(cliState) && !restartNeedsExitRef.current && effectiveClaudeStatus === 'running' && !isTimelineLoading) {
+    if (isCliIdle(cliState) && !restartNeedsExitRef.current && (effectiveClaudeStatus === 'running' || effectiveClaudeStatus === 'starting') && !isTimelineLoading) {
       onRestartComplete?.();
     }
   }, [isRestarting, effectiveClaudeStatus, cliState, isTimelineLoading, onRestartComplete]);

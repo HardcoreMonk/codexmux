@@ -1,4 +1,4 @@
-export type TClaudeStatus = 'unknown' | 'running' | 'not-running' | 'not-installed';
+export type TClaudeStatus = 'unknown' | 'starting' | 'running' | 'not-running' | 'not-installed';
 
 export type TCliState = 'idle' | 'busy' | 'inactive' | 'ready-for-review' | 'needs-input';
 

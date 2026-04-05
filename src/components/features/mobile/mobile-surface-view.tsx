@@ -182,19 +182,19 @@ const MobileSurfaceView = ({
           .then(({ running, checkedAt }) => {
             const current = useTabStore.getState().tabs[tabId];
             if (current && current.claudeStatusCheckedAt !== prevCheckedAt) {
-              if (current.claudeStatus !== (running ? 'running' : 'not-running')) {
+              if (current.claudeStatus !== (running ? 'starting' : 'not-running')) {
                 setTimeout(() => {
                   fetch(`/api/check-claude?session=${tab.sessionName}`)
                     .then((r) => r.json())
                     .then(({ running, checkedAt }) => {
-                      useTabStore.getState().setClaudeStatus(tabId, running ? 'running' : 'not-running', checkedAt);
+                      useTabStore.getState().setClaudeStatus(tabId, running ? 'starting' : 'not-running', checkedAt);
                     })
                     .catch(() => {});
                 }, 500);
               }
               return;
             }
-            useTabStore.getState().setClaudeStatus(tabId, running ? 'running' : 'not-running', checkedAt);
+            useTabStore.getState().setClaudeStatus(tabId, running ? 'starting' : 'not-running', checkedAt);
           })
           .catch(() => {});
       }
@@ -367,7 +367,7 @@ const MobileSurfaceView = ({
   }, [status, sendStdin, activeTabId]);
 
   useEffect(() => {
-    if (!pendingRestartRef.current || claudeStatus === 'running') return;
+    if (!pendingRestartRef.current || claudeStatus === 'running' || claudeStatus === 'starting') return;
     pendingRestartRef.current = false;
     if (status !== 'connected') return;
     const dangerous = useConfigStore.getState().dangerouslySkipPermissions;

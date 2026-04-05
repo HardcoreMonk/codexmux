@@ -13,18 +13,35 @@ tmux pane에서 Claude CLI 프로세스가 실행 중인지 판별하는 상태.
 | 상태 | 의미 |
 | --- | --- |
 | `unknown` | 아직 감지 전 (초기값, 터미널 WS 미연결) |
-| `running` | Claude 프로세스 실행 중 |
+| `starting` | Claude 프로세스 감지됨, 세션 미준비 (PID 파일/JSONL 아직 없음) |
+| `running` | Claude 프로세스 실행 중 + 세션 확인됨 |
 | `not-running` | Claude 프로세스 없음 |
 | `not-installed` | Claude CLI 미설치 (`~/.claude` 없음) |
 
+`starting`과 `running`의 차이: `starting`은 프로세스 기반 감지(`isClaudeRunning`)로만 확인된 상태이고, `running`은 타임라인 WS에서 세션(`PID 파일 + sessionId`)까지 확인된 상태이다.
+
 두 감지 경로:
 
-| 경로 | 트리거 | 서버 체크 |
-| --- | --- | --- |
-| 터미널 WS `onTitleChange` | tmux 타이틀 변경 시 | `/api/check-claude` → `isClaudeRunning()` |
-| 타임라인 WS | 세션 파일 변경 시 | `detectActiveSession()` |
+| 경로 | 트리거 | 서버 체크 | 설정 값 |
+| --- | --- | --- | --- |
+| 터미널 WS `onTitleChange` | tmux 타이틀 변경 시 | `/api/check-claude` → `isClaudeRunning()` | `starting` / `not-running` |
+| 타임라인 WS | 세션 파일 변경 시 | `detectActiveSession()` | `running` / `not-running` |
 
 동일 `claudeStatus` 필드에 쓰며, `claudeStatusCheckedAt` 서버 타임스탬프로 stale 업데이트를 방지한다.
+
+#### 상태 전환 가드
+
+`setClaudeStatus`에서 다음 전환을 차단한다:
+
+| 차단 전환 | 이유 |
+| --- | --- |
+| `running` → `starting` | `running`이 상위 상태 (세션 확인됨), 다운그레이드 방지 |
+
+추가로 `onSync` 콜백(claude-code-panel, mobile-claude-code-panel)에서 다음을 차단한다:
+
+| 차단 전환 | 이유 |
+| --- | --- |
+| `starting` → `not-running` (타임라인 경유) | 프로세스는 감지됐지만 세션 아직 미준비, check-claude 경유의 `not-running`은 허용 |
 
 ### CLI 작업 상태 (`TCliState`)
 
@@ -56,7 +73,7 @@ Claude 패널에서 어떤 화면을 보여줄지 결정하는 파생 상태.
 
 | 상태 | 의미 | 결정 조건 |
 | --- | --- | --- |
-| `loading` | 타임라인 로딩 중 | `claudeStatus === 'running' && isTimelineLoading`, 또는 `isResuming` |
+| `loading` | 타임라인 로딩 중 | `claudeStatus === 'starting'`, 또는 `claudeStatus === 'running' && isTimelineLoading`, 또는 `isResuming` |
 | `restarting` | 새 대화 생성 중 | `isRestarting === true` |
 | `not-installed` | Claude CLI 미설치 | `claudeStatus === 'not-installed'` |
 | `timeline` | 타임라인 표시 | `claudeStatus === 'running' && !isTimelineLoading` |
@@ -234,7 +251,7 @@ tmux 타이틀 변경 → onTitleChange
   ├─ formatTabTitle() → 탭 표시명 업데이트
   └─ fetch /api/check-claude
       └─ isClaudeRunning(panePid) → { running, checkedAt }
-          └─ setClaudeStatus(tabId, status, checkedAt)
+          └─ setClaudeStatus(tabId, running ? 'starting' : 'not-running', checkedAt)
 ```
 
 ### 타임라인 WS 경로 (세션 + 작업 상태)
@@ -248,6 +265,7 @@ tmux 타이틀 변경 → onTitleChange
       │
       └─ useTimeline onSync 콜백
           ├─ setClaudeStatus(tabId, status, Date.now())
+          │    ※ 현재 starting이고 incoming이 not-running이면 무시
           ├─ setCliState(tabId, cliState)    ← 여기서 ready-for-review 승격
           └─ setTimelineLoading(tabId, loading)
 ```

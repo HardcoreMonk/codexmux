@@ -88,7 +88,11 @@ const ClaudeCodePanel = ({
       onResumeError: handleResumeError,
     },
     onSync: (state) => {
-      useTabStore.getState().setClaudeStatus(tabId, state.claudeStatus, Date.now());
+      const current = useTabStore.getState().tabs[tabId];
+      // starting 상태에서 timeline의 not-running은 무시 (세션 아직 준비 안 됨)
+      if (!(current?.claudeStatus === 'starting' && state.claudeStatus === 'not-running')) {
+        useTabStore.getState().setClaudeStatus(tabId, state.claudeStatus, Date.now());
+      }
       useTabStore.getState().setCliState(tabId, state.cliState);
       useTabStore.getState().setTimelineLoading(tabId, state.isLoading);
       notifyCliState(tabId, state.cliState);
@@ -105,7 +109,7 @@ const ClaudeCodePanel = ({
     loadMore: loadMoreSessions,
   } = useSessionList({
     tmuxSession: sessionName,
-    enabled: !!sessionName && claudeStatus !== 'running',
+    enabled: !!sessionName && claudeStatus !== 'running' && claudeStatus !== 'starting',
     cwd,
   });
 
@@ -123,13 +127,13 @@ const ClaudeCodePanel = ({
 
   useEffect(() => {
     if (isRestarting && !prevIsRestartingRef.current) {
-      restartNeedsExitRef.current = claudeStatus === 'running';
+      restartNeedsExitRef.current = claudeStatus === 'running' || claudeStatus === 'starting';
     }
     prevIsRestartingRef.current = isRestarting;
 
     if (!isRestarting) return;
 
-    if (restartNeedsExitRef.current && claudeStatus !== 'running') {
+    if (restartNeedsExitRef.current && claudeStatus !== 'running' && claudeStatus !== 'starting') {
       restartNeedsExitRef.current = false;
     }
 
@@ -138,7 +142,7 @@ const ClaudeCodePanel = ({
     }
   }, [isRestarting, claudeStatus, cliState, tabId]);
 
-  const effectiveCliState = claudeStatus !== 'running' && cliState !== 'inactive'
+  const effectiveCliState = claudeStatus !== 'running' && claudeStatus !== 'starting' && cliState !== 'inactive'
     ? 'inactive' as const
     : cliState;
 

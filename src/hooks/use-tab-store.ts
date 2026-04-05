@@ -110,8 +110,10 @@ const useTabStore = create<ITabStore>((set) => ({
       const prev = state.tabs[tabId];
       if (!prev || prev.claudeStatusCheckedAt > checkedAt) return state;
       if (prev.claudeStatus === status) return state;
+      // running에서 starting 전환 차단 (running이 상위 상태)
+      if (prev.claudeStatus === 'running' && status === 'starting') return state;
       const patch: Partial<ITabState> = { claudeStatus: status, claudeStatusCheckedAt: checkedAt };
-      if (prev.claudeStatus === 'running' && status !== 'running' && prev.isResuming) {
+      if ((prev.claudeStatus === 'running' || prev.claudeStatus === 'starting') && status !== 'running' && status !== 'starting' && prev.isResuming) {
         patch.isResuming = false;
       }
       return { tabs: updateTab(state.tabs, tabId, patch) };
@@ -249,6 +251,8 @@ export const selectSessionView = (tabs: Record<string, ITabState>, tabId: string
 
   if (tab.isRestarting) return 'restarting';
   if (tab.claudeStatus === 'not-installed') return 'not-installed';
+
+  if (tab.claudeStatus === 'starting') return 'loading';
 
   if (tab.claudeStatus === 'running') {
     return tab.isTimelineLoading ? 'loading' : 'timeline';
