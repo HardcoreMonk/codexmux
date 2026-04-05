@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
+import { verifySessionToken, SESSION_COOKIE } from '@/lib/auth';
 import { verifyTokenValue } from '@/lib/agent-token';
 
 export const proxy = async (request: NextRequest) => {
@@ -8,13 +8,8 @@ export const proxy = async (request: NextRequest) => {
     return NextResponse.next();
   }
 
-  const token = await getToken({
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET,
-    cookieName: 'next-auth.session-token',
-  });
-
-  if (!token) {
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  if (!token || !(await verifySessionToken(token))) {
     if (request.nextUrl.pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

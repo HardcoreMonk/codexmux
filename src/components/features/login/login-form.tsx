@@ -3,7 +3,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, Check, HelpCircle, Lock, X } from 'lucide-react';
-import { signIn } from 'next-auth/react';
 import AppLogo from '@/components/layout/app-logo';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useEffect, useState } from 'react';
@@ -114,10 +113,15 @@ export const LoginForm = ({ className, ...props }: React.ComponentProps<'div'>) 
     setIsLoading(true);
     setError('');
 
-    const result = await signIn('credentials', { password, redirect: false });
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
 
-    if (result?.error) {
-      setError('비밀번호가 올바르지 않습니다.');
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      setError(data?.error ?? '비밀번호가 올바르지 않습니다.');
       setIsLoading(false);
     } else {
       window.location.href = '/';

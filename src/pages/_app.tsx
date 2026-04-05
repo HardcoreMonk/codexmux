@@ -5,7 +5,6 @@ import type { ReactElement, ReactNode } from "react";
 import { useEffect } from "react";
 import type { NextPage } from "next";
 import type { AppProps } from "next/app";
-import { SessionProvider } from "next-auth/react";
 import { ThemeProvider, useTheme } from "next-themes";
 import { Toaster } from "sonner";
 import useTerminalTheme from "@/hooks/use-terminal-theme";
@@ -60,20 +59,18 @@ const ElectronTitlebar = () => {
   );
 };
 
-export default function App({ Component, pageProps: { session, ...pageProps } }: TAppPropsWithLayout) {
+export default function App({ Component, pageProps }: TAppPropsWithLayout) {
   const getLayout = Component.getLayout ?? ((page) => page);
 
   return (
-    <SessionProvider session={session}>
-      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-        <main className="font-sans antialiased">
-          <ElectronTitlebar />
-          {getLayout(<Component {...pageProps} />)}
-          <TerminalThemeSync />
-          <ClaudeStatusProvider />
-          <ThemedToaster />
-        </main>
-      </ThemeProvider>
-    </SessionProvider>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <main className="font-sans antialiased">
+        <ElectronTitlebar />
+        {getLayout(<Component {...pageProps} />)}
+        <TerminalThemeSync />
+        <ClaudeStatusProvider />
+        <ThemedToaster />
+      </main>
+    </ThemeProvider>
   );
 }

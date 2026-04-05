@@ -4,7 +4,7 @@ import { createConnection } from 'net';
 import path from 'path';
 import next from 'next';
 import { WebSocketServer } from 'ws';
-import { getToken } from 'next-auth/jwt';
+import { verifySessionToken, SESSION_COOKIE } from './src/lib/auth';
 import { handleConnection, gracefulShutdown } from './src/lib/terminal-server';
 import { handleTimelineConnection, gracefulTimelineShutdown } from './src/lib/timeline-server';
 import { handleSyncConnection, gracefulSyncShutdown } from './src/lib/sync-server';
@@ -35,16 +35,10 @@ const extractCookie = (header: string, name: string): string | undefined => {
   return undefined;
 };
 
-const SESSION_COOKIE = 'next-auth.session-token';
-
 const verifyWebSocketAuth = async (request: IncomingMessage): Promise<boolean> => {
   const value = extractCookie(request.headers.cookie ?? '', SESSION_COOKIE);
-  const token = await getToken({
-    req: { headers: request.headers, cookies: { [SESSION_COOKIE]: value ?? '' } } as never,
-    secret: process.env.NEXTAUTH_SECRET,
-    cookieName: SESSION_COOKIE,
-  });
-  return !!token;
+  if (!value) return false;
+  return !!(await verifySessionToken(value));
 };
 
 const WS_PATHS = new Set(['/api/terminal', '/api/timeline', '/api/sync', '/api/status', '/api/agent-status']);

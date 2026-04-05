@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { Bell, Bot, LogOut, Menu } from 'lucide-react';
-import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -27,7 +26,7 @@ interface IAppHeaderProps {
 }
 
 const handleLogout = async () => {
-  await signOut({ redirect: false });
+  await fetch('/api/auth/logout', { method: 'POST' });
   window.location.href = '/login';
 };
 

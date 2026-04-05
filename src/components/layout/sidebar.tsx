@@ -10,7 +10,6 @@ import {
   LogOut,
   Bot,
 } from 'lucide-react';
-import { signOut } from 'next-auth/react';
 import useTabStore from '@/hooks/use-tab-store';
 import { useNotificationCount } from '@/components/features/terminal/notification-sheet';
 import AppLogo from '@/components/layout/app-logo';
@@ -41,7 +40,7 @@ const MIN_WIDTH = 160;
 const MAX_WIDTH = 480;
 
 const handleLogout = async () => {
-  await signOut({ redirect: false });
+  await fetch('/api/auth/logout', { method: 'POST' });
   window.location.href = '/login';
 };
 
