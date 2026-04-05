@@ -148,7 +148,7 @@ const WebInputBar = ({
         )}
       >
         <div className="overflow-hidden">
-          <div className="px-3 pt-0 pb-0">
+          <div className="mx-auto w-full max-w-4xl px-3 pt-0 pb-0">
           <div
             ref={containerRef}
             className={cn(

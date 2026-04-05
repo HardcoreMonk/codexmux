@@ -2,12 +2,14 @@ import type { ReactNode } from 'react';
 import useIsMobile from '@/hooks/use-is-mobile';
 import MobileLayout from '@/components/features/mobile/mobile-layout';
 import Sidebar from '@/components/layout/sidebar';
+import useSync from '@/hooks/use-sync';
 
 interface IPageShellProps {
   children: ReactNode;
 }
 
 const PageShell = ({ children }: IPageShellProps) => {
+  useSync();
   const isMobile = useIsMobile();
 
   if (isMobile) {

@@ -11,11 +11,9 @@ import type { ITabMetadata } from '@/hooks/use-tab-metadata-store';
 import PaneLayout from '@/components/features/terminal/pane-layout';
 import ContentHeader from '@/components/features/terminal/content-header';
 import AgentPanel from '@/components/features/agent/agent-panel';
-import useSync from '@/hooks/use-sync';
 import useSidebarActions from '@/hooks/use-sidebar-actions';
 
 const TerminalPage = () => {
-  useSync();
   const isLoading = useWorkspaceStore((s) => s.isLoading);
   const error = useWorkspaceStore((s) => s.error);
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);

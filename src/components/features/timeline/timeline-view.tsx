@@ -315,7 +315,7 @@ const TimelineView = ({
         role="log"
         aria-label="Claude Code 타임라인"
       >
-        <div ref={contentRef}>
+        <div ref={contentRef} className="mx-auto max-w-4xl">
           {hasMore && <div ref={sentinelRef} className="h-px" />}
           {hasMore && !isLoadingMore && (
             <div className="flex justify-center py-2">

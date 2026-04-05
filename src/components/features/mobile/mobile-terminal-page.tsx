@@ -16,11 +16,9 @@ import { dismissTab } from '@/hooks/use-claude-status';
 import useTabStore from '@/hooks/use-tab-store';
 import type { TCliState } from '@/types/timeline';
 import useConfigStore from '@/hooks/use-config-store';
-import useSync from '@/hooks/use-sync';
 import useMobileLayoutActions from '@/hooks/use-mobile-layout-actions';
 
 const MobileTerminalPage = () => {
-  useSync();
   const isLoading = useWorkspaceStore((s) => s.isLoading);
   const error = useWorkspaceStore((s) => s.error);
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
