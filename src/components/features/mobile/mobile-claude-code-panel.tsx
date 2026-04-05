@@ -113,6 +113,10 @@ const MobileClaudeCodePanel = ({
     },
     onSync: tabId ? (state) => {
       const current = useTabStore.getState().tabs[tabId];
+      if (state.isLoading && current && current.claudeStatus !== 'unknown') {
+        useTabStore.getState().setTimelineLoading(tabId, state.isLoading);
+        return;
+      }
       if (!(current?.claudeStatus === 'starting' && state.claudeStatus === 'not-running')) {
         useTabStore.getState().setClaudeStatus(tabId, state.claudeStatus, Date.now());
       }

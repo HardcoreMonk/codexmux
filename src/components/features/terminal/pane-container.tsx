@@ -403,11 +403,9 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
       lastTitleRef.current = '';
     }
 
-    // 탭 전환 시 스토어 초기화 (layout.json 값 + 터미널 리셋)
+    // 탭 전환 시 터미널 연결 상태만 리셋, 상태 WS가 관리하는 값은 보존
     useTabStore.getState().initTab(activeTabId, {
-      cliState: tab.cliState ?? 'inactive',
       terminalConnected: false,
-      claudeStatus: 'unknown',
       panelType: tab.panelType,
     });
 
@@ -503,15 +501,6 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
         closePane(paneId);
         return;
       }
-      const isActive = tabId === activeTabId;
-      if (isActive) {
-        const sorted = [...tabs].sort((a, b) => a.order - b.order);
-        const idx = sorted.findIndex((t) => t.id === tabId);
-        const adjacent = sorted[idx + 1] || sorted[idx - 1];
-        if (adjacent) {
-          switchTabInPane(paneId, adjacent.id);
-        }
-      }
       closingTabIdRef.current = tabId;
       setClosingTabId(tabId);
       try {
@@ -521,7 +510,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
         setClosingTabId(null);
       }
     },
-    [paneId, activeTabId, tabs, paneCount, switchTabInPane, deleteTabInPane, closePane],
+    [paneId, tabs, paneCount, deleteTabInPane, closePane],
   );
 
   const handleRestartTab = useCallback(

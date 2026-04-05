@@ -91,6 +91,11 @@ const ClaudeCodePanel = ({
     },
     onSync: (state) => {
       const current = useTabStore.getState().tabs[tabId];
+      // 타임라인 로딩 중에는 스토어의 기존 상태를 보존 (탭 전환 시 깜빡임 방지)
+      if (state.isLoading && current && current.claudeStatus !== 'unknown') {
+        useTabStore.getState().setTimelineLoading(tabId, state.isLoading);
+        return;
+      }
       if (!(current?.claudeStatus === 'starting' && state.claudeStatus === 'not-running')) {
         useTabStore.getState().setClaudeStatus(tabId, state.claudeStatus, Date.now());
       }
