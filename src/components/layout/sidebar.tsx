@@ -408,10 +408,7 @@ const Sidebar = () => {
                   onClick={() => router.push('/agents')}
                   aria-label="에이전트"
                 >
-                  <Bot className="h-3.5 w-3.5" />
-                  {hasWorkingAgent && (
-                    <span className="absolute inset-0 animate-ping rounded-full bg-ui-teal/15" />
-                  )}
+                  <Bot className={cn('h-3.5 w-3.5', hasWorkingAgent && !isNavActive('/agents') && 'animate-pulse')} />
                   {(unreadCount > 0 || blockedCount > 0) && (
                     <span className={`absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[9px] font-medium leading-none text-white ${unreadCount > 0 ? 'bg-ui-teal' : 'bg-ui-amber'}`}>
                       {unreadCount > 0 ? unreadCount : blockedCount}
