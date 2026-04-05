@@ -1,11 +1,9 @@
-import type { ReactElement } from 'react';
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { Zap, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
-import PageShell from '@/components/layout/page-shell';
-import type { TNextPageWithLayout } from '@/pages/_app';
+import { getPageShellWithTitlebarLayout } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import ActivitySummary from '@/components/features/agent/activity-summary';
@@ -390,6 +388,6 @@ const AgentWorkspacePage = () => {
   );
 };
 
-AgentWorkspacePage.getLayout = (page: ReactElement) => <PageShell>{page}</PageShell>;
+AgentWorkspacePage.getLayout = getPageShellWithTitlebarLayout;
 
 export default AgentWorkspacePage;

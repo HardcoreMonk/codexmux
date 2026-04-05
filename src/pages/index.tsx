@@ -1,4 +1,3 @@
-import type { ReactElement } from 'react';
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import type { GetServerSideProps } from 'next';
@@ -16,8 +15,7 @@ import { useEffect, useRef } from 'react';
 import { useTheme } from 'next-themes';
 import useIsMobile from '@/hooks/use-is-mobile';
 import useBrowserTitle from '@/hooks/use-browser-title';
-import PageShell from '@/components/layout/page-shell';
-import type { TNextPageWithLayout } from '@/pages/_app';
+import { getPageShellLayout } from '@/components/layout/page-shell';
 
 const TerminalPage = dynamic(
   () => import('@/components/features/terminal/terminal-page'),
@@ -64,7 +62,7 @@ const Index = ({ initialWorkspace, initialConfig, initialQuickPrompts }: IIndexP
   );
 };
 
-Index.getLayout = (page: ReactElement) => <PageShell>{page}</PageShell>;
+Index.getLayout = getPageShellLayout;
 
 export const getServerSideProps: GetServerSideProps<IIndexProps> = async () => {
   const [data, configData, quickPrompts] = await Promise.all([getWorkspaces(), getConfig(), readQuickPrompts()]);

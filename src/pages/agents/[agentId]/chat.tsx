@@ -1,10 +1,8 @@
-import type { ReactElement } from 'react';
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { useShallow } from 'zustand/react/shallow';
-import PageShell from '@/components/layout/page-shell';
-import type { TNextPageWithLayout } from '@/pages/_app';
+import { getPageShellWithTitlebarLayout } from '@/components/layout/page-shell';
 import ChatHeader from '@/components/features/agent/chat-header';
 import MessageList from '@/components/features/agent/message-list';
 import ChatInput from '@/components/features/agent/chat-input';
@@ -184,6 +182,6 @@ const AgentChatPage = () => {
   );
 };
 
-AgentChatPage.getLayout = (page: ReactElement) => <PageShell>{page}</PageShell>;
+AgentChatPage.getLayout = getPageShellWithTitlebarLayout;
 
 export default AgentChatPage;

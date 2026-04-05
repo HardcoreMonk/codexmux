@@ -1,11 +1,9 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
-import type { ReactElement } from 'react';
 import Head from 'next/head';
 import { FileText, Sparkles, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import useBrowserTitle from '@/hooks/use-browser-title';
-import PageShell from '@/components/layout/page-shell';
-import type { TNextPageWithLayout } from '@/pages/_app';
+import { getPageShellWithTitlebarLayout } from '@/components/layout/page-shell';
 import SectionErrorBoundary from '@/components/features/stats/section-error-boundary';
 import DailyReportSection from '@/components/features/stats/daily-report-section';
 import type { IDailyReportDay, IDailyReportListItem, IDailyReportListResponse } from '@/types/stats';
@@ -149,6 +147,6 @@ const ReportsPage = () => {
   );
 };
 
-ReportsPage.getLayout = (page: ReactElement) => <PageShell>{page}</PageShell>;
+ReportsPage.getLayout = getPageShellWithTitlebarLayout;
 
 export default ReportsPage;

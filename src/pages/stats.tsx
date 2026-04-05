@@ -1,10 +1,8 @@
-import type { ReactElement } from 'react';
 import Head from 'next/head';
 import { BarChart3, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import useBrowserTitle from '@/hooks/use-browser-title';
-import PageShell from '@/components/layout/page-shell';
-import type { TNextPageWithLayout } from '@/pages/_app';
+import { getPageShellWithTitlebarLayout } from '@/components/layout/page-shell';
 import useStats from '@/hooks/use-stats';
 import PeriodFilter from '@/components/features/stats/period-filter';
 import SectionErrorBoundary from '@/components/features/stats/section-error-boundary';
@@ -174,6 +172,6 @@ const StatsPage = () => {
   );
 };
 
-StatsPage.getLayout = (page: ReactElement) => <PageShell>{page}</PageShell>;
+StatsPage.getLayout = getPageShellWithTitlebarLayout;
 
 export default StatsPage;

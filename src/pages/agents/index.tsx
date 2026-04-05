@@ -1,12 +1,10 @@
-import type { ReactElement } from 'react';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { useShallow } from 'zustand/react/shallow';
 import { Plus, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import PageShell from '@/components/layout/page-shell';
-import type { TNextPageWithLayout } from '@/pages/_app';
+import { getPageShellWithTitlebarLayout } from '@/components/layout/page-shell';
 import AgentCreateDialog from '@/components/features/agent/agent-create-dialog';
 import useAgentStore, { selectAgentList } from '@/hooks/use-agent-store';
 import useAgentStatus from '@/hooks/use-agent-status';
@@ -82,6 +80,6 @@ const AgentsPage = () => {
   );
 };
 
-AgentsPage.getLayout = (page: ReactElement) => <PageShell>{page}</PageShell>;
+AgentsPage.getLayout = getPageShellWithTitlebarLayout;
 
 export default AgentsPage;

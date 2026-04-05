@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import useIsMobile from '@/hooks/use-is-mobile';
 import MobileLayout from '@/components/features/mobile/mobile-layout';
 import Sidebar from '@/components/layout/sidebar';
@@ -31,5 +31,13 @@ const PageShell = ({ children }: IPageShellProps) => {
     </div>
   );
 };
+
+export const getPageShellLayout = (page: ReactElement) => <PageShell>{page}</PageShell>;
+
+export const getPageShellWithTitlebarLayout = (page: ReactElement) => (
+  <PageShell>
+    <div className="pt-titlebar">{page}</div>
+  </PageShell>
+);
 
 export default PageShell;
