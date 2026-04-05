@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
-import { Code, Dices, Globe, Lock, Monitor, Moon, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
+import { Bot, Code, Dices, Globe, Lock, Monitor, Moon, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
 import ClaudeLogo from '@/components/icons/claude-logo';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
@@ -77,7 +77,7 @@ const settingsItems: ISettingsItem[] = [
   {
     id: 'agent',
     label: '에이전트',
-    icon: <ClaudeLogo className="h-4 w-4" />,
+    icon: <Bot className="h-4 w-4" />,
   },
   {
     id: 'system',

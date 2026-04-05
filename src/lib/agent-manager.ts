@@ -387,9 +387,7 @@ class AgentManager {
 
     if (runtime.status === 'idle' || runtime.status === 'blocked') {
       await this.deliverToAgent(runtime, content);
-      runtime.lastDeliveredContent = content;
-      runtime.lastDeliveredAt = Date.now();
-      runtime.deliveryRetryCount = 0;
+      this.markDelivered(runtime, content);
       this.setStatus(runtime, 'working');
       return { id: message.id, status: 'sent' };
     }
@@ -430,10 +428,7 @@ class AgentManager {
       message,
     });
 
-    // relay 응답이 왔으므로 delivery 추적 클리어
-    runtime.lastDeliveredContent = null;
-    runtime.lastDeliveredAt = 0;
-    runtime.deliveryRetryCount = 0;
+    this.clearDeliveryTracking(runtime);
 
     if (type === 'question' || type === 'approval') {
       this.setStatus(runtime, 'blocked');
@@ -807,28 +802,25 @@ class AgentManager {
       if (Date.now() - runtime.relaySetAt < RELAY_GRACE_MS) return;
 
       const prevStatus = runtime.status;
-      const newStatus = await this.deriveStatusFromSession(runtime, sessionInfo.jsonlPath);
+      const derivedStatus = await this.deriveStatusFromSession(runtime, sessionInfo.jsonlPath);
 
-      if (newStatus !== prevStatus) {
+      if (derivedStatus !== prevStatus) {
         if (prevStatus === 'blocked') {
           // blocked 상태는 relay API(receiveAgentMessage)로만 해제 — 폴링이 덮어쓰지 않음
         } else {
-          this.setStatus(runtime, newStatus);
+          this.setStatus(runtime, derivedStatus);
         }
 
-        if (newStatus === 'idle') {
+        if (derivedStatus === 'idle') {
           await this.retryOrDrainPending(runtime);
         }
       }
 
-      // working 상태인데 relay 응답 없이 오래 걸리면 실제 상태 확인 후 재전달
+      // working 상태인데 relay 응답 없이 오래 걸리면 재전달
       if (runtime.status === 'working' && runtime.lastDeliveredContent && runtime.lastDeliveredAt > 0) {
         const elapsed = Date.now() - runtime.lastDeliveredAt;
-        if (elapsed >= DELIVERY_CHECK_DELAY_MS) {
-          const actualStatus = await this.deriveStatusFromSession(runtime, sessionInfo.jsonlPath);
-          if (actualStatus === 'idle') {
-            await this.retryDelivery(runtime);
-          }
+        if (elapsed >= DELIVERY_CHECK_DELAY_MS && derivedStatus === 'idle') {
+          await this.retryDelivery(runtime);
         }
       }
     } else if (sessionInfo.status !== 'running') {
@@ -901,14 +893,24 @@ class AgentManager {
     if (!next) return;
 
     await this.deliverToAgent(runtime, next);
-    runtime.lastDeliveredContent = next;
-    runtime.lastDeliveredAt = Date.now();
-    runtime.deliveryRetryCount = 0;
+    this.markDelivered(runtime, next);
     this.setStatus(runtime, 'working');
   }
 
   private async deliverToAgent(runtime: IAgentRuntime, content: string): Promise<void> {
     await sendBracketedPaste(runtime.info.tmuxSession, content);
+  }
+
+  private markDelivered(runtime: IAgentRuntime, content: string): void {
+    runtime.lastDeliveredContent = content;
+    runtime.lastDeliveredAt = Date.now();
+    runtime.deliveryRetryCount = 0;
+  }
+
+  private clearDeliveryTracking(runtime: IAgentRuntime): void {
+    runtime.lastDeliveredContent = null;
+    runtime.lastDeliveredAt = 0;
+    runtime.deliveryRetryCount = 0;
   }
 
   private async retryDelivery(runtime: IAgentRuntime): Promise<void> {
@@ -921,18 +923,26 @@ class AgentManager {
         await appendMessage(runtime.info.id, runtime.chatSessionId, errorMsg);
       }
       this.broadcast({ type: 'agent:message', agentId: runtime.info.id, message: errorMsg });
-      runtime.lastDeliveredContent = null;
-      runtime.lastDeliveredAt = 0;
-      runtime.deliveryRetryCount = 0;
+      this.clearDeliveryTracking(runtime);
       this.setStatus(runtime, 'idle');
+      return;
+    }
+
+    const alive = await hasSession(runtime.info.tmuxSession);
+    if (!alive) {
+      log.warn(`agent ${runtime.info.id} tmux session dead during retry, skipping`);
       return;
     }
 
     runtime.deliveryRetryCount++;
     log.info(`agent ${runtime.info.id} retrying delivery (attempt ${runtime.deliveryRetryCount})`);
-    await this.deliverToAgent(runtime, runtime.lastDeliveredContent);
-    runtime.lastDeliveredAt = Date.now();
-    this.setStatus(runtime, 'working');
+    try {
+      await this.deliverToAgent(runtime, runtime.lastDeliveredContent);
+      runtime.lastDeliveredAt = Date.now();
+      this.setStatus(runtime, 'working');
+    } catch (err) {
+      log.error(`agent ${runtime.info.id} delivery retry failed: ${err instanceof Error ? err.message : err}`);
+    }
   }
 
   private async retryOrDrainPending(runtime: IAgentRuntime): Promise<void> {
@@ -948,7 +958,6 @@ class AgentManager {
       const { messages } = await readMessages(agentId, sessionId, { limit: 10 });
       if (messages.length === 0) return null;
 
-      // 마지막 메시지부터 역순 탐색
       for (let i = messages.length - 1; i >= 0; i--) {
         const msg = messages[i];
         if (msg.role === 'agent') return null; // agent 응답이 있으면 정상

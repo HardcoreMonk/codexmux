@@ -47,7 +47,7 @@ const QuickPromptBar = ({ prompts, visible, onSelect }: IQuickPromptBarProps) =>
       ref={barRef}
       role="toolbar"
       aria-label="빠른 프롬프트"
-      className="mx-auto mt-1 flex max-w-4xl gap-2 overflow-x-auto px-3 py-1.5 scrollbar-none"
+      className="mx-auto mt-1 flex max-w-4xl justify-start gap-2 overflow-x-auto px-3 py-1.5 scrollbar-none"
       onKeyDown={handleKeyDown}
     >
       {prompts.map((p) => (
