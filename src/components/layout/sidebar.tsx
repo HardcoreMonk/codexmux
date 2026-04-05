@@ -11,7 +11,7 @@ import {
   Bot,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
-import useTabStore, { selectGlobalStatus } from '@/hooks/use-tab-store';
+import useTabStore from '@/hooks/use-tab-store';
 import { useNotificationCount } from '@/components/features/terminal/notification-sheet';
 import AppLogo from '@/components/layout/app-logo';
 import { isMac } from '@/lib/keyboard-shortcuts';
@@ -33,7 +33,7 @@ import useWorkspaceStore from '@/hooks/use-workspace-store';
 import WorkspaceItem from '@/components/features/terminal/workspace-item';
 import SettingsDialog from '@/components/features/terminal/settings-dialog';
 import NotificationSheet from '@/components/features/terminal/notification-sheet';
-import useAgentStore, { selectBlockedCount, selectUnreadCount } from '@/hooks/use-agent-store';
+import useAgentStore, { selectBlockedCount, selectHasWorkingAgent, selectUnreadCount } from '@/hooks/use-agent-store';
 import useConfigStore from '@/hooks/use-config-store';
 import { useSelectWorkspace } from '@/hooks/use-sidebar-actions';
 
@@ -52,11 +52,17 @@ const Sidebar = () => {
   const collapsed = useWorkspaceStore((s) => s.sidebarCollapsed);
   const width = useWorkspaceStore((s) => s.sidebarWidth);
   const isLoading = useWorkspaceStore((s) => s.isLoading);
-  const hasBusy = useTabStore((s) => selectGlobalStatus(s.tabs).busyCount > 0);
+  const hasBusy = useTabStore((s) => {
+    for (const t of Object.values(s.tabs)) {
+      if (t.cliState === 'busy') return true;
+    }
+    return false;
+  });
   const { busyCount, attentionCount } = useNotificationCount();
   const hasActive = busyCount > 0 || attentionCount > 0;
   const blockedCount = useAgentStore(selectBlockedCount);
   const unreadCount = useAgentStore(selectUnreadCount);
+  const hasWorkingAgent = useAgentStore(selectHasWorkingAgent);
   const agentEnabled = useConfigStore((s) => s.agentEnabled);
   const selectWorkspace = useSelectWorkspace();
 
@@ -397,12 +403,15 @@ const Sidebar = () => {
                 <button
                   className={cn(
                     'relative flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',
-                    isNavActive('/agents') ? 'text-foreground' : 'text-muted-foreground',
+                    isNavActive('/agents') ? 'text-foreground' : hasWorkingAgent ? 'text-ui-teal' : 'text-muted-foreground',
                   )}
                   onClick={() => router.push('/agents')}
                   aria-label="에이전트"
                 >
                   <Bot className="h-3.5 w-3.5" />
+                  {hasWorkingAgent && (
+                    <span className="absolute inset-0 animate-ping rounded-full bg-ui-teal/15" />
+                  )}
                   {(unreadCount > 0 || blockedCount > 0) && (
                     <span className={`absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[9px] font-medium leading-none text-white ${unreadCount > 0 ? 'bg-ui-teal' : 'bg-ui-amber'}`}>
                       {unreadCount > 0 ? unreadCount : blockedCount}

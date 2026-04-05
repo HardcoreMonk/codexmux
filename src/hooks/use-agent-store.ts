@@ -28,6 +28,9 @@ interface IAgentState {
   removeOptimistic: (id: string) => void;
 }
 
+export const selectHasWorkingAgent = (state: IAgentState): boolean =>
+  Object.values(state.agents).some((a) => a.status === 'working');
+
 export const selectBlockedCount = (state: IAgentState): number =>
   Object.values(state.agents).filter((a) => a.status === 'blocked').length;
 

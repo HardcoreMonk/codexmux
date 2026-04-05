@@ -1,5 +1,5 @@
-import { useMemo, memo } from 'react';
-import { Loader2, Globe } from 'lucide-react';
+import { memo, useMemo } from 'react';
+import { Globe } from 'lucide-react';
 import useTabStore, { selectTabDisplayStatus } from '@/hooks/use-tab-store';
 import { getProcessIcon } from '@/lib/process-icon';
 import type { TTabDisplayStatus, TTerminalStatus } from '@/types/status';
@@ -23,7 +23,12 @@ const DotByStatus = ({ status, panelType, terminalStatus, process }: { status: T
 
   if (panelType === 'claude-code') {
     if (status === 'busy') {
-      inner = <Loader2 className="h-2 w-2 animate-spin text-muted-foreground" aria-hidden="true" />;
+      inner = (
+        <span className="relative flex h-2 w-2" aria-hidden="true">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ui-purple/40" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-ui-purple" />
+        </span>
+      );
     } else if (status === 'ready-for-review' || status === 'needs-input') {
       inner = <span className="h-2 w-2 rounded-full bg-ui-purple animate-pulse" aria-hidden="true" />;
     } else {
@@ -50,19 +55,17 @@ const DotByStatus = ({ status, panelType, terminalStatus, process }: { status: T
 };
 
 const WorkspaceStatusIndicator = ({ workspaceId }: IWorkspaceStatusIndicatorProps) => {
+  const wsConnected = useTabStore((state) => state.statusWsConnected);
   const tabs = useTabStore((state) => state.tabs);
   const tabOrder = useTabStore((state) => state.tabOrders[workspaceId]);
-  const wsConnected = useTabStore((state) => state.statusWsConnected);
   const tabEntries = useMemo(() => {
-    const statusTabIds = new Set<string>();
+    const wsTabIds = new Set<string>();
     for (const [tabId, entry] of Object.entries(tabs)) {
-      if (entry.workspaceId === workspaceId) statusTabIds.add(tabId);
+      if (entry.workspaceId === workspaceId) wsTabIds.add(tabId);
     }
 
-    const ordered = tabOrder
-      ? tabOrder.filter((id) => statusTabIds.has(id))
-      : [];
-    for (const id of statusTabIds) {
+    const ordered = (tabOrder ?? []).filter((id) => wsTabIds.has(id));
+    for (const id of wsTabIds) {
       if (!ordered.includes(id)) ordered.push(id);
     }
 

@@ -1,5 +1,5 @@
 import { useRef, useEffect, useMemo } from 'react';
-import { Loader2, Globe } from 'lucide-react';
+import { Globe } from 'lucide-react';
 import useTabStore, { selectTabDisplayStatus } from '@/hooks/use-tab-store';
 import { getProcessIcon } from '@/lib/process-icon';
 import type { IWorkspace, IPaneNode, TPanelType } from '@/types/terminal';
@@ -97,7 +97,10 @@ const MobileWorkspaceTabBar = ({
               {isActive ? (
                 <span className="h-2 w-2 rounded-[2px] bg-foreground" />
               ) : isClaude && status === 'busy' ? (
-                <Loader2 className="h-2.5 w-2.5 animate-spin text-muted-foreground" />
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ui-purple/40" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-ui-purple" />
+                </span>
               ) : isClaude && (status === 'ready-for-review' || status === 'needs-input') ? (
                 <span className="h-2 w-2 rounded-full bg-ui-purple animate-pulse" />
               ) : isClaude ? (
