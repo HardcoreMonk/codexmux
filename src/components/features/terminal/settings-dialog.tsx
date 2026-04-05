@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
+import isElectron from '@/hooks/use-is-electron';
 import { Bot, Code, Dices, Globe, Lock, Monitor, Moon, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
 import ClaudeLogo from '@/components/icons/claude-logo';
 import { Button } from '@/components/ui/button';
@@ -328,7 +329,7 @@ const AuthTab = () => {
     changePassword(localPassword.trim());
     setLocalPassword('');
     setPasswordTouched(false);
-    toast.success('저장되었습니다. 서버 재시작 후 적용됩니다.');
+    toast.success(isElectron ? '저장되었습니다. 앱 종료 후 재시작하면 적용됩니다.' : '저장되었습니다. 서버 재시작 후 적용됩니다.');
   };
 
   return (
@@ -352,7 +353,7 @@ const AuthTab = () => {
       </Field>
 
       <FieldDescription>
-        초기화하려면 ~/.purplemux/config.json 파일을 삭제하고 서버를 재시작하세요.
+        초기화하려면 ~/.purplemux/config.json 파일을 삭제하고 {isElectron ? '앱을 종료 후 재시작' : '서버를 재시작'}하세요.
       </FieldDescription>
 
       <div className="flex justify-end">
@@ -405,7 +406,7 @@ const SystemTab = () => {
         <div>
           <p className="text-sm font-medium">tmux 초기화</p>
           <p className="text-sm text-muted-foreground">
-            tmux 세션을 모두 종료하고 서버를 재시작합니다.
+            tmux 세션을 모두 종료하고 {isElectron ? '앱을 재시작' : '서버를 재시작'}합니다.
             설정 변경 후 적용이 필요할 때 사용합니다.
           </p>
         </div>

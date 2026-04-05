@@ -5,6 +5,7 @@ import Spinner from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import isElectron from '@/hooks/use-is-electron';
 
 interface IServeEntry {
   httpsPort: string;
@@ -226,7 +227,7 @@ const TailscaleSettings = () => {
             </p>
             <p className="text-sm text-muted-foreground">
               기본 포트({DEFAULT_PORT})가 사용 중이어서 자동으로 다른 포트가 할당되었습니다.
-              자동 할당된 포트는 서버 재시작 시 변경될 수 있으므로, Tailscale Serve 설정 시 로컬 포트를{' '}
+              자동 할당된 포트는 {isElectron ? '앱 재시작' : '서버 재시작'} 시 변경될 수 있으므로, Tailscale Serve 설정 시 로컬 포트를{' '}
               <span className="font-mono font-medium text-foreground">{currentPort}</span> 대신{' '}
               <span className="font-mono font-medium text-foreground">{DEFAULT_PORT}</span>로 설정하는 것을 권장합니다.
             </p>

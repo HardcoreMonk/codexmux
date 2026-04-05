@@ -6,6 +6,7 @@ import { AlertTriangle, Check, HelpCircle, Lock, X } from 'lucide-react';
 import AppLogo from '@/components/layout/app-logo';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useEffect, useState } from 'react';
+import isElectron from '@/hooks/use-is-electron';
 
 interface IToolStatus {
   installed: boolean;
@@ -77,8 +78,10 @@ const PreflightError = ({ checks }: { checks: IToolCheck[] }) => {
         {failedChecks.map((check) => (
           <p key={check.name}>{check.install}</p>
         ))}
-        <p className="mt-2 text-muted-foreground/60"># 설치 후 서버 재시작</p>
-        <p>pnpm start</p>
+        <p className="mt-2 text-muted-foreground/60">
+          # 설치 후 {isElectron ? '앱 종료 후 재시작' : '서버 재시작'}
+        </p>
+        {!isElectron && <p>pnpm start</p>}
       </div>
     </div>
   );
@@ -169,7 +172,7 @@ export const LoginForm = ({ className, ...props }: React.ComponentProps<'div'>) 
                 <PopoverContent className="w-72 text-xs" side="bottom">
                   <p className="font-medium mb-1">비밀번호 초기화</p>
                   <p className="text-muted-foreground">
-                    아래 파일을 삭제하고 서버를 재시작하면 온보딩 화면에서 새 비밀번호를 설정할 수 있습니다.
+                    아래 파일을 삭제하고 {isElectron ? '앱을 종료 후 재시작' : '서버를 재시작'}하면 온보딩 화면에서 새 비밀번호를 설정할 수 있습니다.
                   </p>
                   <code className="mt-2 block rounded bg-muted px-2 py-1 font-mono">~/.purplemux/config.json</code>
                 </PopoverContent>
