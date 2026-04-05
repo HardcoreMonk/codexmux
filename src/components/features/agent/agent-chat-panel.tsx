@@ -106,25 +106,27 @@ const AgentChatPanel = ({ agentId, onBack }: IAgentChatPanelProps) => {
           {agent && (
             <>
               <span className="truncate text-sm font-medium">{agent.name}</span>
-              {agent.status === 'working' ? (
-                <div className="flex shrink-0 items-center gap-1">
-                  <span className="text-xs text-ui-teal">입력중</span>
-                  <span className="flex gap-[2px]">
-                    <span className="typing-dot h-[3px] w-[3px] rounded-full bg-ui-teal" />
-                    <span className="typing-dot h-[3px] w-[3px] rounded-full bg-ui-teal" />
-                    <span className="typing-dot h-[3px] w-[3px] rounded-full bg-ui-teal" />
-                  </span>
-                </div>
-              ) : (
-                <>
-                  <span
-                    className={cn(
-                      'inline-block h-1.5 w-1.5 shrink-0 rounded-full',
-                      statusConfig[agent.status].className,
-                    )}
-                  />
-                  <span className="text-xs text-muted-foreground">{statusConfig[agent.status].label}</span>
-                </>
+              {agent.status !== 'idle' && (
+                agent.status === 'working' ? (
+                  <div className="flex shrink-0 items-center gap-1">
+                    <span className="text-xs text-ui-teal">입력중</span>
+                    <span className="flex gap-[2px]">
+                      <span className="typing-dot h-[3px] w-[3px] rounded-full bg-ui-teal" />
+                      <span className="typing-dot h-[3px] w-[3px] rounded-full bg-ui-teal" />
+                      <span className="typing-dot h-[3px] w-[3px] rounded-full bg-ui-teal" />
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <span
+                      className={cn(
+                        'inline-block h-1.5 w-1.5 shrink-0 rounded-full',
+                        statusConfig[agent.status].className,
+                      )}
+                    />
+                    <span className="text-xs text-muted-foreground">{statusConfig[agent.status].label}</span>
+                  </>
+                )
               )}
               <div className="ml-auto">
                 <Button

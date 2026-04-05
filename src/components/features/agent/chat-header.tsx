@@ -70,23 +70,25 @@ const ChatHeader = ({ agent, onSettingsClick, agents, onCreateClick, onAgentSele
           <span className="truncate text-sm font-medium">{agent.name}</span>
         )}
 
-        {agent.status === 'working' ? (
-          <div className="flex shrink-0 items-center gap-1">
-            <span className="text-xs text-ui-teal">입력중</span>
-            <span className="flex gap-[2px]">
-              <span className="typing-dot h-[3px] w-[3px] rounded-full bg-ui-teal" />
-              <span className="typing-dot h-[3px] w-[3px] rounded-full bg-ui-teal" />
-              <span className="typing-dot h-[3px] w-[3px] rounded-full bg-ui-teal" />
-            </span>
-          </div>
-        ) : (
-          <div className="flex shrink-0 items-center gap-1.5">
-            <span
-              className={cn('inline-block h-1.5 w-1.5 rounded-full', status.className)}
-              aria-label={`상태: ${status.label}`}
-            />
-            <span className="text-xs text-muted-foreground">{status.label}</span>
-          </div>
+        {agent.status !== 'idle' && (
+          agent.status === 'working' ? (
+            <div className="flex shrink-0 items-center gap-1">
+              <span className="text-xs text-ui-teal">입력중</span>
+              <span className="flex gap-[2px]">
+                <span className="typing-dot h-[3px] w-[3px] rounded-full bg-ui-teal" />
+                <span className="typing-dot h-[3px] w-[3px] rounded-full bg-ui-teal" />
+                <span className="typing-dot h-[3px] w-[3px] rounded-full bg-ui-teal" />
+              </span>
+            </div>
+          ) : (
+            <div className="flex shrink-0 items-center gap-1.5">
+              <span
+                className={cn('inline-block h-1.5 w-1.5 rounded-full', status.className)}
+                aria-label={`상태: ${status.label}`}
+              />
+              <span className="text-xs text-muted-foreground">{status.label}</span>
+            </div>
+          )
         )}
       </div>
 
