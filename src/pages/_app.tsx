@@ -40,7 +40,7 @@ const ClaudeStatusProvider = () => {
 
 const ThemedToaster = () => {
   const { resolvedTheme } = useTheme();
-  return <Toaster position="bottom-right" theme={resolvedTheme as 'light' | 'dark'} />;
+  return <Toaster position="bottom-right" theme={resolvedTheme as 'light' | 'dark'} closeButton />;
 };
 
 const ElectronTitlebar = () => {

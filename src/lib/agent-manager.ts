@@ -846,6 +846,13 @@ class AgentManager {
           await this.retryDelivery(runtime);
         }
       }
+    } else if (sessionInfo.status === 'running' && !sessionInfo.jsonlPath) {
+      // JSONL 미생성 상태의 새 세션 — idle로 간주
+      runtime.lastClaudeSessionId = sessionInfo.sessionId;
+      if (runtime.status !== 'idle') {
+        this.setStatus(runtime, 'idle');
+        await this.retryOrDrainPending(runtime);
+      }
     } else if (sessionInfo.status !== 'running') {
       const command = await getPaneCurrentCommand(runtime.info.tmuxSession);
       if (command && ['zsh', 'bash', 'fish', 'sh'].includes(command)) {
