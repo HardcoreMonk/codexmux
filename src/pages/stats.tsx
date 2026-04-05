@@ -62,8 +62,8 @@ const StatsPage = () => {
       <div className="mx-auto max-w-content px-4 py-6">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-ui-purple" />
-            <h1 className="text-sm font-semibold">사용량 통계</h1>
+            <BarChart3 className="h-5 w-5 text-ui-purple" />
+            <h1 className="text-base font-semibold">사용량 통계</h1>
           </div>
           <div className="overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
             <PeriodFilter value={period} onChange={setPeriod} />

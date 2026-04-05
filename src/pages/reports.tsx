@@ -1,7 +1,7 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
 import type { ReactElement } from 'react';
 import Head from 'next/head';
-import { Sparkles, Square } from 'lucide-react';
+import { FileText, Sparkles, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import useBrowserTitle from '@/hooks/use-browser-title';
 import PageShell from '@/components/layout/page-shell';
@@ -76,8 +76,12 @@ const ReportsPage = () => {
   const content = (
     <div className="min-h-0 flex-1 overflow-y-auto">
       <div className="mx-auto max-w-content px-4 py-6">
-        <div className="mb-6">
-          <div className="mb-3 flex items-center justify-end">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-ui-purple" />
+            <h1 className="text-base font-semibold">노트</h1>
+          </div>
+          <div className="flex items-center gap-2">
             {!loading && unreportedCount > 0 && (
               batchRunning ? (
                 <Button variant="outline" size="xs" onClick={() => batchActionsRef.current.stop()}>
