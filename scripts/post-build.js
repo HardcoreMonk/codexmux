@@ -10,6 +10,14 @@ if (!fs.existsSync(standalone)) {
   process.exit(1);
 }
 
+// Next.js standalone copies .env* files automatically — remove them
+for (const f of fs.readdirSync(standalone)) {
+  if (f.startsWith('.env')) {
+    fs.rmSync(path.join(standalone, f));
+    console.log(`[post-build] removed ${f} from standalone`);
+  }
+}
+
 const copies = [
   { src: path.join(root, 'public'), dest: path.join(standalone, 'public') },
   { src: path.join(root, '.next', 'static'), dest: path.join(standalone, '.next', 'static') },
