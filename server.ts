@@ -6,6 +6,7 @@ import next from 'next';
 import { WebSocketServer } from 'ws';
 import { verifySessionToken, SESSION_COOKIE } from './src/lib/auth';
 import { handleConnection, gracefulShutdown } from './src/lib/terminal-server';
+import { handleInstallConnection, gracefulInstallShutdown } from './src/lib/install-server';
 import { handleTimelineConnection, gracefulTimelineShutdown } from './src/lib/timeline-server';
 import { handleSyncConnection, gracefulSyncShutdown } from './src/lib/sync-server';
 import { handleStatusConnection, gracefulStatusShutdown } from './src/lib/status-server';
@@ -41,7 +42,7 @@ const verifyWebSocketAuth = async (request: IncomingMessage): Promise<boolean> =
   return !!(await verifySessionToken(value));
 };
 
-const WS_PATHS = new Set(['/api/terminal', '/api/timeline', '/api/sync', '/api/status', '/api/agent-status']);
+const WS_PATHS = new Set(['/api/terminal', '/api/timeline', '/api/sync', '/api/status', '/api/agent-status', '/api/install']);
 
 const createWsServers = () => {
   const wss = new WebSocketServer({ noServer: true });
@@ -59,11 +60,14 @@ const createWsServers = () => {
   const agentStatusWss = new WebSocketServer({ noServer: true });
   agentStatusWss.on('connection', handleAgentStatusConnection);
 
-  return { wss, timelineWss, syncWss, statusWss, agentStatusWss };
+  const installWss = new WebSocketServer({ noServer: true });
+  installWss.on('connection', handleInstallConnection);
+
+  return { wss, timelineWss, syncWss, statusWss, agentStatusWss, installWss };
 };
 
 const handleWsUpgrade = (
-  { wss, timelineWss, syncWss, statusWss, agentStatusWss }: ReturnType<typeof createWsServers>,
+  { wss, timelineWss, syncWss, statusWss, agentStatusWss, installWss }: ReturnType<typeof createWsServers>,
   request: IncomingMessage,
   socket: import('stream').Duplex,
   head: Buffer,
@@ -92,14 +96,21 @@ const handleWsUpgrade = (
     agentStatusWss.handleUpgrade(request, socket, head, (ws) => {
       agentStatusWss.emit('connection', ws);
     });
+  } else if (url.pathname === '/api/install') {
+    installWss.handleUpgrade(request, socket, head, (ws) => {
+      installWss.emit('connection', ws, request);
+    });
   }
 };
+
+const NO_AUTH_WS_PATHS = new Set(['/api/install']);
 
 const shutdownWs = async () => {
   gracefulTimelineShutdown();
   gracefulSyncShutdown();
   gracefulStatusShutdown();
   gracefulAgentStatusShutdown();
+  gracefulInstallShutdown();
   await gracefulShutdown();
 };
 
@@ -222,6 +233,11 @@ const startDev = async (port: number, appDir: string): Promise<IStartResult> => 
       return;
     }
 
+    if (NO_AUTH_WS_PATHS.has(url.pathname)) {
+      handleWsUpgrade(wsServers, request, socket, head, port);
+      return;
+    }
+
     const authenticated = await verifyWebSocketAuth(request);
     if (!authenticated) {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
@@ -275,6 +291,11 @@ const startProd = async (port: number, appDir: string): Promise<IStartResult> =>
 
   server.on('upgrade', async (request, socket, head) => {
     const url = new URL(request.url ?? '', `http://localhost:${port}`);
+
+    if (NO_AUTH_WS_PATHS.has(url.pathname)) {
+      handleWsUpgrade(wsServers, request, socket, head, port);
+      return;
+    }
 
     const authenticated = await verifyWebSocketAuth(request);
     if (!authenticated) {

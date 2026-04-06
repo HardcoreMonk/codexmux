@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, Eye, EyeOff, Lock, Loader2, RefreshCcw, Terminal, Bot, Sun, Moon, Monitor, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, Download, Eye, EyeOff, Lock, Loader2, RefreshCcw, Terminal, Bot, Sun, Moon, Monitor, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { TERMINAL_THEMES, DEFAULT_THEME_IDS } from '@/lib/terminal-themes';
 import type { ITerminalThemeColors } from '@/lib/terminal-themes';
 import AppLogo from '@/components/layout/app-logo';
-
+import InstallDialog from '@/components/features/login/install-dialog';
 
 interface IToolStatus {
   installed: boolean;
@@ -124,6 +124,7 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [preflightStatus, setPreflightStatus] = useState<IPreflightResult | null>(null);
   const [preflightChecking, setPreflightChecking] = useState(true);
+  const [installTarget, setInstallTarget] = useState<{ command: string; label: string } | null>(null);
 
   const runPreflightCheck = async () => {
     setPreflightChecking(true);
@@ -227,61 +228,73 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
               <Loader2 className="h-5 w-5 animate-spin" />
               <span className="text-sm">환경을 확인하는 중...</span>
             </div>
-          ) : preflightStatus && !(preflightStatus.tmux.installed && preflightStatus.tmux.compatible) ? (
+          ) : preflightStatus && !(preflightStatus.tmux.installed && preflightStatus.tmux.compatible) ? (() => {
+            const needsUpgrade = preflightStatus.tmux.installed && !preflightStatus.tmux.compatible;
+            const tmuxAction = needsUpgrade
+              ? { command: 'tmux-upgrade', label: 'tmux 업그레이드' }
+              : { command: 'tmux-install', label: 'tmux 설치' };
+            return (
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-2 text-amber-400">
                 <AlertTriangle className="h-5 w-5 shrink-0" />
                 <p className="text-sm font-medium">필수 도구가 누락되었습니다</p>
               </div>
               <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-sm">
-                  {preflightStatus.tmux.installed && preflightStatus.tmux.compatible ? (
-                    <Check className="h-4 w-4 shrink-0 text-green-400" />
-                  ) : (
+                {!preflightStatus.brew.installed && (
+                  <div className="flex items-center gap-2 text-sm">
                     <X className="h-4 w-4 shrink-0 text-red-400" />
-                  )}
-                  <span className={preflightStatus.tmux.installed && preflightStatus.tmux.compatible ? 'text-muted-foreground' : 'text-foreground font-medium'}>
-                    tmux
-                  </span>
+                    <span className="text-foreground font-medium">Homebrew</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-sm">
+                  <X className="h-4 w-4 shrink-0 text-red-400" />
+                  <span className="text-foreground font-medium">tmux</span>
                   {preflightStatus.tmux.version && (
                     <span className="text-xs text-muted-foreground">({preflightStatus.tmux.version})</span>
                   )}
                 </div>
               </div>
-              <div className="rounded-md bg-muted p-3 font-mono text-xs leading-relaxed">
+              <div className="flex flex-col gap-2">
                 {!preflightStatus.brew.installed ? (
-                  <>
-                    <p className="text-muted-foreground/60"># Homebrew 설치</p>
-                    <p>/bin/bash -c &quot;$(curl -fsSL</p>
-                    <p className="pl-2">https://raw.githubusercontent.com/</p>
-                    <p className="pl-2">Homebrew/install/HEAD/install.sh)&quot;</p>
-                    <p className="mt-2 text-muted-foreground/60"># tmux 설치</p>
-                    <p>brew install tmux</p>
-                  </>
+                  <Button
+                    size="lg"
+                    className="h-12 w-full"
+                    onClick={() => setInstallTarget({ command: 'brew', label: 'Homebrew 설치' })}
+                  >
+                    <Download className="mr-1 h-4 w-4" />
+                    Homebrew 설치
+                  </Button>
                 ) : (
-                  <>
-                    <p className="text-muted-foreground/60">
-                      # {preflightStatus.tmux.installed && !preflightStatus.tmux.compatible ? 'tmux 업그레이드' : 'tmux 설치'}
-                    </p>
-                    <p>
-                      {preflightStatus.tmux.installed && !preflightStatus.tmux.compatible
-                        ? 'brew upgrade tmux'
-                        : 'brew install tmux'}
-                    </p>
-                  </>
+                  <Button
+                    size="lg"
+                    className="h-12 w-full"
+                    onClick={() => setInstallTarget(tmuxAction)}
+                  >
+                    <Download className="mr-1 h-4 w-4" />
+                    {tmuxAction.label}
+                  </Button>
                 )}
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="h-12 w-full"
+                  onClick={() => window.location.reload()}
+                >
+                  <RefreshCcw className="mr-1 h-4 w-4" />
+                  새로고침
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-12 w-full"
-                onClick={() => window.location.reload()}
-              >
-                <RefreshCcw className="mr-1 h-4 w-4" />
-                새로고침
-              </Button>
+              {installTarget && (
+                <InstallDialog
+                  open
+                  onOpenChange={() => setInstallTarget(null)}
+                  command={installTarget.command}
+                  label={installTarget.label}
+                />
+              )}
             </div>
-          ) : null}
+            );
+          })() : null}
         </div>
       )}
 

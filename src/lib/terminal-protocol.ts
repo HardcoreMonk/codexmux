@@ -8,6 +8,14 @@ export const MSG_WEB_STDIN = 0x05;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+export const encodeStdout = (data: string): Uint8Array => {
+  const payload = encoder.encode(data);
+  const frame = new Uint8Array(1 + payload.length);
+  frame[0] = MSG_STDOUT;
+  frame.set(payload, 1);
+  return frame;
+};
+
 export const encodeStdin = (data: string): ArrayBuffer => {
   const payload = encoder.encode(data);
   const frame = new Uint8Array(1 + payload.length);
@@ -51,4 +59,4 @@ export const decodeMessage = (
   };
 };
 
-export { decoder as textDecoder };
+export { encoder as textEncoder, decoder as textDecoder };
