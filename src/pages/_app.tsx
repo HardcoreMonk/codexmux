@@ -2,7 +2,7 @@ import "@/styles/globals.css";
 import "@/styles/pretendard.css";
 import "@xterm/xterm/css/xterm.css";
 import type { ReactElement, ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { NextPage } from "next";
 import type { AppProps } from "next/app";
 import Head from "next/head";
@@ -12,6 +12,8 @@ import useTerminalTheme from "@/hooks/use-terminal-theme";
 import useClaudeStatus from "@/hooks/use-claude-status";
 import isElectron from "@/hooks/use-is-electron";
 import SystemResources from "@/components/layout/system-resources";
+import useWorkspaceStore from "@/hooks/use-workspace-store";
+import useConfigStore from "@/hooks/use-config-store";
 
 export type TNextPageWithLayout<P = object, IP = P> = NextPage<P, IP> & {
   getLayout?: (page: ReactElement) => ReactNode;
@@ -61,6 +63,13 @@ const ElectronTitlebar = () => {
 };
 
 export default function App({ Component, pageProps }: TAppPropsWithLayout) {
+  const storeHydrated = useRef(false);
+  if (!storeHydrated.current && pageProps.initialWorkspace) {
+    storeHydrated.current = true;
+    useWorkspaceStore.getState().hydrate(pageProps.initialWorkspace);
+    useConfigStore.getState().hydrate(pageProps.initialConfig);
+  }
+
   const getLayout = Component.getLayout ?? ((page) => page);
 
   return (

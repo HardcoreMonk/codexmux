@@ -22,24 +22,7 @@ interface IConfigState {
   changePassword: (password: string) => void;
 }
 
-const getInitialConfig = (): Pick<IConfigState, 'agentEnabled' | 'editorUrl' | 'dangerouslySkipPermissions' | 'hasAuthPassword'> => {
-  if (typeof window !== 'undefined') {
-    const cfg = (window as unknown as Record<string, unknown>).__CFG__ as
-      | { ae: boolean; eu: string; dsp: boolean; hap: boolean }
-      | undefined;
-    if (cfg) {
-      return {
-        agentEnabled: cfg.ae,
-        editorUrl: cfg.eu,
-        dangerouslySkipPermissions: cfg.dsp,
-        hasAuthPassword: cfg.hap,
-      };
-    }
-  }
-  return { agentEnabled: false, editorUrl: '', dangerouslySkipPermissions: false, hasAuthPassword: false };
-};
-
-const initialConfig = getInitialConfig();
+const initialConfig = { agentEnabled: false, editorUrl: '', dangerouslySkipPermissions: false, hasAuthPassword: false };
 
 const saveConfig = (updates: Record<string, unknown>) => {
   fetch('/api/config', {

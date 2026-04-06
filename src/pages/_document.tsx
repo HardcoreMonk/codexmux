@@ -1,60 +1,32 @@
 import Document, { Html, Head, Main, NextScript, type DocumentContext, type DocumentInitialProps } from 'next/document';
 import { getWorkspaces } from '@/lib/workspace-store';
-import { getConfig } from '@/lib/config-store';
-import type { IWorkspace } from '@/types/terminal';
 
 interface IDocumentProps extends DocumentInitialProps {
   sidebarWidth: number;
   sidebarCollapsed: boolean;
-  agentEnabled: boolean;
-  editorUrl: string;
-  dangerouslySkipPermissions: boolean;
-  hasAuthPassword: boolean;
-  workspaces: IWorkspace[];
 }
-
-const safeJson = (v: unknown) =>
-  JSON.stringify(v).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
 
 class MyDocument extends Document<IDocumentProps> {
   static async getInitialProps(ctx: DocumentContext): Promise<IDocumentProps> {
     const initialProps = await Document.getInitialProps(ctx);
-    const defaults = {
-      sidebarWidth: 200,
-      sidebarCollapsed: false,
-      agentEnabled: false,
-      editorUrl: '',
-      dangerouslySkipPermissions: false,
-      hasAuthPassword: false,
-      workspaces: [] as IWorkspace[],
-    };
     try {
-      const [wsData, cfgData] = await Promise.all([getWorkspaces(), getConfig()]);
+      const wsData = await getWorkspaces();
       return {
         ...initialProps,
         sidebarWidth: wsData.sidebarWidth,
         sidebarCollapsed: wsData.sidebarCollapsed,
-        agentEnabled: cfgData.agentEnabled ?? false,
-        editorUrl: cfgData.editorUrl ?? '',
-        dangerouslySkipPermissions: cfgData.dangerouslySkipPermissions ?? false,
-        hasAuthPassword: !!cfgData.authPassword,
-        workspaces: wsData.workspaces,
       };
     } catch {
-      return { ...initialProps, ...defaults };
+      return { ...initialProps, sidebarWidth: 200, sidebarCollapsed: false };
     }
   }
 
   render() {
-    const { sidebarWidth, sidebarCollapsed, agentEnabled, editorUrl, dangerouslySkipPermissions, hasAuthPassword, workspaces } = this.props;
+    const { sidebarWidth, sidebarCollapsed } = this.props;
     const effectiveWidth = sidebarCollapsed ? 0 : sidebarWidth;
     const effectiveMinWidth = sidebarCollapsed ? 0 : 160;
 
-    const initScript = [
-      `window.__SB__={w:${sidebarWidth},c:${sidebarCollapsed}}`,
-      `window.__CFG__={ae:${agentEnabled},eu:${safeJson(editorUrl)},dsp:${dangerouslySkipPermissions},hap:${hasAuthPassword}}`,
-      `window.__WS__=${safeJson(workspaces)}`,
-    ].join(';');
+    const initScript = `window.__SB__={w:${sidebarWidth},c:${sidebarCollapsed}}`;
 
     return (
       <Html lang="en" suppressHydrationWarning>

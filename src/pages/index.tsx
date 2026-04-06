@@ -6,9 +6,7 @@ import { getWorkspaces } from '@/lib/workspace-store';
 import { getConfig } from '@/lib/config-store';
 import { readQuickPrompts } from '@/lib/quick-prompts-store';
 import type { IQuickPromptsData } from '@/lib/quick-prompts-store';
-import useWorkspaceStore from '@/hooks/use-workspace-store';
 import type { IWorkspaceInitialData } from '@/hooks/use-workspace-store';
-import useConfigStore from '@/hooks/use-config-store';
 import type { IConfigInitialData } from '@/hooks/use-config-store';
 import { initTerminalTheme } from '@/hooks/use-terminal-theme';
 import { useEffect, useRef } from 'react';
@@ -33,16 +31,14 @@ interface IIndexProps {
   initialQuickPrompts: IQuickPromptsData;
 }
 
-const Index = ({ initialWorkspace, initialConfig, initialQuickPrompts }: IIndexProps) => {
+const Index = ({ initialConfig, initialQuickPrompts }: IIndexProps) => {
   const isMobile = useIsMobile();
   const { setTheme } = useTheme();
   useBrowserTitle('purplemux');
-  const hydratedRef = useRef(false);
+  const themeInitRef = useRef(false);
   useEffect(() => {
-    if (!hydratedRef.current) {
-      hydratedRef.current = true;
-      useWorkspaceStore.getState().hydrate(initialWorkspace);
-      useConfigStore.getState().hydrate(initialConfig);
+    if (!themeInitRef.current) {
+      themeInitRef.current = true;
       if (initialConfig.appTheme) {
         setTheme(initialConfig.appTheme);
       }
@@ -50,7 +46,7 @@ const Index = ({ initialWorkspace, initialConfig, initialQuickPrompts }: IIndexP
         initTerminalTheme(initialConfig.terminalTheme);
       }
     }
-  }, [initialWorkspace, initialConfig, setTheme]);
+  }, [initialConfig, setTheme]);
 
   return (
     <SWRConfig value={{ fallback: { '/api/quick-prompts': initialQuickPrompts } }}>
