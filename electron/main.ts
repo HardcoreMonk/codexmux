@@ -346,6 +346,11 @@ const createWindow = (url: string) => {
 
   mainWindow.loadURL(url);
 
+  mainWindow.webContents.on('will-attach-webview', (_event, webPreferences) => {
+    webPreferences.nodeIntegration = false;
+    webPreferences.contextIsolation = true;
+  });
+
   mainWindow.webContents.setWindowOpenHandler(({ url: linkUrl }) => {
     shell.openExternal(linkUrl);
     return { action: 'deny' };

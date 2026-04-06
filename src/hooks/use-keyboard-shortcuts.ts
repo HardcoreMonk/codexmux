@@ -2,11 +2,9 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { collectPanes, findAdjacentPaneInDirection, useLayoutStore } from '@/hooks/use-layout';
 import type { TDirection } from '@/hooks/use-layout';
-import useWorkspaceStore from '@/hooks/use-workspace-store';
 import {
   KEY_MAP,
   TAB_NUMBER_KEYS,
-  WORKSPACE_NUMBER_KEYS,
 } from '@/lib/keyboard-shortcuts';
 import type { ILayoutData, IPaneNode, ITab, TPanelType } from '@/types/terminal';
 
@@ -23,7 +21,6 @@ interface ILayoutActions {
 
 interface IUseKeyboardShortcutsOptions {
   layout: ILayoutActions;
-  onSelectWorkspace: (workspaceId: string) => void;
 }
 
 const HOTKEY_OPTIONS = {
@@ -39,15 +36,12 @@ const getFocusedPane = (layout: ILayoutData | null): IPaneNode | null => {
 
 const useKeyboardShortcuts = ({
   layout,
-  onSelectWorkspace,
 }: IUseKeyboardShortcutsOptions) => {
   const layoutRef = useRef(layout);
-  const onSelectWorkspaceRef = useRef(onSelectWorkspace);
 
   useEffect(() => {
     layoutRef.current = layout;
-    onSelectWorkspaceRef.current = onSelectWorkspace;
-  }, [layout, onSelectWorkspace]);
+  }, [layout]);
 
   useHotkeys(
     KEY_MAP.SPLIT_VERTICAL,
@@ -130,37 +124,11 @@ const useKeyboardShortcuts = ({
   useHotkeys(KEY_MAP.CLEAR_TERMINAL, () => {}, HOTKEY_OPTIONS);
 
   useHotkeys(
-    KEY_MAP.SETTINGS,
-    () => {
-      window.dispatchEvent(new Event('open-settings'));
-    },
-    HOTKEY_OPTIONS,
-  );
-
-  useHotkeys(
     TAB_NUMBER_KEYS,
     (event) => {
       const digit = parseInt(event.code.replace('Digit', ''), 10);
       if (isNaN(digit) || digit < 1 || digit > 9) return;
       useLayoutStore.getState().focusTabByIndex(digit === 9 ? Infinity : digit - 1);
-    },
-    HOTKEY_OPTIONS,
-  );
-
-  useHotkeys(
-    WORKSPACE_NUMBER_KEYS,
-    (event) => {
-      const { workspaces, activeWorkspaceId } = useWorkspaceStore.getState();
-      const digit = parseInt(event.code.replace('Digit', ''), 10);
-      if (isNaN(digit) || digit < 1 || digit > 9) return;
-
-      const workspace =
-        digit === 9
-          ? workspaces[workspaces.length - 1]
-          : workspaces[digit - 1];
-      if (workspace && workspace.id !== activeWorkspaceId) {
-        onSelectWorkspaceRef.current(workspace.id);
-      }
     },
     HOTKEY_OPTIONS,
   );

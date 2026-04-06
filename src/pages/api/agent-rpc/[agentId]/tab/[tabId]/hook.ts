@@ -5,10 +5,7 @@ import { createLogger } from '@/lib/logger';
 const log = createLogger('api:agent-tab-hook');
 
 const isLocalRequest = (req: NextApiRequest): boolean => {
-  const forwarded = req.headers['x-forwarded-for'];
-  const ip = forwarded
-    ? (typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : forwarded[0])
-    : req.socket.remoteAddress;
+  const ip = req.socket.remoteAddress;
   return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
 };
 

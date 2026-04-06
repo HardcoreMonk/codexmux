@@ -18,6 +18,32 @@ interface IUseTerminalOptions {
 
 const DEFAULT_FONT_SIZE = 12;
 
+const FONT_FAMILY =
+  "'MesloLGLDZ', 'Apple SD Gothic Neo', 'Pretendard', 'Menlo', 'Monaco', 'Courier New', monospace";
+
+let fontLoadPromise: Promise<void> | null = null;
+const loadFonts = () => {
+  fontLoadPromise ??= (async () => {
+    const fontsToLoad = [
+      new FontFace('MesloLGLDZ', "url('/fonts/MesloLGLDZNerdFont-Regular.ttf')", {
+        weight: '400',
+        style: 'normal',
+      }),
+      new FontFace('MesloLGLDZ', "url('/fonts/MesloLGLDZNerdFont-Bold.ttf')", {
+        weight: '700',
+        style: 'normal',
+      }),
+    ];
+    await Promise.all(
+      fontsToLoad.map(async (font) => {
+        await font.load();
+        document.fonts.add(font);
+      }),
+    );
+  })();
+  return fontLoadPromise;
+};
+
 const useTerminal = ({ theme, fontSize = DEFAULT_FONT_SIZE, onInput, onResize, onTitleChange, customKeyEventHandler }: IUseTerminalOptions = {}) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const terminalInstance = useRef<Terminal | null>(null);
@@ -97,31 +123,6 @@ const useTerminal = ({ theme, fontSize = DEFAULT_FONT_SIZE, onInput, onResize, o
     let reFitTimer = 0;
     let resizeObserver: ResizeObserver | null = null;
     let cleanupTouch: (() => void) | null = null;
-
-    const FONT_FAMILY =
-      "'MesloLGLDZ', 'Apple SD Gothic Neo', 'Pretendard', 'Menlo', 'Monaco', 'Courier New', monospace";
-
-    const loadFonts = async () => {
-      const fontsToLoad = [
-        new FontFace(
-          "MesloLGLDZ",
-          "url('/fonts/MesloLGLDZNerdFont-Regular.ttf')",
-          { weight: "400", style: "normal" },
-        ),
-        new FontFace(
-          "MesloLGLDZ",
-          "url('/fonts/MesloLGLDZNerdFont-Bold.ttf')",
-          { weight: "700", style: "normal" },
-        ),
-      ];
-
-      await Promise.all(
-        fontsToLoad.map(async (font) => {
-          await font.load();
-          document.fonts.add(font);
-        }),
-      );
-    };
 
     loadFonts().then(() => {
       if (disposed) return;

@@ -22,7 +22,8 @@ class MyDocument extends Document<IDocumentProps> {
   }
 
   render() {
-    const { sidebarWidth, sidebarCollapsed } = this.props;
+    const sidebarWidth = Number(this.props.sidebarWidth) || 200;
+    const sidebarCollapsed = !!this.props.sidebarCollapsed;
     const effectiveWidth = sidebarCollapsed ? 0 : sidebarWidth;
     const effectiveMinWidth = sidebarCollapsed ? 0 : 160;
 

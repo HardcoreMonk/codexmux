@@ -35,6 +35,7 @@ interface IJsonlIdleCache {
   staleMs: number;
 }
 
+const MAX_JSONL_CACHE = 256;
 const jsonlIdleCache = new Map<string, IJsonlIdleCache>();
 
 interface IScanResult {
@@ -120,6 +121,9 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<IJsonlCheckResult> => 
         scan = scanLines(extLines, elapsed);
       }
 
+      if (jsonlIdleCache.size >= MAX_JSONL_CACHE) {
+        jsonlIdleCache.delete(jsonlIdleCache.keys().next().value!);
+      }
       jsonlIdleCache.set(jsonlPath, { mtimeMs: stat.mtimeMs, idle: scan.idle, stale: scan.stale, needsStaleRecheck: scan.needsStaleRecheck, staleMs: scan.staleMs });
       return { idle: scan.idle, stale: scan.stale };
     } finally {
@@ -135,6 +139,7 @@ const g = globalThis as unknown as { __ptStatusManager?: StatusManager };
 class StatusManager {
   private tabs = new Map<string, ITabStatusEntry>();
   private pollingTimer: ReturnType<typeof setInterval> | null = null;
+  private currentInterval = 0;
   private clients = new Set<WebSocket>();
   private initialized = false;
 
@@ -243,18 +248,19 @@ class StatusManager {
 
   startPolling(): void {
     this.stopPolling();
-    const interval = this.getPollingInterval();
+    this.currentInterval = this.getPollingInterval();
     this.pollingTimer = setInterval(() => {
       this.poll().catch((err) => {
         log.error({ err }, '폴링 중 오류');
       });
-    }, interval);
+    }, this.currentInterval);
   }
 
   stopPolling(): void {
     if (this.pollingTimer) {
       clearInterval(this.pollingTimer);
       this.pollingTimer = null;
+      this.currentInterval = 0;
     }
   }
 
@@ -345,13 +351,8 @@ class StatusManager {
     }
 
     const newInterval = this.getPollingInterval();
-    if (this.pollingTimer) {
-      this.stopPolling();
-      this.pollingTimer = setInterval(() => {
-        this.poll().catch((err) => {
-          log.error({ err }, '폴링 중 오류');
-        });
-      }, newInterval);
+    if (this.pollingTimer && newInterval !== this.currentInterval) {
+      this.startPolling();
     }
   }
 

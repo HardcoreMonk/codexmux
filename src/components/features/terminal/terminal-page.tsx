@@ -104,7 +104,7 @@ const TerminalPage = () => {
     return () => useSidebarActions.getState().unregister();
   }, [handleSelectWorkspace]);
 
-  useKeyboardShortcuts({ layout, onSelectWorkspace: handleSelectWorkspace });
+  useKeyboardShortcuts({ layout });
 
   if (isLoading) {
     return (

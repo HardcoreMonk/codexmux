@@ -4,6 +4,7 @@ import MobileLayout from '@/components/features/mobile/mobile-layout';
 import Sidebar from '@/components/layout/sidebar';
 import useSync from '@/hooks/use-sync';
 import useAgentStatus from '@/hooks/use-agent-status';
+import useGlobalShortcuts from '@/hooks/use-global-shortcuts';
 
 interface IPageShellProps {
   children: ReactNode;
@@ -12,6 +13,7 @@ interface IPageShellProps {
 const PageShell = ({ children }: IPageShellProps) => {
   useSync();
   useAgentStatus();
+  useGlobalShortcuts();
 
   const isMobile = useIsMobile();
 
