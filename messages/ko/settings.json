@@ -8,6 +8,7 @@
     "auth": "인증",
     "tailscale": "Tailscale",
     "quickPrompts": "빠른 프롬프트",
+    "sidebarItems": "사이드바",
     "agent": "에이전트",
     "notification": "알림",
     "system": "시스템"
@@ -108,6 +109,28 @@
     "resetToDefault": "기본값으로 초기화",
     "resetTitle": "기본값으로 초기화",
     "resetDescription": "모든 사용자 프롬프트가 삭제되고, 기본 프롬프트가 활성화됩니다.",
+    "resetCancel": "취소",
+    "resetConfirm": "초기화"
+  },
+  "sidebarItems": {
+    "title": "사이드바 항목",
+    "description": "사이드바 하단에 표시할 바로가기 항목을 관리합니다.",
+    "itemsSection": "항목",
+    "addItem": "항목 추가",
+    "editItem": "항목 수정",
+    "nameLabel": "이름",
+    "namePlaceholder": "예: Grafana",
+    "iconLabel": "아이콘",
+    "iconSearch": "아이콘 검색...",
+    "iconNotFound": "아이콘을 찾을 수 없습니다",
+    "urlLabel": "URL",
+    "urlPlaceholder": "예: https://grafana.example.com",
+    "save": "저장",
+    "cancel": "취소",
+    "addButton": "항목 추가",
+    "resetToDefault": "기본값으로 초기화",
+    "resetTitle": "기본값으로 초기화",
+    "resetDescription": "모든 사용자 항목이 삭제되고, 기본 항목이 활성화됩니다.",
     "resetCancel": "취소",
     "resetConfirm": "초기화"
   }
