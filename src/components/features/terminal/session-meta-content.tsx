@@ -1,14 +1,9 @@
 import { useTranslations } from 'next-intl';
 import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
-import 'dayjs/locale/ko';
 import { GitBranch, CircleDot, FilePen, FileQuestion, ArrowUp, ArrowDown, Archive } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatTokenCount, formatTokenDetail, formatCost, formatModelDisplayName } from '@/lib/format-tokens';
 import type { IGitStatus } from '@/lib/git-status';
-
-dayjs.extend(relativeTime);
-dayjs.locale('ko');
 
 export interface IModelTokens {
   model: string;

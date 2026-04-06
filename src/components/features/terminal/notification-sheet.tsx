@@ -3,8 +3,6 @@ import { useTranslations } from 'next-intl';
 import { ArrowRight, Check } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
-import 'dayjs/locale/ko';
 import { useRouter } from 'next/router';
 import {
   Sheet,
@@ -21,8 +19,6 @@ import { navigateToTab, useLayoutStore } from '@/hooks/use-layout';
 import { findPane } from '@/lib/layout-tree';
 import type { ITabState } from '@/hooks/use-tab-store';
 
-dayjs.extend(relativeTime);
-dayjs.locale('ko');
 
 const useActiveTabId = (): string | null => {
   const router = useRouter();

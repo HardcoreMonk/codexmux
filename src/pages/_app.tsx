@@ -3,6 +3,9 @@ import "@/styles/pretendard.css";
 import "@xterm/xterm/css/xterm.css";
 import type { ReactElement, ReactNode } from "react";
 import { useEffect, useRef } from "react";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import "dayjs/locale/ko";
 import type { NextPage } from "next";
 import type { AppProps } from "next/app";
 import Head from "next/head";
@@ -119,6 +122,10 @@ export default function App({ Component, pageProps }: TAppPropsWithLayout) {
   }
 
   const locale = useConfigStore((s) => s.locale);
+
+  dayjs.extend(relativeTime);
+  dayjs.locale(locale);
+
   const getLayout = Component.getLayout ?? ((page) => page);
 
   return (

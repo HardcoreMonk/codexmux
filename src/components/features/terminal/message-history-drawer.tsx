@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
-import 'dayjs/locale/ko';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,9 +19,6 @@ import {
   CommandItem,
 } from '@/components/ui/command';
 import type { IHistoryEntry } from '@/types/message-history';
-
-dayjs.extend(relativeTime);
-dayjs.locale('ko');
 
 interface IMessageHistoryDrawerProps {
   open: boolean;
