@@ -7,6 +7,7 @@ import type { ILayoutData, ITab, IPaneNode, TPanelType } from '@/types/terminal'
 import { clearInputDraft } from '@/hooks/use-web-input';
 import useTabStore from '@/hooks/use-tab-store';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
+import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import {
   collectPanes,
   findPane,
@@ -369,18 +370,16 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
   createTabInPane: async (paneId, explicitPanelType?, command?) => {
     const { layout, workspaceId } = get();
     try {
-      let cwd: string | undefined;
       let panelType: TPanelType | undefined = explicitPanelType;
       const pane = layout ? findPane(layout.root, paneId) : undefined;
       const activeTab = pane?.tabs.find((t) => t.id === pane.activeTabId);
       if (!panelType && activeTab) {
         panelType = activeTab.panelType;
       }
+
+      let cwd: string | undefined;
       if (panelType !== 'web-browser' && activeTab) {
-        try {
-          const cwdRes = await fetch(wsQuery(`/api/layout/cwd?session=${activeTab.sessionName}`, workspaceId));
-          if (cwdRes.ok) cwd = (await cwdRes.json()).cwd;
-        } catch { /* fallback */ }
+        cwd = useTabMetadataStore.getState().metadata[activeTab.id]?.cwd;
       }
 
       const res = await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs`, workspaceId), {
@@ -401,7 +400,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
         activeTabId: newTab.id,
       }));
 
-      await get().fetchLayout(undefined, false);
+      get().fetchLayout(undefined, false);
       return newTab;
     } catch {
       toast.error('탭을 생성할 수 없습니다');

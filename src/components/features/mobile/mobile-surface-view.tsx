@@ -16,7 +16,7 @@ import { formatTabTitle } from '@/lib/tab-title';
 import { isAppShortcut, isClearShortcut, isFocusInputShortcut, isShiftEnter } from '@/lib/keyboard-shortcuts';
 import type { TCliState } from '@/types/timeline';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
-import useTabStore from '@/hooks/use-tab-store';
+import useTabStore, { selectSessionView } from '@/hooks/use-tab-store';
 import { useLayoutStore } from '@/hooks/use-layout';
 import useConfigStore from '@/hooks/use-config-store';
 
@@ -130,6 +130,7 @@ const MobileSurfaceView = ({
   const lastTitleRef = useRef('');
   const claudeStatus = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.claudeStatus ?? 'unknown' : 'unknown');
   const isRestarting = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.isRestarting ?? false : false);
+  const sessionView = useTabStore((s) => activeTabId ? selectSessionView(s.tabs, activeTabId) : null);
 
   const handleCliStateChange = useCallback((state: TCliState) => {
     onCliStateChange?.(state);
@@ -491,7 +492,7 @@ const MobileSurfaceView = ({
         </div>
       )}
 
-      {!noTabs && !isWebBrowser && (
+      {!noTabs && !isWebBrowser && !(isClaudeCode && (sessionView === 'loading' || sessionView === 'restarting')) && (
         <ConnectionStatus
           status={status}
           retryCount={retryCount}
