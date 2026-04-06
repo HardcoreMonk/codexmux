@@ -5,31 +5,22 @@ import { signSessionToken, buildCookieHeader, isSecureRequest } from '@/lib/auth
 const MAX_FAILURES = 16;
 const WINDOW_MS = 15 * 60 * 1000;
 
-const failureMap = new Map<string, { count: number; firstAt: number }>();
+let failures = { count: 0, firstAt: 0 };
 
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, entry] of failureMap) {
-    if (now - entry.firstAt > WINDOW_MS) failureMap.delete(ip);
-  }
-}, WINDOW_MS).unref();
-
-const isRateLimited = (ip: string): boolean => {
-  const entry = failureMap.get(ip);
-  if (!entry) return false;
-  if (Date.now() - entry.firstAt > WINDOW_MS) {
-    failureMap.delete(ip);
+const isRateLimited = (): boolean => {
+  if (failures.count === 0) return false;
+  if (Date.now() - failures.firstAt > WINDOW_MS) {
+    failures = { count: 0, firstAt: 0 };
     return false;
   }
-  return entry.count >= MAX_FAILURES;
+  return failures.count >= MAX_FAILURES;
 };
 
-const recordFailure = (ip: string) => {
-  const entry = failureMap.get(ip);
-  if (!entry || Date.now() - entry.firstAt > WINDOW_MS) {
-    failureMap.set(ip, { count: 1, firstAt: Date.now() });
+const recordFailure = () => {
+  if (failures.count === 0 || Date.now() - failures.firstAt > WINDOW_MS) {
+    failures = { count: 1, firstAt: Date.now() };
   } else {
-    entry.count++;
+    failures.count++;
   }
 };
 
@@ -39,10 +30,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const forwarded = req.headers['x-forwarded-for'];
-  const ip = typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : 'unknown';
-
-  if (isRateLimited(ip)) {
+  if (isRateLimited()) {
     return res.status(429).json({ error: '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.' });
   }
 
@@ -50,11 +38,11 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const storedHash = process.env.AUTH_PASSWORD;
 
   if (!password || !storedHash || !(await verifyPassword(password, storedHash))) {
-    recordFailure(ip);
+    recordFailure();
     return res.status(401).json({ error: '비밀번호가 올바르지 않습니다.' });
   }
 
-  failureMap.delete(ip);
+  failures = { count: 0, firstAt: 0 };
 
   const token = await signSessionToken();
   const secure = isSecureRequest(req);

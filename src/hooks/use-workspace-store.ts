@@ -57,6 +57,7 @@ const getInitialWorkspaceData = (): { workspaces: IWorkspace[]; activeWorkspaceI
 const initialWs = getInitialWorkspaceData();
 
 const getStoredActiveWorkspaceId = (): string | null => {
+  if (typeof window === 'undefined') return null;
   try {
     return localStorage.getItem(STORAGE_KEY);
   } catch {
@@ -65,6 +66,7 @@ const getStoredActiveWorkspaceId = (): string | null => {
 };
 
 const setStoredActiveWorkspaceId = (id: string | null) => {
+  if (typeof window === 'undefined') return;
   try {
     if (id) {
       localStorage.setItem(STORAGE_KEY, id);
