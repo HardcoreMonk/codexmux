@@ -104,27 +104,6 @@ const GeneralTab = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-medium">{t('theme')}</p>
-          <p className="text-sm text-muted-foreground">{t('themeDescription')}</p>
-        </div>
-        <ButtonGroup>
-          <Button variant={theme === 'light' ? 'default' : 'outline'} size="sm" onClick={() => handleThemeChange('light')}>
-            <Sun className="h-4 w-4" />
-            {tc('light')}
-          </Button>
-          <Button variant={theme === 'dark' ? 'default' : 'outline'} size="sm" onClick={() => handleThemeChange('dark')}>
-            <Moon className="h-4 w-4" />
-            {tc('dark')}
-          </Button>
-          <Button variant={theme === 'system' ? 'default' : 'outline'} size="sm" onClick={() => handleThemeChange('system')}>
-            <Monitor className="h-4 w-4" />
-            {tc('system')}
-          </Button>
-        </ButtonGroup>
-      </div>
-
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
           <p className="text-sm font-medium">{t('language')}</p>
           <p className="text-sm text-muted-foreground">{t('languageDescription')}</p>
         </div>
@@ -153,6 +132,27 @@ const GeneralTab = () => {
             </div>
           </PopoverContent>
         </Popover>
+      </div>
+
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-medium">{t('theme')}</p>
+          <p className="text-sm text-muted-foreground">{t('themeDescription')}</p>
+        </div>
+        <ButtonGroup>
+          <Button variant={theme === 'light' ? 'default' : 'outline'} size="sm" onClick={() => handleThemeChange('light')}>
+            <Sun className="h-4 w-4" />
+            {tc('light')}
+          </Button>
+          <Button variant={theme === 'dark' ? 'default' : 'outline'} size="sm" onClick={() => handleThemeChange('dark')}>
+            <Moon className="h-4 w-4" />
+            {tc('dark')}
+          </Button>
+          <Button variant={theme === 'system' ? 'default' : 'outline'} size="sm" onClick={() => handleThemeChange('system')}>
+            <Monitor className="h-4 w-4" />
+            {tc('system')}
+          </Button>
+        </ButtonGroup>
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
