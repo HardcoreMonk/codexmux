@@ -22,7 +22,10 @@ export const useSelectWorkspace = () => {
     if (registered) {
       registered(workspaceId);
     } else {
-      useWorkspaceStore.getState().switchWorkspace(workspaceId);
+      const { activeWorkspaceId } = useWorkspaceStore.getState();
+      if (workspaceId !== activeWorkspaceId) {
+        useWorkspaceStore.getState().switchWorkspace(workspaceId);
+      }
       if (router.pathname !== '/') {
         router.push('/');
       }

@@ -14,7 +14,7 @@ const useGlobalShortcuts = () => {
   useHotkeys(
     WORKSPACE_NUMBER_KEYS,
     (event) => {
-      const { workspaces, activeWorkspaceId } = useWorkspaceStore.getState();
+      const { workspaces } = useWorkspaceStore.getState();
       const digit = parseInt(event.code.replace('Digit', ''), 10);
       if (isNaN(digit) || digit < 1 || digit > 9) return;
 
@@ -22,7 +22,7 @@ const useGlobalShortcuts = () => {
         digit === 9
           ? workspaces[workspaces.length - 1]
           : workspaces[digit - 1];
-      if (workspace && workspace.id !== activeWorkspaceId) {
+      if (workspace) {
         selectWorkspace(workspace.id);
       }
     },
