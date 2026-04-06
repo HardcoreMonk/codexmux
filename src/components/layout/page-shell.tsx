@@ -26,7 +26,7 @@ const PageShell = ({ children }: IPageShellProps) => {
   }
 
   return (
-    <div className="flex h-dvh w-full overflow-hidden bg-background">
+    <div className="flex h-dvh w-full overflow-hidden bg-background max-md:hidden">
       <Sidebar />
       <div className="relative flex min-w-0 flex-1 flex-col">
         {children}
