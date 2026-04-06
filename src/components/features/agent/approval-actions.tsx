@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 type TApprovalResult = 'approved' | 'rejected' | null;
 
 interface IApprovalActionsProps {
-  onAction: (action: '승인' | '거부') => void;
+  onAction: (action: 'approve' | 'reject') => void;
   resolvedAs?: TApprovalResult;
   disabled?: boolean;
 }
@@ -15,8 +15,8 @@ const ApprovalActions = ({ onAction, resolvedAs, disabled }: IApprovalActionsPro
   const [localResult, setLocalResult] = useState<TApprovalResult>(null);
   const result = localResult ?? resolvedAs;
 
-  const handleAction = (action: '승인' | '거부') => {
-    setLocalResult(action === '승인' ? 'approved' : 'rejected');
+  const handleAction = (action: 'approve' | 'reject') => {
+    setLocalResult(action === 'approve' ? 'approved' : 'rejected');
     onAction(action);
   };
 
@@ -33,7 +33,7 @@ const ApprovalActions = ({ onAction, resolvedAs, disabled }: IApprovalActionsPro
       <Button
         variant="outline"
         size="xs"
-        onClick={() => handleAction('거부')}
+        onClick={() => handleAction('reject')}
         disabled={disabled}
       >
         {t('reject')}
@@ -41,7 +41,7 @@ const ApprovalActions = ({ onAction, resolvedAs, disabled }: IApprovalActionsPro
       <Button
         variant="default"
         size="xs"
-        onClick={() => handleAction('승인')}
+        onClick={() => handleAction('approve')}
         disabled={disabled}
       >
         {t('approve')}

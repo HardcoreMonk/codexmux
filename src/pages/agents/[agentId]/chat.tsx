@@ -75,7 +75,7 @@ const AgentChatPage = () => {
   );
 
   const handleApproval = useCallback(
-    (action: '승인' | '거부') => {
+    (action: 'approve' | 'reject') => {
       sendMessage(action);
     },
     [sendMessage],

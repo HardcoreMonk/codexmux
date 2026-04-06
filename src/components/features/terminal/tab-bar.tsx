@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Plus, X, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ const TabBar = ({
   onReorderTabs,
   onRetry,
 }: ITabBarProps) => {
+  const t = useTranslations('terminal');
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
@@ -155,7 +157,7 @@ const TabBar = ({
           className="h-5 px-2 text-xs text-foreground hover:text-foreground"
           onClick={onRetry}
         >
-          재시도
+          {t('retryLoad')}
         </Button>
       </div>
     );
@@ -271,7 +273,7 @@ const TabBar = ({
                   e.stopPropagation();
                   onDeleteTab(tab.id);
                 }}
-                aria-label="탭 닫기"
+                aria-label={t('closeTabLabel')}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -300,7 +302,7 @@ const TabBar = ({
         )}
         onClick={onCreateTab}
         disabled={isCreating}
-        aria-label="새 탭"
+        aria-label={t('newTabLabel')}
       >
         {isCreating ? (
           <Spinner className="h-3 w-3" />

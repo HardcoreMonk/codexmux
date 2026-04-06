@@ -1,5 +1,6 @@
 import { useCallback, useRef } from 'react';
 import { Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -38,15 +39,17 @@ const SessionListSkeleton = () => (
 
 const SessionListError = ({
   error,
+  retryLabel,
   onRetry,
 }: {
   error: string;
+  retryLabel: string;
   onRetry: () => void;
 }) => (
   <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
     <p className="text-sm">{error}</p>
     <Button variant="outline" size="sm" onClick={onRetry}>
-      다시 시도
+      {retryLabel}
     </Button>
   </div>
 );
@@ -63,6 +66,7 @@ const SessionListView = ({
   onLoadMore,
   onNewSession,
 }: ISessionListViewProps) => {
+  const t = useTranslations('terminal');
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const handleRefresh = useCallback(async () => {
@@ -86,7 +90,7 @@ const SessionListView = ({
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b px-4 py-2">
         <span className="text-sm font-medium">
-          세션
+          {t('sessions')}
           {sessions.length > 0 &&
             `(${sessions.length}${hasMore ? '+' : ''})`}
         </span>
@@ -97,7 +101,7 @@ const SessionListView = ({
             onClick={onNewSession}
           >
             <Plus size={12} />
-            새 대화
+            {t('newConversation')}
           </Button>
         )}
       </div>
@@ -105,7 +109,7 @@ const SessionListView = ({
       {isLoading && sessions.length === 0 ? (
         <SessionListSkeleton />
       ) : error ? (
-        <SessionListError error={error} onRetry={handleRefresh} />
+        <SessionListError error={error} retryLabel={t('retryLoad')} onRetry={handleRefresh} />
       ) : (
         <div
           ref={scrollRef}

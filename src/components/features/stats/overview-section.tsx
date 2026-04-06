@@ -1,4 +1,5 @@
 import { useMemo, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { Activity, DollarSign, CalendarDays, TrendingUp } from 'lucide-react';
 import dayjs from 'dayjs';
@@ -12,12 +13,14 @@ interface IOverviewSectionProps {
   data: IOverviewResponse;
 }
 
-const chartConfig: ChartConfig = {
-  sessions: { label: '세션', color: 'var(--ui-blue)' },
-  messages: { label: '메시지', color: 'var(--ui-teal)' },
-};
-
 const OverviewSection = ({ data }: IOverviewSectionProps) => {
+  const t = useTranslations('stats');
+
+  const chartConfig: ChartConfig = {
+    sessions: { label: t('sessions'), color: 'var(--ui-blue)' },
+    messages: { label: t('messages'), color: 'var(--ui-teal)' },
+  };
+
   const chartData = useMemo(() => {
     return data.dailyActivity
       .slice(-30)
@@ -32,10 +35,10 @@ const OverviewSection = ({ data }: IOverviewSectionProps) => {
   const costChange = getChangeRate(data.totalCost, data.previousCost);
 
   const cards = [
-    { label: '총 세션 수', value: formatNumberWithComma(data.totalSessions), icon: Activity, change: sessionChange },
-    { label: '총 비용', value: formatCostWithComma(data.totalCost), icon: DollarSign, change: costChange },
-    { label: '오늘 비용', value: formatCostWithComma(data.todayCost), icon: CalendarDays, change: null },
-    { label: '이번 달 비용', value: formatCostWithComma(data.thisMonthCost), icon: TrendingUp, change: null },
+    { label: t('totalSessions'), value: formatNumberWithComma(data.totalSessions), icon: Activity, change: sessionChange },
+    { label: t('totalCost'), value: formatCostWithComma(data.totalCost), icon: DollarSign, change: costChange },
+    { label: t('todayCost'), value: formatCostWithComma(data.todayCost), icon: CalendarDays, change: null },
+    { label: t('thisMonthCost'), value: formatCostWithComma(data.thisMonthCost), icon: TrendingUp, change: null },
   ];
 
   return (
@@ -52,7 +55,7 @@ const OverviewSection = ({ data }: IOverviewSectionProps) => {
                 <p className="text-2xl font-semibold tabular-nums">{card.value}</p>
                 {card.change && (
                   <p className={`text-xs tabular-nums ${card.change.startsWith('+') ? 'text-ui-teal' : 'text-ui-coral'}`}>
-                    {card.change} vs 이전 기간
+                    {card.change} {t('vsPreviousPeriod')}
                   </p>
                 )}
               </div>
@@ -64,7 +67,7 @@ const OverviewSection = ({ data }: IOverviewSectionProps) => {
       {chartData.length > 0 && (
         <Card size="sm">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">일별 활동 추이</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('dailyActivityTrend')}</CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="aspect-auto h-48 w-full">

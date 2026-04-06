@@ -1,4 +1,5 @@
 import { useMemo, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
@@ -21,11 +22,13 @@ const PROJECT_COLORS = [
   'var(--ui-gray)',
 ];
 
-const chartConfig: ChartConfig = {
-  totalTokens: { label: '토큰', color: 'var(--ui-purple)' },
-};
-
 const ProjectSection = ({ data }: IProjectSectionProps) => {
+  const t = useTranslations('stats');
+
+  const chartConfig: ChartConfig = {
+    totalTokens: { label: t('tokenLabel'), color: 'var(--ui-purple)' },
+  };
+
   const barData = useMemo(() => {
     return data.projects
       .slice(0, 10)
@@ -43,10 +46,10 @@ const ProjectSection = ({ data }: IProjectSectionProps) => {
   if (barData.length === 0) {
     return (
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground">프로젝트별 분석</h2>
+        <h2 className="text-sm font-medium text-muted-foreground">{t('projectAnalysis')}</h2>
         <Card size="sm">
           <CardContent className="flex items-center justify-center py-12">
-            <p className="text-sm text-muted-foreground">프로젝트 데이터가 없습니다</p>
+            <p className="text-sm text-muted-foreground">{t('noProjectData')}</p>
           </CardContent>
         </Card>
       </section>
@@ -55,12 +58,12 @@ const ProjectSection = ({ data }: IProjectSectionProps) => {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-medium text-muted-foreground">프로젝트별 분석</h2>
+      <h2 className="text-sm font-medium text-muted-foreground">{t('projectAnalysis')}</h2>
 
       <Card size="sm">
         <CardHeader>
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            프로젝트별 토큰 사용량 (TOP {barData.length})
+            {t('projectTokenUsageTop', { count: barData.length })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -102,7 +105,7 @@ const ProjectSection = ({ data }: IProjectSectionProps) => {
               <p className="truncate text-xs text-muted-foreground">{project.name}</p>
               <p className="text-lg font-semibold tabular-nums">{formatNumberWithComma(project.totalTokens)}</p>
               <p className="text-xs text-muted-foreground">
-                {formatNumberWithComma(project.sessionCount)}세션 · {formatNumberWithComma(project.messageCount)}메시지
+                {t('sessionCountLabel', { count: formatNumberWithComma(project.sessionCount) })} · {t('messageCountLabel', { count: formatNumberWithComma(project.messageCount) })}
               </p>
             </CardContent>
           </Card>

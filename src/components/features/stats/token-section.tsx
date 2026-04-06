@@ -1,4 +1,5 @@
 import { useMemo, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Area,
   AreaChart,
@@ -53,16 +54,18 @@ const getModelLabel = (model: string): string => {
   return model;
 };
 
-const barChartConfig: ChartConfig = {
-  total: { label: '토큰', color: 'var(--ui-blue)' },
-};
-
-const trendChartConfig: ChartConfig = {
-  input: { label: '입력', color: 'var(--ui-blue)' },
-  output: { label: '출력', color: 'var(--ui-teal)' },
-};
-
 const TokenSection = ({ data }: ITokenSectionProps) => {
+  const t = useTranslations('stats');
+
+  const barChartConfig: ChartConfig = {
+    total: { label: t('tokenLabel'), color: 'var(--ui-blue)' },
+  };
+
+  const trendChartConfig: ChartConfig = {
+    input: { label: t('inputLabel'), color: 'var(--ui-blue)' },
+    output: { label: t('outputLabel'), color: 'var(--ui-teal)' },
+  };
+
   const modelBarData = useMemo(() => {
     return Object.entries(data.modelTokens)
       .map(([model, tokens]) => ({
@@ -83,12 +86,12 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-medium text-muted-foreground">토큰 사용량</h2>
+      <h2 className="text-sm font-medium text-muted-foreground">{t('tokenUsage')}</h2>
 
       {modelBarData.length > 0 && (
         <Card size="sm">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">모델별 토큰</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('modelTokens')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
@@ -119,7 +122,7 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
                   </div>
                 ))}
                 <div className="flex items-center justify-between gap-4 border-t border-foreground/5 pt-1.5 text-xs font-medium">
-                  <span className="text-muted-foreground">합계</span>
+                  <span className="text-muted-foreground">{t('total')}</span>
                   <span className="tabular-nums">{formatCostWithComma(totalCost)}</span>
                 </div>
               </div>
@@ -131,7 +134,7 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
       {data.dailyTokens.length > 0 && (
         <Card size="sm">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">일별 토큰 추이</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('dailyTokenTrend')}</CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer config={trendChartConfig} className="aspect-auto h-48 w-full">

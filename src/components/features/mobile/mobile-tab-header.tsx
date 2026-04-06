@@ -1,4 +1,5 @@
 import { X, Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
 import TabStatusIndicator from '@/components/features/terminal/tab-status-indicator';
 import useTabStore from '@/hooks/use-tab-store';
@@ -34,6 +35,8 @@ const MobileTabHeader = ({
   onCreateTab,
   onClose,
 }: IMobileTabHeaderProps) => {
+  const t = useTranslations('mobile');
+  const tc = useTranslations('common');
   const tabEntry = useTabStore((s) => s.tabs[tabId]);
   const processIcon = getProcessIcon(tabEntry?.currentProcess);
   const nerdColor = tabEntry?.terminalStatus === 'server'
@@ -75,7 +78,7 @@ const MobileTabHeader = ({
         <button
           className="flex h-10 w-10 items-center justify-center text-muted-foreground transition-colors"
           onClick={onCreateTab}
-          aria-label="새 탭"
+          aria-label={t('newTab')}
         >
           <Plus size={16} />
         </button>
@@ -83,24 +86,24 @@ const MobileTabHeader = ({
         <AlertDialog>
           <AlertDialogTrigger
             className="flex h-10 w-10 items-center justify-center text-muted-foreground transition-colors"
-            aria-label="탭 닫기"
+            aria-label={t('closeTab')}
           >
             <X size={16} />
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>탭 닫기</AlertDialogTitle>
+              <AlertDialogTitle>{t('closeTab')}</AlertDialogTitle>
               <AlertDialogDescription>
-                &apos;{tabName}&apos; 탭을 닫으시겠습니까?
+                {t('closeTabConfirm', { name: tabName })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 className="bg-ui-red hover:bg-ui-red/80"
                 onClick={onClose}
               >
-                닫기
+                {tc('close')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

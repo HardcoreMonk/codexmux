@@ -1,4 +1,5 @@
 import { useCallback, useRef, type KeyboardEvent } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import type { IQuickPrompt } from '@/hooks/use-quick-prompts';
 
@@ -9,6 +10,7 @@ interface IQuickPromptBarProps {
 }
 
 const QuickPromptBar = ({ prompts, visible, onSelect }: IQuickPromptBarProps) => {
+  const t = useTranslations('terminal');
   const barRef = useRef<HTMLDivElement>(null);
   const hasPrompts = prompts.length > 0;
 
@@ -46,7 +48,7 @@ const QuickPromptBar = ({ prompts, visible, onSelect }: IQuickPromptBarProps) =>
     <div
       ref={barRef}
       role="toolbar"
-      aria-label="빠른 프롬프트"
+      aria-label={t('quickPrompts')}
       className="mx-auto mt-1 flex w-full max-w-content justify-start gap-2 overflow-x-auto px-3 py-1.5 scrollbar-none animate-in fade-in duration-150"
       onKeyDown={handleKeyDown}
     >

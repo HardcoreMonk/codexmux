@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import type { TPeriod } from '@/types/stats';
 
@@ -6,25 +7,29 @@ interface IPeriodFilterProps {
   onChange: (period: TPeriod) => void;
 }
 
-const PERIODS: { value: TPeriod; label: string }[] = [
-  { value: 'today', label: '오늘' },
-  { value: '7d', label: '7일' },
-  { value: '30d', label: '30일' },
-  { value: 'all', label: '전체' },
-];
+const PERIOD_VALUES: TPeriod[] = ['today', '7d', '30d', 'all'];
+
+const PERIOD_KEYS: Record<TPeriod, string> = {
+  today: 'periodToday',
+  '7d': 'period7d',
+  '30d': 'period30d',
+  all: 'periodAll',
+};
 
 const PeriodFilter = ({ value, onChange }: IPeriodFilterProps) => {
+  const t = useTranslations('stats');
+
   return (
     <div className="flex gap-1">
-      {PERIODS.map((p) => (
+      {PERIOD_VALUES.map((p) => (
         <Button
-          key={p.value}
-          variant={value === p.value ? 'default' : 'ghost'}
+          key={p}
+          variant={value === p ? 'default' : 'ghost'}
           size="sm"
           className="h-7 px-2.5 text-xs"
-          onClick={() => onChange(p.value)}
+          onClick={() => onChange(p)}
         >
-          {p.label}
+          {t(PERIOD_KEYS[p])}
         </Button>
       ))}
     </div>

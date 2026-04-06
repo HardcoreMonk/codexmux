@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/spinner';
 import useTabStore, { selectTabDisplayStatus } from '@/hooks/use-tab-store';
 import type { TPanelType } from '@/types/terminal';
@@ -9,6 +10,7 @@ interface ITabStatusIndicatorProps {
 }
 
 const TabStatusIndicator = ({ tabId, panelType }: ITabStatusIndicatorProps) => {
+  const t = useTranslations('terminal');
   const status = useTabStore(
     (state) => selectTabDisplayStatus(state.tabs, tabId),
   );
@@ -34,7 +36,7 @@ const TabStatusIndicator = ({ tabId, panelType }: ITabStatusIndicatorProps) => {
           aria-hidden="true"
         />
       ) : null}
-      {visible && <span className="sr-only">{status === 'busy' ? '처리 중,' : status === 'needs-input' ? '입력 대기,' : '확인 필요,'}</span>}
+      {visible && <span className="sr-only">{status === 'busy' ? t('statusBusy') : status === 'needs-input' ? t('statusNeedsInput') : t('statusNeedsReview')}</span>}
     </span>
   );
 };

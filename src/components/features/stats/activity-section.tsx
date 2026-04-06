@@ -1,4 +1,5 @@
 import { useMemo, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import dayjs from 'dayjs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,12 +12,6 @@ import { WEEKDAY_LABELS, formatDate, formatNumber, formatAxisTick } from '@/comp
 interface IActivitySectionProps {
   data: IOverviewResponse;
 }
-
-const dailyChartConfig: ChartConfig = {
-  messageCount: { label: '메시지', color: 'var(--ui-blue)' },
-  sessionCount: { label: '세션', color: 'var(--ui-teal)' },
-  toolCallCount: { label: '도구 호출', color: 'var(--ui-coral)' },
-};
 
 const HEATMAP_INTENSITIES = [
   'bg-ui-teal/5',
@@ -38,6 +33,18 @@ const getIntensityClass = (count: number, max: number): string => {
 };
 
 const ActivitySection = ({ data }: IActivitySectionProps) => {
+  const t = useTranslations('stats');
+
+  const dailyChartConfig: ChartConfig = {
+    messageCount: { label: t('messages'), color: 'var(--ui-blue)' },
+    sessionCount: { label: t('sessions'), color: 'var(--ui-teal)' },
+    toolCallCount: { label: t('toolCalls'), color: 'var(--ui-coral)' },
+  };
+
+  const weekdayChartConfig: ChartConfig = {
+    average: { label: t('avgMessages'), color: 'var(--ui-purple)' },
+  };
+
   const { grid, maxCount } = useMemo(() => {
     const dist = data.dayHourDistribution ?? {};
     let max = 0;
@@ -81,17 +88,13 @@ const ActivitySection = ({ data }: IActivitySectionProps) => {
     }));
   }, [data.dailyActivity]);
 
-  const weekdayChartConfig: ChartConfig = {
-    average: { label: '평균 메시지', color: 'var(--ui-purple)' },
-  };
-
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-medium text-muted-foreground">활동 패턴</h2>
+      <h2 className="text-sm font-medium text-muted-foreground">{t('activityPatternTitle')}</h2>
 
       <Card size="sm">
         <CardHeader>
-          <CardTitle className="text-sm font-medium text-muted-foreground">피크 아워</CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground">{t('peakHour')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -122,8 +125,8 @@ const ActivitySection = ({ data }: IActivitySectionProps) => {
                           }
                         />
                         <TooltipContent side="top" className="text-xs">
-                          <p>{WEEKDAY_LABELS[cell.dow]} {cell.hour}시</p>
-                          <p className="font-medium">{cell.count} 메시지</p>
+                          <p>{WEEKDAY_LABELS[cell.dow]} {cell.hour}{t('hourSuffix')}</p>
+                          <p className="font-medium">{t('messageCount', { count: cell.count })}</p>
                         </TooltipContent>
                       </Tooltip>
                     ))}
@@ -132,11 +135,11 @@ const ActivitySection = ({ data }: IActivitySectionProps) => {
               </TooltipProvider>
             </div>
             <div className="mt-2 flex items-center justify-end gap-1.5">
-              <span className="text-[10px] text-muted-foreground">적음</span>
+              <span className="text-[10px] text-muted-foreground">{t('less')}</span>
               {HEATMAP_INTENSITIES.map((cls, i) => (
                 <div key={i} className={`h-[11px] w-[11px] rounded-[2px] ${cls}`} />
               ))}
-              <span className="text-[10px] text-muted-foreground">많음</span>
+              <span className="text-[10px] text-muted-foreground">{t('more')}</span>
             </div>
           </div>
         </CardContent>
@@ -146,7 +149,7 @@ const ActivitySection = ({ data }: IActivitySectionProps) => {
         {dailyChartData.length > 0 && (
           <Card size="sm">
             <CardHeader>
-              <CardTitle className="text-sm font-medium text-muted-foreground">일별 활동</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t('dailyActivity')}</CardTitle>
             </CardHeader>
             <CardContent>
               <ChartContainer config={dailyChartConfig} className="aspect-auto h-48 w-full">
@@ -175,7 +178,7 @@ const ActivitySection = ({ data }: IActivitySectionProps) => {
 
         <Card size="sm">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">요일별 평균</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('weekdayAverage')}</CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer config={weekdayChartConfig} className="aspect-auto h-48 w-full">

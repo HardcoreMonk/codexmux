@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Globe } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
 import { cn } from '@/lib/utils';
 import type { ITab } from '@/types/terminal';
@@ -40,6 +41,7 @@ const PaneTabItem = ({
   onDragOver,
   onDragLeave,
 }: IPaneTabItemProps) => {
+  const t = useTranslations('terminal');
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -144,7 +146,7 @@ const PaneTabItem = ({
           e.stopPropagation();
           onDelete();
         }}
-        aria-label="탭 닫기"
+        aria-label={t('closeTabLabel')}
       >
         <X className="h-3 w-3" />
       </button>

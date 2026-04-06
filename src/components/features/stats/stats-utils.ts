@@ -12,12 +12,12 @@ export const formatAxisTick = (value: number): string => formatNumber(value);
 
 export const formatDuration = (ms: number): string => {
   const minutes = Math.floor(ms / 60_000);
-  if (minutes < 60) return `${minutes}분`;
+  if (minutes < 60) return `${minutes}m`;
   const hours = Math.floor(minutes / 60);
   const remainMinutes = minutes % 60;
-  if (hours < 24) return `${hours}시간 ${remainMinutes}분`;
+  if (hours < 24) return `${hours}h ${remainMinutes}m`;
   const days = Math.floor(hours / 24);
-  return `${days}일 ${hours % 24}시간`;
+  return `${days}d ${hours % 24}h`;
 };
 
 export const formatDate = (dateStr: string): string => {
@@ -49,4 +49,4 @@ export const formatCostWithComma = (cost: number): string => {
   return `$${Number(int).toLocaleString()}.${dec}`;
 };
 
-export const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+export const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

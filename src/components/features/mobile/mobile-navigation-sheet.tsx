@@ -8,6 +8,7 @@ import {
   Settings,
   X,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
 import { useRouter } from 'next/router';
 import { cn } from '@/lib/utils';
@@ -58,6 +59,8 @@ const MobileNavigationSheet = ({
   onCreateWorkspace,
   onOpenSettings,
 }: IMobileNavigationSheetProps) => {
+  const t = useTranslations('mobile');
+  const tc = useTranslations('common');
   const router = useRouter();
   const [expandedWsId, setExpandedWsId] = useState<string | null>(activeWorkspaceId);
   const [longPressTabId, setLongPressTabId] = useState<string | null>(null);
@@ -201,7 +204,7 @@ const MobileNavigationSheet = ({
           <button
             className="absolute left-2 flex h-11 w-11 items-center justify-center text-muted-foreground"
             onClick={() => onOpenChange(false)}
-            aria-label="메뉴 닫기"
+            aria-label={t('closeMenu')}
           >
             <X size={20} />
           </button>
@@ -276,7 +279,7 @@ const MobileNavigationSheet = ({
               }}
             >
               <FileText size={15} />
-              노트
+              {t('notes')}
             </button>
             <button
               className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent"
@@ -286,7 +289,7 @@ const MobileNavigationSheet = ({
               }}
             >
               <BarChart3 size={15} />
-              통계
+              {t('stats')}
             </button>
             <button
               className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent"
@@ -296,7 +299,7 @@ const MobileNavigationSheet = ({
               }}
             >
               <Settings size={15} />
-              설정
+              {tc('settings')}
             </button>
           </div>
         </div>

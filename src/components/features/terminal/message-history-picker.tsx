@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Clock } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import useIsMobileDevice from '@/hooks/use-is-mobile-device';
@@ -28,6 +29,7 @@ const MessageHistoryPicker = ({
   onDelete,
   onClose,
 }: IMessageHistoryPickerProps) => {
+  const t = useTranslations('terminal');
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobileDevice();
 
@@ -42,7 +44,7 @@ const MessageHistoryPicker = ({
         (disabled || isEmpty) && 'opacity-50 pointer-events-none',
       )}
       disabled={disabled || isEmpty}
-      aria-label="메시지 히스토리"
+      aria-label={t('messageHistory')}
     >
       <Clock size={16} />
     </Button>

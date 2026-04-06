@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, memo } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import {
   ContextMenu,
@@ -33,6 +34,8 @@ const WorkspaceItem = ({
   onRename,
   onDelete,
 }: IWorkspaceItemProps) => {
+  const t = useTranslations('terminal');
+  const tc = useTranslations('common');
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(workspace.name);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -160,7 +163,7 @@ const WorkspaceItem = ({
       <ContextMenuContent>
         <ContextMenuItem onClick={startEditing}>
           <Pencil className="mr-2 h-3.5 w-3.5" />
-          이름 변경
+          {t('rename')}
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem
@@ -168,7 +171,7 @@ const WorkspaceItem = ({
           onClick={() => onDelete(workspace.id)}
         >
           <Trash2 className="mr-2 h-3.5 w-3.5" />
-          삭제
+          {tc('delete')}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import dayjs from 'dayjs';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useStickToBottom } from 'use-stick-to-bottom';
 import { AlertCircle, Bot } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
@@ -23,7 +23,7 @@ interface IMessageListProps {
   onRetry: () => void;
   onLoadMore: () => Promise<void>;
   onResend: (messageId: string) => void;
-  onApproval: (action: '승인' | '거부') => void;
+  onApproval: (action: 'approve' | 'reject') => void;
   scrollToBottomRef?: React.MutableRefObject<(() => void) | undefined>;
 }
 
@@ -83,8 +83,8 @@ const resolveApproval = (
   for (let i = index + 1; i < messages.length; i++) {
     const m = messages[i];
     if (m.role === 'user') {
-      if (m.content === '승인') return 'approved';
-      if (m.content === '거부') return 'rejected';
+      if (m.content === 'approve' || m.content === '승인') return 'approved';
+      if (m.content === 'reject' || m.content === '거부') return 'rejected';
       return null;
     }
   }
@@ -96,10 +96,15 @@ const shouldShowDateSeparator = (current: IChatMessage, prev: IChatMessage | nul
   return !dayjs(current.timestamp).isSame(dayjs(prev.timestamp), 'day');
 };
 
-const formatDateSeparator = (timestamp: string): string => {
+const WEEKDAYS_KO = ['일', '월', '화', '수', '목', '금', '토'];
+const WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const formatDateSeparator = (timestamp: string, locale: string): string => {
   const d = dayjs(timestamp);
-  const days = ['일', '월', '화', '수', '목', '금', '토'];
-  return `${d.format('YYYY년 M월 D일')} (${days[d.day()]})`;
+  if (locale === 'ko') {
+    return `${d.format('YYYY년 M월 D일')} (${WEEKDAYS_KO[d.day()]})`;
+  }
+  return `${WEEKDAYS_EN[d.day()]}, ${d.format('MMM D, YYYY')}`;
 };
 
 const MessageList = ({
@@ -121,6 +126,7 @@ const MessageList = ({
 }: IMessageListProps) => {
   const t = useTranslations('agent');
   const tc = useTranslations('common');
+  const locale = useLocale();
   const { scrollRef, contentRef, scrollToBottom, isAtBottom } = useStickToBottom({
     resize: { damping: 0.8, stiffness: 0.05 },
     initial: 'instant',
@@ -243,7 +249,7 @@ const MessageList = ({
 
               return (
                 <div key={msg.id}>
-                  {showDate && <DateSeparator date={formatDateSeparator(msg.timestamp)} />}
+                  {showDate && <DateSeparator date={formatDateSeparator(msg.timestamp, locale)} />}
                   <ChatBubble
                     message={msg}
                     isFailed={failedMessageIds.has(msg.id)}

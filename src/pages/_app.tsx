@@ -35,6 +35,7 @@ import koNotification from "../../messages/ko/notification.json";
 import koSession from "../../messages/ko/session.json";
 import koMessageHistory from "../../messages/ko/messageHistory.json";
 import koWebBrowser from "../../messages/ko/webBrowser.json";
+import koMobile from "../../messages/ko/mobile.json";
 
 import enCommon from "../../messages/en/common.json";
 import enSidebar from "../../messages/en/sidebar.json";
@@ -55,6 +56,7 @@ import enNotification from "../../messages/en/notification.json";
 import enSession from "../../messages/en/session.json";
 import enMessageHistory from "../../messages/en/messageHistory.json";
 import enWebBrowser from "../../messages/en/webBrowser.json";
+import enMobile from "../../messages/en/mobile.json";
 
 export type TNextPageWithLayout<P = object, IP = P> = NextPage<P, IP> & {
   getLayout?: (page: ReactElement) => ReactNode;
@@ -104,8 +106,8 @@ const ElectronTitlebar = () => {
 };
 
 const messages: Record<string, Record<string, unknown>> = {
-  ko: { common: koCommon, sidebar: koSidebar, header: koHeader, terminal: koTerminal, connection: koConnection, workspace: koWorkspace, login: koLogin, onboarding: koOnboarding, settings: koSettings, stats: koStats, reset: koReset, reports: koReports, agents: koAgents, agent: koAgent, timeline: koTimeline, notification: koNotification, session: koSession, messageHistory: koMessageHistory, webBrowser: koWebBrowser },
-  en: { common: enCommon, sidebar: enSidebar, header: enHeader, terminal: enTerminal, connection: enConnection, workspace: enWorkspace, login: enLogin, onboarding: enOnboarding, settings: enSettings, stats: enStats, reset: enReset, reports: enReports, agents: enAgents, agent: enAgent, timeline: enTimeline, notification: enNotification, session: enSession, messageHistory: enMessageHistory, webBrowser: enWebBrowser },
+  ko: { common: koCommon, sidebar: koSidebar, header: koHeader, terminal: koTerminal, connection: koConnection, workspace: koWorkspace, login: koLogin, onboarding: koOnboarding, settings: koSettings, stats: koStats, reset: koReset, reports: koReports, agents: koAgents, agent: koAgent, timeline: koTimeline, notification: koNotification, session: koSession, messageHistory: koMessageHistory, webBrowser: koWebBrowser, mobile: koMobile },
+  en: { common: enCommon, sidebar: enSidebar, header: enHeader, terminal: enTerminal, connection: enConnection, workspace: enWorkspace, login: enLogin, onboarding: enOnboarding, settings: enSettings, stats: enStats, reset: enReset, reports: enReports, agents: enAgents, agent: enAgent, timeline: enTimeline, notification: enNotification, session: enSession, messageHistory: enMessageHistory, webBrowser: enWebBrowser, mobile: enMobile },
 };
 
 export default function App({ Component, pageProps }: TAppPropsWithLayout) {

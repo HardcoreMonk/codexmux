@@ -1,0 +1,16 @@
+{
+  "send": "전송",
+  "commandPlaceholder": "명령어 입력...",
+  "newTab": "새 탭",
+  "closeTab": "탭 닫기",
+  "closeTabConfirm": "'{name}' 탭을 닫으시겠습니까?",
+  "closeMenu": "메뉴 닫기",
+  "notes": "노트",
+  "stats": "통계",
+  "disconnectedMaxConnections": "동시 접속 수를 초과했습니다. 다른 탭을 닫아주세요.",
+  "disconnectedPtyError": "터미널을 시작할 수 없습니다",
+  "cannotConnectServer": "서버에 연결할 수 없습니다",
+  "restart": "다시 시작",
+  "reconnect": "다시 연결",
+  "noWorkspace": "Workspace 없음"
+}

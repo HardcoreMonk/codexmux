@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import useTimeline from '@/hooks/use-timeline';
 import useStartingPrompt from '@/hooks/use-starting-prompt';
 import useSessionList from '@/hooks/use-session-list';
@@ -58,6 +59,7 @@ const MobileClaudeCodePanel = ({
   isRestarting,
   onRestartComplete,
 }: IMobileClaudeCodePanelProps) => {
+  const t = useTranslations('terminal');
   const { prompts: quickPrompts } = useQuickPrompts();
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(null);
   const [metaSheetOpen, setMetaSheetOpen] = useState(false);
@@ -73,19 +75,19 @@ const MobileClaudeCodePanel = ({
   const handleResumeBlocked = useCallback(
     (payload: { reason: string; processName?: string }) => {
       setResumingSessionId(null);
-      toast.warning('터미널에서 다른 프로세스가 실행 중입니다', {
+      toast.warning(t('resumeBlocked'), {
         description: payload.processName
-          ? `현재 실행 중인 프로세스: ${payload.processName}`
+          ? t('resumeBlockedProcess', { name: payload.processName })
           : undefined,
       });
     },
-    [],
+    [t],
   );
 
   const handleResumeError = useCallback(() => {
     setResumingSessionId(null);
-    toast.error('세션을 재개할 수 없습니다');
-  }, []);
+    toast.error(t('resumeFailed'));
+  }, [t]);
 
   const {
     entries,
@@ -213,7 +215,7 @@ const MobileClaudeCodePanel = ({
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-muted">
         <Spinner className="h-4 w-4 text-muted-foreground" />
-        <span className="mt-2 text-sm text-muted-foreground">새 대화 만드는중...</span>
+        <span className="mt-2 text-sm text-muted-foreground">{t('creatingConversation')}</span>
       </div>
     );
   }
@@ -228,11 +230,11 @@ const MobileClaudeCodePanel = ({
               sessionName={sessionName}
               options={startingPromptOptions.options}
               fallback={
-                <span className="text-xs text-muted-foreground">터미널을 확인하세요</span>
+                <span className="text-xs text-muted-foreground">{t('checkTerminal')}</span>
               }
             />
           ) : (
-            <span className="mt-3 text-xs text-muted-foreground">터미널을 확인하세요</span>
+            <span className="mt-3 text-xs text-muted-foreground">{t('checkTerminal')}</span>
           )
         )}
       </div>

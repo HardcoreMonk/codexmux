@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect, type ChangeEvent } from 'react';
 import { SendHorizontal } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -34,6 +35,7 @@ const KEYS: IKeyDef[] = [
 ];
 
 const MobileTerminalToolbar = ({ sendStdin, terminalConnected }: IMobileTerminalToolbarProps) => {
+  const t = useTranslations('mobile');
   const [value, setValue] = useState('');
   const [ctrlActive, setCtrlActive] = useState(false);
   const [shiftActive, setShiftActive] = useState(false);
@@ -108,7 +110,7 @@ const MobileTerminalToolbar = ({ sendStdin, terminalConnected }: IMobileTerminal
           ref={textareaRef}
           value={value}
           onChange={handleChange}
-          placeholder={ctrlActive ? 'Ctrl + ...' : shiftActive ? 'Shift + ...' : '명령어 입력...'}
+          placeholder={ctrlActive ? 'Ctrl + ...' : shiftActive ? 'Shift + ...' : t('commandPlaceholder')}
           autoComplete="off"
           autoCorrect="off"
           autoCapitalize="off"
@@ -134,7 +136,7 @@ const MobileTerminalToolbar = ({ sendStdin, terminalConnected }: IMobileTerminal
             value.trim() && 'text-ui-purple',
           )}
           onClick={handleSend}
-          aria-label="전송"
+          aria-label={t('send')}
         >
           <SendHorizontal size={16} />
         </Button>

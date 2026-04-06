@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { ShieldAlert } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 interface IBypassPromptCardProps {
@@ -24,6 +25,7 @@ const sendSelection = async (session: string, optionIndex: number): Promise<bool
 };
 
 const BypassPromptCard = ({ sessionName, options, fallback }: IBypassPromptCardProps) => {
+  const t = useTranslations('terminal');
   const [sent, setSent] = useState(false);
 
   const handleSelect = async (index: number) => {
@@ -32,7 +34,7 @@ const BypassPromptCard = ({ sessionName, options, fallback }: IBypassPromptCardP
     const ok = await sendSelection(sessionName, index);
     if (!ok) {
       setSent(false);
-      toast.error('선택 전송에 실패했습니다');
+      toast.error(t('bypassSendFailed'));
     }
   };
 
@@ -40,7 +42,7 @@ const BypassPromptCard = ({ sessionName, options, fallback }: IBypassPromptCardP
     <div className="mt-4 w-full max-w-xs rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3">
       <div className="mb-2.5 flex items-center gap-2 text-xs font-medium text-amber-600 dark:text-amber-400">
         <ShieldAlert size={14} />
-        <span>Bypass Permissions 확인</span>
+        <span>{t('bypassPermissions')}</span>
       </div>
       <div className="flex flex-col gap-1.5">
         {options.map((option, i) => (

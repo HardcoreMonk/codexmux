@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Plus, WifiOff } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import type { ITab, TDisconnectReason, TPanelType } from '@/types/terminal';
+import type { ITab, TPanelType } from '@/types/terminal';
 import WebBrowserPanel from '@/components/features/terminal/web-browser-panel';
 import useTerminal from '@/hooks/use-terminal';
 import useTerminalWebSocket from '@/hooks/use-terminal-websocket';
@@ -20,11 +21,6 @@ import useTabStore, { selectSessionView } from '@/hooks/use-tab-store';
 import { useLayoutStore } from '@/hooks/use-layout';
 import useConfigStore from '@/hooks/use-config-store';
 
-const DISCONNECT_MESSAGES: Record<NonNullable<TDisconnectReason>, string> = {
-  'max-connections': '동시 접속 수를 초과했습니다. 다른 탭을 닫아주세요.',
-  'pty-error': '터미널을 시작할 수 없습니다',
-  'session-not-found': '세션을 찾을 수 없습니다',
-};
 
 interface ITermActions {
   write: (data: Uint8Array) => void;
@@ -78,7 +74,9 @@ const MobileSurfaceView = ({
   onCliStateChange,
   onOpenNewTabDialog,
 }: IMobileSurfaceViewProps) => {
-  const activeTab = tabs.find((t) => t.id === activeTabId);
+  const t = useTranslations('mobile');
+  const tt = useTranslations('terminal');
+  const activeTab = tabs.find((tab) => tab.id === activeTabId);
   const isClaudeCode = panelType === 'claude-code';
   const isWebBrowser = panelType === 'web-browser';
 
@@ -451,7 +449,7 @@ const MobileSurfaceView = ({
             ) : (
               <Plus className="h-3.5 w-3.5" />
             )}
-            새 탭 열기
+            {tt('openNewTab')}
           </Button>
         </div>
       )}
@@ -461,8 +459,13 @@ const MobileSurfaceView = ({
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3">
           <WifiOff className="h-5 w-5 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">
-            {(disconnectReason && DISCONNECT_MESSAGES[disconnectReason]) ??
-              '서버에 연결할 수 없습니다'}
+            {disconnectReason === 'max-connections'
+              ? t('disconnectedMaxConnections')
+              : disconnectReason === 'pty-error'
+                ? t('disconnectedPtyError')
+                : disconnectReason === 'session-not-found'
+                  ? tt('disconnectedSessionNotFound')
+                  : t('cannotConnectServer')}
           </span>
           {disconnectReason === 'session-not-found' && activeTabId ? (
             <div className="flex gap-2">
@@ -474,19 +477,19 @@ const MobileSurfaceView = ({
                   if (ok) reconnect();
                 }}
               >
-                다시 시작
+                {t('restart')}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => onDeleteTab(paneId, activeTabId)}
               >
-                탭 닫기
+                {tt('closeTabLabel')}
               </Button>
             </div>
           ) : (
             <Button variant="outline" size="sm" onClick={reconnect}>
-              다시 연결
+              {t('reconnect')}
             </Button>
           )}
         </div>

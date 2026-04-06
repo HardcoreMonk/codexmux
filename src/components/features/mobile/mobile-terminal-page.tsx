@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { AlertTriangle, RefreshCw, Monitor, Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/spinner';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,9 @@ import useConfigStore from '@/hooks/use-config-store';
 import useMobileLayoutActions from '@/hooks/use-mobile-layout-actions';
 
 const MobileTerminalPage = () => {
+  const t = useTranslations('terminal');
+  const tm = useTranslations('mobile');
+  const tc = useTranslations('common');
   const isLoading = useWorkspaceStore((s) => s.isLoading);
   const error = useWorkspaceStore((s) => s.error);
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
@@ -35,9 +39,9 @@ const MobileTerminalPage = () => {
     const prevId = prevWorkspaceIdRef.current;
     if (prevId) {
       useWorkspaceStore.getState().switchWorkspace(prevId);
-      toast.error('전환할 수 없습니다');
+      toast.error(t('cannotSwitch'));
     }
-  }, []);
+  }, [t]);
 
   const layout = useLayout({
     workspaceId: activeWorkspaceId,
@@ -269,7 +273,7 @@ const MobileTerminalPage = () => {
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
         <Spinner className="h-4 w-4 text-muted-foreground" />
-        <span className="mt-3 text-sm text-muted-foreground">연결 중...</span>
+        <span className="mt-3 text-sm text-muted-foreground">{t('connecting')}</span>
       </div>
     );
   }
@@ -286,7 +290,7 @@ const MobileTerminalPage = () => {
           onClick={useWorkspaceStore.getState().fetchWorkspaces}
         >
           <RefreshCw className="h-3.5 w-3.5" />
-          재시도
+          {tc('retry')}
         </Button>
       </div>
     );
@@ -296,7 +300,7 @@ const MobileTerminalPage = () => {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
         <Monitor className="h-8 w-8 text-muted-foreground" />
-        <span className="text-sm font-medium text-muted-foreground">Workspace 없음</span>
+        <span className="text-sm font-medium text-muted-foreground">{tm('noWorkspace')}</span>
         <Button
           variant="outline"
           size="sm"
@@ -307,7 +311,7 @@ const MobileTerminalPage = () => {
           }}
         >
           <Plus className="h-3.5 w-3.5" />
-          새 Workspace 만들기
+          {t('newWorkspace')}
         </Button>
       </div>
     );
@@ -333,7 +337,7 @@ const MobileTerminalPage = () => {
           onClick={() => layout.fetchLayout()}
         >
           <RefreshCw className="h-3.5 w-3.5" />
-          재시도
+          {tc('retry')}
         </Button>
       </div>
     );

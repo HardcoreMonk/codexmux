@@ -1,5 +1,6 @@
 import { memo, useMemo } from 'react';
 import { Globe } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/spinner';
 import useTabStore, { selectTabDisplayStatus } from '@/hooks/use-tab-store';
 import { getProcessIcon } from '@/lib/process-icon';
@@ -51,6 +52,7 @@ const DotByStatus = ({ status, panelType, terminalStatus, process }: { status: T
 };
 
 const WorkspaceStatusIndicator = ({ workspaceId }: IWorkspaceStatusIndicatorProps) => {
+  const t = useTranslations('terminal');
   const wsConnected = useTabStore((state) => state.statusWsConnected);
   const tabs = useTabStore((state) => state.tabs);
   const tabOrder = useTabStore((state) => state.tabOrders[workspaceId]);
@@ -77,7 +79,7 @@ const WorkspaceStatusIndicator = ({ workspaceId }: IWorkspaceStatusIndicatorProp
   if (wsConnected && tabEntries.length === 0) return null;
 
   return (
-    <span className="mt-1 flex h-3 items-center gap-0.5" aria-label="탭 상태">
+    <span className="mt-1 flex h-3 items-center gap-0.5" aria-label={t('tabStatus')}>
       {tabEntries.map(({ tabId, status, panelType, terminalStatus, currentProcess }) => (
         <DotByStatus key={tabId} status={status} panelType={panelType} terminalStatus={terminalStatus} process={currentProcess} />
       ))}

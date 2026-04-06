@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { useTranslations } from 'next-intl';
 import dayjs from 'dayjs';
 import { Trophy, Zap, Flame, Timer, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,26 +32,28 @@ const HOUR_MARKS = [0, 6, 12, 18];
 const TOP_STREAK_COUNT = 5;
 
 const UptimeSection = ({ data }: IUptimeSectionProps) => {
+  const t = useTranslations('stats');
+
   const streakCards = [
     {
-      label: '최장 연속',
+      label: t('longestStreak'),
       value: formatDuration(data.longestStreakMinutes * 60_000),
       icon: Trophy,
     },
     {
-      label: '현재 연속',
+      label: t('currentStreak'),
       value: data.currentStreak.active
         ? formatDuration(data.currentStreak.minutes * 60_000)
         : '-',
       icon: Zap,
     },
     {
-      label: '가동 횟수',
-      value: `${data.totalStreaks}회`,
+      label: t('streakCount'),
+      value: t('streakCountValue', { count: data.totalStreaks }),
       icon: Flame,
     },
     {
-      label: '평균 연속',
+      label: t('avgStreak'),
       value: formatDuration(data.averageStreakMinutes * 60_000),
       icon: Timer,
     },
@@ -69,14 +72,14 @@ const UptimeSection = ({ data }: IUptimeSectionProps) => {
   return (
     <section className="space-y-3">
       <div className="flex items-center gap-1.5">
-        <h2 className="text-sm font-medium text-muted-foreground">연속 가동</h2>
+        <h2 className="text-sm font-medium text-muted-foreground">{t('continuousUptime')}</h2>
         <TooltipProvider delay={0}>
           <Tooltip>
             <TooltipTrigger
               render={<Info className="h-3.5 w-3.5 text-muted-foreground/50" />}
             />
             <TooltipContent side="right" className="max-w-56 text-xs leading-relaxed">
-              1분 단위로 메시지 활동을 감지합니다. 같은 세션 내 15분 이내 간격은 연속으로 처리합니다.
+              {t('uptimeDescription')}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -101,7 +104,7 @@ const UptimeSection = ({ data }: IUptimeSectionProps) => {
       <Card size="sm">
         <CardHeader>
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            주간 타임라인
+            {t('weeklyTimeline')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -189,7 +192,7 @@ const UptimeSection = ({ data }: IUptimeSectionProps) => {
         <Card size="sm">
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              연속 가동 TOP 10
+              {t('streakTop')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -206,7 +209,7 @@ const UptimeSection = ({ data }: IUptimeSectionProps) => {
         <Card size="sm">
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              동시 사용
+              {t('concurrentUsage')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -219,11 +222,11 @@ const UptimeSection = ({ data }: IUptimeSectionProps) => {
                       x{combo.level}+
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {combo.level}개 이상 동시
+                      {t('concurrentOrMore', { level: combo.level })}
                     </span>
                   </div>
                   <span className="text-sm tabular-nums">
-                    누적 {formatDuration(combo.value * 60_000)}
+                    {t('accumulated', { duration: formatDuration(combo.value * 60_000) })}
                   </span>
                 </div>
               ))}
@@ -234,7 +237,7 @@ const UptimeSection = ({ data }: IUptimeSectionProps) => {
 
       {!hasActivity && (
         <p className="py-4 text-center text-sm text-muted-foreground">
-          최근 7일 동안 Claude 사용 기록이 없습니다
+          {t('noRecentActivity')}
         </p>
       )}
 
@@ -242,7 +245,7 @@ const UptimeSection = ({ data }: IUptimeSectionProps) => {
         <div className="flex items-center gap-2 rounded-lg bg-ui-teal/10 px-4 py-2">
           <div className="h-2 w-2 animate-pulse rounded-full bg-ui-teal" />
           <span className="text-xs text-ui-teal">
-            현재 가동 중 — {formatDuration(data.currentStreak.minutes * 60_000)} 연속
+            {t('currentlyRunning', { duration: formatDuration(data.currentStreak.minutes * 60_000) })}
             {data.currentStreak.maxConcurrent >= 2 &&
               ` (x${data.currentStreak.maxConcurrent})`}
           </span>

@@ -1,4 +1,5 @@
 import { useMemo, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Bar,
   BarChart,
@@ -43,21 +44,23 @@ const OUTCOME_COLORS: Record<string, string> = {
 };
 
 const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoading, totalToolCalls }: ISessionSectionProps) => {
+  const t = useTranslations('stats');
+
   const cards = [
     {
-      label: '평균 세션 길이',
+      label: t('avgSessionLength'),
       value: formatDuration(sessions.averageDurationMs),
       icon: Clock,
     },
     {
-      label: '최장 세션',
+      label: t('longestSession'),
       value: sessions.longestSession
         ? formatDuration(sessions.longestSession.duration)
         : '-',
       icon: Maximize2,
     },
     {
-      label: '총 도구 호출 수',
+      label: t('totalToolCalls'),
       value: formatNumberWithComma(totalToolCalls),
       icon: Wrench,
     },
@@ -108,7 +111,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
   }, [history]);
 
   const commandConfig: ChartConfig = {
-    count: { label: '횟수', color: 'var(--ui-purple)' },
+    count: { label: t('count'), color: 'var(--ui-purple)' },
   };
 
   const inputDistData = useMemo(() => {
@@ -117,12 +120,12 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
   }, [history]);
 
   const inputDistConfig: ChartConfig = {
-    count: { label: '건수', color: 'var(--ui-blue)' },
+    count: { label: t('cases'), color: 'var(--ui-blue)' },
   };
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-medium text-muted-foreground">세션 분석</h2>
+      <h2 className="text-sm font-medium text-muted-foreground">{t('sessionAnalysis')}</h2>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         {cards.map((card) => (
@@ -148,7 +151,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
             {categoryDonutData.length > 0 && (
               <Card size="sm">
                 <CardHeader>
-                  <CardTitle className="text-sm font-medium text-muted-foreground">카테고리 분포</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">{t('categoryDistribution')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ChartContainer config={categoryConfig} className="aspect-auto h-48 w-full">
@@ -182,7 +185,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
                         dominantBaseline="middle"
                         className="fill-muted-foreground text-xs"
                       >
-                        총 세션
+                        {t('totalSessionsPie')}
                       </text>
                     </PieChart>
                   </ChartContainer>
@@ -193,7 +196,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
             {outcomeData.length > 0 && (
               <Card size="sm">
                 <CardHeader>
-                  <CardTitle className="text-sm font-medium text-muted-foreground">목표 달성도</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">{t('goalAchievement')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ChartContainer config={outcomeConfig} className="aspect-auto h-48 w-full">
@@ -227,7 +230,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
             {commandData.length > 0 && (
               <Card size="sm">
                 <CardHeader>
-                  <CardTitle className="text-sm font-medium text-muted-foreground">자주 사용하는 명령어 TOP 10</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">{t('topCommands')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ChartContainer config={commandConfig} className="aspect-auto h-64 w-full">
@@ -260,7 +263,7 @@ const SessionSection = ({ sessions, facets, history, facetsLoading, historyLoadi
             {inputDistData.length > 0 && (
               <Card size="sm">
                 <CardHeader>
-                  <CardTitle className="text-sm font-medium text-muted-foreground">입력 길이 분포</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">{t('inputLengthDist')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ChartContainer config={inputDistConfig} className="aspect-auto h-64 w-full">

@@ -1,0 +1,16 @@
+{
+  "send": "Send",
+  "commandPlaceholder": "Enter command...",
+  "newTab": "New Tab",
+  "closeTab": "Close Tab",
+  "closeTabConfirm": "Close '{name}' tab?",
+  "closeMenu": "Close menu",
+  "notes": "Notes",
+  "stats": "Statistics",
+  "disconnectedMaxConnections": "Too many connections. Please close other tabs.",
+  "disconnectedPtyError": "Unable to start terminal",
+  "cannotConnectServer": "Unable to connect to server",
+  "restart": "Restart",
+  "reconnect": "Reconnect",
+  "noWorkspace": "No Workspace"
+}

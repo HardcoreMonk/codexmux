@@ -16,7 +16,7 @@ interface IChatBubbleProps {
   isFailed?: boolean;
   approvalResolved?: 'approved' | 'rejected' | null;
   onResend?: () => void;
-  onApproval?: (action: '승인' | '거부') => void;
+  onApproval?: (action: 'approve' | 'reject') => void;
 }
 
 const agentTypeIcons: Record<string, React.ReactNode> = {

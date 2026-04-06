@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import useTerminal from '@/hooks/use-terminal';
@@ -12,6 +13,8 @@ interface IInstallDialogProps {
 }
 
 const InstallDialog = ({ open, onOpenChange, command, label }: IInstallDialogProps) => {
+  const t = useTranslations('terminal');
+  const tc = useTranslations('common');
   const connectedRef = useRef(false);
   const writeRef = useRef<(data: Uint8Array) => void>(() => {});
 
@@ -54,11 +57,11 @@ const InstallDialog = ({ open, onOpenChange, command, label }: IInstallDialogPro
         />
         <DialogFooter>
           <span className="mr-auto text-xs text-muted-foreground">
-            {status === 'connected' && '실행 중...'}
-            {status === 'disconnected' && '완료'}
+            {status === 'connected' && t('installRunning')}
+            {status === 'disconnected' && t('installDone')}
           </span>
           <Button variant="outline" onClick={handleClose}>
-            닫기
+            {tc('close')}
           </Button>
         </DialogFooter>
       </DialogContent>
