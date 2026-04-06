@@ -94,6 +94,8 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
 
   const { theme: terminalTheme } = useTerminalTheme();
   const [hasEverConnected, setHasEverConnected] = useState(false);
+  const [sessionSwitching, setSessionSwitching] = useState(false);
+  const sessionSwitchTimerRef = useRef(0);
   const [isCreating, setIsCreating] = useState(false);
   const [closingTabId, setClosingTabId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -373,6 +375,8 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
         termActionsRef.current.focus();
       }
       fetchAndUpdateCwd();
+      clearTimeout(sessionSwitchTimerRef.current);
+      sessionSwitchTimerRef.current = window.setTimeout(() => setSessionSwitching(false), 50);
     },
     onSessionEnded: handleSessionEnded,
   });
@@ -399,6 +403,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
     if (connectedSessionRef.current === tab.sessionName) return;
 
     if (connectedSessionRef.current !== null) {
+      setSessionSwitching(true);
       reset();
       lastTitleRef.current = '';
     }
@@ -667,7 +672,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   }, [claudeInputVisible]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const noTabs = tabs.length === 0;
-  const ready = isReady && (status === 'connected' || hasEverConnected) && !noTabs;
+  const ready = isReady && (status === 'connected' || hasEverConnected) && !noTabs && !sessionSwitching;
   const showInitialLoading =
     !noTabs &&
     (!isReady ||
@@ -818,7 +823,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
               <TerminalContainer
                 ref={terminalRef}
                 className={cn(
-                  'min-h-0 flex-1 transition-opacity duration-150',
+                  'min-h-0 flex-1',
                   ready ? 'opacity-100' : 'opacity-0',
                 )}
               />
