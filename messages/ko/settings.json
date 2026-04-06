@@ -9,6 +9,7 @@
     "tailscale": "Tailscale",
     "quickPrompts": "빠른 프롬프트",
     "agent": "에이전트",
+    "notification": "알림",
     "system": "시스템"
   },
   "general": {
@@ -41,6 +42,10 @@
     "savedRestart": "저장되었습니다. {action} 후 적용됩니다.",
     "restartServerAction": "서버 재시작",
     "restartAppAction": "앱 종료 후 재시작"
+  },
+  "notification": {
+    "enable": "알림 활성화",
+    "enableDescription": "Claude 작업 완료 시 시스템 알림을 표시합니다. Electron 앱에서만 동작합니다."
   },
   "agent": {
     "enableMenu": "에이전트 메뉴 활성화",

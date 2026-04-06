@@ -15,6 +15,7 @@ export interface IConfigData {
   dangerouslySkipPermissions?: boolean;
   editorUrl?: string;
   agentEnabled?: boolean;
+  notificationsEnabled?: boolean;
   locale?: string;
   updatedAt: string;
 }

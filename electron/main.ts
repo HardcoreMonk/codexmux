@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, Menu, ipcMain, session, screen } from 'electron';
+import { app, BrowserWindow, shell, Menu, ipcMain, session, screen, Notification } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -451,6 +451,25 @@ ipcMain.handle('open-external', (_event, url: string) => {
   if (typeof url === 'string' && /^https?:\/\//.test(url)) {
     shell.openExternal(url);
   }
+});
+
+// --- Native Notifications ---
+
+ipcMain.handle('show-notification', (_event, title: string, body: string) => {
+  if (mainWindow?.isFocused()) return false;
+  const notification = new Notification({ title, body });
+  notification.on('click', () => {
+    mainWindow?.show();
+    mainWindow?.focus();
+    mainWindow?.webContents.send('notification-click');
+  });
+  notification.show();
+  return true;
+});
+
+ipcMain.handle('set-dock-badge', (_event, count: number) => {
+  if (process.platform !== 'darwin') return;
+  app.dock.setBadge(count > 0 ? String(count) : '');
 });
 
 // --- System Resources ---

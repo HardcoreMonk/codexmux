@@ -9,6 +9,7 @@
     "tailscale": "Tailscale",
     "quickPrompts": "Quick Prompts",
     "agent": "Agent",
+    "notification": "Notification",
     "system": "System"
   },
   "general": {
@@ -41,6 +42,10 @@
     "savedRestart": "Saved. Changes will apply after {action}.",
     "restartServerAction": "server restart",
     "restartAppAction": "app restart"
+  },
+  "notification": {
+    "enable": "Enable Notifications",
+    "enableDescription": "Show system notifications when Claude tasks complete. Only works in the Electron app."
   },
   "agent": {
     "enableMenu": "Enable Agent Menu",

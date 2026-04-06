@@ -3,7 +3,7 @@ import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
 import isElectron from '@/hooks/use-is-electron';
-import { Bot, Check, Code, Dices, Globe, Lock, Monitor, Moon, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
+import { Bell, Bot, Check, Code, Dices, Globe, Lock, Monitor, Moon, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
 import ClaudeLogo from '@/components/icons/claude-logo';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
@@ -32,7 +32,7 @@ import type { ITerminalThemeColors } from '@/lib/terminal-themes';
 import QuickPromptsSettings from '@/components/features/settings/quick-prompts-settings';
 import TailscaleSettings from '@/components/features/settings/tailscale-settings';
 
-type TSettingsTab = 'general' | 'terminal' | 'editor' | 'claude' | 'auth' | 'tailscale' | 'quick-prompts' | 'agent' | 'system';
+type TSettingsTab = 'general' | 'terminal' | 'editor' | 'claude' | 'notification' | 'auth' | 'tailscale' | 'quick-prompts' | 'agent' | 'system';
 
 interface ISettingsItem {
   id: TSettingsTab;
@@ -45,6 +45,7 @@ const settingsItems: ISettingsItem[] = [
   { id: 'terminal', labelKey: 'terminal', icon: <Terminal className="h-4 w-4" /> },
   { id: 'editor', labelKey: 'editor', icon: <Code className="h-4 w-4" /> },
   { id: 'claude', labelKey: 'claude', icon: <ClaudeLogo className="h-4 w-4" /> },
+  { id: 'notification', labelKey: 'notification', icon: <Bell className="h-4 w-4" /> },
   { id: 'auth', labelKey: 'auth', icon: <Lock className="h-4 w-4" /> },
   { id: 'tailscale', labelKey: 'tailscale', icon: <Globe className="h-4 w-4" /> },
   { id: 'quick-prompts', labelKey: 'quickPrompts', icon: <Zap className="h-4 w-4" /> },
@@ -291,6 +292,32 @@ const ClaudeTab = () => {
   );
 };
 
+const NotificationTab = () => {
+  const t = useTranslations('settings.notification');
+  const notificationsEnabled = useConfigStore((state) => state.notificationsEnabled);
+  const setNotificationsEnabled = useConfigStore((state) => state.setNotificationsEnabled);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="space-y-0.5">
+          <Label htmlFor="notifications-enabled" className="text-sm font-medium">
+            {t('enable')}
+          </Label>
+          <p className="text-sm text-muted-foreground">
+            {t('enableDescription')}
+          </p>
+        </div>
+        <Switch
+          id="notifications-enabled"
+          checked={notificationsEnabled}
+          onCheckedChange={setNotificationsEnabled}
+        />
+      </div>
+    </div>
+  );
+};
+
 const randomHex = (length: number): string => {
   const bytes = new Uint8Array(length);
   crypto.getRandomValues(bytes);
@@ -491,6 +518,7 @@ const SettingsDialog = ({ open, onOpenChange }: ISettingsDialogProps) => {
             {activeTab === 'terminal' && <TerminalTab />}
             {activeTab === 'editor' && <EditorTab />}
             {activeTab === 'claude' && <ClaudeTab />}
+            {activeTab === 'notification' && <NotificationTab />}
             {activeTab === 'auth' && <AuthTab />}
             {activeTab === 'tailscale' && <TailscaleSettings />}
             {activeTab === 'quick-prompts' && <QuickPromptsSettings />}

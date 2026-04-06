@@ -6,6 +6,7 @@ export interface IConfigInitialData {
   dangerouslySkipPermissions?: boolean;
   editorUrl?: string;
   agentEnabled?: boolean;
+  notificationsEnabled?: boolean;
   hasAuthPassword?: boolean;
   locale?: string;
 }
@@ -14,6 +15,7 @@ interface IConfigState {
   dangerouslySkipPermissions: boolean;
   editorUrl: string;
   agentEnabled: boolean;
+  notificationsEnabled: boolean;
   hasAuthPassword: boolean;
   locale: string;
 
@@ -21,11 +23,12 @@ interface IConfigState {
   setDangerouslySkipPermissions: (enabled: boolean) => void;
   setEditorUrl: (url: string) => void;
   setAgentEnabled: (enabled: boolean) => void;
+  setNotificationsEnabled: (enabled: boolean) => void;
   changePassword: (password: string) => void;
   setLocale: (locale: string) => void;
 }
 
-const initialConfig = { agentEnabled: false, editorUrl: '', dangerouslySkipPermissions: false, hasAuthPassword: false, locale: 'en' };
+const initialConfig = { agentEnabled: false, notificationsEnabled: true, editorUrl: '', dangerouslySkipPermissions: false, hasAuthPassword: false, locale: 'en' };
 
 const saveConfig = (updates: Record<string, unknown>) => {
   fetch('/api/config', {
@@ -41,6 +44,7 @@ const useConfigStore = create<IConfigState>((set, get) => ({
   dangerouslySkipPermissions: initialConfig.dangerouslySkipPermissions,
   editorUrl: initialConfig.editorUrl,
   agentEnabled: initialConfig.agentEnabled,
+  notificationsEnabled: initialConfig.notificationsEnabled,
   hasAuthPassword: initialConfig.hasAuthPassword,
   locale: initialConfig.locale,
 
@@ -49,6 +53,7 @@ const useConfigStore = create<IConfigState>((set, get) => ({
       dangerouslySkipPermissions: data.dangerouslySkipPermissions ?? false,
       editorUrl: data.editorUrl ?? '',
       agentEnabled: data.agentEnabled ?? false,
+      notificationsEnabled: data.notificationsEnabled ?? true,
       hasAuthPassword: data.hasAuthPassword ?? false,
       locale: data.locale ?? 'en',
     });
@@ -68,6 +73,11 @@ const useConfigStore = create<IConfigState>((set, get) => ({
   setAgentEnabled: (enabled) => {
     set({ agentEnabled: enabled });
     saveConfig({ agentEnabled: enabled });
+  },
+
+  setNotificationsEnabled: (enabled) => {
+    set({ notificationsEnabled: enabled });
+    saveConfig({ notificationsEnabled: enabled });
   },
 
   changePassword: (password) => {
