@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
 import isElectron from '@/hooks/use-is-electron';
-import { Bell, Bot, Check, Code, Dices, Globe, Lock, Monitor, Moon, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
+import { Bell, Bot, Check, ChevronDown, Code, Dices, Globe, Lock, Monitor, Moon, Palette, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
 import ClaudeLogo from '@/components/icons/claude-logo';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
@@ -32,7 +32,7 @@ import type { ITerminalThemeColors } from '@/lib/terminal-themes';
 import QuickPromptsSettings from '@/components/features/settings/quick-prompts-settings';
 import TailscaleSettings from '@/components/features/settings/tailscale-settings';
 
-type TSettingsTab = 'general' | 'terminal' | 'editor' | 'claude' | 'notification' | 'auth' | 'tailscale' | 'quick-prompts' | 'agent' | 'system';
+type TSettingsTab = 'general' | 'appearance' | 'terminal' | 'editor' | 'claude' | 'notification' | 'auth' | 'tailscale' | 'quick-prompts' | 'agent' | 'system';
 
 interface ISettingsItem {
   id: TSettingsTab;
@@ -43,6 +43,7 @@ interface ISettingsItem {
 
 const settingsItems: ISettingsItem[] = [
   { id: 'general', labelKey: 'general', icon: <Settings className="h-4 w-4" /> },
+  { id: 'appearance', labelKey: 'appearance', icon: <Palette className="h-4 w-4" /> },
   { id: 'terminal', labelKey: 'terminal', icon: <Terminal className="h-4 w-4" /> },
   { id: 'editor', labelKey: 'editor', icon: <Code className="h-4 w-4" /> },
   { id: 'claude', labelKey: 'claude', icon: <ClaudeLogo className="h-4 w-4" /> },
@@ -120,6 +121,125 @@ const GeneralTab = () => {
             </Button>
           ))}
         </ButtonGroup>
+      </div>
+    </div>
+  );
+};
+
+const CSS_VARIABLE_GROUPS = [
+  {
+    label: 'Surface',
+    vars: ['--background', '--card', '--popover', '--muted', '--secondary', '--accent', '--sidebar'],
+  },
+  {
+    label: 'Text',
+    vars: ['--foreground', '--card-foreground', '--popover-foreground', '--muted-foreground', '--secondary-foreground', '--accent-foreground', '--sidebar-foreground'],
+  },
+  {
+    label: 'Interactive',
+    vars: ['--primary', '--primary-foreground', '--destructive'],
+  },
+  {
+    label: 'Border',
+    vars: ['--border', '--input', '--ring'],
+  },
+  {
+    label: 'Palette',
+    vars: ['--ui-blue', '--ui-teal', '--ui-coral', '--ui-amber', '--ui-purple', '--ui-pink', '--ui-green', '--ui-gray', '--ui-red'],
+  },
+  {
+    label: 'Semantic',
+    vars: ['--positive', '--negative', '--accent-color'],
+  },
+] as const;
+
+const AppearanceTab = () => {
+  const t = useTranslations('settings.appearance');
+  const tc = useTranslations('common');
+  const customCSS = useConfigStore((s) => s.customCSS);
+  const setCustomCSS = useConfigStore((s) => s.setCustomCSS);
+  const [localCSS, setLocalCSS] = useState(customCSS);
+  const [showVars, setShowVars] = useState(false);
+
+  useEffect(() => {
+    setLocalCSS(customCSS);
+  }, [customCSS]);
+
+  const isDirty = localCSS !== customCSS;
+
+  const handleApply = () => {
+    setCustomCSS(localCSS);
+    toast.success(t('applied'));
+  };
+
+  const handleReset = () => {
+    setLocalCSS('');
+    setCustomCSS('');
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="text-sm font-medium">{t('customCSS')}</p>
+        <p className="text-sm text-muted-foreground">{t('customCSSDescription')}</p>
+      </div>
+
+      <textarea
+        className="h-56 w-full resize-y rounded-md border border-input bg-muted/30 p-3 font-mono text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/40 focus:border-ring focus:outline-none"
+        placeholder={t('placeholder')}
+        value={localCSS}
+        onChange={(e) => setLocalCSS(e.target.value)}
+        spellCheck={false}
+      />
+
+      <div className="flex items-center justify-between">
+        <AlertDialog>
+          <AlertDialogTrigger
+            render={
+              <Button variant="outline" size="sm" disabled={!customCSS}>
+                {t('reset')}
+              </Button>
+            }
+          />
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('reset')}</AlertDialogTitle>
+              <AlertDialogDescription>{t('resetConfirm')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
+              <AlertDialogAction onClick={handleReset}>{t('reset')}</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <Button size="sm" disabled={!isDirty} onClick={handleApply}>
+          {t('apply')}
+        </Button>
+      </div>
+
+      <div>
+        <button
+          type="button"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => setShowVars(!showVars)}
+        >
+          <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', showVars && 'rotate-180')} />
+          {t('availableVariables')}
+        </button>
+        {showVars && (
+          <div className="mt-2 space-y-3">
+            {CSS_VARIABLE_GROUPS.map((group) => (
+              <div key={group.label}>
+                <p className="mb-1 text-[11px] font-medium text-muted-foreground">{group.label}</p>
+                <div className="flex flex-wrap gap-1">
+                  {group.vars.map((v) => (
+                    <code key={v} className="rounded bg-muted px-1.5 py-0.5 text-[11px]">{v}</code>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -516,6 +636,7 @@ const SettingsDialog = ({ open, onOpenChange }: ISettingsDialogProps) => {
           <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6">
             <h2 className="mb-6 text-lg font-semibold">{activeItem ? t(`tabs.${activeItem.labelKey}`) : ''}</h2>
             {activeTab === 'general' && <GeneralTab />}
+            {activeTab === 'appearance' && <AppearanceTab />}
             {activeTab === 'terminal' && <TerminalTab />}
             {activeTab === 'editor' && <EditorTab />}
             {activeTab === 'claude' && <ClaudeTab />}
