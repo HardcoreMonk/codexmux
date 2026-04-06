@@ -1,10 +1,13 @@
 import type { ReactElement, ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import useIsMobile from '@/hooks/use-is-mobile';
 import MobileLayout from '@/components/features/mobile/mobile-layout';
 import Sidebar from '@/components/layout/sidebar';
 import useSync from '@/hooks/use-sync';
 import useAgentStatus from '@/hooks/use-agent-status';
 import useGlobalShortcuts from '@/hooks/use-global-shortcuts';
+
+const WebviewLayer = dynamic(() => import('@/components/layout/webview-layer'), { ssr: false });
 
 interface IPageShellProps {
   children: ReactNode;
@@ -32,6 +35,7 @@ const PageShell = ({ children }: IPageShellProps) => {
       <Sidebar />
       <div className="relative flex min-w-0 flex-1 flex-col">
         {children}
+        <WebviewLayer />
       </div>
     </div>
   );

@@ -68,15 +68,6 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => 
   const [url, setUrl] = useState(resolvedUrl);
   const [addressValue, setAddressValue] = useState(resolvedUrl);
   const [canNavigate, setCanNavigate] = useState(isElectron);
-
-  useEffect(() => {
-    if (!initialUrl) return;
-    const restored = getLastViewedUrl(initialUrl) ?? initialUrl;
-    if (restored !== url) {
-      setUrl(restored);
-      setAddressValue(restored);
-    }
-  }, [initialUrl]);
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
   const [mobileUA, setMobileUA] = useState(false);

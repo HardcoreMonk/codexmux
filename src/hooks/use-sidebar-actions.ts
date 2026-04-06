@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { useRouter } from 'next/router';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
+import useWebviewStore from '@/hooks/use-webview-store';
 
 interface ISidebarActionsState {
   onSelectWorkspace: ((id: string) => void) | null;
@@ -19,6 +20,7 @@ export const useSelectWorkspace = () => {
   const registered = useSidebarActions((s) => s.onSelectWorkspace);
 
   return (workspaceId: string) => {
+    useWebviewStore.getState().hide();
     if (registered) {
       registered(workspaceId);
     } else {

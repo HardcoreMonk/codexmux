@@ -35,6 +35,7 @@ import useAgentStore, { selectBlockedCount, selectHasWorkingAgent, selectUnreadC
 import useConfigStore from '@/hooks/use-config-store';
 import { useSelectWorkspace } from '@/hooks/use-sidebar-actions';
 import useSidebarItems from '@/hooks/use-sidebar-items';
+import useWebviewStore from '@/hooks/use-webview-store';
 import IconRenderer from '@/components/features/settings/icon-renderer';
 
 const MIN_WIDTH = 160;
@@ -68,6 +69,7 @@ const Sidebar = () => {
   const agentEnabled = useConfigStore((s) => s.agentEnabled);
   const selectWorkspace = useSelectWorkspace();
   const { items: sidebarItems } = useSidebarItems();
+  const activeWebviewId = useWebviewStore((s) => s.activeId);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -309,9 +311,9 @@ const Sidebar = () => {
               <button
                 className={cn(
                   'relative flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',
-                  isNavActive('/agents') ? 'text-foreground' : hasWorkingAgent ? 'text-ui-teal' : 'text-muted-foreground',
+                  isNavActive('/agents') && !activeWebviewId ? 'text-foreground' : hasWorkingAgent ? 'text-ui-teal' : 'text-muted-foreground',
                 )}
-                onClick={() => router.push('/agents')}
+                onClick={() => { useWebviewStore.getState().hide(); router.push('/agents'); }}
                 aria-label={tc('agent')}
               >
                 <Bot className={cn('h-3.5 w-3.5', hasWorkingAgent && !isNavActive('/agents') && 'animate-pulse')} />
@@ -394,7 +396,7 @@ const Sidebar = () => {
             >
               <WorkspaceItem
                 workspace={ws}
-                isActive={ws.id === activeWorkspaceId && router.pathname === '/'}
+                isActive={ws.id === activeWorkspaceId && router.pathname === '/' && !activeWebviewId}
                 isDeleting={deletingIds.has(ws.id)}
                 shortcutLabel={i < 8 ? `⌘${i + 1}` : i === workspaces.length - 1 ? '⌘9' : undefined}
                 showShortcut={showShortcuts}
@@ -421,10 +423,9 @@ const Sidebar = () => {
             <div className="flex items-center gap-0.5">
               {sidebarItems.map((item) => {
                 const isExternal = item.url.startsWith('http://') || item.url.startsWith('https://');
-                const navPath = isExternal ? `/webview?url=${encodeURIComponent(item.url)}` : item.url;
                 const isActive = isExternal
-                  ? router.pathname === '/webview' && router.query.url === item.url
-                  : isNavActive(item.url);
+                  ? activeWebviewId === item.id
+                  : isNavActive(item.url) && !activeWebviewId;
                 return (
                   <button
                     key={item.id}
@@ -432,7 +433,14 @@ const Sidebar = () => {
                       'flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',
                       isActive ? 'text-foreground' : 'text-muted-foreground',
                     )}
-                    onClick={() => router.push(navPath)}
+                    onClick={() => {
+                      if (isExternal) {
+                        useWebviewStore.getState().open(item.id, item.url, item.name);
+                      } else {
+                        useWebviewStore.getState().hide();
+                        router.push(item.url);
+                      }
+                    }}
                     aria-label={item.name}
                     title={item.name}
                   >
