@@ -345,15 +345,12 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   await applyConfig();
   await initWorkspaceStore();
   await autoResumeOnStartup();
-  await ensureHookSettings(port);
   await getStatusManager().init();
   await getAgentManager().init();
 
   const result = dev ? await startDev(port, appDir) : await startProd(port, appDir);
 
-  if (result.port !== port) {
-    await ensureHookSettings(result.port);
-  }
+  await ensureHookSettings(result.port);
 
   const mode = dev ? 'development' : process.env.NODE_ENV;
   console.log('');
