@@ -153,9 +153,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Pretendard", "Apple SD Gothic Neo", sans-serif;
+  --font-sans: "Inter", sans-serif;
   --font-mono: "MesloLGLDZ", monospace;
-  --font-heading: "Pretendard", sans-serif;
+  --font-heading: "Inter", sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -359,4 +359,24 @@ body {
 
 .typing-dot:nth-child(3) {
   animation-delay: 0.4s;
+}
+
+:root:lang(ko) {
+  --font-sans: "Pretendard", "Inter", "Apple SD Gothic Neo", sans-serif;
+  --font-heading: "Pretendard", "Inter", sans-serif;
+}
+
+:root:lang(ja) {
+  --font-sans: "Noto Sans JP", "Inter", sans-serif;
+  --font-heading: "Noto Sans JP", "Inter", sans-serif;
+}
+
+:root:lang(zh-CN) {
+  --font-sans: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-heading: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+:root:lang(zh-TW) {
+  --font-sans: "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-heading: "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
 }

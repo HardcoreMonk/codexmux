@@ -371,6 +371,10 @@ export default function App({ Component, pageProps }: TAppPropsWithLayout) {
 
   const locale = useConfigStore((s) => s.locale);
 
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
   dayjs.extend(relativeTime);
   const dayjsLocaleMap: Record<string, string> = { 'zh-CN': 'zh-cn', 'pt-BR': 'pt-br', 'zh-TW': 'zh-tw' };
   dayjs.locale(dayjsLocaleMap[locale] ?? locale);
