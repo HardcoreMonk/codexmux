@@ -9,6 +9,7 @@
     "auth": "Auth",
     "tailscale": "Tailscale",
     "quickPrompts": "Quick Prompts",
+    "sidebarItems": "Sidebar",
     "agent": "Agent",
     "notification": "Notification",
     "system": "System"
@@ -119,6 +120,28 @@
     "resetToDefault": "Reset to Default",
     "resetTitle": "Reset to Default",
     "resetDescription": "All custom prompts will be deleted and built-in prompts will be enabled.",
+    "resetCancel": "Cancel",
+    "resetConfirm": "Reset"
+  },
+  "sidebarItems": {
+    "title": "Sidebar Items",
+    "description": "Manage shortcut items displayed at the bottom of the sidebar.",
+    "itemsSection": "Items",
+    "addItem": "Add Item",
+    "editItem": "Edit Item",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Grafana",
+    "iconLabel": "Icon",
+    "iconSearch": "Search icons...",
+    "iconNotFound": "No icons found",
+    "urlLabel": "URL",
+    "urlPlaceholder": "e.g. https://grafana.example.com",
+    "save": "Save",
+    "cancel": "Cancel",
+    "addButton": "Add Item",
+    "resetToDefault": "Reset to Default",
+    "resetTitle": "Reset to Default",
+    "resetDescription": "All custom items will be deleted and built-in items will be enabled.",
     "resetCancel": "Cancel",
     "resetConfirm": "Reset"
   }

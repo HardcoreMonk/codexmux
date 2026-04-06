@@ -5,8 +5,6 @@ import {
   ChevronsRight,
   Plus,
   Settings,
-  BarChart3,
-  FileText,
   Bell,
   LogOut,
   Bot,
@@ -36,6 +34,8 @@ import NotificationSheet from '@/components/features/terminal/notification-sheet
 import useAgentStore, { selectBlockedCount, selectHasWorkingAgent, selectUnreadCount } from '@/hooks/use-agent-store';
 import useConfigStore from '@/hooks/use-config-store';
 import { useSelectWorkspace } from '@/hooks/use-sidebar-actions';
+import useSidebarItems from '@/hooks/use-sidebar-items';
+import IconRenderer from '@/components/features/settings/icon-renderer';
 
 const MIN_WIDTH = 160;
 const MAX_WIDTH = 480;
@@ -67,6 +67,7 @@ const Sidebar = () => {
   const hasWorkingAgent = useAgentStore(selectHasWorkingAgent);
   const agentEnabled = useConfigStore((s) => s.agentEnabled);
   const selectWorkspace = useSelectWorkspace();
+  const { items: sidebarItems } = useSidebarItems();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -418,26 +419,27 @@ const Sidebar = () => {
 
           <div className="flex items-center justify-between px-2 pb-2">
             <div className="flex items-center gap-0.5">
-              <button
-                className={cn(
-                  'flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',
-                  isNavActive('/reports') ? 'text-foreground' : 'text-muted-foreground',
-                )}
-                onClick={() => router.push('/reports')}
-                aria-label={t('notes')}
-              >
-                <FileText className="h-3.5 w-3.5" />
-              </button>
-              <button
-                className={cn(
-                  'flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',
-                  isNavActive('/stats') ? 'text-foreground' : 'text-muted-foreground',
-                )}
-                onClick={() => router.push('/stats')}
-                aria-label={t('stats')}
-              >
-                <BarChart3 className="h-3.5 w-3.5" />
-              </button>
+              {sidebarItems.map((item) => {
+                const isExternal = item.url.startsWith('http://') || item.url.startsWith('https://');
+                const navPath = isExternal ? `/webview?url=${encodeURIComponent(item.url)}` : item.url;
+                const isActive = isExternal
+                  ? router.pathname === '/webview' && router.query.url === item.url
+                  : isNavActive(item.url);
+                return (
+                  <button
+                    key={item.id}
+                    className={cn(
+                      'flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',
+                      isActive ? 'text-foreground' : 'text-muted-foreground',
+                    )}
+                    onClick={() => router.push(navPath)}
+                    aria-label={item.name}
+                    title={item.name}
+                  >
+                    <IconRenderer name={item.icon} className="h-3.5 w-3.5" />
+                  </button>
+                );
+              })}
               <button
                 className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
                 onClick={() => setSettingsOpen(true)}

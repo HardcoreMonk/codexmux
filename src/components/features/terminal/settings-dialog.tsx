@@ -3,7 +3,7 @@ import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
 import isElectron from '@/hooks/use-is-electron';
-import { Bell, Bot, Check, ChevronDown, Code, Dices, Globe, Lock, Monitor, Moon, Palette, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
+import { Bell, Bot, Check, ChevronDown, Code, Dices, Globe, Layout, Lock, Monitor, Moon, Palette, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
 import ClaudeLogo from '@/components/icons/claude-logo';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
@@ -30,9 +30,10 @@ import useConfigStore from '@/hooks/use-config-store';
 import { TERMINAL_THEMES } from '@/lib/terminal-themes';
 import type { ITerminalThemeColors } from '@/lib/terminal-themes';
 import QuickPromptsSettings from '@/components/features/settings/quick-prompts-settings';
+import SidebarItemsSettings from '@/components/features/settings/sidebar-items-settings';
 import TailscaleSettings from '@/components/features/settings/tailscale-settings';
 
-type TSettingsTab = 'general' | 'appearance' | 'terminal' | 'editor' | 'claude' | 'notification' | 'auth' | 'tailscale' | 'quick-prompts' | 'agent' | 'system';
+type TSettingsTab = 'general' | 'appearance' | 'terminal' | 'editor' | 'claude' | 'notification' | 'auth' | 'tailscale' | 'quick-prompts' | 'sidebar-items' | 'agent' | 'system';
 
 interface ISettingsItem {
   id: TSettingsTab;
@@ -51,6 +52,7 @@ const settingsItems: ISettingsItem[] = [
   { id: 'auth', labelKey: 'auth', icon: <Lock className="h-4 w-4" /> },
   { id: 'tailscale', labelKey: 'tailscale', icon: <Globe className="h-4 w-4" /> },
   { id: 'quick-prompts', labelKey: 'quickPrompts', icon: <Zap className="h-4 w-4" /> },
+  { id: 'sidebar-items', labelKey: 'sidebarItems', icon: <Layout className="h-4 w-4" /> },
   { id: 'agent', labelKey: 'agent', icon: <Bot className="h-4 w-4" /> },
   { id: 'system', labelKey: 'system', icon: <Wrench className="h-4 w-4" /> },
 ];
@@ -644,6 +646,7 @@ const SettingsDialog = ({ open, onOpenChange }: ISettingsDialogProps) => {
             {activeTab === 'auth' && <AuthTab />}
             {activeTab === 'tailscale' && <TailscaleSettings />}
             {activeTab === 'quick-prompts' && <QuickPromptsSettings />}
+            {activeTab === 'sidebar-items' && <SidebarItemsSettings />}
             {activeTab === 'agent' && <AgentTab />}
             {activeTab === 'system' && <SystemTab />}
           </div>

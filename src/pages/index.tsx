@@ -6,6 +6,8 @@ import { getWorkspaces } from '@/lib/workspace-store';
 import { getConfig } from '@/lib/config-store';
 import { readQuickPrompts } from '@/lib/quick-prompts-store';
 import type { IQuickPromptsData } from '@/lib/quick-prompts-store';
+import { readSidebarItems } from '@/lib/sidebar-items-store';
+import type { ISidebarItemsData } from '@/lib/sidebar-items-store';
 import type { IWorkspaceInitialData } from '@/hooks/use-workspace-store';
 import type { IConfigInitialData } from '@/hooks/use-config-store';
 import { initTerminalTheme } from '@/hooks/use-terminal-theme';
@@ -29,9 +31,10 @@ interface IIndexProps {
   initialWorkspace: IWorkspaceInitialData;
   initialConfig: IConfigInitialData;
   initialQuickPrompts: IQuickPromptsData;
+  initialSidebarItems: ISidebarItemsData;
 }
 
-const Index = ({ initialConfig, initialQuickPrompts }: IIndexProps) => {
+const Index = ({ initialConfig, initialQuickPrompts, initialSidebarItems }: IIndexProps) => {
   const isMobile = useIsMobile();
   const { setTheme } = useTheme();
   useBrowserTitle('purplemux');
@@ -49,7 +52,7 @@ const Index = ({ initialConfig, initialQuickPrompts }: IIndexProps) => {
   }, [initialConfig, setTheme]);
 
   return (
-    <SWRConfig value={{ fallback: { '/api/quick-prompts': initialQuickPrompts } }}>
+    <SWRConfig value={{ fallback: { '/api/quick-prompts': initialQuickPrompts, '/api/sidebar-items': initialSidebarItems } }}>
       <Head>
         <title>purplemux</title>
       </Head>
@@ -61,9 +64,9 @@ const Index = ({ initialConfig, initialQuickPrompts }: IIndexProps) => {
 Index.getLayout = getPageShellLayout;
 
 export const getServerSideProps: GetServerSideProps<IIndexProps> = async () => {
-  const [data, configData, quickPrompts] = await Promise.all([getWorkspaces(), getConfig(), readQuickPrompts()]);
+  const [data, configData, quickPrompts, sidebarItems] = await Promise.all([getWorkspaces(), getConfig(), readQuickPrompts(), readSidebarItems()]);
   const { authPassword, authSecret: _, ...safeConfig } = configData;
-  return { props: { initialWorkspace: data, initialConfig: { ...safeConfig, hasAuthPassword: !!authPassword }, initialQuickPrompts: quickPrompts } };
+  return { props: { initialWorkspace: data, initialConfig: { ...safeConfig, hasAuthPassword: !!authPassword }, initialQuickPrompts: quickPrompts, initialSidebarItems: sidebarItems } };
 };
 
 export default Index;
