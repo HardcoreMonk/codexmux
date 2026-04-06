@@ -56,5 +56,9 @@
   "tabStatus": "탭 상태",
   "messageHistory": "메시지 히스토리",
   "installRunning": "실행 중...",
-  "installDone": "완료"
+  "installDone": "완료",
+  "closeTerminalTabTitle": "탭 닫기",
+  "closeTerminalTabConfirm": "'{name}' 탭을 닫으시겠습니까?",
+  "claudeTabClosed": "Claude 탭이 닫혔습니다",
+  "claudeTabClosedUndo": "실행 취소"
 }

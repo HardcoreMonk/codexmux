@@ -56,5 +56,9 @@
   "tabStatus": "Estado de la pestaña",
   "messageHistory": "Historial de mensajes",
   "installRunning": "Ejecutando...",
-  "installDone": "Completado"
+  "installDone": "Completado",
+  "closeTerminalTabTitle": "Cerrar pestaña",
+  "closeTerminalTabConfirm": "¿Cerrar la pestaña '{name}'?",
+  "claudeTabClosed": "Pestaña de Claude cerrada",
+  "claudeTabClosedUndo": "Deshacer"
 }

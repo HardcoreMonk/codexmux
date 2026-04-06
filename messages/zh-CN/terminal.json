@@ -56,5 +56,9 @@
   "tabStatus": "标签状态",
   "messageHistory": "消息历史",
   "installRunning": "运行中...",
-  "installDone": "完成"
+  "installDone": "完成",
+  "closeTerminalTabTitle": "关闭标签页",
+  "closeTerminalTabConfirm": "确定关闭 '{name}' 标签页？",
+  "claudeTabClosed": "Claude标签页已关闭",
+  "claudeTabClosedUndo": "撤销"
 }

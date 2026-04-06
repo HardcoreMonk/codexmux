@@ -56,5 +56,9 @@
   "tabStatus": "Статус вкладки",
   "messageHistory": "История сообщений",
   "installRunning": "Выполняется...",
-  "installDone": "Готово"
+  "installDone": "Готово",
+  "closeTerminalTabTitle": "Закрыть вкладку",
+  "closeTerminalTabConfirm": "Закрыть вкладку '{name}'?",
+  "claudeTabClosed": "Вкладка Claude закрыта",
+  "claudeTabClosedUndo": "Отменить"
 }

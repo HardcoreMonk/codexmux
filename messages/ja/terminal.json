@@ -56,5 +56,9 @@
   "tabStatus": "タブステータス",
   "messageHistory": "メッセージ履歴",
   "installRunning": "実行中...",
-  "installDone": "完了"
+  "installDone": "完了",
+  "closeTerminalTabTitle": "タブを閉じる",
+  "closeTerminalTabConfirm": "'{name}' タブを閉じますか？",
+  "claudeTabClosed": "Claudeタブが閉じられました",
+  "claudeTabClosedUndo": "元に戻す"
 }

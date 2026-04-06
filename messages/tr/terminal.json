@@ -56,5 +56,9 @@
   "tabStatus": "Sekme durumu",
   "messageHistory": "Mesaj geçmişi",
   "installRunning": "Çalıştırılıyor...",
-  "installDone": "Tamamlandı"
+  "installDone": "Tamamlandı",
+  "closeTerminalTabTitle": "Sekmeyi kapat",
+  "closeTerminalTabConfirm": "'{name}' sekmesini kapatmak istiyor musunuz?",
+  "claudeTabClosed": "Claude sekmesi kapatıldı",
+  "claudeTabClosedUndo": "Geri al"
 }

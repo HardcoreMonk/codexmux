@@ -3,9 +3,20 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/router';
 import { Group, Panel, Separator, type GroupImperativeHandle } from 'react-resizable-panels';
 import { ChevronDown, ChevronUp, Plus, TerminalSquare } from 'lucide-react';
+import { toast } from 'sonner';
 import Spinner from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import type { ITab, TPanelType } from '@/types/terminal';
 import { findPane } from '@/lib/layout-tree';
 import useTerminal from '@/hooks/use-terminal';
@@ -73,6 +84,7 @@ const EMPTY_TABS: ITab[] = [];
 
 const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   const t = useTranslations('terminal');
+  const tc = useTranslations('common');
   const router = useRouter();
   const isObserveMode = router.query.observe === 'true';
   const observeAgentId = (router.query.agentId as string) || '';
@@ -107,6 +119,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   const [isCreating, setIsCreating] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isPanelTransitioning, setIsPanelTransitioning] = useState(false);
+  const [closeConfirmTabId, setCloseConfirmTabId] = useState<string | null>(null);
 
   const tabIds = useMemo(() => tabs.map((t) => t.id), [tabs]);
   const tabTitles = useTabMetadataStore(
@@ -503,7 +516,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
     setIsCreating(false);
   }, [paneId, createTabInPane]);
 
-  const handleDeleteTab = useCallback(
+  const executeDeleteTab = useCallback(
     async (tabId: string) => {
       if (closingTabIdRef.current) return;
       const isLastTab = tabs.length === 1;
@@ -520,6 +533,46 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
     },
     [paneId, tabs, paneCount, deleteTabInPane, closePane],
   );
+
+  const handleDeleteTab = useCallback(
+    (tabId: string) => {
+      const tab = tabs.find((t) => t.id === tabId);
+      if (!tab) return;
+
+      if (tab.panelType === 'claude-code') {
+        const savedSessionId = tab.claudeSessionId;
+        const savedCwd = useTabMetadataStore.getState().metadata[tabId]?.cwd || tab.cwd;
+        const savedName = tab.name;
+        executeDeleteTab(tabId);
+        toast(t('claudeTabClosed'), {
+          action: {
+            label: t('claudeTabClosedUndo'),
+            onClick: async () => {
+              const newTab = await createTabInPane(paneId, 'claude-code', undefined, savedSessionId ?? undefined);
+              if (newTab) {
+                useTabStore.getState().initTab(newTab.id, { panelType: 'claude-code', workspaceId: layoutWsId ?? '', isResuming: !!savedSessionId });
+                if (savedCwd) useTabMetadataStore.getState().setCwd(newTab.id, savedCwd);
+                if (savedName) renameTabInPane(paneId, newTab.id, savedName);
+              }
+            },
+          },
+          duration: 5000,
+          position: 'bottom-right',
+        });
+        return;
+      }
+
+      setCloseConfirmTabId(tabId);
+    },
+    [tabs, paneId, executeDeleteTab, createTabInPane, layoutWsId, renameTabInPane, t],
+  );
+
+  const handleConfirmDeleteTab = useCallback(() => {
+    if (closeConfirmTabId) {
+      executeDeleteTab(closeConfirmTabId);
+    }
+    setCloseConfirmTabId(null);
+  }, [closeConfirmTabId, executeDeleteTab]);
 
   const handleRestartTab = useCallback(
     async (tabId: string, command?: string) => {
@@ -884,6 +937,27 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
           />
         )}
       </div>
+
+      <AlertDialog open={!!closeConfirmTabId} onOpenChange={(open) => { if (!open) setCloseConfirmTabId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('closeTerminalTabTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('closeTerminalTabConfirm', {
+                name: closeConfirmTabId
+                  ? (tabs.find((tab) => tab.id === closeConfirmTabId)?.name ?? '')
+                  : '',
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleConfirmDeleteTab}>
+              {tc('close')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 });

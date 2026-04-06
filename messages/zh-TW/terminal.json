@@ -56,5 +56,9 @@
   "tabStatus": "分頁狀態",
   "messageHistory": "訊息紀錄",
   "installRunning": "執行中...",
-  "installDone": "完成"
+  "installDone": "完成",
+  "closeTerminalTabTitle": "關閉分頁",
+  "closeTerminalTabConfirm": "確定關閉 '{name}' 分頁？",
+  "claudeTabClosed": "Claude分頁已關閉",
+  "claudeTabClosedUndo": "復原"
 }

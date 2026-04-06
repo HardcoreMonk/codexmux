@@ -5,6 +5,8 @@ import { nanoid } from 'nanoid';
 import { createSession, hasSession, killSession, sendKeys, workspaceSessionName } from '@/lib/tmux';
 import { broadcastSync } from '@/lib/sync-server';
 import { createLogger } from '@/lib/logger';
+import { HOOK_SETTINGS_PATH } from '@/lib/hook-settings';
+import { getDangerouslySkipPermissions } from '@/lib/config-store';
 import {
   collectPanes,
   collectAllTabs,
@@ -244,7 +246,7 @@ export const deletePane = async (
   }
 };
 
-export const addTabToPane = async (wsId: string, paneId: string, name?: string, cwd?: string, panelType?: string, command?: string): Promise<ITab | null> =>
+export const addTabToPane = async (wsId: string, paneId: string, name?: string, cwd?: string, panelType?: string, command?: string, resumeSessionId?: string): Promise<ITab | null> =>
   withLock(async () => {
     const filePath = resolveLayoutFile(wsId);
     const layout = await readLayoutFile(filePath);
@@ -258,7 +260,14 @@ export const addTabToPane = async (wsId: string, paneId: string, name?: string, 
     const sessionName = workspaceSessionName(wsId, paneId, tabId);
     if (!isWebBrowser) {
       await createSession(sessionName, 80, 24, cwd);
-      if (command) {
+      if (resumeSessionId) {
+        const settings = `--settings ${HOOK_SETTINGS_PATH}`;
+        const skipPerms = await getDangerouslySkipPermissions();
+        const resumeCmd = skipPerms
+          ? `claude --resume ${resumeSessionId} ${settings} --dangerously-skip-permissions`
+          : `claude --resume ${resumeSessionId} ${settings}`;
+        await sendKeys(sessionName, resumeCmd);
+      } else if (command) {
         await sendKeys(sessionName, command);
       }
     }
@@ -266,7 +275,7 @@ export const addTabToPane = async (wsId: string, paneId: string, name?: string, 
     const nextOrder = pane.tabs.length > 0 ? Math.max(...pane.tabs.map((t) => t.order)) + 1 : 0;
     const defaultName = isWebBrowser ? 'Web Browser' : undefined;
     const tabName = name?.trim() || defaultName || nextTabName(pane.tabs);
-    const tab: ITab = { id: tabId, sessionName, name: tabName, order: nextOrder, ...(cwd ? { cwd } : {}), ...(panelType ? { panelType: panelType as ITab['panelType'] } : {}) };
+    const tab: ITab = { id: tabId, sessionName, name: tabName, order: nextOrder, ...(cwd ? { cwd } : {}), ...(panelType ? { panelType: panelType as ITab['panelType'] } : {}), ...(resumeSessionId ? { claudeSessionId: resumeSessionId } : {}) };
 
     pane.tabs.push(tab);
     pane.activeTabId = tabId;
