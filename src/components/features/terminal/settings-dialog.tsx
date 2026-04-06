@@ -126,21 +126,6 @@ const GeneralTab = () => {
         </ButtonGroup>
       </div>
 
-      <div className="space-y-2">
-        <div>
-          <p className="text-sm font-medium">설치 및 실행</p>
-          <p className="text-sm text-muted-foreground">앱 설치, 빌드, 실행 방법입니다.</p>
-        </div>
-        <div className="rounded-md bg-muted p-3 font-mono text-xs leading-relaxed">
-          <p className="text-muted-foreground/60"># 설치 및 빌드</p>
-          <p>pnpm install</p>
-          <p>pnpm build</p>
-          <p className="mt-2 text-muted-foreground/60"># 실행</p>
-          <p>pnpm start</p>
-          <p className="mt-2 text-muted-foreground/60"># Tailscale로 외부 접속 (선택)</p>
-          <p>tailscale serve --bg --https=443 http://localhost:8022</p>
-        </div>
-      </div>
     </div>
   );
 };
