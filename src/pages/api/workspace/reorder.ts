@@ -9,12 +9,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   const { workspaceIds } = req.body ?? {};
   if (!Array.isArray(workspaceIds) || workspaceIds.length === 0) {
-    return res.status(400).json({ error: 'workspaceIds 배열이 필요합니다' });
+    return res.status(400).json({ error: 'workspaceIds array required' });
   }
 
   const ok = await reorderWorkspaces(workspaceIds);
   if (!ok) {
-    return res.status(400).json({ error: '유효하지 않은 순서입니다' });
+    return res.status(400).json({ error: 'Invalid order' });
   }
 
   return res.status(200).json({ ok: true });

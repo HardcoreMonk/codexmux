@@ -12,7 +12,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   const tmuxSession = req.query.tmuxSession as string | undefined;
   if (!tmuxSession) {
-    return res.status(400).json({ error: 'missing-param', message: 'tmuxSession 파라미터 필수' });
+    return res.status(400).json({ error: 'missing-param', message: 'tmuxSession parameter required' });
   }
 
   try {

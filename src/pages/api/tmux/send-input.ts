@@ -13,12 +13,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const { session, input } = req.body as { session?: string; input?: string };
 
   if (!session || !input) {
-    return res.status(400).json({ error: 'session, input 파라미터 필수' });
+    return res.status(400).json({ error: 'session and input parameters required' });
   }
 
   const exists = await hasSession(session);
   if (!exists) {
-    return res.status(404).json({ error: '세션을 찾을 수 없습니다' });
+    return res.status(404).json({ error: 'Session not found' });
   }
 
   try {
@@ -26,7 +26,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(200).json({ ok: true });
   } catch (err) {
     log.error(`send-input failed: ${err instanceof Error ? err.message : err}`);
-    return res.status(500).json({ error: '입력 전송 실패' });
+    return res.status(500).json({ error: 'Failed to send input' });
   }
 };
 

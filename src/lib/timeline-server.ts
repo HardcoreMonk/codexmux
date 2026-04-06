@@ -233,7 +233,7 @@ const startFileWatch = (fw: IFileWatcher) => {
         broadcastToWatcher(fw.jsonlPath, {
           type: 'timeline:error',
           code: 'watcher-failed',
-          message: '파일 감시 실패 (재시도 초과)',
+          message: 'File watch failed (retries exceeded)',
         });
       }
     });
@@ -392,7 +392,7 @@ const subscribeToFile = async (ws: WebSocket, jsonlPath: string, sessionId?: str
     sendJson(ws, {
       type: 'timeline:error',
       code: 'parse-error',
-      message: `JSONL 파싱 중 ${result.errorCount}건의 오류 발생 (해당 줄 무시됨)`,
+      message: `JSONL parsing: ${result.errorCount} errors (lines skipped)`,
     });
   }
 
@@ -518,7 +518,7 @@ const watchForJsonlFile = (
 
   if (existsSync(projectDir)) {
     watchProjectDir();
-    // watch 설정 후 재확인: existsSync → watch() 사이에 파일이 생성된 경우 대응
+    // Re-check after watch setup: file may have been created between existsSync and watch()
     if (!stopped && existsSync(expectedJsonlPath)) {
       onJsonlFound();
     }
@@ -634,7 +634,7 @@ const handleResumeMessage = async (
   } catch (err) {
     sendJson(ws, {
       type: 'timeline:resume-error',
-      message: err instanceof Error ? err.message : 'resume 실행 중 오류가 발생했습니다',
+      message: err instanceof Error ? err.message : 'Error during resume',
     });
   }
 };
@@ -740,7 +740,7 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
     await updateTabClaudeSummary(conn.sessionName, null).catch(() => {});
   }
 
-  // PID 파일 생성 전이지만 pane에서 claude 프로세스가 실행 중인지 확인
+  // Check if claude process is running in pane before PID file is created
   const isClaudeStarting = sessionInfo.status === 'not-running'
     && !claudeSessionId
     && await isClaudeRunning(panePid);
@@ -846,10 +846,10 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
     watchForJsonlFile(sessionName, sessionInfo.sessionId, sessionInfo.cwd);
   }
 
-  // isClaudeStarting 레이스 컨디션 보완:
-  // detectActiveSession → isClaudeRunning 사이에 PID 파일이 생성되면
-  // 초기 감지도 놓치고 watchSessionsDir도 이미 존재하는 파일이라 이벤트가 안 옴.
-  // watcher 설정 후 재확인하여 그 틈을 메운다.
+  // Race condition mitigation for isClaudeStarting:
+  // If PID file is created between detectActiveSession and isClaudeRunning,
+  // initial detection misses it and watchSessionsDir won't fire for an existing file.
+  // Re-check after watcher setup to cover this gap.
   if (isClaudeStarting) {
     const recheckInfo = await detectActiveSession(panePid);
     if (conn.cleaned) return;

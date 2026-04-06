@@ -10,12 +10,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     const setup = await needsSetup();
     if (!setup) {
-      return res.status(400).json({ error: '이미 설정이 완료되었습니다.' });
+      return res.status(400).json({ error: 'Setup already completed.' });
     }
 
     const { authPassword, appTheme, terminalTheme, dangerouslySkipPermissions } = req.body ?? {};
     if (!authPassword || typeof authPassword !== 'string') {
-      return res.status(400).json({ error: '비밀번호를 입력해주세요.' });
+      return res.status(400).json({ error: 'Password is required.' });
     }
 
     const hashedPassword = await hashPassword(authPassword);

@@ -1,4 +1,5 @@
 import { useState, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import { MessageCircleQuestion, Check } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import { toast } from 'sonner';
@@ -24,6 +25,7 @@ const sendSelection = async (session: string, optionIndex: number): Promise<bool
 };
 
 const AskUserQuestionItem = ({ entry, sessionName }: IAskUserQuestionItemProps) => {
+  const t = useTranslations('timeline');
   const [localSelected, setLocalSelected] = useState<number | null>(null);
   const isAnswered = entry.status === 'success';
   const question = entry.questions[0];
@@ -39,7 +41,7 @@ const AskUserQuestionItem = ({ entry, sessionName }: IAskUserQuestionItemProps) 
     const ok = await sendSelection(sessionName, idx);
     if (!ok) {
       setLocalSelected(null);
-      toast.error('선택 전송에 실패했습니다');
+      toast.error(t('selectionFailed'));
     }
   };
 

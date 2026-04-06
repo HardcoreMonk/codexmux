@@ -9,7 +9,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   const directory = req.query.directory as string;
   if (!directory) {
-    return res.status(400).json({ error: 'directory 파라미터 필수' });
+    return res.status(400).json({ error: 'directory parameter required' });
   }
 
   const result = await validateDirectory(directory);

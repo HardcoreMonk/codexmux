@@ -2,6 +2,7 @@ import { useState, useCallback, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
+import { useTranslations } from 'next-intl';
 import { Eye, EyeOff, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,6 +25,8 @@ const MarkdownEditor = ({
   onCancel,
   isSaving,
 }: IMarkdownEditorProps) => {
+  const t = useTranslations('agent');
+  const tc = useTranslations('common');
   const [content, setContent] = useState(initialContent);
   const [isPreview, setIsPreview] = useState(false);
 
@@ -35,10 +38,10 @@ const MarkdownEditor = ({
 
   const handleCancel = useCallback(() => {
     if (hasChanges) {
-      if (!window.confirm('변경사항을 버리시겠습니까?')) return;
+      if (!window.confirm(t('discardChanges'))) return;
     }
     onCancel();
-  }, [hasChanges, onCancel]);
+  }, [hasChanges, onCancel, t]);
 
   const togglePreview = useCallback(() => {
     setIsPreview((prev) => !prev);
@@ -50,7 +53,7 @@ const MarkdownEditor = ({
         <span className="flex-1 truncate text-sm font-medium">{fileName}</span>
         <Button variant="ghost" size="sm" onClick={togglePreview} className="h-7 gap-1 px-2 text-xs">
           {isPreview ? <EyeOff size={12} /> : <Eye size={12} />}
-          {isPreview ? '편집' : '미리보기'}
+          {isPreview ? tc('edit') : t('preview')}
         </Button>
         <Button
           variant="default"
@@ -60,7 +63,7 @@ const MarkdownEditor = ({
           className="h-7 gap-1 px-2 text-xs"
         >
           <Save size={12} />
-          저장
+          {tc('save')}
         </Button>
         <Button variant="ghost" size="sm" onClick={handleCancel} className="h-7 px-2 text-xs">
           <X size={12} />
@@ -70,7 +73,7 @@ const MarkdownEditor = ({
       <div className="flex flex-1 overflow-hidden">
         <div className={isPreview ? 'w-1/2 border-r' : 'w-full'}>
           <Textarea
-            aria-label="마크다운 편집"
+            aria-label={t('markdownEditAria')}
             className="h-full min-h-0 resize-none rounded-none border-0 font-mono text-sm focus-visible:ring-0"
             value={content}
             onChange={(e) => setContent(e.target.value)}

@@ -1,4 +1,5 @@
 import { useState, useEffect, memo, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { ShieldCheck, Check } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import { toast } from 'sonner';
@@ -38,6 +39,7 @@ const POLL_INTERVAL = 500;
 const POLL_TIMEOUT = 3_000;
 
 const PermissionPromptItem = ({ sessionName }: IPermissionPromptItemProps) => {
+  const t = useTranslations('timeline');
   const [localSelected, setLocalSelected] = useState<number | null>(null);
   const [resolved, setResolved] = useState(false);
   const [options, setOptions] = useState<string[]>([]);
@@ -85,12 +87,12 @@ const PermissionPromptItem = ({ sessionName }: IPermissionPromptItemProps) => {
       const ok = await sendSelection(sessionName, idx);
       if (!ok) {
         setLocalSelected(null);
-        toast.error('선택 전송에 실패했습니다');
+        toast.error(t('selectionFailed'));
         return;
       }
       setResolved(true);
     },
-    [sessionName, localSelected, resolved],
+    [sessionName, localSelected, resolved, t],
   );
 
   if (options.length === 0) return null;
@@ -100,7 +102,7 @@ const PermissionPromptItem = ({ sessionName }: IPermissionPromptItemProps) => {
       <div className="rounded-lg border border-ui-purple/20 bg-ui-purple/5 px-4 py-3">
         <div className="mb-2.5 flex items-center gap-2 text-xs font-medium text-ui-purple">
           <ShieldCheck size={14} />
-          <span>권한 승인 필요</span>
+          <span>{t('permissionRequired')}</span>
         </div>
 
         <div className="flex flex-col gap-1.5">

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Trash2 } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,8 @@ interface ISettingsFormProps {
 }
 
 const SettingsForm = ({ agent, onClose, onDeleteClick }: ISettingsFormProps) => {
+  const t = useTranslations('agent');
+  const tc = useTranslations('common');
   const [name, setName] = useState(agent.name);
   const [role, setRole] = useState(agent.role);
   const [avatar, setAvatar] = useState(agent.avatar ?? '');
@@ -61,25 +64,25 @@ const SettingsForm = ({ agent, onClose, onDeleteClick }: ISettingsFormProps) => 
   const validateName = useCallback(
     (value: string) => {
       if (!value) {
-        setNameError('이름을 입력해주세요');
+        setNameError(t('nameRequired'));
         return false;
       }
       if (value.length > 30) {
-        setNameError('30자 이내로 입력해주세요');
+        setNameError(t('nameMaxLength'));
         return false;
       }
       if (!NAME_PATTERN.test(value)) {
-        setNameError('공백은 사용할 수 없습니다');
+        setNameError(t('nameNoSpaces'));
         return false;
       }
       if (agents.some((a) => a.name === value && a.id !== agent.id)) {
-        setNameError('이미 사용 중인 이름입니다');
+        setNameError(t('nameDuplicate'));
         return false;
       }
       setNameError('');
       return true;
     },
-    [agents, agent.id],
+    [agents, agent.id, t],
   );
 
   const handleSave = async () => {
@@ -102,13 +105,13 @@ const SettingsForm = ({ agent, onClose, onDeleteClick }: ISettingsFormProps) => 
   return (
     <>
       <SheetHeader>
-        <SheetTitle>에이전트 설정</SheetTitle>
-        <SheetDescription>{agent.name} 설정을 수정합니다</SheetDescription>
+        <SheetTitle>{t('settingsTitle')}</SheetTitle>
+        <SheetDescription>{t('settingsDescription', { name: agent.name })}</SheetDescription>
       </SheetHeader>
 
       <div className="flex-1 space-y-4 overflow-y-auto px-4">
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium">아바타</Label>
+          <Label className="text-sm font-medium">{t('labelAvatar')}</Label>
           <div className="flex gap-2">
             <button
               type="button"
@@ -136,7 +139,7 @@ const SettingsForm = ({ agent, onClose, onDeleteClick }: ISettingsFormProps) => 
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium">이름</Label>
+          <Label className="text-sm font-medium">{t('labelName')}</Label>
           <Input
             value={name}
             onChange={(e) => {
@@ -152,18 +155,18 @@ const SettingsForm = ({ agent, onClose, onDeleteClick }: ISettingsFormProps) => 
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium">역할</Label>
+          <Label className="text-sm font-medium">{t('labelRole')}</Label>
           <Input
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            placeholder="역할을 입력하세요"
+            placeholder={t('rolePlaceholder')}
             maxLength={100}
           />
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium">Soul</Label>
-          <p className="text-xs text-muted-foreground">에이전트의 성격, 행동 방식, 커뮤니케이션 스타일을 정의합니다</p>
+          <Label className="text-sm font-medium">{t('labelSoul')}</Label>
+          <p className="text-xs text-muted-foreground">{t('soulDescription')}</p>
           {isLoadingSoul ? (
             <div className="flex h-32 items-center justify-center rounded-md border">
               <Spinner className="h-3 w-3 text-muted-foreground" />
@@ -189,20 +192,20 @@ const SettingsForm = ({ agent, onClose, onDeleteClick }: ISettingsFormProps) => 
           disabled={isSaving}
         >
           <Trash2 className="h-4 w-4" />
-          <span className="sr-only">에이전트 삭제</span>
+          <span className="sr-only">{t('deleteAgent')}</span>
         </Button>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onClose} disabled={isSaving}>
-            취소
+            {tc('cancel')}
           </Button>
           <Button onClick={handleSave} disabled={!canSave}>
             {isSaving ? (
               <>
                 <Spinner className="h-3 w-3" />
-                저장 중
+                {t('saving')}
               </>
             ) : (
-              '저장'
+              tc('save')
             )}
           </Button>
         </div>

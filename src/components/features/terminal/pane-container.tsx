@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/router';
 import { Group, Panel, Separator, type GroupImperativeHandle } from 'react-resizable-panels';
 import { ChevronDown, ChevronUp, Plus, TerminalSquare } from 'lucide-react';
@@ -66,6 +67,7 @@ const CLAUDE_CODE_FONT_SIZE = 11;
 const EMPTY_TABS: ITab[] = [];
 
 const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
+  const t = useTranslations('terminal');
   const router = useRouter();
   const isObserveMode = router.query.observe === 'true';
   const observeAgentId = (router.query.agentId as string) || '';
@@ -834,7 +836,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
               ) : (
                 <Plus className="h-3.5 w-3.5" />
               )}
-              새 탭 열기
+              {t('openNewTab')}
             </Button>
           </div>
         )}

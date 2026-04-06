@@ -14,19 +14,19 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     const result = await closePaneInLayout(wsId, paneId);
     if (!result) {
-      return res.status(404).json({ error: 'Pane을 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Pane not found' });
     }
     return res.status(200).json(result);
   }
 
   if (req.method === 'PATCH') {
     if (!wsId) {
-      return res.status(400).json({ error: 'Workspace가 없습니다' });
+      return res.status(400).json({ error: 'No workspace found' });
     }
     const { activeTabId } = req.body ?? {};
     const result = await patchPane(wsId, paneId, { activeTabId });
     if (!result) {
-      return res.status(404).json({ error: '대상을 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Target not found' });
     }
     return res.status(200).json(result);
   }

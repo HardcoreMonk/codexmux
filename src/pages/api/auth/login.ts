@@ -31,7 +31,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   if (isRateLimited()) {
-    return res.status(429).json({ error: '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.' });
+    return res.status(429).json({ error: 'Too many login attempts. Please try again later.' });
   }
 
   const { password } = req.body ?? {};
@@ -39,7 +39,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   if (!password || !storedHash || !(await verifyPassword(password, storedHash))) {
     recordFailure();
-    return res.status(401).json({ error: '비밀번호가 올바르지 않습니다.' });
+    return res.status(401).json({ error: 'Invalid password.' });
   }
 
   failures = { count: 0, firstAt: 0 };

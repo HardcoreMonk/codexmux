@@ -19,7 +19,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const { agentId, type, content, metadata } = req.body as Partial<IAgentMessageRequest>;
 
   if (!agentId || !type || !content) {
-    return res.status(400).json({ error: 'agentId, type, content 필수' });
+    return res.status(400).json({ error: 'agentId, type, and content are required' });
   }
 
   const validTypes = new Set(['report', 'question', 'done', 'error', 'approval', 'activity']);

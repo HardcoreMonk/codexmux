@@ -10,19 +10,19 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   const wsId = (req.query.workspace as string) || await getActiveWorkspaceId();
   if (!wsId) {
-    return res.status(400).json({ error: 'Workspace가 없습니다' });
+    return res.status(400).json({ error: 'No workspace found' });
   }
 
   const paneId = req.query.paneId as string;
   const { tabIds } = req.body ?? {};
 
   if (!Array.isArray(tabIds) || tabIds.length === 0) {
-    return res.status(400).json({ error: 'tabIds 배열 필수' });
+    return res.status(400).json({ error: 'tabIds array required' });
   }
 
   const result = await reorderTabsInPane(wsId, paneId, tabIds);
   if (!result) {
-    return res.status(404).json({ error: '대상을 찾을 수 없습니다' });
+    return res.status(404).json({ error: 'Target not found' });
   }
   return res.status(200).json(result);
 };

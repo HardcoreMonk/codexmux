@@ -1,4 +1,5 @@
 import { useState, useMemo, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ToolCallItem from '@/components/features/timeline/tool-call-item';
@@ -11,37 +12,38 @@ interface IToolGroupItemProps {
   sessionName?: string;
 }
 
-const getGroupDescription = (toolCalls: ITimelineToolCall[]) => {
-  const count = toolCalls.length;
-  const toolNames = new Set(toolCalls.map((t) => t.toolName));
-
+const getGroupDescriptionTags = (toolCalls: ITimelineToolCall[]): string[] => {
+  const toolNames = new Set(toolCalls.map((tc) => tc.toolName));
   const tags: string[] = [];
   if (toolNames.has('Read') || toolNames.has('Grep') || toolNames.has('Glob')) {
-    tags.push('코드 검색됨');
+    tags.push('codeSearched');
   }
   if (toolNames.has('Edit') || toolNames.has('Write')) {
-    tags.push('코드 수정됨');
+    tags.push('codeEdited');
   }
-
-  const suffix = tags.length > 0 ? `, ${tags.join(', ')}` : '';
-  return `명령 ${count}개 실행함${suffix}`;
+  return tags;
 };
 
 const PERMISSION_TOOL_NAMES = new Set(['Edit', 'Write', 'Bash', 'Read', 'Glob', 'Grep', 'Agent']);
 
 const ToolGroupItem = ({ toolCalls, toolResults, sessionName }: IToolGroupItemProps) => {
-  const hasPending = toolCalls.some((t) => t.status === 'pending');
+  const t = useTranslations('timeline');
+  const hasPending = toolCalls.some((tc) => tc.status === 'pending');
   const [isExpanded, setIsExpanded] = useState(hasPending);
 
   const hasPendingPermissionTool = hasPending
-    && toolCalls.some((t) => t.status === 'pending' && PERMISSION_TOOL_NAMES.has(t.toolName));
+    && toolCalls.some((tc) => tc.status === 'pending' && PERMISSION_TOOL_NAMES.has(tc.toolName));
   const showPermissionPrompt = hasPendingPermissionTool && !!sessionName;
 
   const resultMap = useMemo(() => new Map(toolResults.map((r) => [r.toolUseId, r])), [toolResults]);
 
-  const headerText = hasPending
-    ? `명령 ${toolCalls.length}개 실행 중...`
-    : getGroupDescription(toolCalls);
+  const headerText = (() => {
+    if (hasPending) return t('commandsRunning', { count: toolCalls.length });
+    const tags = getGroupDescriptionTags(toolCalls);
+    const translatedTags = tags.map((tag) => t(tag));
+    const suffix = translatedTags.length > 0 ? `, ${translatedTags.join(', ')}` : '';
+    return `${t('commandsExecuted', { count: toolCalls.length })}${suffix}`;
+  })();
 
   return (
     <div className="animate-in fade-in duration-150">

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/router';
 import { Bell, Bot, LogOut, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,8 @@ const handleLogout = async () => {
 };
 
 const AppHeader = ({ onMenuOpen, workspaceName }: IAppHeaderProps) => {
+  const t = useTranslations('header');
+  const tc = useTranslations('common');
   const router = useRouter();
   const hasBusy = useTabStore((s) => selectGlobalStatus(s.tabs).busyCount > 0);
   const { busyCount, attentionCount } = useNotificationCount();
@@ -48,7 +51,7 @@ const AppHeader = ({ onMenuOpen, workspaceName }: IAppHeaderProps) => {
           <button
             className="flex h-8 w-8 shrink-0 items-center justify-center text-foreground"
             onClick={onMenuOpen}
-            aria-label="메뉴 열기"
+            aria-label={t('openMenu')}
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -83,7 +86,7 @@ const AppHeader = ({ onMenuOpen, workspaceName }: IAppHeaderProps) => {
                   </span>
                 )}
               </TooltipTrigger>
-              <TooltipContent>에이전트</TooltipContent>
+              <TooltipContent>{tc('agent')}</TooltipContent>
             </Tooltip>
           )}
 
@@ -105,7 +108,7 @@ const AppHeader = ({ onMenuOpen, workspaceName }: IAppHeaderProps) => {
                 </span>
               )}
             </TooltipTrigger>
-            <TooltipContent>알림</TooltipContent>
+            <TooltipContent>{tc('notifications')}</TooltipContent>
           </Tooltip>
 
           <AlertDialog>
@@ -125,18 +128,18 @@ const AppHeader = ({ onMenuOpen, workspaceName }: IAppHeaderProps) => {
               >
                 <LogOut className="h-4 w-4 text-muted-foreground" />
               </TooltipTrigger>
-              <TooltipContent>로그아웃</TooltipContent>
+              <TooltipContent>{tc('logout')}</TooltipContent>
             </Tooltip>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>로그아웃</AlertDialogTitle>
+                <AlertDialogTitle>{tc('logout')}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  로그아웃하시겠습니까? 다시 접속하려면 서버 로그의 비밀번호가 필요합니다.
+                  {tc('logoutConfirm')}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>취소</AlertDialogCancel>
-                <AlertDialogAction onClick={handleLogout}>로그아웃</AlertDialogAction>
+                <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleLogout}>{tc('logout')}</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

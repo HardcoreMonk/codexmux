@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
 import isElectron from '@/hooks/use-is-electron';
-import { Bot, Code, Dices, Globe, Lock, Monitor, Moon, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
+import { Bot, Check, Code, Dices, Globe, Lock, Monitor, Moon, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
 import ClaudeLogo from '@/components/icons/claude-logo';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
@@ -35,56 +36,20 @@ type TSettingsTab = 'general' | 'terminal' | 'editor' | 'claude' | 'auth' | 'tai
 
 interface ISettingsItem {
   id: TSettingsTab;
-  label: string;
+  labelKey: string;
   icon: React.ReactNode;
 }
 
 const settingsItems: ISettingsItem[] = [
-  {
-    id: 'general',
-    label: '일반',
-    icon: <Settings className="h-4 w-4" />,
-  },
-  {
-    id: 'terminal',
-    label: '터미널',
-    icon: <Terminal className="h-4 w-4" />,
-  },
-  {
-    id: 'editor',
-    label: '에디터',
-    icon: <Code className="h-4 w-4" />,
-  },
-  {
-    id: 'claude',
-    label: 'Claude',
-    icon: <ClaudeLogo className="h-4 w-4" />,
-  },
-  {
-    id: 'auth',
-    label: '인증',
-    icon: <Lock className="h-4 w-4" />,
-  },
-  {
-    id: 'tailscale',
-    label: 'Tailscale',
-    icon: <Globe className="h-4 w-4" />,
-  },
-  {
-    id: 'quick-prompts',
-    label: '빠른 프롬프트',
-    icon: <Zap className="h-4 w-4" />,
-  },
-  {
-    id: 'agent',
-    label: '에이전트',
-    icon: <Bot className="h-4 w-4" />,
-  },
-  {
-    id: 'system',
-    label: '시스템',
-    icon: <Wrench className="h-4 w-4" />,
-  },
+  { id: 'general', labelKey: 'general', icon: <Settings className="h-4 w-4" /> },
+  { id: 'terminal', labelKey: 'terminal', icon: <Terminal className="h-4 w-4" /> },
+  { id: 'editor', labelKey: 'editor', icon: <Code className="h-4 w-4" /> },
+  { id: 'claude', labelKey: 'claude', icon: <ClaudeLogo className="h-4 w-4" /> },
+  { id: 'auth', labelKey: 'auth', icon: <Lock className="h-4 w-4" /> },
+  { id: 'tailscale', labelKey: 'tailscale', icon: <Globe className="h-4 w-4" /> },
+  { id: 'quick-prompts', labelKey: 'quickPrompts', icon: <Zap className="h-4 w-4" /> },
+  { id: 'agent', labelKey: 'agent', icon: <Bot className="h-4 w-4" /> },
+  { id: 'system', labelKey: 'system', icon: <Wrench className="h-4 w-4" /> },
 ];
 
 const saveAppTheme = (value: string) => {
@@ -95,8 +60,17 @@ const saveAppTheme = (value: string) => {
   }).catch(() => {});
 };
 
+const LOCALES = [
+  { id: 'en', label: 'English' },
+  { id: 'ko', label: '한국어' },
+] as const;
+
 const GeneralTab = () => {
+  const t = useTranslations('settings.general');
+  const tc = useTranslations('common');
   const { theme, setTheme } = useTheme();
+  const locale = useConfigStore((s) => s.locale);
+  const setLocale = useConfigStore((s) => s.setLocale);
 
   const handleThemeChange = (value: string) => {
     setTheme(value);
@@ -107,25 +81,44 @@ const GeneralTab = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-medium">테마</p>
-          <p className="text-sm text-muted-foreground">화면 테마를 선택합니다.</p>
+          <p className="text-sm font-medium">{t('theme')}</p>
+          <p className="text-sm text-muted-foreground">{t('themeDescription')}</p>
         </div>
         <ButtonGroup>
           <Button variant={theme === 'light' ? 'default' : 'outline'} size="sm" onClick={() => handleThemeChange('light')}>
             <Sun className="h-4 w-4" />
-            라이트
+            {tc('light')}
           </Button>
           <Button variant={theme === 'dark' ? 'default' : 'outline'} size="sm" onClick={() => handleThemeChange('dark')}>
             <Moon className="h-4 w-4" />
-            다크
+            {tc('dark')}
           </Button>
           <Button variant={theme === 'system' ? 'default' : 'outline'} size="sm" onClick={() => handleThemeChange('system')}>
             <Monitor className="h-4 w-4" />
-            시스템
+            {tc('system')}
           </Button>
         </ButtonGroup>
       </div>
 
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-medium">{t('language')}</p>
+          <p className="text-sm text-muted-foreground">{t('languageDescription')}</p>
+        </div>
+        <ButtonGroup>
+          {LOCALES.map((l) => (
+            <Button
+              key={l.id}
+              variant={locale === l.id ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setLocale(l.id)}
+            >
+              {locale === l.id && <Check className="h-4 w-4" />}
+              {l.label}
+            </Button>
+          ))}
+        </ButtonGroup>
+      </div>
     </div>
   );
 };
@@ -176,21 +169,23 @@ const ThemeGrid = ({
 );
 
 const TerminalTab = () => {
+  const t = useTranslations('settings.terminal');
+  const tc = useTranslations('common');
   const { mode, themeIds, setTerminalTheme, themes } = useTerminalTheme();
 
-  const darkThemes = themes.filter((t) => t.variant === 'dark');
-  const lightThemes = themes.filter((t) => t.variant === 'light');
+  const darkThemes = themes.filter((th) => th.variant === 'dark');
+  const lightThemes = themes.filter((th) => th.variant === 'light');
 
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-sm font-medium">터미널 테마</p>
-        <p className="text-sm text-muted-foreground">모드별 터미널 색상 테마를 선택합니다.</p>
+        <p className="text-sm font-medium">{t('theme')}</p>
+        <p className="text-sm text-muted-foreground">{t('themeDescription')}</p>
       </div>
       <Tabs defaultValue={mode}>
         <TabsList>
-          <TabsTrigger value="dark">다크</TabsTrigger>
-          <TabsTrigger value="light">라이트</TabsTrigger>
+          <TabsTrigger value="dark">{tc('dark')}</TabsTrigger>
+          <TabsTrigger value="light">{tc('light')}</TabsTrigger>
         </TabsList>
         <TabsContent value="dark" className="mt-3">
           <ThemeGrid list={darkThemes} selectedId={themeIds.dark} onSelect={(id) => setTerminalTheme('dark', id)} />
@@ -204,6 +199,8 @@ const TerminalTab = () => {
 };
 
 const EditorTab = () => {
+  const t = useTranslations('settings.editor');
+  const tc = useTranslations('common');
   const editorUrl = useConfigStore((state) => state.editorUrl);
   const setEditorUrl = useConfigStore((state) => state.setEditorUrl);
   const [localEditorUrl, setLocalEditorUrl] = useState(editorUrl);
@@ -214,16 +211,16 @@ const EditorTab = () => {
     const trimmed = localEditorUrl.trim();
     setLocalEditorUrl(trimmed);
     setEditorUrl(trimmed);
-    toast.success('저장되었습니다.');
+    toast.success(tc('saved'));
   };
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <div>
-          <p className="text-sm font-medium">에디터 URL</p>
+          <p className="text-sm font-medium">{t('url')}</p>
           <p className="text-sm text-muted-foreground">
-            헤더의 EDITOR 버튼 클릭 시 이동할 에디터 주소를 입력합니다.
+            {t('urlDescription')}
           </p>
         </div>
         <Input
@@ -235,16 +232,19 @@ const EditorTab = () => {
           }}
         />
         <p className="text-sm text-muted-foreground">
-          <a
-            href="https://github.com/coder/code-server"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-foreground"
-          >
-            code-server
-          </a>
-          를 설치하고 실행하면 브라우저에서 VS Code를 사용할 수 있습니다.
-          URL에 <code className="rounded bg-muted px-1 py-0.5 text-xs">?folder=</code> 파라미터가 자동으로 추가됩니다.
+          {t.rich('urlHelp', {
+            link: (chunks) => (
+              <a
+                href="https://github.com/coder/code-server"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground"
+              >
+                {chunks}
+              </a>
+            ),
+            code: () => <code className="rounded bg-muted px-1 py-0.5 text-xs">?folder=</code>,
+          })}
         </p>
         <div className="rounded-md bg-muted p-3 font-mono text-xs leading-relaxed">
           <p className="text-muted-foreground/60"># macOS 설치</p>
@@ -258,7 +258,7 @@ const EditorTab = () => {
 
       <div className="flex justify-end">
         <Button disabled={!isDirty} onClick={handleSave}>
-          저장
+          {tc('save')}
         </Button>
       </div>
     </div>
@@ -266,6 +266,7 @@ const EditorTab = () => {
 };
 
 const ClaudeTab = () => {
+  const t = useTranslations('settings.claude');
   const dangerouslySkipPermissions = useConfigStore((state) => state.dangerouslySkipPermissions);
   const setDangerouslySkipPermissions = useConfigStore((state) => state.setDangerouslySkipPermissions);
 
@@ -274,10 +275,10 @@ const ClaudeTab = () => {
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
           <Label htmlFor="skip-permissions" className="text-sm font-medium">
-            권한 확인 건너뛰기
+            {t('skipPermissions')}
           </Label>
           <p className="text-sm text-muted-foreground">
-            Claude CLI 실행 시 --dangerously-skip-permissions 옵션을 추가합니다.
+            {t('skipPermissionsDescription')}
           </p>
         </div>
         <Switch
@@ -297,6 +298,8 @@ const randomHex = (length: number): string => {
 };
 
 const AuthTab = () => {
+  const t = useTranslations('settings.auth');
+  const tc = useTranslations('common');
   const hasAuthPassword = useConfigStore((state) => state.hasAuthPassword);
   const changePassword = useConfigStore((state) => state.changePassword);
   const [localPassword, setLocalPassword] = useState('');
@@ -314,20 +317,20 @@ const AuthTab = () => {
     changePassword(localPassword.trim());
     setLocalPassword('');
     setPasswordTouched(false);
-    toast.success(isElectron ? '저장되었습니다. 앱 종료 후 재시작하면 적용됩니다.' : '저장되었습니다. 서버 재시작 후 적용됩니다.');
+    toast.success(t('savedRestart', { action: isElectron ? t('restartAppAction') : t('restartServerAction') }));
   };
 
   return (
     <div className="space-y-6">
       <Field>
-        <FieldLabel htmlFor="auth-password">비밀번호 변경</FieldLabel>
+        <FieldLabel htmlFor="auth-password">{t('changePassword')}</FieldLabel>
         <FieldDescription>
-          새 비밀번호를 입력하면 SHA-512로 해싱되어 저장됩니다.
+          {t('changePasswordDescription')}
         </FieldDescription>
         <div className="flex gap-2">
           <Input
             id="auth-password"
-            placeholder={hasStoredPassword ? '새 비밀번호 입력 (4자 이상)' : '비밀번호 입력 (4자 이상)'}
+            placeholder={hasStoredPassword ? t('newPasswordPlaceholder') : t('passwordPlaceholder')}
             value={localPassword}
             onChange={(e) => handlePasswordChange(e.target.value)}
           />
@@ -338,12 +341,12 @@ const AuthTab = () => {
       </Field>
 
       <FieldDescription>
-        초기화하려면 ~/.purplemux/config.json 파일을 삭제하고 {isElectron ? '앱을 종료 후 재시작' : '서버를 재시작'}하세요.
+        {t('resetHint', { action: isElectron ? t('restartApp') : t('restartServer') })}
       </FieldDescription>
 
       <div className="flex justify-end">
         <Button disabled={!isDirty} onClick={handleSave}>
-          저장
+          {tc('save')}
         </Button>
       </div>
     </div>
@@ -351,6 +354,7 @@ const AuthTab = () => {
 };
 
 const AgentTab = () => {
+  const t = useTranslations('settings.agent');
   const agentEnabled = useConfigStore((state) => state.agentEnabled);
   const setAgentEnabled = useConfigStore((state) => state.setAgentEnabled);
 
@@ -360,14 +364,14 @@ const AgentTab = () => {
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
             <Label htmlFor="agent-enabled" className="text-sm font-medium">
-              에이전트 메뉴 활성화
+              {t('enableMenu')}
             </Label>
             <span className="rounded-full bg-ui-purple/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ui-purple">
               Beta
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
-            사이드바에 에이전트 메뉴를 표시합니다. 이 기능은 현재 beta 테스트 중입니다.
+            {t('enableMenuDescription')}
           </p>
         </div>
         <Switch
@@ -381,6 +385,9 @@ const AgentTab = () => {
 };
 
 const SystemTab = () => {
+  const t = useTranslations('settings.system');
+  const tc = useTranslations('common');
+
   const handleReset = () => {
     window.location.href = '/reset';
   };
@@ -389,10 +396,9 @@ const SystemTab = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-medium">tmux 초기화</p>
+          <p className="text-sm font-medium">{t('tmuxReset')}</p>
           <p className="text-sm text-muted-foreground">
-            tmux 세션을 모두 종료하고 {isElectron ? '앱을 재시작' : '서버를 재시작'}합니다.
-            설정 변경 후 적용이 필요할 때 사용합니다.
+            {t('tmuxResetDescription', { action: isElectron ? t('restartApp') : t('restartServer') })}
           </p>
         </div>
         <AlertDialog>
@@ -400,24 +406,24 @@ const SystemTab = () => {
             render={
               <Button variant="destructive" size="sm" className="gap-1.5 shrink-0">
                 <RotateCcw className="h-3.5 w-3.5" />
-                초기화
+                {tc('reset')}
               </Button>
             }
           />
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>tmux 초기화</AlertDialogTitle>
+              <AlertDialogTitle>{t('tmuxReset')}</AlertDialogTitle>
               <AlertDialogDescription>
-                실행 중인 모든 터미널 프로세스가 종료됩니다. 계속하시겠습니까?
+                {t('tmuxResetConfirm')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 className="bg-ui-red hover:bg-ui-red/80"
                 onClick={handleReset}
               >
-                초기화
+                {tc('reset')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -433,6 +439,8 @@ interface ISettingsDialogProps {
 }
 
 const SettingsDialog = ({ open, onOpenChange }: ISettingsDialogProps) => {
+  const t = useTranslations('settings');
+  const tc = useTranslations('common');
   const [activeTab, setActiveTab] = useState<TSettingsTab>('general');
 
   const activeItem = settingsItems.find((item) => item.id === activeTab);
@@ -446,7 +454,7 @@ const SettingsDialog = ({ open, onOpenChange }: ISettingsDialogProps) => {
         <div className="flex h-full min-h-0 min-w-0 w-full flex-col overflow-hidden md:h-[520px] md:flex-row">
           <div className="flex shrink-0 flex-col border-b bg-muted/30 px-3 pt-3 pb-0 md:p-3 md:w-48 md:border-b-0 md:border-r">
             <div className="mb-2 flex items-center justify-between px-2 md:mb-4">
-              <DialogTitle className="text-base font-semibold">설정</DialogTitle>
+              <DialogTitle className="text-base font-semibold">{t('title')}</DialogTitle>
               <Button
                 variant="ghost"
                 size="icon"
@@ -454,7 +462,7 @@ const SettingsDialog = ({ open, onOpenChange }: ISettingsDialogProps) => {
                 className="h-6 w-6 opacity-70 hover:opacity-100"
               >
                 <X className="h-[18px] w-[18px]" />
-                <span className="sr-only">닫기</span>
+                <span className="sr-only">{tc('close')}</span>
               </Button>
             </div>
             <nav className="flex gap-1 overflow-x-auto px-1 pb-2 md:flex-col md:px-0 md:pb-0">
@@ -471,14 +479,14 @@ const SettingsDialog = ({ open, onOpenChange }: ISettingsDialogProps) => {
                   )}
                 >
                   {item.icon}
-                  {item.label}
+                  {t(`tabs.${item.labelKey}`)}
                 </Button>
               ))}
             </nav>
           </div>
 
           <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6">
-            <h2 className="mb-6 text-lg font-semibold">{activeItem?.label}</h2>
+            <h2 className="mb-6 text-lg font-semibold">{activeItem ? t(`tabs.${activeItem.labelKey}`) : ''}</h2>
             {activeTab === 'general' && <GeneralTab />}
             {activeTab === 'terminal' && <TerminalTab />}
             {activeTab === 'editor' && <EditorTab />}

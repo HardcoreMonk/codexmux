@@ -1,0 +1,16 @@
+{
+  "pageTitle": "Login - purplemux",
+  "setupTitle": "Setup - purplemux",
+  "missingTools": "Required tools are missing",
+  "install": "Install",
+  "password": "Password",
+  "passwordPlaceholder": "Enter your password",
+  "invalidPassword": "Invalid password.",
+  "loggingIn": "Logging in...",
+  "loginButton": "Login",
+  "forgotPassword": "Forgot your password?",
+  "resetPassword": "Reset password",
+  "resetPasswordHelp": "Delete the file below and {action} to set a new password in the onboarding screen.",
+  "restartServer": "restart the server",
+  "restartApp": "quit and restart the app"
+}

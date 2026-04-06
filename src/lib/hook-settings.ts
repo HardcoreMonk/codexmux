@@ -110,10 +110,10 @@ export const buildAgentBrainHookSettings = (port: number, agentId: string) => ({
 export const ensureHookSettings = async (port: number): Promise<void> => {
   await fs.mkdir(BASE_DIR, { recursive: true });
 
-  // port 파일 기록
+  // Write port file
   await fs.writeFile(PORT_FILE, String(port), 'utf-8');
 
-  // hook 스크립트 생성
+  // Create hook script
   try {
     const existing = await fs.readFile(HOOK_SCRIPT, 'utf-8');
     if (existing !== HOOK_SCRIPT_CONTENT) {
@@ -123,7 +123,7 @@ export const ensureHookSettings = async (port: number): Promise<void> => {
     await fs.writeFile(HOOK_SCRIPT, HOOK_SCRIPT_CONTENT, { mode: 0o755 });
   }
 
-  // hooks.json 생성
+  // Create hooks.json
   const settings = buildHookSettings();
   const content = JSON.stringify(settings, null, 2) + '\n';
 
@@ -135,7 +135,7 @@ export const ensureHookSettings = async (port: number): Promise<void> => {
   }
 
   await fs.writeFile(HOOKS_FILE, content, 'utf-8');
-  log.debug(`${HOOKS_FILE} 생성 완료`);
+  log.debug(`${HOOKS_FILE} created`);
 };
 
 export const removePortFile = async (): Promise<void> => {

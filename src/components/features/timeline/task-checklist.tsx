@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { CheckCircle2, ChevronDown, ListChecks, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ITaskItem, TCliState, TTaskStatus } from '@/types/timeline';
@@ -25,6 +26,8 @@ const StatusIcon = ({ status }: { status: TTaskStatus }) => {
 };
 
 const TaskChecklist = ({ tasks, cliState }: ITaskChecklistProps) => {
+  const t = useTranslations('timeline');
+  const tc = useTranslations('common');
   const completedCount = tasks.filter((t) => t.status === 'completed').length;
   const allCompleted = tasks.length > 0 && completedCount === tasks.length;
   const hasInProgress = tasks.some((t) => t.status === 'in_progress');
@@ -107,7 +110,7 @@ const TaskChecklist = ({ tasks, cliState }: ITaskChecklistProps) => {
           type="button"
           className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center self-start rounded-sm text-muted-foreground hover:text-foreground"
           onClick={() => setDismissed(true)}
-          aria-label="닫기"
+          aria-label={tc('close')}
         >
           <X size={12} />
         </button>
@@ -123,7 +126,7 @@ const TaskChecklist = ({ tasks, cliState }: ITaskChecklistProps) => {
           <div
             id="task-list"
             role="list"
-            aria-label="Task 진행 상황"
+            aria-label={t('taskProgress')}
             className="mt-1.5 max-h-[240px] overflow-y-auto"
             style={{ scrollbarWidth: 'thin' }}
           >

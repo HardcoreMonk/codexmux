@@ -1,4 +1,5 @@
 import { memo, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { FileText } from 'lucide-react';
 import type { IMemorySearchResult } from '@/types/memory';
 
@@ -32,6 +33,7 @@ interface ISearchResultsProps {
 }
 
 const SearchResults = ({ results, query, onFileSelect }: ISearchResultsProps) => {
+  const t = useTranslations('agent');
   const handleClick = useCallback(
     (filePath: string) => {
       onFileSelect(filePath);
@@ -42,7 +44,7 @@ const SearchResults = ({ results, query, onFileSelect }: ISearchResultsProps) =>
   if (results.length === 0) {
     return (
       <div className="px-3 py-8 text-center">
-        <p className="text-sm text-muted-foreground">검색 결과가 없습니다</p>
+        <p className="text-sm text-muted-foreground">{t('noSearchResults')}</p>
       </div>
     );
   }

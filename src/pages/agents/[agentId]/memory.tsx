@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import { useTranslations } from 'next-intl';
 import { FileText, FolderTree, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { getPageShellWithTitlebarLayout } from '@/components/layout/page-shell';
@@ -74,17 +75,22 @@ const TreeSkeleton = () => (
   </div>
 );
 
-const TreeErrorState = ({ onRetry }: { onRetry: () => void }) => (
-  <div className="flex flex-col items-center justify-center gap-3 py-12">
-    <FileText className="h-8 w-8 text-negative/40" />
-    <p className="text-sm text-muted-foreground">메모리를 불러올 수 없습니다</p>
-    <Button variant="outline" size="sm" onClick={onRetry}>
-      다시 시도
-    </Button>
-  </div>
-);
+const TreeErrorState = ({ onRetry, message }: { onRetry: () => void; message: string }) => {
+  const tc = useTranslations('common');
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 py-12">
+      <FileText className="h-8 w-8 text-negative/40" />
+      <p className="text-sm text-muted-foreground">{message}</p>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        {tc('retry')}
+      </Button>
+    </div>
+  );
+};
 
 const MemoryPage = () => {
+  const t = useTranslations('agents');
+  const tc = useTranslations('common');
   const router = useRouter();
   const agentId = router.query.agentId as string;
 
@@ -117,10 +123,10 @@ const MemoryPage = () => {
       setState((prev) => ({
         ...prev,
         isTreeLoading: false,
-        treeError: '메모리를 불러올 수 없습니다',
+        treeError: t('memoryLoadError'),
       }));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (agentId) fetchTree(agentId);
@@ -140,7 +146,7 @@ const MemoryPage = () => {
         setState((prev) => ({
           ...prev,
           isFileLoading: false,
-          fileError: '파일이 삭제되었습니다',
+          fileError: t('fileDeleted'),
           fileContent: null,
         }));
         if (agentId) fetchTree(agentId);
@@ -159,10 +165,10 @@ const MemoryPage = () => {
       setState((prev) => ({
         ...prev,
         isFileLoading: false,
-        fileError: '파일을 읽을 수 없습니다',
+        fileError: t('fileReadError'),
       }));
     }
-  }, [agentId, fetchTree]);
+  }, [agentId, fetchTree, t]);
 
   const handleFileSelect = useCallback(
     (filePath: string) => {
@@ -187,7 +193,6 @@ const MemoryPage = () => {
       const prevContent = state.fileContent;
       const prevMeta = { sizeBytes: state.fileSizeBytes, modifiedAt: state.fileModifiedAt };
 
-      // Optimistic: switch to viewer with new content
       setState((prev) => ({
         ...prev,
         isEditing: false,
@@ -209,9 +214,8 @@ const MemoryPage = () => {
           fileModifiedAt: data.modifiedAt,
           fileSizeBytes: new Blob([content]).size,
         }));
-        toast.success('저장되었습니다');
+        toast.success(tc('saved'));
       } catch {
-        // Rollback
         setState((prev) => ({
           ...prev,
           isSaving: false,
@@ -220,10 +224,10 @@ const MemoryPage = () => {
           fileSizeBytes: prevMeta.sizeBytes,
           fileModifiedAt: prevMeta.modifiedAt,
         }));
-        toast.error('저장에 실패했습니다');
+        toast.error(t('saveFailed'));
       }
     },
-    [state.selectedPath, state.fileContent, state.fileSizeBytes, state.fileModifiedAt],
+    [state.selectedPath, state.fileContent, state.fileSizeBytes, state.fileModifiedAt, t, tc],
   );
 
   const handleRetryFile = useCallback(() => {
@@ -263,11 +267,11 @@ const MemoryPage = () => {
           }));
         } catch {
           setState((prev) => ({ ...prev, isSearching: false }));
-          toast.error('검색 중 오류가 발생했습니다');
+          toast.error(t('searchError'));
         }
       }, 300);
     },
-    [agentId],
+    [agentId, t],
   );
 
   useEffect(() => {
@@ -279,12 +283,11 @@ const MemoryPage = () => {
   if (!agentId) return null;
 
   const showTreeLoading = state.isTreeLoading || (isStoreLoading && !agent);
-  const title = agent ? `${agent.name} 메모리 — purplemux` : '메모리 — purplemux';
+  const title = agent ? t('memoryPageTitle', { name: agent.name }) : t('memoryDefaultTitle');
   const agentName = agent?.name ?? agentId;
 
   const content = (
     <>
-      {/* Header */}
       <div className="flex items-center gap-3 border-b px-4 py-3">
           <div className="flex flex-col">
             <span className="text-sm font-medium">{agentName}</span>
@@ -293,10 +296,9 @@ const MemoryPage = () => {
             )}
           </div>
 
-          <span className="text-xs text-muted-foreground">메모리</span>
+          <span className="text-xs text-muted-foreground">{t('memory')}</span>
         </div>
 
-        {/* Mobile tab bar */}
         <div className="flex border-b md:hidden">
           <button
             type="button"
@@ -304,7 +306,7 @@ const MemoryPage = () => {
             onClick={() => setMobileTab('tree')}
           >
             <FolderTree size={14} />
-            트리
+            {t('tree')}
           </button>
           <button
             type="button"
@@ -312,16 +314,14 @@ const MemoryPage = () => {
             onClick={() => setMobileTab('viewer')}
           >
             <Eye size={14} />
-            뷰어
+            {t('viewer')}
           </button>
         </div>
 
-        {/* Content — split view (desktop) / tab (mobile) */}
         <div className="flex flex-1 overflow-hidden">
-          {/* Left: Tree */}
           <div className={`${mobileTab === 'tree' ? 'flex' : 'hidden'} w-full flex-col overflow-hidden md:flex md:w-64 md:shrink-0 md:border-r`}>
             {showTreeLoading && <TreeSkeleton />}
-            {!showTreeLoading && state.treeError && <TreeErrorState onRetry={handleRetryTree} />}
+            {!showTreeLoading && state.treeError && <TreeErrorState onRetry={handleRetryTree} message={state.treeError} />}
             {!showTreeLoading && !state.treeError && (
               <MemoryTree
                 tree={state.tree}
@@ -336,7 +336,6 @@ const MemoryPage = () => {
             )}
           </div>
 
-          {/* Right: Viewer */}
           <div className={`${mobileTab === 'viewer' ? 'flex' : 'hidden'} flex-1 flex-col overflow-hidden md:flex`}>
             <MemoryViewer
               selectedPath={state.selectedPath}
@@ -355,7 +354,6 @@ const MemoryPage = () => {
           </div>
         </div>
 
-        {/* Bottom stats */}
         <MemoryStats
           totalFiles={state.stats.totalFiles}
           totalSizeBytes={state.stats.totalSizeBytes}

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, memo, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import TreeNode from '@/components/features/agent/tree-node';
@@ -45,6 +46,7 @@ const MemoryTree = ({
   searchResults,
   isSearching,
 }: IMemoryTreeProps) => {
+  const t = useTranslations('agent');
   const defaultExpanded = useMemo(() => new Set(collectDirPaths(tree, agentId)), [tree, agentId]);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(defaultExpanded);
 
@@ -101,7 +103,7 @@ const MemoryTree = ({
           <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             size={1}
-            placeholder="검색..."
+            placeholder={t('searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="h-8 pl-7 pr-7 text-sm"
@@ -120,7 +122,7 @@ const MemoryTree = ({
 
       <div className="flex-1 overflow-y-auto py-1">
         {isSearching && (
-          <div className="px-3 py-4 text-center text-sm text-muted-foreground">검색 중...</div>
+          <div className="px-3 py-4 text-center text-sm text-muted-foreground">{t('searching')}</div>
         )}
 
         {isSearchMode && !isSearching && searchResults && (

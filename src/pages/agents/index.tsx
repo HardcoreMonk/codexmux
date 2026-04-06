@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import { useTranslations } from 'next-intl';
 import { useShallow } from 'zustand/react/shallow';
 import { Plus, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,21 +11,25 @@ import useAgentStore, { selectAgentList } from '@/hooks/use-agent-store';
 
 const LAST_AGENT_KEY = 'last-agent-id';
 
-const EmptyState = ({ onCreateClick }: { onCreateClick: () => void }) => (
-  <div className="flex flex-1 flex-col items-center justify-center gap-3">
-    <Bot className="h-8 w-8 text-muted-foreground/40" />
-    <div className="text-center">
-      <p className="text-sm text-muted-foreground">아직 에이전트가 없습니다</p>
-      <p className="text-sm text-muted-foreground">첫 에이전트를 만들어보세요</p>
+const EmptyState = ({ onCreateClick }: { onCreateClick: () => void }) => {
+  const t = useTranslations('agents');
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3">
+      <Bot className="h-8 w-8 text-muted-foreground/40" />
+      <div className="text-center">
+        <p className="text-sm text-muted-foreground">{t('emptyTitle')}</p>
+        <p className="text-sm text-muted-foreground">{t('emptyDescription')}</p>
+      </div>
+      <Button variant="outline" size="sm" onClick={onCreateClick}>
+        <Plus className="h-3.5 w-3.5" />
+        {t('createAgent')}
+      </Button>
     </div>
-    <Button variant="outline" size="sm" onClick={onCreateClick}>
-      <Plus className="h-3.5 w-3.5" />
-      새 에이전트 만들기
-    </Button>
-  </div>
-);
+  );
+};
 
 const AgentsPage = () => {
+  const t = useTranslations('agents');
   const router = useRouter();
   const agents = useAgentStore(useShallow(selectAgentList));
   const isLoading = useAgentStore((s) => s.isLoading);
@@ -63,7 +68,7 @@ const AgentsPage = () => {
   return (
     <>
       <Head>
-        <title>에이전트 — purplemux</title>
+        <title>{t('pageTitle')}</title>
       </Head>
 
       <EmptyState onCreateClick={() => setCreateOpen(true)} />

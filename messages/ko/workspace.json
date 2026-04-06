@@ -1,0 +1,7 @@
+{
+  "add": "Workspace 추가",
+  "projectDirectory": "프로젝트 디렉토리",
+  "directoryPlaceholder": "디렉토리 경로 입력",
+  "validating": "검증 중...",
+  "addButton": "추가"
+}

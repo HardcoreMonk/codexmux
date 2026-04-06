@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useTranslations } from 'next-intl';
 import { SendHorizontal, Square } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ const WebInputBar = ({
   onRestartSession,
   onSend,
 }: IWebInputBarProps) => {
+  const t = useTranslations('terminal');
   const { entries, isLoading, isError, fetchHistory, addHistory, deleteHistory } =
     useMessageHistory({ wsId });
   const { value, setValue, mode, send, interrupt, textareaRef, focusInput } = useWebInput(
@@ -180,10 +182,10 @@ const WebInputBar = ({
               disabled={isDisabled}
               placeholder={
                 mode === 'disabled'
-                  ? 'Claude Code가 실행 중이 아닙니다'
-                  : '메시지를 입력하세요...'
+                  ? t('inputDisabledPlaceholder')
+                  : t('inputPlaceholder')
               }
-              aria-label="Claude Code 메시지 입력"
+              aria-label={t('inputAriaLabel')}
               className={cn(
                 'flex-1 resize-none bg-transparent py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground',
                 isDisabled && 'cursor-not-allowed opacity-70',
@@ -202,7 +204,7 @@ const WebInputBar = ({
                 size="sm"
                 className="h-7 w-7 shrink-0 p-0 text-ui-red hover:text-ui-red/80"
                 onClick={handleInterruptClick}
-                aria-label="작업 중단"
+                aria-label={t('interruptAriaLabel')}
               >
                 <Square size={14} fill="currentColor" />
               </Button>
@@ -217,7 +219,7 @@ const WebInputBar = ({
                 )}
                 onClick={handleSendClick}
                 disabled={isDisabled}
-                aria-label="메시지 전송"
+                aria-label={t('sendAriaLabel')}
               >
                 <SendHorizontal size={16} />
               </Button>

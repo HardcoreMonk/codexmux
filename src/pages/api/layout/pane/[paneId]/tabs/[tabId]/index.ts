@@ -10,7 +10,7 @@ const log = createLogger('layout');
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const wsId = (req.query.workspace as string) || await getActiveWorkspaceId();
   if (!wsId) {
-    return res.status(400).json({ error: 'Workspace가 없습니다' });
+    return res.status(400).json({ error: 'No workspace found' });
   }
 
   const paneId = req.query.paneId as string;
@@ -19,7 +19,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'DELETE') {
     const found = await removeTabFromPane(wsId, paneId, tabId);
     if (!found) {
-      return res.status(404).json({ error: '탭을 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Tab not found' });
     }
     getStatusManager().removeTab(tabId);
     return res.status(204).end();
@@ -30,7 +30,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const { command } = req.body ?? {};
       const ok = await restartTabSession(wsId, paneId, tabId, command);
       if (!ok) {
-        return res.status(404).json({ error: '탭을 찾을 수 없습니다' });
+        return res.status(404).json({ error: 'Tab not found' });
       }
       return res.status(200).json({ ok: true });
     } catch (err) {
@@ -46,7 +46,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const patch: Partial<Pick<ITab, 'name' | 'panelType' | 'title' | 'cwd' | 'lastCommand' | 'webUrl'>> = {};
       if (name !== undefined) {
         if (typeof name !== 'string' || !name.trim()) {
-          return res.status(400).json({ error: 'name은 빈 문자열일 수 없습니다' });
+          return res.status(400).json({ error: 'name cannot be empty' });
         }
         patch.name = name.trim();
       }
@@ -58,12 +58,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
       const result = await patchTab(wsId, paneId, tabId, patch);
       if (!result) {
-        return res.status(404).json({ error: '탭을 찾을 수 없습니다' });
+        return res.status(404).json({ error: 'Tab not found' });
       }
       return res.status(200).json(result);
     }
 
-    return res.status(400).json({ error: '수정할 필드가 없습니다' });
+    return res.status(400).json({ error: 'No fields to update' });
   }
 
   res.setHeader('Allow', 'POST, DELETE, PATCH');

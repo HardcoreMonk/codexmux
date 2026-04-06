@@ -1,5 +1,6 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
+import { useTranslations } from 'next-intl';
 import { FileText, Sparkles, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import useBrowserTitle from '@/hooks/use-browser-title';
@@ -11,7 +12,9 @@ import type { IDailyReportDay, IDailyReportListItem, IDailyReportListResponse } 
 const PAGE_SIZE = 10;
 
 const ReportsPage = () => {
-  useBrowserTitle('노트');
+  const t = useTranslations('reports');
+
+  useBrowserTitle(t('title'));
 
   const [days, setDays] = useState<IDailyReportListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -77,26 +80,26 @@ const ReportsPage = () => {
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-ui-purple" />
-            <h1 className="text-base font-semibold">노트</h1>
+            <h1 className="text-base font-semibold">{t('title')}</h1>
           </div>
           <div className="flex items-center gap-2">
             {!loading && unreportedCount > 0 && (
               batchRunning ? (
                 <Button variant="outline" size="xs" onClick={() => batchActionsRef.current.stop()}>
                   <Square className="h-3 w-3" />
-                  중지
+                  {t('stop')}
                 </Button>
               ) : (
                 <Button variant="outline" size="xs" onClick={() => batchActionsRef.current.start()}>
                   <Sparkles className="h-3 w-3" />
-                  작업 요약 ({unreportedCount})
+                  {t('summarize', { count: unreportedCount })}
                 </Button>
               )
             )}
           </div>
         </div>
 
-        <SectionErrorBoundary sectionName="노트">
+        <SectionErrorBoundary sectionName={t('title')}>
           {loading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -126,7 +129,7 @@ const ReportsPage = () => {
                     onClick={handleLoadMore}
                     disabled={loadingMore}
                   >
-                    {loadingMore ? '불러오는 중...' : `더 보기 (${total - days.length}일 남음)`}
+                    {loadingMore ? t('loadingMore') : t('loadMore', { count: total - days.length })}
                   </Button>
                 </div>
               )}
@@ -140,7 +143,7 @@ const ReportsPage = () => {
   return (
     <>
       <Head>
-        <title>노트 — purplemux</title>
+        <title>{t('pageTitle')}</title>
       </Head>
       {content}
     </>

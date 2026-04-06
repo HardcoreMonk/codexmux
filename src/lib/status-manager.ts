@@ -253,7 +253,7 @@ class StatusManager {
     this.currentInterval = this.getPollingInterval();
     this.pollingTimer = setInterval(() => {
       this.poll().catch((err) => {
-        log.error({ err }, '폴링 중 오류');
+        log.error({ err }, 'Polling error');
       });
     }, this.currentInterval);
   }

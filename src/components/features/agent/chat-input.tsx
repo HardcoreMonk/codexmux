@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { SendHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,7 @@ interface IChatInputProps {
 }
 
 const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps) => {
+  const t = useTranslations('agent');
   const [value, setValue] = useState(() => loadDraft(agentId));
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -63,7 +65,7 @@ const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps)
   const maxRows = isMobileDevice ? MOBILE_MAX_ROWS : DESKTOP_MAX_ROWS;
 
   const placeholder =
-    agentStatus === 'offline' ? '에이전트 오프라인' : '메시지를 입력하세요...';
+    agentStatus === 'offline' ? t('offlinePlaceholder') : t('messagePlaceholder');
 
   // Draft auto-save
   useEffect(() => {
@@ -138,7 +140,7 @@ const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps)
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={isInputDisabled}
-          aria-label="메시지 입력"
+          aria-label={t('messageInputAria')}
           className={cn(
             'flex-1 resize-none bg-transparent py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground',
             isInputDisabled && 'cursor-not-allowed opacity-70',
@@ -161,7 +163,7 @@ const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps)
           )}
           onClick={handleSubmit}
           disabled={isSendDisabled}
-          aria-label="메시지 전송"
+          aria-label={t('sendMessageAria')}
         >
           <SendHorizontal size={16} />
         </Button>

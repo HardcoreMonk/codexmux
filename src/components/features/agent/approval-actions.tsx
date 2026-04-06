@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 
 type TApprovalResult = 'approved' | 'rejected' | null;
@@ -10,6 +11,7 @@ interface IApprovalActionsProps {
 }
 
 const ApprovalActions = ({ onAction, resolvedAs, disabled }: IApprovalActionsProps) => {
+  const t = useTranslations('agent');
   const [localResult, setLocalResult] = useState<TApprovalResult>(null);
   const result = localResult ?? resolvedAs;
 
@@ -21,7 +23,7 @@ const ApprovalActions = ({ onAction, resolvedAs, disabled }: IApprovalActionsPro
   if (result) {
     return (
       <span className="mt-2 text-xs text-muted-foreground">
-        {result === 'approved' ? '승인됨' : '거부됨'}
+        {result === 'approved' ? t('approved') : t('rejected')}
       </span>
     );
   }
@@ -34,7 +36,7 @@ const ApprovalActions = ({ onAction, resolvedAs, disabled }: IApprovalActionsPro
         onClick={() => handleAction('거부')}
         disabled={disabled}
       >
-        거부
+        {t('reject')}
       </Button>
       <Button
         variant="default"
@@ -42,7 +44,7 @@ const ApprovalActions = ({ onAction, resolvedAs, disabled }: IApprovalActionsPro
         onClick={() => handleAction('승인')}
         disabled={disabled}
       >
-        승인
+        {t('approve')}
       </Button>
     </div>
   );

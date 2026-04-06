@@ -1,4 +1,5 @@
 import { Settings } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import useAgentStore from '@/hooks/use-agent-store';
 import type { IAgentInfo, TAgentStatus } from '@/types/agent';
@@ -10,16 +11,18 @@ interface IAgentCardProps {
   isFadingOut?: boolean;
 }
 
-const statusConfig: Record<TAgentStatus, { className: string; label: string }> = {
-  idle: { className: 'bg-muted-foreground/20', label: '대기 중' },
-  working: { className: 'bg-ui-teal animate-pulse', label: '작업 중' },
-  blocked: { className: 'bg-ui-amber animate-pulse', label: '차단됨' },
-  offline: { className: 'bg-muted-foreground/10', label: '오프라인' },
+const statusConfig: Record<TAgentStatus, { className: string; labelKey: string }> = {
+  idle: { className: 'bg-muted-foreground/20', labelKey: 'statusIdle' },
+  working: { className: 'bg-ui-teal animate-pulse', labelKey: 'statusWorking' },
+  blocked: { className: 'bg-ui-amber animate-pulse', labelKey: 'statusBlockedCard' },
+  offline: { className: 'bg-muted-foreground/10', labelKey: 'statusOffline' },
 };
 
 const AgentCard = ({ agent, onClick, onSettingsClick, isFadingOut }: IAgentCardProps) => {
+  const t = useTranslations('agent');
   const hasUnread = useAgentStore((s) => s.unreadAgentIds.has(agent.id));
   const status = statusConfig[agent.status];
+  const statusLabel = t(status.labelKey);
 
   const handleSettingsClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -42,7 +45,7 @@ const AgentCard = ({ agent, onClick, onSettingsClick, isFadingOut }: IAgentCardP
         <div className="flex items-center gap-2">
           <span
             className={`inline-block h-1.5 w-1.5 rounded-full ${status.className}`}
-            aria-label={`상태: ${status.label}`}
+            aria-label={t('statusLabel', { label: statusLabel })}
           />
           <span className="text-sm font-medium">{agent.name}</span>
           {hasUnread && (
@@ -54,7 +57,7 @@ const AgentCard = ({ agent, onClick, onSettingsClick, isFadingOut }: IAgentCardP
           size="icon-xs"
           className="opacity-0 transition-opacity group-hover:opacity-100"
           onClick={handleSettingsClick}
-          aria-label="에이전트 설정"
+          aria-label={t('agentSettings')}
         >
           <Settings className="h-3 w-3 text-muted-foreground" />
         </Button>

@@ -12,16 +12,16 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   const jsonlPath = req.query.jsonlPath as string;
   if (!jsonlPath) {
-    return res.status(400).json({ error: 'jsonlPath 파라미터가 필요합니다' });
+    return res.status(400).json({ error: 'jsonlPath parameter required' });
   }
 
   if (!isAllowedJsonlPath(jsonlPath)) {
-    return res.status(403).json({ error: '허용되지 않는 경로입니다' });
+    return res.status(403).json({ error: 'Path not allowed' });
   }
 
   const beforeByte = parseInt(req.query.beforeByte as string, 10);
   if (isNaN(beforeByte) || beforeByte < 0) {
-    return res.status(400).json({ error: 'beforeByte 파라미터가 필요합니다' });
+    return res.status(400).json({ error: 'beforeByte parameter required' });
   }
 
   const limit = parseInt(req.query.limit as string, 10) || DEFAULT_LIMIT;

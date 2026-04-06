@@ -16,11 +16,11 @@ interface IRawHistoryEntry {
 }
 
 const LENGTH_BUCKETS = [
-  { label: '~50자', max: 50 },
-  { label: '51~200자', max: 200 },
-  { label: '201~500자', max: 500 },
-  { label: '501~1000자', max: 1000 },
-  { label: '1000자+', max: Infinity },
+  { label: '≤50', max: 50 },
+  { label: '51–200', max: 200 },
+  { label: '201–500', max: 500 },
+  { label: '501–1000', max: 1000 },
+  { label: '1000+', max: Infinity },
 ];
 
 const extractCommand = (display: string): string | null => {

@@ -84,7 +84,7 @@ const readWorkspacesFile = async (): Promise<IWorkspacesData | null> => {
     }
     return data;
   } catch {
-    log.warn('workspaces.json 파싱 실패, 빈 상태로 시작합니다');
+    log.warn('Failed to parse workspaces.json, starting empty');
     try {
       await fs.copyFile(WORKSPACES_FILE, WORKSPACES_FILE.replace(/\.json$/, '.json.bak'));
     } catch {}
@@ -128,7 +128,7 @@ const migrateFromPhase4 = async (): Promise<IWorkspacesData | null> => {
   };
 
   await writeWorkspacesFile(data);
-  log.info(`Phase 4 layout.json → Workspace 'default' 마이그레이션 완료`);
+  log.info(`Phase 4 layout.json → Workspace 'default' migration complete`);
   return data;
 };
 
@@ -153,7 +153,7 @@ const migrateFromTabs = async (): Promise<IWorkspacesData | null> => {
     const tmpFile = LEGACY_LAYOUT_FILE + '.tmp';
     await fs.writeFile(tmpFile, JSON.stringify(legacyLayout, null, 2));
     await fs.rename(tmpFile, LEGACY_LAYOUT_FILE);
-    log.info('tabs.json → layout.json 마이그레이션 완료');
+    log.info('tabs.json → layout.json migration complete');
 
     return await migrateFromPhase4();
   } catch {
@@ -180,7 +180,7 @@ export const initWorkspaceStore = async (): Promise<void> => {
 
   if (!data) {
     await writeWorkspacesFile(emptyState());
-    log.info('초기 workspaces.json 생성');
+    log.info('Initial workspaces.json created');
     return;
   }
 
@@ -193,7 +193,7 @@ export const initWorkspaceStore = async (): Promise<void> => {
     let layout = await readLayoutFile(layoutFile);
 
     if (!layout) {
-      log.warn(`Workspace '${ws.name}': layout.json 손상, 기본 Pane으로 초기화`);
+      log.warn(`Workspace '${ws.name}': layout.json corrupted, reset to default pane`);
       layout = await createDefaultLayout(ws.id, ws.directories[0]);
       await writeLayoutFile(layout, layoutFile);
       continue;
@@ -213,7 +213,7 @@ export const initWorkspaceStore = async (): Promise<void> => {
         await writeLayoutFile(layout, layoutFile);
       }
     } catch (err) {
-      log.error(`Workspace '${ws.name}': tmux 정합성 체크 실패: ${err instanceof Error ? err.message : err}`);
+      log.error(`Workspace '${ws.name}': tmux consistency check failed: ${err instanceof Error ? err.message : err}`);
     }
 
   }
@@ -250,11 +250,11 @@ export const createWorkspace = async (directory: string, name?: string): Promise
     try {
       stat = await fs.stat(directory);
     } catch {
-      throw new Error('디렉토리가 존재하지 않습니다');
+      throw new Error('Directory does not exist');
     }
 
     if (!stat.isDirectory()) {
-      throw new Error('파일이 아닌 디렉토리 경로를 입력하세요');
+      throw new Error('Please enter a directory path, not a file');
     }
 
     const data = (await readWorkspacesFile()) ?? emptyState();
@@ -271,7 +271,7 @@ export const createWorkspace = async (directory: string, name?: string): Promise
     data.workspaces.push(workspace);
     await writeWorkspacesFile(data);
 
-    log.info(`생성: ${wsId} (${wsName}, ${directory})`);
+    log.info(`Created: ${wsId} (${wsName}, ${directory})`);
     return workspace;
   });
 
@@ -302,7 +302,7 @@ export const deleteWorkspace = async (workspaceId: string): Promise<boolean> =>
     data.workspaces.forEach((w, i) => { w.order = i; });
 
     await writeWorkspacesFile(data);
-    log.info(`삭제: ${workspaceId} (${ws.name})`);
+    log.info(`Deleted: ${workspaceId} (${ws.name})`);
     return true;
   });
 
@@ -317,7 +317,7 @@ export const renameWorkspace = async (workspaceId: string, name: string): Promis
     ws.name = name;
     await writeWorkspacesFile(data);
 
-    log.info(`이름 변경: ${workspaceId} → "${name}"`);
+    log.info(`Renamed: ${workspaceId} → "${name}"`);
     return { ...ws };
   });
 
@@ -372,10 +372,10 @@ export const validateDirectory = async (directory: string): Promise<{
   try {
     const stat = await fs.stat(directory);
     if (!stat.isDirectory()) {
-      return { valid: false, error: '파일이 아닌 디렉토리 경로를 입력하세요' };
+      return { valid: false, error: 'Please enter a directory path, not a file' };
     }
   } catch {
-    return { valid: false, error: '디렉토리가 존재하지 않습니다' };
+    return { valid: false, error: 'Directory does not exist' };
   }
 
   return { valid: true, suggestedName: path.basename(directory) };

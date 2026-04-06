@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/ko';
@@ -130,6 +131,7 @@ export const MetaDetail = ({
   gitStatus,
   tmuxInfo,
 }: IMetaDetailProps) => {
+  const t = useTranslations('session.meta');
   const createdRelative = createdAt ? dayjs(createdAt).fromNow() : '';
   const updatedRelative = updatedAt ? dayjs(updatedAt).fromNow() : '';
 
@@ -154,17 +156,17 @@ export const MetaDetail = ({
 
       <div className="mt-1 flex flex-col gap-1">
         <div className="flex items-baseline gap-2">
-          <span className="w-12 shrink-0 text-xs text-muted-foreground/70">메시지</span>
+          <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('message')}</span>
           <span className="text-xs text-muted-foreground">
-            사용자 {userCount} / 어시스턴트 {assistantCount}
+            {t('userAssistant', { userCount, assistantCount })}
           </span>
         </div>
 
         <div className="flex items-baseline gap-2">
-          <span className="w-12 shrink-0 text-xs text-muted-foreground/70">토큰</span>
+          <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('tokens')}</span>
           <div className="flex flex-col gap-0.5">
             <span className="font-mono text-xs text-muted-foreground">
-              입력 {formatTokenDetail(inputTokens)} / 출력 {formatTokenDetail(outputTokens)} / 총 {formatTokenDetail(totalTokens)}
+              {t('inputOutputTotal', { input: formatTokenDetail(inputTokens), output: formatTokenDetail(outputTokens), total: formatTokenDetail(totalTokens) })}
             </span>
             {tokensByModel.map((m) => (
               <span key={m.model} className="font-mono text-xs text-muted-foreground/60">
@@ -178,7 +180,7 @@ export const MetaDetail = ({
 
         {totalCost !== null && (
           <div className="flex items-baseline gap-2">
-            <span className="w-12 shrink-0 text-xs text-muted-foreground/70">비용</span>
+            <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('cost')}</span>
             <span className="font-mono text-xs text-muted-foreground">
               {formatCost(totalCost)}
             </span>
@@ -187,7 +189,7 @@ export const MetaDetail = ({
 
         {createdAt && (
           <div className="flex items-baseline gap-2">
-            <span className="w-12 shrink-0 text-xs text-muted-foreground/70">생성</span>
+            <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('created')}</span>
             <Tooltip>
               <TooltipTrigger className="text-xs text-muted-foreground">
                 {dayjs(createdAt).format('MM/DD HH:mm')} ({createdRelative})
@@ -201,7 +203,7 @@ export const MetaDetail = ({
 
         {updatedAt && (
           <div className="flex items-baseline gap-2">
-            <span className="w-12 shrink-0 text-xs text-muted-foreground/70">수정</span>
+            <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('updated')}</span>
             <Tooltip>
               <TooltipTrigger className="text-xs text-muted-foreground">
                 {dayjs(updatedAt).format('MM/DD HH:mm')} ({updatedRelative})
@@ -228,7 +230,7 @@ export const MetaDetail = ({
           <div className="flex flex-col gap-1">
             {tmuxInfo.cwd && (
               <div className="flex items-baseline gap-2">
-                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">경로</span>
+                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('path')}</span>
                 <Tooltip>
                   <TooltipTrigger className="min-w-0 truncate font-mono text-xs text-muted-foreground">
                     {shortenPath(tmuxInfo.cwd)}
@@ -241,13 +243,13 @@ export const MetaDetail = ({
             )}
             {tmuxInfo.lastCommand && (
               <div className="flex items-baseline gap-2">
-                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">프로세스</span>
+                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('process')}</span>
                 <span className="font-mono text-xs text-muted-foreground">{tmuxInfo.lastCommand}</span>
               </div>
             )}
             {!tmuxInfo.lastCommand && tmuxInfo.command && (
               <div className="flex items-baseline gap-2">
-                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">프로세스</span>
+                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('process')}</span>
                 <span className="font-mono text-xs text-muted-foreground">{tmuxInfo.command}</span>
               </div>
             )}
@@ -259,12 +261,12 @@ export const MetaDetail = ({
             )}
             {tmuxInfo.width && tmuxInfo.height && (
               <div className="flex items-baseline gap-2">
-                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">크기</span>
+                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('size')}</span>
                 <span className="font-mono text-xs text-muted-foreground">{tmuxInfo.width} × {tmuxInfo.height}</span>
               </div>
             )}
             <div className="flex items-baseline gap-2">
-              <span className="w-12 shrink-0 text-xs text-muted-foreground/70">세션</span>
+              <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('session')}</span>
               <span className="min-w-0 truncate font-mono text-xs text-muted-foreground/50">{tmuxInfo.sessionName}</span>
             </div>
           </div>

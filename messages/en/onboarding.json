@@ -1,0 +1,37 @@
+{
+  "steps": {
+    "preflight": "System Check",
+    "password": "Set Password",
+    "appearance": "App Theme",
+    "theme": "Terminal Theme",
+    "claude": "Claude Settings",
+    "complete": "Complete"
+  },
+  "checking": "Checking environment...",
+  "missingTools": "Required tools are missing",
+  "installBrew": "Install Homebrew",
+  "installTmux": "Install tmux",
+  "upgradeTmux": "Upgrade tmux",
+  "password": "Password",
+  "passwordPlaceholder": "Min 4 characters",
+  "confirmPassword": "Confirm password",
+  "confirmPasswordPlaceholder": "Re-enter your password",
+  "passwordMinLength": "Password must be at least 4 characters.",
+  "passwordMismatch": "Passwords do not match.",
+  "appearanceDescription": "Select the app-wide display theme.",
+  "skipPermissions": "Skip Permission Checks",
+  "skipPermissionsDescription": "Adds --dangerously-skip-permissions option when running Claude CLI.",
+  "summary": {
+    "password": "Password",
+    "appTheme": "App Theme",
+    "darkTheme": "Dark Theme",
+    "lightTheme": "Light Theme",
+    "skipPermissions": "Skip Permissions",
+    "enabled": "Enabled",
+    "disabled": "Disabled"
+  },
+  "submitting": "Saving...",
+  "completeButton": "Complete Setup",
+  "setupFailed": "Setup failed.",
+  "connectionError": "Cannot connect to server."
+}

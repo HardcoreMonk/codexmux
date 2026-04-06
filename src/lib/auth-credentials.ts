@@ -23,17 +23,17 @@ const readConfigAuth = (): { password: string; secret: string } | null => {
 };
 
 export const initAuthCredentials = (): (IAuthCredentials & { fixed: boolean }) | null => {
-  // 1. 환경변수 우선
+  // 1. Environment variables take priority
   if (process.env.AUTH_PASSWORD && process.env.NEXTAUTH_SECRET) {
     return { password: process.env.AUTH_PASSWORD, secret: process.env.NEXTAUTH_SECRET, fixed: true };
   }
 
-  // 2. config.json에 저장된 인증 정보
+  // 2. Stored credentials from config.json
   const stored = readConfigAuth();
   if (stored) {
     return { ...stored, fixed: true };
   }
 
-  // 3. 비밀번호 미설정 → 온보딩에서 설정
+  // 3. Password not set — will be configured during onboarding
   return null;
 };

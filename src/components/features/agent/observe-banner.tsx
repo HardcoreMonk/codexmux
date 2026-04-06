@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router';
 import { useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Eye, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -8,6 +9,7 @@ interface IObserveBannerProps {
 }
 
 const ObserveBanner = ({ agentId }: IObserveBannerProps) => {
+  const t = useTranslations('agent');
   const router = useRouter();
 
   const handleClose = useCallback(() => {
@@ -20,7 +22,7 @@ const ObserveBanner = ({ agentId }: IObserveBannerProps) => {
       role="alert"
     >
       <Eye size={12} />
-      <span>관찰 모드 — 에이전트가 작업 중입니다</span>
+      <span>{t('observeMode')}</span>
       <Button
         variant="ghost"
         size="icon"

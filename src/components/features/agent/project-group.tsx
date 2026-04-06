@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router';
 import { useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Folder } from 'lucide-react';
 import AgentTabItem from '@/components/features/agent/agent-tab-item';
 import type { IProjectGroup } from '@/types/agent';
@@ -10,6 +11,7 @@ interface IProjectGroupProps {
 }
 
 const ProjectGroup = ({ group, agentId }: IProjectGroupProps) => {
+  const t = useTranslations('agent');
   const router = useRouter();
 
   const handleWorkspaceClick = useCallback(() => {
@@ -20,7 +22,7 @@ const ProjectGroup = ({ group, agentId }: IProjectGroupProps) => {
     <div
       className="mb-3 rounded-lg border p-3"
       role="region"
-      aria-label={`${group.workspaceName} 탭 목록`}
+      aria-label={t('tabListAria', { name: group.workspaceName })}
     >
       <div className="flex items-center gap-2 text-sm font-medium">
         <Folder size={14} className="text-muted-foreground" />
@@ -30,7 +32,7 @@ const ProjectGroup = ({ group, agentId }: IProjectGroupProps) => {
           className="ml-auto text-xs text-ui-blue hover:underline"
           onClick={handleWorkspaceClick}
         >
-          워크스페이스 열기
+          {t('openWorkspace')}
         </button>
       </div>
 

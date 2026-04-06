@@ -1,0 +1,11 @@
+{
+  "back": "뒤로",
+  "forward": "앞으로",
+  "reload": "새로고침",
+  "switchToDesktop": "데스크톱 모드로 전환",
+  "switchToMobile": "모바일 모드로 전환",
+  "mobileModeTip": "모바일 모드 (클릭하여 데스크톱으로 전환)",
+  "desktopModeTip": "데스크톱 모드 (클릭하여 모바일로 전환)",
+  "urlPlaceholder": "URL을 입력하세요",
+  "emptyMessage": "URL을 입력하여 웹페이지를 열어보세요"
+}

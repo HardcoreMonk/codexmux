@@ -1,0 +1,15 @@
+{
+  "title": "Usage Statistics",
+  "pageTitle": "Usage Statistics — purplemux",
+  "dataLoadError": "Unable to load data",
+  "collectingInitial": "Collecting initial data",
+  "collectingToday": "Collecting today's data",
+  "analyzingSessions": "Analyzing {count} session records",
+  "asOf": "As of {date}",
+  "overview": "Overview",
+  "token": "Tokens",
+  "uptime": "Uptime",
+  "activityPattern": "Activity Pattern",
+  "project": "Projects",
+  "session": "Sessions"
+}

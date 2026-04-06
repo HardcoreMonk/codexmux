@@ -22,7 +22,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     const { name, role, avatar } = req.body as Partial<ICreateAgentRequest>;
     if (!name) {
-      return res.status(400).json({ error: 'name은 필수입니다' });
+      return res.status(400).json({ error: 'name is required' });
     }
 
     try {

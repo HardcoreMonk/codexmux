@@ -1,4 +1,5 @@
 import { ChevronDown, Plus, Settings } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -13,11 +14,11 @@ interface IChatHeaderProps {
   onAgentSelect?: (agentId: string) => void;
 }
 
-const statusConfig: Record<TAgentStatus, { className: string; label: string }> = {
-  idle: { className: 'bg-muted-foreground/20', label: '대기 중' },
-  working: { className: 'bg-ui-teal animate-pulse', label: '작업 중' },
-  blocked: { className: 'bg-ui-amber animate-pulse', label: '응답 대기' },
-  offline: { className: 'bg-muted-foreground/10', label: '오프라인' },
+const statusConfig: Record<TAgentStatus, { className: string; labelKey: string }> = {
+  idle: { className: 'bg-muted-foreground/20', labelKey: 'statusIdle' },
+  working: { className: 'bg-ui-teal animate-pulse', labelKey: 'statusWorking' },
+  blocked: { className: 'bg-ui-amber animate-pulse', labelKey: 'statusBlocked' },
+  offline: { className: 'bg-muted-foreground/10', labelKey: 'statusOffline' },
 };
 
 const AgentAvatar = ({ agent, size = 'sm' }: { agent: IAgentInfo; size?: 'sm' | 'default' }) => (
@@ -28,9 +29,11 @@ const AgentAvatar = ({ agent, size = 'sm' }: { agent: IAgentInfo; size?: 'sm' | 
 );
 
 const ChatHeader = ({ agent, onSettingsClick, agents, onCreateClick, onAgentSelect }: IChatHeaderProps) => {
+  const t = useTranslations('agent');
   if (!agent) return null;
 
   const status = statusConfig[agent.status];
+  const statusLabel = t(status.labelKey);
   const otherAgents = agents?.filter((a) => a.id !== agent.id) ?? [];
   const hasSelector = otherAgents.length > 0 && onAgentSelect;
 
@@ -60,7 +63,7 @@ const ChatHeader = ({ agent, onSettingsClick, agents, onCreateClick, onAgentSele
                   >
                     <AgentAvatar agent={a} size="sm" />
                     <span className="truncate font-medium">{a.name}</span>
-                    <span className="ml-auto text-xs text-muted-foreground">{s.label}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">{t(s.labelKey)}</span>
                   </button>
                 );
               })}
@@ -73,7 +76,7 @@ const ChatHeader = ({ agent, onSettingsClick, agents, onCreateClick, onAgentSele
         {agent.status !== 'idle' && (
           agent.status === 'working' ? (
             <div className="flex shrink-0 items-center gap-1">
-              <span className="text-xs text-ui-teal">입력중</span>
+              <span className="text-xs text-ui-teal">{t('statusTyping')}</span>
               <span className="flex gap-[2px]">
                 <span className="typing-dot h-[3px] w-[3px] rounded-full bg-ui-teal" />
                 <span className="typing-dot h-[3px] w-[3px] rounded-full bg-ui-teal" />
@@ -84,9 +87,9 @@ const ChatHeader = ({ agent, onSettingsClick, agents, onCreateClick, onAgentSele
             <div className="flex shrink-0 items-center gap-1.5">
               <span
                 className={cn('inline-block h-1.5 w-1.5 rounded-full', status.className)}
-                aria-label={`상태: ${status.label}`}
+                aria-label={t('statusLabel', { label: statusLabel })}
               />
-              <span className="text-xs text-muted-foreground">{status.label}</span>
+              <span className="text-xs text-muted-foreground">{statusLabel}</span>
             </div>
           )
         )}
@@ -99,7 +102,7 @@ const ChatHeader = ({ agent, onSettingsClick, agents, onCreateClick, onAgentSele
             size="icon"
             className="h-7 w-7"
             onClick={onCreateClick}
-            aria-label="새 에이전트 만들기"
+            aria-label={t('createAgent')}
           >
             <Plus className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
@@ -109,7 +112,7 @@ const ChatHeader = ({ agent, onSettingsClick, agents, onCreateClick, onAgentSele
           size="icon"
           className="h-7 w-7"
           onClick={onSettingsClick}
-          aria-label="에이전트 설정"
+          aria-label={t('agentSettings')}
         >
           <Settings className="h-3.5 w-3.5 text-muted-foreground" />
         </Button>

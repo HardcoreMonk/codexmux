@@ -14,7 +14,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const { content } = req.body as { content?: string };
 
   if (!content) {
-    return res.status(400).json({ error: 'content 필수' });
+    return res.status(400).json({ error: 'content is required' });
   }
 
   try {

@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router';
 import { useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { IAgentTab } from '@/types/agent';
@@ -24,6 +25,7 @@ const statusIcon: Record<IAgentTab['status'], React.ReactNode> = {
 };
 
 const AgentTabItem = ({ tab, workspaceId, agentId }: IAgentTabItemProps) => {
+  const t = useTranslations('agent');
   const router = useRouter();
 
   const handleView = useCallback(
@@ -41,7 +43,7 @@ const AgentTabItem = ({ tab, workspaceId, agentId }: IAgentTabItemProps) => {
       <span className="text-xs text-muted-foreground">{tab.tabName}</span>
       {tab.status === 'running' && (
         <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={handleView}>
-          보기
+          {t('viewTab')}
         </Button>
       )}
     </div>

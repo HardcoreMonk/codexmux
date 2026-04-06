@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import dayjs from 'dayjs';
+import { useTranslations } from 'next-intl';
 import { FileText, Pencil, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -39,6 +40,18 @@ const extractAgent = (filePath: string): string | null => {
 
 const COLLAPSE_HEIGHT = 400;
 
+const CollapsibleToggle = ({ isExpanded, toggle }: { isExpanded: boolean; toggle: () => void }) => {
+  const t = useTranslations('agent');
+  return (
+    <div className="flex justify-center py-2">
+      <Button variant="ghost" size="sm" onClick={toggle} className="h-7 gap-1 text-xs text-muted-foreground">
+        {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        {isExpanded ? t('collapse') : t('expand')}
+      </Button>
+    </div>
+  );
+};
+
 const CollapsibleContent = ({ children }: { children: React.ReactNode }) => {
   const contentRef = useRef<HTMLDivElement>(null);
   const [isOverflow, setIsOverflow] = useState(false);
@@ -67,24 +80,22 @@ const CollapsibleContent = ({ children }: { children: React.ReactNode }) => {
         <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background to-transparent" />
       )}
       {isOverflow && (
-        <div className="flex justify-center py-2">
-          <Button variant="ghost" size="sm" onClick={toggle} className="h-7 gap-1 text-xs text-muted-foreground">
-            {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-            {isExpanded ? '접기' : '더 보기'}
-          </Button>
-        </div>
+        <CollapsibleToggle isExpanded={isExpanded} toggle={toggle} />
       )}
     </div>
   );
 };
 
-const EmptyState = () => (
-  <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4">
-    <FileText className="h-8 w-8 text-muted-foreground/40" />
-    <p className="text-sm text-muted-foreground">에이전트가 아직 학습한</p>
-    <p className="text-sm text-muted-foreground">내용이 없습니다</p>
-  </div>
-);
+const EmptyState = () => {
+  const t = useTranslations('agent');
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4">
+      <FileText className="h-8 w-8 text-muted-foreground/40" />
+      <p className="text-sm text-muted-foreground">{t('memoryEmpty')}</p>
+      <p className="text-sm text-muted-foreground">{t('memoryEmptySub')}</p>
+    </div>
+  );
+};
 
 const LoadingState = () => (
   <div className="space-y-3 p-4">
@@ -102,17 +113,20 @@ interface IErrorViewProps {
   onRetry: () => void;
 }
 
-const ErrorView = ({ error, path, onRetry }: IErrorViewProps) => (
-  <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4">
-    <FileText className="h-8 w-8 text-negative/40" />
-    <p className="text-sm text-muted-foreground">{error}</p>
-    <p className="text-xs text-muted-foreground">{path}</p>
-    <Button variant="outline" size="sm" onClick={onRetry} className="gap-1">
-      <RefreshCw size={12} />
-      다시 시도
-    </Button>
-  </div>
-);
+const ErrorView = ({ error, path, onRetry }: IErrorViewProps) => {
+  const tc = useTranslations('common');
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4">
+      <FileText className="h-8 w-8 text-negative/40" />
+      <p className="text-sm text-muted-foreground">{error}</p>
+      <p className="text-xs text-muted-foreground">{path}</p>
+      <Button variant="outline" size="sm" onClick={onRetry} className="gap-1">
+        <RefreshCw size={12} />
+        {tc('retry')}
+      </Button>
+    </div>
+  );
+};
 
 const MemoryViewer = ({
   selectedPath,
@@ -128,6 +142,7 @@ const MemoryViewer = ({
   onCancelEdit,
   onRetry,
 }: IMemoryViewerProps) => {
+  const t = useTranslations('agent');
   if (!selectedPath) return <EmptyState />;
 
   if (isLoading) return <LoadingState />;
@@ -154,7 +169,7 @@ const MemoryViewer = ({
         <span className="flex-1 truncate text-sm font-medium">{fileName}</span>
         <Button variant="outline" size="sm" onClick={onEdit} className="h-7 gap-1 px-2 text-xs">
           <Pencil size={12} />
-          편집
+          {t('editLabel')}
         </Button>
       </div>
 
@@ -170,10 +185,10 @@ const MemoryViewer = ({
 
       {(sizeBytes !== null || modifiedAt || selectedPath) && (
         <div className="flex gap-4 border-t px-4 py-2 text-xs text-muted-foreground">
-          {sizeBytes !== null && <span>크기: {formatBytes(sizeBytes)}</span>}
-          {modifiedAt && <span>수정: {dayjs(modifiedAt).format('YYYY-MM-DD HH:mm')}</span>}
+          {sizeBytes !== null && <span>{t('sizeLabel', { size: formatBytes(sizeBytes) })}</span>}
+          {modifiedAt && <span>{t('modifiedLabel', { date: dayjs(modifiedAt).format('YYYY-MM-DD HH:mm') })}</span>}
           {selectedPath && extractAgent(selectedPath) && (
-            <span>에이전트: {extractAgent(selectedPath)}</span>
+            <span>{t('agentLabel', { name: extractAgent(selectedPath)! })}</span>
           )}
         </div>
       )}

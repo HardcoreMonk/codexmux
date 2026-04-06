@@ -1,0 +1,10 @@
+{
+  "title": "메시지 히스토리",
+  "searchPlaceholder": "히스토리 검색...",
+  "loading": "로딩중..",
+  "fetchError": "불러오기 실패",
+  "retry": "다시 시도",
+  "noSearchResults": "검색 결과가 없습니다",
+  "noHistory": "히스토리가 없습니다",
+  "deleteLabel": "삭제"
+}

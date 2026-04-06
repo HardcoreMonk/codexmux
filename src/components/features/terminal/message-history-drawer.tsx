@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/ko';
@@ -47,6 +48,7 @@ const MessageHistoryDrawer = ({
   onDelete,
   trigger,
 }: IMessageHistoryDrawerProps) => {
+  const t = useTranslations('messageHistory');
   const [search, setSearch] = useState('');
   const [prevOpen, setPrevOpen] = useState(false);
 
@@ -75,27 +77,27 @@ const MessageHistoryDrawer = ({
       <DrawerTrigger asChild>{trigger}</DrawerTrigger>
       <DrawerContent className="max-h-[60vh]">
         <DrawerHeader className="sr-only">
-          <DrawerTitle>메시지 히스토리</DrawerTitle>
+          <DrawerTitle>{t('title')}</DrawerTitle>
         </DrawerHeader>
         <Command className="rounded-none" shouldFilter>
           <div className="p-2 pb-0">
-            <CommandInput placeholder="히스토리 검색..." value={search} onValueChange={setSearch} />
+            <CommandInput placeholder={t('searchPlaceholder')} value={search} onValueChange={setSearch} />
           </div>
           <CommandList className="max-h-[50vh] p-2" data-vaul-no-drag>
             {isLoading && entries.length === 0 ? (
               <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
-                로딩중..
+                {t('loading')}
               </div>
             ) : isError ? (
               <div className="flex flex-col items-center gap-2 py-6 text-sm text-muted-foreground">
-                <span>불러오기 실패</span>
+                <span>{t('fetchError')}</span>
                 <Button variant="outline" size="sm" onClick={onFetch}>
-                  다시 시도
+                  {t('retry')}
                 </Button>
               </div>
             ) : (
               <>
-                <CommandEmpty>{search ? '검색 결과가 없습니다' : '히스토리가 없습니다'}</CommandEmpty>
+                <CommandEmpty>{search ? t('noSearchResults') : t('noHistory')}</CommandEmpty>
                 <CommandGroup>
                   {entries.map((entry) => (
                     <CommandItem
@@ -114,7 +116,7 @@ const MessageHistoryDrawer = ({
                         type="button"
                         className="ml-1 shrink-0 rounded p-0.5 hover:bg-muted"
                         onClick={(e) => handleDelete(e, entry.id)}
-                        aria-label="삭제"
+                        aria-label={t('deleteLabel')}
                       >
                         <X className="size-3" />
                       </button>

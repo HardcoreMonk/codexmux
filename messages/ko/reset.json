@@ -1,0 +1,9 @@
+{
+  "pageTitle": "초기화 - purplemux",
+  "title": "tmux 초기화",
+  "stepCleanup": "기존 연결 정리",
+  "stepReset": "tmux 서버 종료 및 재설정",
+  "stepDone": "완료",
+  "apiError": "API 응답 오류",
+  "resetFailed": "tmux 초기화에 실패했습니다."
+}

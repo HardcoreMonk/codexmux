@@ -33,7 +33,7 @@ export const WORKSPACE_NUMBER_KEYS = Array.from(
   (_, i) => `${mod}+${i + 1}`,
 ).join(', ');
 
-// xterm.js용 앱 단축키 판별 Set (O(1) lookup)
+// App shortcut detection Set for xterm.js (O(1) lookup)
 const buildShortcutSet = (): Set<string> => {
   const set = new Set<string>();
 

@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { useTranslations } from 'next-intl';
 import dayjs from 'dayjs';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -24,28 +25,28 @@ const handleArrowNavigation = (e: React.KeyboardEvent<HTMLButtonElement>) => {
   }
 };
 
-const formatRelativeTime = (dateStr: string): string => {
+const formatRelativeTime = (dateStr: string, t: ReturnType<typeof useTranslations>): string => {
   const now = dayjs();
   const target = dayjs(dateStr);
   const diffMinutes = now.diff(target, 'minute');
 
-  if (diffMinutes < 1) return '방금 전';
-  if (diffMinutes < 60) return `${diffMinutes}분 전`;
+  if (diffMinutes < 1) return t('justNow');
+  if (diffMinutes < 60) return t('minutesAgo', { count: diffMinutes });
 
   const diffHours = now.diff(target, 'hour');
-  if (diffHours < 24) return `${diffHours}시간 전`;
+  if (diffHours < 24) return t('hoursAgo', { count: diffHours });
 
   const diffDays = now.diff(target, 'day');
-  if (diffDays === 1) return '어제';
-  if (diffDays < 7) return `${diffDays}일 전`;
+  if (diffDays === 1) return t('yesterday');
+  if (diffDays < 7) return t('daysAgo', { count: diffDays });
 
   const diffWeeks = now.diff(target, 'week');
-  if (diffWeeks < 4) return `${diffWeeks}주 전`;
+  if (diffWeeks < 4) return t('weeksAgo', { count: diffWeeks });
 
   const diffMonths = now.diff(target, 'month');
-  if (diffMonths < 12) return `${diffMonths}개월 전`;
+  if (diffMonths < 12) return t('monthsAgo', { count: diffMonths });
 
-  return `${now.diff(target, 'year')}년 전`;
+  return t('yearsAgo', { count: now.diff(target, 'year') });
 };
 
 const SessionListItem = ({
@@ -54,9 +55,10 @@ const SessionListItem = ({
   isDisabled,
   onSelect,
 }: ISessionListItemProps) => {
+  const t = useTranslations('session');
   const absoluteTime = dayjs(session.lastActivityAt).format('MM/DD HH:mm');
-  const relativeTime = formatRelativeTime(session.lastActivityAt);
-  const displayMessage = session.firstMessage || '(메시지 없음)';
+  const relativeTime = formatRelativeTime(session.lastActivityAt, t);
+  const displayMessage = session.firstMessage || t('noMessage');
 
   return (
     <button
@@ -69,7 +71,7 @@ const SessionListItem = ({
       onClick={() => onSelect(session.sessionId)}
       onKeyDown={handleArrowNavigation}
       disabled={isDisabled}
-      aria-label={`세션: ${displayMessage}`}
+      aria-label={t('sessionLabel', { message: displayMessage })}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-xs">
@@ -94,7 +96,7 @@ const SessionListItem = ({
             {displayMessage}
           </span>
         <span className="shrink-0 text-xs text-muted-foreground">
-          {session.turnCount}턴
+          {t('turnCount', { count: session.turnCount })}
         </span>
       </div>
     </button>

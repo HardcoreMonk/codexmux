@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Terminal, RefreshCw, OctagonX, LogOut, ChevronsUp } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import { useStickToBottom } from 'use-stick-to-bottom';
@@ -92,19 +93,25 @@ const groupTimelineEntries = (entries: ITimelineEntry[]): TGroupedItem[] => {
   return result;
 };
 
-const InterruptItem = () => (
-  <div className="flex items-center justify-end gap-1.5 py-1 text-xs text-muted-foreground/60">
-    <OctagonX size={12} />
-    <span>요청 취소됨</span>
-  </div>
-);
+const InterruptItem = () => {
+  const t = useTranslations('timeline');
+  return (
+    <div className="flex items-center justify-end gap-1.5 py-1 text-xs text-muted-foreground/60">
+      <OctagonX size={12} />
+      <span>{t('requestCancelled')}</span>
+    </div>
+  );
+};
 
-const SessionExitItem = () => (
-  <div className="flex items-center justify-end gap-1.5 py-1 text-xs text-muted-foreground/60">
-    <LogOut size={12} />
-    <span>세션 종료(/exit)</span>
-  </div>
-);
+const SessionExitItem = () => {
+  const t = useTranslations('timeline');
+  return (
+    <div className="flex items-center justify-end gap-1.5 py-1 text-xs text-muted-foreground/60">
+      <LogOut size={12} />
+      <span>{t('sessionExit')}</span>
+    </div>
+  );
+};
 
 const TimelineEntryRenderer = ({ entry, sessionName }: { entry: ITimelineEntry; sessionName?: string }) => {
   switch (entry.type) {
@@ -142,48 +149,61 @@ const SkeletonLoader = () => (
   </div>
 );
 
-const ErrorState = ({ error, onRetry }: { error: string; onRetry: () => void }) => (
-  <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
-    <Terminal size={32} className="opacity-40" />
-    <div className="text-center">
-      <p className="text-sm font-medium">연결 오류</p>
-      <p className="mt-1 text-xs">{error}</p>
-    </div>
-    <Button variant="outline" size="xs" onClick={onRetry}>
-      <RefreshCw size={12} />
-      다시 시도
-    </Button>
-  </div>
-);
-
-const ReconnectBanner = () => (
-  <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
-    <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground shadow-sm">
-      <Spinner size={10} />
-      연결이 끊어졌습니다. 재연결 중...
-    </div>
-  </div>
-);
-
-const DisconnectedBanner = ({ onRetry }: { onRetry: () => void }) => (
-  <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
-    <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground shadow-sm">
-      <span>연결 실패</span>
-      <Button variant="outline" size="xs" className="h-5 rounded-full px-2 text-xs" onClick={onRetry}>
-        다시 시도
+const ErrorState = ({ error, onRetry }: { error: string; onRetry: () => void }) => {
+  const t = useTranslations('timeline');
+  const tc = useTranslations('common');
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+      <Terminal size={32} className="opacity-40" />
+      <div className="text-center">
+        <p className="text-sm font-medium">{t('connectionError')}</p>
+        <p className="mt-1 text-xs">{error}</p>
+      </div>
+      <Button variant="outline" size="xs" onClick={onRetry}>
+        <RefreshCw size={12} />
+        {tc('retry')}
       </Button>
     </div>
-  </div>
-);
+  );
+};
+
+const ReconnectBanner = () => {
+  const t = useTranslations('timeline');
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
+      <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground shadow-sm">
+        <Spinner size={10} />
+        {t('reconnecting')}
+      </div>
+    </div>
+  );
+};
+
+const DisconnectedBanner = ({ onRetry }: { onRetry: () => void }) => {
+  const t = useTranslations('timeline');
+  const tc = useTranslations('common');
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
+      <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground shadow-sm">
+        <span>{t('connectionFailed')}</span>
+        <Button variant="outline" size="xs" className="h-5 rounded-full px-2 text-xs" onClick={onRetry}>
+          {tc('retry')}
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 const EmptyState = ({ claudeStatus }: { claudeStatus: TClaudeStatus }) => {
+  const t = useTranslations('timeline');
+
   if (claudeStatus === 'not-installed') {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
         <Terminal size={32} className="opacity-40" />
         <div className="text-center">
-          <p className="text-sm font-medium">Claude Code를 설치하세요</p>
-          <p className="mt-1 text-xs">~/.claude 디렉토리를 찾을 수 없습니다.</p>
+          <p className="text-sm font-medium">{t('installClaude')}</p>
+          <p className="mt-1 text-xs">{t('installClaudeHint')}</p>
         </div>
       </div>
     );
@@ -193,7 +213,7 @@ const EmptyState = ({ claudeStatus }: { claudeStatus: TClaudeStatus }) => {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
         <Terminal size={32} className="opacity-40" />
-        <p className="text-xs">메시지를 입력하면 타임라인이 표시됩니다</p>
+        <p className="text-xs">{t('emptyRunning')}</p>
       </div>
     );
   }
@@ -202,9 +222,9 @@ const EmptyState = ({ claudeStatus }: { claudeStatus: TClaudeStatus }) => {
     <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
       <Terminal size={32} className="opacity-40" />
       <div className="text-center">
-        <p className="text-sm font-medium">Claude Code가 실행 중이지 않습니다</p>
+        <p className="text-sm font-medium">{t('notRunningTitle')}</p>
         <p className="mt-1 text-xs">
-          현재 터미널에서 Claude Code를<br />실행하면 타임라인이 표시됩니다.
+          {t('notRunningHint')}<br />{t('notRunningHint2')}
         </p>
       </div>
     </div>
@@ -226,6 +246,7 @@ const TimelineView = ({
   hasMore,
   scrollToBottomRef,
 }: ITimelineViewProps) => {
+  const t = useTranslations('timeline');
   const { scrollRef, contentRef, scrollToBottom, isAtBottom } = useStickToBottom({
     resize: { damping: 0.8, stiffness: 0.05 },
     initial: 'instant',
@@ -314,7 +335,7 @@ const TimelineView = ({
         }}
         tabIndex={0}
         role="log"
-        aria-label="Claude Code 타임라인"
+        aria-label={t('timelineAria')}
       >
         <div ref={contentRef} className="mx-auto max-w-content">
           {hasMore && <div ref={sentinelRef} className="h-px" />}
@@ -322,7 +343,7 @@ const TimelineView = ({
             <div className="flex justify-center py-2">
               <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={triggerLoadMore}>
                 <ChevronsUp size={12} className="mr-1" />
-                이전 내용 더보기
+                {t('loadMore')}
               </Button>
             </div>
           )}

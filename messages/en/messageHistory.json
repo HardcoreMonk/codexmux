@@ -1,0 +1,10 @@
+{
+  "title": "Message History",
+  "searchPlaceholder": "Search history...",
+  "loading": "Loading..",
+  "fetchError": "Failed to load",
+  "retry": "Retry",
+  "noSearchResults": "No search results",
+  "noHistory": "No history",
+  "deleteLabel": "Delete"
+}

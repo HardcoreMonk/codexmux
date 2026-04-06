@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,13 +50,15 @@ const getToolChecks = (status: IPreflightResult): IToolCheck[] => [
 ];
 
 const PreflightError = ({ checks }: { checks: IToolCheck[] }) => {
+  const t = useTranslations('login');
+  const tc = useTranslations('common');
   const failedChecks = checks.filter((c) => !c.ok);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2 text-amber-400">
         <AlertTriangle className="h-5 w-5 shrink-0" />
-        <p className="text-sm font-medium">필수 도구가 누락되었습니다</p>
+        <p className="text-sm font-medium">{t('missingTools')}</p>
       </div>
       <div className="space-y-1.5">
         {checks.map((check) => (
@@ -75,7 +78,7 @@ const PreflightError = ({ checks }: { checks: IToolCheck[] }) => {
         ))}
       </div>
       <div className="rounded-md bg-muted p-3 font-mono text-xs leading-relaxed">
-        <p className="text-muted-foreground/60"># 설치</p>
+        <p className="text-muted-foreground/60"># {t('install')}</p>
         {failedChecks.map((check) => (
           <p key={check.name}>{check.install}</p>
         ))}
@@ -87,13 +90,14 @@ const PreflightError = ({ checks }: { checks: IToolCheck[] }) => {
         onClick={() => window.location.reload()}
       >
         <RefreshCcw className="mr-1 h-4 w-4" />
-        새로고침
+        {tc('refresh')}
       </Button>
     </div>
   );
 };
 
 export const LoginForm = ({ className, ...props }: React.ComponentProps<'div'>) => {
+  const t = useTranslations('login');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -130,7 +134,7 @@ export const LoginForm = ({ className, ...props }: React.ComponentProps<'div'>) 
 
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      setError(data?.error ?? '비밀번호가 올바르지 않습니다.');
+      setError(data?.error ?? t('invalidPassword'));
       setIsLoading(false);
     } else {
       window.location.href = '/';
@@ -150,11 +154,11 @@ export const LoginForm = ({ className, ...props }: React.ComponentProps<'div'>) 
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="password">비밀번호</Label>
+              <Label htmlFor="password">{t('password')}</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="비밀번호를 입력하세요"
+                placeholder={t('passwordPlaceholder')}
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
@@ -167,18 +171,18 @@ export const LoginForm = ({ className, ...props }: React.ComponentProps<'div'>) 
             </div>
             <Button type="submit" disabled={isLoading || !password} size="lg" className="h-12 w-full">
               <Lock className="size-4" />
-              {isLoading ? '로그인 중...' : '로그인'}
+              {isLoading ? t('loggingIn') : t('loginButton')}
             </Button>
             <div className="flex items-center justify-center gap-1">
               <Popover>
                 <PopoverTrigger className="flex items-center gap-1 text-muted-foreground text-xs hover:text-foreground transition-colors">
-                  비밀번호를 잊으셨나요?
+                  {t('forgotPassword')}
                   <HelpCircle className="h-3 w-3" />
                 </PopoverTrigger>
                 <PopoverContent className="w-72 text-xs" side="bottom">
-                  <p className="font-medium mb-1">비밀번호 초기화</p>
+                  <p className="font-medium mb-1">{t('resetPassword')}</p>
                   <p className="text-muted-foreground">
-                    아래 파일을 삭제하고 {isElectron ? '앱을 종료 후 재시작' : '서버를 재시작'}하면 온보딩 화면에서 새 비밀번호를 설정할 수 있습니다.
+                    {t('resetPasswordHelp', { action: isElectron ? t('restartApp') : t('restartServer') })}
                   </p>
                   <code className="mt-2 block rounded bg-muted px-2 py-1 font-mono">~/.purplemux/config.json</code>
                 </PopoverContent>

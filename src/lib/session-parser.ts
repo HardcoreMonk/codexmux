@@ -147,11 +147,11 @@ export const summarizeToolCall = (name: string, input: Record<string, unknown> =
 };
 
 export const summarizeToolResult = (content: string | unknown[], isError: boolean): string => {
-  if (isError) return '오류 발생';
+  if (isError) return 'error';
 
   if (typeof content === 'string') {
     const lines = content.split('\n');
-    return lines.length > 1 ? `${lines.length}줄 출력` : lines[0].slice(0, 100);
+    return lines.length > 1 ? `${lines.length} lines` : lines[0].slice(0, 100);
   }
 
   if (Array.isArray(content)) {
@@ -162,7 +162,7 @@ export const summarizeToolResult = (content: string | unknown[], isError: boolea
     if (textItems.length > 0) {
       const text = String(textItems[0].text ?? '');
       const lines = text.split('\n');
-      return lines.length > 1 ? `${lines.length}줄 출력` : lines[0].slice(0, 100);
+      return lines.length > 1 ? `${lines.length} lines` : lines[0].slice(0, 100);
     }
   }
 
@@ -552,7 +552,7 @@ const createAgentGroup = (
     type: 'agent-group',
     timestamp,
     agentType: 'Unknown',
-    description: description || '서브에이전트 실행',
+    description: description || 'Sub-agent',
     entryCount: rawEntries.length,
     entries,
   };
@@ -590,12 +590,12 @@ const mergeToolResults = (entries: ITimelineEntry[]): ITimelineEntry[] => {
         toolCall.status = status;
 
         if (entry.summary && !entry.isError) {
-          const linesMatch = entry.summary.match(/^(\d+)줄 출력$/);
+          const linesMatch = entry.summary.match(/^(\d+) lines$/);
           if (toolCall.toolName === 'Bash' && linesMatch) {
-            toolCall.summary = `${toolCall.summary} → ${linesMatch[1]}줄 출력`;
+            toolCall.summary = `${toolCall.summary} → ${linesMatch[1]} lines`;
           } else if (toolCall.toolName === 'Grep' || toolCall.toolName === 'Glob') {
             const count = linesMatch ? linesMatch[1] : '1';
-            toolCall.summary = `${toolCall.summary} → ${count}건`;
+            toolCall.summary = `${toolCall.summary} → ${count} results`;
           }
         }
       } else {

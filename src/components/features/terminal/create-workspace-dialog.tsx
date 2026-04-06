@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Check, X } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import {
@@ -28,6 +29,8 @@ const CreateWorkspaceDialog = ({
   onSubmit,
   onValidate,
 }: ICreateWorkspaceDialogProps) => {
+  const t = useTranslations('workspace');
+  const tc = useTranslations('common');
   const [directory, setDirectory] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -94,13 +97,13 @@ const CreateWorkspaceDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Workspace 추가</DialogTitle>
+          <DialogTitle>{t('add')}</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col gap-2">
-          <label className="text-sm text-muted-foreground">프로젝트 디렉토리</label>
+          <label className="text-sm text-muted-foreground">{t('projectDirectory')}</label>
           <Input
-            placeholder="디렉토리 경로 입력"
+            placeholder={t('directoryPlaceholder')}
             value={directory}
             onChange={(e) => handleDirectoryChange(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -110,7 +113,7 @@ const CreateWorkspaceDialog = ({
             {isValidating && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Spinner className="h-2.5 w-2.5" />
-                검증 중...
+                {t('validating')}
               </div>
             )}
             {!isValidating && validation?.valid && (
@@ -134,14 +137,14 @@ const CreateWorkspaceDialog = ({
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
           >
-            취소
+            {tc('cancel')}
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={!validation?.valid || isSubmitting}
           >
             {isSubmitting && <Spinner className="mr-1.5 h-3.5 w-3.5" />}
-            추가
+            {t('addButton')}
           </Button>
         </DialogFooter>
       </DialogContent>

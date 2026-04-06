@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import { useTranslations } from 'next-intl';
 import { Zap, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { getPageShellWithTitlebarLayout } from '@/components/layout/page-shell';
@@ -45,14 +46,15 @@ interface IEmptyStateProps {
 }
 
 const EmptyState = ({ agentId }: IEmptyStateProps) => {
+  const t = useTranslations('agents');
   const router = useRouter();
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-20">
       <Zap className="h-8 w-8 text-muted-foreground/40" />
-      <p className="text-sm text-muted-foreground">에이전트가 아직 작업을 시작하지 않았습니다</p>
-      <p className="text-xs text-muted-foreground">채팅에서 미션을 지시해보세요</p>
+      <p className="text-sm text-muted-foreground">{t('emptyWorkspace')}</p>
+      <p className="text-xs text-muted-foreground">{t('emptyWorkspaceHint')}</p>
       <Button variant="outline" size="sm" onClick={() => router.push(`/agents/${agentId}/chat`)}>
-        채팅으로 이동
+        {t('goToChat')}
       </Button>
     </div>
   );
@@ -62,15 +64,19 @@ interface IErrorStateProps {
   onRetry: () => void;
 }
 
-const ErrorState = ({ onRetry }: IErrorStateProps) => (
-  <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4">
-    <Zap className="h-8 w-8 text-negative/40" />
-    <p className="text-sm text-muted-foreground">워크스페이스를 불러올 ��� 없습니다</p>
-    <Button variant="outline" size="sm" onClick={onRetry}>
-      다시 시도
-    </Button>
-  </div>
-);
+const ErrorState = ({ onRetry }: IErrorStateProps) => {
+  const t = useTranslations('agents');
+  const tc = useTranslations('common');
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4">
+      <Zap className="h-8 w-8 text-negative/40" />
+      <p className="text-sm text-muted-foreground">{t('workspaceLoadError')}</p>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        {tc('retry')}
+      </Button>
+    </div>
+  );
+};
 
 interface IWorkspaceState {
   stats: IAgentWorkspaceResponse['stats'];
@@ -95,6 +101,7 @@ const initialState: IWorkspaceState = {
 };
 
 const AgentWorkspacePage = () => {
+  const t = useTranslations('agents');
   const router = useRouter();
   const agentId = router.query.agentId as string;
 
@@ -132,16 +139,15 @@ const AgentWorkspacePage = () => {
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        error: '워크스페이스를 불러올 수 없습니다',
+        error: t('workspaceLoadError'),
       }));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (agentId) fetchWorkspace(agentId);
   }, [agentId, fetchWorkspace]);
 
-  // WebSocket for real-time workspace updates
   useEffect(() => {
     if (!agentId) return;
     mountedRef.current = true;
@@ -296,15 +302,15 @@ const AgentWorkspacePage = () => {
         isRestarting: false,
         brainSession: { ...prev.brainSession, status: 'idle' },
       }));
-      toast.success('에이���트가 재시작되었습니다');
+      toast.success(t('agentRestarted'));
     } catch {
       setState((prev) => ({
         ...prev,
         isRestarting: false,
-        restartError: '재시작에 실패���습니다',
+        restartError: t('restartFailed'),
       }));
     }
-  }, [agentId]);
+  }, [agentId, t]);
 
   const handleRetry = useCallback(() => {
     if (agentId) fetchWorkspace(agentId);
@@ -319,14 +325,12 @@ const AgentWorkspacePage = () => {
     !state.error &&
     state.projectGroups.length === 0 &&
     state.brainSession.status !== 'offline';
-  const title = agent ? `${agent.name} 워크���페이스 — purplemux` : '워크스페이스 — purplemux';
+  const title = agent ? t('workspacePageTitle', { name: agent.name }) : t('workspaceDefaultTitle');
 
-  // Sort project groups by tab count (most tabs first)
   const sortedGroups = [...state.projectGroups].sort((a, b) => b.tabs.length - a.tabs.length);
 
   const content = (
     <>
-      {/* Header */}
       <div className="flex items-center gap-3 border-b px-4 py-3">
           <div className="flex flex-col">
             <span className="text-sm font-medium">{agent?.name ?? '...'}</span>
@@ -335,20 +339,18 @@ const AgentWorkspacePage = () => {
             )}
           </div>
 
-          <span className="text-xs text-muted-foreground">워크스페이스</span>
+          <span className="text-xs text-muted-foreground">{t('workspaceLabel')}</span>
         </div>
 
-        {/* WebSocket error banner */}
         {wsError && (
           <div className="flex items-center gap-2 border-b bg-negative/5 px-4 py-2">
             <WifiOff size={14} className="text-negative" />
             <span className="text-xs text-negative">
-              실시간 연결이 끊어졌습니다. 새로고침하세요.
+              {t('wsDisconnected')}
             </span>
           </div>
         )}
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
           {showLoading && <WorkspaceSkeleton />}
 

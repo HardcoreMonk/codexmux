@@ -1,4 +1,5 @@
 import { useState, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   FileText,
   FilePen,
@@ -54,6 +55,7 @@ const DiffView = ({ oldString, newString }: { oldString: string; newString: stri
 };
 
 const ToolCallItem = ({ entry, result }: IToolCallItemProps) => {
+  const t = useTranslations('timeline');
   const [isDiffOpen, setIsDiffOpen] = useState(false);
   const hasDiff = entry.diff && (entry.diff.oldString || entry.diff.newString);
 
@@ -91,7 +93,7 @@ const ToolCallItem = ({ entry, result }: IToolCallItemProps) => {
             className="ml-4 mt-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             onClick={() => setIsDiffOpen((prev) => !prev)}
           >
-            {isDiffOpen ? '▾ diff 숨기기' : '▸ diff 보기'}
+            {isDiffOpen ? `▾ ${t('diffHide')}` : `▸ ${t('diffShow')}`}
           </button>
           {isDiffOpen && entry.diff && (
             <div className="ml-4">

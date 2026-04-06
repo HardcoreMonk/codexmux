@@ -1,4 +1,5 @@
 import { useState, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import { CheckCircle2, XCircle, ChevronRight, Clock, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ITimelineTaskNotification } from '@/types/timeline';
@@ -13,6 +14,7 @@ const formatDuration = (ms: number): string => {
 };
 
 const TaskNotificationItem = ({ entry }: ITaskNotificationItemProps) => {
+  const t = useTranslations('timeline');
   const [isExpanded, setIsExpanded] = useState(false);
   const isSuccess = entry.status === 'completed';
   const hasDetail = !!entry.result;
@@ -64,7 +66,7 @@ const TaskNotificationItem = ({ entry }: ITaskNotificationItemProps) => {
             {entry.usage?.toolUses != null && (
               <div className="mt-1.5 flex items-center gap-1 text-[11px] text-muted-foreground/50">
                 <Zap size={10} />
-                <span>도구 {entry.usage.toolUses}회 사용</span>
+                <span>{t('toolUsageCount', { count: entry.usage.toolUses })}</span>
               </div>
             )}
           </div>

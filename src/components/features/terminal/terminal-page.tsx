@@ -1,4 +1,5 @@
 import { useCallback, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { AlertTriangle, RefreshCw, Plus } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import { toast } from 'sonner';
@@ -13,6 +14,7 @@ import ContentHeader from '@/components/features/terminal/content-header';
 import useSidebarActions from '@/hooks/use-sidebar-actions';
 
 const TerminalPage = () => {
+  const t = useTranslations('terminal');
   const isLoading = useWorkspaceStore((s) => s.isLoading);
   const error = useWorkspaceStore((s) => s.error);
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
@@ -24,9 +26,9 @@ const TerminalPage = () => {
     const prevId = prevWorkspaceIdRef.current;
     if (prevId) {
       useWorkspaceStore.getState().switchWorkspace(prevId);
-      toast.error('전환할 수 없습니다');
+      toast.error(t('cannotSwitch'));
     }
-  }, []);
+  }, [t]);
 
   const layout = useLayout({
     workspaceId: activeWorkspaceId,
@@ -120,7 +122,7 @@ const TerminalPage = () => {
         <div className="flex flex-1 items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <Spinner className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">연결 중...</span>
+            <span className="text-sm text-muted-foreground">{t('connecting')}</span>
           </div>
         </div>
       </div>
@@ -134,7 +136,7 @@ const TerminalPage = () => {
         <span className="text-sm text-muted-foreground">{error}</span>
         <Button variant="outline" size="sm" className="gap-1.5" onClick={useWorkspaceStore.getState().fetchWorkspaces}>
           <RefreshCw className="h-3.5 w-3.5" />
-          재시도
+          {t('retryAction')}
         </Button>
       </div>
     );
@@ -170,7 +172,7 @@ const TerminalPage = () => {
             <span className="text-sm text-muted-foreground">{layout.error}</span>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => layout.fetchLayout()}>
               <RefreshCw className="h-3.5 w-3.5" />
-              재시도
+              {t('retryAction')}
             </Button>
           </div>
         )}
@@ -201,7 +203,7 @@ const TerminalPage = () => {
               }}
             >
               <Plus className="h-3.5 w-3.5" />
-              새 Workspace 만들기
+              {t('newWorkspace')}
             </Button>
           </div>
         )}

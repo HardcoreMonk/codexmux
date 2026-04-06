@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import dayjs from 'dayjs';
+import { useTranslations } from 'next-intl';
 import { useStickToBottom } from 'use-stick-to-bottom';
 import { AlertCircle, Bot } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
@@ -37,28 +38,35 @@ const SkeletonMessages = () => (
   </div>
 );
 
-const ErrorState = ({ onRetry }: { onRetry: () => void }) => (
-  <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4">
-    <AlertCircle className="h-8 w-8 text-negative/40" />
-    <p className="text-sm text-muted-foreground">채팅 이력을 불러올 수 없습니다</p>
-    <Button variant="outline" size="sm" onClick={onRetry}>
-      다시 시도
-    </Button>
-  </div>
-);
-
-const EmptyState = () => (
-  <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4">
-    <Bot className="h-8 w-8 text-muted-foreground/40" />
-    <div className="text-center">
-      <p className="text-sm text-muted-foreground">에이전트에게 첫 지시를</p>
-      <p className="text-sm text-muted-foreground">내려보세요</p>
+const ErrorState = ({ onRetry }: { onRetry: () => void }) => {
+  const t = useTranslations('agent');
+  const tc = useTranslations('common');
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4">
+      <AlertCircle className="h-8 w-8 text-negative/40" />
+      <p className="text-sm text-muted-foreground">{t('loadError')}</p>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        {tc('retry')}
+      </Button>
     </div>
-    <p className="text-xs text-muted-foreground/60">
-      예: &quot;A 프로젝트 README 정리해줘&quot;
-    </p>
-  </div>
-);
+  );
+};
+
+const EmptyState = () => {
+  const t = useTranslations('agent');
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4">
+      <Bot className="h-8 w-8 text-muted-foreground/40" />
+      <div className="text-center">
+        <p className="text-sm text-muted-foreground">{t('emptyTitle')}</p>
+        <p className="text-sm text-muted-foreground">{t('emptySubtitle')}</p>
+      </div>
+      <p className="text-xs text-muted-foreground/60">
+        {t('emptyExample')}
+      </p>
+    </div>
+  );
+};
 
 const DateSeparator = ({ date }: { date: string }) => (
   <div className="my-4 flex items-center gap-3">
@@ -111,6 +119,8 @@ const MessageList = ({
   onApproval,
   scrollToBottomRef,
 }: IMessageListProps) => {
+  const t = useTranslations('agent');
+  const tc = useTranslations('common');
   const { scrollRef, contentRef, scrollToBottom, isAtBottom } = useStickToBottom({
     resize: { damping: 0.8, stiffness: 0.05 },
     initial: 'instant',
@@ -217,7 +227,7 @@ const MessageList = ({
               <div className="flex justify-center py-2">
                 <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={triggerLoadMore}>
                   <Spinner size={10} className="mr-1" />
-                  이전 내용 더보기
+                  {t('loadMore')}
                 </Button>
               </div>
             )}
@@ -259,16 +269,16 @@ const MessageList = ({
         <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
           <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground shadow-sm">
             <Spinner size={10} />
-            연결이 끊어졌습니다. 재연결 중...
+            {t('reconnecting')}
           </div>
         </div>
       )}
       {connectionError && (
         <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
           <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground shadow-sm">
-            <span>연결 실패</span>
+            <span>{t('connectionFailed')}</span>
             <Button variant="outline" size="xs" className="h-5 rounded-full px-2 text-xs" onClick={onRetry}>
-              다시 시도
+              {tc('retry')}
             </Button>
           </div>
         </div>

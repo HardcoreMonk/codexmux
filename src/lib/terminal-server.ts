@@ -117,12 +117,12 @@ export const gracefulShutdown = (): Promise<void> => {
       }
 
       remaining++;
-      // onExit 콜백이 호출될 때까지 대기 — native ThreadSafeFunction이 완전히 drain됨
+      // Wait for onExit callback — ensures native ThreadSafeFunction is fully drained
       conn.pty.onExit(() => done());
 
-      // 기존 disposable(onData, onExit)을 dispose하지 않고 PTY를 kill.
-      // kill → native exit event → 위의 onExit 콜백 → done.
-      // 기존 onData disposable은 cleaned=true로 인해 무시됨.
+      // Kill PTY without disposing existing onData/onExit disposables.
+      // kill → native exit event → onExit callback above → done.
+      // Existing onData disposable is ignored because cleaned=true.
       try {
         if ('destroy' in conn.pty) {
           (conn.pty as pty.IPty & { destroy: () => void }).destroy();
@@ -166,8 +166,8 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
   }
 
   if (connections.size >= MAX_CONNECTIONS) {
-    // 워크스페이스 전환 시 close 프레임이 지연 도착하면 일시적으로 한도 초과 가능.
-    // 가장 오래된 연결부터 정리하여 새 연결을 수용한다.
+    // Close frames may arrive late during workspace switch, temporarily exceeding the limit.
+    // Evict oldest connections to accommodate the new one.
     const toEvict = connections.size - MAX_CONNECTIONS + 1;
     let evicted = 0;
     for (const [oldWs, oldConn] of connections) {

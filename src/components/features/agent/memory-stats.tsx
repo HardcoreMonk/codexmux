@@ -1,4 +1,5 @@
 import { memo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Clock, ChevronUp, ChevronDown } from 'lucide-react';
 import dayjs from 'dayjs';
 import type { IRecentMemoryFile } from '@/types/memory';
@@ -28,6 +29,7 @@ const MemoryStats = ({
   recentFiles,
   onFileSelect,
 }: IMemoryStatsProps) => {
+  const t = useTranslations('agent');
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -36,7 +38,7 @@ const MemoryStats = ({
         <div className="border-b px-4 py-2">
           <div className="mb-1 flex items-center gap-1 text-xs font-medium text-muted-foreground">
             <Clock size={10} />
-            최근 변경
+            {t('recentChanges')}
           </div>
           {recentFiles.map((file) => (
             <button
@@ -55,10 +57,10 @@ const MemoryStats = ({
       )}
       <div className="flex items-center gap-6 px-4 py-2 text-xs text-muted-foreground">
         <span>
-          전체: {totalFiles} 파일, {formatBytes(totalSizeBytes)}
+          {t('totalStats', { files: totalFiles, size: formatBytes(totalSizeBytes) })}
         </span>
         <span>
-          {agentName}: {agentFiles} 파일, {formatBytes(agentSizeBytes)}
+          {t('agentStats', { name: agentName, files: agentFiles, size: formatBytes(agentSizeBytes) })}
         </span>
         {recentFiles.length > 0 && (
           <button
@@ -67,7 +69,7 @@ const MemoryStats = ({
             onClick={() => setIsExpanded((prev) => !prev)}
           >
             {isExpanded ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
-            최근 변경
+            {t('recentChanges')}
           </button>
         )}
       </div>

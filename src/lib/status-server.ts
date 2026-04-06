@@ -31,7 +31,7 @@ export const handleStatusConnection = (ws: WebSocket) => {
           break;
 
         default:
-          log.warn(`알 수 없는 이벤트: ${(msg as { type: string }).type}`);
+          log.warn(`Unknown event: ${(msg as { type: string }).type}`);
       }
     } catch {
       // invalid message

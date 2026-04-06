@@ -1,0 +1,8 @@
+{
+  "connecting": "Connecting...",
+  "reconnecting": "Reconnecting... ({count}/{max})",
+  "maxConnections": "Max connections exceeded",
+  "ptyError": "Terminal start failed",
+  "disconnected": "Disconnected",
+  "reconnect": "Reconnect"
+}

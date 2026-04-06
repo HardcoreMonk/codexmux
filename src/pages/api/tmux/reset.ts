@@ -28,7 +28,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(200).json({ killed: sessions.length });
   } catch (err) {
     log.error(`tmux reset failed: ${err instanceof Error ? err.message : err}`);
-    return res.status(500).json({ error: 'tmux 초기화 실패' });
+    return res.status(500).json({ error: 'tmux reset failed' });
   }
 };
 

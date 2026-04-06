@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { nanoid } from 'nanoid';
 import {
   DndContext,
@@ -89,6 +90,7 @@ const SortablePromptItem = ({ prompt: p, onEdit, onDelete, onToggle }: ISortable
 };
 
 const QuickPromptsSettings = () => {
+  const t = useTranslations('settings.quickPrompts');
   const { builtinPrompts, customPrompts, toggleBuiltin, saveCustom, resetAll } = useQuickPrompts();
   const [form, setForm] = useState<IFormState | null>(null);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -163,13 +165,13 @@ const QuickPromptsSettings = () => {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-sm font-medium">빠른 프롬프트</p>
-        <p className="text-sm text-muted-foreground">입력창 위에 표시할 프롬프트 버튼을 관리합니다.</p>
+        <p className="text-sm font-medium">{t('title')}</p>
+        <p className="text-sm text-muted-foreground">{t('description')}</p>
       </div>
 
       {builtinPrompts.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">기본 프롬프트</p>
+          <p className="text-xs font-medium text-muted-foreground">{t('builtinSection')}</p>
           <div className="divide-y divide-border rounded-lg border">
             {builtinPrompts.map((p) => (
               <div key={p.id} className="flex items-center gap-3 px-3 py-2.5">
@@ -185,7 +187,7 @@ const QuickPromptsSettings = () => {
       )}
 
       <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground">사용자 프롬프트</p>
+        <p className="text-xs font-medium text-muted-foreground">{t('customSection')}</p>
         {customPrompts.length > 0 && (
           <DndContext
             sensors={sensors}
@@ -211,31 +213,31 @@ const QuickPromptsSettings = () => {
 
         {form && (
           <div className="space-y-3 rounded-lg border p-3">
-            <p className="text-sm font-medium">{form.mode === 'add' ? '프롬프트 추가' : '프롬프트 수정'}</p>
+            <p className="text-sm font-medium">{form.mode === 'add' ? t('addPrompt') : t('editPrompt')}</p>
             <div className="space-y-2">
-              <label className="text-xs text-muted-foreground">이름</label>
+              <label className="text-xs text-muted-foreground">{t('nameLabel')}</label>
               <Input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="예: 코드 리뷰"
+                placeholder={t('namePlaceholder')}
                 autoFocus
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs text-muted-foreground">프롬프트</label>
+              <label className="text-xs text-muted-foreground">{t('promptLabel')}</label>
               <Textarea
                 value={form.prompt}
                 onChange={(e) => setForm({ ...form, prompt: e.target.value })}
-                placeholder="예: 현재 변경사항을 리뷰해주세요."
+                placeholder={t('promptPlaceholder')}
                 rows={3}
               />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => setForm(null)}>
-                취소
+                {t('cancel')}
               </Button>
               <Button size="sm" onClick={handleFormSave} disabled={!isFormValid}>
-                저장
+                {t('save')}
               </Button>
             </div>
           </div>
@@ -244,7 +246,7 @@ const QuickPromptsSettings = () => {
         {!form && (
           <Button variant="outline" size="sm" onClick={handleAdd}>
             <Plus className="mr-1 h-3.5 w-3.5" />
-            프롬프트 추가
+            {t('addButton')}
           </Button>
         )}
       </div>
@@ -256,20 +258,20 @@ const QuickPromptsSettings = () => {
         onClick={() => setResetDialogOpen(true)}
       >
         <RotateCcw className="mr-1 h-3.5 w-3.5" />
-        기본값으로 초기화
+        {t('resetToDefault')}
       </Button>
 
       <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>기본값으로 초기화</AlertDialogTitle>
+            <AlertDialogTitle>{t('resetTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              모든 사용자 프롬프트가 삭제되고, 기본 프롬프트가 활성화됩니다.
+              {t('resetDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReset}>초기화</AlertDialogAction>
+            <AlertDialogCancel>{t('resetCancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleReset}>{t('resetConfirm')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

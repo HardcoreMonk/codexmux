@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { LoginForm } from '@/components/features/login/login-form';
 import OnboardingWizard from '@/components/features/login/onboarding-wizard';
 import Head from 'next/head';
@@ -6,6 +7,7 @@ import { useEffect, useState } from 'react';
 type TMode = 'loading' | 'onboarding' | 'login';
 
 const LoginPage = () => {
+  const t = useTranslations('login');
   const [mode, setMode] = useState<TMode>('loading');
 
   useEffect(() => {
@@ -24,7 +26,7 @@ const LoginPage = () => {
   return (
     <>
       <Head>
-        <title>{mode === 'onboarding' ? '설정 - purplemux' : '로그인 - purplemux'}</title>
+        <title>{mode === 'onboarding' ? t('setupTitle') : t('pageTitle')}</title>
       </Head>
       <div className="flex min-h-svh items-center justify-center p-6">
         <div className={mode === 'onboarding' ? 'w-full max-w-sm' : 'w-full max-w-xs'}>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Plus, Terminal, Globe } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
@@ -16,15 +17,16 @@ interface IPaneNewTabMenuProps {
   onCreateTab: (panelType?: TPanelType, options?: { command?: string }) => void;
 }
 
-const MENU_ITEMS = [
-  { key: 'claude-new', type: 'claude-code' as const, icon: <ClaudeCodeIcon className="h-3.5 w-3.5" />, label: 'Claude 새 대화', startClaude: true },
-  { key: 'claude', type: 'claude-code' as const, icon: <ClaudeCodeIcon className="h-3.5 w-3.5" />, label: 'Claude 세션 목록' },
-  { key: 'terminal', type: 'terminal' as const, icon: <Terminal className="h-3.5 w-3.5 text-muted-foreground" />, label: 'Terminal' },
-  { key: 'web-browser', type: 'web-browser' as const, icon: <Globe className="h-3.5 w-3.5 text-muted-foreground" />, label: 'Web Browser' },
-] as const;
-
 const PaneNewTabMenu = ({ isCreating, onCreateTab }: IPaneNewTabMenuProps) => {
+  const t = useTranslations('terminal');
   const [open, setOpen] = useState(false);
+
+  const menuItems = [
+    { key: 'claude-new', type: 'claude-code' as const, icon: <ClaudeCodeIcon className="h-3.5 w-3.5" />, label: t('claudeNewConversation'), startClaude: true },
+    { key: 'claude', type: 'claude-code' as const, icon: <ClaudeCodeIcon className="h-3.5 w-3.5" />, label: t('claudeSessionList') },
+    { key: 'terminal', type: 'terminal' as const, icon: <Terminal className="h-3.5 w-3.5 text-muted-foreground" />, label: 'Terminal' },
+    { key: 'web-browser', type: 'web-browser' as const, icon: <Globe className="h-3.5 w-3.5 text-muted-foreground" />, label: 'Web Browser' },
+  ];
 
   return (
     <div className="flex items-center border-l border-r border-border px-0.5">
@@ -38,7 +40,7 @@ const PaneNewTabMenu = ({ isCreating, onCreateTab }: IPaneNewTabMenuProps) => {
                   isCreating && 'pointer-events-none opacity-50',
                 )}
                 disabled={isCreating}
-                aria-label="새 탭"
+                aria-label={t('openNewTab')}
               />
             }
           >
@@ -48,10 +50,10 @@ const PaneNewTabMenu = ({ isCreating, onCreateTab }: IPaneNewTabMenuProps) => {
               <Plus className="h-3.5 w-3.5" />
             )}
           </TooltipTrigger>
-          <TooltipContent side="bottom">새 탭 열기 ({mod}T)</TooltipContent>
+          <TooltipContent side="bottom">{t('newTabTooltip', { shortcut: `${mod}T` })}</TooltipContent>
         </Tooltip>
         <PopoverContent side="bottom" align="start" className="w-44 gap-0 p-0.5">
-          {MENU_ITEMS.map((item) => (
+          {menuItems.map((item) => (
             <button
               key={item.key}
               className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-xs text-foreground hover:bg-accent"

@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { ChevronRight } from 'lucide-react';
 import dayjs from 'dayjs';
 import type { IActivityEntry } from '@/types/agent';
@@ -8,6 +9,7 @@ interface IRecentActivityProps {
 }
 
 const RecentActivity = ({ entries }: IRecentActivityProps) => {
+  const t = useTranslations('agent');
   const [open, setOpen] = useState(false);
 
   const toggle = useCallback(() => {
@@ -32,7 +34,7 @@ const RecentActivity = ({ entries }: IRecentActivityProps) => {
           size={14}
           className={open ? 'rotate-90 transition-transform' : 'transition-transform'}
         />
-        최근 활동 ({sorted.length})
+        {t('recentActivity', { count: sorted.length })}
       </button>
 
       {open && (

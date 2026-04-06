@@ -15,6 +15,7 @@ export interface IConfigData {
   dangerouslySkipPermissions?: boolean;
   editorUrl?: string;
   agentEnabled?: boolean;
+  locale?: string;
   updatedAt: string;
 }
 
@@ -119,12 +120,12 @@ export const initConfigStore = async (): Promise<void> => {
 
   const existing = await readConfig();
   if (existing) {
-    log.debug('config.json 로드 완료');
+    log.debug('config.json loaded');
     return;
   }
 
   await writeConfig(emptyConfig());
-  log.info('초기 config.json 생성 (온보딩 필요)');
+  log.info('Initial config.json created (onboarding required)');
 };
 
 export const getDangerouslySkipPermissions = async (): Promise<boolean> => {

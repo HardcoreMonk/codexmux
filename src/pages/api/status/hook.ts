@@ -20,7 +20,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   getStatusManager().poll().catch((err) => {
-    log.error({ err }, 'poll 트리거 실패');
+    log.error({ err }, 'Poll trigger failed');
   });
 
   return res.status(204).end();

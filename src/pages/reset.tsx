@@ -1,5 +1,6 @@
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Check, Circle } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 
@@ -9,12 +10,6 @@ interface IStep {
   label: string;
   status: TStepStatus;
 }
-
-const INITIAL_STEPS: IStep[] = [
-  { label: '기존 연결 정리', status: 'pending' },
-  { label: 'tmux 서버 종료 및 재설정', status: 'pending' },
-  { label: '완료', status: 'pending' },
-];
 
 const StepIcon = ({ status }: { status: TStepStatus }) => {
   switch (status) {
@@ -33,7 +28,15 @@ const SETTLE_DELAY = 800;
 const REDIRECT_DELAY = 600;
 
 const ResetPage = () => {
-  const [steps, setSteps] = useState<IStep[]>(INITIAL_STEPS);
+  const t = useTranslations('reset');
+
+  const initialSteps: IStep[] = [
+    { label: t('stepCleanup'), status: 'pending' },
+    { label: t('stepReset'), status: 'pending' },
+    { label: t('stepDone'), status: 'pending' },
+  ];
+
+  const [steps, setSteps] = useState<IStep[]>(initialSteps);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const updateStep = (index: number, status: TStepStatus) => {
@@ -54,11 +57,11 @@ const ResetPage = () => {
       updateStep(1, 'running');
       try {
         const res = await fetch('/api/tmux/reset', { method: 'POST' });
-        if (!res.ok) throw new Error('API 응답 오류');
+        if (!res.ok) throw new Error(t('apiError'));
       } catch {
         if (cancelled) return;
         updateStep(1, 'error');
-        setErrorMsg('tmux 초기화에 실패했습니다.');
+        setErrorMsg(t('resetFailed'));
         return;
       }
       if (cancelled) return;
@@ -78,11 +81,11 @@ const ResetPage = () => {
   return (
     <>
       <Head>
-        <title>초기화 - purplemux</title>
+        <title>{t('pageTitle')}</title>
       </Head>
       <div className="flex min-h-svh items-center justify-center p-6">
         <div className="w-full max-w-xs space-y-6">
-          <h1 className="text-lg font-semibold text-center">tmux 초기화</h1>
+          <h1 className="text-lg font-semibold text-center">{t('title')}</h1>
           <div className="space-y-3">
             {steps.map((step, i) => (
               <div key={i} className="flex items-center gap-3">

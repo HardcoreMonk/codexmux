@@ -1,7 +1,11 @@
-const TypingIndicator = () => (
+import { useTranslations } from 'next-intl';
+
+const TypingIndicator = () => {
+  const t = useTranslations('agent');
+  return (
   <div
     className="flex justify-start"
-    aria-label="에이전트가 입력 중"
+    aria-label={t('agentTypingAria')}
     aria-live="polite"
   >
     <div className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-muted px-4 py-3">
@@ -19,6 +23,7 @@ const TypingIndicator = () => (
       />
     </div>
   </div>
-);
+  );
+};
 
 export default TypingIndicator;

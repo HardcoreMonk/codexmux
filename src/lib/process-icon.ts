@@ -1,4 +1,4 @@
-// Nerd Font 아이콘 매핑 (tmux-nerd-font-window-name 기반)
+// Nerd Font icon mapping (based on tmux-nerd-font-window-name)
 // https://github.com/joshmedeski/tmux-nerd-font-window-name
 
 const PROCESS_ICONS: Record<string, string> = {

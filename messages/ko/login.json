@@ -1,0 +1,16 @@
+{
+  "pageTitle": "로그인 - purplemux",
+  "setupTitle": "설정 - purplemux",
+  "missingTools": "필수 도구가 누락되었습니다",
+  "install": "설치",
+  "password": "비밀번호",
+  "passwordPlaceholder": "비밀번호를 입력하세요",
+  "invalidPassword": "비밀번호가 올바르지 않습니다.",
+  "loggingIn": "로그인 중...",
+  "loginButton": "로그인",
+  "forgotPassword": "비밀번호를 잊으셨나요?",
+  "resetPassword": "비밀번호 초기화",
+  "resetPasswordHelp": "아래 파일을 삭제하고 {action}하면 온보딩 화면에서 새 비밀번호를 설정할 수 있습니다.",
+  "restartServer": "서버를 재시작",
+  "restartApp": "앱을 종료 후 재시작"
+}

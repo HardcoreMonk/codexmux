@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ExternalLink } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import { toast } from 'sonner';
@@ -55,6 +56,7 @@ const ContentHeader = ({
   onEqualizeRatios,
   onUpdateTabPanelType,
 }: IContentHeaderProps) => {
+  const t = useTranslations('terminal');
   const [isToggling, setIsToggling] = useState(false);
 
   const panes = collectPanes(root);
@@ -103,7 +105,7 @@ const ContentHeader = ({
             className="flex h-7 items-center border-r border-border pr-2 pl-1 text-[11px] font-medium tracking-wide text-muted-foreground hover:text-foreground"
             onClick={() => {
               if (!editorUrl) {
-                toast.info('에디터 URL이 설정되지 않았습니다. 설정 > 에디터에서 URL을 입력해주세요.');
+                toast.info(t('editorUrlNotSet'));
                 return;
               }
               const folder = activeTabCwd || '/';
@@ -111,7 +113,7 @@ const ContentHeader = ({
               const url = `${editorUrl}${separator}folder=${encodeURIComponent(folder)}`;
               window.open(url, '_blank');
             }}
-            aria-label="code-server 열기"
+            aria-label={t('openEditor')}
           >
             EDITOR
             <ExternalLink className="-mt-0.5 ml-1 h-3 w-3" />
@@ -127,7 +129,7 @@ const ContentHeader = ({
               )}
               onClick={canSplit && paneId ? () => onSplitPane(paneId, 'horizontal') : undefined}
               disabled={!canSplit}
-              aria-label="수직 분할"
+              aria-label={t('splitVertical')}
             >
               {isSplitting ? (
                 <Spinner className="h-3 w-3" />
@@ -135,7 +137,7 @@ const ContentHeader = ({
                 <SplitVerticalIcon className="h-3.5 w-3.5" />
               )}
             </TooltipTrigger>
-            <TooltipContent side="bottom">수직 분할 ({mod}D)</TooltipContent>
+            <TooltipContent side="bottom">{t('splitVerticalShortcut', { shortcut: `${mod}D` })}</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -148,7 +150,7 @@ const ContentHeader = ({
               )}
               onClick={canSplit && paneId ? () => onSplitPane(paneId, 'vertical') : undefined}
               disabled={!canSplit}
-              aria-label="수평 분할"
+              aria-label={t('splitHorizontal')}
             >
               {isSplitting ? (
                 <Spinner className="h-3 w-3" />
@@ -156,7 +158,7 @@ const ContentHeader = ({
                 <SplitHorizontalIcon className="h-3.5 w-3.5" />
               )}
             </TooltipTrigger>
-            <TooltipContent side="bottom">수평 분할 ({mod}⇧D)</TooltipContent>
+            <TooltipContent side="bottom">{t('splitHorizontalShortcut', { shortcut: `${mod}⇧D` })}</TooltipContent>
           </Tooltip>
 
           {paneCount >= 2 && (
@@ -164,11 +166,11 @@ const ContentHeader = ({
               <TooltipTrigger
                 className="flex h-7 w-7 items-center justify-center text-muted-foreground hover:text-foreground"
                 onClick={onEqualizeRatios}
-                aria-label="균등 분할"
+                aria-label={t('equalSplit')}
               >
                 <EqualizeIcon className="h-3.5 w-3.5" />
               </TooltipTrigger>
-              <TooltipContent side="bottom">균등 분할</TooltipContent>
+              <TooltipContent side="bottom">{t('equalSplit')}</TooltipContent>
             </Tooltip>
           )}
         </div>

@@ -1,0 +1,33 @@
+{
+  "noMessage": "(메시지 없음)",
+  "sessionLabel": "세션: {message}",
+  "turnCount": "{count}턴",
+  "justNow": "방금 전",
+  "minutesAgo": "{count}분 전",
+  "hoursAgo": "{count}시간 전",
+  "yesterday": "어제",
+  "daysAgo": "{count}일 전",
+  "weeksAgo": "{count}주 전",
+  "monthsAgo": "{count}개월 전",
+  "yearsAgo": "{count}년 전",
+  "empty": {
+    "closeLabel": "닫기",
+    "noSession": "세션 없음",
+    "startNewSession": "터미널에서 claude를 실행하여{br}새 세션을 시작하세요",
+    "newConversation": "새 대화",
+    "close": "닫기"
+  },
+  "meta": {
+    "message": "메시지",
+    "userAssistant": "사용자 {userCount} / 어시스턴트 {assistantCount}",
+    "tokens": "토큰",
+    "inputOutputTotal": "입력 {input} / 출력 {output} / 총 {total}",
+    "cost": "비용",
+    "created": "생성",
+    "updated": "수정",
+    "path": "경로",
+    "process": "프로세스",
+    "size": "크기",
+    "session": "세션"
+  }
+}

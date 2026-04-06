@@ -48,16 +48,16 @@ const sendResumeKeys = async (target: IAutoResumeTarget, skipPerms: boolean): Pr
   try {
     const command = await getPaneCurrentCommand(target.tmuxSession);
     if (!command) {
-      log.warn(`프로세스 확인 불가: ${target.tmuxSession}`);
+      log.warn(`Cannot check process: ${target.tmuxSession}`);
       return false;
     }
 
     if (!SAFE_SHELLS.has(command)) {
       if (command === 'claude' || command === 'node') {
-        log.debug(`Claude 이미 실행 중, skip: ${target.tmuxSession}`);
+        log.debug(`Claude already running, skip: ${target.tmuxSession}`);
         return true;
       }
-      log.debug(`셸이 아닌 프로세스 실행 중 (${command}), skip: ${target.tmuxSession}`);
+      log.debug(`Non-shell process running (${command}), skip: ${target.tmuxSession}`);
       return false;
     }
 
@@ -65,33 +65,33 @@ const sendResumeKeys = async (target: IAutoResumeTarget, skipPerms: boolean): Pr
     const resumeCmd = skipPerms
       ? `claude --resume ${target.claudeSessionId} ${settings} --dangerously-skip-permissions`
       : `claude --resume ${target.claudeSessionId} ${settings}`;
-    log.info(`resume 전송: ${target.tmuxSession} → ${target.claudeSessionId}${skipPerms ? ' (skip-permissions)' : ''}`);
+    log.info(`Sending resume: ${target.tmuxSession} → ${target.claudeSessionId}${skipPerms ? ' (skip-permissions)' : ''}`);
     await sendKeys(target.tmuxSession, resumeCmd);
 
     return true;
   } catch (err) {
-    log.error(`실패: ${target.tmuxSession} — ${err instanceof Error ? err.message : err}`);
+    log.error(`Failed: ${target.tmuxSession} — ${err instanceof Error ? err.message : err}`);
     return false;
   }
 };
 
 export const executeAutoResume = async (targets: IAutoResumeTarget[]): Promise<void> => {
-  // Phase 1: 세션 생성 (순차 — 첫 createSession이 tmux 서버를 cold-start하므로 race 방지)
+  // Phase 1: Sequential session creation — first createSession cold-starts tmux server, so avoid race
   let hasNewSession = false;
   for (const target of targets) {
     if (!(await hasSession(target.tmuxSession))) {
-      log.info(`tmux 세션 없음, 새로 생성: ${target.tmuxSession}`);
+      log.info(`No tmux session, creating new: ${target.tmuxSession}`);
       await createSession(target.tmuxSession, 80, 24);
       hasNewSession = true;
     }
   }
 
-  // Phase 2: 새 세션이 있으면 셸 초기화 대기 (한 번만)
+  // Phase 2: Wait for shell initialization if new sessions were created (once)
   if (hasNewSession) {
     await sleep(SHELL_READY_DELAY_MS);
   }
 
-  // Phase 3: resume 명령 병렬 전송
+  // Phase 3: Send resume commands in parallel
   const skipPerms = await getDangerouslySkipPermissions();
   await Promise.allSettled(targets.map((target) => sendResumeKeys(target, skipPerms)));
 };
@@ -100,10 +100,10 @@ export const autoResumeOnStartup = async (): Promise<void> => {
   const targets = await findAutoResumeTargets();
   if (targets.length === 0) return;
 
-  log.info(`${targets.length}개 Surface 자동 resume 시작`);
+  log.info(`${targets.length} surface(s) auto-resume started`);
   executeAutoResume(targets).then(() => {
-    log.debug('자동 resume 완료');
+    log.debug('Auto-resume complete');
   }).catch((err) => {
-    log.error(`자동 resume 중 오류: ${err instanceof Error ? err.message : err}`);
+    log.error(`Auto-resume error: ${err instanceof Error ? err.message : err}`);
   });
 };

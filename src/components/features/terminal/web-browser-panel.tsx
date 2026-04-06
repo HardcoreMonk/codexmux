@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { ArrowLeft, ArrowRight, RotateCw, Globe, Smartphone, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import isElectron from '@/hooks/use-is-electron';
@@ -42,6 +43,7 @@ const checkSameOrigin = (iframe: HTMLIFrameElement): boolean => {
 };
 
 const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => {
+  const t = useTranslations('webBrowser');
   const [url, setUrl] = useState(initialUrl || '');
   const [addressValue, setAddressValue] = useState(initialUrl || '');
   const [canNavigate, setCanNavigate] = useState(isElectron);
@@ -205,7 +207,7 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => 
               )}
               onClick={handleGoBack}
               disabled={isElectron && !canGoBack}
-              aria-label="뒤로"
+              aria-label={t('back')}
             >
               <ArrowLeft className="h-3.5 w-3.5" />
             </button>
@@ -216,14 +218,14 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => 
               )}
               onClick={handleGoForward}
               disabled={isElectron && !canGoForward}
-              aria-label="앞으로"
+              aria-label={t('forward')}
             >
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
             <button
               className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
               onClick={handleRefresh}
-              aria-label="새로고침"
+              aria-label={t('reload')}
             >
               <RotateCw className="h-3.5 w-3.5" />
             </button>
@@ -237,8 +239,8 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => 
               mobileUA ? 'text-blue-400' : 'text-muted-foreground hover:text-foreground',
             )}
             onClick={handleToggleMobileUA}
-            aria-label={mobileUA ? '데스크톱 모드로 전환' : '모바일 모드로 전환'}
-            title={mobileUA ? '모바일 모드 (클릭하여 데스크톱으로 전환)' : '데스크톱 모드 (클릭하여 모바일로 전환)'}
+            aria-label={mobileUA ? t('switchToDesktop') : t('switchToMobile')}
+            title={mobileUA ? t('mobileModeTip') : t('desktopModeTip')}
           >
             {mobileUA ? <Smartphone className="h-3.5 w-3.5" /> : <Monitor className="h-3.5 w-3.5" />}
           </button>
@@ -251,7 +253,7 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => 
               'min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/50',
               canNavigate ? 'text-foreground' : 'text-muted-foreground',
             )}
-            placeholder="URL을 입력하세요"
+            placeholder={t('urlPlaceholder')}
             value={addressValue}
             onChange={(e) => setAddressValue(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -277,7 +279,7 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => 
         <div className="flex flex-1 items-center justify-center">
           <div className="flex flex-col items-center gap-3 text-muted-foreground">
             <Globe className="h-10 w-10 opacity-20" />
-            <span className="text-sm">URL을 입력하여 웹페이지를 열어보세요</span>
+            <span className="text-sm">{t('emptyMessage')}</span>
           </div>
         </div>
       )}

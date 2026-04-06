@@ -1,0 +1,37 @@
+{
+  "steps": {
+    "preflight": "환경 확인",
+    "password": "비밀번호 설정",
+    "appearance": "화면 테마",
+    "theme": "터미널 테마",
+    "claude": "Claude 설정",
+    "complete": "설정 완료"
+  },
+  "checking": "환경을 확인하는 중...",
+  "missingTools": "필수 도구가 누락되었습니다",
+  "installBrew": "Homebrew 설치",
+  "installTmux": "tmux 설치",
+  "upgradeTmux": "tmux 업그레이드",
+  "password": "비밀번호",
+  "passwordPlaceholder": "4자 이상 입력",
+  "confirmPassword": "비밀번호 확인",
+  "confirmPasswordPlaceholder": "비밀번호를 다시 입력",
+  "passwordMinLength": "비밀번호는 4자 이상이어야 합니다.",
+  "passwordMismatch": "비밀번호가 일치하지 않습니다.",
+  "appearanceDescription": "앱 전체의 화면 테마를 선택합니다.",
+  "skipPermissions": "권한 확인 건너뛰기",
+  "skipPermissionsDescription": "Claude CLI 실행 시 --dangerously-skip-permissions 옵션을 추가합니다.",
+  "summary": {
+    "password": "비밀번호",
+    "appTheme": "화면 테마",
+    "darkTheme": "다크 테마",
+    "lightTheme": "라이트 테마",
+    "skipPermissions": "권한 건너뛰기",
+    "enabled": "사용",
+    "disabled": "사용 안 함"
+  },
+  "submitting": "설정 중...",
+  "completeButton": "설정 완료",
+  "setupFailed": "설정에 실패했습니다.",
+  "connectionError": "서버에 연결할 수 없습니다."
+}

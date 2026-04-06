@@ -1,0 +1,109 @@
+{
+  "title": "Settings",
+  "tabs": {
+    "general": "General",
+    "terminal": "Terminal",
+    "editor": "Editor",
+    "claude": "Claude",
+    "auth": "Auth",
+    "tailscale": "Tailscale",
+    "quickPrompts": "Quick Prompts",
+    "agent": "Agent",
+    "system": "System"
+  },
+  "general": {
+    "theme": "Theme",
+    "themeDescription": "Select the display theme.",
+    "language": "Language",
+    "languageDescription": "Select the interface language."
+  },
+  "terminal": {
+    "theme": "Terminal Theme",
+    "themeDescription": "Select terminal color themes for each mode."
+  },
+  "editor": {
+    "url": "Editor URL",
+    "urlDescription": "Enter the editor URL to open when clicking the EDITOR button in the header.",
+    "urlHelp": "Install and run <link>code-server</link> to use VS Code in the browser. The <code>?folder=</code> parameter is automatically appended to the URL."
+  },
+  "claude": {
+    "skipPermissions": "Skip Permission Checks",
+    "skipPermissionsDescription": "Adds --dangerously-skip-permissions option when running Claude CLI."
+  },
+  "auth": {
+    "changePassword": "Change Password",
+    "changePasswordDescription": "New passwords are hashed with SHA-512 before saving.",
+    "newPasswordPlaceholder": "Enter new password (min 4 chars)",
+    "passwordPlaceholder": "Enter password (min 4 chars)",
+    "resetHint": "To reset, delete ~/.purplemux/config.json and {action}.",
+    "restartServer": "restart the server",
+    "restartApp": "quit and restart the app",
+    "savedRestart": "Saved. Changes will apply after {action}.",
+    "restartServerAction": "server restart",
+    "restartAppAction": "app restart"
+  },
+  "agent": {
+    "enableMenu": "Enable Agent Menu",
+    "enableMenuDescription": "Show the agent menu in the sidebar. This feature is currently in beta."
+  },
+  "system": {
+    "tmuxReset": "Reset tmux",
+    "tmuxResetDescription": "Terminates all tmux sessions and {action}. Use when settings changes need to be applied.",
+    "tmuxResetConfirm": "All running terminal processes will be terminated. Continue?",
+    "restartServer": "restarts the server",
+    "restartApp": "restarts the app"
+  },
+  "tailscale": {
+    "notInstalled": "Tailscale CLI is not installed",
+    "notInstalledDescription": "Install Tailscale to securely access from outside your network.",
+    "commentMac": "# macOS",
+    "commentMacAppStore": "# or install from Mac App Store",
+    "commentLinux": "# Linux (Ubuntu/Debian)",
+    "commentAfterInstall": "# After installation, log in",
+    "installGuide": "For detailed installation instructions, visit <link>Tailscale official website</link>.",
+    "notRunning": "Tailscale is not running",
+    "notRunningDescription": "Please start Tailscale.",
+    "deviceInfo": "Device Info",
+    "host": "Host",
+    "dns": "DNS",
+    "ip": "IP",
+    "version": "Version",
+    "nonDefaultPortTitle": "Server is currently running on port {port}",
+    "nonDefaultPortDescription": "The default port ({defaultPort}) was in use, so a different port was automatically assigned. The auto-assigned port may change after {restartAction}, so it is recommended to set the local port to {defaultPort} instead of {currentPort} in Tailscale Serve settings.",
+    "appRestart": "app restart",
+    "serverRestart": "server restart",
+    "commentFixedPort": "# To use fixed port ({port})",
+    "commentOrTerminate": "# or terminate the process occupying port {port} and restart",
+    "serveStatus": "Serve Status",
+    "noActiveServe": "No active serve entries.",
+    "httpsPort": "HTTPS Port",
+    "proxyTarget": "Proxy Target",
+    "url": "URL",
+    "addServe": "Add Serve",
+    "localPort": "Local Port",
+    "add": "Add",
+    "enterPort": "Please enter a port",
+    "addedToast": "HTTPS :{httpsPort} → localhost:{localPort} added",
+    "removedToast": "HTTPS :{httpsPort} removed"
+  },
+  "quickPrompts": {
+    "title": "Quick Prompts",
+    "description": "Manage prompt buttons displayed above the input field.",
+    "builtinSection": "Built-in Prompts",
+    "customSection": "Custom Prompts",
+    "addPrompt": "Add Prompt",
+    "editPrompt": "Edit Prompt",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Code Review",
+    "promptLabel": "Prompt",
+    "promptPlaceholder": "e.g. Please review the current changes.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "addButton": "Add Prompt",
+    "resetToDefault": "Reset to Default",
+    "resetTitle": "Reset to Default",
+    "resetDescription": "All custom prompts will be deleted and built-in prompts will be enabled.",
+    "resetCancel": "Cancel",
+    "resetConfirm": "Reset"
+  }
+}

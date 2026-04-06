@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/spinner';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -34,6 +35,7 @@ const ClaudeCodePanel = ({
   onNewSession,
   scrollToBottomRef,
 }: IClaudeCodePanelProps) => {
+  const t = useTranslations('terminal');
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(null);
 
   const claudeStatus = useTabStore((s) => s.tabs[tabId]?.claudeStatus ?? 'unknown');
@@ -52,19 +54,19 @@ const ClaudeCodePanel = ({
   const handleResumeBlocked = useCallback(
     (payload: { reason: string; processName?: string }) => {
       setResumingSessionId(null);
-      toast.warning('터미널에서 다른 프로세스가 실행 중입니다', {
+      toast.warning(t('resumeBlocked'), {
         description: payload.processName
-          ? `현재 실행 중인 프로세스: ${payload.processName}`
+          ? t('resumeBlockedProcess', { name: payload.processName })
           : undefined,
       });
     },
-    [],
+    [t],
   );
 
   const handleResumeError = useCallback(() => {
     setResumingSessionId(null);
-    toast.error('세션을 재개할 수 없습니다');
-  }, []);
+    toast.error(t('resumeFailed'));
+  }, [t]);
 
   const {
     entries,
@@ -168,7 +170,7 @@ const ClaudeCodePanel = ({
     return (
       <div className={cn('flex h-full w-full flex-col items-center justify-center', className)}>
         <Spinner className="h-4 w-4 text-muted-foreground" />
-        <span className="mt-2 text-sm text-muted-foreground">새 대화 만드는중...</span>
+        <span className="mt-2 text-sm text-muted-foreground">{t('creatingConversation')}</span>
       </div>
     );
   }
@@ -187,7 +189,7 @@ const ClaudeCodePanel = ({
                   className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
                   onClick={onClose}
                 >
-                  터미널을 확인하세요
+                  {t('checkTerminal')}
                 </button>
               }
             />
@@ -196,7 +198,7 @@ const ClaudeCodePanel = ({
               className="mt-3 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
               onClick={onClose}
             >
-              터미널을 확인하세요
+              {t('checkTerminal')}
             </button>
           )
         )}

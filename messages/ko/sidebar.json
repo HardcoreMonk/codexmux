@@ -1,0 +1,11 @@
+{
+  "workspaceList": "Workspace 목록",
+  "addWorkspace": "Workspace 추가",
+  "noWorkspaces": "Workspace가 없습니다",
+  "deleteWorkspace": "Workspace 삭제",
+  "deleteWorkspaceConfirm": "Workspace ''{name}''을 닫으시겠습니까?",
+  "notes": "노트",
+  "stats": "사용량 통계",
+  "collapseSidebar": "사이드바 접기",
+  "expandSidebar": "사이드바 펼치기"
+}

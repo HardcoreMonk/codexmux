@@ -105,7 +105,7 @@ export const killSession = async (name: string): Promise<void> => {
     await sleep(200);
   }
 
-  // 아직 살아있으면 SIGKILL로 강제 종료
+  // Still alive — escalate to SIGKILL
   log.warn(`session survived SIGTERM, escalating to SIGKILL: ${name}`);
   if (panePid) {
     try {
@@ -149,7 +149,7 @@ export const hasSession = async (name: string): Promise<boolean> => {
   }
 };
 
-// tmux는 remain-on-exit 미설정 시 죽은 세션을 자동 정리하므로 별도 처리 불필요
+// tmux auto-cleans dead sessions when remain-on-exit is not set, no extra handling needed
 export const cleanDeadSessions = async (): Promise<void> => {};
 
 export const scanSessions = async (): Promise<void> => {
@@ -315,7 +315,7 @@ export const sendRawKeys = async (
   );
 };
 
-/** 브라켓 페이스트 모드로 텍스트를 전송하고 Enter를 두 번 입력 (Claude Code 긴 입력 확인 대응) */
+/** Send text via bracketed paste mode and press Enter twice (handles Claude Code long input confirmation) */
 export const sendBracketedPaste = async (
   sessionName: string,
   content: string,

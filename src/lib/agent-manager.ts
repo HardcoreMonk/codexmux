@@ -398,7 +398,7 @@ class AgentManager {
       runtime.messageQueue.shift();
       log.warn(`message queue overflow for agent ${agentId}, dropping oldest`);
 
-      const dropNotice = createMessage('agent', 'error', '메시지 큐가 가득 차 가장 오래된 메시지가 삭제되었습니다.');
+      const dropNotice = createMessage('agent', 'error', 'Message queue full, oldest message dropped.');
       if (runtime.chatSessionId) {
         await appendMessage(agentId, runtime.chatSessionId, dropNotice);
       }
@@ -406,7 +406,7 @@ class AgentManager {
     }
     runtime.messageQueue.push(content);
 
-    const queuedNotice = createMessage('agent', 'activity', '메시지를 받았습니다. 현재 작업이 끝나면 확인하겠습니다.');
+    const queuedNotice = createMessage('agent', 'activity', 'Message received. Will check after current task completes.');
     if (runtime.chatSessionId) {
       await appendMessage(agentId, runtime.chatSessionId, queuedNotice);
     }
@@ -443,7 +443,7 @@ class AgentManager {
       this.setStatus(runtime, 'blocked');
       runtime.relaySetAt = Date.now();
     } else if (type === 'activity') {
-      // activity는 상태 변경 없이 저장+브로드캐스트만
+      // activity: save + broadcast only, no status change
     } else if (type === 'done' || type === 'error' || type === 'report') {
       this.setStatus(runtime, 'idle');
       runtime.relaySetAt = Date.now();
@@ -838,7 +838,7 @@ class AgentManager {
 
       if (derivedStatus !== prevStatus) {
         if (prevStatus === 'blocked') {
-          // blocked 상태는 relay API(receiveAgentMessage)로만 해제 — 폴링이 덮어쓰지 않음
+          // blocked status is only cleared via relay API (receiveAgentMessage) — polling must not overwrite it
         } else {
           this.setStatus(runtime, derivedStatus);
         }
@@ -848,7 +848,7 @@ class AgentManager {
         }
       }
 
-      // working 상태인데 relay 응답 없이 오래 걸리면 재전달
+      // If working too long without relay response, retry delivery
       if (runtime.status === 'working' && runtime.lastDeliveredContent && runtime.lastDeliveredAt > 0) {
         const elapsed = Date.now() - runtime.lastDeliveredAt;
         if (elapsed >= DELIVERY_CHECK_DELAY_MS && derivedStatus === 'idle') {
@@ -856,7 +856,7 @@ class AgentManager {
         }
       }
     } else if (sessionInfo.status === 'running' && !sessionInfo.jsonlPath) {
-      // JSONL 미생성 상태의 새 세션 — idle로 간주
+      // New session without JSONL — treat as idle
       runtime.lastClaudeSessionId = sessionInfo.sessionId;
       if (runtime.status !== 'idle') {
         this.setStatus(runtime, 'idle');
@@ -870,7 +870,7 @@ class AgentManager {
         await sendKeys(runtime.info.tmuxSession, `claude --settings ${hookPath} --dangerously-skip-permissions`);
         this.setStatus(runtime, 'idle');
       } else if (runtime.status === 'working' && runtime.lastDeliveredContent) {
-        // Claude Code 프롬프트에서 대기 중 (세션 없음) — 미전달 메시지 재전달
+        // Waiting at Claude Code prompt (no session) — retry undelivered message
         await this.retryDelivery(runtime);
       }
     }
@@ -958,7 +958,7 @@ class AgentManager {
 
     if (runtime.deliveryRetryCount >= MAX_DELIVERY_RETRIES) {
       log.warn(`agent ${runtime.info.id} delivery failed after ${MAX_DELIVERY_RETRIES} retries, giving up`);
-      const errorMsg = createMessage('agent', 'error', '메시지 전달에 실패했습니다. 다시 보내주세요.');
+      const errorMsg = createMessage('agent', 'error', 'Failed to deliver message. Please resend.');
       if (runtime.chatSessionId) {
         await appendMessage(runtime.info.id, runtime.chatSessionId, errorMsg);
       }
@@ -1000,7 +1000,7 @@ class AgentManager {
 
       for (let i = messages.length - 1; i >= 0; i--) {
         const msg = messages[i];
-        if (msg.role === 'agent') return null; // agent 응답이 있으면 정상
+        if (msg.role === 'agent') return null; // agent has responded, all good
         if (msg.role === 'user' && msg.type === 'text') {
           return msg.content;
         }
@@ -1258,7 +1258,7 @@ class AgentManager {
 
       await this.recoverTabs(runtime);
 
-      // 마지막 user 메시지에 대한 agent 응답이 없으면 재전달 대상으로 기록
+      // If no agent response for the last user message, mark for re-delivery
       const pendingContent = chatSessionId ? await this.findUnansweredMessage(entry, chatSessionId) : null;
       if (pendingContent) {
         runtime.lastDeliveredContent = pendingContent;
@@ -1282,7 +1282,7 @@ class AgentManager {
         await this.startAgentSession(runtime);
       }
 
-      // idle 상태로 복구된 후 미전달 메시지 재전달
+      // After recovering to idle, retry undelivered messages
       if (runtime.status === 'idle' && runtime.lastDeliveredContent) {
         await this.retryDelivery(runtime);
       }
@@ -1360,7 +1360,7 @@ class AgentManager {
     const cwd = ws.directories[0];
     const tabName = taskTitle || 'Agent Task';
 
-    await this.emitActivity(runtime, `탭 생성 중: ${tabName}`, { workspaceId, taskTitle });
+    await this.emitActivity(runtime, `Creating tab: ${tabName}`, { workspaceId, taskTitle });
 
     const newTab = await addTabToPane(workspaceId, targetPane.id, tabName, cwd, 'claude-code');
     if (!newTab) throw new Error('Failed to create tab session');
@@ -1424,7 +1424,7 @@ class AgentManager {
 
     if (tr.tab.status === 'idle') {
       const label = tr.tab.taskTitle || tabId;
-      await this.emitActivity(runtime, `작업 지시 전송: ${label}`, { tabId });
+      await this.emitActivity(runtime, `Sending task: ${label}`, { tabId });
       await sendBracketedPaste(tr.tab.tmuxSession, content);
       tr.tab.status = 'working';
       tr.tab.lastActivity = new Date().toISOString();

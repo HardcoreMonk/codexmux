@@ -15,7 +15,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const httpsPort = parsePort(req.body?.httpsPort);
     const localPort = parsePort(req.body?.localPort);
     if (!httpsPort || !localPort) {
-      return res.status(400).json({ error: '유효한 포트 번호가 필요합니다 (1-65535)' });
+      return res.status(400).json({ error: 'Valid port number required (1-65535)' });
     }
 
     try {
@@ -34,7 +34,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'DELETE') {
     const httpsPort = parsePort(req.body?.httpsPort);
     if (!httpsPort) {
-      return res.status(400).json({ error: '유효한 포트 번호가 필요합니다 (1-65535)' });
+      return res.status(400).json({ error: 'Valid port number required (1-65535)' });
     }
 
     try {

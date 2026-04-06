@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -45,6 +46,8 @@ const handleLogout = async () => {
 };
 
 const Sidebar = () => {
+  const t = useTranslations('sidebar');
+  const tc = useTranslations('common');
   const router = useRouter();
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
@@ -295,7 +298,7 @@ const Sidebar = () => {
           transition: isDragging ? 'none' : 'width 200ms ease, min-width 200ms ease',
         }}
         role="navigation"
-        aria-label="Workspace 목록"
+        aria-label={t('workspaceList')}
       >
         <div className="h-titlebar shrink-0" />
         <div className="flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
@@ -308,7 +311,7 @@ const Sidebar = () => {
                   isNavActive('/agents') ? 'text-foreground' : hasWorkingAgent ? 'text-ui-teal' : 'text-muted-foreground',
                 )}
                 onClick={() => router.push('/agents')}
-                aria-label="에이전트"
+                aria-label={tc('agent')}
               >
                 <Bot className={cn('h-3.5 w-3.5', hasWorkingAgent && !isNavActive('/agents') && 'animate-pulse')} />
                 {(unreadCount > 0 || blockedCount > 0) && (
@@ -321,7 +324,7 @@ const Sidebar = () => {
             <button
               className="relative flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
               onClick={() => setNotificationOpen(true)}
-              aria-label="알림"
+              aria-label={tc('notifications')}
             >
               <Bell className={`h-3.5 w-3.5${hasActive ? ' fill-current' : ''}`} />
               {attentionCount > 0 && (
@@ -335,7 +338,7 @@ const Sidebar = () => {
                 render={
                   <button
                     className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
-                    aria-label="로그아웃"
+                    aria-label={tc('logout')}
                   />
                 }
               >
@@ -343,14 +346,14 @@ const Sidebar = () => {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>로그아웃</AlertDialogTitle>
+                  <AlertDialogTitle>{tc('logout')}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    로그아웃하시겠습니까? 다시 접속하려면 서버 로그의 비밀번호가 필요합니다.
+                    {tc('logoutConfirm')}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>취소</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleLogout}>로그아웃</AlertDialogAction>
+                  <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleLogout}>{tc('logout')}</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -364,7 +367,7 @@ const Sidebar = () => {
           {!isLoading && workspaces.length === 0 && (
             <div className="flex flex-col items-center gap-2 p-4">
               <span className="text-xs text-muted-foreground">
-                Workspace가 없습니다
+                {t('noWorkspaces')}
               </span>
             </div>
           )}
@@ -407,7 +410,7 @@ const Sidebar = () => {
             className="flex h-9 w-full items-center gap-2 px-3 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent disabled:opacity-50"
             onClick={handleCreateWorkspace}
             disabled={isCreating}
-            aria-label="Workspace 추가"
+            aria-label={t('addWorkspace')}
           >
             <Plus className="h-3.5 w-3.5" />
             Workspace
@@ -421,7 +424,7 @@ const Sidebar = () => {
                   isNavActive('/reports') ? 'text-foreground' : 'text-muted-foreground',
                 )}
                 onClick={() => router.push('/reports')}
-                aria-label="노트"
+                aria-label={t('notes')}
               >
                 <FileText className="h-3.5 w-3.5" />
               </button>
@@ -431,14 +434,14 @@ const Sidebar = () => {
                   isNavActive('/stats') ? 'text-foreground' : 'text-muted-foreground',
                 )}
                 onClick={() => router.push('/stats')}
-                aria-label="사용량 통계"
+                aria-label={t('stats')}
               >
                 <BarChart3 className="h-3.5 w-3.5" />
               </button>
               <button
                 className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
                 onClick={() => setSettingsOpen(true)}
-                aria-label="설정"
+                aria-label={tc('settings')}
               >
                 <Settings className="h-3.5 w-3.5" />
               </button>
@@ -446,7 +449,7 @@ const Sidebar = () => {
             <button
               className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
               onClick={handleToggleCollapse}
-              aria-label="사이드바 접기"
+              aria-label={t('collapseSidebar')}
             >
               <ChevronsLeft className="h-3.5 w-3.5" />
             </button>
@@ -488,6 +491,7 @@ const Sidebar = () => {
           aria-valuemin={MIN_WIDTH}
           aria-valuemax={MAX_WIDTH}
           tabIndex={0}
+          suppressHydrationWarning
         >
           <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border transition-colors group-hover:bg-muted-foreground/50 group-active:bg-muted-foreground" />
         </div>
@@ -499,7 +503,7 @@ const Sidebar = () => {
           <button
             className="flex flex-1 items-center justify-center text-muted-foreground transition-colors hover:bg-sidebar-accent"
             onClick={handleToggleCollapse}
-            aria-label="사이드바 펼치기"
+            aria-label={t('expandSidebar')}
             aria-expanded="false"
           >
             <ChevronsRight className="h-4 w-4" />
@@ -521,18 +525,18 @@ const Sidebar = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Workspace 삭제</AlertDialogTitle>
+            <AlertDialogTitle>{t('deleteWorkspace')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Workspace &apos;{deleteTarget?.name}&apos;을 닫으시겠습니까?
+              {t('deleteWorkspaceConfirm', { name: deleteTarget?.name ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-ui-red hover:bg-ui-red/80"
               onClick={handleDeleteConfirm}
             >
-              삭제
+              {tc('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

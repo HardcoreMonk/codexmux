@@ -1,0 +1,9 @@
+{
+  "pageTitle": "Reset - purplemux",
+  "title": "tmux Reset",
+  "stepCleanup": "Cleaning up connections",
+  "stepReset": "Stopping and resetting tmux server",
+  "stepDone": "Done",
+  "apiError": "API response error",
+  "resetFailed": "Failed to reset tmux."
+}

@@ -10,7 +10,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   const session = req.query.session as string | undefined;
   if (!session) {
-    return res.status(400).json({ error: 'session 파라미터 필수' });
+    return res.status(400).json({ error: 'session parameter required' });
   }
 
   const checkedAt = Date.now();

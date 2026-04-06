@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,8 @@ interface IAgentDeleteDialogProps {
 }
 
 const AgentDeleteDialog = ({ agentName, open, onOpenChange, onConfirm }: IAgentDeleteDialogProps) => {
+  const t = useTranslations('agent');
+  const tc = useTranslations('common');
   const [confirmName, setConfirmName] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -43,14 +46,14 @@ const AgentDeleteDialog = ({ agentName, open, onOpenChange, onConfirm }: IAgentD
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md" aria-live="assertive">
         <DialogHeader>
-          <DialogTitle>에이전트 삭제</DialogTitle>
+          <DialogTitle>{t('deleteTitle')}</DialogTitle>
           <DialogDescription>
-            &ldquo;{agentName}&rdquo;을 삭제하면 채팅 이력과 메모리가 모두 삭제됩니다.
+            {t('deleteDescription', { name: agentName })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-1.5">
-          <p className="text-sm text-muted-foreground">확인을 위해 에이전트 이름을 입력하세요</p>
+          <p className="text-sm text-muted-foreground">{t('deleteConfirmHint')}</p>
           <Input
             value={confirmName}
             onChange={(e) => setConfirmName(e.target.value)}
@@ -61,7 +64,7 @@ const AgentDeleteDialog = ({ agentName, open, onOpenChange, onConfirm }: IAgentD
 
         <DialogFooter>
           <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isDeleting}>
-            취소
+            {tc('cancel')}
           </Button>
           <Button
             variant="destructive"
@@ -71,10 +74,10 @@ const AgentDeleteDialog = ({ agentName, open, onOpenChange, onConfirm }: IAgentD
             {isDeleting ? (
               <>
                 <Spinner className="h-3 w-3" />
-                삭제 중
+                {t('deleting')}
               </>
             ) : (
-              '삭제'
+              tc('delete')
             )}
           </Button>
         </DialogFooter>

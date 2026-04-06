@@ -17,8 +17,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const workspace = await createWorkspace(resolvedDirectory, name);
       return res.status(200).json(workspace);
     } catch (err) {
-      const message = err instanceof Error ? err.message : '알 수 없는 오류';
-      const isValidation = ['존재하지', '디렉토리', '등록된'].some((k) => message.includes(k));
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      const isValidation = ['not exist', 'directory', 'registered'].some((k) => message.includes(k));
       return res.status(isValidation ? 400 : 500).json({ error: message });
     }
   }

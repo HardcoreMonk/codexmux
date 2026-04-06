@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import { useTranslations } from 'next-intl';
 import { useShallow } from 'zustand/react/shallow';
 import { getPageShellWithTitlebarLayout } from '@/components/layout/page-shell';
 import ChatHeader from '@/components/features/agent/chat-header';
@@ -15,6 +16,7 @@ import useAgentChat from '@/hooks/use-agent-chat';
 const LAST_AGENT_KEY = 'last-agent-id';
 
 const AgentChatPage = () => {
+  const t = useTranslations('agents');
   const router = useRouter();
   const agentId = router.query.agentId as string;
 
@@ -120,7 +122,7 @@ const AgentChatPage = () => {
 
   const agentStatus = agent?.status ?? 'offline';
 
-  const title = agent ? `${agent.name} — purplemux` : '에이전트 채팅 — purplemux';
+  const title = agent ? t('chatPageTitle', { name: agent.name }) : t('chatDefaultTitle');
 
   const content = (
     <>

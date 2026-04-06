@@ -1,4 +1,5 @@
 import { useState, useEffect, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import { ClipboardList, Eye, TerminalSquare, Check } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import ReactMarkdown from 'react-markdown';
@@ -48,6 +49,7 @@ const sendSelection = async (session: string, optionIndex: number): Promise<bool
 };
 
 const PlanItem = ({ entry, sessionName }: IPlanItemProps) => {
+  const t = useTranslations('timeline');
   const [open, setOpen] = useState(false);
   const [terminalOptions, setTerminalOptions] = useState<string[]>([]);
   const [localSelected, setLocalSelected] = useState<number | null>(null);
@@ -86,7 +88,7 @@ const PlanItem = ({ entry, sessionName }: IPlanItemProps) => {
     const ok = await sendSelection(sessionName, idx);
     if (!ok) {
       setLocalSelected(null);
-      toast.error('선택 전송에 실패했습니다');
+      toast.error(t('selectionFailed'));
     }
   };
 
@@ -96,14 +98,14 @@ const PlanItem = ({ entry, sessionName }: IPlanItemProps) => {
         <div className="rounded-lg border border-ui-purple/20 bg-ui-purple/5 px-4 py-3">
           <div className="mb-2.5 flex items-center gap-2 text-xs font-medium text-ui-purple">
             <ClipboardList size={14} />
-            <span>플랜 승인 대기</span>
+            <span>{t('planPendingLabel')}</span>
             <button
               type="button"
               onClick={() => setOpen(true)}
               className="ml-auto flex items-center gap-1 rounded-md border border-ui-purple/30 bg-ui-purple/10 px-2 py-0.5 text-ui-purple transition-colors hover:bg-ui-purple/20"
             >
               <Eye size={12} />
-              <span>자세히 보기</span>
+              <span>{t('planViewDetail')}</span>
             </button>
           </div>
 
@@ -166,7 +168,7 @@ const PlanItem = ({ entry, sessionName }: IPlanItemProps) => {
           {!displayOptions && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <TerminalSquare size={12} />
-              <span>터미널에서 승인하세요</span>
+              <span>{t('planApproveInTerminal')}</span>
             </div>
           )}
         </div>
@@ -188,7 +190,7 @@ const PlanItem = ({ entry, sessionName }: IPlanItemProps) => {
         <DialogContent className="flex max-h-[80vh] flex-col sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
-            <DialogDescription className="sr-only">Plan 상세 내용</DialogDescription>
+            <DialogDescription className="sr-only">{t('planDialogDescription')}</DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto overflow-x-hidden">
             <div className="prose prose-sm dark:prose-invert max-w-none text-sm [&_pre]:overflow-x-auto [&_pre]:bg-muted [&_pre]:rounded-md [&_pre]:p-3 [&_pre_code]:text-foreground [&_code]:text-[0.9em] [&_code.hljs]:text-[1em] [&_code]:font-normal [&_code]:font-mono [&_code::before]:content-none [&_code::after]:content-none">

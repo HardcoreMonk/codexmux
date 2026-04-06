@@ -1,0 +1,15 @@
+{
+  "title": "사용량 통계",
+  "pageTitle": "사용량 통계 — purplemux",
+  "dataLoadError": "데이터를 불러올 수 없습니다",
+  "collectingInitial": "초기 데이터를 수집하고 있습니다",
+  "collectingToday": "오늘 데이터를 수집하고 있습니다",
+  "analyzingSessions": "총 {count}건의 세션 데이터를 분석하고 있습니다",
+  "asOf": "{date} 기준",
+  "overview": "개요",
+  "token": "토큰",
+  "uptime": "가동률",
+  "activityPattern": "활동 패턴",
+  "project": "프로젝트",
+  "session": "세션"
+}

@@ -1,0 +1,8 @@
+{
+  "title": "Notifications",
+  "empty": "No tasks in progress",
+  "busySection": "In Progress ({count})",
+  "reviewSection": "Review ({count})",
+  "dismiss": "Dismiss",
+  "navigate": "Go to"
+}

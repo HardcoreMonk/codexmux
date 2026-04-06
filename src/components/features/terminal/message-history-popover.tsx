@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/ko';
@@ -41,6 +42,7 @@ const MessageHistoryPopover = ({
   onDelete,
   trigger,
 }: IMessageHistoryPopoverProps) => {
+  const t = useTranslations('messageHistory');
   const [search, setSearch] = useState('');
   const [prevOpen, setPrevOpen] = useState(false);
 
@@ -69,22 +71,22 @@ const MessageHistoryPopover = ({
       <PopoverTrigger render={trigger as React.ReactElement} />
       <PopoverContent side="top" align="start" sideOffset={8} className="w-80 p-0">
         <Command className="rounded-lg" shouldFilter>
-          <CommandInput placeholder="히스토리 검색..." value={search} onValueChange={setSearch} />
+          <CommandInput placeholder={t('searchPlaceholder')} value={search} onValueChange={setSearch} />
           <CommandList className="max-h-[300px]">
             {isLoading && entries.length === 0 ? (
               <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
-                로딩중..
+                {t('loading')}
               </div>
             ) : isError ? (
               <div className="flex flex-col items-center gap-2 py-6 text-sm text-muted-foreground">
-                <span>불러오기 실패</span>
+                <span>{t('fetchError')}</span>
                 <Button variant="outline" size="sm" onClick={onFetch}>
-                  다시 시도
+                  {t('retry')}
                 </Button>
               </div>
             ) : (
               <>
-                <CommandEmpty>{search ? '검색 결과가 없습니다' : '히스토리가 없습니다'}</CommandEmpty>
+                <CommandEmpty>{search ? t('noSearchResults') : t('noHistory')}</CommandEmpty>
                 <CommandGroup>
                   {entries.map((entry) => (
                     <CommandItem
@@ -103,7 +105,7 @@ const MessageHistoryPopover = ({
                         type="button"
                         className="ml-1 shrink-0 rounded p-0.5 opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
                         onClick={(e) => handleDelete(e, entry.id)}
-                        aria-label="삭제"
+                        aria-label={t('deleteLabel')}
                       >
                         <X className="size-3" />
                       </button>

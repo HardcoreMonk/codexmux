@@ -7,6 +7,7 @@ export interface IConfigInitialData {
   editorUrl?: string;
   agentEnabled?: boolean;
   hasAuthPassword?: boolean;
+  locale?: string;
 }
 
 interface IConfigState {
@@ -14,15 +15,17 @@ interface IConfigState {
   editorUrl: string;
   agentEnabled: boolean;
   hasAuthPassword: boolean;
+  locale: string;
 
   hydrate: (data: IConfigInitialData) => void;
   setDangerouslySkipPermissions: (enabled: boolean) => void;
   setEditorUrl: (url: string) => void;
   setAgentEnabled: (enabled: boolean) => void;
   changePassword: (password: string) => void;
+  setLocale: (locale: string) => void;
 }
 
-const initialConfig = { agentEnabled: false, editorUrl: '', dangerouslySkipPermissions: false, hasAuthPassword: false };
+const initialConfig = { agentEnabled: false, editorUrl: '', dangerouslySkipPermissions: false, hasAuthPassword: false, locale: 'en' };
 
 const saveConfig = (updates: Record<string, unknown>) => {
   fetch('/api/config', {
@@ -39,6 +42,7 @@ const useConfigStore = create<IConfigState>((set, get) => ({
   editorUrl: initialConfig.editorUrl,
   agentEnabled: initialConfig.agentEnabled,
   hasAuthPassword: initialConfig.hasAuthPassword,
+  locale: initialConfig.locale,
 
   hydrate: (data) => {
     set({
@@ -46,6 +50,7 @@ const useConfigStore = create<IConfigState>((set, get) => ({
       editorUrl: data.editorUrl ?? '',
       agentEnabled: data.agentEnabled ?? false,
       hasAuthPassword: data.hasAuthPassword ?? false,
+      locale: data.locale ?? 'en',
     });
   },
 
@@ -68,6 +73,11 @@ const useConfigStore = create<IConfigState>((set, get) => ({
   changePassword: (password) => {
     set({ hasAuthPassword: true });
     saveConfig({ authPassword: password });
+  },
+
+  setLocale: (locale) => {
+    set({ locale });
+    saveConfig({ locale });
   },
 }));
 

@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
     '*': ['./release/**'],
   },
   reactStrictMode: true,
+  i18n: {
+    locales: ['en', 'ko'],
+    defaultLocale: 'en',
+    localeDetection: false,
+  },
   headers: async () => [
     {
       source: '/fonts/:path*',

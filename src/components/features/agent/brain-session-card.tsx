@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import type { TAgentStatus } from '@/types/agent';
 
 interface IBrainSessionCardProps {
@@ -5,11 +6,11 @@ interface IBrainSessionCardProps {
   status: TAgentStatus;
 }
 
-const statusLabel: Record<TAgentStatus, string> = {
-  idle: '대기 중',
-  working: '계획 수립 중',
-  blocked: '차단됨',
-  offline: '오프라인',
+const statusLabelKeys: Record<TAgentStatus, string> = {
+  idle: 'statusIdle',
+  working: 'brainPlanning',
+  blocked: 'statusBlockedCard',
+  offline: 'statusOffline',
 };
 
 const statusIcon: Record<TAgentStatus, React.ReactNode> = {
@@ -33,14 +34,17 @@ const statusIcon: Record<TAgentStatus, React.ReactNode> = {
   ),
 };
 
-const BrainSessionCard = ({ tmuxSession, status }: IBrainSessionCardProps) => (
-  <div className="mb-4 rounded-lg border bg-muted/30 p-3">
-    <div className="flex items-center gap-2">
-      {statusIcon[status]}
-      <span className="text-sm font-medium">{statusLabel[status]}</span>
+const BrainSessionCard = ({ tmuxSession, status }: IBrainSessionCardProps) => {
+  const t = useTranslations('agent');
+  return (
+    <div className="mb-4 rounded-lg border bg-muted/30 p-3">
+      <div className="flex items-center gap-2">
+        {statusIcon[status]}
+        <span className="text-sm font-medium">{t(statusLabelKeys[status])}</span>
+      </div>
+      <div className="mt-1 text-xs text-muted-foreground">{t('sessionLabel', { session: tmuxSession })}</div>
     </div>
-    <div className="mt-1 text-xs text-muted-foreground">{tmuxSession} 세션</div>
-  </div>
-);
+  );
+};
 
 export default BrainSessionCard;

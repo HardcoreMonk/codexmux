@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +17,8 @@ interface IInterruptDialogProps {
 }
 
 const InterruptDialog = ({ open, onOpenChange, onConfirm }: IInterruptDialogProps) => {
+  const t = useTranslations('terminal');
+  const tc = useTranslations('common');
   const handleConfirm = () => {
     onConfirm();
     onOpenChange(false);
@@ -25,15 +28,15 @@ const InterruptDialog = ({ open, onOpenChange, onConfirm }: IInterruptDialogProp
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>작업 중단</AlertDialogTitle>
+          <AlertDialogTitle>{t('interruptTitle')}</AlertDialogTitle>
           <AlertDialogDescription>
-            Claude 작업을 중단하시겠습니까? 진행 중인 작업이 취소됩니다.
+            {t('interruptDescription')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>취소</AlertDialogCancel>
+          <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
           <AlertDialogAction variant="destructive" onClick={handleConfirm}>
-            중단
+            {t('interruptConfirm')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

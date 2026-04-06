@@ -41,7 +41,7 @@ const readQuickPrompts = async (): Promise<IQuickPromptsData> => {
     const raw = await fs.readFile(FILE_PATH, 'utf-8');
     const parsed = JSON.parse(raw);
 
-    // 기존 flat array 포맷 마이그레이션
+    // Migrate from legacy flat array format
     if (Array.isArray(parsed)) {
       const migrated = migrateFromFlatArray(parsed);
       await writeQuickPrompts(migrated);

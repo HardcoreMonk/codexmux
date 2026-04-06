@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { WifiOff, RefreshCw } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
@@ -17,6 +18,7 @@ const ConnectionStatus = ({
   disconnectReason,
   onReconnect,
 }: IConnectionStatusProps) => {
+  const t = useTranslations('connection');
   const isVisible = status !== 'connected' && status !== 'session-ended';
 
   return (
@@ -29,7 +31,7 @@ const ConnectionStatus = ({
       {status === 'connecting' && (
         <>
           <Spinner className="h-3 w-3 text-muted-foreground" />
-          <span className="text-muted-foreground">연결 중...</span>
+          <span className="text-muted-foreground">{t('connecting')}</span>
         </>
       )}
 
@@ -37,7 +39,7 @@ const ConnectionStatus = ({
         <>
           <Spinner className="h-3 w-3 text-muted-foreground" />
           <span className="text-muted-foreground">
-            재연결 중... ({retryCount}/{5})
+            {t('reconnecting', { count: retryCount, max: 5 })}
           </span>
         </>
       )}
@@ -47,10 +49,10 @@ const ConnectionStatus = ({
           <WifiOff className="h-4 w-4 text-muted-foreground" />
           <span className="text-muted-foreground">
             {disconnectReason === 'max-connections'
-              ? '동시 접속 초과'
+              ? t('maxConnections')
               : disconnectReason === 'pty-error'
-                ? '터미널 시작 실패'
-                : '연결 끊김'}
+                ? t('ptyError')
+                : t('disconnected')}
           </span>
           <Button
             variant="ghost"
@@ -59,7 +61,7 @@ const ConnectionStatus = ({
             onClick={onReconnect}
           >
             <RefreshCw className="h-3 w-3" />
-            다시 연결
+            {t('reconnect')}
           </Button>
         </>
       )}

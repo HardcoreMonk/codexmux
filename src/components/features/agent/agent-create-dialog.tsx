@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Plus } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,8 @@ interface IAgentCreateDialogProps {
 const NAME_PATTERN = /^\S+$/;
 
 const AgentCreateDialog = ({ open, onOpenChange, onCreated }: IAgentCreateDialogProps) => {
+  const t = useTranslations('agent');
+  const tc = useTranslations('common');
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [avatar, setAvatar] = useState('');
@@ -55,21 +58,21 @@ const AgentCreateDialog = ({ open, onOpenChange, onCreated }: IAgentCreateDialog
         return false;
       }
       if (value.length > 30) {
-        setNameError('30자 이내로 입력해주세요');
+        setNameError(t('nameMaxLength'));
         return false;
       }
       if (!NAME_PATTERN.test(value)) {
-        setNameError('공백은 사용할 수 없습니다');
+        setNameError(t('nameNoSpaces'));
         return false;
       }
       if (agents.some((a) => a.name === value)) {
-        setNameError('이미 사용 중인 이름입니다');
+        setNameError(t('nameDuplicate'));
         return false;
       }
       setNameError('');
       return true;
     },
-    [agents],
+    [agents, t],
   );
 
   const handleNameBlur = () => {
@@ -99,13 +102,13 @@ const AgentCreateDialog = ({ open, onOpenChange, onCreated }: IAgentCreateDialog
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>새 에이전트 만들기</DialogTitle>
-          <DialogDescription>에이전트 이름과 역할을 설정하세요</DialogDescription>
+          <DialogTitle>{t('createTitle')}</DialogTitle>
+          <DialogDescription>{t('createDescription')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium">아바타</Label>
+            <Label className="text-sm font-medium">{t('labelAvatar')}</Label>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -133,7 +136,7 @@ const AgentCreateDialog = ({ open, onOpenChange, onCreated }: IAgentCreateDialog
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium">이름</Label>
+            <Label className="text-sm font-medium">{t('labelName')}</Label>
             <Input
               value={name}
               onChange={(e) => {
@@ -151,11 +154,11 @@ const AgentCreateDialog = ({ open, onOpenChange, onCreated }: IAgentCreateDialog
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium">역할</Label>
+            <Label className="text-sm font-medium">{t('labelRole')}</Label>
             <Input
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              placeholder="백엔드 개발 전담"
+              placeholder={t('backendRolePlaceholder')}
               maxLength={100}
             />
           </div>
@@ -164,18 +167,18 @@ const AgentCreateDialog = ({ open, onOpenChange, onCreated }: IAgentCreateDialog
 
         <DialogFooter>
           <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isCreating}>
-            취소
+            {tc('cancel')}
           </Button>
           <Button onClick={handleSubmit} disabled={!canSubmit}>
             {isCreating ? (
               <>
                 <Spinner className="h-3 w-3" />
-                만드는 중
+                {t('creating')}
               </>
             ) : (
               <>
                 <Plus className="h-3.5 w-3.5" />
-                만들기
+                {tc('create')}
               </>
             )}
           </Button>

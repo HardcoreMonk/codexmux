@@ -238,7 +238,7 @@ export const generateDailyReport = async (date: string, force = false): Promise<
   if (sessions.length === 0) {
     const empty: IDailyReportDay = {
       date,
-      brief: '활동 내역이 없습니다.',
+      brief: 'No activity recorded.',
       detail: '',
       generatedAt: new Date().toISOString(),
     };
