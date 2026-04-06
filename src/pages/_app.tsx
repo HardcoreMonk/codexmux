@@ -5,6 +5,7 @@ import type { ReactElement, ReactNode } from "react";
 import { useEffect } from "react";
 import type { NextPage } from "next";
 import type { AppProps } from "next/app";
+import Head from "next/head";
 import { ThemeProvider, useTheme } from "next-themes";
 import { Toaster } from "sonner";
 import useTerminalTheme from "@/hooks/use-terminal-theme";
@@ -64,6 +65,9 @@ export default function App({ Component, pageProps }: TAppPropsWithLayout) {
 
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+      </Head>
       <main className="font-sans antialiased">
         <ElectronTitlebar />
         {getLayout(<Component {...pageProps} />)}
