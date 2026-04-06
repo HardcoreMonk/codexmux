@@ -79,7 +79,7 @@ const ReportsPage = () => {
       <div className="mx-auto max-w-content px-4 py-6">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-ui-purple" />
+            <FileText className="h-5 w-5 text-claude-active" />
             <h1 className="text-base font-semibold">{t('title')}</h1>
           </div>
           <div className="flex items-center gap-2">

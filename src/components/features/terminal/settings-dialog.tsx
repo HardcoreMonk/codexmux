@@ -149,7 +149,7 @@ const CSS_VARIABLE_GROUPS = [
   },
   {
     label: 'Semantic',
-    vars: ['--positive', '--negative', '--accent-color'],
+    vars: ['--positive', '--negative', '--accent-color', '--brand', '--focus-indicator', '--claude-active'],
   },
 ] as const;
 
@@ -514,7 +514,7 @@ const AgentTab = () => {
             <Label htmlFor="agent-enabled" className="text-sm font-medium">
               {t('enableMenu')}
             </Label>
-            <span className="rounded-full bg-ui-purple/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ui-purple">
+            <span className="rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand">
               Beta
             </span>
           </div>

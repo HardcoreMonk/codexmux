@@ -158,7 +158,7 @@ const ChatInput = ({ agentId, onSend, agentStatus, isSending }: IChatInputProps)
           size="sm"
           className={cn(
             'h-7 w-7 shrink-0 p-0 text-muted-foreground hover:text-foreground',
-            hasValue && !isSendDisabled && 'text-ui-purple',
+            hasValue && !isSendDisabled && 'text-claude-active',
             isSendDisabled && 'opacity-30',
           )}
           onClick={handleSubmit}

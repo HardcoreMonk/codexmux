@@ -119,7 +119,7 @@ const MobileTerminalToolbar = ({ sendStdin, terminalConnected }: IMobileTerminal
           className={cn(
             'flex-1 resize-none rounded-md border px-3 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground',
             ctrlActive || shiftActive
-              ? 'border-ui-purple bg-ui-purple/10'
+              ? 'border-claude-active bg-claude-active/10'
               : 'border-border bg-black/5 focus:border-ring dark:bg-white/5',
           )}
           style={{
@@ -133,7 +133,7 @@ const MobileTerminalToolbar = ({ sendStdin, terminalConnected }: IMobileTerminal
           size="sm"
           className={cn(
             'h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-foreground',
-            value.trim() && 'text-ui-purple',
+            value.trim() && 'text-claude-active',
           )}
           onClick={handleSend}
           aria-label={t('send')}
@@ -152,7 +152,7 @@ const MobileTerminalToolbar = ({ sendStdin, terminalConnected }: IMobileTerminal
             className={cn(
               'shrink-0 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
               (key.value === CTRL_TOGGLE && ctrlActive) || (key.value === SHIFT_TOGGLE && shiftActive)
-                ? 'border-ui-purple bg-ui-purple/20 text-ui-purple'
+                ? 'border-claude-active bg-claude-active/20 text-claude-active'
                 : 'border-border bg-muted/50 text-muted-foreground active:bg-muted',
             )}
             onClick={() => handleKeyButton(key)}

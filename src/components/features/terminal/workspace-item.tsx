@@ -110,7 +110,7 @@ const WorkspaceItem = ({
           'relative flex cursor-pointer flex-col justify-center border-l-2 px-3 py-2 transition-colors duration-75',
           'overflow-hidden',
           isActive
-            ? 'border-l-ui-purple bg-accent text-foreground'
+            ? 'border-l-focus-indicator bg-accent text-foreground'
             : 'border-l-transparent text-muted-foreground hover:bg-sidebar-accent',
         )}
         style={{

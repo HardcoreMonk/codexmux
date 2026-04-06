@@ -16,7 +16,7 @@ const StatusIcon = ({ status }: { status: TTaskStatus }) => {
   if (status === 'in_progress') {
     return (
       <span className="flex h-[14px] w-[14px] items-center justify-center">
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ui-purple" />
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-claude-active" />
       </span>
     );
   }
@@ -61,7 +61,7 @@ const TaskChecklist = ({ tasks, cliState }: ITaskChecklistProps) => {
   const borderColor = allCompleted
     ? 'border-positive'
     : hasInProgress
-      ? 'border-ui-purple'
+      ? 'border-claude-active'
       : 'border-muted-foreground/40';
 
   if (dismissed) return null;
@@ -85,7 +85,7 @@ const TaskChecklist = ({ tasks, cliState }: ITaskChecklistProps) => {
           {allCompleted ? (
             <CheckCircle2 size={14} className="shrink-0 text-positive" />
           ) : (
-            <ListChecks size={14} className="shrink-0 text-ui-purple" />
+            <ListChecks size={14} className="shrink-0 text-claude-active" />
           )}
           <span
             className="text-xs leading-none font-medium tabular-nums"

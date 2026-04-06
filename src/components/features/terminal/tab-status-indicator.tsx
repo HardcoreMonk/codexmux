@@ -32,7 +32,7 @@ const TabStatusIndicator = ({ tabId, panelType }: ITabStatusIndicatorProps) => {
         <Spinner className="h-2.5 w-2.5 text-muted-foreground" />
       ) : status === 'ready-for-review' || status === 'needs-input' ? (
         <span
-          className="h-2 w-2 shrink-0 rounded-full bg-ui-purple animate-pulse"
+          className="h-2 w-2 shrink-0 rounded-full bg-claude-active animate-pulse"
           aria-hidden="true"
         />
       ) : null}

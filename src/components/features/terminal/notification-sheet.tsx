@@ -109,14 +109,14 @@ const NotificationItem = ({
       className={cn(
         'flex items-start gap-3 rounded-md border px-3 py-2.5 transition-colors',
         isActiveTab
-          ? 'border-ui-purple/30 bg-ui-purple/5'
+          ? 'border-claude-active/30 bg-claude-active/5'
           : 'border-border/50 bg-muted/30 hover:bg-muted/50 cursor-pointer',
       )}
       onClick={isActiveTab ? undefined : () => onNavigate?.(item.workspaceId, item.tabId)}
     >
       <span className="mt-1 shrink-0">
         {showActions ? (
-          <span className="block h-2 w-2 rounded-full bg-ui-purple" />
+          <span className="block h-2 w-2 rounded-full bg-claude-active" />
         ) : (
           <Spinner className="h-3 w-3 text-muted-foreground" />
         )}

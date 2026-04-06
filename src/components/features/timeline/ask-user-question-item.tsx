@@ -47,8 +47,8 @@ const AskUserQuestionItem = ({ entry, sessionName }: IAskUserQuestionItemProps) 
 
   return (
     <div className="animate-in fade-in duration-150">
-      <div className="rounded-lg border border-ui-purple/20 bg-ui-purple/5 px-4 py-3">
-        <div className="mb-2.5 flex items-center gap-2 text-xs font-medium text-ui-purple">
+      <div className="rounded-lg border border-claude-active/20 bg-claude-active/5 px-4 py-3">
+        <div className="mb-2.5 flex items-center gap-2 text-xs font-medium text-claude-active">
           <MessageCircleQuestion size={14} />
           <span>{question.header}</span>
         </div>
@@ -72,18 +72,18 @@ const AskUserQuestionItem = ({ entry, sessionName }: IAskUserQuestionItemProps) 
                 className={cn(
                   'flex items-start gap-2.5 rounded-md border px-3 py-2 text-left text-sm transition-colors',
                   isSelected
-                    ? 'border-ui-purple/40 bg-ui-purple/10'
+                    ? 'border-claude-active/40 bg-claude-active/10'
                     : dimmed
                       ? 'border-border/30 opacity-50'
                       : 'border-border/50',
-                  isSelectable && 'cursor-pointer hover:border-ui-purple/30 hover:bg-ui-purple/5',
+                  isSelectable && 'cursor-pointer hover:border-claude-active/30 hover:bg-claude-active/5',
                 )}
               >
                 <span
                   className={cn(
                     'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs font-medium',
                     isSelected
-                      ? 'bg-ui-purple text-white'
+                      ? 'bg-claude-active text-white'
                       : 'bg-muted text-muted-foreground',
                   )}
                 >

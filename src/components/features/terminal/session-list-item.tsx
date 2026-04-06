@@ -64,9 +64,9 @@ const SessionListItem = ({
     <button
       type="button"
       className={cn(
-        'w-full cursor-pointer border-b border-border/50 py-3 pl-1 pr-4 text-left transition-colors hover:bg-ui-purple/5',
+        'w-full cursor-pointer border-b border-border/50 py-3 pl-1 pr-4 text-left transition-colors hover:bg-claude-active/5',
         isDisabled && !isResuming && 'pointer-events-none opacity-50',
-        isResuming && 'bg-ui-purple/5',
+        isResuming && 'bg-claude-active/5',
       )}
       onClick={() => onSelect(session.sessionId)}
       onKeyDown={handleArrowNavigation}
@@ -78,7 +78,7 @@ const SessionListItem = ({
           {isResuming ? (
             <Loader2
               size={14}
-              className="shrink-0 animate-spin text-ui-purple"
+              className="shrink-0 animate-spin text-claude-active"
             />
           ) : (
             <span className="inline-block h-1.5 w-1.5 shrink-0" />

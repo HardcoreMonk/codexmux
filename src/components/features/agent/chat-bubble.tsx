@@ -23,7 +23,7 @@ const agentTypeIcons: Record<string, React.ReactNode> = {
   question: <HelpCircle className="h-3 w-3 text-ui-amber" />,
   done: <CheckCircle2 className="h-3 w-3 text-positive" />,
   error: <AlertCircle className="h-3 w-3 text-negative" />,
-  approval: <ShieldQuestion className="h-3 w-3 text-ui-purple" />,
+  approval: <ShieldQuestion className="h-3 w-3 text-claude-active" />,
   activity: <Activity className="h-3 w-3 text-muted-foreground/60" />,
 };
 

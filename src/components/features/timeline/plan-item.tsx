@@ -95,14 +95,14 @@ const PlanItem = ({ entry, sessionName }: IPlanItemProps) => {
   return (
     <div className="animate-in fade-in duration-150">
       {isPending ? (
-        <div className="rounded-lg border border-ui-purple/20 bg-ui-purple/5 px-4 py-3">
-          <div className="mb-2.5 flex items-center gap-2 text-xs font-medium text-ui-purple">
+        <div className="rounded-lg border border-claude-active/20 bg-claude-active/5 px-4 py-3">
+          <div className="mb-2.5 flex items-center gap-2 text-xs font-medium text-claude-active">
             <ClipboardList size={14} />
             <span>{t('planPendingLabel')}</span>
             <button
               type="button"
               onClick={() => setOpen(true)}
-              className="ml-auto flex items-center gap-1 rounded-md border border-ui-purple/30 bg-ui-purple/10 px-2 py-0.5 text-ui-purple transition-colors hover:bg-ui-purple/20"
+              className="ml-auto flex items-center gap-1 rounded-md border border-claude-active/30 bg-claude-active/10 px-2 py-0.5 text-claude-active transition-colors hover:bg-claude-active/20"
             >
               <Eye size={12} />
               <span>{t('planViewDetail')}</span>
@@ -126,18 +126,18 @@ const PlanItem = ({ entry, sessionName }: IPlanItemProps) => {
                     className={cn(
                       'flex items-start gap-2.5 rounded-md border px-3 py-2 text-left text-sm transition-colors',
                       isSelected
-                        ? 'border-ui-purple/40 bg-ui-purple/10'
+                        ? 'border-claude-active/40 bg-claude-active/10'
                         : dimmed
                           ? 'border-border/30 opacity-50'
                           : 'border-border/50',
-                      isSelectable && 'cursor-pointer hover:border-ui-purple/30 hover:bg-ui-purple/5',
+                      isSelectable && 'cursor-pointer hover:border-claude-active/30 hover:bg-claude-active/5',
                     )}
                   >
                     <span
                       className={cn(
                         'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs font-medium',
                         isSelected
-                          ? 'bg-ui-purple text-white'
+                          ? 'bg-claude-active text-white'
                           : 'bg-muted text-muted-foreground',
                       )}
                     >
@@ -158,7 +158,7 @@ const PlanItem = ({ entry, sessionName }: IPlanItemProps) => {
             <div className="mb-2.5 flex flex-col gap-1 text-xs text-muted-foreground">
               {entry.allowedPrompts.map((p, idx) => (
                 <div key={idx} className="flex items-center gap-2">
-                  <TerminalSquare size={11} className="shrink-0 text-ui-purple/50" />
+                  <TerminalSquare size={11} className="shrink-0 text-claude-active/50" />
                   <span className="truncate">{p.prompt}</span>
                 </div>
               ))}
@@ -178,10 +178,10 @@ const PlanItem = ({ entry, sessionName }: IPlanItemProps) => {
           onClick={() => setOpen(true)}
           className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-muted/50"
         >
-          <ClipboardList size={14} className="shrink-0 text-ui-purple" />
-          <span className="shrink-0 font-semibold uppercase text-ui-purple">Plan</span>
+          <ClipboardList size={14} className="shrink-0 text-claude-active" />
+          <span className="shrink-0 font-semibold uppercase text-claude-active">Plan</span>
           <span className="flex-1 truncate">{title}</span>
-          {isApproved && <Check size={12} className="shrink-0 text-ui-purple/60" />}
+          {isApproved && <Check size={12} className="shrink-0 text-claude-active/60" />}
           <Eye size={12} className="shrink-0 opacity-0 transition-opacity group-hover:opacity-60" />
         </button>
       )}

@@ -90,6 +90,9 @@
   --positive: var(--ui-teal);
   --negative: var(--ui-red);
   --accent-color: var(--ui-blue);
+  --brand: var(--ui-purple);
+  --focus-indicator: var(--ui-purple);
+  --claude-active: var(--ui-purple);
 }
 
 .dark {
@@ -142,6 +145,9 @@
   --positive: var(--ui-teal);
   --negative: var(--ui-red);
   --accent-color: var(--ui-blue);
+  --brand: var(--ui-purple);
+  --focus-indicator: var(--ui-purple);
+  --claude-active: var(--ui-purple);
 }
 
 @theme inline {
@@ -195,6 +201,9 @@
   --color-positive: var(--positive);
   --color-negative: var(--negative);
   --color-accent-color: var(--accent-color);
+  --color-brand: var(--brand);
+  --color-focus-indicator: var(--focus-indicator);
+  --color-claude-active: var(--claude-active);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -250,7 +259,7 @@ body {
 
 .animate-shimmer {
   display: inline-block;
-  background: linear-gradient(90deg, var(--color-ui-purple) calc(50% - 4em), var(--color-foreground) 50%, var(--color-ui-purple) calc(50% + 4em)) no-repeat;
+  background: linear-gradient(90deg, var(--color-brand) calc(50% - 4em), var(--color-foreground) 50%, var(--color-brand) calc(50% + 4em)) no-repeat;
   background-size: 400% 200%;
   -webkit-background-clip: text;
   background-clip: text;

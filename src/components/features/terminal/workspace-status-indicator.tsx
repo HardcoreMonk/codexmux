@@ -27,7 +27,7 @@ const DotByStatus = ({ status, panelType, terminalStatus, process }: { status: T
     if (status === 'busy') {
       inner = <Spinner className="h-2 w-2 text-muted-foreground" />;
     } else if (status === 'ready-for-review' || status === 'needs-input') {
-      inner = <span className="h-2 w-2 rounded-full bg-ui-purple animate-pulse" aria-hidden="true" />;
+      inner = <span className="h-2 w-2 rounded-full bg-claude-active animate-pulse" aria-hidden="true" />;
     } else {
       inner = <span className="h-2 w-2 rounded-full border border-muted-foreground/40" aria-hidden="true" />;
     }

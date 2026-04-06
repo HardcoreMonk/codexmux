@@ -384,10 +384,10 @@ const Sidebar = () => {
                 opacity: fadingOutIds.has(ws.id) ? 0 : undefined,
                 transition: 'opacity 150ms ease-out',
                 borderTop: dropIndex === i && dragIndex !== null && dragIndex > i
-                  ? '2px solid var(--ui-purple)'
+                  ? '2px solid var(--focus-indicator)'
                   : undefined,
                 borderBottom: dropIndex === i && dragIndex !== null && dragIndex < i
-                  ? '2px solid var(--ui-purple)'
+                  ? '2px solid var(--focus-indicator)'
                   : undefined,
               }}
             >

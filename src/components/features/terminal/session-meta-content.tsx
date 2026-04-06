@@ -298,7 +298,7 @@ export const MetaDetail = ({
                 </span>
               )}
               {gitStatus.behind > 0 && (
-                <span className="flex items-center gap-1 font-mono text-xs text-ui-purple">
+                <span className="flex items-center gap-1 font-mono text-xs text-claude-active">
                   <ArrowDown size={11} />
                   {gitStatus.behind} behind
                 </span>

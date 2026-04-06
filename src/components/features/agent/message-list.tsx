@@ -31,8 +31,8 @@ const SkeletonMessages = () => (
   <div className="flex flex-col gap-4 p-4">
     {[48, 36, 40].map((w, i) => (
       <div key={i} className="flex flex-col gap-2">
-        <div className="h-4 animate-pulse rounded bg-ui-purple/20" style={{ width: `${w}%` }} />
-        <div className="h-4 animate-pulse rounded bg-ui-purple/20" style={{ width: `${w - 10}%` }} />
+        <div className="h-4 animate-pulse rounded bg-claude-active/20" style={{ width: `${w}%` }} />
+        <div className="h-4 animate-pulse rounded bg-claude-active/20" style={{ width: `${w - 10}%` }} />
       </div>
     ))}
   </div>
@@ -263,7 +263,7 @@ const MessageList = ({
 
             {agentStatus === 'working' && lastActivity && (
               <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
-                <Spinner size={10} className="text-ui-purple" />
+                <Spinner size={10} className="text-claude-active" />
                 <span>{lastActivity}</span>
               </div>
             )}

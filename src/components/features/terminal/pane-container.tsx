@@ -680,7 +680,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
       className={cn(
         'flex h-full flex-col overflow-hidden',
         paneCount > 1 && 'border',
-        paneCount > 1 && isFocused ? 'border-ui-purple' : 'border-transparent',
+        paneCount > 1 && isFocused ? 'border-focus-indicator' : 'border-transparent',
       )}
       style={{
         opacity: !mounted ? 0 : undefined,
