@@ -19,9 +19,14 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  getStatusManager().poll().catch((err) => {
-    log.error({ err }, 'Poll trigger failed');
-  });
+  const { event, session } = req.body ?? {};
+  if (typeof event === 'string' && event !== 'poll' && typeof session === 'string' && session) {
+    getStatusManager().updateTabFromHook(session, event);
+  } else {
+    getStatusManager().poll().catch((err) => {
+      log.error({ err }, 'Poll trigger failed');
+    });
+  }
 
   return res.status(204).end();
 };

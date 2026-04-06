@@ -25,6 +25,7 @@ const STALE_MS_INTERRUPTED = 20_000;
 const STALE_MS_AWAITING_API = 90_000;
 const TERMINAL_OUTPUT_STALE_MS = 5_000;
 const WINDOW_ACTIVITY_STALE_MS = 10_000;
+const HOOK_GRACE_MS = 15_000;
 
 
 interface IJsonlIdleCache {
@@ -138,6 +139,7 @@ const g = globalThis as unknown as { __ptStatusManager?: StatusManager };
 
 class StatusManager {
   private tabs = new Map<string, ITabStatusEntry>();
+  private hookUpdatedAt = new Map<string, number>();
   private pollingTimer: ReturnType<typeof setInterval> | null = null;
   private currentInterval = 0;
   private clients = new Set<WebSocket>();
@@ -283,7 +285,11 @@ class StatusManager {
         const paneInfo = panesInfo.get(tab.sessionName);
 
         const prevCliState = existing?.cliState;
-        const newCliState = await this.detectTabCliState(tab.sessionName, paneInfo);
+        const hookTs = this.hookUpdatedAt.get(tab.id);
+        const hookRecent = hookTs !== undefined && Date.now() - hookTs < HOOK_GRACE_MS;
+        const newCliState = hookRecent && existing
+          ? existing.cliState
+          : await this.detectTabCliState(tab.sessionName, paneInfo);
         const { terminalStatus, listeningPorts } = tab.panelType === 'claude-code'
           ? { terminalStatus: 'idle' as const, listeningPorts: [] as number[] }
           : await this.detectTerminalStatus(paneInfo);
@@ -333,9 +339,7 @@ class StatusManager {
 
         if (cliChanged) {
           const promoted = prevCliState === 'busy' && newCliState === 'idle';
-          existing.cliState = promoted ? 'ready-for-review' : newCliState;
-          existing.readyForReviewAt = promoted ? Date.now() : null;
-          existing.busySince = newCliState === 'busy' && prevCliState !== 'busy' ? Date.now() : (newCliState !== 'busy' ? null : existing.busySince);
+          this.applyCliState(existing, promoted ? 'ready-for-review' : newCliState);
         }
 
         if (cliChanged || terminalChanged || processChanged || messageChanged || panelTypeChanged) {
@@ -348,6 +352,7 @@ class StatusManager {
     for (const tabId of tabsBeforePoll) {
       if (!knownTabIds.has(tabId) && this.tabs.has(tabId)) {
         this.tabs.delete(tabId);
+        this.hookUpdatedAt.delete(tabId);
         this.broadcastRemove(tabId);
       }
     }
@@ -378,6 +383,15 @@ class StatusManager {
     return result;
   }
 
+  private applyCliState(entry: ITabStatusEntry, newState: TCliState): void {
+    const prevState = entry.cliState;
+    entry.cliState = newState;
+    entry.readyForReviewAt = newState === 'ready-for-review' ? Date.now() : null;
+    entry.busySince = newState === 'busy' && prevState !== 'busy'
+      ? Date.now()
+      : (newState !== 'busy' ? null : entry.busySince);
+  }
+
   updateTab(tabId: string, cliState: TCliState, exclude?: WebSocket): void {
     const entry = this.tabs.get(tabId);
     if (!entry) return;
@@ -387,9 +401,7 @@ class StatusManager {
     if (prevState === 'ready-for-review' && cliState === 'idle') return;
 
     const promoted = prevState === 'busy' && cliState === 'idle';
-    entry.cliState = promoted ? 'ready-for-review' : cliState;
-    entry.readyForReviewAt = promoted ? Date.now() : null;
-    entry.busySince = cliState === 'busy' && prevState !== 'busy' ? Date.now() : (cliState !== 'busy' ? null : entry.busySince);
+    this.applyCliState(entry, promoted ? 'ready-for-review' : cliState);
 
     this.persistToLayout(entry);
     this.broadcastUpdate(tabId, entry, exclude);
@@ -405,8 +417,51 @@ class StatusManager {
     this.broadcastUpdate(tabId, entry, exclude);
   }
 
+  private findTabIdBySession(tmuxSession: string): string | undefined {
+    for (const [tabId, entry] of this.tabs) {
+      if (entry.tmuxSession === tmuxSession) return tabId;
+    }
+    return undefined;
+  }
+
+  updateTabFromHook(tmuxSession: string, event: string): void {
+    const tabId = this.findTabIdBySession(tmuxSession);
+    if (!tabId) return;
+    const entry = this.tabs.get(tabId);
+    if (!entry) return;
+
+    const prevState = entry.cliState;
+    let newState: TCliState;
+
+    switch (event) {
+      case 'session-start':
+        newState = 'idle';
+        break;
+      case 'prompt-submit':
+        newState = 'busy';
+        break;
+      case 'notification':
+        newState = 'needs-input';
+        break;
+      case 'stop':
+        newState = prevState === 'busy' || prevState === 'needs-input' ? 'ready-for-review' : 'idle';
+        break;
+      default:
+        return;
+    }
+
+    if (prevState === newState) return;
+
+    this.hookUpdatedAt.set(tabId, Date.now());
+    this.applyCliState(entry, newState);
+
+    this.persistToLayout(entry);
+    this.broadcastUpdate(tabId, entry);
+  }
+
   removeTab(tabId: string): void {
     this.tabs.delete(tabId);
+    this.hookUpdatedAt.delete(tabId);
     this.broadcastRemove(tabId);
   }
 

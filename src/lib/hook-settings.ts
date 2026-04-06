@@ -13,39 +13,38 @@ const HOOK_SCRIPT = path.join(BASE_DIR, 'status-hook.sh');
 export const HOOK_SETTINGS_PATH = HOOKS_FILE;
 
 const HOOK_SCRIPT_CONTENT = `#!/bin/sh
+EVENT="\${1:-poll}"
 PORT_FILE="$HOME/.purplemux/port"
 [ -f "$PORT_FILE" ] || exit 0
 PORT=$(cat "$PORT_FILE")
-curl -s -X POST -o /dev/null "http://localhost:\${PORT}/api/status/hook" 2>/dev/null
+SESSION=$(tmux display-message -p '#{session_name}' 2>/dev/null) || SESSION=""
+curl -s -X POST -o /dev/null \
+  -H 'Content-Type: application/json' \
+  -d "{\\"event\\":\\"\${EVENT}\\",\\"session\\":\\"\${SESSION}\\"}" \
+  "http://localhost:\${PORT}/api/status/hook" 2>/dev/null
 exit 0
 `;
 
+const hookEntry = (event: string, timeout = 3) => [
+  {
+    matcher: '',
+    hooks: [
+      {
+        type: 'command',
+        command: `sh "${HOOK_SCRIPT}" ${event}`,
+        timeout,
+      },
+    ],
+  },
+];
+
 const buildHookSettings = () => ({
   hooks: {
-    Stop: [
-      {
-        matcher: '',
-        hooks: [
-          {
-            type: 'command',
-            command: `sh "${HOOK_SCRIPT}"`,
-            timeout: 3,
-          },
-        ],
-      },
-    ],
-    StopFailure: [
-      {
-        matcher: '',
-        hooks: [
-          {
-            type: 'command',
-            command: `sh "${HOOK_SCRIPT}"`,
-            timeout: 3,
-          },
-        ],
-      },
-    ],
+    SessionStart: hookEntry('session-start'),
+    UserPromptSubmit: hookEntry('prompt-submit'),
+    Notification: hookEntry('notification'),
+    Stop: hookEntry('stop'),
+    StopFailure: hookEntry('stop'),
   },
 });
 
