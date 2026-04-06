@@ -23,8 +23,8 @@ const BASE_DIR = path.join(os.homedir(), '.purplemux');
 const FILE_PATH = path.join(BASE_DIR, 'quick-prompts.json');
 
 const BUILTIN_PROMPTS: IQuickPrompt[] = [
-  { id: 'builtin-commit', name: '코드커밋', prompt: '/commit-commands:commit', enabled: true },
-  { id: 'builtin-simplify', name: '코드정리', prompt: '/simplify', enabled: true },
+  { id: 'builtin-commit', name: 'Commit', prompt: '/commit-commands:commit', enabled: true },
+  { id: 'builtin-simplify', name: 'Simplify', prompt: '/simplify', enabled: true },
 ];
 
 const migrateFromFlatArray = (arr: IQuickPrompt[]): IQuickPromptsFile => {

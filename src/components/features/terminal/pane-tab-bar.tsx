@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { X, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,8 @@ const PaneTabBar = ({
   onFocusPane,
   onRetry,
 }: IPaneTabBarProps) => {
+  const t = useTranslations('terminal');
+  const tc = useTranslations('common');
   const scrollRef = useRef<HTMLDivElement>(null);
   const sortedTabs = useMemo(() => [...tabs].sort((a, b) => a.order - b.order), [tabs]);
 
@@ -137,7 +140,7 @@ const PaneTabBar = ({
           className="h-5 px-2 text-xs text-foreground hover:text-foreground"
           onClick={onRetry}
         >
-          재시도
+          {tc('retry')}
         </Button>
       </div>
     );
@@ -235,11 +238,11 @@ const PaneTabBar = ({
                     e.stopPropagation();
                     onClosePane();
                   }}
-                  aria-label="탭 모두 닫기"
+                  aria-label={t('closeAllTabs')}
                 >
                   <X className="h-3.5 w-3.5" />
                 </TooltipTrigger>
-                <TooltipContent side="bottom">탭 모두 닫기</TooltipContent>
+                <TooltipContent side="bottom">{t('closeAllTabs')}</TooltipContent>
               </Tooltip>
             </div>
           )}

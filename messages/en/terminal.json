@@ -32,5 +32,6 @@
   "inputPlaceholder": "Type a message...",
   "inputAriaLabel": "Claude Code message input",
   "interruptAriaLabel": "Interrupt task",
-  "sendAriaLabel": "Send message"
+  "sendAriaLabel": "Send message",
+  "closeAllTabs": "Close all tabs"
 }

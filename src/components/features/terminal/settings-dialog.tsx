@@ -247,11 +247,11 @@ const EditorTab = () => {
           })}
         </p>
         <div className="rounded-md bg-muted p-3 font-mono text-xs leading-relaxed">
-          <p className="text-muted-foreground/60"># macOS 설치</p>
+          <p className="text-muted-foreground/60"># Install on macOS</p>
           <p>brew install code-server</p>
-          <p className="mt-2 text-muted-foreground/60"># 실행</p>
+          <p className="mt-2 text-muted-foreground/60"># Run</p>
           <p>code-server --port 8080</p>
-          <p className="mt-2 text-muted-foreground/60"># Tailscale로 외부 접속 (선택)</p>
+          <p className="mt-2 text-muted-foreground/60"># External access via Tailscale (optional)</p>
           <p>tailscale serve --bg --https=8443 http://localhost:8080</p>
         </div>
       </div>
