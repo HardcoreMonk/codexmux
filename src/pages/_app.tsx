@@ -152,7 +152,7 @@ export default function App({ Component, pageProps }: TAppPropsWithLayout) {
   const getLayout = Component.getLayout ?? ((page) => page);
 
   return (
-    <NextIntlClientProvider locale={locale} messages={messages[locale] ?? messages.en}>
+    <NextIntlClientProvider locale={locale} timeZone={Intl.DateTimeFormat().resolvedOptions().timeZone} messages={messages[locale] ?? messages.en}>
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
         <Head>
           <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
