@@ -16,7 +16,8 @@ tmux pane에서 Claude CLI 프로세스가 실행 중인지 판별하는 상태.
 | `starting` | Claude 프로세스 감지됨, 세션 미준비 (PID 파일/JSONL 아직 없음) |
 | `running` | Claude 프로세스 실행 중 + 세션 확인됨 |
 | `not-running` | Claude 프로세스 없음 |
-| `not-installed` | Claude CLI 미설치 (`~/.claude` 없음) |
+| `not-initialized` | Claude CLI 설치됨, `~/.claude` 미생성 (한 번도 실행하지 않은 상태) |
+| `not-installed` | Claude CLI 미설치 (바이너리 없음) |
 
 `starting`과 `running`의 차이: `starting`은 프로세스 기반 감지(`isClaudeRunning`)로만 확인된 상태이고, `running`은 타임라인 WS에서 세션(`PID 파일 + sessionId`)까지 확인된 상태이다.
 
@@ -81,7 +82,7 @@ Claude 패널에서 어떤 화면을 보여줄지 결정하는 파생 상태.
 | `restarting` | 새 대화 생성 중 | `isRestarting === true` |
 | `not-installed` | Claude CLI 미설치 | `claudeStatus === 'not-installed'` |
 | `timeline` | 타임라인 표시 | `claudeStatus === 'running' && !isTimelineLoading` |
-| `inactive` | Claude 미실행 | 위 어디에도 해당하지 않음 |
+| `inactive` | Claude 미실행 | 위 어디에도 해당하지 않음 (`not-initialized`, `not-running` 포함) |
 
 `inactive`일 때 컴포넌트에서 `sessions.length`로 세션 목록/빈 화면을 분기한다.
 

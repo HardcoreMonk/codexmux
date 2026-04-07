@@ -59,4 +59,8 @@ export interface IStatusCliStateMessage {
   cliState: TCliState;
 }
 
-export type TStatusClientMessage = IStatusTabDismissedMessage | IStatusCliStateMessage;
+export interface IStatusRequestSyncMessage {
+  type: 'status:request-sync';
+}
+
+export type TStatusClientMessage = IStatusTabDismissedMessage | IStatusCliStateMessage | IStatusRequestSyncMessage;

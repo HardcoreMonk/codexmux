@@ -9,6 +9,7 @@ import useWorkspaceStore from '@/hooks/use-workspace-store';
 import useKeyboardShortcuts from '@/hooks/use-keyboard-shortcuts';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import type { ITabMetadata } from '@/hooks/use-tab-metadata-store';
+import { requestSync } from '@/hooks/use-claude-status';
 import PaneLayout from '@/components/features/terminal/pane-layout';
 import ContentHeader from '@/components/features/terminal/content-header';
 import useSidebarActions from '@/hooks/use-sidebar-actions';
@@ -57,6 +58,7 @@ const TerminalPage = () => {
       }
     }
     useTabMetadataStore.getState().hydrate(metadata);
+    requestSync();
   }, [layoutUpdatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cleanup stale tab metadata

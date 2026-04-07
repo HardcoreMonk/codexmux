@@ -5,12 +5,14 @@ import os from 'os';
 import { execFile as execFileCb } from 'child_process';
 import { promisify } from 'util';
 import type { ISessionInfo } from '@/types/timeline';
+import { shellPath } from '@/lib/preflight';
 
 const execFile = promisify(execFileCb);
 
 const CLAUDE_DIR = path.join(os.homedir(), '.claude');
 const SESSIONS_DIR = path.join(CLAUDE_DIR, 'sessions');
 const PROJECTS_DIR = path.join(CLAUDE_DIR, 'projects');
+const CLAUDE_KNOWN_PATHS = [path.join(os.homedir(), '.local', 'bin', 'claude')];
 const PID_POLL_INTERVAL = 10_000;
 const SESSION_DIR_DEBOUNCE = 200;
 const INSTALL_CHECK_INTERVAL = 60_000;
@@ -91,6 +93,23 @@ const findJsonlPath = async (projectDir: string, sessionId: string): Promise<str
   }
 };
 
+const isClaudeInstalled = async (): Promise<boolean> => {
+  try {
+    await execFile('claude', ['--version'], { timeout: 5000, env: { ...process.env, PATH: shellPath } });
+    return true;
+  } catch {
+    for (const p of CLAUDE_KNOWN_PATHS) {
+      try {
+        await fs.access(p);
+        return true;
+      } catch {
+        // not found
+      }
+    }
+    return false;
+  }
+};
+
 export const isClaudeRunning = async (panePid: number, preloadedChildPids?: number[]): Promise<boolean> => {
   const childPids = preloadedChildPids ?? await getChildPids(panePid);
   for (const pid of childPids) {
@@ -108,7 +127,9 @@ export const detectActiveSession = async (panePid: number, preloadedChildPids?: 
   try {
     await fs.access(CLAUDE_DIR);
   } catch {
-    return { status: 'not-installed', sessionId: null, jsonlPath: null, pid: null, startedAt: null, cwd: null };
+    const installed = await isClaudeInstalled();
+    const status = installed ? 'not-initialized' : 'not-installed';
+    return { status, sessionId: null, jsonlPath: null, pid: null, startedAt: null, cwd: null };
   }
 
   const childPids = preloadedChildPids ?? await getChildPids(panePid);

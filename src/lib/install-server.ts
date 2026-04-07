@@ -17,6 +17,8 @@ const INSTALL_COMMANDS: Record<string, string> = Object.freeze({
   'tmux-upgrade': 'brew upgrade tmux',
   git: 'brew install git',
   claude: 'curl -fsSL https://claude.ai/install.sh | bash',
+  'claude-path': 'SHELL_NAME=$(basename "$SHELL"); if [ "$SHELL_NAME" = "bash" ]; then RC="$HOME/.bashrc"; elif [ "$SHELL_NAME" = "zsh" ]; then RC="$HOME/.zshrc"; else RC="$HOME/.profile"; fi; if grep -q "\\.local/bin" "$RC" 2>/dev/null; then echo "~/.local/bin is already in PATH ($RC)"; else echo \'export PATH="$HOME/.local/bin:$PATH"\' >> "$RC" && echo "Added ~/.local/bin to PATH in $RC"; fi; export PATH="$HOME/.local/bin:$PATH"; echo ""; claude --version',
+  'claude-login': 'claude',
 });
 
 let activeConn: { ws: WebSocket; pty: pty.IPty } | null = null;

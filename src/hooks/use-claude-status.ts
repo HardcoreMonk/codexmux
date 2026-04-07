@@ -23,6 +23,12 @@ export const notifyCliState = (tabId: string, cliState: TCliState) => {
   }
 };
 
+export const requestSync = () => {
+  if (sharedWs?.readyState === WebSocket.OPEN) {
+    sharedWs.send(JSON.stringify({ type: 'status:request-sync' }));
+  }
+};
+
 const useClaudeStatus = () => {
   const retryCountRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

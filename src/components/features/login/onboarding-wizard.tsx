@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, Download, Eye, EyeOff, Lock, Loader2, RefreshCcw, Terminal, Bot, Sun, Moon, Monitor, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, Download, Eye, EyeOff, Lock, Loader2, LogIn, RefreshCcw, Terminal, Bot, Sun, Moon, Monitor, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,7 +21,7 @@ interface IToolStatus {
 interface IPreflightResult {
   tmux: IToolStatus & { compatible: boolean };
   git: IToolStatus;
-  claude: IToolStatus;
+  claude: IToolStatus & { binaryPath: string | null; loggedIn: boolean };
   brew: IToolStatus;
   clt: { installed: boolean };
 }
@@ -136,7 +136,7 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
       const res = await fetch('/api/auth/preflight');
       const data: IPreflightResult = await res.json();
       setPreflightStatus(data);
-      if (data.tmux.installed && data.tmux.compatible && data.git.installed && data.claude.installed) {
+      if (data.tmux.installed && data.tmux.compatible && data.git.installed && data.claude.installed && data.claude.loggedIn) {
         setStep('password');
       }
     } catch {
@@ -231,17 +231,51 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
               <Loader2 className="h-5 w-5 animate-spin" />
               <span className="text-sm">{t('checking')}</span>
             </div>
+          ) : preflightStatus && preflightStatus.tmux.installed && preflightStatus.tmux.compatible &&
+            preflightStatus.git.installed && preflightStatus.claude.installed &&
+            !preflightStatus.claude.loggedIn ? (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-muted-foreground">{t('claudeLoginDescription')}</p>
+              <div className="flex flex-col gap-2">
+                <Button
+                  size="lg"
+                  className="h-12 w-full"
+                  onClick={() => setInstallTarget({ command: 'claude-login', label: t('claudeLogin') })}
+                >
+                  <LogIn className="mr-1 h-4 w-4" />
+                  {t('claudeLogin')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="h-12 w-full"
+                  onClick={() => window.location.reload()}
+                >
+                  <RefreshCcw className="mr-1 h-4 w-4" />
+                  {tc('refresh')}
+                </Button>
+              </div>
+              {installTarget && (
+                <InstallDialog
+                  open
+                  onOpenChange={() => setInstallTarget(null)}
+                  command={installTarget.command}
+                  label={installTarget.label}
+                />
+              )}
+            </div>
           ) : preflightStatus && !(
             preflightStatus.tmux.installed && preflightStatus.tmux.compatible &&
             preflightStatus.git.installed &&
             preflightStatus.claude.installed
           ) ? (() => {
+            const claudeNeedsPath = !preflightStatus.claude.installed && !!preflightStatus.claude.binaryPath;
             const missingTools: { name: string; show: boolean }[] = [
               { name: 'Command Line Tools', show: !preflightStatus.clt.installed && !preflightStatus.brew.installed },
               { name: 'Homebrew', show: !preflightStatus.brew.installed },
               { name: 'tmux', show: !(preflightStatus.tmux.installed && preflightStatus.tmux.compatible) },
               { name: 'git', show: !preflightStatus.git.installed },
-              { name: 'Claude CLI', show: !preflightStatus.claude.installed },
+              { name: claudeNeedsPath ? t('claudePathMissing') : 'Claude CLI', show: !preflightStatus.claude.installed },
             ];
 
             const needsUpgrade = preflightStatus.tmux.installed && !preflightStatus.tmux.compatible;
@@ -254,6 +288,8 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
                 ? { command: needsUpgrade ? 'tmux-upgrade' : 'tmux-install', label: needsUpgrade ? t('upgradeTmux') : t('installTmux') }
               : !preflightStatus.git.installed
                 ? { command: 'git', label: t('installGit') }
+              : claudeNeedsPath
+                ? { command: 'claude-path', label: t('fixClaudePath') }
               : { command: 'claude', label: t('installClaude') };
 
             return (

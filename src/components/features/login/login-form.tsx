@@ -17,7 +17,7 @@ interface IToolStatus {
 interface IPreflightResult {
   tmux: IToolStatus & { compatible: boolean };
   git: IToolStatus;
-  claude: IToolStatus;
+  claude: IToolStatus & { binaryPath: string | null; loggedIn: boolean };
   brew: IToolStatus;
   clt: { installed: boolean };
 }
@@ -46,7 +46,9 @@ const getToolChecks = (status: IPreflightResult): IToolCheck[] => [
     name: 'claude',
     ok: status.claude.installed,
     version: status.claude.version,
-    install: 'npm install -g @anthropic-ai/claude-code',
+    install: status.claude.binaryPath
+      ? `echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc`
+      : 'curl -fsSL https://claude.ai/install.sh | bash',
   },
 ];
 

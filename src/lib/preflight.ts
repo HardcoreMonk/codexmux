@@ -1,5 +1,7 @@
 import { execFile as execFileCb, execFileSync } from 'child_process';
+import { access } from 'fs/promises';
 import os from 'os';
+import path from 'path';
 import { promisify } from 'util';
 
 const execFile = promisify(execFileCb);
@@ -29,7 +31,7 @@ interface IToolStatus {
 interface IPreflightResult {
   tmux: IToolStatus & { compatible: boolean };
   git: IToolStatus;
-  claude: IToolStatus;
+  claude: IToolStatus & { binaryPath: string | null; loggedIn: boolean };
   brew: IToolStatus;
   clt: { installed: boolean };
 }
@@ -50,6 +52,20 @@ const checkTool = async (
 const parseSemanticVersion = (stdout: string): string | null =>
   stdout.trim().match(/(\d+\.\d+[\d.]*)/)?.[1] ?? null;
 
+const CLAUDE_KNOWN_DIRS = [path.join(os.homedir(), '.local', 'bin')];
+
+const findClaudeBinary = async (): Promise<string | null> => {
+  for (const dir of CLAUDE_KNOWN_DIRS) {
+    try {
+      await access(path.join(dir, 'claude'));
+      return dir;
+    } catch {
+      // not found
+    }
+  }
+  return null;
+};
+
 const checkClt = async (): Promise<{ installed: boolean }> => {
   try {
     await execFile('xcode-select', ['-p'], { timeout: CMD_TIMEOUT });
@@ -69,13 +85,24 @@ export const getPreflightStatus = async (): Promise<IPreflightResult> => {
     checkClt(),
   ]);
 
+  const claudeBinaryPath = claude.installed ? null : await findClaudeBinary();
+  let claudeLoggedIn = false;
+  if (claude.installed || claudeBinaryPath) {
+    try {
+      await access(path.join(os.homedir(), '.claude'));
+      claudeLoggedIn = true;
+    } catch {
+      // not logged in yet
+    }
+  }
+
   return {
     tmux: {
       ...tmux,
       compatible: tmux.installed && tmux.version !== null && parseFloat(tmux.version) >= MIN_TMUX_VERSION,
     },
     git,
-    claude,
+    claude: { ...claude, binaryPath: claudeBinaryPath, loggedIn: claudeLoggedIn },
     brew,
     clt,
   };

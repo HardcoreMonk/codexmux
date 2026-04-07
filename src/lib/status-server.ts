@@ -30,6 +30,17 @@ export const handleStatusConnection = (ws: WebSocket) => {
           manager.updateTab(msg.tabId, msg.cliState, ws);
           break;
 
+        case 'status:request-sync': {
+          const sync: IStatusSyncMessage = {
+            type: 'status:sync',
+            tabs: manager.getAllForClient(),
+          };
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify(sync));
+          }
+          break;
+        }
+
         default:
           log.warn(`Unknown event: ${(msg as { type: string }).type}`);
       }

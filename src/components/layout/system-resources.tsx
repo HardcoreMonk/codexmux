@@ -8,7 +8,7 @@ const SystemResources = () => {
   if (!resources) return null;
 
   return (
-    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+    <div className="flex items-center gap-2 text-[9px] text-muted-foreground/60">
       <span className="tabular-nums">CPU {resources.cpu.toFixed(1)}%</span>
       <span className="tabular-nums">MEM {formatMB(resources.memory.used)}MB</span>
       <span className="tabular-nums">TMUX {resources.tmuxSessions}</span>
