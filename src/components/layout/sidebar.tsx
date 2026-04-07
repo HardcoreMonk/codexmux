@@ -42,6 +42,7 @@ import { useSelectWorkspace } from '@/hooks/use-sidebar-actions';
 import useSidebarItems from '@/hooks/use-sidebar-items';
 import useWebviewStore from '@/hooks/use-webview-store';
 import IconRenderer from '@/components/features/settings/icon-renderer';
+import SidebarRateLimits from '@/components/layout/sidebar-rate-limits';
 
 const MIN_WIDTH = 160;
 const MAX_WIDTH = 480;
@@ -423,6 +424,8 @@ const Sidebar = () => {
             <Plus className="h-3.5 w-3.5" />
             Workspace
           </button>
+
+          <SidebarRateLimits />
 
           <div className="flex items-center justify-between px-2 pb-2">
             <div className="flex items-center gap-0.5">

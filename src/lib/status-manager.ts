@@ -551,6 +551,7 @@ class StatusManager {
 
   shutdown(): void {
     this.stopPolling();
+    this.rateLimitsWatcher?.stop();
     for (const ws of this.clients) {
       if (ws.readyState === WebSocket.OPEN) {
         ws.close(1001, 'Server shutting down');

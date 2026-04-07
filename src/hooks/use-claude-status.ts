@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import useTabStore from '@/hooks/use-tab-store';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
+import useRateLimitsStore from '@/hooks/use-rate-limits-store';
 import { formatTabTitle } from '@/lib/tab-title';
 import type { TStatusServerMessage } from '@/types/status';
 import type { TCliState } from '@/types/timeline';
@@ -82,6 +83,10 @@ const useClaudeStatus = () => {
               if (msg.paneTitle) {
                 useTabMetadataStore.getState().setTitle(msg.tabId, formatTabTitle(msg.paneTitle));
               }
+              break;
+
+            case 'rate-limits:update':
+              useRateLimitsStore.getState().setData(msg.data);
               break;
           }
         } catch {
