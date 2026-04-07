@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, Download, Eye, EyeOff, Lock, Loader2, LogIn, RefreshCcw, Terminal, Bot, Sun, Moon, Monitor, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, Download, Eye, EyeOff, ListChecks, Lock, Loader2, LogIn, RefreshCcw, Terminal, Bot, Sun, Moon, Monitor, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -82,7 +82,7 @@ const StepIndicator = ({ current }: { current: TStep }) => {
 };
 
 const STEP_ICONS: Record<TStep, React.ReactNode> = {
-  preflight: <Terminal className="h-5 w-5" />,
+  preflight: <ListChecks className="h-5 w-5" />,
   password: <Lock className="h-5 w-5" />,
   appearance: <Sun className="h-5 w-5" />,
   theme: <Terminal className="h-5 w-5" />,
@@ -248,7 +248,7 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
               { name: 'Homebrew', show: !preflightStatus.brew.installed },
               { name: 'tmux', show: !(preflightStatus.tmux.installed && preflightStatus.tmux.compatible) },
               { name: 'git', show: !preflightStatus.git.installed },
-              { name: claudeNeedsPath ? t('claudePathMissing') : 'Claude CLI', show: !preflightStatus.claude.installed },
+              { name: claudeNeedsPath ? t('claudePathMissing') : 'Claude Code', show: !preflightStatus.claude.installed },
             ];
 
             const needsUpgrade = preflightStatus.tmux.installed && !preflightStatus.tmux.compatible;
