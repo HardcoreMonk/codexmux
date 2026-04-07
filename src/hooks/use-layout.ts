@@ -102,6 +102,27 @@ const applyLayout = (set: (s: Partial<ILayoutState>) => void, get: () => ILayout
   set({ layout: data, ...updateDerived(data, get().isSplitting) });
 };
 
+const applyLayoutPreserveFocus = (
+  set: (s: Partial<ILayoutState>) => void,
+  get: () => ILayoutState,
+  data: ILayoutData,
+) => {
+  const current = get().layout;
+  if (current) {
+    const panes = collectPanes(data.root);
+    if (current.activePaneId && panes.some((p) => p.id === current.activePaneId)) {
+      data.activePaneId = current.activePaneId;
+    }
+    for (const pane of panes) {
+      const localPane = findPane(current.root, pane.id);
+      if (localPane?.activeTabId && pane.tabs.some((t) => t.id === localPane.activeTabId)) {
+        pane.activeTabId = localPane.activeTabId;
+      }
+    }
+  }
+  set({ layout: data, ...updateDerived(data, get().isSplitting) });
+};
+
 const applyPaneUpdate = (
   set: (s: Partial<ILayoutState>) => void,
   get: () => ILayoutState,
@@ -306,7 +327,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
     set({ layout: { ...layout, activePaneId: paneId } });
 
     patchApi(wsQuery('/api/layout', workspaceId), { activePaneId: paneId }).then((data) => {
-      if (data) applyLayout(set, get, data);
+      if (data) applyLayoutPreserveFocus(set, get, data);
     });
   },
 
@@ -322,7 +343,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
     _ratioTimer = setTimeout(() => {
       _ratioTimer = null;
       patchApi(wsQuery('/api/layout', workspaceId), { ratioUpdate: { path, ratio } }).then((data) => {
-        if (data) applyLayout(set, get, data);
+        if (data) applyLayoutPreserveFocus(set, get, data);
       });
     }, 300);
   },
@@ -360,7 +381,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
     }).then(async (res) => {
       if (res.ok) {
         const data: ILayoutData = await res.json();
-        applyLayout(set, get, data);
+        applyLayoutPreserveFocus(set, get, data);
       } else {
         await get().fetchLayout(undefined, false);
       }
@@ -400,7 +421,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
         activeTabId: newTab.id,
       }));
 
-      get().fetchLayout(undefined, false);
+      get().fetchLayout();
       return newTab;
     } catch {
       toast.error('탭을 생성할 수 없습니다');
@@ -457,7 +478,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
 
     const { workspaceId } = get();
     patchApi(wsQuery(`/api/layout/pane/${paneId}`, workspaceId), { activeTabId: tabId }).then((data) => {
-      if (data) applyLayout(set, get, data);
+      if (data) applyLayoutPreserveFocus(set, get, data);
     });
   },
 
@@ -470,7 +491,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
     const { workspaceId } = get();
     const data = await patchApi(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`, workspaceId), { name });
     if (data) {
-      applyLayout(set, get, data);
+      applyLayoutPreserveFocus(set, get, data);
     } else {
       toast.error('탭 이름 변경에 실패했습니다');
     }
@@ -490,7 +511,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
 
     const { workspaceId } = get();
     patchApi(wsQuery(`/api/layout/pane/${paneId}/tabs/order`, workspaceId), { tabIds }).then((data) => {
-      if (data) applyLayout(set, get, data);
+      if (data) applyLayoutPreserveFocus(set, get, data);
     });
   },
 
@@ -509,7 +530,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
     const { workspaceId } = get();
 
     patchApi(wsQuery('/api/layout', workspaceId), { equalize: true }).then((data) => {
-      if (data) applyLayout(set, get, data);
+      if (data) applyLayoutPreserveFocus(set, get, data);
     });
   },
 
@@ -528,7 +549,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
 
     const { workspaceId } = get();
     patchApi(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`, workspaceId), { panelType }).then((data) => {
-      if (data) applyLayout(set, get, data);
+      if (data) applyLayoutPreserveFocus(set, get, data);
     });
   },
 
