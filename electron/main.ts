@@ -418,6 +418,22 @@ const createWindow = (url: string) => {
   });
 };
 
+// --- Splash (Loading) Screen ---
+
+const SPLASH_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#09090b;display:flex;align-items:center;justify-content:center;height:100vh;-webkit-app-region:drag}
+.loader{display:flex;flex-direction:column;align-items:center;gap:24px}
+.bar-track{width:200px;height:3px;background:#27272a;border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;width:40%;background:#7c3aed;border-radius:2px;animation:slide 1.2s ease-in-out infinite}
+.label{color:#71717a;font:13px -apple-system,BlinkMacSystemFont,sans-serif}
+@keyframes slide{0%{transform:translateX(-100%)}50%{transform:translateX(250%)}100%{transform:translateX(-100%)}}
+</style></head><body><div class="loader"><div class="bar-track"><div class="bar-fill"></div></div><div class="label">초기화 중…</div></div></body></html>`;
+
+const loadSplash = (win: BrowserWindow) => {
+  win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(SPLASH_HTML)}`);
+};
+
 // --- Bootstrap ---
 
 const bootstrap = async () => {
@@ -440,8 +456,11 @@ const bootstrap = async () => {
     createWindow(serverConfig.remoteUrl);
   } else {
     serverConfig = { mode: 'local' };
+    // 윈도우를 먼저 띄우고 로딩 화면을 보여준 뒤, 서버가 준비되면 전환
+    createWindow('about:blank');
+    loadSplash(mainWindow!);
     const port = await startLocalServer();
-    createWindow(`http://localhost:${port}`);
+    mainWindow?.loadURL(`http://localhost:${port}`);
   }
 
   updateMenu();

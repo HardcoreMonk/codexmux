@@ -100,7 +100,7 @@ const PaneTabBar = ({
     const el = scrollRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
-      const delta = e.deltaY || e.deltaX;
+      const delta = e.deltaX + e.deltaY;
       if (delta === 0) return;
       e.preventDefault();
       el.scrollLeft += delta;

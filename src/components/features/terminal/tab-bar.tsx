@@ -82,7 +82,7 @@ const TabBar = ({
   const handleWheel = (e: React.WheelEvent) => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollLeft += e.deltaY || e.deltaX;
+    el.scrollLeft += e.deltaX + e.deltaY;
     checkOverflow();
   };
 
