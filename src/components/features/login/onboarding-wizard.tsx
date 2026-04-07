@@ -247,7 +247,7 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
               { name: 'Command Line Tools', show: !preflightStatus.clt.installed && !preflightStatus.brew.installed },
               { name: 'Homebrew', show: !preflightStatus.brew.installed },
               { name: 'tmux', show: !(preflightStatus.tmux.installed && preflightStatus.tmux.compatible) },
-              { name: 'git', show: !preflightStatus.git.installed },
+              { name: 'Git', show: !preflightStatus.git.installed },
               { name: claudeNeedsPath ? t('claudePathMissing') : 'Claude Code', show: !preflightStatus.claude.installed },
             ];
 

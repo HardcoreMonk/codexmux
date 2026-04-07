@@ -48,7 +48,7 @@ const ToolsRequiredPage = () => {
   const tools = status
     ? [
         { name: 'tmux', ok: status.tmux.installed && status.tmux.compatible, version: status.tmux.version },
-        { name: 'git', ok: status.git.installed, version: status.git.version },
+        { name: 'Git', ok: status.git.installed, version: status.git.version },
         { name: 'Claude CLI', ok: status.claude.installed, version: status.claude.version },
       ]
     : [];
