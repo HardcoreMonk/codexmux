@@ -2,6 +2,7 @@
   "title": "Notificaciones",
   "empty": "No hay tareas en progreso",
   "busySection": "En progreso ({count})",
+  "needsInputSection": "Requiere entrada ({count})",
   "reviewSection": "Revisión ({count})",
   "dismiss": "Descartar",
   "navigate": "Ir a"

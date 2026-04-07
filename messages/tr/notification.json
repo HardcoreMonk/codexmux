@@ -2,6 +2,7 @@
   "title": "Bildirimler",
   "empty": "Devam eden görev yok",
   "busySection": "Devam Eden ({count})",
+  "needsInputSection": "Giriş Bekliyor ({count})",
   "reviewSection": "İnceleme ({count})",
   "dismiss": "Kapat",
   "navigate": "Git"

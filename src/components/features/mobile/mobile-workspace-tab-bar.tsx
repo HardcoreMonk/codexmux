@@ -99,8 +99,10 @@ const MobileWorkspaceTabBar = ({
                 <span className="h-2 w-2 rounded-[2px] bg-foreground" />
               ) : isClaude && status === 'busy' ? (
                 <Spinner className="h-2 w-2 text-muted-foreground" />
-              ) : isClaude && (status === 'ready-for-review' || status === 'needs-input') ? (
+              ) : isClaude && status === 'ready-for-review' ? (
                 <span className="h-2 w-2 rounded-full bg-claude-active animate-pulse" />
+              ) : isClaude && status === 'needs-input' ? (
+                <span className="h-2 w-2 rounded-full bg-ui-amber animate-pulse" />
               ) : isClaude ? (
                 <span className="h-2 w-2 rounded-full border border-muted-foreground/40" />
               ) : item.panelType === 'web-browser' ? (

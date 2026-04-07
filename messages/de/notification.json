@@ -2,6 +2,7 @@
   "title": "Benachrichtigungen",
   "empty": "Keine laufenden Aufgaben",
   "busySection": "In Bearbeitung ({count})",
+  "needsInputSection": "Eingabe erforderlich ({count})",
   "reviewSection": "Überprüfung ({count})",
   "dismiss": "Schließen",
   "navigate": "Aufrufen"

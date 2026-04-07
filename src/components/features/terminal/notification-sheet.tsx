@@ -40,7 +40,7 @@ export const useNotificationCount = (): { busyCount: number; attentionCount: num
     for (const [tabId, tab] of Object.entries(tabs)) {
       if (tabId === activeTabId) continue;
       if (tab.cliState === 'busy') busyCount++;
-      else if (tab.cliState === 'ready-for-review') attentionCount++;
+      else if (tab.cliState === 'ready-for-review' || tab.cliState === 'needs-input') attentionCount++;
     }
     return { busyCount, attentionCount };
   }, [tabs, activeTabId]);
@@ -63,7 +63,7 @@ interface INotificationSheetProps {
 const collectItems = (
   tabs: Record<string, ITabState>,
   workspaces: { id: string; name: string }[],
-  targetState: 'busy' | 'ready-for-review',
+  targetState: 'busy' | 'ready-for-review' | 'needs-input',
 ): INotificationItem[] => {
   const wsMap = new Map(workspaces.map((ws) => [ws.id, ws.name]));
   const items: INotificationItem[] = [];
@@ -92,12 +92,14 @@ const collectItems = (
 const NotificationItem = ({
   item,
   showActions,
+  variant,
   isActiveTab,
   onDismiss,
   onNavigate,
 }: {
   item: INotificationItem;
   showActions: boolean;
+  variant?: 'needs-input';
   isActiveTab?: boolean;
   onDismiss?: (tabId: string) => void;
   onNavigate?: (workspaceId: string, tabId: string) => void;
@@ -115,7 +117,9 @@ const NotificationItem = ({
       onClick={isActiveTab ? undefined : () => onNavigate?.(item.workspaceId, item.tabId)}
     >
       <span className="mt-1 shrink-0">
-        {showActions ? (
+        {variant === 'needs-input' ? (
+          <span className="block h-2 w-2 rounded-full bg-ui-amber animate-pulse" />
+        ) : showActions ? (
           <span className="block h-2 w-2 rounded-full bg-claude-active" />
         ) : (
           <Spinner className="h-3 w-3 text-muted-foreground" />
@@ -175,6 +179,11 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
     [tabs, workspaces],
   );
 
+  const needsInputItems = useMemo(
+    () => collectItems(tabs, workspaces, 'needs-input'),
+    [tabs, workspaces],
+  );
+
   const reviewItems = useMemo(
     () => collectItems(tabs, workspaces, 'ready-for-review'),
     [tabs, workspaces],
@@ -192,7 +201,7 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
     [onOpenChange],
   );
 
-  const isEmpty = busyItems.length === 0 && reviewItems.length === 0;
+  const isEmpty = busyItems.length === 0 && needsInputItems.length === 0 && reviewItems.length === 0;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -228,8 +237,28 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
                 </section>
               )}
 
-              {reviewItems.length > 0 && (
+              {needsInputItems.length > 0 && (
                 <section className={busyItems.length > 0 ? 'mt-4' : ''}>
+                  <h3 className="mb-2 text-xs font-medium text-muted-foreground">
+                    {t('needsInputSection', { count: needsInputItems.length })}
+                  </h3>
+                  <div className="flex flex-col gap-2">
+                    {needsInputItems.map((item) => (
+                      <NotificationItem
+                        key={item.tabId}
+                        item={item}
+                        showActions={false}
+                        variant="needs-input"
+                        isActiveTab={item.tabId === activeTabId}
+                        onNavigate={handleNavigate}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {reviewItems.length > 0 && (
+                <section className={busyItems.length > 0 || needsInputItems.length > 0 ? 'mt-4' : ''}>
                   <h3 className="mb-2 text-xs font-medium text-muted-foreground">
                     {t('reviewSection', { count: reviewItems.length })}
                   </h3>

@@ -68,7 +68,7 @@ Claude가 실행 중일 때의 작업 진행 상태.
 | --- | --- | --- |
 | `busy` | `busy` | 스피너 |
 | `ready-for-review` | `ready-for-review` | 보라색 점 (펄스) |
-| `needs-input` | `needs-input` | 보라색 점 (펄스) |
+| `needs-input` | `needs-input` | 황색 점 (펄스) |
 | `idle` | `idle` | 표시 없음 |
 | `inactive` | `idle` | 표시 없음 |
 
@@ -451,7 +451,7 @@ tmux 타이틀 변경 → onTitleChange
 
 ### 알림 시트 (`NotificationSheet`)
 
-Bell 아이콘 클릭 시 Sheet로 표시. 진행중(`busy`)과 리뷰(`ready-for-review`) 두 섹션.
+Bell 아이콘 클릭 시 Sheet로 표시. 진행중(`busy`), 입력 대기(`needs-input`), 리뷰(`ready-for-review`) 세 섹션.
 
 ### 활성 탭 제외 로직
 

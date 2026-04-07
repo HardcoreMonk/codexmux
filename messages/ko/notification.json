@@ -2,6 +2,7 @@
   "title": "알림",
   "empty": "진행중인 작업이 없습니다",
   "busySection": "진행중 ({count})",
+  "needsInputSection": "입력 대기 ({count})",
   "reviewSection": "리뷰 ({count})",
   "dismiss": "확인",
   "navigate": "이동"

@@ -2,6 +2,7 @@
   "title": "Notificacoes",
   "empty": "Nenhuma tarefa em andamento",
   "busySection": "Em Andamento ({count})",
+  "needsInputSection": "Aguardando entrada ({count})",
   "reviewSection": "Revisao ({count})",
   "dismiss": "Dispensar",
   "navigate": "Ir para"

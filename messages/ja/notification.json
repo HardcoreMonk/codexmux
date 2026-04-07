@@ -2,6 +2,7 @@
   "title": "通知",
   "empty": "進行中のタスクはありません",
   "busySection": "進行中 ({count})",
+  "needsInputSection": "入力待ち ({count})",
   "reviewSection": "レビュー ({count})",
   "dismiss": "閉じる",
   "navigate": "移動"

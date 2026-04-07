@@ -267,7 +267,7 @@ export const selectWorkspaceStatus = (
   for (const entry of Object.values(tabs)) {
     if (entry.workspaceId !== wsId) continue;
     if (entry.cliState === 'busy') busyCount++;
-    else if (entry.cliState === 'ready-for-review') attentionCount++;
+    else if (entry.cliState === 'ready-for-review' || entry.cliState === 'needs-input') attentionCount++;
   }
   return { busyCount, attentionCount };
 };
@@ -294,7 +294,7 @@ export const selectGlobalStatus = (
   let attentionCount = 0;
   for (const entry of Object.values(tabs)) {
     if (entry.cliState === 'busy') busyCount++;
-    else if (entry.cliState === 'ready-for-review') attentionCount++;
+    else if (entry.cliState === 'ready-for-review' || entry.cliState === 'needs-input') attentionCount++;
   }
   return { busyCount, attentionCount };
 };

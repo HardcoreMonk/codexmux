@@ -2,6 +2,7 @@
   "title": "Уведомления",
   "empty": "Нет активных задач",
   "busySection": "В процессе ({count})",
+  "needsInputSection": "Ожидает ввода ({count})",
   "reviewSection": "На проверке ({count})",
   "dismiss": "Скрыть",
   "navigate": "Перейти"

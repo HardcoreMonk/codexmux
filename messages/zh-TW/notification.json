@@ -2,6 +2,7 @@
   "title": "通知",
   "empty": "沒有進行中的任務",
   "busySection": "進行中（{count}）",
+  "needsInputSection": "等待輸入（{count}）",
   "reviewSection": "待審查（{count}）",
   "dismiss": "關閉",
   "navigate": "前往"
