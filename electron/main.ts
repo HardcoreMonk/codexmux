@@ -1,7 +1,8 @@
-import { app, BrowserWindow, shell, Menu, ipcMain, session, screen, Notification } from 'electron';
+import { app, BrowserWindow, shell, Menu, ipcMain, session, screen, Notification, nativeTheme } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { pickTaglines } from './splash-taglines';
 
 const isDev = process.env.NODE_ENV === 'development';
 const devUrl = process.env.ELECTRON_DEV_URL;
@@ -41,6 +42,7 @@ interface IWindowState {
 interface IAppConfig {
   server?: IServerConfig;
   windowState?: IWindowState;
+  appTheme?: string;
 }
 
 const CONFIG_DIR = path.join(os.homedir(), '.purplemux');
@@ -332,7 +334,7 @@ const createWindow = (url: string) => {
     minHeight: 500,
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 12, y: 10 },
-    backgroundColor: '#09090b',
+    backgroundColor: resolveIsDark() ? '#09090b' : '#ffffff',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -420,18 +422,45 @@ const createWindow = (url: string) => {
 
 // --- Splash (Loading) Screen ---
 
-const SPLASH_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+const resolveIsDark = (): boolean => {
+  const cfg = readAppConfig();
+  const theme = cfg.appTheme || 'dark';
+  if (theme === 'system') return nativeTheme.shouldUseDarkColors;
+  return theme !== 'light';
+};
+
+const buildSplashHTML = (isDark: boolean): string => {
+  const bg = isDark ? '#09090b' : '#ffffff';
+  const spinner = isDark ? '#a09dc0' : '#807da8';
+  const text = isDark ? '#52525b' : '#a1a1aa';
+  const escape = (s: string) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const tags = pickTaglines(8).map(escape);
+  const tagsJson = "['" + tags.join("','") + "']";
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#09090b;display:flex;align-items:center;justify-content:center;height:100vh;-webkit-app-region:drag}
-.loader{display:flex;flex-direction:column;align-items:center;gap:24px}
-.bar-track{width:200px;height:3px;background:#27272a;border-radius:2px;overflow:hidden}
-.bar-fill{height:100%;width:40%;background:#7c3aed;border-radius:2px;animation:slide 1.2s ease-in-out infinite}
-.label{color:#71717a;font:13px -apple-system,BlinkMacSystemFont,sans-serif}
-@keyframes slide{0%{transform:translateX(-100%)}50%{transform:translateX(250%)}100%{transform:translateX(-100%)}}
-</style></head><body><div class="loader"><div class="bar-track"><div class="bar-fill"></div></div><div class="label">초기화 중…</div></div></body></html>`;
+body{background:${bg};display:flex;align-items:center;justify-content:center;height:100vh;-webkit-app-region:drag;font-family:'SF Mono','Fira Code','JetBrains Mono',monospace}
+.container{text-align:center;user-select:none}
+.spinner{font-size:20px;color:${spinner};height:28px;line-height:28px}
+.word{font-size:12px;color:${text};margin-top:14px;height:20px}
+</style></head><body><div class="container">
+<div class="spinner" id="s"></div>
+<div class="word" id="w"></div>
+</div><script>
+var sc=['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
+var ws=${tagsJson};
+var si=0,wi=0,ch=[],tg=[],rs=false,st=0;
+var sEl=document.getElementById('s'),wEl=document.getElementById('w');
+var pool='abcdefghijklmnopqrstuvwxyz.!?@#$%&*';
+function go(){tg=ws[wi].split('');ch=tg.map(function(c){return c===' '?' ':pool[Math.floor(Math.random()*pool.length)]});rs=true;st=0;wi=(wi+1)%ws.length}
+go();
+setInterval(function(){sEl.textContent=sc[si];si=(si+1)%sc.length},80);
+setInterval(function(){if(rs){if(st<tg.length){for(var i=0;i<ch.length;i++){if(i<=st){ch[i]=tg[i]}else if(tg[i]!==' '){ch[i]=pool[Math.floor(Math.random()*pool.length)]}}st+=2}else{rs=false;setTimeout(go,1500)}}wEl.textContent=ch.join('')},40);
+</script></body></html>`;
+};
 
 const loadSplash = (win: BrowserWindow) => {
-  win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(SPLASH_HTML)}`);
+  const html = buildSplashHTML(resolveIsDark());
+  win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 };
 
 // --- Bootstrap ---
