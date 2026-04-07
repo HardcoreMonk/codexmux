@@ -184,7 +184,11 @@ StatsPage.getLayout = getPageShellWithTitlebarLayout;
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const { requireAuth } = await import('@/lib/require-auth');
-  return requireAuth(context);
+  const { loadMessagesServer } = await import('@/lib/load-messages');
+  return requireAuth(context, async () => {
+    const messages = await loadMessagesServer();
+    return { props: { messages } };
+  });
 };
 
 export default StatsPage;

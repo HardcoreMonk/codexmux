@@ -18,6 +18,7 @@ import useIsMobile from '@/hooks/use-is-mobile';
 import useBrowserTitle from '@/hooks/use-browser-title';
 import { getPageShellLayout } from '@/components/layout/page-shell';
 import { requireAuth } from '@/lib/require-auth';
+import { loadMessagesServer } from '@/lib/load-messages';
 
 const TerminalPage = dynamic(
   () => import('@/components/features/terminal/terminal-page'),
@@ -67,7 +68,7 @@ Index.getLayout = getPageShellLayout;
 
 export const getServerSideProps: GetServerSideProps<IIndexProps> = async (context) =>
   requireAuth(context, async () => {
-    const [data, configData, quickPrompts, sidebarItems] = await Promise.all([getWorkspaces(), getConfig(), readQuickPrompts(), readSidebarItems()]);
+    const [data, configData, quickPrompts, sidebarItems, messages] = await Promise.all([getWorkspaces(), getConfig(), readQuickPrompts(), readSidebarItems(), loadMessagesServer()]);
 
     if (data.workspaces.length === 0) {
       const ws = await createWorkspace(os.homedir());
@@ -75,7 +76,7 @@ export const getServerSideProps: GetServerSideProps<IIndexProps> = async (contex
     }
 
     const { authPassword, authSecret: _, ...safeConfig } = configData;
-    return { props: { initialWorkspace: data, initialConfig: { ...safeConfig, hasAuthPassword: !!authPassword }, initialQuickPrompts: quickPrompts, initialSidebarItems: sidebarItems } };
+    return { props: { initialWorkspace: data, initialConfig: { ...safeConfig, hasAuthPassword: !!authPassword }, initialQuickPrompts: quickPrompts, initialSidebarItems: sidebarItems, messages } };
   });
 
 export default Index;

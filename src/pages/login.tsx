@@ -1,8 +1,10 @@
 import { useTranslations } from 'next-intl';
+import type { GetServerSideProps } from 'next';
 import { LoginForm } from '@/components/features/login/login-form';
 import OnboardingWizard from '@/components/features/login/onboarding-wizard';
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
+import { loadMessagesServer } from '@/lib/load-messages';
 
 type TMode = 'loading' | 'onboarding' | 'login';
 
@@ -41,6 +43,11 @@ const LoginPage = () => {
       </div>
     </>
   );
+};
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  const messages = await loadMessagesServer();
+  return { props: { messages } };
 };
 
 export default LoginPage;

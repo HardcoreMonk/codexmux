@@ -139,7 +139,11 @@ const ToolsRequiredPage = () => {
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const { requireAuth } = await import('@/lib/require-auth');
-  return requireAuth(context, undefined, { skipPreflight: true });
+  const { loadMessagesServer } = await import('@/lib/load-messages');
+  return requireAuth(context, async () => {
+    const messages = await loadMessagesServer();
+    return { props: { messages } };
+  }, { skipPreflight: true });
 };
 
 export default ToolsRequiredPage;
