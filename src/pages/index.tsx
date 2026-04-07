@@ -2,7 +2,8 @@ import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import type { GetServerSideProps } from 'next';
 import { SWRConfig } from 'swr';
-import { getWorkspaces } from '@/lib/workspace-store';
+import os from 'os';
+import { getWorkspaces, createWorkspace } from '@/lib/workspace-store';
 import { getConfig } from '@/lib/config-store';
 import { readQuickPrompts } from '@/lib/quick-prompts-store';
 import type { IQuickPromptsData } from '@/lib/quick-prompts-store';
@@ -67,6 +68,12 @@ Index.getLayout = getPageShellLayout;
 export const getServerSideProps: GetServerSideProps<IIndexProps> = async (context) =>
   requireAuth(context, async () => {
     const [data, configData, quickPrompts, sidebarItems] = await Promise.all([getWorkspaces(), getConfig(), readQuickPrompts(), readSidebarItems()]);
+
+    if (data.workspaces.length === 0) {
+      const ws = await createWorkspace(os.homedir());
+      data.workspaces.push(ws);
+    }
+
     const { authPassword, authSecret: _, ...safeConfig } = configData;
     return { props: { initialWorkspace: data, initialConfig: { ...safeConfig, hasAuthPassword: !!authPassword }, initialQuickPrompts: quickPrompts, initialSidebarItems: sidebarItems } };
   });
