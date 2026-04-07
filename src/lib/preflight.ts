@@ -1,4 +1,4 @@
-import { execFile as execFileCb, execFileSync } from 'child_process';
+import { execFile as execFileCb } from 'child_process';
 import { access } from 'fs/promises';
 import os from 'os';
 import path from 'path';
@@ -8,10 +8,13 @@ import type { IRuntimePreflightResult } from '@/types/preflight';
 const execFile = promisify(execFileCb);
 const CMD_TIMEOUT = 5000;
 
-const resolveShellPath = (): string => {
+let shellPathCache: string | null = null;
+let shellPathPromise: Promise<string> | null = null;
+
+const resolveShellPathAsync = async (): Promise<string> => {
   const shell = os.userInfo().shell || process.env.SHELL || '/bin/zsh';
   try {
-    const stdout = execFileSync(shell, ['-ilc', 'echo -n "$PATH"'], {
+    const { stdout } = await execFile(shell, ['-ilc', 'echo -n "$PATH"'], {
       timeout: CMD_TIMEOUT,
       env: { NODE_ENV: process.env.NODE_ENV, DISABLE_AUTO_UPDATE: 'true', ZSH_TMUX_AUTOSTARTED: 'true' },
     });
@@ -21,7 +24,21 @@ const resolveShellPath = (): string => {
   }
 };
 
-export let shellPath = resolveShellPath();
+export const initShellPath = async (): Promise<void> => {
+  shellPathCache = await resolveShellPathAsync();
+};
+
+export const getShellPath = async (): Promise<string> => {
+  if (shellPathCache) return shellPathCache;
+  if (!shellPathPromise) {
+    shellPathPromise = resolveShellPathAsync().then((result) => {
+      shellPathCache = result;
+      shellPathPromise = null;
+      return result;
+    });
+  }
+  return shellPathPromise;
+};
 const MIN_TMUX_VERSION = 2.9;
 
 interface IToolStatus {
@@ -43,7 +60,8 @@ const checkTool = async (
   parseVersion: (stdout: string) => string | null,
 ): Promise<IToolStatus> => {
   try {
-    const { stdout } = await execFile(cmd, args, { timeout: CMD_TIMEOUT, env: { ...process.env, PATH: shellPath } });
+    const resolvedPath = await getShellPath();
+    const { stdout } = await execFile(cmd, args, { timeout: CMD_TIMEOUT, env: { ...process.env, PATH: resolvedPath } });
     return { installed: true, version: parseVersion(stdout) };
   } catch {
     return { installed: false, version: null };
@@ -80,7 +98,7 @@ const checkClt = async (): Promise<{ installed: boolean }> => {
 };
 
 export const getPreflightStatus = async (): Promise<IPreflightResult> => {
-  shellPath = resolveShellPath();
+  shellPathCache = await resolveShellPathAsync();
   const [tmux, git, claude] = await Promise.all([
     checkTool('tmux', ['-V'], parseSemanticVersion),
     checkTool('git', ['--version'], parseSemanticVersion),
@@ -123,7 +141,7 @@ let runtimeCache: { result: IRuntimePreflightResult; checkedAt: number } | null 
 let inflightRequest: Promise<IRuntimePreflightResult> | null = null;
 
 export const getRuntimePreflightStatus = async (): Promise<IRuntimePreflightResult> => {
-  shellPath = resolveShellPath();
+  shellPathCache = await resolveShellPathAsync();
   const [tmux, git, claude] = await Promise.all([
     checkTool('tmux', ['-V'], parseSemanticVersion),
     checkTool('git', ['--version'], parseSemanticVersion),

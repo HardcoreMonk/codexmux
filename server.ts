@@ -19,6 +19,7 @@ import { initWorkspaceStore } from './src/lib/workspace-store';
 import { autoResumeOnStartup } from './src/lib/auto-resume';
 import { initAuthCredentials } from './src/lib/auth-credentials';
 import { initConfigStore } from './src/lib/config-store';
+import { initShellPath } from './src/lib/preflight';
 import { createLogger } from './src/lib/logger';
 import pkg from './package.json';
 
@@ -324,7 +325,7 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   const port = opts?.port ?? parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
   const appDir = process.env.__PMUX_APP_DIR || process.cwd();
 
-  await initConfigStore();
+  await Promise.all([initConfigStore(), initShellPath()]);
 
   const credentials = initAuthCredentials();
   if (credentials) {

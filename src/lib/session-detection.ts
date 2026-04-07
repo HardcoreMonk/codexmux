@@ -5,7 +5,7 @@ import os from 'os';
 import { execFile as execFileCb } from 'child_process';
 import { promisify } from 'util';
 import type { ISessionInfo } from '@/types/timeline';
-import { shellPath } from '@/lib/preflight';
+import { getShellPath } from '@/lib/preflight';
 
 const execFile = promisify(execFileCb);
 
@@ -95,7 +95,7 @@ const findJsonlPath = async (projectDir: string, sessionId: string): Promise<str
 
 const isClaudeInstalled = async (): Promise<boolean> => {
   try {
-    await execFile('claude', ['--version'], { timeout: 5000, env: { ...process.env, PATH: shellPath } });
+    await execFile('claude', ['--version'], { timeout: 5000, env: { ...process.env, PATH: await getShellPath() } });
     return true;
   } catch {
     for (const p of CLAUDE_KNOWN_PATHS) {

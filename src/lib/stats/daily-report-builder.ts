@@ -4,7 +4,7 @@ import os from 'os';
 import { createReadStream } from 'fs';
 import readline from 'readline';
 import { execFile } from 'child_process';
-import { shellPath } from '@/lib/preflight';
+import { getShellPath } from '@/lib/preflight';
 import { collectJsonlFiles } from './stats-cache';
 import type { IDailyReportDay } from '@/types/stats';
 
@@ -166,12 +166,13 @@ const buildPromptData = (sessions: ISessionData[]): string => {
     .join('\n');
 };
 
-const callClaudeCli = (input: string, systemPrompt: string): Promise<string> => {
+const callClaudeCli = async (input: string, systemPrompt: string): Promise<string> => {
+  const resolvedPath = await getShellPath();
   return new Promise((resolve, reject) => {
     const child = execFile(
       'claude',
       ['-p'],
-      { timeout: 120_000, maxBuffer: 1024 * 1024, env: { ...process.env, PATH: shellPath } },
+      { timeout: 120_000, maxBuffer: 1024 * 1024, env: { ...process.env, PATH: resolvedPath } },
       (error, stdout) => {
         if (error) {
           reject(new Error(`claude -p failed: ${error.message}`));
