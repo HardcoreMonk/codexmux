@@ -136,7 +136,7 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
       const res = await fetch('/api/auth/preflight');
       const data: IPreflightResult = await res.json();
       setPreflightStatus(data);
-      if (data.tmux.installed && data.tmux.compatible) {
+      if (data.tmux.installed && data.tmux.compatible && data.git.installed && data.claude.installed) {
         setStep('password');
       }
     } catch {
@@ -231,16 +231,31 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
               <Loader2 className="h-5 w-5 animate-spin" />
               <span className="text-sm">{t('checking')}</span>
             </div>
-          ) : preflightStatus && !(preflightStatus.tmux.installed && preflightStatus.tmux.compatible) ? (() => {
+          ) : preflightStatus && !(
+            preflightStatus.tmux.installed && preflightStatus.tmux.compatible &&
+            preflightStatus.git.installed &&
+            preflightStatus.claude.installed
+          ) ? (() => {
+            const missingTools: { name: string; show: boolean }[] = [
+              { name: 'Command Line Tools', show: !preflightStatus.clt.installed && !preflightStatus.brew.installed },
+              { name: 'Homebrew', show: !preflightStatus.brew.installed },
+              { name: 'tmux', show: !(preflightStatus.tmux.installed && preflightStatus.tmux.compatible) },
+              { name: 'git', show: !preflightStatus.git.installed },
+              { name: 'Claude CLI', show: !preflightStatus.claude.installed },
+            ];
+
             const needsUpgrade = preflightStatus.tmux.installed && !preflightStatus.tmux.compatible;
-            const tmuxAction = needsUpgrade
-              ? { command: 'tmux-upgrade', label: t('upgradeTmux') }
-              : { command: 'tmux-install', label: t('installTmux') };
-            const nextInstall = !preflightStatus.clt.installed && !preflightStatus.brew.installed
-              ? { command: 'clt', label: t('installClt') }
+            const nextInstall =
+              !preflightStatus.clt.installed && !preflightStatus.brew.installed
+                ? { command: 'clt', label: t('installClt') }
               : !preflightStatus.brew.installed
                 ? { command: 'brew', label: t('installBrew') }
-                : tmuxAction;
+              : !(preflightStatus.tmux.installed && preflightStatus.tmux.compatible)
+                ? { command: needsUpgrade ? 'tmux-upgrade' : 'tmux-install', label: needsUpgrade ? t('upgradeTmux') : t('installTmux') }
+              : !preflightStatus.git.installed
+                ? { command: 'git', label: t('installGit') }
+              : { command: 'claude', label: t('installClaude') };
+
             return (
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-2 text-ui-amber">
@@ -248,25 +263,12 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
                 <p className="text-sm font-medium">{t('missingTools')}</p>
               </div>
               <div className="space-y-1.5">
-                {!preflightStatus.clt.installed && !preflightStatus.brew.installed && (
-                  <div className="flex items-center gap-2 text-sm">
+                {missingTools.filter((t) => t.show).map((tool) => (
+                  <div key={tool.name} className="flex items-center gap-2 text-sm">
                     <X className="h-4 w-4 shrink-0 text-negative" />
-                    <span className="text-foreground font-medium">Command Line Tools</span>
+                    <span className="text-foreground font-medium">{tool.name}</span>
                   </div>
-                )}
-                {!preflightStatus.brew.installed && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <X className="h-4 w-4 shrink-0 text-negative" />
-                    <span className="text-foreground font-medium">Homebrew</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-2 text-sm">
-                  <X className="h-4 w-4 shrink-0 text-negative" />
-                  <span className="text-foreground font-medium">tmux</span>
-                  {preflightStatus.tmux.version && (
-                    <span className="text-xs text-muted-foreground">({preflightStatus.tmux.version})</span>
-                  )}
-                </div>
+                ))}
               </div>
               <div className="flex flex-col gap-2">
                 <Button

@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 import useTabStore from '@/hooks/use-tab-store';
+import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
+import { formatTabTitle } from '@/lib/tab-title';
 import type { TStatusServerMessage } from '@/types/status';
 import type { TCliState } from '@/types/timeline';
 
@@ -50,6 +52,11 @@ const useClaudeStatus = () => {
           switch (msg.type) {
             case 'status:sync':
               useTabStore.getState().syncAllFromServer(msg.tabs);
+              for (const [tabId, entry] of Object.entries(msg.tabs)) {
+                if (entry.paneTitle) {
+                  useTabMetadataStore.getState().setTitle(tabId, formatTabTitle(entry.paneTitle));
+                }
+              }
               break;
 
             case 'status:update':
@@ -66,6 +73,9 @@ const useClaudeStatus = () => {
                 readyForReviewAt: msg.readyForReviewAt,
                 busySince: msg.busySince,
               });
+              if (msg.paneTitle) {
+                useTabMetadataStore.getState().setTitle(msg.tabId, formatTabTitle(msg.paneTitle));
+              }
               break;
           }
         } catch {

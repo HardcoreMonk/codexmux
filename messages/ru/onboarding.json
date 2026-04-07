@@ -13,6 +13,8 @@
   "installBrew": "Установить Homebrew",
   "installTmux": "Установить tmux",
   "upgradeTmux": "Обновить tmux",
+  "installGit": "Установить git",
+  "installClaude": "Установить Claude CLI",
   "password": "Пароль",
   "passwordPlaceholder": "Минимум 4 символа",
   "confirmPassword": "Подтверждение пароля",

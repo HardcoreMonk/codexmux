@@ -13,6 +13,8 @@
   "installBrew": "Homebrew 설치",
   "installTmux": "tmux 설치",
   "upgradeTmux": "tmux 업그레이드",
+  "installGit": "git 설치",
+  "installClaude": "Claude CLI 설치",
   "password": "비밀번호",
   "passwordPlaceholder": "4자 이상 입력",
   "confirmPassword": "비밀번호 확인",

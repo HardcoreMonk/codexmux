@@ -13,6 +13,8 @@
   "installBrew": "Homebrewをインストール",
   "installTmux": "tmuxをインストール",
   "upgradeTmux": "tmuxをアップグレード",
+  "installGit": "gitをインストール",
+  "installClaude": "Claude CLIをインストール",
   "password": "パスワード",
   "passwordPlaceholder": "4文字以上",
   "confirmPassword": "パスワード確認",

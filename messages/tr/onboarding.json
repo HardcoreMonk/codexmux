@@ -13,6 +13,8 @@
   "installBrew": "Homebrew Yükle",
   "installTmux": "tmux Yükle",
   "upgradeTmux": "tmux Güncelle",
+  "installGit": "git Yükle",
+  "installClaude": "Claude CLI Yükle",
   "password": "Şifre",
   "passwordPlaceholder": "En az 4 karakter",
   "confirmPassword": "Şifre onayı",

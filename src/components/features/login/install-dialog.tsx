@@ -13,12 +13,11 @@ interface IInstallDialogProps {
 }
 
 const InstallDialog = ({ open, onOpenChange, command, label }: IInstallDialogProps) => {
-  const t = useTranslations('terminal');
   const tc = useTranslations('common');
   const connectedRef = useRef(false);
   const writeRef = useRef<(data: Uint8Array) => void>(() => {});
 
-  const { status, connect, disconnect, sendStdin, sendResize } = useInstallWebSocket(
+  const { connect, disconnect, sendStdin, sendResize } = useInstallWebSocket(
     (data) => writeRef.current(data),
   );
 
@@ -56,10 +55,6 @@ const InstallDialog = ({ open, onOpenChange, command, label }: IInstallDialogPro
           className="h-[400px] w-full rounded-md bg-black p-2"
         />
         <DialogFooter>
-          <span className="mr-auto text-xs text-muted-foreground">
-            {status === 'connected' && t('installRunning')}
-            {status === 'disconnected' && t('installDone')}
-          </span>
           <Button variant="outline" onClick={handleClose}>
             {tc('close')}
           </Button>

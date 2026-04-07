@@ -13,6 +13,8 @@
   "installBrew": "安裝 Homebrew",
   "installTmux": "安裝 tmux",
   "upgradeTmux": "升級 tmux",
+  "installGit": "安裝 git",
+  "installClaude": "安裝 Claude CLI",
   "password": "密碼",
   "passwordPlaceholder": "至少 4 個字元",
   "confirmPassword": "確認密碼",

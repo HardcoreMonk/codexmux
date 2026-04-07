@@ -19,6 +19,7 @@ interface IPreflightResult {
   git: IToolStatus;
   claude: IToolStatus;
   brew: IToolStatus;
+  clt: { installed: boolean };
 }
 
 interface IToolCheck {

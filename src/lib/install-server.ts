@@ -11,10 +11,12 @@ import { createLogger } from '@/lib/logger';
 const log = createLogger('install');
 
 const INSTALL_COMMANDS: Record<string, string> = Object.freeze({
-  clt: 'xcode-select --install',
+  clt: 'xcode-select --install 2>&1; sleep 1; open -b com.apple.dt.CommandLineTools.installondemand 2>/dev/null; echo ""; echo "Waiting for installation..."; while ! xcode-select -p &>/dev/null; do sleep 3; done; echo ""; echo "Command Line Tools installed."',
   brew: '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"',
   'tmux-install': 'brew install tmux',
   'tmux-upgrade': 'brew upgrade tmux',
+  git: 'brew install git',
+  claude: 'npm install -g @anthropic-ai/claude-code',
 });
 
 let activeConn: { ws: WebSocket; pty: pty.IPty } | null = null;

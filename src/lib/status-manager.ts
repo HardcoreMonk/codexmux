@@ -178,6 +178,7 @@ class StatusManager {
           workspaceId: ws.id,
           tabName: tab.name,
           currentProcess: paneInfo?.command,
+          paneTitle: paneInfo ? `${paneInfo.command}|${paneInfo.path}` : undefined,
           tmuxSession: tab.sessionName,
           panelType: tab.panelType,
           terminalStatus,
@@ -295,12 +296,15 @@ class StatusManager {
           ? { terminalStatus: 'idle' as const, listeningPorts: [] as number[] }
           : await this.detectTerminalStatus(paneInfo);
 
+        const newPaneTitle = paneInfo ? `${paneInfo.command}|${paneInfo.path}` : undefined;
+
         if (!existing) {
           const entry: ITabStatusEntry = {
             cliState: newCliState,
             workspaceId: ws.id,
             tabName: tab.name,
             currentProcess: paneInfo?.command,
+            paneTitle: newPaneTitle,
             tmuxSession: tab.sessionName,
             panelType: tab.panelType,
             terminalStatus,
@@ -319,6 +323,7 @@ class StatusManager {
         const panelTypeChanged = existing.panelType !== tab.panelType;
         existing.tabName = tab.name;
         existing.currentProcess = paneInfo?.command;
+        existing.paneTitle = newPaneTitle;
         existing.workspaceId = ws.id;
         existing.panelType = tab.panelType;
         existing.claudeSummary = tab.claudeSummary;
@@ -380,6 +385,7 @@ class StatusManager {
         workspaceId: entry.workspaceId,
         tabName: entry.tabName,
         currentProcess: entry.currentProcess,
+        paneTitle: entry.paneTitle,
         panelType: entry.panelType,
         terminalStatus: entry.terminalStatus,
         listeningPorts: entry.listeningPorts,
@@ -499,6 +505,7 @@ class StatusManager {
       workspaceId: entry.workspaceId,
       tabName: entry.tabName,
       currentProcess: entry.currentProcess,
+      paneTitle: entry.paneTitle,
       panelType: entry.panelType,
       terminalStatus: entry.terminalStatus,
       listeningPorts: entry.listeningPorts,

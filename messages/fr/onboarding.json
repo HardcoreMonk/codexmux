@@ -13,6 +13,8 @@
   "installBrew": "Installer Homebrew",
   "installTmux": "Installer tmux",
   "upgradeTmux": "Mettre à jour tmux",
+  "installGit": "Installer git",
+  "installClaude": "Installer Claude CLI",
   "password": "Mot de passe",
   "passwordPlaceholder": "4 caractères minimum",
   "confirmPassword": "Confirmer le mot de passe",
