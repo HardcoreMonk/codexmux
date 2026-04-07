@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { AlertTriangle, ArrowLeft, ArrowRight, Check, Download, Eye, EyeOff, Lock, Loader2, LogIn, RefreshCcw, Terminal, Bot, Sun, Moon, Monitor, X } from 'lucide-react';
@@ -12,19 +12,7 @@ import { TERMINAL_THEMES, DEFAULT_THEME_IDS } from '@/lib/terminal-themes';
 import type { ITerminalThemeColors } from '@/lib/terminal-themes';
 import AppLogo from '@/components/layout/app-logo';
 import InstallDialog from '@/components/features/login/install-dialog';
-
-interface IToolStatus {
-  installed: boolean;
-  version: string | null;
-}
-
-interface IPreflightResult {
-  tmux: IToolStatus & { compatible: boolean };
-  git: IToolStatus;
-  claude: IToolStatus & { binaryPath: string | null; loggedIn: boolean };
-  brew: IToolStatus;
-  clt: { installed: boolean };
-}
+import { usePreflight } from '@/hooks/use-preflight';
 
 type TStep = 'preflight' | 'password' | 'appearance' | 'theme' | 'claude' | 'complete';
 type TAppTheme = 'dark' | 'light' | 'system';
@@ -120,8 +108,13 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
   const [skipPermissions, setSkipPermissions] = useState(true);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [preflightStatus, setPreflightStatus] = useState<IPreflightResult | null>(null);
-  const [preflightChecking, setPreflightChecking] = useState(true);
+  const { status: preflightStatus, checking: preflightChecking } = usePreflight({
+    onReady: (data) => {
+      if (data.tmux.installed && data.tmux.compatible && data.git.installed && data.claude.installed && data.claude.loggedIn) {
+        setStep('password');
+      }
+    },
+  });
   const [installTarget, setInstallTarget] = useState<{ command: string; label: string } | null>(null);
 
   const appThemeOptions: { value: TAppTheme; icon: React.ReactNode; label: string }[] = [
@@ -129,26 +122,6 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
     { value: 'light', icon: <Sun className="h-4 w-4" />, label: tc('light') },
     { value: 'system', icon: <Monitor className="h-4 w-4" />, label: tc('system') },
   ];
-
-  const runPreflightCheck = async () => {
-    setPreflightChecking(true);
-    try {
-      const res = await fetch('/api/auth/preflight');
-      const data: IPreflightResult = await res.json();
-      setPreflightStatus(data);
-      if (data.tmux.installed && data.tmux.compatible && data.git.installed && data.claude.installed && data.claude.loggedIn) {
-        setStep('password');
-      }
-    } catch {
-      // 체크 실패 시 수동 진행 허용
-    } finally {
-      setPreflightChecking(false);
-    }
-  };
-
-  useEffect(() => {
-    runPreflightCheck();
-  }, []);
 
   const stepIndex = STEPS.indexOf(step);
 

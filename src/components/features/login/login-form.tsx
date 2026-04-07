@@ -6,21 +6,10 @@ import { cn } from '@/lib/utils';
 import { AlertTriangle, Check, HelpCircle, Lock, RefreshCcw, X } from 'lucide-react';
 import AppLogo from '@/components/layout/app-logo';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import isElectron from '@/hooks/use-is-electron';
-
-interface IToolStatus {
-  installed: boolean;
-  version: string | null;
-}
-
-interface IPreflightResult {
-  tmux: IToolStatus & { compatible: boolean };
-  git: IToolStatus;
-  claude: IToolStatus & { binaryPath: string | null; loggedIn: boolean };
-  brew: IToolStatus;
-  clt: { installed: boolean };
-}
+import { usePreflight } from '@/hooks/use-preflight';
+import type { IPreflightResult } from '@/types/preflight';
 
 interface IToolCheck {
   name: string;
@@ -104,23 +93,8 @@ export const LoginForm = ({ className, ...props }: React.ComponentProps<'div'>) 
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [toolChecks, setToolChecks] = useState<IToolCheck[] | null>(null);
-  const [checking, setChecking] = useState(true);
-
-  useEffect(() => {
-    const check = async () => {
-      try {
-        const res = await fetch('/api/auth/preflight');
-        const data: IPreflightResult = await res.json();
-        setToolChecks(getToolChecks(data));
-      } catch {
-        // preflight 실패 시 로그인 폼 표시
-      } finally {
-        setChecking(false);
-      }
-    };
-    check();
-  }, []);
+  const { status: preflightStatus, checking } = usePreflight();
+  const toolChecks = preflightStatus ? getToolChecks(preflightStatus) : null;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
