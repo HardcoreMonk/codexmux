@@ -56,9 +56,5 @@
   "tabStatus": "État de l'onglet",
   "messageHistory": "Historique des messages",
   "installRunning": "Exécution...",
-  "installDone": "Terminé",
-  "closeTerminalTabTitle": "Fermer l'onglet",
-  "closeTerminalTabConfirm": "Fermer l'onglet '{name}' ?",
-  "claudeTabClosed": "Onglet Claude fermé",
-  "claudeTabClosedUndo": "Annuler"
+  "installDone": "Terminé"
 }

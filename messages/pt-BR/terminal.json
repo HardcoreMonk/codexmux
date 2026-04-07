@@ -56,9 +56,5 @@
   "tabStatus": "Status da aba",
   "messageHistory": "Historico de mensagens",
   "installRunning": "Executando...",
-  "installDone": "Concluido",
-  "closeTerminalTabTitle": "Fechar aba",
-  "closeTerminalTabConfirm": "Fechar a aba '{name}'?",
-  "claudeTabClosed": "Aba do Claude fechada",
-  "claudeTabClosedUndo": "Desfazer"
+  "installDone": "Concluido"
 }

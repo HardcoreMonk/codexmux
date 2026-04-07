@@ -56,9 +56,5 @@
   "tabStatus": "Tab status",
   "messageHistory": "Message history",
   "installRunning": "Running...",
-  "installDone": "Done",
-  "closeTerminalTabTitle": "Close Tab",
-  "closeTerminalTabConfirm": "Close '{name}' tab?",
-  "claudeTabClosed": "Claude tab closed",
-  "claudeTabClosedUndo": "Undo"
+  "installDone": "Done"
 }
