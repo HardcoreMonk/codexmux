@@ -6,10 +6,11 @@ import { detectActiveSession, getChildPids, isClaudeRunning } from '@/lib/sessio
 import { hasPermissionPrompt } from '@/lib/permission-prompt';
 import { getLastTerminalOutput } from '@/lib/terminal-server';
 import { INTERRUPT_PREFIX } from '@/lib/session-parser';
+import { createRateLimitsWatcher } from '@/lib/rate-limits-watcher';
 import { createLogger } from '@/lib/logger';
 import type { IPaneInfo } from '@/lib/tmux';
 import type { TCliState } from '@/types/timeline';
-import type { TTerminalStatus, ITabStatusEntry, IClientTabStatusEntry, IStatusUpdateMessage } from '@/types/status';
+import type { TTerminalStatus, ITabStatusEntry, IClientTabStatusEntry, IStatusUpdateMessage, IRateLimitsData } from '@/types/status';
 import fs from 'fs/promises';
 
 const log = createLogger('status');
@@ -145,6 +146,8 @@ class StatusManager {
   private currentInterval = 0;
   private clients = new Set<WebSocket>();
   private initialized = false;
+  private rateLimitsWatcher: ReturnType<typeof createRateLimitsWatcher> | null = null;
+  private lastRateLimits: IRateLimitsData | null = null;
 
   async init(): Promise<void> {
     if (this.initialized) return;
@@ -152,6 +155,12 @@ class StatusManager {
 
     await this.scanAll();
     this.startPolling();
+
+    this.rateLimitsWatcher = createRateLimitsWatcher((data) => {
+      this.lastRateLimits = data;
+      this.broadcast({ type: 'rate-limits:update', data });
+    });
+    this.rateLimitsWatcher.start();
   }
 
   private async scanAll(): Promise<void> {
@@ -487,6 +496,9 @@ class StatusManager {
 
   addClient(ws: WebSocket): void {
     this.clients.add(ws);
+    if (this.lastRateLimits && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'rate-limits:update', data: this.lastRateLimits }));
+    }
   }
 
   removeClient(ws: WebSocket): void {

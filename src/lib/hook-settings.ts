@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { createLogger } from '@/lib/logger';
+import { STATUSLINE_SCRIPT_PATH, STATUSLINE_SCRIPT_CONTENT } from '@/lib/statusline-script';
 
 const log = createLogger('hooks');
 
@@ -45,6 +46,10 @@ const buildHookSettings = () => ({
     Notification: hookEntry('notification'),
     Stop: hookEntry('stop'),
     StopFailure: hookEntry('stop'),
+  },
+  statusLine: {
+    type: 'command' as const,
+    command: `sh "${STATUSLINE_SCRIPT_PATH}"`,
   },
 });
 
@@ -120,6 +125,16 @@ export const ensureHookSettings = async (port: number): Promise<void> => {
     }
   } catch {
     await fs.writeFile(HOOK_SCRIPT, HOOK_SCRIPT_CONTENT, { mode: 0o755 });
+  }
+
+  // Create statusline script
+  try {
+    const existing = await fs.readFile(STATUSLINE_SCRIPT_PATH, 'utf-8');
+    if (existing !== STATUSLINE_SCRIPT_CONTENT) {
+      await fs.writeFile(STATUSLINE_SCRIPT_PATH, STATUSLINE_SCRIPT_CONTENT, { mode: 0o755 });
+    }
+  } catch {
+    await fs.writeFile(STATUSLINE_SCRIPT_PATH, STATUSLINE_SCRIPT_CONTENT, { mode: 0o755 });
   }
 
   // Create hooks.json
