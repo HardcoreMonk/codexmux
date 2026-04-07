@@ -94,10 +94,16 @@ const MobileTerminalPage = () => {
     const adjacent = wsList[idx + 1] || wsList[idx - 1];
 
     layout.clearLayout();
-    removeWorkspace(wsId);
 
-    if (adjacent) switchWorkspace(adjacent.id);
-    deleteWorkspace(wsId);
+    if (adjacent) {
+      removeWorkspace(wsId);
+      deleteWorkspace(wsId);
+      switchWorkspace(adjacent.id);
+    } else {
+      deleteWorkspace(wsId).then(() => {
+        removeWorkspace(wsId);
+      });
+    }
   }, [allTabsEmpty, layout.clearLayout]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [prevLayoutSnapshot, setPrevLayoutSnapshot] = useState<{ layout: typeof layout.layout; panes: typeof panes }>({ layout: null, panes: [] });

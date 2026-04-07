@@ -80,11 +80,15 @@ const TerminalPage = () => {
     const adjacent = workspaces[idx + 1] || workspaces[idx - 1];
 
     layout.clearLayout();
-    removeWorkspace(activeWorkspaceId);
-    deleteWorkspace(activeWorkspaceId);
 
     if (adjacent) {
+      removeWorkspace(activeWorkspaceId);
+      deleteWorkspace(activeWorkspaceId);
       switchWorkspace(adjacent.id);
+    } else {
+      deleteWorkspace(activeWorkspaceId).then(() => {
+        removeWorkspace(activeWorkspaceId);
+      });
     }
   }, [allTabsEmpty, layout.clearLayout]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -147,7 +151,7 @@ const TerminalPage = () => {
 
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-background">
-      {layout.layout && !layout.isLoading && (
+      {layout.layout && !layout.isLoading && !allTabsEmpty && (
         <ContentHeader
           activePaneId={layout.layout.activePaneId}
           root={layout.layout.root}
@@ -178,7 +182,7 @@ const TerminalPage = () => {
           </div>
         )}
 
-        {layout.layout && !layout.isLoading && (
+        {layout.layout && !layout.isLoading && !allTabsEmpty && (
           <div
             key={activeWorkspaceId}
             className="h-full"

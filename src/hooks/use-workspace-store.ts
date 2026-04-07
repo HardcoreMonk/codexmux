@@ -175,7 +175,7 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
   deleteWorkspace: async (workspaceId) => {
     try {
       const res = await fetch(`/api/workspace/${workspaceId}`, { method: 'DELETE' });
-      if (!res.ok && res.status !== 204) throw new Error();
+      if (!res.ok && res.status !== 204 && res.status !== 404) throw new Error();
       return true;
     } catch {
       toast.error('삭제할 수 없습니다');
