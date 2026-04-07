@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
+import packageJson from '../../../../package.json';
 import isElectron from '@/hooks/use-is-electron';
 import { Bell, Bot, Check, ChevronDown, ChevronsUpDown, Code, Dices, Globe, Layout, Lock, Monitor, Moon, Palette, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
 import ClaudeLogo from '@/components/icons/claude-logo';
@@ -168,6 +169,10 @@ const GeneralTab = () => {
           ))}
         </ButtonGroup>
       </div>
+
+      <p className="text-xs text-muted-foreground/50">
+        {packageJson.version}({process.env.NEXT_PUBLIC_COMMIT_HASH})
+      </p>
     </div>
   );
 };
