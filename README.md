@@ -52,10 +52,21 @@ Run, monitor, and manage multiple Claude Code sessions from any browser.
 
 독립적인 AI 에이전트를 생성하여 역할과 성격(soul)을 부여하고, 멀티 탭으로 태스크를 실행할 수 있습니다. 에이전트별 채팅, 메모리, 워크스페이스를 제공합니다.
 
+## 지원 플랫폼
+
+| 플랫폼 | 상태 |
+| --- | --- |
+| macOS (Apple Silicon / Intel) | ✅ 지원 |
+| Linux | ❌ 미지원 |
+| Windows | ❌ 미지원 |
+
+현재 macOS 전용입니다. `node-pty` 네이티브 바이너리가 macOS용으로만 포함되어 있으며, tmux 연동과 프로세스 감지 로직이 macOS 환경을 기준으로 동작합니다.
+
 ## 설치 및 실행
 
 ### 필수 요구사항
 
+- macOS 13 (Ventura) 이상
 - [Node.js](https://nodejs.org/) 18+
 - [tmux](https://github.com/tmux/tmux)
 
