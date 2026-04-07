@@ -41,9 +41,9 @@ const ToolsRequiredPage = () => {
 
   useEffect(() => {
     if (status && isRuntimeOk(status)) {
-      router.replace(from);
+      window.location.href = from;
     }
-  }, [status, from, router]);
+  }, [status, from]);
 
   const tools = status
     ? [

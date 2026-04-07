@@ -114,6 +114,7 @@ let runtimeCache: { result: IRuntimePreflightResult; checkedAt: number } | null 
 let inflightRequest: Promise<IRuntimePreflightResult> | null = null;
 
 export const getRuntimePreflightStatus = async (): Promise<IRuntimePreflightResult> => {
+  shellPath = resolveShellPath();
   const [tmux, git, claude] = await Promise.all([
     checkTool('tmux', ['-V'], parseSemanticVersion),
     checkTool('git', ['--version'], parseSemanticVersion),
