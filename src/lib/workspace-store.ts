@@ -179,12 +179,25 @@ export const initWorkspaceStore = async (): Promise<void> => {
   }
 
   if (!data) {
-    await writeWorkspacesFile(emptyState());
+    const state = emptyState();
+    await writeWorkspacesFile(state);
+    data = state;
     log.info('Initial workspaces.json created');
-    return;
   }
 
-  if (data.workspaces.length === 0) return;
+  if (data.workspaces.length === 0) {
+    const homeDir = os.homedir();
+    const wsId = `ws-${nanoid(6)}`;
+    const layout = await createDefaultLayout(wsId, homeDir);
+    await fs.mkdir(resolveLayoutDir(wsId), { recursive: true });
+    await writeLayoutFile(layout, resolveLayoutFile(wsId));
+
+    const workspace: IWorkspace = { id: wsId, name: 'Workspace 1', directories: [homeDir], order: 0 };
+    data.workspaces.push(workspace);
+    await writeWorkspacesFile(data);
+    log.info(`Auto-created default workspace: ${wsId} (${homeDir})`);
+    return;
+  }
 
   const allTmuxSessions = await listSessions();
 
