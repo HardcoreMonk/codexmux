@@ -25,6 +25,7 @@ import { formatTabTitle, isAutoTabName } from '@/lib/tab-title';
 import { getProcessIcon } from '@/lib/process-icon';
 import TabStatusIndicator from '@/components/features/terminal/tab-status-indicator';
 import WorkspaceStatusIndicator from '@/components/features/terminal/workspace-status-indicator';
+import SidebarRateLimits from '@/components/layout/sidebar-rate-limits';
 
 const WorkspacePortsLabel = ({ workspaceId }: { workspaceId: string }) => {
   const label = useTabStore(
@@ -271,6 +272,7 @@ const MobileNavigationSheet = ({
             <Plus size={16} />
             Workspace
           </button>
+          <SidebarRateLimits />
           <div className="flex items-center gap-0.5 px-3 pb-3">
             {sidebarItems.map((item) => {
               const isExternal = item.url.startsWith('http://') || item.url.startsWith('https://');
