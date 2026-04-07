@@ -73,6 +73,16 @@ const WorkspaceItem = ({
     setIsEditing(true);
   }, [workspace.name]);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      if ((e as CustomEvent).detail === workspace.id) {
+        startEditing();
+      }
+    };
+    window.addEventListener('rename-workspace', handler);
+    return () => window.removeEventListener('rename-workspace', handler);
+  }, [workspace.id, startEditing]);
+
   const handleDoubleClick = useCallback(() => {
     startEditing();
   }, [startEditing]);

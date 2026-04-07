@@ -36,6 +36,36 @@ const useGlobalShortcuts = () => {
     },
     HOTKEY_OPTIONS,
   );
+
+  useHotkeys(
+    KEY_MAP.NEW_WORKSPACE,
+    async () => {
+      const store = useWorkspaceStore.getState();
+      const ws = await store.createWorkspace('');
+      if (ws) selectWorkspace(ws.id);
+    },
+    HOTKEY_OPTIONS,
+  );
+
+  useHotkeys(
+    KEY_MAP.RENAME_WORKSPACE,
+    () => {
+      const { activeWorkspaceId } = useWorkspaceStore.getState();
+      if (!activeWorkspaceId) return;
+      window.dispatchEvent(
+        new CustomEvent('rename-workspace', { detail: activeWorkspaceId }),
+      );
+    },
+    HOTKEY_OPTIONS,
+  );
+
+  useHotkeys(
+    KEY_MAP.TOGGLE_SIDEBAR,
+    () => {
+      useWorkspaceStore.getState().toggleSidebar();
+    },
+    HOTKEY_OPTIONS,
+  );
 };
 
 export default useGlobalShortcuts;
