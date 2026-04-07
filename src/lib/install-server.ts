@@ -11,7 +11,7 @@ import { createLogger } from '@/lib/logger';
 const log = createLogger('install');
 
 const INSTALL_COMMANDS: Record<string, string> = Object.freeze({
-  clt: 'touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress; LABEL=$(softwareupdate -l 2>&1 | grep "Command Line" | grep -v "Title:" | head -1 | sed "s/.*Label: //" | sed "s/^[[:space:]]*\\*[[:space:]]*//"); rm -f /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress; if [ -n "$LABEL" ]; then echo "Installing: $LABEL"; softwareupdate -i "$LABEL" --agree-to-license; else echo "Command Line Tools package not found."; fi',
+  clt: 'xcode-select --install',
   brew: '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"',
   'tmux-install': 'brew install tmux',
   'tmux-upgrade': 'brew upgrade tmux',
