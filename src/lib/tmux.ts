@@ -1,8 +1,10 @@
 import { execFile as execFileCb } from 'child_process';
+import fs from 'fs/promises';
 import { promisify } from 'util';
 import path from 'path';
 import { nanoid } from 'nanoid';
 import { createLogger } from '@/lib/logger';
+import { isLinux } from '@/lib/platform';
 
 const log = createLogger('terminal');
 
@@ -420,26 +422,68 @@ export const capturePaneContent = async (sessionName: string): Promise<string | 
   }
 };
 
+const getChildPidsOf = async (parentPids: number[]): Promise<number[]> => {
+  if (isLinux) {
+    const results: number[] = [];
+    await Promise.all(
+      parentPids.map(async (pid) => {
+        try {
+          const raw = await fs.readFile(`/proc/${pid}/task/${pid}/children`, 'utf-8');
+          for (const s of raw.trim().split(/\s+/)) {
+            const n = parseInt(s, 10);
+            if (!Number.isNaN(n)) results.push(n);
+          }
+        } catch {
+          // process gone
+        }
+      }),
+    );
+    return results;
+  }
+  try {
+    const { stdout } = await execFile('pgrep', ['-P', parentPids.join(',')], { timeout: CMD_TIMEOUT });
+    return stdout.trim().split('\n').map((s) => parseInt(s, 10)).filter((n) => !Number.isNaN(n));
+  } catch {
+    return [];
+  }
+};
+
 const getDescendantPids = async (rootPid: number): Promise<number[]> => {
   const all: number[] = [];
   let frontier = [rootPid];
   while (frontier.length > 0) {
-    try {
-      const { stdout } = await execFile('pgrep', ['-P', frontier.join(',')], { timeout: CMD_TIMEOUT });
-      const children = stdout.trim().split('\n').map((s) => parseInt(s, 10)).filter((n) => !Number.isNaN(n));
-      if (children.length === 0) break;
-      all.push(...children);
-      frontier = children;
-    } catch {
-      break;
-    }
+    const children = await getChildPidsOf(frontier);
+    if (children.length === 0) break;
+    all.push(...children);
+    frontier = children;
   }
   return all;
+};
+
+const getListeningPortsLinux = async (pids: number[]): Promise<number[]> => {
+  try {
+    const pidSet = new Set(pids);
+    const { stdout } = await execFile('ss', ['-tlnp'], { timeout: CMD_TIMEOUT });
+    const ports = new Set<number>();
+    for (const line of stdout.split('\n')) {
+      const pidMatch = line.match(/pid=(\d+)/g);
+      if (!pidMatch) continue;
+      const hasPid = pidMatch.some((m) => pidSet.has(parseInt(m.replace('pid=', ''), 10)));
+      if (!hasPid) continue;
+      const portMatch = line.match(/:(\d+)\s/);
+      if (portMatch) ports.add(parseInt(portMatch[1], 10));
+    }
+    return [...ports].sort((a, b) => a - b);
+  } catch {
+    return [];
+  }
 };
 
 export const getListeningPorts = async (shellPid: number): Promise<number[]> => {
   const pids = await getDescendantPids(shellPid);
   if (pids.length === 0) return [];
+
+  if (isLinux) return getListeningPortsLinux(pids);
 
   try {
     const { stdout } = await execFile(

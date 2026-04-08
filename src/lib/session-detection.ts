@@ -6,6 +6,7 @@ import { execFile as execFileCb } from 'child_process';
 import { promisify } from 'util';
 import type { ISessionInfo } from '@/types/timeline';
 import { getShellPath } from '@/lib/preflight';
+import { isLinux } from '@/lib/platform';
 
 const execFile = promisify(execFileCb);
 
@@ -44,6 +45,13 @@ export const getChildPids = async (parentPid: number): Promise<number[]> => {
 };
 
 const getProcessCwd = async (pid: number): Promise<string | null> => {
+  if (isLinux) {
+    try {
+      return await fs.readlink(`/proc/${pid}/cwd`);
+    } catch {
+      return null;
+    }
+  }
   try {
     const { stdout } = await execFile('lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-Fn']);
     const line = stdout.split('\n').find((l) => l.startsWith('n/'));

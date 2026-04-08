@@ -11,8 +11,11 @@ const CMD_TIMEOUT = 5000;
 let shellPathCache: string | null = null;
 let shellPathPromise: Promise<string> | null = null;
 
+const defaultShell = () =>
+  os.userInfo().shell || process.env.SHELL || (process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash');
+
 const resolveShellPathAsync = async (): Promise<string> => {
-  const shell = os.userInfo().shell || process.env.SHELL || '/bin/zsh';
+  const shell = defaultShell();
   try {
     const { stdout } = await execFile(shell, ['-ilc', 'echo -n "$PATH"'], {
       timeout: CMD_TIMEOUT,
@@ -125,12 +128,14 @@ export const getPreflightStatus = async (): Promise<IPreflightResult> => {
   };
 
   if (!coreReady) {
-    const [brew, clt] = await Promise.all([
-      checkTool('brew', ['--version'], parseSemanticVersion),
-      checkClt(),
-    ]);
-    result.brew = brew;
-    result.clt = clt;
+    if (process.platform === 'darwin') {
+      const [brew, clt] = await Promise.all([
+        checkTool('brew', ['--version'], parseSemanticVersion),
+        checkClt(),
+      ]);
+      result.brew = brew;
+      result.clt = clt;
+    }
   }
 
   return result;
