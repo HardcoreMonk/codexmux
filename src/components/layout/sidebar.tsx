@@ -464,13 +464,23 @@ const Sidebar = () => {
                 <Settings className="h-3.5 w-3.5" />
               </button>
             </div>
-            <button
-              className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
-              onClick={handleToggleCollapse}
-              aria-label={t('collapseSidebar')}
-            >
-              <ChevronsLeft className="h-3.5 w-3.5" />
-            </button>
+            <div className="relative">
+              <button
+                className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
+                onClick={handleToggleCollapse}
+                aria-label={t('collapseSidebar')}
+              >
+                <ChevronsLeft className="h-3.5 w-3.5" />
+              </button>
+              <span
+                className={cn(
+                  'absolute -right-0.5 -top-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-medium leading-none text-muted-foreground transition-opacity duration-200 pointer-events-none',
+                  showShortcuts ? 'opacity-100' : 'opacity-0',
+                )}
+              >
+                {isMac ? '⌘B' : '^B'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
