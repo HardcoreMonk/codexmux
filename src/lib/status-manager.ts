@@ -197,7 +197,7 @@ class StatusManager {
           workspaceId: ws.id,
           tabName: tab.name,
           currentProcess: resolvedProcess,
-          paneTitle: paneInfo ? `${paneInfo.command}|${paneInfo.path}` : undefined,
+          paneTitle: paneInfo ? `${resolvedProcess ?? paneInfo.command}|${paneInfo.path}` : undefined,
           tmuxSession: tab.sessionName,
           panelType: tab.panelType,
           terminalStatus,
@@ -315,8 +315,8 @@ class StatusManager {
           ? { terminalStatus: 'idle' as const, listeningPorts: [] as number[] }
           : await this.detectTerminalStatus(paneInfo);
 
-        const newPaneTitle = paneInfo ? `${paneInfo.command}|${paneInfo.path}` : undefined;
         const resolvedProcess = await this.resolveCurrentProcess(tab.sessionName, paneInfo?.command);
+        const newPaneTitle = paneInfo ? `${resolvedProcess ?? paneInfo.command}|${paneInfo.path}` : undefined;
 
         if (!existing) {
           const entry: ITabStatusEntry = {
