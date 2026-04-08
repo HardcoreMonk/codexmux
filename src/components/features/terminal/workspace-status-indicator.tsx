@@ -16,7 +16,7 @@ const NERD_FONT_STYLE = { fontFamily: 'MesloLGLDZ, monospace' };
 
 const TerminalNerdIcon = ({ className, process }: { className: string; process?: string | null }) => {
   if (process === 'codex') {
-    return <OpenAIIcon className={`h-3 w-3 ${className}`} />;
+    return <OpenAIIcon className={`h-2.5 w-2.5 ${className}`} />;
   }
   return (
     <span className={`text-sm leading-none ${className}`} style={NERD_FONT_STYLE} aria-hidden="true">

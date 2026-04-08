@@ -215,20 +215,22 @@ const useTerminal = ({ theme, fontSize = DEFAULT_FONT_SIZE, onInput, onResize, o
       resizeObserver.observe(containerNode);
 
       // tmux mouse on 상태에서 Shift 없이 드래그 선택 지원
-      // 일반 mousedown은 mouse report로 TTY에 전달되지만, shiftKey가 있으면
-      // xterm.js가 selection으로 전환한다. 따라서 수식어 없는 left mousedown을
-      // shiftKey=true로 합성해 재발행한다.
-      const forceShiftOnDrag = (e: MouseEvent) => {
+      // xterm.js는 pointerdown의 shiftKey로 selection/mouse-report를 분기하므로
+      // 수식어 없는 left pointerdown을 shiftKey=true로 합성해 재발행한다.
+      const forceShiftOnDrag = (e: PointerEvent) => {
         if (e.button !== 0) return;
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         e.stopImmediatePropagation();
         const target = e.target as HTMLElement | null;
         if (!target) return;
         target.dispatchEvent(
-          new MouseEvent('mousedown', {
+          new PointerEvent('pointerdown', {
             bubbles: true,
             cancelable: true,
             view: window,
+            pointerId: e.pointerId,
+            pointerType: e.pointerType,
+            isPrimary: e.isPrimary,
             button: 0,
             buttons: e.buttons,
             clientX: e.clientX,
@@ -239,9 +241,9 @@ const useTerminal = ({ theme, fontSize = DEFAULT_FONT_SIZE, onInput, onResize, o
           }),
         );
       };
-      containerNode.addEventListener('mousedown', forceShiftOnDrag, { capture: true });
+      containerNode.addEventListener('pointerdown', forceShiftOnDrag, { capture: true });
       cleanupDragSelect = () => {
-        containerNode.removeEventListener('mousedown', forceShiftOnDrag, { capture: true });
+        containerNode.removeEventListener('pointerdown', forceShiftOnDrag, { capture: true });
       };
 
       // 모바일 터치 → 합성 WheelEvent 변환 (tmux 스크롤 지원)
