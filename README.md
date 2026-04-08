@@ -55,19 +55,19 @@ Run, monitor, and manage multiple Claude Code sessions from any browser.
 
 ## 지원 플랫폼
 
-| 플랫폼 | 상태 |
-| --- | --- |
-| macOS (Apple Silicon / Intel) | ✅ 지원 |
-| Linux | ❌ 미지원 |
-| Windows | ❌ 미지원 |
+| 플랫폼 | 상태 | 비고 |
+| --- | --- | --- |
+| macOS (Apple Silicon / Intel) | ✅ 지원 | |
+| Linux | ✅ 지원 | Electron 제외 |
+| Windows | ❌ 미지원 | |
 
-현재 macOS 전용입니다. `node-pty` 네이티브 바이너리가 macOS용으로만 포함되어 있으며, tmux 연동과 프로세스 감지 로직이 macOS 환경을 기준으로 동작합니다.
+macOS와 Linux를 지원합니다. Linux에서는 Electron 데스크톱 앱을 제외한 모든 기능을 사용할 수 있습니다. Windows는 현재 미지원입니다.
 
 ## 설치 및 실행
 
 ### 필수 요구사항
 
-- macOS 13 (Ventura) 이상
+- macOS 13 (Ventura) 이상 또는 Linux
 - [Node.js](https://nodejs.org/) 18+
 - [tmux](https://github.com/tmux/tmux)
 
