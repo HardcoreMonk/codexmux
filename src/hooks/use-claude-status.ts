@@ -57,16 +57,18 @@ const useClaudeStatus = () => {
           const msg = JSON.parse(event.data) as TStatusServerMessage;
 
           switch (msg.type) {
-            case 'status:sync':
+            case 'status:sync': {
               useTabStore.getState().syncAllFromServer(msg.tabs);
               for (const [tabId, entry] of Object.entries(msg.tabs)) {
-                if (entry.paneTitle) {
+                if (entry.paneTitle && !useTabMetadataStore.getState().metadata[tabId]?.title) {
                   useTabMetadataStore.getState().setTitle(tabId, formatTabTitle(entry.paneTitle));
                 }
               }
               break;
+            }
 
             case 'status:update':
+              console.log('[title:status:update]', JSON.stringify({ tabId: msg.tabId, paneTitle: msg.paneTitle, formatted: msg.paneTitle ? formatTabTitle(msg.paneTitle) : null, process: msg.currentProcess }));
               useTabStore.getState().updateFromServer(msg.tabId, {
                 cliState: msg.cliState,
                 workspaceId: msg.workspaceId,

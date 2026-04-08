@@ -28,7 +28,7 @@ import ObserveBanner from '@/components/features/agent/observe-banner';
 import useQuickPrompts from '@/hooks/use-quick-prompts';
 import useFileDrop from '@/hooks/use-file-drop';
 import PaneTabBar from '@/components/features/terminal/pane-tab-bar';
-import { formatTabTitle, parseCurrentCommand, isShellProcess } from '@/lib/tab-title';
+import { formatTabTitle, parseCurrentCommand } from '@/lib/tab-title';
 import { isInterpreter, hasProcessIcon } from '@/lib/process-icon';
 import { isAppShortcut, isClearShortcut, isFocusInputShortcut, isShiftEnter } from '@/lib/keyboard-shortcuts';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
@@ -199,7 +199,6 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   const scrollToBottomRef = useRef<(() => void) | undefined>(undefined);
   const pendingRestartRef = useRef(false);
   const lastTitleRef = useRef('');
-  const shellDeferTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const claudeCliState = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.cliState ?? 'inactive' : 'inactive');
   const claudeStatus = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.claudeStatus ?? 'unknown' : 'unknown');
@@ -296,23 +295,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
       const prevTitle = lastTitleRef.current;
       lastTitleRef.current = title;
 
-      if (isShellProcess(title) && prevTitle && !isShellProcess(prevTitle)) {
-        if (shellDeferTimerRef.current) clearTimeout(shellDeferTimerRef.current);
-        shellDeferTimerRef.current = setTimeout(() => {
-          shellDeferTimerRef.current = null;
-          const formatted = formatTabTitle(title);
-          const process = parseCurrentCommand(title);
-          useTabMetadataStore.getState().setTitle(tabId, formatted);
-          useTabStore.getState().setCurrentProcess(tabId, process);
-          fetchAndUpdateCwd();
-        }, 3_000);
-        return;
-      }
-
-      if (shellDeferTimerRef.current) {
-        clearTimeout(shellDeferTimerRef.current);
-        shellDeferTimerRef.current = null;
-      }
+      console.log('[title]', JSON.stringify({ prev: prevTitle, next: title, formatted: formatTabTitle(title), process: parseCurrentCommand(title) }));
 
       const formatted = formatTabTitle(title);
       const process = parseCurrentCommand(title);

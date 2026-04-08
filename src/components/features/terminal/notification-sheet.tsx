@@ -51,7 +51,7 @@ interface INotificationItem {
   workspaceName: string;
   workspaceId: string;
   lastUserMessage?: string | null;
-  lastAction?: string | null;
+  currentAction?: string | null;
   lastAssistantMessage?: string | null;
   claudeSummary?: string | null;
   readyForReviewAt?: number | null;
@@ -78,7 +78,7 @@ const collectItems = (
       workspaceName: wsMap.get(tab.workspaceId) || tab.workspaceId,
       workspaceId: tab.workspaceId,
       lastUserMessage: tab.lastUserMessage,
-      lastAction: tab.lastAction,
+      currentAction: tab.currentAction,
       lastAssistantMessage: tab.lastAssistantMessage,
       claudeSummary: tab.claudeSummary,
       readyForReviewAt: tab.readyForReviewAt,
@@ -111,7 +111,7 @@ const NotificationItem = ({
   onNavigate?: (workspaceId: string, tabId: string) => void;
 }) => {
   const t = useTranslations('notification');
-  const progressText = item.lastAction || item.lastAssistantMessage || item.claudeSummary;
+  const progressText = item.currentAction || item.lastAssistantMessage || item.claudeSummary;
 
   return (
     <div

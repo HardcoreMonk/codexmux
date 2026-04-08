@@ -16,7 +16,7 @@ export interface ITabStatusEntry {
   claudeSummary?: string | null;
   lastUserMessage?: string | null;
   lastAssistantMessage?: string | null;
-  lastAction?: string | null;
+  currentAction?: string | null;
   readyForReviewAt?: number | null;
   busySince?: number | null;
   processRetries?: number;
@@ -45,7 +45,7 @@ export interface IStatusUpdateMessage {
   claudeSummary?: string | null;
   lastUserMessage?: string | null;
   lastAssistantMessage?: string | null;
-  lastAction?: string | null;
+  currentAction?: string | null;
   readyForReviewAt?: number | null;
   busySince?: number | null;
 }

@@ -77,6 +77,7 @@ const useTabMetadataStore = create<ITabMetadataState>((set) => ({
     set((state) => {
       const prev = state.metadata[tabId];
       if (prev?.title === title) return state;
+      console.log('[title:setTitle]', JSON.stringify({ tabId, prev: prev?.title, next: title, caller: new Error().stack?.split('\n')[2]?.trim() }));
       return { metadata: { ...state.metadata, [tabId]: { ...prev, title } } };
     });
     scheduleSyncToLayout();
@@ -116,8 +117,12 @@ const useTabMetadataStore = create<ITabMetadataState>((set) => ({
         if (existing) {
           merged[id] = {
             ...incoming,
+            ...(existing.title ? { title: existing.title } : {}),
             ...(existing.cwd ? { cwd: existing.cwd } : {}),
           };
+          if (incoming.title !== (existing.title ?? incoming.title)) {
+            console.log('[title:hydrate]', JSON.stringify({ tabId: id, existing: existing.title, incoming: incoming.title, result: merged[id].title }));
+          }
         } else {
           merged[id] = incoming;
         }
