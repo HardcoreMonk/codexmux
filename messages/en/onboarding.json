@@ -2,6 +2,7 @@
   "steps": {
     "preflight": "System Check",
     "password": "Set Password",
+    "language": "Language",
     "appearance": "App Theme",
     "theme": "Terminal Theme",
     "claude": "Claude Settings",
@@ -25,11 +26,13 @@
   "confirmPasswordPlaceholder": "Re-enter your password",
   "passwordMinLength": "Password must be at least 4 characters.",
   "passwordMismatch": "Passwords do not match.",
+  "languageDescription": "Select your preferred language.",
   "appearanceDescription": "Select the app-wide display theme.",
   "skipPermissions": "Skip Permission Checks",
   "skipPermissionsDescription": "Adds --dangerously-skip-permissions option when running Claude Code.",
   "summary": {
     "password": "Password",
+    "language": "Language",
     "appTheme": "App Theme",
     "darkTheme": "Dark Theme",
     "lightTheme": "Light Theme",

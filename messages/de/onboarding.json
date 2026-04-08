@@ -2,6 +2,7 @@
   "steps": {
     "preflight": "Systemprüfung",
     "password": "Passwort festlegen",
+    "language": "Sprache",
     "appearance": "App-Theme",
     "theme": "Terminal-Theme",
     "claude": "Claude-Einstellungen",
@@ -25,11 +26,13 @@
   "confirmPasswordPlaceholder": "Passwort erneut eingeben",
   "passwordMinLength": "Das Passwort muss mindestens 4 Zeichen lang sein.",
   "passwordMismatch": "Passwörter stimmen nicht überein.",
+  "languageDescription": "Wählen Sie Ihre bevorzugte Sprache.",
   "appearanceDescription": "Wähle das Anzeige-Theme für die gesamte App.",
   "skipPermissions": "Berechtigungsprüfungen überspringen",
   "skipPermissionsDescription": "Fügt die Option --dangerously-skip-permissions beim Ausführen der Claude Code hinzu.",
   "summary": {
     "password": "Passwort",
+    "language": "Sprache",
     "appTheme": "App-Theme",
     "darkTheme": "Dunkles Theme",
     "lightTheme": "Helles Theme",

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, Download, Eye, EyeOff, ListChecks, Lock, Loader2, LogIn, RefreshCcw, Terminal, Bot, Sun, Moon, Monitor, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, Download, Eye, EyeOff, Globe, ListChecks, Lock, Loader2, LogIn, RefreshCcw, Terminal, Bot, Sun, Moon, Monitor, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,11 +13,26 @@ import type { ITerminalThemeColors } from '@/lib/terminal-themes';
 import AppLogo from '@/components/layout/app-logo';
 import InstallDialog from '@/components/features/login/install-dialog';
 import { usePreflight } from '@/hooks/use-preflight';
+import useConfigStore from '@/hooks/use-config-store';
 
-type TStep = 'preflight' | 'password' | 'appearance' | 'theme' | 'claude' | 'complete';
+type TStep = 'preflight' | 'password' | 'language' | 'appearance' | 'theme' | 'claude' | 'complete';
 type TAppTheme = 'dark' | 'light' | 'system';
 
-const STEPS: TStep[] = ['preflight', 'password', 'appearance', 'theme', 'claude', 'complete'];
+const STEPS: TStep[] = ['preflight', 'password', 'language', 'appearance', 'theme', 'claude', 'complete'];
+
+const LOCALES = [
+  { id: 'en', label: 'English' },
+  { id: 'ko', label: '한국어' },
+  { id: 'ja', label: '日本語' },
+  { id: 'zh-CN', label: '中文（简体）' },
+  { id: 'zh-TW', label: '中文（繁體）' },
+  { id: 'es', label: 'Español' },
+  { id: 'fr', label: 'Français' },
+  { id: 'de', label: 'Deutsch' },
+  { id: 'pt-BR', label: 'Português (BR)' },
+  { id: 'ru', label: 'Русский' },
+  { id: 'tr', label: 'Türkçe' },
+] as const;
 
 const previewColors = (colors: ITerminalThemeColors) => [
   colors.red, colors.green, colors.yellow, colors.blue,
@@ -84,6 +99,7 @@ const StepIndicator = ({ current }: { current: TStep }) => {
 const STEP_ICONS: Record<TStep, React.ReactNode> = {
   preflight: <ListChecks className="h-5 w-5" />,
   password: <Lock className="h-5 w-5" />,
+  language: <Globe className="h-5 w-5" />,
   appearance: <Sun className="h-5 w-5" />,
   theme: <Terminal className="h-5 w-5" />,
   claude: <Bot className="h-5 w-5" />,
@@ -116,6 +132,10 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
     },
   });
   const [installTarget, setInstallTarget] = useState<{ command: string; label: string } | null>(null);
+  const [direction, setDirection] = useState<'forward' | 'back'>('forward');
+  const storeLocale = useConfigStore((s) => s.locale);
+  const setStoreLocale = useConfigStore((s) => s.setLocale);
+  const [selectedLocale, setSelectedLocale] = useState(storeLocale);
 
   useEffect(() => {
     if (step === 'password') {
@@ -133,19 +153,32 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
 
   const goNext = () => {
     const next = STEPS[stepIndex + 1];
-    if (next) setStep(next);
+    if (next) { setDirection('forward'); setStep(next); }
   };
 
   const goBack = () => {
     const prev = STEPS[stepIndex - 1];
-    if (prev) setStep(prev);
+    if (prev) { setDirection('back'); setStep(prev); }
   };
+
+  const stepPanelClass = (s: TStep) =>
+    cn(
+      'flex flex-col gap-4 [grid-area:1/1] transition-all duration-200 ease-out',
+      step === s
+        ? 'opacity-100'
+        : cn('opacity-0 pointer-events-none', direction === 'forward' ? 'translate-x-2' : '-translate-x-2'),
+    );
 
   const canProceed = () => {
     if (step === 'password') {
       return password.length >= 4 && password === confirmPassword;
     }
     return true;
+  };
+
+  const handleLocaleChange = (id: string) => {
+    setSelectedLocale(id);
+    setStoreLocale(id);
   };
 
   const handlePasswordNext = () => {
@@ -169,6 +202,7 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           authPassword: password,
+          locale: selectedLocale,
           appTheme,
           terminalTheme: { light: lightTheme, dark: darkTheme },
           dangerouslySkipPermissions: skipPermissions,
@@ -204,7 +238,7 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
       </div>
 
       <div className="grid">
-        <div className={cn('flex flex-col gap-4 [grid-area:1/1]', step !== 'preflight' && 'invisible')} aria-hidden={step !== 'preflight'}>
+        <div className={stepPanelClass('preflight')} aria-hidden={step !== 'preflight'}>
           {preflightChecking ? (
             <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -319,7 +353,7 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
           })() : null}
         </div>
 
-        <div className={cn('flex flex-col gap-4 [grid-area:1/1]', step !== 'password' && 'invisible')} aria-hidden={step !== 'password'}>
+        <div className={stepPanelClass('password')} aria-hidden={step !== 'password'}>
           <div className="flex flex-col gap-2">
             <Label htmlFor="setup-password">{t('password')}</Label>
             <div className="relative">
@@ -370,7 +404,39 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
           </Button>
         </div>
 
-        <div className={cn('flex flex-col gap-4 [grid-area:1/1]', step !== 'appearance' && 'invisible')} aria-hidden={step !== 'appearance'}>
+        <div className={stepPanelClass('language')} aria-hidden={step !== 'language'}>
+          <p className="text-sm text-muted-foreground">{t('languageDescription')}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {LOCALES.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => handleLocaleChange(l.id)}
+                tabIndex={step === 'language' ? 0 : -1}
+                className={cn(
+                  'rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition-colors',
+                  selectedLocale === l.id
+                    ? 'border-primary bg-accent'
+                    : 'border-border hover:border-muted-foreground/50',
+                )}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="lg" className="h-12" tabIndex={step === 'language' ? 0 : -1} onClick={goBack}>
+              <ArrowLeft className="mr-1 h-4 w-4" />
+              {tc('back')}
+            </Button>
+            <Button size="lg" className="h-12 flex-1" tabIndex={step === 'language' ? 0 : -1} onClick={goNext}>
+              {tc('next')}
+              <ArrowRight className="ml-1 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className={stepPanelClass('appearance')} aria-hidden={step !== 'appearance'}>
           <p className="text-sm text-muted-foreground">{t('appearanceDescription')}</p>
           <div className="grid grid-cols-3 gap-2">
             {appThemeOptions.map((opt) => (
@@ -403,7 +469,7 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
           </div>
         </div>
 
-        <div className={cn('flex flex-col gap-4 [grid-area:1/1]', step !== 'theme' && 'invisible')} aria-hidden={step !== 'theme'}>
+        <div className={stepPanelClass('theme')} aria-hidden={step !== 'theme'}>
           <Tabs defaultValue="dark">
             <TabsList className="w-full">
               <TabsTrigger value="dark" className="flex-1" tabIndex={step === 'theme' ? 0 : -1}>{tc('dark')}</TabsTrigger>
@@ -428,7 +494,7 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
           </div>
         </div>
 
-        <div className={cn('flex flex-col gap-4 [grid-area:1/1]', step !== 'claude' && 'invisible')} aria-hidden={step !== 'claude'}>
+        <div className={stepPanelClass('claude')} aria-hidden={step !== 'claude'}>
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="space-y-1 pr-4">
               <p className="text-sm font-medium">{t('skipPermissions')}</p>
@@ -454,11 +520,15 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
           </div>
         </div>
 
-        <div className={cn('flex flex-col gap-4 [grid-area:1/1]', step !== 'complete' && 'invisible')} aria-hidden={step !== 'complete'}>
+        <div className={stepPanelClass('complete')} aria-hidden={step !== 'complete'}>
           <div className="rounded-lg border p-4 space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t('summary.password')}</span>
               <span className="font-mono">{'*'.repeat(password.length)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t('summary.language')}</span>
+              <span>{LOCALES.find((l) => l.id === selectedLocale)?.label}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t('summary.appTheme')}</span>

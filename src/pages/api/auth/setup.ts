@@ -13,7 +13,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(400).json({ error: 'Setup already completed.' });
     }
 
-    const { authPassword, appTheme, terminalTheme, dangerouslySkipPermissions } = req.body ?? {};
+    const { authPassword, locale, appTheme, terminalTheme, dangerouslySkipPermissions } = req.body ?? {};
     if (!authPassword || typeof authPassword !== 'string') {
       return res.status(400).json({ error: 'Password is required.' });
     }
@@ -24,6 +24,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     await updateConfig({
       authPassword: hashedPassword,
       authSecret,
+      locale: locale || 'en',
       appTheme: appTheme || 'dark',
       terminalTheme,
       dangerouslySkipPermissions: dangerouslySkipPermissions ?? false,

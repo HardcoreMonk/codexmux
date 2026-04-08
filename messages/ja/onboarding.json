@@ -2,6 +2,7 @@
   "steps": {
     "preflight": "システムチェック",
     "password": "パスワード設定",
+    "language": "言語",
     "appearance": "アプリテーマ",
     "theme": "ターミナルテーマ",
     "claude": "Claude設定",
@@ -25,11 +26,13 @@
   "confirmPasswordPlaceholder": "パスワードを再入力",
   "passwordMinLength": "パスワードは4文字以上で入力してください。",
   "passwordMismatch": "パスワードが一致しません。",
+  "languageDescription": "使用する言語を選択してください。",
   "appearanceDescription": "アプリ全体の表示テーマを選択します。",
   "skipPermissions": "権限チェックをスキップ",
   "skipPermissionsDescription": "Claude Code実行時に--dangerously-skip-permissionsオプションを追加します。",
   "summary": {
     "password": "パスワード",
+    "language": "言語",
     "appTheme": "アプリテーマ",
     "darkTheme": "ダークテーマ",
     "lightTheme": "ライトテーマ",

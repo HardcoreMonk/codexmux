@@ -2,6 +2,7 @@
   "steps": {
     "preflight": "Verificacao do Sistema",
     "password": "Definir Senha",
+    "language": "Idioma",
     "appearance": "Tema do Aplicativo",
     "theme": "Tema do Terminal",
     "claude": "Configuracoes do Claude",
@@ -25,11 +26,13 @@
   "confirmPasswordPlaceholder": "Digite a senha novamente",
   "passwordMinLength": "A senha deve ter no minimo 4 caracteres.",
   "passwordMismatch": "As senhas nao coincidem.",
+  "languageDescription": "Selecione seu idioma preferido.",
   "appearanceDescription": "Selecione o tema de exibicao do aplicativo.",
   "skipPermissions": "Pular Verificacao de Permissoes",
   "skipPermissionsDescription": "Adiciona a opcao --dangerously-skip-permissions ao executar o Claude Code.",
   "summary": {
     "password": "Senha",
+    "language": "Idioma",
     "appTheme": "Tema do Aplicativo",
     "darkTheme": "Tema Escuro",
     "lightTheme": "Tema Claro",

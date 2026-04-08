@@ -2,6 +2,7 @@
   "steps": {
     "preflight": "Sistem Kontrolü",
     "password": "Şifre Belirleme",
+    "language": "Dil",
     "appearance": "Uygulama Teması",
     "theme": "Terminal Teması",
     "claude": "Claude Ayarları",
@@ -25,11 +26,13 @@
   "confirmPasswordPlaceholder": "Şifrenizi tekrar girin",
   "passwordMinLength": "Şifre en az 4 karakter olmalıdır.",
   "passwordMismatch": "Şifreler eşleşmiyor.",
+  "languageDescription": "Tercih ettiğiniz dili seçin.",
   "appearanceDescription": "Uygulama genelinde görüntüleme temasını seçin.",
   "skipPermissions": "İzin Kontrollerini Atla",
   "skipPermissionsDescription": "Claude Code çalıştırılırken --dangerously-skip-permissions seçeneğini ekler.",
   "summary": {
     "password": "Şifre",
+    "language": "Dil",
     "appTheme": "Uygulama Teması",
     "darkTheme": "Koyu Tema",
     "lightTheme": "Açık Tema",

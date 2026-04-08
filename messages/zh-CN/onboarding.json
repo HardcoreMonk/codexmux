@@ -2,6 +2,7 @@
   "steps": {
     "preflight": "系统检查",
     "password": "设置密码",
+    "language": "语言",
     "appearance": "应用主题",
     "theme": "终端主题",
     "claude": "Claude设置",
@@ -25,11 +26,13 @@
   "confirmPasswordPlaceholder": "重新输入密码",
   "passwordMinLength": "密码至少需要4个字符。",
   "passwordMismatch": "密码不一致。",
+  "languageDescription": "选择您偏好的语言。",
   "appearanceDescription": "选择应用的整体显示主题。",
   "skipPermissions": "跳过权限检查",
   "skipPermissionsDescription": "运行Claude Code时添加--dangerously-skip-permissions选项。",
   "summary": {
     "password": "密码",
+    "language": "语言",
     "appTheme": "应用主题",
     "darkTheme": "深色主题",
     "lightTheme": "浅色主题",

@@ -2,6 +2,7 @@
   "steps": {
     "preflight": "Vérification système",
     "password": "Définir le mot de passe",
+    "language": "Langue",
     "appearance": "Thème de l'application",
     "theme": "Thème du terminal",
     "claude": "Paramètres Claude",
@@ -25,11 +26,13 @@
   "confirmPasswordPlaceholder": "Ressaisissez votre mot de passe",
   "passwordMinLength": "Le mot de passe doit contenir au moins 4 caractères.",
   "passwordMismatch": "Les mots de passe ne correspondent pas.",
+  "languageDescription": "Sélectionnez votre langue préférée.",
   "appearanceDescription": "Sélectionnez le thème d'affichage de l'application.",
   "skipPermissions": "Ignorer les vérifications de permissions",
   "skipPermissionsDescription": "Ajoute l'option --dangerously-skip-permissions lors de l'exécution de Claude Code.",
   "summary": {
     "password": "Mot de passe",
+    "language": "Langue",
     "appTheme": "Thème de l'application",
     "darkTheme": "Thème sombre",
     "lightTheme": "Thème clair",
