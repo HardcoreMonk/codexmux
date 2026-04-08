@@ -678,8 +678,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   const ready = isReady && (status === 'connected' || hasEverConnected) && !noTabs && !sessionSwitching;
   const showInitialLoading =
     !noTabs &&
-    (!isReady ||
-      (isReady && status === 'connecting' && !hasEverConnected));
+    (!isReady || !hasEverConnected);
 
   return (
     <div
