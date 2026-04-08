@@ -5,5 +5,6 @@
   "needsInputSection": "Ожидает ввода ({count})",
   "reviewSection": "На проверке ({count})",
   "dismiss": "Скрыть",
-  "navigate": "Перейти"
+  "navigate": "Перейти",
+  "starting": "Запуск..."
 }

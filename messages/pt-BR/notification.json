@@ -5,5 +5,6 @@
   "needsInputSection": "Aguardando entrada ({count})",
   "reviewSection": "Revisao ({count})",
   "dismiss": "Dispensar",
-  "navigate": "Ir para"
+  "navigate": "Ir para",
+  "starting": "Iniciando..."
 }

@@ -5,5 +5,6 @@
   "needsInputSection": "入力待ち ({count})",
   "reviewSection": "レビュー ({count})",
   "dismiss": "閉じる",
-  "navigate": "移動"
+  "navigate": "移動",
+  "starting": "開始中..."
 }

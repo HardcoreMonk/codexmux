@@ -5,5 +5,6 @@
   "needsInputSection": "等待輸入（{count}）",
   "reviewSection": "待審查（{count}）",
   "dismiss": "關閉",
-  "navigate": "前往"
+  "navigate": "前往",
+  "starting": "正在啟動..."
 }

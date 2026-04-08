@@ -148,11 +148,9 @@ const NotificationItem = ({
             {item.lastUserMessage}
           </p>
         )}
-        {progressText && (
-          <p className="mt-0.5 truncate text-xs text-muted-foreground/60">
-            {progressText}
-          </p>
-        )}
+        <p className="mt-0.5 truncate text-xs text-muted-foreground/60">
+          {progressText || t('starting')}
+        </p>
         {showActions && !isActiveTab && (
           <div className="mt-2 flex items-center gap-1.5">
             <Button

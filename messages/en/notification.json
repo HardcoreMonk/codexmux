@@ -5,5 +5,6 @@
   "needsInputSection": "Needs Input ({count})",
   "reviewSection": "Review ({count})",
   "dismiss": "Dismiss",
-  "navigate": "Go to"
+  "navigate": "Go to",
+  "starting": "Starting..."
 }

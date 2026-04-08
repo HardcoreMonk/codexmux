@@ -6,7 +6,7 @@ interface ISpinnerProps extends React.HTMLAttributes<HTMLSpanElement> {
 
 const Spinner = ({ className, size, style, ...props }: ISpinnerProps) => (
   <span
-    className={cn('shrink-0 animate-spin rounded-full border border-current border-t-transparent', className)}
+    className={cn('inline-block shrink-0 animate-spin rounded-full border border-current border-t-transparent', className)}
     style={size ? { width: size, height: size, ...style } : style}
     aria-hidden="true"
     {...props}
