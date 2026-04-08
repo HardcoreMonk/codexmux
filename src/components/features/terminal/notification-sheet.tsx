@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowRight, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import dayjs from 'dayjs';
 import { useRouter } from 'next/router';
@@ -51,6 +51,9 @@ interface INotificationItem {
   workspaceName: string;
   workspaceId: string;
   lastUserMessage?: string | null;
+  lastAction?: string | null;
+  lastAssistantMessage?: string | null;
+  claudeSummary?: string | null;
   readyForReviewAt?: number | null;
   busySince?: number | null;
 }
@@ -75,6 +78,9 @@ const collectItems = (
       workspaceName: wsMap.get(tab.workspaceId) || tab.workspaceId,
       workspaceId: tab.workspaceId,
       lastUserMessage: tab.lastUserMessage,
+      lastAction: tab.lastAction,
+      lastAssistantMessage: tab.lastAssistantMessage,
+      claudeSummary: tab.claudeSummary,
       readyForReviewAt: tab.readyForReviewAt,
       busySince: tab.busySince,
     });
@@ -105,6 +111,7 @@ const NotificationItem = ({
   onNavigate?: (workspaceId: string, tabId: string) => void;
 }) => {
   const t = useTranslations('notification');
+  const progressText = item.lastAction || item.lastAssistantMessage || item.claudeSummary;
 
   return (
     <div
@@ -112,7 +119,7 @@ const NotificationItem = ({
         'flex items-start gap-3 rounded-md border px-3 py-2.5 transition-colors',
         isActiveTab
           ? 'border-claude-active/30 bg-claude-active/5'
-          : 'border-border/50 bg-muted/30 hover:bg-muted/50 cursor-pointer',
+          : 'border-border/50 bg-muted/30 hover:bg-muted/50 hover:border-foreground/20 cursor-pointer',
       )}
       onClick={isActiveTab ? undefined : () => onNavigate?.(item.workspaceId, item.tabId)}
     >
@@ -120,14 +127,14 @@ const NotificationItem = ({
         {variant === 'needs-input' ? (
           <span className="block h-2 w-2 rounded-full bg-ui-amber animate-pulse" />
         ) : showActions ? (
-          <span className="block h-2 w-2 rounded-full bg-claude-active" />
+          <span className="mt-px block h-2 w-2 rounded-full bg-claude-active" />
         ) : (
-          <Spinner className="h-3 w-3 text-muted-foreground" />
+          <Spinner className="h-3.5 w-3.5 text-claude-active/70" />
         )}
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm font-medium text-foreground">
+          <span className="truncate text-xs text-foreground">
             {item.workspaceName}
           </span>
           {(item.readyForReviewAt || item.busySince) && (
@@ -137,8 +144,13 @@ const NotificationItem = ({
           )}
         </div>
         {item.lastUserMessage && (
-          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+          <p className="mt-0.5 truncate text-sm text-muted-foreground">
             {item.lastUserMessage}
+          </p>
+        )}
+        {progressText && (
+          <p className="mt-0.5 truncate text-xs text-muted-foreground/60">
+            {progressText}
           </p>
         )}
         {showActions && !isActiveTab && (
@@ -151,15 +163,6 @@ const NotificationItem = ({
             >
               <Check className="mr-1 h-3 w-3" />
               {t('dismiss')}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 px-2 text-xs"
-              onClick={(e) => { e.stopPropagation(); onNavigate?.(item.workspaceId, item.tabId); }}
-            >
-              <ArrowRight className="mr-1 h-3 w-3" />
-              {t('navigate')}
             </Button>
           </div>
         )}

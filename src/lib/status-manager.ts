@@ -1,7 +1,7 @@
 import { WebSocket } from 'ws';
 import { getWorkspaces } from '@/lib/workspace-store';
-import { readLayoutFile, resolveLayoutFile, collectAllTabs, updateTabCliStatus } from '@/lib/layout-store';
-import { getAllPanesInfo, capturePaneContent, getListeningPorts, SAFE_SHELLS, getLastCommand } from '@/lib/tmux';
+import { readLayoutFile, resolveLayoutFile, collectAllTabs, updateTabCliStatus, updateTabClaudeSummary } from '@/lib/layout-store';
+import { getAllPanesInfo, capturePaneContent, getListeningPorts, SAFE_SHELLS, getLastCommand, getPaneTitle } from '@/lib/tmux';
 import { detectActiveSession, getChildPids, isClaudeRunning } from '@/lib/session-detection';
 import { isInterpreter, hasProcessIcon } from '@/lib/process-icon';
 import { hasPermissionPrompt } from '@/lib/permission-prompt';
@@ -37,10 +37,94 @@ interface IJsonlIdleCache {
   stale: boolean;
   needsStaleRecheck: boolean;
   staleMs: number;
+  lastAssistantSnippet: string | null;
+  lastAction: string | null;
 }
 
 const MAX_JSONL_CACHE = 256;
 const jsonlIdleCache = new Map<string, IJsonlIdleCache>();
+
+const MAX_SNIPPET_LENGTH = 200;
+
+const formatToolAction = (block: { name?: string; input?: Record<string, unknown> }): string => {
+  const name = block.name ?? 'Tool';
+  const input = block.input;
+  if (!input) return name;
+
+  const filePath = input.file_path as string | undefined;
+  if (filePath) {
+    const basename = filePath.split('/').pop() ?? filePath;
+    return `${name} ${basename}`;
+  }
+
+  const command = input.command as string | undefined;
+  if (command) {
+    const first = command.split('\n')[0].trim();
+    const short = first.length > 60 ? first.slice(0, 60) + '…' : first;
+    return `${name} ${short}`;
+  }
+
+  const pattern = input.pattern as string | undefined;
+  if (pattern) return `${name} ${pattern}`;
+
+  const prompt = input.prompt as string | undefined;
+  if (prompt) {
+    const short = prompt.length > 60 ? prompt.slice(0, 60) + '…' : prompt;
+    return `${name} ${short}`;
+  }
+
+  return name;
+};
+
+interface IAssistantExtract {
+  lastAssistantSnippet: string | null;
+  lastAction: string | null;
+}
+
+const extractAssistantInfo = (lines: string[]): IAssistantExtract => {
+  for (let i = lines.length - 1; i >= 0; i--) {
+    try {
+      const entry = JSON.parse(lines[i]);
+      if (entry.isSidechain) continue;
+      if (entry.type !== 'assistant' || !entry.message?.content) continue;
+      const content = entry.message.content;
+      if (!Array.isArray(content)) continue;
+
+      let lastAssistantSnippet: string | null = null;
+      let lastAction: string | null = null;
+
+      // lastAction: last content block (text or tool_use)
+      for (let j = content.length - 1; j >= 0; j--) {
+        const block = content[j];
+        if (block.type === 'tool_use') {
+          lastAction = formatToolAction(block);
+          break;
+        }
+        if (block.type === 'text' && block.text?.trim()) {
+          const text = block.text.trim();
+          lastAction = text.length > MAX_SNIPPET_LENGTH
+            ? text.slice(0, MAX_SNIPPET_LENGTH) + '…'
+            : text;
+          break;
+        }
+      }
+
+      // lastAssistantSnippet: last text block
+      for (let j = content.length - 1; j >= 0; j--) {
+        if (content[j].type === 'text' && content[j].text?.trim()) {
+          const text = content[j].text.trim();
+          lastAssistantSnippet = text.length > MAX_SNIPPET_LENGTH
+            ? text.slice(0, MAX_SNIPPET_LENGTH) + '…'
+            : text;
+          break;
+        }
+      }
+
+      return { lastAssistantSnippet, lastAction };
+    } catch { continue; }
+  }
+  return { lastAssistantSnippet: null, lastAction: null };
+};
 
 interface IScanResult {
   matched: boolean;
@@ -89,21 +173,23 @@ const scanLines = (lines: string[], elapsed: number): IScanResult => {
 interface IJsonlCheckResult {
   idle: boolean;
   stale: boolean;
+  lastAssistantSnippet: string | null;
+  lastAction: string | null;
 }
 
 const checkJsonlIdle = async (jsonlPath: string): Promise<IJsonlCheckResult> => {
   try {
     const stat = await fs.stat(jsonlPath);
-    if (stat.size === 0) return { idle: true, stale: false };
+    if (stat.size === 0) return { idle: true, stale: false, lastAssistantSnippet: null, lastAction: null };
 
     const cached = jsonlIdleCache.get(jsonlPath);
     if (cached && cached.mtimeMs === stat.mtimeMs) {
-      if (cached.idle) return { idle: true, stale: cached.stale };
+      if (cached.idle) return { idle: true, stale: cached.stale, lastAssistantSnippet: cached.lastAssistantSnippet, lastAction: cached.lastAction };
       if (cached.needsStaleRecheck) {
         const idle = Date.now() - stat.mtimeMs > cached.staleMs;
-        return { idle, stale: true };
+        return { idle, stale: true, lastAssistantSnippet: cached.lastAssistantSnippet, lastAction: cached.lastAction };
       }
-      return { idle: false, stale: false };
+      return { idle: false, stale: false, lastAssistantSnippet: cached.lastAssistantSnippet, lastAction: cached.lastAction };
     }
 
     const handle = await fs.open(jsonlPath, 'r');
@@ -116,6 +202,7 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<IJsonlCheckResult> => 
       const lines = buffer.toString('utf-8').split('\n').filter((l) => l.trim());
 
       let scan = scanLines(lines, elapsed);
+      let extracted = extractAssistantInfo(lines);
 
       if (!scan.matched && stat.size > JSONL_TAIL_SIZE) {
         const extSize = Math.min(stat.size, JSONL_EXTENDED_TAIL_SIZE);
@@ -123,19 +210,29 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<IJsonlCheckResult> => 
         await handle.read(extBuffer, 0, extSize, stat.size - extSize);
         const extLines = extBuffer.toString('utf-8').split('\n').filter((l) => l.trim());
         scan = scanLines(extLines, elapsed);
+        if (!extracted.lastAssistantSnippet && !extracted.lastAction) extracted = extractAssistantInfo(extLines);
       }
 
       if (jsonlIdleCache.size >= MAX_JSONL_CACHE) {
         jsonlIdleCache.delete(jsonlIdleCache.keys().next().value!);
       }
-      jsonlIdleCache.set(jsonlPath, { mtimeMs: stat.mtimeMs, idle: scan.idle, stale: scan.stale, needsStaleRecheck: scan.needsStaleRecheck, staleMs: scan.staleMs });
-      return { idle: scan.idle, stale: scan.stale };
+      jsonlIdleCache.set(jsonlPath, { mtimeMs: stat.mtimeMs, idle: scan.idle, stale: scan.stale, needsStaleRecheck: scan.needsStaleRecheck, staleMs: scan.staleMs, lastAssistantSnippet: extracted.lastAssistantSnippet, lastAction: extracted.lastAction });
+      return { idle: scan.idle, stale: scan.stale, lastAssistantSnippet: extracted.lastAssistantSnippet, lastAction: extracted.lastAction };
     } finally {
       await handle.close();
     }
   } catch {
-    return { idle: false, stale: false };
+    return { idle: false, stale: false, lastAssistantSnippet: null, lastAction: null };
   }
+};
+
+const CLAUDE_TITLE_RE = /^[✳⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⠐⠈]\s+/;
+
+const parseClaudePaneTitle = (paneTitle: string | null): string | null => {
+  if (!paneTitle) return null;
+  if (!CLAUDE_TITLE_RE.test(paneTitle)) return null;
+  const cleaned = paneTitle.replace(CLAUDE_TITLE_RE, '').trim();
+  return cleaned || null;
 };
 
 const g = globalThis as unknown as { __ptStatusManager?: StatusManager };
@@ -184,10 +281,10 @@ class StatusManager {
       const tabs = collectAllTabs(layout.root);
       for (const tab of tabs) {
         const paneInfo = panesInfo.get(tab.sessionName);
-        const detectedState = await this.detectTabCliState(tab.sessionName, paneInfo);
-        const cliState = tab.cliState === 'ready-for-review' && detectedState === 'idle'
+        const detected = await this.detectTabCliState(tab.sessionName, paneInfo);
+        const cliState = tab.cliState === 'ready-for-review' && detected.cliState === 'idle'
           ? 'ready-for-review' as const
-          : detectedState;
+          : detected.cliState;
         const { terminalStatus, listeningPorts } = tab.panelType === 'claude-code'
           ? { terminalStatus: 'idle' as const, listeningPorts: [] as number[] }
           : await this.detectTerminalStatus(paneInfo);
@@ -204,6 +301,8 @@ class StatusManager {
           listeningPorts,
           claudeSummary: tab.claudeSummary,
           lastUserMessage: tab.lastUserMessage,
+          lastAssistantMessage: detected.lastAssistantSnippet,
+          lastAction: detected.lastAction,
           readyForReviewAt: cliState === 'ready-for-review' ? Date.now() : null,
           busySince: cliState === 'busy' ? Date.now() : null,
         });
@@ -211,20 +310,21 @@ class StatusManager {
     }
   }
 
-  private async detectTabCliState(tmuxSession: string, paneInfo?: IPaneInfo): Promise<TCliState> {
-    if (!paneInfo || !paneInfo.pid) return 'inactive';
+  private async detectTabCliState(tmuxSession: string, paneInfo?: IPaneInfo): Promise<{ cliState: TCliState; lastAssistantSnippet: string | null; lastAction: string | null }> {
+    const empty = { cliState: 'inactive' as const, lastAssistantSnippet: null, lastAction: null };
+    if (!paneInfo || !paneInfo.pid) return empty;
 
     const childPids = await getChildPids(paneInfo.pid);
 
     const claudeRunning = await isClaudeRunning(paneInfo.pid, childPids);
-    if (!claudeRunning) return 'inactive';
+    if (!claudeRunning) return empty;
 
     const session = await detectActiveSession(paneInfo.pid, childPids);
-    if (session.status !== 'running') return 'idle';
+    if (session.status !== 'running') return { cliState: 'idle', lastAssistantSnippet: null, lastAction: null };
 
-    if (!session.jsonlPath) return 'idle';
+    if (!session.jsonlPath) return { cliState: 'idle', lastAssistantSnippet: null, lastAction: null };
 
-    const { idle: jsonlIdle, stale } = await checkJsonlIdle(session.jsonlPath);
+    const { idle: jsonlIdle, stale, lastAssistantSnippet, lastAction } = await checkJsonlIdle(session.jsonlPath);
 
     let state: TCliState;
     if (!stale) {
@@ -242,10 +342,10 @@ class StatusManager {
 
     if (state === 'busy') {
       const paneContent = await capturePaneContent(tmuxSession);
-      if (paneContent && hasPermissionPrompt(paneContent)) return 'needs-input';
+      if (paneContent && hasPermissionPrompt(paneContent)) return { cliState: 'needs-input', lastAssistantSnippet, lastAction };
     }
 
-    return state;
+    return { cliState: state, lastAssistantSnippet, lastAction };
   }
 
   private async detectTerminalStatus(
@@ -308,9 +408,10 @@ class StatusManager {
         const prevCliState = existing?.cliState;
         const hookTs = this.hookUpdatedAt.get(tab.id);
         const hookRecent = hookTs !== undefined && Date.now() - hookTs < HOOK_GRACE_MS;
-        const newCliState = hookRecent && existing
-          ? existing.cliState
+        const detected = hookRecent && existing
+          ? { cliState: existing.cliState, lastAssistantSnippet: existing.lastAssistantMessage ?? null, lastAction: existing.lastAction ?? null }
           : await this.detectTabCliState(tab.sessionName, paneInfo);
+        const newCliState = detected.cliState;
         const { terminalStatus, listeningPorts } = tab.panelType === 'claude-code'
           ? { terminalStatus: 'idle' as const, listeningPorts: [] as number[] }
           : await this.detectTerminalStatus(paneInfo);
@@ -331,6 +432,8 @@ class StatusManager {
             listeningPorts,
             claudeSummary: tab.claudeSummary,
             lastUserMessage: tab.lastUserMessage,
+            lastAssistantMessage: detected.lastAssistantSnippet,
+            lastAction: detected.lastAction,
           };
           this.tabs.set(tab.id, entry);
           this.persistToLayout(entry);
@@ -340,14 +443,21 @@ class StatusManager {
 
         const processChanged = existing.currentProcess !== resolvedProcess;
         const messageChanged = existing.lastUserMessage !== tab.lastUserMessage;
+        const assistantMessageChanged = detected.lastAssistantSnippet !== null && existing.lastAssistantMessage !== detected.lastAssistantSnippet;
+        const actionChanged = detected.lastAction !== null && existing.lastAction !== detected.lastAction;
         const panelTypeChanged = existing.panelType !== tab.panelType;
         existing.tabName = tab.name;
         existing.currentProcess = resolvedProcess;
         existing.paneTitle = newPaneTitle;
         existing.workspaceId = ws.id;
         existing.panelType = tab.panelType;
-        existing.claudeSummary = tab.claudeSummary;
         existing.lastUserMessage = tab.lastUserMessage;
+        if (assistantMessageChanged) {
+          existing.lastAssistantMessage = detected.lastAssistantSnippet;
+        }
+        if (actionChanged) {
+          existing.lastAction = detected.lastAction;
+        }
 
         if (processChanged) {
           existing.processRetries = PROCESS_RETRY_COUNT;
@@ -371,12 +481,31 @@ class StatusManager {
           && prevCliState !== newCliState
           && !(prevCliState === 'ready-for-review' && newCliState === 'idle');
 
+        const effectiveCliState = cliChanged
+          ? (prevCliState === 'busy' && newCliState === 'idle' ? 'ready-for-review' : newCliState)
+          : existing.cliState;
+        let summaryChanged = false;
+        if (effectiveCliState === 'busy' || effectiveCliState === 'needs-input') {
+          const paneTitle = await getPaneTitle(tab.sessionName);
+          const liveSummary = parseClaudePaneTitle(paneTitle);
+          if (liveSummary && liveSummary !== existing.claudeSummary) {
+            existing.claudeSummary = liveSummary;
+            summaryChanged = true;
+            updateTabClaudeSummary(tab.sessionName, liveSummary).catch(() => {});
+          }
+        } else {
+          if (existing.claudeSummary !== tab.claudeSummary) {
+            existing.claudeSummary = tab.claudeSummary;
+            summaryChanged = true;
+          }
+        }
+
         if (cliChanged) {
           const promoted = prevCliState === 'busy' && newCliState === 'idle';
           this.applyCliState(existing, promoted ? 'ready-for-review' : newCliState);
         }
 
-        if (cliChanged || terminalChanged || processChanged || processRetryNeeded || messageChanged || panelTypeChanged) {
+        if (cliChanged || terminalChanged || processChanged || processRetryNeeded || messageChanged || assistantMessageChanged || actionChanged || panelTypeChanged || summaryChanged) {
           if (cliChanged) this.persistToLayout(existing);
           this.broadcastUpdate(tab.id, existing);
         }
@@ -411,6 +540,8 @@ class StatusManager {
         listeningPorts: entry.listeningPorts,
         claudeSummary: entry.claudeSummary,
         lastUserMessage: entry.lastUserMessage,
+        lastAssistantMessage: entry.lastAssistantMessage,
+        lastAction: entry.lastAction,
         readyForReviewAt: entry.readyForReviewAt,
         busySince: entry.busySince,
       };
@@ -534,6 +665,8 @@ class StatusManager {
       listeningPorts: entry.listeningPorts,
       claudeSummary: entry.claudeSummary,
       lastUserMessage: entry.lastUserMessage,
+      lastAssistantMessage: entry.lastAssistantMessage,
+      lastAction: entry.lastAction,
       readyForReviewAt: entry.readyForReviewAt,
       busySince: entry.busySince,
     };

@@ -15,6 +15,8 @@ export interface ITabStatusEntry {
   listeningPorts?: number[];
   claudeSummary?: string | null;
   lastUserMessage?: string | null;
+  lastAssistantMessage?: string | null;
+  lastAction?: string | null;
   readyForReviewAt?: number | null;
   busySince?: number | null;
   processRetries?: number;
@@ -42,6 +44,8 @@ export interface IStatusUpdateMessage {
   listeningPorts?: number[];
   claudeSummary?: string | null;
   lastUserMessage?: string | null;
+  lastAssistantMessage?: string | null;
+  lastAction?: string | null;
   readyForReviewAt?: number | null;
   busySince?: number | null;
 }
