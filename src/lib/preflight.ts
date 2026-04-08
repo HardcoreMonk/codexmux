@@ -19,7 +19,7 @@ const resolveShellPathAsync = async (): Promise<string> => {
   try {
     const { stdout } = await execFile(shell, ['-ilc', 'echo -n "$PATH"'], {
       timeout: CMD_TIMEOUT,
-      env: { NODE_ENV: process.env.NODE_ENV, DISABLE_AUTO_UPDATE: 'true', ZSH_TMUX_AUTOSTARTED: 'true' },
+      env: { HOME: os.homedir(), NODE_ENV: process.env.NODE_ENV, DISABLE_AUTO_UPDATE: 'true', ZSH_TMUX_AUTOSTARTED: 'true' },
     });
     return stdout.toString().trim();
   } catch {

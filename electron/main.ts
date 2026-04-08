@@ -63,7 +63,7 @@ const writeAppConfig = (config: IAppConfig) => {
     fs.writeFileSync(tmp, JSON.stringify(config, null, 2));
     fs.renameSync(tmp, CONFIG_FILE);
   } catch (err) {
-    console.error('[electron] config.json 저장 실패:', err);
+    console.error('[electron] Failed to save config.json:', err);
   }
 };
 
@@ -279,7 +279,7 @@ const handleSwitchToLocal = async () => {
     const port = await startLocalServer();
     mainWindow?.loadURL(`http://localhost:${port}`);
   } catch (err) {
-    console.error('[electron] 로컬 서버 시작 실패:', err);
+    console.error('[electron] Failed to start local server:', err);
   }
   updateMenu();
 };

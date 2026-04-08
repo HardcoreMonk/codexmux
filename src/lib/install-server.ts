@@ -22,7 +22,7 @@ const MAC_INSTALL_COMMANDS: Record<string, string> = Object.freeze({
   'tmux-upgrade': 'brew upgrade tmux',
   git: 'brew install git',
   claude: 'curl -fsSL https://claude.ai/install.sh | bash',
-  'claude-path': 'SHELL_NAME=$(basename "$SHELL"); if [ "$SHELL_NAME" = "bash" ]; then RC="$HOME/.bashrc"; elif [ "$SHELL_NAME" = "zsh" ]; then RC="$HOME/.zshrc"; else RC="$HOME/.profile"; fi; if grep -q "\\.local/bin" "$RC" 2>/dev/null; then echo "~/.local/bin is already in PATH ($RC)"; else echo \'export PATH="$HOME/.local/bin:$PATH"\' >> "$RC" && echo "Added ~/.local/bin to PATH in $RC"; fi; export PATH="$HOME/.local/bin:$PATH"; echo ""; claude --version',
+  'claude-path': 'SHELL_NAME=$(basename "$SHELL"); if [ "$SHELL_NAME" = "bash" ]; then if [ -f "$HOME/.bash_profile" ]; then RC="$HOME/.bash_profile"; else RC="$HOME/.profile"; fi; elif [ "$SHELL_NAME" = "zsh" ]; then RC="$HOME/.zshrc"; else RC="$HOME/.profile"; fi; if grep -q "\\.local/bin" "$RC" 2>/dev/null; then echo "~/.local/bin is already in PATH ($RC)"; else echo \'export PATH="$HOME/.local/bin:$PATH"\' >> "$RC" && echo "Added ~/.local/bin to PATH in $RC"; fi; export PATH="$HOME/.local/bin:$PATH"; echo ""; claude --version',
   'claude-login': 'claude',
 });
 
@@ -31,7 +31,7 @@ const LINUX_INSTALL_COMMANDS: Record<string, string> = Object.freeze({
   'tmux-upgrade': 'echo "Upgrade tmux using your package manager:"; echo "  Ubuntu/Debian: sudo apt install --only-upgrade tmux"; echo "  Fedora: sudo dnf upgrade tmux"; echo "  Arch: sudo pacman -Syu tmux"; echo ""; echo "After upgrading, refresh this page."',
   git: 'echo "Install git using your package manager:"; echo "  Ubuntu/Debian: sudo apt install git"; echo "  Fedora: sudo dnf install git"; echo "  Arch: sudo pacman -S git"; echo ""; echo "After installing, refresh this page."',
   claude: 'curl -fsSL https://claude.ai/install.sh | bash',
-  'claude-path': 'SHELL_NAME=$(basename "$SHELL"); if [ "$SHELL_NAME" = "bash" ]; then RC="$HOME/.bashrc"; elif [ "$SHELL_NAME" = "zsh" ]; then RC="$HOME/.zshrc"; else RC="$HOME/.profile"; fi; if grep -q "\\.local/bin" "$RC" 2>/dev/null; then echo "~/.local/bin is already in PATH ($RC)"; else echo \'export PATH="$HOME/.local/bin:$PATH"\' >> "$RC" && echo "Added ~/.local/bin to PATH in $RC"; fi; export PATH="$HOME/.local/bin:$PATH"; echo ""; claude --version',
+  'claude-path': 'SHELL_NAME=$(basename "$SHELL"); if [ "$SHELL_NAME" = "bash" ]; then if [ -f "$HOME/.bash_profile" ]; then RC="$HOME/.bash_profile"; else RC="$HOME/.profile"; fi; elif [ "$SHELL_NAME" = "zsh" ]; then RC="$HOME/.zshrc"; else RC="$HOME/.profile"; fi; if grep -q "\\.local/bin" "$RC" 2>/dev/null; then echo "~/.local/bin is already in PATH ($RC)"; else echo \'export PATH="$HOME/.local/bin:$PATH"\' >> "$RC" && echo "Added ~/.local/bin to PATH in $RC"; fi; export PATH="$HOME/.local/bin:$PATH"; echo ""; claude --version',
   'claude-login': 'claude',
 });
 
