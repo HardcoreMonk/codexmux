@@ -434,35 +434,61 @@ const Sidebar = () => {
                 const isActive = isExternal
                   ? activeWebviewId === item.id
                   : isNavActive(item.url) && !activeWebviewId;
+                const shortcutMap: Record<string, string> = {
+                  'builtin-notes': isMac ? '⌘⇧E' : '^⇧E',
+                  'builtin-stats': isMac ? '⌘⇧U' : '^⇧U',
+                };
+                const shortcut = shortcutMap[item.id];
                 return (
-                  <button
-                    key={item.id}
-                    className={cn(
-                      'flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',
-                      isActive ? 'text-foreground' : 'text-muted-foreground',
+                  <div key={item.id} className="relative">
+                    <button
+                      className={cn(
+                        'flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',
+                        isActive ? 'text-foreground' : 'text-muted-foreground',
+                      )}
+                      onClick={() => {
+                        if (isExternal) {
+                          useWebviewStore.getState().open(item.id, item.url, item.name);
+                        } else {
+                          useWebviewStore.getState().hide();
+                          router.push(item.url);
+                        }
+                      }}
+                      aria-label={item.name}
+                      title={item.name}
+                    >
+                      <IconRenderer name={item.icon} className="h-3.5 w-3.5" />
+                    </button>
+                    {shortcut && (
+                      <span
+                        className={cn(
+                          'absolute -right-0.5 -top-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-medium leading-none text-muted-foreground transition-opacity duration-200 pointer-events-none',
+                          showShortcuts ? 'opacity-100' : 'opacity-0',
+                        )}
+                      >
+                        {shortcut}
+                      </span>
                     )}
-                    onClick={() => {
-                      if (isExternal) {
-                        useWebviewStore.getState().open(item.id, item.url, item.name);
-                      } else {
-                        useWebviewStore.getState().hide();
-                        router.push(item.url);
-                      }
-                    }}
-                    aria-label={item.name}
-                    title={item.name}
-                  >
-                    <IconRenderer name={item.icon} className="h-3.5 w-3.5" />
-                  </button>
+                  </div>
                 );
               })}
-              <button
-                className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
-                onClick={() => setSettingsOpen(true)}
-                aria-label={tc('settings')}
-              >
-                <Settings className="h-3.5 w-3.5" />
-              </button>
+              <div className="relative">
+                <button
+                  className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
+                  onClick={() => setSettingsOpen(true)}
+                  aria-label={tc('settings')}
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                </button>
+                <span
+                  className={cn(
+                    'absolute -right-0.5 -top-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-medium leading-none text-muted-foreground transition-opacity duration-200 pointer-events-none',
+                    showShortcuts ? 'opacity-100' : 'opacity-0',
+                  )}
+                >
+                  {isMac ? '⌘,' : '^,'}
+                </span>
+              </div>
             </div>
             <div className="relative">
               <button

@@ -24,6 +24,8 @@ export const KEY_MAP = {
   NEW_WORKSPACE: `${mod}+n`,
   RENAME_WORKSPACE: `${mod}+shift+r`,
   TOGGLE_SIDEBAR: `${mod}+b`,
+  NOTES: `${mod}+shift+e`,
+  STATS: `${mod}+shift+u`,
 } as const;
 
 export const TAB_NUMBER_KEYS = Array.from(
@@ -73,6 +75,8 @@ const buildShortcutSet = (): Set<string> => {
     add(true, false, false, false, 'KeyN');
     add(true, false, false, true, 'KeyR');
     add(true, false, false, false, 'KeyB');
+    add(true, false, false, true, 'KeyE');
+    add(true, false, false, true, 'KeyU');
     for (let i = 1; i <= 9; i++) add(false, true, false, false, `Digit${i}`);
     for (let i = 1; i <= 9; i++) add(true, false, false, false, `Digit${i}`);
   } else {
@@ -92,6 +96,8 @@ const buildShortcutSet = (): Set<string> => {
     add(false, true, false, false, 'KeyN');
     add(false, true, false, true, 'KeyR');
     add(false, true, false, false, 'KeyB');
+    add(false, true, false, true, 'KeyE');
+    add(false, true, false, true, 'KeyU');
     for (let i = 1; i <= 9; i++) add(false, false, true, false, `Digit${i}`);
     for (let i = 1; i <= 9; i++) add(false, true, false, false, `Digit${i}`);
   }
