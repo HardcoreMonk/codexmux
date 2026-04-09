@@ -11,7 +11,9 @@ import useWorkspaceStore from '@/hooks/use-workspace-store';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import {
   collectPanes,
+  collectAllTabs,
   findPane,
+  getFirstPaneId,
   removePaneWithFocus,
   updateRatioAtPath,
   updatePaneInTree,
@@ -659,6 +661,47 @@ export const navigateToTab = (workspaceId: string, tabId: string) => {
   }
 };
 
+export const navigateToTabOrCreate = async (
+  workspaceId: string,
+  tabId: string,
+  claudeSessionId: string | null,
+  workspaceName: string,
+): Promise<void> => {
+  const wsStore = useWorkspaceStore.getState();
+
+  let targetWsId = workspaceId;
+  const wsExists = wsStore.workspaces.some((w) => w.id === workspaceId);
+
+  if (!wsExists) {
+    const created = await wsStore.createWorkspace(workspaceName);
+    if (!created) return;
+    targetWsId = created.id;
+  }
+
+  const layoutRes = await fetch(wsQuery(`/api/layout`, targetWsId));
+  if (!layoutRes.ok) return;
+  const layout: ILayoutData = await layoutRes.json();
+
+  const tabExists = collectAllTabs(layout.root).some((t) => t.id === tabId);
+  if (tabExists) {
+    navigateToTab(targetWsId, tabId);
+    return;
+  }
+
+  const paneId = layout.activePaneId ?? getFirstPaneId(layout.root);
+  const body: Record<string, string> = { panelType: 'claude-code' };
+  if (claudeSessionId) body.resumeSessionId = claudeSessionId;
+
+  const tabRes = await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs`, targetWsId), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!tabRes.ok) return;
+  const newTab: ITab = await tabRes.json();
+
+  navigateToTab(targetWsId, newTab.id);
+};
 
 const useLayout = ({ workspaceId, onFetchError }: { workspaceId: string | null; onFetchError?: () => void }) => {
   useEffect(() => {

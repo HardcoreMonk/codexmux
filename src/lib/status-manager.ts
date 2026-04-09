@@ -278,6 +278,7 @@ const parseJsonlStats = async (jsonlPath: string): Promise<IJsonlStats> => {
           if (entry.type === 'assistant') {
             if (ts && !lastAssistantTs) lastAssistantTs = ts;
             if (Array.isArray(entry.message?.content)) {
+              let msgLastText: string | null = null;
               for (const block of entry.message.content) {
                 if (block.type === 'tool_use' && block.name) {
                   toolUsage[block.name] = (toolUsage[block.name] ?? 0) + 1;
@@ -285,9 +286,12 @@ const parseJsonlStats = async (jsonlPath: string): Promise<IJsonlStats> => {
                     touchedFiles.add(String(block.input.file_path));
                   }
                 }
-                if (block.type === 'text' && block.text && !lastAssistantText) {
-                  lastAssistantText = block.text;
+                if (block.type === 'text' && block.text) {
+                  msgLastText = block.text;
                 }
+              }
+              if (!lastAssistantText && msgLastText) {
+                lastAssistantText = msgLastText;
               }
             }
           }

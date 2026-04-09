@@ -2,9 +2,14 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { addTabToPane } from '@/lib/layout-store';
 import { getActiveWorkspaceId } from '@/lib/workspace-store';
 import { getStatusManager } from '@/lib/status-manager';
+import { getDangerouslySkipPermissions } from '@/lib/config-store';
+import { HOOK_SETTINGS_PATH } from '@/lib/hook-settings';
+import { sendKeys } from '@/lib/tmux';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('layout');
+
+const SHELL_READY_DELAY_MS = 500;
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -18,7 +23,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   const paneId = req.query.paneId as string;
-  const { name, cwd, panelType, command } = req.body ?? {};
+  const { name, cwd, panelType, command, resumeSessionId } = req.body ?? {};
 
   try {
     const tab = await addTabToPane(wsId, paneId, name, cwd, panelType, command);
@@ -33,6 +38,22 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         tmuxSession: tab.sessionName,
       });
     }
+
+    if (resumeSessionId && !command) {
+      const skipPerms = await getDangerouslySkipPermissions();
+      const settings = `--settings ${HOOK_SETTINGS_PATH}`;
+      const resumeCmd = skipPerms
+        ? `claude --resume ${resumeSessionId} ${settings} --dangerously-skip-permissions`
+        : `claude --resume ${resumeSessionId} ${settings}`;
+      setTimeout(async () => {
+        try {
+          await sendKeys(tab.sessionName, resumeCmd);
+        } catch (err) {
+          log.warn(`resume sendKeys failed: ${err instanceof Error ? err.message : err}`);
+        }
+      }, SHELL_READY_DELAY_MS);
+    }
+
     return res.status(200).json(tab);
   } catch (err) {
     log.error(`tab creation failed: ${err instanceof Error ? err.message : err}`);

@@ -120,30 +120,33 @@ const collectItems = (
   return items;
 };
 
-interface ITabHistoryGroup {
+interface ISessionHistoryGroup {
+  sessionId: string;
   tabId: string;
   workspaceName: string;
   latestEntry: ITaskHistoryEntry;
   olderEntries: ITaskHistoryEntry[];
 }
 
-const groupHistoryByTab = (entries: ITaskHistoryEntry[]): ITabHistoryGroup[] => {
-  const tabMap = new Map<string, ITaskHistoryEntry[]>();
+const groupHistoryBySession = (entries: ITaskHistoryEntry[]): ISessionHistoryGroup[] => {
+  const sessionMap = new Map<string, ITaskHistoryEntry[]>();
 
   for (const entry of entries) {
-    const existing = tabMap.get(entry.tabId);
+    const key = entry.claudeSessionId ?? entry.id;
+    const existing = sessionMap.get(key);
     if (existing) existing.push(entry);
-    else tabMap.set(entry.tabId, [entry]);
+    else sessionMap.set(key, [entry]);
   }
 
-  const groups: ITabHistoryGroup[] = [];
-  for (const [tabId, tabEntries] of tabMap) {
-    tabEntries.sort((a, b) => b.completedAt - a.completedAt);
+  const groups: ISessionHistoryGroup[] = [];
+  for (const [sessionId, sessionEntries] of sessionMap) {
+    sessionEntries.sort((a, b) => b.completedAt - a.completedAt);
     groups.push({
-      tabId,
-      workspaceName: tabEntries[0].workspaceName,
-      latestEntry: tabEntries[0],
-      olderEntries: tabEntries.slice(1),
+      sessionId,
+      tabId: sessionEntries[0].tabId,
+      workspaceName: sessionEntries[0].workspaceName,
+      latestEntry: sessionEntries[0],
+      olderEntries: sessionEntries.slice(1),
     });
   }
 
@@ -350,16 +353,16 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
     [tabs, workspaces],
   );
 
-  const tabGroups = useMemo(
-    () => groupHistoryByTab(historyEntries),
+  const sessionGroups = useMemo(
+    () => groupHistoryBySession(historyEntries),
     [historyEntries],
   );
 
-  const toggleExpanded = useCallback((tabId: string) => {
+  const toggleExpanded = useCallback((sessionId: string) => {
     setExpandedTabs((prev) => {
       const next = new Set(prev);
-      if (next.has(tabId)) next.delete(tabId);
-      else next.add(tabId);
+      if (next.has(sessionId)) next.delete(sessionId);
+      else next.add(sessionId);
       return next;
     });
   }, []);
@@ -376,7 +379,7 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
     [onOpenChange],
   );
 
-  const isEmpty = busyItems.length === 0 && needsInputItems.length === 0 && reviewItems.length === 0 && tabGroups.length === 0;
+  const isEmpty = busyItems.length === 0 && needsInputItems.length === 0 && reviewItems.length === 0 && sessionGroups.length === 0;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -452,17 +455,17 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
                 </section>
               )}
 
-              {tabGroups.length > 0 && (
+              {sessionGroups.length > 0 && (
                 <section className={busyItems.length > 0 || needsInputItems.length > 0 || reviewItems.length > 0 ? 'mt-4' : ''}>
                   <h3 className="mb-2 text-xs font-medium text-muted-foreground">
                     {t('doneSection', { count: historyEntries.length })}
                   </h3>
                   <div className="flex flex-col gap-2">
-                    {tabGroups.map((group) => {
-                      const isExpanded = expandedTabs.has(group.tabId);
+                    {sessionGroups.map((group) => {
+                      const isExpanded = expandedTabs.has(group.sessionId);
                       const hasOlder = group.olderEntries.length > 0;
                       return (
-                        <div key={group.tabId}>
+                        <div key={group.sessionId}>
                           <TaskHistoryItem
                             entry={group.latestEntry}
                             isTabOpen={group.tabId in tabs}
@@ -471,8 +474,8 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
                           {hasOlder && (
                             <button
                               type="button"
-                              className="mt-1 flex w-full items-center gap-1 px-1 py-0.5 text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-                              onClick={() => toggleExpanded(group.tabId)}
+                              className="mt-1 flex w-full items-center gap-1 py-0.5 pl-[26px] text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                              onClick={() => toggleExpanded(group.sessionId)}
                             >
                               <ChevronRight className={cn('h-3 w-3 transition-transform', isExpanded && 'rotate-90')} />
                               {isExpanded ? t('showLess') : t('showMore', { count: group.olderEntries.length })}
