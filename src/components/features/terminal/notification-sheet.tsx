@@ -28,7 +28,7 @@ import useTabStore from '@/hooks/use-tab-store';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
 import useTaskHistoryStore from '@/hooks/use-task-history-store';
 import { dismissTab } from '@/hooks/use-claude-status';
-import { navigateToTab, useLayoutStore } from '@/hooks/use-layout';
+import { navigateToTab, navigateToTabOrCreate, useLayoutStore } from '@/hooks/use-layout';
 import { findPane } from '@/lib/layout-tree';
 import type { ITabState } from '@/hooks/use-tab-store';
 import type { ICurrentAction } from '@/types/status';
@@ -157,6 +157,34 @@ const groupHistoryBySession = (entries: ITaskHistoryEntry[]): ISessionHistoryGro
   return groups;
 };
 
+type TDateGroup = 'today' | 'yesterday' | 'thisWeek' | 'older';
+
+const groupSessionsByDate = (groups: ISessionHistoryGroup[]): { group: TDateGroup; sessions: ISessionHistoryGroup[] }[] => {
+  const now = dayjs();
+  const todayStart = now.startOf('day');
+  const yesterdayStart = todayStart.subtract(1, 'day');
+  const weekStart = todayStart.subtract(6, 'day');
+
+  const buckets: Record<TDateGroup, ISessionHistoryGroup[]> = {
+    today: [],
+    yesterday: [],
+    thisWeek: [],
+    older: [],
+  };
+
+  for (const sg of groups) {
+    const time = dayjs(sg.latestEntry.completedAt);
+    if (time.isAfter(todayStart)) buckets.today.push(sg);
+    else if (time.isAfter(yesterdayStart)) buckets.yesterday.push(sg);
+    else if (time.isAfter(weekStart)) buckets.thisWeek.push(sg);
+    else buckets.older.push(sg);
+  }
+
+  return (['today', 'yesterday', 'thisWeek', 'older'] as TDateGroup[])
+    .filter((g) => buckets[g].length > 0)
+    .map((g) => ({ group: g, sessions: buckets[g] }));
+};
+
 const formatNotificationTime = (ts: number): string => {
   const d = dayjs(ts);
   const now = dayjs();
@@ -170,16 +198,14 @@ const formatNotificationTime = (ts: number): string => {
 
 const TaskHistoryItem = ({
   entry,
-  isTabOpen,
   isActiveSession,
   compact,
-  onNavigate,
+  onClick,
 }: {
   entry: ITaskHistoryEntry;
-  isTabOpen: boolean;
   isActiveSession?: boolean;
   compact?: boolean;
-  onNavigate?: (workspaceId: string, tabId: string) => void;
+  onClick?: () => void;
 }) => {
   const t = useTranslations('notification');
 
@@ -204,13 +230,8 @@ const TaskHistoryItem = ({
   if (compact) {
     return (
       <div
-        className={cn(
-          'rounded px-2 py-1.5 transition-colors',
-          isTabOpen
-            ? 'hover:bg-muted/40 cursor-pointer'
-            : 'cursor-default opacity-50',
-        )}
-        onClick={isTabOpen ? () => onNavigate?.(entry.workspaceId, entry.tabId) : undefined}
+        className="rounded px-2 py-1.5 transition-colors hover:bg-muted/40 cursor-pointer"
+        onClick={onClick}
       >
         <div className="flex items-center justify-between gap-2">
           {entry.prompt ? (
@@ -239,11 +260,9 @@ const TaskHistoryItem = ({
         'border-border/50 hover:border-foreground/20',
         isActiveSession
           ? 'bg-claude-active/10'
-          : isTabOpen
-            ? 'bg-muted/30 hover:bg-muted/50 cursor-pointer'
-            : 'border-border/30 bg-muted/20 cursor-default opacity-60',
+          : 'bg-muted/30 hover:bg-muted/50 cursor-pointer',
       )}
-      onClick={isActiveSession ? undefined : isTabOpen ? () => onNavigate?.(entry.workspaceId, entry.tabId) : undefined}
+      onClick={isActiveSession ? undefined : onClick}
     >
       <span className="mt-1 shrink-0">
         <CheckCircle2 className={cn('h-3.5 w-3.5', entry.dismissedAt ? 'text-muted-foreground' : 'text-muted-foreground/50')} />
@@ -378,6 +397,13 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const { id: activeTabId, claudeSessionId: activeClaudeSessionId } = useActiveTab();
   const historyEntries = useTaskHistoryStore((s) => s.entries);
+  const sessionTabMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const [tabId, tab] of Object.entries(tabs)) {
+      if (tab.claudeSessionId) map.set(tab.claudeSessionId, tabId);
+    }
+    return map;
+  }, [tabs]);
   const [expandedTabs, setExpandedTabs] = useState<Set<string>>(new Set());
 
   const busyItems = useMemo(
@@ -398,6 +424,11 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
   const sessionGroups = useMemo(
     () => groupHistoryBySession(historyEntries),
     [historyEntries],
+  );
+
+  const dateGroups = useMemo(
+    () => groupSessionsByDate(sessionGroups),
+    [sessionGroups],
   );
 
   const toggleExpanded = useCallback((sessionId: string) => {
@@ -421,7 +452,24 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
     [onOpenChange],
   );
 
-  const isEmpty = busyItems.length === 0 && needsInputItems.length === 0 && reviewItems.length === 0 && sessionGroups.length === 0;
+  const handleHistoryClick = useCallback(
+    (entry: ITaskHistoryEntry, resolvedTabId: string | null) => {
+      onOpenChange(false);
+      if (resolvedTabId) {
+        navigateToTab(entry.workspaceId, resolvedTabId);
+      } else {
+        navigateToTabOrCreate(
+          entry.workspaceId,
+          entry.tabId,
+          entry.claudeSessionId,
+          entry.workspaceName,
+        );
+      }
+    },
+    [onOpenChange],
+  );
+
+  const isEmpty = busyItems.length === 0 && needsInputItems.length === 0 && reviewItems.length === 0 && dateGroups.length === 0;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -497,51 +545,57 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
                 </section>
               )}
 
-              {sessionGroups.length > 0 && (
+              {dateGroups.length > 0 && (
                 <section className={busyItems.length > 0 || needsInputItems.length > 0 || reviewItems.length > 0 ? 'mt-4' : ''}>
                   <h3 className="mb-2 text-xs font-medium text-muted-foreground">
                     {t('doneSection', { count: historyEntries.length })}
                   </h3>
-                  <div className="flex flex-col gap-2">
-                    {sessionGroups.map((group) => {
-                      const isExpanded = expandedTabs.has(group.sessionId);
-                      const hasOlder = group.olderEntries.length > 0;
-                      const isActive = activeClaudeSessionId !== null && group.sessionId === activeClaudeSessionId;
-                      return (
-                        <div key={group.sessionId}>
-                          <TaskHistoryItem
-                            entry={group.latestEntry}
-                            isTabOpen={group.tabId in tabs}
-                            isActiveSession={isActive}
-                            onNavigate={handleNavigate}
-                          />
-                          {hasOlder && (
-                            <button
-                              type="button"
-                              className="mt-1 flex w-full items-center gap-1 py-0.5 pl-9 text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-                              onClick={() => toggleExpanded(group.sessionId)}
-                            >
-                              <ChevronRight className={cn('h-3 w-3 transition-transform', isExpanded && 'rotate-90')} />
-                              {isExpanded ? t('showLess') : t('showMore', { count: group.olderEntries.length })}
-                            </button>
-                          )}
-                          {isExpanded && (
-                            <div className="mt-1 flex flex-col border-l border-border/30 ml-5 pl-2">
-                              {group.olderEntries.map((entry) => (
-                                <TaskHistoryItem
-                                  key={entry.id}
-                                  entry={entry}
-                                  isTabOpen={group.tabId in tabs}
-                                  compact
-                                  onNavigate={handleNavigate}
-                                />
-                              ))}
+                  {dateGroups.map(({ group: dateGroup, sessions }) => (
+                    <div key={dateGroup}>
+                      <h4 className="mb-1.5 mt-3 first:mt-0 text-xs text-muted-foreground/60">
+                        {t(`dateGroup_${dateGroup}`)}
+                      </h4>
+                      <div className="flex flex-col gap-2">
+                        {sessions.map((group) => {
+                          const isExpanded = expandedTabs.has(group.sessionId);
+                          const hasOlder = group.olderEntries.length > 0;
+                          const isActive = activeClaudeSessionId !== null && group.sessionId === activeClaudeSessionId;
+                          const resolvedTabId = sessionTabMap.get(group.sessionId) ?? null;
+                          return (
+                            <div key={group.sessionId}>
+                              <TaskHistoryItem
+                                entry={group.latestEntry}
+                                isActiveSession={isActive}
+                                onClick={() => handleHistoryClick(group.latestEntry, resolvedTabId)}
+                              />
+                              {hasOlder && (
+                                <button
+                                  type="button"
+                                  className="mt-1 flex w-full items-center gap-1 py-0.5 pl-9 text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                                  onClick={() => toggleExpanded(group.sessionId)}
+                                >
+                                  <ChevronRight className={cn('h-3 w-3 transition-transform', isExpanded && 'rotate-90')} />
+                                  {isExpanded ? t('showLess') : t('showMore', { count: group.olderEntries.length })}
+                                </button>
+                              )}
+                              {isExpanded && (
+                                <div className="mt-1 flex flex-col border-l border-border/30 ml-5 pl-2">
+                                  {group.olderEntries.map((entry) => (
+                                    <TaskHistoryItem
+                                      key={entry.id}
+                                      entry={entry}
+                                      compact
+                                      onClick={() => handleHistoryClick(entry, resolvedTabId)}
+                                    />
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </section>
               )}
             </>

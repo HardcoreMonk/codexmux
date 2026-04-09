@@ -402,6 +402,7 @@ class StatusManager {
           readyForReviewAt: cliState === 'ready-for-review' ? Date.now() : null,
           busySince: cliState === 'busy' ? Date.now() : null,
           dismissedAt: cliState === 'busy' ? null : (tab.dismissedAt ?? null),
+          claudeSessionId: tab.claudeSessionId ?? null,
           jsonlPath: detected.jsonlPath,
           lastActivityAt: cliState === 'busy' ? Date.now() : null,
           lastCaptureHash: null,
@@ -579,6 +580,7 @@ class StatusManager {
             lastUserMessage: tab.lastUserMessage,
             lastAssistantMessage: detected.lastAssistantSnippet,
             currentAction: detected.currentAction,
+            claudeSessionId: tab.claudeSessionId ?? null,
             jsonlPath: detected.jsonlPath,
             lastActivityAt: newCliState === 'busy' ? Date.now() : null,
             lastCaptureHash: null,
@@ -601,6 +603,7 @@ class StatusManager {
         existing.paneTitle = newPaneTitle;
         existing.workspaceId = ws.id;
         existing.panelType = tab.panelType;
+        existing.claudeSessionId = tab.claudeSessionId ?? null;
         existing.lastUserMessage = tab.lastUserMessage;
         if (assistantMessageChanged) {
           existing.lastAssistantMessage = detected.reset ? null : detected.lastAssistantSnippet;
@@ -702,6 +705,7 @@ class StatusManager {
         readyForReviewAt: entry.readyForReviewAt,
         busySince: entry.busySince,
         dismissedAt: entry.dismissedAt,
+        claudeSessionId: entry.claudeSessionId,
       };
     }
     return result;
@@ -931,6 +935,7 @@ class StatusManager {
       readyForReviewAt: entry.readyForReviewAt,
       busySince: entry.busySince,
       dismissedAt: entry.dismissedAt,
+      claudeSessionId: entry.claudeSessionId,
     };
     this.broadcast(msg, exclude);
   }

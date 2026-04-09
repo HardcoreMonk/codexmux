@@ -26,6 +26,7 @@ export interface ITabStatusEntry {
   readyForReviewAt?: number | null;
   busySince?: number | null;
   dismissedAt?: number | null;
+  claudeSessionId?: string | null;
   processRetries?: number;
   jsonlPath?: string | null;
   lastActivityAt?: number | null;
@@ -59,6 +60,7 @@ export interface IStatusUpdateMessage {
   readyForReviewAt?: number | null;
   busySince?: number | null;
   dismissedAt?: number | null;
+  claudeSessionId?: string | null;
 }
 
 export interface IRateLimitWindow {
