@@ -76,7 +76,17 @@ const Sidebar = () => {
   const activeWebviewId = useWebviewStore((s) => s.activeId);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<'workspace' | 'tasks'>('workspace');
+  const [sidebarTab, setSidebarTab] = useState<'workspace' | 'tasks'>(() => {
+    if (typeof window === 'undefined') return 'workspace';
+    const saved = localStorage.getItem('sidebar-tab');
+    return saved === 'tasks' ? 'tasks' : 'workspace';
+  });
+
+  const handleSidebarTabChange = useCallback((v: string) => {
+    const tab = v as 'workspace' | 'tasks';
+    setSidebarTab(tab);
+    localStorage.setItem('sidebar-tab', tab);
+  }, []);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const modTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -322,7 +332,7 @@ const Sidebar = () => {
               >
                 <Bot className={cn('h-3.5 w-3.5', hasWorkingAgent && !isNavActive('/agents') && 'animate-pulse')} />
                 {(unreadCount > 0 || blockedCount > 0) && (
-                  <span className={`absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[9px] font-medium leading-none text-white ${unreadCount > 0 ? 'bg-ui-teal' : 'bg-ui-amber'}`}>
+                  <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded px-0.5 text-[9px] font-medium leading-none text-foreground/60 bg-foreground/10">
                     {unreadCount > 0 ? unreadCount : blockedCount}
                   </span>
                 )}
@@ -358,7 +368,7 @@ const Sidebar = () => {
         <div className="shrink-0 border-b border-sidebar-border px-2 py-1.5">
           <Tabs
             value={sidebarTab}
-            onValueChange={(v) => setSidebarTab(v as 'workspace' | 'tasks')}
+            onValueChange={handleSidebarTabChange}
             className="gap-0"
           >
             <TabsList className="h-7 w-full">
@@ -368,7 +378,7 @@ const Sidebar = () => {
               <TabsTrigger value="tasks" className="h-full flex-1 px-2.5 text-[11px] tracking-wide">
                 TASKS
                 {attentionCount > 0 && (
-                  <span className="ml-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-ui-purple px-0.5 text-[9px] font-medium leading-none text-white">
+                  <span className="ml-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded bg-foreground/10 px-0.5 text-[9px] font-medium leading-none text-foreground/60">
                     {attentionCount}
                   </span>
                 )}

@@ -230,7 +230,7 @@ const TaskHistoryItem = ({
   if (compact) {
     return (
       <div
-        className="rounded px-2 py-1.5 transition-colors hover:bg-muted/40 cursor-pointer"
+        className="rounded px-2 py-1.5 transition-colors hover:bg-muted cursor-pointer"
         onClick={onClick}
       >
         <div className="flex items-center justify-between gap-2">
@@ -259,7 +259,7 @@ const TaskHistoryItem = ({
         'flex items-start gap-3 rounded-md px-3 py-2.5 transition-colors',
         isActiveSession
           ? 'bg-claude-active/10'
-          : 'hover:bg-muted/50 cursor-pointer',
+          : 'hover:bg-muted cursor-pointer',
       )}
       onClick={isActiveSession ? undefined : onClick}
     >
@@ -329,7 +329,7 @@ const NotificationItem = ({
         'flex items-start gap-3 rounded-md px-3 py-2.5 transition-colors',
         isActiveTab
           ? 'bg-claude-active/10'
-          : 'hover:bg-muted/50 cursor-pointer',
+          : 'hover:bg-muted cursor-pointer',
       )}
       onClick={isActiveTab ? undefined : () => onNavigate?.(item.workspaceId, item.tabId)}
     >
@@ -407,7 +407,19 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
   const busyItems = useMemo(() => collectItems(tabs, workspaces, 'busy'), [tabs, workspaces]);
   const needsInputItems = useMemo(() => collectItems(tabs, workspaces, 'needs-input'), [tabs, workspaces]);
   const reviewItems = useMemo(() => collectItems(tabs, workspaces, 'ready-for-review'), [tabs, workspaces]);
-  const sessionGroups = useMemo(() => groupHistoryBySession(historyEntries), [historyEntries]);
+  const reviewSessionIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const [, tab] of Object.entries(tabs)) {
+      if (tab.cliState === 'ready-for-review' && tab.claudeSessionId) ids.add(tab.claudeSessionId);
+    }
+    return ids;
+  }, [tabs]);
+  const sessionGroups = useMemo(() => {
+    const filtered = reviewSessionIds.size > 0
+      ? historyEntries.filter((e) => !e.claudeSessionId || !reviewSessionIds.has(e.claudeSessionId))
+      : historyEntries;
+    return groupHistoryBySession(filtered);
+  }, [historyEntries, reviewSessionIds]);
   const dateGroups = useMemo(() => groupSessionsByDate(sessionGroups), [sessionGroups]);
 
   const toggleExpanded = useCallback((sessionId: string) => {
@@ -515,16 +527,23 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
                               {isExpanded ? t('showLess') : t('showMore', { count: group.olderEntries.length })}
                             </button>
                           )}
-                          {isExpanded && (
-                            <div className="mt-1 flex flex-col border-l border-border/30 ml-5 pl-2">
-                              {group.olderEntries.map((entry) => (
-                                <TaskHistoryItem
-                                  key={entry.id}
-                                  entry={entry}
-                                  compact
-                                  onClick={() => handleHistoryClick(entry, resolvedTabId)}
-                                />
-                              ))}
+                          {hasOlder && (
+                            <div
+                              className="grid transition-[grid-template-rows] duration-200 ease-out"
+                              style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}
+                            >
+                              <div className="overflow-hidden min-h-0">
+                                <div className="mt-1 flex flex-col border-l border-border/30 ml-5 pl-2">
+                                  {group.olderEntries.map((entry) => (
+                                    <TaskHistoryItem
+                                      key={entry.id}
+                                      entry={entry}
+                                      compact
+                                      onClick={() => handleHistoryClick(entry, resolvedTabId)}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
                             </div>
                           )}
                         </div>

@@ -66,7 +66,17 @@ const MobileNavigationSheet = ({
   const t = useTranslations('mobile');
   const tc = useTranslations('common');
   const router = useRouter();
-  const [mobileTab, setMobileTab] = useState<'workspace' | 'tasks'>('workspace');
+  const [mobileTab, setMobileTab] = useState<'workspace' | 'tasks'>(() => {
+    if (typeof window === 'undefined') return 'workspace';
+    const saved = localStorage.getItem('sidebar-tab');
+    return saved === 'tasks' ? 'tasks' : 'workspace';
+  });
+
+  const handleMobileTabChange = useCallback((v: string) => {
+    const tab = v as 'workspace' | 'tasks';
+    setMobileTab(tab);
+    localStorage.setItem('sidebar-tab', tab);
+  }, []);
   const { attentionCount } = useNotificationCount();
   const [expandedWsId, setExpandedWsId] = useState<string | null>(activeWorkspaceId);
   const [longPressTabId, setLongPressTabId] = useState<string | null>(null);
@@ -211,9 +221,9 @@ const MobileNavigationSheet = ({
   return (
     <Sheet open={open} onOpenChange={handleSheetOpenChange}>
       <SheetContent side="left" className="w-72 gap-0 p-0" showCloseButton={false}>
-        <SheetHeader className="relative flex-row items-center justify-center border-b px-4 py-3">
+        <SheetHeader className="flex-row items-center border-b py-3 pl-1 pr-3">
           <button
-            className="absolute left-2 flex h-11 w-11 items-center justify-center text-muted-foreground"
+            className="flex h-11 w-11 shrink-0 items-center justify-center text-muted-foreground focus-visible:outline-none"
             onClick={() => onOpenChange(false)}
             aria-label={t('closeMenu')}
           >
@@ -222,8 +232,8 @@ const MobileNavigationSheet = ({
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           <Tabs
             value={mobileTab}
-            onValueChange={(v) => setMobileTab(v as 'workspace' | 'tasks')}
-            className="gap-0"
+            onValueChange={handleMobileTabChange}
+            className="min-w-0 flex-1 gap-0"
           >
             <TabsList className="h-7 w-full">
               <TabsTrigger value="workspace" className="h-full flex-1 px-2.5 text-[11px] tracking-wide">
@@ -232,7 +242,7 @@ const MobileNavigationSheet = ({
               <TabsTrigger value="tasks" className="h-full flex-1 px-2.5 text-[11px] tracking-wide">
                 TASKS
                 {attentionCount > 0 && (
-                  <span className="ml-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-ui-purple px-0.5 text-[9px] font-medium leading-none text-white">
+                  <span className="ml-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded bg-foreground/10 px-0.5 text-[9px] font-medium leading-none text-foreground/60">
                     {attentionCount}
                   </span>
                 )}
