@@ -37,7 +37,7 @@ interface IConfigState {
   setSystemResourcesEnabled: (enabled: boolean) => void;
 }
 
-const initialConfig = { agentEnabled: false, notificationsEnabled: true, editorUrl: '', dangerouslySkipPermissions: false, hasAuthPassword: false, locale: 'en', customCSS: '', fontSize: 'normal', systemResourcesEnabled: true };
+const initialConfig = { agentEnabled: false, notificationsEnabled: true, editorUrl: '', dangerouslySkipPermissions: false, hasAuthPassword: false, locale: 'en', customCSS: '', fontSize: 'normal', systemResourcesEnabled: false };
 
 const saveConfig = (updates: Record<string, unknown>) => {
   fetch('/api/config', {
@@ -70,7 +70,7 @@ const useConfigStore = create<IConfigState>((set, get) => ({
       locale: data.locale ?? 'en',
       customCSS: data.customCSS ?? '',
       fontSize: data.fontSize ?? 'normal',
-      systemResourcesEnabled: data.systemResourcesEnabled ?? true,
+      systemResourcesEnabled: data.systemResourcesEnabled ?? false,
     });
   },
 
