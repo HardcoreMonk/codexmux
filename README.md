@@ -36,7 +36,7 @@ Monitor and manage multiple Claude Code sessions from any browser.
 - **권한 프롬프트 응답** — Claude의 bypass/permission 프롬프트에 타임라인에서 직접 응답
 - **빠른 프롬프트** — 자주 사용하는 프롬프트를 등록해 원클릭으로 전송
 - **메시지 히스토리** — 이전에 보낸 메시지를 다시 불러와서 재사용
-- **알림** — 세션 상태 변경(attention 등)을 알림으로 받아 놓친 요청 없이 대응
+- **알림** — 세션 상태 변경(attention 등)을 알림으로 받아 놓친 요청 없이 대응. Electron은 네이티브 알림, 웹 브라우저는 Web Push로 탭을 닫아도 수신 가능
 - **사용량 통계** — 토큰 사용량, 비용, 프로젝트별 분석, 일별 추이를 대시보드에서 확인
 - **Rate Limit 모니터링** — 5시간/7일 사용량과 리셋까지 남은 시간을 사이드바 바 그래프로 실시간 표시 (Pro/Max 구독자)
 - **데일리 노트** — 일별 작업 내역을 AI가 자동 요약하여 리포트 생성
@@ -146,6 +146,8 @@ purplemux는 기본적으로 HTTP로 동작합니다. 외부 네트워크에 노
 | --- | --- |
 | `config.json` | 인증 정보(해싱된 비밀번호, 시크릿), 앱 설정 |
 | `workspaces.json` | 워크스페이스 레이아웃, 탭, 디렉토리 |
+| `vapid-keys.json` | Web Push VAPID 키 쌍 (자동 생성) |
+| `push-subscriptions.json` | Web Push 구독 정보 |
 | `hooks/` | 사용자 정의 훅 스크립트 |
 
 이 디렉토리에 민감한 인증 정보가 포함되므로, 다른 사용자에게 읽기 권한을 부여하지 않도록 주의하세요.
