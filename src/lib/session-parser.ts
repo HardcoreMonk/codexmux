@@ -326,9 +326,7 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
               : undefined,
             status: 'pending' as TToolStatus,
           } satisfies ITimelinePlan);
-        }
-
-        if (toolName === 'TaskCreate') {
+        } else if (toolName === 'TaskCreate') {
           entries.push({
             id: nanoid(),
             type: 'task-progress',
@@ -699,10 +697,19 @@ const parseContent = (content: string): IParseResult => {
   const entryLineOffsets: number[] = [];
   let lastAgentHint: { agentType: string; description: string } | null = null;
   let skipNextUser = false;
+  let planFilePath: string | null = null;
   let i = 0;
 
   while (i < rawEntries.length) {
     const { base, raw, lineOffset } = rawEntries[i];
+
+    if (base.type === 'attachment') {
+      const rawObj = raw as Record<string, unknown>;
+      const att = rawObj.attachment as Record<string, unknown> | undefined;
+      if (att?.type === 'plan_mode' && typeof att.planFilePath === 'string') {
+        planFilePath = att.planFilePath;
+      }
+    }
 
     if (base.type === 'system') {
       const timestamp = base.timestamp ? new Date(base.timestamp).getTime() : Date.now();
@@ -762,6 +769,24 @@ const parseContent = (content: string): IParseResult => {
       entryLineOffsets.push(lineOffset);
     }
     i++;
+  }
+
+  if (planFilePath && !entries.some((e) => e.type === 'plan')) {
+    for (let j = entries.length - 1; j >= 0; j--) {
+      const e = entries[j];
+      if (e.type === 'tool-call' && e.toolName === 'Write' && e.filePath === planFilePath && e.diff?.newString) {
+        entries[j] = {
+          id: e.id,
+          type: 'plan',
+          timestamp: e.timestamp,
+          toolUseId: e.toolUseId,
+          markdown: e.diff.newString,
+          filePath: planFilePath,
+          status: e.status,
+        } satisfies ITimelinePlan;
+        break;
+      }
+    }
   }
 
   return {
