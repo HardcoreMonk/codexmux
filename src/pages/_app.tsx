@@ -157,9 +157,9 @@ export default function App({ Component, pageProps }: TAppPropsWithLayout) {
   }, [locale]);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js');
-    }
+    if (!('serviceWorker' in navigator)) return;
+
+    navigator.serviceWorker.register('/sw.js');
   }, []);
 
   dayjs.extend(relativeTime);
