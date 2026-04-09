@@ -192,8 +192,13 @@ export const crossCheckLayout = async (
   return changed;
 };
 
-export const createDefaultLayout = async (wsId: string, cwd: string): Promise<ILayoutData> => {
+export interface ICreateLayoutOptions {
+  panelType?: 'claude-code';
+}
+
+export const createDefaultLayout = async (wsId: string, cwd: string, options?: ICreateLayoutOptions): Promise<ILayoutData> => {
   const { pane, tab } = createDefaultPaneNode(wsId, cwd);
+  if (options?.panelType) tab.panelType = options.panelType;
   await createSession(tab.sessionName, 80, 24, cwd);
   return {
     root: pane,

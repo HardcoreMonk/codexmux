@@ -7,6 +7,7 @@
   "splitHorizontalShortcut": "水平分割 ({shortcut})",
   "equalSplit": "均匀分割",
   "creatingConversation": "正在创建新对话...",
+  "resumingSession": "正在恢复会话...",
   "checkTerminal": "请检查终端",
   "resumeBlocked": "终端中有其他进程正在运行",
   "resumeBlockedProcess": "当前运行的进程：{name}",

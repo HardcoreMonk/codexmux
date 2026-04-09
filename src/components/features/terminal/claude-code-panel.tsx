@@ -40,6 +40,7 @@ const ClaudeCodePanel = ({
 
   const claudeStatus = useTabStore((s) => s.tabs[tabId]?.claudeStatus ?? 'unknown');
   const isRestarting = useTabStore((s) => s.tabs[tabId]?.isRestarting ?? false);
+  const isResuming = useTabStore((s) => s.tabs[tabId]?.isResuming ?? false);
   const storeTimelineLoading = useTabStore((s) => s.tabs[tabId]?.isTimelineLoading ?? true);
   const view = useTabStore((s) => selectSessionView(s.tabs, tabId));
 
@@ -181,7 +182,10 @@ const ClaudeCodePanel = ({
     return (
       <div className={cn('flex h-full w-full flex-col items-center justify-center animate-delayed-fade-in', className)}>
         <Spinner className="h-4 w-4 text-muted-foreground" />
-        {startingPromptOptions && (
+        {isResuming && (
+          <span className="mt-2 text-sm text-muted-foreground">{t('resumingSession')}</span>
+        )}
+        {!isResuming && startingPromptOptions && (
           startingPromptOptions.isBypassPrompt && startingPromptOptions.options.length > 0 ? (
             <BypassPromptCard
               sessionName={sessionName}

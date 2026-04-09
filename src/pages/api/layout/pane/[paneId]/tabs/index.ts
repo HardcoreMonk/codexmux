@@ -2,8 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { addTabToPane } from '@/lib/layout-store';
 import { getActiveWorkspaceId } from '@/lib/workspace-store';
 import { getStatusManager } from '@/lib/status-manager';
-import { getDangerouslySkipPermissions } from '@/lib/config-store';
-import { HOOK_SETTINGS_PATH } from '@/lib/hook-settings';
+import { buildResumeCommand } from '@/lib/claude-command';
 import { sendKeys } from '@/lib/tmux';
 import { createLogger } from '@/lib/logger';
 
@@ -40,13 +39,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     if (resumeSessionId && !command) {
-      const skipPerms = await getDangerouslySkipPermissions();
-      const settings = `--settings ${HOOK_SETTINGS_PATH}`;
-      const resumeCmd = skipPerms
-        ? `claude --resume ${resumeSessionId} ${settings} --dangerously-skip-permissions`
-        : `claude --resume ${resumeSessionId} ${settings}`;
       setTimeout(async () => {
         try {
+          const resumeCmd = await buildResumeCommand(resumeSessionId);
           await sendKeys(tab.sessionName, resumeCmd);
         } catch (err) {
           log.warn(`resume sendKeys failed: ${err instanceof Error ? err.message : err}`);

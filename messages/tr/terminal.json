@@ -7,6 +7,7 @@
   "splitHorizontalShortcut": "Yatay böl ({shortcut})",
   "equalSplit": "Bölmeleri eşitle",
   "creatingConversation": "Yeni sohbet oluşturuluyor...",
+  "resumingSession": "Oturum devam ettiriliyor...",
   "checkTerminal": "Terminali kontrol edin",
   "resumeBlocked": "Terminalde başka bir işlem çalışıyor",
   "resumeBlockedProcess": "Şu anda çalışan işlem: {name}",

@@ -26,7 +26,7 @@ interface IWorkspaceState {
   hydrate: (data: IWorkspaceInitialData) => void;
   fetchWorkspaces: () => Promise<void>;
   syncWorkspaces: () => Promise<void>;
-  createWorkspace: (directory: string, name?: string) => Promise<IWorkspace | null>;
+  createWorkspace: (directory: string, name?: string, resumeSessionId?: string) => Promise<IWorkspace | null>;
   deleteWorkspace: (workspaceId: string) => Promise<boolean>;
   removeWorkspace: (workspaceId: string) => void;
   switchWorkspace: (workspaceId: string) => void;
@@ -152,12 +152,12 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
     }
   },
 
-  createWorkspace: async (directory, name?) => {
+  createWorkspace: async (directory, name?, resumeSessionId?) => {
     try {
       const res = await fetch('/api/workspace', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ directory, name }),
+        body: JSON.stringify({ directory, name, resumeSessionId }),
       });
       if (!res.ok) {
         const data = await res.json();

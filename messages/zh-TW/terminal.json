@@ -7,6 +7,7 @@
   "splitHorizontalShortcut": "水平分割（{shortcut}）",
   "equalSplit": "等分分割",
   "creatingConversation": "正在建立新對話...",
+  "resumingSession": "正在恢復對話...",
   "checkTerminal": "請檢查終端機",
   "resumeBlocked": "終端機中有其他處理程序正在執行",
   "resumeBlockedProcess": "目前執行中的處理程序：{name}",

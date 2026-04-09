@@ -748,22 +748,13 @@ class StatusManager {
     const startedAt = stats.firstUserTs ?? prevBusySince ?? now;
     const completedAt = stats.lastAssistantTs ?? now;
 
-    let claudeSessionId: string | null = null;
-    const parsed = parseSessionName(entry.tmuxSession);
-    if (parsed) {
-      const layout = await readLayoutFile(resolveLayoutFile(parsed.wsId));
-      if (layout) {
-        const tab = collectAllTabs(layout.root).find((t) => t.sessionName === entry.tmuxSession);
-        claudeSessionId = tab?.claudeSessionId ?? null;
-      }
-    }
-
     const historyEntry: ITaskHistoryEntry = {
       id: nanoid(),
       workspaceId: entry.workspaceId,
       workspaceName: ws?.name ?? entry.workspaceId,
+      workspaceDir: ws?.directories[0] ?? null,
       tabId,
-      claudeSessionId,
+      claudeSessionId: entry.claudeSessionId ?? null,
       prompt: stats.lastUserText ?? entry.lastUserMessage,
       result: stats.lastAssistantText,
       startedAt,

@@ -1,8 +1,7 @@
 import { readLayoutFile, resolveLayoutFile, collectAllTabs } from '@/lib/layout-store';
 import { hasSession, createSession, getPaneCurrentCommand, sendKeys } from '@/lib/tmux';
 import { getWorkspaces } from '@/lib/workspace-store';
-import { getDangerouslySkipPermissions } from '@/lib/config-store';
-import { HOOK_SETTINGS_PATH } from '@/lib/hook-settings';
+import { buildResumeCommand } from '@/lib/claude-command';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('auto-resume');
@@ -44,7 +43,7 @@ const findAutoResumeTargets = async (): Promise<IAutoResumeTarget[]> => {
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
-const sendResumeKeys = async (target: IAutoResumeTarget, skipPerms: boolean): Promise<boolean> => {
+const sendResumeKeys = async (target: IAutoResumeTarget): Promise<boolean> => {
   try {
     const command = await getPaneCurrentCommand(target.tmuxSession);
     if (!command) {
@@ -61,11 +60,8 @@ const sendResumeKeys = async (target: IAutoResumeTarget, skipPerms: boolean): Pr
       return false;
     }
 
-    const settings = `--settings ${HOOK_SETTINGS_PATH}`;
-    const resumeCmd = skipPerms
-      ? `claude --resume ${target.claudeSessionId} ${settings} --dangerously-skip-permissions`
-      : `claude --resume ${target.claudeSessionId} ${settings}`;
-    log.info(`Sending resume: ${target.tmuxSession} → ${target.claudeSessionId}${skipPerms ? ' (skip-permissions)' : ''}`);
+    const resumeCmd = await buildResumeCommand(target.claudeSessionId);
+    log.info(`Sending resume: ${target.tmuxSession} → ${target.claudeSessionId}`);
     await sendKeys(target.tmuxSession, resumeCmd);
 
     return true;
@@ -92,8 +88,7 @@ export const executeAutoResume = async (targets: IAutoResumeTarget[]): Promise<v
   }
 
   // Phase 3: Send resume commands in parallel
-  const skipPerms = await getDangerouslySkipPermissions();
-  await Promise.allSettled(targets.map((target) => sendResumeKeys(target, skipPerms)));
+  await Promise.allSettled(targets.map((target) => sendResumeKeys(target)));
 };
 
 export const autoResumeOnStartup = async (): Promise<void> => {

@@ -6,7 +6,7 @@ import type { ITaskHistoryEntry, ITaskHistoryData } from '@/types/task-history';
 
 const log = createLogger('task-history');
 
-const MAX_ENTRIES = 100;
+const MAX_ENTRIES = 200;
 const BASE_DIR = path.join(os.homedir(), '.purplemux');
 const TASK_HISTORY_FILE = path.join(BASE_DIR, 'task-history.json');
 

@@ -11,8 +11,7 @@ import { getSessionPanePid, checkTerminalProcess, sendKeys, getSessionCwd, getPa
 import { cwdToProjectPath } from './session-list';
 import { updateTabClaudeSessionId, updateTabClaudeSummary, updateTabLastUserMessage } from './layout-store';
 import { getStatusManager } from './status-manager';
-import { getDangerouslySkipPermissions } from './config-store';
-import { HOOK_SETTINGS_PATH } from './hook-settings';
+import { buildResumeCommand } from './claude-command';
 import { calculateCost } from './format-tokens';
 import type { TTimelineServerMessage, IInitMeta, ITimelineEntry } from '@/types/timeline';
 import path from 'path';
@@ -605,11 +604,7 @@ const handleResumeMessage = async (
       return;
     }
 
-    const skipPerms = await getDangerouslySkipPermissions();
-    const settings = `--settings ${HOOK_SETTINGS_PATH}`;
-    const resumeCmd = skipPerms
-      ? `claude --resume ${sessionId} ${settings} --dangerously-skip-permissions`
-      : `claude --resume ${sessionId} ${settings}`;
+    const resumeCmd = await buildResumeCommand(sessionId);
     await sendKeys(tmuxSession, resumeCmd);
 
     await updateTabClaudeSessionId(conn.sessionName, sessionId).catch(() => {});

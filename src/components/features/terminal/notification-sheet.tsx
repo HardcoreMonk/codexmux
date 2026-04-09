@@ -463,6 +463,7 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
           entry.tabId,
           entry.claudeSessionId,
           entry.workspaceName,
+          entry.workspaceDir,
         );
       }
     },
@@ -548,7 +549,7 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
               {dateGroups.length > 0 && (
                 <section className={busyItems.length > 0 || needsInputItems.length > 0 || reviewItems.length > 0 ? 'mt-4' : ''}>
                   <h3 className="mb-2 text-xs font-medium text-muted-foreground">
-                    {t('doneSection', { count: historyEntries.length })}
+                    {t('doneSection', { count: historyEntries.length >= 200 ? '200+' : historyEntries.length })}
                   </h3>
                   {dateGroups.map(({ group: dateGroup, sessions }) => (
                     <div key={dateGroup}>

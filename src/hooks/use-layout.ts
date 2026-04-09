@@ -666,17 +666,31 @@ export const navigateToTabOrCreate = async (
   tabId: string,
   claudeSessionId: string | null,
   workspaceName: string,
+  workspaceDir: string | null,
 ): Promise<void> => {
   const wsStore = useWorkspaceStore.getState();
-  const layoutStore = useLayoutStore.getState();
 
   let targetWsId = workspaceId;
   const ws = wsStore.workspaces.find((w) => w.id === workspaceId);
 
   if (!ws) {
-    const created = await wsStore.createWorkspace(workspaceName);
+    if (!workspaceDir) return;
+    const created = await wsStore.createWorkspace(workspaceDir, workspaceName, claudeSessionId ?? undefined);
     if (!created) return;
     targetWsId = created.id;
+
+    const layoutRes = await fetch(wsQuery('/api/layout', targetWsId));
+    if (!layoutRes.ok) return;
+    const layout: ILayoutData = await layoutRes.json();
+    const firstTab = collectAllTabs(layout.root)[0];
+    if (!firstTab) return;
+
+    if (claudeSessionId) {
+      useTabStore.getState().initTab(firstTab.id, { panelType: 'claude-code', isResuming: true });
+    }
+
+    navigateToTab(targetWsId, firstTab.id);
+    return;
   }
 
   const layoutRes = await fetch(wsQuery('/api/layout', targetWsId));
@@ -690,9 +704,7 @@ export const navigateToTabOrCreate = async (
   }
 
   const paneId = layout.activePaneId ?? getFirstPaneId(layout.root);
-  const targetWs = ws ?? wsStore.workspaces.find((w) => w.id === targetWsId);
-  const cwd = targetWs?.directories[0];
-
+  const cwd = ws.directories[0];
   const body: Record<string, string | undefined> = { panelType: 'claude-code', cwd };
   if (claudeSessionId) body.resumeSessionId = claudeSessionId;
 
@@ -704,14 +716,15 @@ export const navigateToTabOrCreate = async (
   if (!tabRes.ok) return;
   const newTab: ITab = await tabRes.json();
 
-  useLayoutStore.setState({ pendingFocusTabId: newTab.id });
+  if (claudeSessionId) {
+    useTabStore.getState().initTab(newTab.id, { panelType: 'claude-code', isResuming: true });
+  }
 
-  if (targetWsId === layoutStore.workspaceId) {
-    layoutStore.fetchLayout();
+  if (targetWsId === useLayoutStore.getState().workspaceId) {
+    useLayoutStore.setState({ pendingFocusTabId: newTab.id });
+    useLayoutStore.getState().fetchLayout();
   } else {
-    layoutStore.clearLayout();
-    wsStore.switchWorkspace(targetWsId);
-    if (Router.pathname !== '/') Router.push('/');
+    navigateToTab(targetWsId, newTab.id);
   }
 };
 

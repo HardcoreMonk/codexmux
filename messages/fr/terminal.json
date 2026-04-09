@@ -7,6 +7,7 @@
   "splitHorizontalShortcut": "Diviser horizontalement ({shortcut})",
   "equalSplit": "Égaliser les divisions",
   "creatingConversation": "Création d'une nouvelle conversation...",
+  "resumingSession": "Reprise de la session...",
   "checkTerminal": "Vérifiez le terminal",
   "resumeBlocked": "Un autre processus est en cours dans le terminal",
   "resumeBlockedProcess": "Processus en cours : {name}",

@@ -7,6 +7,7 @@
   "splitHorizontalShortcut": "横分割 ({shortcut})",
   "equalSplit": "分割を均等化",
   "creatingConversation": "新しい会話を作成中...",
+  "resumingSession": "セッションを再開中...",
   "checkTerminal": "ターミナルを確認してください",
   "resumeBlocked": "ターミナルで別のプロセスが実行中です",
   "resumeBlockedProcess": "現在実行中のプロセス: {name}",

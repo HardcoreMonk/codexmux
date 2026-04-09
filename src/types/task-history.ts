@@ -2,6 +2,7 @@ export interface ITaskHistoryEntry {
   id: string;
   workspaceId: string;
   workspaceName: string;
+  workspaceDir: string | null;
   tabId: string;
   claudeSessionId: string | null;
   prompt: string | null;

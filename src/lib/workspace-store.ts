@@ -15,6 +15,7 @@ import {
   createDefaultLayout,
   clearLayoutCache,
 } from '@/lib/layout-store';
+import type { ICreateLayoutOptions } from '@/lib/layout-store';
 import type { IWorkspace, IWorkspacesData, ILayoutData } from '@/types/terminal';
 
 const log = createLogger('workspace');
@@ -247,7 +248,7 @@ export const getWorkspaceById = async (wsId: string): Promise<IWorkspace | undef
   return data?.workspaces.find((w) => w.id === wsId);
 };
 
-export const createWorkspace = async (directory: string, name?: string): Promise<IWorkspace> =>
+export const createWorkspace = async (directory: string, name?: string, layoutOptions?: ICreateLayoutOptions): Promise<IWorkspace> =>
   withLock(async () => {
     let stat;
     try {
@@ -266,7 +267,7 @@ export const createWorkspace = async (directory: string, name?: string): Promise
     const wsName = name?.trim() || nextWorkspaceName(data.workspaces);
     const order = data.workspaces.length;
 
-    const layout = await createDefaultLayout(wsId, directory);
+    const layout = await createDefaultLayout(wsId, directory, layoutOptions);
     await fs.mkdir(resolveLayoutDir(wsId), { recursive: true });
     await writeLayoutFile(layout, resolveLayoutFile(wsId));
 
