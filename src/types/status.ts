@@ -1,7 +1,12 @@
-import type { TCliState } from '@/types/timeline';
+import type { TCliState, TToolName } from '@/types/timeline';
 import type { TPanelType } from '@/types/terminal';
 
 export type TTerminalStatus = 'idle' | 'running' | 'server';
+
+export interface ICurrentAction {
+  toolName: TToolName | null;
+  summary: string;
+}
 
 export interface ITabStatusEntry {
   cliState: TCliState;
@@ -16,7 +21,7 @@ export interface ITabStatusEntry {
   claudeSummary?: string | null;
   lastUserMessage?: string | null;
   lastAssistantMessage?: string | null;
-  currentAction?: string | null;
+  currentAction?: ICurrentAction | null;
   readyForReviewAt?: number | null;
   busySince?: number | null;
   dismissedAt?: number | null;
@@ -47,7 +52,7 @@ export interface IStatusUpdateMessage {
   claudeSummary?: string | null;
   lastUserMessage?: string | null;
   lastAssistantMessage?: string | null;
-  currentAction?: string | null;
+  currentAction?: ICurrentAction | null;
   readyForReviewAt?: number | null;
   busySince?: number | null;
   dismissedAt?: number | null;

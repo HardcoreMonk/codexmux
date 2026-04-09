@@ -1,6 +1,16 @@
 import { useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { Check, CheckCircle2 } from 'lucide-react';
+import {
+  Check,
+  CheckCircle2,
+  FileText,
+  FilePen,
+  FilePlus,
+  Terminal,
+  Search,
+  Users,
+  Wrench,
+} from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import dayjs from 'dayjs';
 import { useRouter } from 'next/router';
@@ -18,7 +28,18 @@ import { dismissTab } from '@/hooks/use-claude-status';
 import { navigateToTab, useLayoutStore } from '@/hooks/use-layout';
 import { findPane } from '@/lib/layout-tree';
 import type { ITabState } from '@/hooks/use-tab-store';
+import type { ICurrentAction } from '@/types/status';
 import { stripMarkdown } from '@/lib/strip-markdown';
+
+const ACTION_ICONS: Record<string, typeof FileText> = {
+  Read: FileText,
+  Edit: FilePen,
+  Write: FilePlus,
+  Bash: Terminal,
+  Grep: Search,
+  Glob: Search,
+  Agent: Users,
+};
 
 
 const useActiveTabId = (): string | null => {
@@ -53,7 +74,7 @@ interface INotificationItem {
   workspaceId: string;
   lastUserMessage?: string | null;
   lastAssistantMessage?: string | null;
-  currentAction?: string | null;
+  currentAction?: ICurrentAction | null;
   readyForReviewAt?: number | null;
   busySince?: number | null;
   dismissedAt?: number | null;
@@ -139,14 +160,25 @@ const NotificationItem = ({
   onNavigate?: (workspaceId: string, tabId: string) => void;
 }) => {
   const t = useTranslations('notification');
-  const progressText = item.currentAction;
+  const action = item.currentAction;
+
+  const renderAction = () => {
+    if (!action) return showActions ? null : t('starting');
+    const IconComponent = action.toolName ? ACTION_ICONS[action.toolName] ?? Wrench : null;
+    return (
+      <span className="inline-flex items-center gap-1 min-w-0">
+        {IconComponent && <IconComponent size={11} className="shrink-0 text-muted-foreground/40" />}
+        <span className="truncate">{action.summary}</span>
+      </span>
+    );
+  };
 
   return (
     <div
       className={cn(
         'flex items-start gap-3 rounded-md border px-3 py-2.5 transition-colors',
         isActiveTab
-          ? 'border-claude-active/30 bg-claude-active/5'
+          ? 'border-claude-active/30 bg-claude-active/10'
           : 'border-border/50 bg-muted/30 hover:bg-muted/50 hover:border-foreground/20 cursor-pointer',
       )}
       onClick={isActiveTab ? undefined : () => onNavigate?.(item.workspaceId, item.tabId)}
@@ -186,7 +218,7 @@ const NotificationItem = ({
           )
         ) : !variant && (
           <p className="mt-0.5 truncate text-xs text-muted-foreground/60">
-            {showActions ? progressText : (progressText || t('starting'))}
+            {renderAction()}
           </p>
         )}
         {showActions && !isActiveTab && (

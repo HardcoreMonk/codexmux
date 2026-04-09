@@ -7,12 +7,12 @@ import { cwdToProjectPath } from '@/lib/session-list';
 import { isInterpreter, hasProcessIcon } from '@/lib/process-icon';
 import { hasPermissionPrompt } from '@/lib/permission-prompt';
 import { getLastTerminalOutput } from '@/lib/terminal-server';
-import { INTERRUPT_PREFIX } from '@/lib/session-parser';
+import { INTERRUPT_PREFIX, summarizeToolCall } from '@/lib/session-parser';
 import { createRateLimitsWatcher } from '@/lib/rate-limits-watcher';
 import { createLogger } from '@/lib/logger';
 import type { IPaneInfo } from '@/lib/tmux';
-import type { TCliState } from '@/types/timeline';
-import type { TTerminalStatus, ITabStatusEntry, IClientTabStatusEntry, IStatusUpdateMessage, IRateLimitsData } from '@/types/status';
+import type { TCliState, TToolName } from '@/types/timeline';
+import type { ICurrentAction, TTerminalStatus, ITabStatusEntry, IClientTabStatusEntry, IStatusUpdateMessage, IRateLimitsData } from '@/types/status';
 import fs from 'fs/promises';
 import { watch, type FSWatcher } from 'fs';
 
@@ -41,7 +41,7 @@ interface IJsonlIdleCache {
   needsStaleRecheck: boolean;
   staleMs: number;
   lastAssistantSnippet: string | null;
-  currentAction: string | null;
+  currentAction: ICurrentAction | null;
   reset: boolean;
 }
 
@@ -50,39 +50,15 @@ const jsonlIdleCache = new Map<string, IJsonlIdleCache>();
 
 const MAX_SNIPPET_LENGTH = 200;
 
-const formatToolAction = (block: { name?: string; input?: Record<string, unknown> }): string => {
-  const name = block.name ?? 'Tool';
-  const input = block.input;
-  if (!input) return name;
-
-  const filePath = input.file_path as string | undefined;
-  if (filePath) {
-    const basename = filePath.split('/').pop() ?? filePath;
-    return `${name} ${basename}`;
-  }
-
-  const command = input.command as string | undefined;
-  if (command) {
-    const first = command.split('\n')[0].trim();
-    const short = first.length > 60 ? first.slice(0, 60) + '…' : first;
-    return `${name} ${short}`;
-  }
-
-  const pattern = input.pattern as string | undefined;
-  if (pattern) return `${name} ${pattern}`;
-
-  const prompt = input.prompt as string | undefined;
-  if (prompt) {
-    const short = prompt.length > 60 ? prompt.slice(0, 60) + '…' : prompt;
-    return `${name} ${short}`;
-  }
-
-  return name;
+const toCurrentAction = (block: { name?: string; input?: Record<string, unknown> }): ICurrentAction => {
+  const toolName = (block.name ?? 'Tool') as TToolName;
+  const input = (block.input ?? {}) as Record<string, unknown>;
+  return { toolName, summary: summarizeToolCall(toolName, input) };
 };
 
 interface IAssistantExtract {
   lastAssistantSnippet: string | null;
-  currentAction: string | null;
+  currentAction: ICurrentAction | null;
   reset: boolean;
 }
 
@@ -109,25 +85,24 @@ const extractAssistantInfo = (lines: string[]): IAssistantExtract => {
       if (!Array.isArray(content)) continue;
 
       let lastAssistantSnippet: string | null = null;
-      let currentAction: string | null = null;
+      let currentAction: ICurrentAction | null = null;
 
-      // currentAction: last content block (text or tool_use)
       for (let j = content.length - 1; j >= 0; j--) {
         const block = content[j];
         if (block.type === 'tool_use') {
-          currentAction = formatToolAction(block);
+          currentAction = toCurrentAction(block);
           break;
         }
         if (block.type === 'text' && block.text?.trim()) {
           const text = block.text.trim();
-          currentAction = text.length > MAX_SNIPPET_LENGTH
-            ? text.slice(0, MAX_SNIPPET_LENGTH) + '…'
-            : text;
+          currentAction = {
+            toolName: null,
+            summary: text.length > MAX_SNIPPET_LENGTH ? text.slice(0, MAX_SNIPPET_LENGTH) + '…' : text,
+          };
           break;
         }
       }
 
-      // lastAssistantSnippet: last text block
       for (let j = content.length - 1; j >= 0; j--) {
         if (content[j].type === 'text' && content[j].text?.trim()) {
           const text = content[j].text.trim();
@@ -192,7 +167,7 @@ interface IJsonlCheckResult {
   idle: boolean;
   stale: boolean;
   lastAssistantSnippet: string | null;
-  currentAction: string | null;
+  currentAction: ICurrentAction | null;
   reset: boolean;
 }
 
@@ -338,7 +313,7 @@ class StatusManager {
     }
   }
 
-  private async detectTabCliState(tmuxSession: string, paneInfo?: IPaneInfo): Promise<{ cliState: TCliState; lastAssistantSnippet: string | null; currentAction: string | null; jsonlPath: string | null; reset: boolean }> {
+  private async detectTabCliState(tmuxSession: string, paneInfo?: IPaneInfo): Promise<{ cliState: TCliState; lastAssistantSnippet: string | null; currentAction: ICurrentAction | null; jsonlPath: string | null; reset: boolean }> {
     const empty = { cliState: 'inactive' as const, lastAssistantSnippet: null, currentAction: null, jsonlPath: null, reset: false };
     if (!paneInfo || !paneInfo.pid) return empty;
 
@@ -488,7 +463,7 @@ class StatusManager {
         const assistantMessageChanged = (detected.reset && existing.lastAssistantMessage !== null)
           || (detected.lastAssistantSnippet !== null && existing.lastAssistantMessage !== detected.lastAssistantSnippet);
         const actionChanged = (detected.reset && existing.currentAction !== null)
-          || (detected.currentAction !== null && existing.currentAction !== detected.currentAction);
+          || (detected.currentAction !== null && detected.currentAction.summary !== existing.currentAction?.summary);
         const panelTypeChanged = existing.panelType !== tab.panelType;
         existing.tabName = tab.name;
         existing.currentProcess = resolvedProcess;
@@ -701,7 +676,7 @@ class StatusManager {
             if (entry.currentAction !== null) { entry.currentAction = null; updated = true; }
             if (entry.lastAssistantMessage !== null) { entry.lastAssistantMessage = null; updated = true; }
           } else {
-            if (currentAction !== null && entry.currentAction !== currentAction) {
+            if (currentAction !== null && currentAction.summary !== entry.currentAction?.summary) {
               entry.currentAction = currentAction;
               updated = true;
             }
@@ -883,7 +858,7 @@ class StatusManager {
     }
 
     const { idle, stale, currentAction, lastAssistantSnippet, reset } = await checkJsonlIdle(jsonlPath);
-    log.debug('onJsonlFileChange tabId=%s idle=%s action=%s', tabId, idle, currentAction?.slice(0, 40));
+    log.debug('onJsonlFileChange tabId=%s idle=%s action=%s', tabId, idle, currentAction?.summary.slice(0, 40));
 
     let changed = false;
 
@@ -900,7 +875,7 @@ class StatusManager {
       if (entry.currentAction !== null) { entry.currentAction = null; changed = true; }
       if (entry.lastAssistantMessage !== null) { entry.lastAssistantMessage = null; changed = true; }
     } else {
-      if (currentAction !== null && entry.currentAction !== currentAction) {
+      if (currentAction !== null && currentAction.summary !== entry.currentAction?.summary) {
         entry.currentAction = currentAction;
         changed = true;
       }

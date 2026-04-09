@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { TCliState, TClaudeStatus } from '@/types/timeline';
-import type { TTabDisplayStatus, TTerminalStatus } from '@/types/status';
+import type { ICurrentAction, TTabDisplayStatus, TTerminalStatus } from '@/types/status';
 import type { TPanelType } from '@/types/terminal';
 
 export type TSessionView =
@@ -27,7 +27,7 @@ export interface ITabState {
   claudeSummary?: string | null;
   lastUserMessage?: string | null;
   lastAssistantMessage?: string | null;
-  currentAction?: string | null;
+  currentAction?: ICurrentAction | null;
   readyForReviewAt?: number | null;
   busySince?: number | null;
   dismissedAt?: number | null;
@@ -67,8 +67,8 @@ interface ITabStore {
   setCurrentProcess: (tabId: string, process: string | null) => void;
   setTabOrder: (workspaceId: string, tabIds: string[]) => void;
   setStatusWsConnected: (connected: boolean) => void;
-  syncAllFromServer: (serverTabs: Record<string, { cliState: TCliState; workspaceId: string; tabName?: string; panelType?: TPanelType; terminalStatus?: TTerminalStatus; listeningPorts?: number[]; currentProcess?: string; claudeSummary?: string | null; lastUserMessage?: string | null; lastAssistantMessage?: string | null; currentAction?: string | null; readyForReviewAt?: number | null; busySince?: number | null; dismissedAt?: number | null }>) => void;
-  updateFromServer: (tabId: string, update: { cliState: TCliState | null; workspaceId: string; tabName?: string; panelType?: TPanelType; terminalStatus?: TTerminalStatus; listeningPorts?: number[]; currentProcess?: string; claudeSummary?: string | null; lastUserMessage?: string | null; lastAssistantMessage?: string | null; currentAction?: string | null; readyForReviewAt?: number | null; busySince?: number | null; dismissedAt?: number | null }) => void;
+  syncAllFromServer: (serverTabs: Record<string, { cliState: TCliState; workspaceId: string; tabName?: string; panelType?: TPanelType; terminalStatus?: TTerminalStatus; listeningPorts?: number[]; currentProcess?: string; claudeSummary?: string | null; lastUserMessage?: string | null; lastAssistantMessage?: string | null; currentAction?: ICurrentAction | null; readyForReviewAt?: number | null; busySince?: number | null; dismissedAt?: number | null }>) => void;
+  updateFromServer: (tabId: string, update: { cliState: TCliState | null; workspaceId: string; tabName?: string; panelType?: TPanelType; terminalStatus?: TTerminalStatus; listeningPorts?: number[]; currentProcess?: string; claudeSummary?: string | null; lastUserMessage?: string | null; lastAssistantMessage?: string | null; currentAction?: ICurrentAction | null; readyForReviewAt?: number | null; busySince?: number | null; dismissedAt?: number | null }) => void;
 }
 
 const updateTab = (
