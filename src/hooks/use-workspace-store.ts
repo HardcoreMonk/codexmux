@@ -46,7 +46,7 @@ const getInitialSidebar = (): { sidebarWidth: number; sidebarCollapsed: boolean 
     const sb = (window as unknown as Record<string, unknown>).__SB__ as { w: number; c: boolean } | undefined;
     if (sb) return { sidebarWidth: sb.w, sidebarCollapsed: sb.c };
   }
-  return { sidebarWidth: 200, sidebarCollapsed: false };
+  return { sidebarWidth: 220, sidebarCollapsed: false };
 };
 
 const initialSidebar = getInitialSidebar();
@@ -131,7 +131,7 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
         workspaces: data.workspaces,
         activeWorkspaceId,
         sidebarCollapsed: data.sidebarCollapsed ?? false,
-        sidebarWidth: data.sidebarWidth ?? 200,
+        sidebarWidth: data.sidebarWidth ?? 220,
         isLoading: false,
       });
     } catch {

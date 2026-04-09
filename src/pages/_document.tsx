@@ -17,12 +17,12 @@ class MyDocument extends Document<IDocumentProps> {
         sidebarCollapsed: wsData.sidebarCollapsed,
       };
     } catch {
-      return { ...initialProps, sidebarWidth: 200, sidebarCollapsed: false };
+      return { ...initialProps, sidebarWidth: 220, sidebarCollapsed: false };
     }
   }
 
   render() {
-    const sidebarWidth = Number(this.props.sidebarWidth) || 200;
+    const sidebarWidth = Number(this.props.sidebarWidth) || 220;
     const sidebarCollapsed = !!this.props.sidebarCollapsed;
     const effectiveWidth = sidebarCollapsed ? 0 : sidebarWidth;
     const effectiveMinWidth = sidebarCollapsed ? 0 : 160;
