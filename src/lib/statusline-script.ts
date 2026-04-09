@@ -26,6 +26,20 @@ if [ "$HAS_LIMITS" = "yes" ]; then
   }' > "$OUTPUT" 2>/dev/null
 fi
 
+# Check user statusLine: project local → project shared → global
+PROJECT_DIR=$(echo "$input" | jq -r '.workspace.project_dir // empty')
+USER_CMD=""
+if [ -n "$PROJECT_DIR" ]; then
+  USER_CMD=$(jq -r '.statusLine.command // empty' "$PROJECT_DIR/.claude/settings.local.json" 2>/dev/null)
+  [ -z "$USER_CMD" ] && USER_CMD=$(jq -r '.statusLine.command // empty' "$PROJECT_DIR/.claude/settings.json" 2>/dev/null)
+fi
+[ -z "$USER_CMD" ] && USER_CMD=$(jq -r '.statusLine.command // empty' "$HOME/.claude/settings.json" 2>/dev/null)
+
+if [ -n "$USER_CMD" ]; then
+  echo "$input" | sh -c "$USER_CMD"
+  exit 0
+fi
+
 MODEL=$(echo "$input" | jq -r '.model.display_name // empty')
 CTX=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 IN_TOK=$(echo "$input" | jq -r '.context_window.total_input_tokens // 0')
