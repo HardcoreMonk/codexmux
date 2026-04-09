@@ -44,7 +44,7 @@ const ElapsedTime = ({ since }: { since: number }) => {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
-    const update = () => setElapsed(Math.floor((Date.now() - since) / 1000));
+    const update = () => setElapsed(Math.max(0, Math.floor((Date.now() - since) / 1000)));
     update();
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
