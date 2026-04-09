@@ -6,8 +6,8 @@ const handler = (req: NextApiRequest, res: NextApiResponse) => {
   const startUrl = `${proto}://${host}/`;
 
   const manifest = {
-    name: 'Purplemux',
-    short_name: 'Purplemux',
+    name: 'purplemux',
+    short_name: 'purplemux',
     start_url: startUrl,
     display: 'standalone',
     theme_color: '#ffffff',

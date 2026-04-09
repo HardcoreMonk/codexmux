@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifyAgentToken } from '@/lib/agent-token';
 
-const guide = `# Purplemux API Reference
+const guide = `# purplemux API Reference
 
 All endpoints require \`-H "X-Agent-Token: TOKEN"\` header.
 Base: http://localhost:PORT
