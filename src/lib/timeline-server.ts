@@ -10,6 +10,7 @@ import { createInterface } from 'readline';
 import { getSessionPanePid, checkTerminalProcess, sendKeys, getSessionCwd, getPaneTitle } from './tmux';
 import { cwdToProjectPath } from './session-list';
 import { updateTabClaudeSessionId, updateTabClaudeSummary, updateTabLastUserMessage } from './layout-store';
+import { getStatusManager } from './status-manager';
 import { getDangerouslySkipPermissions } from './config-store';
 import { HOOK_SETTINGS_PATH } from './hook-settings';
 import { calculateCost } from './format-tokens';
@@ -196,6 +197,7 @@ const processFileChange = async (fw: IFileWatcher) => {
         const lastMsg = findLastUserMessage(newEntries);
         if (lastMsg) {
           await updateTabLastUserMessage(fw.sessionName, lastMsg).catch(() => {});
+          getStatusManager().notifyLastUserMessage(fw.sessionName, lastMsg);
         }
       }
 
@@ -424,6 +426,7 @@ const subscribeToFile = async (ws: WebSocket, jsonlPath: string, sessionId?: str
     const lastMsg = findLastUserMessage(result.entries);
     if (lastMsg) {
       await updateTabLastUserMessage(sessionName, lastMsg).catch(() => {});
+      getStatusManager().notifyLastUserMessage(sessionName, lastMsg);
     }
   }
 
@@ -824,7 +827,15 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
 
       if (newInfo.status === 'running' && !newInfo.jsonlPath) {
         for (const c of wsConns) {
-          if (c.currentJsonlPath) continue;
+          if (c.currentJsonlPath) {
+            const currentFile = path.basename(c.currentJsonlPath, '.jsonl');
+            if (newInfo.sessionId && currentFile !== newInfo.sessionId) {
+              unsubscribeFromFile(c.ws, c.currentJsonlPath);
+              c.currentJsonlPath = null;
+            } else {
+              continue;
+            }
+          }
           if (pendingJsonlWatchers.has(sessionName)) continue;
           sendJson(c.ws, {
             type: 'timeline:session-changed',
@@ -835,6 +846,7 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
         if (newInfo.sessionId && newInfo.cwd) {
           const hasActiveSubscription = wsConns.some((c) => c.currentJsonlPath !== null);
           if (!hasActiveSubscription && wsConns.length > 0) {
+            cancelJsonlWatcher(sessionName);
             watchForJsonlFile(sessionName, newInfo.sessionId, newInfo.cwd);
           }
         }

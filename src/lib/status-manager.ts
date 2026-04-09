@@ -900,6 +900,15 @@ class StatusManager {
     }
     this.clients.clear();
   }
+
+  notifyLastUserMessage(sessionName: string, message: string): void {
+    const parsed = parseSessionName(sessionName);
+    if (!parsed) return;
+    const entry = this.tabs.get(parsed.tabId);
+    if (!entry || entry.lastUserMessage === message) return;
+    entry.lastUserMessage = message;
+    this.broadcastUpdate(parsed.tabId, entry);
+  }
 }
 
 export const getStatusManager = (): StatusManager => {
