@@ -33,6 +33,13 @@ const HOOK_GRACE_MS = 15_000;
 const PROCESS_RETRY_COUNT = 3;
 const JSONL_WATCH_DEBOUNCE_MS = 100;
 
+const simpleHash = (str: string): number => {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  }
+  return h;
+};
 
 interface IJsonlIdleCache {
   mtimeMs: number;
@@ -312,6 +319,8 @@ class StatusManager {
           busySince: cliState === 'busy' ? Date.now() : null,
           dismissedAt: cliState === 'busy' ? null : (tab.dismissedAt ?? null),
           jsonlPath: detected.jsonlPath,
+          lastActivityAt: cliState === 'busy' ? Date.now() : null,
+          lastCaptureHash: null,
         });
         if ((cliState === 'busy' || cliState === 'needs-input') && detected.jsonlPath) {
           this.startJsonlWatch(tab.id, detected.jsonlPath);
@@ -320,7 +329,7 @@ class StatusManager {
     }
   }
 
-  private async detectTabCliState(tmuxSession: string, paneInfo?: IPaneInfo): Promise<{ cliState: TCliState; lastAssistantSnippet: string | null; currentAction: ICurrentAction | null; jsonlPath: string | null; reset: boolean }> {
+  private async detectTabCliState(tmuxSession: string, paneInfo?: IPaneInfo, entry?: ITabStatusEntry): Promise<{ cliState: TCliState; lastAssistantSnippet: string | null; currentAction: ICurrentAction | null; jsonlPath: string | null; reset: boolean }> {
     const empty = { cliState: 'inactive' as const, lastAssistantSnippet: null, currentAction: null, jsonlPath: null, reset: false };
     if (!paneInfo || !paneInfo.pid) return empty;
 
@@ -337,6 +346,8 @@ class StatusManager {
     const { idle: jsonlIdle, stale, lastAssistantSnippet, currentAction, reset, lastEntryTs, staleMs: entryStaleMs } = await checkJsonlIdle(session.jsonlPath);
 
     let state: TCliState;
+    let capturedPaneContent: string | null = null;
+
     if (!stale) {
       state = jsonlIdle ? 'idle' : 'busy';
     } else {
@@ -344,8 +355,27 @@ class StatusManager {
         ? Date.now() - lastEntryTs > entryStaleMs
         : jsonlIdle;
 
+      if (entry && lastEntryTs !== null && lastEntryTs > (entry.lastActivityAt ?? 0)) {
+        entry.lastActivityAt = lastEntryTs;
+      }
+
       if (entryExpired) {
-        state = 'idle';
+        let activityDetected = false;
+        if (entry) {
+          capturedPaneContent = await capturePaneContent(tmuxSession);
+          if (capturedPaneContent !== null) {
+            const hash = simpleHash(capturedPaneContent);
+            if (entry.lastCaptureHash !== null && entry.lastCaptureHash !== undefined && hash !== entry.lastCaptureHash) {
+              entry.lastActivityAt = Date.now();
+              activityDetected = true;
+            }
+            entry.lastCaptureHash = hash;
+          }
+          if (!activityDetected && entry.lastActivityAt) {
+            activityDetected = Date.now() - entry.lastActivityAt < entryStaleMs;
+          }
+        }
+        state = activityDetected ? 'busy' : 'idle';
       } else {
         const lastOutput = getLastTerminalOutput(tmuxSession);
         if (lastOutput !== undefined) {
@@ -359,7 +389,7 @@ class StatusManager {
     }
 
     if (state === 'busy') {
-      const paneContent = await capturePaneContent(tmuxSession);
+      const paneContent = capturedPaneContent ?? await capturePaneContent(tmuxSession);
       if (paneContent && hasPermissionPrompt(paneContent)) return { cliState: 'needs-input', lastAssistantSnippet, currentAction, jsonlPath: session.jsonlPath, reset };
     }
 
@@ -437,7 +467,7 @@ class StatusManager {
           }
           detected = { cliState: existing.cliState, ...actionSnippet, jsonlPath: existing.jsonlPath ?? null };
         } else {
-          detected = await this.detectTabCliState(tab.sessionName, paneInfo);
+          detected = await this.detectTabCliState(tab.sessionName, paneInfo, existing);
           if (hookRecent && existing) {
             detected = { ...detected, cliState: existing.cliState };
           }
@@ -466,6 +496,8 @@ class StatusManager {
             lastAssistantMessage: detected.lastAssistantSnippet,
             currentAction: detected.currentAction,
             jsonlPath: detected.jsonlPath,
+            lastActivityAt: newCliState === 'busy' ? Date.now() : null,
+            lastCaptureHash: null,
           };
           this.tabs.set(tab.id, entry);
           this.persistToLayout(entry);
@@ -599,6 +631,7 @@ class StatusManager {
       ? Date.now()
       : (newState !== 'busy' ? null : entry.busySince);
     if (newState === 'busy') entry.dismissedAt = null;
+    if (newState !== 'busy' && newState !== 'needs-input') entry.lastCaptureHash = null;
 
     const shouldWatch = (newState === 'busy' || newState === 'needs-input') && entry.jsonlPath;
     const keepForFinalRead = newState === 'ready-for-review' && this.jsonlWatchers.has(tabId);
@@ -673,7 +706,9 @@ class StatusManager {
 
     if (prevState === newState) return;
 
-    this.hookUpdatedAt.set(tabId, Date.now());
+    const now = Date.now();
+    this.hookUpdatedAt.set(tabId, now);
+    entry.lastActivityAt = now;
     this.applyCliState(tabId, entry, newState);
 
     this.persistToLayout(entry);
@@ -874,6 +909,7 @@ class StatusManager {
 
     const { idle, stale, currentAction, lastAssistantSnippet, reset } = await checkJsonlIdle(jsonlPath);
     log.debug('onJsonlFileChange tabId=%s idle=%s action=%s', tabId, idle, currentAction?.summary.slice(0, 40));
+    entry.lastActivityAt = Date.now();
 
     let changed = false;
 

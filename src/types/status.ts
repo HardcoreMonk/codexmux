@@ -27,11 +27,13 @@ export interface ITabStatusEntry {
   dismissedAt?: number | null;
   processRetries?: number;
   jsonlPath?: string | null;
+  lastActivityAt?: number | null;
+  lastCaptureHash?: number | null;
 }
 
 export type TTabDisplayStatus = 'busy' | 'ready-for-review' | 'needs-input' | 'idle';
 
-export type IClientTabStatusEntry = Omit<ITabStatusEntry, 'tmuxSession' | 'jsonlPath' | 'processRetries'>;
+export type IClientTabStatusEntry = Omit<ITabStatusEntry, 'tmuxSession' | 'jsonlPath' | 'processRetries' | 'lastActivityAt' | 'lastCaptureHash'>;
 
 export interface IStatusSyncMessage {
   type: 'status:sync';
