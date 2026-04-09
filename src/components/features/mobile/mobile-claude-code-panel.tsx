@@ -163,7 +163,7 @@ const MobileClaudeCodePanel = ({
   const tmuxInfo = useTmuxInfo(sessionName, metaSheetOpen);
 
   const restartNeedsExitRef = useRef(false);
-  const prevIsRestartingRef = useRef(false);
+  const prevIsRestartingRef = useRef(!!isRestarting);
 
   useEffect(() => {
     if (isRestarting && !prevIsRestartingRef.current) {
