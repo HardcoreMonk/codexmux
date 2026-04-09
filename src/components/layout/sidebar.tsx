@@ -76,11 +76,12 @@ const Sidebar = () => {
   const activeWebviewId = useWebviewStore((s) => s.activeId);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<'workspace' | 'tasks'>(() => {
-    if (typeof window === 'undefined') return 'workspace';
+  const [sidebarTab, setSidebarTab] = useState<'workspace' | 'tasks'>('workspace');
+
+  useEffect(() => {
     const saved = localStorage.getItem('sidebar-tab');
-    return saved === 'tasks' ? 'tasks' : 'workspace';
-  });
+    if (saved === 'tasks') setSidebarTab('tasks');
+  }, []);
 
   const handleSidebarTabChange = useCallback((v: string) => {
     const tab = v as 'workspace' | 'tasks';

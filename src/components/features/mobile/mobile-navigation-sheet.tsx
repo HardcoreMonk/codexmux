@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -66,11 +66,12 @@ const MobileNavigationSheet = ({
   const t = useTranslations('mobile');
   const tc = useTranslations('common');
   const router = useRouter();
-  const [mobileTab, setMobileTab] = useState<'workspace' | 'tasks'>(() => {
-    if (typeof window === 'undefined') return 'workspace';
+  const [mobileTab, setMobileTab] = useState<'workspace' | 'tasks'>('workspace');
+
+  useEffect(() => {
     const saved = localStorage.getItem('sidebar-tab');
-    return saved === 'tasks' ? 'tasks' : 'workspace';
-  });
+    if (saved === 'tasks') setMobileTab('tasks');
+  }, []);
 
   const handleMobileTabChange = useCallback((v: string) => {
     const tab = v as 'workspace' | 'tasks';
