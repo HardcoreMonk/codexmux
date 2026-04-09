@@ -202,11 +202,13 @@ const TaskHistoryItem = ({
   entry,
   isActiveSession,
   compact,
+  icon,
   onClick,
 }: {
   entry: ITaskHistoryEntry;
   isActiveSession?: boolean;
   compact?: boolean;
+  icon?: React.ReactNode;
   onClick?: () => void;
 }) => {
   const t = useTranslations('notification');
@@ -266,7 +268,7 @@ const TaskHistoryItem = ({
       onClick={isActiveSession ? undefined : onClick}
     >
       <span className="mt-1 shrink-0">
-        <CheckCircle2 className={cn('h-3.5 w-3.5', entry.dismissedAt ? 'text-muted-foreground' : 'text-muted-foreground/50')} />
+        {icon ?? <CheckCircle2 className={cn('h-3.5 w-3.5', entry.dismissedAt ? 'text-muted-foreground' : 'text-muted-foreground/50')} />}
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
@@ -343,7 +345,7 @@ const NotificationItem = ({
         ) : showActions ? (
           <span className="mt-px block h-2 w-2 rounded-full bg-claude-active" />
         ) : (
-          <Spinner className="h-3.5 w-3.5 text-claude-active/70" />
+          <Spinner className="h-3 w-3 text-claude-active/70" />
         )}
       </span>
       <div className="min-w-0 flex-1">
@@ -520,6 +522,7 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
                       <TaskHistoryItem
                         entry={entry}
                         isActiveSession={isActive}
+                        icon={<span className="mt-px block h-2 w-2 rounded-full bg-claude-active" />}
                         onClick={isActive ? undefined : () => handleNavigate(item.workspaceId, item.tabId)}
                       />
                       {!isActive && (
