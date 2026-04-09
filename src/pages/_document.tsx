@@ -17,17 +17,17 @@ class MyDocument extends Document<IDocumentProps> {
         sidebarCollapsed: wsData.sidebarCollapsed,
       };
     } catch {
-      return { ...initialProps, sidebarWidth: 220, sidebarCollapsed: false };
+      return { ...initialProps, sidebarWidth: 240, sidebarCollapsed: false };
     }
   }
 
   render() {
-    const sidebarWidth = Number(this.props.sidebarWidth) || 220;
+    const sidebarWidth = Number(this.props.sidebarWidth) || 240;
     const sidebarCollapsed = !!this.props.sidebarCollapsed;
     const effectiveWidth = sidebarCollapsed ? 0 : sidebarWidth;
     const effectiveMinWidth = sidebarCollapsed ? 0 : 160;
 
-    const initScript = `window.__SB__={w:${sidebarWidth},c:${sidebarCollapsed}}`;
+    const initScript = `window.__SB__=(function(){var s=localStorage,t=s.getItem("sidebar-tab"),a=s.getItem("active-ws");return{w:${sidebarWidth},c:${sidebarCollapsed},t:t==="tasks"?"tasks":"workspace",a:a||""}})()`;
 
     return (
       <Html lang="en" suppressHydrationWarning>

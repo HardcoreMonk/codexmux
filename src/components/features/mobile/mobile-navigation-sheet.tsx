@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl';
 import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
 import { useRouter } from 'next/router';
 import useSidebarItems from '@/hooks/use-sidebar-items';
+import useWorkspaceStore from '@/hooks/use-workspace-store';
 import IconRenderer from '@/components/features/settings/icon-renderer';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -66,17 +67,10 @@ const MobileNavigationSheet = ({
   const t = useTranslations('mobile');
   const tc = useTranslations('common');
   const router = useRouter();
-  const [mobileTab, setMobileTab] = useState<'workspace' | 'tasks'>('workspace');
-
-  useEffect(() => {
-    const saved = localStorage.getItem('sidebar-tab');
-    if (saved === 'tasks') setMobileTab('tasks');
-  }, []);
+  const mobileTab = useWorkspaceStore((s) => s.sidebarTab);
 
   const handleMobileTabChange = useCallback((v: string) => {
-    const tab = v as 'workspace' | 'tasks';
-    setMobileTab(tab);
-    localStorage.setItem('sidebar-tab', tab);
+    useWorkspaceStore.getState().setSidebarTab(v as 'workspace' | 'tasks');
   }, []);
   const { attentionCount } = useNotificationCount();
   const [expandedWsId, setExpandedWsId] = useState<string | null>(activeWorkspaceId);

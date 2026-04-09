@@ -20,6 +20,7 @@ interface IWorkspaceState {
   activeWorkspaceId: string | null;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
+  sidebarTab: 'workspace' | 'tasks';
   isLoading: boolean;
   error: string | null;
 
@@ -36,17 +37,16 @@ interface IWorkspaceState {
   toggleSidebar: () => void;
   setSidebarWidth: (width: number) => void;
   saveSidebarWidth: (width: number) => void;
+  setSidebarTab: (tab: 'workspace' | 'tasks') => void;
   validateDirectory: (directory: string) => Promise<IValidateResponse>;
 }
 
-const STORAGE_KEY = 'pt-active-workspace-id';
-
-const getInitialSidebar = (): { sidebarWidth: number; sidebarCollapsed: boolean } => {
+const getInitialSidebar = (): { sidebarWidth: number; sidebarCollapsed: boolean; sidebarTab: 'workspace' | 'tasks' } => {
   if (typeof window !== 'undefined') {
-    const sb = (window as unknown as Record<string, unknown>).__SB__ as { w: number; c: boolean } | undefined;
-    if (sb) return { sidebarWidth: sb.w, sidebarCollapsed: sb.c };
+    const sb = (window as unknown as Record<string, unknown>).__SB__ as { w: number; c: boolean; t?: string } | undefined;
+    if (sb) return { sidebarWidth: sb.w, sidebarCollapsed: sb.c, sidebarTab: sb.t === 'tasks' ? 'tasks' : 'workspace' };
   }
-  return { sidebarWidth: 220, sidebarCollapsed: false };
+  return { sidebarWidth: 240, sidebarCollapsed: false, sidebarTab: 'workspace' };
 };
 
 const initialSidebar = getInitialSidebar();
@@ -59,24 +59,19 @@ const initialWs = getInitialWorkspaceData();
 
 const getStoredActiveWorkspaceId = (): string | null => {
   if (typeof window === 'undefined') return null;
-  try {
-    return localStorage.getItem(STORAGE_KEY);
-  } catch {
-    return null;
-  }
+  const sb = (window as unknown as Record<string, unknown>).__SB__ as { a?: string } | undefined;
+  return sb?.a ?? null;
 };
 
 const setStoredActiveWorkspaceId = (id: string | null) => {
   if (typeof window === 'undefined') return;
   try {
     if (id) {
-      localStorage.setItem(STORAGE_KEY, id);
+      localStorage.setItem('active-ws', id);
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem('active-ws');
     }
-  } catch (err) {
-    console.log(`[workspace-store] localStorage write error: ${err instanceof Error ? err.message : err}`);
-  }
+  } catch { /* */ }
 };
 
 const resolveActiveWorkspaceId = (workspaces: IWorkspace[]): string | null => {
@@ -103,6 +98,7 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
   activeWorkspaceId: initialWs.workspaces.length > 0 ? resolveActiveWorkspaceId(initialWs.workspaces) : null,
   sidebarCollapsed: initialSidebar.sidebarCollapsed,
   sidebarWidth: initialSidebar.sidebarWidth,
+  sidebarTab: initialSidebar.sidebarTab,
   isLoading: initialWs.isLoading,
   error: null,
 
@@ -131,7 +127,7 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
         workspaces: data.workspaces,
         activeWorkspaceId,
         sidebarCollapsed: data.sidebarCollapsed ?? false,
-        sidebarWidth: data.sidebarWidth ?? 220,
+        sidebarWidth: data.sidebarWidth ?? 240,
         isLoading: false,
       });
     } catch {
@@ -264,6 +260,11 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
 
   saveSidebarWidth: (width) => {
     saveActive({ sidebarWidth: width });
+  },
+
+  setSidebarTab: (tab) => {
+    set({ sidebarTab: tab });
+    try { localStorage.setItem('sidebar-tab', tab); } catch { /* */ }
   },
 
   validateDirectory: async (directory) => {

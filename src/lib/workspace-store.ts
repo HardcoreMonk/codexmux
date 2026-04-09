@@ -62,7 +62,7 @@ const withLock = async <T>(fn: () => Promise<T>): Promise<T> => {
 const emptyState = (): IWorkspacesData => ({
   workspaces: [],
   sidebarCollapsed: false,
-  sidebarWidth: 220,
+  sidebarWidth: 240,
   updatedAt: new Date().toISOString(),
 });
 
@@ -124,7 +124,7 @@ const migrateFromPhase4 = async (): Promise<IWorkspacesData | null> => {
       order: 0,
     }],
     sidebarCollapsed: false,
-    sidebarWidth: 220,
+    sidebarWidth: 240,
     updatedAt: legacyLayout.updatedAt || new Date().toISOString(),
   };
 
