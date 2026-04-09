@@ -15,5 +15,7 @@
   "durationUnderMinute": "1分未満",
   "durationMinutes": "{count}分",
   "filesModified": "ファイル{count}件変更",
-  "toolCalls": "ツール{count}回"
+  "toolCalls": "ツール{count}回",
+  "showMore": "過去の記録 {count}件",
+  "showLess": "閉じる"
 }

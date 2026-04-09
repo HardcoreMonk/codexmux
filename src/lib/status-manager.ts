@@ -239,10 +239,13 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<IJsonlCheckResult> => 
 interface IJsonlStats {
   toolUsage: Record<string, number>;
   touchedFiles: string[];
+  lastAssistantText: string | null;
+  firstUserTs: number | null;
+  lastAssistantTs: number | null;
 }
 
 const parseJsonlStats = async (jsonlPath: string): Promise<IJsonlStats> => {
-  const empty: IJsonlStats = { toolUsage: {}, touchedFiles: [] };
+  const empty: IJsonlStats = { toolUsage: {}, touchedFiles: [], lastAssistantText: null, firstUserTs: null, lastAssistantTs: null };
   try {
     const stat = await fs.stat(jsonlPath);
     if (stat.size === 0) return empty;
@@ -256,18 +259,34 @@ const parseJsonlStats = async (jsonlPath: string): Promise<IJsonlStats> => {
 
       const toolUsage: Record<string, number> = {};
       const touchedFiles = new Set<string>();
+      let lastAssistantText: string | null = null;
+      let lastAssistantTs: number | null = null;
+      let firstUserTs: number | null = null;
 
       for (let i = lines.length - 1; i >= 0; i--) {
         try {
           const entry = JSON.parse(lines[i]);
+          if (entry.type === 'file-history-snapshot') break;
           if (entry.isSidechain) continue;
 
-          if (entry.type === 'assistant' && Array.isArray(entry.message?.content)) {
-            for (const block of entry.message.content) {
-              if (block.type === 'tool_use' && block.name) {
-                toolUsage[block.name] = (toolUsage[block.name] ?? 0) + 1;
-                if ((block.name === 'Edit' || block.name === 'Write') && block.input?.file_path) {
-                  touchedFiles.add(String(block.input.file_path));
+          const ts = entry.timestamp ? new Date(entry.timestamp).getTime() : null;
+
+          if (entry.type === 'user' && ts) {
+            firstUserTs = ts;
+          }
+
+          if (entry.type === 'assistant') {
+            if (ts && !lastAssistantTs) lastAssistantTs = ts;
+            if (Array.isArray(entry.message?.content)) {
+              for (const block of entry.message.content) {
+                if (block.type === 'tool_use' && block.name) {
+                  toolUsage[block.name] = (toolUsage[block.name] ?? 0) + 1;
+                  if ((block.name === 'Edit' || block.name === 'Write') && block.input?.file_path) {
+                    touchedFiles.add(String(block.input.file_path));
+                  }
+                }
+                if (block.type === 'text' && block.text && !lastAssistantText) {
+                  lastAssistantText = block.text;
                 }
               }
             }
@@ -275,7 +294,7 @@ const parseJsonlStats = async (jsonlPath: string): Promise<IJsonlStats> => {
         } catch { continue; }
       }
 
-      return { toolUsage, touchedFiles: [...touchedFiles] };
+      return { toolUsage, touchedFiles: [...touchedFiles], lastAssistantText, firstUserTs, lastAssistantTs };
     } finally {
       await handle.close();
     }
@@ -707,18 +726,30 @@ class StatusManager {
     const { workspaces } = await getWorkspaces();
     const ws = workspaces.find((w) => w.id === entry.workspaceId);
     const now = Date.now();
-    const startedAt = prevBusySince ?? now;
+    const startedAt = stats.firstUserTs ?? prevBusySince ?? now;
+    const completedAt = stats.lastAssistantTs ?? now;
+
+    let claudeSessionId: string | null = null;
+    const parsed = parseSessionName(entry.tmuxSession);
+    if (parsed) {
+      const layout = await readLayoutFile(resolveLayoutFile(parsed.wsId));
+      if (layout) {
+        const tab = collectAllTabs(layout.root).find((t) => t.sessionName === entry.tmuxSession);
+        claudeSessionId = tab?.claudeSessionId ?? null;
+      }
+    }
 
     const historyEntry: ITaskHistoryEntry = {
       id: nanoid(),
       workspaceId: entry.workspaceId,
       workspaceName: ws?.name ?? entry.workspaceId,
       tabId,
+      claudeSessionId,
       prompt: entry.lastUserMessage,
-      result: entry.lastAssistantMessage ?? null,
+      result: stats.lastAssistantText,
       startedAt,
-      completedAt: now,
-      duration: now - startedAt,
+      completedAt,
+      duration: completedAt - startedAt,
       dismissedAt: null,
       toolUsage: stats.toolUsage,
       touchedFiles: stats.touchedFiles,

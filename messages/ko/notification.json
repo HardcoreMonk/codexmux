@@ -15,5 +15,7 @@
   "durationUnderMinute": "1분 미만",
   "durationMinutes": "{count}분 소요",
   "filesModified": "파일 {count}개 수정",
-  "toolCalls": "도구 {count}회"
+  "toolCalls": "도구 {count}회",
+  "showMore": "이전 기록 {count}개",
+  "showLess": "접기"
 }

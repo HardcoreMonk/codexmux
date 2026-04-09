@@ -69,6 +69,8 @@
     "enableMenuDescription": "在侧边栏显示智能体菜单。此功能目前处于测试阶段。"
   },
   "system": {
+    "showResources": "显示系统资源",
+    "showResourcesDescription": "在标题栏显示CPU、内存和tmux会话使用情况。",
     "tmuxReset": "重置tmux",
     "tmuxResetDescription": "终止所有tmux会话并{action}。在需要应用设置更改时使用。",
     "tmuxResetConfirm": "所有正在运行的终端进程将被终止。是否继续？",

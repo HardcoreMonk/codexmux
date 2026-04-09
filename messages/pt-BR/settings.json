@@ -69,6 +69,8 @@
     "enableMenuDescription": "Exibir o menu de agentes na barra lateral. Este recurso esta atualmente em beta."
   },
   "system": {
+    "showResources": "Mostrar recursos do sistema",
+    "showResourcesDescription": "Exibir uso de CPU, memória e sessões tmux no cabeçalho.",
     "tmuxReset": "Redefinir tmux",
     "tmuxResetDescription": "Encerra todas as sessoes tmux e {action}. Use quando alteracoes nas configuracoes precisarem ser aplicadas.",
     "tmuxResetConfirm": "Todos os processos em execucao no terminal serao encerrados. Continuar?",

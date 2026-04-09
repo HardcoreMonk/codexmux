@@ -1,8 +1,9 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Check,
   CheckCircle2,
+  ChevronRight,
   FileText,
   FilePen,
   FilePlus,
@@ -119,32 +120,35 @@ const collectItems = (
   return items;
 };
 
-type TDateGroup = 'today' | 'yesterday' | 'thisWeek' | 'older';
+interface ITabHistoryGroup {
+  tabId: string;
+  workspaceName: string;
+  latestEntry: ITaskHistoryEntry;
+  olderEntries: ITaskHistoryEntry[];
+}
 
-const groupHistoryByDate = (entries: ITaskHistoryEntry[]): { group: TDateGroup; items: ITaskHistoryEntry[] }[] => {
-  const now = dayjs();
-  const todayStart = now.startOf('day');
-  const yesterdayStart = todayStart.subtract(1, 'day');
-  const weekStart = todayStart.subtract(6, 'day');
-
-  const groups: Record<TDateGroup, ITaskHistoryEntry[]> = {
-    today: [],
-    yesterday: [],
-    thisWeek: [],
-    older: [],
-  };
+const groupHistoryByTab = (entries: ITaskHistoryEntry[]): ITabHistoryGroup[] => {
+  const tabMap = new Map<string, ITaskHistoryEntry[]>();
 
   for (const entry of entries) {
-    const time = dayjs(entry.completedAt);
-    if (time.isAfter(todayStart)) groups.today.push(entry);
-    else if (time.isAfter(yesterdayStart)) groups.yesterday.push(entry);
-    else if (time.isAfter(weekStart)) groups.thisWeek.push(entry);
-    else groups.older.push(entry);
+    const existing = tabMap.get(entry.tabId);
+    if (existing) existing.push(entry);
+    else tabMap.set(entry.tabId, [entry]);
   }
 
-  return (['today', 'yesterday', 'thisWeek', 'older'] as TDateGroup[])
-    .filter((g) => groups[g].length > 0)
-    .map((g) => ({ group: g, items: groups[g] }));
+  const groups: ITabHistoryGroup[] = [];
+  for (const [tabId, tabEntries] of tabMap) {
+    tabEntries.sort((a, b) => b.completedAt - a.completedAt);
+    groups.push({
+      tabId,
+      workspaceName: tabEntries[0].workspaceName,
+      latestEntry: tabEntries[0],
+      olderEntries: tabEntries.slice(1),
+    });
+  }
+
+  groups.sort((a, b) => b.latestEntry.completedAt - a.latestEntry.completedAt);
+  return groups;
 };
 
 const formatHistoryTime = (ts: number): string => {
@@ -212,6 +216,11 @@ const TaskHistoryItem = ({
         {entry.prompt && (
           <p className="mt-0.5 truncate text-sm text-foreground">
             {stripMarkdown(entry.prompt)}
+          </p>
+        )}
+        {entry.result && (
+          <p className="mt-0.5 truncate text-xs text-muted-foreground/50">
+            {stripMarkdown(entry.result)}
           </p>
         )}
         <p className="mt-0.5 truncate text-xs text-muted-foreground/50">
@@ -324,6 +333,7 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const activeTabId = useActiveTabId();
   const historyEntries = useTaskHistoryStore((s) => s.entries);
+  const [expandedTabs, setExpandedTabs] = useState<Set<string>>(new Set());
 
   const busyItems = useMemo(
     () => collectItems(tabs, workspaces, 'busy'),
@@ -340,10 +350,19 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
     [tabs, workspaces],
   );
 
-  const dateGroups = useMemo(
-    () => groupHistoryByDate(historyEntries),
+  const tabGroups = useMemo(
+    () => groupHistoryByTab(historyEntries),
     [historyEntries],
   );
+
+  const toggleExpanded = useCallback((tabId: string) => {
+    setExpandedTabs((prev) => {
+      const next = new Set(prev);
+      if (next.has(tabId)) next.delete(tabId);
+      else next.add(tabId);
+      return next;
+    });
+  }, []);
 
   const handleDismiss = useCallback((tabId: string) => {
     dismissTab(tabId);
@@ -357,7 +376,7 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
     [onOpenChange],
   );
 
-  const isEmpty = busyItems.length === 0 && needsInputItems.length === 0 && reviewItems.length === 0 && dateGroups.length === 0;
+  const isEmpty = busyItems.length === 0 && needsInputItems.length === 0 && reviewItems.length === 0 && tabGroups.length === 0;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -433,28 +452,48 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
                 </section>
               )}
 
-              {dateGroups.length > 0 && (
+              {tabGroups.length > 0 && (
                 <section className={busyItems.length > 0 || needsInputItems.length > 0 || reviewItems.length > 0 ? 'mt-4' : ''}>
                   <h3 className="mb-2 text-xs font-medium text-muted-foreground">
                     {t('doneSection', { count: historyEntries.length })}
                   </h3>
-                  {dateGroups.map(({ group, items }) => (
-                    <div key={group}>
-                      <h4 className="mb-1.5 mt-3 text-xs text-muted-foreground/60">
-                        {t(`dateGroup_${group}`)}
-                      </h4>
-                      <div className="flex flex-col gap-1.5">
-                        {items.map((entry) => (
+                  <div className="flex flex-col gap-2">
+                    {tabGroups.map((group) => {
+                      const isExpanded = expandedTabs.has(group.tabId);
+                      const hasOlder = group.olderEntries.length > 0;
+                      return (
+                        <div key={group.tabId}>
                           <TaskHistoryItem
-                            key={entry.id}
-                            entry={entry}
-                            isTabOpen={entry.tabId in tabs}
+                            entry={group.latestEntry}
+                            isTabOpen={group.tabId in tabs}
                             onNavigate={handleNavigate}
                           />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                          {hasOlder && (
+                            <button
+                              type="button"
+                              className="mt-1 flex w-full items-center gap-1 px-1 py-0.5 text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                              onClick={() => toggleExpanded(group.tabId)}
+                            >
+                              <ChevronRight className={cn('h-3 w-3 transition-transform', isExpanded && 'rotate-90')} />
+                              {isExpanded ? t('showLess') : t('showMore', { count: group.olderEntries.length })}
+                            </button>
+                          )}
+                          {isExpanded && (
+                            <div className="mt-1 flex flex-col gap-1.5 border-l border-border/30 ml-2 pl-2">
+                              {group.olderEntries.map((entry) => (
+                                <TaskHistoryItem
+                                  key={entry.id}
+                                  entry={entry}
+                                  isTabOpen={group.tabId in tabs}
+                                  onNavigate={handleNavigate}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </section>
               )}
             </>

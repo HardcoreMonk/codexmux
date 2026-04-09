@@ -1,11 +1,13 @@
 import useSystemResources from '@/hooks/use-system-resources';
+import useConfigStore from '@/hooks/use-config-store';
 
 const formatMB = (bytes: number) => Math.round(bytes / (1024 * 1024));
 
 const SystemResources = () => {
   const resources = useSystemResources();
+  const enabled = useConfigStore((s) => s.systemResourcesEnabled);
 
-  if (!resources) return null;
+  if (!enabled || !resources) return null;
 
   return (
     <div className="flex items-center gap-2 text-[9px] text-muted-foreground/60">

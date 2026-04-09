@@ -69,6 +69,8 @@
     "enableMenuDescription": "サイドバーにエージェントメニューを表示します。この機能は現在ベータテスト中です。"
   },
   "system": {
+    "showResources": "システムリソースを表示",
+    "showResourcesDescription": "ヘッダーにCPU、メモリ、tmuxセッションの使用状況を表示します。",
     "tmuxReset": "tmuxリセット",
     "tmuxResetDescription": "すべてのtmuxセッションを終了し、{action}します。設定変更の適用が必要な場合に使用します。",
     "tmuxResetConfirm": "実行中のすべてのターミナルプロセスが終了されます。続行しますか？",

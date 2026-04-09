@@ -15,5 +15,7 @@
   "durationUnderMinute": "不到1分鐘",
   "durationMinutes": "{count}分鐘",
   "filesModified": "修改了{count}個檔案",
-  "toolCalls": "工具呼叫{count}次"
+  "toolCalls": "工具呼叫{count}次",
+  "showMore": "更早記錄 {count}筆",
+  "showLess": "收起"
 }

@@ -11,6 +11,7 @@ export interface IConfigInitialData {
   hasAuthPassword?: boolean;
   locale?: string;
   fontSize?: string;
+  systemResourcesEnabled?: boolean;
 }
 
 interface IConfigState {
@@ -22,6 +23,7 @@ interface IConfigState {
   locale: string;
   customCSS: string;
   fontSize: string;
+  systemResourcesEnabled: boolean;
 
   hydrate: (data: IConfigInitialData) => void;
   setDangerouslySkipPermissions: (enabled: boolean) => void;
@@ -32,9 +34,10 @@ interface IConfigState {
   setLocale: (locale: string) => void;
   setCustomCSS: (css: string) => void;
   setFontSize: (fontSize: string) => void;
+  setSystemResourcesEnabled: (enabled: boolean) => void;
 }
 
-const initialConfig = { agentEnabled: false, notificationsEnabled: true, editorUrl: '', dangerouslySkipPermissions: false, hasAuthPassword: false, locale: 'en', customCSS: '', fontSize: 'normal' };
+const initialConfig = { agentEnabled: false, notificationsEnabled: true, editorUrl: '', dangerouslySkipPermissions: false, hasAuthPassword: false, locale: 'en', customCSS: '', fontSize: 'normal', systemResourcesEnabled: true };
 
 const saveConfig = (updates: Record<string, unknown>) => {
   fetch('/api/config', {
@@ -55,6 +58,7 @@ const useConfigStore = create<IConfigState>((set, get) => ({
   locale: initialConfig.locale,
   customCSS: initialConfig.customCSS,
   fontSize: initialConfig.fontSize,
+  systemResourcesEnabled: initialConfig.systemResourcesEnabled,
 
   hydrate: (data) => {
     set({
@@ -66,6 +70,7 @@ const useConfigStore = create<IConfigState>((set, get) => ({
       locale: data.locale ?? 'en',
       customCSS: data.customCSS ?? '',
       fontSize: data.fontSize ?? 'normal',
+      systemResourcesEnabled: data.systemResourcesEnabled ?? true,
     });
   },
 
@@ -108,6 +113,11 @@ const useConfigStore = create<IConfigState>((set, get) => ({
   setFontSize: (fontSize) => {
     set({ fontSize });
     saveConfig({ fontSize });
+  },
+
+  setSystemResourcesEnabled: (enabled) => {
+    set({ systemResourcesEnabled: enabled });
+    saveConfig({ systemResourcesEnabled: enabled });
   },
 }));
 

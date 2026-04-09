@@ -69,6 +69,8 @@
     "enableMenuDescription": "在側邊欄顯示代理選單。此功能目前為測試版。"
   },
   "system": {
+    "showResources": "顯示系統資源",
+    "showResourcesDescription": "在標題列顯示 CPU、記憶體和 tmux 工作階段使用狀況。",
     "tmuxReset": "重設 tmux",
     "tmuxResetDescription": "終止所有 tmux 工作階段並{action}。設定變更需要套用時使用。",
     "tmuxResetConfirm": "所有執行中的終端機處理程序將被終止。確定繼續？",

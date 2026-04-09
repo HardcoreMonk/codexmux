@@ -15,5 +15,7 @@
   "durationUnderMinute": "< 1 мин",
   "durationMinutes": "{count} мин",
   "filesModified": "Изменено файлов: {count}",
-  "toolCalls": "Вызовов инструментов: {count}"
+  "toolCalls": "Вызовов инструментов: {count}",
+  "showMore": "Ещё {count}",
+  "showLess": "Свернуть"
 }

@@ -15,5 +15,7 @@
   "durationUnderMinute": "< 1 dk",
   "durationMinutes": "{count} dk",
   "filesModified": "{count} dosya değiştirildi",
-  "toolCalls": "{count} araç çağrısı"
+  "toolCalls": "{count} araç çağrısı",
+  "showMore": "{count} daha",
+  "showLess": "Daha az"
 }

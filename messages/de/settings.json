@@ -69,6 +69,8 @@
     "enableMenuDescription": "Zeigt das Agentenmenü in der Seitenleiste an. Diese Funktion befindet sich derzeit in der Beta-Phase."
   },
   "system": {
+    "showResources": "Systemressourcen anzeigen",
+    "showResourcesDescription": "CPU-, Arbeitsspeicher- und tmux-Sitzungsauslastung in der Kopfzeile anzeigen.",
     "tmuxReset": "tmux zurücksetzen",
     "tmuxResetDescription": "Beendet alle tmux-Sitzungen und {action}. Verwende diese Option, wenn Einstellungsänderungen angewendet werden müssen.",
     "tmuxResetConfirm": "Alle laufenden Terminal-Prozesse werden beendet. Fortfahren?",

@@ -69,6 +69,8 @@
     "enableMenuDescription": "Kenar çubuğunda ajan menüsünü gösterir. Bu özellik şu anda beta aşamasındadır."
   },
   "system": {
+    "showResources": "Sistem kaynaklarını göster",
+    "showResourcesDescription": "Başlıkta CPU, bellek ve tmux oturum kullanımını görüntüler.",
     "tmuxReset": "tmux Sıfırla",
     "tmuxResetDescription": "Tüm tmux oturumlarını sonlandırır ve {action}. Ayar değişikliklerinin uygulanması gerektiğinde kullanın.",
     "tmuxResetConfirm": "Çalışan tüm terminal işlemleri sonlandırılacak. Devam edilsin mi?",

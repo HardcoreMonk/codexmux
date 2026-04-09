@@ -15,5 +15,7 @@
   "durationUnderMinute": "< 1 min",
   "durationMinutes": "{count} min",
   "filesModified": "{count} files modified",
-  "toolCalls": "{count} tool calls"
+  "toolCalls": "{count} tool calls",
+  "showMore": "{count} more",
+  "showLess": "Show less"
 }

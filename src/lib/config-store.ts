@@ -19,6 +19,7 @@ export interface IConfigData {
   notificationsEnabled?: boolean;
   locale?: string;
   fontSize?: string;
+  systemResourcesEnabled?: boolean;
   updatedAt: string;
 }
 
