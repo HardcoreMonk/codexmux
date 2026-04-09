@@ -4,6 +4,7 @@
   "busySection": "В процессе ({count})",
   "needsInputSection": "Ожидает ввода ({count})",
   "reviewSection": "На проверке ({count})",
+  "doneSection": "Завершено ({count})",
   "dismiss": "Скрыть",
   "navigate": "Перейти",
   "starting": "Запуск..."

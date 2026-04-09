@@ -4,6 +4,7 @@
   "busySection": "In Bearbeitung ({count})",
   "needsInputSection": "Eingabe erforderlich ({count})",
   "reviewSection": "Überprüfung ({count})",
+  "doneSection": "Erledigt ({count})",
   "dismiss": "Schließen",
   "navigate": "Aufrufen",
   "starting": "Wird gestartet..."

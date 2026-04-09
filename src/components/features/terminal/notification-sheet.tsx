@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { Check } from 'lucide-react';
+import { Check, CheckCircle2 } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import dayjs from 'dayjs';
 import { useRouter } from 'next/router';
@@ -18,6 +18,7 @@ import { dismissTab } from '@/hooks/use-claude-status';
 import { navigateToTab, useLayoutStore } from '@/hooks/use-layout';
 import { findPane } from '@/lib/layout-tree';
 import type { ITabState } from '@/hooks/use-tab-store';
+import { stripMarkdown } from '@/lib/strip-markdown';
 
 
 const useActiveTabId = (): string | null => {
@@ -51,9 +52,11 @@ interface INotificationItem {
   workspaceName: string;
   workspaceId: string;
   lastUserMessage?: string | null;
+  lastAssistantMessage?: string | null;
   currentAction?: string | null;
   readyForReviewAt?: number | null;
   busySince?: number | null;
+  dismissedAt?: number | null;
 }
 
 interface INotificationSheetProps {
@@ -76,9 +79,11 @@ const collectItems = (
       workspaceName: wsMap.get(tab.workspaceId) || tab.workspaceId,
       workspaceId: tab.workspaceId,
       lastUserMessage: tab.lastUserMessage,
+      lastAssistantMessage: tab.lastAssistantMessage,
       currentAction: tab.currentAction,
       readyForReviewAt: tab.readyForReviewAt,
       busySince: tab.busySince,
+      dismissedAt: tab.dismissedAt,
     });
   }
 
@@ -88,6 +93,33 @@ const collectItems = (
     return tb - ta;
   });
 
+  return items;
+};
+
+const collectDoneItems = (
+  tabs: Record<string, ITabState>,
+  workspaces: { id: string; name: string }[],
+): INotificationItem[] => {
+  const wsMap = new Map(workspaces.map((ws) => [ws.id, ws.name]));
+  const items: INotificationItem[] = [];
+
+  for (const [tabId, tab] of Object.entries(tabs)) {
+    if (!tab.dismissedAt) continue;
+    if (tab.cliState !== 'idle' && tab.cliState !== 'inactive') continue;
+    items.push({
+      tabId,
+      workspaceName: wsMap.get(tab.workspaceId) || tab.workspaceId,
+      workspaceId: tab.workspaceId,
+      lastUserMessage: tab.lastUserMessage,
+      lastAssistantMessage: tab.lastAssistantMessage,
+      currentAction: tab.currentAction,
+      readyForReviewAt: tab.readyForReviewAt,
+      busySince: tab.busySince,
+      dismissedAt: tab.dismissedAt,
+    });
+  }
+
+  items.sort((a, b) => (b.dismissedAt ?? 0) - (a.dismissedAt ?? 0));
   return items;
 };
 
@@ -101,7 +133,7 @@ const NotificationItem = ({
 }: {
   item: INotificationItem;
   showActions: boolean;
-  variant?: 'needs-input';
+  variant?: 'needs-input' | 'done';
   isActiveTab?: boolean;
   onDismiss?: (tabId: string) => void;
   onNavigate?: (workspaceId: string, tabId: string) => void;
@@ -120,7 +152,9 @@ const NotificationItem = ({
       onClick={isActiveTab ? undefined : () => onNavigate?.(item.workspaceId, item.tabId)}
     >
       <span className="mt-1 shrink-0">
-        {variant === 'needs-input' ? (
+        {variant === 'done' ? (
+          <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground/50" />
+        ) : variant === 'needs-input' ? (
           <span className="block h-2 w-2 rounded-full bg-ui-amber animate-pulse" />
         ) : showActions ? (
           <span className="mt-px block h-2 w-2 rounded-full bg-claude-active" />
@@ -133,18 +167,24 @@ const NotificationItem = ({
           <span className="truncate text-xs text-muted-foreground">
             {item.workspaceName}
           </span>
-          {(item.readyForReviewAt || item.busySince) && (
+          {(item.dismissedAt || item.readyForReviewAt || item.busySince) && (
             <span className="shrink-0 text-xs text-muted-foreground/60">
-              {dayjs(item.readyForReviewAt ?? item.busySince).fromNow()}
+              {dayjs(item.dismissedAt ?? item.readyForReviewAt ?? item.busySince).fromNow()}
             </span>
           )}
         </div>
         {item.lastUserMessage && (
           <p className="mt-0.5 truncate text-sm text-foreground">
-            {item.lastUserMessage}
+            {stripMarkdown(item.lastUserMessage)}
           </p>
         )}
-        {!variant && (
+        {variant === 'done' ? (
+          item.lastAssistantMessage && (
+            <p className="mt-0.5 truncate text-xs text-muted-foreground/50">
+              {stripMarkdown(item.lastAssistantMessage)}
+            </p>
+          )
+        ) : !variant && (
           <p className="mt-0.5 truncate text-xs text-muted-foreground/60">
             {showActions ? progressText : (progressText || t('starting'))}
           </p>
@@ -188,6 +228,11 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
     [tabs, workspaces],
   );
 
+  const doneItems = useMemo(
+    () => collectDoneItems(tabs, workspaces),
+    [tabs, workspaces],
+  );
+
   const handleDismiss = useCallback((tabId: string) => {
     dismissTab(tabId);
   }, []);
@@ -200,7 +245,7 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
     [onOpenChange],
   );
 
-  const isEmpty = busyItems.length === 0 && needsInputItems.length === 0 && reviewItems.length === 0;
+  const isEmpty = busyItems.length === 0 && needsInputItems.length === 0 && reviewItems.length === 0 && doneItems.length === 0;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -269,6 +314,26 @@ const NotificationSheet = ({ open, onOpenChange }: INotificationSheetProps) => {
                         showActions
                         isActiveTab={item.tabId === activeTabId}
                         onDismiss={handleDismiss}
+                        onNavigate={handleNavigate}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {doneItems.length > 0 && (
+                <section className={busyItems.length > 0 || needsInputItems.length > 0 || reviewItems.length > 0 ? 'mt-4' : ''}>
+                  <h3 className="mb-2 text-xs font-medium text-muted-foreground">
+                    {t('doneSection', { count: doneItems.length })}
+                  </h3>
+                  <div className="flex flex-col gap-2">
+                    {doneItems.map((item) => (
+                      <NotificationItem
+                        key={item.tabId}
+                        item={item}
+                        showActions={false}
+                        variant="done"
+                        isActiveTab={item.tabId === activeTabId}
                         onNavigate={handleNavigate}
                       />
                     ))}

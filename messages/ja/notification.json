@@ -4,6 +4,7 @@
   "busySection": "進行中 ({count})",
   "needsInputSection": "入力待ち ({count})",
   "reviewSection": "レビュー ({count})",
+  "doneSection": "完了 ({count})",
   "dismiss": "閉じる",
   "navigate": "移動",
   "starting": "開始中..."

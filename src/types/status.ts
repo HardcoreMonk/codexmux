@@ -19,12 +19,14 @@ export interface ITabStatusEntry {
   currentAction?: string | null;
   readyForReviewAt?: number | null;
   busySince?: number | null;
+  dismissedAt?: number | null;
   processRetries?: number;
+  jsonlPath?: string | null;
 }
 
 export type TTabDisplayStatus = 'busy' | 'ready-for-review' | 'needs-input' | 'idle';
 
-export type IClientTabStatusEntry = Omit<ITabStatusEntry, 'tmuxSession'>;
+export type IClientTabStatusEntry = Omit<ITabStatusEntry, 'tmuxSession' | 'jsonlPath' | 'processRetries'>;
 
 export interface IStatusSyncMessage {
   type: 'status:sync';
@@ -48,6 +50,7 @@ export interface IStatusUpdateMessage {
   currentAction?: string | null;
   readyForReviewAt?: number | null;
   busySince?: number | null;
+  dismissedAt?: number | null;
 }
 
 export interface IRateLimitWindow {

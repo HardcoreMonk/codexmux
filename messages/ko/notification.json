@@ -4,6 +4,7 @@
   "busySection": "진행중 ({count})",
   "needsInputSection": "입력 대기 ({count})",
   "reviewSection": "리뷰 ({count})",
+  "doneSection": "완료 ({count})",
   "dismiss": "확인",
   "navigate": "이동",
   "starting": "시작하는 중..."

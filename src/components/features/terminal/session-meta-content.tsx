@@ -151,14 +151,14 @@ export const MetaDetail = ({
 
       <div className="mt-1 flex flex-col gap-1">
         <div className="flex items-baseline gap-2">
-          <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('message')}</span>
+          <span className="w-14 shrink-0 text-xs text-muted-foreground/70">{t('message')}</span>
           <span className="text-xs text-muted-foreground">
             {t('userAssistant', { userCount, assistantCount })}
           </span>
         </div>
 
         <div className="flex items-baseline gap-2">
-          <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('tokens')}</span>
+          <span className="w-14 shrink-0 text-xs text-muted-foreground/70">{t('tokens')}</span>
           <div className="flex flex-col gap-0.5">
             <span className="font-mono text-xs text-muted-foreground">
               {t('inputOutputTotal', { input: formatTokenDetail(inputTokens), output: formatTokenDetail(outputTokens), total: formatTokenDetail(totalTokens) })}
@@ -175,7 +175,7 @@ export const MetaDetail = ({
 
         {totalCost !== null && (
           <div className="flex items-baseline gap-2">
-            <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('cost')}</span>
+            <span className="w-14 shrink-0 text-xs text-muted-foreground/70">{t('cost')}</span>
             <span className="font-mono text-xs text-muted-foreground">
               {formatCost(totalCost)}
             </span>
@@ -184,7 +184,7 @@ export const MetaDetail = ({
 
         {createdAt && (
           <div className="flex items-baseline gap-2">
-            <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('created')}</span>
+            <span className="w-14 shrink-0 text-xs text-muted-foreground/70">{t('created')}</span>
             <Tooltip>
               <TooltipTrigger className="text-xs text-muted-foreground">
                 {dayjs(createdAt).format('MM/DD HH:mm')} ({createdRelative})
@@ -198,7 +198,7 @@ export const MetaDetail = ({
 
         {updatedAt && (
           <div className="flex items-baseline gap-2">
-            <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('updated')}</span>
+            <span className="w-14 shrink-0 text-xs text-muted-foreground/70">{t('updated')}</span>
             <Tooltip>
               <TooltipTrigger className="text-xs text-muted-foreground">
                 {dayjs(updatedAt).format('MM/DD HH:mm')} ({updatedRelative})
@@ -212,7 +212,7 @@ export const MetaDetail = ({
 
         {fileSize > 0 && (
           <div className="flex items-baseline gap-2">
-            <span className="w-12 shrink-0 text-xs text-muted-foreground/70">JSONL</span>
+            <span className="w-14 shrink-0 text-xs text-muted-foreground/70">JSONL</span>
             <span className="font-mono text-xs text-muted-foreground">
               {formatFileSize(fileSize)}
             </span>
@@ -225,7 +225,7 @@ export const MetaDetail = ({
           <div className="flex flex-col gap-1">
             {tmuxInfo.cwd && (
               <div className="flex items-baseline gap-2">
-                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('path')}</span>
+                <span className="w-14 shrink-0 text-xs text-muted-foreground/70">{t('path')}</span>
                 <Tooltip>
                   <TooltipTrigger className="min-w-0 truncate font-mono text-xs text-muted-foreground">
                     {shortenPath(tmuxInfo.cwd)}
@@ -238,30 +238,30 @@ export const MetaDetail = ({
             )}
             {tmuxInfo.lastCommand && (
               <div className="flex items-baseline gap-2">
-                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('process')}</span>
+                <span className="w-14 shrink-0 text-xs text-muted-foreground/70">{t('process')}</span>
                 <span className="font-mono text-xs text-muted-foreground">{tmuxInfo.lastCommand}</span>
               </div>
             )}
             {!tmuxInfo.lastCommand && tmuxInfo.command && (
               <div className="flex items-baseline gap-2">
-                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('process')}</span>
+                <span className="w-14 shrink-0 text-xs text-muted-foreground/70">{t('process')}</span>
                 <span className="font-mono text-xs text-muted-foreground">{tmuxInfo.command}</span>
               </div>
             )}
             {tmuxInfo.pid && (
               <div className="flex items-baseline gap-2">
-                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">PID</span>
+                <span className="w-14 shrink-0 text-xs text-muted-foreground/70">PID</span>
                 <span className="font-mono text-xs text-muted-foreground">{tmuxInfo.pid}</span>
               </div>
             )}
             {tmuxInfo.width && tmuxInfo.height && (
               <div className="flex items-baseline gap-2">
-                <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('size')}</span>
+                <span className="w-14 shrink-0 text-xs text-muted-foreground/70">{t('size')}</span>
                 <span className="font-mono text-xs text-muted-foreground">{tmuxInfo.width} × {tmuxInfo.height}</span>
               </div>
             )}
             <div className="flex items-baseline gap-2">
-              <span className="w-12 shrink-0 text-xs text-muted-foreground/70">{t('session')}</span>
+              <span className="w-14 shrink-0 text-xs text-muted-foreground/70">{t('session')}</span>
               <span className="min-w-0 truncate font-mono text-xs text-muted-foreground/50">{tmuxInfo.sessionName}</span>
             </div>
           </div>
@@ -271,7 +271,7 @@ export const MetaDetail = ({
       {gitStatus && (
         <div className="mt-1 border-t border-border pt-2">
           <div className="flex items-baseline gap-2">
-            <span className="w-12 shrink-0 text-xs text-muted-foreground/70">Git</span>
+            <span className="w-14 shrink-0 text-xs text-muted-foreground/70">Git</span>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
               {gitStatus.staged > 0 && (
                 <span className="flex items-center gap-1 font-mono text-xs text-ui-green">

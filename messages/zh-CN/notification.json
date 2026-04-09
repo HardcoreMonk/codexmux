@@ -4,6 +4,7 @@
   "busySection": "进行中 ({count})",
   "needsInputSection": "等待输入 ({count})",
   "reviewSection": "待审查 ({count})",
+  "doneSection": "已完成 ({count})",
   "dismiss": "关闭",
   "navigate": "前往",
   "starting": "正在启动..."

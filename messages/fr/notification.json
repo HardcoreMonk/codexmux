@@ -4,6 +4,7 @@
   "busySection": "En cours ({count})",
   "needsInputSection": "En attente d'entrée ({count})",
   "reviewSection": "À vérifier ({count})",
+  "doneSection": "Terminé ({count})",
   "dismiss": "Ignorer",
   "navigate": "Accéder",
   "starting": "Démarrage..."

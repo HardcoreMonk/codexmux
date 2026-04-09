@@ -25,6 +25,7 @@ export interface ITab {
   lastUserMessage?: string | null;
   lastCommand?: string | null;
   cliState?: TCliState;
+  dismissedAt?: number | null;
   webUrl?: string | null;
 }
 

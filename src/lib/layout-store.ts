@@ -457,6 +457,7 @@ export const updateTabLastUserMessage = async (
 export const updateTabCliStatus = async (
   sessionName: string,
   cliState: TCliState,
+  dismissedAt?: number | null,
 ): Promise<void> => {
   const parsed = parseSessionName(sessionName);
   if (!parsed) return;
@@ -470,8 +471,9 @@ export const updateTabCliStatus = async (
     const tab = allTabs.find((t) => t.sessionName === sessionName);
     if (!tab) return;
 
-    if (tab.cliState === cliState) return;
+    if (tab.cliState === cliState && tab.dismissedAt === dismissedAt) return;
     tab.cliState = cliState;
+    tab.dismissedAt = dismissedAt;
     layout.updatedAt = new Date().toISOString();
     await writeLayoutFile(layout, filePath);
   });

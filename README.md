@@ -2,7 +2,7 @@
 
 **A web-native terminal multiplexer for Claude Code**
 
-Run, monitor, and manage multiple Claude Code sessions from any browser.
+Monitor and manage multiple Claude Code sessions from any browser.
 
 ---
 

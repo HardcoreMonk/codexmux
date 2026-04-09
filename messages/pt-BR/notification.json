@@ -4,6 +4,7 @@
   "busySection": "Em Andamento ({count})",
   "needsInputSection": "Aguardando entrada ({count})",
   "reviewSection": "Revisao ({count})",
+  "doneSection": "Concluído ({count})",
   "dismiss": "Dispensar",
   "navigate": "Ir para",
   "starting": "Iniciando..."

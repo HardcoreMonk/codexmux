@@ -4,6 +4,7 @@
   "busySection": "Devam Eden ({count})",
   "needsInputSection": "Giriş Bekliyor ({count})",
   "reviewSection": "İnceleme ({count})",
+  "doneSection": "Tamamlandı ({count})",
   "dismiss": "Kapat",
   "navigate": "Git",
   "starting": "Başlatılıyor..."

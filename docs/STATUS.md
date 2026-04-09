@@ -132,17 +132,18 @@ export const isCliIdle = (cliState: TCliState): boolean =>
 
 ```
 detectTabCliState(tmuxSession, paneInfo)
+│  반환값: { cliState, lastAssistantSnippet, currentAction, jsonlPath }
 │
-├─ paneInfo 없음 → inactive
-├─ isClaudeRunning(panePid) === false → inactive
+├─ paneInfo 없음 → inactive (jsonlPath: null)
+├─ isClaudeRunning(panePid) === false → inactive (jsonlPath: null)
 │
 └─ detectActiveSession(panePid)
-    ├─ status !== 'running' → idle (Claude 실행 중이나 세션 없음)
+    ├─ status !== 'running' → idle (jsonlPath: null)
     └─ status === 'running'
-        ├─ jsonlPath 없음 → idle (아직 요청 전, JSONL 미생성)
+        ├─ jsonlPath 없음 → idle (jsonlPath: null)
         └─ jsonlPath 있음 → checkJsonlIdle()
-            ├─ idle → idle
-            └─ busy → busy
+            ├─ idle → idle (jsonlPath 저장 → ITabStatusEntry)
+            └─ busy → busy (jsonlPath 저장 → JSONL watch 시작)
 ```
 
 ### JSONL 기반 busy/idle 판별 (통일 기준)
@@ -168,7 +169,7 @@ noise 엔트리(`file-history-snapshot`, `progress`, `last-prompt`)는 스킵하
 
 - `busy → idle` 전환 시 `ready-for-review`으로 승격
 - `ready-for-review` 상태에서 `idle` 수신 시 무시 (보호)
-- `dismissTab` 호출 시 `ready-for-review → idle` 전환
+- `dismissTab` 호출 시 `ready-for-review → idle` 전환 + `dismissedAt` 기록
 
 #### ready-for-review / needs-input 보호 불변식
 
@@ -273,14 +274,16 @@ stop          → ready-for-review  notification  → 무시 (prev ≠ busy)
 
 ### Hook Grace Period
 
-Hook 이벤트 수신 후 **15초**(HOOK_GRACE_MS) 동안 해당 탭의 폴링 재감지를 스킵한다.
+Hook 이벤트 수신 후 **15초**(HOOK_GRACE_MS) 동안 해당 탭의 `cliState` 재감지(`detectTabCliState`)를 스킵한다.
 
 Hook이 즉시 상태를 전환한 뒤, 폴링이 아직 JSONL에 반영되지 않은 이전 상태를 읽어 덮어쓰는 경합을 방지한다. 15초 후에는 폴링이 다시 JSONL 기반으로 상태를 감지한다.
+
+단, Grace Period 중에도 `busy`/`needs-input` 탭은 저장된 `jsonlPath`로 `checkJsonlIdle`을 호출하여 `currentAction`과 `lastAssistantSnippet`을 갱신한다. cliState만 보호하고 대화 추출은 계속 수행한다.
 
 ```
 Hook 수신 → hookUpdatedAt.set(tabId, Date.now())
   │
-  ├─ 15초 이내 폴링 → 기존 cliState 유지 (detectTabCliState 스킵)
+  ├─ 15초 이내 폴링 → cliState 유지, JSONL은 읽어서 currentAction 갱신
   └─ 15초 경과 후 폴링 → detectTabCliState 재실행
 ```
 
@@ -307,7 +310,7 @@ Hook 수신 → hookUpdatedAt.set(tabId, Date.now())
           ▼
 [서버 폴링] status-manager.ts
   │  5~15초 간격 (탭 수에 따라 조절)
-  │  ※ hookUpdatedAt 15초 이내면 해당 탭 스킵
+  │  ※ hookUpdatedAt 15초 이내면 cliState 스킵 (JSONL은 읽음)
   │
   ├─ getAllPanesInfo()          tmux list-panes 1회 호출
   ├─ isClaudeRunning()         자식 프로세스 args 확인
@@ -315,6 +318,16 @@ Hook 수신 → hookUpdatedAt.set(tabId, Date.now())
   ├─ checkJsonlIdle()          ~/.claude/projects/{project}/{sessionId}.jsonl 읽기
   │
   └─ 상태 변경 감지 시 WebSocket 브로드캐스트 (ready-for-review 승격 포함)
+      │
+      ▼
+[JSONL Watch] status-manager.ts
+  │  busy/needs-input 탭의 JSONL 파일에 fs.watch 설정
+  │  100ms 디바운스, 파일 변경 시 checkJsonlIdle 호출
+  │
+  ├─ 시작: cliState → busy/needs-input 전환 시 (poll, hook, scanAll)
+  ├─ 해제: busy/needs-input 해제, 탭 삭제, shutdown
+  ├─ currentAction/lastAssistantSnippet 변경 시 즉시 브로드캐스트
+  └─ idle 감지 시 ready-for-review 전환 + watch 해제
       │
       ▼
 [Status WebSocket] status-server.ts (/api/status)
@@ -341,7 +354,7 @@ Hook 수신 → hookUpdatedAt.set(tabId, Date.now())
 [UI 컴포넌트]
   ├─ TabStatusIndicator          탭 바 (각 탭 옆)
   ├─ WorkspaceStatusIndicator    사이드바 (워크스페이스 옆)
-  ├─ NotificationSheet           알림 시트 (진행중/리뷰 목록)
+  ├─ NotificationSheet           알림 시트 (진행중/리뷰/완료 목록)
   ├─ Bell 아이콘                  사이드바 + 앱 헤더 (fill 상태, 배지)
   └─ useBrowserTitle             브라우저 탭 제목 (N) purplemux
 ```
@@ -409,7 +422,7 @@ tmux 타이틀 변경 → onTitleChange
 
 | 파일 | 설명 |
 | --- | --- |
-| `src/lib/status-manager.ts` | 폴링 엔진, `checkJsonlIdle`, `updateTabFromHook`, ready-for-review 승격, 상태 브로드캐스트 |
+| `src/lib/status-manager.ts` | 폴링 엔진, `checkJsonlIdle`, `updateTabFromHook`, ready-for-review 승격, 상태 브로드캐스트, JSONL watch |
 | `src/lib/status-server.ts` | `/api/status` WebSocket 핸들러 (`tab-dismissed` 처리) |
 | `src/lib/hook-settings.ts` | Hook 설정 파일(`hooks.json`) 생성, 스크립트(`status-hook.sh`) 관리 |
 | `src/pages/api/status/hook.ts` | Hook API 엔드포인트 (localhost only, `updateTabFromHook` 호출) |
@@ -451,7 +464,9 @@ tmux 타이틀 변경 → onTitleChange
 
 ### 알림 시트 (`NotificationSheet`)
 
-Bell 아이콘 클릭 시 Sheet로 표시. 진행중(`busy`), 입력 대기(`needs-input`), 리뷰(`ready-for-review`) 세 섹션.
+Bell 아이콘 클릭 시 Sheet로 표시. 진행중(`busy`), 입력 대기(`needs-input`), 리뷰(`ready-for-review`), 완료(`done`) 네 섹션.
+
+완료 섹션은 `dismissTab`으로 확인된 탭(`dismissedAt` 값이 있고 `cliState`가 `idle`/`inactive`인 탭) 중 현재 활성 탭을 제외하여 최신순으로 표시한다. 해당 탭에서 새 작업이 시작되면(`busy` 전환) `dismissedAt`이 초기화되어 목록에서 제거된다.
 
 ### 활성 탭 제외 로직
 
@@ -472,5 +487,6 @@ Bell 아이콘 클릭 시 Sheet로 표시. 진행중(`busy`), 입력 대기(`nee
 | `lastUserMessage` | `ITab.lastUserMessage` (레이아웃 JSON) | 마지막 사용자 메시지 |
 | `busySince` | `ITabStatusEntry.busySince` | busy 상태 진입 시점 |
 | `readyForReviewAt` | `ITabStatusEntry.readyForReviewAt` | ready-for-review 전환 시점 |
+| `dismissedAt` | `ITabStatusEntry.dismissedAt` | dismiss(확인) 시점 — 완료 섹션 표시 기준 |
 
 `lastUserMessage`는 타임라인 서버에서 `user-message` 엔트리 수신 시 레이아웃 JSON에 저장(`updateTabLastUserMessage`). 상태 매니저 폴링 시 레이아웃에서 읽어 클라이언트로 전파.

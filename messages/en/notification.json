@@ -4,6 +4,7 @@
   "busySection": "In Progress ({count})",
   "needsInputSection": "Needs Input ({count})",
   "reviewSection": "Review ({count})",
+  "doneSection": "Done ({count})",
   "dismiss": "Dismiss",
   "navigate": "Go to",
   "starting": "Starting..."

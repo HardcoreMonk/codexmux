@@ -30,6 +30,7 @@ export interface ITabState {
   currentAction?: string | null;
   readyForReviewAt?: number | null;
   busySince?: number | null;
+  dismissedAt?: number | null;
   localUpdatedAt?: number;
 }
 
@@ -66,8 +67,8 @@ interface ITabStore {
   setCurrentProcess: (tabId: string, process: string | null) => void;
   setTabOrder: (workspaceId: string, tabIds: string[]) => void;
   setStatusWsConnected: (connected: boolean) => void;
-  syncAllFromServer: (serverTabs: Record<string, { cliState: TCliState; workspaceId: string; tabName?: string; panelType?: TPanelType; terminalStatus?: TTerminalStatus; listeningPorts?: number[]; currentProcess?: string; claudeSummary?: string | null; lastUserMessage?: string | null; lastAssistantMessage?: string | null; currentAction?: string | null; readyForReviewAt?: number | null; busySince?: number | null }>) => void;
-  updateFromServer: (tabId: string, update: { cliState: TCliState | null; workspaceId: string; tabName?: string; panelType?: TPanelType; terminalStatus?: TTerminalStatus; listeningPorts?: number[]; currentProcess?: string; claudeSummary?: string | null; lastUserMessage?: string | null; lastAssistantMessage?: string | null; currentAction?: string | null; readyForReviewAt?: number | null; busySince?: number | null }) => void;
+  syncAllFromServer: (serverTabs: Record<string, { cliState: TCliState; workspaceId: string; tabName?: string; panelType?: TPanelType; terminalStatus?: TTerminalStatus; listeningPorts?: number[]; currentProcess?: string; claudeSummary?: string | null; lastUserMessage?: string | null; lastAssistantMessage?: string | null; currentAction?: string | null; readyForReviewAt?: number | null; busySince?: number | null; dismissedAt?: number | null }>) => void;
+  updateFromServer: (tabId: string, update: { cliState: TCliState | null; workspaceId: string; tabName?: string; panelType?: TPanelType; terminalStatus?: TTerminalStatus; listeningPorts?: number[]; currentProcess?: string; claudeSummary?: string | null; lastUserMessage?: string | null; lastAssistantMessage?: string | null; currentAction?: string | null; readyForReviewAt?: number | null; busySince?: number | null; dismissedAt?: number | null }) => void;
 }
 
 const updateTab = (
@@ -152,7 +153,7 @@ const useTabStore = create<ITabStore>((set) => ({
     set((state) => {
       const prev = state.tabs[tabId];
       if (!prev || prev.cliState !== 'ready-for-review') return state;
-      return { tabs: updateTab(state.tabs, tabId, { cliState: 'idle' }) };
+      return { tabs: updateTab(state.tabs, tabId, { cliState: 'idle', dismissedAt: Date.now() }) };
     }),
 
   setResuming: (tabId, resuming) =>
@@ -204,9 +205,9 @@ const useTabStore = create<ITabStore>((set) => ({
         if (existing?.localUpdatedAt && now - existing.localUpdatedAt < SYNC_GRACE_MS) {
           next[tabId] = existing;
         } else if (existing) {
-          next[tabId] = { ...existing, cliState: entry.cliState, workspaceId: entry.workspaceId, tabName: entry.tabName, panelType: entry.panelType ?? existing.panelType, terminalStatus: entry.terminalStatus, listeningPorts: entry.listeningPorts, currentProcess: entry.currentProcess, claudeSummary: entry.claudeSummary, lastUserMessage: entry.lastUserMessage, lastAssistantMessage: entry.lastAssistantMessage, currentAction: entry.currentAction, readyForReviewAt: entry.readyForReviewAt, busySince: entry.busySince };
+          next[tabId] = { ...existing, cliState: entry.cliState, workspaceId: entry.workspaceId, tabName: entry.tabName, panelType: entry.panelType ?? existing.panelType, terminalStatus: entry.terminalStatus, listeningPorts: entry.listeningPorts, currentProcess: entry.currentProcess, claudeSummary: entry.claudeSummary, lastUserMessage: entry.lastUserMessage, lastAssistantMessage: entry.lastAssistantMessage, currentAction: entry.currentAction, readyForReviewAt: entry.readyForReviewAt, busySince: entry.busySince, dismissedAt: entry.dismissedAt };
         } else {
-          next[tabId] = { ...DEFAULT_TAB_STATE, cliState: entry.cliState, workspaceId: entry.workspaceId, tabName: entry.tabName, panelType: entry.panelType, terminalStatus: entry.terminalStatus, listeningPorts: entry.listeningPorts, currentProcess: entry.currentProcess, claudeSummary: entry.claudeSummary, lastUserMessage: entry.lastUserMessage, lastAssistantMessage: entry.lastAssistantMessage, currentAction: entry.currentAction, readyForReviewAt: entry.readyForReviewAt, busySince: entry.busySince };
+          next[tabId] = { ...DEFAULT_TAB_STATE, cliState: entry.cliState, workspaceId: entry.workspaceId, tabName: entry.tabName, panelType: entry.panelType, terminalStatus: entry.terminalStatus, listeningPorts: entry.listeningPorts, currentProcess: entry.currentProcess, claudeSummary: entry.claudeSummary, lastUserMessage: entry.lastUserMessage, lastAssistantMessage: entry.lastAssistantMessage, currentAction: entry.currentAction, readyForReviewAt: entry.readyForReviewAt, busySince: entry.busySince, dismissedAt: entry.dismissedAt };
         }
       }
       return { tabs: next };
@@ -220,12 +221,12 @@ const useTabStore = create<ITabStore>((set) => ({
       }
       const existing = state.tabs[tabId];
       if (existing) {
-        return { tabs: updateTab(state.tabs, tabId, { cliState: update.cliState, workspaceId: update.workspaceId, tabName: update.tabName, panelType: update.panelType ?? existing.panelType, terminalStatus: update.terminalStatus, listeningPorts: update.listeningPorts, currentProcess: update.currentProcess, claudeSummary: update.claudeSummary, lastUserMessage: update.lastUserMessage, lastAssistantMessage: update.lastAssistantMessage, currentAction: update.currentAction, readyForReviewAt: update.readyForReviewAt, busySince: update.busySince }) };
+        return { tabs: updateTab(state.tabs, tabId, { cliState: update.cliState, workspaceId: update.workspaceId, tabName: update.tabName, panelType: update.panelType ?? existing.panelType, terminalStatus: update.terminalStatus, listeningPorts: update.listeningPorts, currentProcess: update.currentProcess, claudeSummary: update.claudeSummary, lastUserMessage: update.lastUserMessage, lastAssistantMessage: update.lastAssistantMessage, currentAction: update.currentAction, readyForReviewAt: update.readyForReviewAt, busySince: update.busySince, dismissedAt: update.dismissedAt }) };
       }
       return {
         tabs: {
           ...state.tabs,
-          [tabId]: { ...DEFAULT_TAB_STATE, cliState: update.cliState, workspaceId: update.workspaceId, tabName: update.tabName, panelType: update.panelType, terminalStatus: update.terminalStatus, listeningPorts: update.listeningPorts, currentProcess: update.currentProcess, claudeSummary: update.claudeSummary, lastUserMessage: update.lastUserMessage, lastAssistantMessage: update.lastAssistantMessage, readyForReviewAt: update.readyForReviewAt, busySince: update.busySince },
+          [tabId]: { ...DEFAULT_TAB_STATE, cliState: update.cliState, workspaceId: update.workspaceId, tabName: update.tabName, panelType: update.panelType, terminalStatus: update.terminalStatus, listeningPorts: update.listeningPorts, currentProcess: update.currentProcess, claudeSummary: update.claudeSummary, lastUserMessage: update.lastUserMessage, lastAssistantMessage: update.lastAssistantMessage, readyForReviewAt: update.readyForReviewAt, busySince: update.busySince, dismissedAt: update.dismissedAt },
         },
       };
     }),
