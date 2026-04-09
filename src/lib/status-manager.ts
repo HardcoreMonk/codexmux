@@ -239,11 +239,10 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<IJsonlCheckResult> => 
 interface IJsonlStats {
   toolUsage: Record<string, number>;
   touchedFiles: string[];
-  turnCount: number;
 }
 
 const parseJsonlStats = async (jsonlPath: string): Promise<IJsonlStats> => {
-  const empty: IJsonlStats = { toolUsage: {}, touchedFiles: [], turnCount: 0 };
+  const empty: IJsonlStats = { toolUsage: {}, touchedFiles: [] };
   try {
     const stat = await fs.stat(jsonlPath);
     if (stat.size === 0) return empty;
@@ -257,22 +256,11 @@ const parseJsonlStats = async (jsonlPath: string): Promise<IJsonlStats> => {
 
       const toolUsage: Record<string, number> = {};
       const touchedFiles = new Set<string>();
-      let turnCount = 0;
 
       for (let i = lines.length - 1; i >= 0; i--) {
         try {
           const entry = JSON.parse(lines[i]);
           if (entry.isSidechain) continue;
-
-          if (entry.type === 'user') {
-            const c = entry.message?.content;
-            const isToolResult = Array.isArray(c) && c.some((b: unknown) => (b as { type?: string }).type === 'tool_result');
-            if (!isToolResult) {
-              turnCount++;
-              break;
-            }
-            continue;
-          }
 
           if (entry.type === 'assistant' && Array.isArray(entry.message?.content)) {
             for (const block of entry.message.content) {
@@ -287,7 +275,7 @@ const parseJsonlStats = async (jsonlPath: string): Promise<IJsonlStats> => {
         } catch { continue; }
       }
 
-      return { toolUsage, touchedFiles: [...touchedFiles], turnCount };
+      return { toolUsage, touchedFiles: [...touchedFiles] };
     } finally {
       await handle.close();
     }
@@ -734,7 +722,6 @@ class StatusManager {
       dismissedAt: null,
       toolUsage: stats.toolUsage,
       touchedFiles: stats.touchedFiles,
-      turnCount: stats.turnCount,
     };
 
     await addTaskHistoryEntry(historyEntry);

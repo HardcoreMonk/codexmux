@@ -1,7 +1,21 @@
 {
   "name": "purplemux",
   "version": "0.1.1",
+  "description": "Manage multiple Claude Code sessions from your browser",
   "license": "MIT",
+  "author": "subicura",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/subicura/purplemux.git"
+  },
+  "homepage": "https://github.com/subicura/purplemux",
+  "bugs": {
+    "url": "https://github.com/subicura/purplemux/issues"
+  },
+  "keywords": ["claude", "terminal", "multiplexer", "tmux", "claude-code"],
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "main": "dist-electron/main.js",
   "bin": {
     "purplemux": "./bin/purplemux.js",

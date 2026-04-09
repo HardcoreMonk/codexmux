@@ -11,7 +11,6 @@ export interface ITaskHistoryEntry {
   dismissedAt: number | null;
   toolUsage: Record<string, number>;
   touchedFiles: string[];
-  turnCount: number;
 }
 
 export interface ITaskHistoryData {
