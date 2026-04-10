@@ -70,7 +70,7 @@ const MobileNavigationSheet = ({
   const mobileTab = useWorkspaceStore((s) => s.sidebarTab);
 
   const handleMobileTabChange = useCallback((v: string) => {
-    useWorkspaceStore.getState().setSidebarTab(v as 'workspace' | 'tasks');
+    useWorkspaceStore.getState().setSidebarTab(v as 'workspace' | 'sessions');
   }, []);
   const { attentionCount } = useNotificationCount();
   const [expandedWsId, setExpandedWsId] = useState<string | null>(activeWorkspaceId);
@@ -234,8 +234,8 @@ const MobileNavigationSheet = ({
               <TabsTrigger value="workspace" className="h-full flex-1 px-2.5 text-[11px] tracking-wide">
                 WORKSPACE
               </TabsTrigger>
-              <TabsTrigger value="tasks" className="h-full flex-1 px-2.5 text-[11px] tracking-wide">
-                TASKS
+              <TabsTrigger value="sessions" className="h-full flex-1 px-2.5 text-[11px] tracking-wide">
+                SESSIONS
                 {attentionCount > 0 && (
                   <span className="ml-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded bg-foreground/10 px-0.5 text-[9px] font-medium leading-none text-foreground/60">
                     {attentionCount}

@@ -20,7 +20,7 @@ interface IWorkspaceState {
   activeWorkspaceId: string | null;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
-  sidebarTab: 'workspace' | 'tasks';
+  sidebarTab: 'workspace' | 'sessions';
   isLoading: boolean;
   error: string | null;
 
@@ -37,14 +37,14 @@ interface IWorkspaceState {
   toggleSidebar: () => void;
   setSidebarWidth: (width: number) => void;
   saveSidebarWidth: (width: number) => void;
-  setSidebarTab: (tab: 'workspace' | 'tasks') => void;
+  setSidebarTab: (tab: 'workspace' | 'sessions') => void;
   validateDirectory: (directory: string) => Promise<IValidateResponse>;
 }
 
-const getInitialSidebar = (): { sidebarWidth: number; sidebarCollapsed: boolean; sidebarTab: 'workspace' | 'tasks' } => {
+const getInitialSidebar = (): { sidebarWidth: number; sidebarCollapsed: boolean; sidebarTab: 'workspace' | 'sessions' } => {
   if (typeof window !== 'undefined') {
     const sb = (window as unknown as Record<string, unknown>).__SB__ as { w: number; c: boolean; t?: string } | undefined;
-    if (sb) return { sidebarWidth: sb.w, sidebarCollapsed: sb.c, sidebarTab: sb.t === 'tasks' ? 'tasks' : 'workspace' };
+    if (sb) return { sidebarWidth: sb.w, sidebarCollapsed: sb.c, sidebarTab: sb.t === 'sessions' ? 'sessions' : 'workspace' };
   }
   return { sidebarWidth: 240, sidebarCollapsed: false, sidebarTab: 'workspace' };
 };

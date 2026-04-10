@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSystemResources: () => ipcRenderer.invoke('get-system-resources'),
   showNotification: (title: string, body: string) => ipcRenderer.invoke('show-notification', title, body),
   setDockBadge: (count: number) => ipcRenderer.invoke('set-dock-badge', count),
+  setLocale: (locale: string) => ipcRenderer.invoke('set-locale', locale),
   onNotificationClick: (callback: () => void) => {
     const handler = () => callback();
     ipcRenderer.on('notification-click', handler);

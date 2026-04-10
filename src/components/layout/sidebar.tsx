@@ -79,7 +79,7 @@ const Sidebar = () => {
   const sidebarTab = useWorkspaceStore((s) => s.sidebarTab);
 
   const handleSidebarTabChange = useCallback((v: string) => {
-    useWorkspaceStore.getState().setSidebarTab(v as 'workspace' | 'tasks');
+    useWorkspaceStore.getState().setSidebarTab(v as 'workspace' | 'sessions');
   }, []);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const modTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -369,8 +369,8 @@ const Sidebar = () => {
               <TabsTrigger value="workspace" className="h-full flex-1 px-2.5 text-[11px] tracking-wide">
                 WORKSPACE
               </TabsTrigger>
-              <TabsTrigger value="tasks" className="h-full flex-1 px-2.5 text-[11px] tracking-wide">
-                TASKS
+              <TabsTrigger value="sessions" className="h-full flex-1 px-2.5 text-[11px] tracking-wide">
+                SESSIONS
                 {attentionCount > 0 && (
                   <span className="ml-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded bg-foreground/10 px-0.5 text-[9px] font-medium leading-none text-foreground/60">
                     {attentionCount}

@@ -125,7 +125,8 @@ const showServerPrompt = (parent: BrowserWindow, currentUrl?: string): Promise<s
     });
 
     const escaped = (currentUrl || 'http://').replace(/"/g, '&quot;');
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>서버 연결</title><style>
+    const m = mt();
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${m.serverConnection}</title><style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:24px}
 label{display:block;margin-bottom:8px;font-size:13px;color:#a1a1aa}
@@ -136,11 +137,11 @@ button{padding:6px 16px;border-radius:6px;border:1px solid #27272a;font-size:13p
 .cancel{background:#27272a;color:#fafafa}.cancel:hover{background:#3f3f46}
 .connect{background:#7c3aed;color:#fff;border-color:#7c3aed}.connect:hover{background:#6d28d9}
 </style></head><body>
-<label>서버 주소</label>
+<label>${m.serverAddress}</label>
 <input id="url" value="${escaped}" placeholder="http://192.168.1.100:8022"/>
 <div class="buttons">
-<button class="cancel" id="cancelBtn">취소</button>
-<button class="connect" id="connectBtn">연결</button>
+<button class="cancel" id="cancelBtn">${m.cancel}</button>
+<button class="connect" id="connectBtn">${m.connect}</button>
 </div>
 <script>
 var input=document.getElementById('url');
@@ -168,6 +169,41 @@ input.onkeydown=function(e){
     prompt.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
     prompt.once('ready-to-show', () => prompt.show());
   });
+
+// --- i18n ---
+
+interface IMenuMessages {
+  server: string;
+  useLocalServer: string;
+  connectRemoteServer: string;
+  serverConnection: string;
+  serverAddress: string;
+  cancel: string;
+  connect: string;
+}
+
+const menuMessages: Record<string, IMenuMessages> = {
+  en: { server: 'Server', useLocalServer: 'Use Local Server', connectRemoteServer: 'Connect to Remote Server…', serverConnection: 'Server Connection', serverAddress: 'Server Address', cancel: 'Cancel', connect: 'Connect' },
+  ko: { server: '서버', useLocalServer: '로컬 서버 사용', connectRemoteServer: '원격 서버 연결…', serverConnection: '서버 연결', serverAddress: '서버 주소', cancel: '취소', connect: '연결' },
+  ja: { server: 'サーバー', useLocalServer: 'ローカルサーバーを使用', connectRemoteServer: 'リモートサーバーに接続…', serverConnection: 'サーバー接続', serverAddress: 'サーバーアドレス', cancel: 'キャンセル', connect: '接続' },
+  'zh-CN': { server: '服务器', useLocalServer: '使用本地服务器', connectRemoteServer: '连接远程服务器…', serverConnection: '服务器连接', serverAddress: '服务器地址', cancel: '取消', connect: '连接' },
+  'zh-TW': { server: '伺服器', useLocalServer: '使用本機伺服器', connectRemoteServer: '連線遠端伺服器…', serverConnection: '伺服器連線', serverAddress: '伺服器位址', cancel: '取消', connect: '連線' },
+  es: { server: 'Servidor', useLocalServer: 'Usar servidor local', connectRemoteServer: 'Conectar a servidor remoto…', serverConnection: 'Conexión al servidor', serverAddress: 'Dirección del servidor', cancel: 'Cancelar', connect: 'Conectar' },
+  de: { server: 'Server', useLocalServer: 'Lokalen Server verwenden', connectRemoteServer: 'Mit Remote-Server verbinden…', serverConnection: 'Serververbindung', serverAddress: 'Serveradresse', cancel: 'Abbrechen', connect: 'Verbinden' },
+  fr: { server: 'Serveur', useLocalServer: 'Utiliser le serveur local', connectRemoteServer: 'Se connecter à un serveur distant…', serverConnection: 'Connexion au serveur', serverAddress: 'Adresse du serveur', cancel: 'Annuler', connect: 'Connecter' },
+  'pt-BR': { server: 'Servidor', useLocalServer: 'Usar servidor local', connectRemoteServer: 'Conectar a servidor remoto…', serverConnection: 'Conexão com servidor', serverAddress: 'Endereço do servidor', cancel: 'Cancelar', connect: 'Conectar' },
+  ru: { server: 'Сервер', useLocalServer: 'Использовать локальный сервер', connectRemoteServer: 'Подключиться к удалённому серверу…', serverConnection: 'Подключение к серверу', serverAddress: 'Адрес сервера', cancel: 'Отмена', connect: 'Подключить' },
+  tr: { server: 'Sunucu', useLocalServer: 'Yerel sunucuyu kullan', connectRemoteServer: 'Uzak sunucuya bağlan…', serverConnection: 'Sunucu bağlantısı', serverAddress: 'Sunucu adresi', cancel: 'İptal', connect: 'Bağlan' },
+};
+
+let currentLocale = 'en';
+
+const mt = (): IMenuMessages => menuMessages[currentLocale] || menuMessages.en;
+
+const readLocaleFromConfig = (): string => {
+  const cfg = readAppConfig();
+  return (cfg as Record<string, unknown>).locale as string || 'en';
+};
 
 // --- State ---
 
@@ -226,9 +262,9 @@ const updateMenu = () => {
       submenu: [
         { role: 'about' },
         { type: 'separator' },
-        { label: `서버: ${getServerLabel()}`, enabled: false },
-        { label: '로컬 서버 사용', type: 'radio', checked: serverConfig.mode === 'local', click: handleSwitchToLocal },
-        { label: '원격 서버 연결...', type: 'radio', checked: serverConfig.mode === 'remote', click: handleSwitchToRemote },
+        { label: `${mt().server}: ${getServerLabel()}`, enabled: false },
+        { label: mt().useLocalServer, type: 'radio', checked: serverConfig.mode === 'local', click: handleSwitchToLocal },
+        { label: mt().connectRemoteServer, type: 'radio', checked: serverConfig.mode === 'remote', click: handleSwitchToRemote },
         { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },
@@ -480,9 +516,12 @@ const bootstrap = async () => {
   process.env.__PMUX_APP_DIR_UNPACKED = isDev ? process.cwd() : appPath.replace('app.asar', 'app.asar.unpacked');
 
   serverConfig = readServerConfig();
+  currentLocale = readLocaleFromConfig();
 
   if (serverConfig.mode === 'remote' && serverConfig.remoteUrl) {
-    createWindow(serverConfig.remoteUrl);
+    createWindow('about:blank');
+    loadSplash(mainWindow!);
+    mainWindow?.loadURL(serverConfig.remoteUrl);
   } else {
     serverConfig = { mode: 'local' };
     // 윈도우를 먼저 띄우고 로딩 화면을 보여준 뒤, 서버가 준비되면 전환
@@ -498,6 +537,13 @@ const bootstrap = async () => {
 ipcMain.handle('open-external', (_event, url: string) => {
   if (typeof url === 'string' && /^https?:\/\//.test(url)) {
     shell.openExternal(url);
+  }
+});
+
+ipcMain.handle('set-locale', (_event, locale: string) => {
+  if (typeof locale === 'string' && locale !== currentLocale) {
+    currentLocale = locale;
+    updateMenu();
   }
 });
 

@@ -103,6 +103,9 @@ const useConfigStore = create<IConfigState>((set, get) => ({
   setLocale: (locale) => {
     set({ locale });
     saveConfig({ locale });
+    if (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).electronAPI) {
+      (window as unknown as { electronAPI: { setLocale: (l: string) => void } }).electronAPI.setLocale(locale);
+    }
   },
 
   setCustomCSS: (css) => {

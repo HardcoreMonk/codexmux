@@ -27,7 +27,7 @@ class MyDocument extends Document<IDocumentProps> {
     const effectiveWidth = sidebarCollapsed ? 0 : sidebarWidth;
     const effectiveMinWidth = sidebarCollapsed ? 0 : 160;
 
-    const initScript = `window.__SB__=(function(){var s=localStorage,t=s.getItem("sidebar-tab"),a=s.getItem("active-ws");return{w:${sidebarWidth},c:${sidebarCollapsed},t:t==="tasks"?"tasks":"workspace",a:a||""}})()`;
+    const initScript = `window.__SB__=(function(){var s=localStorage,t=s.getItem("sidebar-tab"),a=s.getItem("active-ws");return{w:${sidebarWidth},c:${sidebarCollapsed},t:t==="sessions"?"sessions":"workspace",a:a||""}})()`;
 
     return (
       <Html lang="en" suppressHydrationWarning>
@@ -42,8 +42,8 @@ class MyDocument extends Document<IDocumentProps> {
           <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
           <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
           <link rel="manifest" href="/api/manifest" />
-          <meta name="msapplication-TileColor" content="#ffffff" />
-          <meta name="theme-color" content="#ffffff" />
+          <meta name="msapplication-TileColor" content="#131313" />
+          <meta name="theme-color" content="#131313" />
           <style dangerouslySetInnerHTML={{ __html: `:root{--initial-sb-w:${effectiveWidth}px;--initial-sb-mw:${effectiveMinWidth}px}` }} />
           <script dangerouslySetInnerHTML={{ __html: initScript }} />
           <script dangerouslySetInnerHTML={{ __html: `if(window.electronAPI)document.documentElement.style.setProperty('--titlebar-height','24px')` }} />
