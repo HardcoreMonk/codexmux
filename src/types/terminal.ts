@@ -60,6 +60,7 @@ export interface IWorkspace {
 
 export interface IWorkspacesData {
   workspaces: IWorkspace[];
+  activeWorkspaceId?: string;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
   updatedAt: string;

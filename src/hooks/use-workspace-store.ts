@@ -11,6 +11,7 @@ interface IValidateResponse {
 
 export interface IWorkspaceInitialData {
   workspaces: IWorkspace[];
+  activeWorkspaceId?: string;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
 }
@@ -67,16 +68,25 @@ const setStoredActiveWorkspaceId = (id: string | null) => {
   if (typeof window === 'undefined') return;
   try {
     if (id) {
-      localStorage.setItem('active-ws', id);
+      sessionStorage.setItem('active-ws', id);
     } else {
-      localStorage.removeItem('active-ws');
+      sessionStorage.removeItem('active-ws');
     }
   } catch { /* */ }
 };
 
-const resolveActiveWorkspaceId = (workspaces: IWorkspace[]): string | null => {
+const saveActiveWorkspaceIdToServer = (id: string) => {
+  fetch('/api/workspace/active', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ activeWorkspaceId: id }),
+  }).catch(() => { /* */ });
+};
+
+const resolveActiveWorkspaceId = (workspaces: IWorkspace[], serverActiveId?: string): string | null => {
   const stored = getStoredActiveWorkspaceId();
   if (stored && workspaces.some((w) => w.id === stored)) return stored;
+  if (serverActiveId && workspaces.some((w) => w.id === serverActiveId)) return serverActiveId;
   return workspaces[0]?.id ?? null;
 };
 
@@ -103,8 +113,9 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
   error: null,
 
   hydrate: (data) => {
-    const activeWorkspaceId = resolveActiveWorkspaceId(data.workspaces);
+    const activeWorkspaceId = resolveActiveWorkspaceId(data.workspaces, data.activeWorkspaceId);
     setStoredActiveWorkspaceId(activeWorkspaceId);
+    if (activeWorkspaceId) saveActiveWorkspaceIdToServer(activeWorkspaceId);
     set({
       workspaces: data.workspaces,
       activeWorkspaceId,
@@ -121,7 +132,7 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
       const res = await fetch('/api/workspace');
       if (!res.ok) throw new Error();
       const data = await res.json();
-      const activeWorkspaceId = resolveActiveWorkspaceId(data.workspaces);
+      const activeWorkspaceId = resolveActiveWorkspaceId(data.workspaces, data.activeWorkspaceId);
       setStoredActiveWorkspaceId(activeWorkspaceId);
       set({
         workspaces: data.workspaces,
@@ -185,7 +196,10 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
       const remaining = state.workspaces.filter((w) => w.id !== workspaceId);
       const needSwitch = state.activeWorkspaceId === workspaceId;
       const activeWorkspaceId = needSwitch ? (remaining[0]?.id ?? null) : state.activeWorkspaceId;
-      if (needSwitch) setStoredActiveWorkspaceId(activeWorkspaceId);
+      if (needSwitch) {
+        setStoredActiveWorkspaceId(activeWorkspaceId);
+        if (activeWorkspaceId) saveActiveWorkspaceIdToServer(activeWorkspaceId);
+      }
       return { workspaces: remaining, activeWorkspaceId };
     });
   },
@@ -193,6 +207,7 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
   switchWorkspace: (workspaceId) => {
     set({ activeWorkspaceId: workspaceId });
     setStoredActiveWorkspaceId(workspaceId);
+    saveActiveWorkspaceIdToServer(workspaceId);
   },
 
   renameWorkspace: async (workspaceId, name) => {

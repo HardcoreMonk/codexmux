@@ -2,6 +2,7 @@ import Document, { Html, Head, Main, NextScript, type DocumentContext, type Docu
 import { getWorkspaces } from '@/lib/workspace-store';
 
 interface IDocumentProps extends DocumentInitialProps {
+  activeWorkspaceId: string;
   sidebarWidth: number;
   sidebarCollapsed: boolean;
 }
@@ -13,11 +14,12 @@ class MyDocument extends Document<IDocumentProps> {
       const wsData = await getWorkspaces();
       return {
         ...initialProps,
+        activeWorkspaceId: wsData.activeWorkspaceId ?? '',
         sidebarWidth: wsData.sidebarWidth,
         sidebarCollapsed: wsData.sidebarCollapsed,
       };
     } catch {
-      return { ...initialProps, sidebarWidth: 240, sidebarCollapsed: false };
+      return { ...initialProps, activeWorkspaceId: '', sidebarWidth: 240, sidebarCollapsed: false };
     }
   }
 
@@ -27,7 +29,8 @@ class MyDocument extends Document<IDocumentProps> {
     const effectiveWidth = sidebarCollapsed ? 0 : sidebarWidth;
     const effectiveMinWidth = sidebarCollapsed ? 0 : 160;
 
-    const initScript = `window.__SB__=(function(){var s=localStorage,t=s.getItem("sidebar-tab"),a=s.getItem("active-ws");return{w:${sidebarWidth},c:${sidebarCollapsed},t:t==="sessions"?"sessions":"workspace",a:a||""}})()`;
+    const serverActiveWs = JSON.stringify(this.props.activeWorkspaceId || '');
+    const initScript = `window.__SB__=(function(){var s=sessionStorage,l=localStorage,t=l.getItem("sidebar-tab"),a=s.getItem("active-ws")||${serverActiveWs};return{w:${sidebarWidth},c:${sidebarCollapsed},t:t==="sessions"?"sessions":"workspace",a:a||""}})()`;
 
     return (
       <Html lang="en" suppressHydrationWarning>

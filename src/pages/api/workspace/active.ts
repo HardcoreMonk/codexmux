@@ -7,8 +7,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { sidebarCollapsed, sidebarWidth } = req.body ?? {};
-  await updateActive({ sidebarCollapsed, sidebarWidth });
+  const { activeWorkspaceId, sidebarCollapsed, sidebarWidth } = req.body ?? {};
+  await updateActive({ activeWorkspaceId, sidebarCollapsed, sidebarWidth });
   return res.status(200).json({ ok: true });
 };
 

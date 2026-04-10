@@ -94,8 +94,8 @@ const readWorkspacesFile = async (): Promise<IWorkspacesData | null> => {
 };
 
 const writeWorkspacesFile = async (data: IWorkspacesData): Promise<void> => {
-  const { workspaces, sidebarCollapsed, sidebarWidth } = data;
-  const contentKey = JSON.stringify({ workspaces, sidebarCollapsed, sidebarWidth });
+  const { workspaces, activeWorkspaceId, sidebarCollapsed, sidebarWidth } = data;
+  const contentKey = JSON.stringify({ workspaces, activeWorkspaceId, sidebarCollapsed, sidebarWidth });
 
   if (g.__purplemuxWorkspacesContentCache === contentKey) return;
 
@@ -235,6 +235,7 @@ export const initWorkspaceStore = async (): Promise<void> => {
 
 export const getWorkspaces = async (): Promise<{
   workspaces: IWorkspace[];
+  activeWorkspaceId?: string;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
 }> => {
@@ -243,6 +244,7 @@ export const getWorkspaces = async (): Promise<{
 
   return {
     workspaces: data.workspaces,
+    activeWorkspaceId: data.activeWorkspaceId,
     sidebarCollapsed: data.sidebarCollapsed,
     sidebarWidth: data.sidebarWidth,
   };
@@ -250,6 +252,9 @@ export const getWorkspaces = async (): Promise<{
 
 export const getActiveWorkspaceId = async (): Promise<string | null> => {
   const data = await readWorkspacesFile();
+  if (data?.activeWorkspaceId && data.workspaces.some((w) => w.id === data.activeWorkspaceId)) {
+    return data.activeWorkspaceId;
+  }
   return data?.workspaces[0]?.id ?? null;
 };
 
@@ -336,11 +341,13 @@ export const renameWorkspace = async (workspaceId: string, name: string): Promis
   });
 
 export const updateActive = async (updates: {
+  activeWorkspaceId?: string;
   sidebarCollapsed?: boolean;
   sidebarWidth?: number;
 }): Promise<void> =>
   withLock(async () => {
     const data = (await readWorkspacesFile()) ?? emptyState();
+    if (updates.activeWorkspaceId !== undefined) data.activeWorkspaceId = updates.activeWorkspaceId;
     if (updates.sidebarCollapsed !== undefined) data.sidebarCollapsed = updates.sidebarCollapsed;
     if (updates.sidebarWidth !== undefined) data.sidebarWidth = updates.sidebarWidth;
     await writeWorkspacesFile(data);
