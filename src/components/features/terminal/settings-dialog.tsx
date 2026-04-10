@@ -35,7 +35,7 @@ import QuickPromptsSettings from '@/components/features/settings/quick-prompts-s
 import SidebarItemsSettings from '@/components/features/settings/sidebar-items-settings';
 import TailscaleSettings from '@/components/features/settings/tailscale-settings';
 
-type TSettingsTab = 'general' | 'appearance' | 'terminal' | 'editor' | 'claude' | 'notification' | 'auth' | 'tailscale' | 'quick-prompts' | 'sidebar-items' | 'agent' | 'system';
+type TSettingsTab = 'general' | 'appearance' | 'terminal' | 'notification' | 'editor' | 'claude' | 'auth' | 'tailscale' | 'quick-prompts' | 'sidebar-items' | 'agent' | 'system';
 
 interface ISettingsItem {
   id: TSettingsTab;
@@ -48,9 +48,9 @@ const settingsItems: ISettingsItem[] = [
   { id: 'general', labelKey: 'general', icon: <Settings className="h-4 w-4" /> },
   { id: 'appearance', labelKey: 'appearance', icon: <Palette className="h-4 w-4" /> },
   { id: 'terminal', labelKey: 'terminal', icon: <Terminal className="h-4 w-4" /> },
+  { id: 'notification', labelKey: 'notification', icon: <Bell className="h-4 w-4" /> },
   { id: 'editor', labelKey: 'editor', icon: <Code className="h-4 w-4" /> },
   { id: 'claude', labelKey: 'claude', icon: <ClaudeLogo className="h-4 w-4" /> },
-  { id: 'notification', labelKey: 'notification', icon: <Bell className="h-4 w-4" /> },
   { id: 'auth', labelKey: 'auth', icon: <Lock className="h-4 w-4" /> },
   { id: 'tailscale', labelKey: 'tailscale', icon: <Globe className="h-4 w-4" /> },
   { id: 'quick-prompts', labelKey: 'quickPrompts', icon: <Zap className="h-4 w-4" /> },
@@ -725,9 +725,9 @@ const SettingsDialog = ({ open, onOpenChange }: ISettingsDialogProps) => {
             {activeTab === 'general' && <GeneralTab />}
             {activeTab === 'appearance' && <AppearanceTab />}
             {activeTab === 'terminal' && <TerminalTab />}
+            {activeTab === 'notification' && <NotificationTab />}
             {activeTab === 'editor' && <EditorTab />}
             {activeTab === 'claude' && <ClaudeTab />}
-            {activeTab === 'notification' && <NotificationTab />}
             {activeTab === 'auth' && <AuthTab />}
             {activeTab === 'tailscale' && <TailscaleSettings />}
             {activeTab === 'quick-prompts' && <QuickPromptsSettings />}
