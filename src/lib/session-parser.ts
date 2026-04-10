@@ -947,23 +947,32 @@ export const readEntriesBefore = async (
   try {
     if (beforeByte <= 0) return empty;
     const stat = await fs.stat(filePath);
-    const from = Math.max(0, beforeByte - CHUNK_SIZE);
-    const { content, validFrom } = await readChunk(filePath, from, beforeByte);
-    if (!content) return empty;
-    const result = parseContent(content);
-    const sliced = result.entries.length > maxEntries;
-    const sliceStart = sliced ? result.entries.length - maxEntries : 0;
-    const entries = sliced ? result.entries.slice(-maxEntries) : result.entries;
-    const startByteOffset = sliced
-      ? validFrom + result.entryLineOffsets[sliceStart]
-      : (from === 0 ? 0 : validFrom);
-    return {
-      entries,
-      startByteOffset,
-      fileSize: stat.size,
-      hasMore: startByteOffset > 0,
-      errorCount: result.errorCount,
-    };
+
+    let chunkSize = CHUNK_SIZE;
+    while (chunkSize < beforeByte * 2) {
+      const from = Math.max(0, beforeByte - chunkSize);
+      const { content, validFrom } = await readChunk(filePath, from, beforeByte);
+      if (!content) { chunkSize *= 2; continue; }
+      const result = parseContent(content);
+      if (result.entries.length >= maxEntries || from === 0) {
+        const sliced = result.entries.length > maxEntries;
+        const sliceStart = sliced ? result.entries.length - maxEntries : 0;
+        const entries = sliced ? result.entries.slice(-maxEntries) : result.entries;
+        const startByteOffset = sliced
+          ? validFrom + result.entryLineOffsets[sliceStart]
+          : (from === 0 ? 0 : validFrom);
+        return {
+          entries,
+          startByteOffset,
+          fileSize: stat.size,
+          hasMore: startByteOffset > 0,
+          errorCount: result.errorCount,
+        };
+      }
+      chunkSize *= 2;
+    }
+
+    return empty;
   } catch {
     return empty;
   }
