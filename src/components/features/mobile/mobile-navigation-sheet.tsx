@@ -221,7 +221,7 @@ const MobileNavigationSheet = ({
   return (
     <Sheet open={open} onOpenChange={handleSheetOpenChange}>
       <SheetContent side="left" className="w-72 gap-0 p-0" showCloseButton={false}>
-        <SheetHeader className="flex-row items-center border-b py-3 pl-1 pr-3">
+        <SheetHeader className="flex-row items-center border-b py-1.5 pl-1 pr-3">
           <button
             className="flex h-11 w-11 shrink-0 items-center justify-center text-muted-foreground focus-visible:outline-none"
             onClick={() => onOpenChange(false)}
@@ -317,7 +317,7 @@ const MobileNavigationSheet = ({
             </button>
           )}
           <SidebarRateLimits />
-          <div className="flex items-center gap-0.5 px-3 pb-3">
+          <div className="flex items-center gap-0.5 px-3 pt-1 pb-4">
             {sidebarItems.map((item) => {
               const isExternal = item.url.startsWith('http://') || item.url.startsWith('https://');
               const navPath = isExternal ? `/webview?url=${encodeURIComponent(item.url)}` : item.url;

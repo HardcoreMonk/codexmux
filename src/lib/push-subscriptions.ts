@@ -97,5 +97,9 @@ export const setSessionPushTarget = (sessionId: string, endpoint: string): void 
   sessionPushTarget.set(sessionId, endpoint);
 };
 
+export const clearSessionPushTarget = (sessionId: string): void => {
+  sessionPushTarget.delete(sessionId);
+};
+
 export const getSessionPushEndpoint = (sessionId: string): string | null =>
   sessionPushTarget.get(sessionId) ?? null;

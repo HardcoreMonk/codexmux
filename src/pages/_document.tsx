@@ -62,7 +62,7 @@ class MyDocument extends Document<IDocumentProps> {
           <link rel="apple-touch-startup-image" href="/splash/splash-1488x2266.png" media="(device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2)" />
           <style dangerouslySetInnerHTML={{ __html: `:root{--initial-sb-w:${effectiveWidth}px;--initial-sb-mw:${effectiveMinWidth}px}` }} />
           <script dangerouslySetInnerHTML={{ __html: initScript }} />
-          <script dangerouslySetInnerHTML={{ __html: `if(window.electronAPI){document.documentElement.style.setProperty('--titlebar-height','24px');document.documentElement.style.setProperty('--traffic-light-area','80px')}` }} />
+          <script dangerouslySetInnerHTML={{ __html: `if(window.electronAPI){document.documentElement.style.setProperty('--titlebar-height','24px');document.documentElement.style.setProperty('--traffic-light-area','82px')}` }} />
         </Head>
         <body className="antialiased">
           <Main />

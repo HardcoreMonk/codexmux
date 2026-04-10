@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { setSessionPushTarget, markVisible } from '@/lib/push-subscriptions';
+import { setSessionPushTarget, clearSessionPushTarget, markVisible } from '@/lib/push-subscriptions';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -8,12 +8,16 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   const { endpoint, sessionId } = req.body ?? {};
-  if (!endpoint || typeof sessionId !== 'string' || !sessionId) {
+  if (typeof sessionId !== 'string' || !sessionId) {
     return res.status(400).json({ error: 'Invalid body' });
   }
 
-  setSessionPushTarget(sessionId, endpoint);
-  markVisible(endpoint);
+  if (endpoint) {
+    setSessionPushTarget(sessionId, endpoint);
+    markVisible(endpoint);
+  } else {
+    clearSessionPushTarget(sessionId);
+  }
   return res.status(200).json({ ok: true });
 };
 

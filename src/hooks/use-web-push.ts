@@ -96,7 +96,6 @@ const sendVisibility = (endpoint: string, visible: boolean) => {
 
 export const registerPushTarget = async (sessionId: string): Promise<void> => {
   const endpoint = await getEndpoint();
-  if (!endpoint) return;
   fetch('/api/push/register-session', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
