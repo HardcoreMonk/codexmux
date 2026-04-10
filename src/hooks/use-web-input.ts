@@ -43,6 +43,7 @@ interface IUseWebInputReturn {
   value: string;
   setValue: (v: string) => void;
   mode: TWebInputMode;
+  canSend: boolean;
   send: () => void;
   interrupt: () => void;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
@@ -142,10 +143,13 @@ const useWebInput = (
     }
   }
 
+  const canSend = mode !== 'disabled' && terminalWsConnected;
+
   return {
     value,
     setValue,
     mode,
+    canSend,
     send,
     interrupt,
     textareaRef,

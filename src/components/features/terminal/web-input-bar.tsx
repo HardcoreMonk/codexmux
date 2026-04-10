@@ -49,7 +49,7 @@ const WebInputBar = ({
   const t = useTranslations('terminal');
   const { entries, isLoading, isError, fetchHistory, addHistory, deleteHistory } =
     useMessageHistory({ wsId });
-  const { value, setValue, mode, send, interrupt, textareaRef, focusInput } = useWebInput(
+  const { value, setValue, mode, canSend, send, interrupt, textareaRef, focusInput } = useWebInput(
     cliState,
     sendStdin,
     terminalWsConnected,
@@ -211,8 +211,12 @@ const WebInputBar = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 shrink-0 p-0 text-ui-red hover:text-ui-red/80"
+                className={cn(
+                  'h-7 w-7 shrink-0 p-0 text-ui-red hover:text-ui-red/80',
+                  !canSend && 'opacity-30',
+                )}
                 onClick={handleInterruptClick}
+                disabled={!canSend}
                 aria-label={t('interruptAriaLabel')}
               >
                 <Square size={14} fill="currentColor" />
@@ -223,11 +227,11 @@ const WebInputBar = ({
                 size="sm"
                 className={cn(
                   'h-7 w-7 shrink-0 p-0 text-muted-foreground hover:text-foreground',
-                  hasValue && !isDisabled && 'text-claude-active',
-                  isDisabled && 'opacity-30',
+                  hasValue && canSend && 'text-claude-active',
+                  !canSend && 'opacity-30',
                 )}
                 onClick={handleSendClick}
-                disabled={isDisabled}
+                disabled={!canSend}
                 aria-label={t('sendAriaLabel')}
               >
                 <SendHorizontal size={16} />
