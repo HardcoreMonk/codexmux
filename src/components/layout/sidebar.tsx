@@ -316,7 +316,7 @@ const Sidebar = () => {
           className="relative z-[60] flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border px-3 pl-traffic-light"
           {...(isElectron ? { style: { WebkitAppRegion: 'drag' } as React.CSSProperties } : {})}
         >
-          <AppLogo shimmer={hasBusy} />
+          <AppLogo shimmer={hasBusy} className="pointer-events-none" />
           <div
             className="flex items-center gap-0.5"
             {...(isElectron ? { style: { WebkitAppRegion: 'no-drag' } as React.CSSProperties } : {})}
