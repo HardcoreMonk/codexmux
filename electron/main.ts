@@ -560,8 +560,8 @@ app.on('window-all-closed', async () => {
   }
 
   // 2) 스토리지 flush (localStorage + 쿠키)
-  await session.defaultSession.flushStorageData().catch(() => {});
-  await session.defaultSession.cookies.flushStore().catch(() => {});
+  await session.defaultSession?.flushStorageData()?.catch(() => {});
+  await session.defaultSession?.cookies?.flushStore()?.catch(() => {});
 
   // 3) 모든 cleanup 완료 후 종료.
   //    app.exit()는 FreeEnvironment를 건너뛰어
@@ -585,8 +585,8 @@ app.on('will-quit', async (event) => {
     serverShutdown = null;
   }
 
-  await session.defaultSession.flushStorageData().catch(() => {});
-  await session.defaultSession.cookies.flushStore().catch(() => {});
+  await session.defaultSession?.flushStorageData()?.catch(() => {});
+  await session.defaultSession?.cookies?.flushStore()?.catch(() => {});
   clearTimeout(forceExit);
   app.exit(0);
 });
