@@ -65,6 +65,9 @@ const saveAppTheme = (value: string) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ appTheme: value }),
   }).catch(() => {});
+  if ((window as unknown as Record<string, unknown>).electronAPI) {
+    (window as unknown as { electronAPI: { setNativeTheme: (t: string) => void } }).electronAPI.setNativeTheme(value);
+  }
 };
 
 const LOCALES = [

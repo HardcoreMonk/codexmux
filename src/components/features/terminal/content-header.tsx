@@ -11,6 +11,8 @@ import { collectPanes } from '@/hooks/use-layout';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import useConfigStore from '@/hooks/use-config-store';
 import { isMac } from '@/lib/keyboard-shortcuts';
+import isElectron from '@/hooks/use-is-electron';
+import SystemResources from '@/components/layout/system-resources';
 
 const mod = isMac ? '⌘' : 'Ctrl+';
 
@@ -83,10 +85,18 @@ const ContentHeader = ({
 
   return (
     <div className="shrink-0 bg-background">
-      <div className="h-titlebar" />
-      <div className="flex h-12 shrink-0 items-center justify-end border-b border-border px-3">
+      <div
+        className="relative z-[60] flex h-12 shrink-0 items-center border-b border-border px-3"
+        {...(isElectron ? { style: { WebkitAppRegion: 'drag' } as React.CSSProperties } : {})}
+      >
+      <div className="mr-auto" {...(isElectron ? { style: { WebkitAppRegion: 'no-drag' } as React.CSSProperties } : {})}>
+        <SystemResources />
+      </div>
       <TooltipProvider>
-        <div className="flex items-center gap-1">
+        <div
+          className="flex items-center gap-1"
+          {...(isElectron ? { style: { WebkitAppRegion: 'no-drag' } as React.CSSProperties } : {})}
+        >
           <Tabs
             value={activePanelType}
             onValueChange={handlePanelSwitch}

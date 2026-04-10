@@ -42,6 +42,7 @@ import useSidebarItems from '@/hooks/use-sidebar-items';
 import useWebviewStore from '@/hooks/use-webview-store';
 import IconRenderer from '@/components/features/settings/icon-renderer';
 import SidebarRateLimits from '@/components/layout/sidebar-rate-limits';
+import isElectron from '@/hooks/use-is-electron';
 
 const MIN_WIDTH = 160;
 const MAX_WIDTH = 480;
@@ -311,10 +312,15 @@ const Sidebar = () => {
         role="navigation"
         aria-label={t('workspaceList')}
       >
-        <div className="h-titlebar shrink-0" />
-        <div className="flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
+        <div
+          className="relative z-[60] flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border px-3 pl-traffic-light"
+          {...(isElectron ? { style: { WebkitAppRegion: 'drag' } as React.CSSProperties } : {})}
+        >
           <AppLogo shimmer={hasBusy} />
-          <div className="flex items-center gap-0.5">
+          <div
+            className="flex items-center gap-0.5"
+            {...(isElectron ? { style: { WebkitAppRegion: 'no-drag' } as React.CSSProperties } : {})}
+          >
             {agentEnabled && (
               <button
                 className={cn(
@@ -571,7 +577,6 @@ const Sidebar = () => {
 
       {collapsed && (
         <div className="flex w-8 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-          <div className="h-titlebar shrink-0" />
           <button
             className="flex flex-1 items-center justify-center text-muted-foreground transition-colors hover:bg-sidebar-accent"
             onClick={handleToggleCollapse}

@@ -518,6 +518,10 @@ const bootstrap = async () => {
   serverConfig = readServerConfig();
   currentLocale = readLocaleFromConfig();
 
+  // macOS: nativeTheme을 앱 테마와 동기화해야 비활성 트래픽 라이트가 올바른 대비로 렌더링됨
+  const appTheme = readAppConfig().appTheme || 'dark';
+  nativeTheme.themeSource = appTheme as 'dark' | 'light' | 'system';
+
   if (serverConfig.mode === 'remote' && serverConfig.remoteUrl) {
     createWindow('about:blank');
     loadSplash(mainWindow!);
@@ -537,6 +541,12 @@ const bootstrap = async () => {
 ipcMain.handle('open-external', (_event, url: string) => {
   if (typeof url === 'string' && /^https?:\/\//.test(url)) {
     shell.openExternal(url);
+  }
+});
+
+ipcMain.handle('set-native-theme', (_event, theme: string) => {
+  if (theme === 'dark' || theme === 'light' || theme === 'system') {
+    nativeTheme.themeSource = theme;
   }
 });
 
