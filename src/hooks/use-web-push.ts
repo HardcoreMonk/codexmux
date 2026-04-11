@@ -85,11 +85,22 @@ const getEndpoint = async (): Promise<string | null> => {
   }
 };
 
-const sendVisibility = (endpoint: string, visible: boolean) => {
+const DEVICE_ID_KEY = 'purplemux-device-id';
+
+const getDeviceId = (): string => {
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+};
+
+const sendVisibility = (visible: boolean) => {
   fetch('/api/push/visibility', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ endpoint, visible }),
+    body: JSON.stringify({ deviceId: getDeviceId(), visible }),
     keepalive: true,
   }).catch(() => {});
 };
@@ -213,53 +224,24 @@ const useWebPush = () => {
         subscribe().then((ok) => {
           if (!ok) {
             useConfigStore.getState().setNotificationsEnabled(false);
-            return;
           }
-          if (!useConfigStore.getState().notificationsEnabled) return;
-          getEndpoint().then((ep) => {
-            if (!ep) return;
-            cleanupVisibility?.();
-            cleanupVisibility = startVisibilityTracking(ep);
-          });
         });
       } else {
-        cleanupVisibility?.();
-        cleanupVisibility = null;
         unsubscribe();
       }
     });
 
-    // Visibility tracking
-    let visibilityEndpoint: string | null = null;
-    let pingTimer: ReturnType<typeof setInterval> | null = null;
+    // Visibility tracking (push 구독 여부와 무관하게 항상 실행)
+    sendVisibility(!document.hidden);
 
-    const startVisibilityTracking = (ep: string) => {
-      visibilityEndpoint = ep;
-      sendVisibility(ep, !document.hidden);
-
-      const handleVisChange = () => {
-        if (!visibilityEndpoint) return;
-        sendVisibility(visibilityEndpoint, !document.hidden);
-      };
-      document.addEventListener('visibilitychange', handleVisChange);
-
-      pingTimer = setInterval(() => {
-        if (visibilityEndpoint && !document.hidden) {
-          sendVisibility(visibilityEndpoint, true);
-        }
-      }, 30_000);
-
-      return () => {
-        document.removeEventListener('visibilitychange', handleVisChange);
-        if (pingTimer) clearInterval(pingTimer);
-        if (visibilityEndpoint) sendVisibility(visibilityEndpoint, false);
-      };
+    const handleDeviceVisChange = () => {
+      sendVisibility(!document.hidden);
     };
+    document.addEventListener('visibilitychange', handleDeviceVisChange);
 
-    let cleanupVisibility: (() => void) | null = null;
-    getEndpoint().then((ep) => {
-      if (ep) cleanupVisibility = startVisibilityTracking(ep);
-    });
+    const pingTimer = setInterval(() => {
+      if (!document.hidden) sendVisibility(true);
+    }, 30_000);
 
     return () => {
       navigator.serviceWorker.removeEventListener('message', handleSwMessage);
@@ -267,7 +249,9 @@ const useWebPush = () => {
       window.removeEventListener('pageshow', handlePageShow);
       window.removeEventListener('focus', handlePageShow);
       unsub();
-      cleanupVisibility?.();
+      document.removeEventListener('visibilitychange', handleDeviceVisChange);
+      clearInterval(pingTimer);
+      sendVisibility(false);
     };
   }, []);
 };

@@ -16,7 +16,7 @@ import type { ICurrentAction, TTerminalStatus, ITabStatusEntry, IClientTabStatus
 import type { ISessionHistoryEntry } from '@/types/session-history';
 import { addSessionHistoryEntry, updateSessionHistoryDismissedAt } from '@/lib/session-history';
 import webpush from 'web-push';
-import { getSubscriptions, removeSubscription, isEndpointVisible, getSessionPushEndpoint } from '@/lib/push-subscriptions';
+import { getSubscriptions, removeSubscription, isAnyDeviceVisible, getSessionPushEndpoint } from '@/lib/push-subscriptions';
 import { getVAPIDKeys } from '@/lib/vapid-keys';
 import { nanoid } from 'nanoid';
 import fs from 'fs/promises';
@@ -1145,7 +1145,7 @@ class StatusManager {
       workspaceDir: ws?.directories[0] ?? null,
     });
 
-    if (subs.some((sub) => isEndpointVisible(sub.endpoint))) return;
+    if (isAnyDeviceVisible()) return;
     for (const sub of subs) {
       try {
         await webpush.sendNotification(sub, payload);
