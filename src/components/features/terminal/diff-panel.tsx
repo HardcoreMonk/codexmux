@@ -22,7 +22,11 @@ const DiffPanel = ({ sessionName }: IDiffPanelProps) => {
   const [isGitRepo, setIsGitRepo] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasUpdate, setHasUpdate] = useState(false);
-  const [outputFormat, setOutputFormat] = useState<OutputFormatType>('side-by-side');
+  const [outputFormat, setOutputFormat] = useState<OutputFormatType>(() => {
+    if (typeof window === 'undefined') return 'side-by-side';
+    const saved = localStorage.getItem('diff-output-format');
+    return saved === 'line-by-line' ? 'line-by-line' : 'side-by-side';
+  });
   const [showFileList, setShowFileList] = useState(false);
   const pollTimerRef = useRef(0);
   const currentHashRef = useRef('');
@@ -131,7 +135,11 @@ const DiffPanel = ({ sessionName }: IDiffPanelProps) => {
           {!isMobile && (
             <button
               className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-              onClick={() => setOutputFormat((f) => f === 'side-by-side' ? 'line-by-line' : 'side-by-side')}
+              onClick={() => setOutputFormat((f) => {
+                const next = f === 'side-by-side' ? 'line-by-line' : 'side-by-side';
+                localStorage.setItem('diff-output-format', next);
+                return next;
+              })}
               title={outputFormat === 'side-by-side' ? t('lineByLine') : t('sideBySide')}
             >
               {outputFormat === 'side-by-side' ? (
