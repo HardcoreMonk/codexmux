@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { RefreshCw, GitBranch, Columns2, Rows2 } from 'lucide-react';
-import { html as diffHtml } from 'diff2html';
 import type { OutputFormatType } from 'diff2html/lib/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -18,7 +17,6 @@ const DiffPanel = ({ sessionName }: IDiffPanelProps) => {
   const t = useTranslations('diff');
   const isMobile = useIsMobile();
   const [diff, setDiff] = useState('');
-  const [hash, setHash] = useState('');
   const [isGitRepo, setIsGitRepo] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasUpdate, setHasUpdate] = useState(false);
@@ -27,9 +25,9 @@ const DiffPanel = ({ sessionName }: IDiffPanelProps) => {
     const saved = localStorage.getItem('diff-output-format');
     return saved === 'line-by-line' ? 'line-by-line' : 'side-by-side';
   });
-  const [showFileList, setShowFileList] = useState(false);
   const pollTimerRef = useRef(0);
   const currentHashRef = useRef('');
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const fetchDiff = useCallback(async () => {
     setLoading(true);
@@ -41,7 +39,6 @@ const DiffPanel = ({ sessionName }: IDiffPanelProps) => {
       setIsGitRepo(data.isGitRepo);
       if (data.isGitRepo) {
         setDiff(data.diff ?? '');
-        setHash(data.hash ?? '');
         currentHashRef.current = data.hash ?? '';
       }
     } finally {
@@ -83,15 +80,32 @@ const DiffPanel = ({ sessionName }: IDiffPanelProps) => {
     };
   }, [isGitRepo, pollForChanges]);
 
-  const renderedHtml = useMemo(() => {
-    if (!diff) return '';
-    return diffHtml(diff, {
-      outputFormat: isMobile ? 'line-by-line' : outputFormat,
-      drawFileList: true,
-      matching: 'lines',
-    });
-  }, [diff, outputFormat, isMobile]);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !diff) {
+      if (el) el.innerHTML = '';
+      return;
+    }
 
+    let cancelled = false;
+    import('diff2html/lib/ui/js/diff2html-ui-slim').then(({ Diff2HtmlUI }) => {
+      if (cancelled || !containerRef.current) return;
+      const ui = new Diff2HtmlUI(containerRef.current, diff, {
+        outputFormat: isMobile ? 'line-by-line' : outputFormat,
+        drawFileList: true,
+        matching: 'lines',
+        highlight: true,
+        fileListToggle: true,
+        fileListStartVisible: false,
+        fileContentToggle: false,
+        synchronisedScroll: true,
+        stickyFileHeaders: true,
+      });
+      ui.draw();
+    });
+
+    return () => { cancelled = true; };
+  }, [diff, outputFormat, isMobile]);
 
   if (loading && isGitRepo === null) {
     return (
@@ -174,13 +188,8 @@ const DiffPanel = ({ sessionName }: IDiffPanelProps) => {
           </div>
         ) : (
           <div
-            className={cn('diff-panel-content text-xs', !showFileList && 'diff-file-list-collapsed')}
-            dangerouslySetInnerHTML={{ __html: renderedHtml }}
-            onClick={(e) => {
-              if ((e.target as HTMLElement).closest('.d2h-file-list-header')) {
-                setShowFileList((v) => !v);
-              }
-            }}
+            ref={containerRef}
+            className="diff-panel-content text-xs"
           />
         )}
       </div>

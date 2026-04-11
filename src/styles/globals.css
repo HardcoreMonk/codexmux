@@ -540,22 +540,3 @@ body {
   display: none;
 }
 
-.diff-panel-content .d2h-file-list-header {
-  cursor: pointer;
-  user-select: none;
-}
-
-.diff-panel-content .d2h-file-list-title::after {
-  content: " hide";
-  font-weight: 400;
-  font-size: 10px;
-  color: var(--muted-foreground);
-}
-
-.diff-file-list-collapsed .d2h-file-list-title::after {
-  content: " show";
-}
-
-.diff-file-list-collapsed .d2h-file-list-wrapper .d2h-file-list {
-  display: none;
-}
