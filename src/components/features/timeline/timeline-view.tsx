@@ -9,6 +9,7 @@ import type {
   ITimelineToolCall,
   ITimelineToolResult,
   ITaskItem,
+  IInitMeta,
   TCliState,
   TClaudeStatus,
   TTimelineConnectionStatus,
@@ -23,12 +24,14 @@ import AskUserQuestionItem from '@/components/features/timeline/ask-user-questio
 import TaskChecklist from '@/components/features/timeline/task-checklist';
 import TaskProgressItem from '@/components/features/timeline/task-progress-item';
 import ScrollToBottomButton from '@/components/features/timeline/scroll-to-bottom-button';
+import PermissionPromptItem from '@/components/features/timeline/permission-prompt-item';
 
 interface ITimelineViewProps {
   entries: ITimelineEntry[];
   tasks: ITaskItem[];
   sessionId: string | null;
   sessionName?: string;
+  initMeta?: IInitMeta;
   cliState: TCliState;
   claudeStatus: TClaudeStatus;
   wsStatus: TTimelineConnectionStatus;
@@ -39,6 +42,9 @@ interface ITimelineViewProps {
   hasMore: boolean;
   scrollToBottomRef?: React.MutableRefObject<(() => void) | undefined>;
 }
+
+const RESUME_TOKEN_THRESHOLD = 100_000;
+const RESUME_IDLE_MINUTES = 70;
 
 const ElapsedTime = ({ since }: { since: number }) => {
   const [elapsed, setElapsed] = useState(0);
@@ -236,6 +242,7 @@ const TimelineView = ({
   tasks,
   sessionId,
   sessionName,
+  initMeta,
   cliState,
   claudeStatus,
   wsStatus,
@@ -270,6 +277,27 @@ const TimelineView = ({
 
   const groupedItems = useMemo(() => groupTimelineEntries(entries), [entries]);
   const hasDisplayItems = groupedItems.length > 0;
+
+  const [showDialogPrompt, setShowDialogPrompt] = useState(false);
+  const dialogDepsKey = `${cliState}:${initMeta?.contextWindowTokens ?? 0}:${initMeta?.lastTimestamp ?? 0}:${sessionName ?? ''}`;
+
+  useEffect(() => {
+    if (cliState !== 'idle' || !initMeta || !sessionName
+      || initMeta.contextWindowTokens < RESUME_TOKEN_THRESHOLD
+      || !initMeta.lastTimestamp) {
+      setShowDialogPrompt(false);
+      return;
+    }
+
+    const check = () => {
+      const idleMinutes = (Date.now() - initMeta.lastTimestamp) / 60_000;
+      setShowDialogPrompt(idleMinutes >= RESUME_IDLE_MINUTES);
+    };
+    check();
+    const id = setInterval(check, 60_000);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialogDepsKey]);
 
   useEffect(() => {
     if (skipAnimation && entries.length > 0) {
@@ -393,6 +421,11 @@ const TimelineView = ({
               )}
             </div>
           ))}
+          {showDialogPrompt && sessionName && (
+            <div className="px-4 py-1.5">
+              <PermissionPromptItem sessionName={sessionName} />
+            </div>
+          )}
           {cliState === 'busy' && (
             <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
               <Spinner size={10} className="text-claude-active" />

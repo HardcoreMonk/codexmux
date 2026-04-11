@@ -247,6 +247,7 @@ const ClaudeCodePanel = ({
           tasks={tasks}
           sessionId={sessionId}
           sessionName={sessionName}
+          initMeta={initMeta}
           cliState={effectiveCliState}
           claudeStatus={claudeStatusFromTimeline}
           wsStatus={wsStatus}

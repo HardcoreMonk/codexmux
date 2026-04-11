@@ -3,6 +3,10 @@ const OPTION_KEYWORDS = [
   'Accept', 'Decline',
   'Open System Settings', 'Try again',
   'Use this', 'Continue without',
+  // ink Select dialog keywords (Resume Return, Idle Return)
+  'Resume from summary', 'Resume full session',
+  'Continue this conversation', 'Send message as',
+  "Don't ask me again",
 ];
 const INDICATOR_RE = /^\s*(?:[❯›>]\s+)?(.+)$/;
 const FOCUSED_RE = /^\s*[❯›>]\s+/;
@@ -17,7 +21,9 @@ const isKnownPromptPattern = (options: string[]): boolean => {
   return (hasOption(options, 'Yes') && hasOption(options, 'No'))
     || (hasOption(options, 'Accept') && hasOption(options, 'Decline'))
     || hasOption(options, 'Open System Settings')
-    || (hasOption(options, 'Use this') && hasOption(options, 'Continue without'));
+    || (hasOption(options, 'Use this') && hasOption(options, 'Continue without'))
+    || (hasOption(options, 'Resume from summary') && hasOption(options, 'Resume full session'))
+    || (hasOption(options, 'Continue this conversation') && hasOption(options, 'Send message as'));
 };
 
 export const parsePermissionOptions = (paneContent: string): { options: string[]; focusedIndex: number } => {
