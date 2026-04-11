@@ -481,10 +481,12 @@ body {
 
 .diff-panel-content .d2h-code-linenumber,
 .diff-panel-content .d2h-code-side-linenumber {
+  display: table-cell;
   position: relative;
   border-color: var(--border);
   color: var(--muted-foreground);
   font-size: 11px;
+  white-space: nowrap;
 }
 
 .diff-panel-content .d2h-info {
