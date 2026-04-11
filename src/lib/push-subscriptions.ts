@@ -67,26 +67,28 @@ export const removeSubscription = async (endpoint: string): Promise<void> =>
   });
 
 const VISIBILITY_TTL = 60_000;
-const gVis = globalThis as unknown as { __ptVisibleEndpoints?: Map<string, number> };
-if (!gVis.__ptVisibleEndpoints) gVis.__ptVisibleEndpoints = new Map();
-const visibleEndpoints = gVis.__ptVisibleEndpoints;
+const gVis = globalThis as unknown as { __ptVisibleDevices?: Map<string, number> };
+if (!gVis.__ptVisibleDevices) gVis.__ptVisibleDevices = new Map();
+const visibleDevices = gVis.__ptVisibleDevices;
 
-export const markVisible = (endpoint: string): void => {
-  visibleEndpoints.set(endpoint, Date.now());
+export const markDeviceVisible = (deviceId: string): void => {
+  visibleDevices.set(deviceId, Date.now());
 };
 
-export const markHidden = (endpoint: string): void => {
-  visibleEndpoints.delete(endpoint);
+export const markDeviceHidden = (deviceId: string): void => {
+  visibleDevices.delete(deviceId);
 };
 
-export const isEndpointVisible = (endpoint: string): boolean => {
-  const lastSeen = visibleEndpoints.get(endpoint);
-  if (!lastSeen) return false;
-  if (Date.now() - lastSeen > VISIBILITY_TTL) {
-    visibleEndpoints.delete(endpoint);
-    return false;
+export const isAnyDeviceVisible = (): boolean => {
+  const now = Date.now();
+  for (const [deviceId, lastSeen] of visibleDevices) {
+    if (now - lastSeen > VISIBILITY_TTL) {
+      visibleDevices.delete(deviceId);
+    } else {
+      return true;
+    }
   }
-  return true;
+  return false;
 };
 
 const gActive = globalThis as unknown as { __ptSessionPushTarget?: Map<string, string> };

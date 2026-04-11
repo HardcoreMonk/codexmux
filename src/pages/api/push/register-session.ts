@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { setSessionPushTarget, clearSessionPushTarget, markVisible } from '@/lib/push-subscriptions';
+import { setSessionPushTarget, clearSessionPushTarget } from '@/lib/push-subscriptions';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -14,7 +14,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   if (endpoint) {
     setSessionPushTarget(sessionId, endpoint);
-    markVisible(endpoint);
   } else {
     clearSessionPushTarget(sessionId);
   }

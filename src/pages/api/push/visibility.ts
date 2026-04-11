@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { markVisible, markHidden } from '@/lib/push-subscriptions';
+import { markDeviceVisible, markDeviceHidden } from '@/lib/push-subscriptions';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -7,15 +7,15 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { endpoint, visible } = req.body ?? {};
-  if (!endpoint || typeof visible !== 'boolean') {
+  const { deviceId, visible } = req.body ?? {};
+  if (!deviceId || typeof visible !== 'boolean') {
     return res.status(400).json({ error: 'Invalid body' });
   }
 
   if (visible) {
-    markVisible(endpoint);
+    markDeviceVisible(deviceId);
   } else {
-    markHidden(endpoint);
+    markDeviceHidden(deviceId);
   }
 
   return res.status(200).json({ ok: true });
