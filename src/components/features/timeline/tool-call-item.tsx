@@ -42,7 +42,7 @@ const DiffView = ({ oldString, newString }: { oldString: string; newString: stri
   const newLines = newString.split('\n');
 
   return (
-    <div className="mt-1.5 overflow-x-auto rounded border bg-ui-gray/5 font-mono text-xs">
+    <div className="mt-1.5 overflow-x-auto rounded border bg-ui-gray/5 font-mono text-xs whitespace-pre">
       {oldLines.map((line, i) => (
         <div key={`old-${i}`} className="bg-ui-red/10 px-3 py-0.5">
           <span className="mr-2 text-ui-red select-none">-</span>
