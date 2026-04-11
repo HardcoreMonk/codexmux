@@ -211,6 +211,12 @@ const useTabStore = create<ITabStore>((set) => ({
           next[tabId] = { ...DEFAULT_TAB_STATE, cliState: entry.cliState, workspaceId: entry.workspaceId, tabName: entry.tabName, panelType: entry.panelType, terminalStatus: entry.terminalStatus, listeningPorts: entry.listeningPorts, currentProcess: entry.currentProcess, claudeSummary: entry.claudeSummary, lastUserMessage: entry.lastUserMessage, lastAssistantMessage: entry.lastAssistantMessage, currentAction: entry.currentAction, readyForReviewAt: entry.readyForReviewAt, busySince: entry.busySince, dismissedAt: entry.dismissedAt, claudeSessionId: entry.claudeSessionId };
         }
       }
+      // 서버에 아직 반영되지 않은 로컬 탭 보존 (split 직후 레이스 컨디션 방지)
+      for (const [tabId, existing] of Object.entries(state.tabs)) {
+        if (!next[tabId]) {
+          next[tabId] = existing;
+        }
+      }
       return { tabs: next };
     }),
 
