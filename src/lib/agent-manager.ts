@@ -474,11 +474,7 @@ class AgentManager {
   // --- Session lifecycle ---
 
   private async buildClaudeMdContent(runtime: IAgentRuntime, includeHistory = true): Promise<string> {
-    const port = process.env.PORT || '8022';
-    const token = getAgentToken();
     const { info } = runtime;
-    const baseUrl = `http://localhost:${port}/api/agent-rpc`;
-    const authHeader = `  -H "X-Agent-Token: ${token}" \\`;
     const soul = await this.readSoul(info.id);
 
     const lines = [
@@ -495,26 +491,26 @@ class AgentManager {
         soul,
         '',
       ] : []),
+      '## purplemux CLI',
+      '',
+      'All interaction with purplemux goes through the `purplemux` CLI.',
+      'Environment variables (`PMUX_PORT`, `PMUX_TOKEN`, `PMUX_AGENT_ID`) are pre-configured.',
+      '',
       '## Workspace Discovery',
       '',
-      'You do NOT have pre-assigned projects. Instead, discover available workspaces',
-      'by querying the API below. Use the conversation context to determine which',
-      'workspace is relevant for the current task.',
-      '',
-      '### List workspaces',
+      'You do NOT have pre-assigned projects. Discover available workspaces:',
       '',
       '```bash',
-      `curl -s ${baseUrl}/workspaces \\`,
-      authHeader.replace(/ \\$/, ''),
+      'purplemux workspaces',
       '```',
       '',
       'Response: `{ "workspaces": [{ "id": "ws-xxx", "name": "...", "directories": ["..."] }] }`',
       '',
-      'Call this API at the start of every new task to know the current workspace state.',
+      'Call this at the start of every new task to know the current workspace state.',
       'Match the user\'s request to the appropriate workspace by name or directory path.',
       'If unclear which workspace to use, ask the user.',
       '',
-      '## Tab Control API (localhost:' + port + ')',
+      '## Tab Control',
       '',
       'You do NOT modify code directly. Instead, create tabs in project workspaces',
       'and delegate work to Claude Code sessions running in those tabs.',
@@ -522,10 +518,7 @@ class AgentManager {
       '### Create a tab',
       '',
       '```bash',
-      `curl -s -X POST ${baseUrl}/${info.id}/tab \\`,
-      authHeader,
-      '  -H "Content-Type: application/json" \\',
-      '  -d \'{"workspaceId":"WORKSPACE_ID","taskTitle":"TASK_TITLE"}\'',
+      'purplemux tab create -w WORKSPACE_ID -t "TASK_TITLE"',
       '```',
       '',
       'Response: `{ "tabId": "...", "workspaceId": "...", "tmuxSession": "..." }`',
@@ -533,10 +526,7 @@ class AgentManager {
       '### Send instructions to a tab',
       '',
       '```bash',
-      `curl -s -X POST ${baseUrl}/${info.id}/tab/TAB_ID/send \\`,
-      authHeader,
-      '  -H "Content-Type: application/json" \\',
-      '  -d \'{"content":"YOUR_INSTRUCTION"}\'',
+      'purplemux tab send TAB_ID YOUR_INSTRUCTION',
       '```',
       '',
       'Response: `{ "status": "sent" | "queued" }`',
@@ -544,8 +534,7 @@ class AgentManager {
       '### Check tab status',
       '',
       '```bash',
-      `curl -s ${baseUrl}/${info.id}/tab/TAB_ID/status \\`,
-      authHeader.replace(/ \\$/, ''),
+      'purplemux tab status TAB_ID',
       '```',
       '',
       'Response: `{ "tabId": "...", "status": "idle" | "working" | "completed" | "error" }`',
@@ -553,8 +542,7 @@ class AgentManager {
       '### Read tab result',
       '',
       '```bash',
-      `curl -s ${baseUrl}/${info.id}/tab/TAB_ID/result \\`,
-      authHeader.replace(/ \\$/, ''),
+      'purplemux tab result TAB_ID',
       '```',
       '',
       'Response: `{ "content": "...", "source": "file" | "jsonl" | "buffer" }`',
@@ -562,23 +550,25 @@ class AgentManager {
       '### Close a tab',
       '',
       '```bash',
-      `curl -s -X DELETE ${baseUrl}/${info.id}/tab/TAB_ID \\`,
-      authHeader.replace(/ \\$/, ''),
+      'purplemux tab close TAB_ID',
       '```',
       '',
-      '## Communication API',
+      '### List tabs',
+      '',
+      '```bash',
+      'purplemux tab list',
+      '```',
+      '',
+      '## Communication',
       '',
       'The user communicates with you through a chat UI, NOT the terminal.',
       'Your terminal output is invisible to the user.',
-      'The ONLY way the user sees your responses is through the relay API below.',
+      'The ONLY way the user sees your responses is through the message command below.',
       '',
-      '**You MUST call this API for EVERY response.**',
+      '**You MUST call this for EVERY response.**',
       '',
       '```bash',
-      `curl -s -X POST ${baseUrl}/message \\`,
-      authHeader,
-      `  -H "Content-Type: application/json" \\`,
-      `  -d '{"agentId":"${info.id}","type":"TYPE","content":"YOUR_MESSAGE"}'`,
+      'purplemux message --type TYPE YOUR_MESSAGE',
       '```',
       '',
       '### Message types',
@@ -591,7 +581,7 @@ class AgentManager {
       '| `error` | Unrecoverable failure |',
       '| `approval` | Need user approval for a risky action |',
       '',
-      '## Memory API',
+      '## Memory',
       '',
       'You have persistent memory. Use it to save important context that should survive across sessions:',
       'decisions made, user preferences, project-specific knowledge, lessons learned.',
@@ -599,30 +589,21 @@ class AgentManager {
       '### Save a memory',
       '',
       '```bash',
-      `curl -s -X POST ${baseUrl}/${info.id}/memory \\`,
-      authHeader,
-      '  -H "Content-Type: application/json" \\',
-      '  -d \'{"content":"WHAT_TO_REMEMBER","tags":["tag1","tag2"]}\'',
+      'purplemux memory save --tags tag1,tag2 WHAT_TO_REMEMBER',
       '```',
-      '',
-      'Response: `{ "id": "...", "content": "...", "tags": [...], "createdAt": "..." }`',
       '',
       '### Search memories',
       '',
       '```bash',
-      `curl -s "${baseUrl}/${info.id}/memory?q=KEYWORD&tag=TAG" \\`,
-      authHeader.replace(/ \\$/, ''),
+      'purplemux memory search --q KEYWORD --tag TAG',
       '```',
       '',
-      'Response: `{ "entries": [{ "id": "...", "content": "...", "tags": [...], "createdAt": "..." }] }`',
-      '',
-      'Both `q` and `tag` are optional. Omit both to list all memories.',
+      'Both `--q` and `--tag` are optional. Omit both to list all memories.',
       '',
       '### Delete a memory',
       '',
       '```bash',
-      `curl -s -X DELETE ${baseUrl}/${info.id}/memory/MEMORY_ID \\`,
-      authHeader.replace(/ \\$/, ''),
+      'purplemux memory delete MEMORY_ID',
       '```',
       '',
       '### When to save',
@@ -640,23 +621,7 @@ class AgentManager {
       '',
       '## purplemux API',
       '',
-      'All purplemux APIs are accessible with your agent token (`-H "X-Agent-Token: TOKEN"`).',
-      'Use these to query the mux state when needed.',
-      '',
-      '| Category | Endpoint | Description |',
-      '|----------|----------|-------------|',
-      '| Workspace | `GET /api/workspace` | 워크스페이스 목록 |',
-      '| Layout | `GET /api/layout?workspace=ID` | 탭/패인 구조 |',
-      '| Git | `GET /api/git/status?tmuxSession=S` | Git 상태 |',
-      '| Config | `GET /api/config` | 앱 설정 |',
-      '| Stats | `GET /api/stats/overview` | 사용 통계 |',
-      '| Timeline | `GET /api/timeline/sessions` | 세션 히스토리 |',
-      '',
-      'For full API reference:',
-      '```bash',
-      `curl -s ${baseUrl}/api-guide \\`,
-      authHeader.replace(/ \\$/, ''),
-      '```',
+      'For advanced queries, use `purplemux api-guide` to see the full HTTP API reference.',
       '',
       '## Workflow',
       '',
@@ -673,12 +638,12 @@ class AgentManager {
       '5. Send instructions to tab (simple: enriched request / complex: one step at a time)',
       '6. Wait for `[TAB_COMPLETE]` or `[TAB_ERROR]` notification',
       '7. Read the tab result and verify',
-      '8. Send progress/completion reports to the user via the relay API',
+      '8. Send progress/completion reports to the user via the message command',
       '9. Close the tab when done',
       '',
       '## Rules',
       '',
-      '- ALWAYS relay your response via the Communication API. The user cannot see terminal output.',
+      '- ALWAYS relay your response via the message command. The user cannot see terminal output.',
       '- 코드를 직접 수정하지 않는다. 모든 코드 변경은 반드시 탭을 생성하여 위임한다.',
       '- 단순한 변경이라도 직접 수정하지 말고 탭에 위임한다. 에이전트의 역할은 조율과 오케스트레이션이다.',
       '- For long tasks, send periodic `report` messages so the user knows progress.',
@@ -749,6 +714,10 @@ class AgentManager {
       await createSession(info.tmuxSession, TMUX_COLS, TMUX_ROWS, agentDir);
 
       await new Promise((resolve) => setTimeout(resolve, 500));
+      const port = process.env.PORT || '8022';
+      const token = getAgentToken();
+      await sendKeys(info.tmuxSession, `export PMUX_PORT=${port} PMUX_TOKEN=${token} PMUX_AGENT_ID=${info.id}`);
+      await new Promise((resolve) => setTimeout(resolve, 300));
       await sendKeys(info.tmuxSession, `claude --settings ${brainHookPath} --dangerously-skip-permissions`);
 
       // Accept workspace trust prompt if shown
@@ -1083,11 +1052,11 @@ class AgentManager {
   // --- Hook settings ---
 
   private getAgentHookPath(agentId: string): string {
-    return path.join(getAgentDir(agentId), 'hooks.json');
+    return path.join(getAgentDir(agentId), 'agent-hooks.json');
   }
 
   private getTabHookPath(agentId: string, tabId: string): string {
-    return path.join(getAgentDir(agentId), `hooks-${tabId}.json`);
+    return path.join(getAgentDir(agentId), `agent-hooks-${tabId}.json`);
   }
 
   private async writeAgentHookSettings(agentId: string): Promise<string> {
@@ -1095,6 +1064,9 @@ class AgentManager {
     const hookPath = this.getAgentHookPath(agentId);
     const settings = buildAgentBrainHookSettings(port, agentId);
     await fs.writeFile(hookPath, JSON.stringify(settings, null, 2), 'utf-8');
+    // Clean up legacy filename
+    const legacyPath = path.join(getAgentDir(agentId), 'hooks.json');
+    await fs.unlink(legacyPath).catch(() => {});
     return hookPath;
   }
 
@@ -1103,6 +1075,9 @@ class AgentManager {
     const hookPath = this.getTabHookPath(agentId, tabId);
     const settings = buildAgentTabHookSettings(port, agentId, tabId);
     await fs.writeFile(hookPath, JSON.stringify(settings, null, 2), 'utf-8');
+    // Clean up legacy filename
+    const legacyPath = path.join(getAgentDir(agentId), `hooks-${tabId}.json`);
+    await fs.unlink(legacyPath).catch(() => {});
     return hookPath;
   }
 
@@ -1268,21 +1243,8 @@ class AgentManager {
         log.info(`agent ${entry} has unanswered message, will retry delivery`);
       }
 
-      if (agentSessions.has(tmuxSession)) {
-        runtime.claudeMdHash = await this.computeClaudeMdHash(runtime);
-        const needsRestart = await this.isClaudeMdStale(runtime);
-        if (needsRestart) {
-          log.info(`agent ${entry} CLAUDE.md is stale, restarting session`);
-          await this.restartAgentSession(runtime);
-        } else {
-          this.setStatus(runtime, 'idle');
-          this.startStatusPolling(runtime);
-          if (runtime.tabs.size > 0) this.startTabPolling(runtime);
-          log.debug(`recovered agent session: ${entry} (${tmuxSession})`);
-        }
-      } else {
-        await this.startAgentSession(runtime);
-      }
+      // Always restart — server restart invalidates token and hook settings
+      await this.restartAgentSession(runtime);
 
       // After recovering to idle, retry undelivered messages
       if (runtime.status === 'idle' && runtime.lastDeliveredContent) {

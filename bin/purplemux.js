@@ -2,6 +2,19 @@
 
 const path = require('path');
 
-process.env.NODE_ENV = process.env.NODE_ENV || 'production';
-process.env.__PMUX_APP_DIR = path.resolve(__dirname, '..');
-require('../dist/server.js');
+const CLI_COMMANDS = new Set([
+  'workspaces', 'tab', 'message', 'msg', 'memory', 'mem', 'api-guide', 'help',
+]);
+
+const cmd = process.argv[2];
+
+if (cmd && CLI_COMMANDS.has(cmd)) {
+  require('./cli.js');
+} else if (!cmd || cmd === 'start') {
+  process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+  process.env.__PMUX_APP_DIR = path.resolve(__dirname, '..');
+  require('../dist/server.js');
+} else {
+  process.stderr.write(`unknown command: ${cmd}\nRun 'purplemux help' for usage.\n`);
+  process.exit(1);
+}
