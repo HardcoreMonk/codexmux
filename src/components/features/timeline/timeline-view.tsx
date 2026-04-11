@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { Terminal, RefreshCw, OctagonX, LogOut, ChevronsUp, Sparkles } from 'lucide-react';
+import { Terminal, RefreshCw, OctagonX, LogOut, ChevronsUp, MessageSquareMore } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import { useStickToBottom } from 'use-stick-to-bottom';
 import { Button } from '@/components/ui/button';
@@ -212,7 +212,7 @@ const EmptyState = ({ claudeStatus }: { claudeStatus: TClaudeStatus }) => {
   if (claudeStatus === 'running') {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
-        <Sparkles size={32} className="opacity-40" />
+        <MessageSquareMore size={32} className="opacity-40" />
         <p className="text-xs">{t('emptyRunning')}</p>
       </div>
     );
