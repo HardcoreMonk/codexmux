@@ -35,18 +35,26 @@ const useNativeNotification = () => {
       let attentionCount = 0;
 
       for (const [tabId, tab] of Object.entries(state.tabs)) {
-        if (tab.cliState === 'ready-for-review') attentionCount++;
+        if (tab.cliState === 'ready-for-review' || tab.cliState === 'needs-input') attentionCount++;
 
         if (notified || !enabled) continue;
         const prevTab = prev.tabs[tabId];
+        const body = tab.lastUserMessage
+          ? tab.lastUserMessage.slice(0, 100)
+          : tab.tabName || tabId;
         if (
           tab.cliState === 'ready-for-review' &&
           prevTab?.cliState === 'busy'
         ) {
-          const body = tab.lastUserMessage
-            ? tab.lastUserMessage.slice(0, 100)
-            : tab.tabName || tabId;
           api.showNotification('Task Complete', body);
+          lastNotifiedTabId = tabId;
+          lastNotifiedWorkspaceId = tab.workspaceId;
+          notified = true;
+        } else if (
+          tab.cliState === 'needs-input' &&
+          prevTab?.cliState === 'busy'
+        ) {
+          api.showNotification('Input Required', body);
           lastNotifiedTabId = tabId;
           lastNotifiedWorkspaceId = tab.workspaceId;
           notified = true;

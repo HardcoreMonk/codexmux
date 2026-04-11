@@ -741,7 +741,13 @@ class StatusManager {
     }
 
     if (newState === 'ready-for-review' && prevState === 'busy') {
-      this.sendWebPush(tabId, entry).catch((err) => {
+      this.sendWebPush(tabId, entry, 'review').catch((err) => {
+        log.warn('Web push failed: %s', err);
+      });
+    }
+
+    if (newState === 'needs-input' && prevState === 'busy') {
+      this.sendWebPush(tabId, entry, 'needs-input').catch((err) => {
         log.warn('Web push failed: %s', err);
       });
     }
@@ -1119,17 +1125,18 @@ class StatusManager {
     this.broadcastUpdate(parsed.tabId, entry);
   }
 
-  private async sendWebPush(tabId: string, entry: ITabStatusEntry): Promise<void> {
+  private async sendWebPush(tabId: string, entry: ITabStatusEntry, pushType: 'review' | 'needs-input'): Promise<void> {
     const subs = await getSubscriptions();
     if (subs.length === 0) return;
 
     const keys = await getVAPIDKeys();
     webpush.setVapidDetails('mailto:noreply@purplemux.app', keys.publicKey, keys.privateKey);
 
+    const title = pushType === 'needs-input' ? 'Input Required' : 'Task Complete';
     const body = entry.lastUserMessage?.slice(0, 100) || entry.tabName || tabId;
     const ws = (await getWorkspaces()).workspaces.find((w) => w.id === entry.workspaceId);
     const payload = JSON.stringify({
-      title: 'Task Complete',
+      title,
       body,
       tabId,
       workspaceId: entry.workspaceId,
