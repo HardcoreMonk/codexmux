@@ -2,7 +2,7 @@ import os from 'os';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getWorkspaces, createWorkspace } from '@/lib/workspace-store';
 import { readLayoutFile, resolveLayoutFile, collectAllTabs } from '@/lib/layout-store';
-import { buildResumeCommand } from '@/lib/claude-command';
+import { buildResumeCommand, isValidSessionId } from '@/lib/claude-command';
 import { sendKeys } from '@/lib/tmux';
 import { getStatusManager } from '@/lib/status-manager';
 import { createLogger } from '@/lib/logger';
@@ -19,6 +19,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   if (req.method === 'POST') {
     const { directory, name, resumeSessionId } = req.body ?? {};
+    if (resumeSessionId && !isValidSessionId(resumeSessionId)) {
+      return res.status(400).json({ error: 'Invalid session ID format' });
+    }
     const resolvedDirectory =
       directory && typeof directory === 'string' ? directory : os.homedir();
 

@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { addTabToPane } from '@/lib/layout-store';
 import { getActiveWorkspaceId } from '@/lib/workspace-store';
 import { getStatusManager } from '@/lib/status-manager';
-import { buildResumeCommand } from '@/lib/claude-command';
+import { buildResumeCommand, isValidSessionId } from '@/lib/claude-command';
 import { sendKeys } from '@/lib/tmux';
 import { createLogger } from '@/lib/logger';
 
@@ -23,6 +23,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   const paneId = req.query.paneId as string;
   const { name, cwd, panelType, command, resumeSessionId } = req.body ?? {};
+  if (resumeSessionId && !isValidSessionId(resumeSessionId)) {
+    return res.status(400).json({ error: 'Invalid session ID format' });
+  }
 
   try {
     const tab = await addTabToPane(wsId, paneId, name, cwd, panelType, command);

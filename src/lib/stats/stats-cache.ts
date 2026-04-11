@@ -243,35 +243,37 @@ let memoryCache: { data: IStatsCache; expiresAt: number } | null = null;
 
 // --- Main: build or update cache, return IStatsCache ---
 
+const findFirstDateFromFile = async (filePath: string): Promise<string | null> => {
+  try {
+    const stream = createReadStream(filePath, { encoding: 'utf-8' });
+    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+
+    for await (const line of rl) {
+      if (!line.trim()) continue;
+      try {
+        const entry = JSON.parse(line) as Record<string, unknown>;
+        const ts = String(entry.timestamp ?? '');
+        if (ts) return ts.slice(0, 10);
+      } catch {
+        // skip
+      }
+    }
+  } catch {
+    // skip
+  }
+  return null;
+};
+
 const findFirstDate = async (): Promise<string | null> => {
   const files = await collectJsonlFiles();
-  let earliest: string | null = null;
+  if (files.length === 0) return null;
 
-  for (const filePath of files) {
-    try {
-      const stream = createReadStream(filePath, { encoding: 'utf-8' });
-      const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
-
-      for await (const line of rl) {
-        if (!line.trim()) continue;
-        try {
-          const entry = JSON.parse(line) as Record<string, unknown>;
-          const ts = String(entry.timestamp ?? '');
-          if (ts) {
-            const date = ts.slice(0, 10);
-            if (!earliest || date < earliest) earliest = date;
-            break;
-          }
-        } catch {
-          // skip
-        }
-      }
-    } catch {
-      // skip
-    }
-  }
-
-  return earliest;
+  const tasks = files.map((f) => () => findFirstDateFromFile(f));
+  const results = await runWithConcurrency(tasks, CONCURRENCY_LIMIT);
+  const dates = results.filter((d): d is string => d !== null);
+  if (dates.length === 0) return null;
+  dates.sort();
+  return dates[0];
 };
 
 const computeMissingDays = async (targetDates: Set<string>): Promise<Map<string, IStatsDailyData>> => {

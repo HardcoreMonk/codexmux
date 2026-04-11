@@ -11,7 +11,7 @@ import { getSessionPanePid, checkTerminalProcess, sendKeys, getSessionCwd, getPa
 import { cwdToProjectPath } from './session-list';
 import { updateTabClaudeSessionId, updateTabClaudeSummary, updateTabLastUserMessage } from './layout-store';
 import { getStatusManager } from './status-manager';
-import { buildResumeCommand } from './claude-command';
+import { buildResumeCommand, isValidSessionId } from './claude-command';
 import { calculateCost } from './format-tokens';
 import type { TTimelineServerMessage, IInitMeta, ITimelineEntry } from '@/types/timeline';
 import path from 'path';
@@ -711,10 +711,14 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
           conn.currentJsonlPath = null;
         }
       } else if (msg.type === 'timeline:resume' && msg.sessionId && msg.tmuxSession) {
-        await handleResumeMessage(ws, conn, {
-          sessionId: msg.sessionId,
-          tmuxSession: msg.tmuxSession,
-        });
+        if (!isValidSessionId(msg.sessionId)) {
+          sendJson(ws, { type: 'timeline:resume-error', message: 'Invalid session ID format' });
+        } else {
+          await handleResumeMessage(ws, conn, {
+            sessionId: msg.sessionId,
+            tmuxSession: msg.tmuxSession,
+          });
+        }
       }
     } catch (err) {
       log.error(`message handler error: ${err instanceof Error ? err.message : err}`);
