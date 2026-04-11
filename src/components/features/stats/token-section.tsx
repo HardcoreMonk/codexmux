@@ -16,6 +16,9 @@ import type { ChartConfig } from '@/components/ui/chart';
 import type { IOverviewResponse } from '@/types/stats';
 import { formatNumber, formatNumberWithComma, formatDate, formatAxisTick, formatCostWithComma } from '@/components/features/stats/stats-utils';
 
+const pct = (value: number, total: number): string =>
+  total > 0 ? `${Math.round((value / total) * 100)}%` : '0%';
+
 interface ITokenSectionProps {
   data: IOverviewResponse;
 }
@@ -58,12 +61,17 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
   const t = useTranslations('stats');
 
   const barChartConfig: ChartConfig = {
-    total: { label: t('tokenLabel'), color: 'var(--ui-blue)' },
+    input: { label: t('inputLabel'), color: 'var(--ui-blue)' },
+    output: { label: t('outputLabel'), color: 'var(--ui-teal)' },
+    cacheRead: { label: t('cacheReadLabel'), color: 'var(--ui-amber)' },
+    cacheCreation: { label: t('cacheWriteLabel'), color: 'var(--ui-pink)' },
   };
 
   const trendChartConfig: ChartConfig = {
     input: { label: t('inputLabel'), color: 'var(--ui-blue)' },
     output: { label: t('outputLabel'), color: 'var(--ui-teal)' },
+    cacheRead: { label: t('cacheReadLabel'), color: 'var(--ui-amber)' },
+    cacheCreation: { label: t('cacheWriteLabel'), color: 'var(--ui-pink)' },
   };
 
   const modelBarData = useMemo(() => {
@@ -72,8 +80,9 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
         model: getModelLabel(model),
         input: tokens.input,
         output: tokens.output,
-        cache: tokens.cache,
-        total: tokens.input + tokens.output + tokens.cache,
+        cacheRead: tokens.cacheRead,
+        cacheCreation: tokens.cacheCreation,
+        total: tokens.input + tokens.output + tokens.cacheRead + tokens.cacheCreation,
         cost: tokens.cost,
         fill: getModelColor(model),
       }))
@@ -106,19 +115,34 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
                   <YAxis type="category" dataKey="model" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={100} />
                   <ChartTooltip
                     content={<ChartTooltipContent />}
-                    formatter={(value) => formatNumberWithComma(Number(value))}
+                    formatter={(value, _name, item) => {
+                      const d = item.payload;
+                      return `${formatNumberWithComma(Number(value))} (${pct(Number(value), d.total)})`;
+                    }}
                   />
-                  <Bar dataKey="total" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="input" stackId="stack" fill="var(--ui-blue)" radius={0} />
+                  <Bar dataKey="output" stackId="stack" fill="var(--ui-teal)" radius={0} />
+                  <Bar dataKey="cacheRead" stackId="stack" fill="var(--ui-amber)" radius={0} />
+                  <Bar dataKey="cacheCreation" stackId="stack" fill="var(--ui-pink)" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ChartContainer>
               <div className="flex flex-col justify-center space-y-1.5 lg:min-w-[180px]">
                 {modelBarData.map((d) => (
-                  <div key={d.model} className="flex items-center justify-between gap-4 text-xs">
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: d.fill }} />
-                      <span>{d.model}</span>
+                  <div key={d.model} className="space-y-0.5">
+                    <div className="flex items-center justify-between gap-4 text-xs">
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: d.fill }} />
+                        <span>{d.model}</span>
+                      </div>
+                      <span className="tabular-nums font-medium">{formatCostWithComma(d.cost)}</span>
                     </div>
-                    <span className="tabular-nums font-medium">{formatCostWithComma(d.cost)}</span>
+                    <div className="flex gap-2 pl-4 text-[10px] text-muted-foreground/60">
+                      <span>I {formatNumber(d.input)} ({pct(d.input, d.total)})</span>
+                      <span>O {formatNumber(d.output)} ({pct(d.output, d.total)})</span>
+                      {(d.cacheRead > 0 || d.cacheCreation > 0) && (
+                        <span>C {formatNumber(d.cacheRead + d.cacheCreation)} ({pct(d.cacheRead + d.cacheCreation, d.total)})</span>
+                      )}
+                    </div>
                   </div>
                 ))}
                 <div className="flex items-center justify-between gap-4 border-t border-foreground/5 pt-1.5 text-xs font-medium">
@@ -148,6 +172,14 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
                     <stop offset="0%" stopColor="var(--ui-teal)" stopOpacity={0.3} />
                     <stop offset="100%" stopColor="var(--ui-teal)" stopOpacity={0.02} />
                   </linearGradient>
+                  <linearGradient id="fillCacheRead" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--ui-amber)" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="var(--ui-amber)" stopOpacity={0.02} />
+                  </linearGradient>
+                  <linearGradient id="fillCacheCreation" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--ui-pink)" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="var(--ui-pink)" stopOpacity={0.02} />
+                  </linearGradient>
                 </defs>
                 <CartesianGrid vertical={false} strokeDasharray="3 3" />
                 <XAxis
@@ -167,6 +199,11 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
                 <ChartTooltip
                   content={<ChartTooltipContent />}
                   labelFormatter={(v) => dayjs(v).format('YYYY-MM-DD')}
+                  formatter={(value, _name, item) => {
+                    const d = item.payload;
+                    const total = d.input + d.output + d.cacheRead + d.cacheCreation;
+                    return `${formatNumberWithComma(Number(value))} (${pct(Number(value), total)})`;
+                  }}
                 />
                 <Area
                   dataKey="input"
@@ -181,6 +218,22 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
                   type="monotone"
                   fill="url(#fillOutput)"
                   stroke="var(--ui-teal)"
+                  strokeWidth={1.5}
+                  stackId="1"
+                />
+                <Area
+                  dataKey="cacheRead"
+                  type="monotone"
+                  fill="url(#fillCacheRead)"
+                  stroke="var(--ui-amber)"
+                  strokeWidth={1.5}
+                  stackId="1"
+                />
+                <Area
+                  dataKey="cacheCreation"
+                  type="monotone"
+                  fill="url(#fillCacheCreation)"
+                  stroke="var(--ui-pink)"
                   strokeWidth={1.5}
                   stackId="1"
                 />

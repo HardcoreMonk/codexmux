@@ -16,6 +16,8 @@
   "tokenLabel": "Token",
   "inputLabel": "Giriş",
   "outputLabel": "Çıkış",
+  "cacheReadLabel": "Önbellek Okuma",
+  "cacheWriteLabel": "Önbellek Yazma",
   "tokenUsage": "Token Kullanımı",
   "modelTokens": "Modele Göre Token",
   "dailyTokenTrend": "Günlük Token Eğilimi",

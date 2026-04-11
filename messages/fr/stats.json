@@ -16,6 +16,8 @@
   "tokenLabel": "Tokens",
   "inputLabel": "Entrée",
   "outputLabel": "Sortie",
+  "cacheReadLabel": "Lecture cache",
+  "cacheWriteLabel": "Écriture cache",
   "tokenUsage": "Utilisation des tokens",
   "modelTokens": "Tokens par modèle",
   "dailyTokenTrend": "Tendance quotidienne des tokens",

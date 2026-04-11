@@ -20,14 +20,14 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   const overview = buildOverview(statsCache, 'all');
 
-  const totalAllTokens = overview.dailyTokens.reduce((s, t) => s + t.input + t.output, 0);
+  const totalAllTokens = overview.dailyTokens.reduce((s, t) => s + t.input + t.output + t.cacheRead + t.cacheCreation, 0);
   const totalCost = Object.values(overview.modelTokens).reduce((s, m) => s + m.cost, 0);
 
   const allDays: IDailyReportListItem[] = overview.dailyActivity
     .filter((d) => d.sessionCount > 0)
     .map((d) => {
       const tokenDay = overview.dailyTokens.find((t) => t.date === d.date);
-      const dayTokens = tokenDay ? tokenDay.input + tokenDay.output : 0;
+      const dayTokens = tokenDay ? tokenDay.input + tokenDay.output + tokenDay.cacheRead + tokenDay.cacheCreation : 0;
       const cost = totalAllTokens > 0 ? totalCost * (dayTokens / totalAllTokens) : 0;
       return {
         date: d.date,

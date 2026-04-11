@@ -16,6 +16,8 @@
   "tokenLabel": "토큰",
   "inputLabel": "입력",
   "outputLabel": "출력",
+  "cacheReadLabel": "캐시 읽기",
+  "cacheWriteLabel": "캐시 쓰기",
   "tokenUsage": "토큰 사용량",
   "modelTokens": "모델별 토큰",
   "dailyTokenTrend": "일별 토큰 추이",

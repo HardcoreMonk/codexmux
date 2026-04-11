@@ -16,6 +16,8 @@
   "tokenLabel": "Tokens",
   "inputLabel": "Input",
   "outputLabel": "Output",
+  "cacheReadLabel": "Cache Read",
+  "cacheWriteLabel": "Cache Write",
   "tokenUsage": "Token Usage",
   "modelTokens": "Tokens by Model",
   "dailyTokenTrend": "Daily Token Trend",

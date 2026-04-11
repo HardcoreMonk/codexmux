@@ -16,6 +16,8 @@
   "tokenLabel": "Токены",
   "inputLabel": "Входящие",
   "outputLabel": "Исходящие",
+  "cacheReadLabel": "Чтение кэша",
+  "cacheWriteLabel": "Запись кэша",
   "tokenUsage": "Использование токенов",
   "modelTokens": "Токены по моделям",
   "dailyTokenTrend": "Ежедневный тренд токенов",

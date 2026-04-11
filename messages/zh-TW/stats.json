@@ -16,6 +16,8 @@
   "tokenLabel": "Token",
   "inputLabel": "輸入",
   "outputLabel": "輸出",
+  "cacheReadLabel": "快取讀取",
+  "cacheWriteLabel": "快取寫入",
   "tokenUsage": "Token 使用量",
   "modelTokens": "各模型 Token 用量",
   "dailyTokenTrend": "每日 Token 趨勢",

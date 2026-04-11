@@ -8,6 +8,7 @@ import type {
   IStatsCacheDailyTokens,
   IStatsCacheModelUsage,
   IStatsCacheLongestSession,
+  ITokenBreakdown,
   IOverviewResponse,
   TPeriod,
 } from '@/types/stats';
@@ -51,6 +52,22 @@ const safeParseDailyActivity = (raw: unknown): IStatsCacheDailyActivity[] => {
     }));
 };
 
+const parseTokenBreakdown = (v: unknown): ITokenBreakdown => {
+  if (typeof v === 'number') {
+    return { input: v, output: 0, cacheRead: 0, cacheCreation: 0 };
+  }
+  if (typeof v === 'object' && v !== null) {
+    const o = v as Record<string, unknown>;
+    return {
+      input: Number(o.input ?? 0),
+      output: Number(o.output ?? 0),
+      cacheRead: Number(o.cacheRead ?? 0),
+      cacheCreation: Number(o.cacheCreation ?? 0),
+    };
+  }
+  return { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 };
+};
+
 const safeParseDailyTokens = (raw: unknown): IStatsCacheDailyTokens[] => {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -59,7 +76,7 @@ const safeParseDailyTokens = (raw: unknown): IStatsCacheDailyTokens[] => {
       date: String(item.date ?? ''),
       tokensByModel: typeof item.tokensByModel === 'object' && item.tokensByModel !== null
         ? Object.fromEntries(
-            Object.entries(item.tokensByModel as Record<string, unknown>).map(([k, v]) => [k, Number(v ?? 0)]),
+            Object.entries(item.tokensByModel as Record<string, unknown>).map(([k, v]) => [k, parseTokenBreakdown(v)]),
           )
         : {},
     }));
@@ -146,13 +163,14 @@ export const buildOverview = (cache: IStatsCache, period: TPeriod): IOverviewRes
   const previousSessions = previousDaily.reduce((sum, d) => sum + d.sessionCount, 0);
   const previousMessages = previousDaily.reduce((sum, d) => sum + d.messageCount, 0);
 
-  const modelTokens: Record<string, { input: number; output: number; cache: number; cost: number }> = {};
+  const modelTokens: Record<string, { input: number; output: number; cacheRead: number; cacheCreation: number; cost: number }> = {};
   if (period === 'all') {
     for (const [model, usage] of Object.entries(cache.modelUsage)) {
       modelTokens[model] = {
         input: usage.inputTokens,
         output: usage.outputTokens,
-        cache: usage.cacheReadInputTokens + usage.cacheCreationInputTokens,
+        cacheRead: usage.cacheReadInputTokens,
+        cacheCreation: usage.cacheCreationInputTokens,
         cost: estimateCostFromUsage(
           model,
           usage.inputTokens,
@@ -164,9 +182,12 @@ export const buildOverview = (cache: IStatsCache, period: TPeriod): IOverviewRes
     }
   } else {
     for (const day of filteredTokens) {
-      for (const [model, total] of Object.entries(day.tokensByModel)) {
-        if (!modelTokens[model]) modelTokens[model] = { input: 0, output: 0, cache: 0, cost: 0 };
-        modelTokens[model].input += total;
+      for (const [model, breakdown] of Object.entries(day.tokensByModel)) {
+        if (!modelTokens[model]) modelTokens[model] = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0, cost: 0 };
+        modelTokens[model].input += breakdown.input;
+        modelTokens[model].output += breakdown.output;
+        modelTokens[model].cacheRead += breakdown.cacheRead;
+        modelTokens[model].cacheCreation += breakdown.cacheCreation;
       }
     }
 
@@ -175,6 +196,7 @@ export const buildOverview = (cache: IStatsCache, period: TPeriod): IOverviewRes
       if (!usage) continue;
       const allTimeTotal = usage.inputTokens + usage.outputTokens
         + usage.cacheReadInputTokens + usage.cacheCreationInputTokens;
+      const periodTotal = tokens.input + tokens.output + tokens.cacheRead + tokens.cacheCreation;
       if (allTimeTotal > 0) {
         const allTimeCost = estimateCostFromUsage(
           model,
@@ -183,24 +205,20 @@ export const buildOverview = (cache: IStatsCache, period: TPeriod): IOverviewRes
           usage.cacheReadInputTokens,
           usage.cacheCreationInputTokens,
         );
-        tokens.cost = allTimeCost * (tokens.input / allTimeTotal);
+        tokens.cost = allTimeCost * (periodTotal / allTimeTotal);
       }
     }
   }
 
-  const totalInput = Object.values(cache.modelUsage).reduce((s, u) => s + u.inputTokens, 0);
-  const totalOutput = Object.values(cache.modelUsage).reduce((s, u) => s + u.outputTokens, 0);
-  const totalAll = totalInput + totalOutput;
-  const inputRatio = totalAll > 0 ? totalInput / totalAll : 0.7;
-  const outputRatio = totalAll > 0 ? totalOutput / totalAll : 0.3;
-
   const dailyTokens = filteredTokens.map((d) => {
-    const total = Object.values(d.tokensByModel).reduce((sum, t) => sum + t, 0);
-    return {
-      date: d.date,
-      input: Math.round(total * inputRatio),
-      output: Math.round(total * outputRatio),
-    };
+    let input = 0, output = 0, cacheRead = 0, cacheCreation = 0;
+    for (const breakdown of Object.values(d.tokensByModel)) {
+      input += breakdown.input;
+      output += breakdown.output;
+      cacheRead += breakdown.cacheRead;
+      cacheCreation += breakdown.cacheCreation;
+    }
+    return { date: d.date, input, output, cacheRead, cacheCreation };
   });
 
   const today = dayjs().format('YYYY-MM-DD');
@@ -215,17 +233,18 @@ export const buildOverview = (cache: IStatsCache, period: TPeriod): IOverviewRes
   const estimateCostForDates = (dates: IStatsCacheDailyTokens[]): number => {
     let cost = 0;
     for (const day of dates) {
-      for (const [model, total] of Object.entries(day.tokensByModel)) {
+      for (const [model, breakdown] of Object.entries(day.tokensByModel)) {
         const usage = cache.modelUsage[model];
         if (!usage) continue;
         const allTimeTotal = usage.inputTokens + usage.outputTokens
           + usage.cacheReadInputTokens + usage.cacheCreationInputTokens;
+        const dayTotal = breakdown.input + breakdown.output + breakdown.cacheRead + breakdown.cacheCreation;
         if (allTimeTotal > 0) {
           const allTimeCost = estimateCostFromUsage(
             model, usage.inputTokens, usage.outputTokens,
             usage.cacheReadInputTokens, usage.cacheCreationInputTokens,
           );
-          cost += allTimeCost * (total / allTimeTotal);
+          cost += allTimeCost * (dayTotal / allTimeTotal);
         }
       }
     }

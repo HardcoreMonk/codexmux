@@ -9,9 +9,16 @@ export interface IStatsCacheDailyActivity {
   toolCallCount: number;
 }
 
+export interface ITokenBreakdown {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheCreation: number;
+}
+
 export interface IStatsCacheDailyTokens {
   date: string;
-  tokensByModel: Record<string, number>;
+  tokensByModel: Record<string, ITokenBreakdown>;
 }
 
 export interface IStatsCacheModelUsage {
@@ -56,8 +63,8 @@ export interface IOverviewResponse {
   previousMessages: number;
   totalToolCalls: number;
   dailyActivity: IStatsCacheDailyActivity[];
-  modelTokens: Record<string, { input: number; output: number; cache: number; cost: number }>;
-  dailyTokens: { date: string; input: number; output: number }[];
+  modelTokens: Record<string, { input: number; output: number; cacheRead: number; cacheCreation: number; cost: number }>;
+  dailyTokens: { date: string; input: number; output: number; cacheRead: number; cacheCreation: number }[];
   hourlyDistribution: Record<string, number>;
   dayHourDistribution: Record<string, number>;
   todayMessages: number;

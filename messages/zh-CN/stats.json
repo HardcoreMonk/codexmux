@@ -15,6 +15,8 @@
   "tokenLabel": "令牌",
   "inputLabel": "输入",
   "outputLabel": "输出",
+  "cacheReadLabel": "缓存读取",
+  "cacheWriteLabel": "缓存写入",
   "tokenUsage": "令牌使用量",
   "modelTokens": "模型令牌分布",
   "dailyTokenTrend": "每日令牌趋势",

@@ -125,7 +125,7 @@ const parseDaysFromFile = async (
 
           const model = String(message.model ?? '');
           const usage = message.usage as Record<string, unknown> | undefined;
-          if (model && usage) {
+          if (model && !model.startsWith('<') && usage) {
             if (!day.modelTokens[model]) {
               day.modelTokens[model] = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 };
             }
@@ -387,9 +387,14 @@ const buildStatsCache = (
       toolCallCount: day.toolCallCount,
     });
 
-    const tokensByModel: Record<string, number> = {};
+    const tokensByModel: Record<string, { input: number; output: number; cacheRead: number; cacheCreation: number }> = {};
     for (const [model, tokens] of Object.entries(day.modelTokens)) {
-      tokensByModel[model] = tokens.input + tokens.output + tokens.cacheRead + tokens.cacheCreation;
+      tokensByModel[model] = {
+        input: tokens.input,
+        output: tokens.output,
+        cacheRead: tokens.cacheRead,
+        cacheCreation: tokens.cacheCreation,
+      };
 
       if (!modelUsage[model]) {
         modelUsage[model] = {
