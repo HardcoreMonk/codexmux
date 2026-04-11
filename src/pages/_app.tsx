@@ -1,6 +1,7 @@
 import "@/styles/globals.css";
 import "@/styles/pretendard.css";
 import "@xterm/xterm/css/xterm.css";
+import "diff2html/bundles/css/diff2html.min.css";
 import type { ReactElement, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import dayjs from "dayjs";
@@ -134,7 +135,7 @@ export default function App({ Component, pageProps }: TAppPropsWithLayout) {
       'workspace', 'login', 'onboarding', 'settings', 'stats',
       'reset', 'reports', 'agents', 'agent', 'timeline',
       'notification', 'session', 'messageHistory', 'webBrowser',
-      'mobile', 'toolsRequired',
+      'mobile', 'toolsRequired', 'diff',
     ] as const;
     Promise.all(namespaces.map((ns) => import(`../../messages/${locale}/${ns}.json`))).then((modules) => {
       if (cancelled) return;

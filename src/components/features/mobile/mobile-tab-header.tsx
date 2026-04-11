@@ -5,6 +5,7 @@ import TabStatusIndicator from '@/components/features/terminal/tab-status-indica
 import useTabStore from '@/hooks/use-tab-store';
 import { getProcessIcon } from '@/lib/process-icon';
 import OpenAIIcon from '@/components/icons/openai-icon';
+import { cn } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,14 +17,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { TPanelType } from '@/types/terminal';
+
+const PANEL_MODES = [
+  { type: 'terminal' as const, label: 'TERMINAL' },
+  { type: 'claude-code' as const, label: 'CLAUDE' },
+  { type: 'diff' as const, label: 'DIFF' },
+] as const;
 
 interface IMobileTabHeaderProps {
   tabId: string;
   tabName: string;
   panelType: TPanelType;
-  onToggleClaude: () => void;
+  onSwitchPanelType: (type: TPanelType) => void;
   onCreateTab: () => void;
   onClose: () => void;
 }
@@ -32,7 +38,7 @@ const MobileTabHeader = ({
   tabId,
   tabName,
   panelType,
-  onToggleClaude,
+  onSwitchPanelType,
   onCreateTab,
   onClose,
 }: IMobileTabHeaderProps) => {
@@ -68,16 +74,22 @@ const MobileTabHeader = ({
       </div>
 
       <div className="flex shrink-0 items-center gap-0.5 pr-0.5">
-        <Tabs value={panelType} onValueChange={() => onToggleClaude()} className="gap-0">
-          <TabsList className="h-7">
-            <TabsTrigger value="terminal" className="h-full px-2 text-[10px] tracking-wide">
-              TERMINAL
-            </TabsTrigger>
-            <TabsTrigger value="claude-code" className="h-full px-2 text-[10px] tracking-wide">
-              CLAUDE
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center gap-px">
+          {PANEL_MODES.map((mode) => (
+            <button
+              key={mode.type}
+              className={cn(
+                'rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide transition-colors',
+                panelType === mode.type
+                  ? 'bg-accent text-foreground'
+                  : 'text-muted-foreground/60 hover:text-muted-foreground',
+              )}
+              onClick={() => onSwitchPanelType(mode.type)}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
 
         <button
           className="flex h-10 w-10 items-center justify-center text-muted-foreground transition-colors"

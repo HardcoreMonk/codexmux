@@ -21,6 +21,7 @@ import WebInputBar from '@/components/features/terminal/web-input-bar';
 import QuickPromptBar from '@/components/features/terminal/quick-prompt-bar';
 import ConnectionStatus from '@/components/features/terminal/connection-status';
 import WebBrowserPanel from '@/components/features/terminal/web-browser-panel';
+import DiffPanel from '@/components/features/terminal/diff-panel';
 import PaneDisconnectedOverlay from '@/components/features/terminal/pane-disconnected-overlay';
 import PaneClaudeModePrompt from '@/components/features/terminal/pane-claude-mode-prompt';
 import PanePathInputOverlay from '@/components/features/terminal/pane-path-input-overlay';
@@ -100,6 +101,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   const activePanelType: TPanelType = activeTab?.panelType ?? 'terminal';
   const isClaudeCode = activePanelType === 'claude-code';
   const isWebBrowser = activePanelType === 'web-browser';
+  const isDiff = activePanelType === 'diff';
 
   const { theme: terminalTheme } = useTerminalTheme();
   const configFontSize = useConfigStore((s) => s.fontSize);
@@ -573,15 +575,11 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
     focusPane(paneId);
   }, [paneId, focusPane]);
 
-  const handleTogglePanelType = useCallback(() => {
+  const handleSwitchPanelType = useCallback((next: TPanelType) => {
     if (!activeTabId) return;
-    const activeTab = tabs.find((t) => t.id === activeTabId);
-    const current = activeTab?.panelType ?? 'terminal';
-    const next: TPanelType = current === 'terminal' ? 'claude-code' : 'terminal';
-
     setIsPanelTransitioning(true);
     updateTabPanelType(paneId, activeTabId, next);
-  }, [paneId, activeTabId, tabs, updateTabPanelType]);
+  }, [paneId, activeTabId, updateTabPanelType]);
 
   const handleWebUrlChange = useCallback((url: string) => {
     if (!activeTabId || !layoutWsId) return;
@@ -744,15 +742,22 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
       <div
         role="tabpanel"
         className="relative min-h-0 flex-1 flex flex-col"
-        style={isWebBrowser ? undefined : { backgroundColor: terminalTheme.colors.background }}
-        onDragOver={isWebBrowser ? undefined : handleTerminalDragOver}
-        onDrop={isWebBrowser ? undefined : handleTerminalDrop}
+        style={isWebBrowser || isDiff ? undefined : { backgroundColor: terminalTheme.colors.background }}
+        onDragOver={isWebBrowser || isDiff ? undefined : handleTerminalDragOver}
+        onDrop={isWebBrowser || isDiff ? undefined : handleTerminalDrop}
       >
         {isWebBrowser && activeTabId && (
           <WebBrowserPanel
             key={activeTabId}
             initialUrl={activeTab?.webUrl}
             onUrlChange={handleWebUrlChange}
+          />
+        )}
+
+        {isDiff && activeTab && (
+          <DiffPanel
+            key={activeTab.sessionName}
+            sessionName={activeTab.sessionName}
           />
         )}
 
@@ -763,7 +768,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
             ? { timeline: 70, 'terminal-area': 30 }
             : { timeline: 0, 'terminal-area': 100 }
           }
-          className={cn('min-h-0 flex-1', isWebBrowser && 'invisible absolute inset-0 pointer-events-none', isPanelTransitioning && '[&>[data-panel]]:[transition:flex-grow_150ms_ease-out]')}
+          className={cn('min-h-0 flex-1', (isWebBrowser || isDiff) && 'invisible absolute inset-0 pointer-events-none', isPanelTransitioning && '[&>[data-panel]]:[transition:flex-grow_150ms_ease-out]')}
         >
           <Panel
             id="timeline"
@@ -780,7 +785,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
                   sessionName={activeTab.sessionName}
                   claudeSessionId={activeTab.claudeSessionId}
                   cwd={activeTabCwd || activeTab.cwd}
-                  onClose={handleTogglePanelType}
+                  onClose={() => handleSwitchPanelType('terminal')}
                   onNewSession={handleNewClaudeSession}
                   scrollToBottomRef={scrollToBottomRef}
                 />
@@ -880,7 +885,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
           <PaneClaudeModePrompt
             onSwitch={() => {
               setShowClaudeModePrompt(false);
-              handleTogglePanelType();
+              handleSwitchPanelType('claude-code');
             }}
             onDismiss={() => setShowClaudeModePrompt(false)}
           />
@@ -894,7 +899,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
           />
         )}
 
-        {!noTabs && !isWebBrowser && (
+        {!noTabs && !isWebBrowser && !isDiff && (
           <ConnectionStatus
             status={status}
             retryCount={retryCount}

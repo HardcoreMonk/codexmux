@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Globe } from 'lucide-react';
+import { X, Globe, GitCompareArrows } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
 import OpenAIIcon from '@/components/icons/openai-icon';
@@ -122,6 +122,8 @@ const PaneTabItem = ({
             <ClaudeCodeIcon className="h-3.5 w-3.5" />
           ) : tab.panelType === 'web-browser' ? (
             <Globe className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          ) : tab.panelType === 'diff' ? (
+            <GitCompareArrows className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           ) : currentProcess === 'codex' ? (
             <OpenAIIcon className="h-3 w-3 text-muted-foreground" />
           ) : (

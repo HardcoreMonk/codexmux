@@ -1,0 +1,9 @@
+{
+  "notGitRepo": "Git 저장소가 아닙니다",
+  "noChanges": "변경사항 없음",
+  "hasChanges": "변경사항이 있습니다",
+  "refresh": "새로고침",
+  "sideBySide": "나란히 보기",
+  "lineByLine": "줄 단위 보기",
+  "fileList": "파일 목록"
+}

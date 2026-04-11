@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Plus, Terminal, Globe } from 'lucide-react';
+import { Plus, Terminal, Globe, GitCompareArrows } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
 import { cn } from '@/lib/utils';
@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { TPanelType } from '@/types/terminal';
 import useConfigStore from '@/hooks/use-config-store';
+import useIsMobile from '@/hooks/use-is-mobile';
 import { isMac } from '@/lib/keyboard-shortcuts';
 
 const mod = isMac ? '⌘' : 'Ctrl+';
@@ -20,13 +21,17 @@ interface IPaneNewTabMenuProps {
 const PaneNewTabMenu = ({ isCreating, onCreateTab }: IPaneNewTabMenuProps) => {
   const t = useTranslations('terminal');
   const [open, setOpen] = useState(false);
+  const isMobile = useIsMobile();
 
-  const menuItems = [
+  const allMenuItems = [
     { key: 'claude-new', type: 'claude-code' as const, icon: <ClaudeCodeIcon className="h-3.5 w-3.5" />, label: t('claudeNewConversation'), startClaude: true },
     { key: 'claude', type: 'claude-code' as const, icon: <ClaudeCodeIcon className="h-3.5 w-3.5" />, label: t('claudeSessionList') },
     { key: 'terminal', type: 'terminal' as const, icon: <Terminal className="h-3.5 w-3.5 text-muted-foreground" />, label: 'Terminal' },
+    { key: 'diff', type: 'diff' as const, icon: <GitCompareArrows className="h-3.5 w-3.5 text-muted-foreground" />, label: 'Diff' },
     { key: 'web-browser', type: 'web-browser' as const, icon: <Globe className="h-3.5 w-3.5 text-muted-foreground" />, label: 'Web Browser' },
   ];
+
+  const menuItems = isMobile ? allMenuItems.filter((item) => item.key !== 'web-browser') : allMenuItems;
 
   return (
     <div className="flex items-center border-l border-r border-border px-0.5">

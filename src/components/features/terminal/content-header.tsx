@@ -4,7 +4,6 @@ import { ExternalLink } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { TLayoutNode, TPanelType } from '@/types/terminal';
 import { collectPanes } from '@/hooks/use-layout';
@@ -97,22 +96,28 @@ const ContentHeader = ({
           className="flex items-center gap-1"
           {...(isElectron ? { style: { WebkitAppRegion: 'no-drag' } as React.CSSProperties } : {})}
         >
-          <Tabs
-            value={activePanelType}
-            onValueChange={handlePanelSwitch}
-            className={cn('gap-0 border-r border-border pr-2', isToggling && 'pointer-events-none opacity-80')}
-          >
-            <TabsList className="h-7">
-              <TabsTrigger value="terminal" className="h-full px-2.5 text-[11px] tracking-wide">
-                TERMINAL
-              </TabsTrigger>
-              <TabsTrigger value="claude-code" className="h-full px-2.5 text-[11px] tracking-wide">
-                CLAUDE
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className={cn('flex items-center gap-px border-r border-border pr-2', isToggling && 'pointer-events-none opacity-80')}>
+            {([
+              { value: 'terminal', label: 'TERMINAL' },
+              { value: 'claude-code', label: 'CLAUDE' },
+              { value: 'diff', label: 'DIFF' },
+            ] as const).map((item) => (
+              <button
+                key={item.value}
+                className={cn(
+                  'rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide transition-colors',
+                  activePanelType === item.value
+                    ? 'bg-accent text-foreground'
+                    : 'text-muted-foreground/60 hover:text-muted-foreground',
+                )}
+                onClick={() => handlePanelSwitch(item.value)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
           <button
-            className="flex h-7 items-center border-r border-border pr-2 pl-1 text-[11px] font-medium tracking-wide text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-muted-foreground/60 transition-colors hover:text-muted-foreground"
             onClick={() => {
               if (!editorUrl) {
                 toast.info(t('editorUrlNotSet'));
@@ -126,7 +131,7 @@ const ContentHeader = ({
             aria-label={t('openEditor')}
           >
             EDITOR
-            <ExternalLink className="-mt-0.5 ml-1 h-3 w-3" />
+            <ExternalLink className="h-2.5 w-2.5" />
           </button>
 
           <Tooltip>

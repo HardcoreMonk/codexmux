@@ -9,7 +9,7 @@ const NAMESPACES = [
   'workspace', 'login', 'onboarding', 'settings', 'stats',
   'reset', 'reports', 'agents', 'agent', 'timeline',
   'notification', 'session', 'messageHistory', 'webBrowser',
-  'mobile', 'toolsRequired',
+  'mobile', 'toolsRequired', 'diff',
 ] as const;
 
 const VALID_LOCALES = new Set([

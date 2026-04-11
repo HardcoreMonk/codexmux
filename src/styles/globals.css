@@ -382,3 +382,180 @@ body {
   --font-sans: "PingFang TC", "Microsoft JhengHei", "Inter", "MesloLGLDZ", "Pretendard", system-ui, sans-serif;
   --font-heading: "PingFang TC", "Microsoft JhengHei", "Inter", "MesloLGLDZ", "Pretendard", system-ui, sans-serif;
 }
+
+/* diff2html — CSS variable override for light/dark via design tokens */
+.diff-panel-content {
+  --d2h-bg-color: var(--card);
+  --d2h-border-color: var(--border);
+  --d2h-dim-color: var(--muted-foreground);
+  --d2h-line-border-color: var(--border);
+  --d2h-file-header-bg-color: var(--secondary);
+  --d2h-file-header-border-color: var(--border);
+  --d2h-empty-placeholder-bg-color: var(--secondary);
+  --d2h-empty-placeholder-border-color: var(--border);
+  --d2h-selected-color: var(--accent);
+  --d2h-info-bg-color: var(--secondary);
+  --d2h-info-border-color: var(--border);
+  --d2h-ins-bg-color: color-mix(in oklch, var(--ui-teal) 10%, transparent);
+  --d2h-ins-border-color: color-mix(in oklch, var(--ui-teal) 20%, transparent);
+  --d2h-ins-highlight-bg-color: color-mix(in oklch, var(--ui-teal) 28%, transparent);
+  --d2h-ins-label-color: var(--ui-teal);
+  --d2h-del-bg-color: color-mix(in oklch, var(--ui-red) 10%, transparent);
+  --d2h-del-border-color: color-mix(in oklch, var(--ui-red) 20%, transparent);
+  --d2h-del-highlight-bg-color: color-mix(in oklch, var(--ui-red) 28%, transparent);
+  --d2h-del-label-color: var(--ui-red);
+  --d2h-change-del-color: color-mix(in oklch, var(--ui-amber) 12%, transparent);
+  --d2h-change-ins-color: color-mix(in oklch, var(--ui-teal) 12%, transparent);
+  --d2h-change-label-color: var(--ui-amber);
+  --d2h-moved-label-color: var(--ui-blue);
+}
+
+.diff-panel-content .d2h-wrapper {
+  font-family: var(--font-mono);
+}
+
+.diff-panel-content .d2h-file-wrapper {
+  border-color: var(--border);
+  border-radius: 0;
+  margin-bottom: 0;
+}
+
+.diff-panel-content .d2h-file-header {
+  padding: 6px 10px;
+  height: auto;
+  line-height: 1.5;
+}
+
+.diff-panel-content .d2h-file-name {
+  color: var(--foreground);
+  font-size: 12px;
+}
+
+.diff-panel-content .d2h-file-list-wrapper {
+  border-color: var(--border);
+  margin-bottom: 0;
+}
+
+.diff-panel-content .d2h-file-list-wrapper .d2h-file-list-header {
+  background: var(--secondary);
+  border-color: var(--border);
+  padding: 4px 8px 4px 12px;
+}
+
+.diff-panel-content .d2h-file-list-line {
+  color: var(--foreground);
+}
+
+.diff-panel-content .d2h-file-list-line a {
+  color: var(--ui-blue);
+}
+
+.diff-panel-content .d2h-file-list-wrapper .d2h-file-switch {
+  display: none;
+}
+
+.diff-panel-content .d2h-diff-table {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border-collapse: collapse;
+}
+
+.diff-panel-content .d2h-diff-tbody {
+  border-color: var(--border);
+}
+
+.diff-panel-content .d2h-code-line {
+  padding: 0 0.5em;
+  width: calc(100% - 1em);
+}
+
+.diff-panel-content .d2h-code-side-line {
+  padding: 0 0.5em;
+  width: calc(100% - 1em);
+}
+
+.diff-panel-content .d2h-code-line-ctn {
+  color: var(--foreground);
+  font-size: 12px;
+}
+
+.diff-panel-content .d2h-code-linenumber,
+.diff-panel-content .d2h-code-side-linenumber {
+  position: relative;
+  border-color: var(--border);
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+
+.diff-panel-content .d2h-info {
+  color: var(--muted-foreground);
+}
+
+.diff-panel-content .d2h-emptyplaceholder,
+.diff-panel-content .d2h-code-side-emptyplaceholder {
+  border-color: var(--border);
+}
+
+.diff-panel-content .d2h-tag {
+  background: var(--secondary);
+  border-color: var(--border);
+  color: var(--muted-foreground);
+  font-size: 9px;
+  padding: 0 4px;
+  line-height: 1.6;
+}
+
+.diff-panel-content .d2h-deleted-tag {
+  border-color: color-mix(in oklch, var(--ui-red) 30%, transparent);
+  color: var(--ui-red);
+}
+
+.diff-panel-content .d2h-added-tag {
+  border-color: color-mix(in oklch, var(--ui-teal) 30%, transparent);
+  color: var(--ui-teal);
+}
+
+.diff-panel-content .d2h-changed-tag {
+  border-color: color-mix(in oklch, var(--ui-amber) 30%, transparent);
+  color: var(--ui-amber);
+}
+
+.diff-panel-content .d2h-lines-added {
+  color: var(--ui-teal);
+}
+
+.diff-panel-content .d2h-lines-deleted {
+  color: var(--ui-red);
+}
+
+.diff-panel-content .d2h-file-header .d2h-icon {
+  display: none;
+}
+
+.diff-panel-content .d2h-file-collapse {
+  display: none;
+}
+
+.diff-panel-content .d2h-file-stats {
+  display: none;
+}
+
+.diff-panel-content .d2h-file-list-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.diff-panel-content .d2h-file-list-title::after {
+  content: " hide";
+  font-weight: 400;
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+
+.diff-file-list-collapsed .d2h-file-list-title::after {
+  content: " show";
+}
+
+.diff-file-list-collapsed .d2h-file-list-wrapper .d2h-file-list {
+  display: none;
+}

@@ -171,11 +171,10 @@ const MobileTerminalPage = () => {
     return `Tab ${currentTab.order + 1}`;
   }, [currentTab, tabMetadata]);
 
-  const handleToggleClaude = useCallback(() => {
+  const handleSwitchPanelType = useCallback((next: TPanelType) => {
     if (!currentPane || !selectedTabId) return;
-    const nextType: TPanelType = currentPanelType === 'claude-code' ? 'terminal' : 'claude-code';
-    layout.updateTabPanelType(currentPane.id, selectedTabId, nextType);
-  }, [currentPane, selectedTabId, currentPanelType, layout]);
+    layout.updateTabPanelType(currentPane.id, selectedTabId, next);
+  }, [currentPane, selectedTabId, layout]);
 
   const handleOpenNewTabDialog = useCallback(() => {
     setNewTabDialogOpen(true);
@@ -285,7 +284,7 @@ const MobileTerminalPage = () => {
           tabId={selectedTabId}
           tabName={currentTabName}
           panelType={currentPanelType}
-          onToggleClaude={handleToggleClaude}
+          onSwitchPanelType={handleSwitchPanelType}
           onCreateTab={handleOpenNewTabDialog}
           onClose={handleCloseTab}
         />

@@ -1,5 +1,5 @@
 import { useRef, useEffect, useMemo } from 'react';
-import { Globe } from 'lucide-react';
+import { Globe, GitCompareArrows } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import useTabStore, { selectTabDisplayStatus } from '@/hooks/use-tab-store';
 import { getProcessIcon } from '@/lib/process-icon';
@@ -116,6 +116,8 @@ const MobileWorkspaceTabBar = ({
                 <span className="h-2 w-2 rounded-full border border-muted-foreground/40" />
               ) : item.panelType === 'web-browser' ? (
                 <Globe className="h-2.5 w-2.5 text-muted-foreground/50" />
+              ) : item.panelType === 'diff' ? (
+                <GitCompareArrows className="h-2.5 w-2.5 text-muted-foreground/50" />
               ) : isCodex ? (
                 <OpenAIIcon className={cn('h-3 w-3', iconColorClass)} />
               ) : (

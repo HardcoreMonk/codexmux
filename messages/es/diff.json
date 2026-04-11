@@ -1,0 +1,9 @@
+{
+  "notGitRepo": "Not a Git repository",
+  "noChanges": "No changes",
+  "hasChanges": "Changes detected",
+  "refresh": "Refresh",
+  "sideBySide": "Side by side",
+  "lineByLine": "Line by line",
+  "fileList": "Files"
+}

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { ITab, TPanelType } from '@/types/terminal';
 import WebBrowserPanel from '@/components/features/terminal/web-browser-panel';
+import DiffPanel from '@/components/features/terminal/diff-panel';
 import useTerminal from '@/hooks/use-terminal';
 import useTerminalWebSocket from '@/hooks/use-terminal-websocket';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
@@ -79,6 +80,7 @@ const MobileSurfaceView = ({
   const activeTab = tabs.find((tab) => tab.id === activeTabId);
   const isClaudeCode = panelType === 'claude-code';
   const isWebBrowser = panelType === 'web-browser';
+  const isDiff = panelType === 'diff';
 
   const activeTabCwd = useTabMetadataStore(
     (state) => (activeTabId ? state.metadata[activeTabId]?.cwd : undefined),
@@ -383,7 +385,7 @@ const MobileSurfaceView = ({
   }, [activeTabId, paneId, layoutWsId]);
 
   const noTabs = tabs.length === 0;
-  const ready = isWebBrowser || (isReady && status === 'connected' && !noTabs);
+  const ready = isWebBrowser || isDiff || (isReady && status === 'connected' && !noTabs);
   const isFirstConnectionForTab =
     activeTabId !== null && attemptedTabId !== activeTabId;
   return (
@@ -399,6 +401,13 @@ const MobileSurfaceView = ({
           key={activeTabId}
           initialUrl={activeTab?.webUrl}
           onUrlChange={handleWebUrlChange}
+        />
+      )}
+
+      {isDiff && activeTab && (
+        <DiffPanel
+          key={activeTab.sessionName}
+          sessionName={activeTab.sessionName}
         />
       )}
 
@@ -423,7 +432,7 @@ const MobileSurfaceView = ({
         />
       )}
 
-      {!isWebBrowser && (
+      {!isWebBrowser && !isDiff && (
         <TerminalContainer
           ref={terminalRef}
           className={cn(
@@ -435,7 +444,7 @@ const MobileSurfaceView = ({
         />
       )}
 
-      {!isClaudeCode && !isWebBrowser && status === 'connected' && (
+      {!isClaudeCode && !isWebBrowser && !isDiff && status === 'connected' && (
         <MobileTerminalToolbar sendStdin={sendWebStdin} terminalConnected={status === 'connected'} />
       )}
 
@@ -493,7 +502,7 @@ const MobileSurfaceView = ({
         </div>
       )}
 
-      {!noTabs && !isWebBrowser && !(isClaudeCode && (sessionView === 'loading' || sessionView === 'restarting')) && (
+      {!noTabs && !isWebBrowser && !isDiff && !(isClaudeCode && (sessionView === 'loading' || sessionView === 'restarting')) && (
         <ConnectionStatus
           status={status}
           retryCount={retryCount}
