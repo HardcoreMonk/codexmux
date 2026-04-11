@@ -59,7 +59,7 @@ const AppHeader = ({ onMenuOpen, workspaceName }: IAppHeaderProps) => {
           </button>
         )}
         <AppLogo shimmer={hasBusy} />
-        {workspaceName && (
+        {workspaceName && !router.pathname.startsWith('/agents') && (
           <>
             <span className="text-muted-foreground/40 text-sm">/</span>
             <span className="truncate text-sm font-medium text-muted-foreground">{workspaceName}</span>
@@ -83,7 +83,7 @@ const AppHeader = ({ onMenuOpen, workspaceName }: IAppHeaderProps) => {
               >
                 <Bot className={`h-4 w-4 ${hasWorkingAgent ? 'text-ui-teal animate-pulse' : 'text-muted-foreground'}`} />
                 {(unreadCount > 0 || blockedCount > 0) && (
-                  <span className={`absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[10px] font-medium leading-none text-white ${unreadCount > 0 ? 'bg-ui-teal' : 'bg-ui-amber'}`}>
+                  <span className="absolute -right-0.5 top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded bg-foreground/10 px-0.5 text-[9px] font-medium leading-none text-foreground/60">
                     {unreadCount > 0 ? unreadCount : blockedCount}
                   </span>
                 )}

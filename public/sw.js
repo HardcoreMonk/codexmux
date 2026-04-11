@@ -22,28 +22,27 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
+const PUSH_NAV_CACHE = 'push-nav';
+const PUSH_NAV_KEY = '/_push-pending';
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const { tabId, workspaceId, claudeSessionId, workspaceName, workspaceDir } = event.notification.data || {};
-  const url = tabId && workspaceId ? `/?ws=${workspaceId}&tab=${tabId}` : '/';
+  const navData = { tabId, workspaceId, claudeSessionId, workspaceName, workspaceDir };
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window' }).then((windowClients) => {
+    caches.open(PUSH_NAV_CACHE).then((cache) =>
+      cache.put(PUSH_NAV_KEY, new Response(JSON.stringify(navData)))
+    ).then(() =>
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    ).then((windowClients) => {
       for (const client of windowClients) {
         if (client.url.includes(self.location.origin)) {
-          client.focus();
-          client.postMessage({
-            type: 'notification-click',
-            tabId,
-            workspaceId,
-            claudeSessionId,
-            workspaceName,
-            workspaceDir,
-          });
-          return;
+          client.postMessage({ type: 'notification-click', ...navData });
+          return client.focus();
         }
       }
-      return self.clients.openWindow(url);
+      return self.clients.openWindow('/');
     })
   );
 });

@@ -135,29 +135,31 @@ const AgentChatPage = () => {
         onAgentSelect={handleAgentSelect}
       />
 
-      <MessageList
-        messages={messages}
-        agentStatus={agentStatus}
-        lastActivity={lastActivity}
-        isLoading={isLoading || (isStoreLoading && !agent)}
-        isLoadingMore={isLoadingMore}
-        hasMore={hasMore}
-        isConnected={isConnected}
-        connectionError={connectionError}
-        loadError={loadError}
-        failedMessageIds={failedMessageIds}
-        onRetry={fetchHistory}
-        onLoadMore={loadMore}
-        onResend={resendMessage}
-        onApproval={handleApproval}
-      />
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <MessageList
+          messages={messages}
+          agentStatus={agentStatus}
+          lastActivity={lastActivity}
+          isLoading={isLoading || (isStoreLoading && !agent)}
+          isLoadingMore={isLoadingMore}
+          hasMore={hasMore}
+          isConnected={isConnected}
+          connectionError={connectionError}
+          loadError={loadError}
+          failedMessageIds={failedMessageIds}
+          onRetry={fetchHistory}
+          onLoadMore={loadMore}
+          onResend={resendMessage}
+          onApproval={handleApproval}
+        />
 
-      <ChatInput
-        agentId={agentId}
-        onSend={handleSend}
-        agentStatus={agentStatus}
-        isSending={isSending}
-      />
+        <ChatInput
+          agentId={agentId}
+          onSend={handleSend}
+          agentStatus={agentStatus}
+          isSending={isSending}
+        />
+      </div>
     </>
   );
 

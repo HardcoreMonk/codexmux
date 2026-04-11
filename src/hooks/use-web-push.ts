@@ -94,6 +94,21 @@ const sendVisibility = (endpoint: string, visible: boolean) => {
   }).catch(() => {});
 };
 
+const PUSH_NAV_CACHE = 'push-nav';
+const PUSH_NAV_KEY = '/_push-pending';
+
+const consumePushNavCache = async (): Promise<Record<string, string | null> | null> => {
+  try {
+    const cache = await caches.open(PUSH_NAV_CACHE);
+    const res = await cache.match(PUSH_NAV_KEY);
+    if (!res) return null;
+    await cache.delete(PUSH_NAV_KEY);
+    return await res.json();
+  } catch {
+    return null;
+  }
+};
+
 export const registerPushTarget = async (sessionId: string): Promise<void> => {
   const endpoint = await getEndpoint();
   fetch('/api/push/register-session', {
@@ -112,23 +127,55 @@ const useWebPush = () => {
     if (typeof window === 'undefined') return;
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
+    const handlePushNavigation = (params: {
+      workspaceId: string;
+      tabId?: string;
+      claudeSessionId?: string | null;
+      workspaceName?: string;
+      workspaceDir?: string | null;
+    }) => {
+      if (params.claudeSessionId) {
+        navigateToTabOrCreate(
+          params.workspaceId,
+          params.tabId ?? '',
+          params.claudeSessionId,
+          params.workspaceName ?? '',
+          params.workspaceDir ?? null,
+        );
+      } else if (params.tabId) {
+        navigateToTab(params.workspaceId, params.tabId);
+      }
+    };
+
     const handleSwMessage = (event: MessageEvent) => {
       const data = event.data;
       if (data?.type === 'notification-click' && data.workspaceId) {
-        if (data.claudeSessionId) {
-          navigateToTabOrCreate(
-            data.workspaceId,
-            data.tabId,
-            data.claudeSessionId,
-            data.workspaceName ?? '',
-            data.workspaceDir ?? null,
-          );
-        } else if (data.tabId) {
-          navigateToTab(data.workspaceId, data.tabId);
-        }
+        consumePushNavCache();
+        handlePushNavigation(data);
       }
     };
     navigator.serviceWorker.addEventListener('message', handleSwMessage);
+
+    // Cache API 폴백: iOS에서 postMessage 유실 시 (background → foreground 복귀 포함)
+    const checkPushNavCache = () => {
+      consumePushNavCache().then((data) => {
+        if (data?.workspaceId) {
+          handlePushNavigation({
+            workspaceId: data.workspaceId,
+            tabId: data.tabId ?? undefined,
+            claudeSessionId: data.claudeSessionId,
+            workspaceName: data.workspaceName ?? '',
+            workspaceDir: data.workspaceDir,
+          });
+        }
+      });
+    };
+    checkPushNavCache();
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) checkPushNavCache();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // 초기 로드: 기존 구독이 없으면 토글 OFF로 동기화
     hasExistingSubscription().then((exists) => {
@@ -199,6 +246,7 @@ const useWebPush = () => {
 
     return () => {
       navigator.serviceWorker.removeEventListener('message', handleSwMessage);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       unsub();
       cleanupVisibility?.();
     };
