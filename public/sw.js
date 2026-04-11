@@ -10,6 +10,8 @@ self.addEventListener('push', (event) => {
     body: data.body || '',
     icon: '/android-chrome-192x192.png',
     badge: '/favicon-32x32.png',
+    tag: data.claudeSessionId ? `session:${data.claudeSessionId}` : undefined,
+    renotify: !!data.claudeSessionId,
     data: {
       tabId: data.tabId,
       workspaceId: data.workspaceId,
@@ -20,6 +22,16 @@ self.addEventListener('push', (event) => {
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'clear-notifications') {
+    event.waitUntil(
+      self.registration.getNotifications().then((notifications) => {
+        notifications.forEach((n) => n.close());
+      })
+    );
+  }
 });
 
 const PUSH_NAV_CACHE = 'push-nav';

@@ -1145,11 +1145,8 @@ class StatusManager {
       workspaceDir: ws?.directories[0] ?? null,
     });
 
-    const target = entry.claudeSessionId ? getSessionPushEndpoint(entry.claudeSessionId) : null;
-    if (!target) return;
+    if (subs.some((sub) => isEndpointVisible(sub.endpoint))) return;
     for (const sub of subs) {
-      if (sub.endpoint !== target) continue;
-      if (isEndpointVisible(sub.endpoint)) continue;
       try {
         await webpush.sendNotification(sub, payload);
       } catch (err: unknown) {

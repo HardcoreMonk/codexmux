@@ -172,10 +172,27 @@ const useWebPush = () => {
     };
     checkPushNavCache();
 
+    const clearNotifications = () => {
+      navigator.serviceWorker.ready.then((reg) => {
+        reg.active?.postMessage({ type: 'clear-notifications' });
+      });
+      navigator.clearAppBadge?.();
+    };
+
     const handleVisibilityChange = () => {
-      if (!document.hidden) checkPushNavCache();
+      if (!document.hidden) {
+        checkPushNavCache();
+        clearNotifications();
+      }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const handlePageShow = () => {
+      checkPushNavCache();
+      clearNotifications();
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('focus', handlePageShow);
 
     // 초기 로드: 기존 구독이 없으면 토글 OFF로 동기화
     hasExistingSubscription().then((exists) => {
@@ -247,6 +264,8 @@ const useWebPush = () => {
     return () => {
       navigator.serviceWorker.removeEventListener('message', handleSwMessage);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('focus', handlePageShow);
       unsub();
       cleanupVisibility?.();
     };
