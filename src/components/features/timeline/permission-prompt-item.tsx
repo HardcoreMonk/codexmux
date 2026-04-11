@@ -1,7 +1,6 @@
 import { useState, useEffect, memo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { ShieldCheck, Check } from 'lucide-react';
-import Spinner from '@/components/ui/spinner';
+import { ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -41,7 +40,6 @@ const POLL_TIMEOUT = 3_000;
 const PermissionPromptItem = ({ sessionName }: IPermissionPromptItemProps) => {
   const t = useTranslations('timeline');
   const [localSelected, setLocalSelected] = useState<number | null>(null);
-  const [resolved, setResolved] = useState(false);
   const [options, setOptions] = useState<string[]>([]);
 
   useEffect(() => {
@@ -77,22 +75,20 @@ const PermissionPromptItem = ({ sessionName }: IPermissionPromptItemProps) => {
     };
   }, [sessionName]);
 
-  const isSelectable = localSelected === null && !resolved;
+  const isSelectable = localSelected === null;
 
   const handleSelect = useCallback(
     async (idx: number) => {
-      if (localSelected !== null || resolved) return;
+      if (localSelected !== null) return;
 
       setLocalSelected(idx);
       const ok = await sendSelection(sessionName, idx);
       if (!ok) {
         setLocalSelected(null);
         toast.error(t('selectionFailed'));
-        return;
       }
-      setResolved(true);
     },
-    [sessionName, localSelected, resolved, t],
+    [sessionName, localSelected, t],
   );
 
   if (options.length === 0) return null;
@@ -108,8 +104,7 @@ const PermissionPromptItem = ({ sessionName }: IPermissionPromptItemProps) => {
         <div className="flex flex-col gap-1.5">
           {options.map((label, idx) => {
             const isSelected = localSelected === idx;
-            const isLocalPending = isSelected && !resolved;
-            const dimmed = (localSelected !== null || resolved) && !isSelected;
+            const dimmed = localSelected !== null && !isSelected;
 
             return (
               <button
@@ -135,13 +130,7 @@ const PermissionPromptItem = ({ sessionName }: IPermissionPromptItemProps) => {
                       : 'bg-muted text-muted-foreground',
                   )}
                 >
-                  {isLocalPending ? (
-                    <Spinner size={10} />
-                  ) : isSelected && resolved ? (
-                    <Check size={12} />
-                  ) : (
-                    idx + 1
-                  )}
+                  {idx + 1}
                 </span>
                 <span className="min-w-0 flex-1 font-medium">{stripNumberPrefix(label)}</span>
               </button>
