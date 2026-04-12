@@ -9,12 +9,12 @@ import {
   exitCopyMode,
   sanitizedEnv,
 } from './tmux';
+import { encodeStdout } from '@/lib/terminal-protocol';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('terminal');
 
 const MSG_STDIN = 0x00;
-const MSG_STDOUT = 0x01;
 const MSG_RESIZE = 0x02;
 const MSG_HEARTBEAT = 0x03;
 const MSG_KILL_SESSION = 0x04;
@@ -25,9 +25,10 @@ const HEARTBEAT_INTERVAL = 30_000;
 const HEARTBEAT_TIMEOUT = 90_000;
 const BACKPRESSURE_HIGH = 1024 * 1024;
 const BACKPRESSURE_LOW = 256 * 1024;
+const THROTTLE_WINDOW_MS = 500;
+const THROTTLE_FLUSH_INTERVAL_MS = 250;
 
 const TMUX_SOCKET = 'purple';
-const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
 interface IActiveConnection {
@@ -43,6 +44,9 @@ interface IActiveConnection {
   capturePaused: boolean;
   currentCols: number;
   currentRows: number;
+  throttleUntil: number;
+  throttleBuffer: string;
+  throttleInterval: ReturnType<typeof setInterval> | null;
 }
 
 const globalStore = globalThis as unknown as {
@@ -75,6 +79,11 @@ const cleanup = (conn: IActiveConnection, sessionExited = false) => {
   terminalOutputTimestamps.delete(conn.sessionName);
 
   clearInterval(conn.heartbeatTimer);
+  if (conn.throttleInterval) {
+    clearInterval(conn.throttleInterval);
+    conn.throttleInterval = null;
+  }
+  conn.throttleBuffer = '';
 
   for (const d of conn.disposables) {
     d.dispose();
@@ -158,6 +167,10 @@ export const gracefulShutdown = (): Promise<void> => {
       terminalOutputTimestamps.delete(conn.sessionName);
 
       clearInterval(conn.heartbeatTimer);
+      if (conn.throttleInterval) {
+        clearInterval(conn.throttleInterval);
+        conn.throttleInterval = null;
+      }
 
       if (conn.ws.readyState === WebSocket.OPEN) {
         conn.ws.close(1001, 'Server shutting down');
@@ -284,10 +297,12 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
           const newRows = view.getUint16(2);
           if (newCols > 0 && newRows > 0) {
             if (conn) {
+              const sizeChanged = conn.currentCols !== newCols || conn.currentRows !== newRows;
               conn.currentCols = newCols;
               conn.currentRows = newRows;
               if (!conn.capturePaused) {
                 ptyProcess.resize(newCols, newRows);
+                if (sizeChanged) startThrottleWindow('resize');
               }
             } else {
               ptyProcess.resize(newCols, newRows);
@@ -386,9 +401,55 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
     capturePaused: false,
     currentCols,
     currentRows,
+    throttleUntil: 0,
+    throttleBuffer: '',
+    throttleInterval: null,
   };
 
   connections.set(ws, conn);
+
+  const ptyPid = ptyProcess.pid;
+
+  const sendStdout = (data: string) => {
+    ws.send(encodeStdout(data));
+
+    if (ws.bufferedAmount > BACKPRESSURE_HIGH && !conn.backpressurePaused) {
+      conn.backpressurePaused = true;
+      ptyProcess!.pause();
+    } else if (ws.bufferedAmount < BACKPRESSURE_LOW && conn.backpressurePaused) {
+      conn.backpressurePaused = false;
+      ptyProcess!.resume();
+    }
+  };
+
+  const flushThrottleBuffer = () => {
+    if (conn.throttleBuffer.length === 0) return;
+    sendStdout(conn.throttleBuffer);
+    conn.throttleBuffer = '';
+  };
+
+  // tmux pane reflow는 새 사이즈로 재렌더링하면서 중간 frame들을 빠르게 보냄.
+  // 이 동안 데이터를 모아서 일정 간격으로만 flush해 화면 떨림을 줄임.
+  const startThrottleWindow = (reason: string) => {
+    const now = Date.now();
+    const wasActive = now < conn.throttleUntil;
+    const newEnd = now + THROTTLE_WINDOW_MS;
+    if (newEnd <= conn.throttleUntil) return;
+    conn.throttleUntil = newEnd;
+    if (!wasActive) {
+      log.debug(`[throttle] window started ${THROTTLE_WINDOW_MS}ms reason=${reason} session=${sessionName} pid=${ptyPid}`);
+    }
+    if (conn.throttleInterval) return;
+    conn.throttleInterval = setInterval(() => {
+      flushThrottleBuffer();
+      if (Date.now() < conn.throttleUntil) return;
+      clearInterval(conn.throttleInterval!);
+      conn.throttleInterval = null;
+      log.debug(`[throttle] window ended session=${sessionName} pid=${ptyPid}`);
+    }, THROTTLE_FLUSH_INTERVAL_MS);
+  };
+
+  startThrottleWindow('initial');
 
   conn.disposables.push(
     ptyProcess.onData((data: string) => {
@@ -396,19 +457,11 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
       terminalOutputTimestamps.set(sessionName, Date.now());
       if (conn.capturePaused) return;
 
-      const payload = textEncoder.encode(data);
-      const frame = new Uint8Array(1 + payload.length);
-      frame[0] = MSG_STDOUT;
-      frame.set(payload, 1);
-      ws.send(frame);
-
-      if (ws.bufferedAmount > BACKPRESSURE_HIGH && !conn.backpressurePaused) {
-        conn.backpressurePaused = true;
-        ptyProcess!.pause();
-      } else if (ws.bufferedAmount < BACKPRESSURE_LOW && conn.backpressurePaused) {
-        conn.backpressurePaused = false;
-        ptyProcess!.resume();
+      if (Date.now() < conn.throttleUntil) {
+        conn.throttleBuffer += data;
+        return;
       }
+      sendStdout(data);
     }),
   );
 
