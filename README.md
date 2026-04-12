@@ -1,7 +1,8 @@
 # purplemux
 
 **A web-native terminal multiplexer for Claude Code.**
-**Run from anywhere—your sessions never disconnect.**
+
+Run from anywhere—your sessions never disconnect.
 
 <!-- TODO: 히어로 이미지 / GIF -->
 
@@ -23,13 +24,13 @@ npx purplemux
 - **모바일 & 멀티 디바이스** — 폰, 태블릿, 다른 데스크탑 어디서든 같은 세션에 접속
 - **라이브 세션 뷰** — CLI 출력을 스크롤할 필요 없이, 진행 상황을 타임라인으로 정리해서 표시
 
-그리고:
+그리고
 
 - **끊김 없는 세션** — tmux 기반. 브라우저를 닫아도 세션과 작업 환경이 그대로 유지. 재접속하면 탭, 패널, 디렉토리까지 마지막 상태 그대로
 - **셀프 호스팅 & 오픈소스** — 코드와 세션 데이터가 내 머신에만 존재. 외부 서버 경유 없음
 - **암호화된 원격 접근** — Tailscale로 어디서든 HTTPS 접속
 
-## 공식 Remote Control과 뭐가 다른가
+## 공식 Remote Control과 차이점
 
 > 공식 Remote Control은 단일 세션 원격 제어에 초점을 둡니다. purplemux는 멀티 세션 관리, 푸시 알림, 세션 지속성이 필요할 때 사용합니다.
 
@@ -50,7 +51,6 @@ npx purplemux
 - **실시간 상태** — 작업중/사용자 요청 상태 표시, 세션 간 전환
 - **라이브 세션 뷰** — 메시지, 도구 호출, 태스크, 권한 요청, thinking 블록
 - **원클릭 Resume** — 중단된 세션을 브라우저에서 바로 재개
-- **Resume Return 감지** — 컨텍스트 초과/유휴 시 선택지를 타임라인에서 바로 노출
 - **자동 Resume** — 서버 시작 시 이전 Claude 세션 자동 복구
 - **빠른 프롬프트** — 자주 쓰는 프롬프트 등록, 원클릭 전송
 - **메시지 히스토리** — 이전 메시지 재사용
@@ -133,11 +133,7 @@ tailscale serve --bg off 8022
 
 최초 접속 시 비밀번호를 설정합니다. scrypt로 해싱되어 `~/.purplemux/config.json`에 저장됩니다.
 
-환경변수로 직접 지정:
-
-```bash
-AUTH_PASSWORD=<비밀번호> NEXTAUTH_SECRET=<시크릿> purplemux
-```
+초기화하려면 `~/.purplemux/config.json`을 삭제하고 재시작하면 온보딩 화면이 다시 나타납니다.
 
 ### HTTPS
 
@@ -161,31 +157,31 @@ AUTH_PASSWORD=<비밀번호> NEXTAUTH_SECRET=<시크릿> purplemux
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Browser                                                    │
-│  ┌───────────┐ ┌───────────┐ ┌──────────┐ ┌─────────────┐  │
-│  │  xterm.js │ │ Timeline  │ │ Status   │ │ Multi-device│  │
-│  │  Terminal  │ │           │ │          │ │ Sync        │  │
-│  └─────┬─────┘ └─────┬─────┘ └────┬─────┘ └──────┬──────┘  │
+│  ┌───────────┐ ┌───────────┐ ┌──────────┐ ┌─────────────┐   │
+│  │  xterm.js │ │ Timeline  │ │ Status   │ │ Multi-device│   │
+│  │  Terminal │ │           │ │          │ │ Sync        │   │
+│  └─────┬─────┘ └─────┬─────┘ └────┬─────┘ └──────┬──────┘   │
 └────────┼─────────────┼────────────┼───────────────┼─────────┘
          │ws           │ws          │ws             │ws
          │/terminal    │/timeline   │/status        │/sync
          ▼             ▼            ▼               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  Node.js Server (:8022)                                     │
-│  ┌──────────┐  ┌──────────────┐  ┌────────────────────┐    │
-│  │ node-pty │  │ JSONL Watcher│  │ Status Manager     │    │
-│  │ PTY↔WS   │  │ File watch → │  │ Process tree +     │    │
-│  │ Binary   │  │ Parse → Send │  │ JSONL tail analysis │    │
-│  └────┬─────┘  └──────┬───────┘  └─────────┬──────────┘    │
-└───────┼───────────────┼────────────────────┼───────────────┘
-        ▼               ▼                    ▼
+│  ┌──────────┐  ┌───────────────┐  ┌─────────────────────┐   │
+│  │ node-pty │  │ JSONL Watcher │  │ Status Manager      │   │
+│  │ PTY↔WS   │  │ File watch →  │  │ Process tree +      │   │
+│  │ Binary   │  │ Parse → Send  │  │ JSONL tail analysis │   │
+│  └────┬─────┘  └───────┬───────┘  └──────────┬──────────┘   │
+└───────┼────────────────┼─────────────────────┼──────────────┘
+        ▼               ▼                     ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  System                                                     │
 │  tmux (purple socket)         Claude Code                   │
-│  ┌────────┐ ┌────────┐       ┌─────────────────────────┐   │
-│  │Session1│ │Session2│  ...  │ ~/.claude/sessions/      │   │
-│  │ (shell)│ │ (shell)│       │ ~/.claude/projects/      │   │
-│  └────────┘ └────────┘       │   └─ {project}/{sid}.jsonl│  │
-│                              └─────────────────────────┘   │
+│  ┌────────┐ ┌────────┐       ┌────────────────────────────┐ │
+│  │Session1│ │Session2│  ...  │ ~/.claude/sessions/        │ │
+│  │ (shell)│ │ (shell)│       │ ~/.claude/projects/        │ │
+│  └────────┘ └────────┘       │   └─ {project}/{sid}.jsonl │ │
+│                              └────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -198,10 +194,6 @@ AUTH_PASSWORD=<비밀번호> NEXTAUTH_SECRET=<시크릿> purplemux
 **tmux isolation** — Uses a dedicated `purple` socket, completely separate from your existing tmux. No prefix key, no status bar.
 
 **Auto recovery** — On server start, restores previous Claude sessions via `claude --resume {sessionId}`.
-
-## 기여
-
-[Contributing Guide](CONTRIBUTING.md)를 참고하세요.
 
 ## License
 
