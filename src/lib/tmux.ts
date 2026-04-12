@@ -422,6 +422,22 @@ export const capturePaneContent = async (sessionName: string): Promise<string | 
   }
 };
 
+export const capturePaneContentWithHistory = async (
+  sessionName: string,
+  historyLines: number,
+): Promise<string | null> => {
+  try {
+    const { stdout } = await execFile(
+      'tmux',
+      ['-L', TMUX_SOCKET, 'capture-pane', '-p', '-S', `-${historyLines}`, '-t', sessionName],
+      { timeout: CMD_TIMEOUT },
+    );
+    return stdout;
+  } catch {
+    return null;
+  }
+};
+
 const getChildPidsOf = async (parentPids: number[]): Promise<number[]> => {
   if (isLinux) {
     const results: number[] = [];

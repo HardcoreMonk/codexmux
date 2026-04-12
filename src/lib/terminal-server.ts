@@ -39,11 +39,19 @@ interface IActiveConnection {
   cleaned: boolean;
   detaching: boolean;
   disposables: pty.IDisposable[];
+  backpressurePaused: boolean;
+  capturePaused: boolean;
+  currentCols: number;
+  currentRows: number;
 }
 
-const connections = new Map<WebSocket, IActiveConnection>();
+const globalStore = globalThis as unknown as {
+  __purplemux_terminal_connections?: Map<WebSocket, IActiveConnection>;
+  __purplemux_terminal_output_ts?: Map<string, number>;
+};
 
-const terminalOutputTimestamps = new Map<string, number>();
+const connections = globalStore.__purplemux_terminal_connections ??= new Map<WebSocket, IActiveConnection>();
+const terminalOutputTimestamps = globalStore.__purplemux_terminal_output_ts ??= new Map<string, number>();
 
 export const getLastTerminalOutput = (sessionName: string): number | undefined =>
   terminalOutputTimestamps.get(sessionName);
@@ -90,6 +98,45 @@ const cleanup = (conn: IActiveConnection, sessionExited = false) => {
   connections.delete(conn.ws);
 };
 
+
+export const pauseSession = (sessionName: string): { cols: number; rows: number } | null => {
+  for (const conn of connections.values()) {
+    if (conn.sessionName === sessionName && !conn.cleaned) {
+      if (conn.capturePaused) return null;
+      conn.capturePaused = true;
+      return { cols: conn.currentCols, rows: conn.currentRows };
+    }
+  }
+  return null;
+};
+
+export const resumeSession = (sessionName: string): void => {
+  for (const conn of connections.values()) {
+    if (conn.sessionName === sessionName && !conn.cleaned) {
+      if (!conn.capturePaused) return;
+      conn.capturePaused = false;
+      return;
+    }
+  }
+};
+
+export const resizeSessionPty = (sessionName: string, cols: number, rows: number): void => {
+  for (const conn of connections.values()) {
+    if (conn.sessionName === sessionName && !conn.cleaned) {
+      conn.pty.resize(cols, rows);
+      return;
+    }
+  }
+};
+
+export const getActiveSessionSize = (sessionName: string): { cols: number; rows: number } | null => {
+  for (const conn of connections.values()) {
+    if (conn.sessionName === sessionName && !conn.cleaned) {
+      return { cols: conn.currentCols, rows: conn.currentRows };
+    }
+  }
+  return null;
+};
 
 export const gracefulShutdown = (): Promise<void> => {
   if (connections.size === 0) return Promise.resolve();
@@ -192,9 +239,10 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
   let ptyProcess: pty.IPty | null = null;
   let conn: IActiveConnection | null = null;
   let lastHeartbeat = Date.now();
-  let paused = false;
   let sessionName = '';
   let webStdinQueue = Promise.resolve();
+  let currentCols = 80;
+  let currentRows = 24;
 
   const parseMessage = (raw: Buffer | ArrayBuffer) => {
     const data = new Uint8Array(
@@ -235,7 +283,15 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
           const newCols = view.getUint16(0);
           const newRows = view.getUint16(2);
           if (newCols > 0 && newRows > 0) {
-            ptyProcess.resize(newCols, newRows);
+            if (conn) {
+              conn.currentCols = newCols;
+              conn.currentRows = newRows;
+              if (!conn.capturePaused) {
+                ptyProcess.resize(newCols, newRows);
+              }
+            } else {
+              ptyProcess.resize(newCols, newRows);
+            }
           }
         }
         break;
@@ -277,10 +333,10 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
       return;
     }
     if (ws.readyState !== WebSocket.OPEN) return;
-    const cols = urlCols > 0 ? urlCols : (pending.resize?.cols || 80);
-    const rows = urlRows > 0 ? urlRows : (pending.resize?.rows || 24);
+    currentCols = urlCols > 0 ? urlCols : (pending.resize?.cols || 80);
+    currentRows = urlRows > 0 ? urlRows : (pending.resize?.rows || 24);
     try {
-      ptyProcess = attachToSession(sessionName, cols, rows);
+      ptyProcess = attachToSession(sessionName, currentCols, currentRows);
     } catch (err) {
       log.error(`tmux attach failed: ${err instanceof Error ? err.message : err}`);
       ws.close(1011, 'Session attach failed');
@@ -288,12 +344,12 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
     }
   } else {
     sessionName = defaultSessionName();
-    const cols = urlCols > 0 ? urlCols : (pending.resize?.cols || 80);
-    const rows = urlRows > 0 ? urlRows : (pending.resize?.rows || 24);
+    currentCols = urlCols > 0 ? urlCols : (pending.resize?.cols || 80);
+    currentRows = urlRows > 0 ? urlRows : (pending.resize?.rows || 24);
     try {
-      await createSession(sessionName, cols, rows);
+      await createSession(sessionName, currentCols, currentRows);
       if (ws.readyState !== WebSocket.OPEN) return;
-      ptyProcess = attachToSession(sessionName, cols, rows);
+      ptyProcess = attachToSession(sessionName, currentCols, currentRows);
     } catch (err) {
       log.error(`tmux session creation failed: ${err instanceof Error ? err.message : err}`);
       ws.close(1011, 'Session create failed');
@@ -302,7 +358,9 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
   }
 
   if (pending.resize && pending.resize.cols > 0 && pending.resize.rows > 0) {
-    ptyProcess.resize(pending.resize.cols, pending.resize.rows);
+    currentCols = pending.resize.cols;
+    currentRows = pending.resize.rows;
+    ptyProcess.resize(currentCols, currentRows);
   }
 
   const heartbeatTimer = setInterval(() => {
@@ -324,6 +382,10 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
     cleaned: false,
     detaching: false,
     disposables: [],
+    backpressurePaused: false,
+    capturePaused: false,
+    currentCols,
+    currentRows,
   };
 
   connections.set(ws, conn);
@@ -332,6 +394,7 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
     ptyProcess.onData((data: string) => {
       if (conn.cleaned || ws.readyState !== WebSocket.OPEN) return;
       terminalOutputTimestamps.set(sessionName, Date.now());
+      if (conn.capturePaused) return;
 
       const payload = textEncoder.encode(data);
       const frame = new Uint8Array(1 + payload.length);
@@ -339,11 +402,11 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
       frame.set(payload, 1);
       ws.send(frame);
 
-      if (ws.bufferedAmount > BACKPRESSURE_HIGH && !paused) {
-        paused = true;
+      if (ws.bufferedAmount > BACKPRESSURE_HIGH && !conn.backpressurePaused) {
+        conn.backpressurePaused = true;
         ptyProcess!.pause();
-      } else if (ws.bufferedAmount < BACKPRESSURE_LOW && paused) {
-        paused = false;
+      } else if (ws.bufferedAmount < BACKPRESSURE_LOW && conn.backpressurePaused) {
+        conn.backpressurePaused = false;
         ptyProcess!.resume();
       }
     }),

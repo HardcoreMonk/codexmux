@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { hasSession, capturePaneContent } from '@/lib/tmux';
+import { hasSession } from '@/lib/tmux';
+import { capturePaneAtWidth } from '@/lib/capture-at-width';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('tmux');
@@ -22,7 +23,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   try {
-    const content = await capturePaneContent(session);
+    const content = await capturePaneAtWidth(session, 120, 50);
     if (!content) {
       return res.status(200).json({ options: [] });
     }

@@ -50,21 +50,14 @@ export const parsePermissionOptions = (paneContent: string): { options: string[]
     if (!match) continue;
     const label = match[1].trim();
     const stripped = stripPrefix(label);
+    const isKeyword = OPTION_KEYWORDS.some((kw) => stripped.startsWith(kw));
 
-    if (!foundFirst) {
-      if (OPTION_KEYWORDS.some((kw) => stripped.startsWith(kw))) {
-        if (isFocused) focusedIndex = options.length;
-        options.push(label);
-        foundFirst = true;
-      }
-    } else {
-      if (OPTION_KEYWORDS.some((kw) => stripped.startsWith(kw))) {
-        if (isFocused) focusedIndex = options.length;
-        options.push(label);
-      } else {
-        break;
-      }
+    if (isKeyword) {
+      if (isFocused) focusedIndex = options.length;
+      options.push(label);
+      foundFirst = true;
     }
+    // foundFirst 이후 키워드 매치 안 되는 들여쓰기 라인은 이전 옵션의 wrap된 continuation → skip
   }
 
   if (!isKnownPromptPattern(options)) {
