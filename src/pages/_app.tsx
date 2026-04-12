@@ -154,7 +154,28 @@ export default function App({ Component, pageProps }: TAppPropsWithLayout) {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
-    navigator.serviceWorker.register('/sw.js');
+    let cancelled = false;
+    let cleanup: (() => void) | null = null;
+
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      if (cancelled) return;
+
+      const check = () => {
+        if (!document.hidden) reg.update().catch(() => { /* ignore */ });
+      };
+      document.addEventListener('visibilitychange', check);
+      const timer = setInterval(check, 60 * 60 * 1000);
+
+      cleanup = () => {
+        document.removeEventListener('visibilitychange', check);
+        clearInterval(timer);
+      };
+    }).catch(() => { /* ignore */ });
+
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
   }, []);
 
   dayjs.extend(relativeTime);

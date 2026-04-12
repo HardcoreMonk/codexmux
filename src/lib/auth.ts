@@ -1,7 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose';
 
 export const SESSION_COOKIE = 'session-token';
-const MAX_AGE = 7 * 86400;
+export const MAX_AGE = 7 * 86400;
 
 const getSecret = () => new TextEncoder().encode(process.env.NEXTAUTH_SECRET);
 

@@ -1,11 +1,13 @@
 import { useState, useEffect, memo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import useTabStore from '@/hooks/use-tab-store';
 
 interface IPermissionPromptItemProps {
   sessionName: string;
+  tabId?: string;
 }
 
 const fetchPermissionOptions = async (session: string): Promise<string[]> => {
@@ -34,46 +36,46 @@ const sendSelection = async (session: string, optionIndex: number): Promise<bool
 
 const stripNumberPrefix = (label: string) => label.replace(/^\d+\.\s+/, '');
 
-const POLL_INTERVAL = 500;
-const POLL_TIMEOUT = 3_000;
+const RETRY_DELAYS_MS = [500, 1_000, 2_000, 4_000];
 
-const PermissionPromptItem = ({ sessionName }: IPermissionPromptItemProps) => {
+type TPhase = 'loading' | 'ready' | 'failed';
+
+const PermissionPromptItem = ({ sessionName, tabId }: IPermissionPromptItemProps) => {
   const t = useTranslations('timeline');
   const [localSelected, setLocalSelected] = useState<number | null>(null);
   const [options, setOptions] = useState<string[]>([]);
+  const [phase, setPhase] = useState<TPhase>('loading');
+  const cliState = useTabStore((s) => tabId ? s.tabs[tabId]?.cliState : undefined);
 
   useEffect(() => {
     let cancelled = false;
-    let interval: ReturnType<typeof setInterval> | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    setLocalSelected(null);
+    setOptions([]);
+    setPhase('loading');
 
-    const poll = async () => {
+    const attempt = async (retryIndex: number) => {
       const fetched = await fetchPermissionOptions(sessionName);
       if (cancelled) return;
       if (fetched.length > 0) {
         setOptions(fetched);
-        if (interval) {
-          clearInterval(interval);
-          interval = null;
-        }
+        setPhase('ready');
+        return;
       }
+      if (retryIndex >= RETRY_DELAYS_MS.length) {
+        setPhase('failed');
+        return;
+      }
+      timer = setTimeout(() => attempt(retryIndex + 1), RETRY_DELAYS_MS[retryIndex]);
     };
 
-    poll();
-    interval = setInterval(poll, POLL_INTERVAL);
-
-    const timeout = setTimeout(() => {
-      if (interval) {
-        clearInterval(interval);
-        interval = null;
-      }
-    }, POLL_TIMEOUT);
+    attempt(0);
 
     return () => {
       cancelled = true;
-      if (interval) clearInterval(interval);
-      clearTimeout(timeout);
+      if (timer) clearTimeout(timer);
     };
-  }, [sessionName]);
+  }, [sessionName, cliState]);
 
   const isSelectable = localSelected === null;
 
@@ -91,7 +93,27 @@ const PermissionPromptItem = ({ sessionName }: IPermissionPromptItemProps) => {
     [sessionName, localSelected, t],
   );
 
-  if (options.length === 0) return null;
+  if (phase === 'loading') {
+    return (
+      <div className="animate-in fade-in duration-150 mt-2">
+        <div className="flex items-center gap-2 rounded-lg border border-claude-active/20 bg-claude-active/5 px-4 py-3 text-xs text-claude-active">
+          <Loader2 size={14} className="animate-spin" />
+          <span>{t('permissionLoading')}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === 'failed') {
+    return (
+      <div className="animate-in fade-in duration-150 mt-2">
+        <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs text-amber-600 dark:text-amber-400">
+          <ShieldAlert size={14} className="mt-0.5 shrink-0" />
+          <span>{t('permissionParseFailed')}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-in fade-in duration-150 mt-2">

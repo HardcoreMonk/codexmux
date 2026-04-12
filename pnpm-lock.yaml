@@ -50,6 +50,9 @@ importers:
       dayjs:
         specifier: ^1.11.20
         version: 1.11.20
+      diff:
+        specifier: ^8.0.4
+        version: 8.0.4
       diff2html:
         specifier: ^3.4.56
         version: 3.4.56
@@ -2657,8 +2660,8 @@ packages:
     resolution: {integrity: sha512-u9gfn+BlbHcyO7vItCIC4z49LJDUt31tODzOfAuJ5R1E7IdlRL6KjugcB9zOpejD+XiR+dDZbsnHSQ3g6A/u8A==}
     engines: {node: '>=12'}
 
-  diff@8.0.3:
-    resolution: {integrity: sha512-qejHi7bcSD4hQAZE0tNAawRK1ZtafHDmMTMkrrIGgSLl7hTnQHmKCeB45xAcbfTqK2zowkM3j3bHt/4b/ARbYQ==}
+  diff@8.0.4:
+    resolution: {integrity: sha512-DPi0FmjiSU5EvQV0++GFDOJ9ASQUVFh5kD+OzOnYdi7n3Wpm9hWWGfB/O2blfHcMVTL5WkQXSnRiK9makhrcnw==}
     engines: {node: '>=0.3.1'}
 
   dir-compare@4.2.0:
@@ -7908,11 +7911,11 @@ snapshots:
   diff2html@3.4.56:
     dependencies:
       '@profoundlogic/hogan': 3.0.4
-      diff: 8.0.3
+      diff: 8.0.4
     optionalDependencies:
       highlight.js: 11.11.1
 
-  diff@8.0.3: {}
+  diff@8.0.4: {}
 
   dir-compare@4.2.0:
     dependencies:
@@ -10814,7 +10817,7 @@ snapshots:
       cosmiconfig: 9.0.1(typescript@5.9.3)
       dedent: 1.7.2
       deepmerge: 4.3.1
-      diff: 8.0.3
+      diff: 8.0.4
       execa: 9.6.1
       fast-glob: 3.3.3
       fs-extra: 11.3.4

@@ -22,6 +22,8 @@
   "commandsRunning": "{count} komut çalıştırılıyor...",
   "commandsExecuted": "{count} komut yürütüldü",
   "permissionRequired": "İzin gerekli",
+  "permissionLoading": "İzin istemi yükleniyor...",
+  "permissionParseFailed": "Seçenekler yüklenemedi. Lütfen terminal sekmesinde doğrudan yanıtlayın.",
   "taskProgress": "Görev ilerlemesi",
   "toolUsageCount": "{count} araç kullanımı",
   "diffShow": "Farkı göster",

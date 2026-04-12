@@ -3,13 +3,11 @@ import { useTranslations } from 'next-intl';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ToolCallItem from '@/components/features/timeline/tool-call-item';
-import PermissionPromptItem from '@/components/features/timeline/permission-prompt-item';
 import type { ITimelineToolCall, ITimelineToolResult } from '@/types/timeline';
 
 interface IToolGroupItemProps {
   toolCalls: ITimelineToolCall[];
   toolResults: ITimelineToolResult[];
-  sessionName?: string;
 }
 
 const getGroupDescriptionTags = (toolCalls: ITimelineToolCall[]): string[] => {
@@ -24,16 +22,10 @@ const getGroupDescriptionTags = (toolCalls: ITimelineToolCall[]): string[] => {
   return tags;
 };
 
-const PERMISSION_TOOL_NAMES = new Set(['Edit', 'Write', 'Bash', 'Read', 'Glob', 'Grep', 'Agent']);
-
-const ToolGroupItem = ({ toolCalls, toolResults, sessionName }: IToolGroupItemProps) => {
+const ToolGroupItem = ({ toolCalls, toolResults }: IToolGroupItemProps) => {
   const t = useTranslations('timeline');
   const hasPending = toolCalls.some((tc) => tc.status === 'pending');
   const [isExpanded, setIsExpanded] = useState(hasPending);
-
-  const hasPendingPermissionTool = hasPending
-    && toolCalls.some((tc) => tc.status === 'pending' && PERMISSION_TOOL_NAMES.has(tc.toolName));
-  const showPermissionPrompt = hasPendingPermissionTool && !!sessionName;
 
   const resultMap = useMemo(() => new Map(toolResults.map((r) => [r.toolUseId, r])), [toolResults]);
 
@@ -69,11 +61,6 @@ const ToolGroupItem = ({ toolCalls, toolResults, sessionName }: IToolGroupItemPr
               result={resultMap.get(call.toolUseId)}
             />
           ))}
-          {showPermissionPrompt && (
-            <PermissionPromptItem
-              sessionName={sessionName}
-            />
-          )}
         </div>
       )}
     </div>

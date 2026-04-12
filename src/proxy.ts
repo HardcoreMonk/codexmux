@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifySessionToken, SESSION_COOKIE } from '@/lib/auth';
+import {
+  verifySessionToken,
+  signSessionToken,
+  buildCookieHeader,
+  SESSION_COOKIE,
+  MAX_AGE,
+} from '@/lib/auth';
 import { verifyTokenValue } from '@/lib/agent-token';
 
 export const proxy = async (request: NextRequest) => {
@@ -9,14 +15,25 @@ export const proxy = async (request: NextRequest) => {
   }
 
   const token = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!token || !(await verifySessionToken(token))) {
+  const payload = token ? await verifySessionToken(token) : null;
+  if (!payload) {
     if (request.nextUrl.pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+
+  const exp = typeof payload.exp === 'number' ? payload.exp : 0;
+  const remaining = exp - Math.floor(Date.now() / 1000);
+  if (remaining > 0 && remaining < MAX_AGE / 2) {
+    const secure = request.nextUrl.protocol === 'https:';
+    const fresh = await signSessionToken();
+    response.headers.set('Set-Cookie', buildCookieHeader(fresh, secure));
+  }
+
+  return response;
 };
 
 export const config = {

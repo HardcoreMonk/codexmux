@@ -22,6 +22,8 @@
   "commandsRunning": "Running {count} commands...",
   "commandsExecuted": "{count} commands executed",
   "permissionRequired": "Permission required",
+  "permissionLoading": "Loading permission prompt...",
+  "permissionParseFailed": "Could not load options. Please respond directly in the terminal tab.",
   "taskProgress": "Task progress",
   "toolUsageCount": "{count} tool uses",
   "diffShow": "Show diff",

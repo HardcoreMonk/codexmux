@@ -1,8 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { hasSession, sendRawKeys } from '@/lib/tmux';
+import { getStatusManager } from '@/lib/status-manager';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('tmux');
+
+const POST_INPUT_POLL_DELAY_MS = 300;
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -23,6 +26,13 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   try {
     await sendRawKeys(session, input);
+    const manager = getStatusManager();
+    manager.clearHookGraceBySession(session);
+    setTimeout(() => {
+      manager.poll().catch((err) => {
+        log.error(`post-input poll failed: ${err instanceof Error ? err.message : err}`);
+      });
+    }, POST_INPUT_POLL_DELAY_MS);
     return res.status(200).json({ ok: true });
   } catch (err) {
     log.error(`send-input failed: ${err instanceof Error ? err.message : err}`);

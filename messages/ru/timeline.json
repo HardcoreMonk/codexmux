@@ -22,6 +22,8 @@
   "commandsRunning": "Выполняется {count} команд...",
   "commandsExecuted": "Выполнено {count} команд",
   "permissionRequired": "Требуется разрешение",
+  "permissionLoading": "Загрузка запроса разрешения...",
+  "permissionParseFailed": "Не удалось загрузить варианты. Ответьте напрямую во вкладке терминала.",
   "taskProgress": "Прогресс задачи",
   "toolUsageCount": "{count} вызовов инструментов",
   "diffShow": "Показать diff",

@@ -22,6 +22,8 @@
   "commandsRunning": "Ejecutando {count} comandos...",
   "commandsExecuted": "{count} comandos ejecutados",
   "permissionRequired": "Se requiere permiso",
+  "permissionLoading": "Cargando solicitud de permiso...",
+  "permissionParseFailed": "No se pudieron cargar las opciones. Responde directamente en la pestaña del terminal.",
   "taskProgress": "Progreso de la tarea",
   "toolUsageCount": "{count} usos de herramientas",
   "diffShow": "Mostrar diferencias",

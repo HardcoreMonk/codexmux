@@ -35,7 +35,7 @@ const STALE_MS_INTERRUPTED = 20_000;
 const STALE_MS_AWAITING_API = 90_000;
 const TERMINAL_OUTPUT_STALE_MS = 5_000;
 const WINDOW_ACTIVITY_STALE_MS = 10_000;
-const HOOK_GRACE_MS = 15_000;
+const HOOK_GRACE_MS = 1_000;
 const PROCESS_RETRY_COUNT = 3;
 const JSONL_WATCH_DEBOUNCE_MS = 100;
 
@@ -832,6 +832,11 @@ class StatusManager {
       if (entry.tmuxSession === tmuxSession) return tabId;
     }
     return undefined;
+  }
+
+  clearHookGraceBySession(tmuxSession: string): void {
+    const tabId = this.findTabIdBySession(tmuxSession);
+    if (tabId) this.hookUpdatedAt.delete(tabId);
   }
 
   updateTabFromHook(tmuxSession: string, event: string): void {

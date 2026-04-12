@@ -1,6 +1,7 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useEffect, useMemo, useRef, memo } from 'react';
 import { useTranslations } from 'next-intl';
-import hljs from 'highlight.js/lib/common';
+import { createPatch } from 'diff';
+import type { Diff2HtmlUIConfig } from 'diff2html/lib/ui/js/diff2html-ui-base';
 import {
   FileText,
   FilePen,
@@ -38,116 +39,14 @@ const renderToolIcon = (toolName: TToolName, size: number) => {
   return <IconComponent size={size} />;
 };
 
-const EXT_TO_LANG: Record<string, string> = {
-  ts: 'typescript',
-  tsx: 'typescript',
-  mts: 'typescript',
-  cts: 'typescript',
-  js: 'javascript',
-  jsx: 'javascript',
-  mjs: 'javascript',
-  cjs: 'javascript',
-  py: 'python',
-  rb: 'ruby',
-  go: 'go',
-  rs: 'rust',
-  java: 'java',
-  kt: 'kotlin',
-  swift: 'swift',
-  c: 'c',
-  h: 'c',
-  cpp: 'cpp',
-  cc: 'cpp',
-  hpp: 'cpp',
-  cs: 'csharp',
-  php: 'php',
-  sh: 'bash',
-  bash: 'bash',
-  zsh: 'bash',
-  fish: 'bash',
-  json: 'json',
-  yml: 'yaml',
-  yaml: 'yaml',
-  toml: 'ini',
-  md: 'markdown',
-  mdx: 'markdown',
-  html: 'xml',
-  xml: 'xml',
-  svg: 'xml',
-  vue: 'xml',
-  css: 'css',
-  scss: 'scss',
-  sass: 'scss',
-  less: 'less',
-  sql: 'sql',
-  dockerfile: 'dockerfile',
-  lua: 'lua',
-  pl: 'perl',
-  r: 'r',
-  dart: 'dart',
-};
-
-const detectLanguage = (filePath?: string): string | undefined => {
-  if (!filePath) return undefined;
-  const base = filePath.split('/').pop()?.toLowerCase() ?? '';
-  if (base === 'dockerfile') return 'dockerfile';
-  const ext = base.includes('.') ? base.split('.').pop() : undefined;
-  if (!ext) return undefined;
-  const lang = EXT_TO_LANG[ext];
-  return lang && hljs.getLanguage(lang) ? lang : undefined;
-};
-
-const splitHighlightedLines = (html: string): string[] => {
-  const tagRegex = /<span class="[^"]*">|<\/span>/g;
-  const lines: string[] = [];
-  const openStack: string[] = [];
-  let cursor = 0;
-  let lineBuffer = '';
-  let match: RegExpExecArray | null;
-
-  const flushLine = () => {
-    const closing = '</span>'.repeat(openStack.length);
-    const opening = openStack.join('');
-    lines.push(opening + lineBuffer + closing);
-    lineBuffer = '';
-  };
-
-  const appendText = (text: string) => {
-    const segments = text.split('\n');
-    for (let i = 0; i < segments.length; i += 1) {
-      lineBuffer += segments[i];
-      if (i < segments.length - 1) flushLine();
-    }
-  };
-
-  while ((match = tagRegex.exec(html)) !== null) {
-    if (match.index > cursor) {
-      appendText(html.slice(cursor, match.index));
-    }
-    const tag = match[0];
-    lineBuffer += tag;
-    if (tag === '</span>') {
-      openStack.pop();
-    } else {
-      openStack.push(tag);
-    }
-    cursor = match.index + tag.length;
-  }
-  if (cursor < html.length) {
-    appendText(html.slice(cursor));
-  }
-  flushLine();
-  return lines;
-};
-
-const highlightBlock = (code: string, language: string | undefined): string[] => {
-  if (!language) return code.split('\n');
-  try {
-    const html = hljs.highlight(code, { language, ignoreIllegals: true }).value;
-    return splitHighlightedLines(html);
-  } catch {
-    return code.split('\n');
-  }
+const DIFF2HTML_CONFIG: Diff2HtmlUIConfig = {
+  outputFormat: 'line-by-line',
+  drawFileList: false,
+  matching: 'lines',
+  highlight: true,
+  fileContentToggle: false,
+  stickyFileHeaders: false,
+  synchronisedScroll: false,
 };
 
 const DiffView = ({
@@ -159,38 +58,31 @@ const DiffView = ({
   newString: string;
   filePath?: string;
 }) => {
-  const { oldLines, newLines, useHtml } = useMemo(() => {
-    const language = detectLanguage(filePath);
-    return {
-      oldLines: highlightBlock(oldString, language),
-      newLines: highlightBlock(newString, language),
-      useHtml: Boolean(language),
-    };
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const patch = useMemo(() => {
+    const name = filePath ? filePath.split('/').pop() || filePath : 'file';
+    return createPatch(name, oldString, newString, undefined, undefined, { context: 3 });
   }, [oldString, newString, filePath]);
 
-  const renderLine = (line: string) =>
-    useHtml ? (
-      <span className="hljs" dangerouslySetInnerHTML={{ __html: line || '\u200b' }} />
-    ) : (
-      <span>{line}</span>
-    );
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
 
-  return (
-    <div className="mt-1.5 overflow-x-auto rounded border bg-ui-gray/5 font-mono text-xs whitespace-pre">
-      {oldLines.map((line, i) => (
-        <div key={`old-${i}`} className="bg-ui-red/10 px-3 py-0.5">
-          <span className="mr-2 text-ui-red select-none">-</span>
-          {renderLine(line)}
-        </div>
-      ))}
-      {newLines.map((line, i) => (
-        <div key={`new-${i}`} className="bg-ui-teal/10 px-3 py-0.5">
-          <span className="mr-2 text-ui-teal select-none">+</span>
-          {renderLine(line)}
-        </div>
-      ))}
-    </div>
-  );
+    let cancelled = false;
+    import('diff2html/lib/ui/js/diff2html-ui-slim').then(({ Diff2HtmlUI }) => {
+      if (cancelled || !containerRef.current) return;
+      const ui = new Diff2HtmlUI(containerRef.current, patch, DIFF2HTML_CONFIG);
+      ui.draw();
+    });
+
+    return () => {
+      cancelled = true;
+      if (el) el.innerHTML = '';
+    };
+  }, [patch]);
+
+  return <div ref={containerRef} className="diff-panel-content diff-panel-content--inline mt-1.5 text-xs" />;
 };
 
 const ToolCallItem = ({ entry, result }: IToolCallItemProps) => {

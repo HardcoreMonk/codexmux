@@ -110,6 +110,7 @@ const PUSH_NAV_KEY = '/_push-pending';
 
 const consumePushNavCache = async (): Promise<Record<string, string | null> | null> => {
   try {
+    if (typeof caches === 'undefined') return null;
     const cache = await caches.open(PUSH_NAV_CACHE);
     const res = await cache.match(PUSH_NAV_KEY);
     if (!res) return null;
@@ -117,6 +118,16 @@ const consumePushNavCache = async (): Promise<Record<string, string | null> | nu
     return await res.json();
   } catch {
     return null;
+  }
+};
+
+const drainPushNavCache = async (): Promise<void> => {
+  try {
+    if (typeof caches === 'undefined') return;
+    const cache = await caches.open(PUSH_NAV_CACHE);
+    await cache.delete(PUSH_NAV_KEY);
+  } catch {
+    // ignore
   }
 };
 
@@ -161,14 +172,16 @@ const useWebPush = () => {
     const handleSwMessage = (event: MessageEvent) => {
       const data = event.data;
       if (data?.type === 'notification-click' && data.workspaceId) {
-        consumePushNavCache();
+        drainPushNavCache();
         handlePushNavigation(data);
       }
     };
     navigator.serviceWorker.addEventListener('message', handleSwMessage);
 
-    // Cache API 폴백: iOS에서 postMessage 유실 시 (background → foreground 복귀 포함)
-    const checkPushNavCache = () => {
+    // iOS는 SW notificationclick이 client focus/visibilitychange보다 늦게 실행되므로
+    // 즉시 1회 + 300ms 지연 재시도로 SW의 cache 쓰기가 끝난 뒤에도 잡는다.
+    const retryTimers = new Set<ReturnType<typeof setTimeout>>();
+    const consumeAndNavigate = () => {
       consumePushNavCache().then((data) => {
         if (data?.workspaceId) {
           handlePushNavigation({
@@ -180,6 +193,14 @@ const useWebPush = () => {
           });
         }
       });
+    };
+    const checkPushNavCache = () => {
+      consumeAndNavigate();
+      const timer = setTimeout(() => {
+        retryTimers.delete(timer);
+        consumeAndNavigate();
+      }, 300);
+      retryTimers.add(timer);
     };
     checkPushNavCache();
 
@@ -236,6 +257,8 @@ const useWebPush = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('pageshow', handlePageShow);
       window.removeEventListener('focus', handlePageShow);
+      retryTimers.forEach((t) => clearTimeout(t));
+      retryTimers.clear();
       unsub();
     };
   }, []);
