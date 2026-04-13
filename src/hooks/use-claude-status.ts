@@ -25,12 +25,8 @@ export const requestSync = () => {
 };
 
 export const ackNotificationInput = (tabId: string, seq: number) => {
-  const state = sharedWs?.readyState;
-  console.log('[ack] send', { tabId, seq, wsState: state });
-  if (state === WebSocket.OPEN) {
-    sharedWs!.send(JSON.stringify({ type: 'status:ack-notification', tabId, seq }));
-  } else {
-    console.warn('[ack] dropped: ws not open', { wsState: state });
+  if (sharedWs?.readyState === WebSocket.OPEN) {
+    sharedWs.send(JSON.stringify({ type: 'status:ack-notification', tabId, seq }));
   }
 };
 
@@ -89,6 +85,8 @@ const useClaudeStatus = () => {
                 dismissedAt: msg.dismissedAt,
                 claudeSessionId: msg.claudeSessionId,
                 compactingSince: msg.compactingSince,
+                lastEvent: msg.lastEvent,
+                eventSeq: msg.eventSeq,
               });
               if (msg.paneTitle) {
                 useTabMetadataStore.getState().setTitle(msg.tabId, formatTabTitle(msg.paneTitle));

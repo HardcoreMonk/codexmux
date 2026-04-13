@@ -99,10 +99,8 @@ const PermissionPromptItem = ({ sessionName, tabId, silent = false }: IPermissio
     async (idx: number) => {
       if (localSelected !== null) return;
 
-      console.log('[permission-prompt] select', { sessionName, tabId, idx, lastEventSeq, cliState });
       setLocalSelected(idx);
       const ok = await sendSelection(sessionName, idx);
-      console.log('[permission-prompt] sendSelection result', { ok });
       if (!ok) {
         setLocalSelected(null);
         toast.error(t('selectionFailed'));
@@ -110,12 +108,10 @@ const PermissionPromptItem = ({ sessionName, tabId, silent = false }: IPermissio
       }
       if (tabId && lastEventSeq !== undefined) {
         ackNotificationInput(tabId, lastEventSeq);
-      } else {
-        console.warn('[permission-prompt] ack skipped', { tabId, lastEventSeq });
       }
       setDismissed(true);
     },
-    [sessionName, localSelected, t, tabId, lastEventSeq, cliState],
+    [sessionName, localSelected, t, tabId, lastEventSeq],
   );
 
   const renderContent = () => {

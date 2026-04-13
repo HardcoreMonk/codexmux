@@ -13,6 +13,7 @@ import {
   Search,
   Users,
   Wrench,
+  XCircle,
 } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import dayjs from 'dayjs';
@@ -277,7 +278,10 @@ const SessionHistoryItem = ({
       onClick={isActiveSession ? undefined : onClick}
     >
       <span className="mt-1 shrink-0">
-        {icon ?? <CheckCircle2 className={cn('h-3.5 w-3.5', entry.dismissedAt ? 'text-muted-foreground' : 'text-muted-foreground/50')} />}
+        {icon ?? (entry.cancelled
+          ? <XCircle className="h-3.5 w-3.5 text-muted-foreground/50" />
+          : <CheckCircle2 className={cn('h-3.5 w-3.5', entry.dismissedAt ? 'text-muted-foreground' : 'text-muted-foreground/50')} />
+        )}
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">

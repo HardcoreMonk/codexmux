@@ -72,7 +72,7 @@ interface ITabStore {
   setTabOrder: (workspaceId: string, tabIds: string[]) => void;
   setStatusWsConnected: (connected: boolean) => void;
   syncAllFromServer: (serverTabs: Record<string, { cliState: TCliState; workspaceId: string; tabName?: string; panelType?: TPanelType; terminalStatus?: TTerminalStatus; listeningPorts?: number[]; currentProcess?: string; claudeSummary?: string | null; lastUserMessage?: string | null; lastAssistantMessage?: string | null; currentAction?: ICurrentAction | null; readyForReviewAt?: number | null; busySince?: number | null; dismissedAt?: number | null; claudeSessionId?: string | null; compactingSince?: number | null; lastEvent?: ILastEvent | null; eventSeq?: number }>) => void;
-  updateFromServer: (tabId: string, update: { cliState: TCliState | null; workspaceId: string; tabName?: string; panelType?: TPanelType; terminalStatus?: TTerminalStatus; listeningPorts?: number[]; currentProcess?: string; claudeSummary?: string | null; lastUserMessage?: string | null; lastAssistantMessage?: string | null; currentAction?: ICurrentAction | null; readyForReviewAt?: number | null; busySince?: number | null; dismissedAt?: number | null; claudeSessionId?: string | null; compactingSince?: number | null }) => void;
+  updateFromServer: (tabId: string, update: { cliState: TCliState | null; workspaceId: string; tabName?: string; panelType?: TPanelType; terminalStatus?: TTerminalStatus; listeningPorts?: number[]; currentProcess?: string; claudeSummary?: string | null; lastUserMessage?: string | null; lastAssistantMessage?: string | null; currentAction?: ICurrentAction | null; readyForReviewAt?: number | null; busySince?: number | null; dismissedAt?: number | null; claudeSessionId?: string | null; compactingSince?: number | null; lastEvent?: ILastEvent | null; eventSeq?: number }) => void;
   applyHookEvent: (tabId: string, event: ILastEvent) => void;
 }
 
@@ -234,12 +234,18 @@ const useTabStore = create<ITabStore>((set) => ({
       const existing = state.tabs[tabId];
       if (existing) {
         if (existing.cliState === 'cancelled') return state;
-        return { tabs: updateTab(state.tabs, tabId, { cliState: update.cliState, workspaceId: update.workspaceId, tabName: update.tabName, panelType: update.panelType ?? existing.panelType, terminalStatus: update.terminalStatus, listeningPorts: update.listeningPorts, currentProcess: update.currentProcess, claudeSummary: update.claudeSummary, lastUserMessage: update.lastUserMessage, lastAssistantMessage: update.lastAssistantMessage, currentAction: update.currentAction, readyForReviewAt: update.readyForReviewAt, busySince: update.busySince, dismissedAt: update.dismissedAt, claudeSessionId: update.claudeSessionId, compactingSince: update.compactingSince }) };
+        // lastEvent는 클라가 더 최신(큰 seq)을 쥐고 있으면 유지, 아니면 서버값 반영
+        const shouldAdoptEvent = update.eventSeq !== undefined
+          && (existing.eventSeq === undefined || update.eventSeq >= existing.eventSeq);
+        const eventPatch = shouldAdoptEvent
+          ? { lastEvent: update.lastEvent, eventSeq: update.eventSeq }
+          : {};
+        return { tabs: updateTab(state.tabs, tabId, { cliState: update.cliState, workspaceId: update.workspaceId, tabName: update.tabName, panelType: update.panelType ?? existing.panelType, terminalStatus: update.terminalStatus, listeningPorts: update.listeningPorts, currentProcess: update.currentProcess, claudeSummary: update.claudeSummary, lastUserMessage: update.lastUserMessage, lastAssistantMessage: update.lastAssistantMessage, currentAction: update.currentAction, readyForReviewAt: update.readyForReviewAt, busySince: update.busySince, dismissedAt: update.dismissedAt, claudeSessionId: update.claudeSessionId, compactingSince: update.compactingSince, ...eventPatch }) };
       }
       return {
         tabs: {
           ...state.tabs,
-          [tabId]: { ...DEFAULT_TAB_STATE, cliState: update.cliState, workspaceId: update.workspaceId, tabName: update.tabName, panelType: update.panelType, terminalStatus: update.terminalStatus, listeningPorts: update.listeningPorts, currentProcess: update.currentProcess, claudeSummary: update.claudeSummary, lastUserMessage: update.lastUserMessage, lastAssistantMessage: update.lastAssistantMessage, readyForReviewAt: update.readyForReviewAt, busySince: update.busySince, dismissedAt: update.dismissedAt, claudeSessionId: update.claudeSessionId, compactingSince: update.compactingSince },
+          [tabId]: { ...DEFAULT_TAB_STATE, cliState: update.cliState, workspaceId: update.workspaceId, tabName: update.tabName, panelType: update.panelType, terminalStatus: update.terminalStatus, listeningPorts: update.listeningPorts, currentProcess: update.currentProcess, claudeSummary: update.claudeSummary, lastUserMessage: update.lastUserMessage, lastAssistantMessage: update.lastAssistantMessage, readyForReviewAt: update.readyForReviewAt, busySince: update.busySince, dismissedAt: update.dismissedAt, claudeSessionId: update.claudeSessionId, compactingSince: update.compactingSince, lastEvent: update.lastEvent, eventSeq: update.eventSeq },
         },
       };
     }),

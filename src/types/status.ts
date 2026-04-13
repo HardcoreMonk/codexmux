@@ -71,6 +71,8 @@ export interface IStatusUpdateMessage {
   dismissedAt?: number | null;
   claudeSessionId?: string | null;
   compactingSince?: number | null;
+  lastEvent?: ILastEvent | null;
+  eventSeq?: number;
 }
 
 export interface IRateLimitWindow {

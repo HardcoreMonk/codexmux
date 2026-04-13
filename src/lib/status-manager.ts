@@ -400,6 +400,11 @@ class StatusManager {
           ? { terminalStatus: 'idle' as const, listeningPorts: [] as number[] }
           : await this.detectTerminalStatus(paneInfo);
         const resolvedProcess = await this.resolveCurrentProcess(tab.sessionName, paneInfo?.command);
+        // lastEvent는 메모리 전용이라 재시작 시 유실. persisted needs-input 복원 시
+        // 클라 ack가 seq=0과 매칭할 baseline이 필요하므로 합성한다.
+        const syntheticLastEvent: ILastEvent | null = cliState === 'needs-input'
+          ? { name: 'notification', at: Date.now(), seq: 0 }
+          : null;
         this.tabs.set(tab.id, {
           cliState,
           workspaceId: ws.id,
@@ -419,7 +424,7 @@ class StatusManager {
           dismissedAt: tab.dismissedAt ?? null,
           claudeSessionId: tab.claudeSessionId ?? null,
           jsonlPath: detected.jsonlPath,
-          lastEvent: null,
+          lastEvent: syntheticLastEvent,
           eventSeq: 0,
         });
         if ((cliState === 'needs-input' || cliState === 'unknown') && detected.jsonlPath) {
@@ -543,6 +548,11 @@ class StatusManager {
           const persisted: TCliState = (tab.cliState as TCliState | undefined) ?? 'idle';
           const initialState: TCliState = persisted === 'busy' ? 'unknown' : persisted;
           const detected = await this.readTabMetadata(paneInfo);
+          // lastEvent는 메모리 전용이라 재시작 시 유실. persisted needs-input을 복원할 때는
+          // 클라이언트 ack가 seq=0과 매칭할 baseline이 필요하므로 합성한다.
+          const syntheticLastEvent: ILastEvent | null = initialState === 'needs-input'
+            ? { name: 'notification', at: Date.now(), seq: 0 }
+            : null;
           const entry: ITabStatusEntry = {
             cliState: initialState,
             workspaceId: ws.id,
@@ -559,7 +569,7 @@ class StatusManager {
             currentAction: detected.currentAction,
             claudeSessionId: tab.claudeSessionId ?? null,
             jsonlPath: detected.jsonlPath,
-            lastEvent: null,
+            lastEvent: syntheticLastEvent,
             eventSeq: 0,
           };
           this.tabs.set(tab.id, entry);
@@ -686,7 +696,7 @@ class StatusManager {
 
     if (newState === 'ready-for-review' && entry.jsonlPath) {
       const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
-      delay(500).then(() => this.saveSessionHistory(tabId, entry, prevBusySince)).catch((err) => {
+      delay(500).then(() => this.saveSessionHistory(tabId, entry, prevBusySince, false)).catch((err) => {
         log.warn('Failed to save session history: %s', err);
       });
     }
@@ -712,16 +722,18 @@ class StatusManager {
     }
   }
 
-  private async saveSessionHistory(tabId: string, entry: ITabStatusEntry, prevBusySince: number | null | undefined): Promise<void> {
+  private async saveSessionHistory(tabId: string, entry: ITabStatusEntry, prevBusySince: number | null | undefined, cancelled: boolean): Promise<void> {
     if (!entry.lastUserMessage) return;
 
-    const stats = await parseJsonlStats(entry.jsonlPath!);
+    const stats = entry.jsonlPath ? await parseJsonlStats(entry.jsonlPath) : null;
     const { workspaces } = await getWorkspaces();
     const ws = workspaces.find((w) => w.id === entry.workspaceId);
     const now = Date.now();
-    const startedAt = stats.firstUserTs ?? prevBusySince ?? now;
-    const completedAt = stats.lastAssistantTs ?? now;
-    const duration = stats.turnDurationMs ?? (completedAt - startedAt);
+    const startedAt = stats?.firstUserTs ?? prevBusySince ?? now;
+    const completedAt = cancelled ? now : (stats?.lastAssistantTs ?? now);
+    const duration = cancelled
+      ? completedAt - startedAt
+      : (stats?.turnDurationMs ?? (completedAt - startedAt));
 
     const historyEntry: ISessionHistoryEntry = {
       id: nanoid(),
@@ -730,14 +742,15 @@ class StatusManager {
       workspaceDir: ws?.directories[0] ?? null,
       tabId,
       claudeSessionId: entry.claudeSessionId ?? null,
-      prompt: stats.lastUserText ?? entry.lastUserMessage,
-      result: stats.lastAssistantText,
+      prompt: stats?.lastUserText ?? entry.lastUserMessage,
+      result: stats?.lastAssistantText ?? null,
       startedAt,
       completedAt,
       duration,
       dismissedAt: completedAt,
-      toolUsage: stats.toolUsage,
-      touchedFiles: stats.touchedFiles,
+      toolUsage: stats?.toolUsage ?? {},
+      touchedFiles: stats?.touchedFiles ?? [],
+      ...(cancelled ? { cancelled: true } : {}),
     };
 
     await addSessionHistoryEntry(historyEntry);
@@ -762,23 +775,10 @@ class StatusManager {
   }
 
   ackNotificationInput(tabId: string, seq: number): void {
-    hookLog.debug({ tabId, seq }, 'ack received');
     const entry = this.tabs.get(tabId);
-    if (!entry) {
-      hookLog.debug({ tabId, seq }, 'ack ignored: no entry');
-      return;
-    }
-    if (entry.cliState !== 'needs-input') {
-      hookLog.debug({ tabId, seq, cliState: entry.cliState }, 'ack ignored: not needs-input');
-      return;
-    }
-    if (entry.lastEvent?.name !== 'notification' || entry.lastEvent.seq !== seq) {
-      hookLog.debug(
-        { tabId, seq, lastEvent: entry.lastEvent },
-        'ack ignored: seq/name mismatch',
-      );
-      return;
-    }
+    if (!entry) return;
+    if (entry.cliState !== 'needs-input') return;
+    if (entry.lastEvent?.name !== 'notification' || entry.lastEvent.seq !== seq) return;
 
     hookLog.debug({ tabId, seq }, 'ack: needs-input→busy');
     this.applyCliState(tabId, entry, 'busy');
@@ -901,6 +901,12 @@ class StatusManager {
   }
 
   removeTab(tabId: string): void {
+    const entry = this.tabs.get(tabId);
+    if (entry && (entry.cliState === 'busy' || entry.cliState === 'needs-input') && entry.lastUserMessage) {
+      this.saveSessionHistory(tabId, entry, entry.busySince, true).catch((err) => {
+        log.warn('Failed to save cancelled session history: %s', err);
+      });
+    }
     this.stopJsonlWatch(tabId);
     const compactTimer = this.compactStaleTimers.get(tabId);
     if (compactTimer) {
@@ -952,6 +958,8 @@ class StatusManager {
       dismissedAt: entry.dismissedAt,
       claudeSessionId: entry.claudeSessionId,
       compactingSince: entry.compactingSince,
+      lastEvent: entry.lastEvent,
+      eventSeq: entry.eventSeq,
     };
     this.broadcast(msg, exclude);
   }
