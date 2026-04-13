@@ -9,11 +9,9 @@ import type { TLayoutNode, TPanelType } from '@/types/terminal';
 import { collectPanes } from '@/hooks/use-layout';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import useConfigStore from '@/hooks/use-config-store';
-import { isMac } from '@/lib/keyboard-shortcuts';
+import useIsMac from '@/hooks/use-is-mac';
 import isElectron from '@/hooks/use-is-electron';
 import SystemResources from '@/components/layout/system-resources';
-
-const mod = isMac ? '⌘' : 'Ctrl+';
 
 const EqualizeIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -58,6 +56,8 @@ const ContentHeader = ({
   onUpdateTabPanelType,
 }: IContentHeaderProps) => {
   const t = useTranslations('terminal');
+  const isMac = useIsMac();
+  const mod = isMac ? '⌘' : 'Ctrl+';
   const [isToggling, setIsToggling] = useState(false);
 
   const panes = collectPanes(root);

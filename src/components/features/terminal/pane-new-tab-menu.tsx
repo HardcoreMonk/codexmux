@@ -9,9 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import type { TPanelType } from '@/types/terminal';
 import useConfigStore from '@/hooks/use-config-store';
 import useIsMobile from '@/hooks/use-is-mobile';
-import { isMac } from '@/lib/keyboard-shortcuts';
-
-const mod = isMac ? '⌘' : 'Ctrl+';
+import useIsMac from '@/hooks/use-is-mac';
 
 interface IPaneNewTabMenuProps {
   isCreating: boolean;
@@ -20,6 +18,8 @@ interface IPaneNewTabMenuProps {
 
 const PaneNewTabMenu = ({ isCreating, onCreateTab }: IPaneNewTabMenuProps) => {
   const t = useTranslations('terminal');
+  const isMac = useIsMac();
+  const mod = isMac ? '⌘' : 'Ctrl+';
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
 

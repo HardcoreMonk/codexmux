@@ -11,6 +11,7 @@ import {
 import useTabStore from '@/hooks/use-tab-store';
 import { useNotificationCount, NotificationPanel } from '@/components/features/terminal/notification-sheet';
 import AppLogo from '@/components/layout/app-logo';
+import ShortcutKey from '@/components/shortcut-key';
 import { isMac } from '@/lib/keyboard-shortcuts';
 import { useRouter } from 'next/router';
 import { cn } from '@/lib/utils';
@@ -462,9 +463,9 @@ const Sidebar = () => {
                 const isActive = isExternal
                   ? activeWebviewId === item.id
                   : isNavActive(item.url) && !activeWebviewId;
-                const shortcutMap: Record<string, string> = {
-                  'builtin-notes': isMac ? '⌘⇧E' : '^⇧E',
-                  'builtin-stats': isMac ? '⌘⇧U' : '^⇧U',
+                const shortcutMap: Record<string, { mac: string; other: string }> = {
+                  'builtin-notes': { mac: '⌘⇧E', other: '^⇧E' },
+                  'builtin-stats': { mac: '⌘⇧U', other: '^⇧U' },
                 };
                 const shortcut = shortcutMap[item.id];
                 return (
@@ -488,14 +489,14 @@ const Sidebar = () => {
                       <IconRenderer name={item.icon} className="h-3.5 w-3.5" />
                     </button>
                     {shortcut && (
-                      <span
+                      <ShortcutKey
+                        mac={shortcut.mac}
+                        other={shortcut.other}
                         className={cn(
                           'absolute -right-0.5 -top-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-medium leading-none text-muted-foreground transition-opacity duration-200 pointer-events-none',
                           showShortcuts ? 'opacity-100' : 'opacity-0',
                         )}
-                      >
-                        {shortcut}
-                      </span>
+                      />
                     )}
                   </div>
                 );
@@ -508,14 +509,14 @@ const Sidebar = () => {
                 >
                   <Settings className="h-3.5 w-3.5" />
                 </button>
-                <span
+                <ShortcutKey
+                  mac="⌘,"
+                  other="^,"
                   className={cn(
                     'absolute -right-0.5 -top-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-medium leading-none text-muted-foreground transition-opacity duration-200 pointer-events-none',
                     showShortcuts ? 'opacity-100' : 'opacity-0',
                   )}
-                >
-                  {isMac ? '⌘,' : '^,'}
-                </span>
+                />
               </div>
             </div>
             <div className="relative">
@@ -526,14 +527,14 @@ const Sidebar = () => {
               >
                 <ChevronsLeft className="h-3.5 w-3.5" />
               </button>
-              <span
+              <ShortcutKey
+                mac="⌘B"
+                other="^B"
                 className={cn(
                   'absolute -right-0.5 -top-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-medium leading-none text-muted-foreground transition-opacity duration-200 pointer-events-none',
                   showShortcuts ? 'opacity-100' : 'opacity-0',
                 )}
-              >
-                {isMac ? '⌘B' : '^B'}
-              </span>
+              />
             </div>
           </div>
         </div>
