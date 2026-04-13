@@ -1,4 +1,5 @@
 import { useMemo, useCallback, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useShallow } from 'zustand/react/shallow';
 import { useTranslations } from 'next-intl';
 import {
@@ -43,6 +44,14 @@ const ACTION_ICONS: Record<string, typeof FileText> = {
   Grep: Search,
   Glob: Search,
   Agent: Users,
+};
+
+const ITEM_MOTION = {
+  layout: true,
+  initial: { opacity: 0, y: -6 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, scale: 0.92 },
+  transition: { duration: 0.2, ease: [0.2, 0.8, 0.2, 1] as const },
 };
 
 
@@ -485,9 +494,13 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
                 {t('busySection', { count: busyItems.length })}
               </h3>
               <div className="flex flex-col gap-2">
-                {busyItems.map((item) => (
-                  <NotificationItem key={item.tabId} item={item} showActions={false} isActiveTab={item.tabId === activeTabId} onNavigate={handleNavigate} />
-                ))}
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {busyItems.map((item) => (
+                    <motion.div key={item.tabId} {...ITEM_MOTION}>
+                      <NotificationItem item={item} showActions={false} isActiveTab={item.tabId === activeTabId} onNavigate={handleNavigate} />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             </section>
           )}
@@ -498,9 +511,13 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
                 {t('needsInputSection', { count: needsInputItems.length })}
               </h3>
               <div className="flex flex-col gap-2">
-                {needsInputItems.map((item) => (
-                  <NotificationItem key={item.tabId} item={item} showActions={false} variant="needs-input" isActiveTab={item.tabId === activeTabId} onNavigate={handleNavigate} />
-                ))}
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {needsInputItems.map((item) => (
+                    <motion.div key={item.tabId} {...ITEM_MOTION}>
+                      <NotificationItem item={item} showActions={false} variant="needs-input" isActiveTab={item.tabId === activeTabId} onNavigate={handleNavigate} />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             </section>
           )}
@@ -511,36 +528,42 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
                 {t('reviewSection', { count: reviewItems.length })}
               </h3>
               <div className="flex flex-col gap-2">
-                {reviewItems.map((item) => {
-                  const entry = item.claudeSessionId ? reviewHistoryMap.get(item.claudeSessionId) : undefined;
-                  const isActive = item.tabId === activeTabId;
-                  if (!entry) {
-                    return <NotificationItem key={item.tabId} item={item} showActions isActiveTab={isActive} onDismiss={handleDismiss} onNavigate={handleNavigate} />;
-                  }
-                  return (
-                    <div key={item.tabId}>
-                      <SessionHistoryItem
-                        entry={entry}
-                        isActiveSession={isActive}
-                        icon={<span className="mt-px block h-2 w-2 rounded-full bg-claude-active" />}
-                        onClick={isActive ? undefined : () => handleNavigate(item.workspaceId, item.tabId)}
-                      />
-                      {!isActive && (
-                        <div className="mt-1 flex items-center pl-9">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-6 px-2 text-xs"
-                            onClick={() => handleDismiss(item.tabId)}
-                          >
-                            <Check className="mr-1 h-3 w-3" />
-                            {t('dismiss')}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {reviewItems.map((item) => {
+                    const entry = item.claudeSessionId ? reviewHistoryMap.get(item.claudeSessionId) : undefined;
+                    const isActive = item.tabId === activeTabId;
+                    if (!entry) {
+                      return (
+                        <motion.div key={item.tabId} {...ITEM_MOTION}>
+                          <NotificationItem item={item} showActions isActiveTab={isActive} onDismiss={handleDismiss} onNavigate={handleNavigate} />
+                        </motion.div>
+                      );
+                    }
+                    return (
+                      <motion.div key={item.tabId} {...ITEM_MOTION}>
+                        <SessionHistoryItem
+                          entry={entry}
+                          isActiveSession={isActive}
+                          icon={<span className="mt-px block h-2 w-2 rounded-full bg-claude-active" />}
+                          onClick={isActive ? undefined : () => handleNavigate(item.workspaceId, item.tabId)}
+                        />
+                        {!isActive && (
+                          <div className="mt-1 flex items-center pl-9">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => handleDismiss(item.tabId)}
+                            >
+                              <Check className="mr-1 h-3 w-3" />
+                              {t('dismiss')}
+                            </Button>
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
               </div>
             </section>
           )}
@@ -556,50 +579,52 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
                     {t(`dateGroup_${dateGroup}`)}
                   </h4>
                   <div className="flex flex-col gap-2">
-                    {sessions.map((group) => {
-                      const isExpanded = expandedTabs.has(group.sessionId);
-                      const hasOlder = group.olderEntries.length > 0;
-                      const isActive = activeClaudeSessionId !== null && group.sessionId === activeClaudeSessionId && !liveSessionIds.has(group.sessionId);
-                      const resolvedTabId = sessionTabMap.get(group.sessionId) ?? null;
-                      return (
-                        <div key={group.sessionId}>
-                          <SessionHistoryItem
-                            entry={group.latestEntry}
-                            isActiveSession={isActive}
-                            onClick={() => handleHistoryClick(group.latestEntry, resolvedTabId)}
-                          />
-                          {hasOlder && (
-                            <button
-                              type="button"
-                              className="mt-1 flex w-full items-center gap-1 py-0.5 pl-9 text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-                              onClick={() => toggleExpanded(group.sessionId)}
-                            >
-                              <ChevronRight className={cn('h-3 w-3 transition-transform', isExpanded && 'rotate-90')} />
-                              {isExpanded ? t('showLess') : t('showMore', { count: group.olderEntries.length })}
-                            </button>
-                          )}
-                          {hasOlder && (
-                            <div
-                              className="grid transition-[grid-template-rows] duration-200 ease-out"
-                              style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}
-                            >
-                              <div className="overflow-hidden min-h-0">
-                                <div className="mt-1 flex flex-col border-l border-border/30 ml-5 pl-2">
-                                  {group.olderEntries.map((entry) => (
-                                    <SessionHistoryItem
-                                      key={entry.id}
-                                      entry={entry}
-                                      compact
-                                      onClick={() => handleHistoryClick(entry, resolvedTabId)}
-                                    />
-                                  ))}
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      {sessions.map((group) => {
+                        const isExpanded = expandedTabs.has(group.sessionId);
+                        const hasOlder = group.olderEntries.length > 0;
+                        const isActive = activeClaudeSessionId !== null && group.sessionId === activeClaudeSessionId && !liveSessionIds.has(group.sessionId);
+                        const resolvedTabId = sessionTabMap.get(group.sessionId) ?? null;
+                        return (
+                          <motion.div key={group.sessionId} {...ITEM_MOTION}>
+                            <SessionHistoryItem
+                              entry={group.latestEntry}
+                              isActiveSession={isActive}
+                              onClick={() => handleHistoryClick(group.latestEntry, resolvedTabId)}
+                            />
+                            {hasOlder && (
+                              <button
+                                type="button"
+                                className="mt-1 flex w-full items-center gap-1 py-0.5 pl-9 text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                                onClick={() => toggleExpanded(group.sessionId)}
+                              >
+                                <ChevronRight className={cn('h-3 w-3 transition-transform', isExpanded && 'rotate-90')} />
+                                {isExpanded ? t('showLess') : t('showMore', { count: group.olderEntries.length })}
+                              </button>
+                            )}
+                            {hasOlder && (
+                              <div
+                                className="grid transition-[grid-template-rows] duration-200 ease-out"
+                                style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}
+                              >
+                                <div className="overflow-hidden min-h-0">
+                                  <div className="mt-1 flex flex-col border-l border-border/30 ml-5 pl-2">
+                                    {group.olderEntries.map((entry) => (
+                                      <SessionHistoryItem
+                                        key={entry.id}
+                                        entry={entry}
+                                        compact
+                                        onClick={() => handleHistoryClick(entry, resolvedTabId)}
+                                      />
+                                    ))}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                            )}
+                          </motion.div>
+                        );
+                      })}
+                    </AnimatePresence>
                   </div>
                 </div>
               ))}
