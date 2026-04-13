@@ -966,6 +966,7 @@ class StatusManager {
       busySince: entry.busySince,
       dismissedAt: entry.dismissedAt,
       claudeSessionId: entry.claudeSessionId,
+      permissionPromptVersion: entry.permissionPromptVersion,
     };
     this.broadcast(msg, exclude);
   }

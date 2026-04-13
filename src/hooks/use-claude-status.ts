@@ -85,6 +85,7 @@ const useClaudeStatus = () => {
                 busySince: msg.busySince,
                 dismissedAt: msg.dismissedAt,
                 claudeSessionId: msg.claudeSessionId,
+                permissionPromptVersion: msg.permissionPromptVersion,
               });
               if (msg.paneTitle) {
                 useTabMetadataStore.getState().setTitle(msg.tabId, formatTabTitle(msg.paneTitle));

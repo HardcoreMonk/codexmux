@@ -21,7 +21,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   const { event, session } = req.body ?? {};
   if (typeof event === 'string' && event !== 'poll' && typeof session === 'string' && session) {
-    log.info({ event, session, ts: Date.now() }, '[hook-trace] received');
     getStatusManager().updateTabFromHook(session, event);
   } else {
     getStatusManager().poll().catch((err) => {

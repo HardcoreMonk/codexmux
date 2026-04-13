@@ -47,6 +47,7 @@ const PermissionPromptItem = ({ sessionName, tabId, silent = false }: IPermissio
   const [options, setOptions] = useState<string[]>([]);
   const [phase, setPhase] = useState<TPhase>('loading');
   const cliState = useTabStore((s) => tabId ? s.tabs[tabId]?.cliState : undefined);
+  const promptVersion = useTabStore((s) => tabId ? s.tabs[tabId]?.permissionPromptVersion : undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,7 +79,7 @@ const PermissionPromptItem = ({ sessionName, tabId, silent = false }: IPermissio
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [sessionName, cliState, silent]);
+  }, [sessionName, cliState, promptVersion, silent]);
 
   const isSelectable = localSelected === null;
 
