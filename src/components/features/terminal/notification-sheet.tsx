@@ -450,11 +450,11 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
     return map;
   }, [historyEntries, reviewSessionIds]);
   const sessionGroups = useMemo(() => {
-    const filtered = reviewSessionIds.size > 0
-      ? historyEntries.filter((e) => !e.claudeSessionId || !reviewSessionIds.has(e.claudeSessionId))
+    const filtered = liveSessionIds.size > 0
+      ? historyEntries.filter((e) => !e.claudeSessionId || !liveSessionIds.has(e.claudeSessionId))
       : historyEntries;
     return groupHistoryBySession(filtered);
-  }, [historyEntries, reviewSessionIds]);
+  }, [historyEntries, liveSessionIds]);
   const dateGroups = useMemo(() => groupSessionsByDate(sessionGroups), [sessionGroups]);
 
   const toggleExpanded = useCallback((sessionId: string) => {
