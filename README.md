@@ -4,7 +4,7 @@
 
 한 화면에서 모든 세션을, 폰에서도 끊김 없이.
 
-<!-- TODO: 히어로 이미지 / GIF -->
+![purplemux](docs/images/screenshot.png)
 
 ## 설치
 
