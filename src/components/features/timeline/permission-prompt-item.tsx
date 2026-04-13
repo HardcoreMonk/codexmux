@@ -8,6 +8,7 @@ import useTabStore from '@/hooks/use-tab-store';
 interface IPermissionPromptItemProps {
   sessionName: string;
   tabId?: string;
+  silent?: boolean;
 }
 
 const fetchPermissionOptions = async (session: string): Promise<string[]> => {
@@ -40,7 +41,7 @@ const RETRY_DELAYS_MS = [500, 1_000, 2_000, 4_000];
 
 type TPhase = 'loading' | 'ready' | 'failed';
 
-const PermissionPromptItem = ({ sessionName, tabId }: IPermissionPromptItemProps) => {
+const PermissionPromptItem = ({ sessionName, tabId, silent = false }: IPermissionPromptItemProps) => {
   const t = useTranslations('timeline');
   const [localSelected, setLocalSelected] = useState<number | null>(null);
   const [options, setOptions] = useState<string[]>([]);
@@ -54,6 +55,8 @@ const PermissionPromptItem = ({ sessionName, tabId }: IPermissionPromptItemProps
     setOptions([]);
     setPhase('loading');
 
+    const maxRetries = silent ? 0 : RETRY_DELAYS_MS.length;
+
     const attempt = async (retryIndex: number) => {
       const fetched = await fetchPermissionOptions(sessionName);
       if (cancelled) return;
@@ -62,7 +65,7 @@ const PermissionPromptItem = ({ sessionName, tabId }: IPermissionPromptItemProps
         setPhase('ready');
         return;
       }
-      if (retryIndex >= RETRY_DELAYS_MS.length) {
+      if (retryIndex >= maxRetries) {
         setPhase('failed');
         return;
       }
@@ -75,7 +78,7 @@ const PermissionPromptItem = ({ sessionName, tabId }: IPermissionPromptItemProps
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [sessionName, cliState]);
+  }, [sessionName, cliState, silent]);
 
   const isSelectable = localSelected === null;
 
@@ -94,6 +97,7 @@ const PermissionPromptItem = ({ sessionName, tabId }: IPermissionPromptItemProps
   );
 
   if (phase === 'loading') {
+    if (silent) return null;
     return (
       <div className="animate-in fade-in duration-150 mt-2">
         <div className="flex items-center gap-2 rounded-lg border border-claude-active/20 bg-claude-active/5 px-4 py-3 text-xs text-claude-active">
@@ -105,6 +109,7 @@ const PermissionPromptItem = ({ sessionName, tabId }: IPermissionPromptItemProps
   }
 
   if (phase === 'failed') {
+    if (silent) return null;
     return (
       <div className="animate-in fade-in duration-150 mt-2">
         <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs text-amber-600 dark:text-amber-400">

@@ -283,26 +283,26 @@ const TimelineView = ({
   const groupedItems = useMemo(() => groupTimelineEntries(entries), [entries]);
   const hasDisplayItems = groupedItems.length > 0;
 
-  const [showDialogPrompt, setShowDialogPrompt] = useState(false);
-  const dialogDepsKey = `${cliState}:${initMeta?.contextWindowTokens ?? 0}:${initMeta?.lastTimestamp ?? 0}:${sessionName ?? ''}`;
+  const [shouldProbeResumeDialog, setShouldProbeResumeDialog] = useState(false);
+  const resumeProbeDepsKey = `${cliState}:${initMeta?.contextWindowTokens ?? 0}:${initMeta?.lastTimestamp ?? 0}:${sessionName ?? ''}`;
 
   useEffect(() => {
     if (cliState !== 'idle' || !initMeta || !sessionName
       || initMeta.contextWindowTokens < RESUME_TOKEN_THRESHOLD
       || !initMeta.lastTimestamp) {
-      setShowDialogPrompt(false);
+      setShouldProbeResumeDialog(false);
       return;
     }
 
     const check = () => {
       const idleMinutes = (Date.now() - initMeta.lastTimestamp) / 60_000;
-      setShowDialogPrompt(idleMinutes >= RESUME_IDLE_MINUTES);
+      setShouldProbeResumeDialog(idleMinutes >= RESUME_IDLE_MINUTES);
     };
     check();
     const id = setInterval(check, 60_000);
     return () => clearInterval(id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dialogDepsKey]);
+  }, [resumeProbeDepsKey]);
 
   useEffect(() => {
     if (skipAnimation && entries.length > 0) {
@@ -426,9 +426,13 @@ const TimelineView = ({
               )}
             </div>
           ))}
-          {(showDialogPrompt || storeNeedsInput) && sessionName && (
+          {(shouldProbeResumeDialog || storeNeedsInput) && sessionName && (
             <div className="px-4 py-1.5">
-              <PermissionPromptItem sessionName={sessionName} tabId={tabId} />
+              <PermissionPromptItem
+                sessionName={sessionName}
+                tabId={tabId}
+                silent={shouldProbeResumeDialog && !storeNeedsInput}
+              />
             </div>
           )}
           {cliState === 'busy' && !storeNeedsInput && (
