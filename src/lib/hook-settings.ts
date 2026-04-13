@@ -19,10 +19,19 @@ PORT_FILE="$HOME/.purplemux/port"
 [ -f "$PORT_FILE" ] || exit 0
 PORT=$(cat "$PORT_FILE")
 SESSION=$(tmux display-message -p '#{session_name}' 2>/dev/null) || SESSION=""
-curl -s -X POST -o /dev/null \
-  -H 'Content-Type: application/json' \
-  -d "{\\"event\\":\\"\${EVENT}\\",\\"session\\":\\"\${SESSION}\\"}" \
-  "http://localhost:\${PORT}/api/status/hook" 2>/dev/null
+
+NOTIFICATION_TYPE=""
+if [ "$EVENT" = "notification" ]; then
+  NOTIFICATION_TYPE=$(sed -n 's/.*"notification_type"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p')
+fi
+
+PAYLOAD="{\\"event\\":\\"\${EVENT}\\",\\"session\\":\\"\${SESSION}\\""
+if [ -n "$NOTIFICATION_TYPE" ]; then
+  PAYLOAD="\${PAYLOAD},\\"notificationType\\":\\"\${NOTIFICATION_TYPE}\\""
+fi
+PAYLOAD="\${PAYLOAD}}"
+
+curl -s -X POST -o /dev/null -H 'Content-Type: application/json' -d "$PAYLOAD" "http://localhost:\${PORT}/api/status/hook" 2>/dev/null
 exit 0
 `;
 

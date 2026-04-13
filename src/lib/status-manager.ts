@@ -23,6 +23,10 @@ import { watch, type FSWatcher } from 'fs';
 const log = createLogger('status');
 const hookLog = createLogger('hooks');
 
+// Notification hook의 notification_type 중 권한 요청류만 needs-input으로 전환.
+// idle_prompt(응답 후 60s idle 알람), computer_use_*, elicitation_*, auth_success 등은 상태 변경 없이 무시한다.
+const INPUT_REQUESTING_NOTIFICATION_TYPES = new Set(['permission_prompt', 'worker_permission_prompt']);
+
 export const deriveStateFromEvent = (event: ILastEvent | null, fallback: TCliState): TCliState => {
   if (!event) return fallback;
   switch (event.name) {
@@ -761,23 +765,28 @@ class StatusManager {
     return undefined;
   }
 
-  updateTabFromHook(tmuxSession: string, event: string): void {
+  updateTabFromHook(tmuxSession: string, event: string, notificationType?: string): void {
     const tabId = this.findTabIdBySession(tmuxSession);
     if (!tabId) {
-      hookLog.debug({ tmuxSession, event }, 'no tabId for session');
+      hookLog.debug({ tmuxSession, event, notificationType }, 'no tabId for session');
       return;
     }
     const entry = this.tabs.get(tabId);
     if (!entry) {
-      hookLog.debug({ tabId, event }, 'no entry for tab');
+      hookLog.debug({ tabId, event, notificationType }, 'no entry for tab');
       return;
     }
 
     if (event !== 'session-start' && event !== 'prompt-submit' && event !== 'notification' && event !== 'stop') {
-      hookLog.debug({ tabId, event }, 'unknown event, ignoring');
+      hookLog.debug({ tabId, event, notificationType }, 'unknown event, ignoring');
       return;
     }
     const eventName = event as TEventName;
+
+    if (eventName === 'notification' && notificationType && !INPUT_REQUESTING_NOTIFICATION_TYPES.has(notificationType)) {
+      hookLog.debug({ tabId, event: eventName, notificationType }, 'non-input notification, skipping state transition');
+      return;
+    }
 
     const now = Date.now();
     const seq = (entry.eventSeq ?? 0) + 1;
@@ -790,7 +799,10 @@ class StatusManager {
       ? prevState
       : deriveStateFromEvent(entry.lastEvent, prevState);
 
-    hookLog.debug({ tabId, event: eventName, seq, prevState, newState, transition: prevState !== newState }, 'processed');
+    hookLog.debug(
+      { tabId, event: eventName, notificationType, seq, prevState, newState, transition: prevState !== newState },
+      `processed ${eventName}${notificationType ? `(${notificationType})` : ''} ${prevState}→${newState}`,
+    );
 
     if (prevState !== newState) {
       this.applyCliState(tabId, entry, newState);

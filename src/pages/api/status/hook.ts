@@ -19,10 +19,11 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  const { event, session } = req.body ?? {};
+  const { event, session, notificationType } = req.body ?? {};
   if (typeof event === 'string' && event !== 'poll' && typeof session === 'string' && session) {
-    log.debug({ event, session }, 'received');
-    getStatusManager().updateTabFromHook(session, event);
+    const type = typeof notificationType === 'string' && notificationType ? notificationType : undefined;
+    log.debug({ event, session, notificationType: type }, `received ${event}${type ? `(${type})` : ''}`);
+    getStatusManager().updateTabFromHook(session, event, type);
   } else {
     log.debug({ body: req.body }, 'poll trigger');
     getStatusManager().poll().catch((err) => {

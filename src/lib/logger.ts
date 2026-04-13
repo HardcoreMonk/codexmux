@@ -29,12 +29,14 @@ const lowestLevel = (): pino.Level => {
 const g = globalThis as unknown as { __ptRootLogger?: pino.Logger };
 
 if (!g.__ptRootLogger) {
+  const rootLevel = lowestLevel();
   g.__ptRootLogger = pino({
-    level: lowestLevel(),
+    level: rootLevel,
     transport: {
       targets: [
         {
           target: 'pino-roll',
+          level: rootLevel,
           options: {
             file: path.join(LOG_DIR, 'purplemux'),
             frequency: 'daily',
@@ -45,6 +47,7 @@ if (!g.__ptRootLogger) {
         },
         {
           target: 'pino-pretty',
+          level: rootLevel,
           options: {
             colorize: true,
             ignore: 'pid,hostname,module',
