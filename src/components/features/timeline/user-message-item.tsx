@@ -10,12 +10,15 @@ interface IUserMessageItemProps {
 
 const UserMessageItem = ({ entry }: IUserMessageItemProps) => {
   const [delayed, setDelayed] = useState(false);
+  const [lastPending, setLastPending] = useState(entry.pending);
+
+  if (lastPending !== entry.pending) {
+    setLastPending(entry.pending);
+    setDelayed(false);
+  }
 
   useEffect(() => {
-    if (!entry.pending) {
-      setDelayed(false);
-      return;
-    }
+    if (!entry.pending) return;
     const timer = setTimeout(() => setDelayed(true), PENDING_FADE_DELAY_MS);
     return () => clearTimeout(timer);
   }, [entry.pending]);
