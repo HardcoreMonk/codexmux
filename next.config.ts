@@ -15,7 +15,16 @@ const nextConfig: NextConfig = {
   },
   output: 'standalone',
   outputFileTracingExcludes: {
-    '*': ['./release/**'],
+    '*': [
+      './release/**',
+      './CLAUDE.md',
+      './AGENTS.md',
+      './README*.md',
+      './docs/**',
+      './.specs/**',
+      './.claude/**',
+      './tests/**',
+    ],
   },
   reactStrictMode: true,
   i18n: {

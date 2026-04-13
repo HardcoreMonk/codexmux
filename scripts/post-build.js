@@ -2,6 +2,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const electronMode = process.argv.includes('--electron');
+
 const root = path.join(__dirname, '..');
 const standalone = path.join(root, '.next', 'standalone');
 
@@ -14,6 +16,15 @@ if (!fs.existsSync(standalone)) {
 for (const f of fs.readdirSync(standalone)) {
   if (f.startsWith('.env')) {
     fs.rmSync(path.join(standalone, f));
+    console.log(`[post-build] removed ${f} from standalone`);
+  }
+}
+
+// Dev-only files occasionally picked up by NFT — strip them out
+for (const f of ['CLAUDE.md', 'AGENTS.md']) {
+  const p = path.join(standalone, f);
+  if (fs.existsSync(p)) {
+    fs.rmSync(p, { force: true });
     console.log(`[post-build] removed ${f} from standalone`);
   }
 }
@@ -31,6 +42,17 @@ for (const { src, dest } of copies) {
   fs.cpSync(src, dest, { recursive: true });
   console.log(`[post-build] ${path.relative(root, src)} → ${path.relative(root, dest)}`);
 }
+
+if (!electronMode) {
+  const partial = path.join(standalone, 'node_modules');
+  if (fs.existsSync(partial)) {
+    fs.rmSync(partial, { recursive: true, force: true });
+    console.log('[post-build] web mode — removed standalone/node_modules');
+  }
+  return;
+}
+
+console.log('[post-build] electron mode — completing node_modules');
 
 // --- Complete incomplete node_modules in standalone ---
 // Next.js NFT traces only referenced files, leaving packages partial.

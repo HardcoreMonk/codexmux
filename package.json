@@ -31,7 +31,6 @@
     "bin/",
     "dist/",
     ".next/standalone/",
-    "public/",
     "src/config/tmux.conf"
   ],
   "scripts": {
@@ -39,7 +38,7 @@
     "build": "next build && node scripts/post-build.js && tsup",
     "build:server": "tsup",
     "build:electron:main": "tsup --config electron/tsup.config.ts",
-    "build:electron": "pnpm build && pnpm build:electron:main",
+    "build:electron": "next build && node scripts/post-build.js --electron && tsup && pnpm build:electron:main",
     "dev:electron": "ELECTRON_DEV_URL=http://localhost:8022 electron .",
     "pack:electron": "pnpm build:electron && electron-builder --mac",
     "pack:electron:dev": "pnpm build:electron && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac -c.mac.identity=null -c.mac.notarize=false",
