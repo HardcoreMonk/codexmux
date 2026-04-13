@@ -58,7 +58,7 @@ Claude가 실행 중일 때의 작업 진행 상태.
 
 `ready-for-review`은 `busy → idle` 전환 시 자동 승격되며, 사용자가 해당 탭을 포커스하면 `idle`로 전환된다.
 
-`needs-input`은 두 경로로 진입한다: (1) 서버 폴링에서 터미널 화면에 권한 프롬프트가 감지된 경우, (2) Notification hook이 `busy` 상태에서 수신된 경우.
+`needs-input`은 두 경로로 진입한다: (1) 서버 폴링에서 터미널 화면에 권한 프롬프트가 감지된 경우, (2) Notification hook 수신 — `inactive`를 제외한 모든 상태에서 전환된다.
 
 ### 탭 표시 상태 (`TTabDisplayStatus`)
 
@@ -181,7 +181,7 @@ noise 엔트리(`file-history-snapshot`, `progress`, `last-prompt`)는 스킵하
 | `updateTab` (서버 StatusManager) | 동일 조건 → 무시 |
 | `poll` (서버 StatusManager) | `cliChanged` 조건에서 제외 |
 | `initTab` (탭 초기화/재연결) | `existing === 'ready-for-review'` → 유지 |
-| `updateTabFromHook` (Hook) | `needs-input`은 `prev === 'busy'`일 때만 전환, `stop`은 `busy`/`needs-input`에서만 `ready-for-review`로 전환 |
+| `updateTabFromHook` (Hook) | `notification`은 `prev === 'inactive'`만 제외하고 `needs-input`으로 전환 (연속 권한 프롬프트 지원 목적), `stop`은 `busy`/`needs-input`에서만 `ready-for-review`로 전환 |
 | `syncAllFromServer` / `updateFromServer` | 서버가 authority, 직접 patch (서버에서 이미 보호) |
 
 **새로운 `cliState` 쓰기 경로를 추가할 때는 반드시 이 보호를 포함해야 한다.** `initTab`에서 layout JSON의 stale 값이 store의 `ready-for-review`를 덮어쓰는 버그가 실제 발생한 사례가 있다 — layout 파일 persist는 비동기(fire-and-forget)이므로 WebSocket을 통해 전파된 store 값과 layout 파일 값이 불일치할 수 있다.
@@ -258,19 +258,29 @@ localhost 연결만 허용 (보안). `event`와 `session`을 수신하여 `Statu
 | --- | --- | --- |
 | `session-start` | → `idle` | 세션 시작, 입력 대기 |
 | `prompt-submit` | → `busy` | 사용자 입력 제출 |
-| `notification` | `busy` → `needs-input`, 그 외 → 유지 | busy일 때만 전환 (아래 참고) |
+| `notification` | `inactive` → 유지, 그 외 → `needs-input` | 아래 참고 |
 | `stop` | `busy`/`needs-input` → `ready-for-review`, 그 외 → `idle` | 작업 완료 |
 
-#### Notification 조건부 처리
+#### Notification 처리 원칙
 
-Notification hook은 `prevState === 'busy'`일 때만 `needs-input`으로 전환한다. 이는 Stop hook이 먼저 도착하여 `ready-for-review`로 전환된 후, 뒤늦은 Notification이 상태를 덮어쓰는 문제를 방지한다.
+Notification hook은 `prevState === 'inactive'`만 제외하고 언제나 `needs-input`으로 전환한다. `idle`, `ready-for-review`, `busy` 모두에서 덮어쓴다.
+
+동일한 `needs-input` 상태에서 새 notification이 도착해도 무시하지 않고 **`permissionPromptVersion`을 증가**시켜 broadcast한다. 클라이언트(`PermissionPromptItem`)는 이 version 변경을 useEffect dep로 구독하여 pane capture를 재호출하고 새 옵션을 다시 읽어온다. 이 동작이 끊기면 연속으로 발생하는 권한 프롬프트의 두 번째 프롬프트가 UI에 반영되지 않는다.
 
 ```
-정상 순서:                   비정상 순서 (보호 동작):
-prompt-submit → busy         prompt-submit → busy
-notification  → needs-input  stop          → ready-for-review
-stop          → ready-for-review  notification  → 무시 (prev ≠ busy)
+정상 순서 (단일 권한 프롬프트):
+prompt-submit → busy
+notification  → needs-input
+stop          → ready-for-review
+
+연속 권한 프롬프트 (version bump로 갱신):
+prompt-submit → busy
+notification  → needs-input (version=1)
+notification  → needs-input (version=2, UI가 pane capture 재호출)
+stop          → ready-for-review
 ```
+
+**알려진 트레이드오프**: `stop` 직후 뒤늦게 도착한 notification이 `ready-for-review`를 `needs-input`으로 잠깐 덮어쓸 수 있다. 이 경우 타임라인에 로딩 배너가 잠깐 표시되었다가 다음 `stop`/`prompt-submit`이 도착하면 사라진다. 연속 권한 프롬프트 지원이 우선이므로 이 flicker는 허용된다.
 
 ### Hook Grace Period
 
