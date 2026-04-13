@@ -200,11 +200,12 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
 
   const scrollToBottomRef = useRef<(() => void) | undefined>(undefined);
   const addPendingMessageRef = useRef<((text: string) => void) | undefined>(undefined);
-  const pendingRestartRef = useRef(false);
+  const pendingRestartRef = useRef<string | null>(null);
   const lastTitleRef = useRef('');
 
   const claudeCliState = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.cliState ?? 'inactive' : 'inactive');
   const claudeStatus = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.claudeStatus ?? 'unknown' : 'unknown');
+  const claudeSessionId = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.claudeSessionId ?? null : null);
   const sessionView = useTabStore((s) => activeTabId ? selectSessionView(s.tabs, activeTabId) : 'inactive');
   const claudeInputVisible = sessionView === 'timeline';
 
@@ -618,29 +619,59 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
     focus,
   });
 
+  const buildClaudeCommand = useCallback((sessionId: string | null): string => {
+    const dangerous = useConfigStore.getState().dangerouslySkipPermissions;
+    const settings = '--settings ~/.purplemux/hooks.json';
+    const base = sessionId
+      ? `claude --resume ${sessionId} ${settings}`
+      : `claude ${settings}`;
+    return dangerous ? `${base} --dangerously-skip-permissions` : base;
+  }, []);
+
   const handleNewClaudeSession = useCallback(() => {
     if (status !== 'connected' || !activeTabId) return;
     useTabStore.getState().setRestarting(activeTabId, true);
-    const dangerous = useConfigStore.getState().dangerouslySkipPermissions;
-    const settings = '--settings ~/.purplemux/hooks.json';
-    const cmd = dangerous ? `claude ${settings} --dangerously-skip-permissions` : `claude ${settings}`;
-    sendStdin(`${cmd}\r`);
-  }, [status, sendStdin, activeTabId]);
+    sendStdin(`${buildClaudeCommand(null)}\r`);
+  }, [status, sendStdin, activeTabId, buildClaudeCommand]);
 
   const handleRestartClaudeSession = useCallback(() => {
     if (status !== 'connected' || !activeTabId) return;
-    pendingRestartRef.current = true;
+    pendingRestartRef.current = buildClaudeCommand(null);
     useTabStore.getState().setRestarting(activeTabId, true);
     sendStdin('/exit\r');
-  }, [status, sendStdin, activeTabId]);
+  }, [status, sendStdin, activeTabId, buildClaudeCommand]);
+
+  const handleSwitchToClaudeMode = useCallback(async () => {
+    if (!activeTabId) return;
+    setShowClaudeModePrompt(false);
+    handleSwitchPanelType('claude-code');
+    if (status !== 'connected') return;
+
+    let resumeSessionId = claudeSessionId;
+    if (!resumeSessionId) {
+      const tab = tabsRef.current.find((t) => t.id === activeTabId);
+      if (tab) {
+        try {
+          const res = await fetch(`/api/check-claude?session=${tab.sessionName}`);
+          const data = await res.json();
+          resumeSessionId = typeof data.sessionId === 'string' ? data.sessionId : null;
+        } catch {
+          // fall through with null
+        }
+      }
+    }
+
+    pendingRestartRef.current = buildClaudeCommand(resumeSessionId);
+    useTabStore.getState().setRestarting(activeTabId, true);
+    sendStdin('\x1b');
+    setTimeout(() => sendStdin('/exit\r'), 100);
+  }, [activeTabId, status, sendStdin, claudeSessionId, buildClaudeCommand, handleSwitchPanelType]);
 
   useEffect(() => {
     if (!pendingRestartRef.current || claudeStatus === 'running') return;
-    pendingRestartRef.current = false;
+    const cmd = pendingRestartRef.current;
+    pendingRestartRef.current = null;
     if (status !== 'connected') return;
-    const dangerous = useConfigStore.getState().dangerouslySkipPermissions;
-    const settings = '--settings ~/.purplemux/hooks.json';
-    const cmd = dangerous ? `claude ${settings} --dangerously-skip-permissions` : `claude ${settings}`;
     sendStdin(`${cmd}\r`);
   }, [claudeStatus, status, sendStdin]);
 
@@ -890,10 +921,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
 
         {showClaudeModePrompt && (
           <PaneClaudeModePrompt
-            onSwitch={() => {
-              setShowClaudeModePrompt(false);
-              handleSwitchPanelType('claude-code');
-            }}
+            onSwitch={handleSwitchToClaudeMode}
             onDismiss={() => setShowClaudeModePrompt(false)}
           />
         )}

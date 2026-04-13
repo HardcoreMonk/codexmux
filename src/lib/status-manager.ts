@@ -22,9 +22,15 @@ import { getVAPIDKeys } from '@/lib/vapid-keys';
 import { nanoid } from 'nanoid';
 import fs from 'fs/promises';
 import { watch, type FSWatcher } from 'fs';
+import path from 'path';
 
 const log = createLogger('status');
 const hookLog = createLogger('hooks');
+
+const sessionIdFromJsonlPath = (jsonlPath: string | null | undefined): string | null => {
+  if (!jsonlPath) return null;
+  return path.basename(jsonlPath, '.jsonl');
+};
 
 // Notification hook의 notification_type 중 권한 요청류만 needs-input으로 전환.
 // idle_prompt(응답 후 60s idle 알람), computer_use_*, elicitation_*, auth_success 등은 상태 변경 없이 무시한다.
@@ -426,7 +432,7 @@ class StatusManager {
           readyForReviewAt: cliState === 'ready-for-review' ? Date.now() : null,
           busySince: null,
           dismissedAt: tab.dismissedAt ?? null,
-          claudeSessionId: tab.claudeSessionId ?? null,
+          claudeSessionId: sessionIdFromJsonlPath(detected.jsonlPath) ?? tab.claudeSessionId ?? null,
           jsonlPath: detected.jsonlPath,
           lastEvent: syntheticLastEvent,
           eventSeq: 0,
@@ -571,7 +577,7 @@ class StatusManager {
             lastUserMessage: tab.lastUserMessage,
             lastAssistantMessage: detected.lastAssistantSnippet,
             currentAction: detected.currentAction,
-            claudeSessionId: tab.claudeSessionId ?? null,
+            claudeSessionId: sessionIdFromJsonlPath(detected.jsonlPath) ?? tab.claudeSessionId ?? null,
             jsonlPath: detected.jsonlPath,
             lastEvent: syntheticLastEvent,
             eventSeq: 0,
@@ -588,12 +594,14 @@ class StatusManager {
         const processChanged = existing.currentProcess !== resolvedProcess;
         const messageChanged = existing.lastUserMessage !== tab.lastUserMessage;
         const panelTypeChanged = existing.panelType !== tab.panelType;
+        const refreshed = await this.readTabMetadata(paneInfo);
         existing.tabName = tab.name || (newPaneTitle ? formatTabTitle(newPaneTitle) : '');
         existing.currentProcess = resolvedProcess;
         existing.paneTitle = newPaneTitle;
         existing.workspaceId = ws.id;
         existing.panelType = tab.panelType;
-        existing.claudeSessionId = tab.claudeSessionId ?? null;
+        existing.claudeSessionId = sessionIdFromJsonlPath(refreshed.jsonlPath) ?? tab.claudeSessionId ?? null;
+        existing.jsonlPath = refreshed.jsonlPath ?? existing.jsonlPath;
         existing.lastUserMessage = tab.lastUserMessage;
 
         if (processChanged) {
