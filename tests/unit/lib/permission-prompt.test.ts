@@ -82,6 +82,29 @@ describe('parsePermissionOptions', () => {
     expect(result.focusedIndex).toBe(0);
   });
 
+  it('스크롤백에 이전 프롬프트가 남아있으면 가장 최근 블록을 선택한다', () => {
+    const pane = [
+      'Do you want to proceed?',
+      ' ❯ 1. Yes',
+      "   2. Yes, and don\u2019t ask again for: python3 -c \"import sys,json\"",
+      '   3. No',
+      '',
+      '> running command...',
+      'output line',
+      '',
+      'Do you want to proceed?',
+      '   1. Yes',
+      " ❯ 2. Yes, and don\u2019t ask again for tmux list-sessions",
+      '   3. No',
+    ].join('\n');
+
+    const result = parsePermissionOptions(pane);
+
+    expect(result.options).toHaveLength(3);
+    expect(result.options[1]).toContain('tmux list-sessions');
+    expect(result.focusedIndex).toBe(1);
+  });
+
   it('keyword 기반 Accept/Decline 프롬프트를 인식한다', () => {
     const pane = [
       'Trust this workspace?',

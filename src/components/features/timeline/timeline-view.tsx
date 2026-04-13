@@ -426,12 +426,7 @@ const TimelineView = ({
               )}
             </div>
           ))}
-          {showDialogPrompt && sessionName && (
-            <div className="px-4 py-1.5">
-              <PermissionPromptItem sessionName={sessionName} tabId={tabId} />
-            </div>
-          )}
-          {storeNeedsInput && sessionName && (
+          {(showDialogPrompt || storeNeedsInput) && sessionName && (
             <div className="px-4 py-1.5">
               <PermissionPromptItem sessionName={sessionName} tabId={tabId} />
             </div>

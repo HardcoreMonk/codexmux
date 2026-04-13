@@ -44,11 +44,22 @@ const isKnownPromptPattern = (options: string[]): boolean => {
 };
 
 const parseNumberedOptions = (lines: string[]): { options: string[]; focusedIndex: number } => {
-  const rawOptions: string[] = [];
+  // 스크롤백에 이전 프롬프트 블록이 남아있는 경우 마지막 블록을 선택한다
+  const blocks: { rawOptions: string[]; focusedIndex: number }[] = [];
+  let rawOptions: string[] = [];
   let focusedIndex = 0;
   let expected = 1;
-  let started = false;
   let lastOptionIndent = 0;
+
+  const flush = () => {
+    if (rawOptions.length >= 2) {
+      blocks.push({ rawOptions: rawOptions.slice(), focusedIndex });
+    }
+    rawOptions = [];
+    focusedIndex = 0;
+    expected = 1;
+    lastOptionIndent = 0;
+  };
 
   for (const line of lines) {
     // 손상된 pane capture에서 옵션 사이에 빈 줄이 끼어 있을 수 있으므로 break하지 않고 계속 탐색
@@ -59,30 +70,43 @@ const parseNumberedOptions = (lines: string[]): { options: string[]; focusedInde
       const marker = match[1];
       const num = Number(match[2]);
       const rest = match[3].trim();
-      if (num === expected && rest.length > 0) {
-        if (marker) focusedIndex = rawOptions.length;
-        rawOptions.push(rest);
-        lastOptionIndent = leadingSpaces(line);
-        expected += 1;
-        started = true;
-        continue;
+      if (rest.length > 0) {
+        if (num === 1) {
+          flush();
+          rawOptions.push(rest);
+          if (marker) focusedIndex = 0;
+          lastOptionIndent = leadingSpaces(line);
+          expected = 2;
+          continue;
+        }
+        if (num === expected) {
+          if (marker) focusedIndex = rawOptions.length;
+          rawOptions.push(rest);
+          lastOptionIndent = leadingSpaces(line);
+          expected += 1;
+          continue;
+        }
       }
     }
 
-    if (started) {
+    if (rawOptions.length > 0) {
       // 긴 옵션이 터미널 width를 초과해 soft-wrap된 경우: 연속 라인은 원본 옵션보다 더 깊이 들여쓰기됨
-      if (rawOptions.length > 0 && leadingSpaces(line) > lastOptionIndent) {
+      if (leadingSpaces(line) > lastOptionIndent) {
         rawOptions[rawOptions.length - 1] += line.trimStart();
         continue;
       }
       if (/^\s+\S/.test(line)) continue;
-      break;
+      flush();
     }
   }
+  flush();
+
+  const best = blocks[blocks.length - 1];
+  if (!best) return { options: [], focusedIndex: 0 };
 
   return {
-    options: rawOptions.map((raw, i) => `${i + 1}. ${normalizeOption(raw)}`),
-    focusedIndex,
+    options: best.rawOptions.map((raw, i) => `${i + 1}. ${normalizeOption(raw)}`),
+    focusedIndex: best.focusedIndex,
   };
 };
 
