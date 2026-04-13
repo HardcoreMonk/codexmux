@@ -63,6 +63,25 @@ describe('parsePermissionOptions', () => {
     expect(result.focusedIndex).toBe(0);
   });
 
+  it('terminal soft-wrap으로 다음 줄로 이어진 긴 옵션을 합친다', () => {
+    const pane = [
+      ' Do you want to proceed?',
+      ' ❯ 1. Yes',
+      "   2. Yes, and don\u2019t ask again for: python3 -c \"import sys,json; d=json.loads(sys.stdin.read()); print('type:',d.get('type'),'| timestamp:',d.get('timestamp'),'|",
+      "                                  stop_reason:',d.get('message',{}).get('stop_reason'))\"",
+      '   3. No',
+    ].join('\n');
+
+    const result = parsePermissionOptions(pane);
+
+    expect(result.options).toEqual([
+      '1. Yes',
+      "2. Yes, and don\u2019t ask again for: python3 -c \"import sys,json; d=json.loads(sys.stdin.read()); print('type:',d.get('type'),'| timestamp:',d.get('timestamp'),'|stop_reason:',d.get('message',{}).get('stop_reason'))\"",
+      '3. No',
+    ]);
+    expect(result.focusedIndex).toBe(0);
+  });
+
   it('keyword 기반 Accept/Decline 프롬프트를 인식한다', () => {
     const pane = [
       'Trust this workspace?',

@@ -17,15 +17,17 @@ const NUMBERED_LINE_RE = /^\s*([❯›>])?\s*(\d+)\.?\s*(\S.*)$/;
 const stripPrefix = (o: string) => o.replace(NUMBER_PREFIX_RE, '');
 const hasOption = (options: string[], prefix: string) =>
   options.some((o) => stripPrefix(o).startsWith(prefix));
+const leadingSpaces = (line: string): number => line.match(/^\s*/)?.[0].length ?? 0;
 
 // tmux pane capture가 손상된 경우 원본 옵션 텍스트를 복원한다.
 // - "Yescurrent status for this tab"처럼 다른 UI 영역이 뒤에 붙은 경우 "Yes"만 남김
 // - "Yes, and don't ask: <cmd>"처럼 "again for" 구간이 유실된 경우 canonical 형태로 복원
-const DONT_ASK_RE = /^Yes,\s*and\s+don[\u2019']?t\s+ask(?:\s+again(?:\s+for)?)?:\s*(.+)$/;
+//   (이미 canonical한 텍스트는 건드리지 않아 원본 따옴표 문자를 보존)
+const DAMAGED_DONT_ASK_RE = /^(Yes,\s*and\s+don[\u2019']?t\s+ask)\s*:\s*(.+)$/;
 
 const normalizeOption = (text: string): string => {
-  const dontAsk = text.match(DONT_ASK_RE);
-  if (dontAsk) return `Yes, and don't ask again for: ${dontAsk[1].trim()}`;
+  const damaged = text.match(DAMAGED_DONT_ASK_RE);
+  if (damaged) return `${damaged[1]} again for: ${damaged[2].trim()}`;
   if (/^Yes(?![,\s]|$)/.test(text)) return 'Yes';
   if (/^No(?![,\s]|$)/.test(text)) return 'No';
   return text;
@@ -42,10 +44,11 @@ const isKnownPromptPattern = (options: string[]): boolean => {
 };
 
 const parseNumberedOptions = (lines: string[]): { options: string[]; focusedIndex: number } => {
-  const options: string[] = [];
+  const rawOptions: string[] = [];
   let focusedIndex = 0;
   let expected = 1;
   let started = false;
+  let lastOptionIndent = 0;
 
   for (const line of lines) {
     // 손상된 pane capture에서 옵션 사이에 빈 줄이 끼어 있을 수 있으므로 break하지 않고 계속 탐색
@@ -57,8 +60,9 @@ const parseNumberedOptions = (lines: string[]): { options: string[]; focusedInde
       const num = Number(match[2]);
       const rest = match[3].trim();
       if (num === expected && rest.length > 0) {
-        if (marker) focusedIndex = options.length;
-        options.push(`${num}. ${normalizeOption(rest)}`);
+        if (marker) focusedIndex = rawOptions.length;
+        rawOptions.push(rest);
+        lastOptionIndent = leadingSpaces(line);
         expected += 1;
         started = true;
         continue;
@@ -66,12 +70,20 @@ const parseNumberedOptions = (lines: string[]): { options: string[]; focusedInde
     }
 
     if (started) {
+      // 긴 옵션이 터미널 width를 초과해 soft-wrap된 경우: 연속 라인은 원본 옵션보다 더 깊이 들여쓰기됨
+      if (rawOptions.length > 0 && leadingSpaces(line) > lastOptionIndent) {
+        rawOptions[rawOptions.length - 1] += line.trimStart();
+        continue;
+      }
       if (/^\s+\S/.test(line)) continue;
       break;
     }
   }
 
-  return { options, focusedIndex };
+  return {
+    options: rawOptions.map((raw, i) => `${i + 1}. ${normalizeOption(raw)}`),
+    focusedIndex,
+  };
 };
 
 const parseKeywordOptions = (lines: string[]): { options: string[]; focusedIndex: number } => {
