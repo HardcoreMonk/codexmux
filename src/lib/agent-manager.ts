@@ -342,7 +342,7 @@ class AgentManager {
         await this.restartAgentSession(runtime);
       } else {
         runtime.pendingRestart = true;
-        log.info(`agent ${agentId} marked for pending restart (CLAUDE.md changed)`);
+        log.debug(`agent ${agentId} marked for pending restart (CLAUDE.md changed)`);
       }
     }
 
@@ -365,7 +365,7 @@ class AgentManager {
     this.agents.delete(agentId);
 
     this.broadcastStatus(agentId, 'offline');
-    log.info(`agent deleted: ${agentId}`);
+    log.debug(`agent deleted: ${agentId}`);
     return true;
   }
 
@@ -730,7 +730,7 @@ class AgentManager {
       runtime.restartCount = 0;
       this.startStatusPolling(runtime);
 
-      log.info(`agent session started: ${info.id} (${info.tmuxSession})`);
+      log.debug(`agent session started: ${info.id} (${info.tmuxSession})`);
     } catch (err) {
       log.error(`failed to start agent session ${info.id}: ${err instanceof Error ? err.message : err}`);
       this.setStatus(runtime, 'offline');
@@ -745,7 +745,7 @@ class AgentManager {
     }
 
     runtime.restartCount++;
-    log.info(`restarting agent session ${runtime.info.id} (attempt ${runtime.restartCount})`);
+    log.debug(`restarting agent session ${runtime.info.id} (attempt ${runtime.restartCount})`);
 
     await killSession(runtime.info.tmuxSession).catch(() => {});
     await this.startAgentSession(runtime);
@@ -946,7 +946,7 @@ class AgentManager {
     }
 
     runtime.deliveryRetryCount++;
-    log.info(`agent ${runtime.info.id} retrying delivery (attempt ${runtime.deliveryRetryCount})`);
+    log.debug(`agent ${runtime.info.id} retrying delivery (attempt ${runtime.deliveryRetryCount})`);
     try {
       await this.deliverToAgent(runtime, runtime.lastDeliveredContent);
       runtime.lastDeliveredAt = Date.now();
@@ -994,7 +994,7 @@ class AgentManager {
     if (status === 'idle' && runtime.pendingRestart) {
       runtime.pendingRestart = false;
       runtime.restartCount = 0;
-      log.info(`agent ${runtime.info.id} executing pending restart`);
+      log.debug(`agent ${runtime.info.id} executing pending restart`);
       this.restartAgentSession(runtime).catch((err) => {
         log.error(`pending restart failed for ${runtime.info.id}: ${err instanceof Error ? err.message : err}`);
       });
@@ -1240,7 +1240,7 @@ class AgentManager {
       if (pendingContent) {
         runtime.lastDeliveredContent = pendingContent;
         runtime.lastDeliveredAt = Date.now();
-        log.info(`agent ${entry} has unanswered message, will retry delivery`);
+        log.debug(`agent ${entry} has unanswered message, will retry delivery`);
       }
 
       // Always restart — server restart invalidates token and hook settings
@@ -1258,7 +1258,7 @@ class AgentManager {
     for (const orphan of agentSessions) {
       if (!registeredSessions.has(orphan)) {
         await killSession(orphan);
-        log.info(`killed orphan agent session: ${orphan}`);
+        log.debug(`killed orphan agent session: ${orphan}`);
       }
     }
   }
@@ -1371,7 +1371,7 @@ class AgentManager {
       },
     });
 
-    log.info(`agent ${agentId} created tab ${newTab.id} in workspace ${workspaceId}`);
+    log.debug(`agent ${agentId} created tab ${newTab.id} in workspace ${workspaceId}`);
     return execTab;
   }
 
@@ -1494,7 +1494,7 @@ class AgentManager {
       tabId,
     });
 
-    log.info(`agent ${runtime.info.id} closed tab ${tabId}`);
+    log.debug(`agent ${runtime.info.id} closed tab ${tabId}`);
   }
 
   // --- Tab status detection ---

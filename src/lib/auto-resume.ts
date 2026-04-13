@@ -61,7 +61,7 @@ const sendResumeKeys = async (target: IAutoResumeTarget): Promise<boolean> => {
     }
 
     const resumeCmd = await buildResumeCommand(target.claudeSessionId);
-    log.info(`Sending resume: ${target.tmuxSession} → ${target.claudeSessionId}`);
+    log.debug(`Sending resume: ${target.tmuxSession} → ${target.claudeSessionId}`);
     await sendKeys(target.tmuxSession, resumeCmd);
 
     return true;
@@ -76,7 +76,7 @@ export const executeAutoResume = async (targets: IAutoResumeTarget[]): Promise<v
   let hasNewSession = false;
   for (const target of targets) {
     if (!(await hasSession(target.tmuxSession))) {
-      log.info(`No tmux session, creating new: ${target.tmuxSession}`);
+      log.debug(`No tmux session, creating new: ${target.tmuxSession}`);
       await createSession(target.tmuxSession, 80, 24);
       hasNewSession = true;
     }
@@ -95,7 +95,7 @@ export const autoResumeOnStartup = async (): Promise<void> => {
   const targets = await findAutoResumeTargets();
   if (targets.length === 0) return;
 
-  log.info(`${targets.length} surface(s) auto-resume started`);
+  log.debug(`${targets.length} surface(s) auto-resume started`);
   executeAutoResume(targets).then(() => {
     log.debug('Auto-resume complete');
   }).catch((err) => {

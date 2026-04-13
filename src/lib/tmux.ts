@@ -78,11 +78,11 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 export const killSession = async (name: string): Promise<void> => {
   if (!(await hasSession(name))) return;
 
-  log.info(`killSession start: ${name}`);
+  log.debug(`killSession start: ${name}`);
   const panePid = await getSessionPanePid(name);
   if (panePid) {
     try {
-      log.info(`SIGTERM → process group ${panePid}: ${name}`);
+      log.debug(`SIGTERM → process group ${panePid}: ${name}`);
       process.kill(-panePid, 'SIGTERM');
     } catch {
       // process group already gone
@@ -101,7 +101,7 @@ export const killSession = async (name: string): Promise<void> => {
 
   for (let i = 0; i < 5; i++) {
     if (!(await hasSession(name))) {
-      log.info(`killSession done (SIGTERM): ${name}`);
+      log.debug(`killSession done (SIGTERM): ${name}`);
       return;
     }
     await sleep(200);
@@ -111,7 +111,7 @@ export const killSession = async (name: string): Promise<void> => {
   log.warn(`session survived SIGTERM, escalating to SIGKILL: ${name}`);
   if (panePid) {
     try {
-      log.info(`SIGKILL → process group ${panePid}: ${name}`);
+      log.debug(`SIGKILL → process group ${panePid}: ${name}`);
       process.kill(-panePid, 'SIGKILL');
     } catch {
       // already gone
@@ -129,7 +129,7 @@ export const killSession = async (name: string): Promise<void> => {
 
   for (let i = 0; i < 3; i++) {
     if (!(await hasSession(name))) {
-      log.info(`killSession done (SIGKILL): ${name}`);
+      log.debug(`killSession done (SIGKILL): ${name}`);
       return;
     }
     await sleep(200);
@@ -403,7 +403,7 @@ export const killServer = async (): Promise<void> => {
       ['-L', TMUX_SOCKET, 'kill-server'],
       { timeout: CMD_TIMEOUT },
     );
-    log.info('tmux server killed');
+    log.debug('tmux server killed');
   } catch {
     // Server may not be running
   }

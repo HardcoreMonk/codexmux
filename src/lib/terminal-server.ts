@@ -317,7 +317,7 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
         break;
       }
       case MSG_KILL_SESSION: {
-        log.info(`kill session requested: ${sessionName}`);
+        log.debug(`kill session requested: ${sessionName}`);
         killSession(sessionName).catch((err) => {
           log.error(`kill session failed: ${err instanceof Error ? err.message : err}`);
         });
@@ -468,7 +468,7 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
   conn.disposables.push(
     ptyProcess.onExit(({ exitCode, signal }) => {
       if (conn.cleaned) return;
-      log.info(
+      log.debug(
         `pty exited (pid: ${ptyProcess!.pid}, code: ${exitCode}, signal: ${signal}, detaching: ${conn.detaching})`,
       );
       cleanup(conn, !conn.detaching);
