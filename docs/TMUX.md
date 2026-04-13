@@ -1,13 +1,13 @@
-# tmux 기반 터미널 관리 및 프로세스 감지
+# tmux-based Terminal Management and Process Detection
 
-PT는 tmux를 터미널 백엔드로 사용합니다. 사용자 `~/.tmux.conf`와 격리된 전용 소켓(`purple`)과 설정(`src/config/tmux.conf`)으로 운영됩니다.
+PT uses tmux as its terminal backend. It runs on a dedicated socket (`purple`) and config (`src/config/tmux.conf`) isolated from the user's `~/.tmux.conf`.
 
 ---
 
-## 아키텍처
+## Architecture
 
 ```
-브라우저 (xterm.js)
+Browser (xterm.js)
   │
   │  WebSocket (/api/terminal)
   ▼
@@ -15,163 +15,164 @@ terminal-server.ts
   │
   │  node-pty (tmux attach-session)
   ▼
-tmux 소켓 (purple)
+tmux socket (purple)
   │
-  ├─ pt-{wsId}-{paneId}-{tabId}   세션 1
-  ├─ pt-{wsId}-{paneId}-{tabId}   세션 2
+  ├─ pt-{wsId}-{paneId}-{tabId}   session 1
+  ├─ pt-{wsId}-{paneId}-{tabId}   session 2
   └─ ...
 ```
 
-- **소켓 이름**: `purple` (`-L purple`). 시스템 tmux와 완전 격리.
-- **세션 네이밍**: `pt-{워크스페이스ID}-{paneID}-{tabID}` 형식
-- **설정 파일**: `src/config/tmux.conf` (prefix 비활성, status bar off, 마우스 on)
+- **Socket name**: `purple` (`-L purple`). Fully isolated from the system tmux.
+- **Session naming**: `pt-{workspaceId}-{paneId}-{tabId}` format
+- **Config file**: `src/config/tmux.conf` (prefix disabled, status bar off, mouse on)
 
 ---
 
-## tmux 설정 (`src/config/tmux.conf`)
+## tmux Settings (`src/config/tmux.conf`)
 
-| 설정 | 값 | 목적 |
+| Setting | Value | Purpose |
 | --- | --- | --- |
-| `prefix` | None | 모든 키가 셸에 직접 전달 |
-| `status` | off | tmux UI 숨김 (xterm.js가 렌더링) |
-| `set-titles` | on | 타이틀을 외부 터미널로 전달 |
-| `set-titles-string` | `#{pane_current_command}\|#{pane_current_path}` | 포그라운드 프로세스와 CWD를 파이프로 구분하여 전송 |
-| `status-interval` | 2 | 2초마다 타이틀 갱신 |
-| `allow-passthrough` | on | OSC 시퀀스 패스스루 허용 |
-| `mouse` | on | 마우스 스크롤 → copy-mode 진입 |
-| `history-limit` | 5000 | 스크롤백 버퍼 크기 |
+| `prefix` | None | Every key passes through directly to the shell |
+| `status` | off | Hide tmux UI (xterm.js does the rendering) |
+| `set-titles` | on | Forward titles to the outer terminal |
+| `set-titles-string` | `#{pane_current_command}\|#{pane_current_path}` | Send the foreground process and CWD separated by a pipe |
+| `status-interval` | 2 | Refresh the title every 2 seconds |
+| `allow-passthrough` | on | Allow OSC sequence passthrough |
+| `mouse` | on | Mouse scroll → enter copy-mode |
+| `history-limit` | 5000 | Scrollback buffer size |
 
 ---
 
-## tmux 명령어 래퍼 (`src/lib/tmux.ts`)
+## tmux Command Wrapper (`src/lib/tmux.ts`)
 
-모든 tmux 호출은 `tmux.ts`를 통해 수행합니다. 직접 `child_process`로 tmux를 호출하지 않습니다.
+All tmux invocations go through `tmux.ts`. Do not call tmux directly via `child_process`.
 
-### 세션 관리
+### Session Management
 
-| 함수 | tmux 명령 | 용도 |
+| Function | tmux command | Purpose |
 | --- | --- | --- |
-| `listSessions()` | `tmux -L purple ls -F '#{session_name}'` | `pt-` 접두사 세션 목록 |
-| `createSession(name, cols, rows, cwd)` | `tmux -L purple new-session -d -s {name} -x {cols} -y {rows}` | 백그라운드 세션 생성 |
-| `killSession(name)` | SIGTERM → `kill-session` → 재확인 → SIGKILL 폴백 | 세션 종료 (프로세스 그룹 단위) |
-| `hasSession(name)` | `tmux -L purple has-session -t {name}` | 세션 존재 확인 |
-| `cleanDeadSessions()` | `listSessions` + `hasSession` 루프 | 죽은 세션 정리 |
-| `scanSessions()` | 서버 시작 시 호출 | 기존 세션 스캔 및 정리 |
+| `listSessions()` | `tmux -L purple ls -F '#{session_name}'` | List sessions with the `pt-` prefix |
+| `createSession(name, cols, rows, cwd)` | `tmux -L purple new-session -d -s {name} -x {cols} -y {rows}` | Create a background session |
+| `killSession(name)` | SIGTERM → `kill-session` → recheck → SIGKILL fallback | End a session (process group level) |
+| `hasSession(name)` | `tmux -L purple has-session -t {name}` | Check whether a session exists |
+| `cleanDeadSessions()` | `listSessions` + `hasSession` loop | Clean up dead sessions |
+| `scanSessions()` | Called at server start | Scan and clean existing sessions |
 
-### 정보 조회
+### Information Lookup
 
-| 함수 | tmux 명령 | 반환 |
+| Function | tmux command | Returns |
 | --- | --- | --- |
-| `getSessionCwd(session)` | `display-message -p '#{pane_current_path}'` | 현재 작업 디렉토리 |
-| `getSessionPanePid(session)` | `display-message -p '#{pane_pid}'` | pane의 셸 PID |
-| `getPaneCurrentCommand(session)` | `list-panes -F '#{pane_current_command}'` | 포그라운드 프로세스명 |
-| `getAllPanesInfo()` | `list-panes -a -F '#{session_name}\t#{pane_current_command}\t#{pane_pid}'` | 전체 세션의 프로세스/PID 일괄 조회 |
-| `checkTerminalProcess(session)` | `getPaneCurrentCommand` + SAFE_SHELLS 체크 | 셸 여부 판별 (resume 전 안전 검사) |
+| `getSessionCwd(session)` | `display-message -p '#{pane_current_path}'` | Current working directory |
+| `getSessionPanePid(session)` | `display-message -p '#{pane_pid}'` | The pane's shell PID |
+| `getPaneCurrentCommand(session)` | `list-panes -F '#{pane_current_command}'` | Foreground process name |
+| `getAllPanesInfo()` | `list-panes -a -F '#{session_name}\t#{pane_current_command}\t#{pane_pid}'` | All sessions' processes/PIDs at once |
+| `checkTerminalProcess(session)` | `getPaneCurrentCommand` + SAFE_SHELLS check | Determine whether the foreground is a shell (safe pre-resume check) |
 
-### 입력 전송
+### Input Sending
 
-| 함수 | tmux 명령 | 용도 |
+| Function | tmux command | Purpose |
 | --- | --- | --- |
-| `sendKeys(session, command)` | `copy-mode -q` → `send-keys {command} Enter` | 세션에 명령어 전송 (resume 등) |
-| `exitCopyMode(session)` | `copy-mode -q` | copy-mode 해제 |
+| `sendKeys(session, command)` | `copy-mode -q` → `send-keys {command} Enter` | Send a command to the session (resume, etc.) |
+| `exitCopyMode(session)` | `copy-mode -q` | Leave copy-mode |
 
 ---
 
-## 터미널 연결 (`src/lib/terminal-server.ts`)
+## Terminal Connection (`src/lib/terminal-server.ts`)
 
-WebSocket `/api/terminal?session={name}&clientId={id}` 엔드포인트.
+WebSocket endpoint: `/api/terminal?session={name}&clientId={id}`.
 
-### 바이너리 프로토콜
+### Binary Protocol
 
-| 메시지 타입 | 코드 | 방향 | 설명 |
+Defined in `src/lib/terminal-protocol.ts` and imported by `terminal-server.ts`.
+
+| Message type | Code | Direction | Description |
 | --- | --- | --- | --- |
-| `MSG_STDIN` | `0x00` | 클라이언트 → 서버 | 키 입력 |
-| `MSG_STDOUT` | `0x01` | 서버 → 클라이언트 | 터미널 출력 |
-| `MSG_RESIZE` | `0x02` | 클라이언트 → 서버 | 터미널 크기 변경 (cols: u16, rows: u16) |
-| `MSG_HEARTBEAT` | `0x03` | 양방향 | 연결 생존 확인 (30초 간격, 90초 타임아웃) |
-| `MSG_KILL_SESSION` | `0x04` | 클라이언트 → 서버 | 세션 종료 요청 |
-| `MSG_WEB_STDIN` | `0x05` | 클라이언트 → 서버 | 웹 입력 (copy-mode 해제 후 전달) |
+| `MSG_STDIN` | `0x00` | client → server | Key input |
+| `MSG_STDOUT` | `0x01` | server → client | Terminal output |
+| `MSG_RESIZE` | `0x02` | client → server | Terminal resize (cols: u16, rows: u16) |
+| `MSG_HEARTBEAT` | `0x03` | both | Connection keep-alive (30s interval, 90s timeout) |
+| `MSG_KILL_SESSION` | `0x04` | client → server | Request session termination |
+| `MSG_WEB_STDIN` | `0x05` | client → server | Web input (delivered after copy-mode exit) |
 
-### 연결 흐름
+### Connection Flow
 
 ```
-1. WebSocket 연결 수신
-2. clientId 중복 시 기존 연결 교체
-3. 최대 32개 연결 관리 (초과 시 가장 오래된 연결 정리)
-4. tmux attach-session (node-pty 경유)
+1. Receive WebSocket connection
+2. If clientId is duplicate, replace the existing connection
+3. Manage at most 32 connections (when exceeded, drop the oldest)
+4. tmux attach-session (via node-pty)
 5. pty.onData → WebSocket MSG_STDOUT
 6. WebSocket MSG_STDIN → pty.write
-7. backpressure: bufferedAmount > 1MB → pty.pause, < 256KB → pty.resume
-8. pty.onExit → cleanup (detach와 session exit 구분)
+7. Backpressure: bufferedAmount > 1MB → pty.pause, < 256KB → pty.resume
+8. pty.onExit → cleanup (distinguish detach vs session exit)
 ```
 
 ---
 
-## 타이틀 기반 프로세스 감지 (클라이언트)
+## Title-based Process Detection (Client)
 
-tmux가 `"#{pane_current_command}|#{pane_current_path}"` 형식으로 타이틀을 전송하고, xterm.js `onTitleChange` 이벤트로 브라우저에 전달됩니다.
+tmux emits the title in the format `"#{pane_current_command}|#{pane_current_path}"`, which the browser receives via the xterm.js `onTitleChange` event.
 
 ### `src/lib/tab-title.ts`
 
-| 함수 | 입력 예시 | 출력 | 용도 |
+| Function | Example input | Output | Purpose |
 | --- | --- | --- | --- |
-| `parseCurrentCommand(raw)` | `"claude\|/home/user"` | `"claude"` | 파이프 앞부분 (프로세스명) 추출 |
-| `isClaudeProcess(raw)` | `"claude\|/home/user"` | `true` | Claude 실행 여부 (`claude` 또는 버전 패턴) |
-| `isShellProcess(raw)` | `"zsh\|/home/user"` | `true` | 셸 여부 (zsh/bash/fish/sh) |
-| `formatTabTitle(raw)` | `"zsh\|/home/user/project"` | `"project"` | 탭 표시용 이름 (셸이면 디렉토리, 아니면 프로세스명) |
+| `parseCurrentCommand(raw)` | `"claude\|/home/user"` | `"claude"` | Extract the part before the pipe (process name) |
+| `isShellProcess(raw)` | `"zsh\|/home/user"` | `true` | Whether it is a shell (zsh/bash/fish/sh) |
+| `formatTabTitle(raw)` | `"zsh\|/home/user/project"` | `"project"` | Tab display name (directory if a shell, otherwise process name) |
 
-### 사용처
+### Where It's Used
 
 ```
 xterm.js onTitleChange
   → pane-container.tsx / mobile-surface-view.tsx
-    ├─ formatTabTitle(title)      → 탭 메타데이터 업데이트
-    ├─ isClaudeProcess(title)     → Claude 실행 여부 상태 저장
-    └─ fetchAndUpdateCwd()        → CWD 동기화
+    ├─ formatTabTitle(title)      → update tab metadata
+    ├─ isShellProcess(title)      → record shell-state
+    └─ fetchAndUpdateCwd()        → sync CWD
 ```
 
 ---
 
-## 프로세스 감지 (서버 — `src/lib/session-detection.ts`)
+## Process Detection (Server — `src/lib/session-detection.ts`)
 
-서버에서 Claude CLI의 세션 상태를 감지하는 로직.
+Server-side logic for detecting Claude CLI session state.
 
-### 프로세스 트리 탐색
-
-```
-tmux pane (셸 PID)
-  └─ 자식 프로세스 (pgrep -P {panePid})
-      └─ claude 프로세스 (ps -p {pid} -o args= 로 확인)
-```
-
-### `detectActiveSession(panePid)` 판별 흐름
+### Process Tree Walk
 
 ```
-~/.claude 디렉토리 존재?
+tmux pane (shell PID)
+  └─ child processes (pgrep -P {panePid})
+      └─ claude process (verified via ps -p {pid} -o args=)
+```
+
+### `detectActiveSession(panePid)` Decision Flow
+
+```
+~/.claude directory exists?
 ├─ NO → { status: 'not-installed' }
 └─ YES
-    └─ pgrep -P {panePid} → 자식 PID 목록
-        ├─ 자식 없음 → { status: 'none' }
-        └─ 자식 있음
-            ├─ [1순위] ~/.claude/sessions/*.json에서 PID 매칭
-            │   └─ ps -p {pid} -o args= → 'claude' 포함 확인
-            │       ├─ 매칭 → { status: 'active', sessionId, jsonlPath, ... }
-            │       └─ 불일치 → PID 파일 삭제 (stale cleanup)
+    └─ pgrep -P {panePid} → list of child PIDs
+        ├─ no children → { status: 'none' }
+        └─ has children
+            ├─ [primary] match against PIDs in ~/.claude/sessions/*.json
+            │   └─ ps -p {pid} -o args= → confirm 'claude' is in the args
+            │       ├─ matched → { status: 'active', sessionId, jsonlPath, ... }
+            │       └─ mismatch → delete the PID file (stale cleanup)
             │
-            └─ [2순위] ps args에서 'claude --resume {uuid}' 패턴 매칭
-                └─ lsof -a -p {pid} -d cwd -Fn → CWD 조회
+            └─ [fallback] match `claude --resume {uuid}` pattern in ps args
+                └─ lsof -a -p {pid} -d cwd -Fn → look up CWD
                     └─ { status: 'active', sessionId, jsonlPath, ... }
 ```
 
-### 참조하는 Claude CLI 디렉토리
+### Claude CLI Directories Referenced
 
-| 경로 | 내용 |
+| Path | Contents |
 | --- | --- |
-| `~/.claude/` | Claude CLI 루트 |
-| `~/.claude/sessions/` | 활성 세션 PID 파일 (`{uuid}.json`) |
-| `~/.claude/projects/{projectName}/` | 세션 JSONL 파일 (`{sessionId}.jsonl`) |
+| `~/.claude/` | Claude CLI root |
+| `~/.claude/sessions/` | Active session PID files (`{uuid}.json`) |
+| `~/.claude/projects/{projectName}/` | Session JSONL files (`{sessionId}.jsonl`) |
 
-PID 파일 형식:
+PID file format:
 ```json
 {
   "pid": 12345,
@@ -181,71 +182,72 @@ PID 파일 형식:
 }
 ```
 
-### 프로세스 감시 (`watchSessionsDir`)
+### Process Watching (`watchSessionsDir`)
 
-폴링과 fs.watch를 조합하여 세션 변화를 실시간 감지:
+Combines polling and `fs.watch` to detect session changes in real time:
 
-| 감시 대상 | 방식 | 간격/조건 |
+| Watch target | Method | Interval / condition |
 | --- | --- | --- |
-| `~/.claude/sessions/` 디렉토리 변경 | `fs.watch` | 200ms 디바운스 |
-| 활성 Claude PID 생존 여부 | `ps -p {pid}` 폴링 | 10초 간격 |
-| `~/.claude` 디렉토리 존재 (미설치 시) | 주기적 접근 확인 | 60초 간격 |
+| `~/.claude/sessions/` directory changes | `fs.watch` | 200ms debounce |
+| Active Claude PID liveness | `ps -p {pid}` polling | 10s interval |
+| `~/.claude` existence (when uninstalled) | Periodic access check | 60s interval |
 
-변경 감지 시 `detectActiveSession`을 재실행하여 콜백에 전달.
+When a change is detected, `detectActiveSession` is re-run and the result is delivered to the callback.
 
 ---
 
-## 사용되는 시스템 명령어 요약
+## System Commands Used
 
-| 명령어 | 호출 위치 | 용도 |
+| Command | Caller | Purpose |
 | --- | --- | --- |
-| `tmux -L purple ...` | `tmux.ts` | 세션 관리, 정보 조회, 키 전송 |
-| `pgrep -P {pid}` | `session-detection.ts` | 자식 프로세스 PID 목록 |
-| `ps -p {pid}` | `session-detection.ts` | 프로세스 존재/args 확인 |
-| `ps -p {pid} -o args=` | `session-detection.ts` | 프로세스 인자 확인 (claude 여부) |
-| `lsof -a -p {pid} -d cwd -Fn` | `session-detection.ts` | 프로세스 CWD 조회 (폴백) |
+| `tmux -L purple ...` | `tmux.ts` | Session management, info, key send |
+| `pgrep -P {pid}` | `session-detection.ts` | List child PIDs |
+| `ps -p {pid}` | `session-detection.ts` | Check process existence/args |
+| `ps -p {pid} -o args=` | `session-detection.ts` | Inspect args (claude or not) |
+| `lsof -a -p {pid} -d cwd -Fn` | `session-detection.ts` | Process CWD lookup (fallback) |
 
 ---
 
-## WebSocket 엔드포인트 정리
+## WebSocket Endpoints
 
-| 경로 | 핸들러 | 용도 |
+| Path | Handler | Purpose |
 | --- | --- | --- |
-| `/api/terminal` | `terminal-server.ts` | 터미널 I/O (바이너리 프로토콜) |
-| `/api/timeline` | `timeline-server.ts` | Claude 세션 타임라인 (JSONL 감시) |
-| `/api/status` | `status-server.ts` | 전체 탭 상태 인디케이터 |
-| `/api/sync` | `sync-server.ts` | 클라이언트 간 동기화 |
+| `/api/terminal` | `terminal-server.ts` | Terminal I/O (binary protocol) |
+| `/api/timeline` | `timeline-server.ts` | Claude session timeline (JSONL watcher) |
+| `/api/status` | `status-server.ts` | Whole-tab status indicator |
+| `/api/sync` | `sync-server.ts` | Cross-client sync |
 
-모든 WebSocket 연결은 `server.ts`에서 NextAuth JWT 인증 후 핸드셰이크.
+All WebSocket connections are authenticated via NextAuth JWT in `server.ts` before the handshake.
 
 ---
 
-## 서버 시작 순서 (`server.ts`)
+## Server Startup Sequence (`server.ts`)
 
 ```
-1. initAuthCredentials()        인증 자격증명 초기화
-2. scanSessions()               기존 tmux 세션 스캔/정리
-3. applyConfig()                tmux.conf 적용
-4. initWorkspaceStore()         워크스페이스 저장소 로드
-5. autoResumeOnStartup()        자동 resume 처리
-6. getStatusManager().init()    상태 폴링 시작
-7. app.prepare()                Next.js 준비
-8. server.listen()              HTTP + WebSocket 서버 시작
+1. initAuthCredentials()        Initialize auth credentials
+2. scanSessions()               Scan/clean existing tmux sessions
+3. applyConfig()                Apply tmux.conf
+4. initWorkspaceStore()         Load workspace store
+5. autoResumeOnStartup()        Auto-resume processing
+6. getStatusManager().init()    Start status polling
+7. app.prepare()                Prepare Next.js
+8. server.listen()              Start HTTP + WebSocket server
 ```
 
 ---
 
-## 관련 파일
+## Related Files
 
-| 파일 | 설명 |
+| File | Description |
 | --- | --- |
-| `src/config/tmux.conf` | tmux 설정 (purple 소켓 전용) |
-| `src/lib/tmux.ts` | tmux 명령어 래퍼 |
-| `src/lib/terminal-server.ts` | 터미널 WebSocket 핸들러 (node-pty) |
-| `src/lib/session-detection.ts` | Claude 세션 감지 (`detectActiveSession`, `watchSessionsDir`) |
-| `src/lib/tab-title.ts` | 클라이언트 타이틀 파싱 (`parseCurrentCommand`, `isClaudeProcess`) |
-| `src/lib/timeline-server.ts` | 타임라인 WebSocket 핸들러 (JSONL 감시) |
-| `src/lib/status-manager.ts` | 상태 폴링 엔진 |
-| `src/lib/status-server.ts` | 상태 WebSocket 핸들러 |
-| `src/hooks/use-terminal.ts` | xterm.js 훅 (`onTitleChange` 이벤트) |
-| `server.ts` | 서버 초기화 및 WebSocket 라우팅 |
+| `src/config/tmux.conf` | tmux config (purple socket only) |
+| `src/lib/tmux.ts` | tmux command wrapper |
+| `src/lib/terminal-server.ts` | Terminal WebSocket handler (node-pty) |
+| `src/lib/terminal-protocol.ts` | Terminal binary protocol constants and encoders |
+| `src/lib/session-detection.ts` | Claude session detection (`detectActiveSession`, `watchSessionsDir`) |
+| `src/lib/tab-title.ts` | Client-side title parsing (`parseCurrentCommand`, `isShellProcess`, `formatTabTitle`) |
+| `src/lib/timeline-server.ts` | Timeline WebSocket handler (JSONL watcher) |
+| `src/lib/status-manager.ts` | Status polling engine |
+| `src/lib/status-server.ts` | Status WebSocket handler |
+| `src/hooks/use-terminal.ts` | xterm.js hook (`onTitleChange` event) |
+| `server.ts` | Server initialization and WebSocket routing |

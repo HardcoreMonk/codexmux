@@ -1,66 +1,66 @@
-# Claude CLI 작업 상태 감지
+# Claude CLI Work-State Detection
 
-Claude CLI의 작업 진행 상태를 서버에서 감지하고, WebSocket으로 클라이언트에 전파하여 UI 인디케이터에 반영하는 시스템.
+System that detects the in-progress state of the Claude CLI on the server, broadcasts it to the client over WebSocket, and reflects it in the UI indicators.
 
-**핵심 원칙**: `cliState`는 **Claude Code Hook이 유일한 진실의 출처**다. JSONL 휴리스틱·pane capture·클라이언트 로컬 파생 등 기존의 다중 소스는 모두 제거되었고, 훅 이벤트의 결정적 파생식(`deriveStateFromEvent`)으로 상태가 결정된다.
+**Core principle**: `cliState` has a **single source of truth — the Claude Code hook**. The previous multi-source heuristics (JSONL inference, pane capture, client-side local derivation) have all been removed; state is decided by the deterministic derivation function for hook events (`deriveStateFromEvent`).
 
 ---
 
-## 상태 정의
+## State Definitions
 
-### Claude 프로세스 상태 (`TClaudeStatus`)
+### Claude Process State (`TClaudeStatus`)
 
-tmux pane에서 Claude CLI 프로세스가 실행 중인지 판별하는 상태. `cliState`와 독립적으로 관리되며 두 경로(터미널 WS, 타임라인 WS)에서 감지된다.
+State that determines whether the Claude CLI process is running inside a tmux pane. Managed independently from `cliState` and detected from two paths (terminal WS and timeline WS).
 
-| 상태 | 의미 |
+| State | Meaning |
 | --- | --- |
-| `unknown` | 아직 감지 전 (초기값, 터미널 WS 미연결) |
-| `starting` | Claude 프로세스 감지됨, 세션 미준비 (PID 파일/JSONL 아직 없음) |
-| `running` | Claude 프로세스 실행 중 + 세션 확인됨 |
-| `not-running` | Claude 프로세스 없음 |
-| `not-initialized` | Claude CLI 설치됨, `~/.claude` 미생성 |
-| `not-installed` | Claude CLI 미설치 |
+| `unknown` | Not yet detected (initial value, terminal WS not connected) |
+| `starting` | Claude process detected, session not ready (PID file/JSONL not present) |
+| `running` | Claude process running + session confirmed |
+| `not-running` | No Claude process |
+| `not-initialized` | Claude CLI installed but `~/.claude` not created |
+| `not-installed` | Claude CLI not installed |
 
-두 감지 경로:
+Two detection paths:
 
-| 경로 | 트리거 | 서버 체크 | 설정 값 |
+| Path | Trigger | Server check | Sets value |
 | --- | --- | --- | --- |
-| 터미널 WS `onTitleChange` | tmux 타이틀 변경 시 | `/api/check-claude` → `isClaudeRunning()` | `starting` / `not-running` |
-| 타임라인 WS | 세션 파일 변경 시 | `detectActiveSession()` | `running` / `not-running` |
+| Terminal WS `onTitleChange` | tmux title change | `/api/check-claude` → `isClaudeRunning()` | `starting` / `not-running` |
+| Timeline WS | Session file change | `detectActiveSession()` | `running` / `not-running` |
 
-동일 `claudeStatus` 필드에 쓰며, `claudeStatusCheckedAt` 서버 타임스탬프로 stale 업데이트를 방지한다.
+Both paths write to the same `claudeStatus` field; the `claudeStatusCheckedAt` server timestamp prevents stale updates.
 
-#### 상태 전환 가드
+#### State Transition Guards
 
-`setClaudeStatus`에서 다음 전환을 차단한다:
+`setClaudeStatus` blocks the following transitions:
 
-| 차단 전환 | 이유 |
+| Blocked transition | Reason |
 | --- | --- |
-| `running` → `starting` | `running`이 상위 상태 (세션 확인됨), 다운그레이드 방지 |
+| `running` → `starting` | `running` is the higher state (session confirmed); prevents downgrade |
 
-추가로 `claude-code-panel`/`mobile-claude-code-panel`의 `onSync` 콜백에서:
+Additionally, `claude-code-panel` / `mobile-claude-code-panel` block the following inside the `onSync` callback:
 
-| 차단 전환 | 이유 |
+| Blocked transition | Reason |
 | --- | --- |
-| `starting` → `not-running` (타임라인 경유) | 프로세스는 감지됐지만 세션 아직 미준비, check-claude 경유의 `not-running`은 허용 |
+| `starting` → `not-running` (via timeline) | The process was detected but the session is not yet ready. `not-running` via check-claude is still allowed |
 
-### CLI 작업 상태 (`TCliState`)
+### CLI Work State (`TCliState`)
 
-Claude CLI에서 진행 중인 작업의 상태. 오직 Hook 이벤트의 결정적 파생으로만 변경된다.
+State of the work in progress inside the Claude CLI. Only changed by deterministic derivation from hook events.
 
-| 상태 | 의미 | 트리거 |
+| State | Meaning | Trigger |
 | --- | --- | --- |
-| `busy` | 사용자 요청을 처리 중 | `prompt-submit` 훅 |
-| `idle` | 응답 완료 + 사용자 확인됨 | `session-start` 훅 또는 `dismissTab` |
-| `ready-for-review` | 응답 완료, 사용자 미확인 | `stop` 훅 |
-| `needs-input` | 권한 프롬프트 / 사용자 입력 대기 | `notification` 훅 |
-| `unknown` | 서버 재시작 전 `busy`였고 복구 미완료 | `resolveUnknown` 대기 |
-| `inactive` | Claude 프로세스 미실행 초기 상태 | 탭 생성 시 기본값 |
-| `cancelled` | 사용자가 탭 삭제 중 | 클라이언트 전용 local 상태 |
+| `busy` | Processing a user request | `prompt-submit` hook |
+| `idle` | Response complete + acknowledged by user | `session-start` hook or `dismissTab` |
+| `ready-for-review` | Response complete, awaiting user ack | `stop` hook |
+| `needs-input` | Permission prompt / awaiting user input | `notification` hook |
+| `unknown` | Was `busy` before a server restart, recovery not finished | Awaiting `resolveUnknown` |
+| `inactive` | Initial state when the Claude process is not running | Default on tab creation |
+| `cancelled` | User is deleting the tab | Client-only local state |
 
-### 전이 규칙 (`deriveStateFromEvent`)
+### Transition Rules (`deriveStateFromEvent`)
 
-순수함수. `src/lib/status-manager.ts`:
+Pure function. `src/lib/status-manager.ts`:
 
 ```ts
 export const deriveStateFromEvent = (event: ILastEvent | null, fallback: TCliState): TCliState => {
@@ -74,279 +74,279 @@ export const deriveStateFromEvent = (event: ILastEvent | null, fallback: TCliSta
 };
 ```
 
-**예외**: `prevState === 'cancelled'`이면 훅이 와도 `cancelled` 유지.
+**Exception**: if `prevState === 'cancelled'`, the state stays `cancelled` even when a hook arrives.
 
-**`inactive` 처리**: 기본값일 뿐 덮어쓰기 불가 상태가 아니다. 신규 탭이 `inactive`로 시작해도 첫 `session-start` 훅이 `idle`로 승격한다. (과거에 `inactive`/`cancelled` 모두 전이 차단이었는데, 이 때문에 "새 대화 시작" 시 `Creating new conversation...`이 풀리지 않는 버그가 있어 `inactive` 차단을 제거함.)
+**`inactive` handling**: it is just a default value, not a non-overwritable state. Even when a new tab starts in `inactive`, the first `session-start` hook promotes it to `idle`. (Previously both `inactive` and `cancelled` blocked transitions, which caused a bug where "start new conversation" would be stuck on `Creating new conversation...`. The `inactive` block was removed for that reason.)
 
-### `ready-for-review` 해제
+### Releasing `ready-for-review`
 
-`ready-for-review → idle` 전환은 **오직 `dismissTab` 액션**으로만 발생:
+The `ready-for-review → idle` transition only happens through the **`dismissTab` action**:
 
-- 사용자가 탭 포커스 (auto-dismiss)
-- 알림 시트에서 명시적 dismiss
+- The user focuses the tab (auto-dismiss)
+- An explicit dismiss from the notification sheet
 
-훅이나 JSONL watcher는 이 전환을 일으키지 않는다.
+Hooks and the JSONL watcher do not cause this transition.
 
-### `needs-input` 해제 (사용자 선택 ack)
+### Releasing `needs-input` (User Selection Ack)
 
-권한 프롬프트에서 사용자가 옵션을 선택하면 Claude는 작업을 재개하지만 `prompt-submit` 훅을 발사하지 않는다. 따라서 `needs-input → busy` 전환을 훅만으로 감지할 수 없어, 클라이언트가 명시적으로 ack를 보낸다.
+When the user selects an option on a permission prompt, Claude resumes work but does not fire a `prompt-submit` hook. Therefore the `needs-input → busy` transition cannot be detected from hooks alone, so the client sends an explicit ack.
 
-**플로우**:
+**Flow**:
 
-1. `PermissionPromptItem.handleSelect` — `sendSelection` 성공 후 현재 `lastEvent.seq`와 함께 `status:ack-notification` WS 메시지 전송
+1. `PermissionPromptItem.handleSelect` — after `sendSelection` succeeds, sends a `status:ack-notification` WS message with the current `lastEvent.seq`
 2. `StatusManager.ackNotificationInput(tabId, seq)`:
-   - `cliState === 'needs-input'` 아니면 무시
-   - `lastEvent.name === 'notification' && lastEvent.seq === seq` 아니면 무시 (이미 다음 훅이 도착한 경우)
-   - 조건 충족 시 `applyCliState(busy)` + `persistToLayout` + `broadcastUpdate`
+   - If `cliState !== 'needs-input'`, ignore
+   - If `lastEvent.name !== 'notification'` or `lastEvent.seq !== seq`, ignore (a newer hook has already arrived)
+   - Otherwise: `applyCliState(busy)` + `persistToLayout` + `broadcastUpdate`
 
-**seq 가드의 의미**: ack가 도착하기 전에 다른 훅(연속 `notification` 또는 `stop`)이 먼저 도착하면 `entry.lastEvent.seq`가 증가해 ack와 불일치 → 무시. 이미 서버가 더 최신 상태로 전이했으므로 뒤늦은 ack가 덮어쓰는 레이스를 방지한다.
+**Meaning of the seq guard**: if another hook (consecutive `notification` or `stop`) arrives before the ack does, `entry.lastEvent.seq` increments and no longer matches the ack → ignored. Since the server has already moved to a newer state, the late ack cannot overwrite it (race protection).
 
-`eventSeq`는 증가시키지 않는다 — 이건 훅 이벤트가 아니라 클라이언트 액션이므로. 다음 실제 훅이 오면 기존 seq보다 큰 값을 받아 정상 처리된다.
+`eventSeq` is not incremented — this is a client action, not a hook event. The next real hook will arrive with a value larger than the current seq and be processed normally.
 
-### 탭 표시 상태 (`TTabDisplayStatus`)
+### Tab Display State (`TTabDisplayStatus`)
 
-`selectTabDisplayStatus(tabs, tabId)`에서 `cliState`를 UI 표시용으로 매핑:
+`selectTabDisplayStatus(tabs, tabId)` maps `cliState` to a UI display value:
 
-| cliState | 표시 상태 | UI 인디케이터 |
+| cliState | Display state | UI indicator |
 | --- | --- | --- |
-| `busy` | `busy` | 스피너 |
-| `ready-for-review` | `ready-for-review` | 보라색 점 (펄스) |
-| `needs-input` | `needs-input` | 황색 점 (펄스) |
-| `unknown` | `unknown` | 회색 점 (정적) |
-| `idle` | `idle` | 표시 없음 |
-| `inactive` | `idle` | 표시 없음 |
-| `cancelled` | (컴포넌트 개별 처리) | — |
+| `busy` | `busy` | Spinner |
+| `ready-for-review` | `ready-for-review` | Purple dot (pulse) |
+| `needs-input` | `needs-input` | Amber dot (pulse) |
+| `unknown` | `unknown` | Gray dot (static) |
+| `idle` | `idle` | None |
+| `inactive` | `idle` | None |
+| `cancelled` | (component-specific) | — |
 
-### 세션뷰 (`TSessionView`)
+### Session View (`TSessionView`)
 
-Claude 패널에서 어떤 화면을 보여줄지 결정하는 파생 상태.
+Derived state that decides which screen the Claude panel shows.
 
-| 상태 | 결정 조건 |
+| State | Condition |
 | --- | --- |
-| `loading` | `claudeStatus === 'starting'`, 또는 `claudeStatus === 'running' && isTimelineLoading`, 또는 `isResuming` |
+| `loading` | `claudeStatus === 'starting'`, or `claudeStatus === 'running' && isTimelineLoading`, or `isResuming` |
 | `restarting` | `isRestarting === true` |
 | `not-installed` | `claudeStatus === 'not-installed'` |
 | `timeline` | `claudeStatus === 'running' && !isTimelineLoading` |
-| `inactive` | 위 어디에도 해당하지 않음 |
+| `inactive` | None of the above |
 
 ---
 
-## 탭 스토어 (`useTabStore`)
+## Tab Store (`useTabStore`)
 
-모든 탭 상태를 `Record<tabId, ITabState>`로 관리하는 Zustand 스토어.
+A Zustand store that manages all tab state as `Record<tabId, ITabState>`.
 
-### 주요 필드
+### Key Fields
 
-| 필드 | 타입 | 소스 | 용도 |
+| Field | Type | Source | Purpose |
 | --- | --- | --- | --- |
-| `terminalConnected` | `boolean` | 터미널 WS | 입력 가능 여부 판단 |
-| `claudeStatus` | `TClaudeStatus` | 터미널/타임라인 WS | 세션뷰 결정 |
-| `claudeStatusCheckedAt` | `number` | 서버 타임스탬프 | stale 업데이트 방지 |
-| `cliState` | `TCliState` | 서버 WS (`status:update` / 훅 파생) | 작업 상태, 탭 인디케이터 |
-| `lastEvent` | `ILastEvent \| null` | 서버 WS (`status:hook-event`) | 이벤트 순서 추적, PermissionPrompt 재fetch 트리거 |
-| `eventSeq` | `number` | 서버 WS | 역전 방지용 단조 카운터 |
-| `isTimelineLoading` | `boolean` | 타임라인 WS init 수신 여부 | 세션뷰 `loading` 분기 |
-| `isRestarting` | `boolean` | 사용자 새 대화 액션 | 세션뷰 `restarting` 분기 |
-| `isResuming` | `boolean` | 세션 resume 액션 | 세션뷰 `loading` 분기 |
-| `compactingSince` | `number \| null` | `pre-compact`/`post-compact` 훅 | timeline compacting 인디케이터 |
+| `terminalConnected` | `boolean` | Terminal WS | Whether input is allowed |
+| `claudeStatus` | `TClaudeStatus` | Terminal/Timeline WS | Decides the session view |
+| `claudeStatusCheckedAt` | `number` | Server timestamp | Prevent stale updates |
+| `cliState` | `TCliState` | Server WS (`status:update` / hook derivation) | Work state, tab indicator |
+| `lastEvent` | `ILastEvent \| null` | Server WS (`status:hook-event`) | Track event order, trigger PermissionPrompt re-fetch |
+| `eventSeq` | `number` | Server WS | Monotonic counter to prevent reordering |
+| `isTimelineLoading` | `boolean` | Whether the timeline WS init has been received | Branch into the `loading` session view |
+| `isRestarting` | `boolean` | User "new conversation" action | Branch into the `restarting` session view |
+| `isResuming` | `boolean` | Session resume action | Branch into the `loading` session view |
+| `compactingSince` | `number \| null` | `pre-compact`/`post-compact` hooks | Drives the timeline compacting indicator |
 
-### 쓰기 경로
+### Write Paths
 
-| 경로 | 액션 | 특성 |
+| Path | Action | Notes |
 | --- | --- | --- |
-| 서버 sync (`status:sync`) | `syncAllFromServer` | 초기 로드, `cancelled` 보호 |
-| 서버 update (`status:update`) | `updateFromServer` | 메타데이터 + cliState, `cancelled` 보호 |
-| 서버 event (`status:hook-event`) | `applyHookEvent` | `lastEvent`/`eventSeq`만 갱신, `seq` 역전 방지 |
-| 사용자 dismiss | `dismissTab` | `ready-for-review → idle` 로컬 즉시 반영 + WS `status:tab-dismissed` |
-| 사용자 탭 삭제 | `cancelTab` | `cliState = 'cancelled'` 로컬 전용 |
+| Server sync (`status:sync`) | `syncAllFromServer` | Initial load, `cancelled` protected |
+| Server update (`status:update`) | `updateFromServer` | Metadata + cliState, `cancelled` protected |
+| Server event (`status:hook-event`) | `applyHookEvent` | Updates only `lastEvent`/`eventSeq`, prevents seq reordering |
+| User dismiss | `dismissTab` | Local immediate `ready-for-review → idle` + WS `status:tab-dismissed` |
+| User tab delete | `cancelTab` | `cliState = 'cancelled'`, local only |
 
-**클라이언트는 `cliState`를 서버로 역전파하지 않는다**. 과거의 `notifyCliState`/`status:cli-state` 경로는 제거됨.
+**The client never propagates `cliState` back to the server.** The legacy `notifyCliState` / `status:cli-state` paths have been removed.
 
-### `isCliIdle()` 헬퍼
+### `isCliIdle()` Helper
 
-`idle`과 `ready-for-review` 모두 "작업 대기 중"을 의미하므로:
+Both `idle` and `ready-for-review` mean "waiting for work", so:
 
 ```ts
 export const isCliIdle = (cliState: TCliState): boolean =>
   cliState === 'idle' || cliState === 'ready-for-review';
 ```
 
-사용처: `WebInputBar` 입력 모드, 재시작 완료 감지, dismiss-on-focus.
+Used in: `WebInputBar` input mode, restart-complete detection, dismiss-on-focus.
 
 ---
 
-## Claude Code Hook 시스템
+## Claude Code Hook System
 
-Claude Code의 [Hook](https://docs.anthropic.com/en/docs/claude-code/hooks) 기능을 사용하여 Claude의 작업 상태를 즉시 전달받는다.
+Uses Claude Code's [Hook](https://docs.anthropic.com/en/docs/claude-code/hooks) feature to receive Claude's work state immediately.
 
-### Hook 설정
+### Hook Settings
 
-서버 시작 시 `ensureHookSettings()`가 `~/.purplemux/hooks.json`을 생성한다.
+`ensureHookSettings()` runs at server startup and creates `~/.purplemux/hooks.json`.
 
-| 파일 | 용도 |
+| File | Purpose |
 | --- | --- |
-| `~/.purplemux/hooks.json` | Hook 이벤트 → shell 스크립트 매핑 |
-| `~/.purplemux/status-hook.sh` | 서버로 POST 전송하는 스크립트 |
-| `~/.purplemux/port` | 현재 서버 포트 (스크립트에서 참조) |
+| `~/.purplemux/hooks.json` | Hook event → shell script mapping |
+| `~/.purplemux/status-hook.sh` | Script that POSTs to the server |
+| `~/.purplemux/port` | Current server port (referenced by the script) |
 
-### Hook 이벤트 매핑
+### Hook Event Mapping
 
-| Claude Code Hook | 전송 이벤트 | 결과 |
+| Claude Code Hook | Sent event | Result |
 | --- | --- | --- |
 | `SessionStart` | `session-start` | → `idle` |
 | `UserPromptSubmit` | `prompt-submit` | → `busy` |
-| `Notification` | `notification` | → `needs-input` (단, notificationType 필터링) |
+| `Notification` | `notification` | → `needs-input` (filtered by notificationType) |
 | `Stop` | `stop` | → `ready-for-review` |
 | `StopFailure` | `stop` | → `ready-for-review` |
-| `PreCompact` | `pre-compact` | → `compactingSince = now` (cliState 불변) |
-| `PostCompact` | `post-compact` | → `compactingSince = null` (cliState 불변) |
+| `PreCompact` | `pre-compact` | → `compactingSince = now` (cliState unchanged) |
+| `PostCompact` | `post-compact` | → `compactingSince = null` (cliState unchanged) |
 
-`pre-compact`/`post-compact`는 `cliState`/`eventSeq`/`lastEvent`를 건드리지 않고 별도 필드 `compactingSince`만 세팅한다. 이 값은 timeline-view의 compacting 인디케이터(60초 윈도우)를 구동한다. `pre-compact` 후 `post-compact`가 유실될 경우를 대비해 서버가 `COMPACT_STALE_MS = 60s` 타이머로 자동 해제한다.
+`pre-compact`/`post-compact` do not touch `cliState`/`eventSeq`/`lastEvent`; they only set the separate `compactingSince` field. That value drives the timeline-view's compacting indicator (60s window). To handle a missing `post-compact`, the server auto-clears it via a `COMPACT_STALE_MS = 60s` timer.
 
-### Notification 필터링 (`INPUT_REQUESTING_NOTIFICATION_TYPES`)
+### Notification Filtering (`INPUT_REQUESTING_NOTIFICATION_TYPES`)
 
-Claude의 `Notification` 훅은 다양한 시점에 발사되지만 사용자 입력이 필요한 경우만 `needs-input`으로 전이해야 한다. `status-manager.ts`의 화이트리스트:
+Claude's `Notification` hook fires at many moments, but only cases that need user input should transition to `needs-input`. The whitelist in `status-manager.ts`:
 
 ```ts
 const INPUT_REQUESTING_NOTIFICATION_TYPES = new Set(['permission_prompt', 'worker_permission_prompt']);
 ```
 
-훅 스크립트가 stdin JSON에서 `notification_type`을 파싱해 payload에 포함하면, 서버가 화이트리스트에 없는 타입(예: idle 알림)은 상태 전이 없이 무시한다.
+The hook script parses `notification_type` from the stdin JSON and includes it in the payload, so the server ignores types that are not in the whitelist (e.g. idle notifications) without transitioning state.
 
-### Hook 스크립트
+### Hook Script
 
-`~/.purplemux/status-hook.sh`는 `hook-settings.ts`의 `HOOK_SCRIPT_CONTENT`로 생성된다. 핵심 동작:
+`~/.purplemux/status-hook.sh` is generated from `HOOK_SCRIPT_CONTENT` in `hook-settings.ts`. Core behavior:
 
-- `tmux display-message`로 세션 이름 조회 (서버가 어느 탭인지 식별)
-- `event === 'notification'`이면 stdin JSON에서 `notification_type` 파싱 → payload에 포함
-- `curl POST /api/status/hook`으로 `{ event, session, notificationType? }` 전송
+- Looks up the session name with `tmux display-message` (so the server knows which tab)
+- If `event === 'notification'`, parses `notification_type` from stdin JSON and includes it in the payload
+- POSTs `{ event, session, notificationType? }` to `/api/status/hook` via `curl`
 
-### Agent 탭 별도 hook (참고)
+### Agent Tab Hooks (Reference)
 
-일반 탭은 위 sh 스크립트를 거치지만, **agent 탭/brain 세션**은 `buildAgentTabHookSettings` / `buildAgentBrainHookSettings`로 생성된 `type: 'http'` 훅을 사용해 `/api/agent-rpc/{agentId}/...` 엔드포인트로 직접 POST한다 (`Stop`/`StopFailure`만). StatusManager 경로와 분리되어 있으며 본 문서 범위 밖.
+Normal tabs go through the shell script above, but **agent tabs / brain sessions** use `type: 'http'` hooks generated by `buildAgentTabHookSettings` / `buildAgentBrainHookSettings`, which POST directly to `/api/agent-rpc/{agentId}/...` (only `Stop` / `StopFailure`). They are separate from the StatusManager path and are out of scope here.
 
-### Hook API 엔드포인트
+### Hook API Endpoint
 
-`/api/status/hook` — localhost only. `event`와 `session`을 받아 `StatusManager.updateTabFromHook()`을 호출한다. `event`가 `poll`이거나 `session`이 없으면 전체 poll을 트리거한다.
+`/api/status/hook` — localhost only. Receives `event` and `session` and calls `StatusManager.updateTabFromHook()`. If `event` is `poll` or `session` is missing, it triggers a full poll.
 
-### 처리 흐름 (`updateTabFromHook`)
+### Processing Flow (`updateTabFromHook`)
 
 ```
-훅 수신
+hook received
   │
-  ├─ tabId/entry 조회 (없으면 return)
-  ├─ event 화이트리스트 검사 (session-start/prompt-submit/notification/stop)
+  ├─ look up tabId/entry (return if missing)
+  ├─ check event whitelist (session-start/prompt-submit/notification/stop)
   │
   ├─ entry.eventSeq += 1
   ├─ entry.lastEvent = { name, at: Date.now(), seq }
-  ├─ status:hook-event broadcast (seq + name + at)
+  ├─ broadcast status:hook-event (seq + name + at)
   │
   ├─ newState = deriveStateFromEvent(entry.lastEvent, prevState)
-  │   (prevState === 'cancelled'이면 그대로 유지)
+  │   (if prevState === 'cancelled', stays the same)
   │
-  └─ prevState !== newState면
+  └─ if prevState !== newState:
       ├─ applyCliState(tabId, entry, newState)
       ├─ persistToLayout(entry)
-      └─ status:update broadcast
+      └─ broadcast status:update
 ```
 
-`stop` 이벤트 후 `refreshSnippet`이 JSONL 최종 상태를 비동기로 읽어 `currentAction`/`lastAssistantSnippet`을 추가로 broadcast한다 (500ms 지연 포함).
+After a `stop` event, `refreshSnippet` asynchronously reads the final JSONL state and broadcasts `currentAction` / `lastAssistantSnippet` (with a 500ms delay).
 
-### 이벤트 섀도잉 (`status:hook-event`)
+### Event Shadowing (`status:hook-event`)
 
-`cliState`가 바뀌지 않는 경우(예: 연속 `notification` → `needs-input`에서 `needs-input`)에도 `status:hook-event`는 **항상** broadcast된다. 클라이언트는 `applyHookEvent`에서 `event.seq > prev.eventSeq`인 경우에만 반영하여 역전을 방지한다.
+`status:hook-event` is **always** broadcast even if `cliState` doesn't change (e.g. consecutive `notification` while already in `needs-input`). The client only applies it in `applyHookEvent` when `event.seq > prev.eventSeq`, preventing reordering.
 
-`PermissionPromptItem`은 `lastEvent.seq`를 `useEffect` dep로 구독하여 연속 권한 프롬프트 시 새 옵션을 자동 재fetch한다:
+`PermissionPromptItem` subscribes to `lastEvent.seq` as a `useEffect` dep so that consecutive permission prompts auto-refetch new options:
 
 ```
-연속 권한 프롬프트:
+Consecutive permission prompts:
 prompt-submit → lastEvent{name:'prompt-submit', seq:1} → busy
 notification  → lastEvent{name:'notification', seq:2}  → needs-input
-사용자 선택
+user selection
 notification  → lastEvent{name:'notification', seq:3}  → needs-input (same cliState, seq++)
 stop          → lastEvent{name:'stop', seq:4}          → ready-for-review
 ```
 
 ---
 
-## 서버 재시작 정책
+## Server Restart Policy
 
-서버가 재시작될 때 훅이 유실될 수 있는 유일한 상태는 `busy`다 (Claude가 다운 기간 중 `stop`/`notification`을 쏘면 유실). 다른 상태는 "공이 사용자 코트"에 있어 자동 전이가 발생하지 않으므로 persisted 값 그대로 유지해도 안전하다.
+The only state that can be lost across a server restart is `busy` (Claude might fire `stop`/`notification` while the server is down). All other states have "the ball in the user's court", so no automatic transitions occur and the persisted value can stay as-is.
 
-`StatusManager.scanAll`에서 layout에 저장된 `cliState`를 읽어:
+`StatusManager.scanAll` reads the persisted `cliState` from the layout:
 
-| persisted cliState | 재시작 후 | 후속 처리 |
+| Persisted cliState | After restart | Follow-up |
 | --- | --- | --- |
-| `busy` | **`unknown`** | `resolveUnknown` 즉시 스케줄 |
-| `needs-input` | 유지 | JSONL watcher 시작 |
-| 그 외 | 유지 | — |
+| `busy` | **`unknown`** | `resolveUnknown` scheduled immediately |
+| `needs-input` | unchanged | JSONL watcher started |
+| Others | unchanged | — |
 
-### `resolveUnknown` — unknown 탭 백그라운드 복구
+### `resolveUnknown` — Background Recovery for Unknown Tabs
 
-`busy → unknown`으로 변환된 탭을 다음 확실한 신호만 사용해 승격:
+For tabs converted to `unknown` from `busy`, only definitive signals are used to promote:
 
-1. **Claude 프로세스 검사** — `isClaudeRunning(panePid)` 실패 → `idle` 확정 (silent, 푸시 없음)
-2. **JSONL tail 검사** — `checkJsonlIdle`이 `idle && !stale && lastAssistantSnippet`을 반환 → `ready-for-review` 확정 (silent)
-3. **그 외** → `unknown` 유지, 다음 훅 수신 대기
+1. **Claude process check** — `isClaudeRunning(panePid)` fails → confirm `idle` (silent, no push)
+2. **JSONL tail check** — `checkJsonlIdle` returns `idle && !stale && lastAssistantSnippet` → confirm `ready-for-review` (silent)
+3. **Otherwise** → keep `unknown`, wait for the next hook
 
-**pane capture는 사용하지 않는다.** 스크롤백에 남은 이전 권한 프롬프트를 현재 프롬프트로 오판할 위험 때문.
+**Pane capture is not used.** A previous permission prompt left in the scrollback could be misread as the current one.
 
-`unknown` 상태에서도 JSONL watcher를 시작한다 — cliState는 변경하지 않지만 `currentAction`/`lastAssistantMessage` 메타데이터는 계속 업데이트된다.
+JSONL watcher is also started in the `unknown` state — it does not change `cliState`, but `currentAction` / `lastAssistantMessage` metadata keep updating.
 
-### Busy 교착 안전망
+### Busy Stuck Safety Net
 
-운영 중 `busy` 상태가 `BUSY_STUCK_MS` (**10분**) 이상 지속되고 Claude 프로세스도 사망했다면 `idle`로 silent 복구. 메타데이터 poll 루프 내에서 수행. SIGKILL 등 `stop` 훅 유실 대비.
-
----
-
-## JSONL Watcher (메타데이터 전용)
-
-`busy` / `needs-input` / `unknown` / `ready-for-review` 상태 탭의 JSONL 파일에 `fs.watch`를 설정하여 파일 변경 시 `checkJsonlIdle`을 호출한다.
-
-| 트리거 | 동작 |
-| --- | --- |
-| 시작 | `busy`/`needs-input`/`unknown` 진입 시 (훅 경로 또는 scanAll) |
-| 처리 | `currentAction`, `lastAssistantMessage`, reset 신호만 갱신 → `status:update` broadcast |
-| 해제 | `idle`/`inactive` 전이, 탭 삭제, shutdown |
-
-**핵심**: JSONL watcher는 **`cliState`를 절대 변경하지 않는다**. 과거에는 `busy → ready-for-review` 자동 승격 경로가 있었으나 이제 `stop` 훅만이 이 전환을 일으킨다.
+If a `busy` state lasts longer than `BUSY_STUCK_MS` (**10 minutes**) and the Claude process has died, silently recover to `idle`. Performed inside the metadata poll loop. Designed to handle dropped `stop` hooks (e.g. SIGKILL).
 
 ---
 
-## 메타데이터 Poll
+## JSONL Watcher (Metadata Only)
 
-`cliState`에 관여하지 않는 **메타데이터 전용** 폴링.
+For tabs in `busy` / `needs-input` / `unknown` / `ready-for-review`, an `fs.watch` is set on the JSONL file and `checkJsonlIdle` is called on file changes.
 
-### 주기
-
-| 탭 수 | 간격 |
+| Trigger | Action |
 | --- | --- |
-| 1~10개 | 30초 |
-| 11~20개 | 45초 |
-| 21개+ | 60초 |
+| Start | Entering `busy`/`needs-input`/`unknown` (hook path or scanAll) |
+| Process | Updates only `currentAction`, `lastAssistantMessage`, reset signals → broadcast `status:update` |
+| Release | Transition to `idle`/`inactive`, tab deletion, shutdown |
 
-### 폴링 1회당 비용
-
-| 작업 | 횟수 |
-| --- | --- |
-| `tmux list-panes -a` | 1회 (전체 일괄) |
-| 파일시스템 읽기 (workspace/layout JSON) | 워크스페이스 수 + α |
-| 프로세스 확인 (`pgrep`/`ps`) | busy 교착 검사에 걸린 탭 수만 |
-| JSONL 파일 tail 읽기 | 신규 탭 발견 시 1회 (기존 탭은 watcher 경로) |
-
-### 처리 내용
-
-- 신규 탭 발견 → `readTabMetadata`로 초기 메타데이터 로드 + entry 생성
-  - persisted `cliState === 'busy'` → `'unknown'`으로 변환 + `resolveUnknown` 스케줄
-- 기존 탭 → process/ports/title/summary 갱신 (cliState는 건드리지 않음)
-- busy 교착 검사 → 10분 경과 + Claude 프로세스 사망 → silent `idle`
-- 삭제된 탭 → cleanup + `broadcastRemove`
-
-`cliState` 판정과 `hasPermissionPrompt` 검사가 제거되어 폴링 비용이 Phase 1 이전 대비 ~80% 감소.
+**Key**: the JSONL watcher **never changes `cliState`**. There used to be an automatic `busy → ready-for-review` promotion path, but now only the `stop` hook can cause that transition.
 
 ---
 
-## 데이터 흐름
+## Metadata Poll
+
+A **metadata-only** poll that does not touch `cliState`.
+
+### Cadence
+
+| Tab count | Interval |
+| --- | --- |
+| 1–10 | 30s |
+| 11–20 | 45s |
+| 21+ | 60s |
+
+### Cost per poll
+
+| Operation | Count |
+| --- | --- |
+| `tmux list-panes -a` | 1 (single batch) |
+| Filesystem reads (workspace/layout JSON) | workspace count + α |
+| Process check (`pgrep`/`ps`) | only for tabs caught by the busy stuck check |
+| JSONL tail read | 1 per newly discovered tab (existing tabs go through the watcher path) |
+
+### What Each Poll Does
+
+- New tab found → `readTabMetadata` loads initial metadata + creates entry
+  - Persisted `cliState === 'busy'` → converted to `'unknown'` + `resolveUnknown` scheduled
+- Existing tab → updates process/ports/title/summary (cliState untouched)
+- Busy stuck check → 10 minutes elapsed + Claude process dead → silent `idle`
+- Deleted tabs → cleanup + `broadcastRemove`
+
+Removing the `cliState` decision and the `hasPermissionPrompt` check has reduced poll cost by roughly 80% compared to pre-Phase 1.
+
+---
+
+## Data Flow
 
 ```
 [Claude Code Hook]
@@ -357,183 +357,183 @@ stop          → lastEvent{name:'stop', seq:4}          → ready-for-review
 [/api/status/hook] (localhost only)
   └─ StatusManager.updateTabFromHook(session, event)
      │
-     ├─ entry.eventSeq 증가
+     ├─ entry.eventSeq++
      ├─ entry.lastEvent = { name, at, seq }
-     ├─ status:hook-event broadcast
+     ├─ broadcast status:hook-event
      ├─ deriveStateFromEvent → newState
-     └─ prevState !== newState면
-         ├─ applyCliState (idempotent 가드 + 푸시 알림)
+     └─ if prevState !== newState:
+         ├─ applyCliState (idempotent guard + push notification)
          ├─ persistToLayout (layout JSON)
-         └─ status:update broadcast
+         └─ broadcast status:update
              │
              ▼
-[JSONL Watcher] (병렬)
-  busy/needs-input/unknown/ready-for-review 탭만 감시
-  파일 변경 시 checkJsonlIdle → currentAction/lastAssistantSnippet 갱신
-  └─ status:update broadcast (cliState는 불변)
+[JSONL Watcher] (parallel)
+  Watches only busy/needs-input/unknown/ready-for-review tabs
+  On file change: checkJsonlIdle → updates currentAction/lastAssistantSnippet
+  └─ broadcast status:update (cliState unchanged)
              │
              ▼
-[메타데이터 Poll] (병렬, 30~60초)
-  - 신규 탭 감지, 삭제 탭 정리
-  - process/ports/summary 갱신
-  - busy 교착 안전망
-  - persisted busy → unknown 변환 + resolveUnknown
+[Metadata Poll] (parallel, 30–60s)
+  - Detect new / removed tabs
+  - Update process/ports/summary
+  - Busy stuck safety net
+  - Persisted busy → unknown conversion + resolveUnknown
              │
              ▼
 [Status WebSocket] /api/status
-  서버 → 클라: status:sync / status:update / status:hook-event
-  클라 → 서버: status:tab-dismissed / status:ack-notification / status:request-sync
+  Server → client: status:sync / status:update / status:hook-event
+  Client → server: status:tab-dismissed / status:ack-notification / status:request-sync
              │
              ▼
-[Zustand 스토어] useTabStore
-  syncAllFromServer / updateFromServer (메타+cliState)
-  applyHookEvent (lastEvent/eventSeq, seq 역전 방지)
-  dismissTab / cancelTab (로컬 액션)
+[Zustand store] useTabStore
+  syncAllFromServer / updateFromServer (metadata + cliState)
+  applyHookEvent (lastEvent/eventSeq, prevents seq reordering)
+  dismissTab / cancelTab (local actions)
              │
              ▼
-[UI 컴포넌트]
-  TabStatusIndicator         탭 바 인디케이터
-  WorkspaceStatusIndicator   사이드바 워크스페이스
-  PermissionPromptItem       타임라인, lastEvent.seq로 재fetch
-  NotificationSheet          알림 시트
-  Bell 아이콘                 사이드바 + 앱 헤더
-  useBrowserTitle            브라우저 탭 제목
+[UI components]
+  TabStatusIndicator         tab-bar indicator
+  WorkspaceStatusIndicator   sidebar workspace
+  PermissionPromptItem       timeline, re-fetched via lastEvent.seq
+  NotificationSheet          notification sheet
+  Bell icon                  sidebar + app header
+  useBrowserTitle            browser tab title
 ```
 
-### 터미널 WS 경로 (프로세스 감지, cliState 무관)
+### Terminal WS Path (Process Detection, Independent of cliState)
 
 ```
-tmux 타이틀 변경 → onTitleChange
-  ├─ formatTabTitle → 탭 표시명 업데이트
+tmux title change → onTitleChange
+  ├─ formatTabTitle → updates tab display name
   └─ fetch /api/check-claude
       └─ isClaudeRunning(panePid)
           └─ setClaudeStatus(tabId, 'starting' | 'not-running')
 ```
 
-### 타임라인 WS 경로 (세션 + 엔트리)
+### Timeline WS Path (Sessions + Entries)
 
 ```
-타임라인 WS 연결 → 서버의 detectActiveSession
-  ├─ session-changed → claudeStatus 반영
-  ├─ timeline:init → entries 수신, isTimelineLoading = false
-  └─ timeline:append → entries 추가
-      └─ useTimeline.onSync 콜백
+Timeline WS connects → server runs detectActiveSession
+  ├─ session-changed → reflected in claudeStatus
+  ├─ timeline:init → entries received, isTimelineLoading = false
+  └─ timeline:append → entries appended
+      └─ useTimeline.onSync callback
           ├─ setClaudeStatus(tabId, status, checkedAt)
           └─ setTimelineLoading(tabId, loading)
 ```
 
-`useTimeline`은 **더 이상 `cliState`를 로컬 파생하지 않는다** (과거 `deriveCliState` 제거). 타임라인 WS는 메타데이터 (엔트리, 요약)만 담당하고 `cliState`는 훅 경로로만 갱신된다.
+`useTimeline` **no longer derives `cliState` locally** (the old `deriveCliState` was removed). The timeline WS handles only metadata (entries, summaries); `cliState` is updated solely via the hook path.
 
 ---
 
-## 로그 설정
+## Logging Configuration
 
-### 전역 레벨
+### Global Level
 
 ```bash
-LOG_LEVEL=debug pnpm dev      # 전체
+LOG_LEVEL=debug pnpm dev      # all groups
 ```
 
-### 모듈별 레벨
+### Per-module Level
 
-`LOG_LEVELS` 환경변수로 그룹별 레벨 분리. `createLogger(name)`이 해당 그룹의 레벨을 child logger에 적용한다.
+The `LOG_LEVELS` env var splits levels per group. `createLogger(name)` applies the group's level to a child logger.
 
 ```bash
-# Claude Code hook 동작만 debug로 추적
+# Trace only the Claude Code hook behavior in debug
 LOG_LEVELS=hooks=debug pnpm dev
 
-# 여러 그룹 동시
+# Multiple groups at once
 LOG_LEVELS=hooks=debug,status=warn pnpm dev
 ```
 
-주요 그룹:
+Main groups:
 
-| 그룹 | 출처 | 디버깅 대상 |
+| Group | Source | Debugging target |
 | --- | --- | --- |
-| `hooks` | `api/status/hook.ts`, `status-manager.ts` (`hookLog`) | 훅 수신·처리·상태 전이 |
-| `status` | `status-manager.ts` (`log`) | poll, JSONL watcher, broadcast |
-| `tmux` | `lib/tmux.ts` | tmux 명령 실행 |
+| `hooks` | `api/status/hook.ts`, `status-manager.ts` (`hookLog`) | Hook receive/process/transition |
+| `status` | `status-manager.ts` (`log`) | Poll, JSONL watcher, broadcast |
+| `tmux` | `lib/tmux.ts` | tmux command execution |
 
-`hooks=debug`로 켜면 다음이 보인다:
+With `hooks=debug` you see, for example:
 
-- `[hooks] received { event, session }` — 훅 엔드포인트 수신
-- `[hooks] no tabId for session` / `no entry for tab` — 실패 케이스
-- `[hooks] processed { tabId, event, seq, prevState, newState, transition }` — 처리 결과
+- `[hooks] received { event, session }` — hook endpoint received
+- `[hooks] no tabId for session` / `no entry for tab` — failure cases
+- `[hooks] processed { tabId, event, seq, prevState, newState, transition }` — processing result
 
-### 동작 원리
+### How It Works
 
-`src/lib/logger.ts`가 `LOG_LEVELS`를 파싱하고 root logger의 level을 그룹 최소값으로 설정한 뒤, `createLogger(name)`이 child logger에 그룹별 level을 적용한다. Pino는 root가 최소 레벨까지 열려 있어야 child에서 필터링할 수 있기 때문.
+`src/lib/logger.ts` parses `LOG_LEVELS`, sets the root logger's level to the minimum across groups, then `createLogger(name)` applies each group's level to its child logger. Pino requires the root to be open down to the lowest level for child filtering to work.
 
 ---
 
-## 관련 파일
+## Related Files
 
-### 타입
+### Types
 
-| 파일 | 설명 |
+| File | Description |
 | --- | --- |
-| `src/types/status.ts` | `ITabStatusEntry`, `ILastEvent`, `TEventName`, `TTabDisplayStatus`, WebSocket 메시지 |
+| `src/types/status.ts` | `ITabStatusEntry`, `ILastEvent`, `TEventName`, `TTabDisplayStatus`, WebSocket messages |
 | `src/types/timeline.ts` | `TCliState`, `TClaudeStatus` |
 
-### 서버
+### Server
 
-| 파일 | 설명 |
+| File | Description |
 | --- | --- |
-| `src/lib/status-manager.ts` | `deriveStateFromEvent`, `updateTabFromHook`, `applyCliState`, `resolveUnknown`, `readTabMetadata`, busy 교착 안전망, 메타데이터 poll, JSONL watcher |
-| `src/lib/status-server.ts` | `/api/status` WebSocket 핸들러 |
-| `src/lib/hook-settings.ts` | Hook 설정 파일 생성, 스크립트 관리 |
-| `src/pages/api/status/hook.ts` | Hook API 엔드포인트 (localhost only) |
+| `src/lib/status-manager.ts` | `deriveStateFromEvent`, `updateTabFromHook`, `applyCliState`, `resolveUnknown`, `readTabMetadata`, busy stuck safety net, metadata poll, JSONL watcher |
+| `src/lib/status-server.ts` | `/api/status` WebSocket handler |
+| `src/lib/hook-settings.ts` | Hook settings file generation, script management |
+| `src/pages/api/status/hook.ts` | Hook API endpoint (localhost only) |
 | `src/lib/session-detection.ts` | `detectActiveSession`, `isClaudeRunning` |
-| `src/pages/api/check-claude.ts` | Claude 프로세스 감지 API |
-| `src/lib/layout-store.ts` | `updateTabCliStatus` 등 layout JSON 쓰기 |
-| `src/lib/logger.ts` | `LOG_LEVELS` 파싱 + 그룹별 pino child |
+| `src/pages/api/check-claude.ts` | Claude process detection API |
+| `src/lib/layout-store.ts` | `updateTabCliStatus`, etc. (layout JSON writes) |
+| `src/lib/logger.ts` | `LOG_LEVELS` parsing + per-group pino child |
 
-### 클라이언트
+### Client
 
-| 파일 | 설명 |
+| File | Description |
 | --- | --- |
-| `src/hooks/use-tab-store.ts` | Zustand 탭 스토어, `applyHookEvent`, `selectTabDisplayStatus` |
-| `src/hooks/use-claude-status.ts` | Status WebSocket 연결, `status:hook-event`/`status:update` 처리, `dismissTab` |
-| `src/hooks/use-timeline.ts` | 타임라인 WS 데이터 (cliState 파생 없음) |
-| `src/hooks/use-web-input.ts` | 입력 모드 결정 (`unknown` → `input` 허용) |
-| `src/hooks/use-native-notification.ts` | 데스크톱 네이티브 알림 |
-| `src/hooks/use-browser-title.ts` | 브라우저 타이틀 attention 카운트 |
+| `src/hooks/use-tab-store.ts` | Zustand tab store, `applyHookEvent`, `selectTabDisplayStatus` |
+| `src/hooks/use-claude-status.ts` | Status WebSocket, `status:hook-event` / `status:update` handling, `dismissTab` |
+| `src/hooks/use-timeline.ts` | Timeline WS data (no cliState derivation) |
+| `src/hooks/use-web-input.ts` | Input mode decision (`unknown` allows input) |
+| `src/hooks/use-native-notification.ts` | Desktop native notifications |
+| `src/hooks/use-browser-title.ts` | Browser title attention count |
 
-### UI 컴포넌트
+### UI Components
 
-| 파일 | 역할 |
+| File | Role |
 | --- | --- |
-| `src/components/features/terminal/tab-status-indicator.tsx` | 탭 바 인디케이터 |
-| `src/components/features/terminal/workspace-status-indicator.tsx` | 사이드바 워크스페이스 점 |
-| `src/components/features/mobile/mobile-workspace-tab-bar.tsx` | 모바일 탭 바 |
-| `src/components/features/timeline/permission-prompt-item.tsx` | 권한 프롬프트 UI (`lastEvent.seq` 구독) |
-| `src/components/features/terminal/notification-sheet.tsx` | 알림 시트 + `useNotificationCount` |
+| `src/components/features/terminal/tab-status-indicator.tsx` | Tab-bar indicator |
+| `src/components/features/terminal/workspace-status-indicator.tsx` | Sidebar workspace dot |
+| `src/components/features/mobile/mobile-workspace-tab-bar.tsx` | Mobile tab bar |
+| `src/components/features/timeline/permission-prompt-item.tsx` | Permission prompt UI (`lastEvent.seq` subscriber) |
+| `src/components/features/terminal/notification-sheet.tsx` | Notification sheet + `useNotificationCount` |
 
 ---
 
-## 알림 시스템
+## Notification System
 
-### 알림 시트 (`NotificationSheet`)
+### Notification Sheet (`NotificationSheet`)
 
-Bell 아이콘 클릭 시 Sheet로 표시. 진행중(`busy`), 입력 대기(`needs-input`), 리뷰(`ready-for-review`), 완료(`done`) 네 섹션.
+Shown as a Sheet when the Bell icon is clicked. Four sections: in-progress (`busy`), awaiting input (`needs-input`), review (`ready-for-review`), done (`done`).
 
-완료 섹션은 `dismissTab`으로 확인된 탭(`dismissedAt` 값 존재 + `cliState`가 `idle`/`inactive`) 중 현재 활성 탭을 제외하여 최신순으로 표시한다. 해당 탭에서 새 작업이 시작되면 `dismissedAt`이 초기화되어 목록에서 제거된다.
+The done section shows tabs that were acknowledged via `dismissTab` (have a `dismissedAt` value and `cliState` is `idle`/`inactive`), excluding the currently active tab, sorted by recency. When new work starts on such a tab, `dismissedAt` is reset and the tab leaves the list.
 
-### 카운트 집계 범위
+### Count Aggregation Scope
 
-`useNotificationCount` 훅은 모든 탭을 순회하며 `busy`/`needs-input`/`ready-for-review` 상태를 집계한다. 현재 활성 탭도 포함되므로 사이드바·앱 헤더·알림 시트가 동일 카운트를 공유하고, 해당 탭을 열어도 숫자가 줄지 않는다.
+The `useNotificationCount` hook walks all tabs and aggregates `busy` / `needs-input` / `ready-for-review`. The currently active tab is included, so the sidebar, app header, and notification sheet share the same count and the number does not drop just because you opened the tab.
 
-### `unknown` 상태 처리
+### `unknown` Handling
 
-`unknown` 탭은 attention/busy 카운트에서 모두 **제외**된다. 재시작 직후의 불확정 상태를 알림으로 울리지 않기 위한 의도된 동작. 사이드바 뱃지만 회색 점으로 조용히 표시.
+Tabs in `unknown` are **excluded** from both attention and busy counts. This is intentional, so the indeterminate state right after a restart does not raise a notification. Only the sidebar badge shows quietly as a gray dot.
 
-### 푸시 알림 정책
+### Push Notification Policy
 
-`applyCliState` 호출 경로에서 자동 발사:
+Auto-fired from the `applyCliState` call path:
 
 - `newState === 'ready-for-review'` → web push "Task Complete"
 - `newState === 'needs-input'` → web push "Input Required"
 
-함수 상단의 idempotent 가드 (`prevState === newState`)가 중복 호출을 차단하므로 호출자 쪽 상태 추적 부담이 없다.
+The idempotent guard at the top of the function (`prevState === newState`) blocks duplicate calls, so callers don't have to track state.
 
-`resolveUnknown` / `dismissTab` / busy-stuck 안전망 / 서버 재시작 복구 같은 "silent" 경로는 `{ silent: true }` 옵션으로 푸시를 억제한다.
+"Silent" paths such as `resolveUnknown` / `dismissTab` / busy-stuck safety net / server restart recovery suppress the push by passing `{ silent: true }`.
