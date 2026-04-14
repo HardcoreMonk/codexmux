@@ -107,14 +107,38 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - uses: actions/download-artifact@v4
         with:
           name: electron-dmg
           path: dmg/
 
+      - name: Generate changelog with Claude
+        id: changelog
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set +e
+          BODY=$(node scripts/generate-changelog.mjs 2>changelog.err)
+          STATUS=$?
+          if [ $STATUS -ne 0 ] || [ -z "$BODY" ]; then
+            echo "::warning::Changelog generation failed (exit $STATUS), falling back to auto-generated notes"
+            cat changelog.err >&2 || true
+            echo "has_body=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_body=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "body<<CHANGELOG_EOF"
+              printf '%s\n' "$BODY"
+              echo "CHANGELOG_EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          body: ${{ steps.changelog.outputs.body }}
+          generate_release_notes: ${{ steps.changelog.outputs.has_body != 'true' }}
           files: dmg/*.dmg
           fail_on_unmatched_files: true
