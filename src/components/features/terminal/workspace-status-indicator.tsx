@@ -6,10 +6,11 @@ import useTabStore, { selectTabDisplayStatus } from '@/hooks/use-tab-store';
 import { getProcessIcon } from '@/lib/process-icon';
 import OpenAIIcon from '@/components/icons/openai-icon';
 import type { TTabDisplayStatus, TTerminalStatus } from '@/types/status';
-import type { TPanelType } from '@/types/terminal';
+import type { ITab, TPanelType } from '@/types/terminal';
 
 interface IWorkspaceStatusIndicatorProps {
   workspaceId: string;
+  tabs?: ITab[];
 }
 
 const NERD_FONT_STYLE = { fontFamily: 'MesloLGLDZ, monospace' };
@@ -63,12 +64,22 @@ const DotByStatus = ({ status, panelType, terminalStatus, process }: { status: T
   );
 };
 
-const WorkspaceStatusIndicator = ({ workspaceId }: IWorkspaceStatusIndicatorProps) => {
+const WorkspaceStatusIndicator = ({ workspaceId, tabs: layoutTabs }: IWorkspaceStatusIndicatorProps) => {
   const t = useTranslations('terminal');
   const wsConnected = useTabStore((state) => state.statusWsConnected);
   const tabs = useTabStore((state) => state.tabs);
   const tabOrder = useTabStore((state) => state.tabOrders[workspaceId]);
   const tabEntries = useMemo(() => {
+    if (layoutTabs) {
+      return layoutTabs.map((tab) => ({
+        tabId: tab.id,
+        status: selectTabDisplayStatus(tabs, tab.id),
+        panelType: tab.panelType ?? tabs[tab.id]?.panelType,
+        terminalStatus: tabs[tab.id]?.terminalStatus,
+        currentProcess: tabs[tab.id]?.currentProcess,
+      }));
+    }
+
     const wsTabIds = new Set<string>();
     for (const [tabId, entry] of Object.entries(tabs)) {
       if (entry.workspaceId === workspaceId) wsTabIds.add(tabId);
@@ -86,7 +97,7 @@ const WorkspaceStatusIndicator = ({ workspaceId }: IWorkspaceStatusIndicatorProp
       terminalStatus: tabs[tabId]?.terminalStatus,
       currentProcess: tabs[tabId]?.currentProcess,
     }));
-  }, [tabs, tabOrder, workspaceId]);
+  }, [tabs, tabOrder, workspaceId, layoutTabs]);
 
   if (wsConnected && tabEntries.length === 0) return null;
 

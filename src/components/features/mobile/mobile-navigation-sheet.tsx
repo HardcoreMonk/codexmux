@@ -285,7 +285,12 @@ const MobileNavigationSheet = ({
                       <span className="block truncate">{ws.name}</span>
                       <WorkspacePortsLabel workspaceId={ws.id} />
                       {!isExpanded && (
-                        <WorkspaceStatusIndicator workspaceId={ws.id} />
+                        <WorkspaceStatusIndicator
+                          workspaceId={ws.id}
+                          tabs={(workspaceLayouts[ws.id] ?? []).flatMap((pane) =>
+                            [...pane.tabs].sort((a, b) => a.order - b.order),
+                          )}
+                        />
                       )}
                     </div>
                   </button>
