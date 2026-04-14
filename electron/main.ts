@@ -1,5 +1,5 @@
 import { app, BrowserWindow, shell, Menu, ipcMain, session, screen, Notification, nativeTheme, dialog } from 'electron';
-import { autoUpdater, type UpdateInfo } from 'electron-updater';
+import { autoUpdater, type UpdateInfo, type ProgressInfo } from 'electron-updater';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -286,7 +286,12 @@ const setupAutoUpdater = () => {
     });
   });
 
+  autoUpdater.on('download-progress', (progress: ProgressInfo) => {
+    mainWindow?.setProgressBar(progress.percent / 100);
+  });
+
   autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
+    mainWindow?.setProgressBar(-1);
     runExclusiveDialog(async () => {
       const m = mt();
       const result = await showUpdateDialog({
@@ -307,6 +312,7 @@ const setupAutoUpdater = () => {
   autoUpdater.on('error', (err: Error) => {
     console.error('[updater]', err);
     pendingUpdateVersion = null;
+    mainWindow?.setProgressBar(-1);
   });
 };
 
