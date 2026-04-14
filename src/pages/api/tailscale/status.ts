@@ -18,7 +18,10 @@ interface ITailscaleStatus {
   dnsName: string | null;
   tailscaleIp: string | null;
   serveEntries: ITailscaleServeEntry[];
+  serverPort: number;
 }
+
+const DEFAULT_PORT = 8022;
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'GET') {
@@ -34,6 +37,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     dnsName: null,
     tailscaleIp: null,
     serveEntries: [],
+    serverPort: parseInt(process.env.PORT || String(DEFAULT_PORT), 10),
   };
 
   try {

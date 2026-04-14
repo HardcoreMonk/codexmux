@@ -19,6 +19,7 @@ interface ITailscaleStatus {
   dnsName: string | null;
   tailscaleIp: string | null;
   serveEntries: IServeEntry[];
+  serverPort: number;
 }
 
 const DEFAULT_PORT = 8022;
@@ -155,9 +156,7 @@ const TailscaleSettings = () => {
   }
 
   const activeEntries = status.serveEntries;
-  const currentPort = typeof window !== 'undefined'
-    ? parseInt(window.location.port || '443', 10)
-    : DEFAULT_PORT;
+  const currentPort = status.serverPort;
   const isNonDefaultPort = currentPort !== DEFAULT_PORT;
 
   return (

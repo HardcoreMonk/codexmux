@@ -342,6 +342,8 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
 
   const result = dev ? await startDev(port, appDir) : await startProd(port, appDir);
 
+  process.env.PORT = String(result.port);
+
   await ensureHookSettings(result.port);
 
   const mode = dev ? 'development' : process.env.NODE_ENV;
