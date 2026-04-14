@@ -45,9 +45,10 @@ for (const { src, dest } of copies) {
 
 // Turbopack generates hashed external symlinks like
 //   .next/standalone/.next/node_modules/pino-28069d5257187539 -> ../../node_modules/pino
-// npm pack strips symlinks, so we replace each with a tiny shim package that
-// re-exports the real one. Without this, runtime require() fails with
-// "Cannot find module 'pino-<hash>'" in published web builds.
+// npm pack strips symlinks, so replace each with a tiny shim package that
+// re-exports the real one via require('<name>'). At runtime Node resolves
+// '<name>' by walking up the directory tree — in web mode that lands at the
+// consumer's top-level install, in electron mode at standalone/node_modules.
 const turbopackExternals = path.join(standalone, '.next', 'node_modules');
 if (fs.existsSync(turbopackExternals)) {
   let shimmed = 0;
@@ -74,6 +75,17 @@ if (fs.existsSync(turbopackExternals)) {
 }
 
 if (!electronMode) {
+  // Web mode ships purplemux via npm; the consumer's install already contains
+  // every runtime dependency (next, react-dom, pino, node-pty, ...) thanks to
+  // package.json#dependencies, so Node resolves them via the normal walk-up
+  // from standalone/. Dropping standalone/node_modules reclaims ~30MB and
+  // avoids shipping NFT-pruned packages whose missing files would only ever
+  // mask the real copy one level up.
+  const webStandaloneModules = path.join(standalone, 'node_modules');
+  if (fs.existsSync(webStandaloneModules)) {
+    fs.rmSync(webStandaloneModules, { recursive: true, force: true });
+    console.log('[post-build] web mode — removed standalone/node_modules');
+  }
   return;
 }
 

@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_COMMIT_HASH: commitHash,
   },
   output: 'standalone',
+  bundlePagesRouterDependencies: true,
   outputFileTracingExcludes: {
     '*': [
       './release/**',
