@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { nanoid } from 'nanoid';
 import useConfigStore from '@/hooks/use-config-store';
 import { navigateToTab, navigateToTabOrCreate } from '@/hooks/use-layout';
 import isElectron from '@/hooks/use-is-electron';
@@ -90,7 +91,7 @@ const DEVICE_ID_KEY = 'purplemux-device-id';
 const getDeviceId = (): string => {
   let id = localStorage.getItem(DEVICE_ID_KEY);
   if (!id) {
-    id = crypto.randomUUID();
+    id = nanoid();
     localStorage.setItem(DEVICE_ID_KEY, id);
   }
   return id;
