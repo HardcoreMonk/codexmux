@@ -57,12 +57,12 @@ export const createSession = async (
       '-s', name,
       '-x', String(cols),
       '-y', String(rows),
-      shell,
     ],
     {
       timeout: CMD_TIMEOUT,
       env: {
         ...sanitizedEnv(),
+        SHELL: shell,
         TERM: 'xterm-256color',
         COLORTERM: 'truecolor',
       },

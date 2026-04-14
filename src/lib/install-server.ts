@@ -5,7 +5,6 @@ import os from 'os';
 import { needsSetup } from '@/lib/config-store';
 import { verifySessionToken, SESSION_COOKIE, extractCookie } from '@/lib/auth';
 import { sanitizedEnv } from '@/lib/tmux';
-import { getShellPath } from '@/lib/preflight';
 import { MSG_STDIN, MSG_RESIZE, encodeStdout, textDecoder } from '@/lib/terminal-protocol';
 import { createLogger } from '@/lib/logger';
 
@@ -100,7 +99,7 @@ export const handleInstallConnection = async (ws: WebSocket, request: IncomingMe
       cwd: process.env.HOME || '/',
       env: {
         ...sanitizedEnv(),
-        PATH: await getShellPath(),
+        SHELL: shell,
         TERM: 'xterm-256color',
         COLORTERM: 'truecolor',
       },

@@ -4,6 +4,7 @@ import os from 'os';
 import path from 'path';
 import { promisify } from 'util';
 import type { IRuntimePreflightResult } from '@/types/preflight';
+import { sanitizedEnv } from '@/lib/tmux';
 
 const execFile = promisify(execFileCb);
 const CMD_TIMEOUT = 5000;
@@ -19,7 +20,14 @@ const resolveShellPathAsync = async (): Promise<string> => {
   try {
     const { stdout } = await execFile(shell, ['-ilc', 'echo -n "$PATH"'], {
       timeout: CMD_TIMEOUT,
-      env: { HOME: os.homedir(), NODE_ENV: process.env.NODE_ENV, DISABLE_AUTO_UPDATE: 'true', ZSH_TMUX_AUTOSTARTED: 'true' },
+      env: {
+        ...sanitizedEnv(),
+        SHELL: shell,
+        DISABLE_AUTO_UPDATE: 'true',
+        ZSH_TMUX_AUTOSTARTED: 'true',
+        TERM: 'xterm-256color',
+        COLORTERM: 'truecolor',
+      },
     });
     return stdout.toString().trim();
   } catch {
