@@ -55,7 +55,19 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: npm publish --provenance --access public
+
+      - name: Debug OIDC token claims
+        run: |
+          TOKEN=$(curl -sSL -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org" | jq -r '.value')
+          node -e "
+            const [,body] = process.argv[1].split('.');
+            const claims = JSON.parse(Buffer.from(body, 'base64url').toString());
+            const keep = ['iss','aud','sub','repository','repository_owner','workflow','workflow_ref','ref','ref_type','event_name','environment','job_workflow_ref','runner_environment'];
+            for (const k of keep) console.log(k + ': ' + (claims[k] ?? '(none)'));
+          " "$TOKEN"
+
+      - run: npm publish --provenance --access public --loglevel=verbose
 
   build-electron:
     needs: check
@@ -78,7 +90,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:electron
-      - run: pnpm exec electron-builder --mac
+      - run: pnpm exec electron-builder --mac --publish never
 
       - uses: actions/upload-artifact@v4
         with:
