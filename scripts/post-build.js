@@ -43,12 +43,37 @@ for (const { src, dest } of copies) {
   console.log(`[post-build] ${path.relative(root, src)} → ${path.relative(root, dest)}`);
 }
 
-if (!electronMode) {
-  const partial = path.join(standalone, 'node_modules');
-  if (fs.existsSync(partial)) {
-    fs.rmSync(partial, { recursive: true, force: true });
-    console.log('[post-build] web mode — removed standalone/node_modules');
+// Turbopack generates hashed external symlinks like
+//   .next/standalone/.next/node_modules/pino-28069d5257187539 -> ../../node_modules/pino
+// npm pack strips symlinks, so we replace each with a tiny shim package that
+// re-exports the real one. Without this, runtime require() fails with
+// "Cannot find module 'pino-<hash>'" in published web builds.
+const turbopackExternals = path.join(standalone, '.next', 'node_modules');
+if (fs.existsSync(turbopackExternals)) {
+  let shimmed = 0;
+  for (const entry of fs.readdirSync(turbopackExternals, { withFileTypes: true })) {
+    if (!entry.isSymbolicLink()) continue;
+    const link = path.join(turbopackExternals, entry.name);
+    const target = fs.readlinkSync(link);
+    const realName = path.basename(target);
+    fs.rmSync(link, { force: true });
+    fs.mkdirSync(link);
+    fs.writeFileSync(
+      path.join(link, 'package.json'),
+      JSON.stringify({ name: entry.name, main: 'index.js' }, null, 2),
+    );
+    fs.writeFileSync(
+      path.join(link, 'index.js'),
+      `module.exports = require('${realName}');\n`,
+    );
+    shimmed++;
   }
+  if (shimmed > 0) {
+    console.log(`[post-build] shimmed ${shimmed} Turbopack external symlinks`);
+  }
+}
+
+if (!electronMode) {
   return;
 }
 
