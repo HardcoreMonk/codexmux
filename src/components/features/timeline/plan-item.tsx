@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, memo, type AnchorHTMLAttributes } from 'react';
 import { useTranslations } from 'next-intl';
 import { ClipboardList, Eye, TerminalSquare, Check } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
@@ -18,6 +18,11 @@ import type { ITimelinePlan } from '@/types/timeline';
 
 const REMARK_PLUGINS = [remarkGfm];
 const REHYPE_PLUGINS = [rehypeHighlight];
+const MARKDOWN_COMPONENTS = {
+  a: (props: AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a {...props} target="_blank" rel="noopener noreferrer" />
+  ),
+};
 
 interface IPlanItemProps {
   entry: ITimelinePlan;
@@ -194,7 +199,11 @@ const PlanItem = ({ entry, sessionName }: IPlanItemProps) => {
           </DialogHeader>
           <div className="flex-1 overflow-y-auto overflow-x-hidden">
             <div className="prose prose-sm dark:prose-invert max-w-none text-sm [&_pre]:overflow-x-auto [&_pre]:bg-muted [&_pre]:rounded-md [&_pre]:p-3 [&_pre_code]:text-foreground [&_code]:text-[0.9em] [&_code.hljs]:text-[1em] [&_code]:font-normal [&_code]:font-mono [&_code::before]:content-none [&_code::after]:content-none">
-              <ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS}>
+              <ReactMarkdown
+                remarkPlugins={REMARK_PLUGINS}
+                rehypePlugins={REHYPE_PLUGINS}
+                components={MARKDOWN_COMPONENTS}
+              >
                 {entry.markdown}
               </ReactMarkdown>
             </div>
