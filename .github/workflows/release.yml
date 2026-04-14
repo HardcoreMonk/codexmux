@@ -95,8 +95,12 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: electron-dmg
-          path: release/*.dmg
+          name: electron-mac
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.blockmap
+            release/latest-mac.yml
           if-no-files-found: error
           retention-days: 7
 
@@ -112,8 +116,8 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: electron-dmg
-          path: dmg/
+          name: electron-mac
+          path: mac/
 
       - name: Generate changelog with Claude
         id: changelog
@@ -140,5 +144,9 @@ jobs:
         with:
           body: ${{ steps.changelog.outputs.body }}
           generate_release_notes: ${{ steps.changelog.outputs.has_body != 'true' }}
-          files: dmg/*.dmg
+          files: |
+            mac/*.dmg
+            mac/*.zip
+            mac/*.blockmap
+            mac/latest-mac.yml
           fail_on_unmatched_files: true

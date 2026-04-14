@@ -1,4 +1,5 @@
-import { app, BrowserWindow, shell, Menu, ipcMain, session, screen, Notification, nativeTheme } from 'electron';
+import { app, BrowserWindow, shell, Menu, ipcMain, session, screen, Notification, nativeTheme, dialog } from 'electron';
+import { autoUpdater, type UpdateInfo } from 'electron-updater';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -180,20 +181,31 @@ interface IMenuMessages {
   serverAddress: string;
   cancel: string;
   connect: string;
+  checkForUpdates: string;
+  updateAvailableMessage: string;
+  updateAvailableDetail: string;
+  download: string;
+  later: string;
+  updateReadyMessage: string;
+  updateReadyDetail: string;
+  restartNow: string;
+  upToDateMessage: string;
+  upToDateDetail: string;
+  updateErrorMessage: string;
 }
 
 const menuMessages: Record<string, IMenuMessages> = {
-  en: { server: 'Server', useLocalServer: 'Use Local Server', connectRemoteServer: 'Connect to Remote Server…', serverConnection: 'Server Connection', serverAddress: 'Server Address', cancel: 'Cancel', connect: 'Connect' },
-  ko: { server: '서버', useLocalServer: '로컬 서버 사용', connectRemoteServer: '원격 서버 연결…', serverConnection: '서버 연결', serverAddress: '서버 주소', cancel: '취소', connect: '연결' },
-  ja: { server: 'サーバー', useLocalServer: 'ローカルサーバーを使用', connectRemoteServer: 'リモートサーバーに接続…', serverConnection: 'サーバー接続', serverAddress: 'サーバーアドレス', cancel: 'キャンセル', connect: '接続' },
-  'zh-CN': { server: '服务器', useLocalServer: '使用本地服务器', connectRemoteServer: '连接远程服务器…', serverConnection: '服务器连接', serverAddress: '服务器地址', cancel: '取消', connect: '连接' },
-  'zh-TW': { server: '伺服器', useLocalServer: '使用本機伺服器', connectRemoteServer: '連線遠端伺服器…', serverConnection: '伺服器連線', serverAddress: '伺服器位址', cancel: '取消', connect: '連線' },
-  es: { server: 'Servidor', useLocalServer: 'Usar servidor local', connectRemoteServer: 'Conectar a servidor remoto…', serverConnection: 'Conexión al servidor', serverAddress: 'Dirección del servidor', cancel: 'Cancelar', connect: 'Conectar' },
-  de: { server: 'Server', useLocalServer: 'Lokalen Server verwenden', connectRemoteServer: 'Mit Remote-Server verbinden…', serverConnection: 'Serververbindung', serverAddress: 'Serveradresse', cancel: 'Abbrechen', connect: 'Verbinden' },
-  fr: { server: 'Serveur', useLocalServer: 'Utiliser le serveur local', connectRemoteServer: 'Se connecter à un serveur distant…', serverConnection: 'Connexion au serveur', serverAddress: 'Adresse du serveur', cancel: 'Annuler', connect: 'Connecter' },
-  'pt-BR': { server: 'Servidor', useLocalServer: 'Usar servidor local', connectRemoteServer: 'Conectar a servidor remoto…', serverConnection: 'Conexão com servidor', serverAddress: 'Endereço do servidor', cancel: 'Cancelar', connect: 'Conectar' },
-  ru: { server: 'Сервер', useLocalServer: 'Использовать локальный сервер', connectRemoteServer: 'Подключиться к удалённому серверу…', serverConnection: 'Подключение к серверу', serverAddress: 'Адрес сервера', cancel: 'Отмена', connect: 'Подключить' },
-  tr: { server: 'Sunucu', useLocalServer: 'Yerel sunucuyu kullan', connectRemoteServer: 'Uzak sunucuya bağlan…', serverConnection: 'Sunucu bağlantısı', serverAddress: 'Sunucu adresi', cancel: 'İptal', connect: 'Bağlan' },
+  en: { server: 'Server', useLocalServer: 'Use Local Server', connectRemoteServer: 'Connect to Remote Server…', serverConnection: 'Server Connection', serverAddress: 'Server Address', cancel: 'Cancel', connect: 'Connect', checkForUpdates: 'Check for Updates…', updateAvailableMessage: 'A new version ({version}) is available', updateAvailableDetail: 'Would you like to download it now?', download: 'Download', later: 'Later', updateReadyMessage: 'Version {version} is ready to install', updateReadyDetail: 'Restart purplemux to apply the update.', restartNow: 'Restart Now', upToDateMessage: "You're up to date", upToDateDetail: 'purplemux {version} is the latest version.', updateErrorMessage: 'Failed to check for updates' },
+  ko: { server: '서버', useLocalServer: '로컬 서버 사용', connectRemoteServer: '원격 서버 연결…', serverConnection: '서버 연결', serverAddress: '서버 주소', cancel: '취소', connect: '연결', checkForUpdates: '업데이트 확인…', updateAvailableMessage: '새 버전({version})이 있습니다', updateAvailableDetail: '지금 다운로드할까요?', download: '다운로드', later: '나중에', updateReadyMessage: '{version} 버전 설치 준비 완료', updateReadyDetail: 'purplemux를 재시작하면 업데이트가 적용됩니다.', restartNow: '지금 재시작', upToDateMessage: '최신 버전입니다', upToDateDetail: 'purplemux {version}을 사용 중입니다.', updateErrorMessage: '업데이트 확인에 실패했습니다' },
+  ja: { server: 'サーバー', useLocalServer: 'ローカルサーバーを使用', connectRemoteServer: 'リモートサーバーに接続…', serverConnection: 'サーバー接続', serverAddress: 'サーバーアドレス', cancel: 'キャンセル', connect: '接続', checkForUpdates: 'アップデートを確認…', updateAvailableMessage: '新しいバージョン ({version}) が利用可能です', updateAvailableDetail: '今すぐダウンロードしますか?', download: 'ダウンロード', later: '後で', updateReadyMessage: 'バージョン {version} のインストール準備が完了しました', updateReadyDetail: 'purplemux を再起動してアップデートを適用します。', restartNow: '今すぐ再起動', upToDateMessage: '最新バージョンです', upToDateDetail: 'purplemux {version} を使用しています。', updateErrorMessage: 'アップデートの確認に失敗しました' },
+  'zh-CN': { server: '服务器', useLocalServer: '使用本地服务器', connectRemoteServer: '连接远程服务器…', serverConnection: '服务器连接', serverAddress: '服务器地址', cancel: '取消', connect: '连接', checkForUpdates: '检查更新…', updateAvailableMessage: '发现新版本 ({version})', updateAvailableDetail: '是否立即下载?', download: '下载', later: '稍后', updateReadyMessage: '版本 {version} 已准备好安装', updateReadyDetail: '重启 purplemux 以应用更新。', restartNow: '立即重启', upToDateMessage: '已是最新版本', upToDateDetail: '当前正在使用 purplemux {version}。', updateErrorMessage: '检查更新失败' },
+  'zh-TW': { server: '伺服器', useLocalServer: '使用本機伺服器', connectRemoteServer: '連線遠端伺服器…', serverConnection: '伺服器連線', serverAddress: '伺服器位址', cancel: '取消', connect: '連線', checkForUpdates: '檢查更新…', updateAvailableMessage: '發現新版本 ({version})', updateAvailableDetail: '是否立即下載?', download: '下載', later: '稍後', updateReadyMessage: '版本 {version} 已準備好安裝', updateReadyDetail: '重新啟動 purplemux 以套用更新。', restartNow: '立即重新啟動', upToDateMessage: '已是最新版本', upToDateDetail: '目前正在使用 purplemux {version}。', updateErrorMessage: '檢查更新失敗' },
+  es: { server: 'Servidor', useLocalServer: 'Usar servidor local', connectRemoteServer: 'Conectar a servidor remoto…', serverConnection: 'Conexión al servidor', serverAddress: 'Dirección del servidor', cancel: 'Cancelar', connect: 'Conectar', checkForUpdates: 'Buscar actualizaciones…', updateAvailableMessage: 'Nueva versión ({version}) disponible', updateAvailableDetail: '¿Deseas descargarla ahora?', download: 'Descargar', later: 'Más tarde', updateReadyMessage: 'La versión {version} está lista para instalar', updateReadyDetail: 'Reinicia purplemux para aplicar la actualización.', restartNow: 'Reiniciar ahora', upToDateMessage: 'Estás al día', upToDateDetail: 'purplemux {version} es la última versión.', updateErrorMessage: 'Error al buscar actualizaciones' },
+  de: { server: 'Server', useLocalServer: 'Lokalen Server verwenden', connectRemoteServer: 'Mit Remote-Server verbinden…', serverConnection: 'Serververbindung', serverAddress: 'Serveradresse', cancel: 'Abbrechen', connect: 'Verbinden', checkForUpdates: 'Nach Updates suchen…', updateAvailableMessage: 'Neue Version ({version}) verfügbar', updateAvailableDetail: 'Möchten Sie sie jetzt herunterladen?', download: 'Herunterladen', later: 'Später', updateReadyMessage: 'Version {version} kann installiert werden', updateReadyDetail: 'Starten Sie purplemux neu, um das Update anzuwenden.', restartNow: 'Jetzt neu starten', upToDateMessage: 'Sie verwenden die neueste Version', upToDateDetail: 'purplemux {version} ist die aktuellste Version.', updateErrorMessage: 'Fehler beim Prüfen auf Updates' },
+  fr: { server: 'Serveur', useLocalServer: 'Utiliser le serveur local', connectRemoteServer: 'Se connecter à un serveur distant…', serverConnection: 'Connexion au serveur', serverAddress: 'Adresse du serveur', cancel: 'Annuler', connect: 'Connecter', checkForUpdates: 'Rechercher les mises à jour…', updateAvailableMessage: 'Nouvelle version ({version}) disponible', updateAvailableDetail: 'Voulez-vous la télécharger maintenant ?', download: 'Télécharger', later: 'Plus tard', updateReadyMessage: 'La version {version} est prête à être installée', updateReadyDetail: 'Redémarrez purplemux pour appliquer la mise à jour.', restartNow: 'Redémarrer maintenant', upToDateMessage: 'Vous êtes à jour', upToDateDetail: 'purplemux {version} est la dernière version.', updateErrorMessage: 'Échec de la recherche de mises à jour' },
+  'pt-BR': { server: 'Servidor', useLocalServer: 'Usar servidor local', connectRemoteServer: 'Conectar a servidor remoto…', serverConnection: 'Conexão com servidor', serverAddress: 'Endereço do servidor', cancel: 'Cancelar', connect: 'Conectar', checkForUpdates: 'Buscar atualizações…', updateAvailableMessage: 'Nova versão ({version}) disponível', updateAvailableDetail: 'Deseja baixá-la agora?', download: 'Baixar', later: 'Depois', updateReadyMessage: 'A versão {version} está pronta para instalar', updateReadyDetail: 'Reinicie o purplemux para aplicar a atualização.', restartNow: 'Reiniciar agora', upToDateMessage: 'Você está atualizado', upToDateDetail: 'purplemux {version} é a versão mais recente.', updateErrorMessage: 'Falha ao verificar atualizações' },
+  ru: { server: 'Сервер', useLocalServer: 'Использовать локальный сервер', connectRemoteServer: 'Подключиться к удалённому серверу…', serverConnection: 'Подключение к серверу', serverAddress: 'Адрес сервера', cancel: 'Отмена', connect: 'Подключить', checkForUpdates: 'Проверить обновления…', updateAvailableMessage: 'Доступна новая версия ({version})', updateAvailableDetail: 'Загрузить её сейчас?', download: 'Загрузить', later: 'Позже', updateReadyMessage: 'Версия {version} готова к установке', updateReadyDetail: 'Перезапустите purplemux, чтобы применить обновление.', restartNow: 'Перезапустить', upToDateMessage: 'У вас последняя версия', upToDateDetail: 'purplemux {version} — это актуальная версия.', updateErrorMessage: 'Не удалось проверить обновления' },
+  tr: { server: 'Sunucu', useLocalServer: 'Yerel sunucuyu kullan', connectRemoteServer: 'Uzak sunucuya bağlan…', serverConnection: 'Sunucu bağlantısı', serverAddress: 'Sunucu adresi', cancel: 'İptal', connect: 'Bağlan', checkForUpdates: 'Güncellemeleri denetle…', updateAvailableMessage: 'Yeni sürüm ({version}) kullanılabilir', updateAvailableDetail: 'Şimdi indirmek ister misiniz?', download: 'İndir', later: 'Sonra', updateReadyMessage: '{version} sürümü yüklemeye hazır', updateReadyDetail: 'Güncellemeyi uygulamak için purplemux’u yeniden başlatın.', restartNow: 'Şimdi Yeniden Başlat', upToDateMessage: 'Güncelsiniz', upToDateDetail: 'purplemux {version} en son sürümdür.', updateErrorMessage: 'Güncelleme kontrolü başarısız' },
 };
 
 let currentLocale = 'en';
@@ -213,6 +225,140 @@ let isQuitting = false;
 let serverConfig: IServerConfig = { mode: 'local' };
 let localPort: number | null = null;
 let cachedStart: ((opts: { port: number }) => Promise<{ port: number; shutdown: () => Promise<void> }>) | null = null;
+
+// --- Auto Updater ---
+
+const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const FIRST_CHECK_DELAY_MS = 3000;
+
+let updaterInitialized = false;
+let updateCheckTimer: ReturnType<typeof setInterval> | null = null;
+let pendingUpdateVersion: string | null = null;
+let isUpdateDialogOpen = false;
+
+const formatMsg = (template: string, values: Record<string, string>): string =>
+  template.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? '');
+
+const canRunUpdater = (): boolean => !isDev && !devUrl && app.isPackaged;
+
+const showUpdateDialog = (options: Electron.MessageBoxOptions) =>
+  mainWindow
+    ? dialog.showMessageBox(mainWindow, options)
+    : dialog.showMessageBox(options);
+
+const runExclusiveDialog = async (fn: () => Promise<void>) => {
+  if (isUpdateDialogOpen) return;
+  isUpdateDialogOpen = true;
+  try {
+    await fn();
+  } catch (err) {
+    console.error('[updater] dialog error:', err);
+  } finally {
+    isUpdateDialogOpen = false;
+  }
+};
+
+const setupAutoUpdater = () => {
+  if (updaterInitialized || !canRunUpdater()) return;
+  updaterInitialized = true;
+
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-available', (info: UpdateInfo) => {
+    if (pendingUpdateVersion === info.version) return;
+    pendingUpdateVersion = info.version;
+    runExclusiveDialog(async () => {
+      const m = mt();
+      const result = await showUpdateDialog({
+        type: 'info',
+        buttons: [m.download, m.later],
+        defaultId: 0,
+        cancelId: 1,
+        message: formatMsg(m.updateAvailableMessage, { version: info.version }),
+        detail: m.updateAvailableDetail,
+      });
+      if (result.response === 0) {
+        autoUpdater.downloadUpdate().catch((err) => {
+          console.error('[updater] downloadUpdate failed:', err);
+        });
+      }
+    });
+  });
+
+  autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
+    runExclusiveDialog(async () => {
+      const m = mt();
+      const result = await showUpdateDialog({
+        type: 'info',
+        buttons: [m.restartNow, m.later],
+        defaultId: 0,
+        cancelId: 1,
+        message: formatMsg(m.updateReadyMessage, { version: info.version }),
+        detail: m.updateReadyDetail,
+      });
+      if (result.response === 0) {
+        isQuitting = true;
+        autoUpdater.quitAndInstall();
+      }
+    });
+  });
+
+  autoUpdater.on('error', (err: Error) => {
+    console.error('[updater]', err);
+    pendingUpdateVersion = null;
+  });
+};
+
+const checkForUpdatesAuto = () => {
+  if (!canRunUpdater()) return;
+  autoUpdater.checkForUpdates().catch((err) => {
+    console.error('[updater] auto check failed:', err);
+  });
+};
+
+const checkForUpdatesManual = async () => {
+  if (!canRunUpdater()) return;
+  // manual check는 유저가 명시적으로 눌렀으므로 dedup을 건너뛰어 항상 다이얼로그를 띄움
+  pendingUpdateVersion = null;
+  let updateFound = false;
+  const markFound = () => { updateFound = true; };
+  autoUpdater.once('update-available', markFound);
+  try {
+    await autoUpdater.checkForUpdates();
+    if (updateFound) return;
+    const m = mt();
+    await showUpdateDialog({
+      type: 'info',
+      buttons: ['OK'],
+      message: m.upToDateMessage,
+      detail: formatMsg(m.upToDateDetail, { version: app.getVersion() }),
+    });
+  } catch (err) {
+    console.error('[updater] manual check failed:', err);
+    const m = mt();
+    await showUpdateDialog({
+      type: 'error',
+      buttons: ['OK'],
+      message: m.updateErrorMessage,
+      detail: (err as Error).message,
+    });
+  } finally {
+    autoUpdater.off('update-available', markFound);
+  }
+};
+
+const startUpdateCheckTimer = () => {
+  if (!canRunUpdater() || updateCheckTimer) return;
+  updateCheckTimer = setInterval(checkForUpdatesAuto, UPDATE_CHECK_INTERVAL_MS);
+};
+
+const stopUpdateCheckTimer = () => {
+  if (updateCheckTimer) {
+    clearInterval(updateCheckTimer);
+    updateCheckTimer = null;
+  }
+};
 
 // --- Local Server ---
 
@@ -261,6 +407,7 @@ const updateMenu = () => {
       label: app.name,
       submenu: [
         { role: 'about' },
+        { label: mt().checkForUpdates, click: checkForUpdatesManual, enabled: canRunUpdater() },
         { type: 'separator' },
         { label: `${mt().server}: ${getServerLabel()}`, enabled: false },
         { label: mt().useLocalServer, type: 'radio', checked: serverConfig.mode === 'local', click: handleSwitchToLocal },
@@ -536,6 +683,11 @@ const bootstrap = async () => {
   }
 
   updateMenu();
+
+  setupAutoUpdater();
+  // 메인 윈도우 로딩이 끝나기 전에 다이얼로그가 뜨지 않도록 첫 체크를 지연
+  setTimeout(checkForUpdatesAuto, FIRST_CHECK_DELAY_MS);
+  startUpdateCheckTimer();
 };
 
 ipcMain.handle('open-external', (_event, url: string) => {
@@ -609,6 +761,8 @@ app.on('window-all-closed', async () => {
   // 안전장치: 전체 종료가 3초 이내에 완료되지 않으면 강제 종료
   const forceExit = setTimeout(() => app.exit(1), 3000);
 
+  stopUpdateCheckTimer();
+
   // 1) PTY onExit 콜백이 완료될 때까지 대기 → native ThreadSafeFunction drain
   if (serverShutdown) {
     await serverShutdown();
@@ -635,6 +789,8 @@ app.on('before-quit', () => {
 app.on('will-quit', async (event) => {
   event.preventDefault();
   const forceExit = setTimeout(() => app.exit(1), 3000);
+
+  stopUpdateCheckTimer();
 
   if (serverShutdown) {
     await serverShutdown();

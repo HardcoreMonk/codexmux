@@ -7,4 +7,5 @@ export default defineConfig({
   outDir: 'dist-electron',
   clean: true,
   external: ['electron'],
+  noExternal: ['electron-updater', 'builder-util-runtime'],
 });
