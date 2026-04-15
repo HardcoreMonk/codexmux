@@ -2299,12 +2299,12 @@ pre.ascii {
 .selfhost-badge {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.35rem;
-  padding: 0.5rem 0.85rem;
+  gap: 0.3rem;
+  padding: 0.35rem 0.65rem;
   background: var(--secondary);
   border: 0.5px solid var(--border);
-  border-radius: 6px;
-  font-size: var(--text-sm);
+  border-radius: 5px;
+  font-size: var(--text-xs);
   color: var(--muted-foreground);
   font-family: 'SF Mono', Monaco, Menlo, monospace;
   letter-spacing: 0.01em;
@@ -2312,7 +2312,7 @@ pre.ascii {
 .selfhost-badge strong {
   color: var(--ui-amber);
   font-weight: 800;
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
 }
 .selfhost-visual {
@@ -2443,6 +2443,12 @@ footer .foot-links a:hover { color: var(--foreground); }
   .arch-layer { grid-template-columns: 1fr; gap: 0.6rem; padding: 0.85rem; }
   .arch-label { border-right: 0; border-bottom: 0.5px solid var(--border); padding: 0 0 0.5rem; flex-direction: row; align-items: baseline; gap: 0.5rem; }
   .arch-split { grid-template-columns: 1fr; }
+
+  .selfhost { padding: 3rem 0; }
+  .selfhost-grid { grid-template-columns: 1fr; gap: 1.75rem; }
+  .selfhost-text .lead { max-width: none; }
+  .selfhost-visual { padding: 1.25rem; }
+  .selfhost-visual .mockup-selfhost { max-width: 100%; }
 
   footer { padding: 2rem 1.25rem; flex-direction: column; align-items: flex-start; }
 }
