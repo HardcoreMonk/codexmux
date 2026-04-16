@@ -2,7 +2,7 @@
 
 System that detects the in-progress state of the Claude CLI on the server, broadcasts it to the client over WebSocket, and reflects it in the UI indicators.
 
-**Core principle**: `cliState` has a **single source of truth — the Claude Code hook**. The previous multi-source heuristics (JSONL inference, pane capture, client-side local derivation) have all been removed; state is decided by the deterministic derivation function for hook events (`deriveStateFromEvent`).
+**Core principle**: `cliState` has a **single source of truth — hook events** (real Claude Code hooks + one hook-equivalent synthesized on the server from the JSONL interrupt marker). All transitions go through `deriveStateFromEvent`, and seq is monotonic per tab. The previous multi-source heuristics (JSONL-driven promotion, pane capture, client-side local derivation) have otherwise been removed; JSONL is only consulted for the synthetic `interrupt` event and for metadata (snippet, currentAction).
 
 ---
 
@@ -51,7 +51,7 @@ State of the work in progress inside the Claude CLI. Only changed by determinist
 | State | Meaning | Trigger |
 | --- | --- | --- |
 | `busy` | Processing a user request | `prompt-submit` hook |
-| `idle` | Response complete + acknowledged by user | `session-start` hook or `dismissTab` |
+| `idle` | Response complete + acknowledged by user | `session-start` hook, synthetic `interrupt` event, or `dismissTab` |
 | `ready-for-review` | Response complete, awaiting user ack | `stop` hook |
 | `needs-input` | Permission prompt / awaiting user input | `notification` hook |
 | `unknown` | Was `busy` before a server restart, recovery not finished | Awaiting `resolveUnknown` |
@@ -70,9 +70,12 @@ export const deriveStateFromEvent = (event: ILastEvent | null, fallback: TCliSta
     case 'prompt-submit': return 'busy';
     case 'notification':  return 'needs-input';
     case 'stop':          return 'ready-for-review';
+    case 'interrupt':     return 'idle';
   }
 };
 ```
+
+`'interrupt'` is the only event name that does not correspond to a real Claude Code hook. Claude CLI does not fire any hook when the user presses Esc mid-stream, so the JSONL watcher synthesizes one on the server when it sees a `[Request interrupted by user]` entry (see "Synthetic Interrupt Event").
 
 **Exception**: if `prevState === 'cancelled'`, the state stays `cancelled` even when a hook arrives.
 
@@ -155,12 +158,16 @@ A Zustand store that manages all tab state as `Record<tabId, ITabState>`.
 | Path | Action | Notes |
 | --- | --- | --- |
 | Server sync (`status:sync`) | `syncAllFromServer` | Initial load, `cancelled` protected |
-| Server update (`status:update`) | `updateFromServer` | Metadata + cliState, `cancelled` protected |
+| Server update (`status:update`) | `updateFromServer` | Metadata + cliState, `cancelled` protected, **stale seq preserves cliState/busySince/readyForReviewAt/dismissedAt** |
 | Server event (`status:hook-event`) | `applyHookEvent` | Updates only `lastEvent`/`eventSeq`, prevents seq reordering |
 | User dismiss | `dismissTab` | Local immediate `ready-for-review → idle` + WS `status:tab-dismissed` |
 | User tab delete | `cancelTab` | `cliState = 'cancelled'`, local only |
 
 **The client never propagates `cliState` back to the server.** The legacy `notifyCliState` / `status:cli-state` paths have been removed.
+
+### Stale Seq Guard in `updateFromServer`
+
+When `status:update` arrives with `update.eventSeq < existing.eventSeq`, the broadcast is a metadata-only message that was queued behind a newer seq-bearing event. In that case `updateFromServer` preserves `cliState`, `busySince`, `readyForReviewAt`, and `dismissedAt` from the existing state and merges only the non-state metadata fields. This prevents a late `busy` metadata broadcast from clobbering an `idle` state that a higher-seq `interrupt` (or any future event) already set.
 
 ### `isCliIdle()` Helper
 
@@ -200,6 +207,7 @@ Uses Claude Code's [Hook](https://docs.anthropic.com/en/docs/claude-code/hooks) 
 | `StopFailure` | `stop` | → `ready-for-review` |
 | `PreCompact` | `pre-compact` | → `compactingSince = now` (cliState unchanged) |
 | `PostCompact` | `post-compact` | → `compactingSince = null` (cliState unchanged) |
+| _(synthesized by JSONL watcher)_ | `interrupt` | → `idle` (see below) |
 
 `pre-compact`/`post-compact` do not touch `cliState`/`eventSeq`/`lastEvent`; they only set the separate `compactingSince` field. That value drives the timeline-view's compacting indicator (60s window). To handle a missing `post-compact`, the server auto-clears it via a `COMPACT_STALE_MS = 60s` timer.
 
@@ -220,6 +228,21 @@ The hook script parses `notification_type` from the stdin JSON and includes it i
 - Looks up the session name with `tmux display-message` (so the server knows which tab)
 - If `event === 'notification'`, parses `notification_type` from stdin JSON and includes it in the payload
 - POSTs `{ event, session, notificationType? }` to `/api/status/hook` via `curl`
+
+### Synthetic Interrupt Event
+
+Claude CLI aborts a streaming turn locally when the user presses Esc and writes `[Request interrupted by user]` into the transcript JSONL without firing any hook (`query.ts:createUserInterruptionMessage`). To recover `busy → idle` without leaving the tab stuck, `onJsonlFileChange` synthesizes a hook-equivalent `interrupt` event:
+
+1. `scanLines` sets `interrupted: true` when the last non-sidechain user entry's first content block starts with `[Request interrupted by user` (see `INTERRUPT_PREFIX`). This naturally handles the "user typed a new prompt right after Esc" case — the new user entry becomes the last match and suppresses the synthesis.
+2. `onJsonlFileChange` fires `updateTabFromHook(tmuxSession, 'interrupt')` when **all** of the following hold:
+   - `entry.cliState === 'busy'`
+   - `scan.lastEntryTs > entry.lastInterruptTs` (dedup: new interrupt line, not a previously processed one)
+   - `scan.lastEntryTs > entry.lastEvent.at` (race guard: no real hook arrived after the interrupt was written)
+3. `updateTabFromHook` goes through the usual path — bump `eventSeq`, broadcast `status:hook-event`, apply `deriveStateFromEvent → 'idle'`, `persistToLayout`, `status:update`. Push notifications are skipped because only `ready-for-review`/`needs-input` trigger push.
+
+The `lastEvent.at` comparison protects against a narrow race: `prompt-submit` hook POST arriving at the server before the JSONL FS event fires for the interrupt line. Without the guard, the synthetic interrupt could fire after `prompt-submit` was already processed and drag the state back to `idle`.
+
+After transitioning to `idle`, `applyCliState` stops the JSONL watcher (idle is not a watched state). It will be restarted by the next `prompt-submit` hook.
 
 ### Agent Tab Hooks (Reference)
 
@@ -309,7 +332,7 @@ For tabs in `busy` / `needs-input` / `unknown` / `ready-for-review`, an `fs.watc
 | Process | Updates only `currentAction`, `lastAssistantMessage`, reset signals → broadcast `status:update` |
 | Release | Transition to `idle`/`inactive`, tab deletion, shutdown |
 
-**Key**: the JSONL watcher **never changes `cliState`**. There used to be an automatic `busy → ready-for-review` promotion path, but now only the `stop` hook can cause that transition.
+**Key**: the JSONL watcher normally touches only metadata. The one exception is the synthetic `interrupt` event (see "Synthetic Interrupt Event") — it is the only path where the JSONL watcher drives a `cliState` transition, and it does so by going through the standard `updateTabFromHook` pipeline rather than bypassing it. There used to be an automatic `busy → ready-for-review` promotion path, but that was removed; only the `stop` hook triggers `ready-for-review`.
 
 ---
 

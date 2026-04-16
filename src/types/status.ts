@@ -4,7 +4,7 @@ import type { ISessionHistoryEntry } from '@/types/session-history';
 
 export type TTerminalStatus = 'idle' | 'running' | 'server';
 
-export type TEventName = 'session-start' | 'prompt-submit' | 'notification' | 'stop';
+export type TEventName = 'session-start' | 'prompt-submit' | 'notification' | 'stop' | 'interrupt';
 
 export interface ILastEvent {
   name: TEventName;
@@ -40,6 +40,7 @@ export interface ITabStatusEntry {
   jsonlPath?: string | null;
   lastEvent?: ILastEvent | null;
   eventSeq?: number;
+  lastInterruptTs?: number;
 }
 
 export type TTabDisplayStatus = 'busy' | 'ready-for-review' | 'needs-input' | 'idle' | 'unknown';

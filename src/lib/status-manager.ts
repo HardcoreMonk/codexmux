@@ -45,6 +45,7 @@ export const deriveStateFromEvent = (event: ILastEvent | null, fallback: TCliSta
     case 'prompt-submit': return 'busy';
     case 'notification':  return 'needs-input';
     case 'stop':          return 'ready-for-review';
+    case 'interrupt':     return 'idle';
   }
 };
 
@@ -71,6 +72,7 @@ interface IJsonlIdleCache {
   currentAction: ICurrentAction | null;
   reset: boolean;
   lastEntryTs: number | null;
+  interrupted: boolean;
 }
 
 const MAX_JSONL_CACHE = 256;
@@ -154,6 +156,7 @@ interface IScanResult {
   needsStaleRecheck: boolean;
   staleMs: number;
   lastEntryTs: number | null;
+  interrupted: boolean;
 }
 
 const scanLines = (lines: string[], elapsed: number): IScanResult => {
@@ -166,32 +169,32 @@ const scanLines = (lines: string[], elapsed: number): IScanResult => {
       const entryTs: number | null = entry.timestamp ? new Date(entry.timestamp).getTime() : null;
 
       if (entry.type === 'system' && (entry.subtype === 'stop_hook_summary' || entry.subtype === 'turn_duration')) {
-        return { matched: true, idle: true, stale: false, needsStaleRecheck: false, staleMs: 0, lastEntryTs: entryTs };
+        return { matched: true, idle: true, stale: false, needsStaleRecheck: false, staleMs: 0, lastEntryTs: entryTs, interrupted: false };
       }
 
       if (entry.type === 'assistant') {
         const stopReason = entry.message?.stop_reason;
         if (!stopReason) {
           const idle = elapsed > STALE_MS_INTERRUPTED;
-          return { matched: true, idle, stale: true, needsStaleRecheck: !idle, staleMs: STALE_MS_INTERRUPTED, lastEntryTs: entryTs };
+          return { matched: true, idle, stale: true, needsStaleRecheck: !idle, staleMs: STALE_MS_INTERRUPTED, lastEntryTs: entryTs, interrupted: false };
         }
-        return { matched: true, idle: stopReason !== 'tool_use', stale: false, needsStaleRecheck: false, staleMs: 0, lastEntryTs: entryTs };
+        return { matched: true, idle: stopReason !== 'tool_use', stale: false, needsStaleRecheck: false, staleMs: 0, lastEntryTs: entryTs, interrupted: false };
       }
 
       if (entry.type === 'user') {
         const content = entry.message?.content;
         if (Array.isArray(content) && content.length === 1 && typeof content[0]?.text === 'string' && content[0].text.startsWith(INTERRUPT_PREFIX)) {
-          return { matched: true, idle: true, stale: false, needsStaleRecheck: false, staleMs: 0, lastEntryTs: entryTs };
+          return { matched: true, idle: true, stale: false, needsStaleRecheck: false, staleMs: 0, lastEntryTs: entryTs, interrupted: true };
         }
         const idle = elapsed > STALE_MS_AWAITING_API;
-        return { matched: true, idle, stale: true, needsStaleRecheck: !idle, staleMs: STALE_MS_AWAITING_API, lastEntryTs: entryTs };
+        return { matched: true, idle, stale: true, needsStaleRecheck: !idle, staleMs: STALE_MS_AWAITING_API, lastEntryTs: entryTs, interrupted: false };
       }
     } catch {
       continue;
     }
   }
 
-  return { matched: false, idle: elapsed > STALE_MS_AWAITING_API, stale: true, needsStaleRecheck: elapsed <= STALE_MS_AWAITING_API, staleMs: STALE_MS_AWAITING_API, lastEntryTs: null };
+  return { matched: false, idle: elapsed > STALE_MS_AWAITING_API, stale: true, needsStaleRecheck: elapsed <= STALE_MS_AWAITING_API, staleMs: STALE_MS_AWAITING_API, lastEntryTs: null, interrupted: false };
 };
 
 interface IJsonlCheckResult {
@@ -202,23 +205,24 @@ interface IJsonlCheckResult {
   reset: boolean;
   lastEntryTs: number | null;
   staleMs: number;
+  interrupted: boolean;
 }
 
 const checkJsonlIdle = async (jsonlPath: string): Promise<IJsonlCheckResult> => {
   try {
     const stat = await fs.stat(jsonlPath);
-    if (stat.size === 0) return { idle: true, stale: false, lastAssistantSnippet: null, currentAction: null, reset: false, lastEntryTs: null, staleMs: 0 };
+    if (stat.size === 0) return { idle: true, stale: false, lastAssistantSnippet: null, currentAction: null, reset: false, lastEntryTs: null, staleMs: 0, interrupted: false };
 
     const cached = jsonlIdleCache.get(jsonlPath);
     if (cached && cached.mtimeMs === stat.mtimeMs) {
       jsonlIdleCache.delete(jsonlPath);
       jsonlIdleCache.set(jsonlPath, cached);
-      if (cached.idle) return { idle: true, stale: cached.stale, lastAssistantSnippet: cached.lastAssistantSnippet, currentAction: cached.currentAction, reset: cached.reset, lastEntryTs: cached.lastEntryTs, staleMs: cached.staleMs };
+      if (cached.idle) return { idle: true, stale: cached.stale, lastAssistantSnippet: cached.lastAssistantSnippet, currentAction: cached.currentAction, reset: cached.reset, lastEntryTs: cached.lastEntryTs, staleMs: cached.staleMs, interrupted: cached.interrupted };
       if (cached.needsStaleRecheck) {
         const idle = Date.now() - stat.mtimeMs > cached.staleMs;
-        return { idle, stale: true, lastAssistantSnippet: cached.lastAssistantSnippet, currentAction: cached.currentAction, reset: cached.reset, lastEntryTs: cached.lastEntryTs, staleMs: cached.staleMs };
+        return { idle, stale: true, lastAssistantSnippet: cached.lastAssistantSnippet, currentAction: cached.currentAction, reset: cached.reset, lastEntryTs: cached.lastEntryTs, staleMs: cached.staleMs, interrupted: cached.interrupted };
       }
-      return { idle: false, stale: false, lastAssistantSnippet: cached.lastAssistantSnippet, currentAction: cached.currentAction, reset: cached.reset, lastEntryTs: cached.lastEntryTs, staleMs: cached.staleMs };
+      return { idle: false, stale: false, lastAssistantSnippet: cached.lastAssistantSnippet, currentAction: cached.currentAction, reset: cached.reset, lastEntryTs: cached.lastEntryTs, staleMs: cached.staleMs, interrupted: cached.interrupted };
     }
 
     const handle = await fs.open(jsonlPath, 'r');
@@ -245,13 +249,13 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<IJsonlCheckResult> => 
       if (jsonlIdleCache.size >= MAX_JSONL_CACHE) {
         jsonlIdleCache.delete(jsonlIdleCache.keys().next().value!);
       }
-      jsonlIdleCache.set(jsonlPath, { mtimeMs: stat.mtimeMs, idle: scan.idle, stale: scan.stale, needsStaleRecheck: scan.needsStaleRecheck, staleMs: scan.staleMs, lastAssistantSnippet: extracted.lastAssistantSnippet, currentAction: extracted.currentAction, reset: extracted.reset, lastEntryTs: scan.lastEntryTs });
-      return { idle: scan.idle, stale: scan.stale, lastAssistantSnippet: extracted.lastAssistantSnippet, currentAction: extracted.currentAction, reset: extracted.reset, lastEntryTs: scan.lastEntryTs, staleMs: scan.staleMs };
+      jsonlIdleCache.set(jsonlPath, { mtimeMs: stat.mtimeMs, idle: scan.idle, stale: scan.stale, needsStaleRecheck: scan.needsStaleRecheck, staleMs: scan.staleMs, lastAssistantSnippet: extracted.lastAssistantSnippet, currentAction: extracted.currentAction, reset: extracted.reset, lastEntryTs: scan.lastEntryTs, interrupted: scan.interrupted });
+      return { idle: scan.idle, stale: scan.stale, lastAssistantSnippet: extracted.lastAssistantSnippet, currentAction: extracted.currentAction, reset: extracted.reset, lastEntryTs: scan.lastEntryTs, staleMs: scan.staleMs, interrupted: scan.interrupted };
     } finally {
       await handle.close();
     }
   } catch {
-    return { idle: false, stale: false, lastAssistantSnippet: null, currentAction: null, reset: false, lastEntryTs: null, staleMs: 0 };
+    return { idle: false, stale: false, lastAssistantSnippet: null, currentAction: null, reset: false, lastEntryTs: null, staleMs: 0, interrupted: false };
   }
 };
 
@@ -849,7 +853,7 @@ class StatusManager {
       return;
     }
 
-    if (event !== 'session-start' && event !== 'prompt-submit' && event !== 'notification' && event !== 'stop') {
+    if (event !== 'session-start' && event !== 'prompt-submit' && event !== 'notification' && event !== 'stop' && event !== 'interrupt') {
       hookLog.debug({ tabId, event, notificationType }, 'unknown event, ignoring');
       return;
     }
@@ -1132,7 +1136,19 @@ class StatusManager {
       return;
     }
 
-    const { currentAction, lastAssistantSnippet, reset } = await checkJsonlIdle(jsonlPath);
+    const { currentAction, lastAssistantSnippet, reset, interrupted, lastEntryTs } = await checkJsonlIdle(jsonlPath);
+
+    if (
+      interrupted
+      && entry.cliState === 'busy'
+      && lastEntryTs !== null
+      && lastEntryTs > (entry.lastInterruptTs ?? 0)
+      && lastEntryTs > (entry.lastEvent?.at ?? 0)
+    ) {
+      entry.lastInterruptTs = lastEntryTs;
+      hookLog.debug({ tabId, lastEntryTs }, 'synthetic interrupt from JSONL');
+      this.updateTabFromHook(entry.tmuxSession, 'interrupt');
+    }
 
     let changed = false;
 

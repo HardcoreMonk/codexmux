@@ -234,13 +234,20 @@ const useTabStore = create<ITabStore>((set) => ({
       const existing = state.tabs[tabId];
       if (existing) {
         if (existing.cliState === 'cancelled') return state;
+        // stale broadcast: update의 eventSeq가 클라 것보다 작으면 cliState/lastEvent/관련 타임스탬프는 보존하고 나머지 메타데이터만 머지
+        const isStale = update.eventSeq !== undefined
+          && existing.eventSeq !== undefined
+          && update.eventSeq < existing.eventSeq;
         // lastEvent는 클라가 더 최신(큰 seq)을 쥐고 있으면 유지, 아니면 서버값 반영
         const shouldAdoptEvent = update.eventSeq !== undefined
           && (existing.eventSeq === undefined || update.eventSeq >= existing.eventSeq);
         const eventPatch = shouldAdoptEvent
           ? { lastEvent: update.lastEvent, eventSeq: update.eventSeq }
           : {};
-        return { tabs: updateTab(state.tabs, tabId, { cliState: update.cliState, workspaceId: update.workspaceId, tabName: update.tabName, panelType: update.panelType ?? existing.panelType, terminalStatus: update.terminalStatus, listeningPorts: update.listeningPorts, currentProcess: update.currentProcess, claudeSummary: update.claudeSummary, lastUserMessage: update.lastUserMessage, lastAssistantMessage: update.lastAssistantMessage, currentAction: update.currentAction, readyForReviewAt: update.readyForReviewAt, busySince: update.busySince, dismissedAt: update.dismissedAt, claudeSessionId: update.claudeSessionId, compactingSince: update.compactingSince, ...eventPatch }) };
+        const stateFields = isStale
+          ? { cliState: existing.cliState, readyForReviewAt: existing.readyForReviewAt, busySince: existing.busySince, dismissedAt: existing.dismissedAt }
+          : { cliState: update.cliState, readyForReviewAt: update.readyForReviewAt, busySince: update.busySince, dismissedAt: update.dismissedAt };
+        return { tabs: updateTab(state.tabs, tabId, { ...stateFields, workspaceId: update.workspaceId, tabName: update.tabName, panelType: update.panelType ?? existing.panelType, terminalStatus: update.terminalStatus, listeningPorts: update.listeningPorts, currentProcess: update.currentProcess, claudeSummary: update.claudeSummary, lastUserMessage: update.lastUserMessage, lastAssistantMessage: update.lastAssistantMessage, currentAction: update.currentAction, claudeSessionId: update.claudeSessionId, compactingSince: update.compactingSince, ...eventPatch }) };
       }
       return {
         tabs: {
