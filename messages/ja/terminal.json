@@ -32,6 +32,7 @@
   "inputDisabledPlaceholder": "Claude Codeが実行されていません",
   "inputPlaceholder": "メッセージを入力...",
   "inputAriaLabel": "Claude Codeメッセージ入力",
+  "claudeConnecting": "Claude 接続中...",
   "interruptAriaLabel": "タスクを中断",
   "sendAriaLabel": "メッセージを送信",
   "closeAllTabs": "すべてのタブを閉じる",
@@ -66,5 +67,13 @@
   "sessionRestartFailed": "セッションを再起動できません",
   "tabRenameFailed": "タブ名の変更に失敗しました",
   "tabReorderFailed": "タブの並び替えに失敗しました",
-  "dragCopyHint": "テキストをコピーするには Shift を押しながらドラッグしてください"
+  "dragCopyHint": "テキストをコピーするには Shift を押しながらドラッグしてください",
+  "copyPaneLabel": "ターミナルの内容をコピー",
+  "copyPaneDrawerTitle": "ターミナルの内容をコピー",
+  "copyPaneDrawerHint": "テキストを長押しして選択するか、下の「すべてコピー」を押してください。",
+  "copyPaneLoading": "読み込み中...",
+  "copyPaneCaptureFailed": "ターミナルの内容を取得できませんでした",
+  "copyPaneCopyAll": "すべてコピー",
+  "copyPaneSuccess": "クリップボードにコピーしました",
+  "copyPaneCopyFailed": "コピーに失敗しました"
 }

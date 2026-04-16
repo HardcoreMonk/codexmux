@@ -32,6 +32,7 @@
   "inputDisabledPlaceholder": "Claude Code no está en ejecución",
   "inputPlaceholder": "Escribe un mensaje...",
   "inputAriaLabel": "Entrada de mensaje de Claude Code",
+  "claudeConnecting": "Claude conectando...",
   "interruptAriaLabel": "Interrumpir tarea",
   "sendAriaLabel": "Enviar mensaje",
   "closeAllTabs": "Cerrar todas las pestañas",
@@ -66,5 +67,13 @@
   "sessionRestartFailed": "No se pudo reiniciar la sesión",
   "tabRenameFailed": "Error al renombrar la pestaña",
   "tabReorderFailed": "Error al reordenar las pestañas",
-  "dragCopyHint": "Mantén Shift presionado y arrastra para copiar texto"
+  "dragCopyHint": "Mantén Shift presionado y arrastra para copiar texto",
+  "copyPaneLabel": "Copiar salida del terminal",
+  "copyPaneDrawerTitle": "Copiar salida del terminal",
+  "copyPaneDrawerHint": "Mantén pulsado el texto para seleccionarlo o toca «Copiar todo» abajo.",
+  "copyPaneLoading": "Cargando...",
+  "copyPaneCaptureFailed": "No se pudo cargar la salida del terminal",
+  "copyPaneCopyAll": "Copiar todo",
+  "copyPaneSuccess": "Copiado al portapapeles",
+  "copyPaneCopyFailed": "Error al copiar"
 }

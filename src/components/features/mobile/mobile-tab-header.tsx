@@ -1,7 +1,9 @@
-import { X, Plus, GitCompareArrows } from 'lucide-react';
+import { useState } from 'react';
+import { X, Plus, GitCompareArrows, Copy } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
 import TabStatusIndicator from '@/components/features/terminal/tab-status-indicator';
+import CopyPaneDrawer from '@/components/features/terminal/copy-pane-drawer';
 import useTabStore from '@/hooks/use-tab-store';
 import { getProcessIcon } from '@/lib/process-icon';
 import OpenAIIcon from '@/components/icons/openai-icon';
@@ -28,6 +30,7 @@ const PANEL_MODES = [
 interface IMobileTabHeaderProps {
   tabId: string;
   tabName: string;
+  sessionName: string | null;
   panelType: TPanelType;
   onSwitchPanelType: (type: TPanelType) => void;
   onCreateTab: () => void;
@@ -37,6 +40,7 @@ interface IMobileTabHeaderProps {
 const MobileTabHeader = ({
   tabId,
   tabName,
+  sessionName,
   panelType,
   onSwitchPanelType,
   onCreateTab,
@@ -44,6 +48,9 @@ const MobileTabHeader = ({
 }: IMobileTabHeaderProps) => {
   const t = useTranslations('mobile');
   const tc = useTranslations('common');
+  const tt = useTranslations('terminal');
+  const [copyOpen, setCopyOpen] = useState(false);
+  const showCopy = panelType === 'terminal' && !!sessionName;
   const tabEntry = useTabStore((s) => s.tabs[tabId]);
   const isCodex = tabEntry?.currentProcess === 'codex';
   const processIcon = getProcessIcon(tabEntry?.currentProcess);
@@ -93,6 +100,16 @@ const MobileTabHeader = ({
           ))}
         </div>
 
+        {showCopy && (
+          <button
+            className="flex h-10 w-10 items-center justify-center text-muted-foreground transition-colors"
+            onClick={() => setCopyOpen(true)}
+            aria-label={tt('copyPaneLabel')}
+          >
+            <Copy size={16} />
+          </button>
+        )}
+
         <button
           className="flex h-10 w-10 items-center justify-center text-muted-foreground transition-colors"
           onClick={onCreateTab}
@@ -127,6 +144,12 @@ const MobileTabHeader = ({
           </AlertDialogContent>
         </AlertDialog>
       </div>
+
+      <CopyPaneDrawer
+        open={copyOpen}
+        onOpenChange={setCopyOpen}
+        sessionName={sessionName}
+      />
     </div>
   );
 };

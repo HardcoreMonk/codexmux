@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useTranslations } from 'next-intl';
-import { SendHorizontal, Square } from 'lucide-react';
+import { Ban, Loader2, SendHorizontal, Square } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import useWebInput from '@/hooks/use-web-input';
@@ -112,6 +112,7 @@ const WebInputBar = ({
     if (e.key === 'Enter' && !isMobileDevice) {
       if (e.shiftKey) return;
       e.preventDefault();
+      if (!canSend) return;
       if (hasValue) {
         onSend?.();
         if (claudeSessionId) registerPushTarget(claudeSessionId);
@@ -122,6 +123,7 @@ const WebInputBar = ({
   };
 
   const handleSendClick = () => {
+    if (!canSend) return;
     if (hasValue) {
       onSend?.();
       if (claudeSessionId) registerPushTarget(claudeSessionId);
@@ -163,20 +165,34 @@ const WebInputBar = ({
     <>
       <div
         className={cn(
-          'grid',
+          'relative grid',
           visible ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
         )}
       >
+        <div
+          className={cn(
+            'pointer-events-none absolute bottom-full left-0 right-0 transition-opacity duration-300',
+            isDisabled && visible ? 'opacity-100' : 'opacity-0',
+          )}
+          aria-hidden={!isDisabled || !visible}
+        >
+          <div className="mx-auto w-full max-w-content px-3 pb-1">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center px-2 text-[11px] text-muted-foreground/70">
+              <Loader2 size={10} className="mr-1.5 justify-self-end animate-spin" />
+              <span>{t('claudeConnecting')}</span>
+              <span />
+            </div>
+          </div>
+        </div>
         <div className="overflow-hidden">
           <div className="mx-auto w-full max-w-content px-3 pt-0 pb-0 animate-in fade-in duration-150">
           <div
             ref={containerRef}
             className={cn(
               'relative z-10 flex items-end gap-2 rounded-lg border px-3 py-2 transition-colors duration-150',
-              isFocused && !isDisabled
+              isFocused
                 ? 'border-ring bg-background'
                 : 'border-border bg-black/5 dark:bg-white/5',
-              mode === 'disabled' && 'opacity-50',
             )}
             onFocusCapture={handleFocusIn}
             onBlurCapture={handleFocusOut}
@@ -197,17 +213,9 @@ const WebInputBar = ({
               value={value}
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={isDisabled}
-              placeholder={
-                mode === 'disabled'
-                  ? t('inputDisabledPlaceholder')
-                  : t('inputPlaceholder')
-              }
+              placeholder={t('inputPlaceholder')}
               aria-label={t('inputAriaLabel')}
-              className={cn(
-                'flex-1 resize-none bg-transparent py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground',
-                isDisabled && 'cursor-not-allowed opacity-70',
-              )}
+              className="flex-1 resize-none bg-transparent py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground"
               rows={1}
               style={{
                 lineHeight: `${LINE_HEIGHT}px`,
@@ -243,7 +251,7 @@ const WebInputBar = ({
                 disabled={!canSend}
                 aria-label={t('sendAriaLabel')}
               >
-                <SendHorizontal size={16} />
+                {isDisabled ? <Ban size={14} /> : <SendHorizontal size={16} />}
               </Button>
             )}
           </div>

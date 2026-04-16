@@ -283,6 +283,7 @@ const MobileTerminalPage = () => {
           key={selectedTabId}
           tabId={selectedTabId}
           tabName={currentTabName}
+          sessionName={currentTab?.sessionName ?? null}
           panelType={currentPanelType}
           onSwitchPanelType={handleSwitchPanelType}
           onCreateTab={handleOpenNewTabDialog}

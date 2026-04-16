@@ -32,6 +32,7 @@
   "inputDisabledPlaceholder": "Claude Code is not running",
   "inputPlaceholder": "Type a message...",
   "inputAriaLabel": "Claude Code message input",
+  "claudeConnecting": "Claude connecting...",
   "interruptAriaLabel": "Interrupt task",
   "sendAriaLabel": "Send message",
   "closeAllTabs": "Close all tabs",
@@ -66,5 +67,13 @@
   "sessionRestartFailed": "Failed to restart session",
   "tabRenameFailed": "Failed to rename tab",
   "tabReorderFailed": "Failed to reorder tabs",
-  "dragCopyHint": "Hold Shift and drag to copy text"
+  "dragCopyHint": "Hold Shift and drag to copy text",
+  "copyPaneLabel": "Copy terminal output",
+  "copyPaneDrawerTitle": "Copy terminal output",
+  "copyPaneDrawerHint": "Long-press the text to select, or tap Copy all below.",
+  "copyPaneLoading": "Loading...",
+  "copyPaneCaptureFailed": "Failed to load terminal output",
+  "copyPaneCopyAll": "Copy all",
+  "copyPaneSuccess": "Copied to clipboard",
+  "copyPaneCopyFailed": "Failed to copy"
 }

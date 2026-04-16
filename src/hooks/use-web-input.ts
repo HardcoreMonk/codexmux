@@ -136,14 +136,6 @@ const useWebInput = (
     el.setSelectionRange(len, len);
   }, []);
 
-  const [prevMode, setPrevMode] = useState(mode);
-  if (prevMode !== mode) {
-    setPrevMode(mode);
-    if (mode === 'disabled') {
-      setValue('');
-    }
-  }
-
   const canSend = mode !== 'disabled' && terminalWsConnected;
 
   return {

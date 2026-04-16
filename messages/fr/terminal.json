@@ -32,6 +32,7 @@
   "inputDisabledPlaceholder": "Claude Code n'est pas en cours d'exécution",
   "inputPlaceholder": "Saisissez un message...",
   "inputAriaLabel": "Champ de saisie Claude Code",
+  "claudeConnecting": "Claude se connecte...",
   "interruptAriaLabel": "Interrompre la tâche",
   "sendAriaLabel": "Envoyer le message",
   "closeAllTabs": "Fermer tous les onglets",
@@ -66,5 +67,13 @@
   "sessionRestartFailed": "Impossible de redémarrer la session",
   "tabRenameFailed": "Échec du renommage de l'onglet",
   "tabReorderFailed": "Échec de la réorganisation des onglets",
-  "dragCopyHint": "Maintenez Shift et glissez pour copier le texte"
+  "dragCopyHint": "Maintenez Shift et glissez pour copier le texte",
+  "copyPaneLabel": "Copier la sortie du terminal",
+  "copyPaneDrawerTitle": "Copier la sortie du terminal",
+  "copyPaneDrawerHint": "Appuyez longuement sur le texte pour le sélectionner ou touchez « Tout copier » ci-dessous.",
+  "copyPaneLoading": "Chargement...",
+  "copyPaneCaptureFailed": "Impossible de charger la sortie du terminal",
+  "copyPaneCopyAll": "Tout copier",
+  "copyPaneSuccess": "Copié dans le presse-papiers",
+  "copyPaneCopyFailed": "Échec de la copie"
 }

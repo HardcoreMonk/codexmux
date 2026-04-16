@@ -32,6 +32,7 @@
   "inputDisabledPlaceholder": "Claude Code не запущен",
   "inputPlaceholder": "Введите сообщение...",
   "inputAriaLabel": "Поле ввода сообщения Claude Code",
+  "claudeConnecting": "Claude подключается...",
   "interruptAriaLabel": "Прервать задачу",
   "sendAriaLabel": "Отправить сообщение",
   "closeAllTabs": "Закрыть все вкладки",
@@ -66,5 +67,13 @@
   "sessionRestartFailed": "Не удалось перезапустить сессию",
   "tabRenameFailed": "Не удалось переименовать вкладку",
   "tabReorderFailed": "Не удалось изменить порядок вкладок",
-  "dragCopyHint": "Удерживайте Shift и перетащите, чтобы скопировать текст"
+  "dragCopyHint": "Удерживайте Shift и перетащите, чтобы скопировать текст",
+  "copyPaneLabel": "Копировать вывод терминала",
+  "copyPaneDrawerTitle": "Копировать вывод терминала",
+  "copyPaneDrawerHint": "Долгое нажатие для выделения текста или нажмите «Копировать всё» ниже.",
+  "copyPaneLoading": "Загрузка...",
+  "copyPaneCaptureFailed": "Не удалось загрузить вывод терминала",
+  "copyPaneCopyAll": "Копировать всё",
+  "copyPaneSuccess": "Скопировано в буфер обмена",
+  "copyPaneCopyFailed": "Не удалось скопировать"
 }

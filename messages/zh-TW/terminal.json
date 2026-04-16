@@ -32,6 +32,7 @@
   "inputDisabledPlaceholder": "Claude Code 未執行",
   "inputPlaceholder": "輸入訊息...",
   "inputAriaLabel": "Claude Code 訊息輸入",
+  "claudeConnecting": "Claude 連線中...",
   "interruptAriaLabel": "中斷任務",
   "sendAriaLabel": "傳送訊息",
   "closeAllTabs": "關閉所有分頁",
@@ -66,5 +67,13 @@
   "sessionRestartFailed": "無法重新啟動工作階段",
   "tabRenameFailed": "分頁重新命名失敗",
   "tabReorderFailed": "分頁排序失敗",
-  "dragCopyHint": "按住 Shift 拖曳以複製文字"
+  "dragCopyHint": "按住 Shift 拖曳以複製文字",
+  "copyPaneLabel": "複製終端機內容",
+  "copyPaneDrawerTitle": "複製終端機內容",
+  "copyPaneDrawerHint": "長按文字進行選取，或點擊下方的「全部複製」。",
+  "copyPaneLoading": "載入中...",
+  "copyPaneCaptureFailed": "無法載入終端機內容",
+  "copyPaneCopyAll": "全部複製",
+  "copyPaneSuccess": "已複製到剪貼簿",
+  "copyPaneCopyFailed": "複製失敗"
 }

@@ -32,6 +32,7 @@
   "inputDisabledPlaceholder": "Claude Code çalışmıyor",
   "inputPlaceholder": "Bir mesaj yazın...",
   "inputAriaLabel": "Claude Code mesaj girişi",
+  "claudeConnecting": "Claude bağlanıyor...",
   "interruptAriaLabel": "Görevi kesintiye uğrat",
   "sendAriaLabel": "Mesaj gönder",
   "closeAllTabs": "Tüm sekmeleri kapat",
@@ -66,5 +67,13 @@
   "sessionRestartFailed": "Oturum yeniden başlatılamadı",
   "tabRenameFailed": "Sekme yeniden adlandırılamadı",
   "tabReorderFailed": "Sekme sıralaması değiştirilemedi",
-  "dragCopyHint": "Metni kopyalamak için Shift tuşuna basılı tutup sürükleyin"
+  "dragCopyHint": "Metni kopyalamak için Shift tuşuna basılı tutup sürükleyin",
+  "copyPaneLabel": "Terminal çıktısını kopyala",
+  "copyPaneDrawerTitle": "Terminal çıktısını kopyala",
+  "copyPaneDrawerHint": "Seçmek için metne uzun basın veya aşağıdaki «Tümünü kopyala»ya dokunun.",
+  "copyPaneLoading": "Yükleniyor...",
+  "copyPaneCaptureFailed": "Terminal çıktısı yüklenemedi",
+  "copyPaneCopyAll": "Tümünü kopyala",
+  "copyPaneSuccess": "Panoya kopyalandı",
+  "copyPaneCopyFailed": "Kopyalama başarısız"
 }

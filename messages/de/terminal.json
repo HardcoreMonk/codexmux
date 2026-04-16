@@ -32,6 +32,7 @@
   "inputDisabledPlaceholder": "Claude Code läuft nicht",
   "inputPlaceholder": "Nachricht eingeben...",
   "inputAriaLabel": "Claude Code Nachrichteneingabe",
+  "claudeConnecting": "Claude verbindet...",
   "interruptAriaLabel": "Aufgabe unterbrechen",
   "sendAriaLabel": "Nachricht senden",
   "closeAllTabs": "Alle Tabs schließen",
@@ -66,5 +67,13 @@
   "sessionRestartFailed": "Sitzung konnte nicht neu gestartet werden",
   "tabRenameFailed": "Tab-Umbenennung fehlgeschlagen",
   "tabReorderFailed": "Tab-Neuanordnung fehlgeschlagen",
-  "dragCopyHint": "Halten Sie Shift gedrückt und ziehen Sie, um Text zu kopieren"
+  "dragCopyHint": "Halten Sie Shift gedrückt und ziehen Sie, um Text zu kopieren",
+  "copyPaneLabel": "Terminal-Ausgabe kopieren",
+  "copyPaneDrawerTitle": "Terminal-Ausgabe kopieren",
+  "copyPaneDrawerHint": "Text zum Auswählen lang drücken oder unten auf „Alles kopieren“ tippen.",
+  "copyPaneLoading": "Wird geladen...",
+  "copyPaneCaptureFailed": "Terminal-Ausgabe konnte nicht geladen werden",
+  "copyPaneCopyAll": "Alles kopieren",
+  "copyPaneSuccess": "In die Zwischenablage kopiert",
+  "copyPaneCopyFailed": "Kopieren fehlgeschlagen"
 }

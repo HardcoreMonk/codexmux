@@ -32,6 +32,7 @@
   "inputDisabledPlaceholder": "Claude Code未运行",
   "inputPlaceholder": "输入消息...",
   "inputAriaLabel": "Claude Code消息输入",
+  "claudeConnecting": "Claude 连接中...",
   "interruptAriaLabel": "中断任务",
   "sendAriaLabel": "发送消息",
   "closeAllTabs": "关闭所有标签页",
@@ -66,5 +67,13 @@
   "sessionRestartFailed": "无法重启会话",
   "tabRenameFailed": "标签页重命名失败",
   "tabReorderFailed": "标签页排序失败",
-  "dragCopyHint": "按住 Shift 拖动以复制文本"
+  "dragCopyHint": "按住 Shift 拖动以复制文本",
+  "copyPaneLabel": "复制终端内容",
+  "copyPaneDrawerTitle": "复制终端内容",
+  "copyPaneDrawerHint": "长按文本进行选择，或点击下方的「全部复制」。",
+  "copyPaneLoading": "加载中...",
+  "copyPaneCaptureFailed": "无法加载终端内容",
+  "copyPaneCopyAll": "全部复制",
+  "copyPaneSuccess": "已复制到剪贴板",
+  "copyPaneCopyFailed": "复制失败"
 }
