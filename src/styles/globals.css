@@ -410,6 +410,10 @@ body {
   line-height: 1.5;
 }
 
+.diff-panel-content .d2h-file-header.d2h-sticky-header {
+  z-index: 3;
+}
+
 .diff-panel-content .d2h-file-name {
   color: var(--foreground);
   font-size: 12px;
@@ -448,14 +452,10 @@ body {
   border-color: var(--border);
 }
 
-.diff-panel-content .d2h-code-line {
-  padding: 0 0.5em;
-  width: calc(100% - 1em);
-}
-
+.diff-panel-content .d2h-code-line,
 .diff-panel-content .d2h-code-side-line {
   padding: 0 0.5em;
-  width: calc(100% - 1em);
+  width: auto;
 }
 
 .diff-panel-content .d2h-code-line-ctn {
@@ -466,11 +466,53 @@ body {
 .diff-panel-content .d2h-code-linenumber,
 .diff-panel-content .d2h-code-side-linenumber {
   display: table-cell;
-  position: relative;
-  border-color: var(--border);
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  padding: 0 0.5em;
+  border: 0;
+  box-shadow: inset 1px 0 0 var(--border), inset -1px 0 0 var(--border);
   color: var(--muted-foreground);
   font-size: 11px;
   white-space: nowrap;
+  background-color: var(--card);
+  overflow: visible;
+}
+
+.diff-panel-content .d2h-code-side-linenumber {
+  min-width: 3em;
+  width: 3em;
+  text-align: right;
+}
+
+.diff-panel-content .d2h-code-linenumber {
+  min-width: 6.5em;
+  width: 6.5em;
+}
+
+.diff-panel-content .d2h-code-linenumber.d2h-ins,
+.diff-panel-content .d2h-code-side-linenumber.d2h-ins {
+  background-color: color-mix(in oklch, var(--ui-teal) 10%, var(--card));
+}
+
+.diff-panel-content .d2h-code-linenumber.d2h-del,
+.diff-panel-content .d2h-code-side-linenumber.d2h-del {
+  background-color: color-mix(in oklch, var(--ui-red) 10%, var(--card));
+}
+
+.diff-panel-content .d2h-code-linenumber.d2h-ins.d2h-change,
+.diff-panel-content .d2h-code-side-linenumber.d2h-ins.d2h-change {
+  background-color: color-mix(in oklch, var(--ui-teal) 12%, var(--card));
+}
+
+.diff-panel-content .d2h-code-linenumber.d2h-del.d2h-change,
+.diff-panel-content .d2h-code-side-linenumber.d2h-del.d2h-change {
+  background-color: color-mix(in oklch, var(--ui-amber) 12%, var(--card));
+}
+
+.diff-panel-content .d2h-code-linenumber.d2h-info,
+.diff-panel-content .d2h-code-side-linenumber.d2h-info {
+  background-color: var(--secondary);
 }
 
 .diff-panel-content .d2h-info {
