@@ -38,6 +38,6 @@ export const proxy = async (request: NextRequest) => {
 
 export const config = {
   matcher: [
-    '/((?!login|api/auth|api/install|api/agent-rpc/|api/status/hook|api/manifest|_next|favicon\\.ico|fonts|.*\\.(?:svg|png|ico|jpg|jpeg|webp|webmanifest|ttf|woff|woff2)).*)',
+    '/((?!login|api/auth|api/install|api/agent-rpc/|api/status/hook|api/health|api/manifest|_next|favicon\\.ico|fonts|.*\\.(?:svg|png|ico|jpg|jpeg|webp|webmanifest|ttf|woff|woff2)).*)',
   ],
 };

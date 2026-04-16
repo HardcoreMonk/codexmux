@@ -14,6 +14,7 @@ import { handleAgentStatusConnection, gracefulAgentStatusShutdown } from './src/
 import { getStatusManager } from './src/lib/status-manager';
 import { getAgentManager } from './src/lib/agent-manager';
 import { ensureHookSettings, removePortFile } from './src/lib/hook-settings';
+import { acquireLock, releaseLock, registerLockCleanup } from './src/lib/lock';
 import { scanSessions, applyConfig } from './src/lib/tmux';
 import { initWorkspaceStore } from './src/lib/workspace-store';
 import { autoResumeOnStartup } from './src/lib/auto-resume';
@@ -243,6 +244,7 @@ const startDev = async (port: number, appDir: string): Promise<IStartResult> => 
   });
 
   const shutdown = async () => {
+    releaseLock();
     await removePortFile();
     server.close();
     await shutdownWs();
@@ -303,6 +305,7 @@ const startProd = async (port: number, appDir: string): Promise<IStartResult> =>
   });
 
   const shutdown = async () => {
+    releaseLock();
     await removePortFile();
     server.close();
     await shutdownWs();
@@ -324,6 +327,9 @@ export const DEFAULT_PORT = 8022;
 export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   const port = opts?.port ?? parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
   const appDir = process.env.__PMUX_APP_DIR || process.cwd();
+
+  await acquireLock(port);
+  registerLockCleanup();
 
   await Promise.all([initConfigStore(), initShellPath()]);
 
