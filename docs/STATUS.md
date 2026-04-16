@@ -117,7 +117,7 @@ Stored directly in the tab state (not derived). Decides which screen the Claude 
 | `check` | Terminal preparation + Claude start | User action (new conversation, resume, mode switch) | `claudeProcess` becomes `true` → auto-transition to `timeline` |
 | `timeline` | Active conversation | Auto from `check` when `claudeProcess = true`. Also set directly on initial load if `claudeProcess = true` | `claudeProcess` transitions `true → false` → auto-transition to `session-list` |
 
-The auto-transitions are handled inside `setClaudeProcess`: when `claudeProcess` becomes `true` and `sessionView` is `'check'` or `'session-list'`, it flips to `'timeline'`; when `claudeProcess` becomes `false` and `sessionView === 'timeline'`, it flips to `'session-list'`.
+The auto-transitions are handled inside `setClaudeProcess`: when `claudeProcess` becomes `true` and `sessionView` is `'check'` or `'session-list'`, it flips to `'timeline'`; when `claudeProcess` transitions **`true → false`** (Claude was confirmed running and then exited) and `sessionView === 'timeline'`, it flips to `'session-list'`. A `null → false` transition does **not** flip, so a freshly opened resume tab stays on `'check'` during initial shell detection until the actual Claude process comes up. Additionally, `useTimeline` no longer infers `claudeProcess = true` from `timeline:init` alone (JSONL existence ≠ process running) — the store's `claudeProcess` is driven by `timeline:session-changed` (`reason='session-waiting'`, only sent when the server confirms a running Claude) and by the terminal `onTitleChange` → `/api/check-claude` path.
 
 Gates (checked before the view switch):
 - `claudeInstalled === false` → not-installed screen

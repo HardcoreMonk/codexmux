@@ -119,7 +119,7 @@ const useTabStore = create<ITabStore>((set) => ({
       if (process === true && (prev.sessionView === 'check' || prev.sessionView === 'session-list')) {
         patch.sessionView = 'timeline';
       }
-      if (process === false && prev.sessionView === 'timeline') {
+      if (process === false && prev.claudeProcess === true && prev.sessionView === 'timeline') {
         patch.sessionView = 'session-list';
       }
       return { tabs: updateTab(state.tabs, tabId, patch) };

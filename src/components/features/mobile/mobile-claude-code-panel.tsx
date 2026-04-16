@@ -207,7 +207,7 @@ const MobileClaudeCodePanel = ({
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-muted">
         <Spinner className="h-4 w-4 text-muted-foreground" />
-        <span className="mt-2 text-sm text-muted-foreground">{claudeSessionId ? t('resumingSession') : t('creatingConversation')}</span>
+        <span className="mt-2 text-sm text-muted-foreground">{(claudeSessionId || sessionId) ? t('resumingSession') : t('creatingConversation')}</span>
         {startingPromptOptions && (
           startingPromptOptions.isBypassPrompt && startingPromptOptions.options.length > 0 ? (
             <BypassPromptCard

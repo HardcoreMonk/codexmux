@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { addTabToPane } from '@/lib/layout-store';
+import { addTabToPane, updateTabClaudeSessionId } from '@/lib/layout-store';
 import { getActiveWorkspaceId } from '@/lib/workspace-store';
 import { getStatusManager } from '@/lib/status-manager';
 import { buildResumeCommand, isValidSessionId } from '@/lib/claude-command';
@@ -44,6 +44,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     if (resumeSessionId && !command) {
+      await updateTabClaudeSessionId(tab.sessionName, resumeSessionId);
+      tab.claudeSessionId = resumeSessionId;
       setTimeout(async () => {
         try {
           const resumeCmd = await buildResumeCommand(resumeSessionId);

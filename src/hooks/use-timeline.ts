@@ -129,7 +129,6 @@ const useTimeline = ({
     }
     if (initSessionId) {
       setSessionId(initSessionId);
-      setClaudeProcess(true);
     } else if (!isClaudeStarting) {
       setClaudeProcess(false);
     }

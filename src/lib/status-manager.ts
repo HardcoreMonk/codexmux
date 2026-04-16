@@ -1085,6 +1085,7 @@ class StatusManager {
     if (!jsonlPath) return;
 
     entry.jsonlPath = jsonlPath;
+    entry.claudeSessionId = sessionIdFromJsonlPath(jsonlPath) ?? entry.claudeSessionId;
 
     if ((entry.cliState === 'busy' || entry.cliState === 'needs-input') && !this.jsonlWatchers.has(tabId)) {
       this.startJsonlWatch(tabId, jsonlPath);
