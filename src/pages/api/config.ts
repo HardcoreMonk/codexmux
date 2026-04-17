@@ -6,6 +6,17 @@ const ALLOWED_FIELDS: (keyof Omit<IConfigData, 'updatedAt' | 'authSecret'>)[] = 
   'appTheme', 'terminalTheme', 'customCSS', 'dangerouslySkipPermissions', 'editorUrl', 'authPassword', 'notificationsEnabled', 'locale', 'fontSize', 'systemResourcesEnabled',
 ];
 
+const isValidEditorUrl = (value: unknown): value is string => {
+  if (typeof value !== 'string') return false;
+  if (value === '') return true;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     const { authPassword, authSecret: _, ...safe } = await getConfig();
@@ -17,6 +28,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const updates: Record<string, unknown> = {};
     for (const key of ALLOWED_FIELDS) {
       if (key in body) updates[key] = body[key];
+    }
+
+    if ('editorUrl' in updates && !isValidEditorUrl(updates.editorUrl)) {
+      return res.status(400).json({ error: 'editorUrl must be an http(s) URL.' });
     }
 
     if (typeof updates.authPassword === 'string' && updates.authPassword) {

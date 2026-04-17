@@ -126,7 +126,7 @@ const ContentHeader = ({
               const folder = activeTabCwd || '/';
               const separator = editorUrl.includes('?') ? '&' : '?';
               const url = `${editorUrl}${separator}folder=${encodeURIComponent(folder)}`;
-              window.open(url, '_blank');
+              window.open(url, '_blank', 'noopener,noreferrer');
             }}
             aria-label={t('openEditor')}
           >

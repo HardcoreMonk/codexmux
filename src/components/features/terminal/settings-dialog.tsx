@@ -384,6 +384,18 @@ const EditorTab = () => {
 
   const handleSave = () => {
     const trimmed = localEditorUrl.trim();
+    if (trimmed) {
+      try {
+        const url = new URL(trimmed);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+          toast.error('Editor URL must start with http:// or https://');
+          return;
+        }
+      } catch {
+        toast.error('Editor URL must start with http:// or https://');
+        return;
+      }
+    }
     setLocalEditorUrl(trimmed);
     setEditorUrl(trimmed);
     toast.success(tc('saved'));

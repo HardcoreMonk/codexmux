@@ -153,6 +153,30 @@ const RUNTIME_CACHE_TTL = 30_000;
 let runtimeCache: { result: IRuntimePreflightResult; checkedAt: number } | null = null;
 let inflightRequest: Promise<IRuntimePreflightResult> | null = null;
 
+const PREFLIGHT_CACHE_TTL = 1_000;
+let preflightCache: { result: IPreflightResult; checkedAt: number } | null = null;
+let preflightInflight: Promise<IPreflightResult> | null = null;
+
+export const getCachedPreflightStatus = async (): Promise<IPreflightResult> => {
+  if (preflightCache && Date.now() - preflightCache.checkedAt < PREFLIGHT_CACHE_TTL) {
+    return preflightCache.result;
+  }
+  if (preflightInflight) return preflightInflight;
+
+  preflightInflight = getPreflightStatus()
+    .then((result) => {
+      preflightCache = { result, checkedAt: Date.now() };
+      preflightInflight = null;
+      return result;
+    })
+    .catch((err) => {
+      preflightInflight = null;
+      throw err;
+    });
+
+  return preflightInflight;
+};
+
 export const getRuntimePreflightStatus = async (): Promise<IRuntimePreflightResult> => {
   shellPathCache = await resolveShellPathAsync();
   const [tmux, git, claude] = await Promise.all([
