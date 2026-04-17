@@ -89,7 +89,7 @@ const CopyPaneDrawer = ({ open, onOpenChange, sessionName }: ICopyPaneDrawerProp
           ) : (
             <textarea
               value={content}
-              readOnly
+              onChange={(e) => setContent(e.target.value)}
               spellCheck={false}
               autoCorrect="off"
               autoCapitalize="off"
