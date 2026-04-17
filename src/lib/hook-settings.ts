@@ -93,35 +93,6 @@ export const buildAgentTabHookSettings = (port: number, agentId: string, tabId: 
   },
 });
 
-export const buildAgentBrainHookSettings = (port: number, agentId: string) => ({
-  hooks: {
-    Stop: [
-      {
-        matcher: '',
-        hooks: [
-          {
-            type: 'http',
-            url: `http://localhost:${port}/api/agent-rpc/${agentId}/brain-hook`,
-            timeout: 3,
-          },
-        ],
-      },
-    ],
-    StopFailure: [
-      {
-        matcher: '',
-        hooks: [
-          {
-            type: 'http',
-            url: `http://localhost:${port}/api/agent-rpc/${agentId}/brain-hook`,
-            timeout: 3,
-          },
-        ],
-      },
-    ],
-  },
-});
-
 export const ensureHookSettings = async (port: number): Promise<void> => {
   await fs.mkdir(BASE_DIR, { recursive: true });
 

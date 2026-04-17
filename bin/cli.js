@@ -115,20 +115,6 @@ const cmdTabClose = async (args) => {
   if (resp.ok) process.stdout.write('ok\n');
 };
 
-const cmdMessage = async (args) => {
-  requireEnv();
-  requireAgentId();
-  const type = flagValue(args, '--type') || 'report';
-  const content = stripFlags(args, ['--type']).join(' ');
-  if (!content) die('content is required');
-  const { body } = await api('POST', '/api/agent-rpc/message', {
-    agentId: AGENT_ID,
-    type,
-    content,
-  });
-  json({ ok: true }, body);
-};
-
 const cmdMemorySave = async (args) => {
   requireEnv();
   requireAgentId();
@@ -210,13 +196,10 @@ Commands:
   tab status TAB_ID                   Check tab status
   tab result TAB_ID                   Read tab result
   tab close TAB_ID                    Close a tab
-  message [--type TYPE] CONTENT...    Send a message (default: report)
   memory save [--tags a,b] CONTENT... Save a memory
   memory search [--q Q] [--tag TAG]   Search memories
   memory delete MEMORY_ID             Delete a memory
   api-guide                           Print full API reference
-
-Message types: report, question, done, error, approval
 
 Environment:
   PMUX_PORT       Server port (required)
@@ -247,9 +230,6 @@ const main = async () => {
         default: die(`unknown tab command: ${sub || '(none)'}. Run 'purplemux help' for usage.`);
       }
       break;
-    case 'message':
-    case 'msg':
-      return cmdMessage(args.slice(1));
     case 'memory':
     case 'mem':
       switch (sub) {

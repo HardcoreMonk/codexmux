@@ -1,13 +1,11 @@
 import fs from 'fs/promises';
 import path from 'path';
-import os from 'os';
-import { createHash } from 'crypto';
+import { randomUUID } from 'crypto';
 import { WebSocket } from 'ws';
 import { nanoid } from 'nanoid';
 import { createLogger } from '@/lib/logger';
 import { getAgentToken } from '@/lib/agent-token';
 import {
-  createSession,
   killSession,
   hasSession,
   sendKeys,
@@ -15,18 +13,17 @@ import {
   sendBracketedPaste,
   getSessionPanePid,
   getPaneCurrentCommand,
-  listSessions,
   capturePaneContent,
 } from '@/lib/tmux';
 import { detectActiveSession } from '@/lib/session-detection';
 import {
+  AGENTS_DIR,
   ensureAgentDir,
   getAgentDir,
   createChatSession,
   getLatestSessionId,
   appendMessage,
   createMessage,
-  readMessages,
   removeAgentDir,
   writeChatIndex,
 } from '@/lib/agent-chat';
@@ -38,7 +35,19 @@ import {
 } from '@/lib/layout-store';
 import { collectPanes } from '@/lib/layout-tree';
 import { getWorkspaceById } from '@/lib/workspace-store';
-import { buildAgentTabHookSettings, buildAgentBrainHookSettings } from '@/lib/hook-settings';
+import { buildAgentTabHookSettings } from '@/lib/hook-settings';
+import { AgentSubprocess } from '@/lib/agent-subprocess';
+import {
+  writeAgentSystemPromptFile,
+  getAgentSystemPromptPath,
+} from '@/lib/agent-system-prompt';
+import {
+  createMapperState,
+  mapEvent,
+  type IMapperState,
+  type TClaudeStreamEvent,
+  type TMapResult,
+} from '@/lib/agent-stream-mapper';
 import type {
   TAgentStatus,
   IAgentConfig,
@@ -75,19 +84,12 @@ const DEFAULT_SOUL = `## Core Truths
 - 기술적으로 정확하되 친근한 톤을 유지한다
 - 한국어로 소통한다`.trimEnd();
 
-const AGENTS_DIR = path.join(os.homedir(), '.purplemux', 'agents');
-const AGENT_SESSION_PREFIX = 'agent-';
 const MAX_QUEUE_SIZE = 10;
 const MAX_RESTART_ATTEMPTS = 3;
-const STATUS_POLL_INTERVAL = 5_000;
-const TMUX_COLS = 200;
-const TMUX_ROWS = 50;
 const MAX_CONCURRENT_TABS = 5;
 const TAB_POLL_INTERVAL = 30_000;
 const TAB_MESSAGE_QUEUE_MAX = 5;
 const JSONL_TAIL_SIZE = 8192;
-const DELIVERY_CHECK_DELAY_MS = 30_000;
-const MAX_DELIVERY_RETRIES = 2;
 
 interface ITabRuntime {
   tab: IAgentExecTab;
@@ -101,16 +103,10 @@ interface IAgentRuntime {
   messageQueue: string[];
   chatSessionId: string | null;
   restartCount: number;
-  statusTimer: ReturnType<typeof setInterval> | null;
-  relaySetAt: number;
   tabs: Map<string, ITabRuntime>;
   tabPollTimer: ReturnType<typeof setInterval> | null;
-  claudeMdHash: string;
-  pendingRestart: boolean;
-  lastClaudeSessionId: string | null;
-  lastDeliveredContent: string | null;
-  lastDeliveredAt: number;
-  deliveryRetryCount: number;
+  subprocess: AgentSubprocess | null;
+  mapperState: IMapperState | null;
 }
 
 const g = globalThis as unknown as { __ptAgentManager?: AgentManager };
@@ -168,13 +164,13 @@ class AgentManager {
 
     const id = nanoid(8);
     const now = new Date().toISOString();
-    const tmuxSession = `${AGENT_SESSION_PREFIX}${id}`;
 
     const config: IAgentConfig = {
       name,
       role,
       autonomy: 'conservative',
       createdAt: now,
+      sessionId: randomUUID(),
       ...(avatar ? { avatar } : {}),
     };
 
@@ -191,7 +187,7 @@ class AgentManager {
       role,
       status: 'offline',
       createdAt: now,
-      tmuxSession,
+      tmuxSession: '',
       ...(avatar ? { avatar } : {}),
     };
 
@@ -201,19 +197,14 @@ class AgentManager {
       messageQueue: [],
       chatSessionId,
       restartCount: 0,
-      statusTimer: null,
-      relaySetAt: 0,
       tabs: new Map(),
       tabPollTimer: null,
-      claudeMdHash: '',
-      pendingRestart: false,
-      lastClaudeSessionId: null,
-      lastDeliveredContent: null,
-      lastDeliveredAt: 0,
-      deliveryRetryCount: 0,
+      subprocess: null,
+      mapperState: null,
     };
     this.agents.set(id, runtime);
 
+    await this.rewriteSystemPromptFile(runtime);
     await this.startAgentSession(runtime);
 
     return info;
@@ -331,18 +322,17 @@ class AgentManager {
       await this.writeConfig(agentId, config);
     }
 
-    if (update.soul !== undefined) {
-      await this.writeSoul(agentId, update.soul);
+    const soulChanged = update.soul !== undefined;
+    if (soulChanged) {
+      await this.writeSoul(agentId, update.soul!);
     }
 
-    const newHash = await this.computeClaudeMdHash(runtime);
-    if (newHash !== runtime.claudeMdHash && runtime.status !== 'offline') {
-      if (runtime.status === 'idle' || runtime.status === 'blocked') {
+    const promptChanged = soulChanged || Boolean(update.name) || Boolean(update.role);
+    if (promptChanged) {
+      await this.rewriteSystemPromptFile(runtime);
+      if (runtime.status === 'idle') {
         runtime.restartCount = 0;
         await this.restartAgentSession(runtime);
-      } else {
-        runtime.pendingRestart = true;
-        log.debug(`agent ${agentId} marked for pending restart (CLAUDE.md changed)`);
       }
     }
 
@@ -353,14 +343,16 @@ class AgentManager {
     const runtime = this.agents.get(agentId);
     if (!runtime) return false;
 
-    this.stopStatusPolling(runtime);
     this.stopTabPolling(runtime);
 
     for (const tr of runtime.tabs.values()) {
       await this.closeTabInternal(runtime, tr.tab.tabId).catch(() => {});
     }
 
-    await killSession(runtime.info.tmuxSession);
+    if (runtime.subprocess) {
+      await runtime.subprocess.stop().catch(() => {});
+      runtime.subprocess = null;
+    }
     await removeAgentDir(agentId);
     this.agents.delete(agentId);
 
@@ -375,366 +367,184 @@ class AgentManager {
     const runtime = this.agents.get(agentId);
     if (!runtime) throw new Error('Agent not found');
 
-    if (!runtime.chatSessionId) {
-      runtime.chatSessionId = await createChatSession(agentId);
-    }
+    const message = await this.appendAndBroadcast(runtime, 'user', 'text', content);
 
-    const message = createMessage('user', 'text', content);
-    await appendMessage(agentId, runtime.chatSessionId, message);
+    const subprocess = runtime.subprocess;
+    const canSendNow =
+      subprocess?.alive === true && (runtime.status === 'idle' || runtime.status === 'offline');
 
-    this.broadcast({
-      type: 'agent:message',
-      agentId,
-      message,
-    });
-
-    if (runtime.status === 'idle' || runtime.status === 'blocked') {
-      await this.deliverToAgent(runtime, content);
-      this.markDelivered(runtime, content);
-      this.setStatus(runtime, 'working');
-      runtime.relaySetAt = Date.now();
-      return { id: message.id, status: 'sent' };
+    if (canSendNow && subprocess) {
+      try {
+        subprocess.writeUserMessage(content);
+        this.setStatus(runtime, 'working');
+        return { id: message.id, status: 'sent' };
+      } catch (err) {
+        log.error(`stream-json write failed for ${agentId}: ${err instanceof Error ? err.message : err}`);
+      }
     }
 
     if (runtime.messageQueue.length >= MAX_QUEUE_SIZE) {
       runtime.messageQueue.shift();
       log.warn(`message queue overflow for agent ${agentId}, dropping oldest`);
-
-      const dropNotice = createMessage('agent', 'error', 'Message queue full, oldest message dropped.');
-      if (runtime.chatSessionId) {
-        await appendMessage(agentId, runtime.chatSessionId, dropNotice);
-      }
-      this.broadcast({ type: 'agent:message', agentId, message: dropNotice });
+      await this.appendAndBroadcast(runtime, 'agent', 'error', 'Message queue full, oldest message dropped.');
     }
     runtime.messageQueue.push(content);
 
-    const queuedNotice = createMessage('agent', 'activity', 'Message received. Will check after current task completes.');
-    if (runtime.chatSessionId) {
-      await appendMessage(agentId, runtime.chatSessionId, queuedNotice);
+    if (!subprocess?.alive) {
+      this.restartAgentSession(runtime).catch((err) => {
+        log.error(`restart-on-send failed for ${agentId}: ${err instanceof Error ? err.message : err}`);
+      });
     }
-    this.broadcast({ type: 'agent:message', agentId, message: queuedNotice });
 
     return { id: message.id, status: 'queued' };
-  }
-
-  async receiveAgentMessage(
-    agentId: string,
-    type: IChatMessage['type'],
-    content: string,
-    metadata?: Record<string, unknown>,
-  ): Promise<IChatMessage> {
-    const runtime = this.agents.get(agentId);
-    if (!runtime) throw new Error('Agent not found');
-
-    if (!runtime.chatSessionId) {
-      runtime.chatSessionId = await createChatSession(agentId);
-    }
-
-    const message = createMessage('agent', type, content, metadata);
-    await appendMessage(agentId, runtime.chatSessionId, message);
-
-    this.broadcast({
-      type: 'agent:message',
-      agentId,
-      message,
-    });
-
-    this.clearDeliveryTracking(runtime);
-
-    if (type === 'question' || type === 'approval') {
-      this.setStatus(runtime, 'blocked');
-      runtime.relaySetAt = Date.now();
-    } else if (type === 'activity') {
-      // activity: save + broadcast only, no status change
-    } else if (type === 'done' || type === 'error' || type === 'report') {
-      this.setStatus(runtime, 'idle');
-      runtime.relaySetAt = Date.now();
-      if (runtime.messageQueue.length > 0) {
-        await this.drainQueue(runtime);
-      }
-    }
-
-    return message;
   }
 
   getChatSessionId(agentId: string): string | null {
     return this.agents.get(agentId)?.chatSessionId ?? null;
   }
 
-  private async emitActivity(runtime: IAgentRuntime, content: string, metadata?: Record<string, unknown>): Promise<void> {
+  private async appendAndBroadcast(
+    runtime: IAgentRuntime,
+    role: IChatMessage['role'],
+    type: IChatMessage['type'],
+    content: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<IChatMessage> {
     const agentId = runtime.info.id;
     if (!runtime.chatSessionId) {
       runtime.chatSessionId = await createChatSession(agentId);
     }
-    const message = createMessage('agent', 'activity', content, metadata);
+    const message = createMessage(role, type, content, metadata);
     await appendMessage(agentId, runtime.chatSessionId, message);
     this.broadcast({ type: 'agent:message', agentId, message });
+    return message;
+  }
+
+  private emitActivity(runtime: IAgentRuntime, content: string, metadata?: Record<string, unknown>): Promise<IChatMessage> {
+    return this.appendAndBroadcast(runtime, 'agent', 'activity', content, metadata);
   }
 
   // --- Session lifecycle ---
-
-  private async buildClaudeMdContent(runtime: IAgentRuntime, includeHistory = true): Promise<string> {
-    const { info } = runtime;
-    const soul = await this.readSoul(info.id);
-
-    const lines = [
-      '# Agent Instructions',
-      '',
-      `You are "${info.name}" — ${info.role || 'general-purpose agent'}.`,
-      '',
-      ...(soul ? [
-        '## Soul',
-        '',
-        'The following defines your personality, values, and communication style.',
-        'Internalize these principles — they shape how you think, act, and communicate.',
-        '',
-        soul,
-        '',
-      ] : []),
-      '## purplemux CLI',
-      '',
-      'All interaction with purplemux goes through the `purplemux` CLI.',
-      'Environment variables (`PMUX_PORT`, `PMUX_TOKEN`, `PMUX_AGENT_ID`) are pre-configured.',
-      '',
-      '## Workspace Discovery',
-      '',
-      'You do NOT have pre-assigned projects. Discover available workspaces:',
-      '',
-      '```bash',
-      'purplemux workspaces',
-      '```',
-      '',
-      'Response: `{ "workspaces": [{ "id": "ws-xxx", "name": "...", "directories": ["..."] }] }`',
-      '',
-      'Call this at the start of every new task to know the current workspace state.',
-      'Match the user\'s request to the appropriate workspace by name or directory path.',
-      'If unclear which workspace to use, ask the user.',
-      '',
-      '## Tab Control',
-      '',
-      'You do NOT modify code directly. Instead, create tabs in project workspaces',
-      'and delegate work to Claude Code sessions running in those tabs.',
-      '',
-      '### Create a tab',
-      '',
-      '```bash',
-      'purplemux tab create -w WORKSPACE_ID -t "TASK_TITLE"',
-      '```',
-      '',
-      'Response: `{ "tabId": "...", "workspaceId": "...", "tmuxSession": "..." }`',
-      '',
-      '### Send instructions to a tab',
-      '',
-      '```bash',
-      'purplemux tab send TAB_ID YOUR_INSTRUCTION',
-      '```',
-      '',
-      'Response: `{ "status": "sent" | "queued" }`',
-      '',
-      '### Check tab status',
-      '',
-      '```bash',
-      'purplemux tab status TAB_ID',
-      '```',
-      '',
-      'Response: `{ "tabId": "...", "status": "idle" | "working" | "completed" | "error" }`',
-      '',
-      '### Read tab result',
-      '',
-      '```bash',
-      'purplemux tab result TAB_ID',
-      '```',
-      '',
-      'Response: `{ "content": "...", "source": "file" | "jsonl" | "buffer" }`',
-      '',
-      '### Close a tab',
-      '',
-      '```bash',
-      'purplemux tab close TAB_ID',
-      '```',
-      '',
-      '### List tabs',
-      '',
-      '```bash',
-      'purplemux tab list',
-      '```',
-      '',
-      '## Communication',
-      '',
-      'The user communicates with you through a chat UI, NOT the terminal.',
-      'Your terminal output is invisible to the user.',
-      'The ONLY way the user sees your responses is through the message command below.',
-      '',
-      '**You MUST call this for EVERY response.**',
-      '',
-      '```bash',
-      'purplemux message --type TYPE YOUR_MESSAGE',
-      '```',
-      '',
-      '### Message types',
-      '',
-      '| type | when to use |',
-      '|------|------------|',
-      '| `report` | Any reply to the user, progress updates, intermediate results |',
-      '| `question` | Need user input before continuing (user must answer before you proceed) |',
-      '| `done` | Task completed successfully |',
-      '| `error` | Unrecoverable failure |',
-      '| `approval` | Need user approval for a risky action |',
-      '',
-      '## Memory',
-      '',
-      'You have persistent memory. Use it to save important context that should survive across sessions:',
-      'decisions made, user preferences, project-specific knowledge, lessons learned.',
-      '',
-      '### Save a memory',
-      '',
-      '```bash',
-      'purplemux memory save --tags tag1,tag2 WHAT_TO_REMEMBER',
-      '```',
-      '',
-      '### Search memories',
-      '',
-      '```bash',
-      'purplemux memory search --q KEYWORD --tag TAG',
-      '```',
-      '',
-      'Both `--q` and `--tag` are optional. Omit both to list all memories.',
-      '',
-      '### Delete a memory',
-      '',
-      '```bash',
-      'purplemux memory delete MEMORY_ID',
-      '```',
-      '',
-      '### When to save',
-      '',
-      '- User explicitly asks you to remember something',
-      '- You discover an important project convention or decision',
-      '- A non-obvious solution is found (save the problem + solution)',
-      '- User preferences or workflow patterns worth retaining',
-      '',
-      '### When to search',
-      '',
-      '- At the start of a new mission, search for relevant context',
-      '- When the user references something from a previous session',
-      '- Before making a decision that might contradict a past one',
-      '',
-      '## purplemux API',
-      '',
-      'For advanced queries, use `purplemux api-guide` to see the full HTTP API reference.',
-      '',
-      '## Workflow',
-      '',
-      '1. Receive a mission from the user',
-      '2. Send a `report` to the user BEFORE starting any work (reading code, creating tabs, etc). Briefly explain what you understood and how you plan to approach it — speak naturally as in a conversation, not with labels like "이해한 내용:" or "계획:". This is the first thing the user sees.',
-      '   - If the request is ambiguous or could be interpreted multiple ways, state your interpretation in the report. If you are not confident, use `question` to clarify before proceeding — do not guess and execute.',
-      '3. Assess complexity:',
-      '   - **Simple** (single purpose, clear scope — e.g. "fix lint errors", "add types to this function"):',
-      '     Enrich with context (which workspace, relevant background) and forward to a single tab.',
-      '     Let tab\'s Claude Code analyze the code directly and decide the best approach.',
-      '   - **Complex** (spans multiple files/features, has ordering dependencies — e.g. "replace auth with OAuth", "add API caching layer"):',
-      '     Break into tasks, create separate tabs, and send specific step-by-step instructions.',
-      '4. Create tab(s) in the appropriate project workspace',
-      '5. Send instructions to tab (simple: enriched request / complex: one step at a time)',
-      '6. Wait for `[TAB_COMPLETE]` or `[TAB_ERROR]` notification',
-      '7. Read the tab result and verify',
-      '8. Send progress/completion reports to the user via the message command',
-      '9. Close the tab when done',
-      '',
-      '## Rules',
-      '',
-      '- ALWAYS relay your response via the message command. The user cannot see terminal output.',
-      '- 코드를 직접 수정하지 않는다. 모든 코드 변경은 반드시 탭을 생성하여 위임한다.',
-      '- 단순한 변경이라도 직접 수정하지 말고 탭에 위임한다. 에이전트의 역할은 조율과 오케스트레이션이다.',
-      '- For long tasks, send periodic `report` messages so the user knows progress.',
-      '- Use `question` when you need input — this blocks you until the user replies.',
-      '- Always send `done` or `error` when a mission is finished.',
-      '- Tab notifications arrive as `[TAB_COMPLETE] tabId=xxx status=completed` or `[TAB_ERROR] tabId=xxx status=error`.',
-      '- You can run multiple tabs in parallel for independent tasks.',
-      '- Your session may restart. Previous conversation history is saved in `./chat/` as JSONL files.',
-      '  Read `./chat/index.json` to find session IDs, then `./chat/{sessionId}.jsonl` for messages.',
-      '  Review recent history after restart to maintain context continuity.',
-      '',
-    ];
-
-    if (includeHistory && runtime.chatSessionId) {
-      try {
-        const { messages } = await readMessages(info.id, runtime.chatSessionId, { limit: 20 });
-        if (messages.length > 0) {
-          lines.push('## Recent Conversation', '');
-          lines.push('> Below is the recent conversation history. Use this to resume context after restart.', '');
-          for (const msg of messages) {
-            const truncated = msg.content.length > 200
-              ? msg.content.slice(0, 200) + '...'
-              : msg.content;
-            const safe = truncated.replace(/\n/g, ' ');
-            lines.push(`> [${msg.role}/${msg.type}] ${safe}`);
-          }
-          lines.push('');
-          lines.push('위 대화를 참고하여 이전 맥락을 이어가세요. 사용자가 이전 대화를 언급하면 이 내용을 기반으로 응답하세요.');
-          lines.push('');
-        }
-      } catch (err) {
-        log.warn(`failed to read chat history for CLAUDE.md: ${err instanceof Error ? err.message : err}`);
-      }
-    }
-
-    return lines.join('\n');
-  }
-
-  private async writeAgentClaudeMd(runtime: IAgentRuntime): Promise<void> {
-    const content = await this.buildClaudeMdContent(runtime);
-    const claudeMdPath = path.join(getAgentDir(runtime.info.id), 'CLAUDE.md');
-    await fs.writeFile(claudeMdPath, content, 'utf-8');
-  }
-
-  private async computeClaudeMdHash(runtime: IAgentRuntime): Promise<string> {
-    const content = await this.buildClaudeMdContent(runtime, false);
-    return createHash('sha256').update(content).digest('hex').slice(0, 16);
-  }
-
-  private async isClaudeMdStale(runtime: IAgentRuntime): Promise<boolean> {
-    const claudeMdPath = path.join(getAgentDir(runtime.info.id), 'CLAUDE.md');
-    try {
-      const existing = await fs.readFile(claudeMdPath, 'utf-8');
-      const expected = await this.buildClaudeMdContent(runtime, false);
-      return !existing.startsWith(expected);
-    } catch {
-      return true;
-    }
-  }
 
   private async startAgentSession(runtime: IAgentRuntime): Promise<void> {
     const { info } = runtime;
     const agentDir = getAgentDir(info.id);
 
     try {
-      await this.writeAgentClaudeMd(runtime);
-      const brainHookPath = await this.writeAgentHookSettings(info.id);
-      await createSession(info.tmuxSession, TMUX_COLS, TMUX_ROWS, agentDir);
+      const config = await this.readConfig(info.id);
+      if (!config?.sessionId) {
+        throw new Error('agent config missing sessionId');
+      }
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const systemPromptFile = await this.ensureSystemPromptFile(runtime);
+
       const port = process.env.PORT || '8022';
       const token = getAgentToken();
-      await sendKeys(info.tmuxSession, `export PMUX_PORT=${port} PMUX_TOKEN=${token} PMUX_AGENT_ID=${info.id}`);
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      await sendKeys(info.tmuxSession, `claude --settings ${brainHookPath} --dangerously-skip-permissions`);
+      const env: NodeJS.ProcessEnv = {
+        ...process.env,
+        PMUX_PORT: port,
+        PMUX_TOKEN: token,
+        PMUX_AGENT_ID: info.id,
+      };
 
-      // Accept workspace trust prompt if shown
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      await sendRawKeys(info.tmuxSession, 'Enter');
-
-      runtime.claudeMdHash = await this.computeClaudeMdHash(runtime);
-      runtime.pendingRestart = false;
-      this.setStatus(runtime, 'idle');
+      runtime.mapperState = createMapperState();
+      const subprocess = new AgentSubprocess(
+        {
+          agentId: info.id,
+          agentDir,
+          sessionId: config.sessionId,
+          systemPromptFile,
+          env,
+        },
+        {
+          onEvent: (event) => this.handleStreamEvent(runtime, event as TClaudeStreamEvent),
+          onExit: (code, signal) => this.handleStreamExit(runtime, code, signal),
+        },
+      );
+      runtime.subprocess = subprocess;
+      await subprocess.start();
+      runtime.mapperState.initialized = true;
       runtime.restartCount = 0;
-      this.startStatusPolling(runtime);
-
-      log.debug(`agent session started: ${info.id} (${info.tmuxSession})`);
+      this.setStatus(runtime, 'idle');
+      log.debug(`agent session started: ${info.id} pid=${subprocess.pid}`);
     } catch (err) {
       log.error(`failed to start agent session ${info.id}: ${err instanceof Error ? err.message : err}`);
+      runtime.subprocess = null;
+      runtime.mapperState = null;
       this.setStatus(runtime, 'offline');
     }
+  }
+
+  private async ensureSystemPromptFile(runtime: IAgentRuntime): Promise<string> {
+    const promptPath = getAgentSystemPromptPath(runtime.info.id);
+    try {
+      await fs.access(promptPath);
+      return promptPath;
+    } catch {
+      return this.rewriteSystemPromptFile(runtime);
+    }
+  }
+
+  private async rewriteSystemPromptFile(runtime: IAgentRuntime): Promise<string> {
+    const soul = await this.readSoul(runtime.info.id);
+    return writeAgentSystemPromptFile(runtime.info.id, {
+      agentName: runtime.info.name,
+      agentRole: runtime.info.role,
+      soul,
+    });
+  }
+
+  private handleStreamEvent(runtime: IAgentRuntime, event: TClaudeStreamEvent): void {
+    if (!runtime.mapperState) return;
+    const results = mapEvent(event, runtime.mapperState);
+    void this.applyMapResults(runtime, results);
+  }
+
+  private async applyMapResults(runtime: IAgentRuntime, results: TMapResult[]): Promise<void> {
+    for (const r of results) {
+      if (r.kind === 'drop') continue;
+      if (r.kind === 'status') {
+        this.setStatus(runtime, r.status);
+        if (r.status === 'idle' && runtime.messageQueue.length > 0) {
+          await this.drainStreamQueue(runtime);
+        }
+        continue;
+      }
+      await this.appendAndBroadcast(runtime, r.role, r.type, r.content, r.metadata);
+    }
+  }
+
+  private async drainStreamQueue(runtime: IAgentRuntime): Promise<void> {
+    const subprocess = runtime.subprocess;
+    if (!subprocess?.alive) return;
+    if (runtime.messageQueue.length === 0) return;
+    const next = runtime.messageQueue.shift()!;
+    try {
+      subprocess.writeUserMessage(next);
+      this.setStatus(runtime, 'working');
+    } catch (err) {
+      log.error(`drain write failed for ${runtime.info.id}: ${err instanceof Error ? err.message : err}`);
+      runtime.messageQueue.unshift(next);
+    }
+  }
+
+  private handleStreamExit(
+    runtime: IAgentRuntime,
+    code: number | null,
+    signal: NodeJS.Signals | null,
+  ): void {
+    const wasWorking = runtime.status === 'working';
+    runtime.subprocess = null;
+    runtime.mapperState = null;
+
+    if (wasWorking) {
+      this.emitActivity(runtime, `Agent exited (code=${code} signal=${signal}), restarting...`).catch(() => {});
+    }
+
+    this.setStatus(runtime, 'offline');
+    this.restartAgentSession(runtime).catch((err) => {
+      log.error(`stream-json restart failed for ${runtime.info.id}: ${err instanceof Error ? err.message : err}`);
+    });
   }
 
   private async restartAgentSession(runtime: IAgentRuntime): Promise<void> {
@@ -747,240 +557,16 @@ class AgentManager {
     runtime.restartCount++;
     log.debug(`restarting agent session ${runtime.info.id} (attempt ${runtime.restartCount})`);
 
-    await killSession(runtime.info.tmuxSession).catch(() => {});
+    if (runtime.subprocess) {
+      await runtime.subprocess.stop().catch(() => {});
+      runtime.subprocess = null;
+    }
     await this.startAgentSession(runtime);
-
-    if (runtime.status === 'idle' && runtime.messageQueue.length > 0) {
-      await this.drainQueue(runtime);
+    if (runtime.messageQueue.length > 0) {
+      await this.drainStreamQueue(runtime);
     }
   }
 
-  // --- Status polling ---
-
-  private startStatusPolling(runtime: IAgentRuntime): void {
-    this.stopStatusPolling(runtime);
-    runtime.statusTimer = setInterval(() => {
-      this.pollAgentStatus(runtime).catch((err) => {
-        log.error(`status poll error for ${runtime.info.id}: ${err instanceof Error ? err.message : err}`);
-      });
-    }, STATUS_POLL_INTERVAL);
-  }
-
-  private stopStatusPolling(runtime: IAgentRuntime): void {
-    if (runtime.statusTimer) {
-      clearInterval(runtime.statusTimer);
-      runtime.statusTimer = null;
-    }
-  }
-
-  private async pollAgentStatus(runtime: IAgentRuntime): Promise<void> {
-    const alive = await hasSession(runtime.info.tmuxSession);
-    if (!alive) {
-      if (runtime.status !== 'offline') {
-        this.setStatus(runtime, 'offline');
-        await this.restartAgentSession(runtime);
-      }
-      return;
-    }
-
-    const panePid = await getSessionPanePid(runtime.info.tmuxSession);
-    if (!panePid) return;
-
-    const sessionInfo = await detectActiveSession(panePid);
-
-    if (sessionInfo.status === 'running' && sessionInfo.jsonlPath) {
-      // Detect Claude CLI session change (e.g. after force-kill + restart)
-      const claudeSessionId = sessionInfo.sessionId;
-      if (runtime.lastClaudeSessionId && claudeSessionId && claudeSessionId !== runtime.lastClaudeSessionId) {
-        log.debug(`agent ${runtime.info.id} Claude session changed: ${runtime.lastClaudeSessionId} → ${claudeSessionId}`);
-        runtime.lastClaudeSessionId = claudeSessionId;
-        this.setStatus(runtime, 'idle');
-        await this.retryOrDrainPending(runtime);
-        return;
-      }
-      runtime.lastClaudeSessionId = claudeSessionId;
-
-      // Skip polling-based status if relay API recently set status
-      const RELAY_GRACE_MS = 10_000;
-      if (Date.now() - runtime.relaySetAt < RELAY_GRACE_MS) return;
-
-      const prevStatus = runtime.status;
-      const derivedStatus = await this.deriveStatusFromSession(runtime, sessionInfo.jsonlPath);
-
-      if (derivedStatus !== prevStatus) {
-        if (prevStatus === 'blocked') {
-          // blocked status is only cleared via relay API (receiveAgentMessage) — polling must not overwrite it
-        } else {
-          this.setStatus(runtime, derivedStatus);
-        }
-
-        if (derivedStatus === 'idle') {
-          await this.retryOrDrainPending(runtime);
-        }
-      }
-
-      // If working too long without relay response, retry delivery
-      if (runtime.status === 'working' && runtime.lastDeliveredContent && runtime.lastDeliveredAt > 0) {
-        const elapsed = Date.now() - runtime.lastDeliveredAt;
-        if (elapsed >= DELIVERY_CHECK_DELAY_MS && derivedStatus === 'idle') {
-          await this.retryDelivery(runtime);
-        }
-      }
-    } else if (sessionInfo.status === 'running' && !sessionInfo.jsonlPath) {
-      // New session without JSONL — treat as idle
-      runtime.lastClaudeSessionId = sessionInfo.sessionId;
-      if (runtime.status !== 'idle') {
-        this.setStatus(runtime, 'idle');
-        await this.retryOrDrainPending(runtime);
-      }
-    } else if (sessionInfo.status !== 'running') {
-      const command = await getPaneCurrentCommand(runtime.info.tmuxSession);
-      if (command && ['zsh', 'bash', 'fish', 'sh'].includes(command)) {
-        // Claude exited, restart
-        const hookPath = this.getAgentHookPath(runtime.info.id);
-        await sendKeys(runtime.info.tmuxSession, `claude --settings ${hookPath} --dangerously-skip-permissions`);
-        this.setStatus(runtime, 'idle');
-      } else if (runtime.status === 'working' && runtime.lastDeliveredContent) {
-        // Waiting at Claude Code prompt (no session) — retry undelivered message
-        await this.retryDelivery(runtime);
-      }
-    }
-  }
-
-  private async deriveStatusFromSession(runtime: IAgentRuntime, jsonlPath: string): Promise<TAgentStatus> {
-    try {
-      const stat = await fs.stat(jsonlPath);
-      if (stat.size === 0) return 'idle';
-
-      const fd = await fs.open(jsonlPath, 'r');
-      const tailSize = Math.min(8192, stat.size);
-      const buffer = Buffer.alloc(tailSize);
-      await fd.read(buffer, 0, tailSize, stat.size - tailSize);
-      await fd.close();
-
-      const tail = buffer.toString('utf-8');
-      const lines = tail.split('\n').filter(Boolean);
-
-      for (let i = lines.length - 1; i >= 0; i--) {
-        try {
-          const entry = JSON.parse(lines[i]);
-          if (entry.isSidechain) continue;
-
-          if (entry.type === 'system' && (entry.subtype === 'stop_hook_summary' || entry.subtype === 'turn_duration')) {
-            return 'idle';
-          }
-          if (entry.type === 'assistant') {
-            const stopReason = entry.message?.stop_reason;
-            if (!stopReason || stopReason === 'tool_use') return 'working';
-            return 'idle';
-          }
-          if (entry.type === 'user') {
-            const content = entry.message?.content;
-            if (Array.isArray(content)) {
-              const interrupted = content.some(
-                (c: { type: string; text?: string; is_error?: boolean }) =>
-                  (c.type === 'text' && c.text?.includes('[Request interrupted by user')) ||
-                  (c.type === 'tool_result' && c.is_error === true),
-              );
-              if (interrupted) return 'idle';
-            }
-            return 'working';
-          }
-        } catch {
-          continue;
-        }
-      }
-
-      return 'idle';
-    } catch {
-      return runtime.status === 'offline' ? 'offline' : 'idle';
-    }
-  }
-
-  // --- Queue management ---
-
-  private async drainQueue(runtime: IAgentRuntime): Promise<void> {
-    const next = runtime.messageQueue.shift();
-    if (!next) return;
-
-    await this.deliverToAgent(runtime, next);
-    this.markDelivered(runtime, next);
-    this.setStatus(runtime, 'working');
-  }
-
-  private async deliverToAgent(runtime: IAgentRuntime, content: string): Promise<void> {
-    await sendBracketedPaste(runtime.info.tmuxSession, content);
-  }
-
-  private markDelivered(runtime: IAgentRuntime, content: string): void {
-    runtime.lastDeliveredContent = content;
-    runtime.lastDeliveredAt = Date.now();
-    runtime.deliveryRetryCount = 0;
-  }
-
-  private clearDeliveryTracking(runtime: IAgentRuntime): void {
-    runtime.lastDeliveredContent = null;
-    runtime.lastDeliveredAt = 0;
-    runtime.deliveryRetryCount = 0;
-  }
-
-  private async retryDelivery(runtime: IAgentRuntime): Promise<void> {
-    if (!runtime.lastDeliveredContent) return;
-
-    if (runtime.deliveryRetryCount >= MAX_DELIVERY_RETRIES) {
-      log.warn(`agent ${runtime.info.id} delivery failed after ${MAX_DELIVERY_RETRIES} retries, giving up`);
-      const errorMsg = createMessage('agent', 'error', 'Failed to deliver message. Please resend.');
-      if (runtime.chatSessionId) {
-        await appendMessage(runtime.info.id, runtime.chatSessionId, errorMsg);
-      }
-      this.broadcast({ type: 'agent:message', agentId: runtime.info.id, message: errorMsg });
-      this.clearDeliveryTracking(runtime);
-      this.setStatus(runtime, 'idle');
-      return;
-    }
-
-    const alive = await hasSession(runtime.info.tmuxSession);
-    if (!alive) {
-      log.warn(`agent ${runtime.info.id} tmux session dead during retry, skipping`);
-      return;
-    }
-
-    runtime.deliveryRetryCount++;
-    log.debug(`agent ${runtime.info.id} retrying delivery (attempt ${runtime.deliveryRetryCount})`);
-    try {
-      await this.deliverToAgent(runtime, runtime.lastDeliveredContent);
-      runtime.lastDeliveredAt = Date.now();
-      this.setStatus(runtime, 'working');
-    } catch (err) {
-      log.error(`agent ${runtime.info.id} delivery retry failed: ${err instanceof Error ? err.message : err}`);
-    }
-  }
-
-  private async retryOrDrainPending(runtime: IAgentRuntime): Promise<void> {
-    if (runtime.lastDeliveredContent) {
-      await this.retryDelivery(runtime);
-    } else if (runtime.messageQueue.length > 0) {
-      await this.drainQueue(runtime);
-    }
-  }
-
-  private async findUnansweredMessage(agentId: string, sessionId: string): Promise<string | null> {
-    try {
-      const { messages } = await readMessages(agentId, sessionId, { limit: 10 });
-      if (messages.length === 0) return null;
-
-      for (let i = messages.length - 1; i >= 0; i--) {
-        const msg = messages[i];
-        if (msg.role === 'agent') return null; // agent has responded, all good
-        if (msg.role === 'user' && msg.type === 'text') {
-          return msg.content;
-        }
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }
 
   // --- Status management ---
 
@@ -990,15 +576,6 @@ class AgentManager {
     runtime.info.status = status;
     this.broadcastStatus(runtime.info.id, status);
     log.debug(`agent ${runtime.info.id} status: ${status}`);
-
-    if (status === 'idle' && runtime.pendingRestart) {
-      runtime.pendingRestart = false;
-      runtime.restartCount = 0;
-      log.debug(`agent ${runtime.info.id} executing pending restart`);
-      this.restartAgentSession(runtime).catch((err) => {
-        log.error(`pending restart failed for ${runtime.info.id}: ${err instanceof Error ? err.message : err}`);
-      });
-    }
   }
 
   private broadcastStatus(agentId: string, status: TAgentStatus): void {
@@ -1031,6 +608,7 @@ class AgentManager {
       `createdAt: ${config.createdAt}`,
     ];
     if (config.avatar) lines.push(`avatar: ${config.avatar}`);
+    if (config.sessionId) lines.push(`sessionId: ${config.sessionId}`);
     lines.push('---', '');
     await fs.writeFile(configPath, lines.join('\n'), 'utf-8');
   }
@@ -1051,23 +629,8 @@ class AgentManager {
 
   // --- Hook settings ---
 
-  private getAgentHookPath(agentId: string): string {
-    return path.join(getAgentDir(agentId), 'agent-hooks.json');
-  }
-
   private getTabHookPath(agentId: string, tabId: string): string {
     return path.join(getAgentDir(agentId), `agent-hooks-${tabId}.json`);
-  }
-
-  private async writeAgentHookSettings(agentId: string): Promise<string> {
-    const port = parseInt(process.env.PORT || '8022', 10);
-    const hookPath = this.getAgentHookPath(agentId);
-    const settings = buildAgentBrainHookSettings(port, agentId);
-    await fs.writeFile(hookPath, JSON.stringify(settings, null, 2), 'utf-8');
-    // Clean up legacy filename
-    const legacyPath = path.join(getAgentDir(agentId), 'hooks.json');
-    await fs.unlink(legacyPath).catch(() => {});
-    return hookPath;
   }
 
   private async writeTabHookSettings(agentId: string, tabId: string): Promise<string> {
@@ -1118,31 +681,6 @@ class AgentManager {
     await this.persistTabs(runtime);
   }
 
-  async onBrainHook(agentId: string): Promise<void> {
-    const runtime = this.agents.get(agentId);
-    if (!runtime) return;
-
-    runtime.relaySetAt = Date.now();
-
-    const panePid = await getSessionPanePid(runtime.info.tmuxSession);
-    if (!panePid) return;
-
-    const sessionInfo = await detectActiveSession(panePid);
-    if (sessionInfo.status !== 'running' || !sessionInfo.jsonlPath) return;
-
-    runtime.lastClaudeSessionId = sessionInfo.sessionId;
-
-    const derivedStatus = await this.deriveStatusFromSession(runtime, sessionInfo.jsonlPath);
-    if (derivedStatus !== runtime.status) {
-      this.setStatus(runtime, derivedStatus);
-    }
-
-    if (derivedStatus === 'idle') {
-      this.clearDeliveryTracking(runtime);
-      await this.retryOrDrainPending(runtime);
-    }
-  }
-
   private parseConfigMd(raw: string): IAgentConfig | null {
     const match = raw.match(/^---\n([\s\S]*?)\n---/);
     if (!match) return null;
@@ -1162,6 +700,8 @@ class AgentManager {
         config.createdAt = line.slice(11).trim();
       } else if (line.startsWith('avatar: ')) {
         config.avatar = line.slice(8).trim();
+      } else if (line.startsWith('sessionId: ')) {
+        config.sessionId = line.slice(11).trim();
       }
     }
 
@@ -1179,108 +719,53 @@ class AgentManager {
       return;
     }
 
-    const tmuxSessions = await listSessions();
-    const agentSessions = new Set(
-      tmuxSessions
-        .filter((s) => s.startsWith(AGENT_SESSION_PREFIX))
-        .concat(
-          // listSessions only returns pt- prefixed, check agent- sessions separately
-          (await this.listAgentTmuxSessions()),
-        ),
-    );
-
-    for (const entry of entries) {
-      const configPath = path.join(AGENTS_DIR, entry, 'config.md');
-      try {
-        await fs.access(configPath);
-      } catch {
-        continue;
-      }
-
-      const config = await this.readConfig(entry);
-      if (!config) continue;
-
-      const tmuxSession = `${AGENT_SESSION_PREFIX}${entry}`;
-      const chatSessionId = await getLatestSessionId(entry);
-
-      const info: IAgentInfo = {
-        id: entry,
-        name: config.name,
-        role: config.role,
-        status: 'offline',
-        createdAt: config.createdAt,
-        tmuxSession,
-        ...(config.avatar ? { avatar: config.avatar } : {}),
-      };
-
-      const runtime: IAgentRuntime = {
-        info,
-        status: 'offline',
-        messageQueue: [],
-        chatSessionId,
-        restartCount: 0,
-        statusTimer: null,
-        relaySetAt: 0,
-        tabs: new Map(),
-        tabPollTimer: null,
-        claudeMdHash: '',
-        pendingRestart: false,
-        lastClaudeSessionId: null,
-        lastDeliveredContent: null,
-        lastDeliveredAt: 0,
-        deliveryRetryCount: 0,
-      };
-
-      this.agents.set(entry, runtime);
-
-      await this.recoverTabs(runtime);
-
-      // If no agent response for the last user message, mark for re-delivery
-      const pendingContent = chatSessionId ? await this.findUnansweredMessage(entry, chatSessionId) : null;
-      if (pendingContent) {
-        runtime.lastDeliveredContent = pendingContent;
-        runtime.lastDeliveredAt = Date.now();
-        log.debug(`agent ${entry} has unanswered message, will retry delivery`);
-      }
-
-      // Always restart — server restart invalidates token and hook settings
-      await this.restartAgentSession(runtime);
-
-      // After recovering to idle, retry undelivered messages
-      if (runtime.status === 'idle' && runtime.lastDeliveredContent) {
-        await this.retryDelivery(runtime);
-      }
-    }
-
-    const registeredSessions = new Set(
-      Array.from(this.agents.values()).map((r) => r.info.tmuxSession),
-    );
-    for (const orphan of agentSessions) {
-      if (!registeredSessions.has(orphan)) {
-        await killSession(orphan);
-        log.debug(`killed orphan agent session: ${orphan}`);
-      }
-    }
+    await Promise.all(entries.map((entry) => this.scanSingleAgent(entry)));
   }
 
-  private async listAgentTmuxSessions(): Promise<string[]> {
+  private async scanSingleAgent(entry: string): Promise<void> {
+    const configPath = path.join(AGENTS_DIR, entry, 'config.md');
     try {
-      const { execFile } = await import('child_process');
-      const { promisify } = await import('util');
-      const exec = promisify(execFile);
-      const { stdout } = await exec(
-        'tmux',
-        ['-L', 'purple', 'ls', '-F', '#{session_name}'],
-        { timeout: 5000 },
-      );
-      return stdout
-        .trim()
-        .split('\n')
-        .map((l) => l.trim())
-        .filter((name) => name.startsWith(AGENT_SESSION_PREFIX));
+      await fs.access(configPath);
     } catch {
-      return [];
+      return;
     }
+
+    const config = await this.readConfig(entry);
+    if (!config) return;
+
+    if (!config.sessionId) {
+      config.sessionId = randomUUID();
+      await this.writeConfig(entry, config);
+    }
+
+    const chatSessionId = await getLatestSessionId(entry);
+
+    const info: IAgentInfo = {
+      id: entry,
+      name: config.name,
+      role: config.role,
+      status: 'offline',
+      createdAt: config.createdAt,
+      tmuxSession: '',
+      ...(config.avatar ? { avatar: config.avatar } : {}),
+    };
+
+    const runtime: IAgentRuntime = {
+      info,
+      status: 'offline',
+      messageQueue: [],
+      chatSessionId,
+      restartCount: 0,
+      tabs: new Map(),
+      tabPollTimer: null,
+      subprocess: null,
+      mapperState: null,
+    };
+
+    this.agents.set(entry, runtime);
+
+    await this.recoverTabs(runtime);
+    await this.startAgentSession(runtime);
   }
 
   // --- Tab management ---
@@ -1753,8 +1238,11 @@ class AgentManager {
 
   shutdown(): void {
     for (const runtime of this.agents.values()) {
-      this.stopStatusPolling(runtime);
       this.stopTabPolling(runtime);
+      if (runtime.subprocess) {
+        void runtime.subprocess.stop().catch(() => {});
+        runtime.subprocess = null;
+      }
     }
     for (const ws of this.clients) {
       if (ws.readyState === WebSocket.OPEN) {

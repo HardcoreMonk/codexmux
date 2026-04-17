@@ -7,7 +7,7 @@ import type { IChatMessage, IChatIndex } from '@/types/agent';
 
 const log = createLogger('agent-chat');
 
-const AGENTS_DIR = path.join(os.homedir(), '.purplemux', 'agents');
+export const AGENTS_DIR = path.join(os.homedir(), '.purplemux', 'agents');
 
 export const getAgentDir = (agentId: string): string =>
   path.join(AGENTS_DIR, agentId);

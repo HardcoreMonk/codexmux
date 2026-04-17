@@ -6,6 +6,7 @@ export interface IAgentConfig {
   autonomy: string;
   createdAt: string;
   avatar?: string;
+  sessionId?: string;
 }
 
 export interface IAgentInfo {
@@ -87,18 +88,6 @@ export interface ISendMessageRequest {
 export interface ISendMessageResponse {
   id: string;
   status: 'sent' | 'queued';
-}
-
-export interface IAgentMessageRequest {
-  agentId: string;
-  type: 'report' | 'question' | 'done' | 'error' | 'approval' | 'activity';
-  content: string;
-  metadata?: Record<string, unknown>;
-}
-
-export interface IAgentMessageResponse {
-  id: string;
-  received: true;
 }
 
 export interface IChatHistoryQuery {

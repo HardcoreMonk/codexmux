@@ -3,7 +3,7 @@
 const path = require('path');
 
 const CLI_COMMANDS = new Set([
-  'workspaces', 'tab', 'message', 'msg', 'memory', 'mem', 'api-guide', 'help',
+  'workspaces', 'tab', 'memory', 'mem', 'api-guide', 'help',
 ]);
 
 import('update-notifier')
