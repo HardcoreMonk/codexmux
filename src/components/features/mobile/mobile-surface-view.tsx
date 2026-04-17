@@ -353,9 +353,11 @@ const MobileSurfaceView = ({
     useTabStore.getState().setSessionView(activeTabId, 'check');
     const dangerous = useConfigStore.getState().dangerouslySkipPermissions;
     const settings = '--settings ~/.purplemux/hooks.json';
-    const cmd = dangerous ? `claude ${settings} --dangerously-skip-permissions` : `claude ${settings}`;
+    const prompt = layoutWsId ? `--append-system-prompt-file ~/.purplemux/workspaces/${layoutWsId}/claude-prompt.md` : '';
+    const flags = [settings, prompt].filter(Boolean).join(' ');
+    const cmd = dangerous ? `claude ${flags} --dangerously-skip-permissions` : `claude ${flags}`;
     sendStdin(`${cmd}\r`);
-  }, [status, sendStdin, activeTabId]);
+  }, [status, sendStdin, activeTabId, layoutWsId]);
 
   const handleRestartClaudeSession = useCallback(() => {
     if (status !== 'connected' || !activeTabId) return;
@@ -370,9 +372,11 @@ const MobileSurfaceView = ({
     if (status !== 'connected') return;
     const dangerous = useConfigStore.getState().dangerouslySkipPermissions;
     const settings = '--settings ~/.purplemux/hooks.json';
-    const cmd = dangerous ? `claude ${settings} --dangerously-skip-permissions` : `claude ${settings}`;
+    const prompt = layoutWsId ? `--append-system-prompt-file ~/.purplemux/workspaces/${layoutWsId}/claude-prompt.md` : '';
+    const flags = [settings, prompt].filter(Boolean).join(' ');
+    const cmd = dangerous ? `claude ${flags} --dangerously-skip-permissions` : `claude ${flags}`;
     sendStdin(`${cmd}\r`);
-  }, [claudeProcess, status, sendStdin]);
+  }, [claudeProcess, status, sendStdin, layoutWsId]);
 
   const handleWebUrlChange = useCallback((url: string) => {
     if (!activeTabId || !layoutWsId) return;

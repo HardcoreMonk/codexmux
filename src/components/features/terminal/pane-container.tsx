@@ -634,11 +634,13 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   const buildClaudeCommand = useCallback((sessionId: string | null): string => {
     const dangerous = useConfigStore.getState().dangerouslySkipPermissions;
     const settings = '--settings ~/.purplemux/hooks.json';
+    const prompt = layoutWsId ? `--append-system-prompt-file ~/.purplemux/workspaces/${layoutWsId}/claude-prompt.md` : '';
+    const flags = [settings, prompt].filter(Boolean).join(' ');
     const base = sessionId
-      ? `claude --resume ${sessionId} ${settings}`
-      : `claude ${settings}`;
+      ? `claude --resume ${sessionId} ${flags}`
+      : `claude ${flags}`;
     return dangerous ? `${base} --dangerously-skip-permissions` : base;
-  }, []);
+  }, [layoutWsId]);
 
   const handleNewClaudeSession = useCallback(() => {
     if (status !== 'connected' || !activeTabId) return;

@@ -48,7 +48,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       tab.claudeSessionId = resumeSessionId;
       setTimeout(async () => {
         try {
-          const resumeCmd = await buildResumeCommand(resumeSessionId);
+          const resumeCmd = await buildResumeCommand(resumeSessionId, wsId);
           await sendKeys(tab.sessionName, resumeCmd);
         } catch (err) {
           log.warn(`resume sendKeys failed: ${err instanceof Error ? err.message : err}`);

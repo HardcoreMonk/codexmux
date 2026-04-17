@@ -186,7 +186,9 @@ const MobileTerminalPage = () => {
     if (options?.command === 'claude-new') {
       const dangerous = useConfigStore.getState().dangerouslySkipPermissions;
       const settings = '--settings ~/.purplemux/hooks.json';
-      cmd = dangerous ? `claude ${settings} --dangerously-skip-permissions` : `claude ${settings}`;
+      const prompt = activeWorkspaceId ? `--append-system-prompt-file ~/.purplemux/workspaces/${activeWorkspaceId}/claude-prompt.md` : '';
+      const flags = [settings, prompt].filter(Boolean).join(' ');
+      cmd = dangerous ? `claude ${flags} --dangerously-skip-permissions` : `claude ${flags}`;
     }
     const newTab = await layout.createTabInPane(currentPane.id, panelType, cmd);
     if (newTab) {

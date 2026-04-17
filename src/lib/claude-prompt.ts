@@ -1,0 +1,72 @@
+import fs from 'fs/promises';
+import path from 'path';
+import { createLogger } from '@/lib/logger';
+import { resolveLayoutDir } from '@/lib/layout-store';
+import type { IWorkspace } from '@/types/terminal';
+
+const log = createLogger('claude-prompt');
+
+export const getClaudePromptPath = (workspaceId: string): string =>
+  path.join(resolveLayoutDir(workspaceId), 'claude-prompt.md');
+
+const buildBody = (ws: IWorkspace): string => {
+  return `# purplemux context
+
+You are running inside a purplemux workspace tab.
+
+- **Workspace ID**: \`${ws.id}\`
+
+Use \`purplemux workspaces\` if you need the workspace name or directories.
+
+## purplemux CLI
+
+The \`purplemux\` CLI lets you inspect and control other tabs in this workspace.
+It reads port and token from \`~/.purplemux/{port,cli-token}\` automatically,
+so no environment setup is needed.
+
+### Commands
+
+\`\`\`bash
+purplemux workspaces                                # list all workspaces
+purplemux tab list -w ${ws.id}                        # list tabs in this workspace
+purplemux tab create -w ${ws.id} [-n NAME] [-t TYPE]  # create a tab (type: terminal | claude-code | web-browser | diff)
+purplemux tab send -w ${ws.id} TAB_ID CONTENT...      # send input to a tab
+purplemux tab status -w ${ws.id} TAB_ID               # tab status
+purplemux tab result -w ${ws.id} TAB_ID               # capture current pane content
+purplemux tab close -w ${ws.id} TAB_ID                # close a tab
+\`\`\`
+
+For the full HTTP API reference (including endpoint paths and payloads),
+run:
+
+\`\`\`bash
+purplemux api-guide
+\`\`\`
+
+### When to use
+
+- Delegate work to another tab when a task benefits from isolation
+  (long-running builds, different project context, parallel exploration).
+- Poll \`status\` and read \`result\` to verify delegated work.
+- Prefer small, scoped tabs over cramming everything into one session.
+`;
+};
+
+export const writeClaudePromptFile = async (ws: IWorkspace): Promise<string> => {
+  const filePath = getClaudePromptPath(ws.id);
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  const body = buildBody(ws);
+  try {
+    const existing = await fs.readFile(filePath, 'utf-8');
+    if (existing === body) return filePath;
+  } catch {
+    // missing — write below
+  }
+  await fs.writeFile(filePath, body, 'utf-8');
+  return filePath;
+};
+
+export const writeAllClaudePromptFiles = async (workspaces: IWorkspace[]): Promise<void> => {
+  await Promise.all(workspaces.map(writeClaudePromptFile));
+  log.debug(`wrote ${workspaces.length} claude prompt files`);
+};

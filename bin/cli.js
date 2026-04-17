@@ -1,11 +1,23 @@
 #!/usr/bin/env node
 // purplemux CLI — workspace-scoped HTTP API wrapper
-// Reads PMUX_PORT, PMUX_TOKEN from environment.
+// Falls back to ~/.purplemux/{port,cli-token} when env vars absent.
 
 'use strict';
 
-const PORT = process.env.PMUX_PORT;
-const TOKEN = process.env.PMUX_TOKEN;
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+const readFileOrNull = (file) => {
+  try {
+    return fs.readFileSync(file, 'utf-8').trim() || null;
+  } catch {
+    return null;
+  }
+};
+
+const PORT = process.env.PMUX_PORT || readFileOrNull(path.join(os.homedir(), '.purplemux', 'port'));
+const TOKEN = process.env.PMUX_TOKEN || readFileOrNull(path.join(os.homedir(), '.purplemux', 'cli-token'));
 const BASE = `http://localhost:${PORT}`;
 
 const die = (msg) => {
@@ -14,8 +26,8 @@ const die = (msg) => {
 };
 
 const requireEnv = () => {
-  if (!PORT) die('PMUX_PORT is not set');
-  if (!TOKEN) die('PMUX_TOKEN is not set');
+  if (!PORT) die('PMUX_PORT not set and ~/.purplemux/port missing (is the server running?)');
+  if (!TOKEN) die('PMUX_TOKEN not set and ~/.purplemux/cli-token missing (is the server running?)');
 };
 
 const out = (body) => {

@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { TPanelType } from '@/types/terminal';
 import useConfigStore from '@/hooks/use-config-store';
+import { useLayoutStore } from '@/hooks/use-layout';
 import useIsMobile from '@/hooks/use-is-mobile';
 import useIsMac from '@/hooks/use-is-mac';
 
@@ -22,6 +23,7 @@ const PaneNewTabMenu = ({ isCreating, onCreateTab }: IPaneNewTabMenuProps) => {
   const mod = isMac ? '⌘' : 'Ctrl+';
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
+  const wsId = useLayoutStore((s) => s.workspaceId);
 
   const allMenuItems = [
     { key: 'claude-new', type: 'claude-code' as const, icon: <ClaudeCodeIcon className="h-3.5 w-3.5" />, label: t('claudeNewConversation'), startClaude: true },
@@ -67,7 +69,9 @@ const PaneNewTabMenu = ({ isCreating, onCreateTab }: IPaneNewTabMenuProps) => {
                 if ('startClaude' in item && item.startClaude) {
                   const dangerous = useConfigStore.getState().dangerouslySkipPermissions;
                   const settings = '--settings ~/.purplemux/hooks.json';
-                  const cmd = dangerous ? `claude ${settings} --dangerously-skip-permissions` : `claude ${settings}`;
+                  const prompt = wsId ? `--append-system-prompt-file ~/.purplemux/workspaces/${wsId}/claude-prompt.md` : '';
+                  const flags = [settings, prompt].filter(Boolean).join(' ');
+                  const cmd = dangerous ? `claude ${flags} --dangerously-skip-permissions` : `claude ${flags}`;
                   onCreateTab(item.type, { command: cmd });
                 } else {
                   onCreateTab(item.type);

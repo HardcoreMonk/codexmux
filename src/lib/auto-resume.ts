@@ -60,7 +60,7 @@ const sendResumeKeys = async (target: IAutoResumeTarget): Promise<boolean> => {
       return false;
     }
 
-    const resumeCmd = await buildResumeCommand(target.claudeSessionId);
+    const resumeCmd = await buildResumeCommand(target.claudeSessionId, target.workspaceId);
     log.debug(`Sending resume: ${target.tmuxSession} → ${target.claudeSessionId}`);
     await sendKeys(target.tmuxSession, resumeCmd);
 

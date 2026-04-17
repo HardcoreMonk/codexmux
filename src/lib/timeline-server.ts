@@ -9,7 +9,7 @@ import { createReadStream } from 'fs';
 import { createInterface } from 'readline';
 import { getSessionPanePid, checkTerminalProcess, sendKeys, getSessionCwd, getPaneTitle } from './tmux';
 import { cwdToProjectPath } from './session-list';
-import { updateTabClaudeSessionId, updateTabClaudeSummary, updateTabLastUserMessage } from './layout-store';
+import { updateTabClaudeSessionId, updateTabClaudeSummary, updateTabLastUserMessage, parseSessionName } from './layout-store';
 import { getStatusManager } from './status-manager';
 import { buildResumeCommand, isValidSessionId } from './claude-command';
 import { calculateCost } from './claude-tokens';
@@ -620,7 +620,8 @@ const handleResumeMessage = async (
       return;
     }
 
-    const resumeCmd = await buildResumeCommand(sessionId);
+    const parsed = parseSessionName(tmuxSession);
+    const resumeCmd = await buildResumeCommand(sessionId, parsed?.wsId);
     await sendKeys(tmuxSession, resumeCmd);
 
     await updateTabClaudeSessionId(conn.sessionName, sessionId).catch(() => {});

@@ -16,6 +16,7 @@ import {
   createDefaultLayout,
 } from '@/lib/layout-store';
 import type { ICreateLayoutOptions } from '@/lib/layout-store';
+import { writeClaudePromptFile } from '@/lib/claude-prompt';
 import type { IWorkspace, IWorkspacesData, ILayoutData } from '@/types/terminal';
 
 const log = createLogger('workspace');
@@ -289,6 +290,7 @@ export const createWorkspace = async (directory: string, name?: string, layoutOp
     const workspace: IWorkspace = { id: wsId, name: wsName, directories: [directory], order };
     data.workspaces.push(workspace);
     await writeWorkspacesFile(data);
+    await writeClaudePromptFile(workspace);
 
     log.info(`Created: ${wsId} (${wsName}, ${directory})`);
     return workspace;
@@ -334,6 +336,7 @@ export const renameWorkspace = async (workspaceId: string, name: string): Promis
 
     ws.name = name;
     await writeWorkspacesFile(data);
+    await writeClaudePromptFile(ws);
 
     log.info(`Renamed: ${workspaceId} → "${name}"`);
     return { ...ws };
@@ -362,6 +365,7 @@ export const updateWorkspaceDirectories = async (workspaceId: string, directorie
     if (current === JSON.stringify(directories)) return;
     ws.directories = directories;
     await writeWorkspacesFile(data);
+    await writeClaudePromptFile(ws);
   });
 
 export const reorderWorkspaces = async (workspaceIds: string[]): Promise<boolean> =>
