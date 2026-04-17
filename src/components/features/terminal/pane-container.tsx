@@ -923,7 +923,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
         )}
 
 
-        {!noTabs && status === 'disconnected' && disconnectReason === 'session-not-found' && activeTabId && (
+        {!noTabs && activePanelType === 'terminal' && status === 'disconnected' && disconnectReason === 'session-not-found' && activeTabId && (
           <PaneDisconnectedOverlay
             cwd={activeTab?.cwd}
             lastCommand={activeTab?.lastCommand}
