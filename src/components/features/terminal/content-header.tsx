@@ -85,7 +85,7 @@ const ContentHeader = ({
   return (
     <div className="shrink-0 bg-background">
       <div
-        className="relative z-[60] flex h-12 shrink-0 items-center border-b border-border px-3"
+        className="relative z-40 flex h-12 shrink-0 items-center border-b border-border px-3"
         {...(isElectron ? { style: { WebkitAppRegion: 'drag' } as React.CSSProperties } : {})}
       >
       <div className="mr-auto" {...(isElectron ? { style: { WebkitAppRegion: 'no-drag' } as React.CSSProperties } : {})}>

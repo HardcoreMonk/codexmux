@@ -115,9 +115,9 @@ const PROCESS_ICONS: Record<string, string> = {
   unzip: '\uf187',    //
   jest: '\uf0c3',     //
   // claude
-  claude: '\uf121',   //
+  claude: '\u{f05bc}',  // 󰖼
   // ai tools
-  codex: '\uf121',    //
+  codex: '\u{f05bc}',   // 󰖼
 };
 
 const FALLBACK_ICON = '\ue795'; //
