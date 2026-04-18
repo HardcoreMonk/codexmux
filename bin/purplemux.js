@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+// CLI 진입점에서는 부모 shell의 env를 이미 상속받은 상태라
+// Electron의 login shell resolve 로직이 재동작할 필요가 없다.
+process.env.PURPLEMUX_CLI = '1';
+
 if (!process.env.__PMUX_PRISTINE_ENV) {
   process.env.__PMUX_PRISTINE_ENV = JSON.stringify(process.env);
 }

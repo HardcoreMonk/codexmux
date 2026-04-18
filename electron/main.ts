@@ -1,4 +1,5 @@
-import './pristine-env';
+import { capturePristineEnv } from './pristine-env';
+import { applyResolvedShellEnv } from './shell-env';
 import { app, BrowserWindow, shell, Menu, ipcMain, session, screen, Notification, nativeTheme, dialog } from 'electron';
 import { autoUpdater, type UpdateInfo, type ProgressInfo } from 'electron-updater';
 import * as path from 'path';
@@ -657,9 +658,14 @@ const loadSplash = (win: BrowserWindow) => {
 // --- Bootstrap ---
 
 const bootstrap = async () => {
+  // Finder/Dock 런치 시 launchd env가 빈약해 child shell이 초기화에 실패함.
+  // shell resolve는 100~500ms 걸리므로 splash 렌더와 오버랩시키고,
+  // 로컬 서버 spawn 직전에만 완료를 대기한다.
   fixEnv();
+  const shellEnvReady = applyResolvedShellEnv().then(capturePristineEnv);
 
   if (devUrl) {
+    await shellEnvReady;
     createWindow(devUrl);
     return;
   }
@@ -680,12 +686,14 @@ const bootstrap = async () => {
   if (serverConfig.mode === 'remote' && serverConfig.remoteUrl) {
     createWindow('about:blank');
     loadSplash(mainWindow!);
+    await shellEnvReady;
     mainWindow?.loadURL(serverConfig.remoteUrl);
   } else {
     serverConfig = { mode: 'local' };
     // 윈도우를 먼저 띄우고 로딩 화면을 보여준 뒤, 서버가 준비되면 전환
     createWindow('about:blank');
     loadSplash(mainWindow!);
+    await shellEnvReady;
     const port = await startLocalServer();
     mainWindow?.loadURL(`http://localhost:${port}`);
   }
