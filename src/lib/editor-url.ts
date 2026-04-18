@@ -42,13 +42,13 @@ export const buildEditorUrl = (
       return `${base}${separator}folder=${encoded}`;
     }
     case 'vscode':
-      return `vscode://file${folderPath}`;
+      return `vscode://file${folderPath}?windowId=_blank`;
     case 'vscode-insiders':
-      return `vscode-insiders://file${folderPath}`;
+      return `vscode-insiders://file${folderPath}?windowId=_blank`;
     case 'cursor':
-      return `cursor://file${folderPath}`;
+      return `cursor://file${folderPath}?windowId=_blank`;
     case 'windsurf':
-      return `windsurf://file${folderPath}`;
+      return `windsurf://file${folderPath}?windowId=_blank`;
     case 'zed':
       return `zed://file${path}`;
     case 'custom': {
