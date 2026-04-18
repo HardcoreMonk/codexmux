@@ -290,6 +290,7 @@ Complex topics live as separate documents under `docs/`:
 | [docs/STYLE.md](./docs/STYLE.md)         | Muted palette, theme, color usage rules                  |
 | [docs/STATUS.md](./docs/STATUS.md)       | Claude CLI work-state detection logic and data flow      |
 | [docs/TMUX.md](./docs/TMUX.md)           | tmux terminal management, process detection, WebSocket   |
+| [docs/DATA-DIR.md](./docs/DATA-DIR.md)   | `~/.purplemux/` directory structure and file purposes    |
 
 **When modifying status-related code (`TClaudeStatus`, `TCliState`, `selectSessionView`, `setClaudeStatus`, etc.), update `docs/STATUS.md` together.**
 
