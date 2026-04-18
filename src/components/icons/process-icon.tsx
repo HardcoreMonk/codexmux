@@ -2,7 +2,7 @@ import { memo } from 'react';
 import type { IconType } from 'react-icons';
 import { VscVscode } from 'react-icons/vsc';
 import { FaAws } from 'react-icons/fa6';
-import { HiTerminal } from 'react-icons/hi';
+import { BsTerminalFill } from 'react-icons/bs';
 import {
   SiVim,
   SiNeovim,
@@ -72,7 +72,7 @@ import OpenAIIcon from '@/components/icons/openai-icon';
 
 type TProcessIconComponent = IconType | React.ComponentType<{ className?: string }>;
 
-const SHELL_ICON: TProcessIconComponent = HiTerminal;
+const SHELL_ICON: TProcessIconComponent = BsTerminalFill;
 
 const PROCESS_ICON_MAP: Record<string, TProcessIconComponent> = {
   bash: SHELL_ICON,
@@ -184,7 +184,7 @@ interface IProcessIconProps {
 }
 
 const ProcessIcon = ({ process, className }: IProcessIconProps) => {
-  const Icon = (process && PROCESS_ICON_MAP[process]) || HiTerminal;
+  const Icon = (process && PROCESS_ICON_MAP[process]) || BsTerminalFill;
   return <Icon className={className} aria-hidden="true" />;
 };
 
