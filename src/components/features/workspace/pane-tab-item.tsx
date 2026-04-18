@@ -6,7 +6,7 @@ import OpenAIIcon from '@/components/icons/openai-icon';
 import { cn } from '@/lib/utils';
 import type { ITab } from '@/types/terminal';
 import { getProcessIcon } from '@/lib/process-icon';
-import TabStatusIndicator from '@/components/features/terminal/tab-status-indicator';
+import TabStatusIndicator from '@/components/features/workspace/tab-status-indicator';
 
 interface IPaneTabItemProps {
   tab: ITab;

@@ -1,6 +1,6 @@
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { MetaDetail } from '@/components/features/terminal/session-meta-content';
-import type { IMetaDetailProps, ITmuxInfo } from '@/components/features/terminal/session-meta-content';
+import { MetaDetail } from '@/components/features/workspace/session-meta-content';
+import type { IMetaDetailProps, ITmuxInfo } from '@/components/features/workspace/session-meta-content';
 import type { IGitStatus } from '@/lib/git-status';
 
 interface ISessionMetaData {

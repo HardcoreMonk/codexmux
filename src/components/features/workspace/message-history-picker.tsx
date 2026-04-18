@@ -4,8 +4,8 @@ import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import useIsMobileDevice from '@/hooks/use-is-mobile-device';
-import MessageHistoryPopover from '@/components/features/terminal/message-history-popover';
-import MessageHistoryDrawer from '@/components/features/terminal/message-history-drawer';
+import MessageHistoryPopover from '@/components/features/workspace/message-history-popover';
+import MessageHistoryDrawer from '@/components/features/workspace/message-history-drawer';
 import type { IHistoryEntry } from '@/types/message-history';
 
 interface IMessageHistoryPickerProps {

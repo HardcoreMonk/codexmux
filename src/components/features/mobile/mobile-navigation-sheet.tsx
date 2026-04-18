@@ -16,7 +16,7 @@ import useWorkspaceStore from '@/hooks/use-workspace-store';
 import IconRenderer from '@/components/features/settings/icon-renderer';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useNotificationCount, NotificationPanel } from '@/components/features/terminal/notification-sheet';
+import { useNotificationCount, NotificationPanel } from '@/components/features/workspace/notification-sheet';
 import {
   Sheet,
   SheetContent,
@@ -29,8 +29,8 @@ import useTabStore, { selectWorkspacePortsLabel } from '@/hooks/use-tab-store';
 import { formatTabTitle } from '@/lib/tab-title';
 import { getProcessIcon } from '@/lib/process-icon';
 import OpenAIIcon from '@/components/icons/openai-icon';
-import TabStatusIndicator from '@/components/features/terminal/tab-status-indicator';
-import WorkspaceStatusIndicator from '@/components/features/terminal/workspace-status-indicator';
+import TabStatusIndicator from '@/components/features/workspace/tab-status-indicator';
+import WorkspaceStatusIndicator from '@/components/features/workspace/workspace-status-indicator';
 import SidebarRateLimits from '@/components/layout/sidebar-rate-limits';
 
 const WorkspacePortsLabel = ({ workspaceId }: { workspaceId: string }) => {

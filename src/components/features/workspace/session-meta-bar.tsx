@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MetaCompact, MetaDetail } from '@/components/features/terminal/session-meta-content';
+import { MetaCompact, MetaDetail } from '@/components/features/workspace/session-meta-content';
 import useSessionMeta from '@/hooks/use-session-meta';
 import useGitBranch from '@/hooks/use-git-branch';
 import useGitStatus from '@/hooks/use-git-status';

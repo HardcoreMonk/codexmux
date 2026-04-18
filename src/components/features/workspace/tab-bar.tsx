@@ -5,7 +5,7 @@ import Spinner from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { ITab } from '@/types/terminal';
-import TabStatusIndicator from '@/components/features/terminal/tab-status-indicator';
+import TabStatusIndicator from '@/components/features/workspace/tab-status-indicator';
 
 interface ITabBarProps {
   tabs: ITab[];

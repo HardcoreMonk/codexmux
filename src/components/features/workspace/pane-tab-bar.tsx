@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ITab, TPanelType } from '@/types/terminal';
 import useTabDrag from '@/hooks/use-tab-drag';
-import PaneTabItem from '@/components/features/terminal/pane-tab-item';
-import PaneNewTabMenu from '@/components/features/terminal/pane-new-tab-menu';
+import PaneTabItem from '@/components/features/workspace/pane-tab-item';
+import PaneNewTabMenu from '@/components/features/workspace/pane-new-tab-menu';
 
 interface IPaneTabBarProps {
   paneId: string;

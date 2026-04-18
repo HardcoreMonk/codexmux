@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/context-menu';
 import type { IWorkspace } from '@/types/terminal';
 import useTabStore, { selectWorkspacePortsLabel } from '@/hooks/use-tab-store';
-import WorkspaceStatusIndicator from '@/components/features/terminal/workspace-status-indicator';
+import WorkspaceStatusIndicator from '@/components/features/workspace/workspace-status-indicator';
 
 interface IWorkspaceItemProps {
   workspace: IWorkspace;

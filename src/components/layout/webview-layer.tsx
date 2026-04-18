@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import useWebviewStore from '@/hooks/use-webview-store';
 
 const WebBrowserPanel = dynamic(
-  () => import('@/components/features/terminal/web-browser-panel'),
+  () => import('@/components/features/workspace/web-browser-panel'),
   { ssr: false },
 );
 

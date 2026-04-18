@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import SessionListItem from '@/components/features/terminal/session-list-item';
+import SessionListItem from '@/components/features/workspace/session-list-item';
 import type { ISessionMeta } from '@/types/timeline';
 
 interface ISessionListViewProps {

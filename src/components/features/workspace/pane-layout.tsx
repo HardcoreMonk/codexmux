@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Group, Panel, Separator, type GroupImperativeHandle } from 'react-resizable-panels';
 import type { TLayoutNode } from '@/types/terminal';
 import { collectPanes, getFirstPaneId, equalizeNode } from '@/hooks/use-layout';
-import PaneContainer from '@/components/features/terminal/pane-container';
+import PaneContainer from '@/components/features/workspace/pane-container';
 
 interface IPaneLayoutProps {
   root: TLayoutNode;

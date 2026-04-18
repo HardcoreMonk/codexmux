@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import useTabStore, { selectGlobalStatus } from '@/hooks/use-tab-store';
 import AppLogo from '@/components/layout/app-logo';
-import { useNotificationCount } from '@/components/features/terminal/notification-sheet';
+import { useNotificationCount } from '@/components/features/workspace/notification-sheet';
 
 interface IAppHeaderProps {
   onMenuOpen?: () => void;

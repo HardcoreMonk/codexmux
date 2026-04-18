@@ -8,7 +8,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import useTabStore from '@/hooks/use-tab-store';
-import { useNotificationCount, NotificationPanel } from '@/components/features/terminal/notification-sheet';
+import { useNotificationCount, NotificationPanel } from '@/components/features/workspace/notification-sheet';
 import AppLogo from '@/components/layout/app-logo';
 import ShortcutKey from '@/components/shortcut-key';
 import { isMac } from '@/lib/keyboard-shortcuts';
@@ -28,11 +28,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { IWorkspace } from '@/types/terminal';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
-import WorkspaceItem from '@/components/features/terminal/workspace-item';
+import WorkspaceItem from '@/components/features/workspace/workspace-item';
 import dynamic from 'next/dynamic';
 
 const SettingsDialog = dynamic(
-  () => import('@/components/features/terminal/settings-dialog'),
+  () => import('@/components/features/workspace/settings-dialog'),
   { ssr: false },
 );
 import { useSelectWorkspace } from '@/hooks/use-sidebar-actions';

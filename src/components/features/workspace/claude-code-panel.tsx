@@ -7,11 +7,11 @@ import useTimeline from '@/hooks/use-timeline';
 import useSessionList from '@/hooks/use-session-list';
 import useStartingPrompt from '@/hooks/use-starting-prompt';
 import useTabStore, { selectSessionView } from '@/hooks/use-tab-store';
-import SessionListView from '@/components/features/terminal/session-list-view';
-import SessionEmptyView from '@/components/features/terminal/session-empty-view';
-import BypassPromptCard from '@/components/features/terminal/bypass-prompt-card';
+import SessionListView from '@/components/features/workspace/session-list-view';
+import SessionEmptyView from '@/components/features/workspace/session-empty-view';
+import BypassPromptCard from '@/components/features/workspace/bypass-prompt-card';
 import TimelineView from '@/components/features/timeline/timeline-view';
-import SessionMetaBar from '@/components/features/terminal/session-meta-bar';
+import SessionMetaBar from '@/components/features/workspace/session-meta-bar';
 
 interface IClaudeCodePanelProps {
   tabId: string;

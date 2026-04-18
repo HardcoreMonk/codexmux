@@ -519,11 +519,11 @@ With `hooks=debug` you see, for example:
 
 | File | Role |
 | --- | --- |
-| `src/components/features/terminal/tab-status-indicator.tsx` | Tab-bar indicator |
-| `src/components/features/terminal/workspace-status-indicator.tsx` | Sidebar workspace dot |
+| `src/components/features/workspace/tab-status-indicator.tsx` | Tab-bar indicator |
+| `src/components/features/workspace/workspace-status-indicator.tsx` | Sidebar workspace dot |
 | `src/components/features/mobile/mobile-workspace-tab-bar.tsx` | Mobile tab bar |
 | `src/components/features/timeline/permission-prompt-item.tsx` | Permission prompt UI (`lastEvent.seq` subscriber) |
-| `src/components/features/terminal/notification-sheet.tsx` | Notification sheet + `useNotificationCount` |
+| `src/components/features/workspace/notification-sheet.tsx` | Notification sheet + `useNotificationCount` |
 
 ---
 

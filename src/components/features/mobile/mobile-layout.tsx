@@ -6,7 +6,7 @@ import MobileWorkspaceTabBar from '@/components/features/mobile/mobile-workspace
 import useWorkspaceStore from '@/hooks/use-workspace-store';
 import { useLayoutStore, collectPanes } from '@/hooks/use-layout';
 import { navigateToTab } from '@/hooks/use-layout';
-import SettingsDialog from '@/components/features/terminal/settings-dialog';
+import SettingsDialog from '@/components/features/workspace/settings-dialog';
 import useMobileLayoutActions from '@/hooks/use-mobile-layout-actions';
 import type { ILayoutData, IPaneNode } from '@/types/terminal';
 

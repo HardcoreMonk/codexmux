@@ -21,7 +21,7 @@ import { requireAuth } from '@/lib/require-auth';
 import { loadMessagesServer } from '@/lib/load-messages';
 
 const TerminalPage = dynamic(
-  () => import('@/components/features/terminal/terminal-page'),
+  () => import('@/components/features/workspace/terminal-page'),
   { ssr: false },
 );
 

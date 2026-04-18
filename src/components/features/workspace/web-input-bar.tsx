@@ -7,8 +7,8 @@ import useWebInput from '@/hooks/use-web-input';
 import useIsMobileDevice from '@/hooks/use-is-mobile-device';
 import useMessageHistory from '@/hooks/use-message-history';
 import { registerPushTarget } from '@/hooks/use-web-push';
-import InterruptDialog from '@/components/features/terminal/interrupt-dialog';
-import MessageHistoryPicker from '@/components/features/terminal/message-history-picker';
+import InterruptDialog from '@/components/features/workspace/interrupt-dialog';
+import MessageHistoryPicker from '@/components/features/workspace/message-history-picker';
 import type { TCliState } from '@/types/timeline';
 
 const DEFAULT_MAX_ROWS = 5;
