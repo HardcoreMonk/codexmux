@@ -266,6 +266,19 @@ Write commit messages in **English**:
 ❌ 버튼 클릭 시 발생하는 오류 수정
 ```
 
+### 17. Version Bumping
+
+Use **`npm version`** to bump the package version. Do not edit `package.json`'s `version` field by hand.
+
+```bash
+npm version patch   # 1.0.0 → 1.0.1
+npm version minor   # 1.0.0 → 1.1.0
+npm version major   # 1.0.0 → 2.0.0
+npm version prerelease --preid=beta  # 1.0.0 → 1.0.1-beta.0
+```
+
+This updates `package.json` and creates a git tag in one step, keeping the tag and version in sync.
+
 ---
 
 ## Detailed Guides
