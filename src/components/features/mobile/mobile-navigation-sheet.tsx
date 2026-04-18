@@ -27,8 +27,7 @@ import type { IWorkspace, IPaneNode, ITab } from '@/types/terminal';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import useTabStore, { selectWorkspacePortsLabel } from '@/hooks/use-tab-store';
 import { formatTabTitle } from '@/lib/tab-title';
-import { getProcessIcon } from '@/lib/process-icon';
-import OpenAIIcon from '@/components/icons/openai-icon';
+import ProcessIcon from '@/components/icons/process-icon';
 import TabStatusIndicator from '@/components/features/workspace/tab-status-indicator';
 import WorkspaceStatusIndicator from '@/components/features/workspace/workspace-status-indicator';
 import SidebarRateLimits from '@/components/layout/sidebar-rate-limits';
@@ -127,9 +126,7 @@ const MobileNavigationSheet = ({
 
   const tabs = useTabStore((s) => s.tabs);
 
-  const getTabProcessIcon = (tab: ITab) => getProcessIcon(tabs[tab.id]?.currentProcess);
-
-  const isTabCodex = (tab: ITab) => tabs[tab.id]?.currentProcess === 'codex';
+  const getTabProcess = (tab: ITab) => tabs[tab.id]?.currentProcess;
 
   const getTabNerdColor = (tab: ITab) => {
     const terminalStatus = tabs[tab.id]?.terminalStatus;
@@ -176,16 +173,11 @@ const MobileNavigationSheet = ({
               <Globe size={14} className="text-muted-foreground" />
             ) : panelType === 'diff' ? (
               <GitCompareArrows size={14} className="text-muted-foreground" />
-            ) : isTabCodex(tab) ? (
-              <OpenAIIcon size={14} className={getTabNerdColor(tab)} />
             ) : (
-              <span
-                className={cn('text-sm leading-none', getTabNerdColor(tab))}
-                style={{ fontFamily: 'MesloLGLDZ, monospace' }}
-                aria-hidden="true"
-              >
-                {getTabProcessIcon(tab)}
-              </span>
+              <ProcessIcon
+                process={getTabProcess(tab)}
+                className={cn('h-3.5 w-3.5', getTabNerdColor(tab))}
+              />
             )}
           </span>
           <div className="min-w-0 flex-1">

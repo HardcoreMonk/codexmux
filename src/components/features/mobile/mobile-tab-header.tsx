@@ -5,8 +5,7 @@ import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
 import TabStatusIndicator from '@/components/features/workspace/tab-status-indicator';
 import CopyPaneDrawer from '@/components/features/workspace/copy-pane-drawer';
 import useTabStore from '@/hooks/use-tab-store';
-import { getProcessIcon } from '@/lib/process-icon';
-import OpenAIIcon from '@/components/icons/openai-icon';
+import ProcessIcon from '@/components/icons/process-icon';
 import { cn } from '@/lib/utils';
 import {
   AlertDialog,
@@ -52,9 +51,7 @@ const MobileTabHeader = ({
   const [copyOpen, setCopyOpen] = useState(false);
   const showCopy = panelType === 'terminal' && !!sessionName;
   const tabEntry = useTabStore((s) => s.tabs[tabId]);
-  const isCodex = tabEntry?.currentProcess === 'codex';
-  const processIcon = getProcessIcon(tabEntry?.currentProcess);
-  const nerdColor = tabEntry?.terminalStatus === 'server'
+  const processColor = tabEntry?.terminalStatus === 'server'
     ? 'text-ui-green'
     : tabEntry?.terminalStatus === 'running'
       ? 'text-ui-blue'
@@ -68,16 +65,11 @@ const MobileTabHeader = ({
           <ClaudeCodeIcon size={16} />
         ) : panelType === 'diff' ? (
           <GitCompareArrows className="h-4 w-4 shrink-0 text-muted-foreground" />
-        ) : isCodex ? (
-          <OpenAIIcon size={14} className={`shrink-0 ${nerdColor}`} />
         ) : (
-          <span
-            className={`mt-0.5 shrink-0 text-sm leading-none ${nerdColor}`}
-            style={{ fontFamily: 'MesloLGLDZ, monospace' }}
-            aria-hidden="true"
-          >
-            {processIcon}
-          </span>
+          <ProcessIcon
+            process={tabEntry?.currentProcess}
+            className={cn('h-3.5 w-3.5 shrink-0', processColor)}
+          />
         )}
         <span className="truncate text-xs text-foreground">{tabName}</span>
       </div>

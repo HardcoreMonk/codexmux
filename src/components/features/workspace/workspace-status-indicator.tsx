@@ -3,8 +3,7 @@ import { GitCompareArrows, Globe } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/spinner';
 import useTabStore, { selectTabDisplayStatus } from '@/hooks/use-tab-store';
-import { getProcessIcon } from '@/lib/process-icon';
-import OpenAIIcon from '@/components/icons/openai-icon';
+import ProcessIcon from '@/components/icons/process-icon';
 import type { TTabDisplayStatus, TTerminalStatus } from '@/types/status';
 import type { ITab, TPanelType } from '@/types/terminal';
 
@@ -13,22 +12,8 @@ interface IWorkspaceStatusIndicatorProps {
   tabs?: ITab[];
 }
 
-const NERD_FONT_STYLE = { fontFamily: 'MesloLGLDZ, monospace' };
-
-const TerminalNerdIcon = ({ className, process }: { className: string; process?: string | null }) => {
-  if (process === 'codex') {
-    return <OpenAIIcon className={`h-2.5 w-2.5 ${className}`} />;
-  }
-  return (
-    <span className={`text-sm leading-none ${className}`} style={NERD_FONT_STYLE} aria-hidden="true">
-      {getProcessIcon(process)}
-    </span>
-  );
-};
-
 const DotByStatus = ({ status, panelType, terminalStatus, process }: { status: TTabDisplayStatus; panelType?: TPanelType; terminalStatus?: TTerminalStatus; process?: string | null }) => {
   let inner: React.ReactNode;
-  let isNerd = false;
 
   if (panelType === 'claude-code') {
     if (status === 'busy') {
@@ -46,19 +31,16 @@ const DotByStatus = ({ status, panelType, terminalStatus, process }: { status: T
     inner = <Globe className="h-2.5 w-2.5 text-muted-foreground/50" aria-hidden="true" />;
   } else if (panelType === 'diff') {
     inner = <GitCompareArrows className="h-2.5 w-2.5 text-muted-foreground/50" aria-hidden="true" />;
-  } else if (terminalStatus === 'server') {
-    isNerd = true;
-    inner = <TerminalNerdIcon className="text-ui-green" process={process} />;
-  } else if (terminalStatus === 'running') {
-    isNerd = true;
-    inner = <TerminalNerdIcon className="text-ui-blue" process={process} />;
   } else {
-    isNerd = true;
-    inner = <TerminalNerdIcon className="text-muted-foreground/50" process={process} />;
+    const colorClass =
+      terminalStatus === 'server' ? 'text-ui-green'
+      : terminalStatus === 'running' ? 'text-ui-blue'
+      : 'text-muted-foreground/50';
+    inner = <ProcessIcon process={process} className={`h-2.5 w-2.5 ${colorClass}`} />;
   }
 
   return (
-    <span className={`flex h-3 ${isNerd ? 'w-3.5' : 'w-3'} items-center justify-center`}>
+    <span className="flex h-3 w-3 items-center justify-center">
       {inner}
     </span>
   );

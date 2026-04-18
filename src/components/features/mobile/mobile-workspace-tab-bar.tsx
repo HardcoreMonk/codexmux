@@ -2,9 +2,8 @@ import { useRef, useEffect, useMemo } from 'react';
 import { Globe, GitCompareArrows } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
 import useTabStore, { selectTabDisplayStatus } from '@/hooks/use-tab-store';
-import { getProcessIcon } from '@/lib/process-icon';
 import { cn } from '@/lib/utils';
-import OpenAIIcon from '@/components/icons/openai-icon';
+import ProcessIcon from '@/components/icons/process-icon';
 import type { IWorkspace, IPaneNode, TPanelType } from '@/types/terminal';
 
 interface IMobileWorkspaceTabBarProps {
@@ -87,9 +86,6 @@ const MobileWorkspaceTabBar = ({
           const status = selectTabDisplayStatus(statusTabs, item.tabId);
           const termStatus = statusTabs[item.tabId]?.terminalStatus;
           const currentProcess = statusTabs[item.tabId]?.currentProcess;
-          const isCodex = currentProcess === 'codex';
-          const nerdIcon = getProcessIcon(currentProcess);
-          const nerdStyle = { fontFamily: 'MesloLGLDZ, monospace' } as const;
           const iconColorClass = termStatus === 'server'
             ? 'text-ui-green'
             : termStatus === 'running'
@@ -120,10 +116,8 @@ const MobileWorkspaceTabBar = ({
                 <Globe className="h-2.5 w-2.5 text-muted-foreground/50" />
               ) : item.panelType === 'diff' ? (
                 <GitCompareArrows className="h-2.5 w-2.5 text-muted-foreground/50" />
-              ) : isCodex ? (
-                <OpenAIIcon className={cn('h-3 w-3', iconColorClass)} />
               ) : (
-                <span className={cn('text-sm leading-none', iconColorClass)} style={nerdStyle} aria-hidden="true">{nerdIcon}</span>
+                <ProcessIcon process={currentProcess} className={cn('h-3 w-3', iconColorClass)} />
               )}
             </button>
           );

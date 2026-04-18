@@ -2,10 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { X, Globe, GitCompareArrows } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
-import OpenAIIcon from '@/components/icons/openai-icon';
+import ProcessIcon from '@/components/icons/process-icon';
 import { cn } from '@/lib/utils';
 import type { ITab } from '@/types/terminal';
-import { getProcessIcon } from '@/lib/process-icon';
 import TabStatusIndicator from '@/components/features/workspace/tab-status-indicator';
 
 interface IPaneTabItemProps {
@@ -117,12 +116,11 @@ const PaneTabItem = ({
             <Globe className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           ) : tab.panelType === 'diff' ? (
             <GitCompareArrows className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          ) : currentProcess === 'codex' ? (
-            <OpenAIIcon className="h-3 w-3 text-muted-foreground" />
           ) : (
-            <span className="shrink-0 text-sm leading-none text-muted-foreground" style={{ fontFamily: 'MesloLGLDZ, monospace' }}>
-              {getProcessIcon(currentProcess ?? displayTitle)}
-            </span>
+            <ProcessIcon
+              process={currentProcess ?? displayTitle}
+              className="h-3 w-3 shrink-0 text-muted-foreground"
+            />
           )}
           <span
             className={cn(
