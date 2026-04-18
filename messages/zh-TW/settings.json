@@ -69,6 +69,24 @@
     "enableMenuDescription": "在側邊欄顯示代理選單。此功能目前為測試版。"
   },
   "system": {
+    "networkAccess": "網路存取",
+    "networkAccessDescription": "控制哪些網路可以存取 purplemux。伺服器重新啟動後生效。",
+    "networkAccessLocked": "由 HOST 環境變數控制。",
+    "restartRequired": "變更需要重新啟動伺服器後才會生效。",
+    "networkAccessOptions": {
+      "localhost": {
+        "label": "僅 Localhost",
+        "description": "僅本機可存取。最安全；連接埠不會對其他裝置開放。"
+      },
+      "tailscale": {
+        "label": "Localhost + Tailscale",
+        "description": "本機與 Tailscale 對等裝置可存取。LAN 和公網將被封鎖。"
+      },
+      "all": {
+        "label": "所有介面",
+        "description": "允許來自任何可達網路的連線，包括 LAN 和公網。"
+      }
+    },
     "showResources": "顯示系統資源",
     "showResourcesDescription": "在標題列顯示 CPU、記憶體和 tmux 工作階段使用狀況。",
     "tmuxReset": "重設 tmux",

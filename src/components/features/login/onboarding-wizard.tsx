@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, Download, Eye, EyeOff, Globe, ListChecks, Lock, Loader2, LogIn, RefreshCcw, Terminal, Bot, Sun, Moon, Monitor, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, Download, Eye, EyeOff, Globe, ListChecks, Lock, Loader2, LogIn, Network, RefreshCcw, Terminal, Bot, Sun, Moon, Monitor, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,10 +15,13 @@ import InstallDialog from '@/components/features/login/install-dialog';
 import { usePreflight } from '@/hooks/use-preflight';
 import useConfigStore from '@/hooks/use-config-store';
 
-type TStep = 'preflight' | 'password' | 'language' | 'appearance' | 'theme' | 'claude' | 'complete';
+type TStep = 'preflight' | 'password' | 'language' | 'appearance' | 'theme' | 'claude' | 'network' | 'complete';
 type TAppTheme = 'dark' | 'light' | 'system';
+type TNetworkAccess = 'localhost' | 'tailscale' | 'all';
 
-const STEPS: TStep[] = ['preflight', 'password', 'language', 'appearance', 'theme', 'claude', 'complete'];
+const STEPS: TStep[] = ['preflight', 'password', 'language', 'appearance', 'theme', 'claude', 'network', 'complete'];
+
+const NETWORK_ACCESS_OPTIONS: TNetworkAccess[] = ['localhost', 'tailscale', 'all'];
 
 const LOCALES = [
   { id: 'en', label: 'English' },
@@ -103,6 +106,7 @@ const STEP_ICONS: Record<TStep, React.ReactNode> = {
   appearance: <Sun className="h-5 w-5" />,
   theme: <Terminal className="h-5 w-5" />,
   claude: <Bot className="h-5 w-5" />,
+  network: <Network className="h-5 w-5" />,
   complete: <Check className="h-5 w-5" />,
 };
 
@@ -122,6 +126,7 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
   const [darkTheme, setDarkTheme] = useState(DEFAULT_THEME_IDS.dark);
   const [lightTheme, setLightTheme] = useState(DEFAULT_THEME_IDS.light);
   const [skipPermissions, setSkipPermissions] = useState(true);
+  const [networkAccess, setNetworkAccess] = useState<TNetworkAccess>('localhost');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { status: preflightStatus, checking: preflightChecking } = usePreflight({
@@ -206,6 +211,7 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
           appTheme,
           terminalTheme: { light: lightTheme, dark: darkTheme },
           dangerouslySkipPermissions: skipPermissions,
+          networkAccess,
         }),
       });
 
@@ -531,6 +537,40 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
           </div>
         </div>
 
+        <div className={stepPanelClass('network')} aria-hidden={step !== 'network'}>
+          <p className="text-sm text-muted-foreground">{t('networkDescription')}</p>
+          <div className="flex flex-col gap-2">
+            {NETWORK_ACCESS_OPTIONS.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setNetworkAccess(opt)}
+                tabIndex={step === 'network' ? 0 : -1}
+                className={cn(
+                  'flex flex-col gap-1 rounded-lg border p-3 text-left transition-colors',
+                  networkAccess === opt
+                    ? 'border-primary bg-accent'
+                    : 'border-border hover:border-muted-foreground/50',
+                )}
+              >
+                <span className="text-sm font-medium">{t(`networkOptions.${opt}.label`)}</span>
+                <span className="text-xs text-muted-foreground">{t(`networkOptions.${opt}.hint`)}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">{t('networkFootnote')}</p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="lg" className="h-12" tabIndex={step === 'network' ? 0 : -1} onClick={goBack}>
+              <ArrowLeft className="mr-1 h-4 w-4" />
+              {tc('back')}
+            </Button>
+            <Button size="lg" className="h-12 flex-1" tabIndex={step === 'network' ? 0 : -1} onClick={goNext}>
+              {tc('next')}
+              <ArrowRight className="ml-1 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
         <div className={stepPanelClass('complete')} aria-hidden={step !== 'complete'}>
           <div className="rounded-lg border p-4 space-y-3 text-sm">
             <div className="flex justify-between">
@@ -556,6 +596,10 @@ const OnboardingWizard = ({ onComplete }: IOnboardingWizardProps) => {
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t('summary.skipPermissions')}</span>
               <span>{skipPermissions ? t('summary.enabled') : t('summary.disabled')}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t('summary.networkAccess')}</span>
+              <span>{t(`networkOptions.${networkAccess}.label`)}</span>
             </div>
           </div>
           {error && <p className="text-destructive text-sm">{error}</p>}

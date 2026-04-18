@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
 import packageJson from '../../../../package.json';
 import isElectron from '@/hooks/use-is-electron';
-import { Bell, Check, ChevronDown, ChevronsUpDown, Code, Dices, Globe, Layout, Lock, Monitor, Moon, Palette, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
+import { Bell, Check, ChevronDown, ChevronsUpDown, Code, Dices, Globe, Layout, Lock, Monitor, Moon, Network, Palette, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
 import ClaudeLogo from '@/components/icons/claude-logo';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -587,6 +588,20 @@ const SystemTab = () => {
   const tc = useTranslations('common');
   const systemResourcesEnabled = useConfigStore((s) => s.systemResourcesEnabled);
   const setSystemResourcesEnabled = useConfigStore((s) => s.setSystemResourcesEnabled);
+  const networkAccess = useConfigStore((s) => s.networkAccess);
+  const setNetworkAccess = useConfigStore((s) => s.setNetworkAccess);
+  const hostEnvLocked = useConfigStore((s) => s.hostEnvLocked);
+
+  const [pendingNetworkAccess, setPendingNetworkAccess] = useState(networkAccess);
+  useEffect(() => {
+    setPendingNetworkAccess(networkAccess);
+  }, [networkAccess]);
+  const hasNetworkAccessChange = pendingNetworkAccess !== networkAccess;
+
+  const handleSaveNetworkAccess = () => {
+    setNetworkAccess(pendingNetworkAccess);
+    toast.success(t('restartRequired'));
+  };
 
   const handleReset = () => {
     window.location.href = '/reset';
@@ -594,6 +609,51 @@ const SystemTab = () => {
 
   return (
     <div className="space-y-6">
+      <div className="space-y-3">
+        <div className="flex items-start gap-2">
+          <Network className="mt-0.5 h-4 w-4 text-muted-foreground" />
+          <div className="flex-1 space-y-0.5">
+            <p className="text-sm font-medium">{t('networkAccess')}</p>
+            <p className="text-sm text-muted-foreground">
+              {hostEnvLocked ? t('networkAccessLocked') : t('networkAccessDescription')}
+            </p>
+          </div>
+        </div>
+        <RadioGroup
+          value={pendingNetworkAccess}
+          onValueChange={(v) => setPendingNetworkAccess(v as typeof pendingNetworkAccess)}
+          disabled={hostEnvLocked}
+          className="gap-2"
+        >
+          {(['localhost', 'tailscale', 'all'] as const).map((opt) => (
+            <label
+              key={opt}
+              htmlFor={`network-access-${opt}`}
+              className="flex cursor-pointer items-start gap-3 rounded-md border bg-background px-3 py-2.5 aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+              aria-disabled={hostEnvLocked || undefined}
+            >
+              <RadioGroupItem value={opt} id={`network-access-${opt}`} className="mt-0.5" />
+              <div className="flex-1 space-y-0.5">
+                <p className="text-sm font-medium">{t(`networkAccessOptions.${opt}.label`)}</p>
+                <p className="text-xs text-muted-foreground">{t(`networkAccessOptions.${opt}.description`)}</p>
+              </div>
+            </label>
+          ))}
+        </RadioGroup>
+        {!hostEnvLocked && (
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">{t('restartRequired')}</p>
+            <Button
+              size="sm"
+              onClick={handleSaveNetworkAccess}
+              disabled={!hasNetworkAccessChange}
+            >
+              {tc('save')}
+            </Button>
+          </div>
+        )}
+      </div>
+
       {isElectron && (
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">

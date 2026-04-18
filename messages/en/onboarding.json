@@ -6,6 +6,7 @@
     "appearance": "App Theme",
     "theme": "Terminal Theme",
     "claude": "Claude Settings",
+    "network": "Network Access",
     "complete": "Complete"
   },
   "checking": "Checking environment...",
@@ -30,6 +31,22 @@
   "appearanceDescription": "Select the app-wide display theme.",
   "skipPermissions": "Skip Permission Checks",
   "skipPermissionsDescription": "Adds --dangerously-skip-permissions option when running Claude Code.",
+  "networkDescription": "Choose which networks can reach purplemux. You can change this later in Settings > System.",
+  "networkFootnote": "If you go through a reverse proxy, tunnel, or Tailscale Serve, \"Localhost only\" is enough.",
+  "networkOptions": {
+    "localhost": {
+      "label": "Localhost only (recommended)",
+      "hint": "Personal use on this machine, or access via Tailscale Serve / nginx / Cloudflare Tunnel."
+    },
+    "tailscale": {
+      "label": "Localhost + Tailscale",
+      "hint": "Connecting from another device by Tailscale IP directly (e.g. http://100.x.x.x:8022)."
+    },
+    "all": {
+      "label": "All interfaces",
+      "hint": "Anyone reachable on your LAN or the public internet can try to connect."
+    }
+  },
   "summary": {
     "password": "Password",
     "language": "Language",
@@ -38,7 +55,8 @@
     "lightTheme": "Light Theme",
     "skipPermissions": "Skip Permissions",
     "enabled": "Enabled",
-    "disabled": "Disabled"
+    "disabled": "Disabled",
+    "networkAccess": "Network Access"
   },
   "submitting": "Saving...",
   "completeButton": "Complete Setup",

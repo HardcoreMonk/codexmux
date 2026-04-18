@@ -69,6 +69,24 @@
     "enableMenuDescription": "サイドバーにエージェントメニューを表示します。この機能は現在ベータテスト中です。"
   },
   "system": {
+    "networkAccess": "ネットワークアクセス",
+    "networkAccessDescription": "どのネットワークから purplemux にアクセスできるかを設定します。サーバー再起動後に適用されます。",
+    "networkAccessLocked": "HOST 環境変数で制御されています。",
+    "restartRequired": "変更はサーバー再起動後に適用されます。",
+    "networkAccessOptions": {
+      "localhost": {
+        "label": "Localhost のみ",
+        "description": "このマシンのみ許可します。最も安全で、ポートは外部に公開されません。"
+      },
+      "tailscale": {
+        "label": "Localhost + Tailscale",
+        "description": "このマシンと Tailscale ピアのみ許可します。LAN と公開インターネットはブロックされます。"
+      },
+      "all": {
+        "label": "すべてのインターフェース",
+        "description": "LAN や公開インターネットを含む、到達可能なすべてのネットワークを許可します。"
+      }
+    },
     "showResources": "システムリソースを表示",
     "showResourcesDescription": "ヘッダーにCPU、メモリ、tmuxセッションの使用状況を表示します。",
     "tmuxReset": "tmuxリセット",

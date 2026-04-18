@@ -76,7 +76,8 @@ export const getServerSideProps: GetServerSideProps<IIndexProps> = async (contex
     }
 
     const { authPassword, authSecret: _, ...safeConfig } = configData;
-    return { props: { initialWorkspace: data, initialConfig: { ...safeConfig, hasAuthPassword: !!authPassword }, initialQuickPrompts: quickPrompts, initialSidebarItems: sidebarItems, messages } };
+    const hostEnvLocked = typeof process.env.HOST === 'string' && process.env.HOST.trim().length > 0;
+    return { props: { initialWorkspace: data, initialConfig: { ...safeConfig, hasAuthPassword: !!authPassword, hostEnvLocked }, initialQuickPrompts: quickPrompts, initialSidebarItems: sidebarItems, messages } };
   });
 
 export default Index;

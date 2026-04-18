@@ -4,6 +4,7 @@ import os from 'os';
 import crypto from 'crypto';
 import { broadcastSync } from '@/lib/sync-server';
 import { createLogger } from '@/lib/logger';
+import type { TNetworkAccess } from '@/lib/network-access';
 
 const log = createLogger('config');
 
@@ -19,6 +20,7 @@ export interface IConfigData {
   locale?: string;
   fontSize?: string;
   systemResourcesEnabled?: boolean;
+  networkAccess?: TNetworkAccess;
   updatedAt: string;
 }
 

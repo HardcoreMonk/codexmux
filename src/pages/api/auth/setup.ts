@@ -15,10 +15,15 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   if (req.method === 'POST') {
-    const { authPassword, locale, appTheme, terminalTheme, dangerouslySkipPermissions } = req.body ?? {};
+    const { authPassword, locale, appTheme, terminalTheme, dangerouslySkipPermissions, networkAccess } = req.body ?? {};
     if (!authPassword || typeof authPassword !== 'string') {
       return res.status(400).json({ error: 'Password is required.' });
     }
+
+    const VALID_NETWORK_ACCESS = ['localhost', 'tailscale', 'all'] as const;
+    const resolvedNetworkAccess = (VALID_NETWORK_ACCESS as readonly string[]).includes(networkAccess)
+      ? (networkAccess as typeof VALID_NETWORK_ACCESS[number])
+      : undefined;
 
     let release: () => void;
     const next = new Promise<void>((r) => { release = r; });
@@ -46,6 +51,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         appTheme: appTheme || 'dark',
         terminalTheme,
         dangerouslySkipPermissions: dangerouslySkipPermissions ?? false,
+        ...(resolvedNetworkAccess ? { networkAccess: resolvedNetworkAccess } : {}),
       });
 
       process.env.AUTH_PASSWORD = hashedPassword;

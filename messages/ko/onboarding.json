@@ -6,6 +6,7 @@
     "appearance": "화면 테마",
     "theme": "터미널 테마",
     "claude": "Claude 설정",
+    "network": "네트워크 접근",
     "complete": "설정 완료"
   },
   "checking": "환경을 확인하는 중...",
@@ -30,6 +31,22 @@
   "appearanceDescription": "앱 전체의 화면 테마를 선택합니다.",
   "skipPermissions": "권한 확인 건너뛰기",
   "skipPermissionsDescription": "Claude Code 실행 시 --dangerously-skip-permissions 옵션을 추가합니다.",
+  "networkDescription": "어느 네트워크에서 purplemux에 접근할 수 있는지 선택합니다. 설정 > 시스템에서 나중에 변경할 수 있습니다.",
+  "networkFootnote": "리버스 프록시, 터널, Tailscale Serve를 거친다면 \"Localhost만\"으로 충분합니다.",
+  "networkOptions": {
+    "localhost": {
+      "label": "Localhost만 (추천)",
+      "hint": "이 PC에서만 사용하거나 Tailscale Serve / nginx / Cloudflare Tunnel을 통해 접근하는 경우."
+    },
+    "tailscale": {
+      "label": "Localhost + Tailscale",
+      "hint": "다른 기기에서 Tailscale IP로 직접 접속하는 경우 (예: http://100.x.x.x:8022)."
+    },
+    "all": {
+      "label": "모든 인터페이스",
+      "hint": "LAN이나 공인 인터넷에서 접근 가능한 모든 기기가 연결을 시도할 수 있습니다."
+    }
+  },
   "summary": {
     "password": "비밀번호",
     "language": "언어",
@@ -38,7 +55,8 @@
     "lightTheme": "라이트 테마",
     "skipPermissions": "권한 건너뛰기",
     "enabled": "사용",
-    "disabled": "사용 안 함"
+    "disabled": "사용 안 함",
+    "networkAccess": "네트워크 접근"
   },
   "submitting": "설정 중...",
   "completeButton": "설정 완료",

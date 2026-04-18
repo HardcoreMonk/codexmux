@@ -69,6 +69,24 @@
     "enableMenuDescription": "Muestra el menú de agentes en la barra lateral. Esta función está actualmente en fase beta."
   },
   "system": {
+    "networkAccess": "Acceso a la red",
+    "networkAccessDescription": "Controla qué redes pueden acceder a purplemux. Se aplica tras reiniciar el servidor.",
+    "networkAccessLocked": "Controlado por la variable de entorno HOST.",
+    "restartRequired": "Los cambios requieren reiniciar el servidor.",
+    "networkAccessOptions": {
+      "localhost": {
+        "label": "Solo Localhost",
+        "description": "Solo esta máquina. Más seguro; el puerto queda cerrado para otros dispositivos."
+      },
+      "tailscale": {
+        "label": "Localhost + Tailscale",
+        "description": "Esta máquina y pares de Tailscale. Se bloquean LAN e Internet pública."
+      },
+      "all": {
+        "label": "Todas las interfaces",
+        "description": "Permite conexiones desde cualquier red accesible, incluidas LAN e Internet pública."
+      }
+    },
     "showResources": "Mostrar recursos del sistema",
     "showResourcesDescription": "Muestra el uso de CPU, memoria y sesiones tmux en el encabezado.",
     "tmuxReset": "Restablecer tmux",

@@ -69,6 +69,24 @@
     "enableMenuDescription": "Показывать меню агентов в боковой панели. Эта функция в стадии бета-тестирования."
   },
   "system": {
+    "networkAccess": "Сетевой доступ",
+    "networkAccessDescription": "Определяет, из каких сетей можно обращаться к purplemux. Применяется после перезапуска сервера.",
+    "networkAccessLocked": "Управляется переменной окружения HOST.",
+    "restartRequired": "Изменения применяются после перезапуска сервера.",
+    "networkAccessOptions": {
+      "localhost": {
+        "label": "Только Localhost",
+        "description": "Только эта машина. Самый безопасный вариант; порт недоступен другим устройствам."
+      },
+      "tailscale": {
+        "label": "Localhost + Tailscale",
+        "description": "Эта машина и пиры Tailscale. LAN и публичный интернет заблокированы."
+      },
+      "all": {
+        "label": "Все интерфейсы",
+        "description": "Разрешить подключения из любой доступной сети, включая LAN и публичный интернет."
+      }
+    },
     "showResources": "Показать системные ресурсы",
     "showResourcesDescription": "Отображать использование ЦП, памяти и сессий tmux в заголовке.",
     "tmuxReset": "Сбросить tmux",

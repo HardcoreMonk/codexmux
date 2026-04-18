@@ -69,6 +69,24 @@
     "enableMenuDescription": "Kenar çubuğunda ajan menüsünü gösterir. Bu özellik şu anda beta aşamasındadır."
   },
   "system": {
+    "networkAccess": "Ağ erişimi",
+    "networkAccessDescription": "Hangi ağların purplemux'a erişebileceğini kontrol eder. Sunucu yeniden başlatıldıktan sonra uygulanır.",
+    "networkAccessLocked": "HOST ortam değişkeni tarafından kontrol ediliyor.",
+    "restartRequired": "Değişiklikler sunucu yeniden başlatıldıktan sonra uygulanır.",
+    "networkAccessOptions": {
+      "localhost": {
+        "label": "Yalnızca Localhost",
+        "description": "Yalnızca bu makine. En güvenli; bağlantı noktası diğer cihazlara kapalıdır."
+      },
+      "tailscale": {
+        "label": "Localhost + Tailscale",
+        "description": "Bu makine ve Tailscale eşleri. LAN ve genel internet engellenir."
+      },
+      "all": {
+        "label": "Tüm arayüzler",
+        "description": "LAN ve genel internet dahil erişilebilir tüm ağlardan gelen bağlantılara izin verilir."
+      }
+    },
     "showResources": "Sistem kaynaklarını göster",
     "showResourcesDescription": "Başlıkta CPU, bellek ve tmux oturum kullanımını görüntüler.",
     "tmuxReset": "tmux Sıfırla",

@@ -6,6 +6,7 @@
     "appearance": "Uygulama Teması",
     "theme": "Terminal Teması",
     "claude": "Claude Ayarları",
+    "network": "Ağ Erişimi",
     "complete": "Tamamlandı"
   },
   "checking": "Ortam kontrol ediliyor...",
@@ -30,6 +31,22 @@
   "appearanceDescription": "Uygulama genelinde görüntüleme temasını seçin.",
   "skipPermissions": "İzin Kontrollerini Atla",
   "skipPermissionsDescription": "Claude Code çalıştırılırken --dangerously-skip-permissions seçeneğini ekler.",
+  "networkDescription": "Hangi ağların purplemux'a erişebileceğini seçin. Daha sonra Ayarlar > Sistem'den değiştirilebilir.",
+  "networkFootnote": "Ters proxy, tünel veya Tailscale Serve kullanıyorsanız \"Yalnızca Localhost\" yeterlidir.",
+  "networkOptions": {
+    "localhost": {
+      "label": "Yalnızca Localhost (önerilen)",
+      "hint": "Bu makinede kişisel kullanım veya Tailscale Serve / nginx / Cloudflare Tunnel üzerinden erişim."
+    },
+    "tailscale": {
+      "label": "Localhost + Tailscale",
+      "hint": "Başka bir cihazdan Tailscale IP ile doğrudan bağlanma (örn. http://100.x.x.x:8022)."
+    },
+    "all": {
+      "label": "Tüm arayüzler",
+      "hint": "LAN veya genel internette erişilebilen herhangi bir cihaz bağlanmayı deneyebilir."
+    }
+  },
   "summary": {
     "password": "Şifre",
     "language": "Dil",
@@ -38,7 +55,8 @@
     "lightTheme": "Açık Tema",
     "skipPermissions": "İzin Atlama",
     "enabled": "Etkin",
-    "disabled": "Devre Dışı"
+    "disabled": "Devre Dışı",
+    "networkAccess": "Ağ Erişimi"
   },
   "submitting": "Kaydediliyor...",
   "completeButton": "Kurulumu Tamamla",

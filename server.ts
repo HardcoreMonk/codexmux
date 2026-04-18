@@ -1,7 +1,6 @@
 import { createServer, request as httpRequest } from 'http';
 import type { IncomingMessage, ServerResponse } from 'http';
 import { createConnection } from 'net';
-import os from 'os';
 import path from 'path';
 import next from 'next';
 import { WebSocketServer } from 'ws';
@@ -20,7 +19,16 @@ import { scanSessions, applyConfig } from './src/lib/tmux';
 import { initWorkspaceStore, getWorkspaces } from './src/lib/workspace-store';
 import { autoResumeOnStartup } from './src/lib/auto-resume';
 import { initAuthCredentials } from './src/lib/auth-credentials';
-import { initConfigStore } from './src/lib/config-store';
+import { initConfigStore, getConfig } from './src/lib/config-store';
+import {
+  DEFAULT_NETWORK_ACCESS,
+  isAllowed,
+  listInterfaceIps,
+  networkAccessToSpec,
+  parseAccessSpec,
+  resolveBindPlan,
+} from './src/lib/network-access';
+import type { IAccessSpec } from './src/lib/network-access';
 import { initShellPath } from './src/lib/preflight';
 import { createLogger } from './src/lib/logger';
 import pkg from './package.json';
@@ -147,14 +155,14 @@ const getFreePort = (): Promise<number> =>
     srv.on('error', reject);
   });
 
-const listenWithFallback = (server: import('http').Server, port: number): Promise<number> =>
+const listenWithFallback = (server: import('http').Server, port: number, host: string): Promise<number> =>
   new Promise((resolve, reject) => {
     const onError = (err: NodeJS.ErrnoException) => {
       if (err.code === 'EADDRINUSE') {
         log.warn(`Port ${port} is in use, finding an available port...`);
         server.removeListener('error', onError);
         server.on('error', reject);
-        server.listen(0, () => {
+        server.listen(0, host, () => {
           resolve((server.address() as { port: number }).port);
         });
       } else {
@@ -162,7 +170,7 @@ const listenWithFallback = (server: import('http').Server, port: number): Promis
       }
     };
     server.on('error', onError);
-    server.listen(port, () => {
+    server.listen(port, host, () => {
       resolve((server.address() as { port: number }).port);
     });
   });
@@ -196,7 +204,22 @@ interface IStartResult {
   shutdown: () => Promise<void>;
 }
 
-const startDev = async (port: number, appDir: string): Promise<IStartResult> => {
+const normalizeRemote = (addr: string | undefined | null): string | null => {
+  if (!addr) return null;
+  return addr.startsWith('::ffff:') ? addr.slice(7) : addr;
+};
+
+const rejectRequest = (res: ServerResponse) => {
+  res.writeHead(403, { 'Content-Type': 'text/plain' });
+  res.end('Forbidden');
+};
+
+const rejectSocket = (socket: import('stream').Duplex) => {
+  socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+  socket.destroy();
+};
+
+const startDev = async (port: number, appDir: string, bindHost: string, spec: IAccessSpec, needsFilter: boolean): Promise<IStartResult> => {
   const app = next({ dev: true, dir: appDir });
   const handle = app.getRequestHandler();
 
@@ -204,12 +227,20 @@ const startDev = async (port: number, appDir: string): Promise<IStartResult> => 
 
   const upgrade = app.getUpgradeHandler();
   const server = createServer((req, res) => {
+    if (needsFilter && !isAllowed(spec, normalizeRemote(req.socket.remoteAddress))) {
+      rejectRequest(res);
+      return;
+    }
     handle(req, res);
   });
 
   const wsServers = createWsServers();
 
   server.on('upgrade', async (request, socket, head) => {
+    if (needsFilter && !isAllowed(spec, normalizeRemote(request.socket.remoteAddress))) {
+      rejectSocket(socket);
+      return;
+    }
     const url = new URL(request.url ?? '', `http://localhost:${port}`);
 
     if (url.pathname.startsWith('/_next/')) {
@@ -250,11 +281,11 @@ const startDev = async (port: number, appDir: string): Promise<IStartResult> => 
   process.on('SIGTERM', exitGracefully);
   process.on('SIGINT', exitGracefully);
 
-  const actualPort = await listenWithFallback(server, port);
+  const actualPort = await listenWithFallback(server, port, bindHost);
   return { port: actualPort, shutdown };
 };
 
-const startProd = async (port: number, appDir: string): Promise<IStartResult> => {
+const startProd = async (port: number, appDir: string, bindHost: string, spec: IAccessSpec, needsFilter: boolean): Promise<IStartResult> => {
   const internalPort = await getFreePort();
 
   const savedPort = process.env.PORT;
@@ -270,12 +301,20 @@ const startProd = async (port: number, appDir: string): Promise<IStartResult> =>
   await waitForPort(internalPort);
 
   const server = createServer((req, res) => {
+    if (needsFilter && !isAllowed(spec, normalizeRemote(req.socket.remoteAddress))) {
+      rejectRequest(res);
+      return;
+    }
     proxyRequest(req, res, internalPort);
   });
 
   const wsServers = createWsServers();
 
   server.on('upgrade', async (request, socket, head) => {
+    if (needsFilter && !isAllowed(spec, normalizeRemote(request.socket.remoteAddress))) {
+      rejectSocket(socket);
+      return;
+    }
     const url = new URL(request.url ?? '', `http://localhost:${port}`);
 
     if (NO_AUTH_WS_PATHS.has(url.pathname)) {
@@ -311,21 +350,8 @@ const startProd = async (port: number, appDir: string): Promise<IStartResult> =>
   process.on('SIGTERM', exitGracefully);
   process.on('SIGINT', exitGracefully);
 
-  const actualPort = await listenWithFallback(server, port);
+  const actualPort = await listenWithFallback(server, port, bindHost);
   return { port: actualPort, shutdown };
-};
-
-const getAvailableUrls = (port: number): string[] => {
-  const urls = [`http://127.0.0.1:${port}`];
-  for (const addrs of Object.values(os.networkInterfaces())) {
-    if (!addrs) continue;
-    for (const addr of addrs) {
-      if (addr.family === 'IPv4' && !addr.internal) {
-        urls.push(`http://${addr.address}:${port}`);
-      }
-    }
-  }
-  return urls;
 };
 
 export const DEFAULT_PORT = 8022;
@@ -351,7 +377,17 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   await autoResumeOnStartup();
   await getStatusManager().init();
 
-  const result = dev ? await startDev(port, appDir) : await startProd(port, appDir);
+  const envHost = process.env.HOST?.trim();
+  const configData = await getConfig();
+  const specSource = envHost && envHost.length > 0
+    ? envHost
+    : networkAccessToSpec(configData.networkAccess ?? DEFAULT_NETWORK_ACCESS);
+  const accessSpec = parseAccessSpec(specSource);
+  const bindPlan = resolveBindPlan(accessSpec);
+
+  const result = dev
+    ? await startDev(port, appDir, bindPlan.host, accessSpec, bindPlan.needsFilter)
+    : await startProd(port, appDir, bindPlan.host, accessSpec, bindPlan.needsFilter);
 
   process.env.PORT = String(result.port);
 
@@ -361,12 +397,15 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   await writeAllClaudePromptFiles(workspaces);
 
   const mode = dev ? 'development' : process.env.NODE_ENV;
-  const urls = getAvailableUrls(result.port);
+  const urls = listInterfaceIps(accessSpec, result.port);
   console.log('');
   console.log(`  \x1b[1m\x1b[35m⚡ purplemux\x1b[0m  \x1b[2mv${pkg.version}\x1b[0m`);
   console.log(`  \x1b[2m➜\x1b[0m  Available on:`);
   for (const url of urls) {
     console.log(`       \x1b[36m${url}\x1b[0m`);
+  }
+  if (envHost) {
+    console.log(`  \x1b[2m➜\x1b[0m  Access: \x1b[33mHOST=${envHost}\x1b[0m`);
   }
   console.log(`  \x1b[2m➜\x1b[0m  Mode:   \x1b[33m${mode}\x1b[0m`);
   const authStatus = !credentials

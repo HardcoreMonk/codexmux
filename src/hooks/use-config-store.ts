@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+export type TNetworkAccess = 'localhost' | 'tailscale' | 'all';
+
 export interface IConfigInitialData {
   appTheme?: string | null;
   terminalTheme?: { light: string; dark: string } | null;
@@ -11,6 +13,8 @@ export interface IConfigInitialData {
   locale?: string;
   fontSize?: string;
   systemResourcesEnabled?: boolean;
+  networkAccess?: TNetworkAccess;
+  hostEnvLocked?: boolean;
 }
 
 interface IConfigState {
@@ -22,6 +26,8 @@ interface IConfigState {
   customCSS: string;
   fontSize: string;
   systemResourcesEnabled: boolean;
+  networkAccess: TNetworkAccess;
+  hostEnvLocked: boolean;
 
   hydrate: (data: IConfigInitialData) => void;
   setDangerouslySkipPermissions: (enabled: boolean) => void;
@@ -32,9 +38,10 @@ interface IConfigState {
   setCustomCSS: (css: string) => void;
   setFontSize: (fontSize: string) => void;
   setSystemResourcesEnabled: (enabled: boolean) => void;
+  setNetworkAccess: (value: TNetworkAccess) => void;
 }
 
-const initialConfig = { notificationsEnabled: true, editorUrl: '', dangerouslySkipPermissions: false, hasAuthPassword: false, locale: 'en', customCSS: '', fontSize: 'normal', systemResourcesEnabled: false };
+const initialConfig = { notificationsEnabled: true, editorUrl: '', dangerouslySkipPermissions: false, hasAuthPassword: false, locale: 'en', customCSS: '', fontSize: 'normal', systemResourcesEnabled: false, networkAccess: 'all' as TNetworkAccess, hostEnvLocked: false };
 
 const saveConfig = (updates: Record<string, unknown>) => {
   fetch('/api/config', {
@@ -55,6 +62,8 @@ const useConfigStore = create<IConfigState>((set, get) => ({
   customCSS: initialConfig.customCSS,
   fontSize: initialConfig.fontSize,
   systemResourcesEnabled: initialConfig.systemResourcesEnabled,
+  networkAccess: initialConfig.networkAccess,
+  hostEnvLocked: initialConfig.hostEnvLocked,
 
   hydrate: (data) => {
     set({
@@ -66,6 +75,8 @@ const useConfigStore = create<IConfigState>((set, get) => ({
       customCSS: data.customCSS ?? '',
       fontSize: data.fontSize ?? 'normal',
       systemResourcesEnabled: data.systemResourcesEnabled ?? false,
+      networkAccess: data.networkAccess ?? 'all',
+      hostEnvLocked: data.hostEnvLocked ?? false,
     });
   },
 
@@ -111,6 +122,11 @@ const useConfigStore = create<IConfigState>((set, get) => ({
   setSystemResourcesEnabled: (enabled) => {
     set({ systemResourcesEnabled: enabled });
     saveConfig({ systemResourcesEnabled: enabled });
+  },
+
+  setNetworkAccess: (value) => {
+    set({ networkAccess: value });
+    saveConfig({ networkAccess: value });
   },
 }));
 

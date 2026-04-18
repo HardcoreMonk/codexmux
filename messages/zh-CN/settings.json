@@ -69,6 +69,24 @@
     "enableMenuDescription": "在侧边栏显示智能体菜单。此功能目前处于测试阶段。"
   },
   "system": {
+    "networkAccess": "网络访问",
+    "networkAccessDescription": "控制哪些网络可以访问 purplemux。服务器重启后生效。",
+    "networkAccessLocked": "由 HOST 环境变量控制。",
+    "restartRequired": "更改需要重启服务器后生效。",
+    "networkAccessOptions": {
+      "localhost": {
+        "label": "仅 Localhost",
+        "description": "仅本机可访问。最安全；端口不会向其他设备开放。"
+      },
+      "tailscale": {
+        "label": "Localhost + Tailscale",
+        "description": "本机和 Tailscale 对等设备可访问。LAN 和公网将被阻止。"
+      },
+      "all": {
+        "label": "所有接口",
+        "description": "允许来自任何可达网络的连接，包括 LAN 和公网。"
+      }
+    },
     "showResources": "显示系统资源",
     "showResourcesDescription": "在标题栏显示CPU、内存和tmux会话使用情况。",
     "tmuxReset": "重置tmux",

@@ -6,6 +6,7 @@
     "appearance": "Тема приложения",
     "theme": "Тема терминала",
     "claude": "Настройки Claude",
+    "network": "Сетевой доступ",
     "complete": "Готово"
   },
   "checking": "Проверка окружения...",
@@ -30,6 +31,22 @@
   "appearanceDescription": "Выберите тему оформления приложения.",
   "skipPermissions": "Пропустить проверку прав доступа",
   "skipPermissionsDescription": "Добавляет параметр --dangerously-skip-permissions при запуске Claude Code.",
+  "networkDescription": "Выберите, из каких сетей можно обращаться к purplemux. Изменить можно позже в Настройках > Система.",
+  "networkFootnote": "Если используется обратный прокси, туннель или Tailscale Serve, достаточно варианта «Только Localhost».",
+  "networkOptions": {
+    "localhost": {
+      "label": "Только Localhost (рекомендуется)",
+      "hint": "Личное использование на этой машине или доступ через Tailscale Serve / nginx / Cloudflare Tunnel."
+    },
+    "tailscale": {
+      "label": "Localhost + Tailscale",
+      "hint": "Подключение с другого устройства напрямую по IP Tailscale (например, http://100.x.x.x:8022)."
+    },
+    "all": {
+      "label": "Все интерфейсы",
+      "hint": "Любое устройство, доступное в LAN или публичной сети, может попытаться подключиться."
+    }
+  },
   "summary": {
     "password": "Пароль",
     "language": "Язык",
@@ -38,7 +55,8 @@
     "lightTheme": "Светлая тема",
     "skipPermissions": "Пропуск проверки прав",
     "enabled": "Включено",
-    "disabled": "Отключено"
+    "disabled": "Отключено",
+    "networkAccess": "Сетевой доступ"
   },
   "submitting": "Сохранение...",
   "completeButton": "Завершить настройку",
