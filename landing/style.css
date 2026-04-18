@@ -738,15 +738,78 @@ code {
 }
 .preview-desktop {
   display: block;
+  position: relative;
 }
+.preview-desktop > picture {
+  display: block;
+  animation: preview-desktop-rotate 18s linear infinite;
+}
+.preview-desktop > picture:first-child { position: relative; }
+.preview-desktop > picture:not(:first-child) {
+  position: absolute;
+  inset: 0;
+}
+.preview-desktop > picture:nth-child(1) { animation-delay: 0s; }
+.preview-desktop > picture:nth-child(2) { animation-delay: -12s; }
+.preview-desktop > picture:nth-child(3) { animation-delay: -6s; }
+
 .preview-mobile {
   position: absolute;
   right: 2%;
   bottom: -6%;
   width: clamp(180px, 20%, 280px);
   z-index: 2;
+  opacity: 0;
+  transition: opacity 0.7s ease-out;
 }
-.preview-mobile img { border-radius: 26px; }
+.preview-mobile.is-visible { opacity: 1; }
+.preview-mobile > picture {
+  display: block;
+  animation: preview-mobile-rotate 18s linear infinite;
+  animation-play-state: paused;
+}
+.preview-mobile.is-visible > picture { animation-play-state: running; }
+.preview-mobile > picture:first-child { position: relative; }
+.preview-mobile > picture:not(:first-child) {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  bottom: 7px;
+  left: 7px;
+}
+.preview-mobile > picture:nth-child(1) { animation-delay: 0s; }
+.preview-mobile > picture:nth-child(2) { animation-delay: -15s; }
+.preview-mobile > picture:nth-child(3) { animation-delay: -12s; }
+.preview-mobile > picture:nth-child(4) { animation-delay: -9s; }
+.preview-mobile > picture:nth-child(5) { animation-delay: -6s; }
+.preview-mobile > picture:nth-child(6) { animation-delay: -3s; }
+.preview-mobile img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 26px;
+}
+
+@keyframes preview-mobile-rotate {
+  0%, 13.89% { opacity: 1; }
+  16.67% { opacity: 0; }
+  97.22% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes preview-desktop-rotate {
+  0%, 27.78% { opacity: 1; }
+  33.33% { opacity: 0; }
+  94.44% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preview-mobile > picture,
+  .preview-desktop > picture { animation: none; }
+  .preview-mobile > picture:not(:first-child),
+  .preview-desktop > picture:not(:first-child) { opacity: 0; }
+}
 
 /* ── Screenshot ── */
 .screenshot-wrap {
@@ -2436,7 +2499,9 @@ footer .foot-links a:hover { color: var(--foreground); }
   .preview { padding: 1rem 0 3rem; }
   .preview-desktop { display: none; }
   .preview-mobile {
-    position: static;
+    position: relative;
+    right: auto;
+    bottom: auto;
     width: 100%;
     max-width: 360px;
     margin: 0 auto;

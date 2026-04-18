@@ -206,14 +206,19 @@
     <!-- ── Preview ── -->
     <section class="preview">
       <div class="preview-stack">
-        <picture class="shot shot--desktop preview-desktop">
-          <source srcset="../images/screenshot-desktop.webp" type="image/webp" />
-          <img src="../images/screenshot-desktop.png" alt="panel de purplemux en escritorio" width="2522" height="1472" loading="lazy" decoding="async" />
-        </picture>
-        <picture class="shot shot--mobile preview-mobile">
-          <source srcset="../images/screenshot-mobile.webp" type="image/webp" />
-          <img src="../images/screenshot-mobile.png" alt="purplemux en móvil" width="1206" height="2622" loading="lazy" decoding="async" />
-        </picture>
+        <div class="shot shot--desktop preview-desktop">
+          <picture><source srcset="../images/screenshot-desktop-busy.webp" type="image/webp" /><img src="../images/screenshot-desktop-busy.png" alt="panel de purplemux en escritorio" width="2832" height="1552" loading="lazy" decoding="async" /></picture>
+          <picture><source srcset="../images/screenshot-desktop-diff.webp" type="image/webp" /><img src="../images/screenshot-desktop-diff.png" alt="" width="2832" height="1552" loading="lazy" decoding="async" /></picture>
+          <picture><source srcset="../images/screenshot-desktop-claude.webp" type="image/webp" /><img src="../images/screenshot-desktop-claude.png" alt="" width="2832" height="1552" loading="lazy" decoding="async" /></picture>
+        </div>
+        <div class="shot shot--mobile preview-mobile">
+          <picture><source srcset="../images/screenshot-mobile-push.webp" type="image/webp" /><img src="../images/screenshot-mobile-push.png" alt="purplemux en móvil" width="1206" height="2622" loading="lazy" decoding="async" /></picture>
+          <picture><source srcset="../images/screenshot-mobile-done.webp" type="image/webp" /><img src="../images/screenshot-mobile-done.png" alt="" width="1206" height="2622" loading="lazy" decoding="async" /></picture>
+          <picture><source srcset="../images/screenshot-mobile-new-tab.webp" type="image/webp" /><img src="../images/screenshot-mobile-new-tab.png" alt="" width="1206" height="2622" loading="lazy" decoding="async" /></picture>
+          <picture><source srcset="../images/screenshot-mobile-input.webp" type="image/webp" /><img src="../images/screenshot-mobile-input.png" alt="" width="1206" height="2622" loading="lazy" decoding="async" /></picture>
+          <picture><source srcset="../images/screenshot-mobile-busy.webp" type="image/webp" /><img src="../images/screenshot-mobile-busy.png" alt="" width="1206" height="2622" loading="lazy" decoding="async" /></picture>
+          <picture><source srcset="../images/screenshot-mobile-terminal.webp" type="image/webp" /><img src="../images/screenshot-mobile-terminal.png" alt="" width="1206" height="2622" loading="lazy" decoding="async" /></picture>
+        </div>
       </div>
     </section>
 
@@ -1076,6 +1081,23 @@
         }, { rootMargin: '0px 0px -15% 0px', threshold: 0.2 }).observe(showcase);
       } else if (showcase) {
         showcase.classList.add('is-visible');
+      }
+
+      var previewMobile = document.querySelector('.preview-mobile');
+      if (previewMobile && 'IntersectionObserver' in window) {
+        new IntersectionObserver(function (entries, obs) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) {
+              obs.unobserve(previewMobile);
+              var delay = window.matchMedia('(max-width: 767px)').matches ? 0 : 1000;
+              setTimeout(function () {
+                previewMobile.classList.add('is-visible');
+              }, delay);
+            }
+          });
+        }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 }).observe(previewMobile);
+      } else if (previewMobile) {
+        previewMobile.classList.add('is-visible');
       }
 
 
