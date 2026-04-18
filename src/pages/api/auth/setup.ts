@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { needsSetup, updateConfig, generateSecret, hashPassword } from '@/lib/config-store';
+import { updateAccessFromConfig } from '@/lib/access-filter';
 import { verifyRequestSession } from '@/lib/auth';
 
 let setupLock: Promise<void> = Promise.resolve();
@@ -53,6 +54,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         dangerouslySkipPermissions: dangerouslySkipPermissions ?? false,
         ...(resolvedNetworkAccess ? { networkAccess: resolvedNetworkAccess } : {}),
       });
+
+      if (resolvedNetworkAccess) {
+        updateAccessFromConfig(resolvedNetworkAccess);
+      }
 
       process.env.AUTH_PASSWORD = hashedPassword;
       process.env.NEXTAUTH_SECRET = authSecret;
