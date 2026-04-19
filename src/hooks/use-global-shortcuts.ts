@@ -1,22 +1,26 @@
-import { useHotkeys } from 'react-hotkeys-hook';
+import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
 import { useSelectWorkspace } from '@/hooks/use-sidebar-actions';
-import { WORKSPACE_NUMBER_KEYS, KEY_MAP } from '@/lib/keyboard-shortcuts';
+import useKeybindingsStore from '@/hooks/use-keybindings-store';
+import useBoundHotkey from '@/hooks/use-bound-hotkey';
+
+const isEditableTarget = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+};
 
 const useGlobalShortcuts = () => {
   const selectWorkspace = useSelectWorkspace();
   const router = useRouter();
   const isSettingsDialogOpen = useWorkspaceStore((s) => s.isSettingsDialogOpen);
+  const isCheatSheetOpen = useWorkspaceStore((s) => s.isCheatSheetOpen);
+  const enabled = !isSettingsDialogOpen && !isCheatSheetOpen;
 
-  const hotkeyOptions = {
-    preventDefault: true,
-    enableOnFormTags: true as const,
-    enabled: !isSettingsDialogOpen,
-  };
-
-  useHotkeys(
-    WORKSPACE_NUMBER_KEYS,
+  useBoundHotkey(
+    'workspace.switch',
     (event) => {
       const { workspaces } = useWorkspaceStore.getState();
       const digit = parseInt(event.code.replace('Digit', ''), 10);
@@ -30,29 +34,29 @@ const useGlobalShortcuts = () => {
         selectWorkspace(workspace.id);
       }
     },
-    hotkeyOptions,
+    enabled,
   );
 
-  useHotkeys(
-    KEY_MAP.SETTINGS,
+  useBoundHotkey(
+    'app.settings',
     () => {
       window.dispatchEvent(new Event('open-settings'));
     },
-    { preventDefault: true, enableOnFormTags: true as const },
+    true,
   );
 
-  useHotkeys(
-    KEY_MAP.NEW_WORKSPACE,
+  useBoundHotkey(
+    'workspace.new',
     async () => {
       const store = useWorkspaceStore.getState();
       const ws = await store.createWorkspace('');
       if (ws) selectWorkspace(ws.id);
     },
-    hotkeyOptions,
+    enabled,
   );
 
-  useHotkeys(
-    KEY_MAP.RENAME_WORKSPACE,
+  useBoundHotkey(
+    'workspace.rename',
     () => {
       const { activeWorkspaceId } = useWorkspaceStore.getState();
       if (!activeWorkspaceId) return;
@@ -60,32 +64,52 @@ const useGlobalShortcuts = () => {
         new CustomEvent('rename-workspace', { detail: activeWorkspaceId }),
       );
     },
-    hotkeyOptions,
+    enabled,
   );
 
-  useHotkeys(
-    KEY_MAP.TOGGLE_SIDEBAR,
+  useBoundHotkey(
+    'view.toggle_sidebar',
     () => {
       useWorkspaceStore.getState().toggleSidebar();
     },
-    hotkeyOptions,
+    enabled,
   );
 
-  useHotkeys(
-    KEY_MAP.NOTES,
+  useBoundHotkey(
+    'view.notes',
     () => {
       router.push('/reports');
     },
-    hotkeyOptions,
+    enabled,
   );
 
-  useHotkeys(
-    KEY_MAP.STATS,
+  useBoundHotkey(
+    'view.stats',
     () => {
       router.push('/stats');
     },
-    hotkeyOptions,
+    enabled,
   );
+
+  useEffect(() => {
+    if (!useKeybindingsStore.getState().loaded) {
+      useKeybindingsStore.getState().load();
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== '?') return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isEditableTarget(e.target)) return;
+      const ws = useWorkspaceStore.getState();
+      if (ws.isSettingsDialogOpen || ws.isCheatSheetOpen) return;
+      e.preventDefault();
+      ws.setCheatSheetOpen(true);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 };
 
 export default useGlobalShortcuts;

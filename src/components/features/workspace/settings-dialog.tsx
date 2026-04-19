@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
 import packageJson from '../../../../package.json';
 import isElectron from '@/hooks/use-is-electron';
-import { Bell, Check, ChevronDown, ChevronsUpDown, Dices, FolderCode, Globe, Layout, Lock, Monitor, Moon, Network, Palette, RotateCcw, Settings, Sun, Terminal, Wrench, X, Zap } from 'lucide-react';
+import { Bell, Check, ChevronDown, ChevronRight, ChevronsUpDown, Dices, FolderCode, Globe, ImageIcon, Keyboard, Layout, Lock, Monitor, Moon, Network, Palette, RotateCcw, Settings, Sun, Terminal, Trash2, Wrench, X, Zap } from 'lucide-react';
 import ClaudeLogo from '@/components/icons/claude-logo';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
@@ -30,6 +30,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
 import useConfigStore from '@/hooks/use-config-store';
+import useWorkspaceStore from '@/hooks/use-workspace-store';
 import { TERMINAL_THEMES } from '@/lib/terminal-themes';
 import { EDITOR_PRESETS, buildEditorUrl, type TEditorPreset } from '@/lib/editor-url';
 import { EditorIcon } from '@/components/icons/editor-icons';
@@ -100,10 +101,17 @@ const GeneralTab = () => {
   const setLocale = useConfigStore((s) => s.setLocale);
   const fontSize = useConfigStore((s) => s.fontSize);
   const setFontSize = useConfigStore((s) => s.setFontSize);
+  const setSettingsDialogOpen = useWorkspaceStore((s) => s.setSettingsDialogOpen);
+  const setCheatSheetOpen = useWorkspaceStore((s) => s.setCheatSheetOpen);
 
   const handleThemeChange = (value: string) => {
     setTheme(value);
     saveAppTheme(value);
+  };
+
+  const handleOpenShortcuts = () => {
+    setSettingsDialogOpen(false);
+    setCheatSheetOpen(true);
   };
 
   return (
@@ -173,6 +181,18 @@ const GeneralTab = () => {
             </Button>
           ))}
         </ButtonGroup>
+      </div>
+
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-medium">{t('keyboardShortcuts')}</p>
+          <p className="text-sm text-muted-foreground">{t('keyboardShortcutsDescription')}</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleOpenShortcuts}>
+          <Keyboard className="h-4 w-4" />
+          {t('openShortcuts')}
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Button>
       </div>
 
       <a
@@ -675,6 +695,29 @@ const SystemTab = () => {
   const setNetworkAccess = useConfigStore((s) => s.setNetworkAccess);
   const hostEnvLocked = useConfigStore((s) => s.hostEnvLocked);
   const bindHostIsLocal = useConfigStore((s) => s.bindHostIsLocal);
+  const [isCleaningUploads, setIsCleaningUploads] = useState(false);
+
+  const handleCleanUploads = async () => {
+    setIsCleaningUploads(true);
+    try {
+      const res = await fetch('/api/uploads/cleanup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'all' }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { deleted: number };
+      if (data.deleted > 0) {
+        toast.success(t('attachedImagesCleaned', { count: data.deleted }));
+      } else {
+        toast.info(t('attachedImagesNothing'));
+      }
+    } catch {
+      toast.error(tc('error'));
+    } finally {
+      setIsCleaningUploads(false);
+    }
+  };
 
   const [pendingNetworkAccess, setPendingNetworkAccess] = useState(networkAccess);
   useEffect(() => {
@@ -758,6 +801,26 @@ const SystemTab = () => {
           />
         </div>
       )}
+
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-start gap-2">
+          <ImageIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium">{t('attachedImages')}</p>
+            <p className="text-sm text-muted-foreground">{t('attachedImagesDescription')}</p>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 shrink-0"
+          onClick={handleCleanUploads}
+          disabled={isCleaningUploads}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          {t('cleanAttachedImages')}
+        </Button>
+      </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>

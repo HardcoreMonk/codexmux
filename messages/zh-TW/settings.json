@@ -23,7 +23,10 @@
     "fontSizeDescription": "調整介面和終端機的字體大小。",
     "fontSizeNormal": "正常",
     "fontSizeLarge": "大",
-    "fontSizeXLarge": "特大"
+    "fontSizeXLarge": "特大",
+    "keyboardShortcuts": "鍵盤快捷鍵",
+    "keyboardShortcutsDescription": "檢視並自訂所有鍵盤快捷鍵。",
+    "openShortcuts": "開啟"
   },
   "appearance": {
     "customCSS": "自訂 CSS",
@@ -109,6 +112,11 @@
     },
     "showResources": "顯示系統資源",
     "showResourcesDescription": "在標題列顯示 CPU、記憶體和 tmux 工作階段使用狀況。",
+    "attachedImages": "附加圖片",
+    "attachedImagesDescription": "在輸入列附加的圖片儲存在 ~/.purplemux/uploads/ 下。超過 24 小時的檔案會在伺服器啟動時自動清理。",
+    "cleanAttachedImages": "立即清理",
+    "attachedImagesCleaned": "已刪除 {count} 個檔案",
+    "attachedImagesNothing": "沒有可刪除的圖片",
     "tmuxReset": "重設 tmux",
     "tmuxResetDescription": "終止所有 tmux 工作階段並{action}。設定變更需要套用時使用。",
     "tmuxResetConfirm": "所有執行中的終端機處理程序將被終止。確定繼續？",

@@ -182,7 +182,9 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   const wasDragRef = useRef(false);
 
   const scrollToBottomRef = useRef<(() => void) | undefined>(undefined);
-  const addPendingMessageRef = useRef<((text: string) => void) | undefined>(undefined);
+  const addPendingMessageRef = useRef<((text: string, options?: { autoHide?: boolean; attachmentPlaceholder?: boolean }) => string) | undefined>(undefined);
+  const removePendingMessageRef = useRef<((id: string) => void) | undefined>(undefined);
+  const attachFilesRef = useRef<((files: File[]) => Promise<boolean> | void) | undefined>(undefined);
   const pendingRestartRef = useRef<string | null>(null);
   const lastTitleRef = useRef('');
 
@@ -245,6 +247,31 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
 
   const handleOptimisticSend = useCallback((text: string) => {
     addPendingMessageRef.current?.(text);
+  }, []);
+
+  const handleAddPendingMessage = useCallback(
+    (text: string, options?: { autoHide?: boolean; attachmentPlaceholder?: boolean }) =>
+      addPendingMessageRef.current?.(text, options) ?? '',
+    [],
+  );
+
+  const handleRemovePendingMessage = useCallback((id: string) => {
+    removePendingMessageRef.current?.(id);
+  }, []);
+
+  const handleTimelineDragOver = useCallback((e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleTimelineDrop = useCallback((e: React.DragEvent) => {
+    if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) return;
+    if (!attachFilesRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    void attachFilesRef.current(Array.from(e.dataTransfer.files));
   }, []);
 
   const handleSelectQuickPrompt = useCallback((prompt: string) => {
@@ -611,6 +638,8 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   } = useFileDrop({
     sendStdin: (data) => wsActionsRef.current.sendStdin(data),
     focus,
+    wsId: layoutWsId ?? undefined,
+    tabId: activeTabId ?? undefined,
   });
 
   const buildClaudeCommand = useCallback((sessionId: string | null): string => {
@@ -808,7 +837,11 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
             collapsedSize={0}
             disabled={!isClaudeCode}
           >
-            <div className={cn('flex h-full flex-col bg-card', isTerminalCollapsed && 'pb-3')}>
+            <div
+              className={cn('flex h-full flex-col bg-card', isTerminalCollapsed && 'pb-3')}
+              onDragOver={isClaudeCode ? handleTimelineDragOver : undefined}
+              onDrop={isClaudeCode ? handleTimelineDrop : undefined}
+            >
               {isClaudeCode && activeTab && !showInitialLoading && activeTabId && (
                 <ClaudeCodePanel
                   key={activeTab.sessionName}
@@ -820,6 +853,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
                   onNewSession={handleNewClaudeSession}
                   scrollToBottomRef={scrollToBottomRef}
                   addPendingMessageRef={addPendingMessageRef}
+                  removePendingMessageRef={removePendingMessageRef}
                 />
               )}
               {isClaudeCode && !showInitialLoading && claudeInputVisible && (
@@ -827,6 +861,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
                   key={activeTabId}
                   tabId={activeTabId ?? undefined}
                   wsId={layoutWsId ?? undefined}
+                  sessionName={activeTab?.sessionName}
                   claudeSessionId={activeTab?.claudeSessionId}
                   cliState={claudeCliState}
                   sendStdin={sendWebStdin}
@@ -838,6 +873,9 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
                   onRestartSession={handleRestartClaudeSession}
                   onSend={handleScrollToBottom}
                   onOptimisticSend={handleOptimisticSend}
+                  onAddPendingMessage={handleAddPendingMessage}
+                  onRemovePendingMessage={handleRemovePendingMessage}
+                  attachFilesRef={attachFilesRef}
                 />
               )}
               {isClaudeCode && !showInitialLoading && claudeInputVisible && activeTabId && (

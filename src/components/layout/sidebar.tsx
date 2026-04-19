@@ -35,6 +35,10 @@ const SettingsDialog = dynamic(
   () => import('@/components/features/workspace/settings-dialog'),
   { ssr: false },
 );
+const CheatSheetDialog = dynamic(
+  () => import('@/components/features/shortcuts/cheat-sheet-dialog'),
+  { ssr: false },
+);
 import { useSelectWorkspace } from '@/hooks/use-sidebar-actions';
 import useSidebarItems from '@/hooks/use-sidebar-items';
 import useWebviewStore from '@/hooks/use-webview-store';
@@ -571,6 +575,7 @@ const Sidebar = () => {
       )}
 
       {settingsOpen && <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />}
+      <CheatSheetDialog />
 
       <AlertDialog
         open={!!deleteTarget}

@@ -22,7 +22,8 @@ interface IClaudeCodePanelProps {
   onClose?: () => void;
   onNewSession?: () => void;
   scrollToBottomRef?: React.MutableRefObject<(() => void) | undefined>;
-  addPendingMessageRef?: React.MutableRefObject<((text: string) => void) | undefined>;
+  addPendingMessageRef?: React.MutableRefObject<((text: string, options?: { autoHide?: boolean; attachmentPlaceholder?: boolean }) => string) | undefined>;
+  removePendingMessageRef?: React.MutableRefObject<((id: string) => void) | undefined>;
 }
 
 const ClaudeCodePanel = ({
@@ -35,6 +36,7 @@ const ClaudeCodePanel = ({
   onNewSession,
   scrollToBottomRef,
   addPendingMessageRef,
+  removePendingMessageRef,
 }: IClaudeCodePanelProps) => {
   const t = useTranslations('terminal');
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(null);
@@ -84,6 +86,7 @@ const ClaudeCodePanel = ({
     retrySession,
     sendResume,
     addPendingUserMessage,
+    removePendingUserMessage,
   } = useTimeline({
     sessionName,
     claudeSessionId,
@@ -121,12 +124,13 @@ const ClaudeCodePanel = ({
   });
 
   useEffect(() => {
-    if (!addPendingMessageRef) return;
-    addPendingMessageRef.current = addPendingUserMessage;
+    if (addPendingMessageRef) addPendingMessageRef.current = addPendingUserMessage;
+    if (removePendingMessageRef) removePendingMessageRef.current = removePendingUserMessage;
     return () => {
-      addPendingMessageRef.current = undefined;
+      if (addPendingMessageRef) addPendingMessageRef.current = undefined;
+      if (removePendingMessageRef) removePendingMessageRef.current = undefined;
     };
-  }, [addPendingMessageRef, addPendingUserMessage]);
+  }, [addPendingMessageRef, removePendingMessageRef, addPendingUserMessage, removePendingUserMessage]);
 
   const prevClaudeProcessRef = useRef(claudeProcess);
   useEffect(() => {

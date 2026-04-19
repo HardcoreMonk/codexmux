@@ -1,0 +1,26 @@
+{
+  "title": "Горячие клавиши",
+  "searchPlaceholder": "Поиск горячих клавиш...",
+  "noResults": "Не найдено горячих клавиш по запросу «{query}».",
+  "resetAll": "Сбросить все",
+  "pressKey": "Нажмите клавишу…",
+  "recording": "Запись…",
+  "notEditable": "Не редактируется",
+  "save": "Сохранить",
+  "saveAnyway": "Всё равно сохранить",
+  "cancel": "Отмена",
+  "disabled": "отключено",
+  "conflictWarning": "Конфликт с «{label}» — сохранение перезапишет.",
+  "reservedWarning": "Зарезервировано: {reason}",
+  "edit": "Изменить",
+  "resetToDefault": "По умолчанию",
+  "disable": "Отключить",
+  "category": {
+    "workspace": "Рабочее пространство",
+    "tab": "Вкладка",
+    "pane": "Панель",
+    "panel": "Панель",
+    "view": "Вид",
+    "app": "Приложение"
+  }
+}

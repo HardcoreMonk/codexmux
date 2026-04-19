@@ -23,7 +23,10 @@
     "fontSizeDescription": "Arayüz ve terminal yazı tipi boyutunu ayarlayın.",
     "fontSizeNormal": "Normal",
     "fontSizeLarge": "Büyük",
-    "fontSizeXLarge": "Çok büyük"
+    "fontSizeXLarge": "Çok büyük",
+    "keyboardShortcuts": "Klavye kısayolları",
+    "keyboardShortcutsDescription": "Tüm klavye kısayollarını görüntüle ve özelleştir.",
+    "openShortcuts": "Aç"
   },
   "appearance": {
     "customCSS": "Özel CSS",
@@ -109,6 +112,11 @@
     },
     "showResources": "Sistem kaynaklarını göster",
     "showResourcesDescription": "Başlıkta CPU, bellek ve tmux oturum kullanımını görüntüler.",
+    "attachedImages": "Eklenen görseller",
+    "attachedImagesDescription": "Giriş çubuğuna eklenen görseller ~/.purplemux/uploads/ altında saklanır. 24 saatten eski dosyalar sunucu başlangıcında otomatik olarak silinir.",
+    "cleanAttachedImages": "Şimdi temizle",
+    "attachedImagesCleaned": "{count} dosya silindi",
+    "attachedImagesNothing": "Silinecek görsel yok",
     "tmuxReset": "tmux Sıfırla",
     "tmuxResetDescription": "Tüm tmux oturumlarını sonlandırır ve {action}. Ayar değişikliklerinin uygulanması gerektiğinde kullanın.",
     "tmuxResetConfirm": "Çalışan tüm terminal işlemleri sonlandırılacak. Devam edilsin mi?",

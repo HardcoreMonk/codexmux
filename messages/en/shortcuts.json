@@ -1,0 +1,26 @@
+{
+  "title": "Keyboard Shortcuts",
+  "searchPlaceholder": "Search shortcuts...",
+  "noResults": "No shortcuts match \"{query}\".",
+  "resetAll": "Reset all",
+  "pressKey": "Press a key…",
+  "recording": "Recording…",
+  "notEditable": "Not editable",
+  "save": "Save",
+  "saveAnyway": "Save anyway",
+  "cancel": "Cancel",
+  "disabled": "disabled",
+  "conflictWarning": "Conflicts with \"{label}\" — saving will override it.",
+  "reservedWarning": "Reserved: {reason}",
+  "edit": "Edit",
+  "resetToDefault": "Reset to default",
+  "disable": "Disable",
+  "category": {
+    "workspace": "Workspace",
+    "tab": "Tab",
+    "pane": "Pane",
+    "panel": "Panel",
+    "view": "View",
+    "app": "App"
+  }
+}

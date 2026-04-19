@@ -29,6 +29,7 @@ import useWebPush from "@/hooks/use-web-push";
 import useWorkspaceStore from "@/hooks/use-workspace-store";
 import useConfigStore from "@/hooks/use-config-store";
 import { setMessages } from "@/lib/i18n";
+import { MESSAGE_NAMESPACES } from "@/lib/message-namespaces";
 
 export type TNextPageWithLayout<P = object, IP = P> = NextPage<P, IP> & {
   getLayout?: (page: ReactElement) => ReactNode;
@@ -130,16 +131,9 @@ export default function App({ Component, pageProps }: TAppPropsWithLayout) {
   useEffect(() => {
     if (loadedLocaleRef.current === locale) return;
     let cancelled = false;
-    const namespaces = [
-      'common', 'sidebar', 'header', 'terminal', 'connection',
-      'workspace', 'login', 'onboarding', 'settings', 'stats',
-      'reset', 'reports', 'timeline',
-      'notification', 'session', 'messageHistory', 'webBrowser',
-      'mobile', 'toolsRequired', 'diff',
-    ] as const;
-    Promise.all(namespaces.map((ns) => import(`../../messages/${locale}/${ns}.json`))).then((modules) => {
+    Promise.all(MESSAGE_NAMESPACES.map((ns) => import(`../../messages/${locale}/${ns}.json`))).then((modules) => {
       if (cancelled) return;
-      const msgs = Object.fromEntries(namespaces.map((ns, i) => [ns, modules[i].default]));
+      const msgs = Object.fromEntries(MESSAGE_NAMESPACES.map((ns, i) => [ns, modules[i].default]));
       loadedLocaleRef.current = locale;
       setMessagesState(msgs);
       setMessages({ [locale]: msgs });

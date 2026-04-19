@@ -23,7 +23,10 @@
     "fontSizeDescription": "Настройте размер шрифта интерфейса и терминала.",
     "fontSizeNormal": "Обычный",
     "fontSizeLarge": "Крупный",
-    "fontSizeXLarge": "Очень крупный"
+    "fontSizeXLarge": "Очень крупный",
+    "keyboardShortcuts": "Горячие клавиши",
+    "keyboardShortcutsDescription": "Просмотр и настройка всех горячих клавиш.",
+    "openShortcuts": "Открыть"
   },
   "appearance": {
     "customCSS": "Пользовательский CSS",
@@ -109,6 +112,11 @@
     },
     "showResources": "Показать системные ресурсы",
     "showResourcesDescription": "Отображать использование ЦП, памяти и сессий tmux в заголовке.",
+    "attachedImages": "Прикреплённые изображения",
+    "attachedImagesDescription": "Изображения, прикреплённые в строку ввода, хранятся в ~/.purplemux/uploads/. Файлы старше 24 часов автоматически удаляются при запуске сервера.",
+    "cleanAttachedImages": "Очистить сейчас",
+    "attachedImagesCleaned": "Удалено файлов: {count}",
+    "attachedImagesNothing": "Нет изображений для удаления",
     "tmuxReset": "Сбросить tmux",
     "tmuxResetDescription": "Завершает все сессии tmux и {action}. Используйте, когда нужно применить изменённые настройки.",
     "tmuxResetConfirm": "Все запущенные терминальные процессы будут завершены. Продолжить?",

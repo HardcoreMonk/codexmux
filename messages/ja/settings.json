@@ -23,7 +23,10 @@
     "fontSizeDescription": "UIとターミナルのフォントサイズを調整します。",
     "fontSizeNormal": "標準",
     "fontSizeLarge": "大",
-    "fontSizeXLarge": "特大"
+    "fontSizeXLarge": "特大",
+    "keyboardShortcuts": "キーボードショートカット",
+    "keyboardShortcutsDescription": "すべてのキーボードショートカットの表示とカスタマイズ。",
+    "openShortcuts": "開く"
   },
   "appearance": {
     "customCSS": "カスタム CSS",
@@ -109,6 +112,11 @@
     },
     "showResources": "システムリソースを表示",
     "showResourcesDescription": "ヘッダーにCPU、メモリ、tmuxセッションの使用状況を表示します。",
+    "attachedImages": "添付画像",
+    "attachedImagesDescription": "入力欄に添付した画像は ~/.purplemux/uploads/ に保存されます。24時間経過したファイルはサーバー起動時に自動で削除されます。",
+    "cleanAttachedImages": "今すぐ整理",
+    "attachedImagesCleaned": "{count}個のファイルを削除しました",
+    "attachedImagesNothing": "削除する画像がありません",
     "tmuxReset": "tmuxリセット",
     "tmuxResetDescription": "すべてのtmuxセッションを終了し、{action}します。設定変更の適用が必要な場合に使用します。",
     "tmuxResetConfirm": "実行中のすべてのターミナルプロセスが終了されます。続行しますか？",

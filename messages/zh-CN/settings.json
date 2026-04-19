@@ -23,7 +23,10 @@
     "fontSizeDescription": "调整界面和终端的字体大小。",
     "fontSizeNormal": "正常",
     "fontSizeLarge": "大",
-    "fontSizeXLarge": "特大"
+    "fontSizeXLarge": "特大",
+    "keyboardShortcuts": "键盘快捷键",
+    "keyboardShortcutsDescription": "查看和自定义所有键盘快捷键。",
+    "openShortcuts": "打开"
   },
   "appearance": {
     "customCSS": "自定义 CSS",
@@ -109,6 +112,11 @@
     },
     "showResources": "显示系统资源",
     "showResourcesDescription": "在标题栏显示CPU、内存和tmux会话使用情况。",
+    "attachedImages": "附加图片",
+    "attachedImagesDescription": "在输入栏附加的图片保存在 ~/.purplemux/uploads/ 下。超过 24 小时的文件会在服务器启动时自动清理。",
+    "cleanAttachedImages": "立即清理",
+    "attachedImagesCleaned": "已删除 {count} 个文件",
+    "attachedImagesNothing": "没有可删除的图片",
     "tmuxReset": "重置tmux",
     "tmuxResetDescription": "终止所有tmux会话并{action}。在需要应用设置更改时使用。",
     "tmuxResetConfirm": "所有正在运行的终端进程将被终止。是否继续？",

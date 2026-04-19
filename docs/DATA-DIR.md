@@ -31,6 +31,8 @@ File permissions are `0600` for anything containing a secret (config, tokens, la
 ├── pmux.lock                # single-instance lock {pid, port, startedAt}
 ├── logs/                    # pino-roll log files
 │   └── purplemux.YYYY-MM-DD.N.log
+├── uploads/                 # images attached via web input bar
+│   └── {wsId}/{tabId}/{ts}-{rand}-{name}.{ext}
 └── stats/                   # Claude usage statistics
     ├── cache.json
     ├── uptime-cache.json
@@ -179,6 +181,18 @@ purplemux.2026-04-19.1.log
 ```
 
 Root level defaults to `info`; override with `LOG_LEVEL=debug` or per-group with `LOG_LEVELS=hooks=debug,status=warn,tmux=trace`. See `src/lib/logger.ts`.
+
+---
+
+## `uploads/` — `src/lib/uploads-store.ts`
+
+Images attached via the chat input bar (drag/drop, paste, paperclip). Saved as `{timestamp}-{rand}-{name}.{ext}` under `{wsId}/{tabId}/` so paths can be passed to the running Claude CLI.
+
+- Allowed MIME types: `image/png`, `image/jpeg`, `image/gif`, `image/webp`
+- Max size: 10 MB
+- Files are written with `0600` permissions
+- Auto-cleanup on server start removes anything older than 24 hours
+- Manual cleanup: Settings → System → Attached Images → Clean now (or `POST /api/uploads/cleanup` with `{ "mode": "all" | "expired" }`)
 
 ---
 

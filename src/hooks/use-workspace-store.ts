@@ -23,6 +23,7 @@ interface IWorkspaceState {
   sidebarWidth: number;
   sidebarTab: 'workspace' | 'sessions';
   isSettingsDialogOpen: boolean;
+  isCheatSheetOpen: boolean;
   isLoading: boolean;
   error: string | null;
 
@@ -40,6 +41,7 @@ interface IWorkspaceState {
   saveSidebarWidth: (width: number) => void;
   setSidebarTab: (tab: 'workspace' | 'sessions') => void;
   setSettingsDialogOpen: (open: boolean) => void;
+  setCheatSheetOpen: (open: boolean) => void;
   validateDirectory: (directory: string) => Promise<IValidateResponse>;
 }
 
@@ -111,6 +113,7 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
   sidebarWidth: initialSidebar.sidebarWidth,
   sidebarTab: initialSidebar.sidebarTab,
   isSettingsDialogOpen: false,
+  isCheatSheetOpen: false,
   isLoading: initialWs.isLoading,
   error: null,
 
@@ -278,6 +281,10 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
 
   setSettingsDialogOpen: (open) => {
     set({ isSettingsDialogOpen: open });
+  },
+
+  setCheatSheetOpen: (open) => {
+    set({ isCheatSheetOpen: open });
   },
 
   validateDirectory: async (directory) => {

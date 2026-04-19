@@ -23,7 +23,10 @@
     "fontSizeDescription": "Ajusta el tamaño de fuente de la interfaz y la terminal.",
     "fontSizeNormal": "Normal",
     "fontSizeLarge": "Grande",
-    "fontSizeXLarge": "Muy grande"
+    "fontSizeXLarge": "Muy grande",
+    "keyboardShortcuts": "Atajos de teclado",
+    "keyboardShortcutsDescription": "Ver y personalizar todos los atajos de teclado.",
+    "openShortcuts": "Abrir"
   },
   "appearance": {
     "customCSS": "CSS personalizado",
@@ -109,6 +112,11 @@
     },
     "showResources": "Mostrar recursos del sistema",
     "showResourcesDescription": "Muestra el uso de CPU, memoria y sesiones tmux en el encabezado.",
+    "attachedImages": "Imágenes adjuntas",
+    "attachedImagesDescription": "Las imágenes adjuntas en la barra de entrada se almacenan en ~/.purplemux/uploads/. Los archivos con más de 24 horas se eliminan automáticamente al iniciar el servidor.",
+    "cleanAttachedImages": "Limpiar ahora",
+    "attachedImagesCleaned": "Se eliminaron {count} archivos",
+    "attachedImagesNothing": "No hay imágenes para eliminar",
     "tmuxReset": "Restablecer tmux",
     "tmuxResetDescription": "Termina todas las sesiones de tmux y {action}. Úsalo cuando necesites aplicar cambios de configuración.",
     "tmuxResetConfirm": "Todos los procesos de terminal en ejecución serán terminados. ¿Continuar?",

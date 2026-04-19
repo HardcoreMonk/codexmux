@@ -1,0 +1,26 @@
+{
+  "title": "키보드 단축키",
+  "searchPlaceholder": "단축키 검색...",
+  "noResults": "\"{query}\"와 일치하는 단축키가 없습니다.",
+  "resetAll": "전체 초기화",
+  "pressKey": "키를 누르세요…",
+  "recording": "녹화 중…",
+  "notEditable": "수정 불가",
+  "save": "저장",
+  "saveAnyway": "덮어쓰기",
+  "cancel": "취소",
+  "disabled": "비활성",
+  "conflictWarning": "\"{label}\"와 충돌합니다 — 저장하면 기존 설정이 덮어쓰입니다.",
+  "reservedWarning": "예약됨: {reason}",
+  "edit": "편집",
+  "resetToDefault": "기본값으로",
+  "disable": "비활성화",
+  "category": {
+    "workspace": "워크스페이스",
+    "tab": "탭",
+    "pane": "분할창",
+    "panel": "패널",
+    "view": "보기",
+    "app": "앱"
+  }
+}

@@ -8,6 +8,7 @@ const eslintConfig = defineConfig([
   {
     rules: {
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_", ignoreRestSiblings: true }],
+      "@next/next/no-img-element": "off",
     },
   },
   // Override default ignores of eslint-config-next.

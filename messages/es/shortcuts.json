@@ -1,0 +1,26 @@
+{
+  "title": "Atajos de teclado",
+  "searchPlaceholder": "Buscar atajos...",
+  "noResults": "Ningún atajo coincide con «{query}».",
+  "resetAll": "Restablecer todo",
+  "pressKey": "Pulsa una tecla…",
+  "recording": "Grabando…",
+  "notEditable": "No editable",
+  "save": "Guardar",
+  "saveAnyway": "Guardar de todas formas",
+  "cancel": "Cancelar",
+  "disabled": "desactivado",
+  "conflictWarning": "Conflicto con «{label}» — al guardar se sobrescribirá.",
+  "reservedWarning": "Reservado: {reason}",
+  "edit": "Editar",
+  "resetToDefault": "Restablecer valor por defecto",
+  "disable": "Desactivar",
+  "category": {
+    "workspace": "Espacio de trabajo",
+    "tab": "Pestaña",
+    "pane": "Panel",
+    "panel": "Panel",
+    "view": "Vista",
+    "app": "Aplicación"
+  }
+}

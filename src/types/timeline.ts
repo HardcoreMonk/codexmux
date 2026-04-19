@@ -42,7 +42,9 @@ export interface ITimelineUserMessage {
   type: 'user-message';
   timestamp: number;
   text: string;
+  images?: string[];
   pending?: boolean;
+  attachmentPlaceholder?: boolean;
 }
 
 export interface ITimelineAssistantMessage {

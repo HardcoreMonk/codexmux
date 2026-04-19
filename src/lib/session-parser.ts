@@ -406,6 +406,8 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
   }
 
   if (base.type === 'user') {
+    if ((raw as { isMeta?: boolean }).isMeta === true) return [];
+
     const parsed = UserEntrySchema.safeParse(raw);
     if (!parsed.success) return [];
 
@@ -458,17 +460,31 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
       } satisfies ITimelineInterrupt];
     }
 
+    const userTextParts: string[] = [];
+    const userImages: string[] = [];
     for (const item of content) {
       if (item.type === 'text' && 'text' in item) {
         const cleaned = stripProtocolTags((item as { text: string }).text);
-        if (!cleaned) continue;
-        entries.push({
-          id: nanoid(),
-          type: 'user-message',
-          timestamp,
-          text: cleaned,
-        } satisfies ITimelineUserMessage);
-      } else if (item.type === 'tool_result' && 'tool_use_id' in item) {
+        if (cleaned) userTextParts.push(cleaned);
+      } else if (item.type === 'image' && 'source' in item) {
+        const src = (item as { source?: { type?: string; media_type?: string; data?: string } }).source;
+        if (src?.type === 'base64' && src.data) {
+          userImages.push(`data:${src.media_type ?? 'image/png'};base64,${src.data}`);
+        }
+      }
+    }
+    if (userTextParts.length > 0 || userImages.length > 0) {
+      entries.push({
+        id: nanoid(),
+        type: 'user-message',
+        timestamp,
+        text: userTextParts.join('\n'),
+        ...(userImages.length > 0 ? { images: userImages } : {}),
+      } satisfies ITimelineUserMessage);
+    }
+
+    for (const item of content) {
+      if (item.type === 'tool_result' && 'tool_use_id' in item) {
         const c = item as { tool_use_id: string; is_error?: boolean; content?: unknown };
 
         const rawObj = raw as Record<string, unknown>;

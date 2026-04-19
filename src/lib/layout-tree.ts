@@ -133,6 +133,48 @@ export const normalizeTree = (node: TLayoutNode): TLayoutNode => {
 
 export type TDirection = 'left' | 'right' | 'up' | 'down';
 
+export interface IResizeTarget {
+  path: number[];
+  currentRatio: number;
+  increase: boolean;
+}
+
+export const findResizeTarget = (
+  root: TLayoutNode,
+  paneId: string,
+  direction: TDirection,
+): IResizeTarget | null => {
+  const path: { node: TLayoutNode; childIndex: number }[] = [];
+
+  const walk = (node: TLayoutNode): boolean => {
+    if (node.type === 'pane') return node.id === paneId;
+    for (let i = 0; i < 2; i++) {
+      path.push({ node, childIndex: i });
+      if (walk(node.children[i as 0 | 1])) return true;
+      path.pop();
+    }
+    return false;
+  };
+
+  if (!walk(root)) return null;
+
+  const targetOrientation =
+    direction === 'left' || direction === 'right' ? 'horizontal' : 'vertical';
+  const targetChildIndex = direction === 'right' || direction === 'down' ? 0 : 1;
+  const increase = direction === 'right' || direction === 'down';
+
+  for (let i = path.length - 1; i >= 0; i--) {
+    const { node, childIndex } = path[i];
+    if (node.type !== 'split') continue;
+    if (node.orientation !== targetOrientation) continue;
+    if (childIndex !== targetChildIndex) continue;
+    const pathIndices = path.slice(0, i).map((p) => p.childIndex);
+    return { path: pathIndices, currentRatio: node.ratio, increase };
+  }
+
+  return null;
+};
+
 export const findAdjacentPaneInDirection = (
   root: TLayoutNode,
   currentPaneId: string,

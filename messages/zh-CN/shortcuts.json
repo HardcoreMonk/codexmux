@@ -1,0 +1,26 @@
+{
+  "title": "键盘快捷键",
+  "searchPlaceholder": "搜索快捷键...",
+  "noResults": "没有匹配 \"{query}\" 的快捷键。",
+  "resetAll": "全部重置",
+  "pressKey": "按下一个键…",
+  "recording": "录制中…",
+  "notEditable": "不可编辑",
+  "save": "保存",
+  "saveAnyway": "仍然保存",
+  "cancel": "取消",
+  "disabled": "已禁用",
+  "conflictWarning": "与 \"{label}\" 冲突 — 保存将覆盖它。",
+  "reservedWarning": "系统保留: {reason}",
+  "edit": "编辑",
+  "resetToDefault": "恢复默认",
+  "disable": "禁用",
+  "category": {
+    "workspace": "工作区",
+    "tab": "标签页",
+    "pane": "窗格",
+    "panel": "面板",
+    "view": "视图",
+    "app": "应用"
+  }
+}

@@ -102,6 +102,7 @@ const MobileClaudeCodePanel = ({
     retrySession,
     sendResume,
     addPendingUserMessage,
+    removePendingUserMessage,
   } = useTimeline({
     sessionName,
     claudeSessionId,
@@ -307,6 +308,7 @@ const MobileClaudeCodePanel = ({
         <WebInputBar
           tabId={tabId}
           wsId={wsId}
+          sessionName={sessionName}
           claudeSessionId={claudeSessionId}
           cliState={storeCliState}
           sendStdin={sendStdin}
@@ -319,6 +321,8 @@ const MobileClaudeCodePanel = ({
           onRestartSession={onRestartSession}
           onSend={handleScrollToBottom}
           onOptimisticSend={addPendingUserMessage}
+          onAddPendingMessage={addPendingUserMessage}
+          onRemovePendingMessage={removePendingUserMessage}
         />
         <QuickPromptBar
           prompts={quickPrompts}

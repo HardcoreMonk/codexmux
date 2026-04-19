@@ -30,6 +30,7 @@ interface IUseTimelineOptions {
 }
 
 const PENDING_AUTOHIDE_DELAY_MS = 1000;
+const ATTACHMENT_PLACEHOLDER_TIMEOUT_MS = 60_000;
 
 interface IUseTimelineReturn {
   entries: ITimelineEntry[];
@@ -46,7 +47,8 @@ interface IUseTimelineReturn {
   hasMore: boolean;
   retrySession: () => void;
   sendResume: (sessionId: string, tmuxSession: string) => void;
-  addPendingUserMessage: (text: string) => void;
+  addPendingUserMessage: (text: string, options?: { autoHide?: boolean; attachmentPlaceholder?: boolean }) => string;
+  removePendingUserMessage: (id: string) => void;
 }
 
 const useTimeline = ({
@@ -142,7 +144,7 @@ const useTimeline = ({
         if (entry.type === 'user-message') {
           const target = entry.text.trim();
           const pendingIdx = updated.findIndex(
-            (e) => e.type === 'user-message' && e.pending && e.text.trim() === target,
+            (e) => e.type === 'user-message' && e.pending && (e.attachmentPlaceholder || e.text.trim() === target),
           );
           if (pendingIdx !== -1) {
             const pending = updated[pendingIdx] as ITimelineEntry & { type: 'user-message' };
@@ -174,27 +176,47 @@ const useTimeline = ({
     });
   }, []);
 
-  const addPendingUserMessage = useCallback((text: string) => {
+  const addPendingUserMessage = useCallback((text: string, options?: { autoHide?: boolean; attachmentPlaceholder?: boolean }): string => {
     const trimmed = text.trim();
-    if (!trimmed) return;
     const id = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    if (!trimmed) return id;
     const pendingEntry: ITimelineEntry = {
       id,
       type: 'user-message',
       timestamp: Date.now(),
       text: trimmed,
       pending: true,
+      attachmentPlaceholder: options?.attachmentPlaceholder,
     };
     setEntries((prev) => [...prev, pendingEntry]);
 
-    setTimeout(() => {
-      if (getCliStateRef.current?.() !== 'busy') return;
-      setEntries((prev) =>
-        prev.filter(
-          (e) => !(e.id === id && e.type === 'user-message' && e.pending === true),
-        ),
-      );
-    }, PENDING_AUTOHIDE_DELAY_MS);
+    if (options?.attachmentPlaceholder) {
+      setTimeout(() => {
+        setEntries((prev) =>
+          prev.filter(
+            (e) => !(e.id === id && e.type === 'user-message' && e.pending === true && e.attachmentPlaceholder === true),
+          ),
+        );
+      }, ATTACHMENT_PLACEHOLDER_TIMEOUT_MS);
+    } else if (options?.autoHide !== false) {
+      setTimeout(() => {
+        if (getCliStateRef.current?.() !== 'busy') return;
+        setEntries((prev) =>
+          prev.filter(
+            (e) => !(e.id === id && e.type === 'user-message' && e.pending === true),
+          ),
+        );
+      }, PENDING_AUTOHIDE_DELAY_MS);
+    }
+    return id;
+  }, []);
+
+  const removePendingUserMessage = useCallback((id: string) => {
+    setEntries((prev) =>
+      prev.filter(
+        (e) => !(e.id === id && e.type === 'user-message' && e.pending === true),
+      ),
+    );
   }, []);
 
   const handleSessionChanged = useCallback((newSessionId: string, reason: string) => {
@@ -354,6 +376,7 @@ const useTimeline = ({
     retrySession,
     sendResume,
     addPendingUserMessage,
+    removePendingUserMessage,
   };
 };
 

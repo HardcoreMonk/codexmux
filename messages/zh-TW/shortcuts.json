@@ -1,0 +1,26 @@
+{
+  "title": "鍵盤快捷鍵",
+  "searchPlaceholder": "搜尋快捷鍵...",
+  "noResults": "沒有符合「{query}」的快捷鍵。",
+  "resetAll": "全部重設",
+  "pressKey": "按下按鍵…",
+  "recording": "錄製中…",
+  "notEditable": "無法編輯",
+  "save": "儲存",
+  "saveAnyway": "仍然儲存",
+  "cancel": "取消",
+  "disabled": "已停用",
+  "conflictWarning": "與「{label}」衝突 — 儲存將會覆寫。",
+  "reservedWarning": "系統保留: {reason}",
+  "edit": "編輯",
+  "resetToDefault": "還原預設",
+  "disable": "停用",
+  "category": {
+    "workspace": "工作區",
+    "tab": "標籤頁",
+    "pane": "窗格",
+    "panel": "面板",
+    "view": "檢視",
+    "app": "應用程式"
+  }
+}
