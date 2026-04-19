@@ -10,9 +10,10 @@ import type {
   IStatsCacheDailyTokens,
   IStatsCacheModelUsage,
   IStatsCacheLongestSession,
+  ITokenBreakdown,
 } from '@/types/stats';
 
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 const CACHE_DIR = path.join(os.homedir(), '.purplemux', 'stats');
 const CACHE_PATH = path.join(CACHE_DIR, 'cache.json');
 const PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
@@ -20,12 +21,25 @@ const CONCURRENCY_LIMIT = 10;
 
 // --- Cache types ---
 
+interface IDailyModelTokens {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheCreation: number;
+  cacheCreation5m: number;
+  cacheCreation1h: number;
+}
+
+const emptyModelTokens = (): IDailyModelTokens => ({
+  input: 0, output: 0, cacheRead: 0, cacheCreation: 0, cacheCreation5m: 0, cacheCreation1h: 0,
+});
+
 interface IStatsDailyData {
   messageCount: number;
   sessionCount: number;
   toolCallCount: number;
   hourCounts: Record<string, number>;
-  modelTokens: Record<string, { input: number; output: number; cacheRead: number; cacheCreation: number }>;
+  modelTokens: Record<string, IDailyModelTokens>;
   sessions: { id: string; start: string; end: string; messages: number }[];
 }
 
@@ -127,13 +141,21 @@ const parseDaysFromFile = async (
           const usage = message.usage as Record<string, unknown> | undefined;
           if (model && !model.startsWith('<') && usage) {
             if (!day.modelTokens[model]) {
-              day.modelTokens[model] = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 };
+              day.modelTokens[model] = emptyModelTokens();
             }
             const mt = day.modelTokens[model];
+            const cc = Number(usage.cache_creation_input_tokens ?? 0);
+            const cacheCreation = usage.cache_creation as Record<string, unknown> | undefined;
+            const cc1h = Number(cacheCreation?.ephemeral_1h_input_tokens ?? 0);
+            const cc5m = cacheCreation?.ephemeral_5m_input_tokens != null
+              ? Number(cacheCreation.ephemeral_5m_input_tokens)
+              : Math.max(0, cc - cc1h);
             mt.input += Number(usage.input_tokens ?? 0);
             mt.output += Number(usage.output_tokens ?? 0);
             mt.cacheRead += Number(usage.cache_read_input_tokens ?? 0);
-            mt.cacheCreation += Number(usage.cache_creation_input_tokens ?? 0);
+            mt.cacheCreation += cc;
+            mt.cacheCreation5m += cc5m;
+            mt.cacheCreation1h += cc1h;
           }
 
           if (sessionId) {
@@ -195,13 +217,15 @@ const mergeDailyData = (target: IStatsDailyData, source: IStatsDailyData): void 
 
   for (const [model, tokens] of Object.entries(source.modelTokens)) {
     if (!target.modelTokens[model]) {
-      target.modelTokens[model] = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 };
+      target.modelTokens[model] = emptyModelTokens();
     }
     const t = target.modelTokens[model];
     t.input += tokens.input;
     t.output += tokens.output;
     t.cacheRead += tokens.cacheRead;
     t.cacheCreation += tokens.cacheCreation;
+    t.cacheCreation5m += tokens.cacheCreation5m;
+    t.cacheCreation1h += tokens.cacheCreation1h;
   }
 
   const existingIds = new Set(target.sessions.map((s) => s.id));
@@ -387,13 +411,15 @@ const buildStatsCache = (
       toolCallCount: day.toolCallCount,
     });
 
-    const tokensByModel: Record<string, { input: number; output: number; cacheRead: number; cacheCreation: number }> = {};
+    const tokensByModel: Record<string, ITokenBreakdown> = {};
     for (const [model, tokens] of Object.entries(day.modelTokens)) {
       tokensByModel[model] = {
         input: tokens.input,
         output: tokens.output,
         cacheRead: tokens.cacheRead,
         cacheCreation: tokens.cacheCreation,
+        cacheCreation5m: tokens.cacheCreation5m,
+        cacheCreation1h: tokens.cacheCreation1h,
       };
 
       if (!modelUsage[model]) {
@@ -402,6 +428,8 @@ const buildStatsCache = (
           outputTokens: 0,
           cacheReadInputTokens: 0,
           cacheCreationInputTokens: 0,
+          cacheCreation5mInputTokens: 0,
+          cacheCreation1hInputTokens: 0,
           webSearchRequests: 0,
           costUSD: 0,
           contextWindow: 0,
@@ -413,6 +441,8 @@ const buildStatsCache = (
       mu.outputTokens += tokens.output;
       mu.cacheReadInputTokens += tokens.cacheRead;
       mu.cacheCreationInputTokens += tokens.cacheCreation;
+      mu.cacheCreation5mInputTokens += tokens.cacheCreation5m;
+      mu.cacheCreation1hInputTokens += tokens.cacheCreation1h;
     }
 
     dailyModelTokens.push({ date, tokensByModel });

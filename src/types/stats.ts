@@ -14,6 +14,8 @@ export interface ITokenBreakdown {
   output: number;
   cacheRead: number;
   cacheCreation: number;
+  cacheCreation5m: number;
+  cacheCreation1h: number;
 }
 
 export interface IStatsCacheDailyTokens {
@@ -26,6 +28,8 @@ export interface IStatsCacheModelUsage {
   outputTokens: number;
   cacheReadInputTokens: number;
   cacheCreationInputTokens: number;
+  cacheCreation5mInputTokens: number;
+  cacheCreation1hInputTokens: number;
   webSearchRequests: number;
   costUSD: number;
   contextWindow: number;
@@ -63,7 +67,7 @@ export interface IOverviewResponse {
   previousMessages: number;
   totalToolCalls: number;
   dailyActivity: IStatsCacheDailyActivity[];
-  modelTokens: Record<string, { input: number; output: number; cacheRead: number; cacheCreation: number; cost: number }>;
+  modelTokens: Record<string, { input: number; output: number; cacheRead: number; cacheCreation: number; cacheCreation5m: number; cacheCreation1h: number; cost: number }>;
   dailyTokens: { date: string; input: number; output: number; cacheRead: number; cacheCreation: number }[];
   hourlyDistribution: Record<string, number>;
   dayHourDistribution: Record<string, number>;

@@ -15,6 +15,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import type { ChartConfig } from '@/components/ui/chart';
 import type { IOverviewResponse } from '@/types/stats';
 import { formatNumber, formatNumberWithComma, formatDate, formatAxisTick, formatCostWithComma } from '@/components/features/stats/stats-utils';
+import { formatModelDisplayName, normalizeModelName } from '@/lib/claude-tokens';
 
 const pct = (value: number, total: number): string =>
   total > 0 ? `${Math.round((value / total) * 100)}%` : '0%';
@@ -24,37 +25,22 @@ interface ITokenSectionProps {
 }
 
 const MODEL_COLOR_MAP: Record<string, string> = {
-  'claude-opus-4-6': 'var(--ui-purple)',
-  'claude-opus-4-5-20251101': 'var(--ui-pink)',
+  'claude-opus-4-7': 'var(--ui-purple)',
+  'claude-opus-4-6': 'var(--ui-pink)',
+  'claude-opus-4-5': 'var(--ui-red)',
   'claude-sonnet-4-6': 'var(--ui-coral)',
-  'claude-sonnet-4-5-20241022': 'var(--ui-amber)',
-  'claude-haiku-4-5-20251001': 'var(--ui-teal)',
+  'claude-sonnet-4-5': 'var(--ui-amber)',
+  'claude-haiku-4-5': 'var(--ui-teal)',
 };
 
 const getModelColor = (model: string): string => {
-  if (MODEL_COLOR_MAP[model]) return MODEL_COLOR_MAP[model];
+  const key = normalizeModelName(model);
+  if (MODEL_COLOR_MAP[key]) return MODEL_COLOR_MAP[key];
   const lower = model.toLowerCase();
   if (lower.includes('opus')) return 'var(--ui-purple)';
   if (lower.includes('sonnet')) return 'var(--ui-coral)';
   if (lower.includes('haiku')) return 'var(--ui-teal)';
   return 'var(--ui-gray)';
-};
-
-const MODEL_LABEL_MAP: Record<string, string> = {
-  'claude-opus-4-6': 'Opus 4.6',
-  'claude-opus-4-5-20251101': 'Opus 4.5',
-  'claude-sonnet-4-6': 'Sonnet 4.6',
-  'claude-sonnet-4-5-20241022': 'Sonnet 4.5',
-  'claude-haiku-4-5-20251001': 'Haiku 4.5',
-};
-
-const getModelLabel = (model: string): string => {
-  if (MODEL_LABEL_MAP[model]) return MODEL_LABEL_MAP[model];
-  const lower = model.toLowerCase();
-  if (lower.includes('opus')) return 'Opus';
-  if (lower.includes('sonnet')) return 'Sonnet';
-  if (lower.includes('haiku')) return 'Haiku';
-  return model;
 };
 
 const TokenSection = ({ data }: ITokenSectionProps) => {
@@ -88,7 +74,7 @@ const TokenSection = ({ data }: ITokenSectionProps) => {
   const modelBarData = useMemo(() => {
     return Object.entries(data.modelTokens)
       .map(([model, tokens]) => ({
-        model: getModelLabel(model),
+        model: formatModelDisplayName(model),
         input: tokens.input,
         output: tokens.output,
         cacheRead: tokens.cacheRead,

@@ -58,8 +58,19 @@ interface IAccumulator {
   inputTokens: number;
   outputTokens: number;
   cacheCreationTokens: number;
+  cacheCreation5mTokens: number;
+  cacheCreation1hTokens: number;
   cacheReadTokens: number;
 }
+
+const createAccumulator = (): IAccumulator => ({
+  inputTokens: 0,
+  outputTokens: 0,
+  cacheCreationTokens: 0,
+  cacheCreation5mTokens: 0,
+  cacheCreation1hTokens: 0,
+  cacheReadTokens: 0,
+});
 
 const accumulateUsage = (
   entries: ITimelineEntry[],
@@ -78,7 +89,7 @@ const accumulateUsage = (
   let updatedAt: string | null = null;
   let contextWindowTokens = 0;
   let firstUserMessage: string | null = null;
-  const acc: IAccumulator = { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 };
+  const acc = createAccumulator();
   const modelMap = new Map<string, IAccumulator>();
 
   for (const entry of entries) {
@@ -94,20 +105,24 @@ const accumulateUsage = (
       if (entry.usage) {
         const cc = entry.usage.cache_creation_input_tokens ?? 0;
         const cr = entry.usage.cache_read_input_tokens ?? 0;
+        const cc1h = entry.usage.cache_creation?.ephemeral_1h_input_tokens ?? 0;
+        const cc5m = entry.usage.cache_creation?.ephemeral_5m_input_tokens ?? Math.max(0, cc - cc1h);
         acc.inputTokens += entry.usage.input_tokens;
         acc.outputTokens += entry.usage.output_tokens;
         acc.cacheCreationTokens += cc;
+        acc.cacheCreation5mTokens += cc5m;
+        acc.cacheCreation1hTokens += cc1h;
         acc.cacheReadTokens += cr;
 
         contextWindowTokens = entry.usage.input_tokens + entry.usage.output_tokens + cc + cr;
 
         const model = entry.model ?? 'unknown';
-        const existing = modelMap.get(model) ?? {
-          inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0,
-        };
+        const existing = modelMap.get(model) ?? createAccumulator();
         existing.inputTokens += entry.usage.input_tokens;
         existing.outputTokens += entry.usage.output_tokens;
         existing.cacheCreationTokens += cc;
+        existing.cacheCreation5mTokens += cc5m;
+        existing.cacheCreation1hTokens += cc1h;
         existing.cacheReadTokens += cr;
         modelMap.set(model, existing);
       }
@@ -126,7 +141,14 @@ const buildTokensByModel = (modelMap: Map<string, IAccumulator>): IModelTokens[]
       cacheCreationTokens: t.cacheCreationTokens,
       cacheReadTokens: t.cacheReadTokens,
       totalTokens: t.inputTokens + t.outputTokens + t.cacheCreationTokens + t.cacheReadTokens,
-      cost: calculateCost(model, t.inputTokens, t.outputTokens, t.cacheCreationTokens, t.cacheReadTokens),
+      cost: calculateCost(
+        model,
+        t.inputTokens,
+        t.outputTokens,
+        t.cacheCreation5mTokens,
+        t.cacheCreation1hTokens,
+        t.cacheReadTokens,
+      ),
     }))
     .sort((a, b) => b.totalTokens - a.totalTokens);
 

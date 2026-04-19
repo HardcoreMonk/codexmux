@@ -96,6 +96,10 @@ const AssistantEntrySchema = BaseEntrySchema.extend({
       output_tokens: z.number(),
       cache_creation_input_tokens: z.number().optional(),
       cache_read_input_tokens: z.number().optional(),
+      cache_creation: z.object({
+        ephemeral_5m_input_tokens: z.number().optional(),
+        ephemeral_1h_input_tokens: z.number().optional(),
+      }).passthrough().optional(),
     }).passthrough().optional(),
   }),
 });

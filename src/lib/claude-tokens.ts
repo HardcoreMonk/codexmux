@@ -3,31 +3,35 @@
 interface IModelPricing {
   input: number;
   output: number;
-  cacheWrite: number;
+  cacheWrite5m: number;
+  cacheWrite1h: number;
   cacheRead: number;
 }
 
 const MODEL_PRICING: Record<string, IModelPricing> = {
-  'opus-4-6': { input: 5, output: 25, cacheWrite: 6.25, cacheRead: 0.5 },
-  'opus-4-5': { input: 5, output: 25, cacheWrite: 6.25, cacheRead: 0.5 },
-  'opus-4-1': { input: 15, output: 75, cacheWrite: 18.75, cacheRead: 1.5 },
-  'opus-4': { input: 15, output: 75, cacheWrite: 18.75, cacheRead: 1.5 },
-  'sonnet-4-6': { input: 3, output: 15, cacheWrite: 3.75, cacheRead: 0.3 },
-  'sonnet-4-5': { input: 3, output: 15, cacheWrite: 3.75, cacheRead: 0.3 },
-  'sonnet-4': { input: 3, output: 15, cacheWrite: 3.75, cacheRead: 0.3 },
-  'sonnet-3-7': { input: 3, output: 15, cacheWrite: 3.75, cacheRead: 0.3 },
-  'sonnet-3-5': { input: 3, output: 15, cacheWrite: 3.75, cacheRead: 0.3 },
-  'haiku-4-5': { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.1 },
-  'haiku-3-5': { input: 0.8, output: 4, cacheWrite: 1, cacheRead: 0.08 },
-  'haiku-3': { input: 0.25, output: 1.25, cacheWrite: 0.3, cacheRead: 0.03 },
-  'opus-3': { input: 15, output: 75, cacheWrite: 18.75, cacheRead: 1.5 },
+  'opus-4-7': { input: 5, output: 25, cacheWrite5m: 6.25, cacheWrite1h: 10, cacheRead: 0.5 },
+  'opus-4-6': { input: 5, output: 25, cacheWrite5m: 6.25, cacheWrite1h: 10, cacheRead: 0.5 },
+  'opus-4-5': { input: 5, output: 25, cacheWrite5m: 6.25, cacheWrite1h: 10, cacheRead: 0.5 },
+  'opus-4-1': { input: 15, output: 75, cacheWrite5m: 18.75, cacheWrite1h: 30, cacheRead: 1.5 },
+  'opus-4': { input: 15, output: 75, cacheWrite5m: 18.75, cacheWrite1h: 30, cacheRead: 1.5 },
+  'sonnet-4-6': { input: 3, output: 15, cacheWrite5m: 3.75, cacheWrite1h: 6, cacheRead: 0.3 },
+  'sonnet-4-5': { input: 3, output: 15, cacheWrite5m: 3.75, cacheWrite1h: 6, cacheRead: 0.3 },
+  'sonnet-4': { input: 3, output: 15, cacheWrite5m: 3.75, cacheWrite1h: 6, cacheRead: 0.3 },
+  'sonnet-3-7': { input: 3, output: 15, cacheWrite5m: 3.75, cacheWrite1h: 6, cacheRead: 0.3 },
+  'sonnet-3-5': { input: 3, output: 15, cacheWrite5m: 3.75, cacheWrite1h: 6, cacheRead: 0.3 },
+  'haiku-4-5': { input: 1, output: 5, cacheWrite5m: 1.25, cacheWrite1h: 2, cacheRead: 0.1 },
+  'haiku-3-5': { input: 0.8, output: 4, cacheWrite5m: 1, cacheWrite1h: 1.6, cacheRead: 0.08 },
+  'haiku-3': { input: 0.25, output: 1.25, cacheWrite5m: 0.3, cacheWrite1h: 0.5, cacheRead: 0.03 },
+  'opus-3': { input: 15, output: 75, cacheWrite5m: 18.75, cacheWrite1h: 30, cacheRead: 1.5 },
 };
 
+// 1.25x input / 2x input / 0.1x input (prompt caching multipliers applied on top of fast rates)
 const OPUS_46_FAST_PRICING: IModelPricing = {
-  input: 30, output: 150, cacheWrite: 37.5, cacheRead: 3,
+  input: 30, output: 150, cacheWrite5m: 37.5, cacheWrite1h: 60, cacheRead: 3,
 };
 
 const MODEL_DISPLAY_NAMES: Record<string, string> = {
+  'opus-4-7': 'Opus 4.7',
   'opus-4-6': 'Opus 4.6',
   'opus-4-5': 'Opus 4.5',
   'opus-4-1': 'Opus 4.1',
@@ -65,11 +69,23 @@ export const formatModelDisplayName = (modelId: string): string => {
 
 // --- Cost calculation ---
 
+const computeCost = (pricing: IModelPricing, input: number, output: number, cache5m: number, cache1h: number, cacheRead: number): number => {
+  const mtok = 1_000_000;
+  return (
+    (input / mtok) * pricing.input +
+    (cache5m / mtok) * pricing.cacheWrite5m +
+    (cache1h / mtok) * pricing.cacheWrite1h +
+    (cacheRead / mtok) * pricing.cacheRead +
+    (output / mtok) * pricing.output
+  );
+};
+
 export const calculateCost = (
   modelId: string,
   inputTokens: number,
   outputTokens: number,
-  cacheCreationTokens: number,
+  cacheCreation5mTokens: number,
+  cacheCreation1hTokens: number,
   cacheReadTokens: number,
   isFastMode = false,
 ): number | null => {
@@ -81,43 +97,38 @@ export const calculateCost = (
     : MODEL_PRICING[key];
   if (!pricing) return null;
 
-  const mtok = 1_000_000;
-  return (
-    (inputTokens / mtok) * pricing.input +
-    (cacheCreationTokens / mtok) * pricing.cacheWrite +
-    (cacheReadTokens / mtok) * pricing.cacheRead +
-    (outputTokens / mtok) * pricing.output
-  );
+  return computeCost(pricing, inputTokens, outputTokens, cacheCreation5mTokens, cacheCreation1hTokens, cacheReadTokens);
 };
 
 /**
  * Full model ID (e.g. "claude-opus-4-6") 기반 비용 계산.
- * stats-cache에서 사용하는 전체 모델 ID용.
+ * 모델 키 추출 실패 시에는 이름 기반 fallback 요율을 적용해 대략치를 반환.
  */
 export const calculateCostByFullId = (
   fullModelId: string,
   inputTokens: number,
   outputTokens: number,
-  cacheCreationTokens: number,
+  cacheCreation5mTokens: number,
+  cacheCreation1hTokens: number,
   cacheReadTokens: number,
 ): number => {
-  const cost = calculateCost(fullModelId, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens);
+  const cost = calculateCost(
+    fullModelId,
+    inputTokens,
+    outputTokens,
+    cacheCreation5mTokens,
+    cacheCreation1hTokens,
+    cacheReadTokens,
+  );
   if (cost !== null) return cost;
 
-  // fallback: 모델 키 추출 실패 시 이름 기반 추정
   const lower = fullModelId.toLowerCase();
   let pricing: IModelPricing;
   if (lower.includes('opus')) pricing = MODEL_PRICING['opus-4-6']!;
   else if (lower.includes('haiku')) pricing = MODEL_PRICING['haiku-4-5']!;
   else pricing = MODEL_PRICING['sonnet-4-6']!;
 
-  const mtok = 1_000_000;
-  return (
-    (inputTokens / mtok) * pricing.input +
-    (cacheCreationTokens / mtok) * pricing.cacheWrite +
-    (cacheReadTokens / mtok) * pricing.cacheRead +
-    (outputTokens / mtok) * pricing.output
-  );
+  return computeCost(pricing, inputTokens, outputTokens, cacheCreation5mTokens, cacheCreation1hTokens, cacheReadTokens);
 };
 
 // --- Token formatting ---

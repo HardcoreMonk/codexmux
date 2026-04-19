@@ -22,8 +22,9 @@ const estimateCostFromUsage = (
   input: number,
   output: number,
   cacheRead: number,
-  cacheCreation: number,
-): number => calculateCostByFullId(model, input, output, cacheCreation, cacheRead);
+  cacheCreation5m: number,
+  cacheCreation1h: number,
+): number => calculateCostByFullId(model, input, output, cacheCreation5m, cacheCreation1h, cacheRead);
 
 const EMPTY_CACHE: IStatsCache = {
   version: 0,
@@ -54,18 +55,25 @@ const safeParseDailyActivity = (raw: unknown): IStatsCacheDailyActivity[] => {
 
 const parseTokenBreakdown = (v: unknown): ITokenBreakdown => {
   if (typeof v === 'number') {
-    return { input: v, output: 0, cacheRead: 0, cacheCreation: 0 };
+    return { input: v, output: 0, cacheRead: 0, cacheCreation: 0, cacheCreation5m: 0, cacheCreation1h: 0 };
   }
   if (typeof v === 'object' && v !== null) {
     const o = v as Record<string, unknown>;
+    const cacheCreation = Number(o.cacheCreation ?? 0);
+    const cacheCreation1h = Number(o.cacheCreation1h ?? 0);
+    const cacheCreation5m = o.cacheCreation5m != null
+      ? Number(o.cacheCreation5m)
+      : Math.max(0, cacheCreation - cacheCreation1h);
     return {
       input: Number(o.input ?? 0),
       output: Number(o.output ?? 0),
       cacheRead: Number(o.cacheRead ?? 0),
-      cacheCreation: Number(o.cacheCreation ?? 0),
+      cacheCreation,
+      cacheCreation5m,
+      cacheCreation1h,
     };
   }
-  return { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 };
+  return { input: 0, output: 0, cacheRead: 0, cacheCreation: 0, cacheCreation5m: 0, cacheCreation1h: 0 };
 };
 
 const safeParseDailyTokens = (raw: unknown): IStatsCacheDailyTokens[] => {
@@ -88,11 +96,18 @@ const safeParseModelUsage = (raw: unknown): Record<string, IStatsCacheModelUsage
   for (const [model, usage] of Object.entries(raw as Record<string, unknown>)) {
     if (typeof usage !== 'object' || usage === null) continue;
     const u = usage as Record<string, unknown>;
+    const cacheCreationTotal = Number(u.cacheCreationInputTokens ?? 0);
+    const cacheCreation1h = Number(u.cacheCreation1hInputTokens ?? 0);
+    const cacheCreation5m = u.cacheCreation5mInputTokens != null
+      ? Number(u.cacheCreation5mInputTokens)
+      : Math.max(0, cacheCreationTotal - cacheCreation1h);
     result[model] = {
       inputTokens: Number(u.inputTokens ?? 0),
       outputTokens: Number(u.outputTokens ?? 0),
       cacheReadInputTokens: Number(u.cacheReadInputTokens ?? 0),
-      cacheCreationInputTokens: Number(u.cacheCreationInputTokens ?? 0),
+      cacheCreationInputTokens: cacheCreationTotal,
+      cacheCreation5mInputTokens: cacheCreation5m,
+      cacheCreation1hInputTokens: cacheCreation1h,
       webSearchRequests: Number(u.webSearchRequests ?? 0),
       costUSD: Number(u.costUSD ?? 0),
       contextWindow: Number(u.contextWindow ?? 0),
@@ -163,7 +178,7 @@ export const buildOverview = (cache: IStatsCache, period: TPeriod): IOverviewRes
   const previousSessions = previousDaily.reduce((sum, d) => sum + d.sessionCount, 0);
   const previousMessages = previousDaily.reduce((sum, d) => sum + d.messageCount, 0);
 
-  const modelTokens: Record<string, { input: number; output: number; cacheRead: number; cacheCreation: number; cost: number }> = {};
+  const modelTokens: Record<string, { input: number; output: number; cacheRead: number; cacheCreation: number; cacheCreation5m: number; cacheCreation1h: number; cost: number }> = {};
   if (period === 'all') {
     for (const [model, usage] of Object.entries(cache.modelUsage)) {
       modelTokens[model] = {
@@ -171,23 +186,30 @@ export const buildOverview = (cache: IStatsCache, period: TPeriod): IOverviewRes
         output: usage.outputTokens,
         cacheRead: usage.cacheReadInputTokens,
         cacheCreation: usage.cacheCreationInputTokens,
+        cacheCreation5m: usage.cacheCreation5mInputTokens,
+        cacheCreation1h: usage.cacheCreation1hInputTokens,
         cost: estimateCostFromUsage(
           model,
           usage.inputTokens,
           usage.outputTokens,
           usage.cacheReadInputTokens,
-          usage.cacheCreationInputTokens,
+          usage.cacheCreation5mInputTokens,
+          usage.cacheCreation1hInputTokens,
         ),
       };
     }
   } else {
     for (const day of filteredTokens) {
       for (const [model, breakdown] of Object.entries(day.tokensByModel)) {
-        if (!modelTokens[model]) modelTokens[model] = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0, cost: 0 };
+        if (!modelTokens[model]) {
+          modelTokens[model] = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0, cacheCreation5m: 0, cacheCreation1h: 0, cost: 0 };
+        }
         modelTokens[model].input += breakdown.input;
         modelTokens[model].output += breakdown.output;
         modelTokens[model].cacheRead += breakdown.cacheRead;
         modelTokens[model].cacheCreation += breakdown.cacheCreation;
+        modelTokens[model].cacheCreation5m += breakdown.cacheCreation5m;
+        modelTokens[model].cacheCreation1h += breakdown.cacheCreation1h;
       }
     }
 
@@ -203,7 +225,8 @@ export const buildOverview = (cache: IStatsCache, period: TPeriod): IOverviewRes
           usage.inputTokens,
           usage.outputTokens,
           usage.cacheReadInputTokens,
-          usage.cacheCreationInputTokens,
+          usage.cacheCreation5mInputTokens,
+          usage.cacheCreation1hInputTokens,
         );
         tokens.cost = allTimeCost * (periodTotal / allTimeTotal);
       }
@@ -242,7 +265,9 @@ export const buildOverview = (cache: IStatsCache, period: TPeriod): IOverviewRes
         if (allTimeTotal > 0) {
           const allTimeCost = estimateCostFromUsage(
             model, usage.inputTokens, usage.outputTokens,
-            usage.cacheReadInputTokens, usage.cacheCreationInputTokens,
+            usage.cacheReadInputTokens,
+            usage.cacheCreation5mInputTokens,
+            usage.cacheCreation1hInputTokens,
           );
           cost += allTimeCost * (dayTotal / allTimeTotal);
         }

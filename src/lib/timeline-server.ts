@@ -292,6 +292,8 @@ const computeInitMeta = (entries: ITimelineEntry[], fileSize: number, createdAtO
     inputTokens: number;
     outputTokens: number;
     cacheCreationTokens: number;
+    cacheCreation5mTokens: number;
+    cacheCreation1hTokens: number;
     cacheReadTokens: number;
   }>();
 
@@ -311,6 +313,8 @@ const computeInitMeta = (entries: ITimelineEntry[], fileSize: number, createdAtO
       if (entry.usage) {
         const cc = entry.usage.cache_creation_input_tokens ?? 0;
         const cr = entry.usage.cache_read_input_tokens ?? 0;
+        const cc1h = entry.usage.cache_creation?.ephemeral_1h_input_tokens ?? 0;
+        const cc5m = entry.usage.cache_creation?.ephemeral_5m_input_tokens ?? Math.max(0, cc - cc1h);
         inputTokens += entry.usage.input_tokens;
         outputTokens += entry.usage.output_tokens;
         cacheCreationTokens += cc;
@@ -320,11 +324,14 @@ const computeInitMeta = (entries: ITimelineEntry[], fileSize: number, createdAtO
 
         const model = entry.model ?? 'unknown';
         const existing = modelMap.get(model) ?? {
-          inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0,
+          inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0,
+          cacheCreation5mTokens: 0, cacheCreation1hTokens: 0, cacheReadTokens: 0,
         };
         existing.inputTokens += entry.usage.input_tokens;
         existing.outputTokens += entry.usage.output_tokens;
         existing.cacheCreationTokens += cc;
+        existing.cacheCreation5mTokens += cc5m;
+        existing.cacheCreation1hTokens += cc1h;
         existing.cacheReadTokens += cr;
         modelMap.set(model, existing);
       }
@@ -339,7 +346,14 @@ const computeInitMeta = (entries: ITimelineEntry[], fileSize: number, createdAtO
       cacheCreationTokens: tokens.cacheCreationTokens,
       cacheReadTokens: tokens.cacheReadTokens,
       totalTokens: tokens.inputTokens + tokens.outputTokens + tokens.cacheCreationTokens + tokens.cacheReadTokens,
-      cost: calculateCost(model, tokens.inputTokens, tokens.outputTokens, tokens.cacheCreationTokens, tokens.cacheReadTokens),
+      cost: calculateCost(
+        model,
+        tokens.inputTokens,
+        tokens.outputTokens,
+        tokens.cacheCreation5mTokens,
+        tokens.cacheCreation1hTokens,
+        tokens.cacheReadTokens,
+      ),
     }))
     .sort((a, b) => b.totalTokens - a.totalTokens);
 
