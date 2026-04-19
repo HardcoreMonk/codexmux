@@ -211,6 +211,13 @@ export const ACTIONS = {
     defaultKey: `${mod}+comma`,
     display: { mac: '⌘,', other: 'Ctrl+,' },
   },
+  'app.new_window': {
+    id: 'app.new_window',
+    label: 'New window',
+    category: 'app',
+    defaultKey: `${mod}+shift+n`,
+    display: { mac: '⌘⇧N', other: 'Ctrl+Shift+N' },
+  },
 } as const satisfies Record<string, IAction>;
 
 export type TActionId = keyof typeof ACTIONS;

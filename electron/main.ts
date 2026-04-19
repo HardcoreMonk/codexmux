@@ -221,12 +221,32 @@ const readLocaleFromConfig = (): string => {
 
 // --- State ---
 
-let mainWindow: BrowserWindow | null = null;
+const windows = new Set<BrowserWindow>();
+let lastFocusedWindow: BrowserWindow | null = null;
 let serverShutdown: (() => Promise<void>) | null = null;
 let isQuitting = false;
 let serverConfig: IServerConfig = { mode: 'local' };
 let localPort: number | null = null;
 let cachedStart: ((opts: { port: number }) => Promise<{ port: number; shutdown: () => Promise<void> }>) | null = null;
+
+const getPrimaryWindow = (): BrowserWindow | null => {
+  if (lastFocusedWindow && !lastFocusedWindow.isDestroyed() && windows.has(lastFocusedWindow)) {
+    return lastFocusedWindow;
+  }
+  for (const w of windows) {
+    if (!w.isDestroyed()) return w;
+  }
+  return null;
+};
+
+const resolveCurrentUrl = (): string | null => {
+  const primary = getPrimaryWindow();
+  const url = primary?.webContents.getURL();
+  if (url && url !== 'about:blank' && !url.startsWith('data:')) return url;
+  if (serverConfig.mode === 'remote' && serverConfig.remoteUrl) return serverConfig.remoteUrl;
+  if (localPort) return `http://localhost:${localPort}`;
+  return null;
+};
 
 // --- Auto Updater ---
 
@@ -243,10 +263,12 @@ const formatMsg = (template: string, values: Record<string, string>): string =>
 
 const canRunUpdater = (): boolean => !isDev && !devUrl && app.isPackaged;
 
-const showUpdateDialog = (options: Electron.MessageBoxOptions) =>
-  mainWindow
-    ? dialog.showMessageBox(mainWindow, options)
+const showUpdateDialog = (options: Electron.MessageBoxOptions) => {
+  const primary = getPrimaryWindow();
+  return primary
+    ? dialog.showMessageBox(primary, options)
     : dialog.showMessageBox(options);
+};
 
 const runExclusiveDialog = async (fn: () => Promise<void>) => {
   if (isUpdateDialogOpen) return;
@@ -281,7 +303,7 @@ const setupAutoUpdater = () => {
         detail: m.updateAvailableDetail,
       });
       if (result.response === 0) {
-        mainWindow?.setProgressBar(0.05);
+        getPrimaryWindow()?.setProgressBar(0.05);
         autoUpdater.downloadUpdate().catch((err) => {
           console.error('[updater] downloadUpdate failed:', err);
         });
@@ -290,11 +312,11 @@ const setupAutoUpdater = () => {
   });
 
   autoUpdater.on('download-progress', (progress: ProgressInfo) => {
-    mainWindow?.setProgressBar(progress.percent / 100);
+    getPrimaryWindow()?.setProgressBar(progress.percent / 100);
   });
 
   autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
-    mainWindow?.setProgressBar(-1);
+    getPrimaryWindow()?.setProgressBar(-1);
     runExclusiveDialog(async () => {
       const m = mt();
       const result = await showUpdateDialog({
@@ -315,7 +337,7 @@ const setupAutoUpdater = () => {
   autoUpdater.on('error', (err: Error) => {
     console.error('[updater]', err);
     pendingUpdateVersion = null;
-    mainWindow?.setProgressBar(-1);
+    getPrimaryWindow()?.setProgressBar(-1);
   });
 };
 
@@ -451,6 +473,13 @@ const updateMenu = () => {
     {
       label: 'Window',
       submenu: [
+        {
+          label: 'New Window',
+          accelerator: 'CommandOrControl+Shift+N',
+          registerAccelerator: false,
+          click: openNewWindow,
+        },
+        { type: 'separator' },
         { role: 'minimize' }, { role: 'zoom' }, { type: 'separator' }, { role: 'close' },
       ],
     },
@@ -469,7 +498,8 @@ const handleSwitchToLocal = async () => {
 
   try {
     const port = await startLocalServer();
-    mainWindow?.loadURL(`http://localhost:${port}`);
+    const url = `http://localhost:${port}`;
+    for (const w of windows) w.loadURL(url);
   } catch (err) {
     console.error('[electron] Failed to start local server:', err);
   }
@@ -477,9 +507,10 @@ const handleSwitchToLocal = async () => {
 };
 
 const handleSwitchToRemote = async () => {
-  if (!mainWindow) return;
+  const parent = getPrimaryWindow();
+  if (!parent) return;
 
-  const url = await showServerPrompt(mainWindow, serverConfig.remoteUrl);
+  const url = await showServerPrompt(parent, serverConfig.remoteUrl);
   if (!url) {
     updateMenu();
     return;
@@ -488,7 +519,7 @@ const handleSwitchToRemote = async () => {
   await stopLocalServer();
   serverConfig = { mode: 'remote', remoteUrl: url };
   writeServerConfig(serverConfig);
-  mainWindow.loadURL(url);
+  for (const w of windows) w.loadURL(url);
   updateMenu();
 };
 
@@ -514,14 +545,19 @@ const getRestorePosition = (saved: IWindowState): { x?: number; y?: number } => 
   return {};
 };
 
-const createWindow = (url: string) => {
+const NEW_WINDOW_OFFSET = 32;
+
+const createWindow = (url: string): BrowserWindow => {
   const saved = readWindowState();
   const pos = getRestorePosition(saved);
+  const isFirstWindow = windows.size === 0;
+  const offset = isFirstWindow ? 0 : (windows.size * NEW_WINDOW_OFFSET) % 200;
 
-  mainWindow = new BrowserWindow({
+  const win = new BrowserWindow({
     width: saved.width,
     height: saved.height,
-    ...pos,
+    x: pos.x != null ? pos.x + offset : undefined,
+    y: pos.y != null ? pos.y + offset : undefined,
     minWidth: 800,
     minHeight: 500,
     titleBarStyle: 'hiddenInset',
@@ -535,23 +571,32 @@ const createWindow = (url: string) => {
     },
   });
 
-  if (saved.isMaximized) mainWindow.maximize();
-  if (saved.isFullScreen) mainWindow.setFullScreen(true);
+  windows.add(win);
+  lastFocusedWindow = win;
 
-  mainWindow.loadURL(url);
+  if (isFirstWindow) {
+    if (saved.isMaximized) win.maximize();
+    if (saved.isFullScreen) win.setFullScreen(true);
+  }
 
-  mainWindow.webContents.on('will-attach-webview', (_event, webPreferences) => {
+  win.loadURL(url);
+
+  win.on('focus', () => {
+    lastFocusedWindow = win;
+  });
+
+  win.webContents.on('will-attach-webview', (_event, webPreferences) => {
     webPreferences.nodeIntegration = false;
     webPreferences.contextIsolation = true;
   });
 
-  mainWindow.webContents.setWindowOpenHandler(({ url: linkUrl }) => {
+  win.webContents.setWindowOpenHandler(({ url: linkUrl }) => {
     shell.openExternal(linkUrl);
     return { action: 'deny' };
   });
 
-  mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
-    const currentOrigin = new URL(mainWindow?.webContents.getURL() || '').origin;
+  win.webContents.on('will-navigate', (event, navigationUrl) => {
+    const currentOrigin = new URL(win.webContents.getURL() || '').origin;
     const targetOrigin = new URL(navigationUrl).origin;
     if (currentOrigin !== targetOrigin) {
       event.preventDefault();
@@ -561,55 +606,64 @@ const createWindow = (url: string) => {
 
   let saveTimer: ReturnType<typeof setTimeout> | null = null;
   const saveWindowState = () => {
-    if (!mainWindow) return;
+    if (win.isDestroyed()) return;
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-      if (!mainWindow) return;
-      const bounds = mainWindow.getNormalBounds();
-      const currentDisplay = screen.getDisplayMatching(mainWindow.getBounds());
+      if (win.isDestroyed()) return;
+      const bounds = win.getNormalBounds();
+      const currentDisplay = screen.getDisplayMatching(win.getBounds());
       writeWindowState({
         x: bounds.x,
         y: bounds.y,
         width: bounds.width,
         height: bounds.height,
-        isMaximized: mainWindow.isMaximized(),
-        isFullScreen: mainWindow.isFullScreen(),
+        isMaximized: win.isMaximized(),
+        isFullScreen: win.isFullScreen(),
         displayId: currentDisplay.id,
       });
     }, 500);
   };
 
-  mainWindow.on('resize', saveWindowState);
-  mainWindow.on('move', saveWindowState);
-  mainWindow.on('maximize', saveWindowState);
-  mainWindow.on('unmaximize', saveWindowState);
-  mainWindow.on('enter-full-screen', saveWindowState);
-  mainWindow.on('leave-full-screen', saveWindowState);
+  win.on('resize', saveWindowState);
+  win.on('move', saveWindowState);
+  win.on('maximize', saveWindowState);
+  win.on('unmaximize', saveWindowState);
+  win.on('enter-full-screen', saveWindowState);
+  win.on('leave-full-screen', saveWindowState);
 
-  mainWindow.on('close', (e) => {
-    if (!mainWindow) return;
+  win.on('close', (e) => {
     if (saveTimer) clearTimeout(saveTimer);
-    const bounds = mainWindow.getNormalBounds();
-    const currentDisplay = screen.getDisplayMatching(mainWindow.getBounds());
+    const bounds = win.getNormalBounds();
+    const currentDisplay = screen.getDisplayMatching(win.getBounds());
     writeWindowState({
       x: bounds.x,
       y: bounds.y,
       width: bounds.width,
       height: bounds.height,
-      isMaximized: mainWindow.isMaximized(),
-      isFullScreen: mainWindow.isFullScreen(),
+      isMaximized: win.isMaximized(),
+      isFullScreen: win.isFullScreen(),
       displayId: currentDisplay.id,
     });
 
-    if (process.platform === 'darwin' && !isQuitting) {
+    // darwin: hide only when this is the last remaining window
+    if (process.platform === 'darwin' && !isQuitting && windows.size === 1 && windows.has(win)) {
       e.preventDefault();
-      mainWindow.hide();
+      win.hide();
     }
   });
 
-  mainWindow.on('closed', () => {
-    mainWindow = null;
+  win.on('closed', () => {
+    windows.delete(win);
+    if (lastFocusedWindow === win) lastFocusedWindow = null;
   });
+
+  return win;
+};
+
+const openNewWindow = () => {
+  const url = resolveCurrentUrl();
+  if (!url) return;
+  createWindow(url);
 };
 
 // --- Splash (Loading) Screen ---
@@ -684,18 +738,18 @@ const bootstrap = async () => {
   nativeTheme.themeSource = appTheme as 'dark' | 'light' | 'system';
 
   if (serverConfig.mode === 'remote' && serverConfig.remoteUrl) {
-    createWindow('about:blank');
-    loadSplash(mainWindow!);
+    const win = createWindow('about:blank');
+    loadSplash(win);
     await shellEnvReady;
-    mainWindow?.loadURL(serverConfig.remoteUrl);
+    win.loadURL(serverConfig.remoteUrl);
   } else {
     serverConfig = { mode: 'local' };
     // 윈도우를 먼저 띄우고 로딩 화면을 보여준 뒤, 서버가 준비되면 전환
-    createWindow('about:blank');
-    loadSplash(mainWindow!);
+    const win = createWindow('about:blank');
+    loadSplash(win);
     await shellEnvReady;
     const port = await startLocalServer();
-    mainWindow?.loadURL(`http://localhost:${port}`);
+    win.loadURL(`http://localhost:${port}`);
   }
 
   updateMenu();
@@ -730,16 +784,23 @@ ipcMain.handle('set-locale', (_event, locale: string) => {
 
 // --- Native Notifications ---
 
-ipcMain.handle('show-notification', (_event, title: string, body: string) => {
-  if (mainWindow?.isFocused()) return false;
+ipcMain.handle('show-notification', (event, title: string, body: string) => {
+  const anyFocused = BrowserWindow.getAllWindows().some((w) => !w.isDestroyed() && w.isFocused());
+  if (anyFocused) return false;
+  const senderWin = BrowserWindow.fromWebContents(event.sender);
   const notification = new Notification({ title, body });
   notification.on('click', () => {
-    mainWindow?.show();
-    mainWindow?.focus();
-    mainWindow?.webContents.send('notification-click');
+    const target = senderWin && !senderWin.isDestroyed() ? senderWin : getPrimaryWindow();
+    target?.show();
+    target?.focus();
+    target?.webContents.send('notification-click');
   });
   notification.show();
   return true;
+});
+
+ipcMain.handle('open-new-window', () => {
+  openNewWindow();
 });
 
 ipcMain.handle('set-dock-badge', (_event, count: number) => {
@@ -767,8 +828,10 @@ ipcMain.handle('get-system-resources', () => {
 app.on('ready', bootstrap);
 
 app.on('activate', () => {
-  if (mainWindow) {
-    mainWindow.show();
+  const primary = getPrimaryWindow();
+  if (primary) {
+    primary.show();
+    primary.focus();
   } else if (!devUrl) {
     bootstrap();
   }
@@ -824,8 +887,10 @@ app.on('will-quit', async (event) => {
 
 app.requestSingleInstanceLock();
 app.on('second-instance', () => {
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
+  const primary = getPrimaryWindow();
+  if (primary) {
+    if (primary.isMinimized()) primary.restore();
+    primary.show();
+    primary.focus();
   }
 });

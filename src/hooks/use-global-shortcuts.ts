@@ -46,6 +46,15 @@ const useGlobalShortcuts = () => {
   );
 
   useBoundHotkey(
+    'app.new_window',
+    () => {
+      const api = (window as unknown as { electronAPI?: { openNewWindow?: () => void } }).electronAPI;
+      api?.openNewWindow?.();
+    },
+    true,
+  );
+
+  useBoundHotkey(
     'workspace.new',
     async () => {
       const store = useWorkspaceStore.getState();
