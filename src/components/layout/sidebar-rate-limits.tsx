@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import useRateLimitsStore from '@/hooks/use-rate-limits-store';
 import type { IRateLimitWindow } from '@/types/status';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 const PERIOD_SECS = { '5h': 5 * 3600, '7d': 7 * 86400 } as const;
 type TLimitLabel = keyof typeof PERIOD_SECS;
@@ -14,6 +20,18 @@ const getEffectiveWindow = (window: IRateLimitWindow, label: TLimitLabel) => {
   const period = PERIOD_SECS[label];
   const nextResetsAt = window.resets_at + Math.ceil(elapsed / period) * period;
   return { resetsAt: nextResetsAt, usedPct: 0 };
+};
+
+const getProjectedPct = (
+  usedPct: number,
+  resetsAt: number,
+  label: TLimitLabel,
+): number => {
+  const period = PERIOD_SECS[label];
+  const remaining = Math.max(0, resetsAt - Date.now() / 1000);
+  const elapsed = period - remaining;
+  if (elapsed <= 0) return usedPct;
+  return Math.min(100, (usedPct * period) / elapsed);
 };
 
 const formatRemaining = (resetsAt: number): string => {
@@ -36,21 +54,47 @@ const barColor = (pct: number): string => {
 const LimitBar = ({ label, window }: { label: TLimitLabel; window: IRateLimitWindow }) => {
   const { resetsAt, usedPct } = getEffectiveWindow(window, label);
   const pct = Math.min(100, Math.round(usedPct));
+  const projectedPct = Math.min(100, Math.round(getProjectedPct(usedPct, resetsAt, label)));
   const remaining = formatRemaining(resetsAt);
+  const showProjection = projectedPct > pct;
 
   return (
-    <div className="space-y-0.5">
-      <div className="flex justify-between text-[10px] tabular-nums text-muted-foreground/60">
-        <span>{label}</span>
-        <span>{remaining} ({pct}%)</span>
-      </div>
-      <div className="h-1 w-full rounded-full bg-muted-foreground/10">
-        <div
-          className={`h-full rounded-full transition-all duration-300 ${barColor(pct)}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
+    <Tooltip>
+      <TooltipTrigger render={<div className="w-full cursor-default space-y-0.5" />}>
+        <div className="flex justify-between text-[10px] tabular-nums text-muted-foreground/60">
+          <span>{label}</span>
+          <span>
+            {remaining} ({pct}%
+            {showProjection && (
+              <span className="text-muted-foreground/40"> → {projectedPct}%</span>
+            )}
+            )
+          </span>
+        </div>
+        <div className="relative h-1 w-full overflow-hidden rounded-full bg-muted-foreground/10">
+          {showProjection && (
+            <div
+              className={`absolute left-0 top-0 h-full rounded-full opacity-30 transition-all duration-300 ${barColor(projectedPct)}`}
+              style={{ width: `${projectedPct}%` }}
+            />
+          )}
+          <div
+            className={`absolute left-0 top-0 h-full rounded-full transition-all duration-300 ${barColor(pct)}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[240px]">
+        <div className="flex flex-col gap-0.5 text-left">
+          <div>
+            {pct}% used · resets in {remaining}
+          </div>
+          <div className="opacity-70">
+            Projected {projectedPct}% by reset at the current pace
+          </div>
+        </div>
+      </TooltipContent>
+    </Tooltip>
   );
 };
 
@@ -68,10 +112,12 @@ const SidebarRateLimits = () => {
   if (!data.five_hour && !data.seven_day) return null;
 
   return (
-    <div className="space-y-1 px-3 py-1.5">
-      {data.five_hour && <LimitBar label="5h" window={data.five_hour} />}
-      {data.seven_day && <LimitBar label="7d" window={data.seven_day} />}
-    </div>
+    <TooltipProvider delay={200}>
+      <div className="space-y-1 px-3 py-1.5">
+        {data.five_hour && <LimitBar label="5h" window={data.five_hour} />}
+        {data.seven_day && <LimitBar label="7d" window={data.seven_day} />}
+      </div>
+    </TooltipProvider>
   );
 };
 
