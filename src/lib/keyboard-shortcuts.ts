@@ -203,6 +203,27 @@ export const ACTIONS = {
     defaultKey: `${mod}+shift+u`,
     display: { mac: '⌘⇧U', other: 'Ctrl+Shift+U' },
   },
+  'view.mode_terminal': {
+    id: 'view.mode_terminal',
+    label: 'Switch to Terminal mode',
+    category: 'view',
+    defaultKey: `${mod}+shift+t`,
+    display: { mac: '⌘⇧T', other: 'Ctrl+Shift+T' },
+  },
+  'view.mode_claude': {
+    id: 'view.mode_claude',
+    label: 'Switch to Claude mode',
+    category: 'view',
+    defaultKey: `${mod}+shift+c`,
+    display: { mac: '⌘⇧C', other: 'Ctrl+Shift+C' },
+  },
+  'view.mode_diff': {
+    id: 'view.mode_diff',
+    label: 'Switch to Diff mode',
+    category: 'view',
+    defaultKey: `${mod}+shift+f`,
+    display: { mac: '⌘⇧F', other: 'Ctrl+Shift+F' },
+  },
 
   'app.settings': {
     id: 'app.settings',

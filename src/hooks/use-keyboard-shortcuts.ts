@@ -135,6 +135,21 @@ const useKeyboardShortcuts = ({
     },
     enabled,
   );
+
+  const switchMode = useCallback((panelType: TPanelType) => {
+    const l = layoutRef.current;
+    const pane = getFocusedPane(l.layout);
+    if (!pane?.activeTabId) return;
+    const tab = pane.tabs.find((t) => t.id === pane.activeTabId);
+    if (!tab) return;
+    const current = tab.panelType ?? 'terminal';
+    if (current === panelType) return;
+    useLayoutStore.getState().updateTabPanelType(pane.id, pane.activeTabId, panelType);
+  }, []);
+
+  useBoundHotkey('view.mode_terminal', () => switchMode('terminal'), enabled);
+  useBoundHotkey('view.mode_claude', () => switchMode('claude-code'), enabled);
+  useBoundHotkey('view.mode_diff', () => switchMode('diff'), enabled);
 };
 
 export default useKeyboardShortcuts;

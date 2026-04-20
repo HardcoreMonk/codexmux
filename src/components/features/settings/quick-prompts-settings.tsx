@@ -178,14 +178,14 @@ const QuickPromptsSettings = () => {
 
     if (form.mode === 'edit' && form.id) {
       const next = customPrompts.map((p) =>
-        p.id === form.id ? { ...p, name: form.name.trim(), prompt: form.prompt.trim() } : p,
+        p.id === form.id ? { ...p, name: form.name.trim(), prompt: form.prompt } : p,
       );
       saveCustom(next);
     } else {
       const newPrompt: IQuickPrompt = {
         id: `custom-${nanoid(8)}`,
         name: form.name.trim(),
-        prompt: form.prompt.trim(),
+        prompt: form.prompt,
         enabled: true,
       };
       saveCustom([...customPrompts, newPrompt]);
