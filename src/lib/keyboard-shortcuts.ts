@@ -191,7 +191,7 @@ export const ACTIONS = {
   },
   'view.toggle_sidebar_tab': {
     id: 'view.toggle_sidebar_tab',
-    label: 'Toggle sidebar tab (Workspace ↔ Sessions)',
+    label: 'Switch Workspace ↔ Sessions',
     category: 'view',
     defaultKey: `${mod}+shift+b`,
     display: { mac: '⌘⇧B', other: 'Ctrl+Shift+B' },
