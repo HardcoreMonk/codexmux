@@ -1,17 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { isMac } from '@/lib/keyboard-shortcuts';
 
 const HOLD_MS = 500;
 
 let active = false;
-const subscribers = new Set<(next: boolean) => void>();
+const subscribers = new Set<() => void>();
 let holdTimer: ReturnType<typeof setTimeout> | null = null;
 let listenersAttached = false;
 
 const setActive = (next: boolean) => {
   if (active === next) return;
   active = next;
-  for (const sub of subscribers) sub(next);
+  for (const sub of subscribers) sub();
 };
 
 const clearHold = () => {
@@ -47,19 +47,18 @@ const attachListeners = () => {
   });
 };
 
-const useShortcutHints = (): boolean => {
-  const [value, setValue] = useState(active);
-
-  useEffect(() => {
-    attachListeners();
-    subscribers.add(setValue);
-    setValue(active);
-    return () => {
-      subscribers.delete(setValue);
-    };
-  }, []);
-
-  return value;
+const subscribe = (onStoreChange: () => void) => {
+  attachListeners();
+  subscribers.add(onStoreChange);
+  return () => {
+    subscribers.delete(onStoreChange);
+  };
 };
+
+const getSnapshot = () => active;
+const getServerSnapshot = () => false;
+
+const useShortcutHints = (): boolean =>
+  useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
 export default useShortcutHints;
