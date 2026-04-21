@@ -214,7 +214,12 @@ const PaneTabBar = ({
 
       <TooltipProvider>
         <div className="flex shrink-0 items-stretch">
-          <PaneNewTabMenu isCreating={isCreating} onCreateTab={onCreateTab} />
+          <PaneNewTabMenu
+            paneId={paneId}
+            isCreating={isCreating}
+            activePanelType={sortedTabs.find((tab) => tab.id === activeTabId)?.panelType}
+            onCreateTab={onCreateTab}
+          />
 
           {paneCount >= 2 && (
             <div className="flex items-center px-0.5">

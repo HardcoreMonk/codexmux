@@ -410,15 +410,25 @@ const Sidebar = () => {
 
         <div className="shrink-0 border-t border-sidebar-border">
           {sidebarTab === 'workspace' && (
-            <button
-              className="flex h-9 w-full items-center gap-2 px-3 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent disabled:opacity-50"
-              onClick={handleCreateWorkspace}
-              disabled={isCreating}
-              aria-label={t('addWorkspace')}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Workspace
-            </button>
+            <div className="relative">
+              <button
+                className="flex h-9 w-full items-center gap-2 px-3 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent disabled:opacity-50"
+                onClick={handleCreateWorkspace}
+                disabled={isCreating}
+                aria-label={t('addWorkspace')}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Workspace
+              </button>
+              <ShortcutKey
+                mac="⌘N"
+                other="^N"
+                className={cn(
+                  'absolute right-2 top-1/2 -translate-y-1/2 rounded bg-muted px-1 py-0.5 text-[10px] font-medium leading-none text-muted-foreground transition-opacity duration-200 pointer-events-none',
+                  showShortcuts ? 'opacity-100' : 'opacity-0',
+                )}
+              />
+            </div>
           )}
 
           <SidebarRateLimits />

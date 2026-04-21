@@ -96,7 +96,9 @@ const useKeyboardShortcuts = ({
   useBoundHotkey('tab.new', () => {
     const l = layoutRef.current;
     if (!l.layout?.activePaneId) return;
-    l.createTabInPane(l.layout.activePaneId);
+    window.dispatchEvent(
+      new CustomEvent('open-new-tab-menu', { detail: { paneId: l.layout.activePaneId } }),
+    );
   }, enabled);
 
   useBoundHotkey('tab.close', () => {

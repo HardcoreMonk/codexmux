@@ -117,22 +117,33 @@ const ContentHeader = ({
         >
           <div className={cn('flex items-center gap-px border-r border-border pr-2', isToggling && 'pointer-events-none opacity-80')}>
             {([
-              { value: 'terminal', label: 'TERMINAL' },
-              { value: 'claude-code', label: 'CLAUDE' },
-              { value: 'diff', label: 'DIFF' },
+              { value: 'terminal', label: 'TERMINAL', mac: '⌘⇧T', other: '^⇧T' },
+              { value: 'claude-code', label: 'CLAUDE', mac: '⌘⇧C', other: '^⇧C' },
+              { value: 'diff', label: 'DIFF', mac: '⌘⇧F', other: '^⇧F' },
             ] as const).map((item) => (
-              <button
-                key={item.value}
-                className={cn(
-                  'rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide transition-colors',
-                  activePanelType === item.value
-                    ? 'bg-accent text-foreground'
-                    : 'text-muted-foreground/60 hover:text-muted-foreground',
+              <div key={item.value} className="relative">
+                <button
+                  className={cn(
+                    'rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide transition-colors',
+                    activePanelType === item.value
+                      ? 'bg-accent text-foreground'
+                      : 'text-muted-foreground/60 hover:text-muted-foreground',
+                  )}
+                  onClick={() => handlePanelSwitch(item.value)}
+                >
+                  {item.label}
+                </button>
+                {activePanelType !== item.value && (
+                  <ShortcutKey
+                    mac={item.mac}
+                    other={item.other}
+                    className={cn(
+                      'absolute -right-0.5 -top-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-medium leading-none text-muted-foreground transition-opacity duration-200 pointer-events-none',
+                      showShortcuts ? 'opacity-100' : 'opacity-0',
+                    )}
+                  />
                 )}
-                onClick={() => handlePanelSwitch(item.value)}
-              >
-                {item.label}
-              </button>
+              </div>
             ))}
           </div>
           {editorPreset !== 'off' && (
