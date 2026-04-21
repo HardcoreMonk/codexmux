@@ -14,7 +14,7 @@ import TerminalContainer from '@/components/features/workspace/terminal-containe
 import ConnectionStatus from '@/components/features/workspace/connection-status';
 import MobileClaudeCodePanel from '@/components/features/mobile/mobile-claude-code-panel';
 import MobileTerminalToolbar from '@/components/features/mobile/mobile-terminal-toolbar';
-import { formatTabTitle } from '@/lib/tab-title';
+import { formatTabTitle, isShellProcess } from '@/lib/tab-title';
 import { isAppShortcut, isClearShortcut, isFocusInputShortcut, isShiftEnter } from '@/lib/keyboard-shortcuts';
 import type { TCliState } from '@/types/timeline';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
@@ -126,7 +126,7 @@ const MobileSurfaceView = ({
   const focusInputRef = useRef<(() => void) | undefined>(undefined);
   const setInputValueRef = useRef<((v: string) => void) | undefined>(undefined);
 
-  const pendingRestartRef = useRef(false);
+  const pendingRestartRef = useRef<string | null>(null);
   const lastTitleRef = useRef('');
   const claudeProcess = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.claudeProcess ?? null : null);
   const sessionView = useTabStore((s) => activeTabId ? selectSessionView(s.tabs, activeTabId) : null);
@@ -174,6 +174,11 @@ const MobileSurfaceView = ({
       lastTitleRef.current = title;
       const formatted = formatTabTitle(title);
       useTabMetadataStore.getState().setTitle(tabId, formatted);
+      if (isShellProcess(title) && pendingRestartRef.current) {
+        const cmd = pendingRestartRef.current;
+        pendingRestartRef.current = null;
+        wsActionsRef.current.sendStdin(`${cmd}\r`);
+      }
       const tab = tabsRef.current.find((t) => t.id === tabId);
       if (tab) {
         const prevCheckedAt = useTabStore.getState().tabs[tabId]?.claudeProcessCheckedAt ?? 0;
@@ -348,35 +353,36 @@ const MobileSurfaceView = ({
     setIsCreating(false);
   }, [paneId, onCreateTab]);
 
+  const buildClaudeCommand = useCallback((): string => {
+    const dangerous = useConfigStore.getState().dangerouslySkipPermissions;
+    const settings = '--settings ~/.purplemux/hooks.json';
+    const prompt = layoutWsId ? `--append-system-prompt-file ~/.purplemux/workspaces/${layoutWsId}/claude-prompt.md` : '';
+    const flags = [settings, prompt].filter(Boolean).join(' ');
+    const base = `claude ${flags}`;
+    return dangerous ? `${base} --dangerously-skip-permissions` : base;
+  }, [layoutWsId]);
+
   const handleNewClaudeSession = useCallback(() => {
     if (status !== 'connected' || !activeTabId) return;
     useTabStore.getState().setSessionView(activeTabId, 'check');
-    const dangerous = useConfigStore.getState().dangerouslySkipPermissions;
-    const settings = '--settings ~/.purplemux/hooks.json';
-    const prompt = layoutWsId ? `--append-system-prompt-file ~/.purplemux/workspaces/${layoutWsId}/claude-prompt.md` : '';
-    const flags = [settings, prompt].filter(Boolean).join(' ');
-    const cmd = dangerous ? `claude ${flags} --dangerously-skip-permissions` : `claude ${flags}`;
-    sendStdin(`${cmd}\r`);
-  }, [status, sendStdin, activeTabId, layoutWsId]);
+    sendStdin(`${buildClaudeCommand()}\r`);
+  }, [status, sendStdin, activeTabId, buildClaudeCommand]);
 
   const handleRestartClaudeSession = useCallback(() => {
     if (status !== 'connected' || !activeTabId) return;
-    pendingRestartRef.current = true;
+    pendingRestartRef.current = buildClaudeCommand();
     useTabStore.getState().setSessionView(activeTabId, 'check');
     sendStdin('/exit\r');
-  }, [status, sendStdin, activeTabId]);
+  }, [status, sendStdin, activeTabId, buildClaudeCommand]);
 
   useEffect(() => {
     if (!pendingRestartRef.current || claudeProcess === true) return;
-    pendingRestartRef.current = false;
     if (status !== 'connected') return;
-    const dangerous = useConfigStore.getState().dangerouslySkipPermissions;
-    const settings = '--settings ~/.purplemux/hooks.json';
-    const prompt = layoutWsId ? `--append-system-prompt-file ~/.purplemux/workspaces/${layoutWsId}/claude-prompt.md` : '';
-    const flags = [settings, prompt].filter(Boolean).join(' ');
-    const cmd = dangerous ? `claude ${flags} --dangerously-skip-permissions` : `claude ${flags}`;
+    if (!isShellProcess(lastTitleRef.current)) return;
+    const cmd = pendingRestartRef.current;
+    pendingRestartRef.current = null;
     sendStdin(`${cmd}\r`);
-  }, [claudeProcess, status, sendStdin, layoutWsId]);
+  }, [claudeProcess, status, sendStdin]);
 
   const handleWebUrlChange = useCallback((url: string) => {
     if (!activeTabId || !layoutWsId) return;
