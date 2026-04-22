@@ -49,6 +49,7 @@ const RESUME_TOKEN_THRESHOLD = 100_000;
 const RESUME_IDLE_MINUTES = 70;
 const ANCHOR_OFFSET = 12;
 const ANCHOR_SETTLE_DELAY_MS = 300;
+const OVERFLOW_SENTINEL_ROOT_MARGIN = '0px 0px 4px 0px';
 
 const getOffsetInScroller = (el: HTMLElement, scrollEl: HTMLElement): number => {
   const elRect = el.getBoundingClientRect();
@@ -244,6 +245,7 @@ const TimelineView = ({
   const isCompacting = compactingSince != null && Date.now() - compactingSince < 60_000;
   const anchorElRef = useRef<HTMLDivElement | null>(null);
   const spacerRef = useRef<HTMLDivElement | null>(null);
+  const bottomSentinelRef = useRef<HTMLDivElement | null>(null);
   const armedRef = useRef(false);
   const wasBusyRef = useRef(false);
   const pendingShrinkRef = useRef(false);
@@ -397,37 +399,28 @@ const TimelineView = ({
     }
   }, [cliState, anchorUserId, entries.length, shrinkSpacerSafely]);
 
-  const treeReady = !isLoading && !error && hasDisplayItems;
+  const canObserveOverflow = !isLoading && !error && hasDisplayItems && !skipAnimation;
   useEffect(() => {
-    if (!treeReady) return;
+    if (!canObserveOverflow) return;
     const scrollEl = scrollRef.current;
-    const contentEl = contentRef.current;
-    if (!scrollEl || !contentEl) return;
+    const sentinel = bottomSentinelRef.current;
+    if (!scrollEl || !sentinel) return;
 
-    let rafId = 0;
-    const compute = () => {
-      rafId = 0;
-      const spacerH = spacerRef.current?.offsetHeight ?? 0;
-      const effectiveBottom = scrollEl.scrollHeight - spacerH;
-      const next = effectiveBottom - scrollEl.scrollTop - scrollEl.clientHeight > 2;
-      setHasOverflowBelow((prev) => (prev === next ? prev : next));
-    };
-    const schedule = () => {
-      if (rafId) return;
-      rafId = requestAnimationFrame(compute);
-    };
-
-    compute();
-    scrollEl.addEventListener('scroll', schedule, { passive: true });
-    const ro = new ResizeObserver(schedule);
-    ro.observe(scrollEl);
-    ro.observe(contentEl);
-    return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      scrollEl.removeEventListener('scroll', schedule);
-      ro.disconnect();
-    };
-  }, [treeReady, scrollRef, contentRef]);
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setHasOverflowBelow(false);
+          return;
+        }
+        const root = entry.rootBounds;
+        const target = entry.boundingClientRect;
+        setHasOverflowBelow(!!root && target.top >= root.bottom);
+      },
+      { root: scrollEl, threshold: 0, rootMargin: OVERFLOW_SENTINEL_ROOT_MARGIN },
+    );
+    io.observe(sentinel);
+    return () => io.disconnect();
+  }, [canObserveOverflow, scrollRef]);
 
   const isLoadingMoreRef = useRef(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -569,6 +562,7 @@ const TimelineView = ({
               <span>컨텍스트 압축 중…</span>
             </div>
           )}
+          <div ref={bottomSentinelRef} aria-hidden style={{ height: 0, overflowAnchor: 'none' }} />
           {/* overflow-anchor: none prevents the browser from anchoring scroll to this spacer when its height changes */}
           <div ref={spacerRef} aria-hidden style={{ height: spacerHeight, overflowAnchor: 'none' }} />
         </div>
