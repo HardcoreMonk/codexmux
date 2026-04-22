@@ -5,5 +5,11 @@
   "refresh": "Refresh",
   "sideBySide": "Side by side",
   "lineByLine": "Line by line",
-  "fileList": "Files"
+  "fileList": "Files",
+  "tabChanges": "Changes",
+  "tabHistory": "History",
+  "noCommits": "No commits",
+  "ahead": "Unpushed",
+  "back": "Back",
+  "commitNotFound": "Commit not found"
 }

@@ -5,5 +5,11 @@
   "refresh": "새로고침",
   "sideBySide": "나란히 보기",
   "lineByLine": "줄 단위 보기",
-  "fileList": "파일 목록"
+  "fileList": "파일 목록",
+  "tabChanges": "변경",
+  "tabHistory": "히스토리",
+  "noCommits": "커밋이 없습니다",
+  "ahead": "미푸시",
+  "back": "뒤로",
+  "commitNotFound": "커밋을 찾을 수 없습니다"
 }
