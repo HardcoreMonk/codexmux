@@ -11,5 +11,15 @@
   "noCommits": "커밋이 없습니다",
   "ahead": "미푸시",
   "back": "뒤로",
-  "commitNotFound": "커밋을 찾을 수 없습니다"
+  "commitNotFound": "커밋을 찾을 수 없습니다",
+  "sync": "동기화",
+  "syncing": "동기화 중...",
+  "syncUpToDate": "최신 상태입니다",
+  "syncSuccess": "동기화 완료",
+  "syncErrorNoUpstream": "업스트림 브랜치가 없습니다. 터미널에서 설정하세요",
+  "syncErrorAuth": "인증 실패. git credential 설정을 확인하세요",
+  "syncErrorDiverged": "브랜치가 분기됨. 터미널에서 rebase 또는 merge 필요",
+  "syncErrorRejected": "Push 거부됨. 다시 동기화하세요",
+  "syncErrorTimeout": "동기화 시간 초과",
+  "syncErrorGeneric": "동기화 실패"
 }

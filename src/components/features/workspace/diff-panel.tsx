@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
-import { RefreshCw, GitBranch, Columns2, Rows2, ArrowUp, ArrowDown, Archive } from 'lucide-react';
+import { toast } from 'sonner';
+import { RefreshCw, GitBranch, Columns2, Rows2, ArrowUp, ArrowDown, ArrowDownUp, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Spinner from '@/components/ui/spinner';
 import useIsMobile from '@/hooks/use-is-mobile';
@@ -49,6 +50,7 @@ const DiffPanel = ({ sessionName }: IDiffPanelProps) => {
     return (localStorage.getItem('diff-active-tab') as TTab) || 'changes';
   });
   const [historyRefreshToken, setHistoryRefreshToken] = useState(0);
+  const [syncing, setSyncing] = useState(false);
 
   const pollTimerRef = useRef(0);
   const currentHashRef = useRef('');
@@ -99,6 +101,50 @@ const DiffPanel = ({ sessionName }: IDiffPanelProps) => {
     setActiveTab(tab);
     localStorage.setItem('diff-active-tab', tab);
   }, []);
+
+  const handleSync = useCallback(async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      const res = await fetch(`/api/git/sync?session=${sessionName}`, { method: 'POST' });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(t('syncErrorGeneric'));
+        return;
+      }
+
+      if (data.ok) {
+        const { pulled, pushed } = data.summary ?? { pulled: 0, pushed: 0 };
+        if (pulled === 0 && pushed === 0) {
+          toast.success(t('syncUpToDate'));
+        } else {
+          const parts: string[] = [];
+          if (pulled > 0) parts.push(`↓${pulled}`);
+          if (pushed > 0) parts.push(`↑${pushed}`);
+          toast.success(`${t('syncSuccess')} · ${parts.join(' ')}`);
+        }
+      } else {
+        const kind = data.errorKind ?? 'unknown';
+        const messageKey = (
+          kind === 'no-upstream' ? 'syncErrorNoUpstream' :
+          kind === 'auth' ? 'syncErrorAuth' :
+          kind === 'diverged' ? 'syncErrorDiverged' :
+          kind === 'rejected' ? 'syncErrorRejected' :
+          kind === 'timeout' ? 'syncErrorTimeout' :
+          'syncErrorGeneric'
+        ) as 'syncErrorNoUpstream' | 'syncErrorAuth' | 'syncErrorDiverged' | 'syncErrorRejected' | 'syncErrorTimeout' | 'syncErrorGeneric';
+        toast.error(t(messageKey));
+      }
+
+      fetchDiff();
+      setHistoryRefreshToken((n) => n + 1);
+    } catch {
+      toast.error(t('syncErrorGeneric'));
+    } finally {
+      setSyncing(false);
+    }
+  }, [sessionName, syncing, t, fetchDiff]);
 
   useEffect(() => {
     fetchDiff();
@@ -189,6 +235,17 @@ const DiffPanel = ({ sessionName }: IDiffPanelProps) => {
                 {viewMode === 'split' ? <Rows2 className="h-3.5 w-3.5" /> : <Columns2 className="h-3.5 w-3.5" />}
               </button>
             )}
+
+            <button
+              className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+              onClick={handleSync}
+              disabled={syncing || loading}
+              title={syncing ? t('syncing') : t('sync')}
+            >
+              {syncing
+                ? <Spinner className="h-3.5 w-3.5" />
+                : <ArrowDownUp className="h-3.5 w-3.5" />}
+            </button>
 
             <button
               className={cn(

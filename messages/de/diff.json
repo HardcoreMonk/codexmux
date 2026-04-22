@@ -11,5 +11,15 @@
   "noCommits": "No commits",
   "ahead": "Unpushed",
   "back": "Back",
-  "commitNotFound": "Commit not found"
+  "commitNotFound": "Commit not found",
+  "sync": "Sync",
+  "syncing": "Syncing...",
+  "syncUpToDate": "Already up to date",
+  "syncSuccess": "Synced",
+  "syncErrorNoUpstream": "No upstream branch. Set it in terminal",
+  "syncErrorAuth": "Authentication failed. Check git credentials",
+  "syncErrorDiverged": "Branches diverged. Rebase or merge in terminal",
+  "syncErrorRejected": "Push rejected. Try syncing again",
+  "syncErrorTimeout": "Sync timed out",
+  "syncErrorGeneric": "Sync failed"
 }
