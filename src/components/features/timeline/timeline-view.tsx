@@ -248,7 +248,7 @@ const TimelineView = ({
   const wasBusyRef = useRef(false);
   const pendingShrinkRef = useRef(false);
   const entryCountAtArmRef = useRef(-1);
-  const { scrollRef, contentRef, scrollToBottom, isAtBottom } = useStickToBottom({
+  const { scrollRef, contentRef, scrollToBottom } = useStickToBottom({
     resize: { damping: 0.8, stiffness: 0.05 },
     initial: 'instant',
     targetScrollTop: (defaultTarget, { scrollElement }) => {
@@ -261,6 +261,7 @@ const TimelineView = ({
   const [spacerHeight, setSpacerHeight] = useState(0);
   const [skipAnimation, setSkipAnimation] = useState(true);
   const [prevSessionId, setPrevSessionId] = useState(sessionId);
+  const [hasOverflowBelow, setHasOverflowBelow] = useState(false);
 
   if (prevSessionId !== sessionId) {
     setPrevSessionId(sessionId);
@@ -395,6 +396,38 @@ const TimelineView = ({
       shrinkSpacerSafely();
     }
   }, [cliState, anchorUserId, entries.length, shrinkSpacerSafely]);
+
+  const treeReady = !isLoading && !error && hasDisplayItems;
+  useEffect(() => {
+    if (!treeReady) return;
+    const scrollEl = scrollRef.current;
+    const contentEl = contentRef.current;
+    if (!scrollEl || !contentEl) return;
+
+    let rafId = 0;
+    const compute = () => {
+      rafId = 0;
+      const spacerH = spacerRef.current?.offsetHeight ?? 0;
+      const effectiveBottom = scrollEl.scrollHeight - spacerH;
+      const next = effectiveBottom - scrollEl.scrollTop - scrollEl.clientHeight > 2;
+      setHasOverflowBelow((prev) => (prev === next ? prev : next));
+    };
+    const schedule = () => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(compute);
+    };
+
+    compute();
+    scrollEl.addEventListener('scroll', schedule, { passive: true });
+    const ro = new ResizeObserver(schedule);
+    ro.observe(scrollEl);
+    ro.observe(contentEl);
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      scrollEl.removeEventListener('scroll', schedule);
+      ro.disconnect();
+    };
+  }, [treeReady, scrollRef, contentRef]);
 
   const isLoadingMoreRef = useRef(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -543,8 +576,13 @@ const TimelineView = ({
       {isReconnecting && <ReconnectBanner />}
       {isDisconnected && <DisconnectedBanner onRetry={onRetry} />}
       <ScrollToBottomButton
-        visible={!isAtBottom}
-        onClick={() => scrollToBottom('smooth')}
+        visible={hasOverflowBelow}
+        onClick={() => {
+          const el = scrollRef.current;
+          if (!el) return;
+          const spacerH = spacerRef.current?.offsetHeight ?? 0;
+          el.scrollTo({ top: el.scrollHeight - spacerH, behavior: 'smooth' });
+        }}
       />
     </div>
   );
