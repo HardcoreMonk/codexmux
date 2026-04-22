@@ -46,16 +46,27 @@ const parseCommits = (stdout: string): ICommitLogEntry[] => {
     });
 };
 
-export const getCommitLog = async (cwd: string, limit = 50): Promise<ICommitLogResult> => {
+export const getCommitLog = async (cwd: string, limit = 50, skip = 0): Promise<ICommitLogResult> => {
   const format = `%H${FIELD_DELIMITER}%P${FIELD_DELIMITER}%an${FIELD_DELIMITER}%ae${FIELD_DELIMITER}%at${FIELD_DELIMITER}%s${RECORD_DELIMITER}`;
 
-  const { stdout: logOut } = await execFile(
-    'git',
-    ['-C', cwd, 'log', `-${limit}`, `--format=${format}`],
-    { timeout: CMD_TIMEOUT, maxBuffer: 2 * 1024 * 1024 },
-  );
+  const logArgs = ['-C', cwd, 'log', `-${limit}`];
+  if (skip > 0) logArgs.push(`--skip=${skip}`);
+  logArgs.push(`--format=${format}`);
 
-  const [head, branch, upstream] = await Promise.all([
+  const logPromise = execFile('git', logArgs, { timeout: CMD_TIMEOUT, maxBuffer: 2 * 1024 * 1024 });
+
+  if (skip > 0) {
+    const { stdout: logOut } = await logPromise;
+    return {
+      head: '',
+      branch: '',
+      upstreamHash: null,
+      commits: parseCommits(logOut),
+    };
+  }
+
+  const [logResult, head, branch, upstream] = await Promise.all([
+    logPromise,
     execFile('git', ['-C', cwd, 'rev-parse', 'HEAD'], { timeout: CMD_TIMEOUT })
       .then((r) => r.stdout.trim())
       .catch(() => ''),
@@ -71,6 +82,6 @@ export const getCommitLog = async (cwd: string, limit = 50): Promise<ICommitLogR
     head,
     branch,
     upstreamHash: upstream,
-    commits: parseCommits(logOut),
+    commits: parseCommits(logResult.stdout),
   };
 };

@@ -6,7 +6,6 @@ import Spinner from '@/components/ui/spinner';
 import useIsMobile from '@/hooks/use-is-mobile';
 import DiffHistoryView from '@/components/features/workspace/diff-history-view';
 import DiffFileList from '@/components/features/workspace/diff-file-list';
-import { compactFromNow, absoluteTime } from '@/lib/compact-time';
 
 interface IDiffPanelProps {
   sessionName: string;
@@ -153,20 +152,8 @@ const DiffPanel = ({ sessionName }: IDiffPanelProps) => {
 
   return (
     <div className="flex h-full flex-col bg-card">
-      <div className="flex shrink-0 flex-col gap-0.5 border-b border-border px-3 py-1.5">
+      <div className="flex shrink-0 flex-col gap-1 border-b border-border px-3 py-1.5">
         <div className="flex items-center gap-2">
-          <GitBranch className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          <div className="flex min-w-0 items-center gap-1 text-xs">
-            <span className="truncate font-medium text-foreground" title={branchLabel}>
-              {branchLabel}
-            </span>
-            {upstream && (
-              <span className="truncate text-muted-foreground" title={upstream}>
-                → {upstream}
-              </span>
-            )}
-          </div>
-
           <div className="flex items-center gap-0.5 rounded bg-secondary p-0.5">
             <button
               type="button"
@@ -183,33 +170,6 @@ const DiffPanel = ({ sessionName }: IDiffPanelProps) => {
               {t('tabHistory')}
             </button>
           </div>
-
-          {(ahead > 0 || behind > 0) && (
-            <div className="flex items-center gap-1.5 font-mono text-[11px]">
-              {ahead > 0 && (
-                <span className="flex items-center gap-0.5 text-ui-blue" title={`${ahead} commit(s) to push`}>
-                  <ArrowUp className="h-3 w-3" />
-                  {ahead}
-                </span>
-              )}
-              {behind > 0 && (
-                <span className="flex items-center gap-0.5 text-claude-active" title={`${behind} commit(s) to pull`}>
-                  <ArrowDown className="h-3 w-3" />
-                  {behind}
-                </span>
-              )}
-            </div>
-          )}
-
-          {stash > 0 && (
-            <span
-              className="flex items-center gap-0.5 font-mono text-[11px] text-muted-foreground"
-              title={`${stash} stash(es)`}
-            >
-              <Archive className="h-3 w-3" />
-              {stash}
-            </span>
-          )}
 
           <div className="ml-auto flex items-center gap-1">
             {hasUpdate && activeTab === 'changes' && (
@@ -247,20 +207,50 @@ const DiffPanel = ({ sessionName }: IDiffPanelProps) => {
           </div>
         </div>
 
-        {headCommit && (
-          <div className="flex items-center gap-1.5 overflow-hidden pl-5 text-[11px] text-muted-foreground/80">
-            <span className="shrink-0 font-mono">{headCommit.shortHash}</span>
-            <span className="shrink-0">·</span>
-            <span className="truncate" title={headCommit.subject}>{headCommit.subject}</span>
-            <span className="shrink-0">·</span>
-            <span
-              className="shrink-0 tabular-nums"
-              title={absoluteTime(headCommit.timestamp)}
-            >
-              {compactFromNow(headCommit.timestamp)}
+        <div className="flex min-w-0 items-center gap-2 text-xs">
+          <GitBranch className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <div className="flex min-w-0 flex-1 items-center gap-1">
+            <span className="truncate font-medium text-foreground" title={branchLabel}>
+              {branchLabel}
             </span>
+            {upstream && (
+              <span className="shrink-0 text-muted-foreground">→</span>
+            )}
+            {upstream && (
+              <span className="truncate text-muted-foreground" title={upstream}>
+                {upstream}
+              </span>
+            )}
           </div>
-        )}
+
+          {(ahead > 0 || behind > 0) && (
+            <div className="flex shrink-0 items-center gap-1.5 font-mono text-[11px]">
+              {ahead > 0 && (
+                <span className="flex items-center gap-0.5 text-ui-blue" title={`${ahead} commit(s) to push`}>
+                  <ArrowUp className="h-3 w-3" />
+                  {ahead}
+                </span>
+              )}
+              {behind > 0 && (
+                <span className="flex items-center gap-0.5 text-claude-active" title={`${behind} commit(s) to pull`}>
+                  <ArrowDown className="h-3 w-3" />
+                  {behind}
+                </span>
+              )}
+            </div>
+          )}
+
+          {stash > 0 && (
+            <span
+              className="flex shrink-0 items-center gap-0.5 font-mono text-[11px] text-muted-foreground"
+              title={`${stash} stash(es)`}
+            >
+              <Archive className="h-3 w-3" />
+              {stash}
+            </span>
+          )}
+        </div>
+
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">

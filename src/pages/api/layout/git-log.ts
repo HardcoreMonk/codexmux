@@ -20,6 +20,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const session = req.query.session as string | undefined;
   const limitParam = parseInt(req.query.limit as string, 10);
   const limit = Math.min(Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_LIMIT, MAX_LIMIT);
+  const skipParam = parseInt(req.query.skip as string, 10);
+  const skip = Number.isFinite(skipParam) && skipParam > 0 ? skipParam : 0;
 
   if (!session) {
     return res.status(400).json({ error: 'session parameter required' });
@@ -42,7 +44,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   try {
-    const result = await getCommitLog(cwd, limit);
+    const result = await getCommitLog(cwd, limit, skip);
     return res.status(200).json({ isGitRepo: true, ...result });
   } catch (err) {
     log.error(`git log failed: ${err instanceof Error ? err.message : err}`);
