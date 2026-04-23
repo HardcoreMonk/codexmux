@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { ITimelineUserMessage } from '@/types/timeline';
 
@@ -26,6 +26,9 @@ interface IUserMessageItemProps {
 const UserMessageItem = ({ entry }: IUserMessageItemProps) => {
   const [delayed, setDelayed] = useState(false);
   const [lastPending, setLastPending] = useState(entry.pending);
+  const [expanded, setExpanded] = useState(false);
+  const [overflowing, setOverflowing] = useState(false);
+  const textRef = useRef<HTMLParagraphElement | null>(null);
 
   if (lastPending !== entry.pending) {
     setLastPending(entry.pending);
@@ -38,9 +41,21 @@ const UserMessageItem = ({ entry }: IUserMessageItemProps) => {
     return () => clearTimeout(timer);
   }, [entry.pending]);
 
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    const check = () => setOverflowing(el.scrollHeight - el.clientHeight > 1);
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [entry.text, expanded]);
+
   const faded = entry.pending && delayed;
   const hasImages = entry.images && entry.images.length > 0;
   const hasText = entry.text.length > 0;
+  const clamp = !expanded;
+  const showToggle = overflowing || expanded;
 
   return (
     <div className="animate-in fade-in duration-150 flex justify-end">
@@ -69,7 +84,23 @@ const UserMessageItem = ({ entry }: IUserMessageItemProps) => {
             ))}
           </div>
         )}
-        {hasText && <p className="text-sm whitespace-pre-wrap break-words">{entry.text}</p>}
+        {hasText && (
+          <p
+            ref={textRef}
+            className={cn('text-sm whitespace-pre-wrap break-words', clamp && 'line-clamp-6')}
+          >
+            {entry.text}
+          </p>
+        )}
+        {hasText && showToggle && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="text-xs mt-1.5 text-ui-blue hover:underline"
+          >
+            {expanded ? '접기' : '더보기'}
+          </button>
+        )}
       </div>
     </div>
   );
