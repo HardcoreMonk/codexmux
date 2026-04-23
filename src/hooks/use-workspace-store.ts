@@ -7,10 +7,7 @@ import type { IWorkspace, IWorkspaceGroup } from '@/types/terminal';
 const reorderToVisual = (
   workspaces: IWorkspace[],
   groups: IWorkspaceGroup[],
-): IWorkspace[] => {
-  const ordered = getVisuallyOrderedWorkspaces(workspaces, groups);
-  return ordered.map((ws, i) => (ws.order === i ? ws : { ...ws, order: i }));
-};
+): IWorkspace[] => getVisuallyOrderedWorkspaces(workspaces, groups);
 
 interface IValidateResponse {
   valid: boolean;
@@ -474,7 +471,6 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
     const list = [...get().groups];
     const [moved] = list.splice(fromIndex, 1);
     list.splice(toIndex, 0, moved);
-    list.forEach((g, i) => { g.order = i; });
     bumpMutationFence();
     set((state) => ({
       groups: list,

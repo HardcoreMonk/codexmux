@@ -76,12 +76,7 @@ const ensureGroups = (data: IWorkspacesData): IWorkspaceGroup[] => {
 
 const normalizeWorkspaceOrder = (data: IWorkspacesData): void => {
   const groups = ensureGroups(data);
-  groups.sort((a, b) => a.order - b.order);
-  groups.forEach((g, i) => { g.order = i; });
-
-  const ordered = getVisuallyOrderedWorkspaces(data.workspaces, groups);
-  ordered.forEach((ws, i) => { ws.order = i; });
-  data.workspaces = ordered;
+  data.workspaces = getVisuallyOrderedWorkspaces(data.workspaces, groups);
 };
 
 const readWorkspacesFile = async (): Promise<IWorkspacesData | null> => {
@@ -95,13 +90,17 @@ const readWorkspacesFile = async (): Promise<IWorkspacesData | null> => {
   try {
     const data = JSON.parse(raw) as IWorkspacesData;
     for (const ws of data.workspaces) {
-      const legacy = ws as unknown as { directory?: string };
+      const legacy = ws as unknown as { directory?: string; order?: number };
       if (!ws.directories && legacy.directory) {
         ws.directories = [legacy.directory];
         delete legacy.directory;
       }
+      delete legacy.order;
     }
     if (!Array.isArray(data.groups)) data.groups = [];
+    for (const g of data.groups) {
+      delete (g as unknown as { order?: number }).order;
+    }
     const validGroupIds = new Set(data.groups.map((g) => g.id));
     for (const ws of data.workspaces) {
       if (ws.groupId && !validGroupIds.has(ws.groupId)) {
@@ -152,7 +151,6 @@ const migrateFromPhase4 = async (): Promise<IWorkspacesData | null> => {
       id: wsId,
       name: 'default',
       directories: [os.homedir()],
-      order: 0,
     }],
     sidebarCollapsed: false,
     sidebarWidth: 240,
@@ -308,13 +306,12 @@ export const createWorkspace = async (directory: string, name?: string, layoutOp
 
     const wsId = `ws-${nanoid(6)}`;
     const wsName = name?.trim() || nextWorkspaceName(data.workspaces);
-    const order = data.workspaces.length;
 
     const layout = await createDefaultLayout(wsId, directory, layoutOptions);
     await fs.mkdir(resolveLayoutDir(wsId), { recursive: true });
     await writeLayoutFile(layout, resolveLayoutFile(wsId));
 
-    const workspace: IWorkspace = { id: wsId, name: wsName, directories: [directory], order };
+    const workspace: IWorkspace = { id: wsId, name: wsName, directories: [directory] };
     data.workspaces.push(workspace);
     await writeWorkspacesFile(data);
     await writeClaudePromptFile(workspace);
@@ -346,7 +343,6 @@ export const deleteWorkspace = async (workspaceId: string): Promise<boolean> =>
     } catch {}
 
     data.workspaces.splice(idx, 1);
-    data.workspaces.forEach((w, i) => { w.order = i; });
 
     await writeWorkspacesFile(data);
     log.info(`Deleted: ${workspaceId} (${ws.name})`);
@@ -418,7 +414,6 @@ export const reorderWorkspaces = async (items: IReorderItem[]): Promise<boolean>
 
     if (reordered.length !== data.workspaces.length) return false;
 
-    reordered.forEach((w, i) => { w.order = i; });
     data.workspaces = reordered;
     await writeWorkspacesFile(data);
     return true;
@@ -432,7 +427,6 @@ export const createGroup = async (name: string): Promise<IWorkspaceGroup> =>
     const group: IWorkspaceGroup = {
       id: `grp-${nanoid(6)}`,
       name: trimmed,
-      order: groups.length,
       collapsed: false,
     };
     groups.push(group);
@@ -477,7 +471,6 @@ export const ungroupGroup = async (groupId: string): Promise<boolean> =>
       if (ws.groupId === groupId) ws.groupId = null;
     }
     groups.splice(idx, 1);
-    groups.forEach((g, i) => { g.order = i; });
     await writeWorkspacesFile(data);
     log.info(`Group ungrouped: ${groupId}`);
     return true;
@@ -496,7 +489,6 @@ export const reorderGroups = async (groupIds: string[]): Promise<boolean> =>
       reordered.push(g);
     }
     if (reordered.length !== groups.length) return false;
-    reordered.forEach((g, i) => { g.order = i; });
     data.groups = reordered;
     await writeWorkspacesFile(data);
     return true;

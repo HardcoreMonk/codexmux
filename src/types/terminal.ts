@@ -57,14 +57,12 @@ export interface IWorkspace {
   id: string;
   name: string;
   directories: string[];
-  order: number;
   groupId?: string | null;
 }
 
 export interface IWorkspaceGroup {
   id: string;
   name: string;
-  order: number;
   collapsed?: boolean;
 }
 

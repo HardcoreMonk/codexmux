@@ -19,9 +19,8 @@ export const getVisuallyOrderedWorkspaces = (
     }
   }
 
-  const sortedGroups = [...groups].sort((a, b) => a.order - b.order);
   const ordered: IWorkspace[] = [];
-  for (const g of sortedGroups) {
+  for (const g of groups) {
     const list = byGroup.get(g.id);
     if (list) ordered.push(...list);
   }

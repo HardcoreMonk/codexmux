@@ -292,6 +292,7 @@ const Sidebar = () => {
   const handleUngroupedAreaDragOver = useCallback(
     (e: React.DragEvent, lastPosition: number) => {
       if (dragIndex === null) return;
+      if (e.target !== e.currentTarget) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
       setDropTarget({ position: lastPosition, groupId: null, edge: 'after' });
@@ -302,6 +303,7 @@ const Sidebar = () => {
   const handleWsDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
+      e.stopPropagation();
       if (dragIndex === null || !dropTarget) {
         setDragIndex(null);
         setDropTarget(null);
@@ -351,9 +353,8 @@ const Sidebar = () => {
       }
     });
 
-    const sortedGroups = [...groups].sort((a, b) => a.order - b.order);
     const sections: TRenderSection[] = [];
-    for (const g of sortedGroups) {
+    for (const g of groups) {
       const list = byGroup.get(g.id) ?? [];
       const firstWsPosition = list[0]?.flatIdx ?? workspaces.length;
       sections.push({ type: 'group', group: g, workspaces: list, firstWsPosition });

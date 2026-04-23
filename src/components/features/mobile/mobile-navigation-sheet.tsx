@@ -258,8 +258,7 @@ const MobileNavigationSheet = ({
         ungrouped.push(ws);
       }
     }
-    const sortedGroups = [...groups].sort((a, b) => a.order - b.order);
-    const out: TSection[] = sortedGroups.map((g) => ({
+    const out: TSection[] = groups.map((g) => ({
       type: 'group',
       group: g,
       workspaces: byGroup.get(g.id) ?? [],
