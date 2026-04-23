@@ -207,8 +207,8 @@ const DiffPanel = ({ sessionName, onSendToClaude }: IDiffPanelProps) => {
   }, [sessionName, syncing, t, fetchDiff, onSendToClaude, branch]);
 
   useEffect(() => {
-    fetchDiff({ remoteFetch: true });
-  }, [fetchDiff]);
+    fetchDiff().then(() => pollForChanges());
+  }, [fetchDiff, pollForChanges]);
 
   useEffect(() => {
     if (isGitRepo === false) return;
