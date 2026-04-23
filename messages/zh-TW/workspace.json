@@ -1,5 +1,7 @@
 {
   "add": "新增工作區",
+  "renameTitle": "重新命名工作區",
+  "namePlaceholder": "輸入工作區名稱",
   "projectDirectory": "專案目錄",
   "directoryPlaceholder": "輸入目錄路徑",
   "validating": "驗證中...",

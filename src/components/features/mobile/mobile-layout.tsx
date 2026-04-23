@@ -159,6 +159,7 @@ const MobileLayout = ({ children }: IMobileLayoutProps) => {
       <div style={{ paddingTop: 'env(safe-area-inset-top)' }} className="shrink-0">
         <AppHeader
           onMenuOpen={() => setMenuOpen(true)}
+          workspaceId={activeWorkspaceId ?? undefined}
           workspaceName={workspaces.find((ws) => ws.id === activeWorkspaceId)?.name}
         />
       </div>

@@ -40,10 +40,19 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   if (req.method === 'PATCH') {
-    const { name, panelType, title, cwd, lastCommand, webUrl } = req.body ?? {};
+    const { name, panelType, title, cwd, lastCommand, webUrl, terminalRatio, terminalCollapsed } = req.body ?? {};
 
-    if (name !== undefined || panelType !== undefined || title !== undefined || cwd !== undefined || lastCommand !== undefined || webUrl !== undefined) {
-      const patch: Partial<Pick<ITab, 'name' | 'panelType' | 'title' | 'cwd' | 'lastCommand' | 'webUrl'>> = {};
+    if (
+      name !== undefined ||
+      panelType !== undefined ||
+      title !== undefined ||
+      cwd !== undefined ||
+      lastCommand !== undefined ||
+      webUrl !== undefined ||
+      terminalRatio !== undefined ||
+      terminalCollapsed !== undefined
+    ) {
+      const patch: Partial<Pick<ITab, 'name' | 'panelType' | 'title' | 'cwd' | 'lastCommand' | 'webUrl' | 'terminalRatio' | 'terminalCollapsed'>> = {};
       if (name !== undefined) {
         if (typeof name !== 'string') {
           return res.status(400).json({ error: 'name must be a string' });
@@ -55,6 +64,18 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       if (cwd !== undefined) patch.cwd = cwd;
       if (lastCommand !== undefined) patch.lastCommand = lastCommand;
       if (webUrl !== undefined) patch.webUrl = webUrl;
+      if (terminalRatio !== undefined) {
+        if (typeof terminalRatio !== 'number' || !Number.isFinite(terminalRatio)) {
+          return res.status(400).json({ error: 'terminalRatio must be a number' });
+        }
+        patch.terminalRatio = Math.max(0, Math.min(100, terminalRatio));
+      }
+      if (terminalCollapsed !== undefined) {
+        if (typeof terminalCollapsed !== 'boolean') {
+          return res.status(400).json({ error: 'terminalCollapsed must be a boolean' });
+        }
+        patch.terminalCollapsed = terminalCollapsed;
+      }
 
       const result = await patchTab(wsId, paneId, tabId, patch);
       if (!result) {

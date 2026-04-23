@@ -1,5 +1,7 @@
 {
   "add": "Adicionar Workspace",
+  "renameTitle": "Renomear workspace",
+  "namePlaceholder": "Digite o nome do workspace",
   "projectDirectory": "Diretorio do projeto",
   "directoryPlaceholder": "Digite o caminho do diretorio",
   "validating": "Validando...",

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { LogOut, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,9 +17,11 @@ import {
 import useTabStore, { selectGlobalStatus } from '@/hooks/use-tab-store';
 import AppLogo from '@/components/layout/app-logo';
 import { useNotificationCount } from '@/components/features/workspace/notification-sheet';
+import RenameWorkspaceDialog from '@/components/features/workspace/rename-workspace-dialog';
 
 interface IAppHeaderProps {
   onMenuOpen?: () => void;
+  workspaceId?: string;
   workspaceName?: string;
 }
 
@@ -27,12 +30,13 @@ const handleLogout = async () => {
   window.location.href = '/login';
 };
 
-const AppHeader = ({ onMenuOpen, workspaceName }: IAppHeaderProps) => {
+const AppHeader = ({ onMenuOpen, workspaceId, workspaceName }: IAppHeaderProps) => {
   const t = useTranslations('header');
   const tc = useTranslations('common');
   const hasBusy = useTabStore((s) => selectGlobalStatus(s.tabs).busyCount > 0);
   const { attentionCount, busyCount } = useNotificationCount();
   const sessionsBadge = attentionCount + busyCount;
+  const [renameOpen, setRenameOpen] = useState(false);
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border bg-background px-3">
@@ -55,7 +59,17 @@ const AppHeader = ({ onMenuOpen, workspaceName }: IAppHeaderProps) => {
         {workspaceName && (
           <>
             <span className="text-muted-foreground/40 text-sm">/</span>
-            <span className="truncate text-sm font-medium text-muted-foreground">{workspaceName}</span>
+            {workspaceId ? (
+              <button
+                type="button"
+                onClick={() => setRenameOpen(true)}
+                className="truncate rounded px-1 py-0.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                {workspaceName}
+              </button>
+            ) : (
+              <span className="truncate text-sm font-medium text-muted-foreground">{workspaceName}</span>
+            )}
           </>
         )}
       </div>
@@ -96,6 +110,14 @@ const AppHeader = ({ onMenuOpen, workspaceName }: IAppHeaderProps) => {
           </AlertDialog>
         </div>
       </TooltipProvider>
+      {workspaceId && workspaceName && (
+        <RenameWorkspaceDialog
+          open={renameOpen}
+          onOpenChange={setRenameOpen}
+          workspaceId={workspaceId}
+          currentName={workspaceName}
+        />
+      )}
     </header>
   );
 };

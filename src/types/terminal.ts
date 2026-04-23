@@ -27,6 +27,8 @@ export interface ITab {
   cliState?: TCliState;
   dismissedAt?: number | null;
   webUrl?: string | null;
+  terminalRatio?: number;
+  terminalCollapsed?: boolean;
 }
 
 export interface ISplitNode {

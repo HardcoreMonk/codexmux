@@ -27,6 +27,8 @@ const cloneLayout = (data: ILayoutData): ILayoutData =>
 
 const SESSION_PANE_PREFIX = 'pt-active-pane-';
 const SESSION_TAB_PREFIX = 'pt-active-tab-';
+const SESSION_TERMINAL_RATIO_PREFIX = 'pt-terminal-ratio-';
+const SESSION_TERMINAL_COLLAPSED_PREFIX = 'pt-terminal-collapsed-';
 
 const getSessionActivePaneId = (wsId: string): string | null => {
   try { return sessionStorage.getItem(`${SESSION_PANE_PREFIX}${wsId}`); }
@@ -38,6 +40,23 @@ const getSessionActiveTabId = (paneId: string): string | null => {
   catch { return null; }
 };
 
+const getSessionTerminalRatio = (tabId: string): number | null => {
+  try {
+    const raw = sessionStorage.getItem(`${SESSION_TERMINAL_RATIO_PREFIX}${tabId}`);
+    if (raw == null) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  } catch { return null; }
+};
+
+const getSessionTerminalCollapsed = (tabId: string): boolean | null => {
+  try {
+    const raw = sessionStorage.getItem(`${SESSION_TERMINAL_COLLAPSED_PREFIX}${tabId}`);
+    if (raw == null) return null;
+    return raw === '1';
+  } catch { return null; }
+};
+
 const saveSessionActiveState = (wsId: string, layout: ILayoutData) => {
   try {
     if (layout.activePaneId) {
@@ -46,6 +65,14 @@ const saveSessionActiveState = (wsId: string, layout: ILayoutData) => {
     for (const pane of collectPanes(layout.root)) {
       if (pane.activeTabId) {
         sessionStorage.setItem(`${SESSION_TAB_PREFIX}${pane.id}`, pane.activeTabId);
+      }
+      for (const tab of pane.tabs) {
+        if (tab.terminalRatio !== undefined) {
+          sessionStorage.setItem(`${SESSION_TERMINAL_RATIO_PREFIX}${tab.id}`, String(tab.terminalRatio));
+        }
+        if (tab.terminalCollapsed !== undefined) {
+          sessionStorage.setItem(`${SESSION_TERMINAL_COLLAPSED_PREFIX}${tab.id}`, tab.terminalCollapsed ? '1' : '0');
+        }
       }
     }
   } catch { /* */ }
@@ -79,6 +106,7 @@ interface ILayoutState {
   removeTabLocally: (paneId: string, tabId: string) => void;
   equalizeRatios: () => void;
   updateTabPanelType: (paneId: string, tabId: string, panelType: TPanelType) => void;
+  updateTabTerminalLayout: (paneId: string, tabId: string, patch: { terminalRatio?: number; terminalCollapsed?: boolean }) => void;
   clearLayout: () => void;
   focusTab: (tabId: string) => boolean;
   focusPrevTab: () => void;
@@ -90,6 +118,7 @@ let _abortController: AbortController | null = null;
 let _onFetchError: (() => void) | null = null;
 let _ratioTimer: ReturnType<typeof setTimeout> | null = null;
 let _suppressFetch = false;
+const _terminalTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 const wsQuery = (base: string, wsId: string | null): string => {
   if (!wsId) return base;
@@ -217,6 +246,12 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
             const storedTabId = getSessionActiveTabId(pane.id);
             if (storedTabId && pane.tabs.some((t) => t.id === storedTabId)) {
               pane.activeTabId = storedTabId;
+            }
+            for (const tab of pane.tabs) {
+              const storedRatio = getSessionTerminalRatio(tab.id);
+              if (storedRatio !== null) tab.terminalRatio = storedRatio;
+              const storedCollapsed = getSessionTerminalCollapsed(tab.id);
+              if (storedCollapsed !== null) tab.terminalCollapsed = storedCollapsed;
             }
           }
         }
@@ -570,6 +605,30 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
     patchApi(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`, workspaceId), { panelType }).then((data) => {
       if (data) applyLayoutPreserveFocus(set, get, data);
     });
+  },
+
+  updateTabTerminalLayout: (paneId, tabId, patch) => {
+    applyPaneUpdate(set, get, paneId, (pane) => ({
+      ...pane,
+      tabs: pane.tabs.map((t) => (t.id === tabId ? { ...t, ...patch } : t)),
+    }));
+
+    try {
+      if (patch.terminalRatio !== undefined) {
+        sessionStorage.setItem(`${SESSION_TERMINAL_RATIO_PREFIX}${tabId}`, String(patch.terminalRatio));
+      }
+      if (patch.terminalCollapsed !== undefined) {
+        sessionStorage.setItem(`${SESSION_TERMINAL_COLLAPSED_PREFIX}${tabId}`, patch.terminalCollapsed ? '1' : '0');
+      }
+    } catch { /* */ }
+
+    const { workspaceId } = get();
+    const existing = _terminalTimers.get(tabId);
+    if (existing) clearTimeout(existing);
+    _terminalTimers.set(tabId, setTimeout(() => {
+      _terminalTimers.delete(tabId);
+      patchApi(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`, workspaceId), patch);
+    }, 300));
   },
 
   clearLayout: () => {

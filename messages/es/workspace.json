@@ -1,5 +1,7 @@
 {
   "add": "Añadir espacio de trabajo",
+  "renameTitle": "Renombrar espacio de trabajo",
+  "namePlaceholder": "Introduce el nombre del espacio de trabajo",
   "projectDirectory": "Directorio del proyecto",
   "directoryPlaceholder": "Introduce la ruta del directorio",
   "validating": "Validando...",

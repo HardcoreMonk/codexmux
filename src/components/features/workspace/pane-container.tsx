@@ -89,6 +89,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   const renameTabInPane = useLayoutStore((s) => s.renameTabInPane);
   const reorderTabsInPane = useLayoutStore((s) => s.reorderTabsInPane);
   const updateTabPanelType = useLayoutStore((s) => s.updateTabPanelType);
+  const updateTabTerminalLayout = useLayoutStore((s) => s.updateTabTerminalLayout);
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const activePanelType: TPanelType = activeTab?.panelType ?? 'terminal';
@@ -720,36 +721,51 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
 
   const splitGroupRef = useRef<GroupImperativeHandle>(null);
   const [isTerminalCollapsed, setIsTerminalCollapsed] = useState(false);
+  const suppressTerminalSaveRef = useRef(false);
 
   const handleToggleTerminal = useCallback(() => {
     if (!splitGroupRef.current) return;
     setIsPanelTransitioning(true);
     const next = !isTerminalCollapsed;
+    const ratio = activeTab?.terminalRatio ?? 30;
     setIsTerminalCollapsed(next);
+    suppressTerminalSaveRef.current = true;
     splitGroupRef.current.setLayout(
       next
         ? { timeline: 100, 'terminal-area': 0 }
-        : { timeline: 70, 'terminal-area': 30 },
+        : { timeline: 100 - ratio, 'terminal-area': ratio },
     );
+    if (isClaudeCode && activeTabId) {
+      updateTabTerminalLayout(paneId, activeTabId, { terminalCollapsed: next });
+    }
     setTimeout(() => {
       setIsPanelTransitioning(false);
+      suppressTerminalSaveRef.current = false;
       if (!isReady || status !== 'connected') return;
       const { cols, rows } = fit();
       wsActionsRef.current.sendResize(cols, rows);
     }, 150);
-  }, [isTerminalCollapsed, isReady, status, fit]);
+  }, [isTerminalCollapsed, isReady, status, fit, isClaudeCode, activeTabId, paneId, activeTab?.terminalRatio, updateTabTerminalLayout]);
 
   useEffect(() => {
     if (!splitGroupRef.current) return;
+    suppressTerminalSaveRef.current = true;
     if (isClaudeCode) {
-      setIsTerminalCollapsed(false);
-      splitGroupRef.current.setLayout({ timeline: 70, 'terminal-area': 30 });
+      const ratio = activeTab?.terminalRatio ?? 30;
+      const collapsed = activeTab?.terminalCollapsed ?? false;
+      setIsTerminalCollapsed(collapsed);
+      splitGroupRef.current.setLayout(
+        collapsed
+          ? { timeline: 100, 'terminal-area': 0 }
+          : { timeline: 100 - ratio, 'terminal-area': ratio },
+      );
       fetchAndUpdateCwd();
     } else {
       splitGroupRef.current.setLayout({ timeline: 0, 'terminal-area': 100 });
     }
     const timer = setTimeout(() => {
       setIsPanelTransitioning(false);
+      suppressTerminalSaveRef.current = false;
       if (!isReady || status !== 'connected') return;
       const { cols, rows } = fit();
       wsActionsRef.current.sendResize(cols, rows);
@@ -762,7 +778,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
       }
     }, 150);
     return () => clearTimeout(timer);
-  }, [isClaudeCode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isClaudeCode, activeTabId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isFocused && isClaudeCode && claudeInputVisible) {
@@ -843,9 +859,36 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
           groupRef={splitGroupRef}
           orientation="vertical"
           defaultLayout={isClaudeCode
-            ? { timeline: 70, 'terminal-area': 30 }
+            ? (() => {
+                const ratio = activeTab?.terminalRatio ?? 30;
+                const collapsed = activeTab?.terminalCollapsed ?? false;
+                return collapsed
+                  ? { timeline: 100, 'terminal-area': 0 }
+                  : { timeline: 100 - ratio, 'terminal-area': ratio };
+              })()
             : { timeline: 0, 'terminal-area': 100 }
           }
+          onLayoutChanged={(layout) => {
+            if (suppressTerminalSaveRef.current) return;
+            if (!isClaudeCode || !activeTabId) return;
+            const area = layout['terminal-area'];
+            if (area === undefined) return;
+            const collapsed = area <= 0;
+            const patch: { terminalRatio?: number; terminalCollapsed?: boolean } = {};
+            const currentCollapsed = activeTab?.terminalCollapsed ?? false;
+            if (collapsed !== currentCollapsed) {
+              patch.terminalCollapsed = collapsed;
+              setIsTerminalCollapsed(collapsed);
+            }
+            if (!collapsed) {
+              const rounded = Math.round(area);
+              const currentRatio = activeTab?.terminalRatio ?? 30;
+              if (rounded !== currentRatio) patch.terminalRatio = rounded;
+            }
+            if (patch.terminalRatio !== undefined || patch.terminalCollapsed !== undefined) {
+              updateTabTerminalLayout(paneId, activeTabId, patch);
+            }
+          }}
           className={cn('min-h-0 flex-1', (isWebBrowser || isDiff) && 'invisible absolute inset-0 pointer-events-none', isPanelTransitioning && '[&>[data-panel]]:[transition:flex-grow_150ms_ease-out]')}
         >
           <Panel

@@ -707,7 +707,7 @@ export const patchTab = async (
   wsId: string,
   paneId: string,
   tabId: string,
-  patch: Partial<Pick<ITab, 'name' | 'panelType' | 'title' | 'cwd' | 'lastCommand' | 'webUrl'>>,
+  patch: Partial<Pick<ITab, 'name' | 'panelType' | 'title' | 'cwd' | 'lastCommand' | 'webUrl' | 'terminalRatio' | 'terminalCollapsed'>>,
 ): Promise<ILayoutData | null> => {
   let authoritativeCwd: string | null | undefined;
   let authoritativeTitle: string | null | undefined;
@@ -748,6 +748,8 @@ export const patchTab = async (
     if (patch.cwd !== undefined) tab.cwd = authoritativeCwd ?? patch.cwd;
     if (patch.lastCommand !== undefined) tab.lastCommand = patch.lastCommand;
     if (patch.webUrl !== undefined) tab.webUrl = patch.webUrl;
+    if (patch.terminalRatio !== undefined) tab.terminalRatio = patch.terminalRatio;
+    if (patch.terminalCollapsed !== undefined) tab.terminalCollapsed = patch.terminalCollapsed;
     return layout;
   });
 };
