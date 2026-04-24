@@ -7,5 +7,9 @@
   "mobileModeTip": "모바일 모드 (클릭하여 데스크톱으로 전환)",
   "desktopModeTip": "데스크톱 모드 (클릭하여 모바일로 전환)",
   "urlPlaceholder": "URL을 입력하세요",
-  "emptyMessage": "URL을 입력하여 웹페이지를 열어보세요"
+  "emptyMessage": "URL을 입력하여 웹페이지를 열어보세요",
+  "deviceTip": "디바이스 선택",
+  "rotate": "회전",
+  "zoomTip": "줌",
+  "zoomFit": "맞춤"
 }

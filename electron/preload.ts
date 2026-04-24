@@ -15,6 +15,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('browser:register', tabId, webContentsId),
   unregisterBrowserTab: (tabId: string) =>
     ipcRenderer.invoke('browser:unregister', tabId),
+  setBrowserDeviceEmulation: (
+    tabId: string,
+    config: {
+      width: number;
+      height: number;
+      deviceScaleFactor: number;
+      mobile: boolean;
+      userAgent?: string;
+      orientation?: 'portrait' | 'landscape';
+    } | null,
+  ) => ipcRenderer.invoke('browser:set-device-emulation', tabId, config),
   onNotificationClick: (callback: () => void) => {
     const handler = () => callback();
     ipcRenderer.on('notification-click', handler);

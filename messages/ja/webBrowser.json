@@ -7,5 +7,9 @@
   "mobileModeTip": "モバイルモード（クリックでデスクトップに切り替え）",
   "desktopModeTip": "デスクトップモード（クリックでモバイルに切り替え）",
   "urlPlaceholder": "URLを入力",
-  "emptyMessage": "URLを入力してWebページを開きます"
+  "emptyMessage": "URLを入力してWebページを開きます",
+  "deviceTip": "デバイスを選択",
+  "rotate": "回転",
+  "zoomTip": "ズーム",
+  "zoomFit": "フィット"
 }

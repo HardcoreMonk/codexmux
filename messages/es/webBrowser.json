@@ -7,5 +7,9 @@
   "mobileModeTip": "Modo móvil (clic para cambiar a escritorio)",
   "desktopModeTip": "Modo escritorio (clic para cambiar a móvil)",
   "urlPlaceholder": "Introduce una URL",
-  "emptyMessage": "Introduce una URL para abrir una página web"
+  "emptyMessage": "Introduce una URL para abrir una página web",
+  "deviceTip": "Seleccionar dispositivo",
+  "rotate": "Rotar",
+  "zoomTip": "Zoom",
+  "zoomFit": "Ajustar"
 }

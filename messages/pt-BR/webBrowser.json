@@ -7,5 +7,9 @@
   "mobileModeTip": "Modo mobile (clique para alternar para desktop)",
   "desktopModeTip": "Modo desktop (clique para alternar para mobile)",
   "urlPlaceholder": "Digite uma URL",
-  "emptyMessage": "Digite uma URL para abrir uma pagina web"
+  "emptyMessage": "Digite uma URL para abrir uma pagina web",
+  "deviceTip": "Selecionar dispositivo",
+  "rotate": "Girar",
+  "zoomTip": "Zoom",
+  "zoomFit": "Ajustar"
 }

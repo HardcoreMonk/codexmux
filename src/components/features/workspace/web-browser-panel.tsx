@@ -1,8 +1,9 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft, ArrowRight, RotateCw, Globe, Smartphone, Monitor } from 'lucide-react';
+import { ArrowLeft, ArrowRight, RotateCw, Globe, Smartphone, Monitor, RotateCcw, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import isElectron from '@/hooks/use-is-electron';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface IElectronWebview extends HTMLElement {
   loadURL(url: string): Promise<void>;
@@ -16,9 +17,19 @@ interface IElectronWebview extends HTMLElement {
   getWebContentsId(): number;
 }
 
+interface IDeviceEmulationConfig {
+  width: number;
+  height: number;
+  deviceScaleFactor: number;
+  mobile: boolean;
+  userAgent?: string;
+  orientation?: 'portrait' | 'landscape';
+}
+
 interface IBrowserBridgeAPI {
   registerBrowserTab?: (tabId: string, webContentsId: number) => Promise<unknown>;
   unregisterBrowserTab?: (tabId: string) => Promise<unknown>;
+  setBrowserDeviceEmulation?: (tabId: string, config: IDeviceEmulationConfig | null) => Promise<unknown>;
 }
 
 const getBridgeAPI = (): IBrowserBridgeAPI | null => {
@@ -26,8 +37,41 @@ const getBridgeAPI = (): IBrowserBridgeAPI | null => {
   return (window as unknown as { electronAPI?: IBrowserBridgeAPI }).electronAPI ?? null;
 };
 
-const MOBILE_USER_AGENT =
+interface IDevicePreset {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  deviceScaleFactor: number;
+  userAgent: string;
+}
+
+const IOS_UA =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+const IPAD_UA =
+  'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+const ANDROID_PIXEL_UA =
+  'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36';
+const ANDROID_GALAXY_UA =
+  'Mozilla/5.0 (Linux; Android 13; SM-G988B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36';
+
+const DEVICE_PRESETS: IDevicePreset[] = [
+  { id: 'iphone-se', name: 'iPhone SE', width: 375, height: 667, deviceScaleFactor: 2, userAgent: IOS_UA },
+  { id: 'iphone-14-pro', name: 'iPhone 14 Pro', width: 393, height: 852, deviceScaleFactor: 3, userAgent: IOS_UA },
+  { id: 'iphone-14-pro-max', name: 'iPhone 14 Pro Max', width: 430, height: 932, deviceScaleFactor: 3, userAgent: IOS_UA },
+  { id: 'pixel-7', name: 'Pixel 7', width: 412, height: 915, deviceScaleFactor: 2.625, userAgent: ANDROID_PIXEL_UA },
+  { id: 'galaxy-s20-ultra', name: 'Galaxy S20 Ultra', width: 412, height: 915, deviceScaleFactor: 3.5, userAgent: ANDROID_GALAXY_UA },
+  { id: 'ipad-mini', name: 'iPad Mini', width: 768, height: 1024, deviceScaleFactor: 2, userAgent: IPAD_UA },
+  { id: 'ipad-pro', name: 'iPad Pro 12.9"', width: 1024, height: 1366, deviceScaleFactor: 2, userAgent: IPAD_UA },
+];
+
+const DEFAULT_DEVICE_ID = 'iphone-14-pro';
+
+type TZoomValue = 'fit' | number;
+const ZOOM_OPTIONS: TZoomValue[] = ['fit', 0.5, 0.75, 1, 1.25, 1.5];
+
+const formatZoomLabel = (z: TZoomValue, fitLabel: string): string =>
+  z === 'fit' ? fitLabel : `${Math.round(z * 100)}%`;
 
 interface IWebBrowserPanelProps {
   tabId?: string;
@@ -70,7 +114,7 @@ const saveLastViewedUrl = (configuredUrl: string, currentUrl: string) => {
   sessionUrlCache.set(configuredUrl, currentUrl);
   if (isElectron) {
     try { localStorage.setItem(`webview-last:${configuredUrl}`, currentUrl); }
-    catch {}
+    catch { /* noop */ }
   }
 };
 
@@ -82,15 +126,43 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange, tabId }: IWebBrowserPanelPro
   const [canNavigate, setCanNavigate] = useState(isElectron);
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
-  const [mobileUA, setMobileUA] = useState(false);
+  const [mobileMode, setMobileMode] = useState(false);
+  const [deviceId, setDeviceId] = useState<string>(DEFAULT_DEVICE_ID);
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
+  const [zoom, setZoom] = useState<TZoomValue>('fit');
+  const [devicePopoverOpen, setDevicePopoverOpen] = useState(false);
+  const [zoomPopoverOpen, setZoomPopoverOpen] = useState(false);
+  const [stageSize, setStageSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const webviewRef = useRef<IElectronWebview | null>(null);
   const webviewContainerRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const onUrlChangeRef = useRef(onUrlChange);
   useEffect(() => { onUrlChangeRef.current = onUrlChange; });
   const initialUrlRef = useRef(initialUrl);
   useEffect(() => { initialUrlRef.current = initialUrl; });
-  const registeredWcIdRef = useRef<number | null>(null);
+
+  const selectedDevice = useMemo(
+    () => DEVICE_PRESETS.find((d) => d.id === deviceId) ?? DEVICE_PRESETS[0],
+    [deviceId],
+  );
+
+  const deviceSize = useMemo(() => {
+    if (orientation === 'landscape') {
+      return { width: selectedDevice.height, height: selectedDevice.width };
+    }
+    return { width: selectedDevice.width, height: selectedDevice.height };
+  }, [selectedDevice, orientation]);
+
+  const fitScale = useMemo(() => {
+    if (stageSize.w === 0 || stageSize.h === 0) return 1;
+    const padding = 32;
+    const scaleX = (stageSize.w - padding) / deviceSize.width;
+    const scaleY = (stageSize.h - padding) / deviceSize.height;
+    return Math.min(1, scaleX, scaleY);
+  }, [stageSize, deviceSize]);
+
+  const effectiveScale = zoom === 'fit' ? fitScale : zoom;
 
   useEffect(() => {
     if (initialUrl && addressValue) {
@@ -107,11 +179,12 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange, tabId }: IWebBrowserPanelPro
     if (!wv) {
       wv = document.createElement('webview') as unknown as IElectronWebview;
       wv.setAttribute('partition', 'persist:web-browser');
-      if (mobileUA) wv.setAttribute('useragent', MOBILE_USER_AGENT);
       wv.style.width = '100%';
       wv.style.height = '100%';
       wv.style.border = 'none';
       wv.setAttribute('src', url);
+      container.appendChild(wv);
+    } else if (wv.parentElement !== container) {
       container.appendChild(wv);
     }
 
@@ -139,12 +212,8 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange, tabId }: IWebBrowserPanelPro
       if (!tabId) return;
       try {
         const wcId = wv!.getWebContentsId();
-        if (registeredWcIdRef.current === wcId) return;
-        registeredWcIdRef.current = wcId;
         getBridgeAPI()?.registerBrowserTab?.(tabId, wcId);
-      } catch {
-        // getWebContentsId throws before the webview has attached; retries on next dom-ready
-      }
+      } catch { /* webview not yet mounted; retry handled by subsequent dom-ready */ }
     };
 
     wv.addEventListener('did-navigate', handleNavigate);
@@ -156,7 +225,7 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange, tabId }: IWebBrowserPanelPro
       wv!.removeEventListener('did-navigate-in-page', handleNavigateInPage);
       wv!.removeEventListener('dom-ready', handleDomReady);
     };
-  }, [url, mobileUA, tabId]);
+  }, [url, tabId]);
 
   useEffect(() => {
     if (!isElectron || !tabId) return;
@@ -164,6 +233,63 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange, tabId }: IWebBrowserPanelPro
       getBridgeAPI()?.unregisterBrowserTab?.(tabId);
     };
   }, [tabId]);
+
+  const emulationUaRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isElectron || !tabId) return;
+    const api = getBridgeAPI();
+    if (!api?.setBrowserDeviceEmulation) return;
+
+    const targetUa = mobileMode ? selectedDevice.userAgent : null;
+    const uaChanged = emulationUaRef.current !== targetUa;
+    emulationUaRef.current = targetUa;
+
+    const config = mobileMode
+      ? {
+          width: deviceSize.width,
+          height: deviceSize.height,
+          deviceScaleFactor: selectedDevice.deviceScaleFactor,
+          mobile: true,
+          userAgent: selectedDevice.userAgent,
+          orientation,
+        }
+      : null;
+
+    api
+      .setBrowserDeviceEmulation(tabId, config)
+      .then(() => {
+        if (uaChanged) webviewRef.current?.reload();
+      })
+      .catch(() => {});
+  }, [tabId, mobileMode, selectedDevice, deviceSize, orientation]);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const update = () => {
+      setStageSize({ w: stage.clientWidth, h: stage.clientHeight });
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(stage);
+    return () => ro.disconnect();
+  }, [mobileMode]);
+
+  useEffect(() => {
+    const wv = webviewRef.current;
+    if (!wv) return;
+    if (mobileMode) {
+      wv.style.width = `${deviceSize.width}px`;
+      wv.style.height = `${deviceSize.height}px`;
+      wv.style.transformOrigin = 'top left';
+      wv.style.transform = `scale(${effectiveScale})`;
+    } else {
+      wv.style.width = '100%';
+      wv.style.height = '100%';
+      wv.style.transform = '';
+      wv.style.transformOrigin = '';
+    }
+  }, [mobileMode, deviceSize, effectiveScale, url]);
 
   useEffect(() => {
     if (isElectron || !iframeRef.current || !url) return;
@@ -206,17 +332,23 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange, tabId }: IWebBrowserPanelPro
     }
   };
 
-  const handleToggleMobileUA = useCallback(() => {
-    setMobileUA((prev) => {
-      const next = !prev;
-      const wv = webviewRef.current;
-      if (wv) {
-        wv.setUserAgent(next ? MOBILE_USER_AGENT : '');
-        wv.reload();
-      }
-      return next;
-    });
+  const handleToggleMobileMode = useCallback(() => {
+    setMobileMode((prev) => !prev);
   }, []);
+
+  const handleSelectDevice = (id: string) => {
+    setDeviceId(id);
+    setDevicePopoverOpen(false);
+  };
+
+  const handleToggleOrientation = () => {
+    setOrientation((prev) => (prev === 'portrait' ? 'landscape' : 'portrait'));
+  };
+
+  const handleSelectZoom = (z: TZoomValue) => {
+    setZoom(z);
+    setZoomPopoverOpen(false);
+  };
 
   const handleGoBack = () => {
     if (isElectron) {
@@ -255,6 +387,7 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange, tabId }: IWebBrowserPanelPro
   };
 
   const showNavButtons = isElectron || canNavigate;
+  const showEmulatorToolbar = isElectron && mobileMode;
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -304,13 +437,13 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange, tabId }: IWebBrowserPanelPro
             <button
               className={cn(
                 'flex h-7 w-7 items-center justify-center rounded hover:bg-accent',
-                mobileUA ? 'text-accent-color' : 'text-muted-foreground hover:text-foreground',
+                mobileMode ? 'text-accent-color' : 'text-muted-foreground hover:text-foreground',
               )}
-              onClick={handleToggleMobileUA}
-              aria-label={mobileUA ? t('switchToDesktop') : t('switchToMobile')}
-              title={mobileUA ? t('mobileModeTip') : t('desktopModeTip')}
+              onClick={handleToggleMobileMode}
+              aria-label={mobileMode ? t('switchToDesktop') : t('switchToMobile')}
+              title={mobileMode ? t('mobileModeTip') : t('desktopModeTip')}
             >
-              {mobileUA ? <Smartphone className="h-3.5 w-3.5" /> : <Monitor className="h-3.5 w-3.5" />}
+              {mobileMode ? <Smartphone className="h-3.5 w-3.5" /> : <Monitor className="h-3.5 w-3.5" />}
             </button>
           )}
 
@@ -331,9 +464,99 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange, tabId }: IWebBrowserPanelPro
         </div>
       </div>
 
+      {showEmulatorToolbar && (
+        <div className="flex h-9 shrink-0 items-center gap-2 border-b border-border bg-muted/30 px-3 text-xs">
+          <Popover open={devicePopoverOpen} onOpenChange={setDevicePopoverOpen}>
+            <PopoverTrigger
+              className="flex h-6 items-center gap-1 rounded px-2 text-foreground hover:bg-accent"
+              title={t('deviceTip')}
+            >
+              <span className="font-medium">{selectedDevice.name}</span>
+              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-56 p-1">
+              {DEVICE_PRESETS.map((d) => (
+                <button
+                  key={d.id}
+                  className={cn(
+                    'flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-xs hover:bg-accent',
+                    d.id === deviceId && 'bg-accent/50 font-medium',
+                  )}
+                  onClick={() => handleSelectDevice(d.id)}
+                >
+                  <span>{d.name}</span>
+                  <span className="text-muted-foreground">{d.width}×{d.height}</span>
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
+
+          <span className="font-mono text-muted-foreground">
+            {deviceSize.width} × {deviceSize.height}
+          </span>
+
+          <button
+            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+            onClick={handleToggleOrientation}
+            aria-label={t('rotate')}
+            title={t('rotate')}
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </button>
+
+          <div className="flex-1" />
+
+          <Popover open={zoomPopoverOpen} onOpenChange={setZoomPopoverOpen}>
+            <PopoverTrigger
+              className="flex h-6 items-center gap-1 rounded px-2 text-foreground hover:bg-accent"
+              title={t('zoomTip')}
+            >
+              <span>{formatZoomLabel(zoom, t('zoomFit'))}</span>
+              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-32 p-1">
+              {ZOOM_OPTIONS.map((z) => (
+                <button
+                  key={String(z)}
+                  className={cn(
+                    'flex w-full items-center rounded px-2 py-1.5 text-left text-xs hover:bg-accent',
+                    z === zoom && 'bg-accent/50 font-medium',
+                  )}
+                  onClick={() => handleSelectZoom(z)}
+                >
+                  {formatZoomLabel(z, t('zoomFit'))}
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
+
       {url ? (
         isElectron ? (
-          <div ref={webviewContainerRef} className="min-h-0 flex-1" />
+          <div
+            ref={stageRef}
+            className={cn(
+              'relative min-h-0 flex-1 overflow-auto',
+              mobileMode ? 'flex items-center justify-center bg-muted/20 p-4' : '',
+            )}
+          >
+            <div
+              ref={webviewContainerRef}
+              className={cn(
+                mobileMode && 'overflow-hidden rounded-sm bg-background shadow-lg ring-1 ring-border',
+              )}
+              style={
+                mobileMode
+                  ? {
+                      width: deviceSize.width * effectiveScale,
+                      height: deviceSize.height * effectiveScale,
+                      flexShrink: 0,
+                    }
+                  : { width: '100%', height: '100%' }
+              }
+            />
+          </div>
         ) : (
           <iframe
             ref={iframeRef}

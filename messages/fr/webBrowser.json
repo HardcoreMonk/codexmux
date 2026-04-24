@@ -7,5 +7,9 @@
   "mobileModeTip": "Mode mobile (cliquez pour passer en mode bureau)",
   "desktopModeTip": "Mode bureau (cliquez pour passer en mode mobile)",
   "urlPlaceholder": "Saisissez une URL",
-  "emptyMessage": "Saisissez une URL pour ouvrir une page web"
+  "emptyMessage": "Saisissez une URL pour ouvrir une page web",
+  "deviceTip": "Choisir un appareil",
+  "rotate": "Pivoter",
+  "zoomTip": "Zoom",
+  "zoomFit": "Ajuster"
 }

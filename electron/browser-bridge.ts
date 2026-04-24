@@ -32,6 +32,16 @@ interface IBridgeEntry {
   networkRing: INetworkEntry[];
   networkIndex: Map<string, INetworkEntry>;
   bodyCache: Map<string, string>;
+  emulation: IDeviceEmulationConfig | null;
+}
+
+export interface IDeviceEmulationConfig {
+  width: number;
+  height: number;
+  deviceScaleFactor: number;
+  mobile: boolean;
+  userAgent?: string;
+  orientation?: 'portrait' | 'landscape';
 }
 
 export interface IBrowserBridge {
@@ -47,6 +57,7 @@ export interface IBrowserBridge {
   getResponseBody: (tabId: string, requestId: string) => Promise<string | null>;
   reload: (tabId: string) => void;
   navigate: (tabId: string, url: string) => Promise<void>;
+  setDeviceEmulation: (tabId: string, config: IDeviceEmulationConfig | null) => Promise<void>;
 }
 
 type TGlobal = typeof globalThis & { __ptBrowserBridge?: IBrowserBridge };
@@ -80,6 +91,7 @@ const attachDebugger = (tabId: string, wc: WebContents, registry: Map<string, IB
     networkRing: [],
     networkIndex: new Map(),
     bodyCache: new Map(),
+    emulation: null,
   };
 
   const onMessage = (_event: Electron.Event, method: string, params: Record<string, unknown>) => {
@@ -272,6 +284,39 @@ export const initBrowserBridge = (): void => {
       const wc = getWc(entry);
       await wc.loadURL(url);
     },
+    setDeviceEmulation: async (tabId, config) => {
+      const entry = registry.get(tabId);
+      if (!entry) throw new Error('tab not registered');
+      const wc = getWc(entry);
+      if (!config) {
+        entry.emulation = null;
+        await Promise.all([
+          wc.debugger.sendCommand('Emulation.clearDeviceMetricsOverride').catch(() => {}),
+          wc.debugger.sendCommand('Emulation.setUserAgentOverride', { userAgent: '' }).catch(() => {}),
+          wc.debugger.sendCommand('Emulation.setTouchEmulationEnabled', { enabled: false }).catch(() => {}),
+        ]);
+        return;
+      }
+      entry.emulation = config;
+      const orientation = config.orientation ?? 'portrait';
+      await wc.debugger.sendCommand('Emulation.setDeviceMetricsOverride', {
+        width: Math.round(config.width),
+        height: Math.round(config.height),
+        deviceScaleFactor: config.deviceScaleFactor,
+        mobile: config.mobile,
+        screenOrientation: {
+          type: orientation === 'landscape' ? 'landscapePrimary' : 'portraitPrimary',
+          angle: orientation === 'landscape' ? 90 : 0,
+        },
+      });
+      if (config.userAgent !== undefined) {
+        await wc.debugger.sendCommand('Emulation.setUserAgentOverride', { userAgent: config.userAgent });
+      }
+      await wc.debugger.sendCommand('Emulation.setTouchEmulationEnabled', {
+        enabled: config.mobile,
+        maxTouchPoints: 5,
+      });
+    },
   };
 
   g.__ptBrowserBridge = bridge;
@@ -288,5 +333,14 @@ export const initBrowserBridge = (): void => {
   ipcMain.handle('browser:unregister', (_e, tabId: string) => {
     bridge.unregister(tabId);
     return { ok: true };
+  });
+
+  ipcMain.handle('browser:set-device-emulation', async (_e, tabId: string, config: IDeviceEmulationConfig | null) => {
+    try {
+      await bridge.setDeviceEmulation(tabId, config);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
   });
 };

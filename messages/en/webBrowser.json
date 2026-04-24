@@ -7,5 +7,9 @@
   "mobileModeTip": "Mobile mode (click to switch to desktop)",
   "desktopModeTip": "Desktop mode (click to switch to mobile)",
   "urlPlaceholder": "Enter a URL",
-  "emptyMessage": "Enter a URL to open a webpage"
+  "emptyMessage": "Enter a URL to open a webpage",
+  "deviceTip": "Choose a device",
+  "rotate": "Rotate",
+  "zoomTip": "Zoom",
+  "zoomFit": "Fit"
 }
