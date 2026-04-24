@@ -96,7 +96,7 @@ const UserMessageItem = ({ entry }: IUserMessageItemProps) => {
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="text-xs mt-1.5 text-ui-blue hover:underline"
+            className="text-xs mt-1.5 text-muted-foreground hover:underline"
           >
             {expanded ? '접기' : '더보기'}
           </button>
