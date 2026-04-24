@@ -6,6 +6,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { pickTaglines } from './splash-taglines';
+import { initBrowserBridge } from './browser-bridge';
 
 const isDev = process.env.NODE_ENV === 'development';
 const devUrl = process.env.ELECTRON_DEV_URL;
@@ -716,6 +717,7 @@ const bootstrap = async () => {
   // shell resolve는 100~500ms 걸리므로 splash 렌더와 오버랩시키고,
   // 로컬 서버 spawn 직전에만 완료를 대기한다.
   fixEnv();
+  initBrowserBridge();
   const shellEnvReady = applyResolvedShellEnv().then(capturePristineEnv);
 
   if (devUrl) {

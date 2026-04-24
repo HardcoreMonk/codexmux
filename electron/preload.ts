@@ -11,6 +11,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setDockBadge: (count: number) => ipcRenderer.invoke('set-dock-badge', count),
   setLocale: (locale: string) => ipcRenderer.invoke('set-locale', locale),
   setNativeTheme: (theme: string) => ipcRenderer.invoke('set-native-theme', theme),
+  registerBrowserTab: (tabId: string, webContentsId: number) =>
+    ipcRenderer.invoke('browser:register', tabId, webContentsId),
+  unregisterBrowserTab: (tabId: string) =>
+    ipcRenderer.invoke('browser:unregister', tabId),
   onNotificationClick: (callback: () => void) => {
     const handler = () => callback();
     ipcRenderer.on('notification-click', handler);

@@ -13,12 +13,24 @@ interface IElectronWebview extends HTMLElement {
   canGoBack(): boolean;
   canGoForward(): boolean;
   setUserAgent(userAgent: string): void;
+  getWebContentsId(): number;
 }
+
+interface IBrowserBridgeAPI {
+  registerBrowserTab?: (tabId: string, webContentsId: number) => Promise<unknown>;
+  unregisterBrowserTab?: (tabId: string) => Promise<unknown>;
+}
+
+const getBridgeAPI = (): IBrowserBridgeAPI | null => {
+  if (typeof window === 'undefined') return null;
+  return (window as unknown as { electronAPI?: IBrowserBridgeAPI }).electronAPI ?? null;
+};
 
 const MOBILE_USER_AGENT =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 
 interface IWebBrowserPanelProps {
+  tabId?: string;
   initialUrl?: string | null;
   onUrlChange?: (url: string) => void;
 }
@@ -58,11 +70,11 @@ const saveLastViewedUrl = (configuredUrl: string, currentUrl: string) => {
   sessionUrlCache.set(configuredUrl, currentUrl);
   if (isElectron) {
     try { localStorage.setItem(`webview-last:${configuredUrl}`, currentUrl); }
-    catch { /* noop */ }
+    catch {}
   }
 };
 
-const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => {
+const WebBrowserPanel = ({ initialUrl, onUrlChange, tabId }: IWebBrowserPanelProps) => {
   const t = useTranslations('webBrowser');
   const resolvedUrl = initialUrl ? (getLastViewedUrl(initialUrl) ?? initialUrl) : '';
   const [url, setUrl] = useState(resolvedUrl);
@@ -78,6 +90,7 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => 
   useEffect(() => { onUrlChangeRef.current = onUrlChange; });
   const initialUrlRef = useRef(initialUrl);
   useEffect(() => { initialUrlRef.current = initialUrl; });
+  const registeredWcIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (initialUrl && addressValue) {
@@ -85,7 +98,6 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => 
     }
   }, [addressValue, initialUrl]);
 
-  // Electron webview: 생성 및 이벤트 바인딩
   useEffect(() => {
     if (!isElectron || !url || !webviewContainerRef.current) return;
 
@@ -123,16 +135,36 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => 
       onUrlChangeRef.current?.(currentUrl);
     };
 
+    const handleDomReady = () => {
+      if (!tabId) return;
+      try {
+        const wcId = wv!.getWebContentsId();
+        if (registeredWcIdRef.current === wcId) return;
+        registeredWcIdRef.current = wcId;
+        getBridgeAPI()?.registerBrowserTab?.(tabId, wcId);
+      } catch {
+        // getWebContentsId throws before the webview has attached; retries on next dom-ready
+      }
+    };
+
     wv.addEventListener('did-navigate', handleNavigate);
     wv.addEventListener('did-navigate-in-page', handleNavigateInPage);
+    wv.addEventListener('dom-ready', handleDomReady);
 
     return () => {
       wv!.removeEventListener('did-navigate', handleNavigate);
       wv!.removeEventListener('did-navigate-in-page', handleNavigateInPage);
+      wv!.removeEventListener('dom-ready', handleDomReady);
     };
-  }, [url, mobileUA]);
+  }, [url, mobileUA, tabId]);
 
-  // iframe: src 설정
+  useEffect(() => {
+    if (!isElectron || !tabId) return;
+    return () => {
+      getBridgeAPI()?.unregisterBrowserTab?.(tabId);
+    };
+  }, [tabId]);
+
   useEffect(() => {
     if (isElectron || !iframeRef.current || !url) return;
     iframeRef.current.src = url;
@@ -227,7 +259,7 @@ const WebBrowserPanel = ({ initialUrl, onUrlChange }: IWebBrowserPanelProps) => 
   return (
     <div className="flex h-full flex-col bg-background">
       <div
-        className="relative z-[60] flex h-12 shrink-0 items-center gap-1 border-b border-border px-2"
+        className="relative flex h-12 shrink-0 items-center gap-1 border-b border-border px-2"
         {...(isElectron ? { style: { WebkitAppRegion: 'drag' } as React.CSSProperties } : {})}
       >
         <div

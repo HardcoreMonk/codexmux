@@ -843,6 +843,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
         {isWebBrowser && activeTabId && (
           <WebBrowserPanel
             key={activeTabId}
+            tabId={activeTabId}
             initialUrl={activeTab?.webUrl}
             onUrlChange={handleWebUrlChange}
           />

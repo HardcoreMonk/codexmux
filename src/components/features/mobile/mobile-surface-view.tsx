@@ -445,6 +445,7 @@ const MobileSurfaceView = ({
       {isWebBrowser && activeTabId && (
         <WebBrowserPanel
           key={activeTabId}
+          tabId={activeTabId}
           initialUrl={activeTab?.webUrl}
           onUrlChange={handleWebUrlChange}
         />

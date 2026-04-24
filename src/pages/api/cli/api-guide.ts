@@ -38,6 +38,39 @@ GET /api/cli/tabs/<tabId>/status?workspaceId=WS
 GET /api/cli/tabs/<tabId>/result?workspaceId=WS
   Capture the current pane content.
   Response: { "content": "..." }
+
+## Web-browser tabs
+
+These endpoints only work when the tab's panelType is "web-browser" and the webview
+has attached (dom-ready has fired at least once). Electron runtime required;
+503 is returned in headless/remote mode.
+
+GET /api/cli/tabs/<tabId>/browser/url?workspaceId=WS
+  Current URL + title of the webview.
+  Response: { "tabId", "url", "title" }
+
+GET /api/cli/tabs/<tabId>/browser/screenshot?workspaceId=WS[&full=1][&format=base64]
+  PNG screenshot. Default returns image/png; format=base64 returns { base64 } JSON.
+  full=1 captures beyond the viewport.
+
+GET /api/cli/tabs/<tabId>/browser/console?workspaceId=WS[&since=MS][&level=LEVEL]
+  Ring buffer (last 500 entries) of console messages, Log entries, and exceptions.
+  Response: { "tabId", "entries": [{ "level", "text", "ts", "source"?, "url"?, "line"? }] }
+
+GET /api/cli/tabs/<tabId>/browser/network?workspaceId=WS[&since=MS][&method=M][&url=SUBSTR][&status=CODE]
+  Ring buffer (last 500 requests).
+  Response: { "tabId", "entries": [{ "requestId", "method", "url", "status"?, "mimeType"?,
+                                     "resourceType"?, "error"?, "ts", "endedAt"? }] }
+
+GET /api/cli/tabs/<tabId>/browser/network?workspaceId=WS&requestId=RID
+  Fetch response body for one request (cached after first call).
+  Response: { "tabId", "requestId", "body" }
+
+POST /api/cli/tabs/<tabId>/browser/eval?workspaceId=WS
+  Body: { "expression": "..." }
+  Evaluates the expression in the webview via CDP Runtime.evaluate
+  (returnByValue, awaitPromise, 10s timeout).
+  Response: { "tabId", "value" }
 `;
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {

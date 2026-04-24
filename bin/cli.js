@@ -52,6 +52,23 @@ const api = async (method, path, data) => {
   return { resp, body };
 };
 
+const apiRaw = async (method, path) => {
+  const url = `${BASE}${path}`;
+  const resp = await fetch(url, {
+    method,
+    headers: { 'X-Pmux-Token': TOKEN },
+  });
+  if (!resp.ok) {
+    const ct = resp.headers.get('content-type') || '';
+    if (ct.includes('json')) {
+      const body = await resp.json();
+      die(body?.error || `HTTP ${resp.status}`);
+    }
+    die(`HTTP ${resp.status}`);
+  }
+  return resp;
+};
+
 const cmdWorkspaces = async () => {
   requireEnv();
   const { body } = await api('GET', '/api/cli/workspaces');
@@ -141,6 +158,75 @@ const cmdTabClose = async (args) => {
   if (resp.ok) process.stdout.write('ok\n');
 };
 
+const cmdTabBrowser = async (args) => {
+  requireEnv();
+  const sub = args[0];
+  const rest = stripFlags(args.slice(1), ['--workspace', '-w', '-o', '--since', '--level', '--method', '--url', '--status', '--request', '--full']);
+  const tabId = rest[0];
+  if (!sub) die('browser subcommand required (url | screenshot | console | network | eval)');
+  if (!tabId) die('tab ID is required');
+  const wsId = resolveWsForTab(args);
+  const qs = `workspaceId=${encodeURIComponent(wsId)}`;
+
+  switch (sub) {
+    case 'url': {
+      const { body } = await api('GET', `/api/cli/tabs/${tabId}/browser/url?${qs}`);
+      out(body);
+      return;
+    }
+    case 'screenshot': {
+      const outPath = flagValue(args, '-o') || flagValue(args, '--output');
+      const full = args.includes('--full') ? '1' : '0';
+      const path = `/api/cli/tabs/${tabId}/browser/screenshot?${qs}&full=${full}`;
+      if (outPath) {
+        const resp = await apiRaw('GET', path);
+        const buf = Buffer.from(await resp.arrayBuffer());
+        fs.writeFileSync(outPath, buf);
+        out({ saved: outPath, bytes: buf.byteLength });
+      } else {
+        const { body } = await api('GET', `${path}&format=base64`);
+        out(body);
+      }
+      return;
+    }
+    case 'console': {
+      const since = flagValue(args, '--since');
+      const level = flagValue(args, '--level');
+      const params = [qs];
+      if (since) params.push(`since=${encodeURIComponent(since)}`);
+      if (level) params.push(`level=${encodeURIComponent(level)}`);
+      const { body } = await api('GET', `/api/cli/tabs/${tabId}/browser/console?${params.join('&')}`);
+      out(body);
+      return;
+    }
+    case 'network': {
+      const since = flagValue(args, '--since');
+      const method = flagValue(args, '--method');
+      const urlFilter = flagValue(args, '--url');
+      const status = flagValue(args, '--status');
+      const requestId = flagValue(args, '--request');
+      const params = [qs];
+      if (requestId) params.push(`requestId=${encodeURIComponent(requestId)}`);
+      if (since) params.push(`since=${encodeURIComponent(since)}`);
+      if (method) params.push(`method=${encodeURIComponent(method)}`);
+      if (urlFilter) params.push(`url=${encodeURIComponent(urlFilter)}`);
+      if (status) params.push(`status=${encodeURIComponent(status)}`);
+      const { body } = await api('GET', `/api/cli/tabs/${tabId}/browser/network?${params.join('&')}`);
+      out(body);
+      return;
+    }
+    case 'eval': {
+      const expression = rest.slice(1).join(' ');
+      if (!expression) die('expression is required');
+      const { body } = await api('POST', `/api/cli/tabs/${tabId}/browser/eval?${qs}`, { expression });
+      out(body);
+      return;
+    }
+    default:
+      die(`unknown browser subcommand: ${sub}. Use url | screenshot | console | network | eval`);
+  }
+};
+
 const cmdApiGuide = async () => {
   requireEnv();
   const resp = await fetch(`${BASE}/api/cli/api-guide`, {
@@ -183,6 +269,14 @@ Commands:
   tab status -w WS TAB_ID                  Tab status
   tab result -w WS TAB_ID                  Capture tab pane content
   tab close -w WS TAB_ID                   Close a tab
+  tab browser url -w WS TAB_ID             Current URL + title of a web-browser tab
+  tab browser screenshot -w WS TAB_ID      Capture tab screenshot (PNG). Use -o FILE to save, --full for full page
+                          [-o FILE] [--full]
+  tab browser console -w WS TAB_ID         Read recent console entries (ring buffer, 500 entries)
+                          [--since MS] [--level LEVEL]
+  tab browser network -w WS TAB_ID         Read recent network entries, or with --request ID to fetch body
+                          [--since MS] [--method M] [--url SUBSTR] [--status CODE] [--request ID]
+  tab browser eval -w WS TAB_ID EXPR       Evaluate JS expression inside the tab; returns serialized value
   api-guide                                Print full HTTP API reference
   help                                     Show this usage
 
@@ -209,6 +303,7 @@ const main = async () => {
         case 'status': return cmdTabStatus(rest);
         case 'result': return cmdTabResult(rest);
         case 'close': return cmdTabClose(rest);
+        case 'browser': return cmdTabBrowser(rest);
         default: die(`unknown tab command: ${sub || '(none)'}. Run 'purplemux help' for usage.`);
       }
       break;
