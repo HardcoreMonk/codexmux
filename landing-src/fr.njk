@@ -1,89 +1,45 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script>try{localStorage.setItem('pmx-locale','zh-CN');}catch(_){}</script>
-  <title>purplemux — 为 Claude Code 打造的 Web 原生终端复用器</title>
-  <meta name="description" content="在一个仪表板中运行多个 Claude Code 会话。基于 tmux,Web 原生,移动端适配。MIT 开源。" />
-  <meta property="og:title" content="purplemux — 为 Claude Code 打造的 Web 原生终端复用器" />
-  <meta property="og:description" content="在一个仪表板中运行多个 Claude Code 会话。基于 tmux,Web 原生,移动端适配。MIT 开源。" />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://subicura.com/purplemux/zh-CN/" />
-  <meta property="og:locale" content="zh_CN" />
-  <meta property="og:locale:alternate" content="en_US" />
-  <meta property="og:image" content="https://subicura.com/purplemux/images/og-image.png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="purplemux" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="purplemux — 为 Claude Code 打造的 Web 原生终端复用器" />
-  <meta name="twitter:description" content="在一个仪表板中运行多个 Claude Code 会话。基于 tmux,Web 原生,移动端适配。MIT 开源。" />
-  <meta name="twitter:image" content="https://subicura.com/purplemux/images/og-image.png" />
-  <link rel="canonical" href="https://subicura.com/purplemux/zh-CN/" />
-  <link rel="alternate" hreflang="en" href="https://subicura.com/purplemux/" />
-  <link rel="alternate" hreflang="ko" href="https://subicura.com/purplemux/ko/" />
-  <link rel="alternate" hreflang="ja" href="https://subicura.com/purplemux/ja/" />
-  <link rel="alternate" hreflang="zh-CN" href="https://subicura.com/purplemux/zh-CN/" />
-  <link rel="alternate" hreflang="zh-TW" href="https://subicura.com/purplemux/zh-TW/" />
-  <link rel="alternate" hreflang="de" href="https://subicura.com/purplemux/de/" />
-  <link rel="alternate" hreflang="es" href="https://subicura.com/purplemux/es/" />
-  <link rel="alternate" hreflang="fr" href="https://subicura.com/purplemux/fr/" />
-  <link rel="alternate" hreflang="pt-BR" href="https://subicura.com/purplemux/pt-BR/" />
-  <link rel="alternate" hreflang="ru" href="https://subicura.com/purplemux/ru/" />
-  <link rel="alternate" hreflang="tr" href="https://subicura.com/purplemux/tr/" />
-  <link rel="alternate" hreflang="x-default" href="https://subicura.com/purplemux/" />
-  <link rel="icon" href="../images/favicon.ico" sizes="any" />
-  <link rel="icon" type="image/png" sizes="32x32" href="../images/favicon-32x32.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="../images/favicon-16x16.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="../images/apple-touch-icon.png" />
-  <meta name="theme-color" content="#131313" />
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&display=swap" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@12/swiper-bundle.min.css" />
-  <link rel="stylesheet" href="../style.css?v=71" />
-  <script>
-    !function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init os ds Ie us vs ss ls capture calculateEventProperties register register_once register_for_session unregister unregister_for_session ws getFeatureFlag getFeatureFlagPayload getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty bs ps createPersonProfile setInternalOrTestUser ys es $s opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing cs debug M gs getPageViewId captureTraceFeedback captureTraceMetric Qr".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
-    posthog.init('phc_qBeyLuYqK33QZTT39cJnGnzG7DrByc3eP9c9wUuDdBeP', {
-      api_host: 'https://us.i.posthog.com',
-      defaults: '2026-01-30',
-    });
-  </script>
-</head>
-<body>
-
+---
+layout: layouts/base.njk
+lang: fr
+title: "purplemux — Un multiplexeur de terminal web-natif pour Claude Code"
+description: "Gérez plusieurs sessions Claude Code dans un seul tableau de bord. Basé sur tmux, web-natif, prêt pour le mobile. Open source MIT."
+canonical: https://subicura.com/purplemux/fr/
+ogUrl: https://subicura.com/purplemux/fr/
+ogLocale: fr_FR
+ogLocaleAlternate: en_US
+permalink: /fr/index.html
+assetPrefix: "../"
+isRoot: false
+---
   <nav class="nav" data-ph-capture-attribute-location="nav">
     <a href="#top" class="nav-brand is-hidden">
       <svg class="brand-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
       <span class="wordmark"><strong>purple</strong>mux</span>
     </a>
     <div class="nav-links">
-      <a href="#mobile">移动端</a>
-      <a href="#stats">统计</a>
-      <a href="#features">功能</a>
-      <a href="#how">架构</a>
-      <a href="#compare">对比</a>
-      <a href="#install">安装</a>
+      <a href="#mobile">Mobile</a>
+      <a href="#stats">Statistiques</a>
+      <a href="#features">Fonctions</a>
+      <a href="#how">Architecture</a>
+      <a href="#compare">Comparaison</a>
+      <a href="#install">Installer</a>
       <a href="#faq">FAQ</a>
     </div>
     <div class="nav-spacer"></div>
     <details class="nav-lang">
-      <summary aria-label="选择语言">
-        <span class="lang-current">ZH-CN</span>
+      <summary aria-label="Choisir la langue">
+        <span class="lang-current">FR</span>
         <svg class="lang-chevron" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 4l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </summary>
       <div class="lang-menu" role="menu">
         <a href="../" class="lang-opt" lang="en" hreflang="en">English</a>
         <a href="../ko/" class="lang-opt" lang="ko" hreflang="ko">한국어</a>
         <a href="../ja/" class="lang-opt" lang="ja" hreflang="ja">日本語</a>
-        <a href="./" class="lang-opt is-active" lang="zh-CN" hreflang="zh-CN" aria-current="page">简体中文</a>
+        <a href="../zh-CN/" class="lang-opt" lang="zh-CN" hreflang="zh-CN">简体中文</a>
         <a href="../zh-TW/" class="lang-opt" lang="zh-TW" hreflang="zh-TW">繁體中文</a>
         <a href="../de/" class="lang-opt" lang="de" hreflang="de">Deutsch</a>
         <a href="../es/" class="lang-opt" lang="es" hreflang="es">Español</a>
-        <a href="../fr/" class="lang-opt" lang="fr" hreflang="fr">Français</a>
+        <a href="./" class="lang-opt is-active" lang="fr" hreflang="fr" aria-current="page">Français</a>
         <a href="../pt-BR/" class="lang-opt" lang="pt-BR" hreflang="pt-BR">Português</a>
         <a href="../ru/" class="lang-opt" lang="ru" hreflang="ru">Русский</a>
         <a href="../tr/" class="lang-opt" lang="tr" hreflang="tr">Türkçe</a>
@@ -94,7 +50,7 @@
         <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.69-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.18-3.09-.12-.29-.51-1.46.11-3.04 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.62 1.58.23 2.75.11 3.04.74.8 1.18 1.83 1.18 3.09 0 4.42-2.69 5.4-5.26 5.68.41.35.78 1.05.78 2.12 0 1.53-.01 2.77-.01 3.15 0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/>
       </svg>
     </a>
-    <a href="#install" class="nav-cta" data-ph-capture-attribute-cta="nav_cta">立即开始</a>
+    <a href="#install" class="nav-cta" data-ph-capture-attribute-cta="nav_cta">Commencer</a>
   </nav>
 
   <main id="top">
@@ -112,38 +68,38 @@
 
           <h1 class="hero-title">
             <span class="line">Claude Code<span class="punct">,</span></span>
-            <span class="line">多个会话<span class="punct">,</span></span>
-            <span class="line line--brand">全在你的手机上<span class="punct">.</span></span>
+            <span class="line">plusieurs sessions<span class="punct">,</span></span>
+            <span class="line line--brand">tout depuis votre mobile<span class="punct">.</span></span>
           </h1>
 
           <p class="hero-sub">
-            每个会话都跑在 tmux 上 — 关闭标签页也不会停。<br class="br-desktop" />
-            在手机上重新打开，从中断处继续。
+            Chaque session tourne sur tmux — rien ne s'arrête quand vous fermez l'onglet.<br class="br-desktop" />
+            Rouvrez sur votre mobile et reprenez en plein milieu.
           </p>
 
           <div class="install-block">
             <div class="install-cmd">
               <span class="prompt">$</span>
               <span>npx purplemux</span>
-              <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="复制" onclick="(function(b){navigator.clipboard.writeText('npx purplemux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
+              <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="Copier" onclick="(function(b){navigator.clipboard.writeText('npx purplemux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
             </div>
             <a href="https://github.com/subicura/purplemux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-mac>
               <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
                 <path d="M17.05 20.28c-.98.95-2.05.88-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
               </svg>
-              下载 macOS 应用
+              Télécharger pour macOS
             </a>
           </div>
 
           <div class="hero-caps">
-            <span><span class="check">✓</span> Web 仪表板</span>
-            <span><span class="check">✓</span> 移动端支持</span>
-            <span><span class="check">✓</span> 内置终端</span>
+            <span><span class="check">✓</span> Tableau de bord web</span>
+            <span><span class="check">✓</span> Compatible mobile</span>
+            <span><span class="check">✓</span> Terminal intégré</span>
           </div>
 
           <div class="hero-meta">
             <span><span class="ok">●</span> Node.js 20+</span>
-            <span><span class="ok">●</span> 需要 tmux</span>
+            <span><span class="ok">●</span> tmux requis</span>
             <span><span class="ok">●</span> macOS / Linux</span>
           </div>
         </div>
@@ -160,7 +116,7 @@
                 <div class="card-row"><span class="k">read</span><span class="p">src/lib/auth.ts</span></div>
                 <div class="card-row"><span class="k">edit</span><span class="p">src/lib/auth.ts</span></div>
                 <div class="card-row"><span class="k">bash</span><span class="p">pnpm tsc --noEmit</span></div>
-                <div class="card-row running"><span class="k">→</span><span class="p">重构中间件中</span></div>
+                <div class="card-row running"><span class="k">→</span><span class="p">Refactor du middleware</span></div>
               </div>
             </div>
           </article>
@@ -193,9 +149,9 @@
                 <span class="card-badge brand">review</span>
               </header>
               <div class="card-body">
-                <div class="card-row done"><span class="k">✓</span><span class="p">Hero 重设计</span></div>
-                <div class="card-row done"><span class="k">✓</span><span class="p">Footer 标语</span></div>
-                <div class="card-row done"><span class="k">✓</span><span class="p">文案调性整理</span></div>
+                <div class="card-row done"><span class="k">✓</span><span class="p">Redesign du Hero</span></div>
+                <div class="card-row done"><span class="k">✓</span><span class="p">Tagline du footer</span></div>
+                <div class="card-row done"><span class="k">✓</span><span class="p">Passe sur le ton</span></div>
                 <div class="card-row waiting"><span class="k">❯</span><span class="p"><span class="caret"></span></span></div>
               </div>
             </div>
@@ -210,7 +166,7 @@
         <div class="shot shot--desktop preview-desktop">
           <div class="swiper">
             <div class="swiper-wrapper">
-              <div class="swiper-slide"><picture><source srcset="../images/screenshot-desktop-busy.webp" type="image/webp" /><img src="../images/screenshot-desktop-busy.png" alt="purplemux 桌面仪表板" width="2832" height="1552" loading="lazy" decoding="async" /></picture></div>
+              <div class="swiper-slide"><picture><source srcset="../images/screenshot-desktop-busy.webp" type="image/webp" /><img src="../images/screenshot-desktop-busy.png" alt="tableau de bord purplemux sur desktop" width="2832" height="1552" loading="lazy" decoding="async" /></picture></div>
               <div class="swiper-slide"><picture><source srcset="../images/screenshot-desktop-diff.webp" type="image/webp" /><img src="../images/screenshot-desktop-diff.png" alt="" width="2832" height="1552" loading="lazy" decoding="async" /></picture></div>
               <div class="swiper-slide"><picture><source srcset="../images/screenshot-desktop-claude.webp" type="image/webp" /><img src="../images/screenshot-desktop-claude.png" alt="" width="2832" height="1552" loading="lazy" decoding="async" /></picture></div>
             </div>
@@ -220,7 +176,7 @@
         <div class="shot shot--mobile preview-mobile">
           <div class="swiper">
             <div class="swiper-wrapper">
-              <div class="swiper-slide"><picture><source srcset="../images/screenshot-mobile-push.webp" type="image/webp" /><img src="../images/screenshot-mobile-push.png" alt="purplemux 移动端界面" width="1206" height="2622" loading="lazy" decoding="async" /></picture></div>
+              <div class="swiper-slide"><picture><source srcset="../images/screenshot-mobile-push.webp" type="image/webp" /><img src="../images/screenshot-mobile-push.png" alt="purplemux sur mobile" width="1206" height="2622" loading="lazy" decoding="async" /></picture></div>
               <div class="swiper-slide"><picture><source srcset="../images/screenshot-mobile-done.webp" type="image/webp" /><img src="../images/screenshot-mobile-done.png" alt="" width="1206" height="2622" loading="lazy" decoding="async" /></picture></div>
               <div class="swiper-slide"><picture><source srcset="../images/screenshot-mobile-new-tab.webp" type="image/webp" /><img src="../images/screenshot-mobile-new-tab.png" alt="" width="1206" height="2622" loading="lazy" decoding="async" /></picture></div>
               <div class="swiper-slide"><picture><source srcset="../images/screenshot-mobile-input.webp" type="image/webp" /><img src="../images/screenshot-mobile-input.png" alt="" width="1206" height="2622" loading="lazy" decoding="async" /></picture></div>
@@ -234,25 +190,25 @@
 
     <!-- ── Why ── -->
     <section id="why">
-      <div class="eyebrow">为什么选 purplemux</div>
-      <h2>所有会话,一个仪表板。</h2>
+      <div class="eyebrow">Pourquoi purplemux</div>
+      <h2>Chaque session, dans un tableau de bord.</h2>
       <p class="lead">
-        会话越多,状态越难追踪。<br />
-        purplemux 把所有会话汇集到一个画面,让你一眼看到 <strong>当前正在运行什么、哪里需要输入</strong>。
+        Plus les sessions s'accumulent, plus leur état devient difficile à suivre.<br />
+        purplemux les réunit sur un seul écran pour voir <strong>ce qui tourne et là où ton input est attendu</strong> d'un coup d'œil.
       </p>
 
       <div class="pain-highlight">
         <div class="pain-highlight-visual">
           <div class="limit-widget">
             <div class="limit-widget-header">
-              <span class="limit-widget-title">速率限制</span>
-              <span class="limit-widget-sub">侧边栏</span>
+              <span class="limit-widget-title">Rate limit</span>
+              <span class="limit-widget-sub">sidebar</span>
             </div>
             <div class="limit-bar-group">
               <div class="limit-bar">
                 <div class="limit-bar-row">
                   <span class="limit-bar-label">5h</span>
-                  <span class="limit-bar-meta">剩 2h 14m <span class="pct red">(85%)</span></span>
+                  <span class="limit-bar-meta">reste 2h 14m <span class="pct red">(85%)</span></span>
                 </div>
                 <div class="limit-bar-track">
                   <div class="limit-bar-fill red" style="width:85%"></div>
@@ -261,7 +217,7 @@
               <div class="limit-bar">
                 <div class="limit-bar-row">
                   <span class="limit-bar-label">7d</span>
-                  <span class="limit-bar-meta">剩 4d 9h <span class="pct amber">(60%)</span></span>
+                  <span class="limit-bar-meta">reste 4j 9h <span class="pct amber">(60%)</span></span>
                 </div>
                 <div class="limit-bar-track">
                   <div class="limit-bar-fill amber" style="width:60%"></div>
@@ -271,14 +227,14 @@
           </div>
         </div>
         <div class="pain-highlight-text">
-          <h3>你的额度,实时可见。</h3>
+          <h3>Ton quota, en temps réel.</h3>
           <p>
-            专注时<strong>撞上限制,思路就断了。</strong>
-            等下一次重置期间,工作只能停着。
+            Toucher une limite en pleine concentration, <strong>ça casse ton flow.</strong>
+            En attendant le prochain reset, le travail reste bloqué.
           </p>
           <p>
-            purplemux 把 5 小时和 7 天额度常驻侧边栏。
-            在 <span class="hl amber">50%</span> 和 <span class="hl red">80%</span> 时颜色会变,让你在撞墙前就调整节奏。
+            purplemux affiche en permanence les quotas 5 heures et 7 jours dans la sidebar.
+            Les couleurs changent à <span class="hl amber">50%</span> et <span class="hl red">80%</span>, tu ajustes ton rythme avant d'atteindre le mur.
           </p>
         </div>
       </div>
@@ -306,8 +262,8 @@
             </div>
           </div>
           <div class="feature-body">
-            <div class="feature-title">多会话仪表板</div>
-            <div class="feature-desc">一眼看到所有 Claude Code 会话的 <strong>运行中 / 待输入</strong> 状态。</div>
+            <div class="feature-title">Tableau de bord multi-session</div>
+            <div class="feature-desc">Voir d'un coup d'œil l'état <strong>running / needs-input</strong> de chaque session Claude Code.</div>
           </div>
         </div>
         <div class="feature-card green">
@@ -323,8 +279,8 @@
             </div>
           </div>
           <div class="feature-body">
-            <div class="feature-title">实时会话视图</div>
-            <div class="feature-desc">进度以时间线呈现 — 无需滚动 CLI 日志。</div>
+            <div class="feature-title">Vue live de session</div>
+            <div class="feature-desc">Progression affichée en timeline — fini le scroll dans les logs CLI.</div>
           </div>
         </div>
         <div class="feature-card blue">
@@ -345,8 +301,8 @@
             </div>
           </div>
           <div class="feature-body">
-            <div class="feature-title">按状态分组的会话</div>
-            <div class="feature-desc">所有会话自动归类到 <strong>Review · In Progress · Done</strong>。</div>
+            <div class="feature-title">Sessions groupées par statut</div>
+            <div class="feature-desc">Chaque session est automatiquement triée en <strong>Review · In Progress · Done</strong>.</div>
           </div>
         </div>
         <div class="feature-card coral">
@@ -368,8 +324,8 @@
             </div>
           </div>
           <div class="feature-body">
-            <div class="feature-title">工作区保存与恢复</div>
-            <div class="feature-desc">基于 tmux,关闭浏览器后会话依然存活。面板布局、标签页、工作路径都会在第二天一键恢复。</div>
+            <div class="feature-title">Sauver & restaurer les workspaces</div>
+            <div class="feature-desc">Comme on tourne sur tmux, les sessions survivent à la fermeture du navigateur. Layout, onglets et chemins de travail se restaurent en un clic le lendemain.</div>
           </div>
         </div>
         <div class="feature-card teal">
@@ -393,8 +349,8 @@
             </div>
           </div>
           <div class="feature-body">
-            <div class="feature-title">Git diff 查看器</div>
-            <div class="feature-desc">在终端旁的面板中直接看 diff。并列 / 行内切换,带语法高亮。</div>
+            <div class="feature-title">Visionneur Git diff</div>
+            <div class="feature-desc">Consulte les diffs dans un panneau à côté du terminal. Côte à côte ou inline, avec coloration syntaxique.</div>
           </div>
         </div>
         <div class="feature-card amber">
@@ -407,8 +363,8 @@
             </div>
           </div>
           <div class="feature-body">
-            <div class="feature-title">真正的终端</div>
-            <div class="feature-desc">不仅仅是 Claude。基于 xterm.js + node-pty 的完整终端,<strong>vim · docker · ssh · REPL</strong> 都能用。</div>
+            <div class="feature-title">Un vrai terminal</div>
+            <div class="feature-desc">Pas seulement Claude. Un terminal complet xterm.js + node-pty pour <strong>vim, docker, ssh, REPL</strong> — tout ce que tu veux.</div>
           </div>
         </div>
       </div>
@@ -416,69 +372,69 @@
 
     <!-- ── Mobile & Push ── -->
     <section id="mobile">
-      <div class="eyebrow teal">移动端 & 推送</div>
-      <h2>离开桌子,照样顺畅。</h2>
+      <div class="eyebrow teal">Mobile & push</div>
+      <h2>Loin du bureau, sans changement.</h2>
       <p class="lead">
-        你不必守在桌前盯着长时间的任务。
-        用手机浏览器打开并添加到主屏幕,它就像原生应用一样。关闭标签页后,任务完成 / 待输入通知依然通过 Web Push 送达。
+        Pas besoin de rester au bureau juste pour surveiller une tâche longue.
+        Ouvre-le dans un navigateur mobile, ajoute-le à l'écran d'accueil, et il se comporte comme une app native. Ferme l'onglet et les notifications de fin de tâche / d'input requis arrivent quand même via Web Push.
       </p>
 
       <div class="mobile-layout">
         <div class="mobile-showcase">
           <picture class="shot shot--mobile">
             <source srcset="../images/mobile-push.webp" type="image/webp" />
-            <img src="../images/mobile-push.png" alt="purplemux 移动端推送通知" width="1206" height="2622" loading="lazy" decoding="async" />
+            <img src="../images/mobile-push.png" alt="notification push purplemux sur mobile" width="1206" height="2622" loading="lazy" decoding="async" />
           </picture>
         </div>
 
         <div class="mobile-guide">
           <div class="guide-block">
-            <h3>添加到主屏幕 (PWA)</h3>
+            <h3>Ajouter à l'écran d'accueil (PWA)</h3>
             <p class="muted" style="font-size:var(--text-sm); margin-bottom:1rem">
-              用浏览器打开后添加到主屏幕,就会生成一个全屏应用图标。
+              Ouvre-le dans un navigateur et ajoute-le à l'écran d'accueil pour obtenir une icône en plein écran.
             </p>
 
             <div class="tabs">
               <div class="tab-label">iOS (Safari)</div>
               <ol class="guide-steps">
-                <li>在 iOS 上打开 URL</li>
-                <li>点击底部的<strong>分享</strong>按钮</li>
-                <li>从列表中选择<strong>添加到主屏幕</strong></li>
-                <li>点击右上角的<strong>添加</strong></li>
+                <li>Ouvre l'URL sur iOS</li>
+                <li>Touche le bouton <strong>Partager</strong> en bas</li>
+                <li>Choisis <strong>Sur l'écran d'accueil</strong></li>
+                <li>Touche <strong>Ajouter</strong> en haut à droite</li>
               </ol>
             </div>
 
             <div class="tabs">
               <div class="tab-label">Android (Chrome)</div>
               <ol class="guide-steps">
-                <li>在 Chrome 中打开 URL</li>
-                <li>打开右上角的 <strong>⋮</strong> 菜单</li>
-                <li>选择<strong>安装应用</strong>或<strong>添加到主屏幕</strong></li>
+                <li>Ouvre l'URL dans Chrome</li>
+                <li>Ouvre le menu <strong>⋮</strong> en haut à droite</li>
+                <li>Choisis <strong>Installer l'application</strong> ou <strong>Ajouter à l'écran d'accueil</strong></li>
               </ol>
             </div>
           </div>
 
           <div class="guide-block">
-            <h3>开启推送通知</h3>
+            <h3>Activer les notifications push</h3>
             <ol class="guide-steps">
-              <li>在 <strong>Settings → Notification → On</strong> 中启用,并允许浏览器通知权限</li>
-              <li>即使在后台也会通过 Web Push 送达</li>
-              <li>在<strong>任务完成</strong>和<strong>需要输入</strong>时提醒</li>
-              <li>点击通知可直接跳转到对应会话</li>
+              <li>Active <strong>Settings → Notification → On</strong> et autorise les notifications du navigateur</li>
+              <li>Distribuées via Web Push, même en arrière-plan</li>
+              <li>Alertes pour <strong>tâche terminée</strong> et <strong>input requis</strong></li>
+              <li>Touche une notification pour sauter directement à la session</li>
             </ol>
           </div>
 
           <div class="guide-block">
-            <h3>通过 Tailscale 进行外部访问</h3>
+            <h3>Accès externe via Tailscale</h3>
             <p class="muted" style="font-size:var(--text-sm)">
-              如果要从外部网络访问,Tailscale Serve 是最清爽的方案。
-              自动附带 WireGuard 加密和 HTTPS 证书。
+              Pour accéder depuis l'extérieur de ton réseau, Tailscale Serve est la solution la plus propre.
+              Chiffrement WireGuard et certificats HTTPS inclus gratuitement.
             </p>
 
             <div class="ts-diagram" aria-hidden="true">
               <div class="ts-node">
                 <svg class="ts-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="12" rx="1.5"/><path d="M1 19h22"/></svg>
-                <div class="ts-label">我的 PC</div>
+                <div class="ts-label">Mon PC</div>
                 <div class="ts-sub">:8022</div>
               </div>
               <div class="ts-link">
@@ -509,15 +465,15 @@
               </div>
               <div class="ts-node">
                 <svg class="ts-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg>
-                <div class="ts-label">手机</div>
+                <div class="ts-label">Mobile</div>
                 <div class="ts-sub">Safari</div>
               </div>
             </div>
 
 <pre class="code"><span class="c">$</span> tailscale serve --bg 8022</pre>
             <p class="muted" style="font-size:var(--text-sm); margin-top:0.5rem">
-              之后可以通过 <code>https://&lt;machine&gt;.&lt;tailnet&gt;.ts.net</code> 从任意位置访问。
-              iOS Safari 只有在 HTTPS 下,PWA 和 Web Push 才能正常工作。
+              Ensuite tu accèdes à <code>https://&lt;machine&gt;.&lt;tailnet&gt;.ts.net</code> de n'importe où.
+              iOS Safari a besoin du HTTPS pour que PWA et Web Push fonctionnent correctement.
             </p>
           </div>
         </div>
@@ -526,23 +482,23 @@
 
     <!-- ── Stats & analytics ── -->
     <section id="stats">
-      <div class="eyebrow">统计 & 分析</div>
-      <h2>所有使用量,一个画面。</h2>
+      <div class="eyebrow">Stats & analyse</div>
+      <h2>Toute l'utilisation, sur un seul écran.</h2>
       <p class="lead">
-        今天用掉的 token、本月的费用、按项目的使用量、按模型的分布 —
-        把分散的数字汇总到一处,让工作节奏和成本结构一目了然。
+        Tokens du jour, coût du mois, usage par projet, répartition par modèle —
+        des chiffres éparpillés rassemblés en un seul endroit pour révéler le rythme et la structure de coût de ton travail.
       </p>
 
       <div class="stats-showcase">
         <picture class="stats-screen">
           <source srcset="../images/stat.webp" type="image/webp" />
-          <img src="../images/stat.png" alt="purplemux 使用量统计仪表板" width="2068" height="1682" loading="lazy" decoding="async" />
+          <img src="../images/stat.png" alt="tableau de bord d'usage purplemux" width="2068" height="1682" loading="lazy" decoding="async" />
         </picture>
 
         <div class="stats-callout" style="--x:22%; --y:20%">
           <span class="callout-num">01</span>
           <div class="callout-label">
-            <strong>四张概览卡</strong>
+            <strong>Quatre cartes d'aperçu</strong>
             <span>Sessions · Total · Today · Month</span>
           </div>
         </div>
@@ -550,15 +506,15 @@
         <div class="stats-callout stats-callout--left" style="--x:82%; --y:28%">
           <span class="callout-num">02</span>
           <div class="callout-label">
-            <strong>每日活动趋势</strong>
-            <span>最近 30 天的会话 · 消息图表</span>
+            <strong>Tendance d'activité quotidienne</strong>
+            <span>Sessions · messages, 30 derniers jours</span>
           </div>
         </div>
 
         <div class="stats-callout" style="--x:20%; --y:62%">
           <span class="callout-num">03</span>
           <div class="callout-label">
-            <strong>连续工作计数</strong>
+            <strong>Work streaks</strong>
             <span>Longest · Current · Count · Avg</span>
           </div>
         </div>
@@ -566,8 +522,8 @@
         <div class="stats-callout stats-callout--left" style="--x:80%; --y:87%">
           <span class="callout-num">04</span>
           <div class="callout-label">
-            <strong>每周时间线</strong>
-            <span>星期 × 时段分布 + 并发会话</span>
+            <strong>Timeline hebdomadaire</strong>
+            <span>Jour × heure + sessions simultanées</span>
           </div>
         </div>
       </div>
@@ -575,11 +531,11 @@
 
     <!-- ── Notes (AI daily report) ── -->
     <section id="notes">
-      <div class="eyebrow teal">AI 每日报告</div>
-      <h2>今日工作,自动汇总。</h2>
+      <div class="eyebrow teal">Rapport quotidien IA</div>
+      <h2>Ta journée, résumée automatiquement.</h2>
       <p class="lead">
-        一天结束后,系统会汇集会话日志,让 LLM 生成一行简报和详细摘要。
-        以 Markdown 保存,回顾、汇报、1:1 随时可用。
+        À la fin de la journée, les logs de session sont rassemblés et un LLM rédige un résumé en une ligne et un résumé détaillé.
+        Sauvegardé en Markdown — glisse-le directement dans une rétro, un rapport ou un 1:1.
       </p>
 
       <div class="notes-layout">
@@ -590,48 +546,48 @@
           </div>
           <div class="notes-mockup-body">
             <div class="md-brief">
-              撰写 purplemux 落地页初稿,把移动端 / PWA 板块与统计仪表板连起来。统一文案调性,全面替换 feature 卡片的 mockup。
+              Rédigé la première version de la landing purplemux. Connecté la section mobile / PWA au dashboard stats. Uniformisé le ton façon Apple et remplacé tous les mockups de feature cards.
             </div>
             <div class="md-collapse">∧ Collapse</div>
 
             <div class="md-project">purplemux</div>
 
-            <div class="md-h3">落地页初稿</div>
+            <div class="md-h3">Premier jet de la landing</div>
             <ul class="md-ul">
-              <li>设计 8 个分区的结构,以及 Hero / Why / Mobile / Stats 布局</li>
-              <li>将 purple 品牌色抽成 OKLCH 变量</li>
-              <li>应用桌面端 / 移动端截图的 mockup 框架</li>
+              <li>Conception de la structure en huit sections avec les layouts Hero / Why / Mobile / Stats</li>
+              <li>Couleur de marque purple convertie en variable OKLCH</li>
+              <li>Cadres de mockup appliqués aux captures desktop et mobile</li>
             </ul>
 
-            <div class="md-h3">Feature 卡片 mockup</div>
+            <div class="md-h3">Mockups feature cards</div>
             <ul class="md-ul">
-              <li>在多会话仪表板中重现真实的 spinner / pulse 指示器</li>
-              <li>打磨 Git Diff、工作区、Self-hosted 的 mockup CSS 细节</li>
-              <li>为 Tailscale 访问流程图加上动画</li>
+              <li>Indicateurs spinner / pulse réels reproduits dans le dashboard multi-session</li>
+              <li>CSS des mockups Git Diff, workspace et self-hosted peaufiné</li>
+              <li>Animation ajoutée au diagramme d'accès Tailscale</li>
             </ul>
           </div>
         </div>
 
         <div class="notes-points">
           <div class="guide-block">
-            <h3>brief + detailed 双层摘要</h3>
+            <h3>Brief + detailed côte à côte</h3>
             <p class="muted" style="font-size:var(--text-sm)">
-              一行的 brief 显示在仪表板,detailed 点一下就展开。
-              是 Markdown,可以直接复制到回顾或报告里。
+              Le brief d'une ligne vit dans le dashboard ; la version détaillée se déplie en un clic.
+              C'est du Markdown — à coller direct dans une rétro ou un rapport.
             </p>
           </div>
           <div class="guide-block">
-            <h3>批量生成与重新生成</h3>
+            <h3>Batch & régénération</h3>
             <p class="muted" style="font-size:var(--text-sm)">
-              缺失的日期可以一次性批量补齐,想重做某一天也只重做那天。
-              LLM 会按会话分批处理,避免上下文丢失。
+              Remplis les jours manquants en un batch, ou régénère un jour précis.
+              Le LLM traite session par session pour ne jamais perdre le contexte.
             </p>
           </div>
           <div class="guide-block">
-            <h3>随时快速访问</h3>
+            <h3>Partout, vite</h3>
             <p class="muted" style="font-size:var(--text-sm)">
-              常驻在侧边栏的 <strong>笔记</strong> 里,快捷键 <code>Cmd ⇧ E</code> (macOS) / <code>Ctrl ⇧ E</code> (Linux) 直接打开。
-              只保存在本地,不必担心外发。
+              Vit dans la sidebar comme <strong>Notes</strong> et s'ouvre avec <code>Cmd ⇧ E</code> (macOS) / <code>Ctrl ⇧ E</code> (Linux).
+              Stocké en local — rien ne sort de ta machine.
             </p>
           </div>
         </div>
@@ -640,87 +596,87 @@
 
     <!-- ── Features (categories) ── -->
     <section id="features">
-      <div class="eyebrow amber">功能</div>
-      <h2>只给你需要的,不多也不少。</h2>
+      <div class="eyebrow amber">Fonctions</div>
+      <h2>Tout ce qu'il te faut. Rien de superflu.</h2>
 
       <div class="category">
         <div class="category-head">
-          <span class="category-name">终端</span>
+          <span class="category-name">Terminal</span>
           <span class="category-count">7</span>
         </div>
         <ul class="category-list">
-          <li><strong>分割面板</strong><span class="sub">横向 · 纵向拆分,可拖拽调整</span></li>
-          <li><strong>标签页管理</strong><span class="sub">多标签、排序、根据进程名自动命名</span></li>
-          <li><strong>快捷键</strong><span class="sub">分割 · 切换标签 · 焦点移动</span></li>
-          <li><strong>主题</strong><span class="sub">深色 / 浅色 · 多种配色</span></li>
-          <li><strong>工作区 & 分组</strong><span class="sub">保存 / 恢复 · 拖拽分组</span></li>
-          <li><strong>Git 工作流</strong><span class="sub">Diff · 历史 · 同步 · Ask Claude</span></li>
-          <li><strong>Web 浏览器面板</strong><span class="sub">内置 Electron · CLI 控制 · 设备模拟器</span></li>
+          <li><strong>Split panes</strong><span class="sub">Divisions horizontales · verticales, redimensionnables en drag</span></li>
+          <li><strong>Gestion des onglets</strong><span class="sub">Onglets multiples, réordonnables, titre auto selon le processus</span></li>
+          <li><strong>Raccourcis</strong><span class="sub">Split · changer d'onglet · déplacer le focus</span></li>
+          <li><strong>Thèmes</strong><span class="sub">Dark / light · plusieurs jeux de couleurs</span></li>
+          <li><strong>Workspaces et groupes</strong><span class="sub">Sauvegarder / restaurer · groupes en glisser-déposer</span></li>
+          <li><strong>Flux Git</strong><span class="sub">Diff · historique · sync · Ask Claude</span></li>
+          <li><strong>Panneau navigateur web</strong><span class="sub">Electron · pilotable en CLI · émulateur d'appareil</span></li>
         </ul>
       </div>
 
       <div class="category">
         <div class="category-head">
-          <span class="category-name">Claude Code 集成</span>
+          <span class="category-name">Intégration Claude Code</span>
           <span class="category-count">11</span>
         </div>
         <ul class="category-list">
-          <li><strong>实时状态</strong><span class="sub">运行中 / 待输入,瞬时切换</span></li>
-          <li><strong>侧边栏会话模式</strong><span class="sub">Workspace ↔ Sessions 切换,按状态分组视图</span></li>
-          <li><strong>实时会话视图</strong><span class="sub">消息 · 工具调用 · 任务 · 权限提示</span></li>
-          <li><strong>一键恢复</strong><span class="sub">直接在浏览器中续上被中断的会话</span></li>
-          <li><strong>自动恢复</strong><span class="sub">服务重启后找回之前的会话</span></li>
-          <li><strong>快速提示词</strong><span class="sub">登记常用提示词,一键运行</span></li>
-          <li><strong>附件</strong><span class="sub">拖入图片 · 附加文件 · 移动端可用</span></li>
-          <li><strong>消息历史</strong><span class="sub">复用之前的消息</span></li>
-          <li><strong>使用量分析</strong><span class="sub">token · 费用 · 按项目 · 每日报告</span></li>
-          <li><strong>速率限制倒计时</strong><span class="sub">5 小时 / 7 天剩余 · 距离重置时间</span></li>
-          <li><strong>额度使用警告</strong><span class="sub">侧边栏进度条在 50% · 80% 变 amber · red</span></li>
+          <li><strong>Statut en temps réel</strong><span class="sub">In progress / needs input, transitions instantanées</span></li>
+          <li><strong>Mode sessions sidebar</strong><span class="sub">Bascule Workspace ↔ Sessions, vues par statut</span></li>
+          <li><strong>Vue live de session</strong><span class="sub">Messages · appels d'outils · tasks · permission prompts</span></li>
+          <li><strong>Reprise en un clic</strong><span class="sub">Reprendre une session interrompue depuis le navigateur</span></li>
+          <li><strong>Restore automatique</strong><span class="sub">Récupère les sessions précédentes au redémarrage</span></li>
+          <li><strong>Quick prompts</strong><span class="sub">Enregistre tes favoris et lance-les en un clic</span></li>
+          <li><strong>Pièces jointes</strong><span class="sub">Déposez des images · attachez des fichiers · compatible mobile</span></li>
+          <li><strong>Historique de messages</strong><span class="sub">Réutilise les messages précédents</span></li>
+          <li><strong>Analyses d'usage</strong><span class="sub">Tokens · coût · par projet · rapports quotidiens</span></li>
+          <li><strong>Compte à rebours rate limit</strong><span class="sub">Reste 5h / 7j · temps jusqu'au reset</span></li>
+          <li><strong>Alertes d'usage</strong><span class="sub">La barre passe en amber · red à 50% · 80%</span></li>
         </ul>
       </div>
 
       <div class="category">
         <div class="category-head">
-          <span class="category-name">移动端 & 无障碍</span>
+          <span class="category-name">Mobile & accessibilité</span>
           <span class="category-count">7</span>
         </div>
         <ul class="category-list">
-          <li><strong>响应式 UI</strong><span class="sub">手机 · 平板也能看终端 · 时间线</span></li>
-          <li><strong>PWA</strong><span class="sub">添加到主屏幕 · 接近原生应用</span></li>
-          <li><strong>Web Push</strong><span class="sub">关闭标签页也能收到通知</span></li>
-          <li><strong>多设备同步</strong><span class="sub">工作区变更实时同步</span></li>
-          <li><strong>Tailscale</strong><span class="sub">通过 HTTPS 安全外部访问</span></li>
-          <li><strong>密码认证</strong><span class="sub">scrypt 哈希</span></li>
-          <li><strong>多语言</strong><span class="sub">한국어 · English · 日本語 · 中文 · 共 11 种</span></li>
+          <li><strong>UI responsive</strong><span class="sub">Terminal · timeline sur téléphone et tablette</span></li>
+          <li><strong>PWA</strong><span class="sub">Ajout écran d'accueil · feeling natif</span></li>
+          <li><strong>Web Push</strong><span class="sub">Notifications même onglet fermé</span></li>
+          <li><strong>Sync multi-appareils</strong><span class="sub">Changements de workspace reflétés en temps réel</span></li>
+          <li><strong>Tailscale</strong><span class="sub">Accès externe sécurisé en HTTPS</span></li>
+          <li><strong>Auth par mot de passe</strong><span class="sub">Hash scrypt</span></li>
+          <li><strong>Multilingue</strong><span class="sub">한국어 · English · 日本語 · 中文 · 11 langues</span></li>
         </ul>
       </div>
 
       <div class="category">
         <div class="category-head">
-          <span class="category-name">自定义</span>
+          <span class="category-name">Personnalisation</span>
           <span class="category-count">9</span>
         </div>
         <ul class="category-list">
-          <li><strong>主题</strong><span class="sub">Light / Dark / System 自动</span></li>
-          <li><strong>字号</strong><span class="sub">Normal · Large · X-Large</span></li>
-          <li><strong>Custom CSS</strong><span class="sub">通过 CSS 变量全面覆盖</span></li>
-          <li><strong>终端主题</strong><span class="sub">浅色 / 深色各自配色</span></li>
-          <li><strong>侧边栏重排</strong><span class="sub">显示 / 隐藏项目 · 拖拽排序</span></li>
-          <li><strong>Quick Prompts 库</strong><span class="sub">添加自定义提示词 · 拖拽排序</span></li>
-          <li><strong>编辑器集成</strong><span class="sub">通过 code-server URL 外接编辑器</span></li>
-          <li><strong>通知控制</strong><span class="sub">系统通知开 / 关</span></li>
-          <li><strong>Claude 选项</strong><span class="sub">切换跳过权限等 CLI 选项</span></li>
+          <li><strong>Thèmes</strong><span class="sub">Light / Dark / System automatique</span></li>
+          <li><strong>Taille de police</strong><span class="sub">Normal · Large · X-Large</span></li>
+          <li><strong>Custom CSS</strong><span class="sub">Override total via variables CSS</span></li>
+          <li><strong>Thèmes terminal</strong><span class="sub">Jeux de couleurs séparés pour light / dark</span></li>
+          <li><strong>Sidebar réordonnable</strong><span class="sub">Afficher/masquer · drag pour réordonner</span></li>
+          <li><strong>Bibliothèque Quick Prompts</strong><span class="sub">Ajoute des prompts custom · drag pour trier</span></li>
+          <li><strong>Intégration éditeur</strong><span class="sub">Éditeur externe via URL code-server</span></li>
+          <li><strong>Contrôle des notifications</strong><span class="sub">Notifications système on/off</span></li>
+          <li><strong>Options Claude</strong><span class="sub">Active des options CLI comme skip permissions</span></li>
         </ul>
       </div>
     </section>
 
     <!-- ── How it works ── -->
     <section id="how">
-      <div class="eyebrow coral">架构</div>
-      <h2>浏览器 ↔ Node.js ↔ tmux · Claude Code.</h2>
+      <div class="eyebrow coral">Architecture</div>
+      <h2>Navigateur ↔ Node.js ↔ tmux · Claude Code.</h2>
       <p class="lead">
-        xterm.js 通过 WebSocket 连接 node-pty,node-pty 连到专用 <code>purple</code> socket 的 tmux 会话。
-        状态由 Claude Code hook 和 JSONL 日志 watcher 共同追踪。
+        xterm.js se connecte à node-pty en WebSocket, et node-pty se rattache à une session tmux sur le socket <code>purple</code> dédié.
+        L'état est suivi conjointement par les hooks Claude Code et un watcher de logs JSONL.
       </p>
 
       <div class="arch-diagram">
@@ -778,10 +734,10 @@
               <div class="arch-comp-sub">process tree + JSONL tail</div>
             </div>
             <div class="arch-highlights">
-              <span class="arch-hl">Binary PTY · 二进制 stdin/out</span>
-              <span class="arch-hl">Hook + 5–15 秒轮询</span>
-              <span class="arch-hl">拦截权限提示</span>
-              <span class="arch-hl">1MB 背压 · 10 队列</span>
+              <span class="arch-hl">Binary PTY · stdin/out binaire</span>
+              <span class="arch-hl">Hooks + polling 5–15s</span>
+              <span class="arch-hl">Interception des permission prompts</span>
+              <span class="arch-hl">1MB backpressure · 10 queue</span>
             </div>
           </div>
         </div>
@@ -804,8 +760,8 @@
                 <span class="arch-mini">…</span>
               </div>
               <div class="arch-highlights arch-highlights--inline">
-                <span class="arch-hl">独立的 purple socket</span>
-                <span class="arch-hl">重启后并行恢复</span>
+                <span class="arch-hl">Socket purple isolé</span>
+                <span class="arch-hl">Récupération parallèle après reboot</span>
               </div>
             </div>
             <div class="arch-group">
@@ -822,56 +778,56 @@
 
     <!-- ── vs official Remote Control ── -->
     <section id="compare">
-      <div class="eyebrow teal">与官方 Remote Control 的区别</div>
-      <h2>超越远程控制,走向统一工作区。</h2>
+      <div class="eyebrow teal">vs Remote Control officiel</div>
+      <h2>Au-delà du contrôle à distance — un workspace unifié.</h2>
       <p class="lead">
-        官方 Remote Control 是一款<em>在其他设备上继续 Claude Code 会话</em>的远程接入工具。
-        purplemux 在其基础上加上 <em>多会话仪表板、终端扩展、使用量分析</em>,是一个自托管的运营环境。
+        Le Remote Control officiel est un outil d'accès distant pour <em>continuer une session Claude Code depuis un autre appareil</em>.
+        purplemux y ajoute <em>un tableau de bord multi-session, des extensions de terminal et des analyses d'usage</em> — un environnement d'exploitation self-hosted.
       </p>
 
       <table class="compare">
         <thead>
           <tr>
-            <th>项目</th>
-            <th>官方 Remote Control</th>
+            <th>Critère</th>
+            <th>Remote Control officiel</th>
             <th>purplemux</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>并行会话视图</td>
-            <td class="cross">从列表逐个打开</td>
-            <td class="check">所有会话、所有状态同时出现在仪表板</td>
+            <td>Vue simultanée des sessions</td>
+            <td class="cross">Ouvrir une à la fois depuis une liste</td>
+            <td class="check">Toutes les sessions, tous les états, sur un même dashboard</td>
           </tr>
           <tr>
-            <td>状态指示</td>
-            <td class="cross">在线 / 离线</td>
-            <td class="check">实时显示 Busy · Review · Needs-input · Idle</td>
+            <td>Indicateurs de statut</td>
+            <td class="cross">Online / offline</td>
+            <td class="check">Busy · Review · Needs-input · Idle en temps réel</td>
           </tr>
           <tr>
-            <td>推送通知</td>
-            <td class="cross">需要 Claude 移动应用</td>
-            <td class="check">Web Push · 无需安装,任意浏览器</td>
+            <td>Notifications push</td>
+            <td class="cross">Nécessite l'app mobile Claude</td>
+            <td class="check">Web Push · n'importe quel navigateur, sans installation</td>
           </tr>
           <tr>
-            <td>终端持久性</td>
-            <td class="cross">仅在 claude 进程运行时</td>
-            <td class="check">基于 tmux · 重启后自动恢复</td>
+            <td>Persistance du terminal</td>
+            <td class="cross">Uniquement tant que le process claude tourne</td>
+            <td class="check">Basé sur tmux · récupération automatique après restart</td>
           </tr>
           <tr>
-            <td>附带工具</td>
-            <td class="cross">仅 Claude Code 会话</td>
-            <td class="check">分割终端 · Git diff · 工作区保存</td>
+            <td>Outils inclus</td>
+            <td class="cross">Session Claude Code uniquement</td>
+            <td class="check">Terminal split · Git diff · sauvegarde workspace</td>
           </tr>
           <tr>
-            <td>使用量分析</td>
+            <td>Analyses d'usage</td>
             <td class="cross">—</td>
-            <td class="check">token · 费用 · 按项目 · AI 每日报告</td>
+            <td class="check">Tokens · coût · par projet · rapport quotidien IA</td>
           </tr>
           <tr class="tradeoff">
-            <td>优势</td>
-            <td>Anthropic 官方 · Claude 移动应用集成 · 自动更新</td>
-            <td>第三方开源 · 需手动安装 & 维护</td>
+            <td>Points forts</td>
+            <td>Officiel Anthropic · intégration app mobile Claude · auto-update</td>
+            <td>OSS tiers · installation & maintenance manuelles</td>
           </tr>
         </tbody>
       </table>
@@ -879,18 +835,18 @@
 
     <!-- ── Install ── -->
     <section id="install" data-ph-capture-attribute-location="install">
-      <div class="eyebrow">安装</div>
-      <h2>30 秒搞定。</h2>
+      <div class="eyebrow">Installer</div>
+      <h2>30 secondes, du début à la fin.</h2>
       <p class="lead">
-        只需要 Node.js 20+ 和 tmux。一行命令安装,再打开浏览器即可。
+        Il te faut juste Node.js 20+ et tmux. Une ligne pour installer, puis ouvre le navigateur.
       </p>
 
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-body">
-            <h3>运行</h3>
-            <p>可以直接用 npx 启动,也支持全局安装。</p>
+            <h3>Exécuter</h3>
+            <p>Démarre tout de suite avec npx. Une installation globale marche aussi.</p>
 <pre class="code"><span class="c">$</span> npx purplemux</pre>
           </div>
         </div>
@@ -898,8 +854,8 @@
         <div class="step">
           <div class="step-num">2</div>
           <div class="step-body">
-            <h3>打开浏览器</h3>
-            <p>默认端口 8022,可通过 <code>PORT</code> 环境变量修改。</p>
+            <h3>Ouvrir le navigateur</h3>
+            <p>Le port par défaut est 8022. À modifier via la variable <code>PORT</code>.</p>
 <pre class="code"><span class="c">→</span> http://localhost:8022</pre>
           </div>
         </div>
@@ -907,8 +863,8 @@
         <div class="step">
           <div class="step-num">3</div>
           <div class="step-body">
-            <h3>远程访问 (可选)</h3>
-            <p>需要外部访问时推荐 Tailscale Serve。自动附带 WireGuard 加密和证书。</p>
+            <h3>Accès distant (optionnel)</h3>
+            <p>Pour un accès externe, nous recommandons Tailscale Serve. Chiffrement WireGuard et certificats automatiques fournis.</p>
 <pre class="code"><span class="c">$</span> tailscale serve --bg 8022</pre>
           </div>
         </div>
@@ -916,10 +872,10 @@
         <div class="step">
           <div class="step-num">4</div>
           <div class="step-body">
-            <h3>原生应用 (可选)</h3>
-            <p>macOS 上还可使用 Electron 构建版。Apple Silicon 和 Intel 均支持。</p>
+            <h3>App native (optionnel)</h3>
+            <p>Sur macOS tu peux aussi utiliser le build Electron. Apple Silicon et Intel supportés.</p>
             <a href="https://github.com/subicura/purplemux/releases/latest" class="btn-primary" target="_blank" rel="noopener" style="margin-top:0.5rem" data-ph-capture-attribute-cta="download">
-              下载最新版本 →
+              Télécharger la dernière release →
             </a>
           </div>
         </div>
@@ -928,67 +884,67 @@
 
     <!-- ── FAQ ── -->
     <section id="faq">
-      <div class="eyebrow">常见问题</div>
-      <h2>你可能想知道的。</h2>
+      <div class="eyebrow">FAQ</div>
+      <h2>Ce que tu te demandes sûrement.</h2>
 
       <div class="faq">
         <details>
-          <summary>可以帮我省钱吗?</summary>
-          <p><strong>它让你的使用情况变得透明。</strong>
-            今天、本月、按项目的费用,按模型的 token 分布,5 小时 · 7 天额度剩余,全部集中在一个画面,让你自行调整支出。</p>
+          <summary>Est-ce que ça me fait économiser ?</summary>
+          <p><strong>Ça rend ton usage transparent.</strong>
+            Coût du jour, du mois et par projet, répartition des tokens par modèle, reste des rate limits 5h / 7j — tout sur un seul écran pour ajuster toi-même tes dépenses.</p>
         </details>
 
         <details>
-          <summary>权限提示可以从手机批准吗?</summary>
-          <p>可以。purplemux 会从终端截获 Claude Code 的权限对话框,并推送到仪表板和移动通知。
-            随时随地都能批准,任务不会被搁置。</p>
+          <summary>Je peux approuver les permission prompts depuis mon téléphone ?</summary>
+          <p>Oui. purplemux intercepte les dialogues de permission Claude Code depuis le terminal et les envoie au dashboard et aux notifications mobiles.
+            À approuver depuis n'importe où — fini les tâches en pause.</p>
         </details>
 
         <details>
-          <summary>系统崩溃会丢失会话吗?</summary>
-          <p>关闭浏览器或断网都没事 — tmux 会保留会话。
-            即使整机重启,purplemux 也会扫描工作区布局,<strong>并行恢复之前的 Claude 会话</strong>。
-            无需手动还原。</p>
+          <summary>Si mon système plante, je perds mes sessions ?</summary>
+          <p>Fermer le navigateur ou perdre le réseau, ce n'est pas grave — tmux garde les sessions vivantes.
+            Même après un reboot complet, purplemux scanne le layout du workspace et <strong>restaure les sessions Claude précédentes en parallèle</strong>.
+            Aucune restauration manuelle.</p>
         </details>
 
         <details>
-          <summary>数据保存在哪里?</summary>
-          <p>所有配置和会话数据都存在本地 <code>~/.purplemux/</code> 目录。
-            不会向外部服务器发送任何内容。凭据以 scrypt 哈希存储于 <code>config.json</code>。</p>
+          <summary>Où sont stockées mes données ?</summary>
+          <p>Tous les réglages et données de session sont stockés localement sous <code>~/.purplemux/</code>.
+            Rien n'est envoyé à des serveurs externes. L'authentification est conservée en hash scrypt dans <code>config.json</code>.</p>
         </details>
 
         <details>
-          <summary>Windows 可以用吗?</summary>
-          <p>官方不支持。由于 tmux 和 node-pty 的平台限制,仅支持 macOS 和 Linux。
-            WSL2 环境可能可以运行,但不在测试范围内。</p>
+          <summary>Ça marche sous Windows ?</summary>
+          <p>Pas officiellement. Les contraintes de tmux et node-pty font que seuls macOS et Linux sont supportés.
+            Ça peut tourner sous WSL2, mais ce n'est pas testé.</p>
         </details>
 
         <details>
-          <summary>会与现有的 tmux 会话冲突吗?</summary>
-          <p>purplemux 会在专用的 <code>purple</code> socket 上启动独立的 tmux 实例。
-            与你现有的 tmux 会话和 <code>~/.tmux.conf</code> 完全独立。</p>
+          <summary>Ça entre en conflit avec mes sessions tmux existantes ?</summary>
+          <p>purplemux lance une instance tmux isolée sur un socket <code>purple</code> dédié.
+            Totalement indépendant de tes sessions tmux et de <code>~/.tmux.conf</code>.</p>
         </details>
 
         <details>
-          <summary>如何从外部访问?</summary>
-          <p>推荐 Tailscale Serve,它提供 WireGuard 加密和自动 HTTPS 证书。
-            如果你使用自己的反向代理,请务必在 Nginx / Caddy 中转发 <code>Upgrade</code> 和 <code>Connection</code> 头。</p>
+          <summary>Comment accéder à l'outil depuis l'extérieur ?</summary>
+          <p>Tailscale Serve est recommandé — chiffrement WireGuard et certificats HTTPS automatiques.
+            Si tu préfères ton propre reverse proxy, n'oublie pas de relayer les headers <code>Upgrade</code> et <code>Connection</code> dans Nginx / Caddy.</p>
         </details>
 
         <details>
-          <summary>要收费吗?</summary>
-          <p>purplemux 本身是 MIT 许可的开源软件,免费。Claude Code 的使用费用另计。</p>
+          <summary>Y a-t-il un coût ?</summary>
+          <p>purplemux lui-même est open source sous licence MIT et gratuit. L'usage de Claude Code est facturé séparément.</p>
         </details>
 
         <details>
-          <summary>手机上真的好用吗?</summary>
-          <p>是的。自带响应式 UI、PWA 和 Web Push。添加到主屏幕后接近原生应用体验,
-            关闭标签页也能收到任务完成和待输入通知。</p>
+          <summary>Est-ce vraiment utilisable sur mobile ?</summary>
+          <p>Oui. UI responsive, PWA et Web Push sont inclus. Ajoute-le à l'écran d'accueil pour le feeling natif ;
+            ferme l'onglet et tu recevras toujours les notifications de fin de tâche et d'input nécessaire.</p>
         </details>
 
         <details>
-          <summary>支持多语言吗?</summary>
-          <p>支持 11 种语言:한국어 · English · 日本語 · 简体中文 · 繁體中文 · Deutsch · Español · Français · Русский · Português (Brasil) · Türkçe。</p>
+          <summary>Est-ce traduit ?</summary>
+          <p>11 langues supportées : 한국어 · English · 日本語 · 简体中文 · 繁體中文 · Deutsch · Español · Français · Русский · Português (Brasil) · Türkçe.</p>
         </details>
       </div>
     </section>
@@ -997,21 +953,21 @@
     <section id="cta" class="cta-section" data-ph-capture-attribute-location="closing_cta">
       <div class="cta-card">
         <div class="cta-body">
-          <div class="eyebrow">立即开始</div>
-          <h2>一行命令就够了。</h2>
-          <p class="lead">只要准备好 Node.js 20+ 和 tmux,30 秒内就能跑起来。</p>
+          <div class="eyebrow">Commencer</div>
+          <h2>Une ligne suffit.</h2>
+          <p class="lead">Avec Node.js 20+ et tmux prêts, c'est en route en 30 secondes.</p>
         </div>
         <div class="install-block cta-install">
           <div class="install-cmd">
             <span class="prompt">$</span>
             <span>npx purplemux</span>
-            <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="复制" onclick="(function(b){navigator.clipboard.writeText('npx purplemux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
+            <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="Copier" onclick="(function(b){navigator.clipboard.writeText('npx purplemux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
           </div>
           <a href="https://github.com/subicura/purplemux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-mac>
             <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
               <path d="M17.05 20.28c-.98.95-2.05.88-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
             </svg>
-            下载 macOS 应用
+            Télécharger pour macOS
           </a>
         </div>
       </div>
@@ -1021,17 +977,17 @@
     <section id="selfhost" class="selfhost">
       <div class="selfhost-grid">
         <div class="selfhost-text">
-          <div class="eyebrow amber">自托管 · 开源</div>
-          <h2>在你的机器,归你所有。</h2>
+          <div class="eyebrow amber">Self-hosted · open source</div>
+          <h2>Sur ta machine, à toi.</h2>
           <p class="lead">
-            purplemux 是一款在本地运行的自托管工具。
-            会话数据、配置、历史全部只保存在 <code>~/.purplemux/</code>,不会离开你的机器。
-            全部源代码以 MIT 开源 — 可阅读、修改、贡献。
+            purplemux est un outil self-hosted qui tourne en local.
+            Les données de session, réglages et historique vivent uniquement dans <code>~/.purplemux/</code> et ne quittent jamais ta machine.
+            La source complète est sous licence MIT — à lire, modifier, contribuer.
           </p>
           <div class="selfhost-badges">
-            <span class="selfhost-badge"><strong>MIT</strong> 许可</span>
-            <span class="selfhost-badge"><strong>100%</strong> 本地</span>
-            <span class="selfhost-badge"><strong>0</strong> 遥测</span>
+            <span class="selfhost-badge"><strong>MIT</strong> License</span>
+            <span class="selfhost-badge"><strong>100%</strong> local</span>
+            <span class="selfhost-badge"><strong>0</strong> télémétrie</span>
           </div>
         </div>
         <div class="selfhost-visual">
@@ -1053,83 +1009,14 @@
 
   </main>
 
-  <footer>
-    <div class="foot-brand">
-      <svg class="brand-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
-      <span class="wordmark"><strong>purple</strong>mux</span>
-      <span class="muted" style="font-weight:400; margin-left:0.4rem">MIT License</span>
-      <span class="foot-tagline"><span class="pct">100%</span> Claude Code · <span class="pct">0%</span> keyboard</span>
-    </div>
-    <div class="foot-links">
-      <a href="https://github.com/subicura/purplemux" target="_blank" rel="noopener">GitHub</a>
-      <a href="https://github.com/subicura/purplemux/releases" target="_blank" rel="noopener">Releases</a>
-      <a href="https://github.com/subicura/purplemux/blob/main/README.md" target="_blank" rel="noopener">README</a>
-      <a href="https://github.com/subicura/purplemux/issues" target="_blank" rel="noopener">Issues</a>
-    </div>
-  </footer>
-
-  <script>
-    (function () {
-      var sentinel = document.querySelector('.hero-eyebrow');
-      var navBrand = document.querySelector('.nav-brand');
-      if (sentinel && navBrand && 'IntersectionObserver' in window) {
-        new IntersectionObserver(function (entries) {
-          navBrand.classList.toggle('is-hidden', entries[0].isIntersecting);
-        }, { rootMargin: '-52px 0px 0px 0px', threshold: 0 }).observe(sentinel);
-      } else if (navBrand) {
-        navBrand.classList.remove('is-hidden');
-      }
-
-      var showcase = document.querySelector('.stats-showcase');
-      if (showcase && 'IntersectionObserver' in window) {
-        new IntersectionObserver(function (entries, obs) {
-          entries.forEach(function (e) {
-            if (e.isIntersecting) {
-              showcase.classList.add('is-visible');
-              obs.unobserve(showcase);
-            }
-          });
-        }, { rootMargin: '0px 0px -15% 0px', threshold: 0.2 }).observe(showcase);
-      } else if (showcase) {
-        showcase.classList.add('is-visible');
-      }
-
-      var previewMobile = document.querySelector('.preview-mobile');
-      if (previewMobile && 'IntersectionObserver' in window) {
-        new IntersectionObserver(function (entries, obs) {
-          entries.forEach(function (e) {
-            if (e.isIntersecting) {
-              obs.unobserve(previewMobile);
-              var delay = window.matchMedia('(max-width: 767px)').matches ? 0 : 500;
-              setTimeout(function () {
-                previewMobile.classList.add('is-visible');
-              }, delay);
-            }
-          });
-        }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 }).observe(previewMobile);
-      } else if (previewMobile) {
-        previewMobile.classList.add('is-visible');
-      }
-
-
-      var langLinks = document.querySelectorAll('.nav-lang .lang-opt');
-      for (var i = 0; i < langLinks.length; i++) {
-        langLinks[i].addEventListener('click', function () {
-          var l = this.getAttribute('lang');
-          if (l) { try { localStorage.setItem('pmx-locale', l); } catch (_) {} }
-        });
-      }
-    })();
-  </script>
-
   <div class="arch-modal" id="archModal" hidden>
     <div class="arch-modal-backdrop" data-arch-close></div>
     <div class="arch-modal-card" role="dialog" aria-modal="true" aria-labelledby="archModalTitle">
-      <button type="button" class="arch-modal-close" data-arch-close aria-label="关闭">
+      <button type="button" class="arch-modal-close" data-arch-close aria-label="Fermer">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M6 18L18 6"/></svg>
       </button>
-      <h3 id="archModalTitle">选择你的 Mac</h3>
-      <p class="arch-modal-sub">请选择与你芯片匹配的版本。</p>
+      <h3 id="archModalTitle">Choisissez votre Mac</h3>
+      <p class="arch-modal-sub">Sélectionnez la version adaptée à votre processeur.</p>
       <div class="arch-modal-options">
         <button type="button" class="arch-option" data-arch="arm64" data-ph-capture-attribute-cta="download_arm64">
           <span class="arch-option-title">Apple Silicon</span>
@@ -1142,43 +1029,3 @@
       </div>
     </div>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/swiper@12/swiper-bundle.min.js"></script>
-  <script>
-    (function () {
-      if (!window.Swiper) return;
-      new Swiper('.preview-desktop .swiper', {
-        effect: 'fade',
-        fadeEffect: { crossFade: true },
-        loop: true,
-        allowTouchMove: false,
-        observer: true,
-        observeParents: true,
-        autoplay: {
-          delay: 6000,
-          disableOnInteraction: false,
-          pauseOnMouseEnter: true,
-        },
-        pagination: {
-          el: '.preview-desktop .swiper-pagination',
-          clickable: true,
-        },
-      });
-      new Swiper('.preview-mobile .swiper', {
-        effect: 'fade',
-        fadeEffect: { crossFade: true },
-        loop: true,
-        simulateTouch: false,
-        observer: true,
-        observeParents: true,
-        autoplay: {
-          delay: 3000,
-          disableOnInteraction: false,
-        },
-      });
-    })();
-  </script>
-
-  <script src="../download.js?v=1" defer></script>
-
-</body>
-</html>

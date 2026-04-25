@@ -1,78 +1,34 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script>try{localStorage.setItem('pmx-locale','es');}catch(_){}</script>
-  <title>purplemux — Un multiplexor de terminal web-nativo para Claude Code</title>
-  <meta name="description" content="Ejecuta varias sesiones de Claude Code en un solo panel. Basado en tmux, web-nativo, listo para móvil. Código abierto MIT." />
-  <meta property="og:title" content="purplemux — Un multiplexor de terminal web-nativo para Claude Code" />
-  <meta property="og:description" content="Ejecuta varias sesiones de Claude Code en un solo panel. Basado en tmux, web-nativo, listo para móvil. Código abierto MIT." />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://subicura.com/purplemux/es/" />
-  <meta property="og:locale" content="es_ES" />
-  <meta property="og:locale:alternate" content="en_US" />
-  <meta property="og:image" content="https://subicura.com/purplemux/images/og-image.png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="purplemux" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="purplemux — Un multiplexor de terminal web-nativo para Claude Code" />
-  <meta name="twitter:description" content="Ejecuta varias sesiones de Claude Code en un solo panel. Basado en tmux, web-nativo, listo para móvil. Código abierto MIT." />
-  <meta name="twitter:image" content="https://subicura.com/purplemux/images/og-image.png" />
-  <link rel="canonical" href="https://subicura.com/purplemux/es/" />
-  <link rel="alternate" hreflang="en" href="https://subicura.com/purplemux/" />
-  <link rel="alternate" hreflang="ko" href="https://subicura.com/purplemux/ko/" />
-  <link rel="alternate" hreflang="ja" href="https://subicura.com/purplemux/ja/" />
-  <link rel="alternate" hreflang="zh-CN" href="https://subicura.com/purplemux/zh-CN/" />
-  <link rel="alternate" hreflang="zh-TW" href="https://subicura.com/purplemux/zh-TW/" />
-  <link rel="alternate" hreflang="de" href="https://subicura.com/purplemux/de/" />
-  <link rel="alternate" hreflang="es" href="https://subicura.com/purplemux/es/" />
-  <link rel="alternate" hreflang="fr" href="https://subicura.com/purplemux/fr/" />
-  <link rel="alternate" hreflang="pt-BR" href="https://subicura.com/purplemux/pt-BR/" />
-  <link rel="alternate" hreflang="ru" href="https://subicura.com/purplemux/ru/" />
-  <link rel="alternate" hreflang="tr" href="https://subicura.com/purplemux/tr/" />
-  <link rel="alternate" hreflang="x-default" href="https://subicura.com/purplemux/" />
-  <link rel="icon" href="../images/favicon.ico" sizes="any" />
-  <link rel="icon" type="image/png" sizes="32x32" href="../images/favicon-32x32.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="../images/favicon-16x16.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="../images/apple-touch-icon.png" />
-  <meta name="theme-color" content="#131313" />
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&display=swap" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@12/swiper-bundle.min.css" />
-  <link rel="stylesheet" href="../style.css?v=71" />
-  <script>
-    !function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init os ds Ie us vs ss ls capture calculateEventProperties register register_once register_for_session unregister unregister_for_session ws getFeatureFlag getFeatureFlagPayload getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty bs ps createPersonProfile setInternalOrTestUser ys es $s opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing cs debug M gs getPageViewId captureTraceFeedback captureTraceMetric Qr".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
-    posthog.init('phc_qBeyLuYqK33QZTT39cJnGnzG7DrByc3eP9c9wUuDdBeP', {
-      api_host: 'https://us.i.posthog.com',
-      defaults: '2026-01-30',
-    });
-  </script>
-</head>
-<body>
-
+---
+layout: layouts/base.njk
+lang: pt-BR
+title: "purplemux — Um multiplexador de terminal web-nativo para Claude Code"
+description: "Rode várias sessões do Claude Code em um único painel. Baseado em tmux, web-nativo, pronto pra mobile. Open source MIT."
+canonical: https://subicura.com/purplemux/pt-BR/
+ogUrl: https://subicura.com/purplemux/pt-BR/
+ogLocale: pt_BR
+ogLocaleAlternate: en_US
+permalink: /pt-BR/index.html
+assetPrefix: "../"
+isRoot: false
+---
   <nav class="nav" data-ph-capture-attribute-location="nav">
     <a href="#top" class="nav-brand is-hidden">
       <svg class="brand-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
       <span class="wordmark"><strong>purple</strong>mux</span>
     </a>
     <div class="nav-links">
-      <a href="#mobile">Móvil</a>
-      <a href="#stats">Estadísticas</a>
-      <a href="#features">Funciones</a>
-      <a href="#how">Arquitectura</a>
+      <a href="#mobile">Mobile</a>
+      <a href="#stats">Estatísticas</a>
+      <a href="#features">Recursos</a>
+      <a href="#how">Arquitetura</a>
       <a href="#compare">Comparar</a>
       <a href="#install">Instalar</a>
       <a href="#faq">FAQ</a>
     </div>
     <div class="nav-spacer"></div>
     <details class="nav-lang">
-      <summary aria-label="Seleccionar idioma">
-        <span class="lang-current">ES</span>
+      <summary aria-label="Selecionar idioma">
+        <span class="lang-current">PT</span>
         <svg class="lang-chevron" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 4l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </summary>
       <div class="lang-menu" role="menu">
@@ -82,9 +38,9 @@
         <a href="../zh-CN/" class="lang-opt" lang="zh-CN" hreflang="zh-CN">简体中文</a>
         <a href="../zh-TW/" class="lang-opt" lang="zh-TW" hreflang="zh-TW">繁體中文</a>
         <a href="../de/" class="lang-opt" lang="de" hreflang="de">Deutsch</a>
-        <a href="./" class="lang-opt is-active" lang="es" hreflang="es" aria-current="page">Español</a>
+        <a href="../es/" class="lang-opt" lang="es" hreflang="es">Español</a>
         <a href="../fr/" class="lang-opt" lang="fr" hreflang="fr">Français</a>
-        <a href="../pt-BR/" class="lang-opt" lang="pt-BR" hreflang="pt-BR">Português</a>
+        <a href="./" class="lang-opt is-active" lang="pt-BR" hreflang="pt-BR" aria-current="page">Português</a>
         <a href="../ru/" class="lang-opt" lang="ru" hreflang="ru">Русский</a>
         <a href="../tr/" class="lang-opt" lang="tr" hreflang="tr">Türkçe</a>
       </div>
@@ -94,7 +50,7 @@
         <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.69-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.18-3.09-.12-.29-.51-1.46.11-3.04 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.62 1.58.23 2.75.11 3.04.74.8 1.18 1.83 1.18 3.09 0 4.42-2.69 5.4-5.26 5.68.41.35.78 1.05.78 2.12 0 1.53-.01 2.77-.01 3.15 0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/>
       </svg>
     </a>
-    <a href="#install" class="nav-cta" data-ph-capture-attribute-cta="nav_cta">Empezar</a>
+    <a href="#install" class="nav-cta" data-ph-capture-attribute-cta="nav_cta">Começar</a>
   </nav>
 
   <main id="top">
@@ -112,13 +68,13 @@
 
           <h1 class="hero-title">
             <span class="line">Claude Code<span class="punct">,</span></span>
-            <span class="line">muchas sesiones<span class="punct">,</span></span>
-            <span class="line line--brand">todas desde tu móvil<span class="punct">.</span></span>
+            <span class="line">várias sessões<span class="punct">,</span></span>
+            <span class="line line--brand">tudo do seu celular<span class="punct">.</span></span>
           </h1>
 
           <p class="hero-sub">
-            Cada sesión corre sobre tmux — nada se detiene al cerrar la pestaña.<br class="br-desktop" />
-            Ábrela en el móvil y sigue justo donde lo dejaste.
+            Cada sessão roda no tmux — nada para quando você fecha a aba.<br class="br-desktop" />
+            Abra no celular e continue de onde parou.
           </p>
 
           <div class="install-block">
@@ -131,19 +87,19 @@
               <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
                 <path d="M17.05 20.28c-.98.95-2.05.88-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
               </svg>
-              Descargar para macOS
+              Baixar para macOS
             </a>
           </div>
 
           <div class="hero-caps">
-            <span><span class="check">✓</span> Panel web</span>
-            <span><span class="check">✓</span> Compatible con móvil</span>
+            <span><span class="check">✓</span> Painel web</span>
+            <span><span class="check">✓</span> Pronto para mobile</span>
             <span><span class="check">✓</span> Terminal integrado</span>
           </div>
 
           <div class="hero-meta">
             <span><span class="ok">●</span> Node.js 20+</span>
-            <span><span class="ok">●</span> tmux necesario</span>
+            <span><span class="ok">●</span> tmux necessário</span>
             <span><span class="ok">●</span> macOS / Linux</span>
           </div>
         </div>
@@ -160,7 +116,7 @@
                 <div class="card-row"><span class="k">read</span><span class="p">src/lib/auth.ts</span></div>
                 <div class="card-row"><span class="k">edit</span><span class="p">src/lib/auth.ts</span></div>
                 <div class="card-row"><span class="k">bash</span><span class="p">pnpm tsc --noEmit</span></div>
-                <div class="card-row running"><span class="k">→</span><span class="p">Refactorizando middleware</span></div>
+                <div class="card-row running"><span class="k">→</span><span class="p">Refatorando middleware</span></div>
               </div>
             </div>
           </article>
@@ -193,9 +149,9 @@
                 <span class="card-badge brand">review</span>
               </header>
               <div class="card-body">
-                <div class="card-row done"><span class="k">✓</span><span class="p">Rediseño del Hero</span></div>
-                <div class="card-row done"><span class="k">✓</span><span class="p">Tagline del footer</span></div>
-                <div class="card-row done"><span class="k">✓</span><span class="p">Ajuste del tono</span></div>
+                <div class="card-row done"><span class="k">✓</span><span class="p">Redesign do Hero</span></div>
+                <div class="card-row done"><span class="k">✓</span><span class="p">Tagline do rodapé</span></div>
+                <div class="card-row done"><span class="k">✓</span><span class="p">Tom da copy</span></div>
                 <div class="card-row waiting"><span class="k">❯</span><span class="p"><span class="caret"></span></span></div>
               </div>
             </div>
@@ -210,7 +166,7 @@
         <div class="shot shot--desktop preview-desktop">
           <div class="swiper">
             <div class="swiper-wrapper">
-              <div class="swiper-slide"><picture><source srcset="../images/screenshot-desktop-busy.webp" type="image/webp" /><img src="../images/screenshot-desktop-busy.png" alt="panel de purplemux en escritorio" width="2832" height="1552" loading="lazy" decoding="async" /></picture></div>
+              <div class="swiper-slide"><picture><source srcset="../images/screenshot-desktop-busy.webp" type="image/webp" /><img src="../images/screenshot-desktop-busy.png" alt="painel purplemux no desktop" width="2832" height="1552" loading="lazy" decoding="async" /></picture></div>
               <div class="swiper-slide"><picture><source srcset="../images/screenshot-desktop-diff.webp" type="image/webp" /><img src="../images/screenshot-desktop-diff.png" alt="" width="2832" height="1552" loading="lazy" decoding="async" /></picture></div>
               <div class="swiper-slide"><picture><source srcset="../images/screenshot-desktop-claude.webp" type="image/webp" /><img src="../images/screenshot-desktop-claude.png" alt="" width="2832" height="1552" loading="lazy" decoding="async" /></picture></div>
             </div>
@@ -220,7 +176,7 @@
         <div class="shot shot--mobile preview-mobile">
           <div class="swiper">
             <div class="swiper-wrapper">
-              <div class="swiper-slide"><picture><source srcset="../images/screenshot-mobile-push.webp" type="image/webp" /><img src="../images/screenshot-mobile-push.png" alt="purplemux en móvil" width="1206" height="2622" loading="lazy" decoding="async" /></picture></div>
+              <div class="swiper-slide"><picture><source srcset="../images/screenshot-mobile-push.webp" type="image/webp" /><img src="../images/screenshot-mobile-push.png" alt="purplemux no mobile" width="1206" height="2622" loading="lazy" decoding="async" /></picture></div>
               <div class="swiper-slide"><picture><source srcset="../images/screenshot-mobile-done.webp" type="image/webp" /><img src="../images/screenshot-mobile-done.png" alt="" width="1206" height="2622" loading="lazy" decoding="async" /></picture></div>
               <div class="swiper-slide"><picture><source srcset="../images/screenshot-mobile-new-tab.webp" type="image/webp" /><img src="../images/screenshot-mobile-new-tab.png" alt="" width="1206" height="2622" loading="lazy" decoding="async" /></picture></div>
               <div class="swiper-slide"><picture><source srcset="../images/screenshot-mobile-input.webp" type="image/webp" /><img src="../images/screenshot-mobile-input.png" alt="" width="1206" height="2622" loading="lazy" decoding="async" /></picture></div>
@@ -234,11 +190,11 @@
 
     <!-- ── Why ── -->
     <section id="why">
-      <div class="eyebrow">Por qué purplemux</div>
-      <h2>Cada sesión, en un solo panel.</h2>
+      <div class="eyebrow">Por que purplemux</div>
+      <h2>Cada sessão, em um painel só.</h2>
       <p class="lead">
-        Cuantas más sesiones, más difícil es seguir su estado.<br />
-        purplemux reúne todas en una pantalla para que veas <strong>qué está corriendo y dónde hace falta tu input</strong> de un vistazo.
+        Quanto mais sessões, mais difícil fica acompanhar o estado.<br />
+        O purplemux junta todas numa só tela pra você ver <strong>o que está rodando e onde precisa da sua ação</strong> num piscar.
       </p>
 
       <div class="pain-highlight">
@@ -252,7 +208,7 @@
               <div class="limit-bar">
                 <div class="limit-bar-row">
                   <span class="limit-bar-label">5h</span>
-                  <span class="limit-bar-meta">quedan 2h 14m <span class="pct red">(85%)</span></span>
+                  <span class="limit-bar-meta">faltam 2h 14m <span class="pct red">(85%)</span></span>
                 </div>
                 <div class="limit-bar-track">
                   <div class="limit-bar-fill red" style="width:85%"></div>
@@ -261,7 +217,7 @@
               <div class="limit-bar">
                 <div class="limit-bar-row">
                   <span class="limit-bar-label">7d</span>
-                  <span class="limit-bar-meta">quedan 4d 9h <span class="pct amber">(60%)</span></span>
+                  <span class="limit-bar-meta">faltam 4d 9h <span class="pct amber">(60%)</span></span>
                 </div>
                 <div class="limit-bar-track">
                   <div class="limit-bar-fill amber" style="width:60%"></div>
@@ -271,14 +227,14 @@
           </div>
         </div>
         <div class="pain-highlight-text">
-          <h3>Tu cuota, en tiempo real.</h3>
+          <h3>Sua cota, em tempo real.</h3>
           <p>
-            Chocarse con un límite en plena concentración <strong>te corta el flujo.</strong>
-            Mientras esperas al próximo reset, el trabajo se queda parado.
+            Bater no limite no meio do foco <strong>quebra seu fluxo.</strong>
+            Enquanto espera o próximo reset, o trabalho fica parado.
           </p>
           <p>
-            purplemux mantiene las cuotas de 5 horas y 7 días fijadas en la barra lateral.
-            Los colores cambian al <span class="hl amber">50%</span> y al <span class="hl red">80%</span>, para que marques el ritmo antes de chocar con la pared.
+            O purplemux deixa as cotas de 5 horas e 7 dias fixas na barra lateral.
+            As cores mudam em <span class="hl amber">50%</span> e <span class="hl red">80%</span>, pra você dosar o ritmo antes de bater no teto.
           </p>
         </div>
       </div>
@@ -306,8 +262,8 @@
             </div>
           </div>
           <div class="feature-body">
-            <div class="feature-title">Panel multi-sesión</div>
-            <div class="feature-desc">Ve el estado <strong>running / needs-input</strong> de cada sesión de Claude Code de un vistazo.</div>
+            <div class="feature-title">Painel multi-sessão</div>
+            <div class="feature-desc">Veja o estado <strong>running / needs-input</strong> de cada sessão Claude Code num relance.</div>
           </div>
         </div>
         <div class="feature-card green">
@@ -323,8 +279,8 @@
             </div>
           </div>
           <div class="feature-body">
-            <div class="feature-title">Vista de sesión en vivo</div>
-            <div class="feature-desc">Progreso en timeline — ya no hay que hacer scroll por logs del CLI.</div>
+            <div class="feature-title">Visão ao vivo da sessão</div>
+            <div class="feature-desc">Progresso em timeline — nada de rolar logs do CLI.</div>
           </div>
         </div>
         <div class="feature-card blue">
@@ -345,8 +301,8 @@
             </div>
           </div>
           <div class="feature-body">
-            <div class="feature-title">Sesiones por estado</div>
-            <div class="feature-desc">Cada sesión se ordena automáticamente en <strong>Review · In Progress · Done</strong>.</div>
+            <div class="feature-title">Sessões agrupadas por status</div>
+            <div class="feature-desc">Toda sessão é classificada automaticamente em <strong>Review · In Progress · Done</strong>.</div>
           </div>
         </div>
         <div class="feature-card coral">
@@ -368,8 +324,8 @@
             </div>
           </div>
           <div class="feature-body">
-            <div class="feature-title">Guardar y restaurar workspaces</div>
-            <div class="feature-desc">Al correr sobre tmux, las sesiones sobreviven al cierre del navegador. Layout de paneles, pestañas y rutas se restauran mañana con un clic.</div>
+            <div class="feature-title">Salvar & restaurar workspaces</div>
+            <div class="feature-desc">Como roda em tmux, as sessões sobrevivem ao fechamento do navegador. Layout, abas e caminhos voltam num clique no dia seguinte.</div>
           </div>
         </div>
         <div class="feature-card teal">
@@ -393,8 +349,8 @@
             </div>
           </div>
           <div class="feature-body">
-            <div class="feature-title">Visor de Git diff</div>
-            <div class="feature-desc">Revisa diffs en un panel junto al terminal. Side-by-side o inline, con resaltado de sintaxis.</div>
+            <div class="feature-title">Visualizador Git diff</div>
+            <div class="feature-desc">Olhe diffs num painel ao lado do terminal. Lado a lado ou inline, com destaque de sintaxe.</div>
           </div>
         </div>
         <div class="feature-card amber">
@@ -407,8 +363,8 @@
             </div>
           </div>
           <div class="feature-body">
-            <div class="feature-title">Un terminal de verdad</div>
-            <div class="feature-desc">No solo Claude. Un terminal completo con xterm.js + node-pty para <strong>vim, docker, ssh, REPLs</strong> — lo que quieras.</div>
+            <div class="feature-title">Um terminal de verdade</div>
+            <div class="feature-desc">Não só Claude. Terminal completo com xterm.js + node-pty pra <strong>vim, docker, ssh, REPLs</strong> — o que você quiser.</div>
           </div>
         </div>
       </div>
@@ -416,69 +372,69 @@
 
     <!-- ── Mobile & Push ── -->
     <section id="mobile">
-      <div class="eyebrow teal">Móvil & push</div>
-      <h2>Fuera del escritorio, igual.</h2>
+      <div class="eyebrow teal">Mobile & push</div>
+      <h2>Longe da mesa, igualzinho.</h2>
       <p class="lead">
-        No hace falta quedarte en el escritorio solo para vigilar una tarea larga.
-        Ábrelo en el navegador del móvil, añádelo a la pantalla de inicio y funcionará como una app nativa. Cierra la pestaña y las notificaciones de fin de tarea / input pendiente siguen llegando por Web Push.
+        Você não precisa ficar na mesa só pra acompanhar uma tarefa demorada.
+        Abra no navegador do celular, adicione à tela inicial e vira praticamente um app nativo. Feche a aba e as notificações de tarefa concluída / input necessário continuam chegando via Web Push.
       </p>
 
       <div class="mobile-layout">
         <div class="mobile-showcase">
           <picture class="shot shot--mobile">
             <source srcset="../images/mobile-push.webp" type="image/webp" />
-            <img src="../images/mobile-push.png" alt="notificación push de purplemux en móvil" width="1206" height="2622" loading="lazy" decoding="async" />
+            <img src="../images/mobile-push.png" alt="notificação push do purplemux no mobile" width="1206" height="2622" loading="lazy" decoding="async" />
           </picture>
         </div>
 
         <div class="mobile-guide">
           <div class="guide-block">
-            <h3>Añadir a la pantalla de inicio (PWA)</h3>
+            <h3>Adicionar à tela inicial (PWA)</h3>
             <p class="muted" style="font-size:var(--text-sm); margin-bottom:1rem">
-              Ábrelo en el navegador y añádelo a la pantalla de inicio para tener un icono a pantalla completa.
+              Abra no navegador e adicione à tela inicial pra ganhar um ícone em tela cheia.
             </p>
 
             <div class="tabs">
               <div class="tab-label">iOS (Safari)</div>
               <ol class="guide-steps">
-                <li>Abre la URL en iOS</li>
-                <li>Toca el botón <strong>Compartir</strong> de abajo</li>
-                <li>Elige <strong>Añadir a pantalla de inicio</strong></li>
-                <li>Toca <strong>Añadir</strong> arriba a la derecha</li>
+                <li>Abra a URL no iOS</li>
+                <li>Toque no botão <strong>Compartilhar</strong> lá embaixo</li>
+                <li>Escolha <strong>Adicionar à Tela de Início</strong></li>
+                <li>Toque em <strong>Adicionar</strong> no topo direito</li>
               </ol>
             </div>
 
             <div class="tabs">
               <div class="tab-label">Android (Chrome)</div>
               <ol class="guide-steps">
-                <li>Abre la URL en Chrome</li>
-                <li>Abre el menú <strong>⋮</strong> arriba a la derecha</li>
-                <li>Elige <strong>Instalar app</strong> o <strong>Añadir a pantalla de inicio</strong></li>
+                <li>Abra a URL no Chrome</li>
+                <li>Abra o menu <strong>⋮</strong> no topo direito</li>
+                <li>Escolha <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong></li>
               </ol>
             </div>
           </div>
 
           <div class="guide-block">
-            <h3>Activar las notificaciones push</h3>
+            <h3>Ativar notificações push</h3>
             <ol class="guide-steps">
-              <li>Activa <strong>Settings → Notification → On</strong> y permite las notificaciones del navegador</li>
-              <li>Llegan por Web Push incluso en segundo plano</li>
-              <li>Alertas de <strong>tarea completada</strong> y <strong>input necesario</strong></li>
-              <li>Toca una notificación para saltar directo a la sesión</li>
+              <li>Ative em <strong>Settings → Notification → On</strong> e autorize notificações do navegador</li>
+              <li>Entregues por Web Push, mesmo em segundo plano</li>
+              <li>Alertas de <strong>tarefa concluída</strong> e <strong>input necessário</strong></li>
+              <li>Toque a notificação pra ir direto à sessão</li>
             </ol>
           </div>
 
           <div class="guide-block">
-            <h3>Acceso externo con Tailscale</h3>
+            <h3>Acesso externo via Tailscale</h3>
             <p class="muted" style="font-size:var(--text-sm)">
-              Para acceder desde fuera de tu red, Tailscale Serve es la vía más limpia.
-              Trae cifrado WireGuard y certificados HTTPS de regalo.
+              Pra acessar de fora da sua rede, Tailscale Serve é o caminho mais limpo.
+              Criptografia WireGuard e certificados HTTPS vão junto de graça.
             </p>
 
             <div class="ts-diagram" aria-hidden="true">
               <div class="ts-node">
                 <svg class="ts-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="12" rx="1.5"/><path d="M1 19h22"/></svg>
-                <div class="ts-label">Mi PC</div>
+                <div class="ts-label">Meu PC</div>
                 <div class="ts-sub">:8022</div>
               </div>
               <div class="ts-link">
@@ -509,15 +465,15 @@
               </div>
               <div class="ts-node">
                 <svg class="ts-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg>
-                <div class="ts-label">Móvil</div>
+                <div class="ts-label">Celular</div>
                 <div class="ts-sub">Safari</div>
               </div>
             </div>
 
 <pre class="code"><span class="c">$</span> tailscale serve --bg 8022</pre>
             <p class="muted" style="font-size:var(--text-sm); margin-top:0.5rem">
-              Luego podrás llegar a <code>https://&lt;machine&gt;.&lt;tailnet&gt;.ts.net</code> desde cualquier sitio.
-              iOS Safari necesita HTTPS para que PWA y Web Push funcionen bien.
+              Depois você acessa <code>https://&lt;machine&gt;.&lt;tailnet&gt;.ts.net</code> de qualquer lugar.
+              O Safari no iOS exige HTTPS pra PWA e Web Push funcionarem direito.
             </p>
           </div>
         </div>
@@ -526,23 +482,23 @@
 
     <!-- ── Stats & analytics ── -->
     <section id="stats">
-      <div class="eyebrow">Estadísticas & análisis</div>
-      <h2>Todo tu uso, en una pantalla.</h2>
+      <div class="eyebrow">Estatísticas & análise</div>
+      <h2>Toda a utilização, em uma tela.</h2>
       <p class="lead">
-        Los tokens de hoy, el coste del mes, el uso por proyecto, el desglose por modelo —
-        reunidos en un sitio para mostrarte el ritmo y la estructura de coste de tu trabajo.
+        Tokens de hoje, custo do mês, uso por projeto, distribuição por modelo —
+        números espalhados reunidos num lugar só pra mostrar o ritmo e a estrutura de custo do seu trabalho.
       </p>
 
       <div class="stats-showcase">
         <picture class="stats-screen">
           <source srcset="../images/stat.webp" type="image/webp" />
-          <img src="../images/stat.png" alt="panel de estadísticas de uso de purplemux" width="2068" height="1682" loading="lazy" decoding="async" />
+          <img src="../images/stat.png" alt="painel de estatísticas de uso do purplemux" width="2068" height="1682" loading="lazy" decoding="async" />
         </picture>
 
         <div class="stats-callout" style="--x:22%; --y:20%">
           <span class="callout-num">01</span>
           <div class="callout-label">
-            <strong>Cuatro tarjetas de resumen</strong>
+            <strong>Quatro cards de visão geral</strong>
             <span>Sessions · Total · Today · Month</span>
           </div>
         </div>
@@ -550,15 +506,15 @@
         <div class="stats-callout stats-callout--left" style="--x:82%; --y:28%">
           <span class="callout-num">02</span>
           <div class="callout-label">
-            <strong>Tendencia diaria de actividad</strong>
-            <span>Sesiones · mensajes de los últimos 30 días</span>
+            <strong>Tendência diária de atividade</strong>
+            <span>Sessões · mensagens, últimos 30 dias</span>
           </div>
         </div>
 
         <div class="stats-callout" style="--x:20%; --y:62%">
           <span class="callout-num">03</span>
           <div class="callout-label">
-            <strong>Rachas de trabajo</strong>
+            <strong>Sequências de trabalho</strong>
             <span>Longest · Current · Count · Avg</span>
           </div>
         </div>
@@ -566,8 +522,8 @@
         <div class="stats-callout stats-callout--left" style="--x:80%; --y:87%">
           <span class="callout-num">04</span>
           <div class="callout-label">
-            <strong>Línea de tiempo semanal</strong>
-            <span>Día × hora + sesiones simultáneas</span>
+            <strong>Timeline semanal</strong>
+            <span>Dia × hora + sessões simultâneas</span>
           </div>
         </div>
       </div>
@@ -575,11 +531,11 @@
 
     <!-- ── Notes (AI daily report) ── -->
     <section id="notes">
-      <div class="eyebrow teal">Informe diario con IA</div>
-      <h2>Tu día, resumido automáticamente.</h2>
+      <div class="eyebrow teal">Relatório diário com IA</div>
+      <h2>Seu dia, resumido automaticamente.</h2>
       <p class="lead">
-        Al terminar el día se recogen los logs de sesión y un LLM escribe un brief de una línea y un resumen detallado.
-        Se guarda en Markdown — úsalo en retros, informes o 1:1 sin tocar nada.
+        Ao fim do dia, os logs de sessão são reunidos e um LLM escreve um resumo de uma linha e um detalhado.
+        Salvo em Markdown — cole direto numa retrô, relatório ou 1:1.
       </p>
 
       <div class="notes-layout">
@@ -590,48 +546,48 @@
           </div>
           <div class="notes-mockup-body">
             <div class="md-brief">
-              Redactada la primera versión de la landing de purplemux. Conectada la sección mobile / PWA con el dashboard de stats. Unificado el tono estilo Apple y reemplazados todos los mockups de feature cards.
+              Rascunhada a landing do purplemux. Seção mobile / PWA conectada ao dashboard de stats. Copy unificada no tom Apple e todos os mockups de feature cards substituídos.
             </div>
             <div class="md-collapse">∧ Collapse</div>
 
             <div class="md-project">purplemux</div>
 
-            <div class="md-h3">Borrador de la landing</div>
+            <div class="md-h3">Rascunho da landing</div>
             <ul class="md-ul">
-              <li>Diseñada la estructura de ocho secciones con layouts Hero / Why / Mobile / Stats</li>
-              <li>Convertido el color de marca purple en una variable OKLCH</li>
-              <li>Aplicados los marcos de mockup para las capturas de desktop y móvil</li>
+              <li>Estrutura de oito seções com os layouts Hero / Why / Mobile / Stats</li>
+              <li>Cor de marca purple convertida em variável OKLCH</li>
+              <li>Molduras de mockup aplicadas às capturas desktop e mobile</li>
             </ul>
 
             <div class="md-h3">Mockups de feature cards</div>
             <ul class="md-ul">
-              <li>Reproducidos indicadores reales de spinner / pulse en el panel multi-sesión</li>
-              <li>Ajustados los detalles CSS de los mockups de Git Diff, workspace y self-hosted</li>
-              <li>Añadida la animación del diagrama de acceso con Tailscale</li>
+              <li>Indicadores reais de spinner / pulse reproduzidos no painel multi-sessão</li>
+              <li>CSS dos mockups Git Diff, workspace e self-hosted refinado</li>
+              <li>Animação adicionada ao diagrama de acesso Tailscale</li>
             </ul>
           </div>
         </div>
 
         <div class="notes-points">
           <div class="guide-block">
-            <h3>Brief + detailed juntos</h3>
+            <h3>Brief + detailed lado a lado</h3>
             <p class="muted" style="font-size:var(--text-sm)">
-              El brief de una línea vive en el dashboard; expande al detallado con un clic.
-              Es Markdown — pégalo directo en una retro o un informe.
+              O brief de uma linha mora no dashboard; o detalhado expande num clique.
+              É Markdown — cole direto numa retrô ou relatório.
             </p>
           </div>
           <div class="guide-block">
-            <h3>Batch & regenerar</h3>
+            <h3>Em lote & regerar</h3>
             <p class="muted" style="font-size:var(--text-sm)">
-              Rellena los días que falten en un solo batch, o regenera cualquier día suelto.
-              El LLM procesa sesión a sesión para no perder contexto.
+              Preencha os dias faltantes em lote, ou regere um dia específico.
+              O LLM processa sessão a sessão pra não perder contexto.
             </p>
           </div>
           <div class="guide-block">
-            <h3>Rápido, desde cualquier lado</h3>
+            <h3>Rápido, de qualquer lugar</h3>
             <p class="muted" style="font-size:var(--text-sm)">
-              Vive en la barra lateral como <strong>Notes</strong> y se abre con <code>Cmd ⇧ E</code> (macOS) / <code>Ctrl ⇧ E</code> (Linux).
-              Todo local — nada sale de tu máquina.
+              Fica na barra lateral como <strong>Notes</strong> e abre com <code>Cmd ⇧ E</code> (macOS) / <code>Ctrl ⇧ E</code> (Linux).
+              Tudo local — nada sai da sua máquina.
             </p>
           </div>
         </div>
@@ -640,8 +596,8 @@
 
     <!-- ── Features (categories) ── -->
     <section id="features">
-      <div class="eyebrow amber">Funciones</div>
-      <h2>Todo lo que necesitas. Ni más, ni menos.</h2>
+      <div class="eyebrow amber">Recursos</div>
+      <h2>Tudo que você precisa, nada além disso.</h2>
 
       <div class="category">
         <div class="category-head">
@@ -649,78 +605,78 @@
           <span class="category-count">7</span>
         </div>
         <ul class="category-list">
-          <li><strong>Paneles divididos</strong><span class="sub">Divisiones horizontales · verticales, redimensionables con drag</span></li>
-          <li><strong>Gestión de pestañas</strong><span class="sub">Varias pestañas, reordenar, título automático por proceso</span></li>
-          <li><strong>Atajos</strong><span class="sub">Dividir · cambiar pestaña · mover foco</span></li>
-          <li><strong>Temas</strong><span class="sub">Oscuro / claro · varios sets de color</span></li>
-          <li><strong>Workspaces y grupos</strong><span class="sub">Guardar / restaurar · grupos por arrastrar y soltar</span></li>
-          <li><strong>Flujo de trabajo Git</strong><span class="sub">Diff · historial · sync · Ask Claude</span></li>
-          <li><strong>Panel de navegador</strong><span class="sub">Electron · controlable por CLI · emulador de dispositivo</span></li>
+          <li><strong>Painéis divididos</strong><span class="sub">Divisões horizontais · verticais, redimensionáveis arrastando</span></li>
+          <li><strong>Gestão de abas</strong><span class="sub">Múltiplas abas, reordenar, título automático pelo processo</span></li>
+          <li><strong>Atalhos</strong><span class="sub">Dividir · trocar de aba · mover foco</span></li>
+          <li><strong>Temas</strong><span class="sub">Escuro / claro · vários conjuntos de cores</span></li>
+          <li><strong>Workspaces e grupos</strong><span class="sub">Salvar / restaurar · grupos com arrastar e soltar</span></li>
+          <li><strong>Fluxo Git</strong><span class="sub">Diff · histórico · sync · Ask Claude</span></li>
+          <li><strong>Painel de navegador</strong><span class="sub">Electron · controlado via CLI · emulador de dispositivo</span></li>
         </ul>
       </div>
 
       <div class="category">
         <div class="category-head">
-          <span class="category-name">Integración con Claude Code</span>
+          <span class="category-name">Integração com Claude Code</span>
           <span class="category-count">11</span>
         </div>
         <ul class="category-list">
-          <li><strong>Estado en tiempo real</strong><span class="sub">In progress / needs input, transiciones instantáneas</span></li>
-          <li><strong>Modo sesiones en la barra lateral</strong><span class="sub">Alterna Workspace ↔ Sessions, vistas por estado</span></li>
-          <li><strong>Vista de sesión en vivo</strong><span class="sub">Mensajes · llamadas a herramientas · tareas · prompts de permiso</span></li>
-          <li><strong>Reanudar con un clic</strong><span class="sub">Retoma sesiones interrumpidas desde el navegador</span></li>
-          <li><strong>Restore automático</strong><span class="sub">Recupera sesiones previas al reiniciar el servidor</span></li>
-          <li><strong>Quick prompts</strong><span class="sub">Registra favoritos y lánzalos con un clic</span></li>
-          <li><strong>Adjuntos</strong><span class="sub">Suelta imágenes · adjunta archivos · funciona en móvil</span></li>
-          <li><strong>Historial de mensajes</strong><span class="sub">Reutiliza mensajes anteriores</span></li>
-          <li><strong>Analíticas de uso</strong><span class="sub">Tokens · coste · por proyecto · informes diarios</span></li>
-          <li><strong>Cuenta atrás del rate limit</strong><span class="sub">Resto de 5h / 7d · tiempo hasta el reset</span></li>
-          <li><strong>Avisos de uso del límite</strong><span class="sub">La barra cambia a amber / red al 50% / 80%</span></li>
+          <li><strong>Status em tempo real</strong><span class="sub">In progress / needs input, transições instantâneas</span></li>
+          <li><strong>Modo sessões na sidebar</strong><span class="sub">Troca Workspace ↔ Sessions, vistas por status</span></li>
+          <li><strong>Vista ao vivo da sessão</strong><span class="sub">Mensagens · tool calls · tasks · permission prompts</span></li>
+          <li><strong>Retomar com um clique</strong><span class="sub">Pegue sessões interrompidas direto no navegador</span></li>
+          <li><strong>Restore automático</strong><span class="sub">Restaura sessões anteriores quando o servidor reinicia</span></li>
+          <li><strong>Quick prompts</strong><span class="sub">Registre favoritos e rode num clique</span></li>
+          <li><strong>Anexos</strong><span class="sub">Solte imagens · anexe arquivos · funciona no mobile</span></li>
+          <li><strong>Histórico de mensagens</strong><span class="sub">Reutilize mensagens anteriores</span></li>
+          <li><strong>Analytics de uso</strong><span class="sub">Tokens · custo · por projeto · relatórios diários</span></li>
+          <li><strong>Contagem regressiva do rate limit</strong><span class="sub">Restante 5h / 7d · tempo até o reset</span></li>
+          <li><strong>Avisos de uso do limite</strong><span class="sub">A barra vai pra amber / red em 50% / 80%</span></li>
         </ul>
       </div>
 
       <div class="category">
         <div class="category-head">
-          <span class="category-name">Móvil & accesibilidad</span>
+          <span class="category-name">Mobile & acessibilidade</span>
           <span class="category-count">7</span>
         </div>
         <ul class="category-list">
-          <li><strong>UI responsive</strong><span class="sub">Terminal · timeline en móviles y tablets</span></li>
-          <li><strong>PWA</strong><span class="sub">Añadir a la pantalla de inicio · sensación de app nativa</span></li>
-          <li><strong>Web Push</strong><span class="sub">Notificaciones aunque cierres la pestaña</span></li>
-          <li><strong>Sync multi-dispositivo</strong><span class="sub">Cambios de workspace reflejados en tiempo real</span></li>
-          <li><strong>Tailscale</strong><span class="sub">Acceso externo HTTPS seguro</span></li>
-          <li><strong>Auth por contraseña</strong><span class="sub">Hashing con scrypt</span></li>
-          <li><strong>Idiomas</strong><span class="sub">한국어 · English · 日本語 · 中文 · 11 idiomas</span></li>
+          <li><strong>UI responsiva</strong><span class="sub">Terminal · timeline no celular e tablet</span></li>
+          <li><strong>PWA</strong><span class="sub">Adicionar à tela inicial · sensação de app nativo</span></li>
+          <li><strong>Web Push</strong><span class="sub">Notificações mesmo com a aba fechada</span></li>
+          <li><strong>Sync multi-dispositivo</strong><span class="sub">Mudanças no workspace em tempo real</span></li>
+          <li><strong>Tailscale</strong><span class="sub">Acesso externo HTTPS seguro</span></li>
+          <li><strong>Auth por senha</strong><span class="sub">Hash scrypt</span></li>
+          <li><strong>Multilíngue</strong><span class="sub">한국어 · English · 日本語 · 中文 · 11 idiomas</span></li>
         </ul>
       </div>
 
       <div class="category">
         <div class="category-head">
-          <span class="category-name">Personalización</span>
+          <span class="category-name">Personalização</span>
           <span class="category-count">9</span>
         </div>
         <ul class="category-list">
           <li><strong>Temas</strong><span class="sub">Light / Dark / System automático</span></li>
-          <li><strong>Tamaño de fuente</strong><span class="sub">Normal · Large · X-Large</span></li>
-          <li><strong>Custom CSS</strong><span class="sub">Override total vía variables CSS</span></li>
-          <li><strong>Temas de terminal</strong><span class="sub">Sets de color independientes para light / dark</span></li>
-          <li><strong>Reordenar sidebar</strong><span class="sub">Mostrar/ocultar items · arrastra para reordenar</span></li>
-          <li><strong>Biblioteca de quick prompts</strong><span class="sub">Añade prompts personalizados · drag para ordenar</span></li>
-          <li><strong>Integración con editor</strong><span class="sub">Editor externo vía URL de code-server</span></li>
-          <li><strong>Control de notificaciones</strong><span class="sub">Notificaciones del sistema on/off</span></li>
-          <li><strong>Opciones de Claude</strong><span class="sub">Activa opciones del CLI como skip permissions</span></li>
+          <li><strong>Tamanho da fonte</strong><span class="sub">Normal · Large · X-Large</span></li>
+          <li><strong>Custom CSS</strong><span class="sub">Override total via variáveis CSS</span></li>
+          <li><strong>Temas de terminal</strong><span class="sub">Conjuntos de cor separados pra light / dark</span></li>
+          <li><strong>Reordenar sidebar</strong><span class="sub">Mostrar/ocultar itens · arrastar pra reordenar</span></li>
+          <li><strong>Biblioteca de Quick Prompts</strong><span class="sub">Adicione prompts custom · arraste pra ordenar</span></li>
+          <li><strong>Integração com editor</strong><span class="sub">Editor externo via URL do code-server</span></li>
+          <li><strong>Controle de notificações</strong><span class="sub">Notificações do sistema on/off</span></li>
+          <li><strong>Opções do Claude</strong><span class="sub">Toggle de opções do CLI como skip permissions</span></li>
         </ul>
       </div>
     </section>
 
     <!-- ── How it works ── -->
     <section id="how">
-      <div class="eyebrow coral">Arquitectura</div>
+      <div class="eyebrow coral">Arquitetura</div>
       <h2>Navegador ↔ Node.js ↔ tmux · Claude Code.</h2>
       <p class="lead">
-        xterm.js se conecta a node-pty por WebSocket, y node-pty se enlaza a una sesión tmux en el socket dedicado <code>purple</code>.
-        El estado lo siguen a la vez los hooks de Claude Code y un watcher de logs JSONL.
+        O xterm.js conecta no node-pty via WebSocket, e o node-pty gruda numa sessão tmux no socket dedicado <code>purple</code>.
+        O estado é acompanhado por hooks do Claude Code e um watcher de log JSONL juntos.
       </p>
 
       <div class="arch-diagram">
@@ -778,9 +734,9 @@
               <div class="arch-comp-sub">process tree + JSONL tail</div>
             </div>
             <div class="arch-highlights">
-              <span class="arch-hl">Binary PTY · stdin/out binario</span>
+              <span class="arch-hl">Binary PTY · stdin/out binário</span>
               <span class="arch-hl">Hooks + polling 5–15s</span>
-              <span class="arch-hl">Intercepción de permission prompts</span>
+              <span class="arch-hl">Interceptação de permission prompt</span>
               <span class="arch-hl">1MB backpressure · 10 queue</span>
             </div>
           </div>
@@ -804,8 +760,8 @@
                 <span class="arch-mini">…</span>
               </div>
               <div class="arch-highlights arch-highlights--inline">
-                <span class="arch-hl">Socket purple aislado</span>
-                <span class="arch-hl">Recuperación paralela tras reinicio</span>
+                <span class="arch-hl">Socket purple isolado</span>
+                <span class="arch-hl">Restore paralelo após reboot</span>
               </div>
             </div>
             <div class="arch-group">
@@ -823,55 +779,55 @@
     <!-- ── vs official Remote Control ── -->
     <section id="compare">
       <div class="eyebrow teal">vs. Remote Control oficial</div>
-      <h2>Más allá del control remoto — un workspace unificado.</h2>
+      <h2>Além do controle remoto — um workspace unificado.</h2>
       <p class="lead">
-        Remote Control oficial es una herramienta de acceso remoto para <em>seguir una sesión de Claude Code desde otro dispositivo</em>.
-        purplemux añade encima <em>panel multi-sesión, extensiones de terminal y analíticas de uso</em> — un entorno operativo self-hosted.
+        O Remote Control oficial é uma ferramenta de acesso remoto pra <em>continuar sessões do Claude Code em outro dispositivo</em>.
+        O purplemux põe por cima <em>um painel multi-sessão, extensões de terminal e analytics de uso</em> — um ambiente operacional self-hosted.
       </p>
 
       <table class="compare">
         <thead>
           <tr>
-            <th>Aspecto</th>
+            <th>Item</th>
             <th>Remote Control oficial</th>
             <th>purplemux</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>Vista de sesiones simultánea</td>
-            <td class="cross">Abres una a una desde una lista</td>
-            <td class="check">Todas las sesiones y estados en un único panel</td>
+            <td>Vista simultânea de sessões</td>
+            <td class="cross">Abrir uma a uma a partir de uma lista</td>
+            <td class="check">Todas as sessões, todos os estados, num painel só</td>
           </tr>
           <tr>
-            <td>Indicadores de estado</td>
+            <td>Indicadores de status</td>
             <td class="cross">Online / offline</td>
-            <td class="check">Busy · Review · Needs-input · Idle en tiempo real</td>
+            <td class="check">Busy · Review · Needs-input · Idle em tempo real</td>
           </tr>
           <tr>
-            <td>Notificaciones push</td>
-            <td class="cross">Requiere la app móvil de Claude</td>
-            <td class="check">Web Push · cualquier navegador, sin instalar nada</td>
+            <td>Notificações push</td>
+            <td class="cross">Precisa do app móvel do Claude</td>
+            <td class="check">Web Push · qualquer navegador, sem instalar</td>
           </tr>
           <tr>
-            <td>Persistencia del terminal</td>
-            <td class="cross">Solo mientras el proceso claude está vivo</td>
-            <td class="check">Basado en tmux · restore automático tras reinicio</td>
+            <td>Persistência do terminal</td>
+            <td class="cross">Só enquanto o processo claude roda</td>
+            <td class="check">Baseado em tmux · restore automático após restart</td>
           </tr>
           <tr>
-            <td>Herramientas incluidas</td>
-            <td class="cross">Solo la sesión de Claude Code</td>
-            <td class="check">Terminal dividido · Git diff · workspaces</td>
+            <td>Ferramentas incluídas</td>
+            <td class="cross">Somente sessão do Claude Code</td>
+            <td class="check">Terminal dividido · Git diff · salvar workspace</td>
           </tr>
           <tr>
-            <td>Analíticas de uso</td>
+            <td>Analytics de uso</td>
             <td class="cross">—</td>
-            <td class="check">Tokens · coste · por proyecto · informe diario con IA</td>
+            <td class="check">Tokens · custo · por projeto · relatório diário com IA</td>
           </tr>
           <tr class="tradeoff">
-            <td>Puntos fuertes</td>
-            <td>Oficial de Anthropic · integración con Claude móvil · auto-update</td>
-            <td>OSS de terceros · instalación y mantenimiento manuales</td>
+            <td>Pontos fortes</td>
+            <td>Oficial da Anthropic · integração com o app móvel do Claude · auto-update</td>
+            <td>OSS de terceiros · instalação & manutenção manuais</td>
           </tr>
         </tbody>
       </table>
@@ -880,17 +836,17 @@
     <!-- ── Install ── -->
     <section id="install" data-ph-capture-attribute-location="install">
       <div class="eyebrow">Instalar</div>
-      <h2>30 segundos, de principio a fin.</h2>
+      <h2>30 segundos, do começo ao fim.</h2>
       <p class="lead">
-        Solo necesitas Node.js 20+ y tmux. Una línea para instalar y abrir el navegador.
+        Você só precisa de Node.js 20+ e tmux. Uma linha pra instalar e abrir o navegador.
       </p>
 
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-body">
-            <h3>Ejecutar</h3>
-            <p>Arranca al momento con npx. También puedes instalarlo global.</p>
+            <h3>Executar</h3>
+            <p>Já começa com npx. Instalação global também rola.</p>
 <pre class="code"><span class="c">$</span> npx purplemux</pre>
           </div>
         </div>
@@ -898,8 +854,8 @@
         <div class="step">
           <div class="step-num">2</div>
           <div class="step-body">
-            <h3>Abrir el navegador</h3>
-            <p>Por defecto el puerto es 8022. Cámbialo con la variable <code>PORT</code>.</p>
+            <h3>Abrir o navegador</h3>
+            <p>A porta padrão é 8022. Troque pela variável <code>PORT</code>.</p>
 <pre class="code"><span class="c">→</span> http://localhost:8022</pre>
           </div>
         </div>
@@ -907,8 +863,8 @@
         <div class="step">
           <div class="step-num">3</div>
           <div class="step-body">
-            <h3>Acceso remoto (opcional)</h3>
-            <p>Para acceder desde fuera recomendamos Tailscale Serve. Cifrado WireGuard y certificados automáticos incluidos.</p>
+            <h3>Acesso remoto (opcional)</h3>
+            <p>Pra acesso externo, recomendamos Tailscale Serve. Criptografia WireGuard e certificados automáticos inclusos.</p>
 <pre class="code"><span class="c">$</span> tailscale serve --bg 8022</pre>
           </div>
         </div>
@@ -916,10 +872,10 @@
         <div class="step">
           <div class="step-num">4</div>
           <div class="step-body">
-            <h3>App nativa (opcional)</h3>
-            <p>En macOS puedes usar también el build Electron. Compatible con Apple Silicon e Intel.</p>
+            <h3>App nativo (opcional)</h3>
+            <p>No macOS você também pode usar o build Electron. Apple Silicon e Intel suportados.</p>
             <a href="https://github.com/subicura/purplemux/releases/latest" class="btn-primary" target="_blank" rel="noopener" style="margin-top:0.5rem" data-ph-capture-attribute-cta="download">
-              Descargar la última release →
+              Baixar a última release →
             </a>
           </div>
         </div>
@@ -929,66 +885,66 @@
     <!-- ── FAQ ── -->
     <section id="faq">
       <div class="eyebrow">FAQ</div>
-      <h2>Lo que seguramente te preguntas.</h2>
+      <h2>O que você provavelmente quer saber.</h2>
 
       <div class="faq">
         <details>
-          <summary>¿Me ahorrará dinero?</summary>
-          <p><strong>Hace que tu uso sea transparente.</strong>
-            Coste de hoy, del mes y por proyecto, desglose de tokens por modelo, resto de rate limit de 5h / 7d — todo en una pantalla para ajustar el gasto tú mismo.</p>
+          <summary>Vai economizar dinheiro pra mim?</summary>
+          <p><strong>Ele deixa seu uso transparente.</strong>
+            Custo de hoje, do mês e por projeto, divisão de tokens por modelo, restante de rate limit 5h / 7d — tudo numa tela só pra você ajustar o gasto.</p>
         </details>
 
         <details>
-          <summary>¿Puedo aprobar permission prompts desde el móvil?</summary>
-          <p>Sí. purplemux captura los diálogos de permiso de Claude Code del terminal y los envía al panel y a las notificaciones móviles.
-            Aprobarlos desde cualquier sitio — adiós a las tareas en pausa.</p>
+          <summary>Dá pra aprovar permission prompts do celular?</summary>
+          <p>Dá. O purplemux intercepta os diálogos de permissão do Claude Code no terminal e encaminha pra dashboard e pras notificações mobile.
+            Aprove de qualquer lugar — sem tarefa parada.</p>
         </details>
 
         <details>
-          <summary>¿Si el sistema se cuelga, pierdo las sesiones?</summary>
-          <p>Cerrar el navegador o perder la red no es problema — tmux mantiene las sesiones vivas.
-            Incluso tras un reinicio completo, purplemux escanea el layout del workspace y <strong>restaura las sesiones previas de Claude en paralelo</strong>.
-            Sin restore manual.</p>
+          <summary>Se o sistema travar, perco as sessões?</summary>
+          <p>Fechar o navegador ou perder a rede não é problema — o tmux mantém as sessões vivas.
+            Mesmo após um reboot completo, o purplemux varre o layout do workspace e <strong>restaura as sessões Claude anteriores em paralelo</strong>.
+            Sem restore manual.</p>
         </details>
 
         <details>
-          <summary>¿Dónde se guardan mis datos?</summary>
-          <p>Los ajustes y datos de sesión se guardan en local bajo <code>~/.purplemux/</code>.
-            Nada se envía a servidores externos. La autenticación queda como hash scrypt en <code>config.json</code>.</p>
+          <summary>Onde meus dados ficam?</summary>
+          <p>Todas as configurações e dados de sessão ficam localmente em <code>~/.purplemux/</code>.
+            Nada é enviado pra servidores externos. A autenticação é guardada como hash scrypt em <code>config.json</code>.</p>
         </details>
 
         <details>
-          <summary>¿Funciona en Windows?</summary>
-          <p>Oficialmente no. Las restricciones de tmux y node-pty hacen que solo soportemos macOS y Linux.
-            Puede funcionar bajo WSL2, pero no lo probamos.</p>
+          <summary>Funciona no Windows?</summary>
+          <p>Oficialmente não. Pelas restrições do tmux e do node-pty, só macOS e Linux são suportados.
+            Pode funcionar no WSL2, mas não está nos nossos testes.</p>
         </details>
 
         <details>
-          <summary>¿Entra en conflicto con mis sesiones tmux?</summary>
-          <p>purplemux lanza una instancia tmux aislada sobre un socket <code>purple</code> dedicado.
-            Es totalmente independiente de tus sesiones tmux y de <code>~/.tmux.conf</code>.</p>
+          <summary>Conflita com minhas sessões tmux existentes?</summary>
+          <p>O purplemux sobe uma instância tmux isolada num socket <code>purple</code> dedicado.
+            É completamente independente das suas sessões tmux e do <code>~/.tmux.conf</code>.</p>
         </details>
 
         <details>
-          <summary>¿Cómo accedo desde fuera de mi red?</summary>
-          <p>Recomendamos Tailscale Serve — cifrado basado en WireGuard y certificados HTTPS automáticos.
-            Si prefieres un proxy inverso propio, asegúrate de reenviar los headers <code>Upgrade</code> y <code>Connection</code> en Nginx / Caddy.</p>
+          <summary>Como acessar de fora da minha rede?</summary>
+          <p>Recomendamos Tailscale Serve — criptografia WireGuard e certificados HTTPS automáticos.
+            Se preferir um reverse proxy próprio, lembre de encaminhar os headers <code>Upgrade</code> e <code>Connection</code> no Nginx / Caddy.</p>
         </details>
 
         <details>
-          <summary>¿Tiene algún coste?</summary>
-          <p>purplemux es open source con licencia MIT y gratuito. El uso de Claude Code se factura aparte.</p>
+          <summary>Tem algum custo?</summary>
+          <p>O purplemux em si é open source MIT e gratuito. O uso do Claude Code é cobrado à parte.</p>
         </details>
 
         <details>
-          <summary>¿Es realmente usable en móvil?</summary>
-          <p>Sí. UI responsive, PWA y Web Push ya vienen incluidos. Añádelo a la pantalla de inicio para tener sensación de app nativa;
-            cierra la pestaña y seguirás recibiendo las notificaciones de fin de tarea e input necesario.</p>
+          <summary>Dá pra usar de verdade no celular?</summary>
+          <p>Dá. UI responsiva, PWA e Web Push já vêm inclusos. Adicione à tela inicial pra sensação de app nativo;
+            feche a aba e mesmo assim receba notificações de tarefa concluída e input necessário.</p>
         </details>
 
         <details>
-          <summary>¿Está traducido?</summary>
-          <p>11 idiomas disponibles: 한국어 · English · 日本語 · 简体中文 · 繁體中文 · Deutsch · Español · Français · Русский · Português (Brasil) · Türkçe.</p>
+          <summary>Tem tradução?</summary>
+          <p>Suporta 11 idiomas: 한국어 · English · 日本語 · 简体中文 · 繁體中文 · Deutsch · Español · Français · Русский · Português (Brasil) · Türkçe.</p>
         </details>
       </div>
     </section>
@@ -997,9 +953,9 @@
     <section id="cta" class="cta-section" data-ph-capture-attribute-location="closing_cta">
       <div class="cta-card">
         <div class="cta-body">
-          <div class="eyebrow">Empezar</div>
-          <h2>Una línea y listo.</h2>
-          <p class="lead">Con Node.js 20+ y tmux listos, lo tienes funcionando en 30 segundos.</p>
+          <div class="eyebrow">Começar</div>
+          <h2>Uma linha já basta.</h2>
+          <p class="lead">Com Node.js 20+ e tmux prontos, dá pra subir em 30 segundos.</p>
         </div>
         <div class="install-block cta-install">
           <div class="install-cmd">
@@ -1011,7 +967,7 @@
             <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
               <path d="M17.05 20.28c-.98.95-2.05.88-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
             </svg>
-            Descargar para macOS
+            Baixar para macOS
           </a>
         </div>
       </div>
@@ -1021,17 +977,17 @@
     <section id="selfhost" class="selfhost">
       <div class="selfhost-grid">
         <div class="selfhost-text">
-          <div class="eyebrow amber">Self-hosted · código abierto</div>
-          <h2>En tu máquina, tuyo.</h2>
+          <div class="eyebrow amber">Self-hosted · open source</div>
+          <h2>Na sua máquina, seu.</h2>
           <p class="lead">
-            purplemux es una herramienta self-hosted que corre localmente.
-            Datos de sesión, ajustes e historial viven únicamente en <code>~/.purplemux/</code> y nunca abandonan tu máquina.
-            El código está bajo MIT — léelo, modifícalo, contribuye.
+            O purplemux é uma ferramenta self-hosted que roda localmente.
+            Dados de sessão, configurações e histórico ficam só em <code>~/.purplemux/</code> e nunca saem da sua máquina.
+            O código é MIT — leia, modifique, contribua.
           </p>
           <div class="selfhost-badges">
             <span class="selfhost-badge"><strong>MIT</strong> License</span>
             <span class="selfhost-badge"><strong>100%</strong> local</span>
-            <span class="selfhost-badge"><strong>0</strong> telemetría</span>
+            <span class="selfhost-badge"><strong>0</strong> telemetria</span>
           </div>
         </div>
         <div class="selfhost-visual">
@@ -1053,83 +1009,14 @@
 
   </main>
 
-  <footer>
-    <div class="foot-brand">
-      <svg class="brand-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
-      <span class="wordmark"><strong>purple</strong>mux</span>
-      <span class="muted" style="font-weight:400; margin-left:0.4rem">MIT License</span>
-      <span class="foot-tagline"><span class="pct">100%</span> Claude Code · <span class="pct">0%</span> keyboard</span>
-    </div>
-    <div class="foot-links">
-      <a href="https://github.com/subicura/purplemux" target="_blank" rel="noopener">GitHub</a>
-      <a href="https://github.com/subicura/purplemux/releases" target="_blank" rel="noopener">Releases</a>
-      <a href="https://github.com/subicura/purplemux/blob/main/README.md" target="_blank" rel="noopener">README</a>
-      <a href="https://github.com/subicura/purplemux/issues" target="_blank" rel="noopener">Issues</a>
-    </div>
-  </footer>
-
-  <script>
-    (function () {
-      var sentinel = document.querySelector('.hero-eyebrow');
-      var navBrand = document.querySelector('.nav-brand');
-      if (sentinel && navBrand && 'IntersectionObserver' in window) {
-        new IntersectionObserver(function (entries) {
-          navBrand.classList.toggle('is-hidden', entries[0].isIntersecting);
-        }, { rootMargin: '-52px 0px 0px 0px', threshold: 0 }).observe(sentinel);
-      } else if (navBrand) {
-        navBrand.classList.remove('is-hidden');
-      }
-
-      var showcase = document.querySelector('.stats-showcase');
-      if (showcase && 'IntersectionObserver' in window) {
-        new IntersectionObserver(function (entries, obs) {
-          entries.forEach(function (e) {
-            if (e.isIntersecting) {
-              showcase.classList.add('is-visible');
-              obs.unobserve(showcase);
-            }
-          });
-        }, { rootMargin: '0px 0px -15% 0px', threshold: 0.2 }).observe(showcase);
-      } else if (showcase) {
-        showcase.classList.add('is-visible');
-      }
-
-      var previewMobile = document.querySelector('.preview-mobile');
-      if (previewMobile && 'IntersectionObserver' in window) {
-        new IntersectionObserver(function (entries, obs) {
-          entries.forEach(function (e) {
-            if (e.isIntersecting) {
-              obs.unobserve(previewMobile);
-              var delay = window.matchMedia('(max-width: 767px)').matches ? 0 : 500;
-              setTimeout(function () {
-                previewMobile.classList.add('is-visible');
-              }, delay);
-            }
-          });
-        }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 }).observe(previewMobile);
-      } else if (previewMobile) {
-        previewMobile.classList.add('is-visible');
-      }
-
-
-      var langLinks = document.querySelectorAll('.nav-lang .lang-opt');
-      for (var i = 0; i < langLinks.length; i++) {
-        langLinks[i].addEventListener('click', function () {
-          var l = this.getAttribute('lang');
-          if (l) { try { localStorage.setItem('pmx-locale', l); } catch (_) {} }
-        });
-      }
-    })();
-  </script>
-
   <div class="arch-modal" id="archModal" hidden>
     <div class="arch-modal-backdrop" data-arch-close></div>
     <div class="arch-modal-card" role="dialog" aria-modal="true" aria-labelledby="archModalTitle">
-      <button type="button" class="arch-modal-close" data-arch-close aria-label="Cerrar">
+      <button type="button" class="arch-modal-close" data-arch-close aria-label="Fechar">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M6 18L18 6"/></svg>
       </button>
-      <h3 id="archModalTitle">Elige tu Mac</h3>
-      <p class="arch-modal-sub">Selecciona la versión que coincide con tu procesador.</p>
+      <h3 id="archModalTitle">Escolha seu Mac</h3>
+      <p class="arch-modal-sub">Selecione a versão que combina com seu processador.</p>
       <div class="arch-modal-options">
         <button type="button" class="arch-option" data-arch="arm64" data-ph-capture-attribute-cta="download_arm64">
           <span class="arch-option-title">Apple Silicon</span>
@@ -1142,43 +1029,3 @@
       </div>
     </div>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/swiper@12/swiper-bundle.min.js"></script>
-  <script>
-    (function () {
-      if (!window.Swiper) return;
-      new Swiper('.preview-desktop .swiper', {
-        effect: 'fade',
-        fadeEffect: { crossFade: true },
-        loop: true,
-        allowTouchMove: false,
-        observer: true,
-        observeParents: true,
-        autoplay: {
-          delay: 6000,
-          disableOnInteraction: false,
-          pauseOnMouseEnter: true,
-        },
-        pagination: {
-          el: '.preview-desktop .swiper-pagination',
-          clickable: true,
-        },
-      });
-      new Swiper('.preview-mobile .swiper', {
-        effect: 'fade',
-        fadeEffect: { crossFade: true },
-        loop: true,
-        simulateTouch: false,
-        observer: true,
-        observeParents: true,
-        autoplay: {
-          delay: 3000,
-          disableOnInteraction: false,
-        },
-      });
-    })();
-  </script>
-
-  <script src="../download.js?v=1" defer></script>
-
-</body>
-</html>

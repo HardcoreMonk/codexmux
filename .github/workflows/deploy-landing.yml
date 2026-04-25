@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'landing/**'
+      - 'landing-src/**'
+      - 'eleventy.config.js'
       - '.github/workflows/deploy-landing.yml'
   workflow_dispatch:
 
@@ -25,9 +26,16 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm build:landing
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: ./landing
+          path: ./_site
       - id: deploy
         uses: actions/deploy-pages@v5

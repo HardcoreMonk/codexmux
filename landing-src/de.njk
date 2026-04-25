@@ -1,60 +1,16 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script>try{localStorage.setItem('pmx-locale','de');}catch(_){}</script>
-  <title>purplemux — Ein web-nativer Terminal-Multiplexer für Claude Code</title>
-  <meta name="description" content="Mehrere Claude Code Sessions in einem Dashboard. tmux-basiert, web-nativ, mobil bereit. MIT Open Source." />
-  <meta property="og:title" content="purplemux — Ein web-nativer Terminal-Multiplexer für Claude Code" />
-  <meta property="og:description" content="Mehrere Claude Code Sessions in einem Dashboard. tmux-basiert, web-nativ, mobil bereit. MIT Open Source." />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://subicura.com/purplemux/de/" />
-  <meta property="og:locale" content="de_DE" />
-  <meta property="og:locale:alternate" content="en_US" />
-  <meta property="og:image" content="https://subicura.com/purplemux/images/og-image.png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="purplemux" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="purplemux — Ein web-nativer Terminal-Multiplexer für Claude Code" />
-  <meta name="twitter:description" content="Mehrere Claude Code Sessions in einem Dashboard. tmux-basiert, web-nativ, mobil bereit. MIT Open Source." />
-  <meta name="twitter:image" content="https://subicura.com/purplemux/images/og-image.png" />
-  <link rel="canonical" href="https://subicura.com/purplemux/de/" />
-  <link rel="alternate" hreflang="en" href="https://subicura.com/purplemux/" />
-  <link rel="alternate" hreflang="ko" href="https://subicura.com/purplemux/ko/" />
-  <link rel="alternate" hreflang="ja" href="https://subicura.com/purplemux/ja/" />
-  <link rel="alternate" hreflang="zh-CN" href="https://subicura.com/purplemux/zh-CN/" />
-  <link rel="alternate" hreflang="zh-TW" href="https://subicura.com/purplemux/zh-TW/" />
-  <link rel="alternate" hreflang="de" href="https://subicura.com/purplemux/de/" />
-  <link rel="alternate" hreflang="es" href="https://subicura.com/purplemux/es/" />
-  <link rel="alternate" hreflang="fr" href="https://subicura.com/purplemux/fr/" />
-  <link rel="alternate" hreflang="pt-BR" href="https://subicura.com/purplemux/pt-BR/" />
-  <link rel="alternate" hreflang="ru" href="https://subicura.com/purplemux/ru/" />
-  <link rel="alternate" hreflang="tr" href="https://subicura.com/purplemux/tr/" />
-  <link rel="alternate" hreflang="x-default" href="https://subicura.com/purplemux/" />
-  <link rel="icon" href="../images/favicon.ico" sizes="any" />
-  <link rel="icon" type="image/png" sizes="32x32" href="../images/favicon-32x32.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="../images/favicon-16x16.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="../images/apple-touch-icon.png" />
-  <meta name="theme-color" content="#131313" />
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&display=swap" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@12/swiper-bundle.min.css" />
-  <link rel="stylesheet" href="../style.css?v=71" />
-  <script>
-    !function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init os ds Ie us vs ss ls capture calculateEventProperties register register_once register_for_session unregister unregister_for_session ws getFeatureFlag getFeatureFlagPayload getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty bs ps createPersonProfile setInternalOrTestUser ys es $s opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing cs debug M gs getPageViewId captureTraceFeedback captureTraceMetric Qr".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
-    posthog.init('phc_qBeyLuYqK33QZTT39cJnGnzG7DrByc3eP9c9wUuDdBeP', {
-      api_host: 'https://us.i.posthog.com',
-      defaults: '2026-01-30',
-    });
-  </script>
-</head>
-<body>
-
+---
+layout: layouts/base.njk
+lang: de
+title: "purplemux — Ein web-nativer Terminal-Multiplexer für Claude Code"
+description: "Mehrere Claude Code Sessions in einem Dashboard. tmux-basiert, web-nativ, mobil bereit. MIT Open Source."
+canonical: https://subicura.com/purplemux/de/
+ogUrl: https://subicura.com/purplemux/de/
+ogLocale: de_DE
+ogLocaleAlternate: en_US
+permalink: /de/index.html
+assetPrefix: "../"
+isRoot: false
+---
   <nav class="nav" data-ph-capture-attribute-location="nav">
     <a href="#top" class="nav-brand is-hidden">
       <svg class="brand-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
@@ -1053,75 +1009,6 @@
 
   </main>
 
-  <footer>
-    <div class="foot-brand">
-      <svg class="brand-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
-      <span class="wordmark"><strong>purple</strong>mux</span>
-      <span class="muted" style="font-weight:400; margin-left:0.4rem">MIT License</span>
-      <span class="foot-tagline"><span class="pct">100%</span> Claude Code · <span class="pct">0%</span> keyboard</span>
-    </div>
-    <div class="foot-links">
-      <a href="https://github.com/subicura/purplemux" target="_blank" rel="noopener">GitHub</a>
-      <a href="https://github.com/subicura/purplemux/releases" target="_blank" rel="noopener">Releases</a>
-      <a href="https://github.com/subicura/purplemux/blob/main/README.md" target="_blank" rel="noopener">README</a>
-      <a href="https://github.com/subicura/purplemux/issues" target="_blank" rel="noopener">Issues</a>
-    </div>
-  </footer>
-
-  <script>
-    (function () {
-      var sentinel = document.querySelector('.hero-eyebrow');
-      var navBrand = document.querySelector('.nav-brand');
-      if (sentinel && navBrand && 'IntersectionObserver' in window) {
-        new IntersectionObserver(function (entries) {
-          navBrand.classList.toggle('is-hidden', entries[0].isIntersecting);
-        }, { rootMargin: '-52px 0px 0px 0px', threshold: 0 }).observe(sentinel);
-      } else if (navBrand) {
-        navBrand.classList.remove('is-hidden');
-      }
-
-      var showcase = document.querySelector('.stats-showcase');
-      if (showcase && 'IntersectionObserver' in window) {
-        new IntersectionObserver(function (entries, obs) {
-          entries.forEach(function (e) {
-            if (e.isIntersecting) {
-              showcase.classList.add('is-visible');
-              obs.unobserve(showcase);
-            }
-          });
-        }, { rootMargin: '0px 0px -15% 0px', threshold: 0.2 }).observe(showcase);
-      } else if (showcase) {
-        showcase.classList.add('is-visible');
-      }
-
-      var previewMobile = document.querySelector('.preview-mobile');
-      if (previewMobile && 'IntersectionObserver' in window) {
-        new IntersectionObserver(function (entries, obs) {
-          entries.forEach(function (e) {
-            if (e.isIntersecting) {
-              obs.unobserve(previewMobile);
-              var delay = window.matchMedia('(max-width: 767px)').matches ? 0 : 500;
-              setTimeout(function () {
-                previewMobile.classList.add('is-visible');
-              }, delay);
-            }
-          });
-        }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 }).observe(previewMobile);
-      } else if (previewMobile) {
-        previewMobile.classList.add('is-visible');
-      }
-
-
-      var langLinks = document.querySelectorAll('.nav-lang .lang-opt');
-      for (var i = 0; i < langLinks.length; i++) {
-        langLinks[i].addEventListener('click', function () {
-          var l = this.getAttribute('lang');
-          if (l) { try { localStorage.setItem('pmx-locale', l); } catch (_) {} }
-        });
-      }
-    })();
-  </script>
-
   <div class="arch-modal" id="archModal" hidden>
     <div class="arch-modal-backdrop" data-arch-close></div>
     <div class="arch-modal-card" role="dialog" aria-modal="true" aria-labelledby="archModalTitle">
@@ -1142,43 +1029,3 @@
       </div>
     </div>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/swiper@12/swiper-bundle.min.js"></script>
-  <script>
-    (function () {
-      if (!window.Swiper) return;
-      new Swiper('.preview-desktop .swiper', {
-        effect: 'fade',
-        fadeEffect: { crossFade: true },
-        loop: true,
-        allowTouchMove: false,
-        observer: true,
-        observeParents: true,
-        autoplay: {
-          delay: 6000,
-          disableOnInteraction: false,
-          pauseOnMouseEnter: true,
-        },
-        pagination: {
-          el: '.preview-desktop .swiper-pagination',
-          clickable: true,
-        },
-      });
-      new Swiper('.preview-mobile .swiper', {
-        effect: 'fade',
-        fadeEffect: { crossFade: true },
-        loop: true,
-        simulateTouch: false,
-        observer: true,
-        observeParents: true,
-        autoplay: {
-          delay: 3000,
-          disableOnInteraction: false,
-        },
-      });
-    })();
-  </script>
-
-  <script src="../download.js?v=1" defer></script>
-
-</body>
-</html>
