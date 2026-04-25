@@ -7,11 +7,12 @@ import useTimeline from '@/hooks/use-timeline';
 import useSessionList from '@/hooks/use-session-list';
 import useStartingPrompt from '@/hooks/use-starting-prompt';
 import useTabStore, { selectSessionView } from '@/hooks/use-tab-store';
+import { useSessionMetaCompute } from '@/hooks/use-session-meta';
 import SessionListView from '@/components/features/workspace/session-list-view';
 import SessionEmptyView from '@/components/features/workspace/session-empty-view';
 import BypassPromptCard from '@/components/features/workspace/bypass-prompt-card';
 import TimelineView from '@/components/features/timeline/timeline-view';
-import SessionMetaBar from '@/components/features/workspace/session-meta-bar';
+import SessionMetaBar, { SessionMetaBarSkeleton } from '@/components/features/workspace/session-meta-bar';
 
 interface IClaudeCodePanelProps {
   tabId: string;
@@ -46,6 +47,7 @@ const ClaudeCodePanel = ({
   const storeCliState = useTabStore((s) => s.tabs[tabId]?.cliState ?? 'inactive');
   const compactingSince = useTabStore((s) => s.tabs[tabId]?.compactingSince ?? null);
   const view = useTabStore((s) => selectSessionView(s.tabs, tabId));
+  const cachedSessionMeta = useTabStore((s) => s.tabs[tabId]?.sessionMetaCache ?? null);
 
   const handleResumeStarted = useCallback(
     () => {
@@ -157,6 +159,15 @@ const ClaudeCodePanel = ({
 
   const startingPromptOptions = useStartingPrompt(view === 'check', sessionName);
 
+  const isHeaderLoading = claudeProcess === null || (entries.length === 0 && isTimelineLoading);
+  const freshMeta = useSessionMetaCompute(entries, sessionSummary, initMeta, sessionStats);
+
+  useEffect(() => {
+    if (!isHeaderLoading) {
+      useTabStore.getState().setSessionMetaCache(tabId, { meta: freshMeta, sessionId, jsonlPath });
+    }
+  }, [isHeaderLoading, freshMeta, sessionId, jsonlPath, tabId]);
+
   const handleSelectSession = useCallback(
     (sid: string) => {
       if (resumingSessionId) return;
@@ -171,14 +182,6 @@ const ClaudeCodePanel = ({
       <div className={cn('flex h-full w-full flex-col items-center justify-center gap-3 text-muted-foreground', className)}>
         <span className="text-sm font-medium">{t('installClaude')}</span>
         <span className="text-xs">{t('installClaudeHint')}</span>
-      </div>
-    );
-  }
-
-  if (claudeProcess === null && view !== 'check') {
-    return (
-      <div className={cn('flex h-full w-full flex-col items-center justify-center animate-delayed-fade-in', className)}>
-        <Spinner className="h-4 w-4 text-muted-foreground" />
       </div>
     );
   }
@@ -216,7 +219,7 @@ const ClaudeCodePanel = ({
   }
 
   if (view === 'session-list') {
-    if (isSessionListLoading && sessions.length === 0) {
+    if (claudeProcess === null || (isSessionListLoading && sessions.length === 0)) {
       return (
         <div className={cn('flex h-full w-full flex-col items-center justify-center animate-delayed-fade-in', className)}>
           <Spinner className="h-4 w-4 text-muted-foreground" />
@@ -248,9 +251,22 @@ const ClaudeCodePanel = ({
     );
   }
 
+  const displayMeta = isHeaderLoading
+    ? cachedSessionMeta
+    : { meta: freshMeta, sessionId, jsonlPath };
+
   return (
     <div className={cn('flex min-h-0 w-full flex-1 flex-col', className)}>
-      <SessionMetaBar entries={entries} sessionName={sessionName} sessionId={sessionId} jsonlPath={jsonlPath} sessionSummary={sessionSummary} initMeta={initMeta} sessionStats={sessionStats} />
+      {displayMeta ? (
+        <SessionMetaBar
+          meta={displayMeta.meta}
+          sessionName={sessionName}
+          sessionId={displayMeta.sessionId}
+          jsonlPath={displayMeta.jsonlPath}
+        />
+      ) : (
+        <SessionMetaBarSkeleton />
+      )}
       <div className="min-h-0 flex-1">
         <TimelineView
           entries={entries}

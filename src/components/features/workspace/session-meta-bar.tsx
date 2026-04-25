@@ -1,28 +1,38 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import { MetaCompact, MetaDetail } from '@/components/features/workspace/session-meta-content';
-import useSessionMeta from '@/hooks/use-session-meta';
+import type { ISessionMetaData } from '@/hooks/use-session-meta';
 import useGitBranch from '@/hooks/use-git-branch';
 import useGitStatus from '@/hooks/use-git-status';
 import useTmuxInfo from '@/hooks/use-tmux-info';
 import useMessageCounts from '@/hooks/use-message-counts';
-import type { ITimelineEntry, IInitMeta, ISessionStats } from '@/types/timeline';
+
+export const SessionMetaBarSkeleton = () => (
+  <div className="shrink-0 border-b">
+    <div className="flex items-center px-4 py-1.5">
+      <div className="flex h-5 items-center gap-3">
+        <Skeleton className="h-3 w-40" />
+        <Skeleton className="h-3 w-20" />
+      </div>
+    </div>
+  </div>
+);
 
 interface ISessionMetaBarProps {
-  entries: ITimelineEntry[];
+  meta: ISessionMetaData;
   sessionName: string;
   sessionId: string | null;
   jsonlPath: string | null;
-  sessionSummary?: string;
-  initMeta?: IInitMeta;
-  sessionStats?: ISessionStats | null;
 }
 
 const RELATIVE_TIME_INTERVAL_MS = 60_000;
 
-const SessionMetaBar = ({ entries, sessionName, sessionId, jsonlPath, sessionSummary, initMeta, sessionStats }: ISessionMetaBarProps) => {
-  const { meta, isExpanded, toggleExpanded, collapse } = useSessionMeta(entries, sessionSummary, initMeta, sessionStats);
+const SessionMetaBar = ({ meta, sessionName, sessionId, jsonlPath }: ISessionMetaBarProps) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const toggleExpanded = useCallback(() => setIsExpanded((prev) => !prev), []);
+  const collapse = useCallback(() => setIsExpanded(false), []);
   const messageCounts = useMessageCounts(jsonlPath, isExpanded);
   const { branch, isLoading: isBranchLoading } = useGitBranch(sessionName);
   const { status: gitStatus } = useGitStatus(sessionName, isExpanded);

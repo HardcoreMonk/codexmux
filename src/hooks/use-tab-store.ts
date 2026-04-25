@@ -2,8 +2,15 @@ import { create } from 'zustand';
 import type { TCliState } from '@/types/timeline';
 import type { ICurrentAction, ILastEvent, TTabDisplayStatus, TTerminalStatus } from '@/types/status';
 import type { TPanelType } from '@/types/terminal';
+import type { ISessionMetaData } from '@/hooks/use-session-meta';
 
 export type TSessionView = 'session-list' | 'check' | 'timeline';
+
+export interface ISessionMetaCache {
+  meta: ISessionMetaData;
+  sessionId: string | null;
+  jsonlPath: string | null;
+}
 
 export interface ITabState {
   terminalConnected: boolean;
@@ -31,6 +38,7 @@ export interface ITabState {
   lastEvent?: ILastEvent | null;
   eventSeq?: number;
   localUpdatedAt?: number;
+  sessionMetaCache?: ISessionMetaCache | null;
 }
 
 const SYNC_GRACE_MS = 30_000;
@@ -59,6 +67,7 @@ interface ITabStore {
   setClaudeInstalled: (tabId: string, installed: boolean) => void;
   setSessionView: (tabId: string, view: TSessionView) => void;
   setTimelineLoading: (tabId: string, loading: boolean) => void;
+  setSessionMetaCache: (tabId: string, cache: ISessionMetaCache) => void;
   cancelTab: (tabId: string) => void;
   dismissTab: (tabId: string) => void;
   setWorkspaceId: (tabId: string, workspaceId: string) => void;
@@ -144,6 +153,22 @@ const useTabStore = create<ITabStore>((set) => ({
       const prev = state.tabs[tabId];
       if (!prev || prev.isTimelineLoading === loading) return state;
       return { tabs: updateTab(state.tabs, tabId, { isTimelineLoading: loading }) };
+    }),
+
+  setSessionMetaCache: (tabId, cache) =>
+    set((state) => {
+      const prev = state.tabs[tabId];
+      if (!prev) return state;
+      const cached = prev.sessionMetaCache;
+      if (
+        cached
+        && cached.sessionId === cache.sessionId
+        && cached.jsonlPath === cache.jsonlPath
+        && cached.meta === cache.meta
+      ) {
+        return state;
+      }
+      return { tabs: updateTab(state.tabs, tabId, { sessionMetaCache: cache }) };
     }),
 
   cancelTab: (tabId) =>

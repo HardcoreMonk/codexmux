@@ -118,23 +118,29 @@ const computeMeta = (
   }, sessionStats);
 };
 
+export const useSessionMetaCompute = (
+  entries: ITimelineEntry[],
+  sessionSummary?: string,
+  initMeta?: IInitMeta,
+  sessionStats?: ISessionStats | null,
+): ISessionMetaData => {
+  const t = useTranslations('session');
+  const newSessionTitle = t('newSessionTitle');
+  return useMemo(() => {
+    const computed = computeMeta(entries, sessionStats, initMeta, newSessionTitle);
+    if (sessionSummary) return { ...computed, title: sessionSummary };
+    return computed;
+  }, [entries, sessionSummary, initMeta, sessionStats, newSessionTitle]);
+};
+
 const useSessionMeta = (
   entries: ITimelineEntry[],
   sessionSummary?: string,
   initMeta?: IInitMeta,
   sessionStats?: ISessionStats | null,
 ): IUseSessionMetaReturn => {
-  const t = useTranslations('session');
-  const newSessionTitle = t('newSessionTitle');
+  const meta = useSessionMetaCompute(entries, sessionSummary, initMeta, sessionStats);
   const [isExpanded, setIsExpanded] = useState(false);
-
-  const meta = useMemo(() => {
-    const computed = computeMeta(entries, sessionStats, initMeta, newSessionTitle);
-    if (sessionSummary) {
-      return { ...computed, title: sessionSummary };
-    }
-    return computed;
-  }, [entries, sessionSummary, initMeta, sessionStats, newSessionTitle]);
 
   const toggleExpanded = useCallback(() => {
     setIsExpanded((prev) => !prev);
