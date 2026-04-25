@@ -1,0 +1,18 @@
+---
+title: 文档
+description: 运行、定制和扩展 purplemux 所需的一切。
+eyebrow: 从这里开始
+permalink: /zh-CN/docs/index.html
+---
+<p>这里涵盖安装、日常使用以及内部实现。如果你是第一次接触,先阅读 <a href="/purplemux/zh-CN/docs/quickstart/">快速开始</a>。</p>
+
+<div class="doc-home-grid">
+{%- for group in docsNav %}
+{%- for item in group.items %}
+  <a class="doc-home-card" href="/purplemux/zh-CN/docs/{{ item.slug }}/">
+    <span class="doc-home-card-title">{{ item.label['zh-CN'] }}</span>
+    <span class="doc-home-card-desc">{{ group.group['zh-CN'] }}</span>
+  </a>
+{%- endfor %}
+{%- endfor %}
+</div>

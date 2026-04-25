@@ -1,0 +1,45 @@
+---
+title: Klavye kısayolları
+description: Tüm bağlamalar — src/lib/keyboard-shortcuts.ts dosyasından otomatik üretilir.
+eyebrow: Referans
+permalink: /tr/docs/keyboard-shortcuts/index.html
+---
+<p>Aşağıdaki bağlamalar doğrudan <code>src/lib/keyboard-shortcuts.ts</code> dosyasından okunarak üretilir. Her dağıtımda yeniden derlendiği için uygulamayla daima senkronize kalır.</p>
+
+<p>macOS'ta düzenleyici tuşlar <kbd>⌘</kbd> (Cmd), <kbd>⌃</kbd> (Ctrl), <kbd>⌥</kbd> (Option), <kbd>⇧</kbd> (Shift) olarak gösterilir. Linux / Windows'ta aynı eylemler <kbd>Ctrl</kbd> / <kbd>Alt</kbd> / <kbd>Shift</kbd> kullanır.</p>
+
+<div class="callout callout--tip">
+  <div class="callout-title">Özelleştir</div>
+  <div class="callout-body"><strong>Ayarlar → Kısayollar</strong>'ı açarak düzenlenebilir tüm eylemleri yeniden atayın. Devre dışı bağlamalar kaynakta <code>editable: false</code> olarak görünür ve sayı satırı kısayolları için ayrılmıştır.</div>
+</div>
+
+{%- set localizedLabels = {
+  'Workspace': 'Çalışma alanı',
+  'Tabs': 'Sekmeler',
+  'Panes & splits': 'Paneller & bölmeler',
+  'Panel': 'Panel',
+  'Views & modes': 'Görünümler & modlar',
+  'App': 'Uygulama'
+} %}
+
+{%- for group in shortcuts %}
+<h2 id="{{ group.key }}">{{ localizedLabels[group.label] or group.label }}</h2>
+<table class="shortcut-table">
+  <thead>
+    <tr>
+      <th>Eylem</th>
+      <th>macOS</th>
+      <th>Linux / Windows</th>
+    </tr>
+  </thead>
+  <tbody>
+{%- for a in group.actions %}
+    <tr>
+      <td>{{ a.label }}</td>
+      <td><kbd>{{ a.mac }}</kbd></td>
+      <td><kbd>{{ a.other }}</kbd></td>
+    </tr>
+{%- endfor %}
+  </tbody>
+</table>
+{%- endfor %}

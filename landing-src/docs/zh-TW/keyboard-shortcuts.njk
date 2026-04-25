@@ -1,0 +1,45 @@
+---
+title: 鍵盤快速鍵
+description: 所有按鍵繫結 — 由 src/lib/keyboard-shortcuts.ts 自動產生。
+eyebrow: 參考資料
+permalink: /zh-TW/docs/keyboard-shortcuts/index.html
+---
+<p>以下繫結直接從 <code>src/lib/keyboard-shortcuts.ts</code> 讀取產生。每次部署時都會重新建置，因此永遠與應用程式保持同步。</p>
+
+<p>在 macOS 上，輔助鍵會顯示為 <kbd>⌘</kbd>（Cmd）、<kbd>⌃</kbd>（Ctrl）、<kbd>⌥</kbd>（Option）、<kbd>⇧</kbd>（Shift）。在 Linux / Windows 上，相同動作則使用 <kbd>Ctrl</kbd> / <kbd>Alt</kbd> / <kbd>Shift</kbd>。</p>
+
+<div class="callout callout--tip">
+  <div class="callout-title">自訂</div>
+  <div class="callout-body">前往 <strong>設定 → 快速鍵</strong> 即可重新指派任何可編輯的動作。停用的繫結（在原始碼中標記為 <code>editable: false</code>）保留給數字列快速鍵專用。</div>
+</div>
+
+{%- set localizedLabels = {
+  'Workspace': '工作區',
+  'Tabs': '分頁',
+  'Panes & splits': '窗格與分割',
+  'Panel': '面板',
+  'Views & modes': '檢視與模式',
+  'App': '應用程式'
+} %}
+
+{%- for group in shortcuts %}
+<h2 id="{{ group.key }}">{{ localizedLabels[group.label] or group.label }}</h2>
+<table class="shortcut-table">
+  <thead>
+    <tr>
+      <th>動作</th>
+      <th>macOS</th>
+      <th>Linux / Windows</th>
+    </tr>
+  </thead>
+  <tbody>
+{%- for a in group.actions %}
+    <tr>
+      <td>{{ a.label }}</td>
+      <td><kbd>{{ a.mac }}</kbd></td>
+      <td><kbd>{{ a.other }}</kbd></td>
+    </tr>
+{%- endfor %}
+  </tbody>
+</table>
+{%- endfor %}

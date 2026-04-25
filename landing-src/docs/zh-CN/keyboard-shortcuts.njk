@@ -1,0 +1,45 @@
+---
+title: 键盘快捷键
+description: 全部按键绑定 — 自动从 src/lib/keyboard-shortcuts.ts 生成。
+eyebrow: 参考
+permalink: /zh-CN/docs/keyboard-shortcuts/index.html
+---
+<p>下面这些绑定直接从 <code>src/lib/keyboard-shortcuts.ts</code> 读取生成。每次部署都会重新构建,因此始终与应用保持一致。</p>
+
+<p>在 macOS 上,修饰键显示为 <kbd>⌘</kbd>(Cmd)、<kbd>⌃</kbd>(Ctrl)、<kbd>⌥</kbd>(Option)、<kbd>⇧</kbd>(Shift)。在 Linux / Windows 上,相同的操作使用 <kbd>Ctrl</kbd> / <kbd>Alt</kbd> / <kbd>Shift</kbd>。</p>
+
+<div class="callout callout--tip">
+  <div class="callout-title">自定义</div>
+  <div class="callout-body">打开 <strong>设置 → 快捷键</strong> 即可重新绑定任何可编辑的操作。带 <code>editable: false</code> 的禁用绑定保留给数字行专用快捷键。</div>
+</div>
+
+{%- set localizedLabels = {
+  'Workspace': '工作区',
+  'Tabs': '标签页',
+  'Panes & splits': '窗格 & 分割',
+  'Panel': '面板',
+  'Views & modes': '视图 & 模式',
+  'App': '应用'
+} %}
+
+{%- for group in shortcuts %}
+<h2 id="{{ group.key }}">{{ localizedLabels[group.label] or group.label }}</h2>
+<table class="shortcut-table">
+  <thead>
+    <tr>
+      <th>操作</th>
+      <th>macOS</th>
+      <th>Linux / Windows</th>
+    </tr>
+  </thead>
+  <tbody>
+{%- for a in group.actions %}
+    <tr>
+      <td>{{ a.label }}</td>
+      <td><kbd>{{ a.mac }}</kbd></td>
+      <td><kbd>{{ a.other }}</kbd></td>
+    </tr>
+{%- endfor %}
+  </tbody>
+</table>
+{%- endfor %}

@@ -1,0 +1,18 @@
+---
+title: Dokümantasyon
+description: purplemux'ı çalıştırmak, özelleştirmek ve genişletmek için ihtiyacın olan her şey.
+eyebrow: Buradan başla
+permalink: /tr/docs/index.html
+---
+<p>Bu rehberler kurulumdan günlük kullanıma, içerideki yapıya kadar her şeyi anlatır. Yeniyseniz <a href="/purplemux/tr/docs/quickstart/">Hızlı başlangıç</a> ile başlayın.</p>
+
+<div class="doc-home-grid">
+{%- for group in docsNav %}
+{%- for item in group.items %}
+  <a class="doc-home-card" href="/purplemux/tr/docs/{{ item.slug }}/">
+    <span class="doc-home-card-title">{{ item.label.tr }}</span>
+    <span class="doc-home-card-desc">{{ group.group.tr }}</span>
+  </a>
+{%- endfor %}
+{%- endfor %}
+</div>

@@ -1,0 +1,45 @@
+---
+title: Tastenkürzel
+description: Alle Bindings — automatisch generiert aus src/lib/keyboard-shortcuts.ts.
+eyebrow: Referenz
+permalink: /de/docs/keyboard-shortcuts/index.html
+---
+<p>Die Bindings unten werden direkt aus <code>src/lib/keyboard-shortcuts.ts</code> generiert. Die Seite wird bei jedem Deploy neu gebaut, ist also immer mit der App synchron.</p>
+
+<p>Auf macOS werden die Modifier als <kbd>⌘</kbd> (Cmd), <kbd>⌃</kbd> (Ctrl), <kbd>⌥</kbd> (Option), <kbd>⇧</kbd> (Shift) angezeigt. Auf Linux/Windows werden dieselben Aktionen mit <kbd>Ctrl</kbd>/<kbd>Alt</kbd>/<kbd>Shift</kbd> ausgeführt.</p>
+
+<div class="callout callout--tip">
+  <div class="callout-title">Anpassen</div>
+  <div class="callout-body">Öffne <strong>Einstellungen → Tastenkürzel</strong>, um jede editierbare Aktion neu zu belegen. Deaktivierte Bindings (<code>editable: false</code>) sind für die Zahlenreihen-Shortcuts reserviert.</div>
+</div>
+
+{%- set localizedLabels = {
+  'Workspace': 'Workspace',
+  'Tabs': 'Tabs',
+  'Panes & splits': 'Panels & Splits',
+  'Panel': 'Panel',
+  'Views & modes': 'Ansichten & Modi',
+  'App': 'App'
+} %}
+
+{%- for group in shortcuts %}
+<h2 id="{{ group.key }}">{{ localizedLabels[group.label] or group.label }}</h2>
+<table class="shortcut-table">
+  <thead>
+    <tr>
+      <th>Aktion</th>
+      <th>macOS</th>
+      <th>Linux / Windows</th>
+    </tr>
+  </thead>
+  <tbody>
+{%- for a in group.actions %}
+    <tr>
+      <td>{{ a.label }}</td>
+      <td><kbd>{{ a.mac }}</kbd></td>
+      <td><kbd>{{ a.other }}</kbd></td>
+    </tr>
+{%- endfor %}
+  </tbody>
+</table>
+{%- endfor %}

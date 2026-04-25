@@ -79,7 +79,7 @@
       <span class="foot-tagline"><span class="pct">100%</span> Claude Code · <span class="pct">0%</span> keyboard</span>
     </div>
     <div class="foot-links">
-      <a href="{% if lang == 'ko' %}/purplemux/ko/docs/{% else %}/purplemux/docs/{% endif %}">Docs</a>
+      <a href="{% if lang and lang != 'en' %}/purplemux/{{ lang }}/docs/{% else %}/purplemux/docs/{% endif %}">Docs</a>
       <a href="https://github.com/subicura/purplemux" target="_blank" rel="noopener">GitHub</a>
       <a href="https://github.com/subicura/purplemux/releases" target="_blank" rel="noopener">Releases</a>
       <a href="https://github.com/subicura/purplemux/blob/main/README.md" target="_blank" rel="noopener">README</a>

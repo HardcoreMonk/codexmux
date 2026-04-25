@@ -1,0 +1,45 @@
+---
+title: キーボードショートカット
+description: すべてのバインディング — src/lib/keyboard-shortcuts.ts から自動生成。
+eyebrow: リファレンス
+permalink: /ja/docs/keyboard-shortcuts/index.html
+---
+<p>以下のバインディングは <code>src/lib/keyboard-shortcuts.ts</code> から直接読み込んで生成されます。デプロイのたびに再ビルドされるため、常にアプリと同期しています。</p>
+
+<p>macOS では <kbd>⌘</kbd>(Cmd)、<kbd>⌃</kbd>(Ctrl)、<kbd>⌥</kbd>(Option)、<kbd>⇧</kbd>(Shift) として表示されます。Linux / Windows では同じ操作を <kbd>Ctrl</kbd> / <kbd>Alt</kbd> / <kbd>Shift</kbd> で利用します。</p>
+
+<div class="callout callout--tip">
+  <div class="callout-title">カスタマイズ</div>
+  <div class="callout-body"><strong>設定 → ショートカット</strong> から、編集可能なすべてのアクションを再割り当てできます。無効化されたバインディング (<code>editable: false</code>) は数字キー行のショートカット専用に予約されています。</div>
+</div>
+
+{%- set localizedLabels = {
+  'Workspace': 'ワークスペース',
+  'Tabs': 'タブ',
+  'Panes & splits': 'ペイン & 分割',
+  'Panel': 'パネル',
+  'Views & modes': 'ビュー & モード',
+  'App': 'アプリ'
+} %}
+
+{%- for group in shortcuts %}
+<h2 id="{{ group.key }}">{{ localizedLabels[group.label] or group.label }}</h2>
+<table class="shortcut-table">
+  <thead>
+    <tr>
+      <th>アクション</th>
+      <th>macOS</th>
+      <th>Linux / Windows</th>
+    </tr>
+  </thead>
+  <tbody>
+{%- for a in group.actions %}
+    <tr>
+      <td>{{ a.label }}</td>
+      <td><kbd>{{ a.mac }}</kbd></td>
+      <td><kbd>{{ a.other }}</kbd></td>
+    </tr>
+{%- endfor %}
+  </tbody>
+</table>
+{%- endfor %}

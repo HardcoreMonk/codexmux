@@ -18,12 +18,31 @@ module.exports = function (eleventyConfig) {
     };
   });
 
-  eleventyConfig.addFilter('swapDocsLocale', (url) => {
-    if (typeof url !== 'string') return '/purplemux/docs/';
-    if (url.startsWith('/ko/docs/')) return '/purplemux/docs/' + url.slice(9);
-    if (url.startsWith('/docs/')) return '/purplemux/ko/docs/' + url.slice(6);
-    return '/purplemux' + url;
-  });
+  const LOCALE_CODES = [
+    'en', 'ko', 'ja', 'zh-CN', 'zh-TW', 'de', 'es', 'fr', 'pt-BR', 'ru', 'tr',
+  ];
+
+  // Strip any supported locale prefix from a docs URL and return just the
+  // tail (e.g. "quickstart/" or "" for index).
+  const docsTail = (url) => {
+    if (typeof url !== 'string') return '';
+    for (const code of LOCALE_CODES) {
+      if (code === 'en') continue;
+      const prefix = `/${code}/docs/`;
+      if (url.startsWith(prefix)) return url.slice(prefix.length);
+    }
+    if (url.startsWith('/docs/')) return url.slice('/docs/'.length);
+    return '';
+  };
+
+  const docsUrlFor = (locale, tail) => {
+    const prefix = locale === 'en' ? '/purplemux/docs/' : `/purplemux/${locale}/docs/`;
+    return prefix + tail;
+  };
+
+  eleventyConfig.addFilter('localizeDocsUrl', (url, targetLocale) =>
+    docsUrlFor(targetLocale, docsTail(url)),
+  );
 
   eleventyConfig.addFilter('findDocsGroup', (nav, slug, locale) => {
     for (const group of nav) {
@@ -39,9 +58,15 @@ module.exports = function (eleventyConfig) {
       .getAll()
       .filter((item) => {
         if (!item.url) return false;
-        const isDoc = item.url.startsWith('/docs/') || item.url.startsWith('/ko/docs/');
-        const isIndex = item.url === '/docs/' || item.url === '/ko/docs/';
-        return isDoc && !isIndex;
+        const url = item.url;
+        const isDocsRoot = url === '/docs/';
+        const isLocaleIndex = LOCALE_CODES.some(
+          (c) => c !== 'en' && url === `/${c}/docs/`,
+        );
+        const isDoc =
+          url.startsWith('/docs/') ||
+          LOCALE_CODES.some((c) => c !== 'en' && url.startsWith(`/${c}/docs/`));
+        return isDoc && !isDocsRoot && !isLocaleIndex;
       })
       .sort((a, b) => (a.url > b.url ? 1 : -1)),
   );

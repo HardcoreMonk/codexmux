@@ -1,0 +1,18 @@
+---
+title: Документация
+description: Всё необходимое для запуска, настройки и расширения purplemux.
+eyebrow: Начните отсюда
+permalink: /ru/docs/index.html
+---
+<p>Эти руководства проведут вас через установку, повседневное использование и устройство покапотом. Если вы здесь впервые, начните с <a href="/purplemux/ru/docs/quickstart/">Быстрого старта</a>.</p>
+
+<div class="doc-home-grid">
+{%- for group in docsNav %}
+{%- for item in group.items %}
+  <a class="doc-home-card" href="/purplemux/ru/docs/{{ item.slug }}/">
+    <span class="doc-home-card-title">{{ item.label.ru }}</span>
+    <span class="doc-home-card-desc">{{ group.group.ru }}</span>
+  </a>
+{%- endfor %}
+{%- endfor %}
+</div>

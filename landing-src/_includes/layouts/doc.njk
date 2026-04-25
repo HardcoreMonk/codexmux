@@ -1,8 +1,8 @@
 {%- set loc = locale or 'en' %}
 {%- set t = i18n[loc] %}
-{%- set docsBasePath = '/ko/docs/' if loc == 'ko' else '/docs/' %}
+{%- set docsBasePath = '/docs/' if loc == 'en' else '/' + loc + '/docs/' %}
 {%- set docsUrlPrefix = '/purplemux' + docsBasePath %}
-{%- set landingUrl = '/purplemux/ko/' if loc == 'ko' else '/purplemux/' %}
+{%- set landingUrl = '/purplemux/' if loc == 'en' else '/purplemux/' + loc + '/' %}
 <!DOCTYPE html>
 <html lang="{{ loc }}">
 <head>
@@ -16,13 +16,10 @@
   <meta property="og:url" content="{{ site.baseUrl }}{{ page.url }}" />
   <meta property="og:image" content="{{ site.baseUrl }}/images/og-image.png" />
   <link rel="canonical" href="{{ site.baseUrl }}{{ page.url }}" />
-{%- if loc == 'ko' %}
-  <link rel="alternate" hreflang="en" href="{{ site.baseUrl }}{{ page.url | swapDocsLocale | replace('/purplemux', '') }}" />
-  <link rel="alternate" hreflang="ko" href="{{ site.baseUrl }}{{ page.url }}" />
-{%- else %}
-  <link rel="alternate" hreflang="en" href="{{ site.baseUrl }}{{ page.url }}" />
-  <link rel="alternate" hreflang="ko" href="{{ site.baseUrl }}{{ page.url | swapDocsLocale | replace('/purplemux', '') }}" />
-{%- endif %}
+{%- for l in locales %}
+  <link rel="alternate" hreflang="{{ l.htmlLang }}" href="{{ site.baseUrl }}{{ page.url | localizeDocsUrl(l.code) | replace('/purplemux', '') }}" />
+{%- endfor %}
+  <link rel="alternate" hreflang="x-default" href="{{ site.baseUrl }}/docs/" />
   <link rel="icon" href="/purplemux/images/favicon.ico" sizes="any" />
   <link rel="icon" type="image/png" sizes="32x32" href="/purplemux/images/favicon-32x32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="/purplemux/images/favicon-16x16.png" />
@@ -35,7 +32,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&display=swap" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" />
   <link rel="stylesheet" href="/purplemux/style.css?v={{ site.assetVersion.css }}" />
-  <link rel="stylesheet" href="/purplemux/style-docs.css?v=5" />
+  <link rel="stylesheet" href="/purplemux/style-docs.css?v=6" />
 </head>
 <body class="doc-body">
   <nav class="doc-nav">
@@ -57,13 +54,9 @@
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 4l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </summary>
       <div class="doc-nav-lang-menu" role="menu">
-{%- if loc == 'ko' %}
-        <a href="{{ page.url | swapDocsLocale }}" lang="en">English</a>
-        <a href="/purplemux{{ page.url }}" lang="ko" class="is-active">한국어</a>
-{%- else %}
-        <a href="/purplemux{{ page.url }}" lang="en" class="is-active">English</a>
-        <a href="{{ page.url | swapDocsLocale }}" lang="ko">한국어</a>
-{%- endif %}
+{%- for l in locales %}
+        <a href="{{ page.url | localizeDocsUrl(l.code) }}" lang="{{ l.htmlLang }}"{% if l.code == loc %} class="is-active"{% endif %}>{{ l.label }}</a>
+{%- endfor %}
       </div>
     </details>
     <a href="https://github.com/subicura/purplemux" class="doc-nav-github" target="_blank" rel="noopener" aria-label="GitHub">

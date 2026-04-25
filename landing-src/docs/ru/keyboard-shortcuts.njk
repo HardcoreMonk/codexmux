@@ -1,0 +1,45 @@
+---
+title: Клавиатурные сокращения
+description: Полный список биндингов — автоматически генерируется из src/lib/keyboard-shortcuts.ts.
+eyebrow: Справочник
+permalink: /ru/docs/keyboard-shortcuts/index.html
+---
+<p>Эти биндинги читаются напрямую из <code>src/lib/keyboard-shortcuts.ts</code>. Страница пересобирается при каждом деплое, поэтому она всегда синхронизирована с приложением.</p>
+
+<p>На macOS модификаторы отображаются как <kbd>⌘</kbd> (Cmd), <kbd>⌃</kbd> (Ctrl), <kbd>⌥</kbd> (Option), <kbd>⇧</kbd> (Shift). На Linux / Windows те же действия используют <kbd>Ctrl</kbd> / <kbd>Alt</kbd> / <kbd>Shift</kbd>.</p>
+
+<div class="callout callout--tip">
+  <div class="callout-title">Настройка</div>
+  <div class="callout-body">Откройте <strong>Настройки → Сокращения</strong>, чтобы переназначить любое редактируемое действие. Отключённые биндинги (<code>editable: false</code> в исходниках) зарезервированы под сокращения цифрового ряда.</div>
+</div>
+
+{%- set localizedLabels = {
+  'Workspace': 'Рабочее пространство',
+  'Tabs': 'Вкладки',
+  'Panes & splits': 'Панели и разделения',
+  'Panel': 'Панель',
+  'Views & modes': 'Виды и режимы',
+  'App': 'Приложение'
+} %}
+
+{%- for group in shortcuts %}
+<h2 id="{{ group.key }}">{{ localizedLabels[group.label] or group.label }}</h2>
+<table class="shortcut-table">
+  <thead>
+    <tr>
+      <th>Действие</th>
+      <th>macOS</th>
+      <th>Linux / Windows</th>
+    </tr>
+  </thead>
+  <tbody>
+{%- for a in group.actions %}
+    <tr>
+      <td>{{ a.label }}</td>
+      <td><kbd>{{ a.mac }}</kbd></td>
+      <td><kbd>{{ a.other }}</kbd></td>
+    </tr>
+{%- endfor %}
+  </tbody>
+</table>
+{%- endfor %}

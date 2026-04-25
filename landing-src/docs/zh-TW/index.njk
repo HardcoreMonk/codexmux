@@ -1,0 +1,18 @@
+---
+title: 文件
+description: 執行、自訂與擴充 purplemux 所需的一切資源。
+eyebrow: 從這裡開始
+permalink: /zh-TW/docs/index.html
+---
+<p>這些指南涵蓋安裝、日常使用以及內部架構。如果你是新手，請從<a href="/purplemux/zh-TW/docs/quickstart/">快速開始</a>讀起。</p>
+
+<div class="doc-home-grid">
+{%- for group in docsNav %}
+{%- for item in group.items %}
+  <a class="doc-home-card" href="/purplemux/zh-TW/docs/{{ item.slug }}/">
+    <span class="doc-home-card-title">{{ item.label.en }}</span>
+    <span class="doc-home-card-desc">{{ group.group.en }}</span>
+  </a>
+{%- endfor %}
+{%- endfor %}
+</div>

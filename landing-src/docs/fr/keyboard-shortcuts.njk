@@ -1,0 +1,45 @@
+---
+title: Raccourcis clavier
+description: Tous les raccourcis — générés automatiquement à partir de src/lib/keyboard-shortcuts.ts.
+eyebrow: Référence
+permalink: /fr/docs/keyboard-shortcuts/index.html
+---
+<p>Les raccourcis ci-dessous sont lus directement depuis <code>src/lib/keyboard-shortcuts.ts</code>. La page est régénérée à chaque déploiement, elle reste donc toujours synchronisée avec l'application.</p>
+
+<p>Sur macOS les modificateurs s'affichent comme <kbd>⌘</kbd> (Cmd), <kbd>⌃</kbd> (Ctrl), <kbd>⌥</kbd> (Option), <kbd>⇧</kbd> (Shift). Sur Linux / Windows les mêmes actions utilisent <kbd>Ctrl</kbd> / <kbd>Alt</kbd> / <kbd>Shift</kbd>.</p>
+
+<div class="callout callout--tip">
+  <div class="callout-title">Personnaliser</div>
+  <div class="callout-body">Ouvrez <strong>Paramètres → Raccourcis</strong> pour réassigner toute action modifiable. Les raccourcis désactivés (<code>editable: false</code> dans la source) sont réservés aux raccourcis de la rangée des chiffres.</div>
+</div>
+
+{%- set localizedLabels = {
+  'Workspace': 'Espace de travail',
+  'Tabs': 'Onglets',
+  'Panes & splits': 'Volets & divisions',
+  'Panel': 'Panneau',
+  'Views & modes': 'Vues & modes',
+  'App': 'Application'
+} %}
+
+{%- for group in shortcuts %}
+<h2 id="{{ group.key }}">{{ localizedLabels[group.label] or group.label }}</h2>
+<table class="shortcut-table">
+  <thead>
+    <tr>
+      <th>Action</th>
+      <th>macOS</th>
+      <th>Linux / Windows</th>
+    </tr>
+  </thead>
+  <tbody>
+{%- for a in group.actions %}
+    <tr>
+      <td>{{ a.label }}</td>
+      <td><kbd>{{ a.mac }}</kbd></td>
+      <td><kbd>{{ a.other }}</kbd></td>
+    </tr>
+{%- endfor %}
+  </tbody>
+</table>
+{%- endfor %}

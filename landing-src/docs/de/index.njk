@@ -1,0 +1,18 @@
+---
+title: Dokumentation
+description: Alles, was du brauchst, um purplemux auszuführen, anzupassen und zu erweitern.
+eyebrow: Hier starten
+permalink: /de/docs/index.html
+---
+<p>Diese Guides führen dich durch Installation, alltägliche Nutzung und das Innenleben. Wenn du ganz neu bist, fang mit <a href="/purplemux/de/docs/quickstart/">Schnellstart</a> an.</p>
+
+<div class="doc-home-grid">
+{%- for group in docsNav %}
+{%- for item in group.items %}
+  <a class="doc-home-card" href="/purplemux/de/docs/{{ item.slug }}/">
+    <span class="doc-home-card-title">{{ item.label.de or item.label.en }}</span>
+    <span class="doc-home-card-desc">{{ group.group.de or group.group.en }}</span>
+  </a>
+{%- endfor %}
+{%- endfor %}
+</div>

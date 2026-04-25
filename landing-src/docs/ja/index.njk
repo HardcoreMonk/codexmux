@@ -1,0 +1,18 @@
+---
+title: ドキュメント
+description: purplemux を実行・カスタマイズ・拡張するために必要なすべて。
+eyebrow: ここから始める
+permalink: /ja/docs/index.html
+---
+<p>インストール、日常的な使い方、内部構造までカバーしています。初めての方はまず <a href="/purplemux/ja/docs/quickstart/">クイックスタート</a> を読んでみてください。</p>
+
+<div class="doc-home-grid">
+{%- for group in docsNav %}
+{%- for item in group.items %}
+  <a class="doc-home-card" href="/purplemux/ja/docs/{{ item.slug }}/">
+    <span class="doc-home-card-title">{{ item.label.ja }}</span>
+    <span class="doc-home-card-desc">{{ group.group.ja }}</span>
+  </a>
+{%- endfor %}
+{%- endfor %}
+</div>
