@@ -290,6 +290,144 @@
 .shortcut-table th:first-child, .shortcut-table td:first-child { width: 55%; }
 .shortcut-table td:not(:first-child) kbd { min-width: 3.5ch; text-align: center; }
 
+/* ── Search overlay ────────────────────────────────── */
+.doc-search-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 12vh;
+}
+.doc-search-overlay[hidden] { display: none; }
+
+.doc-search-backdrop {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in oklab, var(--background) 70%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.doc-search-modal {
+  position: relative;
+  width: min(560px, calc(100% - 2rem));
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  border-radius: calc(var(--radius) * 1.5);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.doc-search-field {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted-foreground);
+}
+
+.doc-search-input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--foreground);
+  font-size: var(--text-base);
+  font-family: inherit;
+  padding: 0;
+}
+
+.doc-search-input::placeholder { color: var(--muted-foreground); }
+
+.doc-search-esc {
+  padding: 2px 8px;
+  font-size: 11px;
+  font-family: var(--doc-mono);
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+
+.doc-search-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.4rem 0.4rem 0.5rem;
+  min-height: 60px;
+}
+
+.doc-search-result {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--foreground);
+  text-decoration: none;
+}
+
+.doc-search-result:hover,
+.doc-search-result.is-focused {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.doc-search-result-title {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.doc-search-result-desc {
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.doc-search-result.is-focused .doc-search-result-desc { color: color-mix(in oklab, var(--brand) 60%, var(--muted-foreground)); }
+
+.doc-search-result-group {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  margin-bottom: 2px;
+}
+
+.doc-search-empty {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+}
+
+.doc-search-footer {
+  display: flex;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--border);
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+}
+.doc-search-footer kbd {
+  padding: 1px 5px;
+  font-size: 10px;
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: var(--doc-mono);
+  margin-right: 3px;
+}
+
 /* ── Callouts ──────────────────────────────────────── */
 .callout {
   border: 1px solid var(--border);
@@ -315,8 +453,8 @@
 
 /* ── Pagination ────────────────────────────────────── */
 .doc-pagination {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
   margin-top: 4rem;
   padding-top: 1.5rem;
@@ -330,11 +468,11 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   text-decoration: none;
-  min-width: 180px;
   transition: border-color 120ms, background 120ms;
 }
 .doc-pag-link:hover { border-color: var(--border-strong); background: var(--secondary); }
-.doc-pag-next { margin-left: auto; align-items: flex-end; text-align: right; }
+.doc-pag-prev { grid-column: 1; }
+.doc-pag-next { grid-column: 2; align-items: flex-end; text-align: right; }
 .doc-pag-dir { font-size: var(--text-xs); color: var(--muted-foreground); }
 .doc-pag-title { font-size: var(--text-sm); font-weight: 600; color: var(--foreground); }
 

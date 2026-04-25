@@ -74,7 +74,7 @@
 
         {%- set nb = docsFlat | docsNeighbors(page.fileSlug) %}
         {%- if nb.prev or nb.next %}
-        <footer class="doc-pagination">
+        <nav class="doc-pagination" aria-label="Pagination">
           {%- if nb.prev %}
           <a href="/purplemux/docs/{{ nb.prev.slug }}/" class="doc-pag-link doc-pag-prev">
             <span class="doc-pag-dir">← Previous</span>
@@ -89,7 +89,7 @@
             <span class="doc-pag-title">{{ nb.next.label }}</span>
           </a>
           {%- endif %}
-        </footer>
+        </nav>
         {%- endif %}
       </article>
 
@@ -100,6 +100,24 @@
     </main>
   </div>
 
-  <script src="/purplemux/docs.js?v=1" defer></script>
+  <div class="doc-search-overlay" data-search-overlay hidden>
+    <div class="doc-search-backdrop" data-search-close></div>
+    <div class="doc-search-modal" role="dialog" aria-modal="true" aria-labelledby="doc-search-label">
+      <div class="doc-search-field">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="search" class="doc-search-input" data-search-input placeholder="Search docs…" aria-label="Search docs" autocomplete="off" spellcheck="false" />
+        <button type="button" class="doc-search-esc" data-search-close aria-label="Close">Esc</button>
+      </div>
+      <div class="doc-search-results" data-search-results role="listbox" aria-label="Search results"></div>
+      <div class="doc-search-footer">
+        <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+        <span><kbd>↵</kbd> open</span>
+        <span><kbd>Esc</kbd> close</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js" defer></script>
+  <script src="/purplemux/docs.js?v=2" defer></script>
 </body>
 </html>

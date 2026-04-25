@@ -18,6 +18,13 @@ module.exports = function (eleventyConfig) {
     };
   });
 
+  eleventyConfig.addCollection('docs', (api) =>
+    api
+      .getAll()
+      .filter((item) => item.url && item.url.startsWith('/docs/') && item.url !== '/docs/')
+      .sort((a, b) => (a.url > b.url ? 1 : -1)),
+  );
+
   return {
     dir: {
       input: 'landing-src',

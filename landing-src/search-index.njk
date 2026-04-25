@@ -1,0 +1,14 @@
+---
+permalink: /search-index.json
+eleventyExcludeFromCollections: true
+---
+[
+{%- for page in collections.docs %}
+  {
+    "title": {{ page.data.title | dump | safe }},
+    "description": {{ (page.data.description or "") | dump | safe }},
+    "url": "/purplemux{{ page.url }}",
+    "group": {{ (page.data.eyebrow or "Docs") | dump | safe }}
+  }{% if not loop.last %},{% endif %}
+{%- endfor %}
+]
