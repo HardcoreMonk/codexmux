@@ -251,10 +251,41 @@
     init();
   }
 
+  function initSidebarDrawer() {
+    var sidebar = document.getElementById('doc-sidebar');
+    var backdrop = document.querySelector('[data-sidebar-backdrop]');
+    var openBtn = document.querySelector('[data-sidebar-open]');
+    if (!sidebar || !backdrop || !openBtn) return;
+
+    function open() {
+      sidebar.classList.add('is-open');
+      backdrop.hidden = false;
+      openBtn.setAttribute('aria-expanded', 'true');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function close() {
+      sidebar.classList.remove('is-open');
+      backdrop.hidden = true;
+      openBtn.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+    }
+
+    openBtn.addEventListener('click', open);
+    document.querySelectorAll('[data-sidebar-close]').forEach(function (el) {
+      el.addEventListener('click', close);
+    });
+    backdrop.addEventListener('click', close);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && sidebar.classList.contains('is-open')) close();
+    });
+  }
+
   function init() {
     var items = buildToc();
     wireActiveTocTracking(items);
     addCopyButtons();
     initSearch();
+    initSidebarDrawer();
   }
 })();

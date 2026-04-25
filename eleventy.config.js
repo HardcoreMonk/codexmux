@@ -25,6 +25,15 @@ module.exports = function (eleventyConfig) {
     return '/purplemux' + url;
   });
 
+  eleventyConfig.addFilter('findDocsGroup', (nav, slug, locale) => {
+    for (const group of nav) {
+      for (const item of group.items) {
+        if (item.slug === slug) return group.group[locale] || group.group.en || '';
+      }
+    }
+    return '';
+  });
+
   eleventyConfig.addCollection('docs', (api) =>
     api
       .getAll()
