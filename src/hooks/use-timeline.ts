@@ -31,6 +31,7 @@ interface IUseTimelineOptions {
 }
 
 const PENDING_AUTOHIDE_DELAY_MS = 1000;
+const PENDING_FADE_OUT_DURATION_MS = 200;
 const ATTACHMENT_PLACEHOLDER_TIMEOUT_MS = 60_000;
 
 interface IUseTimelineReturn {
@@ -211,10 +212,19 @@ const useTimeline = ({
       setTimeout(() => {
         if (getCliStateRef.current?.() !== 'busy') return;
         setEntries((prev) =>
-          prev.filter(
-            (e) => !(e.id === id && e.type === 'user-message' && e.pending === true),
+          prev.map((e) =>
+            e.id === id && e.type === 'user-message' && e.pending === true
+              ? { ...e, fadingOut: true }
+              : e,
           ),
         );
+        setTimeout(() => {
+          setEntries((prev) =>
+            prev.filter(
+              (e) => !(e.id === id && e.type === 'user-message' && e.pending === true),
+            ),
+          );
+        }, PENDING_FADE_OUT_DURATION_MS);
       }, PENDING_AUTOHIDE_DELAY_MS);
     }
     return id;

@@ -45,6 +45,7 @@ export interface ITimelineUserMessage {
   images?: string[];
   pending?: boolean;
   attachmentPlaceholder?: boolean;
+  fadingOut?: boolean;
 }
 
 export interface ITimelineAssistantMessage {

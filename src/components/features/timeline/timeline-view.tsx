@@ -297,6 +297,7 @@ const TimelineView = ({
   useEffect(() => {
     if (armedRef.current && lastUserMessageId && lastUserMessageId !== anchorUserId) {
       setAnchorUserId(lastUserMessageId);
+      armedRef.current = false;
     }
   }, [lastUserMessageId, anchorUserId]);
 

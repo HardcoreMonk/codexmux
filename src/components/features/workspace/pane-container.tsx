@@ -246,8 +246,9 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   }, [activeTabId, isFocused]);
 
   const handleScrollToBottom = useCallback(() => {
+    if (claudeCliState !== 'idle') return;
     scrollToBottomRef.current?.();
-  }, []);
+  }, [claudeCliState]);
 
   const handleOptimisticSend = useCallback((text: string) => {
     addPendingMessageRef.current?.(text);

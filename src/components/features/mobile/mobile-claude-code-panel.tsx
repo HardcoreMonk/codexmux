@@ -177,8 +177,9 @@ const MobileClaudeCodePanel = ({
   }, [isInputVisible, onInputVisibleChange]);
 
   const handleScrollToBottom = useCallback(() => {
+    if (storeCliState !== 'idle') return;
     scrollToBottomRef.current?.();
-  }, []);
+  }, [storeCliState]);
 
   const handleSelectQuickPrompt = useCallback((prompt: string) => {
     setInputValueRef.current?.(prompt);

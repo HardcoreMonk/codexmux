@@ -51,6 +51,7 @@ const UserMessageItem = ({ entry }: IUserMessageItemProps) => {
     return () => observer.disconnect();
   }, [entry.text, expanded]);
 
+  const fadingOut = entry.fadingOut === true;
   const faded = entry.pending && delayed;
   const hasImages = entry.images && entry.images.length > 0;
   const hasText = entry.text.length > 0;
@@ -61,8 +62,9 @@ const UserMessageItem = ({ entry }: IUserMessageItemProps) => {
     <div className="animate-in fade-in duration-150 flex justify-end">
       <div
         className={cn(
-          'bg-ui-blue/10 rounded-lg px-4 py-2.5 max-w-[85%] transition-opacity duration-500',
-          faded && 'opacity-50',
+          'bg-ui-blue/10 rounded-lg px-4 py-2.5 max-w-[85%] transition-opacity',
+          fadingOut ? 'duration-200' : 'duration-500',
+          fadingOut ? 'opacity-0' : faded && 'opacity-50',
         )}
       >
         {hasImages && (
