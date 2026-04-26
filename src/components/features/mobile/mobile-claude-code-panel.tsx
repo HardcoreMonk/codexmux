@@ -66,6 +66,8 @@ const MobileClaudeCodePanel = ({
   const claudeInstalled = useTabStore((s) => tabId ? s.tabs[tabId]?.claudeInstalled ?? true : true);
   const storeCliState = useTabStore((s) => tabId ? s.tabs[tabId]?.cliState ?? 'inactive' : 'inactive');
   const compactingSince = useTabStore((s) => tabId ? s.tabs[tabId]?.compactingSince ?? null : null);
+  const tabClaudeSummary = useTabStore((s) => tabId ? s.tabs[tabId]?.claudeSummary ?? null : null);
+  const tabLastUserMessage = useTabStore((s) => tabId ? s.tabs[tabId]?.lastUserMessage ?? null : null);
 
   const handleResumeStarted = useCallback(() => {
     setResumingSessionId(null);
@@ -155,7 +157,7 @@ const MobileClaudeCodePanel = ({
 
   const view = useTabStore((s) => tabId ? selectSessionView(s.tabs, tabId) : 'session-list' as const);
 
-  const { meta } = useSessionMeta(entries, sessionSummary, initMeta, sessionStats);
+  const { meta } = useSessionMeta(entries, sessionSummary, initMeta, sessionStats, tabClaudeSummary, tabLastUserMessage);
   const { branch, isLoading: isBranchLoading } = useGitBranch(sessionName);
   const { status: gitStatus } = useGitStatus(sessionName, metaSheetOpen);
   const tmuxInfo = useTmuxInfo(sessionName, metaSheetOpen);

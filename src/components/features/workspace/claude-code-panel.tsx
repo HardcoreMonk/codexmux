@@ -48,6 +48,8 @@ const ClaudeCodePanel = ({
   const compactingSince = useTabStore((s) => s.tabs[tabId]?.compactingSince ?? null);
   const view = useTabStore((s) => selectSessionView(s.tabs, tabId));
   const cachedSessionMeta = useTabStore((s) => s.tabs[tabId]?.sessionMetaCache ?? null);
+  const tabClaudeSummary = useTabStore((s) => s.tabs[tabId]?.claudeSummary ?? null);
+  const tabLastUserMessage = useTabStore((s) => s.tabs[tabId]?.lastUserMessage ?? null);
 
   const handleResumeStarted = useCallback(
     () => {
@@ -160,7 +162,7 @@ const ClaudeCodePanel = ({
   const startingPromptOptions = useStartingPrompt(view === 'check', sessionName);
 
   const isHeaderLoading = claudeProcess === null || (entries.length === 0 && isTimelineLoading);
-  const freshMeta = useSessionMetaCompute(entries, sessionSummary, initMeta, sessionStats);
+  const freshMeta = useSessionMetaCompute(entries, sessionSummary, initMeta, sessionStats, tabClaudeSummary, tabLastUserMessage);
 
   useEffect(() => {
     if (!isHeaderLoading) {
