@@ -128,6 +128,23 @@ export const killSession = async (name: string): Promise<void> => {
   log.warn(`tmux session still alive after kill: ${name}`);
 };
 
+export const resolveExistingDir = async (preferred?: string): Promise<string> => {
+  const fallback = PRISTINE_ENV.HOME || '/';
+  if (!preferred) return fallback;
+  let candidate = preferred;
+  while (true) {
+    try {
+      const stat = await fs.stat(candidate);
+      if (stat.isDirectory()) return candidate;
+    } catch {
+      // walk up
+    }
+    const parent = path.dirname(candidate);
+    if (parent === candidate) return fallback;
+    candidate = parent;
+  }
+};
+
 export const hasSession = async (name: string): Promise<boolean> => {
   try {
     await execFile(

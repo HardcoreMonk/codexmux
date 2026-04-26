@@ -11,6 +11,7 @@ import {
 import { buildShellEnv } from '@/lib/shell-env';
 import { PRISTINE_ENV } from '@/lib/pristine-env';
 import { encodeStdout } from '@/lib/terminal-protocol';
+import { reconcileTabCwd } from '@/lib/layout-store';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('terminal');
@@ -341,6 +342,9 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
     const exists = await hasSession(sessionId);
     if (!exists) {
       log.warn(`session not found: ${sessionName}`);
+      await reconcileTabCwd(sessionName).catch((err) => {
+        log.warn(`reconcile cwd failed: ${err instanceof Error ? err.message : err}`);
+      });
       ws.close(1011, 'Session not found');
       return;
     }

@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { nanoid } from 'nanoid';
-import { createSession, hasSession, killSession, sendKeys, workspaceSessionName } from '@/lib/tmux';
+import { createSession, hasSession, killSession, resolveExistingDir, sendKeys, workspaceSessionName } from '@/lib/tmux';
 import { broadcastSync } from '@/lib/sync-server';
 import { createLogger } from '@/lib/logger';
 import {
@@ -399,11 +399,46 @@ export const restartTabSession = async (wsId: string, paneId: string, tabId: str
     const exists = await hasSession(tab.sessionName);
     if (exists) return true;
 
-    await createSession(tab.sessionName, 80, 24, tab.cwd);
-    if (command) {
+    const effectiveCwd = await resolveExistingDir(tab.cwd);
+    const cwdLost = Boolean(tab.cwd && tab.cwd !== effectiveCwd);
+
+    await createSession(tab.sessionName, 80, 24, effectiveCwd);
+    if (command && !cwdLost) {
       await sendKeys(tab.sessionName, command);
     }
+
+    if (cwdLost) {
+      log.warn(`tab cwd missing, falling back to ${effectiveCwd}: ${tab.sessionName} (was ${tab.cwd})`);
+      tab.cwd = effectiveCwd;
+      delete tab.lastCommand;
+      layout.updatedAt = new Date().toISOString();
+      await writeLayoutFile(layout, filePath);
+    }
     return true;
+  });
+
+export const reconcileTabCwd = async (sessionName: string): Promise<void> =>
+  withLock(async () => {
+    const parsed = parseSessionName(sessionName);
+    if (!parsed) return;
+
+    const filePath = resolveLayoutFile(parsed.wsId);
+    const layout = await readLayoutFile(filePath);
+    if (!layout) return;
+
+    const pane = collectPanes(layout.root).find((p) => p.id === parsed.paneId);
+    if (!pane) return;
+    const tab = pane.tabs.find((t) => t.id === parsed.tabId);
+    if (!tab || !tab.cwd) return;
+
+    const effectiveCwd = await resolveExistingDir(tab.cwd);
+    if (effectiveCwd === tab.cwd) return;
+
+    log.warn(`tab cwd missing, clearing: ${sessionName} (was ${tab.cwd})`);
+    tab.cwd = effectiveCwd;
+    delete tab.lastCommand;
+    layout.updatedAt = new Date().toISOString();
+    await writeLayoutFile(layout, filePath);
   });
 
 export const getFirstPaneTabs = async (wsId: string): Promise<{ tabs: ITab[]; activeTabId: string | null }> =>
