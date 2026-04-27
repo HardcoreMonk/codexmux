@@ -1,7 +1,8 @@
 import { readLayoutFile, resolveLayoutFile, collectAllTabs } from '@/lib/layout-store';
 import { hasSession, createSession, getPaneCurrentCommand, sendKeys } from '@/lib/tmux';
 import { getWorkspaces } from '@/lib/workspace-store';
-import { buildResumeCommand } from '@/lib/claude-command';
+import { getProviderByPanelType, getProviderByProcessName } from '@/lib/providers';
+import type { IAgentProvider } from '@/lib/providers';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('auto-resume');
@@ -13,7 +14,8 @@ interface IAutoResumeTarget {
   workspaceId: string;
   tabId: string;
   tmuxSession: string;
-  claudeSessionId: string;
+  sessionId: string;
+  provider: IAgentProvider;
 }
 
 const findAutoResumeTargets = async (): Promise<IAutoResumeTarget[]> => {
@@ -26,14 +28,17 @@ const findAutoResumeTargets = async (): Promise<IAutoResumeTarget[]> => {
 
     const tabs = collectAllTabs(layout.root);
     for (const tab of tabs) {
-      if (tab.panelType === 'claude-code' && tab.claudeSessionId) {
-        targets.push({
-          workspaceId: ws.id,
-          tabId: tab.id,
-          tmuxSession: tab.sessionName,
-          claudeSessionId: tab.claudeSessionId,
-        });
-      }
+      const provider = getProviderByPanelType(tab.panelType);
+      if (!provider) continue;
+      const sessionId = provider.readSessionId(tab);
+      if (!sessionId) continue;
+      targets.push({
+        workspaceId: ws.id,
+        tabId: tab.id,
+        tmuxSession: tab.sessionName,
+        sessionId,
+        provider,
+      });
     }
   }
 
@@ -52,16 +57,19 @@ const sendResumeKeys = async (target: IAutoResumeTarget): Promise<boolean> => {
     }
 
     if (!SAFE_SHELLS.has(command)) {
-      if (command === 'claude' || command === 'node') {
-        log.debug(`Claude already running, skip: ${target.tmuxSession}`);
+      const runningProvider = getProviderByProcessName(command);
+      if (runningProvider && runningProvider.id === target.provider.id) {
+        log.debug(`${target.provider.displayName} already running, skip: ${target.tmuxSession}`);
         return true;
       }
       log.debug(`Non-shell process running (${command}), skip: ${target.tmuxSession}`);
       return false;
     }
 
-    const resumeCmd = await buildResumeCommand(target.claudeSessionId, target.workspaceId);
-    log.debug(`Sending resume: ${target.tmuxSession} → ${target.claudeSessionId}`);
+    const resumeCmd = await target.provider.buildResumeCommand(target.sessionId, {
+      workspaceId: target.workspaceId,
+    });
+    log.debug(`Sending resume: ${target.tmuxSession} → ${target.sessionId}`);
     await sendKeys(target.tmuxSession, resumeCmd);
 
     return true;

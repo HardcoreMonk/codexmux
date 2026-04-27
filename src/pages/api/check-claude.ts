@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getSessionPanePid, hasSession } from '@/lib/tmux';
-import { detectActiveSession, getChildPids, isClaudeRunning } from '@/lib/session-detection';
+import { getChildPids } from '@/lib/session-detection';
+import { detectAnyActiveSession, isAnyAgentRunning } from '@/lib/providers';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'GET') {
@@ -26,12 +27,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   const childPids = await getChildPids(panePid);
-  const running = await isClaudeRunning(panePid, childPids);
+  const running = await isAnyAgentRunning(panePid, childPids);
   if (!running) {
     return res.status(200).json({ running: false, checkedAt, sessionId: null });
   }
 
-  const info = await detectActiveSession(panePid, childPids);
+  const { info } = await detectAnyActiveSession(panePid, childPids);
   return res.status(200).json({ running: true, checkedAt, sessionId: info.sessionId, resumable: !!info.jsonlPath });
 };
 

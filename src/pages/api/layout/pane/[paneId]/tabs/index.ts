@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { addTabToPane, updateTabClaudeSessionId } from '@/lib/layout-store';
 import { getActiveWorkspaceId } from '@/lib/workspace-store';
 import { getStatusManager } from '@/lib/status-manager';
-import { buildResumeCommand, isValidSessionId } from '@/lib/claude-command';
+import { getProviderByPanelType } from '@/lib/providers';
 import { sendKeys } from '@/lib/tmux';
 import { createLogger } from '@/lib/logger';
 
@@ -23,8 +23,15 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   const paneId = req.query.paneId as string;
   const { name, cwd, panelType, command, resumeSessionId } = req.body ?? {};
-  if (resumeSessionId && !isValidSessionId(resumeSessionId)) {
-    return res.status(400).json({ error: 'Invalid session ID format' });
+
+  const provider = resumeSessionId ? getProviderByPanelType(panelType ?? 'claude-code') : null;
+  if (resumeSessionId) {
+    if (!provider) {
+      return res.status(400).json({ error: 'Unknown panel type for resume' });
+    }
+    if (!provider.isValidSessionId(resumeSessionId)) {
+      return res.status(400).json({ error: 'Invalid session ID format' });
+    }
   }
 
   try {
@@ -43,12 +50,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       });
     }
 
-    if (resumeSessionId && !command) {
+    if (resumeSessionId && provider && !command) {
       await updateTabClaudeSessionId(tab.sessionName, resumeSessionId);
-      tab.claudeSessionId = resumeSessionId;
+      provider.writeSessionId(tab, resumeSessionId);
       setTimeout(async () => {
         try {
-          const resumeCmd = await buildResumeCommand(resumeSessionId, wsId);
+          const resumeCmd = await provider.buildResumeCommand(resumeSessionId, { workspaceId: wsId });
           await sendKeys(tab.sessionName, resumeCmd);
         } catch (err) {
           log.warn(`resume sendKeys failed: ${err instanceof Error ? err.message : err}`);

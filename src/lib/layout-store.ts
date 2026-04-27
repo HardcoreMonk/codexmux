@@ -15,8 +15,9 @@ import {
   equalizeNode,
   isEqualized,
 } from '@/lib/layout-tree';
-import type { ITab, TLayoutNode, IPaneNode, ILayoutData } from '@/types/terminal';
+import type { ITab, TLayoutNode, IPaneNode, ILayoutData, TPanelType } from '@/types/terminal';
 import type { TCliState } from '@/types/timeline';
+import type { IAgentProvider } from '@/lib/providers/types';
 
 const log = createLogger('layout');
 
@@ -226,7 +227,7 @@ export const crossCheckLayout = async (
 };
 
 export interface ICreateLayoutOptions {
-  panelType?: 'claude-code';
+  panelType?: TPanelType;
 }
 
 export const createDefaultLayout = async (wsId: string, cwd: string, options?: ICreateLayoutOptions): Promise<ILayoutData> => {
@@ -459,98 +460,90 @@ export const parseSessionName = (sessionName: string): { wsId: string; paneId: s
   return { wsId: match[1], paneId: match[2], tabId: match[3] };
 };
 
-export const updateTabClaudeSessionId = async (
+const mutateTab = async (
+  sessionName: string,
+  mutator: (tab: ITab) => boolean,
+): Promise<void> => {
+  const parsed = parseSessionName(sessionName);
+  if (!parsed) return;
+
+  await withLock(async () => {
+    const filePath = resolveLayoutFile(parsed.wsId);
+    const layout = await readLayoutFile(filePath);
+    if (!layout) return;
+
+    const tab = collectAllTabs(layout.root).find((t) => t.sessionName === sessionName);
+    if (!tab) return;
+    if (!mutator(tab)) return;
+
+    layout.updatedAt = new Date().toISOString();
+    await writeLayoutFile(layout, filePath);
+  });
+};
+
+export const updateTabAgentSessionId = (
+  sessionName: string,
+  provider: IAgentProvider,
+  sessionId: string | null,
+): Promise<void> =>
+  mutateTab(sessionName, (tab) => {
+    if (provider.readSessionId(tab) === sessionId) return false;
+    provider.writeSessionId(tab, sessionId);
+    return true;
+  });
+
+export const updateTabAgentSummary = (
+  sessionName: string,
+  provider: IAgentProvider,
+  summary: string | null,
+): Promise<void> =>
+  mutateTab(sessionName, (tab) => {
+    if (provider.readSummary(tab) === summary) return false;
+    provider.writeSummary(tab, summary);
+    return true;
+  });
+
+export const updateTabClaudeSessionId = (
   sessionName: string,
   claudeSessionId: string | null,
-): Promise<void> => {
-  const parsed = parseSessionName(sessionName);
-  if (!parsed) return;
-
-  await withLock(async () => {
-    const filePath = resolveLayoutFile(parsed.wsId);
-    const layout = await readLayoutFile(filePath);
-    if (!layout) return;
-
-    const allTabs = collectAllTabs(layout.root);
-    const tab = allTabs.find((t) => t.sessionName === sessionName);
-    if (!tab) return;
-
+): Promise<void> =>
+  mutateTab(sessionName, (tab) => {
+    if (tab.claudeSessionId === claudeSessionId) return false;
     tab.claudeSessionId = claudeSessionId;
-    layout.updatedAt = new Date().toISOString();
-    await writeLayoutFile(layout, filePath);
+    return true;
   });
-};
 
-export const updateTabClaudeSummary = async (
+export const updateTabClaudeSummary = (
   sessionName: string,
   claudeSummary: string | null,
-): Promise<void> => {
-  const parsed = parseSessionName(sessionName);
-  if (!parsed) return;
-
-  await withLock(async () => {
-    const filePath = resolveLayoutFile(parsed.wsId);
-    const layout = await readLayoutFile(filePath);
-    if (!layout) return;
-
-    const allTabs = collectAllTabs(layout.root);
-    const tab = allTabs.find((t) => t.sessionName === sessionName);
-    if (!tab) return;
-
-    if (tab.claudeSummary === claudeSummary) return;
+): Promise<void> =>
+  mutateTab(sessionName, (tab) => {
+    if (tab.claudeSummary === claudeSummary) return false;
     tab.claudeSummary = claudeSummary;
-    layout.updatedAt = new Date().toISOString();
-    await writeLayoutFile(layout, filePath);
+    return true;
   });
-};
 
-export const updateTabLastUserMessage = async (
+export const updateTabLastUserMessage = (
   sessionName: string,
   lastUserMessage: string | null,
-): Promise<void> => {
-  const parsed = parseSessionName(sessionName);
-  if (!parsed) return;
-
-  await withLock(async () => {
-    const filePath = resolveLayoutFile(parsed.wsId);
-    const layout = await readLayoutFile(filePath);
-    if (!layout) return;
-
-    const allTabs = collectAllTabs(layout.root);
-    const tab = allTabs.find((t) => t.sessionName === sessionName);
-    if (!tab) return;
-
-    if (tab.lastUserMessage === lastUserMessage) return;
+): Promise<void> =>
+  mutateTab(sessionName, (tab) => {
+    if (tab.lastUserMessage === lastUserMessage) return false;
     tab.lastUserMessage = lastUserMessage;
-    layout.updatedAt = new Date().toISOString();
-    await writeLayoutFile(layout, filePath);
+    return true;
   });
-};
 
-export const updateTabCliStatus = async (
+export const updateTabCliStatus = (
   sessionName: string,
   cliState: TCliState,
   dismissedAt?: number | null,
-): Promise<void> => {
-  const parsed = parseSessionName(sessionName);
-  if (!parsed) return;
-
-  await withLock(async () => {
-    const filePath = resolveLayoutFile(parsed.wsId);
-    const layout = await readLayoutFile(filePath);
-    if (!layout) return;
-
-    const allTabs = collectAllTabs(layout.root);
-    const tab = allTabs.find((t) => t.sessionName === sessionName);
-    if (!tab) return;
-
-    if (tab.cliState === cliState && tab.dismissedAt === dismissedAt) return;
+): Promise<void> =>
+  mutateTab(sessionName, (tab) => {
+    if (tab.cliState === cliState && tab.dismissedAt === dismissedAt) return false;
     tab.cliState = cliState;
     tab.dismissedAt = dismissedAt;
-    layout.updatedAt = new Date().toISOString();
-    await writeLayoutFile(layout, filePath);
+    return true;
   });
-};
 
 const mutate = async (
   wsId: string,

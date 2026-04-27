@@ -2,7 +2,7 @@ import os from 'os';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getWorkspaces, createWorkspace } from '@/lib/workspace-store';
 import { readLayoutFile, resolveLayoutFile, collectAllTabs } from '@/lib/layout-store';
-import { buildResumeCommand, isValidSessionId } from '@/lib/claude-command';
+import { getProviderByPanelType } from '@/lib/providers';
 import { sendKeys } from '@/lib/tmux';
 import { getStatusManager } from '@/lib/status-manager';
 import { createLogger } from '@/lib/logger';
@@ -18,15 +18,21 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   if (req.method === 'POST') {
-    const { directory, name, resumeSessionId } = req.body ?? {};
-    if (resumeSessionId && !isValidSessionId(resumeSessionId)) {
-      return res.status(400).json({ error: 'Invalid session ID format' });
+    const { directory, name, resumeSessionId, panelType } = req.body ?? {};
+    const provider = resumeSessionId ? getProviderByPanelType(panelType ?? 'claude-code') : null;
+    if (resumeSessionId) {
+      if (!provider) {
+        return res.status(400).json({ error: 'Unknown panel type for resume' });
+      }
+      if (!provider.isValidSessionId(resumeSessionId)) {
+        return res.status(400).json({ error: 'Invalid session ID format' });
+      }
     }
     const resolvedDirectory =
       directory && typeof directory === 'string' ? directory : os.homedir();
 
     try {
-      const layoutOptions = resumeSessionId ? { panelType: 'claude-code' as const } : undefined;
+      const layoutOptions = provider ? { panelType: provider.panelType } : undefined;
       const workspace = await createWorkspace(resolvedDirectory, name, layoutOptions);
 
       const layout = await readLayoutFile(resolveLayoutFile(workspace.id));
@@ -43,10 +49,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         });
       }
 
-      if (resumeSessionId && defaultTab) {
+      if (resumeSessionId && provider && defaultTab) {
         setTimeout(async () => {
           try {
-            const resumeCmd = await buildResumeCommand(resumeSessionId, workspace.id);
+            const resumeCmd = await provider.buildResumeCommand(resumeSessionId, { workspaceId: workspace.id });
             await sendKeys(defaultTab.sessionName, resumeCmd);
           } catch (err) {
             log.warn(`resume sendKeys failed: ${err instanceof Error ? err.message : err}`);

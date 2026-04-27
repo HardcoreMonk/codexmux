@@ -2,7 +2,12 @@ import { WebSocket } from 'ws';
 import { getWorkspaces } from '@/lib/workspace-store';
 import { readLayoutFile, resolveLayoutFile, collectAllTabs, updateTabCliStatus, updateTabClaudeSummary, parseSessionName, setLayoutReconciler } from '@/lib/layout-store';
 import { getAllPanesInfo, getListeningPorts, SAFE_SHELLS, getPaneTitle, getSessionCwd, getSessionPanePid } from '@/lib/tmux';
-import { detectActiveSession, getChildPids, isClaudeRunning } from '@/lib/session-detection';
+import { getChildPids } from '@/lib/session-detection';
+import {
+  detectAnyActiveSession,
+  getProviderByPanelType,
+} from '@/lib/providers';
+import type { IAgentProvider } from '@/lib/providers';
 import { cwdToProjectPath } from '@/lib/session-list';
 import { formatTabTitle } from '@/lib/tab-title';
 import { INTERRUPT_PREFIX, summarizeToolCall } from '@/lib/session-parser';
@@ -396,11 +401,12 @@ class StatusManager {
       const tabs = collectAllTabs(layout.root);
       for (const tab of tabs) {
         const paneInfo = panesInfo.get(tab.sessionName);
-        const detected = await this.readTabMetadata(paneInfo);
+        const provider = getProviderByPanelType(tab.panelType);
+        const detected = await this.readTabMetadata(paneInfo, provider);
         const persisted: TCliState = (tab.cliState as TCliState | undefined) ?? 'idle';
         const cliState: TCliState = persisted === 'busy' ? 'unknown' : persisted;
 
-        const { terminalStatus, listeningPorts } = tab.panelType === 'claude-code'
+        const { terminalStatus, listeningPorts } = provider
           ? { terminalStatus: 'idle' as const, listeningPorts: [] as number[] }
           : await this.detectTerminalStatus(paneInfo);
         const currentProcess = paneInfo?.command;
@@ -446,11 +452,14 @@ class StatusManager {
     const entry = this.tabs.get(tabId);
     if (!entry || entry.cliState !== 'unknown') return;
 
+    const provider = getProviderByPanelType(entry.panelType);
     const paneInfo = (await getAllPanesInfo()).get(entry.tmuxSession);
     const childPids = paneInfo?.pid ? await getChildPids(paneInfo.pid) : [];
-    const claudeRunning = paneInfo?.pid ? await isClaudeRunning(paneInfo.pid, childPids) : false;
+    const agentRunning = paneInfo?.pid && provider
+      ? await provider.isAgentRunning(paneInfo.pid, childPids)
+      : false;
 
-    if (!claudeRunning) {
+    if (!agentRunning) {
       this.applyCliState(tabId, entry, 'idle', { silent: true });
       this.persistToLayout(entry);
       this.broadcastUpdate(tabId, entry);
@@ -468,15 +477,18 @@ class StatusManager {
     }
   }
 
-  private async readTabMetadata(paneInfo?: IPaneInfo): Promise<{ lastAssistantSnippet: string | null; currentAction: ICurrentAction | null; jsonlPath: string | null }> {
+  private async readTabMetadata(
+    paneInfo: IPaneInfo | undefined,
+    provider: IAgentProvider | null,
+  ): Promise<{ lastAssistantSnippet: string | null; currentAction: ICurrentAction | null; jsonlPath: string | null }> {
     const empty = { lastAssistantSnippet: null, currentAction: null, jsonlPath: null };
-    if (!paneInfo || !paneInfo.pid) return empty;
+    if (!paneInfo || !paneInfo.pid || !provider) return empty;
 
     const childPids = await getChildPids(paneInfo.pid);
-    const claudeRunning = await isClaudeRunning(paneInfo.pid, childPids);
-    if (!claudeRunning) return empty;
+    const running = await provider.isAgentRunning(paneInfo.pid, childPids);
+    if (!running) return empty;
 
-    const session = await detectActiveSession(paneInfo.pid, childPids);
+    const session = await provider.detectActiveSession(paneInfo.pid, childPids);
     if (session.status !== 'running' || !session.jsonlPath) {
       return { lastAssistantSnippet: null, currentAction: null, jsonlPath: session.jsonlPath ?? null };
     }
@@ -542,8 +554,9 @@ class StatusManager {
         knownTabIds.add(tab.id);
         const existing = this.tabs.get(tab.id);
         const paneInfo = panesInfo.get(tab.sessionName);
+        const provider = getProviderByPanelType(tab.panelType);
 
-        const { terminalStatus, listeningPorts } = tab.panelType === 'claude-code'
+        const { terminalStatus, listeningPorts } = provider
           ? { terminalStatus: 'idle' as const, listeningPorts: [] as number[] }
           : await this.detectTerminalStatus(paneInfo);
         const currentProcess = paneInfo?.command;
@@ -552,7 +565,7 @@ class StatusManager {
         if (!existing) {
           const persisted: TCliState = (tab.cliState as TCliState | undefined) ?? 'idle';
           const initialState: TCliState = persisted === 'busy' ? 'unknown' : persisted;
-          const detected = await this.readTabMetadata(paneInfo);
+          const detected = await this.readTabMetadata(paneInfo, provider);
           // lastEvent는 메모리 전용이라 재시작 시 유실. persisted needs-input을 복원할 때는
           // 클라이언트 ack가 seq=0과 매칭할 baseline이 필요하므로 합성한다.
           const syntheticLastEvent: ILastEvent | null = initialState === 'needs-input'
@@ -589,7 +602,7 @@ class StatusManager {
         const processChanged = existing.currentProcess !== currentProcess;
         const messageChanged = existing.lastUserMessage !== tab.lastUserMessage;
         const panelTypeChanged = existing.panelType !== tab.panelType;
-        const refreshed = await this.readTabMetadata(paneInfo);
+        const refreshed = await this.readTabMetadata(paneInfo, provider);
         existing.tabName = tab.name || (newPaneTitle ? formatTabTitle(newPaneTitle) : '');
         existing.currentProcess = currentProcess;
         existing.paneTitle = newPaneTitle;
@@ -635,9 +648,11 @@ class StatusManager {
         if (existing.cliState === 'busy' && existing.lastEvent
             && now - existing.lastEvent.at > BUSY_STUCK_MS) {
           const childPids = paneInfo?.pid ? await getChildPids(paneInfo.pid) : [];
-          const claudeRunning = paneInfo?.pid ? await isClaudeRunning(paneInfo.pid, childPids) : false;
-          if (!claudeRunning) {
-            log.info({ tabId: tab.id }, 'busy stuck — Claude process gone, forcing idle');
+          const agentRunning = paneInfo?.pid && provider
+            ? await provider.isAgentRunning(paneInfo.pid, childPids)
+            : false;
+          if (!agentRunning) {
+            log.info({ tabId: tab.id }, 'busy stuck — agent process gone, forcing idle');
             this.applyCliState(tab.id, existing, 'idle', { silent: true });
             this.persistToLayout(existing);
             this.broadcastUpdate(tab.id, existing);
@@ -1068,8 +1083,8 @@ class StatusManager {
     if (!jsonlPath) {
       const panePid = await getSessionPanePid(tmuxSession);
       if (panePid) {
-        const session = await detectActiveSession(panePid);
-        jsonlPath = session.jsonlPath;
+        const { info } = await detectAnyActiveSession(panePid);
+        jsonlPath = info.jsonlPath;
       }
     }
 
