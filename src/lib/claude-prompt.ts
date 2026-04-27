@@ -49,6 +49,16 @@ purplemux api-guide
   (long-running builds, different project context, parallel exploration).
 - Poll \`status\` and read \`result\` to verify delegated work.
 - Prefer small, scoped tabs over cramming everything into one session.
+
+### Tab type notes
+
+- **\`web-browser\` tabs**: Electron webviews, not tmux. The \`alive\` field in
+  \`tab list\` / \`tab status\` is always \`false\` for these — that is the normal
+  value, not a sign the tab is dead. Do not gate actions on \`alive\`. Use the
+  browser-specific HTTP endpoints (\`/browser/url\`, \`/browser/screenshot\`, …;
+  see \`purplemux api-guide\`) directly.
+- **\`terminal\` / \`claude-code\` tabs**: run inside tmux, so \`alive\` is a valid
+  liveness signal.
 `;
 };
 
