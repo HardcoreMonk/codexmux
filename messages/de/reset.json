@@ -1,9 +1,0 @@
-{
-  "pageTitle": "Zurücksetzen - codexmux",
-  "title": "tmux zurücksetzen",
-  "stepCleanup": "Verbindungen werden bereinigt",
-  "stepReset": "tmux-Server wird gestoppt und zurückgesetzt",
-  "stepDone": "Fertig",
-  "apiError": "API-Antwortfehler",
-  "resetFailed": "tmux konnte nicht zurückgesetzt werden."
-}

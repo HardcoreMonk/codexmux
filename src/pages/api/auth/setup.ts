@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { needsSetup, updateConfig, generateSecret, hashPassword } from '@/lib/config-store';
 import { updateAccessFromConfig } from '@/lib/access-filter';
 import { verifyRequestSession } from '@/lib/auth';
+import { normalizeLocale } from '@/lib/locales';
 
 let setupLock: Promise<void> = Promise.resolve();
 
@@ -49,7 +50,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       await updateConfig({
         authPassword: hashedPassword,
         authSecret,
-        locale: locale || 'en',
+        locale: normalizeLocale(locale),
         appTheme: appTheme || 'dark',
         terminalTheme,
         dangerouslySkipPermissions: dangerouslySkipPermissions ?? false,

@@ -1,9 +1,0 @@
-{
-  "pageTitle": "重設 - codexmux",
-  "title": "tmux 重設",
-  "stepCleanup": "清理連線中",
-  "stepReset": "停止並重設 tmux 伺服器",
-  "stepDone": "完成",
-  "apiError": "API 回應錯誤",
-  "resetFailed": "tmux 重設失敗。"
-}

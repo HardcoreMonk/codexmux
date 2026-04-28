@@ -14,6 +14,7 @@ import InstallDialog from '@/components/features/login/install-dialog';
 import { usePreflight } from '@/hooks/use-preflight';
 import useConfigStore from '@/hooks/use-config-store';
 import type { IPreflightResult } from '@/types/preflight';
+import { LOCALE_OPTIONS } from '@/lib/locales';
 
 type TStep = 'preflight' | 'password' | 'language' | 'appearance' | 'theme' | 'network' | 'complete';
 type TAppTheme = 'dark' | 'light' | 'system';
@@ -22,20 +23,6 @@ type TNetworkAccess = 'localhost' | 'tailscale' | 'all';
 const ALL_STEPS: TStep[] = ['preflight', 'password', 'language', 'appearance', 'theme', 'network', 'complete'];
 
 const NETWORK_ACCESS_OPTIONS: TNetworkAccess[] = ['localhost', 'tailscale', 'all'];
-
-const LOCALES = [
-  { id: 'en', label: 'English' },
-  { id: 'ko', label: '한국어' },
-  { id: 'ja', label: '日本語' },
-  { id: 'zh-CN', label: '中文（简体）' },
-  { id: 'zh-TW', label: '中文（繁體）' },
-  { id: 'es', label: 'Español' },
-  { id: 'fr', label: 'Français' },
-  { id: 'de', label: 'Deutsch' },
-  { id: 'pt-BR', label: 'Português (BR)' },
-  { id: 'ru', label: 'Русский' },
-  { id: 'tr', label: 'Türkçe' },
-] as const;
 
 const previewColors = (colors: ITerminalThemeColors) => [
   colors.red, colors.green, colors.yellow, colors.blue,
@@ -428,7 +415,7 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
         <div className={stepPanelClass('language')} aria-hidden={step !== 'language'}>
           <p className="text-sm text-muted-foreground">{t('languageDescription')}</p>
           <div className="grid grid-cols-2 gap-2">
-            {LOCALES.map((l) => (
+            {LOCALE_OPTIONS.map((l) => (
               <button
                 key={l.id}
                 type="button"
@@ -557,7 +544,7 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t('summary.language')}</span>
-              <span>{LOCALES.find((l) => l.id === selectedLocale)?.label}</span>
+              <span>{LOCALE_OPTIONS.find((l) => l.id === selectedLocale)?.label}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t('summary.appTheme')}</span>

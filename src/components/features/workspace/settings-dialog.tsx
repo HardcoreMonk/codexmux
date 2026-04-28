@@ -52,6 +52,7 @@ import type { ITerminalThemeColors } from '@/lib/terminal-themes';
 import QuickPromptsSettings from '@/components/features/settings/quick-prompts-settings';
 import SidebarItemsSettings from '@/components/features/settings/sidebar-items-settings';
 import TailscaleSettings from '@/components/features/settings/tailscale-settings';
+import { LOCALE_OPTIONS } from '@/lib/locales';
 
 type TSettingsTab = 'general' | 'appearance' | 'terminal' | 'notification' | 'editor' | 'codex' | 'auth' | 'tailscale' | 'quick-prompts' | 'sidebar-items' | 'system';
 
@@ -86,20 +87,6 @@ const saveAppTheme = (value: string) => {
     (window as unknown as { electronAPI: { setNativeTheme: (t: string) => void } }).electronAPI.setNativeTheme(value);
   }
 };
-
-const LOCALES = [
-  { id: 'en', label: 'English' },
-  { id: 'ko', label: '한국어' },
-  { id: 'ja', label: '日本語' },
-  { id: 'zh-CN', label: '中文（简体）' },
-  { id: 'zh-TW', label: '中文（繁體）' },
-  { id: 'es', label: 'Español' },
-  { id: 'fr', label: 'Français' },
-  { id: 'de', label: 'Deutsch' },
-  { id: 'pt-BR', label: 'Português (BR)' },
-  { id: 'ru', label: 'Русский' },
-  { id: 'tr', label: 'Türkçe' },
-] as const;
 
 const FONT_SIZES = [
   { id: 'normal', labelKey: 'fontSizeNormal' },
@@ -136,7 +123,7 @@ const GeneralTab = () => {
           <p className="text-sm text-muted-foreground">{t('languageDescription')}</p>
         </div>
         <Select
-          items={LOCALES.map((l) => ({ label: l.label, value: l.id }))}
+          items={LOCALE_OPTIONS.map((l) => ({ label: l.label, value: l.id }))}
           value={locale}
           onValueChange={(v) => v && setLocale(v)}
         >
@@ -144,7 +131,7 @@ const GeneralTab = () => {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {LOCALES.map((l) => (
+            {LOCALE_OPTIONS.map((l) => (
               <SelectItem key={l.id} value={l.id}>
                 {l.label}
               </SelectItem>

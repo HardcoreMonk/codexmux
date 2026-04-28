@@ -1,9 +1,0 @@
-{
-  "connecting": "Bağlanıyor...",
-  "reconnecting": "Yeniden bağlanılıyor... ({count}/{max})",
-  "maxConnections": "Maksimum bağlantı sayısı aşıldı",
-  "ptyError": "Terminal başlatılamadı",
-  "disconnected": "Bağlantı kesildi",
-  "reconnect": "Yeniden bağlan",
-  "terminalDisconnected": "Terminal bağlantısı kesildi"
-}

@@ -6,6 +6,7 @@ import readline from 'readline';
 import { execFile } from 'child_process';
 import { randomUUID } from 'crypto';
 import { getShellPath } from '@/lib/preflight';
+import { normalizeLocale } from '@/lib/locales';
 import { collectJsonlFiles } from './stats-cache';
 import type { IDailyReportDay } from '@/types/stats';
 
@@ -239,15 +240,6 @@ const callCodexCli = async (input: string, systemPrompt: string): Promise<string
 const LOCALE_LANGUAGE_NAMES: Record<string, string> = {
   en: 'English',
   ko: 'Korean (한국어)',
-  ja: 'Japanese (日本語)',
-  'zh-CN': 'Simplified Chinese (简体中文)',
-  'zh-TW': 'Traditional Chinese (繁體中文)',
-  de: 'German (Deutsch)',
-  es: 'Spanish (Español)',
-  fr: 'French (Français)',
-  'pt-BR': 'Brazilian Portuguese (Português do Brasil)',
-  ru: 'Russian (Русский)',
-  tr: 'Turkish (Türkçe)',
 };
 
 const resolveLanguageName = (locale: string): string =>
@@ -304,9 +296,10 @@ export const generateDailyReport = async (
   force = false,
   locale = 'en',
 ): Promise<IDailyReportDay> => {
+  const resolvedLocale = normalizeLocale(locale);
   if (!force) {
     const existing = await readCachedReport(date);
-    if (existing && existing.locale === locale) return existing;
+    if (existing && existing.locale === resolvedLocale) return existing;
   }
 
   const sessions = await extractSessionsForDate(date);
@@ -316,14 +309,14 @@ export const generateDailyReport = async (
       brief: 'No activity recorded.',
       detail: '',
       generatedAt: new Date().toISOString(),
-      locale,
+      locale: resolvedLocale,
     };
     await writeCachedReport(empty);
     return empty;
   }
 
   const promptData = buildPromptData(sessions);
-  const response = await callCodexCli(promptData, SUMMARY_PROMPT(date, locale));
+  const response = await callCodexCli(promptData, SUMMARY_PROMPT(date, resolvedLocale));
   const { brief, detail } = parseSummaryResponse(response);
 
   const report: IDailyReportDay = {
@@ -331,7 +324,7 @@ export const generateDailyReport = async (
     brief,
     detail,
     generatedAt: new Date().toISOString(),
-    locale,
+    locale: resolvedLocale,
   };
 
   await writeCachedReport(report);

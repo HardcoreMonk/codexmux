@@ -1,9 +1,0 @@
-{
-  "connecting": "连接中...",
-  "reconnecting": "重新连接中... ({count}/{max})",
-  "maxConnections": "超过最大连接数",
-  "ptyError": "终端启动失败",
-  "disconnected": "已断开连接",
-  "reconnect": "重新连接",
-  "terminalDisconnected": "终端连接已断开"
-}

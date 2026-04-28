@@ -1,9 +1,0 @@
-{
-  "pageTitle": "Sıfırla - codexmux",
-  "title": "tmux Sıfırlama",
-  "stepCleanup": "Bağlantılar temizleniyor",
-  "stepReset": "tmux sunucusu durduruluyor ve sıfırlanıyor",
-  "stepDone": "Tamamlandı",
-  "apiError": "API yanıt hatası",
-  "resetFailed": "tmux sıfırlama başarısız."
-}

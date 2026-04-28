@@ -31,7 +31,7 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['react-icons'],
   },
   i18n: {
-    locales: ['en', 'ko', 'ja', 'zh-CN', 'es', 'de', 'fr', 'pt-BR', 'zh-TW', 'ru', 'tr'],
+    locales: ['en', 'ko'],
     defaultLocale: 'en',
     localeDetection: false,
   },

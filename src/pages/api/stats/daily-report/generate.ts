@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { generateDailyReport } from '@/lib/stats/daily-report-builder';
+import { normalizeLocale } from '@/lib/locales';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -12,7 +13,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(400).json({ error: 'invalid-date', message: 'date must be YYYY-MM-DD' });
   }
 
-  const resolvedLocale = typeof locale === 'string' && locale.trim() ? locale : 'en';
+  const resolvedLocale = normalizeLocale(locale);
 
   try {
     const report = await generateDailyReport(date, !!force, resolvedLocale);

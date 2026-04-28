@@ -1,9 +1,0 @@
-{
-  "pageTitle": "リセット - codexmux",
-  "title": "tmuxリセット",
-  "stepCleanup": "接続をクリーンアップ中",
-  "stepReset": "tmuxサーバーを停止してリセット中",
-  "stepDone": "完了",
-  "apiError": "APIレスポンスエラー",
-  "resetFailed": "tmuxのリセットに失敗しました。"
-}

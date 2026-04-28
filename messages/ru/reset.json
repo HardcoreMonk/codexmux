@@ -1,9 +1,0 @@
-{
-  "pageTitle": "Сброс - codexmux",
-  "title": "Сброс tmux",
-  "stepCleanup": "Закрытие подключений",
-  "stepReset": "Остановка и сброс сервера tmux",
-  "stepDone": "Готово",
-  "apiError": "Ошибка ответа API",
-  "resetFailed": "Не удалось сбросить tmux."
-}

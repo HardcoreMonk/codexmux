@@ -1,9 +1,0 @@
-{
-  "connecting": "Conectando...",
-  "reconnecting": "Reconectando... ({count}/{max})",
-  "maxConnections": "Numero maximo de conexoes excedido",
-  "ptyError": "Falha ao iniciar o terminal",
-  "disconnected": "Desconectado",
-  "reconnect": "Reconectar",
-  "terminalDisconnected": "Terminal desconectado"
-}

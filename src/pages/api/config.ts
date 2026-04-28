@@ -6,6 +6,7 @@ import { isBoundToLocalhostOnly, updateAccessFromConfig } from '@/lib/access-fil
 import { isValidEditorPreset } from '@/lib/editor-url';
 import { isValidToastPosition } from '@/lib/toast-position';
 import { CODEX_APPROVAL_POLICIES, CODEX_SANDBOX_MODES } from '@/lib/codex-command';
+import { isSupportedLocale, normalizeLocale } from '@/lib/locales';
 
 const ALLOWED_FIELDS: (keyof Omit<IConfigData, 'updatedAt' | 'authSecret'>)[] = [
   'appTheme', 'terminalTheme', 'customCSS', 'dangerouslySkipPermissions', 'codexModel', 'codexSandbox', 'codexApprovalPolicy', 'codexSearchEnabled', 'codexShowTerminal', 'editorUrl', 'editorPreset', 'authPassword', 'notificationsEnabled', 'toastOnCompleteEnabled', 'toastDuration', 'toastPositionDesktop', 'toastPositionMobile', 'locale', 'fontSize', 'systemResourcesEnabled', 'networkAccess',
@@ -36,6 +37,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const hostEnvLocked = typeof process.env.HOST === 'string' && process.env.HOST.trim().length > 0;
     return res.status(200).json({
       ...safe,
+      locale: normalizeLocale(safe.locale),
       hasAuthPassword: !!authPassword,
       hostEnvLocked,
       bindHostIsLocal: isBoundToLocalhostOnly(),
@@ -71,6 +73,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     if ('toastDuration' in updates && !isValidToastDuration(updates.toastDuration)) {
       return res.status(400).json({ error: 'toastDuration must be a number between 1000 and 60000.' });
+    }
+
+    if ('locale' in updates && !isSupportedLocale(updates.locale)) {
+      return res.status(400).json({ error: 'locale must be one of: en, ko.' });
     }
 
     if ('codexModel' in updates && !isValidCodexModel(updates.codexModel)) {

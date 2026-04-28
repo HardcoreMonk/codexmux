@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { TEditorPreset } from '@/lib/editor-url';
 import type { TToastPosition } from '@/lib/toast-position';
 import type { TCodexApprovalPolicy, TCodexSandboxMode } from '@/lib/codex-command';
+import { DEFAULT_LOCALE, normalizeLocale } from '@/lib/locales';
 
 export type { TToastPosition } from '@/lib/toast-position';
 
@@ -97,7 +98,7 @@ const initialConfig = {
   codexSearchEnabled: false,
   codexShowTerminal: true,
   hasAuthPassword: false,
-  locale: 'en',
+  locale: DEFAULT_LOCALE,
   customCSS: '',
   fontSize: 'normal',
   systemResourcesEnabled: false,
@@ -155,7 +156,7 @@ const useConfigStore = create<IConfigState>((set, get) => ({
       toastPositionDesktop: data.toastPositionDesktop ?? DEFAULT_TOAST_POSITION_DESKTOP,
       toastPositionMobile: data.toastPositionMobile ?? DEFAULT_TOAST_POSITION_MOBILE,
       hasAuthPassword: data.hasAuthPassword ?? false,
-      locale: data.locale ?? 'en',
+      locale: normalizeLocale(data.locale),
       customCSS: data.customCSS ?? '',
       fontSize: data.fontSize ?? 'normal',
       systemResourcesEnabled: data.systemResourcesEnabled ?? false,
@@ -247,10 +248,11 @@ const useConfigStore = create<IConfigState>((set, get) => ({
   },
 
   setLocale: (locale) => {
-    set({ locale });
-    saveConfig({ locale });
+    const nextLocale = normalizeLocale(locale);
+    set({ locale: nextLocale });
+    saveConfig({ locale: nextLocale });
     if (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).electronAPI) {
-      (window as unknown as { electronAPI: { setLocale: (l: string) => void } }).electronAPI.setLocale(locale);
+      (window as unknown as { electronAPI: { setLocale: (l: string) => void } }).electronAPI.setLocale(nextLocale);
     }
   },
 

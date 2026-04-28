@@ -7,15 +7,6 @@ import { useEffect, useRef, useState } from "react";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/ko";
-import "dayjs/locale/ja";
-import "dayjs/locale/zh-cn";
-import "dayjs/locale/es";
-import "dayjs/locale/de";
-import "dayjs/locale/fr";
-import "dayjs/locale/pt-br";
-import "dayjs/locale/zh-tw";
-import "dayjs/locale/ru";
-import "dayjs/locale/tr";
 import type { NextPage } from "next";
 import type { AppProps } from "next/app";
 import Head from "next/head";
@@ -202,8 +193,7 @@ export default function App({ Component, pageProps }: TAppPropsWithLayout) {
   }, []);
 
   dayjs.extend(relativeTime);
-  const dayjsLocaleMap: Record<string, string> = { 'zh-CN': 'zh-cn', 'pt-BR': 'pt-br', 'zh-TW': 'zh-tw' };
-  dayjs.locale(dayjsLocaleMap[locale] ?? locale);
+  dayjs.locale(locale);
 
   const getLayout = Component.getLayout ?? ((page) => page);
 

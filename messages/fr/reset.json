@@ -1,9 +1,0 @@
-{
-  "pageTitle": "Réinitialisation - codexmux",
-  "title": "Réinitialisation tmux",
-  "stepCleanup": "Nettoyage des connexions",
-  "stepReset": "Arrêt et réinitialisation du serveur tmux",
-  "stepDone": "Terminé",
-  "apiError": "Erreur de réponse de l'API",
-  "resetFailed": "Échec de la réinitialisation de tmux."
-}

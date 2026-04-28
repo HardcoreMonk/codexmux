@@ -1,9 +1,0 @@
-{
-  "connecting": "Подключение...",
-  "reconnecting": "Переподключение... ({count}/{max})",
-  "maxConnections": "Превышено максимальное число подключений",
-  "ptyError": "Не удалось запустить терминал",
-  "disconnected": "Отключено",
-  "reconnect": "Переподключиться",
-  "terminalDisconnected": "Терминал отключён"
-}

@@ -4,11 +4,7 @@ Codex 작업을 tmux 기반 웹 세션으로 관리하는 self-hosted session ma
 
 한 화면에서 여러 Codex 세션을 확인하고, 모바일에서도 같은 작업 공간에 다시 접속할 수 있습니다.
 
-**문서 언어: 한국어**
-
-![codexmux desktop](docs/images/screenshot.png)
-
-![codexmux mobile](docs/images/screenshot-mobile.png)
+**문서 언어 / Document languages: 한국어, English**
 
 ## 현재 저장소
 
@@ -16,6 +12,7 @@ Codex 작업을 tmux 기반 웹 세션으로 관리하는 self-hosted session ma
 - Upstream reference: <https://github.com/subicura/purplemux>
 - Runtime: Next.js Pages Router + custom Node server + tmux
 - Package manager: pnpm
+- Supported languages: 한국어, English
 - Target: Codex-focused web session manager
 
 ## 빠른 시작
@@ -249,6 +246,124 @@ Codex JSONL
 | [docs/TMUX.md](docs/TMUX.md) | tmux, terminal WebSocket, session 관리 |
 | [docs/DATA-DIR.md](docs/DATA-DIR.md) | `~/.codexmux/` 구조와 삭제 기준 |
 | [docs/STYLE.md](docs/STYLE.md) | theme와 color 사용 규칙 |
+
+## English
+
+codexmux is a self-hosted web session manager for Codex. It keeps Codex work in tmux-backed terminal sessions so you can manage multiple sessions from a browser or reconnect from mobile.
+
+### Repository
+
+- Repository: <https://github.com/HardcoreMonk/codexmux>
+- Upstream reference: <https://github.com/subicura/purplemux>
+- Runtime: Next.js Pages Router + custom Node server + tmux
+- Package manager: pnpm
+- Supported languages: English, Korean
+
+### Quick Start
+
+For a published npm package:
+
+```bash
+npx codexmux
+```
+
+Open:
+
+```text
+http://localhost:8022
+```
+
+Requirements: Node.js 20 or newer, tmux, macOS or Linux.
+
+### Server Options
+
+The default port is `8022`.
+
+```bash
+codexmux
+```
+
+Pin the port and allow only localhost plus Tailscale clients:
+
+```bash
+HOST=localhost,tailscale PORT=8122 codexmux
+```
+
+Recommended `~/.zshrc` wrapper:
+
+```zsh
+codexmux() {
+  HOST=localhost,tailscale PORT=8122 command codexmux "$@"
+}
+```
+
+When running from a source checkout, use the dev server unless the package has already been built:
+
+```bash
+corepack pnpm dev
+```
+
+Production check:
+
+```bash
+corepack pnpm build
+corepack pnpm start
+```
+
+### Tailscale
+
+Run codexmux on a Tailscale-accessible interface:
+
+```bash
+HOST=localhost,tailscale PORT=8122 codexmux
+```
+
+Expose it over HTTPS with Tailscale Serve:
+
+```bash
+tailscale serve --bg --https=443 http://localhost:8122
+```
+
+Open:
+
+```text
+https://<machine>.<tailnet>.ts.net
+```
+
+Disable Serve:
+
+```bash
+tailscale serve off --https=443
+```
+
+### Features
+
+- Persistent tmux sessions for browser and mobile reconnects
+- Multi-workspace layout with panes, tabs, working directories, and sidebar state
+- Codex status detection for busy, idle, input-needed, review-needed, and resume states
+- Live timeline from Codex JSONL logs
+- PWA, Web Push, mobile reconnect, and input draft preservation
+- Git status, diff, history, fetch, pull, and push flows
+- Usage stats, token cache analysis, cost estimates, and daily reports
+- Quick prompts with the built-in `Commit` prompt plus user-defined prompts
+- CLI bridge through `codexmux tab ...`
+
+### Security And Data
+
+The first login sets a password. codexmux stores a scrypt hash in `~/.codexmux/config.json`, not the plain password.
+
+To reset only the password, remove these fields from `config.json` and restart:
+
+```json
+{
+  "authPassword": "...",
+  "authSecret": "..."
+}
+```
+
+Deleting the whole `config.json` also resets app settings such as locale, theme, network access, and Codex options.
+
+The app stores its own state in `~/.codexmux/` and reads Codex CLI JSONL sessions from `~/.codex/sessions/`.
 
 ## 라이선스
 

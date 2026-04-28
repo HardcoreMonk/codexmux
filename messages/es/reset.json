@@ -1,9 +1,0 @@
-{
-  "pageTitle": "Restablecer - codexmux",
-  "title": "Restablecer tmux",
-  "stepCleanup": "Limpiando conexiones",
-  "stepReset": "Deteniendo y restableciendo servidor tmux",
-  "stepDone": "Completado",
-  "apiError": "Error de respuesta de la API",
-  "resetFailed": "Error al restablecer tmux."
-}
