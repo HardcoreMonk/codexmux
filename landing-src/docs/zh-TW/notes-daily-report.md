@@ -1,79 +1,79 @@
 ---
-title: 筆記（AI 每日報告）
-description: 由 LLM 撰寫、儲存於本機的 Markdown，每天結束後總結所有 Claude Code 工作階段。
-eyebrow: Claude Code
+title: 노트 (AI 데일리 리포트)
+description: 하루 동안의 모든 Codex 세션을 LLM이 요약해 Markdown으로 로컬에 저장하는 데일리 리포트.
+eyebrow: Codex
 permalink: /zh-TW/docs/notes-daily-report/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-當一天結束時，purplemux 可以讀取當日的工作階段紀錄，幫你寫一行簡報加上每專案的 Markdown 摘要。它住在側邊欄裡稱為 **筆記**，存在的目的是讓回顧、站立會議與一對一不必再以「我昨天到底做了什麼？」開頭。
+하루가 끝나면 codexmux가 그날의 세션 로그를 읽어서, 한 줄짜리 브리프와 프로젝트별 Markdown 요약을 작성해줍니다. 사이드바의 **노트**에 살고 있고, 회고·스탠드업·1:1이 더 이상 "어제 뭐 했지?"로 시작하지 않게 만들기 위한 기능입니다.
 
-## 每天能得到什麼
+## 하루치에 들어가는 것
 
-每筆條目有兩層：
+각 항목은 두 레이어로 구성됩니다:
 
-- **一行簡報** — 一句話捕捉一天的輪廓，直接顯示在筆記清單。
-- **詳細檢視** — 展開簡報以查看依專案分組的 Markdown 報告，每個主題用 H3 區段，下方列出重點清單。
+- **한 줄 브리프** — 하루의 형태를 한 문장으로 포착. 노트 목록에서 바로 보임
+- **상세 뷰** — 브리프를 펼치면 프로젝트별로 그룹화된 Markdown 리포트. 주제별 H3 섹션과 그 아래 글머리 기호 하이라이트
 
-簡報用來掃讀；詳細檢視用來貼進回顧文件。
+브리프는 스캔용, 상세 뷰는 회고 문서에 붙여넣는 용도입니다.
 
-每一天的小標頭顯示工作階段數與總費用 — 與 [統計儀表板](/purplemux/zh-TW/docs/usage-rate-limits/) 相同的數字，以摘要呈現。
+각 날짜의 작은 헤더는 세션 수와 총 비용을 보여줍니다 — [통계 대시보드](/codexmux/zh-TW/docs/usage-rate-limits/)와 같은 수치를 요약 형태로.
 
-## 產生報告
+## 리포트 생성
 
-報告是依需求產生的，不是自動產生。從筆記檢視中：
+리포트는 자동이 아니라 on-demand로 생성됩니다. 노트 뷰에서:
 
-- 在缺漏日期旁的 **產生** 會從 JSONL 紀錄產生當天的報告。
-- 在現有條目上的 **重新產生** 會以新內容重建同一天（適合在補充了 context 或切換語言後使用）。
-- **全部產生** 會依序走過每個缺漏的日期填補。可隨時停止批次。
+- 비어 있는 날 옆의 **Generate**가 JSONL 트랜스크립트로부터 그날의 리포트를 만듭니다
+- 기존 항목의 **Regenerate**는 같은 날을 새 내용으로 다시 만듭니다 (컨텍스트를 추가했거나 언어를 바꾼 경우 유용)
+- **Generate all**은 비어 있는 모든 날을 순차적으로 채웁니다. 배치는 언제든 멈출 수 있습니다
 
-LLM 會先個別處理每個工作階段，再依專案合併，因此即使是分頁眾多的長日，context 也不會丟失。
+LLM은 각 세션을 개별적으로 처리한 뒤 프로젝트별로 병합하므로, 탭이 많은 긴 하루에도 컨텍스트가 사라지지 않습니다.
 
-{% call callout('note', '語系跟隨 App') %}
-報告以 purplemux 設定的語言撰寫。切換 App 語言並重新產生即可在新語系下取得相同內容。
+{% call callout('note', '로케일은 앱을 따라감') %}
+리포트는 codexmux에 설정된 언어로 작성됩니다. 앱 언어를 바꾸고 regenerate하면 같은 내용을 새 로케일로 받을 수 있습니다.
 {% endcall %}
 
-## 它住在哪裡
+## 어디에 있는가
 
-| 介面 | 路徑 |
+| 위치 | 경로 |
 |---|---|
-| 側邊欄 | **筆記** 條目，打開清單檢視 |
-| 快速鍵 | macOS <kbd>⌘⇧E</kbd>，Linux <kbd>Ctrl⇧E</kbd> |
-| 儲存位置 | `~/.purplemux/stats/daily-reports/<date>.json` |
+| 사이드바 | **노트** 항목, 목록 뷰 열기 |
+| 단축키 | macOS는 <kbd>⌘⇧E</kbd>, Linux는 <kbd>Ctrl⇧E</kbd> |
+| 저장 | `~/.codexmux/stats/daily-reports/<date>.json` |
 
-每天是一個 JSON 檔案，包含簡報、詳細 Markdown、語系與工作階段 metadata。除了 LLM 呼叫本身（會走主機所設定的 Claude Code 帳號），不會有任何東西離開你的機器。
+각 날짜는 브리프, 상세 Markdown, 로케일, 세션 메타데이터를 담은 JSON 파일 하나입니다. LLM 호출 자체를 제외하면 머신 밖으로 나가는 것은 없으며, 그 호출은 호스트에 설정된 Codex 계정을 통해 이루어집니다.
 
-## 每專案結構
+## 프로젝트별 구조
 
-詳細檢視中，典型的一天看起來像：
+상세 뷰 안에서 일반적인 하루는 이런 모양입니다:
 
 ```markdown
-**purplemux**
+**codexmux**
 
-### Landing page draft
-- Designed the eight-section structure with Hero / Why / Mobile / Stats layouts
-- Made the purple brand color an OKLCH variable
-- Applied desktop / mobile screenshot mockup frames
+### 랜딩 페이지 초안
+- Hero / 이유 / 모바일 / 통계 레이아웃의 8섹션 구조 설계
+- 퍼플 브랜드 색상을 OKLCH 변수로 정리
+- 데스크탑/모바일 스크린샷 mockup 프레임 적용
 
-### Feature card mockups
-- Reproduced real spinner / pulse indicators on the multi-session dashboard
-- Tightened Git Diff, workspace, and self-hosted mockup CSS
+### 피처 카드 mockup
+- 멀티 세션 대시보드의 spinner / pulse 인디케이터 실물 재현
+- Git Diff, 워크스페이스, 셀프호스트 mockup CSS 정리
 ```
 
-在同一專案中工作的工作階段會合併到一個專案標題下；專案內的主題成為 H3 區段。你可以把渲染後的 Markdown 直接貼進回顧模板。
+같은 프로젝트에서 작업한 세션들은 하나의 프로젝트 헤딩 아래 병합되고, 프로젝트 안의 주제는 H3 섹션이 됩니다. 렌더링된 Markdown을 그대로 회고 템플릿에 붙여넣을 수 있습니다.
 
-## 不適合摘要的日子
+## 요약할 가치가 없는 날
 
-完全沒有 Claude 工作階段的日子不會產生條目。只有一個小工作階段的日子可能產出非常短的簡報 — 沒關係，下次你真正動手後再重新產生會比較長。
+Codex 세션이 없는 날은 항목이 만들어지지 않습니다. 작은 세션 하나만 있는 날은 매우 짧은 브리프가 나올 수 있습니다 — 괜찮습니다. 다음에 실제 작업을 했을 때 더 길어집니다.
 
-批次產生會略過目前語系下已有報告的日子，只填補真正缺漏的部分。
+배치 생성기는 현재 로케일로 이미 리포트가 있는 날은 건너뛰고, 진짜로 비어 있는 날만 채웁니다.
 
-## 隱私
+## 프라이버시
 
-用來產生報告的文字，就是你自己也可以在 `~/.claude/projects/` 中讀到的 JSONL 紀錄。摘要請求是每天一次的 LLM 呼叫；快取輸出留在 `~/.purplemux/`。沒有遙測、沒有上傳、沒有共用快取。
+리포트를 만드는 데 사용되는 텍스트는 `~/.codex/sessions/`에서 직접 읽을 수 있는 같은 JSONL 트랜스크립트입니다. 요약 요청은 하루당 한 번의 LLM 호출이고, 캐시된 출력은 `~/.codexmux/` 아래에 머무릅니다. 텔레메트리도, 업로드도, 공유 캐시도 없습니다.
 
-## 下一步
+## 다음으로
 
-- **[用量與用量限制](/purplemux/zh-TW/docs/usage-rate-limits/)** — 工作階段數與費用所來自的儀表板。
-- **[即時工作階段檢視](/purplemux/zh-TW/docs/live-session-view/)** — 來源資料，即時呈現。
-- **[鍵盤快速鍵](/purplemux/zh-TW/docs/keyboard-shortcuts/)** — 包含開啟筆記的 <kbd>⌘⇧E</kbd>。
+- **[사용량 & 요금 제한](/codexmux/zh-TW/docs/usage-rate-limits/)** — 세션 수와 비용이 오는 대시보드
+- **[라이브 세션 뷰](/codexmux/zh-TW/docs/live-session-view/)** — 원본 데이터, 실시간으로
+- **[키보드 단축키](/codexmux/zh-TW/docs/keyboard-shortcuts/)** — 노트용 <kbd>⌘⇧E</kbd> 포함

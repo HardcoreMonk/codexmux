@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { X, Plus, GitCompareArrows, Copy } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
+import OpenAIIcon from '@/components/icons/openai-icon';
 import TabStatusIndicator from '@/components/features/workspace/tab-status-indicator';
 import CopyPaneDrawer from '@/components/features/workspace/copy-pane-drawer';
 import useTabStore from '@/hooks/use-tab-store';
 import ProcessIcon from '@/components/icons/process-icon';
 import { cn } from '@/lib/utils';
+import { isAgentPanelType } from '@/lib/panel-type';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,7 +23,7 @@ import type { TPanelType } from '@/types/terminal';
 
 const PANEL_MODES = [
   { type: 'terminal' as const, label: 'TERMINAL' },
-  { type: 'claude-code' as const, label: 'CLAUDE' },
+  { type: 'codex' as const, label: 'CODEX' },
   { type: 'diff' as const, label: 'DIFF' },
 ] as const;
 
@@ -61,8 +62,8 @@ const MobileTabHeader = ({
     <div className="flex h-10 shrink-0 items-center border-b border-border/50 bg-background">
       <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
         <TabStatusIndicator tabId={tabId} panelType={panelType} />
-        {panelType === 'claude-code' ? (
-          <ClaudeCodeIcon size={16} />
+        {isAgentPanelType(panelType) ? (
+          <OpenAIIcon className="h-4 w-4 text-muted-foreground" />
         ) : panelType === 'diff' ? (
           <GitCompareArrows className="h-4 w-4 shrink-0 text-muted-foreground" />
         ) : (

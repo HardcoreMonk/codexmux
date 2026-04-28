@@ -4,7 +4,9 @@ import os from 'os';
 import type { IFacetEntry, TPeriod } from '@/types/stats';
 import { isWithinPeriod } from './period-filter';
 
-const FACETS_DIR = path.join(os.homedir(), '.claude', 'usage-data', 'facets');
+const FACETS_DIRS = [
+  path.join(os.homedir(), '.codexmux', 'usage-data', 'facets'),
+];
 
 const parseSingleFacet = (raw: Record<string, unknown>, sessionId: string): IFacetEntry => ({
   sessionId,
@@ -20,7 +22,7 @@ const parseSingleFacet = (raw: Record<string, unknown>, sessionId: string): IFac
         Object.entries(raw.user_satisfaction_counts as Record<string, unknown>).map(([k, v]) => [k, Number(v ?? 0)]),
       )
     : {},
-  helpfulness: String(raw.claude_helpfulness ?? ''),
+  helpfulness: String(raw.agent_helpfulness ?? raw.codex_helpfulness ?? ''),
   summary: String(raw.brief_summary ?? ''),
 });
 
@@ -43,34 +45,31 @@ const runWithConcurrency = async <T>(
 };
 
 export const parseAllFacets = async (period: TPeriod): Promise<IFacetEntry[]> => {
-  try {
-    const files = (await fs.readdir(FACETS_DIR)).filter((f) => f.endsWith('.json'));
+  const tasks: (() => Promise<IFacetEntry | null>)[] = [];
 
-    const results = await runWithConcurrency(
-      files.map((file) => async () => {
-        try {
-          const filePath = path.join(FACETS_DIR, file);
-          const [content, stat] = await Promise.all([
-            fs.readFile(filePath, 'utf-8'),
-            fs.stat(filePath),
-          ]);
+  for (const dir of FACETS_DIRS) {
+    const files = (await fs.readdir(dir).catch(() => [])).filter((f) => f.endsWith('.json'));
+    tasks.push(...files.map((file) => async () => {
+      try {
+        const filePath = path.join(dir, file);
+        const [content, stat] = await Promise.all([
+          fs.readFile(filePath, 'utf-8'),
+          fs.stat(filePath),
+        ]);
 
-          if (!isWithinPeriod(stat.mtime, period)) return null;
+        if (!isWithinPeriod(stat.mtime, period)) return null;
 
-          const raw = JSON.parse(content) as Record<string, unknown>;
-          const sessionId = String(raw.session_id ?? file.replace('.json', ''));
-          return parseSingleFacet(raw, sessionId);
-        } catch {
-          return null;
-        }
-      }),
-      20,
-    );
-
-    return results.filter((entry): entry is IFacetEntry => entry !== null);
-  } catch {
-    return [];
+        const raw = JSON.parse(content) as Record<string, unknown>;
+        const sessionId = String(raw.session_id ?? file.replace('.json', ''));
+        return parseSingleFacet(raw, sessionId);
+      } catch {
+        return null;
+      }
+    }));
   }
+
+  const results = await runWithConcurrency(tasks, 20);
+  return results.filter((entry): entry is IFacetEntry => entry !== null);
 };
 
 export const aggregateFacets = (facets: IFacetEntry[]): {

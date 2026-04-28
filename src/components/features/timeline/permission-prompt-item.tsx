@@ -5,7 +5,7 @@ import { ShieldCheck, ShieldAlert, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import useTabStore from '@/hooks/use-tab-store';
-import { ackNotificationInput } from '@/hooks/use-claude-status';
+import { ackNotificationInput } from '@/hooks/use-agent-status';
 
 interface IPermissionPromptItemProps {
   sessionName: string;
@@ -121,7 +121,7 @@ const PermissionPromptItem = ({ sessionName, tabId, silent = false }: IPermissio
       if (silent) return null;
       return (
         <motion.div key="loading" {...PROMPT_MOTION} className="mt-2">
-          <div className="flex items-center gap-2 rounded-lg border border-claude-active/20 bg-claude-active/5 px-4 py-3 text-xs text-claude-active">
+          <div className="flex items-center gap-2 rounded-lg border border-agent-active/20 bg-agent-active/5 px-4 py-3 text-xs text-agent-active">
             <Loader2 size={14} className="animate-spin" />
             <span>{t('permissionLoading')}</span>
           </div>
@@ -143,8 +143,8 @@ const PermissionPromptItem = ({ sessionName, tabId, silent = false }: IPermissio
 
     return (
       <motion.div key="ready" {...PROMPT_MOTION} className="mt-2">
-        <div className="rounded-lg border border-claude-active/20 bg-claude-active/5 px-4 py-3">
-          <div className="mb-2.5 flex items-center gap-2 text-xs font-medium text-claude-active">
+        <div className="rounded-lg border border-agent-active/20 bg-agent-active/5 px-4 py-3">
+          <div className="mb-2.5 flex items-center gap-2 text-xs font-medium text-agent-active">
             <ShieldCheck size={14} />
             <span>{t('permissionRequired')}</span>
           </div>
@@ -163,18 +163,18 @@ const PermissionPromptItem = ({ sessionName, tabId, silent = false }: IPermissio
                   className={cn(
                     'flex items-start gap-2.5 rounded-md border px-3 py-2 text-left text-sm transition-colors',
                     isSelected
-                      ? 'border-claude-active/40 bg-claude-active/10'
+                      ? 'border-agent-active/40 bg-agent-active/10'
                       : dimmed
                         ? 'border-border/30 opacity-50'
                         : 'border-border/50',
-                    isSelectable && 'cursor-pointer hover:border-claude-active/30 hover:bg-claude-active/5',
+                    isSelectable && 'cursor-pointer hover:border-agent-active/30 hover:bg-agent-active/5',
                   )}
                 >
                   <span
                     className={cn(
                       'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs font-medium',
                       isSelected
-                        ? 'bg-claude-active text-white'
+                        ? 'bg-agent-active text-white'
                         : 'bg-muted text-muted-foreground',
                     )}
                   >

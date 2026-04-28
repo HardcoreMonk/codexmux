@@ -9,7 +9,7 @@ import useWorkspaceStore from '@/hooks/use-workspace-store';
 import useKeyboardShortcuts from '@/hooks/use-keyboard-shortcuts';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import type { ITabMetadata } from '@/hooks/use-tab-metadata-store';
-import { requestSync } from '@/hooks/use-claude-status';
+import { requestSync } from '@/hooks/use-agent-status';
 import PaneLayout from '@/components/features/workspace/pane-layout';
 import ContentHeader from '@/components/features/workspace/content-header';
 import useSidebarActions from '@/hooks/use-sidebar-actions';

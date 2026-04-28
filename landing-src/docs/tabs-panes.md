@@ -1,83 +1,83 @@
 ---
-title: Tabs & panes
-description: How tabs work inside a workspace, how to split panes, and the shortcuts that move focus between them.
-eyebrow: Workspaces & Terminal
+title: 탭 & 창
+description: 워크스페이스 안에서 탭이 동작하는 방식, 창을 분할하는 법, 그리고 그 사이를 오가는 단축키.
+eyebrow: 워크스페이스 & 터미널
 permalink: /docs/tabs-panes/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-A workspace is divided into **panes**, and each pane holds a stack of **tabs**. Splits give you parallel views; tabs let one pane host multiple shells without stealing screen space.
+워크스페이스는 **창(pane)**으로 나뉘고, 각 창은 여러 **탭**을 쌓아 가집니다. 분할은 동시에 여러 화면을 보기 위한 것이고, 탭은 한 창 안에서 여러 쉘을 화면 면적을 빼앗기지 않고 유지하기 위한 것입니다.
 
-## Tabs
+## 탭
 
-Every tab is a real shell attached to a tmux session. The tab title comes from the foreground process — type `vim` and the tab renames itself; quit and it goes back to the directory name.
+모든 탭은 tmux 세션에 붙은 실제 쉘입니다. 탭 제목은 포어그라운드 프로세스에서 따옵니다 — `vim`을 실행하면 탭 이름이 바뀌고, 종료하면 디렉토리 이름으로 돌아옵니다.
 
-| Action | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| New tab | <kbd>⌘T</kbd> | <kbd>Ctrl+T</kbd> |
-| Close tab | <kbd>⌘W</kbd> | <kbd>Ctrl+W</kbd> |
-| Previous tab | <kbd>⌘⇧[</kbd> | <kbd>Ctrl+Shift+[</kbd> |
-| Next tab | <kbd>⌘⇧]</kbd> | <kbd>Ctrl+Shift+]</kbd> |
-| Go to tab 1–9 | <kbd>⌃1</kbd> – <kbd>⌃9</kbd> | <kbd>Alt+1</kbd> – <kbd>Alt+9</kbd> |
+| 새 탭 | <kbd>⌘T</kbd> | <kbd>Ctrl+T</kbd> |
+| 탭 닫기 | <kbd>⌘W</kbd> | <kbd>Ctrl+W</kbd> |
+| 이전 탭 | <kbd>⌘⇧[</kbd> | <kbd>Ctrl+Shift+[</kbd> |
+| 다음 탭 | <kbd>⌘⇧]</kbd> | <kbd>Ctrl+Shift+]</kbd> |
+| 1–9번 탭으로 이동 | <kbd>⌃1</kbd> – <kbd>⌃9</kbd> | <kbd>Alt+1</kbd> – <kbd>Alt+9</kbd> |
 
-Drag a tab in the tab bar to reorder it. The **+** button at the end of the tab bar opens the same template picker as <kbd>⌘T</kbd>.
+탭 바에서 탭을 드래그하면 순서가 바뀝니다. 탭 바 끝의 **+** 버튼은 <kbd>⌘T</kbd>와 같은 템플릿 선택 메뉴를 엽니다.
 
-{% call callout('tip', 'Templates beyond Terminal') %}
-The new-tab menu lets you pick **Terminal**, **Claude**, **Diff**, or **Web browser** as the panel type. They're all tabs — you can mix them in the same pane and switch between them with the shortcuts above.
+{% call callout('tip', '터미널 외의 템플릿') %}
+새 탭 메뉴에서는 **터미널**, **Codex**, **Diff**, **웹 브라우저** 중 패널 타입을 고를 수 있습니다. 모두 탭이므로 한 창 안에 섞어두고 위 단축키로 자유롭게 전환할 수 있습니다.
 {% endcall %}
 
-## Splitting panes
+## 창 분할
 
-Tabs share screen space. To see two things at once, split the pane.
+탭은 화면을 공유합니다. 동시에 두 개를 보고 싶으면 창을 분할하세요.
 
-| Action | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Split right | <kbd>⌘D</kbd> | <kbd>Ctrl+D</kbd> |
-| Split down | <kbd>⌘⇧D</kbd> | <kbd>Ctrl+Shift+D</kbd> |
+| 오른쪽으로 분할 | <kbd>⌘D</kbd> | <kbd>Ctrl+D</kbd> |
+| 아래로 분할 | <kbd>⌘⇧D</kbd> | <kbd>Ctrl+Shift+D</kbd> |
 
-A new split inherits the workspace's default directory and starts with an empty terminal tab. Each pane has its own tab bar, so a pane on the right can host the diff viewer while the pane on the left runs `claude`.
+새로 만들어지는 분할은 워크스페이스의 기본 디렉토리를 상속받고 빈 터미널 탭으로 시작합니다. 각 창은 자체 탭 바를 가지므로 오른쪽 창에서는 diff 뷰어를, 왼쪽 창에서는 `codex`를 돌리는 식으로 쓸 수 있습니다.
 
-## Move focus between panes
+## 창 사이 포커스 이동
 
-Use the directional shortcuts — they walk the split tree, so <kbd>⌘⌥→</kbd> from a deeply nested pane still lands on the visually adjacent one.
+방향 단축키로 이동합니다 — 분할 트리를 따라 걷기 때문에, 깊게 중첩된 창에서 <kbd>⌘⌥→</kbd>를 눌러도 화면상 인접한 창으로 정확히 이동합니다.
 
-| Action | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Focus left | <kbd>⌘⌥←</kbd> | <kbd>Ctrl+Alt+←</kbd> |
-| Focus right | <kbd>⌘⌥→</kbd> | <kbd>Ctrl+Alt+→</kbd> |
-| Focus up | <kbd>⌘⌥↑</kbd> | <kbd>Ctrl+Alt+↑</kbd> |
-| Focus down | <kbd>⌘⌥↓</kbd> | <kbd>Ctrl+Alt+↓</kbd> |
+| 왼쪽으로 포커스 | <kbd>⌘⌥←</kbd> | <kbd>Ctrl+Alt+←</kbd> |
+| 오른쪽으로 포커스 | <kbd>⌘⌥→</kbd> | <kbd>Ctrl+Alt+→</kbd> |
+| 위로 포커스 | <kbd>⌘⌥↑</kbd> | <kbd>Ctrl+Alt+↑</kbd> |
+| 아래로 포커스 | <kbd>⌘⌥↓</kbd> | <kbd>Ctrl+Alt+↓</kbd> |
 
-## Resize and equalize
+## 크기 조정과 균등화
 
-Drag the divider between panes for fine control, or use the keyboard.
+창 사이의 분리선을 드래그하거나 키보드로 조정합니다.
 
-| Action | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Resize left | <kbd>⌘⌃⇧←</kbd> | <kbd>Ctrl+Alt+Shift+←</kbd> |
-| Resize right | <kbd>⌘⌃⇧→</kbd> | <kbd>Ctrl+Alt+Shift+→</kbd> |
-| Resize up | <kbd>⌘⌃⇧↑</kbd> | <kbd>Ctrl+Alt+Shift+↑</kbd> |
-| Resize down | <kbd>⌘⌃⇧↓</kbd> | <kbd>Ctrl+Alt+Shift+↓</kbd> |
-| Equalize splits | <kbd>⌘⌥=</kbd> | <kbd>Ctrl+Alt+=</kbd> |
+| 왼쪽 크기 조정 | <kbd>⌘⌃⇧←</kbd> | <kbd>Ctrl+Alt+Shift+←</kbd> |
+| 오른쪽 크기 조정 | <kbd>⌘⌃⇧→</kbd> | <kbd>Ctrl+Alt+Shift+→</kbd> |
+| 위쪽 크기 조정 | <kbd>⌘⌃⇧↑</kbd> | <kbd>Ctrl+Alt+Shift+↑</kbd> |
+| 아래쪽 크기 조정 | <kbd>⌘⌃⇧↓</kbd> | <kbd>Ctrl+Alt+Shift+↓</kbd> |
+| 분할 균등화 | <kbd>⌘⌥=</kbd> | <kbd>Ctrl+Alt+=</kbd> |
 
-Equalize is the fastest way to reset a layout that's drifted toward unusable extremes.
+레이아웃이 한쪽으로 너무 치우쳐 못 쓸 정도가 됐을 때 균등화가 가장 빠른 리셋 방법입니다.
 
-## Clear the screen
+## 화면 비우기
 
-<kbd>⌘K</kbd> clears the current pane's terminal, the same way most native terminals do. The shell process keeps running; only the visible buffer is wiped.
+<kbd>⌘K</kbd>는 현재 창의 터미널 화면을 비웁니다. 네이티브 터미널과 동일한 방식입니다. 쉘 프로세스는 계속 살아있고, 보이는 버퍼만 지워집니다.
 
-| Action | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Clear screen | <kbd>⌘K</kbd> | <kbd>Ctrl+K</kbd> |
+| 화면 비우기 | <kbd>⌘K</kbd> | <kbd>Ctrl+K</kbd> |
 
-## Tabs survive everything
+## 탭은 어떤 상황에서도 살아남습니다
 
-Closing a tab kills its tmux session. Closing the *browser*, refreshing, or losing the network does not — every tab keeps running on the server. Reopen and the same panes, splits, and tabs come back.
+탭을 닫으면 해당 tmux 세션이 종료됩니다. *브라우저*를 닫거나, 새로고침하거나, 네트워크가 끊어져도 탭은 종료되지 않고 서버에서 계속 돌아갑니다. 다시 열면 같은 창, 분할, 탭이 그대로 돌아옵니다.
 
-For the recovery story across server reboots, see [Save & restore layouts](/purplemux/docs/save-restore/).
+서버 재부팅 이후의 복구 동작은 [레이아웃 저장 & 복원](/codexmux/docs/save-restore/)에서 다룹니다.
 
-## What's next
+## 다음으로
 
-- **[Save & restore layouts](/purplemux/docs/save-restore/)** — how this layout sticks around.
-- **[Keyboard shortcuts](/purplemux/docs/keyboard-shortcuts/)** — every binding in one table.
-- **[Git workflow panel](/purplemux/docs/git-workflow/)** — a useful tab type to drop into a split.
+- **[레이아웃 저장 & 복원](/codexmux/docs/save-restore/)** — 이 레이아웃이 어떻게 유지되는지
+- **[키보드 단축키](/codexmux/docs/keyboard-shortcuts/)** — 전체 바인딩
+- **[Git 워크플로 패널](/codexmux/docs/git-workflow/)** — 분할에 띄워두면 유용한 탭 타입

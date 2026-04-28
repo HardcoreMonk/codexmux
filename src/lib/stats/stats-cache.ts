@@ -4,6 +4,12 @@ import path from 'path';
 import os from 'os';
 import readline from 'readline';
 import dayjs from 'dayjs';
+import {
+  collectAgentJsonlFilePaths,
+  collectAgentJsonlFiles,
+  extractSessionIdFromAgentJsonlPath,
+  type IAgentJsonlFile,
+} from './agent-jsonl-files';
 import type {
   IStatsCache,
   IStatsCacheDailyActivity,
@@ -13,10 +19,9 @@ import type {
   ITokenBreakdown,
 } from '@/types/stats';
 
-const CACHE_VERSION = 2;
-const CACHE_DIR = path.join(os.homedir(), '.purplemux', 'stats');
+const CACHE_VERSION = 4;
+const CACHE_DIR = path.join(os.homedir(), '.codexmux', 'stats');
 const CACHE_PATH = path.join(CACHE_DIR, 'cache.json');
-const PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
 const CONCURRENCY_LIMIT = 10;
 
 // --- Cache types ---
@@ -49,36 +54,82 @@ interface IStatsFileCache {
   days: Record<string, IStatsDailyData>;
 }
 
-// --- JSONL parsing ---
+interface ICodexTokenUsage {
+  input_tokens: number;
+  cached_input_tokens: number;
+  output_tokens: number;
+}
 
-export const collectJsonlFiles = async (): Promise<string[]> => {
-  const result: string[] = [];
-  try {
-    const projectDirs = await fs.readdir(PROJECTS_DIR);
-    for (const dir of projectDirs) {
-      const projectPath = path.join(PROJECTS_DIR, dir);
-      const stat = await fs.stat(projectPath).catch(() => null);
-      if (!stat?.isDirectory()) continue;
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
 
-      const files = await fs.readdir(projectPath).catch(() => []);
-      for (const file of files) {
-        if (file.endsWith('.jsonl') && !/^agent-/.test(file)) {
-          result.push(path.join(projectPath, file));
-        }
-      }
-    }
-  } catch {
-    // projects dir doesn't exist
+const ensureDay = (
+  days: Map<string, IStatsDailyData>,
+  sessionsByDay: Map<string, Map<string, { start: string; end: string; messages: number }>>,
+  date: string,
+): IStatsDailyData => {
+  let day = days.get(date);
+  if (!day) {
+    day = {
+      messageCount: 0,
+      sessionCount: 0,
+      toolCallCount: 0,
+      hourCounts: {},
+      modelTokens: {},
+      sessions: [],
+    };
+    days.set(date, day);
+    sessionsByDay.set(date, new Map());
   }
-  return result;
+  return day;
 };
 
+const addSessionActivity = (
+  sessionsByDay: Map<string, Map<string, { start: string; end: string; messages: number }>>,
+  date: string,
+  sessionId: string,
+  timestamp: string,
+  messages: number,
+): void => {
+  if (!sessionId) return;
+  const daySessions = sessionsByDay.get(date);
+  if (!daySessions) return;
+
+  const sess = daySessions.get(sessionId);
+  if (sess) {
+    sess.messages += messages;
+    if (timestamp > sess.end) sess.end = timestamp;
+    if (timestamp < sess.start) sess.start = timestamp;
+  } else {
+    daySessions.set(sessionId, { start: timestamp, end: timestamp, messages });
+  }
+};
+
+const parseCodexUsage = (raw: unknown): ICodexTokenUsage | null => {
+  if (!isRecord(raw)) return null;
+  return {
+    input_tokens: Number(raw.input_tokens ?? 0),
+    cached_input_tokens: Number(raw.cached_input_tokens ?? 0),
+    output_tokens: Number(raw.output_tokens ?? 0),
+  };
+};
+
+// --- JSONL parsing ---
+
+export const collectJsonlFiles = collectAgentJsonlFilePaths;
+
 const parseDaysFromFile = async (
-  filePath: string,
+  file: IAgentJsonlFile,
   targetDates: Set<string>,
 ): Promise<Map<string, IStatsDailyData>> => {
   const days = new Map<string, IStatsDailyData>();
   const sessionsByDay = new Map<string, Map<string, { start: string; end: string; messages: number }>>();
+  const filePath = file.filePath;
+  let codexSessionId = file.source === 'codex'
+    ? extractSessionIdFromAgentJsonlPath(filePath) ?? ''
+    : '';
+  let codexModel = 'codex';
+  const previousCodexTotals = new Map<string, ICodexTokenUsage>();
 
   try {
     const stream = createReadStream(filePath, { encoding: 'utf-8' });
@@ -91,38 +142,103 @@ const parseDaysFromFile = async (
         const timestamp = String(entry.timestamp ?? '');
         if (!timestamp) continue;
 
+        const type = String(entry.type ?? '');
+        if (file.source === 'codex' && (type === 'session_meta' || type === 'turn_context')) {
+          const payload = isRecord(entry.payload) ? entry.payload : null;
+          if (payload) {
+            if (type === 'session_meta') {
+              codexSessionId = String(payload.id ?? codexSessionId);
+            }
+            const model = String(payload.model ?? '');
+            if (model) codexModel = model;
+          }
+        }
+
         const date = timestamp.slice(0, 10);
         if (!targetDates.has(date)) continue;
 
-        const type = String(entry.type ?? '');
+        if (file.source === 'codex') {
+          const payload = isRecord(entry.payload) ? entry.payload : null;
+          if (type === 'session_meta' || type === 'turn_context') {
+            continue;
+          }
+
+          if (type === 'response_item' && payload && payload.type === 'function_call') {
+            const day = ensureDay(days, sessionsByDay, date);
+            day.toolCallCount++;
+            addSessionActivity(sessionsByDay, date, codexSessionId, timestamp, 0);
+            continue;
+          }
+
+          if (type !== 'event_msg' || !payload) continue;
+
+          const eventType = String(payload.type ?? '');
+          if (eventType === 'user_message') {
+            const day = ensureDay(days, sessionsByDay, date);
+            const hour = String(new Date(timestamp).getHours());
+            day.messageCount++;
+            day.hourCounts[hour] = (day.hourCounts[hour] ?? 0) + 1;
+            addSessionActivity(sessionsByDay, date, codexSessionId, timestamp, 1);
+            continue;
+          }
+
+          if (eventType === 'agent_message') {
+            ensureDay(days, sessionsByDay, date);
+            addSessionActivity(sessionsByDay, date, codexSessionId, timestamp, 0);
+            continue;
+          }
+
+          if (eventType === 'token_count') {
+            const info = isRecord(payload.info) ? payload.info : null;
+            if (!info) continue;
+
+            const model = codexModel || 'codex';
+            const lastUsage = parseCodexUsage(info.last_token_usage);
+            const totalUsage = parseCodexUsage(info.total_token_usage);
+            let usage = lastUsage;
+
+            if (totalUsage) {
+              const previous = previousCodexTotals.get(model);
+              previousCodexTotals.set(model, totalUsage);
+              if (!usage && previous) {
+                usage = {
+                  input_tokens: Math.max(0, totalUsage.input_tokens - previous.input_tokens),
+                  cached_input_tokens: Math.max(0, totalUsage.cached_input_tokens - previous.cached_input_tokens),
+                  output_tokens: Math.max(0, totalUsage.output_tokens - previous.output_tokens),
+                };
+              } else if (!usage) {
+                usage = totalUsage;
+              }
+            }
+
+            if (!usage) continue;
+
+            const day = ensureDay(days, sessionsByDay, date);
+            if (!day.modelTokens[model]) {
+              day.modelTokens[model] = emptyModelTokens();
+            }
+            const mt = day.modelTokens[model];
+            const cacheRead = Math.min(usage.input_tokens, usage.cached_input_tokens);
+            mt.input += Math.max(0, usage.input_tokens - cacheRead);
+            mt.output += usage.output_tokens;
+            mt.cacheRead += cacheRead;
+            addSessionActivity(sessionsByDay, date, codexSessionId, timestamp, 0);
+            continue;
+          }
+
+          continue;
+        }
+
         if (type !== 'user' && type !== 'assistant') continue;
 
         const sessionId = String(entry.sessionId ?? '');
-        const hour = String(new Date(timestamp).getHours());
-
-        let day = days.get(date);
-        if (!day) {
-          day = { messageCount: 0, sessionCount: 0, toolCallCount: 0, hourCounts: {}, modelTokens: {}, sessions: [] };
-          days.set(date, day);
-          sessionsByDay.set(date, new Map());
-        }
-
-        const daySessions = sessionsByDay.get(date)!;
+        const day = ensureDay(days, sessionsByDay, date);
 
         if (type === 'user') {
+          const hour = String(new Date(timestamp).getHours());
           day.messageCount++;
           day.hourCounts[hour] = (day.hourCounts[hour] ?? 0) + 1;
-
-          if (sessionId) {
-            const sess = daySessions.get(sessionId);
-            if (sess) {
-              sess.messages++;
-              if (timestamp > sess.end) sess.end = timestamp;
-              if (timestamp < sess.start) sess.start = timestamp;
-            } else {
-              daySessions.set(sessionId, { start: timestamp, end: timestamp, messages: 1 });
-            }
-          }
+          addSessionActivity(sessionsByDay, date, sessionId, timestamp, 1);
         }
 
         if (type === 'assistant') {
@@ -158,15 +274,7 @@ const parseDaysFromFile = async (
             mt.cacheCreation1h += cc1h;
           }
 
-          if (sessionId) {
-            const sess = daySessions.get(sessionId);
-            if (sess) {
-              if (timestamp > sess.end) sess.end = timestamp;
-              if (timestamp < sess.start) sess.start = timestamp;
-            } else {
-              daySessions.set(sessionId, { start: timestamp, end: timestamp, messages: 0 });
-            }
-          }
+          addSessionActivity(sessionsByDay, date, sessionId, timestamp, 0);
         }
       } catch {
         // skip malformed lines
@@ -289,10 +397,10 @@ const findFirstDateFromFile = async (filePath: string): Promise<string | null> =
 };
 
 const findFirstDate = async (): Promise<string | null> => {
-  const files = await collectJsonlFiles();
+  const files = await collectAgentJsonlFiles();
   if (files.length === 0) return null;
 
-  const tasks = files.map((f) => () => findFirstDateFromFile(f));
+  const tasks = files.map((f) => () => findFirstDateFromFile(f.filePath));
   const results = await runWithConcurrency(tasks, CONCURRENCY_LIMIT);
   const dates = results.filter((d): d is string => d !== null);
   if (dates.length === 0) return null;
@@ -303,7 +411,7 @@ const findFirstDate = async (): Promise<string | null> => {
 const computeMissingDays = async (targetDates: Set<string>): Promise<Map<string, IStatsDailyData>> => {
   if (targetDates.size === 0) return new Map();
 
-  const files = await collectJsonlFiles();
+  const files = await collectAgentJsonlFiles();
   const tasks = files.map((f) => () => parseDaysFromFile(f, targetDates));
   const allResults = await runWithConcurrency(tasks, CONCURRENCY_LIMIT);
 

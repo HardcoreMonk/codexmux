@@ -10,7 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
+import OpenAIIcon from '@/components/icons/openai-icon';
 import { useRouter } from 'next/router';
 import useSidebarItems from '@/hooks/use-sidebar-items';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
@@ -27,6 +27,8 @@ import {
 import type { IWorkspace, IWorkspaceGroup, IPaneNode, ITab } from '@/types/terminal';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import useTabStore, { selectWorkspacePortsLabel } from '@/hooks/use-tab-store';
+import { readAgentSummary } from '@/lib/agent-tab-fields';
+import { isAgentPanelType } from '@/lib/panel-type';
 import { formatTabTitle } from '@/lib/tab-title';
 import ProcessIcon from '@/components/icons/process-icon';
 import TabStatusIndicator from '@/components/features/workspace/tab-status-indicator';
@@ -190,8 +192,8 @@ const MobileNavigationSheet = ({
             panelType={panelType}
           />
           <span className="mt-0.5 flex w-4 shrink-0 items-center justify-center">
-            {panelType === 'claude-code' ? (
-              <ClaudeCodeIcon size={16} />
+            {isAgentPanelType(panelType) ? (
+              <OpenAIIcon className="h-4 w-4 text-muted-foreground" />
             ) : panelType === 'web-browser' ? (
               <Globe size={14} className="text-muted-foreground" />
             ) : panelType === 'diff' ? (
@@ -205,9 +207,9 @@ const MobileNavigationSheet = ({
           </span>
           <div className="min-w-0 flex-1">
             <span className="block truncate">{getTabDisplayName(tab)}</span>
-            {panelType === 'claude-code' && tab.claudeSummary && (
+            {isAgentPanelType(panelType) && readAgentSummary(tab) && (
               <span className="block truncate text-xs text-muted-foreground/70">
-                {tab.claudeSummary}
+                {readAgentSummary(tab)}
               </span>
             )}
           </div>

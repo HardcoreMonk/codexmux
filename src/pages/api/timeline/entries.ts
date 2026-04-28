@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { readEntriesBefore } from '@/lib/session-parser';
 import { isAllowedJsonlPath } from '@/lib/path-validation';
+import { getProviderByPanelType } from '@/lib/providers';
 
 const DEFAULT_LIMIT = 64;
 
@@ -25,8 +25,13 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   const limit = parseInt(req.query.limit as string, 10) || DEFAULT_LIMIT;
+  const panelType = typeof req.query.panelType === 'string' ? req.query.panelType : 'codex';
+  const provider = getProviderByPanelType(panelType);
+  if (!provider) {
+    return res.status(400).json({ error: 'Unknown panel type' });
+  }
 
-  const result = await readEntriesBefore(jsonlPath, beforeByte, limit);
+  const result = await provider.readEntriesBefore(jsonlPath, beforeByte, limit);
 
   return res.status(200).json({
     entries: result.entries,

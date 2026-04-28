@@ -4,6 +4,7 @@ import Spinner from '@/components/ui/spinner';
 import useTabStore, { selectTabDisplayStatus } from '@/hooks/use-tab-store';
 import { cn } from '@/lib/utils';
 import ProcessIcon from '@/components/icons/process-icon';
+import { isAgentPanelType } from '@/lib/panel-type';
 import type { IWorkspace, IPaneNode, TPanelType } from '@/types/terminal';
 
 interface IMobileWorkspaceTabBarProps {
@@ -82,7 +83,7 @@ const MobileWorkspaceTabBar = ({
             item.workspaceId === activeWorkspaceId &&
             item.paneId === selectedPaneId &&
             item.tabId === selectedTabId;
-          const isClaude = item.panelType === 'claude-code';
+          const isAgentPanel = isAgentPanelType(item.panelType);
           const status = selectTabDisplayStatus(statusTabs, item.tabId);
           const termStatus = statusTabs[item.tabId]?.terminalStatus;
           const currentProcess = statusTabs[item.tabId]?.currentProcess;
@@ -102,15 +103,15 @@ const MobileWorkspaceTabBar = ({
             >
               {isActive ? (
                 <span className="h-2 w-2 rounded-[2px] bg-foreground" />
-              ) : isClaude && status === 'busy' ? (
+              ) : isAgentPanel && status === 'busy' ? (
                 <Spinner className="h-2 w-2 text-muted-foreground" />
-              ) : isClaude && status === 'ready-for-review' ? (
-                <span className="h-2 w-2 rounded-full bg-claude-active animate-pulse" />
-              ) : isClaude && status === 'needs-input' ? (
+              ) : isAgentPanel && status === 'ready-for-review' ? (
+                <span className="h-2 w-2 rounded-full bg-agent-active animate-pulse" />
+              ) : isAgentPanel && status === 'needs-input' ? (
                 <span className="h-2 w-2 rounded-full bg-ui-amber animate-pulse" />
-              ) : isClaude && status === 'unknown' ? (
+              ) : isAgentPanel && status === 'unknown' ? (
                 <span className="h-2 w-2 rounded-full bg-muted-foreground/50" />
-              ) : isClaude ? (
+              ) : isAgentPanel ? (
                 <span className="h-2 w-2 rounded-full border border-muted-foreground/40" />
               ) : item.panelType === 'web-browser' ? (
                 <Globe className="h-2.5 w-2.5 text-muted-foreground/50" />

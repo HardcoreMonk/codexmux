@@ -2,15 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Plus, Terminal, Globe, GitCompareArrows } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
-import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
+import OpenAIIcon from '@/components/icons/openai-icon';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { TPanelType } from '@/types/terminal';
-import useConfigStore from '@/hooks/use-config-store';
-import { useLayoutStore } from '@/hooks/use-layout';
 import useIsMobile from '@/hooks/use-is-mobile';
 import useIsMac from '@/hooks/use-is-mac';
+import { buildCodexCommandFromStore } from '@/lib/codex-client-command';
+import { isAgentPanelType } from '@/lib/panel-type';
 
 interface IPaneNewTabMenuProps {
   paneId: string;
@@ -20,12 +20,12 @@ interface IPaneNewTabMenuProps {
 }
 
 const defaultKeyForPanelType = (panelType?: TPanelType): string => {
+  if (isAgentPanelType(panelType)) return 'codex-new';
   switch (panelType) {
     case 'terminal': return 'terminal';
     case 'web-browser': return 'web-browser';
     case 'diff':
-    case 'claude-code':
-    default: return 'claude-new';
+    default: return 'codex-new';
   }
 };
 
@@ -35,18 +35,16 @@ const PaneNewTabMenu = ({ paneId, isCreating, activePanelType, onCreateTab }: IP
   const mod = isMac ? '⌘' : 'Ctrl+';
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
-  const wsId = useLayoutStore((s) => s.workspaceId);
 
   const menuItems = useMemo(() => {
     const all = [
-      { key: 'claude-new', type: 'claude-code' as const, icon: <ClaudeCodeIcon className="h-3.5 w-3.5" />, label: t('claudeNewConversation'), startClaude: true },
-      { key: 'claude', type: 'claude-code' as const, icon: <ClaudeCodeIcon className="h-3.5 w-3.5" />, label: t('claudeSessionList') },
+      { key: 'codex-new', type: 'codex' as const, icon: <OpenAIIcon className="h-3.5 w-3.5 text-muted-foreground" />, label: 'Codex', startCodex: true },
       { key: 'terminal', type: 'terminal' as const, icon: <Terminal className="h-3.5 w-3.5 text-muted-foreground" />, label: 'Terminal' },
       { key: 'diff', type: 'diff' as const, icon: <GitCompareArrows className="h-3.5 w-3.5 text-muted-foreground" />, label: 'Diff' },
       { key: 'web-browser', type: 'web-browser' as const, icon: <Globe className="h-3.5 w-3.5 text-muted-foreground" />, label: 'Web Browser' },
     ];
     return isMobile ? all.filter((item) => item.key !== 'web-browser') : all;
-  }, [isMobile, t]);
+  }, [isMobile]);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -80,13 +78,8 @@ const PaneNewTabMenu = ({ paneId, isCreating, activePanelType, onCreateTab }: IP
 
   const handleSelect = (item: typeof menuItems[number]) => {
     setOpen(false);
-    if ('startClaude' in item && item.startClaude) {
-      const dangerous = useConfigStore.getState().dangerouslySkipPermissions;
-      const settings = '--settings ~/.purplemux/hooks.json';
-      const prompt = wsId ? `--append-system-prompt-file ~/.purplemux/workspaces/${wsId}/claude-prompt.md` : '';
-      const flags = [settings, prompt].filter(Boolean).join(' ');
-      const cmd = dangerous ? `claude ${flags} --dangerously-skip-permissions` : `claude ${flags}`;
-      onCreateTab(item.type, { command: cmd });
+    if ('startCodex' in item && item.startCodex) {
+      onCreateTab(item.type, { command: buildCodexCommandFromStore() });
     } else {
       onCreateTab(item.type);
     }

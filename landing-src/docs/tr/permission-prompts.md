@@ -1,65 +1,43 @@
 ---
-title: İzin istemleri
-description: purplemux'ın Claude Code'un "bunu çalıştırabilir miyim?" diyaloglarını nasıl yakaladığı ve panelden, klavyeden veya telefonunuzdan onaylamanıza nasıl izin verdiği.
-eyebrow: Claude Code
+title: 권한 프롬프트
+description: Codex의 실행 허가 질문을 대시보드, 키보드, 휴대폰에서 승인하는 방법.
+eyebrow: Codex
 permalink: /tr/docs/permission-prompts/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Claude Code varsayılan olarak izin diyaloglarında bloklanır — araç çağrıları, dosya yazımları ve benzerleri için. purplemux bu diyalogları belirdiği anda yakalar ve yakınınızda olan her cihaza yönlendirir.
+Codex는 tool call, 파일 쓰기, 권한이 필요한 작업에서 사용자의 승인을 기다릴 수 있습니다. codexmux는 terminal prompt를 감지해 timeline 안에 선택지를 표시합니다.
 
-## Neler yakalanır
+## 감지 방식
 
-Claude Code `Notification` hook'unu birkaç nedenle tetikler. purplemux yalnızca iki bildirim türünü izin istemleri olarak kabul eder:
+- tmux pane 내용을 캡처해 option을 파싱합니다.
+- 생성된 hook bridge event가 있으면 이를 보조 신호로 사용합니다.
+- permission prompt가 아닌 notification은 상태를 바꾸지 않습니다.
 
-- `permission_prompt` — standart "Bu aracın çalışmasına izin verilsin mi?" diyaloğu
-- `worker_permission_prompt` — alt-ajandan gelen aynı şey
+## 동작 흐름
 
-Diğer her şey (boşta hatırlatmalar vb.) durum tarafında yok sayılır ve sekmeyi **needs-input**'a çevirmez veya push göndermez.
+1. tab이 입력 대기 상태임을 감지합니다.
+2. 상태를 **needs-input**으로 바꾸고 WebSocket으로 broadcast합니다.
+3. timeline 안에 Codex가 보여준 선택지를 표시합니다.
+4. notification permission이 있으면 Web Push 또는 desktop notification을 보냅니다.
+5. 사용자가 선택하면 값을 tmux stdin으로 전달하고 tab을 다시 **busy**로 바꿉니다.
 
-## Biri tetiklendiğinde ne olur
+## 답하는 방법
 
-1. Claude Code bir `Notification` hook'u yayar. `~/.purplemux/status-hook.sh` shell betiği olayı ve bildirim türünü yerel sunucuya POST eder.
-2. Sunucu sekmenin durumunu **needs-input**'a (sarı nabız) çevirir ve değişikliği durum WebSocket'i üzerinden yayınlar.
-3. Panel istemi **zaman tünelinde satır içi** çizer — modal yok, bağlam değişimi yok — Claude'un sunduğu aynı seçeneklerle.
-4. Bildirim izni verilmişse, `needs-input` için bir Web Push ve / veya masaüstü bildirimi tetiklenir.
+- timeline에서 option 클릭.
+- option 번호에 맞는 숫자 key 입력.
+- 모바일 push를 눌러 해당 tab으로 이동한 뒤 선택.
 
-Claude CLI'nin kendisi hâlâ stdin'de bekliyor. purplemux istemin seçeneklerini tmux'tan okuyor ve bir tanesini seçtiğinizde seçiminizi geri yönlendiriyor.
-
-## Nasıl yanıtlanır
-
-Üç eşdeğer yol:
-
-- Zaman tünelinde seçeneğe **tıklayın**.
-- **Sayıya basın** — <kbd>1</kbd>, <kbd>2</kbd>, <kbd>3</kbd> — seçenek dizinine eşleşen.
-- Telefonunuzda **push'a dokunun**, doğrudan isteme derin bağlanır; oradan seçin.
-
-Seçtiğinizde purplemux girdiyi tmux'a gönderir, sekme **busy**'ye geri döner ve Claude akışın ortasından devam eder. Başka bir şey onaylamanıza gerek yoktur — tıklama *zaten* onaydır.
-
-{% call callout('tip', 'Ardışık istemler otomatik yeniden alınır') %}
-Claude art arda birkaç soru sorarsa, satır içi istem bir sonraki `Notification` geldiğinde yeni seçeneklerle yeniden çizilir. Bir öncekini kapatmanıza gerek yok.
+{% call callout('tip', '연속 prompt') %}
+Codex가 질문을 여러 번 이어서 하면 codexmux는 pane 내용을 다시 읽어 새 선택지를 표시합니다.
 {% endcall %}
 
-## Mobil akış
+## 실패 시 fallback
 
-PWA kurulu ve bildirimler izinliyken, tarayıcı sekmesi açık, arka planda veya kapalıyken Web Push tetiklenir:
+프롬프트가 scrollback에서 사라졌거나 형식이 예상과 다르면 option parsing이 실패할 수 있습니다. 이 경우 **터미널** mode로 전환해 raw CLI에서 직접 답하면 됩니다.
 
-- Bildirim "Girdi Gerekiyor" yazar ve oturumu tanımlar.
-- Dokunmak purplemux'ı o sekmeye odaklanmış olarak açar.
-- Satır içi istem zaten çizilmiş; tek dokunuşla seçenek seçin.
+## 다음 단계
 
-Bu, [Tailscale + PWA](/purplemux/tr/docs/quickstart/#telefonunuzdan-erisin) kurmanın temel nedenidir — onayların masanızdan ayrılırken sizi takip etmesini sağlar.
-
-## Seçenekler ayrıştırılamadığında
-
-Nadir durumlarda (purplemux okumadan önce tmux kaydırma tamponundan kaymış bir istem), seçenek listesi boş gelir. Zaman tüneli "istem okunamadı" kartı gösterir ve geri çekilmeyle dört kez yeniden dener. Yine başarısız olursa, o sekme için **Terminal** moduna geçin ve ham CLI'de yanıtlayın — temel Claude süreci hâlâ bekliyor.
-
-## Boşta dürtmeler ne olacak?
-
-Claude'un diğer bildirim türleri — örneğin boşta hatırlatmaları — yine hook uç noktasına gelir. Sunucu onları loglar ama sekme durumunu değiştirmez, push göndermez veya bir UI istemi yüzeye çıkarmaz. Bu kasıtlıdır: yalnızca Claude'u *bloklayan* olaylar dikkatinizi gerektirir.
-
-## Sıradaki adımlar
-
-- **[Oturum durumu](/purplemux/tr/docs/session-status/)** — **needs-input** durumunun anlamı ve nasıl tespit edildiği.
-- **[Canlı oturum görünümü](/purplemux/tr/docs/live-session-view/)** — satır içi istemin çizildiği yer.
-- **[Tarayıcı desteği](/purplemux/tr/docs/browser-support/)** — Web Push gereksinimleri (özellikle iOS Safari 16.4+).
+- **[세션 상태](/codexmux/tr/docs/session-status/)**
+- **[라이브 세션 뷰](/codexmux/tr/docs/live-session-view/)**
+- **[웹 푸시 알림](/codexmux/tr/docs/web-push/)**

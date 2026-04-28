@@ -1,5 +1,5 @@
 {
-  "pageTitle": "重置 - purplemux",
+  "pageTitle": "重置 - codexmux",
   "title": "tmux重置",
   "stepCleanup": "正在清理连接",
   "stepReset": "正在停止并重置tmux服务器",

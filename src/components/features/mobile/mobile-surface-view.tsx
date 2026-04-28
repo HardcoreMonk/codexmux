@@ -12,15 +12,17 @@ import useTerminalWebSocket from '@/hooks/use-terminal-websocket';
 import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import TerminalContainer from '@/components/features/workspace/terminal-container';
 import ConnectionStatus from '@/components/features/workspace/connection-status';
-import MobileClaudeCodePanel from '@/components/features/mobile/mobile-claude-code-panel';
+import MobileAgentPanel from '@/components/features/mobile/mobile-agent-panel';
 import MobileTerminalToolbar from '@/components/features/mobile/mobile-terminal-toolbar';
 import { formatTabTitle, isShellProcess } from '@/lib/tab-title';
 import { isAppShortcut, isClearShortcut, isFocusInputShortcut, isShiftEnter } from '@/lib/keyboard-shortcuts';
 import type { TCliState } from '@/types/timeline';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
-import useTabStore, { selectSessionView } from '@/hooks/use-tab-store';
+import useTabStore, { selectAgentProcess, selectAgentProcessCheckedAt, selectSessionView } from '@/hooks/use-tab-store';
 import { useLayoutStore } from '@/hooks/use-layout';
-import useConfigStore from '@/hooks/use-config-store';
+import { buildCodexCommandFromStore } from '@/lib/codex-client-command';
+import { readAgentSessionId } from '@/lib/agent-tab-fields';
+import { isAgentPanelType } from '@/lib/panel-type';
 
 
 interface ITermActions {
@@ -79,7 +81,7 @@ const MobileSurfaceView = ({
   const t = useTranslations('mobile');
   const tt = useTranslations('terminal');
   const activeTab = tabs.find((tab) => tab.id === activeTabId);
-  const isClaudeCode = panelType === 'claude-code';
+  const isAgentPanel = isAgentPanelType(panelType);
   const isWebBrowser = panelType === 'web-browser';
   const isDiff = panelType === 'diff';
 
@@ -128,9 +130,9 @@ const MobileSurfaceView = ({
   const setInputValueRef = useRef<((v: string) => void) | undefined>(undefined);
 
   const pendingRestartRef = useRef<string | null>(null);
-  const pendingClaudeInputRef = useRef<string | null>(null);
+  const pendingAgentInputRef = useRef<string | null>(null);
   const lastTitleRef = useRef('');
-  const claudeProcess = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.claudeProcess ?? null : null);
+  const agentProcess = useTabStore((s) => activeTabId ? selectAgentProcess(s.tabs, activeTabId) : null);
   const sessionView = useTabStore((s) => activeTabId ? selectSessionView(s.tabs, activeTabId) : null);
 
   const handleCliStateChange = useCallback((state: TCliState) => {
@@ -157,7 +159,7 @@ const MobileSurfaceView = ({
 
   const { terminalRef, write, clear, reset, fit, focus, isReady } = useTerminal({
     theme: terminalTheme.colors,
-    fontSize: isClaudeCode ? undefined : MOBILE_FONT_SIZE,
+    fontSize: isAgentPanel ? undefined : MOBILE_FONT_SIZE,
     onInput: (data) => wsActionsRef.current.sendStdin(data),
     onResize: (cols, rows) => {
       wsActionsRef.current.sendResize(cols, rows);
@@ -183,25 +185,25 @@ const MobileSurfaceView = ({
       }
       const tab = tabsRef.current.find((t) => t.id === tabId);
       if (tab) {
-        const prevCheckedAt = useTabStore.getState().tabs[tabId]?.claudeProcessCheckedAt ?? 0;
-        fetch(`/api/check-claude?session=${tab.sessionName}`)
+        const prevCheckedAt = selectAgentProcessCheckedAt(useTabStore.getState().tabs, tabId);
+        fetch(`/api/check-agent?session=${tab.sessionName}`)
           .then((res) => res.json())
           .then(({ running, checkedAt }) => {
             const current = useTabStore.getState().tabs[tabId];
-            if (current && current.claudeProcessCheckedAt !== prevCheckedAt) {
-              if (current.claudeProcess !== running) {
+            if (current && selectAgentProcessCheckedAt(useTabStore.getState().tabs, tabId) !== prevCheckedAt) {
+              if (selectAgentProcess(useTabStore.getState().tabs, tabId) !== running) {
                 setTimeout(() => {
-                  fetch(`/api/check-claude?session=${tab.sessionName}`)
+                  fetch(`/api/check-agent?session=${tab.sessionName}`)
                     .then((r) => r.json())
                     .then(({ running, checkedAt }) => {
-                      useTabStore.getState().setClaudeProcess(tabId, running, checkedAt);
+                      useTabStore.getState().setAgentProcess(tabId, running, checkedAt);
                     })
                     .catch(() => {});
                 }, 500);
               }
               return;
             }
-            useTabStore.getState().setClaudeProcess(tabId, running, checkedAt);
+            useTabStore.getState().setAgentProcess(tabId, running, checkedAt);
           })
           .catch(() => {});
       }
@@ -262,6 +264,20 @@ const MobileSurfaceView = ({
     onSessionEnded: handleSessionEnded,
   });
 
+  const handleReconnect = useCallback(() => {
+    const tabId = activeTabIdRef.current;
+    const tab = tabId ? tabsRef.current.find((t) => t.id === tabId) : null;
+    if (!tab || tab.panelType === 'web-browser') {
+      reconnect();
+      return;
+    }
+
+    connectedSessionRef.current = tab.sessionName;
+    setAttemptedTabId(tab.id);
+    const { cols, rows } = termActionsRef.current.fit();
+    connect(tab.sessionName, cols, rows);
+  }, [connect, reconnect]);
+
   useEffect(() => {
     termActionsRef.current = { write, reset, fit, focus };
     wsActionsRef.current = { sendStdin, sendResize };
@@ -290,7 +306,9 @@ const MobileSurfaceView = ({
     });
 
     connectedSessionRef.current = tab.sessionName;
-    connect(tab.sessionName);
+    setAttemptedTabId(activeTabId);
+    const { cols, rows } = fit();
+    connect(tab.sessionName, cols, rows);
   }, [isReady, activeTabId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -328,7 +346,7 @@ const MobileSurfaceView = ({
   }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (isClaudeCode) {
+    if (isAgentPanel) {
       waitingForResizeRef.current = false;
       if (showTimerRef.current) clearTimeout(showTimerRef.current);
       fetchAndUpdateCwd();
@@ -347,7 +365,7 @@ const MobileSurfaceView = ({
       };
     }
     queueMicrotask(() => setShowTerminal(true));
-  }, [isClaudeCode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAgentPanel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreateTab = useCallback(async () => {
     setIsCreating(true);
@@ -355,53 +373,48 @@ const MobileSurfaceView = ({
     setIsCreating(false);
   }, [paneId, onCreateTab]);
 
-  const buildClaudeCommand = useCallback((): string => {
-    const dangerous = useConfigStore.getState().dangerouslySkipPermissions;
-    const settings = '--settings ~/.purplemux/hooks.json';
-    const prompt = layoutWsId ? `--append-system-prompt-file ~/.purplemux/workspaces/${layoutWsId}/claude-prompt.md` : '';
-    const flags = [settings, prompt].filter(Boolean).join(' ');
-    const base = `claude ${flags}`;
-    return dangerous ? `${base} --dangerously-skip-permissions` : base;
-  }, [layoutWsId]);
+  const buildAgentCommand = useCallback((): string => {
+    return buildCodexCommandFromStore();
+  }, []);
 
-  const handleNewClaudeSession = useCallback(() => {
+  const handleNewAgentSession = useCallback(() => {
     if (status !== 'connected' || !activeTabId) return;
     useTabStore.getState().setSessionView(activeTabId, 'check');
-    sendStdin(`${buildClaudeCommand()}\r`);
-  }, [status, sendStdin, activeTabId, buildClaudeCommand]);
+    sendStdin(`${buildAgentCommand()}\r`);
+  }, [status, sendStdin, activeTabId, buildAgentCommand]);
 
-  const handleRestartClaudeSession = useCallback(() => {
+  const handleRestartAgentSession = useCallback(() => {
     if (status !== 'connected' || !activeTabId) return;
-    pendingRestartRef.current = buildClaudeCommand();
+    pendingRestartRef.current = buildAgentCommand();
     useTabStore.getState().setSessionView(activeTabId, 'check');
     sendStdin('/exit\r');
-  }, [status, sendStdin, activeTabId, buildClaudeCommand]);
+  }, [status, sendStdin, activeTabId, buildAgentCommand]);
 
   useEffect(() => {
-    if (!pendingRestartRef.current || claudeProcess === true) return;
+    if (!pendingRestartRef.current || agentProcess === true) return;
     if (status !== 'connected') return;
     if (!isShellProcess(lastTitleRef.current)) return;
     const cmd = pendingRestartRef.current;
     pendingRestartRef.current = null;
     sendStdin(`${cmd}\r`);
-  }, [claudeProcess, status, sendStdin]);
+  }, [agentProcess, status, sendStdin]);
 
-  const handleSendToClaude = useCallback((text: string) => {
+  const handleSendToAgent = useCallback((text: string) => {
     if (!activeTabId) return;
-    pendingClaudeInputRef.current = text;
-    onUpdateTabPanelType(paneId, activeTabId, 'claude-code');
+    pendingAgentInputRef.current = text;
+    onUpdateTabPanelType(paneId, activeTabId, 'codex');
   }, [activeTabId, paneId, onUpdateTabPanelType]);
 
   useEffect(() => {
-    if (!isClaudeCode || !pendingClaudeInputRef.current) return;
-    const text = pendingClaudeInputRef.current;
-    pendingClaudeInputRef.current = null;
+    if (!isAgentPanel || !pendingAgentInputRef.current) return;
+    const text = pendingAgentInputRef.current;
+    pendingAgentInputRef.current = null;
     const timer = window.setTimeout(() => {
       setInputValueRef.current?.(text);
       focusInputRef.current?.();
     }, 100);
     return () => window.clearTimeout(timer);
-  }, [isClaudeCode]);
+  }, [isAgentPanel]);
 
   const handleWebUrlChange = useCallback((url: string) => {
     if (!activeTabId || !layoutWsId) return;
@@ -430,9 +443,9 @@ const MobileSurfaceView = ({
     autoRestartedTabsRef.current.add(activeTabId);
     (async () => {
       const ok = await useLayoutStore.getState().restartTabInPane(paneId, activeTabId);
-      if (ok) reconnect();
+      if (ok) handleReconnect();
     })();
-  }, [status, disconnectReason, activeTabId, activeTab, isFirstConnectionForTab, paneId, reconnect]);
+  }, [status, disconnectReason, activeTabId, activeTab, isFirstConnectionForTab, paneId, handleReconnect]);
 
   return (
     <div
@@ -455,16 +468,18 @@ const MobileSurfaceView = ({
         <DiffPanel
           key={activeTab.sessionName}
           sessionName={activeTab.sessionName}
-          onSendToClaude={handleSendToClaude}
+          onSendToAgent={handleSendToAgent}
         />
       )}
 
-      {isClaudeCode && activeTab && (
-        <MobileClaudeCodePanel
+      {isAgentPanel && activeTab && (
+        <MobileAgentPanel
+          key={`${activeTab.sessionName}:${panelType}`}
           tabId={activeTabId ?? undefined}
           wsId={layoutWsId ?? undefined}
           sessionName={activeTab.sessionName}
-          claudeSessionId={activeTab.claudeSessionId}
+          agentSessionId={readAgentSessionId(activeTab)}
+          panelType={panelType}
           cwd={activeTabCwd}
           sendStdin={sendWebStdin}
           terminalWsConnected={status === 'connected'}
@@ -473,8 +488,8 @@ const MobileSurfaceView = ({
           setInputValueRef={setInputValueRef}
           onCliStateChange={handleCliStateChange}
           onInputVisibleChange={handleInputVisibleChange}
-          onRestartSession={handleRestartClaudeSession}
-          onNewSession={handleNewClaudeSession}
+          onRestartSession={handleRestartAgentSession}
+          onNewSession={handleNewAgentSession}
         />
       )}
 
@@ -482,15 +497,15 @@ const MobileSurfaceView = ({
         <TerminalContainer
           ref={terminalRef}
           className={cn(
-            !isClaudeCode && 'transition-opacity duration-150',
-            isClaudeCode ? 'absolute inset-0 pointer-events-none opacity-0' : 'min-h-0 flex-1',
-            !isClaudeCode && ready && showTerminal ? 'opacity-100' : '',
-            !isClaudeCode && (!ready || !showTerminal) ? 'opacity-0' : '',
+            !isAgentPanel && 'transition-opacity duration-150',
+            isAgentPanel ? 'absolute inset-0 pointer-events-none opacity-0' : 'min-h-0 flex-1',
+            !isAgentPanel && ready && showTerminal ? 'opacity-100' : '',
+            !isAgentPanel && (!ready || !showTerminal) ? 'opacity-0' : '',
           )}
         />
       )}
 
-      {!isClaudeCode && !isWebBrowser && !isDiff && status === 'connected' && (
+      {!isAgentPanel && !isWebBrowser && !isDiff && status === 'connected' && (
         <MobileTerminalToolbar sendStdin={sendWebStdin} terminalConnected={status === 'connected'} />
       )}
 
@@ -527,7 +542,7 @@ const MobileSurfaceView = ({
                 size="sm"
                 onClick={async () => {
                   const ok = await useLayoutStore.getState().restartTabInPane(paneId, activeTabId);
-                  if (ok) reconnect();
+                  if (ok) handleReconnect();
                 }}
               >
                 {t('restart')}
@@ -541,19 +556,19 @@ const MobileSurfaceView = ({
               </Button>
             </div>
           ) : (
-            <Button variant="outline" size="sm" onClick={reconnect}>
+            <Button variant="outline" size="sm" onClick={handleReconnect}>
               {t('reconnect')}
             </Button>
           )}
         </div>
       )}
 
-      {!noTabs && !isWebBrowser && !isDiff && !(isClaudeCode && sessionView === 'check') && (
+      {!noTabs && !isWebBrowser && !isDiff && !(isAgentPanel && sessionView === 'check') && (
         <ConnectionStatus
           status={status}
           retryCount={retryCount}
           disconnectReason={disconnectReason}
-          onReconnect={reconnect}
+          onReconnect={handleReconnect}
         />
       )}
     </div>

@@ -1,64 +1,64 @@
 ---
-title: Panneau navigateur web
-description: Un onglet navigateur intégré pour tester la sortie de dev, pilotable depuis la CLI purplemux, avec un émulateur de terminal pour les viewports mobiles.
-eyebrow: Espaces de travail & terminal
+title: 웹 브라우저 패널
+description: 개발 결과 확인용 내장 브라우저 탭. codexmux CLI로 제어하고, 모바일 뷰포트는 디바이스 에뮬레이터로 확인합니다.
+eyebrow: 워크스페이스 & 터미널
 permalink: /fr/docs/web-browser-panel/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Posez un onglet navigateur web à côté de votre terminal et de votre session Claude. Il fait tourner votre serveur de dev local, le site de staging, n'importe quoi d'accessible — et vous pouvez le piloter depuis la CLI `purplemux` sans quitter le shell.
+터미널과 Codex 세션 옆에 웹 브라우저 탭을 띄워두세요. 로컬 개발 서버, 스테이징, 닿을 수 있는 어느 사이트든 띄울 수 있고, 같은 쉘에서 `codexmux` CLI로 제어할 수 있습니다.
 
-## Ouvrir un onglet navigateur
+## 브라우저 탭 열기
 
-Ajoutez un nouvel onglet et choisissez **Navigateur web** comme type de panneau. Tapez une URL dans la barre d'adresse — `localhost:3000`, une IP, ou une URL https complète. La barre d'adresse normalise l'entrée : les noms d'hôtes nus et les IP partent en `http://`, le reste en `https://`.
+새 탭을 추가하면서 패널 타입을 **Web browser**로 선택합니다. 주소 입력창에 `localhost:3000`, IP, 또는 전체 https URL을 입력하세요. 입력은 정규화됩니다 — 호스트명이나 IP는 `http://`로, 그 외는 `https://`로 자동 보정됩니다.
 
-Le panneau tourne comme une vraie webview Chromium quand purplemux est l'application native macOS (build Electron), et retombe sur une iframe quand il est accédé depuis un navigateur classique. Le chemin iframe couvre la plupart des pages mais ne peut pas faire tourner les sites qui envoient `X-Frame-Options: deny` ; le chemin Electron n'a pas cette limite.
+codexmux를 macOS 네이티브 앱(Electron 빌드)으로 띄웠을 때는 실제 Chromium webview로 동작하고, 일반 브라우저에서 접근했을 때는 iframe으로 폴백합니다. iframe도 대부분의 페이지를 다루지만 `X-Frame-Options: deny`를 보내는 사이트는 막힙니다 — Electron 경로는 그런 제한이 없습니다.
 
-{% call callout('note', 'Idéal dans l\'app native') %}
-L'émulation d'appareils, les captures d'écran CLI et la capture console / réseau ne fonctionnent que dans le build Electron. Le repli onglet-navigateur vous donne barre d'adresse, retour / suivant et rechargement, mais les intégrations plus profondes ont besoin d'une webview.
+{% call callout('note', '네이티브 앱에서 가장 잘 동작') %}
+디바이스 에뮬레이션, CLI 스크린샷, 콘솔/네트워크 캡처는 Electron 빌드에서만 동작합니다. 브라우저 탭 폴백에서는 주소창, 뒤/앞, 새로고침 정도만 됩니다 — 깊은 통합은 webview가 필요합니다.
 {% endcall %}
 
-## Navigation pilotée par CLI
+## CLI 기반 제어
 
-Le panneau expose une petite API HTTP que la CLI `purplemux` embarquée encapsule. Depuis n'importe quel terminal — y compris celui qui se trouve à côté du panneau navigateur — vous pouvez :
+패널은 작은 HTTP API를 노출하고, 번들된 `codexmux` CLI가 이를 감쌉니다. 어느 터미널에서든 — 브라우저 패널 옆 터미널 포함 — 다음을 실행할 수 있습니다.
 
 ```bash
-# lister les onglets et trouver l'ID d'un onglet web-browser
-purplemux tab list -w <workspace-id>
+# 탭 목록에서 web-browser 탭 ID 찾기
+codexmux tab list -w <workspace-id>
 
-# lire l'URL et le titre courants
-purplemux tab browser url -w <ws> <tabId>
+# 현재 URL과 타이틀
+codexmux tab browser url -w <ws> <tabId>
 
-# capturer une copie d'écran dans un fichier (ou pleine page avec --full)
-purplemux tab browser screenshot -w <ws> <tabId> -o shot.png --full
+# 스크린샷을 파일로 (전체 페이지는 --full)
+codexmux tab browser screenshot -w <ws> <tabId> -o shot.png --full
 
-# suivre les logs console récents (ring buffer de 500 entrées)
-purplemux tab browser console -w <ws> <tabId> --since 60000 --level error
+# 최근 콘솔 로그 (500개 ring buffer)
+codexmux tab browser console -w <ws> <tabId> --since 60000 --level error
 
-# inspecter l'activité réseau, en récupérant éventuellement le corps d'une réponse
-purplemux tab browser network -w <ws> <tabId> --method POST --status 500
-purplemux tab browser network -w <ws> <tabId> --request <id>
+# 네트워크 활동 조회, 단일 응답 본문은 --request로
+codexmux tab browser network -w <ws> <tabId> --method POST --status 500
+codexmux tab browser network -w <ws> <tabId> --request <id>
 
-# évaluer du JavaScript dans l'onglet et obtenir le résultat sérialisé
-purplemux tab browser eval -w <ws> <tabId> "document.title"
+# 탭 안에서 JS 평가, 직렬화된 결과 반환
+codexmux tab browser eval -w <ws> <tabId> "document.title"
 ```
 
-La CLI s'authentifie via un token dans `~/.purplemux/cli-token` et lit le port depuis `~/.purplemux/port`. Aucun flag n'est nécessaire quand vous tournez sur la même machine. Lancez `purplemux help` pour voir toutes les commandes ou `purplemux api-guide` pour les endpoints HTTP sous-jacents.
+CLI는 `~/.codexmux/cli-token`의 토큰으로 인증하고 `~/.codexmux/port`에서 포트를 읽습니다. 같은 머신에서 실행할 때는 별도 플래그가 필요 없습니다. `codexmux help`로 전체 명령을 보거나 `codexmux api-guide`로 그 아래 HTTP 엔드포인트를 확인할 수 있습니다.
 
-C'est ce qui rend le panneau utile pour Claude : demandez à Claude de prendre une copie d'écran, de vérifier la console pour l'erreur, ou de lancer un script de sonde — et Claude a la même CLI que vous.
+이 점이 Codex와의 조합에서 중요합니다 — 스크린샷을 찍어 달라거나, 콘솔에서 에러를 확인해 달라거나, probe 스크립트를 돌려 달라고 시킬 때 Codex도 똑같은 CLI를 갖고 있습니다.
 
-## Émulateur d'appareils
+## 디바이스 에뮬레이터
 
-Pour le travail mobile, basculez le panneau en mode mobile. Un sélecteur d'appareils propose des préréglages pour iPhone SE jusqu'au 14 Pro Max, Pixel 7, Galaxy S20 Ultra, iPad Mini et iPad Pro 12.9". Chaque préréglage inclut :
+모바일 작업을 위해 패널을 모바일 모드로 전환할 수 있습니다. 디바이스 피커에는 iPhone SE부터 14 Pro Max, Pixel 7, Galaxy S20 Ultra, iPad Mini, iPad Pro 12.9" 프리셋이 들어있습니다. 각 프리셋이 함께 적용하는 것:
 
-- Largeur / hauteur
+- 가로 / 세로 픽셀
 - Device pixel ratio
-- Un user agent mobile correspondant
+- 해당 디바이스에 맞는 모바일 user agent
 
-Basculez portrait / paysage, et choisissez un niveau de zoom (`fit` pour ajuster au panneau, ou fixe `50% / 75% / 100% / 125% / 150%`). Quand vous changez d'appareil, la webview se recharge avec le nouveau UA pour que la détection mobile côté serveur voie ce que verrait votre téléphone.
+세로 / 가로 회전을 토글할 수 있고, 줌 레벨 (`fit`으로 패널에 맞춤, 또는 고정 `50% / 75% / 100% / 125% / 150%`) 도 선택할 수 있습니다. 디바이스를 바꾸면 새 UA로 webview가 다시 로드되므로 서버 사이드 모바일 감지도 실제 폰처럼 동작합니다.
 
-## Pour aller plus loin
+## 다음으로
 
-- **[Onglets & volets](/purplemux/fr/docs/tabs-panes/)** — placer le navigateur dans une division à côté de Claude.
-- **[Panneau de workflow Git](/purplemux/fr/docs/git-workflow/)** — l'autre type de panneau dédié.
-- **[Installation](/purplemux/fr/docs/installation/)** — l'app native macOS, où vit l'intégration webview complète.
+- **[탭 & 창](/codexmux/fr/docs/tabs-panes/)** — Codex 옆에 브라우저를 분할로 띄우기
+- **[Git 워크플로 패널](/codexmux/fr/docs/git-workflow/)** — 또 다른 전용 패널 타입
+- **[설치](/codexmux/fr/docs/installation/)** — webview 통합이 동작하는 macOS 네이티브 앱

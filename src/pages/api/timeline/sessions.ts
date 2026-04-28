@@ -1,8 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { hasSession } from '@/lib/tmux';
 import { listSessions } from '@/lib/session-list';
+import { normalizePanelType } from '@/lib/panel-type';
+import type { TPanelType } from '@/types/terminal';
 
 const DEFAULT_LIMIT = 50;
+const parsePanelType = (value: string | string[] | undefined): TPanelType => {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return normalizePanelType(candidate) ?? 'codex';
+};
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'GET') {
@@ -24,9 +30,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const offset = Math.max(0, parseInt(req.query.offset as string, 10) || 0);
 
   const cwdHint = req.query.cwd as string | undefined;
+  const panelType = parsePanelType(req.query.panelType);
 
   try {
-    const allSessions = await listSessions(tmuxSession, cwdHint);
+    const allSessions = await listSessions(tmuxSession, cwdHint, panelType);
     const total = allSessions.length;
     const sliced = allSessions.slice(offset, offset + limit);
     const hasMore = offset + limit < total;

@@ -9,7 +9,7 @@ export type TConnectionStatus =
 
 export type TDisconnectReason = 'max-connections' | 'pty-error' | 'session-not-found' | null;
 
-export type TPanelType = 'terminal' | 'claude-code' | 'web-browser' | 'diff';
+export type TPanelType = 'terminal' | 'codex' | 'web-browser' | 'diff';
 
 export interface ITab {
   id: string;
@@ -19,9 +19,9 @@ export interface ITab {
   title?: string;
   cwd?: string;
   panelType?: TPanelType;
-  claudeSessionId?: string | null;
-  claudeJsonlPath?: string | null;
-  claudeSummary?: string | null;
+  agentSessionId?: string | null;
+  agentJsonlPath?: string | null;
+  agentSummary?: string | null;
   lastUserMessage?: string | null;
   lastCommand?: string | null;
   cliState?: TCliState;

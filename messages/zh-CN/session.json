@@ -14,7 +14,7 @@
   "empty": {
     "closeLabel": "关闭",
     "noSession": "没有会话",
-    "startNewSession": "在终端中运行claude{br}开始新会话",
+    "startNewSession": "Run codex in the terminal{br}to start a new session",
     "newConversation": "新对话",
     "close": "关闭"
   },

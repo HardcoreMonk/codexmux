@@ -14,7 +14,7 @@
   "empty": {
     "closeLabel": "關閉",
     "noSession": "沒有工作階段",
-    "startNewSession": "在終端機中執行 claude{br}以開始新的工作階段",
+    "startNewSession": "Run codex in the terminal{br}to start a new session",
     "newConversation": "新對話",
     "close": "關閉"
   },

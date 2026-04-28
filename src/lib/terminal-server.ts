@@ -30,7 +30,7 @@ const BACKPRESSURE_LOW = 256 * 1024;
 const THROTTLE_WINDOW_MS = 500;
 const THROTTLE_FLUSH_INTERVAL_MS = 250;
 
-const TMUX_SOCKET = 'purple';
+const TMUX_SOCKET = 'codexmux';
 const textDecoder = new TextDecoder();
 
 interface IActiveConnection {
@@ -52,12 +52,12 @@ interface IActiveConnection {
 }
 
 const globalStore = globalThis as unknown as {
-  __purplemux_terminal_connections?: Map<WebSocket, IActiveConnection>;
-  __purplemux_terminal_output_ts?: Map<string, number>;
+  __codexmux_terminal_connections?: Map<WebSocket, IActiveConnection>;
+  __codexmux_terminal_output_ts?: Map<string, number>;
 };
 
-const connections = globalStore.__purplemux_terminal_connections ??= new Map<WebSocket, IActiveConnection>();
-const terminalOutputTimestamps = globalStore.__purplemux_terminal_output_ts ??= new Map<string, number>();
+const connections = globalStore.__codexmux_terminal_connections ??= new Map<WebSocket, IActiveConnection>();
+const terminalOutputTimestamps = globalStore.__codexmux_terminal_output_ts ??= new Map<string, number>();
 
 export const getLastTerminalOutput = (sessionName: string): number | undefined =>
   terminalOutputTimestamps.get(sessionName);

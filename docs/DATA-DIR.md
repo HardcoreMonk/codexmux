@@ -1,224 +1,66 @@
-# `~/.purplemux/` Settings Directory
+# `~/.codexmux/` 데이터 디렉터리
 
-All persistent state (settings, layouts, session history, caches) lives under `~/.purplemux/`. See [CLAUDE.md §15](../CLAUDE.md) — memory/variables and `localStorage` are not used.
+codexmux의 영속 상태는 `~/.codexmux/`에 저장된다. Codex CLI의 원본 세션 기록은 `~/.codex/sessions/`에 있으며 codexmux는 이 파일을 읽기 전용으로만 사용한다.
 
-File permissions are `0600` for anything containing a secret (config, tokens, layouts, VAPID keys, lock file). Writes go through a `tmpFile → rename` pattern plus a `withLock` promise queue (in-process) to avoid interleaved writes.
+## 구조
 
----
-
-## Directory Layout
-
-```
-~/.purplemux/
-├── config.json              # app config (auth, theme, locale, …)
-├── workspaces.json          # workspace list + sidebar state
-├── workspaces/
-│   └── {wsId}/
-│       ├── layout.json           # pane/tab tree
-│       ├── message-history.json  # per-workspace input history
-│       └── claude-prompt.md      # --append-system-prompt-file content
-├── hooks.json               # Claude Code hook + statusline config (generated)
-├── status-hook.sh           # hook → POST /api/status/hook (generated, 0755)
-├── statusline.sh            # statusline → POST /api/status/statusline (generated, 0755)
-├── rate-limits.json         # latest statusline JSON written by statusline.sh
-├── session-history.json     # completed Claude session log (cross-workspace)
-├── quick-prompts.json       # custom quick prompts + disabled builtins
-├── sidebar-items.json       # custom sidebar items + disabled builtins
-├── vapid-keys.json          # Web Push VAPID keypair (generated)
-├── push-subscriptions.json  # Web Push endpoint subscriptions
-├── cli-token                # CLI auth token (generated)
-├── port                     # current server port (hook scripts read it)
-├── pmux.lock                # single-instance lock {pid, port, startedAt}
-├── logs/                    # pino-roll log files
-│   └── purplemux.YYYY-MM-DD.N.log
-├── uploads/                 # images attached via web input bar
-│   └── {wsId}/{tabId}/{ts}-{rand}-{name}.{ext}
-└── stats/                   # Claude usage statistics
-    ├── cache.json
-    ├── uptime-cache.json
-    └── daily-reports/
-        └── YYYY-MM-DD.json
+```text
+~/.codexmux/
+├── config.json
+├── workspaces.json
+├── workspaces/{wsId}/layout.json
+├── workspaces/{wsId}/message-history.json
+├── hooks.json
+├── status-hook.sh
+├── statusline.sh
+├── rate-limits.json
+├── session-history.json
+├── quick-prompts.json
+├── sidebar-items.json
+├── keybindings.json
+├── vapid-keys.json
+├── push-subscriptions.json
+├── cli-token
+├── port
+├── cmux.lock
+├── logs/
+├── uploads/
+└── stats/
 ```
 
----
+`hooks.json`, `status-hook.sh`, `statusline.sh`는 local hook/statusline bridge가 서버로 상태를 POST할 때 쓰는 생성 파일이다. Codex tab 실행 자체에는 필요하지 않다.
 
-## Top-level Files
+## 주요 파일
 
-### `config.json` — `src/lib/config-store.ts`
+| 파일 | 내용 |
+|---|---|
+| `config.json` | password hash, session secret, locale, theme, Codex option, editor/network/notification 설정 |
+| `workspaces.json` | workspace 목록, active workspace, sidebar 상태 |
+| `workspaces/{wsId}/layout.json` | pane/tab tree와 tab metadata |
+| `cli-token` | CLI와 bridge script가 `x-cmux-token`으로 보내는 token |
+| `port` | 현재 server port |
+| `cmux.lock` | 단일 인스턴스 guard |
+| `rate-limits.json` | optional statusline payload 최신값 |
+| `session-history.json` | 완료된 Codex session summary |
+| `stats/cache.json` | Codex JSONL에서 계산한 usage cache |
+| `stats/daily-reports/` | `codex exec`로 생성한 일별 report |
 
-App-wide settings. `authPassword` is scrypt-hashed (`scrypt:{salt}:{hash}`); deleting the file resets onboarding.
+비밀값이 들어갈 수 있는 파일은 `0600` 권한으로 쓰며, 저장은 임시 파일을 쓴 뒤 rename하는 방식으로 처리한다.
 
-| Key | Meaning |
-| --- | --- |
-| `authPassword` | scrypt hash of the login password |
-| `authSecret` | HMAC secret for session tokens (32 bytes hex) |
-| `appTheme` | `light` / `dark` |
-| `terminalTheme` | `{ light, dark }` xterm.js theme names |
-| `customCSS` | User-injected CSS string |
-| `locale` | `en` / `ko` / `ja` / … |
-| `fontSize` | `small` / `normal` / `large` |
-| `notificationsEnabled` | System/web-push notification toggle |
-| `dangerouslySkipPermissions` | Pass `--dangerously-skip-permissions` to Claude |
-| `editorUrl` / `editorPreset` | External editor (e.g. code-server, VS Code) |
-| `networkAccess` | `localhost` / `network` — server bind scope |
-| `systemResourcesEnabled` | CPU/memory stats display toggle |
-| `updatedAt` | ISO timestamp |
+## 삭제 기준
 
-Electron additionally stores `server` (`local`/`remote` mode + `remoteUrl`) and `windowState` (position, size, fullscreen) in this file — see `electron/main.ts`.
+| 초기화 대상 | 삭제할 것 |
+|---|---|
+| 비밀번호만 초기화 | `config.json`에서 `authPassword`, `authSecret` 필드만 제거 |
+| 로그인과 onboarding, 앱 설정 | `config.json` |
+| 모든 workspace | `workspaces.json`, `workspaces/` |
+| 특정 workspace layout | `workspaces/{wsId}/layout.json` |
+| quick prompt/sidebar/keybinding | 해당 JSON 파일 |
+| 사용량 통계와 report | `stats/` |
+| push subscription | `push-subscriptions.json` |
+| stale lock | process가 없음을 확인한 뒤 `cmux.lock` |
+| 전체 앱 상태 | `~/.codexmux/` |
 
-### `workspaces.json` — `src/lib/workspace-store.ts`
+비밀번호는 평문이 아니라 scrypt 해시로 저장된다. 잊어버린 비밀번호는 복구하지 않고 `authPassword`와 `authSecret`을 제거한 뒤 onboarding에서 새로 설정한다. `config.json` 전체를 삭제하면 network/theme/Codex option도 같이 초기화된다.
 
-Workspace index and sidebar state. Per-workspace tab/pane tree lives under `workspaces/{wsId}/layout.json`.
-
-```jsonc
-{
-  "workspaces": [
-    { "id": "ws-MMKl07", "name": "purplemux", "directories": ["/path"], "order": 0 }
-  ],
-  "activeWorkspaceId": "ws-MMKl07",
-  "sidebarCollapsed": false,
-  "sidebarWidth": 285,
-  "updatedAt": "2026-04-18T15:31:48.741Z"
-}
-```
-
-Legacy migrations: `tabs.json` → `layout.json` → `workspaces/{wsId}/layout.json`. Parse failures copy the file to `.json.bak` and start fresh.
-
-### `hooks.json` — `src/lib/hook-settings.ts`
-
-Claude Code `--settings` file. Regenerated on server startup from `buildHookSettings()`; overwrites are skipped when content matches.
-
-Hooks mapped to `status-hook.sh`:
-
-| Event | Arg |
-| --- | --- |
-| `SessionStart` | `session-start` |
-| `UserPromptSubmit` | `prompt-submit` |
-| `Notification` | `notification` |
-| `Stop` / `StopFailure` | `stop` |
-| `PreCompact` | `pre-compact` |
-| `PostCompact` | `post-compact` |
-
-Plus `statusLine.command = sh "~/.purplemux/statusline.sh"`.
-
-See [STATUS.md](./STATUS.md) for the full status-detection flow.
-
-### `status-hook.sh`, `statusline.sh`
-
-Auto-generated from `HOOK_SCRIPT_CONTENT` (`hook-settings.ts`) and `STATUSLINE_SCRIPT_CONTENT` (`statusline-script.ts`). Both:
-
-1. Read `port` and `cli-token` from `~/.purplemux/`
-2. `POST` to the local server with `x-pmux-token` header
-3. Fail silently if the server is down
-
-Do not edit these by hand — they are rewritten on startup when content differs.
-
-### `rate-limits.json`
-
-Claude CLI writes its statusline JSON via stdin → `statusline.sh` → `POST /api/status/statusline` → server persists here. Watched by `rate-limits-watcher.ts` (debounced 500 ms); updates drive the rate-limit UI. Schema: `ts`, `model`, `five_hour`, `seven_day`, `context`, `cost`.
-
-### `session-history.json` — `src/lib/session-history.ts`
-
-Cross-workspace log of completed Claude sessions (max 200 entries, version 1). Keyed by `IHistoryEntry` (prompt, result, duration, tool usage, touched files).
-
-### `quick-prompts.json`, `sidebar-items.json` — `src/lib/{quick-prompts,sidebar-items}-store.ts`
-
-User customizations layered on top of built-in lists. Structure:
-
-```json
-{ "custom": [...], "disabledBuiltinIds": [...], "order": [...] }
-```
-
-Built-ins (`BUILTIN_PROMPTS`, `BUILTIN_ITEMS`) are defined in code; the disk file only records overrides and ordering.
-
-### `vapid-keys.json`, `push-subscriptions.json`
-
-Web Push state. VAPID keypair is generated on first run (`vapid-keys.ts`) and cached in memory. Subscriptions are managed per-browser via `push-subscriptions.ts`.
-
-### `cli-token`, `port`
-
-Shared handshake between the server and any CLI/hook that needs to reach it:
-
-- `cli-token` — 32-byte hex token (`randomBytes(32)`), compared with `timingSafeEqual` in `cli-token.ts`. Read by `bin/cli.js` and all hook scripts via the `x-pmux-token` header.
-- `port` — plain-text current port, written by `ensureHookSettings(port)` at startup.
-
-### `pmux.lock` — `src/lib/lock.ts`
-
-Single-instance guard. Contains `{pid, port, startedAt}`. On startup:
-
-1. Attempt `open(LOCK_FILE, 'wx')` — if successful, we own it.
-2. If it exists, read the PID. Dead PID → reclaim. Alive but `GET /api/health` does not reply `{ app: 'purplemux' }` → reclaim.
-3. Alive + healthy → abort with "already running".
-
-Released on `process.on('exit')`.
-
----
-
-## Per-workspace Directory (`workspaces/{wsId}/`)
-
-### `layout.json` — `src/lib/layout-store.ts`
-
-Recursive pane/tab tree. Leaf `pane` nodes hold `tabs[]`; `split` nodes hold `children[]` with `ratio`. Each tab carries its `sessionName` (`pt-{wsId}-{paneId}-{tabId}`), cached `cliState`, `claudeSessionId`, and the last resume command.
-
-See [TMUX.md](./TMUX.md) for how tabs map to tmux sessions and [STATUS.md](./STATUS.md) for the state fields.
-
-### `message-history.json` — `src/lib/message-history-store.ts`
-
-Per-workspace input history for Claude tabs. Capped at 500 entries. Locks are keyed by `wsId` so parallel workspace writes do not block each other.
-
-### `claude-prompt.md` — `src/lib/claude-prompt.ts`
-
-The `--append-system-prompt-file` content passed to every Claude tab in the workspace. Regenerated whenever the workspace is created, renamed, or its directories change. Contains workspace ID + CLI quick-reference.
-
----
-
-## `logs/`
-
-Pino-roll output. One file per UTC day with numeric suffix when size is exceeded:
-
-```
-purplemux.2026-04-19.1.log
-```
-
-Root level defaults to `info`; override with `LOG_LEVEL=debug` or per-group with `LOG_LEVELS=hooks=debug,status=warn,tmux=trace`. See `src/lib/logger.ts`.
-
----
-
-## `uploads/` — `src/lib/uploads-store.ts`
-
-Images attached via the chat input bar (drag/drop, paste, paperclip). Saved as `{timestamp}-{rand}-{name}.{ext}` under `{wsId}/{tabId}/` so paths can be passed to the running Claude CLI.
-
-- Allowed MIME types: `image/png`, `image/jpeg`, `image/gif`, `image/webp`
-- Max size: 10 MB
-- Files are written with `0600` permissions
-- Auto-cleanup on server start removes anything older than 24 hours
-- Manual cleanup: Settings → System → Attached Images → Clean now (or `POST /api/uploads/cleanup` with `{ "mode": "all" | "expired" }`)
-
----
-
-## `stats/`
-
-Claude usage statistics cache. Derived from `~/.claude/projects/**/*.jsonl` — purplemux only reads that directory.
-
-| File | Contents |
-| --- | --- |
-| `cache.json` | `IStatsFileCache` — per-day aggregates (messages, sessions, tool calls, hourly counts, per-model token usage). Cache version `1`. |
-| `uptime-cache.json` | Per-day uptime/active-minutes roll-up. |
-| `daily-reports/{date}.json` | AI-generated daily brief (`IDailyReportDay`) keyed by `YYYY-MM-DD`. |
-
-All files here are regeneratable — deleting them just triggers a recompute on the next stats request.
-
----
-
-## Deleting to Reset
-
-| To reset… | Delete |
-| --- | --- |
-| Login password (onboarding again) | `config.json` |
-| All workspaces and tabs | `workspaces.json` + `workspaces/` |
-| A single workspace's layout | `workspaces/{wsId}/layout.json` (it will be recreated as a default pane) |
-| Usage statistics | `stats/` |
-| Push subscriptions | `push-subscriptions.json` |
-| Stuck "already running" | `pmux.lock` (only if no purplemux process is alive) |
-
-`hooks.json`, `status-hook.sh`, `statusline.sh`, `port`, `cli-token`, `vapid-keys.json` are auto-regenerated on the next startup.
+`~/.codex/`는 Codex CLI의 auth, state, session history를 포함한다. 의도적으로 Codex 상태까지 지우려는 경우가 아니면 삭제하지 않는다.

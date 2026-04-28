@@ -1,66 +1,65 @@
 ---
-layout: layouts/doc.njk
-title: Browser support
-description: Desktop and mobile compatibility matrix, with notes on the browser-specific quirks you'll hit.
-eyebrow: Getting Started
+title: 브라우저 지원
+description: 데스크탑과 모바일 호환성 매트릭스, 브라우저별 주의사항.
+eyebrow: 시작하기
 permalink: /docs/browser-support/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux is a web app, so the experience depends on the browser you open it in. These are the versions we actively test against — older browsers may work but aren't supported.
+codexmux는 웹 앱이므로 사용 경험은 브라우저에 따라 달라집니다. 아래는 저희가 실제로 테스트하는 버전들입니다 — 더 오래된 버전은 동작할 수도 있지만 공식 지원은 하지 않습니다.
 
-## Desktop
+## 데스크탑
 
-| Browser | Minimum | Notes |
+| 브라우저 | 최소 버전 | 비고 |
 |---|---|---|
-| Chrome | 110+ | Recommended. Full PWA + Web Push. |
-| Edge | 110+ | Same engine as Chrome, same support. |
-| Safari | 17+ | Full PWA on macOS Sonoma+. Web Push requires macOS 13+ and an installed PWA. |
-| Firefox | 115+ ESR | Works well. PWA install is manual (no install prompt). |
+| Chrome | 110+ | 권장. PWA와 Web Push 완전 지원. |
+| Edge | 110+ | Chrome과 같은 엔진, 같은 수준 지원. |
+| Safari | 17+ | macOS Sonoma 이상에서 PWA 완전 지원. Web Push는 macOS 13+ 에서 PWA 설치 후 사용 가능. |
+| Firefox | 115+ ESR | 정상 동작. PWA 설치는 수동 (설치 프롬프트 없음). |
 
-All features — xterm.js terminal, live timeline, Claude session view, Git diff panel — work identically across these engines.
+xterm.js 터미널, 라이브 타임라인, Codex 세션 뷰, Git diff 패널 — 모든 기능이 이들 엔진에서 동일하게 동작합니다.
 
-## Mobile
+## 모바일
 
-| Browser | Minimum | Notes |
+| 브라우저 | 최소 버전 | 비고 |
 |---|---|---|
-| iOS Safari | **16.4+** | Required for Web Push. Must **Add to Home Screen** first; push won't fire from a regular tab. |
-| Android Chrome | 110+ | Web Push works from a regular tab too, but we recommend installing as PWA for full-screen layout. |
-| Samsung Internet | 22+ | Works. Install prompt appears automatically. |
+| iOS Safari | **16.4+** | Web Push 필수 조건. **홈 화면에 추가**로 PWA 설치한 경우에만 푸시 알림 수신. |
+| Android Chrome | 110+ | 일반 탭에서도 Web Push 동작. PWA 설치 시 전체 화면 레이아웃 권장. |
+| Samsung Internet | 22+ | 정상 동작. 설치 프롬프트 자동 노출. |
 
-{% call callout('warning', 'iOS Safari ≥ 16.4 is the cutoff') %}
-Apple added Web Push to iOS only in Safari 16.4 (March 2023). Earlier iOS versions can still use the dashboard, but you won't get push notifications even after installing the PWA.
+{% call callout('warning', 'iOS Safari 16.4 이상이 기준') %}
+Apple은 iOS에 Web Push를 Safari 16.4(2023년 3월)에서야 추가했습니다. 그 이전 iOS 버전은 대시보드는 사용할 수 있지만, PWA로 설치해도 푸시 알림이 오지 않습니다.
 {% endcall %}
 
-## Feature requirements
+## 기능 요구사항
 
-purplemux leans on a handful of modern browser APIs. If any of these are missing, the app falls back gracefully but loses the corresponding feature.
+codexmux는 몇 가지 최신 브라우저 API에 의존합니다. 빠진 API가 있으면 앱은 그레이스풀하게 폴백하지만 해당 기능은 사용할 수 없습니다.
 
-| API | Used for | Fallback |
+| API | 사용 목적 | 폴백 |
 |---|---|---|
-| WebSocket | Terminal I/O, status sync, timeline | Hard requirement — no fallback. |
-| Clipboard API | `npx purplemux` copy, code-block copy | Button is hidden if unavailable. |
-| Notifications API | Desktop / mobile push | Skipped — you'll still see in-app status. |
-| Service Workers | PWA + Web Push | Served only as a normal web app. |
-| IntersectionObserver | Live session timeline, nav reveal | Elements render without animation. |
-| `backdrop-filter` | Translucent nav, modals | Falls back to a solid tinted background. |
-| CSS `color-mix()` + OKLCH | Theme variables | Safari < 16.4 loses some tinted states. |
+| WebSocket | 터미널 I/O, 상태 동기화, 타임라인 | 필수 — 폴백 없음 |
+| Clipboard API | `npx codexmux` 복사, 코드블록 복사 | 사용 불가 시 버튼 숨김 |
+| Notifications API | 데스크탑/모바일 푸시 | 건너뜀 — 앱 내 상태는 그대로 표시 |
+| Service Workers | PWA + Web Push | 일반 웹 앱으로만 서빙 |
+| IntersectionObserver | 라이브 타임라인, nav reveal | 애니메이션 없이 렌더링 |
+| `backdrop-filter` | 반투명 nav, 모달 | 단색 tint 배경으로 폴백 |
+| CSS `color-mix()` + OKLCH | 테마 변수 | Safari < 16.4 에서 일부 tint 상태 손실 |
 
-## Is my browser OK?
+## 내 브라우저 괜찮나요?
 
-purplemux ships a built-in self-check at **Settings → Browser check**. It runs the same probes listed above and shows a green / amber / red badge per feature, so you can verify without reading a spec sheet.
+codexmux 앱 안에 **설정 → 브라우저 체크** 자체 진단기가 있습니다. 위에 나열된 것과 동일한 API를 검사하고 기능별로 녹색/황색/빨간색 배지를 보여주니 스펙 시트를 읽지 않아도 됩니다.
 
-## Known quirks
+## 알려진 quirk
 
-- **Safari 17 + private windows** — IndexedDB is disabled, so your workspace cache won't persist across restarts. Use a regular window.
-- **iOS Safari + background tab** — terminals are automatically torn down after ~30s in the background. Tmux keeps the actual session alive; the UI reconnects when you return.
-- **Firefox + Tailscale Serve certificate** — if you use a custom tailnet name that isn't in `ts.net`, Firefox can be pickier about HTTPS trust than Chrome. Accept the certificate once and it sticks.
-- **Self-signed certs** — Web Push simply won't register. Use Tailscale Serve (automatic Let's Encrypt) or a real domain + reverse proxy.
+- **Safari 17 + 프라이빗 창** — IndexedDB가 비활성화되므로 워크스페이스 캐시가 재시작 후 유지되지 않습니다. 일반 창을 사용하세요.
+- **iOS Safari + 백그라운드 탭** — 약 30초 후 터미널이 자동 종료됩니다. tmux는 실제 세션을 계속 유지하므로, 돌아오면 UI가 재연결됩니다.
+- **Firefox + Tailscale Serve 인증서** — `ts.net`이 아닌 커스텀 tailnet 이름을 쓰면 Firefox가 Chrome보다 HTTPS 신뢰에 까다로울 수 있습니다. 한 번 수락하면 계속 유지됩니다.
+- **자체 서명 인증서** — Web Push 등록 자체가 안 됩니다. Tailscale Serve(자동 Let's Encrypt)나 실제 도메인 + 리버스 프록시를 쓰세요.
 
-## Unsupported
+## 미지원
 
-- **Internet Explorer** — not supported, ever.
-- **UC Browser, Opera Mini, Puffin** — proxy-based browsers break WebSocket. Won't work.
-- **Any browser < 3 years old** — our CSS uses OKLCH color and container queries that need a 2023-era engine.
+- **Internet Explorer** — 지원하지 않습니다.
+- **UC Browser, Opera Mini, Puffin** — 프록시 기반 브라우저는 WebSocket이 끊깁니다. 동작 안 합니다.
+- **3년 이상 된 브라우저** — OKLCH 컬러와 컨테이너 쿼리를 써서 2023년 이후 엔진이 필요합니다.
 
-If you're on an unusual setup and something doesn't work, please [open an issue](https://github.com/subicura/purplemux/issues) with your user agent and the self-check output.
+특이한 환경에서 문제가 발생하면 유저 에이전트와 자체 진단 결과를 첨부해 [이슈를 열어주세요](https://github.com/subicura/codexmux/issues).

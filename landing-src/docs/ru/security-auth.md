@@ -1,75 +1,75 @@
 ---
-title: Безопасность и аутентификация
-description: Как purplemux защищает вашу панель — пароль с scrypt-хешем, локальные данные и HTTPS для внешнего доступа.
-eyebrow: Мобильные и удалённый доступ
+title: 보안과 인증
+description: codexmux가 대시보드를 보호하는 방식 — scrypt 해시 비밀번호, 로컬 전용 데이터, 외부 접속 시 HTTPS.
+eyebrow: 모바일 & 원격
 permalink: /ru/docs/security-auth/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux self-hosted и остаётся на вашей машине. Никаких внешних серверов, никакой телеметрии, никакого облачного аккаунта. Всё ниже описывает несколько частей, которые реально охраняют вашу панель.
+codexmux는 셀프 호스팅 방식이며 모든 데이터가 사용자의 머신에 머무릅니다. 외부 서버도, 텔레메트리도, 클라우드 계정도 없습니다. 아래는 대시보드를 실제로 지키는 몇 안 되는 장치들입니다.
 
-## Установка пароля
+## 비밀번호 설정
 
-При первом открытии purplemux экран онбординга предложит задать пароль. После отправки:
+처음 codexmux를 열면 온보딩 화면이 비밀번호를 입력받습니다. 제출 후:
 
-- Пароль хешируется через **scrypt** (случайная 16-байтовая соль, 64-байтовый производный ключ).
-- Хеш записывается в `~/.purplemux/config.json` в виде `scrypt:{salt}:{hash}` — открытый текст никогда не сохраняется.
-- Параллельно генерируется отдельный `authSecret` (случайный hex). purplemux подписывает им cookie сессии после входа.
+- 비밀번호는 **scrypt**로 해싱됩니다 (랜덤 16바이트 salt, 64바이트 derived key).
+- 해시는 `~/.codexmux/config.json`에 `scrypt:{salt}:{hash}` 형태로 저장됩니다 — 평문은 어디에도 저장되지 않습니다.
+- 별도의 `authSecret`(랜덤 hex)이 함께 생성되며, 로그인 후 발급되는 세션 쿠키 서명에 사용됩니다.
 
-Последующие визиты показывают экран входа, который проверяет ваш пароль через `crypto.timingSafeEqual` против сохранённого хеша.
+이후 접속에는 로그인 화면이 나타나고, `crypto.timingSafeEqual`로 저장된 해시와 비교합니다.
 
-{% call callout('note', 'Длина пароля') %}
-Минимум короткий (4 символа), чтобы локальные установки не были неудобными. Если вы выставляете purplemux в tailnet — или ещё куда-то — выберите что-то посильнее. Неудачные логины ограничены: 16 попыток в 15 минут на процесс.
+{% call callout('note', '비밀번호 길이') %}
+최소 길이는 짧게(4자) 잡혀 있어 localhost 전용 환경에서는 부담이 없습니다. 테일넷이든 어디든 외부에 노출한다면 더 강한 비밀번호를 사용하세요. 로그인 실패는 프로세스당 15분에 16회로 rate-limit이 걸려 있습니다.
 {% endcall %}
 
-## Сброс пароля
+## 비밀번호 재설정
 
-Забыли? Достаточно shell-доступа к хосту:
+잊어버렸다면 호스트에 셸 접근만 있으면 됩니다.
 
 ```bash
-rm ~/.purplemux/config.json
+rm ~/.codexmux/config.json
 ```
 
-Перезапустите purplemux (`pnpm start`, `npx purplemux` или как запускали), и снова появится экран онбординга, где можно задать новый пароль.
+codexmux를 재시작하면 (`pnpm start`, `npx codexmux` 등 평소 실행 방법) 온보딩 화면이 다시 나타나 새 비밀번호를 설정할 수 있습니다.
 
-Это сбросит и другие настройки в этом файле (тема, локаль, размер шрифта, переключатель уведомлений и т. д.). Рабочие пространства и вкладки лежат в `workspaces.json` и каталоге `workspaces/`, поэтому раскладка не пострадает.
+이 작업은 같은 파일에 저장된 다른 설정(테마, 언어, 폰트 크기, 알림 토글 등)도 함께 초기화합니다. 워크스페이스와 탭은 `workspaces.json`과 `workspaces/` 디렉토리에 들어 있으니 레이아웃은 영향받지 않습니다.
 
-## HTTPS для внешнего доступа
+## 외부 접속에는 HTTPS
 
-По умолчанию привязка идёт к `localhost` по обычному HTTP. Это нормально на той же машине — но как только вы заходите в purplemux с другого устройства, нужно быть на HTTPS.
+기본 바인드는 `localhost`이고 평문 HTTP로 서빙됩니다. 같은 머신에서 쓸 때는 문제가 없지만, 다른 기기에서 접근하는 순간부터는 HTTPS가 기본입니다.
 
-- **Tailscale Serve** — рекомендуемый путь: WireGuard-шифрование плюс автоматические сертификаты Let's Encrypt. См. [Доступ через Tailscale](/purplemux/ru/docs/tailscale/).
-- **Reverse-proxy** (Nginx, Caddy и т. д.) тоже работает, при условии что вы пробрасываете заголовки WebSocket `Upgrade` и `Connection`.
+- **Tailscale Serve** 권장 — WireGuard 암호화에 Let's Encrypt 인증서 자동 발급. [Tailscale 접속](/codexmux/ru/docs/tailscale/) 참고.
+- **리버스 프록시** (Nginx, Caddy 등)도 가능 — WebSocket의 `Upgrade`, `Connection` 헤더를 반드시 포워딩해야 합니다.
 
-iOS Safari дополнительно требует HTTPS для установки PWA и регистрации Web Push. См. [Настройка PWA](/purplemux/ru/docs/pwa-setup/) и [Web Push](/purplemux/ru/docs/web-push/).
+iOS Safari는 PWA 설치와 Web Push 등록에 HTTPS를 추가로 요구합니다. [PWA 설정](/codexmux/ru/docs/pwa-setup/), [웹 푸시](/codexmux/ru/docs/web-push/) 참고.
 
-## Что лежит в `~/.purplemux/`
+## `~/.codexmux/`에 있는 것
 
-Всё локально. На чувствительных файлах права `0600`.
+모두 로컬에 있습니다. 민감 파일의 권한은 `0600`입니다.
 
-| Файл | Что хранит |
+| 파일 | 내용 |
 |---|---|
-| `config.json` | scrypt-хеш пароля, секрет сессии, настройки приложения |
-| `workspaces.json` + `workspaces/` | список рабочих пространств и раскладка панелей/вкладок |
-| `vapid-keys.json` | пара VAPID-ключей Web Push (генерируется автоматически) |
-| `push-subscriptions.json` | подписки на push по устройствам |
-| `cli-token` | общий токен для хуков/CLI, чтобы общаться с локальным сервером |
-| `pmux.lock` | блокировка единственного экземпляра (`pid`, `port`, `startedAt`) |
-| `logs/` | ротируемые логи pino |
+| `config.json` | scrypt 비밀번호 해시, 세션 secret, 앱 환경 설정 |
+| `workspaces.json` + `workspaces/` | 워크스페이스 목록과 워크스페이스별 pane/탭 레이아웃 |
+| `vapid-keys.json` | Web Push VAPID 키페어 (자동 생성) |
+| `push-subscriptions.json` | 기기별 푸시 구독 정보 |
+| `cli-token` | 훅과 CLI가 로컬 서버와 통신할 때 쓰는 공유 토큰 |
+| `cmux.lock` | 단일 인스턴스 락 (`pid`, `port`, `startedAt`) |
+| `logs/` | pino-roll 로그 파일 |
 
-Полный инвентарь и таблицу сброса смотрите в первоисточнике: [docs/DATA-DIR.md](https://github.com/subicura/purplemux/blob/main/docs/DATA-DIR.md).
+전체 목록과 리셋 표는 source-of-truth인 [docs/DATA-DIR.md](https://github.com/subicura/codexmux/blob/main/docs/DATA-DIR.md)에 정리되어 있습니다.
 
-## Никакой телеметрии
+## 텔레메트리 없음
 
-purplemux сам по себе не делает исходящих запросов. Единственные сетевые вызовы, которые он инициирует:
+codexmux 자체가 외부로 보내는 요청은 없습니다. 발생하는 네트워크 호출은 다음뿐입니다.
 
-- Web Push уведомления, на которые вы подписались, отправляются через push-сервисы ОС.
-- Что бы ни делал сам Claude CLI — это между вами и Anthropic, не purplemux.
+- 사용자가 구독한 Web Push 알림 — OS 푸시 서비스로 전달됩니다.
+- Codex CLI 자체가 하는 통신 — OpenAI과 사용자 사이의 일이며 codexmux와 무관합니다.
 
-Код и данные сессий вашу машину не покидают.
+코드와 세션 데이터는 머신을 벗어나지 않습니다.
 
-## Что дальше
+## 다음으로
 
-- **[Доступ через Tailscale](/purplemux/ru/docs/tailscale/)** — безопасный путь к внешнему HTTPS.
-- **[Настройка PWA](/purplemux/ru/docs/pwa-setup/)** — как только аутентификация настроена, поставьте на главный экран.
-- **[Web Push уведомления](/purplemux/ru/docs/web-push/)** — фоновые алерты.
+- **[Tailscale 접속](/codexmux/ru/docs/tailscale/)** — 외부 HTTPS의 안전한 경로
+- **[PWA 설정](/codexmux/ru/docs/pwa-setup/)** — 인증 정리 후 홈 화면에 설치
+- **[웹 푸시 알림](/codexmux/ru/docs/web-push/)** — 백그라운드 알림

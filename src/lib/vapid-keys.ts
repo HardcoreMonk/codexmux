@@ -7,7 +7,7 @@ import { createLogger } from '@/lib/logger';
 
 const log = createLogger('vapid');
 
-const BASE_DIR = path.join(os.homedir(), '.purplemux');
+const BASE_DIR = path.join(os.homedir(), '.codexmux');
 const VAPID_FILE = path.join(BASE_DIR, 'vapid-keys.json');
 
 interface IVAPIDKeys {

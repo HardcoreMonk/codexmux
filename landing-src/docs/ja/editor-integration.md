@@ -1,82 +1,82 @@
 ---
-title: エディタ連携
-description: 現在のフォルダをお好みのエディタで開く — VS Code、Cursor、Zed、code-server、またはカスタム URL — ヘッダから直接。
-eyebrow: カスタマイズ
+title: 에디터 연동
+description: 헤더의 EDITOR 버튼으로 현재 폴더를 VS Code · Cursor · Zed · code-server · 커스텀 URL로 엽니다.
+eyebrow: 커스터마이즈
 permalink: /ja/docs/editor-integration/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-すべてのワークスペースのヘッダには **EDITOR** ボタンがあります。クリックすると、アクティブセッションのフォルダをお好みのエディタで開きます。プリセットを選んで URL を指定するか OS のハンドラに任せれば、設定完了です。
+워크스페이스 헤더에 **EDITOR** 버튼이 있습니다. 누르면 현재 세션의 폴더가 선택한 에디터로 열립니다. 프리셋을 고르고 URL을 입력하거나 OS 핸들러에 맡기면 끝입니다.
 
-## ピッカーを開く
+## 설정 화면 열기
 
-設定 (<kbd>⌘,</kbd>) → **エディタ** タブ。プリセットのリストが表示され、選択次第で URL フィールドが現れます。
+설정(<kbd>⌘,</kbd>) → **Editor** 탭. 프리셋 목록과, 선택에 따라 URL 입력란이 나타납니다.
 
-## 利用可能なプリセット
+## 제공 프리셋
 
-| プリセット | 動作 |
+| 프리셋 | 동작 |
 |---|---|
-| **Code Server (Web)** | ホストされた [code-server](https://github.com/coder/code-server) インスタンスを `?folder=<path>` で開く。URL が必要。 |
-| **VS Code** | `vscode://file/<path>?windowId=_blank` をトリガー。 |
+| **Code Server (Web)** | 호스팅 중인 [code-server](https://github.com/coder/code-server)에 `?folder=<path>`를 붙여 엽니다. URL 필요. |
+| **VS Code** | `vscode://file/<path>?windowId=_blank` 호출 |
 | **VS Code Insiders** | `vscode-insiders://...` |
 | **Cursor** | `cursor://...` |
 | **Windsurf** | `windsurf://...` |
 | **Zed** | `zed://file<path>` |
-| **Custom URL** | `{folder}` / `{folderEncoded}` プレースホルダ付きの自由な URL テンプレート。 |
-| **Disabled** | EDITOR ボタンを完全に隠す。 |
+| **사용자 URL** | 직접 정의하는 URL 템플릿. `{folder}` / `{folderEncoded}` 플레이스홀더를 사용 |
+| **Disabled** | EDITOR 버튼을 숨깁니다 |
 
-4 つのデスクトップ IDE プリセット (VS Code、Cursor、Windsurf、Zed) は OS が URI ハンドラを登録していることが前提です。IDE がローカルにインストールされていれば期待通りに動きます。
+데스크탑 IDE 4종(VS Code, Cursor, Windsurf, Zed)은 OS에 등록된 URI 핸들러를 통해 동작합니다. 로컬에 IDE가 설치되어 있으면 그대로 열립니다.
 
-## Web vs ローカル
+## 웹 방식과 로컬 방식
 
-各プリセットでフォルダの開き方には意味のある違いがあります:
+폴더를 여는 방식에 의미 있는 차이가 있습니다.
 
-- **code-server** はブラウザ内で動作します。URL はあなたがホストしているサーバ (自分のもの、ネットワーク上、または Tailscale の前面に置いたもの) を指します。EDITOR ボタンを押すと新しいタブでフォルダが読み込まれます。
-- **ローカル IDE** (VS Code、Cursor、Windsurf、Zed) は *ブラウザを動かしているマシン* に IDE がインストールされている必要があります。リンクは OS に渡され、登録されたハンドラが起動します。
+- **code-server**는 브라우저 안에서 동작합니다. URL은 호스팅 중인 서버(로컬·사내망·Tailscale 뒤)를 가리킵니다. 버튼을 누르면 새 탭이 열리며 폴더가 로드됩니다.
+- **로컬 IDE**(VS Code, Cursor, Windsurf, Zed)는 *브라우저가 실행 중인 머신*에 IDE가 설치되어 있어야 합니다. OS가 등록된 URI 핸들러를 호출하는 방식입니다.
 
-スマートフォンで purplemux を使っている場合、code-server プリセットだけが動作します — スマートフォンは `vscode://` URL をデスクトップアプリで開けません。
+휴대폰에서 codexmux를 쓴다면 code-server 프리셋만 의미가 있습니다. 휴대폰에서 `vscode://`로 데스크탑 앱을 열 수는 없습니다.
 
-## code-server セットアップ
+## code-server 설정
 
-製品内で案内される典型的なローカルセットアップ:
+설정 화면에 그대로 노출되는 표준 셋업입니다.
 
 ```bash
-# macOS にインストール
+# macOS 설치
 brew install code-server
 
-# 実行
+# 실행
 code-server --port 8080
 
-# Tailscale 経由の外部アクセス (任意)
+# 외부 접속 (선택) — Tailscale
 tailscale serve --bg --https=8443 http://localhost:8080
 ```
 
-エディタタブで URL に code-server が到達可能なアドレスを設定します — ローカルなら `http://localhost:8080`、Tailscale Serve の背後なら `https://<machine>.<tailnet>.ts.net:8443`。purplemux は URL が `http://` または `https://` で始まることを検証し、`?folder=<absolute path>` を自動で付加します。
+그다음 Editor 탭에 code-server 주소를 입력합니다. 로컬이면 `http://localhost:8080`, Tailscale Serve를 통한다면 `https://<machine>.<tailnet>.ts.net:8443`처럼 입력합니다. codexmux가 `http://` 또는 `https://` 여부를 검증한 뒤, 절대 경로를 `?folder=<path>` 형태로 자동 부착합니다.
 
-{% call callout('note', '8022 以外のポートを選ぶ') %}
-purplemux はすでに `8022` に住んでいます。code-server は別のポート (例では `8080`) で動かして、ぶつからないようにしてください。
+{% call callout('note', '8022 포트는 피하세요') %}
+codexmux가 이미 `8022`를 씁니다. code-server는 다른 포트(예시는 `8080`)에서 띄우세요.
 {% endcall %}
 
-## カスタム URL テンプレート
+## 커스텀 URL 템플릿
 
-Custom プリセットを使うと、URL にフォルダを渡すあらゆるもの — Coder workspaces、Gitpod、Theia、内部ツール — を指定できます。テンプレートには **少なくとも 1 つ** のプレースホルダが必要です:
+사용자 프리셋은 폴더를 URL에 받는 어떤 도구든 연결할 수 있습니다 — Coder 워크스페이스, Gitpod, Theia, 사내 도구 등. 템플릿에는 다음 플레이스홀더가 **반드시** 하나 이상 있어야 합니다.
 
-- `{folder}` — 絶対パス、未エンコード。
-- `{folderEncoded}` — URL エンコード済み。
+- `{folder}` — 절대 경로(인코딩 없음)
+- `{folderEncoded}` — URL 인코딩된 경로
 
 ```
 myeditor://open?path={folderEncoded}
 https://my.coder.example/workspace?dir={folderEncoded}
 ```
 
-purplemux は保存時にテンプレートを検証し、プレースホルダのないものを拒否します。
+저장 시점에 검증하며, 플레이스홀더가 없으면 저장이 거부됩니다.
 
-## ボタンを無効にする
+## 버튼 숨기기
 
-**Disabled** を選びます。ボタンがワークスペースヘッダから消えます。
+**Disabled**를 선택하면 워크스페이스 헤더에서 EDITOR 버튼이 사라집니다.
 
-## 次のステップ
+## 다음으로
 
-- **[サイドバーと Claude オプション](/purplemux/ja/docs/sidebar-options/)** — サイドバー項目並び替え、Claude フラグの切り替え。
-- **[カスタム CSS](/purplemux/ja/docs/custom-css/)** — さらなるビジュアル調整。
-- **[Tailscale](/purplemux/ja/docs/tailscale/)** — code-server にも安全な外部アクセス。
+- **[사이드바 & Codex 옵션](/codexmux/ja/docs/sidebar-options/)** — 사이드바 정렬, Codex 플래그 토글
+- **[커스텀 CSS](/codexmux/ja/docs/custom-css/)** — 시각 요소 추가 조정
+- **[Tailscale](/codexmux/ja/docs/tailscale/)** — code-server 외부 접속도 동일하게 활용

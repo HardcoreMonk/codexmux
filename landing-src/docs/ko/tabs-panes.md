@@ -22,8 +22,8 @@ permalink: /ko/docs/tabs-panes/index.html
 
 탭 바에서 탭을 드래그하면 순서가 바뀝니다. 탭 바 끝의 **+** 버튼은 <kbd>⌘T</kbd>와 같은 템플릿 선택 메뉴를 엽니다.
 
-{% call callout('tip', 'Terminal 외의 템플릿') %}
-새 탭 메뉴에서는 **Terminal**, **Claude**, **Diff**, **Web browser** 중 패널 타입을 고를 수 있습니다. 모두 탭이므로 한 창 안에 섞어두고 위 단축키로 자유롭게 전환할 수 있습니다.
+{% call callout('tip', '터미널 외의 템플릿') %}
+새 탭 메뉴에서는 **터미널**, **Codex**, **Diff**, **웹 브라우저** 중 패널 타입을 고를 수 있습니다. 모두 탭이므로 한 창 안에 섞어두고 위 단축키로 자유롭게 전환할 수 있습니다.
 {% endcall %}
 
 ## 창 분할
@@ -35,7 +35,7 @@ permalink: /ko/docs/tabs-panes/index.html
 | 오른쪽으로 분할 | <kbd>⌘D</kbd> | <kbd>Ctrl+D</kbd> |
 | 아래로 분할 | <kbd>⌘⇧D</kbd> | <kbd>Ctrl+Shift+D</kbd> |
 
-새로 만들어지는 분할은 워크스페이스의 기본 디렉토리를 상속받고 빈 터미널 탭으로 시작합니다. 각 창은 자체 탭 바를 가지므로 오른쪽 창에서는 diff 뷰어를, 왼쪽 창에서는 `claude`를 돌리는 식으로 쓸 수 있습니다.
+새로 만들어지는 분할은 워크스페이스의 기본 디렉토리를 상속받고 빈 터미널 탭으로 시작합니다. 각 창은 자체 탭 바를 가지므로 오른쪽 창에서는 diff 뷰어를, 왼쪽 창에서는 `codex`를 돌리는 식으로 쓸 수 있습니다.
 
 ## 창 사이 포커스 이동
 
@@ -74,10 +74,10 @@ permalink: /ko/docs/tabs-panes/index.html
 
 탭을 닫으면 해당 tmux 세션이 종료됩니다. *브라우저*를 닫거나, 새로고침하거나, 네트워크가 끊어져도 탭은 종료되지 않고 서버에서 계속 돌아갑니다. 다시 열면 같은 창, 분할, 탭이 그대로 돌아옵니다.
 
-서버 재부팅 이후의 복구 동작은 [레이아웃 저장 & 복원](/purplemux/ko/docs/save-restore/)에서 다룹니다.
+서버 재부팅 이후의 복구 동작은 [레이아웃 저장 & 복원](/codexmux/ko/docs/save-restore/)에서 다룹니다.
 
 ## 다음으로
 
-- **[레이아웃 저장 & 복원](/purplemux/ko/docs/save-restore/)** — 이 레이아웃이 어떻게 유지되는지
-- **[키보드 단축키](/purplemux/ko/docs/keyboard-shortcuts/)** — 전체 바인딩
-- **[Git 워크플로 패널](/purplemux/ko/docs/git-workflow/)** — 분할에 띄워두면 유용한 탭 타입
+- **[레이아웃 저장 & 복원](/codexmux/ko/docs/save-restore/)** — 이 레이아웃이 어떻게 유지되는지
+- **[키보드 단축키](/codexmux/ko/docs/keyboard-shortcuts/)** — 전체 바인딩
+- **[Git 워크플로 패널](/codexmux/ko/docs/git-workflow/)** — 분할에 띄워두면 유용한 탭 타입

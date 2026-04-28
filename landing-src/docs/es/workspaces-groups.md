@@ -1,70 +1,70 @@
 ---
-title: Espacios de trabajo y grupos
-description: Organiza pestañas relacionadas en espacios de trabajo y agrupa los espacios en la barra lateral con drag-and-drop.
-eyebrow: Espacios de trabajo y terminal
+title: 워크스페이스와 그룹
+description: 관련된 탭을 워크스페이스로 묶고, 워크스페이스를 사이드바에서 드래그 앤 드롭으로 그룹화합니다.
+eyebrow: 워크스페이스 & 터미널
 permalink: /es/docs/workspaces-groups/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Un espacio de trabajo es una carpeta de pestañas relacionadas — la terminal, el panel de diff y la sesión de Claude de un mismo proyecto, todo junto. Cuando ya tienes varios, los grupos en la barra lateral los mantienen ordenados.
+워크스페이스는 관련된 탭을 한 묶음으로 모아두는 단위입니다 — 프로젝트의 터미널, diff 패널, Codex 세션이 한 곳에 있습니다. 여러 개를 만들고 나면 사이드바의 그룹으로 깔끔하게 정리할 수 있습니다.
 
-## Qué contiene un espacio de trabajo
+## 워크스페이스에 들어가는 것
 
-Cada espacio de trabajo tiene su propio:
+워크스페이스마다 고유하게 가지는 것:
 
-- **Directorio por defecto** — donde arrancan los shells de las nuevas pestañas.
-- **Pestañas y paneles** — terminales, sesiones de Claude, paneles de diff, paneles de navegador web.
-- **Disposición** — proporciones de las divisiones, foco, pestaña activa de cada panel.
+- **기본 디렉토리** — 새 탭의 쉘이 시작되는 위치
+- **탭과 pane** — 터미널, Codex 세션, diff 패널, 웹 브라우저 패널
+- **레이아웃** — 분할 비율, 포커스, 각 pane의 활성 탭
 
-Todo se persiste en `~/.purplemux/workspaces.json`, así que un espacio de trabajo es la unidad que purplemux guarda y restaura. Cerrar el navegador no disuelve un espacio; tmux mantiene los shells abiertos y la disposición intacta.
+모든 정보가 `~/.codexmux/workspaces.json`에 저장됩니다. 워크스페이스는 codexmux가 저장하고 복원하는 단위입니다. 브라우저를 닫아도 워크스페이스가 사라지지 않고, tmux가 쉘을 살려두며 레이아웃도 그대로 유지됩니다.
 
-## Crear un espacio de trabajo
+## 워크스페이스 만들기
 
-El primer arranque te da un espacio por defecto. Para añadir otro:
+첫 실행 시 기본 워크스페이스 하나가 주어집니다. 추가하려면:
 
-1. Haz clic en **+ Nuevo espacio de trabajo** en lo alto de la barra lateral, o pulsa <kbd>⌘N</kbd>.
-2. Ponle nombre y elige un directorio por defecto — normalmente la raíz del repositorio del proyecto.
-3. Pulsa Enter. Se abre el espacio vacío.
+1. 사이드바 상단의 **+ 새 워크스페이스**를 누르거나 <kbd>⌘N</kbd>.
+2. 이름과 기본 디렉토리를 지정 — 보통 프로젝트의 레포 루트로 설정.
+3. Enter로 확정. 빈 워크스페이스가 열립니다.
 
-{% call callout('tip', 'Elige el directorio inicial correcto') %}
-El directorio por defecto es el cwd de cada nuevo shell de este espacio. Si apuntas a la raíz del proyecto, cada pestaña recién creada está a una pulsación de `pnpm dev`, `git status` o de iniciar una sesión de Claude en el sitio correcto.
+{% call callout('tip', '시작 디렉토리를 잘 고르세요') %}
+기본 디렉토리는 이 워크스페이스에서 만들어지는 모든 새 쉘의 cwd입니다. 프로젝트 루트로 지정해두면 새 탭에서 바로 `pnpm dev`, `git status`, Codex 세션 시작이 가능해집니다.
 {% endcall %}
 
-## Renombrar y borrar
+## 이름 변경과 삭제
 
-En la barra lateral, haz clic derecho sobre un espacio (o usa el menú de tres puntos) para **Renombrar** y **Borrar**. Renombrar también está asignado a <kbd>⌘⇧R</kbd> para el espacio activo.
+사이드바에서 워크스페이스를 우클릭(또는 케밥 메뉴)하면 **이름 변경**과 **삭제**가 보입니다. 현재 활성 워크스페이스는 <kbd>⌘⇧R</kbd>로도 이름을 변경할 수 있습니다.
 
-Borrar un espacio cierra sus sesiones de tmux y lo elimina de `workspaces.json`. No hay deshacer. Las pestañas que ya estaban cerradas o caídas siguen así; las activas se cierran limpiamente.
+워크스페이스를 삭제하면 그 안의 tmux 세션이 종료되고 `workspaces.json`에서 제거됩니다. 되돌릴 수 없습니다. 이미 종료된 탭은 그대로지만, 살아있는 탭은 깔끔하게 정리됩니다.
 
-## Cambiar de espacio de trabajo
+## 워크스페이스 전환
 
-Haz clic en cualquier espacio de la barra lateral, o usa la fila de números:
+사이드바에서 클릭하거나, 숫자 키로 전환합니다.
 
-| Acción | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Cambiar al espacio 1–9 | <kbd>⌘1</kbd> – <kbd>⌘9</kbd> | <kbd>Ctrl+1</kbd> – <kbd>Ctrl+9</kbd> |
-| Mostrar/ocultar barra lateral | <kbd>⌘B</kbd> | <kbd>Ctrl+B</kbd> |
-| Cambiar modo de la barra lateral (Espacio ↔ Sesiones) | <kbd>⌘⇧B</kbd> | <kbd>Ctrl+Shift+B</kbd> |
+| 워크스페이스 1–9로 이동 | <kbd>⌘1</kbd> – <kbd>⌘9</kbd> | <kbd>Ctrl+1</kbd> – <kbd>Ctrl+9</kbd> |
+| 사이드바 토글 | <kbd>⌘B</kbd> | <kbd>Ctrl+B</kbd> |
+| 사이드바 모드 전환 (워크스페이스 ↔ 세션) | <kbd>⌘⇧B</kbd> | <kbd>Ctrl+Shift+B</kbd> |
 
-El orden en la barra lateral es el orden al que se asignan las teclas numéricas. Arrastra un espacio hacia arriba o abajo para cambiar la posición que ocupa.
+사이드바의 순서가 그대로 숫자 키 매핑입니다. 위/아래로 드래그하면 해당 슬롯이 바뀝니다.
 
-## Agrupar espacios
+## 워크스페이스 그룹화
 
-Cuando tienes varios espacios, agrúpalos arrastrándolos y soltándolos en la barra lateral. Un grupo es un encabezado plegable — útil para separar "trabajo de cliente", "proyectos paralelos" y "ops" sin meterlos en una lista plana.
+워크스페이스가 여러 개라면 사이드바에서 드래그 앤 드롭으로 그룹에 묶을 수 있습니다. 그룹은 접을 수 있는 헤더입니다 — "클라이언트 작업", "사이드 프로젝트", "운영" 같은 묶음을 한 평면 목록에 강제로 욱여넣지 않아도 됩니다.
 
-- **Crear un grupo** — arrastra un espacio sobre otro y la barra lateral te ofrecerá agruparlos.
-- **Renombrar** — haz clic derecho sobre el encabezado del grupo.
-- **Reordenar** — arrastra grupos arriba o abajo, mueve espacios dentro y fuera.
-- **Plegar** — haz clic en el chevrón del encabezado del grupo.
+- **그룹 만들기** — 한 워크스페이스를 다른 워크스페이스 위로 드래그하면 사이드바가 그룹 생성을 제안합니다.
+- **이름 변경** — 그룹 헤더 우클릭.
+- **순서 변경** — 그룹을 위/아래로 드래그하거나, 워크스페이스를 그룹 안팎으로 드래그.
+- **접기** — 그룹 헤더의 셰브론 클릭.
 
-Los grupos son organización visual. No cambian cómo se persisten las pestañas ni cómo funcionan los atajos; <kbd>⌘1</kbd> – <kbd>⌘9</kbd> sigue recorriendo el orden plano de arriba abajo.
+그룹은 시각적인 정리 도구입니다. 탭의 영속성이나 단축키 동작은 바뀌지 않습니다 — <kbd>⌘1</kbd> – <kbd>⌘9</kbd>는 여전히 평면 순서를 위에서 아래로 따라갑니다.
 
-## Dónde vive en disco
+## 디스크에 저장되는 위치
 
-Cada cambio se escribe en `~/.purplemux/workspaces.json`. Puedes inspeccionarlo o respaldarlo — consulta [Directorio de datos](/purplemux/es/docs/data-directory/) para la disposición completa de archivos. Si lo borras mientras el servidor está en marcha, purplemux vuelve a un espacio vacío y empieza de cero.
+모든 변경은 즉시 `~/.codexmux/workspaces.json`에 반영됩니다. 직접 열어 백업할 수도 있습니다 — 전체 파일 구조는 [데이터 디렉토리](/codexmux/es/docs/data-directory/) 참고. 서버 실행 중에 이 파일을 지우면 codexmux는 빈 워크스페이스로 폴백해 처음부터 다시 시작합니다.
 
-## Siguientes pasos
+## 다음으로
 
-- **[Pestañas y paneles](/purplemux/es/docs/tabs-panes/)** — divide, reordena y enfoca dentro de un espacio.
-- **[Guardar y restaurar disposiciones](/purplemux/es/docs/save-restore/)** — cómo sobreviven los espacios al cierre del navegador y al reinicio del servidor.
-- **[Atajos de teclado](/purplemux/es/docs/keyboard-shortcuts/)** — la tabla completa.
+- **[탭 & 창](/codexmux/es/docs/tabs-panes/)** — 워크스페이스 안에서 분할, 순서 변경, 포커스 이동
+- **[레이아웃 저장 & 복원](/codexmux/es/docs/save-restore/)** — 브라우저 종료와 서버 재부팅에서 워크스페이스가 살아남는 방식
+- **[키보드 단축키](/codexmux/es/docs/keyboard-shortcuts/)** — 전체 바인딩 테이블

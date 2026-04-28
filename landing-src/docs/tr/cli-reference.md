@@ -1,142 +1,62 @@
 ---
-title: CLI referansı
-description: purplemux ve pmux ikili dosyalarının her alt komutu ve bayrağı.
-eyebrow: Referans
+title: CLI 레퍼런스
+description: codexmux와 cmux 명령, tab 제어, token 인증.
+eyebrow: 레퍼런스
 permalink: /tr/docs/cli-reference/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-`purplemux`, ikili dosyayı kullanmanın iki yolunu sunar: bir sunucu başlatıcısı olarak (`purplemux` / `purplemux start`) ve çalışan bir sunucuyla konuşan bir HTTP API sarmalayıcısı olarak (`purplemux <subcommand>`). Kısa kısayol `pmux` aynıdır.
+`codexmux`는 서버 시작 명령이면서 실행 중인 서버를 제어하는 CLI입니다. `cmux`는 같은 기능을 제공하는 짧은 별칭입니다.
 
-## İki rol, tek ikili
-
-| Form | Yaptığı |
-|---|---|
-| `purplemux` | Sunucuyu başlat. `purplemux start` ile aynı. |
-| `purplemux <subcommand>` | Çalışan bir sunucunun CLI HTTP API'siyle konuş. |
-| `pmux ...` | `purplemux ...` için kısayol. |
-
-`bin/purplemux.js`'deki dağıtıcı ilk argümanı ayırır: bilinen alt komutlar `bin/cli.js`'e gider, başka her şey (veya argüman yok) sunucuyu başlatır.
-
-## Sunucuyu başlatma
+## 서버 시작
 
 ```bash
-purplemux              # varsayılan
-purplemux start        # aynı şey, açık
-PORT=9000 purplemux    # özel port
-HOST=all purplemux     # her yere bağla
+codexmux
+codexmux start
+PORT=9000 HOST=localhost,tailscale codexmux
 ```
 
-Tam env yüzeyi için [Portlar & ortam değişkenleri](/purplemux/tr/docs/ports-env-vars/) sayfasına bakın.
+`8022`가 이미 사용 중이면 codexmux는 비어 있는 port를 찾아 바인딩하고 실제 port를 `~/.codexmux/port`에 기록합니다.
 
-Sunucu bağlandığı URL'leri, modu ve auth durumunu yazdırır:
-
-```
-  ⚡ purplemux  v0.x.x
-  ➜  Available on:
-       http://127.0.0.1:8022
-       http://192.168.1.42:8022
-  ➜  Mode:   production
-  ➜  Auth:   configured
-```
-
-`8022` zaten kullanımdaysa sunucu uyarır ve rastgele bir boş porta bağlanır.
-
-## Alt komutlar
-
-Tüm alt komutlar çalışan bir sunucu gerektirir. Portu `~/.purplemux/port`'tan ve auth tokenini `~/.purplemux/cli-token`'dan okurlar; ikisi de sunucu başlangıcında otomatik yazılır.
-
-| Komut | Amaç |
-|---|---|
-| `purplemux workspaces` | Çalışma alanlarını listele |
-| `purplemux tab list [-w WS]` | Sekmeleri listele (isteğe bağlı bir çalışma alanı kapsamına alınmış) |
-| `purplemux tab create -w WS [-n NAME] [-t TYPE]` | Yeni bir sekme oluştur |
-| `purplemux tab send -w WS TAB_ID CONTENT...` | Bir sekmeye girdi gönder |
-| `purplemux tab status -w WS TAB_ID` | Bir sekmenin durumunu incele |
-| `purplemux tab result -w WS TAB_ID` | Sekme panelinin geçerli içeriğini yakala |
-| `purplemux tab close -w WS TAB_ID` | Sekmeyi kapat |
-| `purplemux tab browser ...` | Bir `web-browser` sekmesini sür (yalnızca Electron) |
-| `purplemux api-guide` | Tam HTTP API referansını yazdır |
-| `purplemux help` | Kullanımı göster |
-
-Belirtilmedikçe çıktı JSON'dur. `--workspace` ve `-w` birbirinin yerine kullanılabilir.
-
-### `tab create` panel türleri
-
-`-t` / `--type` bayrağı panel türünü seçer. Geçerli değerler:
-
-| Değer | Panel |
-|---|---|
-| `terminal` | Düz shell |
-| `claude-code` | `claude` zaten çalışıyor olan shell |
-| `web-browser` | Gömülü tarayıcı (yalnızca Electron) |
-| `diff` | Git diff paneli |
-
-`-t` olmadan, düz bir terminal alırsınız.
-
-### `tab browser` alt komutları
-
-Bunlar yalnızca sekmenin panel türü `web-browser` olduğunda ve yalnızca macOS Electron uygulamasında çalışır — köprü aksi halde 503 döndürür.
-
-| Alt komut | Döndürdüğü |
-|---|---|
-| `purplemux tab browser url -w WS TAB_ID` | Geçerli URL + sayfa başlığı |
-| `purplemux tab browser screenshot -w WS TAB_ID [-o FILE] [--full]` | PNG. `-o` ile diske kaydeder; onsuz base64 döner. `--full` tam sayfayı yakalar. |
-| `purplemux tab browser console -w WS TAB_ID [--since MS] [--level LEVEL]` | Son console girişleri (halka tampon, 500 girdi) |
-| `purplemux tab browser network -w WS TAB_ID [--since MS] [--method M] [--url SUBSTR] [--status CODE] [--request ID]` | Son network girişleri; `--request ID` bir gövde alır |
-| `purplemux tab browser eval -w WS TAB_ID EXPR` | Bir JS ifadesi değerlendir ve sonucu serileştir |
-
-## Örnekler
+## tab 생성
 
 ```bash
-# Çalışma alanınızı bulun
-purplemux workspaces
-
-# ws-MMKl07 çalışma alanında bir Claude sekmesi oluşturun
-purplemux tab create -w ws-MMKl07 -t claude-code -n "refactor auth"
-
-# Ona bir prompt gönderin (TAB_ID `tab list`'ten gelir)
-purplemux tab send -w ws-MMKl07 tb-abc "Refactor src/lib/auth.ts to remove the cookie path"
-
-# Durumunu izleyin
-purplemux tab status -w ws-MMKl07 tb-abc
-
-# Paneli yakalayın
-purplemux tab result -w ws-MMKl07 tb-abc
-
-# Bir web-browser sekmesini tam sayfa ekran görüntüsü
-purplemux tab browser screenshot -w ws-MMKl07 tb-xyz -o page.png --full
+codexmux tab create -w WS_ID --type codex --cwd /path/to/project
+cmux tab create -w WS_ID --type terminal --cwd /tmp
 ```
 
-## Kimlik doğrulama
+| type | 의미 |
+|---|---|
+| `codex` | Codex session tab |
+| `terminal` | 일반 shell tab |
+| `diff` | Git diff panel |
+| `browser` | Electron web browser panel |
 
-Her alt komut `x-pmux-token: $(cat ~/.purplemux/cli-token)` gönderir ve sunucu tarafında `timingSafeEqual` ile doğrulanır. `~/.purplemux/cli-token` dosyası ilk sunucu başlangıcında `randomBytes(32)` ile üretilir ve `0600` modunda saklanır.
-
-CLI'yı `~/.purplemux/`'u göremeyen başka bir shell veya betikten sürmeniz gerekirse, env değişkenlerini kullanın:
-
-| Değişken | Varsayılan | Etki |
-|---|---|---|
-| `PMUX_PORT` | `~/.purplemux/port`'un içeriği | CLI'nın konuştuğu port |
-| `PMUX_TOKEN` | `~/.purplemux/cli-token`'ın içeriği | `x-pmux-token` olarak gönderilen Bearer token |
+## browser tab 제어
 
 ```bash
-PMUX_PORT=8022 PMUX_TOKEN=$(cat ~/.purplemux/cli-token) purplemux workspaces
+codexmux tab browser url -w WS_ID TAB_ID
+codexmux tab browser navigate -w WS_ID TAB_ID http://localhost:3000
+codexmux tab browser screenshot -w WS_ID TAB_ID -o screenshot.png --full
 ```
 
-{% call callout('warning') %}
-CLI tokeni tam sunucu erişimi verir. Onu bir parola gibi ele alın. Sohbete yapıştırmayın, commit etmeyin veya bir build env değişkeni olarak açmayın. `~/.purplemux/cli-token`'ı silip sunucuyu yeniden başlatarak döndürün.
+Screenshot은 `-o`가 있으면 파일로 저장하고 없으면 base64로 반환합니다. `--full`은 전체 페이지를 캡처합니다.
+
+## 인증
+
+모든 subcommand는 `x-cmux-token`을 보냅니다. token은 `~/.codexmux/cli-token`에 있으며 첫 서버 시작 시 생성됩니다. 다른 shell에서 실행해야 하면 다음 env var를 사용할 수 있습니다.
+
+| 변수 | 의미 |
+|---|---|
+| `CMUX_PORT` | CLI가 접속할 port |
+| `CMUX_TOKEN` | `x-cmux-token`으로 보낼 token |
+
+{% call callout('warning', 'CLI token 관리') %}
+CLI token은 서버 전체 접근 권한을 줍니다. chat, repository, build log에 노출하지 마세요. 회전하려면 `~/.codexmux/cli-token`을 삭제하고 서버를 재시작합니다.
 {% endcall %}
 
-## update-notifier
+## 다음 단계
 
-`purplemux` her açılışta npm'i daha yeni bir sürüm için kontrol eder (`update-notifier` ile) ve varsa bir banner yazdırır. `NO_UPDATE_NOTIFIER=1` veya [standart `update-notifier` opt-out'larından](https://github.com/yeoman/update-notifier#user-settings) herhangi biri ile devre dışı bırakın.
-
-## Tam HTTP API
-
-`purplemux api-guide`, her `/api/cli/*` uç noktası için istek gövdeleri ve yanıt biçimleri dahil tam HTTP API referansını yazdırır — purplemux'ı doğrudan `curl` veya başka bir runtime'dan sürmek istediğinizde yararlıdır.
-
-## Sıradaki adımlar
-
-- **[Portlar & ortam değişkenleri](/purplemux/tr/docs/ports-env-vars/)** — daha geniş env yüzeyinde `PMUX_PORT` / `PMUX_TOKEN`.
-- **[Mimari](/purplemux/tr/docs/architecture/)** — CLI'nın gerçekte ne ile konuştuğu.
-- **[Sorun giderme](/purplemux/tr/docs/troubleshooting/)** — CLI "sunucu çalışıyor mu?" dediğinde.
+- **[포트 & 환경 변수](/codexmux/tr/docs/ports-env-vars/)**
+- **[탭 & 창](/codexmux/tr/docs/tabs-panes/)**
+- **[웹 브라우저 패널](/codexmux/tr/docs/web-browser-panel/)**

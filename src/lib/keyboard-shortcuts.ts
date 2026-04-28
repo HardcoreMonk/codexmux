@@ -176,7 +176,7 @@ export const ACTIONS = {
 
   'panel.focus_input': {
     id: 'panel.focus_input',
-    label: 'Focus Claude input',
+    label: 'Focus Codex input',
     category: 'panel',
     defaultKey: `${mod}+i`,
     display: { mac: '⌘I', other: 'Ctrl+I' },
@@ -217,9 +217,9 @@ export const ACTIONS = {
     defaultKey: `${mod}+shift+t`,
     display: { mac: '⌘⇧T', other: 'Ctrl+Shift+T' },
   },
-  'view.mode_claude': {
-    id: 'view.mode_claude',
-    label: 'Switch to Claude mode',
+  'view.mode_codex': {
+    id: 'view.mode_codex',
+    label: 'Switch to Codex mode',
     category: 'view',
     defaultKey: `${mod}+shift+c`,
     display: { mac: '⌘⇧C', other: 'Ctrl+Shift+C' },

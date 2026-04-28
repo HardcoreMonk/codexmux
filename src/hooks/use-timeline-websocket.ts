@@ -26,9 +26,10 @@ interface IResumeErrorPayload {
 
 interface IUseTimelineWebSocketOptions {
   sessionName: string;
-  claudeSessionId?: string | null;
+  agentSessionId?: string | null;
+  panelType?: string;
   enabled: boolean;
-  onInit: (entries: ITimelineEntry[], totalEntries: number, sessionId: string, summary?: string, meta?: IInitMeta, startByteOffset?: number, hasMore?: boolean, jsonlPath?: string | null, isClaudeStarting?: boolean, sessionStats?: ISessionStats | null) => void;
+  onInit: (entries: ITimelineEntry[], totalEntries: number, sessionId: string, summary?: string, meta?: IInitMeta, startByteOffset?: number, hasMore?: boolean, jsonlPath?: string | null, isAgentStarting?: boolean, sessionStats?: ISessionStats | null) => void;
   onAppend: (entries: ITimelineEntry[]) => void;
   onSessionChanged: (newSessionId: string, reason: string) => void;
   onStatsUpdate?: (stats: ISessionStats) => void;
@@ -48,7 +49,8 @@ interface IUseTimelineWebSocketReturn {
 
 const useTimelineWebSocket = ({
   sessionName,
-  claudeSessionId,
+  agentSessionId,
+  panelType,
   enabled,
   onInit,
   onAppend,
@@ -99,7 +101,10 @@ const useTimelineWebSocket = ({
 
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
       const params = new URLSearchParams({ session: sessionName });
-      if (claudeSessionId) params.set('claudeSessionId', claudeSessionId);
+      if (panelType) params.set('panelType', panelType);
+      if (agentSessionId) {
+        params.set('agentSessionId', agentSessionId);
+      }
       const ws = new WebSocket(
         `${protocol}//${location.host}/api/timeline?${params}`,
       );
@@ -117,7 +122,7 @@ const useTimelineWebSocket = ({
           const msg = JSON.parse(event.data) as TTimelineServerMessage;
           switch (msg.type) {
             case 'timeline:init':
-              callbacksRef.current.onInit(msg.entries, msg.totalEntries, msg.sessionId, msg.summary, msg.meta, msg.startByteOffset, msg.hasMore, msg.jsonlPath, msg.isClaudeStarting, msg.sessionStats);
+              callbacksRef.current.onInit(msg.entries, msg.totalEntries, msg.sessionId, msg.summary, msg.meta, msg.startByteOffset, msg.hasMore, msg.jsonlPath, msg.isAgentStarting, msg.sessionStats);
               break;
             case 'timeline:append':
               callbacksRef.current.onAppend(msg.entries);
@@ -173,7 +178,7 @@ const useTimelineWebSocket = ({
         console.log('[timeline-ws] connection error');
       };
     },
-    [sessionName, claudeSessionId, clearTimers],
+    [sessionName, agentSessionId, panelType, clearTimers],
   );
 
   useEffect(() => {

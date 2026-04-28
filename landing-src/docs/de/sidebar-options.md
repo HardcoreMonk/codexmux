@@ -1,72 +1,47 @@
 ---
-title: Seitenleiste & Claude-Optionen
-description: Sidebar-Shortcuts umsortieren und ausblenden, die Quick-Prompts-Bibliothek verwalten und Claude-CLI-Flags umschalten.
-eyebrow: Anpassung
+title: 사이드바 & Codex 옵션
+description: 사이드바 단축 항목, 퀵 프롬프트, Codex CLI option 설정.
+eyebrow: 설정
 permalink: /de/docs/sidebar-options/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Die Seitenleiste und die Eingabeleiste bestehen aus kleinen Listen, die du umformen kannst — Shortcut-Links unten in der Seitenleiste, Prompt-Buttons über der Eingabe. Der Claude-Tab in den Einstellungen hält CLI-Level-Toggles für Sessions, die du aus dem Dashboard startest.
+sidebar, quick prompt, Codex launch option은 Settings에서 조정합니다. 이 값은 새 session과 dashboard 사용 흐름에 영향을 줍니다.
 
-## Sidebar-Items
+## sidebar shortcut
 
-Einstellungen (<kbd>⌘,</kbd>) → Tab **Seitenleiste**. Die Liste steuert die Shortcut-Reihe unten in der Seitenleiste — Links zu Dashboards, internen Tools, allem URL-Adressierbaren.
+**Settings** -> **Sidebar**에서 sidebar 하단 shortcut을 관리합니다.
 
-Jede Zeile hat einen Greif-Anker, einen Namen, eine URL und einen Schalter. Du kannst:
+- drag로 순서 변경.
+- switch로 표시/숨김.
+- custom item 추가와 삭제.
+- 기본값으로 reset.
 
-- **Ziehen** am Greif-Anker zum Umsortieren. Sowohl Built-in- als auch Custom-Items bewegen sich frei.
-- **Toggeln**, um ein Item ohne Löschen auszublenden.
-- **Bearbeiten** von Custom-Items (Stift-Icon) — Name, Icon oder URL ändern.
-- **Löschen** von Custom-Items (Mülltonnen-Icon).
-- **Auf Default zurücksetzen** — stellt die Built-in-Items wieder her, löscht alle Custom-, säubert die Reihenfolge.
+## quick prompt
 
-### Ein Custom-Item hinzufügen
+**Settings** -> **Quick Prompts**에서 input 위에 표시되는 prompt button을 관리합니다. 자주 쓰는 요청을 버튼 하나로 보낼 수 있습니다.
 
-Klick **Item hinzufügen** unten. Du bekommst ein kleines Formular:
+예시:
 
-- **Name** — erscheint als Tooltip und Label.
-- **Icon** — gewählt aus einer durchsuchbaren lucide-react-Galerie.
-- **URL** — alles `http(s)://...` funktioniert. Internes Grafana, Vercel-Dashboards, ein internes Admin-Tool.
+- 테스트 실행.
+- 현재 diff review.
+- 마지막 commit 요약.
+- release note 초안 작성.
 
-Klick Speichern, und die Zeile erscheint unten in der Liste. Zieh sie dorthin, wo du sie haben willst.
+## Codex option
 
-{% call callout('note', 'Built-ins können versteckt, aber nicht gelöscht werden') %}
-Built-in-Items (die, die purplemux mitbringt) haben nur einen Schalter und einen Greif-Anker — kein Bearbeiten oder Löschen. Sie sind immer da, falls du es dir anders überlegst. Custom-Items bekommen das volle Set.
-{% endcall %}
+**Settings** -> **Codex**의 값은 새로 여는 Codex tab에 적용됩니다. 이미 실행 중인 session은 바꾸지 않습니다.
 
-## Quick-Prompts
+| option | 의미 |
+|---|---|
+| model | `codex --model` 값 |
+| sandbox | `codex --sandbox` 값 |
+| approval policy | `codex --ask-for-approval` 값 |
+| web search | `--search` 추가 여부 |
+| terminal 표시 | timeline과 raw terminal을 함께 보여줄지 여부 |
 
-Einstellungen → Tab **Quick-Prompts**. Das sind die Buttons über dem Claude-Eingabefeld — Ein-Klick-Senden einer vorgefertigten Nachricht.
+## 다음 단계
 
-Gleiches Muster wie Sidebar-Items:
-
-- Ziehen zum Umsortieren.
-- Toggle zum Ausblenden.
-- Bearbeiten / Löschen von Custom-Prompts.
-- Auf Default zurücksetzen.
-
-Beim Hinzufügen eines Prompts werden ein **Name** (das Button-Label) und der **Prompt** selbst (mehrzeiliger Text) abgefragt. Nutz sie für Dinge, die du oft tippst: „Test-Suite ausführen", „Letzten Commit zusammenfassen", „Aktuellen Diff reviewen".
-
-## Claude-CLI-Optionen
-
-Einstellungen → Tab **Claude**. Diese Flags beeinflussen, *wie purplemux die Claude-CLI in neuen Tabs startet* — sie ändern nicht das Verhalten einer schon laufenden Session.
-
-### Berechtigungs-Checks überspringen
-
-Fügt `--dangerously-skip-permissions` zum `claude`-Befehl hinzu. Claude führt Tools aus und editiert Dateien, ohne jedes Mal nach Approval zu fragen.
-
-Das ist dasselbe Flag, das die offizielle CLI exponiert — purplemux lockert keine Sicherheit darüber hinaus. Lies [Anthropics Doku](https://docs.anthropic.com/en/docs/claude-code/cli-reference), bevor du es einschaltest. Behandle es als Opt-in nur für vertrauenswürdige Workspaces.
-
-### Terminal mit Claude anzeigen
-
-**An** (Default): Ein Claude-Tab zeigt die Live-Session-Ansicht *und* das zugrundeliegende Terminal-Panel side-by-side, sodass du jederzeit in die Shell springen kannst.
-
-**Aus**: Neue Claude-Tabs öffnen mit eingeklapptem Terminal. Die Session-Ansicht füllt das ganze Panel. Du kannst das Terminal pro Tab manuell ausklappen; das hier ändert nur den Default für neu erstellte Tabs.
-
-Nutz die Aus-Einstellung, wenn du Claude meist über die Timeline-Ansicht bedienst und einen saubereren Default willst.
-
-## Wie es weitergeht
-
-- **[Themes & Schriften](/purplemux/de/docs/themes-fonts/)** — hell, dunkel, System; Schriftgrößen-Presets.
-- **[Editor-Integration](/purplemux/de/docs/editor-integration/)** — VS Code, Cursor, code-server verdrahten.
-- **[Erste Session](/purplemux/de/docs/first-session/)** — Auffrischer zum Dashboard-Layout.
+- **[퀵 프롬프트 & 첨부](/codexmux/de/docs/quick-prompts-attachments/)**
+- **[테마 & 글꼴](/codexmux/de/docs/themes-fonts/)**
+- **[권한 프롬프트](/codexmux/de/docs/permission-prompts/)**

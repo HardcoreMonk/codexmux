@@ -1,36 +1,36 @@
 ---
-title: カスタム CSS
-description: CSS 変数を上書きして色、スペーシング、個別のサーフェスを再調整する。
-eyebrow: カスタマイズ
+title: 커스텀 CSS
+description: CSS 변수를 오버라이드해서 컬러·여백·개별 영역을 재조정합니다.
+eyebrow: 커스터마이즈
 permalink: /ja/docs/custom-css/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux は CSS 変数システムの上に構築されています。ソースを触らずに視覚的なほぼすべてを変更できます — **外観** タブにルールを貼り付けて Apply をクリックすれば、すべての接続済みクライアントに即座に反映されます。
+codexmux는 CSS 변수 시스템 위에 만들어져 있습니다. 소스를 건드리지 않고도 거의 모든 시각 요소를 바꿀 수 있습니다. **외형** 탭에 규칙을 붙여넣고 Apply를 누르면 연결된 모든 클라이언트에 즉시 반영됩니다.
 
-## どこに書くか
+## 어디에 작성하나요
 
-設定 (<kbd>⌘,</kbd>) を開いて **外観** を選びます。Custom CSS というラベルの 1 つの textarea があります。
+설정(<kbd>⌘,</kbd>)을 열고 **외형** 탭을 선택합니다. 사용자 CSS라는 라벨이 붙은 텍스트영역이 하나 있습니다.
 
-1. ルールを書く。
-2. **Apply** をクリック。CSS は各ページの `<style>` タグに注入されます。
-3. **Reset** ですべての上書きをクリア。
+1. 규칙을 작성합니다.
+2. **Apply**를 누르면 모든 페이지의 `<style>` 태그에 주입됩니다.
+3. **초기화**로 전체 초기화.
 
-CSS はサーバの `~/.purplemux/config.json` の `customCSS` に保存され、接続するすべてのデバイスに適用されます。
+작성한 CSS는 서버의 `~/.codexmux/config.json`(`customCSS`)에 저장되므로, 접속하는 모든 디바이스에 동일하게 적용됩니다.
 
-{% call callout('note', 'サーバ全体、デバイス単位ではない') %}
-カスタム CSS はサーバ設定に住み、すべてのブラウザに付いてきます。1 つのデバイスを別のデバイスと違う見た目にしたい場合、現状サポートされていません。
+{% call callout('note', '디바이스별이 아닌 서버 단위') %}
+커스텀 CSS는 서버 설정에 저장되어 어떤 브라우저로 접속하든 따라옵니다. 디바이스별로 다른 외형을 원한다면 현재는 지원하지 않습니다.
 {% endcall %}
 
-## 仕組み
+## 동작 원리
 
-purplemux のほとんどの色、サーフェス、アクセントは `:root` (ライト) と `.dark` の下に CSS 変数として公開されています。変数を上書きすると、その変数が使われている場所すべて — サイドバー、ダイアログ、チャート、ステータスバッジ — に変更が波及します。
+codexmux의 컬러·서피스·악센트는 대부분 `:root`(라이트)와 `.dark`(다크) 아래의 CSS 변수로 노출됩니다. 변수 하나만 덮어쓰면 그 변수를 참조하는 모든 컴포넌트(사이드바·다이얼로그·차트·상태 배지)가 한 번에 따라 바뀝니다.
 
-1 つの変数を変えるのは、コンポーネントセレクタを直接上書きするより常にほぼ良い選択です。コンポーネントクラスは安定 API ではなく、変数こそが API です。
+컴포넌트 셀렉터를 직접 오버라이드하는 것보다 변수를 바꾸는 편이 거의 항상 낫습니다. 컴포넌트 클래스는 안정적인 API가 아니지만 변수는 그렇습니다.
 
-## 最小限の例
+## 최소 예시
 
-ライトモードでサイドバーを少し暖色寄りにし、ダークサーフェスをさらに暗く:
+라이트 모드 사이드바를 살짝 따뜻하게, 다크 모드 배경은 더 어둡게.
 
 ```css
 :root {
@@ -42,7 +42,7 @@ purplemux のほとんどの色、サーフェス、アクセントは `:root` (
 }
 ```
 
-または他に何も触らずブランドの色だけ変える:
+브랜드 컬러만 바꾸려면.
 
 ```css
 :root {
@@ -54,22 +54,22 @@ purplemux のほとんどの色、サーフェス、アクセントは `:root` (
 }
 ```
 
-## 変数のグループ
+## 변수 그룹
 
-外観パネルは **Available Variables** 配下に完全なリストを公開しています。主なバケツは:
+외형 패널의 **사용 가능한 변수** 섹션을 펼치면 전체 목록이 보입니다. 주요 묶음은 다음과 같습니다.
 
-- **Surface** — `--background`、`--card`、`--popover`、`--muted`、`--secondary`、`--accent`、`--sidebar`
-- **Text** — `--foreground` と対応する `*-foreground` バリアント
-- **Interactive** — `--primary`、`--primary-foreground`、`--destructive`
-- **Border** — `--border`、`--input`、`--ring`
-- **Palette** — `--ui-blue`、`--ui-teal`、`--ui-coral`、`--ui-amber`、`--ui-purple`、`--ui-pink`、`--ui-green`、`--ui-gray`、`--ui-red`
-- **Semantic** — `--positive`、`--negative`、`--accent-color`、`--brand`、`--focus-indicator`、`--claude-active`
+- **Surface** — `--background`, `--card`, `--popover`, `--muted`, `--secondary`, `--accent`, `--sidebar`
+- **Text** — `--foreground` 및 대응 `*-foreground`
+- **Interactive** — `--primary`, `--primary-foreground`, `--destructive`
+- **Border** — `--border`, `--input`, `--ring`
+- **Palette** — `--ui-blue`, `--ui-teal`, `--ui-coral`, `--ui-amber`, `--ui-purple`, `--ui-pink`, `--ui-green`, `--ui-gray`, `--ui-red`
+- **Semantic** — `--positive`, `--negative`, `--accent-color`, `--brand`, `--focus-indicator`, `--agent-active`
 
-デフォルトの oklch 値とデザイン根拠を含む完全なトークンリストは、リポジトリの [`docs/STYLE.md`](https://github.com/subicura/purplemux/blob/main/docs/STYLE.md) を参照してください。それがソース・オブ・トゥルースです。
+전체 토큰 목록과 기본 oklch 값, 디자인 의도는 저장소의 [`docs/STYLE.md`](https://github.com/subicura/codexmux/blob/main/docs/STYLE.md)에 정리되어 있습니다. 이 문서가 단일 소스입니다.
 
-## 1 つのモードだけをターゲットにする
+## 모드별로만 적용하기
 
-ライトには `:root`、ダークには `.dark` でラップします。クラスは `next-themes` によって `<html>` に設定されます。
+라이트는 `:root`, 다크는 `.dark`로 감쌉니다. `.dark` 클래스는 `next-themes`가 `<html>`에 자동으로 붙입니다.
 
 ```css
 :root {
@@ -81,14 +81,14 @@ purplemux のほとんどの色、サーフェス、アクセントは `:root` (
 }
 ```
 
-片方のモードだけ変えたい場合は、もう片方を触らずに残してください。
+한쪽만 바꾸고 싶으면 다른 쪽은 그대로 두세요.
 
-## ターミナルは?
+## 터미널은요?
 
-xterm.js ターミナルは、こちらの CSS 変数では駆動されない独自のキュレートされたパレットを使います。**ターミナル** タブで切り替えてください。[ターミナルテーマ](/purplemux/ja/docs/terminal-themes/) を参照。
+xterm.js 터미널은 위 CSS 변수가 아니라 별도의 큐레이션된 팔레트를 씁니다. **터미널** 탭에서 전환하세요. [터미널 테마](/codexmux/ja/docs/terminal-themes/) 참고.
 
-## 次のステップ
+## 다음으로
 
-- **[テーマとフォント](/purplemux/ja/docs/themes-fonts/)** — ライト、ダーク、システム; フォントサイズプリセット。
-- **[ターミナルテーマ](/purplemux/ja/docs/terminal-themes/)** — ターミナル領域用の独立パレット。
-- **[サイドバーと Claude オプション](/purplemux/ja/docs/sidebar-options/)** — 項目並び替え、Claude フラグの切り替え。
+- **[테마 & 폰트](/codexmux/ja/docs/themes-fonts/)** — 라이트/다크/시스템, 폰트 크기 프리셋
+- **[터미널 테마](/codexmux/ja/docs/terminal-themes/)** — 터미널 영역 전용 팔레트
+- **[사이드바 & Codex 옵션](/codexmux/ja/docs/sidebar-options/)** — 항목 정렬, Codex 플래그 토글

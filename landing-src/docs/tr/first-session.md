@@ -1,102 +1,51 @@
 ---
-title: İlk oturum
-description: Boş bir çalışma alanından çalışıp izlenebilen ilk Claude oturumunuza — panel için rehberli bir tur.
-eyebrow: Başlarken
+title: 첫 세션
+description: 빈 workspace에서 Codex 세션을 만들고 확인하는 흐름.
+eyebrow: 시작하기
 permalink: /tr/docs/first-session/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux çalışıyor (değilse [Hızlı başlangıç](/purplemux/tr/docs/quickstart/) sayfasına bakın). Bu sayfa arayüzün ne yaptığını anlatır, böylece ilk birkaç dakika daha az soyut hissettirir.
+이 문서는 codexmux가 이미 실행 중이라고 가정합니다. 아직 실행하지 않았다면 [빠른 시작](/codexmux/tr/docs/quickstart/)부터 진행하세요.
 
-## Panel
+## workspace 만들기
 
-`http://localhost:8022`'yi açtığınızda bir **çalışma alanına** düşersiniz. Çalışma alanını ilgili sekmelerin bir klasörü olarak düşünün — biri Claude ile kodladığınız proje, biri yazdığınız dokümanlar, biri ad-hoc shell işleri için.
+1. sidebar의 workspace 영역에서 **+**를 누릅니다.
+2. 이름과 기본 디렉터리를 입력합니다.
+3. Enter를 누르면 빈 workspace가 열립니다.
 
-Düzen:
+기본 디렉터리는 새 shell과 Codex tab의 cwd로 사용됩니다.
 
-- **Sol kenar çubuğu** — çalışma alanları ve oturumlar, Claude durum rozetleri, kullanım sınırı widget'ı, notlar, istatistikler
-- **Ana alan** — geçerli çalışma alanındaki paneller; her panelin birden çok sekmesi olabilir
-- **Üst çubuk** — çalışma alanı adı, bölme kontrolleri, ayarlar
+## 첫 tab 열기
 
-Kenar çubuğunu istediğiniz zaman <kbd>⌘B</kbd> ile açıp kapatın. Kenar çubuğunda Çalışma alanı/Oturumlar modunu <kbd>⌘⇧B</kbd> ile değiştirin.
+<kbd>⌘T</kbd> 또는 tab bar의 **+** 버튼을 누릅니다.
 
-## Bir çalışma alanı oluşturun
+- **터미널**: 빈 shell.
+- **Codex**: shell 안에서 `codex`를 실행.
+- **Diff**: Git 변경 사항 확인.
+- **Web browser**: Electron browser panel.
 
-İlk çalıştırma tek bir varsayılan çalışma alanı verir. Bir tane daha eklemek için:
+Codex 템플릿은 terminal을 열고 `codex`를 실행하는 shortcut입니다. 터미널 tab에서 직접 `codex`를 실행해도 codexmux가 감지합니다.
 
-1. Kenar çubuğunun üstündeki **+ Yeni çalışma alanı**'na tıklayın (<kbd>⌘N</kbd>).
-2. İsim verin ve varsayılan dizini seçin — yeni sekmelerin shell'i burada başlar.
-3. Enter. Boş çalışma alanı açılır.
+## 상태 badge
 
-Çalışma alanlarını kenar çubuğunda sürükleyerek yeniden sıralayıp adlandırabilirsiniz.
-
-## İlk sekmenizi açın
-
-Çalışma alanı boş başlar. <kbd>⌘T</kbd> veya sekme çubuğundaki **+** düğmesi ile bir sekme ekleyin.
-
-Bir **şablon** seçin:
-
-- **Terminal** — boş bir shell. `vim`, `docker`, betikler için iyidir.
-- **Claude** — shell'de `claude` zaten çalışır halde başlar.
-
-{% call callout('tip', 'Şablonlar yalnızca kısayollardır') %}
-Altta her sekme normal bir shell'dir. Claude şablonu yalnızca "bir terminal aç ve `claude` çalıştır" demektir. Sonradan bir Terminal sekmesinde elle `claude` çalıştırırsanız purplemux fark eder ve aynı şekilde durumu yüzeye çıkarır.
-{% endcall %}
-
-## Oturum durumunu okuyun
-
-Sekmeniz için **kenar çubuğu oturum satırına** bakın. Şu göstergelerden birini görürsünüz:
-
-| Durum | Anlamı |
+| 상태 | 의미 |
 |---|---|
-| **Boşta** (gri) | Claude girdinizi bekliyor. |
-| **Meşgul** (mor spinner) | Claude çalışıyor — dosya okuyor, araç çalıştırıyor. |
-| **Girdi gerekiyor** (sarı) | Claude izin istemine takıldı veya soru sordu. |
-| **İnceleme** (mavi) | İş bitti, Claude durdu; kontrol etmeniz gereken bir şey var. |
+| **Idle** | Codex가 다음 입력을 기다림 |
+| **Busy** | Codex가 작업 중 |
+| **Needs input** | permission prompt 또는 질문 대기 |
+| **Review** | 작업 완료, 확인 필요 |
 
-Geçişler neredeyse anlıktır. Bunun nasıl tespit edildiği için [Oturum durumu](/purplemux/tr/docs/session-status/) sayfasına bakın.
+## permission prompt
 
-## Bir izin istemine yanıt verin
+Codex가 tool 실행이나 파일 변경 허가를 요청하면 codexmux는 timeline 안에 prompt를 표시합니다. option을 클릭하거나 숫자 key를 누르거나 모바일 push에서 답할 수 있습니다.
 
-Claude bir aracı çalıştırmak veya dosya düzenlemek istediğinde, purplemux **istemi yakalar** ve oturum görünümünde satır içi gösterir. Şunları yapabilirsiniz:
+## 복구
 
-- **1 · Evet** / **2 · Evet, hep** / **3 · Hayır**'a tıklayın, ya da
-- Klavyede sayı tuşlarına basın, ya da
-- Yok sayın ve telefonunuzdan yanıtlayın — mobil Web Push aynı uyarıyı tetikler.
+브라우저를 닫아도 tmux session은 유지됩니다. 서버가 재시작되면 layout을 읽고 가능한 경우 `codex resume <sessionId>`로 Codex session을 이어 붙입니다.
 
-Claude CLI yakalanan istemde gerçekte bloklanmaz; purplemux sizin yanıtınızı geri iletir.
+## 다음 단계
 
-## Bölün ve geçiş yapın
-
-Bir sekme çalışmaya başladığında şunları deneyin:
-
-- <kbd>⌘D</kbd> — geçerli paneli sağa böl
-- <kbd>⌘⇧D</kbd> — aşağı böl
-- <kbd>⌘⌥←/→/↑/↓</kbd> — bölmeler arasında odağı taşı
-- <kbd>⌘⇧[</kbd> / <kbd>⌘⇧]</kbd> — önceki / sonraki sekme
-
-Tam liste [Klavye kısayolları](/purplemux/tr/docs/keyboard-shortcuts/) sayfasında.
-
-## Kaydet ve geri yükle
-
-Tarayıcıyı kapatın. Sekmeleriniz hiçbir yere gitmiyor — tmux onları sunucuda açık tutar. Bir saat (veya bir hafta) sonra yenileyin; purplemux bölme oranları ve çalışma dizinleri dahil tam düzeni geri yükler.
-
-Sunucu yeniden başlatması bile geri kazanılabilir: yeniden başlangıçta purplemux kayıtlı düzeni `~/.purplemux/workspaces.json`'dan okur, shell'leri doğru dizinlerde tekrar başlatır ve mümkünse Claude oturumlarını yeniden bağlar.
-
-## Telefonunuzdan erişin
-
-Çalıştırın:
-
-```bash
-tailscale serve --bg 8022
-```
-
-Telefonunuzda `https://<machine>.<tailnet>.ts.net` adresini açın, **Paylaş → Ana Ekrana Ekle**'ye dokunun ve bildirim iznini verin. Sekme kapalıyken bile **girdi gerekiyor** ve **inceleme** durumları için push uyarıları alırsınız.
-
-Tam yürüyüş: [PWA kurulumu](/purplemux/tr/docs/pwa-setup/) · [Web Push](/purplemux/tr/docs/web-push/) · [Tailscale](/purplemux/tr/docs/tailscale/).
-
-## Sıradaki adımlar
-
-- **[Klavye kısayolları](/purplemux/tr/docs/keyboard-shortcuts/)** — tüm bağlamalar tek tabloda.
-- **[Tarayıcı desteği](/purplemux/tr/docs/browser-support/)** — uyumluluk matrisi, özellikle iOS Safari 16.4+.
-- Kenar çubuğunu keşfedin: AI günlük raporu için **Notlar** (<kbd>⌘⇧E</kbd>), kullanım analizi için **İstatistik** (<kbd>⌘⇧U</kbd>).
+- **[세션 상태](/codexmux/tr/docs/session-status/)**
+- **[권한 프롬프트](/codexmux/tr/docs/permission-prompts/)**
+- **[브라우저 지원](/codexmux/tr/docs/browser-support/)**

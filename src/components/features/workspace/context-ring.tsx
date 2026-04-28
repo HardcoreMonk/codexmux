@@ -1,7 +1,7 @@
 import { useTranslations } from 'next-intl';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { formatTokenCount } from '@/lib/claude-tokens';
+import { formatTokenCount } from '@/lib/model-tokens';
 
 interface IContextRingProps {
   percentage: number;

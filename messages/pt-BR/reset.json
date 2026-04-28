@@ -1,5 +1,5 @@
 {
-  "pageTitle": "Redefinir - purplemux",
+  "pageTitle": "Redefinir - codexmux",
   "title": "Redefinir tmux",
   "stepCleanup": "Limpando conexoes",
   "stepReset": "Parando e redefinindo o servidor tmux",

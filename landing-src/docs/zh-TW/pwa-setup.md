@@ -1,65 +1,65 @@
 ---
-title: PWA 設定
-description: 在 iOS Safari 與 Android Chrome 把 purplemux 加入主畫面，獲得全螢幕、類原生 App 的體驗。
-eyebrow: 行動與遠端
+title: PWA 설정
+description: iOS Safari와 Android Chrome에서 codexmux를 홈 화면에 추가해 전체 화면 앱처럼 사용합니다.
+eyebrow: 모바일 & 원격
 permalink: /zh-TW/docs/pwa-setup/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-把 purplemux 安裝為漸進式網頁應用程式（PWA），會把瀏覽器分頁變成主畫面上獨立的圖示，附上全螢幕版面與適切的啟動畫面。在 iOS 上，這也是 Web Push 的前提。
+codexmux를 PWA로 설치하면 브라우저 탭이 홈 화면 아이콘으로 바뀌고, 전체 화면 레이아웃과 스플래시 스크린이 적용됩니다. iOS에서는 Web Push를 받기 위한 필수 단계이기도 합니다.
 
-## 你會得到什麼
+## 무엇이 좋아지나
 
-- **全螢幕版面** — 沒有瀏覽器外框，給終端機與時間軸更多垂直空間。
-- **App 圖示** — purplemux 從主畫面啟動，就像任何原生 App。
-- **啟動畫面** — purplemux 為 iPhone 提供逐型號的啟動圖，讓啟動轉場感覺像原生。
-- **Web Push**（僅限 iOS） — 推播通知只在安裝為 PWA 後才會觸發。
+- **전체 화면 레이아웃** — 브라우저 chrome이 사라져 터미널과 타임라인에 쓸 수 있는 세로 공간이 늘어납니다.
+- **앱 아이콘** — 다른 네이티브 앱처럼 홈 화면에서 바로 실행됩니다.
+- **스플래시 스크린** — iPhone 기종별 스플래시 이미지를 포함해서 실행 전환이 자연스럽습니다.
+- **Web Push** (iOS 한정) — PWA 설치 이후에만 푸시 알림이 동작합니다.
 
-manifest 由 `/api/manifest` 提供，註冊 `display: standalone`、purplemux 標誌與主題色彩。
+매니페스트는 `/api/manifest`에서 제공되며 `display: standalone`과 codexmux 아이콘, 테마 컬러로 등록됩니다.
 
-## 安裝前
+## 설치 전 확인
 
-頁面必須能透過 **HTTPS** 存取，PWA 才能運作。從 `localhost` 在 Chrome 上可運作（loopback 例外），但 iOS Safari 拒絕透過純 HTTP 安裝。乾淨的方法是 Tailscale Serve — 請見 [Tailscale 存取](/purplemux/zh-TW/docs/tailscale/)。
+페이지가 **HTTPS**로 접근 가능해야 PWA가 동작합니다. `localhost`는 Chrome에서는 예외적으로 허용되지만 iOS Safari는 평문 HTTP에서 설치를 허용하지 않습니다. 가장 깔끔한 경로는 Tailscale Serve입니다 — [Tailscale 접속](/codexmux/zh-TW/docs/tailscale/) 참고.
 
-{% call callout('warning', 'iOS 需要 Safari 16.4 或更新版本') %}
-較舊的 iOS 版本可以安裝 PWA，但不會收到 Web Push。如果推播對你很重要，請先更新 iOS。逐瀏覽器的細節在 [瀏覽器支援](/purplemux/zh-TW/docs/browser-support/)。
+{% call callout('warning', 'iOS는 Safari 16.4 이상 필요') %}
+이전 iOS에서도 PWA 설치는 됩니다만 Web Push는 동작하지 않습니다. 푸시가 중요하다면 iOS를 먼저 업데이트하세요. 브라우저별 자세한 호환성은 [브라우저 지원](/codexmux/zh-TW/docs/browser-support/)에 정리되어 있습니다.
 {% endcall %}
 
 ## iOS Safari
 
-1. 在 **Safari** 中打開 purplemux 的 URL（其他 iOS 瀏覽器不會對 PWA 顯示加入主畫面）。
-2. 點選底部工具列的 **分享** 圖示。
-3. 在動作面板中向下捲，選擇 **加入主畫面**。
-4. 想改名字就改，然後點選右上角的 **新增**。
-5. 從新的主畫面圖示啟動 purplemux — 它會以全螢幕打開。
+1. **Safari**에서 codexmux URL을 엽니다 (다른 iOS 브라우저는 PWA용 홈 화면에 추가를 노출하지 않습니다).
+2. 하단 툴바의 **공유** 아이콘을 누릅니다.
+3. 액션 시트를 아래로 스크롤해서 **홈 화면에 추가**를 선택합니다.
+4. 이름을 원하는 대로 수정하고 우측 상단의 **추가**를 누릅니다.
+5. 홈 화면에 새로 생긴 아이콘을 누르면 전체 화면으로 실행됩니다.
 
-從圖示首次啟動的那一刻，iOS 才會把它當作真正的 PWA。任何推播權限提示都應該從這個獨立視窗裡面觸發，而不是在普通的 Safari 分頁中。
+이 아이콘으로 처음 실행하는 순간부터 iOS가 PWA로 취급합니다. 푸시 권한 프롬프트도 일반 Safari 탭이 아니라 이 standalone 창 안에서 띄워야 합니다.
 
 ## Android Chrome
 
-Chrome 會自動偵測可安裝的 manifest 並提供橫幅。如果沒看到：
+Chrome은 매니페스트를 자동 감지해서 설치 배너를 띄웁니다. 보이지 않는다면:
 
-1. 在 **Chrome** 中打開 purplemux 的 URL。
-2. 點選右上角的 **⋮** 選單。
-3. 選擇 **安裝應用程式**（有時標記為 **加入主畫面**）。
-4. 確認。圖示會出現在主畫面與 App 抽屜。
+1. **Chrome**에서 codexmux URL을 엽니다.
+2. 우측 상단 **⋮** 메뉴를 누릅니다.
+3. **앱 설치** (또는 **홈 화면에 추가**)를 선택합니다.
+4. 확인하면 홈 화면과 앱 서랍에 아이콘이 생깁니다.
 
-Samsung Internet 的行為相同 — 安裝提示通常會自動出現。
+Samsung Internet도 동일합니다 — 설치 프롬프트가 자동으로 노출됩니다.
 
-## 確認安裝
+## 설치 확인
 
-從主畫面圖示打開 purplemux。瀏覽器網址列應該不見了。若仍看到瀏覽器 UI，表示 manifest 未生效 — 通常是因為頁面是透過純 HTTP 或不尋常的 proxy 載入。
+홈 화면 아이콘으로 codexmux를 실행해보세요. 브라우저 주소창이 보이지 않아야 정상입니다. 여전히 브라우저 UI가 보인다면 매니페스트가 적용되지 않은 것이고, 보통 평문 HTTP 또는 비정상적인 프록시 환경이 원인입니다.
 
-你也可以在 **設定 → 通知** 確認 — 一旦 PWA 安裝完畢且 Web Push 受支援，切換鈕會變成可用。
+**설정 → 알림**에서도 확인할 수 있습니다 — PWA 설치 후 Web Push 지원 환경이라면 토글이 활성화됩니다.
 
-## 更新 PWA
+## 업데이트
 
-不需要做任何事。PWA 載入的是你 purplemux 實例所提供的同一個 `index.html`，所以 purplemux 升級後，下次啟動 PWA 也會跟著升級。
+별도로 할 일은 없습니다. PWA는 codexmux 인스턴스가 서빙하는 같은 `index.html`을 그대로 로드하므로, codexmux를 업그레이드하면 다음 실행 시 자동으로 반영됩니다.
 
-要移除它，長按圖示並選擇 OS 原生的解除安裝動作。
+제거하려면 아이콘을 길게 눌러 OS 기본 삭제 동작을 사용하세요.
 
-## 下一步
+## 다음으로
 
-- **[Web Push 通知](/purplemux/zh-TW/docs/web-push/)** — PWA 安裝完後，開啟背景提醒。
-- **[Tailscale 存取](/purplemux/zh-TW/docs/tailscale/)** — 取得 iOS 所需的 HTTPS URL。
-- **[瀏覽器支援](/purplemux/zh-TW/docs/browser-support/)** — 完整相容性表。
+- **[웹 푸시 알림](/codexmux/zh-TW/docs/web-push/)** — PWA 설치 이후 백그라운드 알림 켜기
+- **[Tailscale 접속](/codexmux/zh-TW/docs/tailscale/)** — iOS가 요구하는 HTTPS URL 확보하기
+- **[브라우저 지원](/codexmux/zh-TW/docs/browser-support/)** — 전체 호환성 매트릭스

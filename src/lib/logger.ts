@@ -2,10 +2,10 @@ import pino from 'pino';
 import path from 'path';
 import os from 'os';
 
-const LOG_DIR = path.join(os.homedir(), '.purplemux', 'logs');
+const LOG_DIR = path.join(os.homedir(), '.codexmux', 'logs');
 const DEFAULT_LEVEL: pino.Level = (process.env.LOG_LEVEL as pino.Level) || 'info';
 
-// LOG_LEVELS=hooks=debug,status=warn,tmux=trace
+// LOG_LEVELS=status=debug,tmux=trace
 const parseGroupLevels = (raw: string | undefined): Record<string, pino.Level> => {
   if (!raw) return {};
   const out: Record<string, pino.Level> = {};
@@ -38,7 +38,7 @@ if (!g.__ptRootLogger) {
           target: 'pino-roll',
           level: rootLevel,
           options: {
-            file: path.join(LOG_DIR, 'purplemux'),
+            file: path.join(LOG_DIR, 'codexmux'),
             frequency: 'daily',
             dateFormat: 'yyyy-MM-dd',
             limit: { count: 7 },

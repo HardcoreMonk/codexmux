@@ -1,83 +1,83 @@
 ---
-title: Vue de session en direct
-description: Ce que le panneau timeline montre vraiment — messages, appels d'outils, tâches et invites disposés en événements plutôt qu'en scrollback CLI.
-eyebrow: Claude Code
+title: 라이브 세션 뷰
+description: 타임라인 패널이 실제로 보여주는 것 — 메시지, 툴 호출, 작업, 프롬프트가 CLI 스크롤백이 아니라 이벤트 단위로 정리되어 표시됩니다.
+eyebrow: Codex
 permalink: /fr/docs/live-session-view/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Quand un onglet fait tourner Claude Code, purplemux remplace la vue terminal brute par une timeline structurée. Même session, même transcript JSONL — mais disposé en événements discrets que vous pouvez parcourir, scroller et lier.
+탭에서 Codex가 실행 중일 때, codexmux는 raw 터미널 뷰 대신 구조화된 타임라인을 보여줍니다. 같은 세션, 같은 JSONL 트랜스크립트지만 — 스캔하고 스크롤하고 링크할 수 있는 개별 이벤트로 펼쳐서 보여줍니다.
 
-## Pourquoi une timeline bat le scrollback
+## 왜 타임라인이 스크롤백보다 나은가
 
-La CLI Claude est interactive. Voir ce qu'elle a fait il y a quinze minutes dans un terminal signifie scroller à travers tout ce qui s'est passé depuis, lire des lignes wrappées et deviner où finit un appel d'outil et où commence le suivant.
+Codex CLI는 인터랙티브합니다. 15분 전에 무엇을 했는지 터미널에서 보려면 그 사이의 모든 출력을 스크롤해서 지나가고, 줄바꿈된 라인을 읽고, 어디서 한 툴 호출이 끝나고 다음이 시작되는지 짐작해야 합니다.
 
-La timeline garde les mêmes données et ajoute de la structure :
+타임라인은 같은 데이터에 구조를 더합니다:
 
-- Une ligne par message, appel d'outil, tâche ou invite
-- Entrées et sorties d'outils groupées ensemble
-- Ancres permanentes — les événements ne glissent pas hors du haut quand le buffer se remplit
-- L'étape courante reste épinglée en bas avec un compteur de temps écoulé
+- 메시지·툴 호출·작업·프롬프트마다 한 행씩
+- 툴 입력과 출력이 함께 그룹화됨
+- 영구 앵커 — 버퍼가 차도 이벤트가 위로 사라지지 않음
+- 현재 진행 중인 단계는 항상 하단에 고정되며 경과 시간 카운터 표시
 
-Vous pouvez toujours basculer dans le terminal à tout moment via le bouton de mode dans la barre du haut. La timeline est une vue *sur* la même session, pas une session séparée.
+상단 모드 토글로 언제든 터미널로 들어갈 수 있습니다. 타임라인은 같은 세션을 보는 다른 뷰일 뿐, 별개의 세션이 아닙니다.
 
-## Ce que vous verrez
+## 보이는 것들
 
-Chaque ligne de la timeline correspond à une entrée du transcript JSONL Claude Code :
+타임라인의 각 행은 Codex JSONL 트랜스크립트의 항목에 대응합니다:
 
-| Type | Ce qui est affiché |
+| 타입 | 내용 |
 |---|---|
-| **Message utilisateur** | Votre prompt sous forme de bulle de chat. |
-| **Message assistant** | La réponse de Claude, rendue en Markdown. |
-| **Appel d'outil** | Nom de l'outil, arguments clés et la réponse — `read`, `edit`, `bash`, etc. |
-| **Groupe d'outils** | Appels d'outils consécutifs réduits en une seule carte. |
-| **Tâche / plan** | Plans multi-étapes avec progression à cases à cocher. |
-| **Sous-agent** | Invocations d'agents groupées avec leur propre progression. |
-| **Invite de permission** | L'invite interceptée avec les mêmes options que Claude propose. |
-| **Compaction** | Indicateur subtil quand Claude auto-compacte le contexte. |
+| **사용자 메시지** | 작성한 프롬프트가 채팅 버블로 |
+| **어시스턴트 메시지** | Codex의 답변, Markdown으로 렌더링 |
+| **툴 호출** | 툴 이름·핵심 인자·응답 — `read`, `edit`, `bash` 등 |
+| **툴 그룹** | 연속된 툴 호출이 한 카드로 collapse |
+| **태스크 / 플랜** | 다단계 플랜과 체크박스 진행 상황 |
+| **서브 에이전트** | 에이전트 호출이 진행 상황과 함께 그룹화 |
+| **권한 프롬프트** | 가로챈 프롬프트가 Codex가 제시한 옵션 그대로 |
+| **Compacting** | Codex가 컨텍스트 자동 압축 중일 때의 미묘한 인디케이터 |
 
-Les longs messages assistant se replient en extrait avec affordance d'expansion ; les longues sorties d'outils sont tronquées avec un toggle « voir plus ».
+긴 어시스턴트 메시지는 스니펫으로 collapse되고 펼침 affordance가 붙습니다. 긴 툴 출력은 잘려서 "더 보기" 토글로 표시됩니다.
 
-## Comment ça reste live
+## 어떻게 라이브로 유지되는가
 
-La timeline est alimentée par un WebSocket sur `/api/timeline`. Le serveur lance un `fs.watch` sur le fichier JSONL actif, parse les entrées ajoutées et les pousse au navigateur en temps réel. Pas de polling, pas de re-fetch complet — la charge initiale envoie les entrées existantes, et tout le reste est incrémental.
+타임라인은 `/api/timeline` WebSocket이 데이터를 공급합니다. 서버는 활성 JSONL 파일에 `fs.watch`를 걸고 추가되는 항목을 파싱해서 발생 즉시 브라우저로 푸시합니다. polling도, 전체 재요청도 없습니다 — 초기 페이로드는 기존 항목을 보내고, 그 이후는 모두 incremental입니다.
 
-Pendant que Claude est `busy`, vous voyez aussi :
+Codex가 `busy`인 동안에는 이런 것도 함께 보입니다:
 
-- Un spinner avec le temps écoulé en direct pour l'étape courante
-- L'appel d'outil courant (par ex. « Lecture de src/lib/auth.ts »)
-- Un court extrait du texte assistant le plus récent
+- 현재 단계의 라이브 경과 시간이 붙은 스피너
+- 진행 중인 툴 호출 (예: "Reading src/lib/auth.ts")
+- 가장 최근 어시스턴트 텍스트의 짧은 스니펫
 
-Tout ça vient de la passe métadonnées du watcher JSONL et se met à jour sans changer l'état de session.
+이 값들은 JSONL watcher의 메타데이터 패스에서 오며, 세션 상태를 바꾸지 않고 갱신됩니다.
 
-## Scroll, ancres et historique
+## 스크롤, 앵커, 히스토리
 
-La timeline auto-scrolle quand vous êtes déjà en bas et reste en place quand vous scrollez vers le haut pour lire. Un bouton flottant **Aller en bas** apparaît quand vous êtes à plus d'un écran au-dessus de la dernière entrée.
+이미 하단에 있을 때는 자동 스크롤이 따라가고, 위로 스크롤해서 무언가를 읽고 있을 때는 그 자리에 머무릅니다. 최신 항목에서 한 화면 이상 위로 올라가면 floating **하단으로 이동** 버튼이 나타납니다.
 
-Pour les longues sessions, les anciennes entrées se chargent à la demande quand vous scrollez vers le haut. L'ID de session Claude est préservé à travers les reprises, donc reprendre une session d'hier vous remet là où vous l'avez laissée.
+긴 세션에서는 위로 스크롤할 때 오래된 항목이 on-demand로 로드됩니다. Codex 세션 ID는 resume 사이에서도 보존되므로, 어제의 세션을 이어 받으면 멈췄던 위치에서 시작합니다.
 
-{% call callout('tip', 'Sauter à la saisie') %}
-Pressez <kbd>⌘I</kbd> depuis n'importe où dans la timeline pour focaliser la barre de saisie en bas. <kbd>Esc</kbd> envoie un interrupt au processus Claude en cours.
+{% call callout('tip', '입력으로 이동') %}
+세션 뷰 어디서든 <kbd>⌘I</kbd>로 하단의 입력 바에 포커스를 줄 수 있습니다. <kbd>Esc</kbd>는 실행 중인 Codex 프로세스에 interrupt를 보냅니다.
 {% endcall %}
 
-## Invites de permission en ligne
+## 인라인 권한 프롬프트
 
-Quand Claude veut exécuter un outil ou modifier un fichier, l'invite apparaît en ligne dans la timeline plutôt qu'en modale. Vous pouvez cliquer sur l'option, presser la touche numérique correspondante, ou l'ignorer et répondre depuis votre téléphone via Web Push. Voir [Invites de permission](/purplemux/fr/docs/permission-prompts/) pour le flux complet.
+Codex가 툴 실행이나 파일 편집 권한을 요청하면, 모달이 아니라 타임라인 인라인으로 프롬프트가 나타납니다. 옵션을 클릭하거나, 매칭되는 숫자 키를 누르거나, 무시하고 휴대폰의 Web Push로 응답할 수 있습니다. 전체 흐름은 [권한 프롬프트](/codexmux/fr/docs/permission-prompts/) 참고.
 
-## Modes sur un seul onglet
+## 한 탭의 여러 모드
 
-La barre du haut permet de changer ce que le panneau de droite affiche pour la même session :
+상단 바에서 같은 세션에 대해 우측 패널이 보여줄 내용을 전환할 수 있습니다:
 
-- **Claude** — la timeline (par défaut)
-- **Terminal** — la vue xterm.js brute
-- **Diff** — les changements Git pour le répertoire de travail
+- **Codex** — 타임라인 (기본)
+- **터미널** — 원시 xterm.js 뷰
+- **Diff** — 작업 디렉토리의 Git 변경
 
-Changer de mode ne redémarre rien. La session continue de tourner sur tmux derrière les trois vues.
+모드 전환은 아무것도 재시작하지 않습니다. 세션은 세 뷰 모두의 뒤에서 tmux 위에서 계속 실행됩니다.
 
-Raccourcis : <kbd>⌘⇧C</kbd> · <kbd>⌘⇧T</kbd> · <kbd>⌘⇧F</kbd>.
+단축키: <kbd>⌘⇧C</kbd> · <kbd>⌘⇧T</kbd> · <kbd>⌘⇧F</kbd>.
 
-## Pour aller plus loin
+## 다음으로
 
-- **[Invites de permission](/purplemux/fr/docs/permission-prompts/)** — le flux d'approbation en ligne.
-- **[Statut de session](/purplemux/fr/docs/session-status/)** — les badges qui pilotent les indicateurs de la timeline.
-- **[Prompts rapides & pièces jointes](/purplemux/fr/docs/quick-prompts-attachments/)** — ce que la barre de saisie en bas peut faire.
+- **[권한 프롬프트](/codexmux/fr/docs/permission-prompts/)** — 인라인 승인 흐름
+- **[세션 상태](/codexmux/fr/docs/session-status/)** — 타임라인 인디케이터를 구동하는 배지들
+- **[퀵 프롬프트 & 첨부](/codexmux/fr/docs/quick-prompts-attachments/)** — 하단 입력 바가 할 수 있는 일들

@@ -1,64 +1,64 @@
 ---
-title: Web Push 通知
-description: 针对 needs-input 和任务完成状态的后台推送提醒,即便浏览器标签已关闭也能收到。
-eyebrow: 移动与远程
+title: 웹 푸시 알림
+description: 탭이 닫혀 있어도 needs-input과 작업 완료 상태에 대한 백그라운드 푸시 알림을 받습니다.
+eyebrow: 모바일 & 원격
 permalink: /zh-CN/docs/web-push/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Web Push 让 purplemux 在 Claude 会话需要你关注时提醒你 — 权限提示、任务完成 — 哪怕你已经关掉了标签页。点一下通知,直接落到那个会话上。
+Web Push는 Codex 세션이 사람을 필요로 하는 순간 — 권한 프롬프트, 작업 완료 — 탭을 닫아둔 상태에서도 알림을 띄워줍니다. 알림을 누르면 해당 세션으로 바로 이동합니다.
 
-## 什么会触发通知
+## 무엇이 알림을 트리거하나
 
-purplemux 在你看到的侧边栏彩色徽章相同的转换上发推送。
+사이드바의 컬러 배지에서 볼 수 있는 전환과 동일한 시점에 푸시가 발송됩니다.
 
-- **Needs input** — Claude 触发了权限提示或在问问题。
-- **任务完成** — Claude 完成了一轮(**review** 状态)。
+- **Needs input** — Codex가 권한 프롬프트나 질문 대기
+- **작업 완료** — Codex가 한 턴을 마침 (**review** 상태)
 
-idle 和 busy 转换有意不推送。它们是噪音。
+idle, busy 전환은 의도적으로 푸시하지 않습니다. 노이즈입니다.
 
-## 启用
+## 활성화
 
-开关在 **设置 → 通知**。步骤:
+토글 위치는 **설정 → 알림**입니다. 순서:
 
-1. 打开 **设置 → 通知**,把开关 **打开**。
-2. 浏览器请求通知权限 — 授予。
-3. purplemux 用服务端的 VAPID 密钥注册一个 Web Push 订阅。
+1. **설정 → 알림**을 열고 **On**으로 토글합니다.
+2. 브라우저가 알림 권한을 요청하면 허용합니다.
+3. codexmux가 서버의 VAPID 키로 Web Push 구독을 등록합니다.
 
-订阅存放在 `~/.purplemux/push-subscriptions.json`,标识你这台特定的浏览器/设备。每个想接收通知的设备都要重复一次。
+구독 정보는 `~/.codexmux/push-subscriptions.json`에 저장되며 브라우저/기기 단위로 식별됩니다. 알림을 받을 기기마다 같은 절차를 반복하세요.
 
-{% call callout('warning', 'iOS 需要 Safari 16.4 + 一个 PWA') %}
-在 iPhone 和 iPad 上,Web Push 只在你把 purplemux 添加到主屏幕并从该图标启动后才生效。从独立 PWA 窗口里打开设置页 — 在普通 Safari 标签中触发的通知权限提示是空操作。先设置好 PWA:[PWA 设置](/purplemux/zh-CN/docs/pwa-setup/)。
+{% call callout('warning', 'iOS는 Safari 16.4와 PWA 필수') %}
+iPhone, iPad에서는 codexmux를 홈 화면에 추가하고 그 아이콘으로 실행한 상태에서만 Web Push가 동작합니다. 일반 Safari 탭에서 알림 권한을 요청해도 의미가 없습니다. PWA부터 설정하세요: [PWA 설정](/codexmux/zh-CN/docs/pwa-setup/).
 {% endcall %}
 
-## VAPID 密钥
+## VAPID 키
 
-purplemux 在首次运行时生成一个应用服务端的 VAPID 密钥对,存放在 `~/.purplemux/vapid-keys.json`(权限 `0600`)。你不需要做任何事 — 订阅时公钥会自动提供给浏览器。
+codexmux는 첫 실행 시 application-server VAPID 키페어를 생성해 `~/.codexmux/vapid-keys.json`(권한 `0600`)에 저장합니다. 별도 작업이 필요 없습니다 — 구독 시 공개 키가 브라우저에 자동 전달됩니다.
 
-如果你需要重置所有订阅(例如轮换密钥之后),删除 `vapid-keys.json` 和 `push-subscriptions.json` 然后重启 purplemux。每个设备需要重新订阅。
+키 회전 등의 이유로 모든 구독을 초기화하고 싶다면 `vapid-keys.json`과 `push-subscriptions.json`을 삭제하고 codexmux를 재시작하세요. 모든 기기는 다시 구독해야 합니다.
 
-## 后台投递
+## 백그라운드 전송
 
-订阅之后,你的手机通过 OS 推送服务接收通知:
+구독 후에는 OS 푸시 서비스를 통해 알림이 전달됩니다.
 
-- **iOS** — 通过 Safari 的 Web Push 桥到 APNs。投递是尽力而为,在手机被严重节流时可能合并。
-- **Android** — 通过 Chrome 走 FCM。一般是即时的。
+- **iOS** — Safari의 Web Push 브리지를 거쳐 APNs로 전달. 최선 노력 방식이며 기기 상태에 따라 묶여서 올 수 있습니다.
+- **Android** — Chrome을 통해 FCM. 일반적으로 즉시 도착합니다.
 
-无论 purplemux 是否在前台,通知都会到达。如果仪表盘当前在你 *任意* 一台设备上可见,purplemux 会跳过推送以避免双重打扰。
+codexmux가 포어그라운드인지와 무관하게 알림이 옵니다. 단, 어느 기기에서든 대시보드가 현재 보이고 있다면 중복 알림을 피하기 위해 푸시 발송을 건너뜁니다.
 
-## 点击进入
+## 알림 탭 → 세션 이동
 
-点击通知会直接打开 purplemux 到触发它的会话。如果 PWA 已在运行,焦点切到对应标签;否则应用启动并直接导航过去。
+알림을 누르면 알림을 발생시킨 세션으로 바로 열립니다. PWA가 이미 실행 중이라면 해당 탭으로 포커스가 이동하고, 아니라면 앱이 실행되며 곧장 이동합니다.
 
-## 故障排查
+## 문제 해결
 
-- **开关变灰** — Service Workers 或 Notifications API 不被支持。运行 **设置 → 浏览器检查**,或见 [浏览器支持](/purplemux/zh-CN/docs/browser-support/)。
-- **权限被拒绝** — 在浏览器设置里清掉该站点的通知权限,然后在 purplemux 重新打开。
-- **iOS 上没推送** — 确认是从主屏幕图标启动的,不是 Safari。确认 iOS 是 **16.4 或更新**。
-- **自签名证书** — Web Push 拒绝注册。请用 Tailscale Serve 或带真实证书的反向代理。见 [Tailscale 访问](/purplemux/zh-CN/docs/tailscale/)。
+- **토글이 비활성** — Service Worker 또는 Notifications API 미지원. **설정 → 브라우저 체크** 또는 [브라우저 지원](/codexmux/zh-CN/docs/browser-support/) 확인.
+- **권한 거부됨** — 브라우저 설정에서 해당 사이트의 알림 권한을 초기화한 후 codexmux에서 다시 토글합니다.
+- **iOS에서 알림이 안 옴** — 홈 화면 아이콘에서 실행 중인지, iOS가 **16.4 이상**인지 확인하세요.
+- **자체 서명 인증서** — Web Push 등록 자체가 거부됩니다. Tailscale Serve나 실제 인증서를 가진 리버스 프록시를 사용하세요. [Tailscale 접속](/codexmux/zh-CN/docs/tailscale/) 참고.
 
-## 下一步
+## 다음으로
 
-- **[PWA 设置](/purplemux/zh-CN/docs/pwa-setup/)** — iOS 推送的前提。
-- **[Tailscale 访问](/purplemux/zh-CN/docs/tailscale/)** — 外部投递所需的 HTTPS。
-- **[安全与认证](/purplemux/zh-CN/docs/security-auth/)** — `~/.purplemux/` 下还有什么。
+- **[PWA 설정](/codexmux/zh-CN/docs/pwa-setup/)** — iOS 푸시의 필수 단계
+- **[Tailscale 접속](/codexmux/zh-CN/docs/tailscale/)** — 외부 전송용 HTTPS 확보
+- **[보안과 인증](/codexmux/zh-CN/docs/security-auth/)** — `~/.codexmux/` 안의 다른 파일들

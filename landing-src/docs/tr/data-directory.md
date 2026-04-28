@@ -1,151 +1,65 @@
 ---
-title: Veri dizini
-description: ~/.purplemux/ altında ne yaşar, neyi silmek güvenli ve nasıl yedeklenir.
-eyebrow: Referans
+title: 데이터 디렉터리
+description: ~/.codexmux/ 아래에 저장되는 파일과 삭제 기준.
+eyebrow: 레퍼런스
 permalink: /tr/docs/data-directory/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux'ın tuttuğu her kalıcı durum parçası — ayarlar, düzenler, oturum geçmişi, önbellekler — `~/.purplemux/` altında yaşar. Başka hiçbir yerde değil. `localStorage` yok, sistem keychain'i yok, dış servis yok.
+codexmux의 영속 상태는 `~/.codexmux/` 아래에 저장됩니다. Codex CLI의 원본 session JSONL은 `~/.codex/sessions/`에 있으며 codexmux는 읽기 전용으로만 접근합니다.
 
-## Bir bakışta düzen
+## 구조
 
-```
-~/.purplemux/
-├── config.json              # uygulama yapılandırması (auth, tema, yerel, …)
-├── workspaces.json          # çalışma alanı listesi + kenar çubuğu durumu
-├── workspaces/
-│   └── {wsId}/
-│       ├── layout.json           # panel/sekme ağacı
-│       ├── message-history.json  # çalışma alanı başına girdi geçmişi
-│       └── claude-prompt.md      # --append-system-prompt-file içeriği
-├── hooks.json               # Claude Code hook + statusline yapılandırması (üretilir)
-├── status-hook.sh           # hook betiği (üretilir, 0755)
-├── statusline.sh            # statusline betiği (üretilir, 0755)
-├── rate-limits.json         # son statusline JSON
-├── session-history.json     # tamamlanan Claude oturum logu (çapraz çalışma alanı)
-├── quick-prompts.json       # özel hızlı promptlar + devre dışı yerleşikler
-├── sidebar-items.json       # özel kenar çubuğu öğeleri + devre dışı yerleşikler
-├── vapid-keys.json          # Web Push VAPID anahtar çifti (üretilir)
-├── push-subscriptions.json  # Web Push uç noktası abonelikleri
-├── cli-token                # CLI auth token'ı (üretilir)
-├── port                     # geçerli sunucu portu
-├── pmux.lock                # tek-örnek kilidi {pid, port, startedAt}
-├── logs/                    # pino-roll log dosyaları
-├── uploads/                 # sohbet girdi çubuğu üzerinden eklenen görüntüler
-└── stats/                   # Claude kullanım istatistikleri önbelleği
+```text
+~/.codexmux/
+├── config.json
+├── workspaces.json
+├── workspaces/{wsId}/layout.json
+├── hooks.json
+├── status-hook.sh
+├── statusline.sh
+├── rate-limits.json
+├── session-history.json
+├── quick-prompts.json
+├── sidebar-items.json
+├── keybindings.json
+├── vapid-keys.json
+├── push-subscriptions.json
+├── cli-token
+├── port
+├── cmux.lock
+├── logs/
+├── uploads/
+└── stats/
 ```
 
-Sırlar içeren dosyalar (config, tokenler, düzenler, VAPID anahtarları, kilit) `tmpFile → rename` deseniyle `0600` modunda yazılır.
+`hooks.json`, `status-hook.sh`, `statusline.sh`는 local hook/statusline bridge용 생성 파일입니다. Codex tab 실행에는 필요하지 않습니다.
 
-## Üst seviye dosyalar
+## 주요 파일
 
-| Dosya | Sakladığı | Silmek güvenli mi? |
+| 파일 | 내용 | 삭제 가능 여부 |
 |---|---|---|
-| `config.json` | scrypt-hashlı login parolası, HMAC oturum gizliliği, tema, yerel, font boyutu, bildirim anahtarı, editör URL'si, ağ erişimi, özel CSS | Evet — onboarding'i yeniden çalıştırır |
-| `workspaces.json` | Çalışma alanı dizini, kenar çubuğu genişliği / daraltılmış durumu, aktif çalışma alanı kimliği | Evet — tüm çalışma alanlarını ve sekmeleri siler |
-| `hooks.json` | Claude Code `--settings` eşlemesi (event → script) + `statusLine.command` | Evet — sonraki başlangıçta yeniden üretilir |
-| `status-hook.sh`, `statusline.sh` | `x-pmux-token` ile `/api/status/hook` ve `/api/status/statusline`'a POST | Evet — sonraki başlangıçta yeniden üretilir |
-| `rate-limits.json` | Son Claude statusline JSON: `ts`, `model`, `five_hour`, `seven_day`, `context`, `cost` | Evet — Claude çalıştıkça yeniden doldurulur |
-| `session-history.json` | Son 200 tamamlanan Claude oturumu (promptlar, sonuçlar, süreler, araçlar, dosyalar) | Evet — geçmişi temizler |
-| `quick-prompts.json`, `sidebar-items.json` | Yerleşik listeler üzerine `{ custom: […], disabledBuiltinIds: […], order: […] }` örtüleri | Evet — varsayılanları geri yükler |
-| `vapid-keys.json` | İlk çalıştırmada üretilen Web Push VAPID anahtar çifti | `push-subscriptions.json`'u da silmediyseniz hayır (mevcut abonelikler bozulur) |
-| `push-subscriptions.json` | Tarayıcı başına push uç noktaları | Evet — her cihazda yeniden abone olun |
-| `cli-token` | `purplemux` CLI ve hook betikleri için 32-baytlık hex token (`x-pmux-token` başlığı) | Evet — sonraki başlangıçta yeniden üretilir, ama zaten üretilmiş herhangi bir hook betiği sunucu üzerine yazana kadar eski tokeni saklar |
-| `port` | Hook betikleri ve CLI tarafından okunan düz metin geçerli port | Evet — sonraki başlangıçta yeniden üretilir |
-| `pmux.lock` | Tek-örnek koruyucu `{ pid, port, startedAt }` | Yalnızca canlı bir purplemux süreci yoksa |
+| `config.json` | login hash, session secret, theme, Codex option | 가능. onboarding 재실행 |
+| `workspaces.json` | workspace 목록과 sidebar 상태 | 가능. 모든 workspace 초기화 |
+| `layout.json` | pane/tab tree와 tab metadata | 가능. 해당 workspace layout 초기화 |
+| `cli-token` | CLI와 bridge script token | 가능. 재시작 시 재생성 |
+| `port` | 현재 server port | 가능. 재시작 시 재생성 |
+| `cmux.lock` | 단일 인스턴스 guard | process가 없을 때만 삭제 |
+| `stats/` | usage cache와 daily report | 가능. 다음 요청에서 재계산 |
 
-{% call callout('warning', 'Kilit dosyası tuzakları') %}
-purplemux "zaten çalışıyor" diyerek başlamayı reddediyor ama hiçbir süreç canlı değilse, `pmux.lock` eskimiştir. `rm ~/.purplemux/pmux.lock` deneyin. purplemux'ı bir kez `sudo` ile çalıştırdıysanız, kilit dosyası root'a ait olabilir — `sudo rm` ile bir kez silin.
-{% endcall %}
-
-## Çalışma alanı başına dizin (`workspaces/{wsId}/`)
-
-Her çalışma alanının üretilen çalışma alanı kimliğiyle adlandırılan kendi klasörü vardır.
-
-| Dosya | İçerik |
-|---|---|
-| `layout.json` | Özyinelemeli panel/sekme ağacı: `tabs[]` ile yaprak `pane` düğümleri, `children[]` ve bir `ratio` ile `split` düğümleri. Her sekme tmux oturum adını (`pt-{wsId}-{paneId}-{tabId}`), önbelleğe alınmış `cliState`, `claudeSessionId`, son resume komutunu taşır. |
-| `message-history.json` | Çalışma alanı başına Claude girdi geçmişi. 500 girişle sınırlı. |
-| `claude-prompt.md` | Bu çalışma alanındaki her Claude sekmesine geçirilen `--append-system-prompt-file` içeriği. Çalışma alanı oluşturma / yeniden adlandırma / dizin değişikliğinde yeniden üretilir. |
-
-Diğerlerine dokunmadan o çalışma alanının düzenini varsayılan bir panele sıfırlamak için tek bir `workspaces/{wsId}/layout.json`'u silin.
-
-## `logs/`
-
-Pino-roll çıktısı, UTC günü başına bir dosya, boyut sınırları aşıldığında sayısal son ekle:
-
-```
-logs/purplemux.2026-04-19.1.log
-```
-
-Varsayılan seviye `info`. `LOG_LEVEL` ile veya modül başına `LOG_LEVELS` ile geçersiz kılın — [Portlar & ortam değişkenleri](/purplemux/tr/docs/ports-env-vars/) sayfasına bakın.
-
-Loglar haftalık döner (7-dosya sınırı). İstediğiniz zaman silebilirsiniz.
-
-## `uploads/`
-
-Sohbet girdi çubuğu üzerinden eklenen görüntüler (sürükle, yapıştır, ataş):
-
-```
-uploads/{wsId}/{tabId}/{timestamp}-{rand}-{name}.{ext}
-```
-
-- İzin verilen: `image/png`, `image/jpeg`, `image/gif`, `image/webp`
-- Dosya başına maks 10 MB, mod `0600`
-- Sunucu başlangıcında otomatik temizlenir: 24 saatten eski her şey kaldırılır
-- Manuel temizlik: **Ayarlar → Sistem → Eklenen Görüntüler → Şimdi temizle**
-
-## `stats/`
-
-Saf önbellek. `~/.claude/projects/**/*.jsonl`'den türetilir — purplemux yalnızca o dizini okur.
-
-| Dosya | İçerik |
-|---|---|
-| `cache.json` | Gün başına toplamlar: mesajlar, oturumlar, araç çağrıları, saatlik sayımlar, model başına token kullanımı |
-| `uptime-cache.json` | Gün başına çalışma süresi / aktif dakika toplaması |
-| `daily-reports/{YYYY-MM-DD}.json` | AI tarafından üretilen günlük özet |
-
-Bir sonraki istatistik isteğinde yeniden hesaplamayı zorlamak için tüm klasörü silin.
-
-## Sıfırlama matrisi
-
-| Sıfırlanacak… | Silinecek |
-|---|---|
-| Login parolası (yeniden onboarding) | `config.json` |
-| Tüm çalışma alanları ve sekmeler | `workspaces.json` + `workspaces/` |
-| Bir çalışma alanının düzeni | `workspaces/{wsId}/layout.json` |
-| Kullanım istatistikleri | `stats/` |
-| Push abonelikleri | `push-subscriptions.json` |
-| Takılı "zaten çalışıyor" | `pmux.lock` (yalnızca canlı süreç yoksa) |
-| Her şey (fabrika ayarlarına dön) | `~/.purplemux/` |
-
-`hooks.json`, `status-hook.sh`, `statusline.sh`, `port`, `cli-token` ve `vapid-keys.json` hepsi bir sonraki başlangıçta otomatik yeniden üretilir, dolayısıyla silmek zararsızdır.
-
-## Yedekler
-
-Tüm dizin düz JSON ve birkaç shell betiğidir. Yedeklemek için:
+## 백업
 
 ```bash
-tar czf purplemux-backup.tgz -C ~ .purplemux
+tar czf codexmux-backup.tgz -C ~ .codexmux
 ```
 
-Yeni bir makineye geri yüklemek için, çıkartın ve purplemux'ı başlatın. Hook betikleri yeni sunucunun portu ile yeniden yazılır; geri kalan her şey (çalışma alanları, geçmiş, ayarlar) olduğu gibi taşınır.
+복원 전에는 codexmux를 종료하고 같은 위치에 풀어 넣습니다.
 
-{% call callout('warning') %}
-`pmux.lock`'u geri yüklemeyin — belirli bir PID'ye bağlıdır ve başlangıcı engeller. Hariç tutun: `--exclude pmux.lock`.
-{% endcall %}
+## reset 기준
 
-## Her şeyi sil
+- 로그인만 초기화: `config.json` 삭제.
+- 모든 workspace 초기화: `workspaces.json`과 `workspaces/` 삭제.
+- 통계 재계산: `stats/` 삭제.
+- 전체 초기화: `~/.codexmux/` 삭제.
 
-```bash
-rm -rf ~/.purplemux
-```
-
-Önce purplemux'ın çalışmadığından emin olun. Sonraki başlatma yine ilk-çalıştırma deneyimi olacak.
-
-## Sıradaki adımlar
-
-- **[Portlar & ortam değişkenleri](/purplemux/tr/docs/ports-env-vars/)** — bu dizini etkileyen her değişken.
-- **[Mimari](/purplemux/tr/docs/architecture/)** — dosyaların çalışan sunucuya nasıl bağlandığı.
-- **[Sorun giderme](/purplemux/tr/docs/troubleshooting/)** — yaygın sorunlar ve çözümler.
+`~/.codex/`는 Codex CLI의 auth와 session history를 포함하므로 일반적인 codexmux reset에서는 삭제하지 않습니다.

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { TEditorPreset } from '@/lib/editor-url';
 import type { TToastPosition } from '@/lib/toast-position';
+import type { TCodexApprovalPolicy, TCodexSandboxMode } from '@/lib/codex-command';
 
 export type { TToastPosition } from '@/lib/toast-position';
 
@@ -15,7 +16,11 @@ export interface IConfigInitialData {
   terminalTheme?: { light: string; dark: string } | null;
   customCSS?: string;
   dangerouslySkipPermissions?: boolean;
-  claudeShowTerminal?: boolean;
+  codexModel?: string | null;
+  codexSandbox?: TCodexSandboxMode | null;
+  codexApprovalPolicy?: TCodexApprovalPolicy | null;
+  codexSearchEnabled?: boolean;
+  codexShowTerminal?: boolean;
   editorUrl?: string;
   editorPreset?: TEditorPreset;
   notificationsEnabled?: boolean;
@@ -34,7 +39,11 @@ export interface IConfigInitialData {
 
 interface IConfigState {
   dangerouslySkipPermissions: boolean;
-  claudeShowTerminal: boolean;
+  codexModel: string;
+  codexSandbox: TCodexSandboxMode | '';
+  codexApprovalPolicy: TCodexApprovalPolicy | '';
+  codexSearchEnabled: boolean;
+  codexShowTerminal: boolean;
   editorUrl: string;
   editorPreset: TEditorPreset;
   notificationsEnabled: boolean;
@@ -53,7 +62,11 @@ interface IConfigState {
 
   hydrate: (data: IConfigInitialData) => void;
   setDangerouslySkipPermissions: (enabled: boolean) => void;
-  setClaudeShowTerminal: (enabled: boolean) => void;
+  setCodexModel: (model: string) => void;
+  setCodexSandbox: (sandbox: TCodexSandboxMode | '') => void;
+  setCodexApprovalPolicy: (policy: TCodexApprovalPolicy | '') => void;
+  setCodexSearchEnabled: (enabled: boolean) => void;
+  setCodexShowTerminal: (enabled: boolean) => void;
   setEditorUrl: (url: string) => void;
   setEditorPreset: (preset: TEditorPreset) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
@@ -78,7 +91,11 @@ const initialConfig = {
   editorUrl: '',
   editorPreset: 'code-server' as TEditorPreset,
   dangerouslySkipPermissions: false,
-  claudeShowTerminal: true,
+  codexModel: '',
+  codexSandbox: '' as TCodexSandboxMode | '',
+  codexApprovalPolicy: '' as TCodexApprovalPolicy | '',
+  codexSearchEnabled: false,
+  codexShowTerminal: true,
   hasAuthPassword: false,
   locale: 'en',
   customCSS: '',
@@ -101,7 +118,11 @@ const saveConfig = (updates: Record<string, unknown>) => {
 
 const useConfigStore = create<IConfigState>((set, get) => ({
   dangerouslySkipPermissions: initialConfig.dangerouslySkipPermissions,
-  claudeShowTerminal: initialConfig.claudeShowTerminal,
+  codexModel: initialConfig.codexModel,
+  codexSandbox: initialConfig.codexSandbox,
+  codexApprovalPolicy: initialConfig.codexApprovalPolicy,
+  codexSearchEnabled: initialConfig.codexSearchEnabled,
+  codexShowTerminal: initialConfig.codexShowTerminal,
   editorUrl: initialConfig.editorUrl,
   editorPreset: initialConfig.editorPreset,
   notificationsEnabled: initialConfig.notificationsEnabled,
@@ -121,7 +142,11 @@ const useConfigStore = create<IConfigState>((set, get) => ({
   hydrate: (data) => {
     set({
       dangerouslySkipPermissions: data.dangerouslySkipPermissions ?? false,
-      claudeShowTerminal: data.claudeShowTerminal ?? true,
+      codexModel: data.codexModel ?? '',
+      codexSandbox: data.codexSandbox ?? '',
+      codexApprovalPolicy: data.codexApprovalPolicy ?? '',
+      codexSearchEnabled: data.codexSearchEnabled ?? false,
+      codexShowTerminal: data.codexShowTerminal ?? true,
       editorUrl: data.editorUrl ?? '',
       editorPreset: data.editorPreset ?? 'code-server',
       notificationsEnabled: data.notificationsEnabled ?? true,
@@ -145,9 +170,34 @@ const useConfigStore = create<IConfigState>((set, get) => ({
     saveConfig({ dangerouslySkipPermissions: enabled });
   },
 
-  setClaudeShowTerminal: (enabled) => {
-    set({ claudeShowTerminal: enabled });
-    saveConfig({ claudeShowTerminal: enabled });
+  setCodexModel: (model) => {
+    if (get().codexModel === model) return;
+    set({ codexModel: model });
+    saveConfig({ codexModel: model.trim() || null });
+  },
+
+  setCodexSandbox: (sandbox) => {
+    if (get().codexSandbox === sandbox) return;
+    set({ codexSandbox: sandbox });
+    saveConfig({ codexSandbox: sandbox || null });
+  },
+
+  setCodexApprovalPolicy: (policy) => {
+    if (get().codexApprovalPolicy === policy) return;
+    set({ codexApprovalPolicy: policy });
+    saveConfig({ codexApprovalPolicy: policy || null });
+  },
+
+  setCodexSearchEnabled: (enabled) => {
+    if (get().codexSearchEnabled === enabled) return;
+    set({ codexSearchEnabled: enabled });
+    saveConfig({ codexSearchEnabled: enabled });
+  },
+
+  setCodexShowTerminal: (enabled) => {
+    if (get().codexShowTerminal === enabled) return;
+    set({ codexShowTerminal: enabled });
+    saveConfig({ codexShowTerminal: enabled });
   },
 
   setEditorUrl: (url) => {

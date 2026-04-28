@@ -5,14 +5,14 @@
     "appearance": "Görünüm",
     "terminal": "Terminal",
     "editor": "Editör",
-    "claude": "Claude",
     "auth": "Kimlik Doğrulama",
     "tailscale": "Tailscale",
     "quickPrompts": "Hızlı Komutlar",
     "sidebarItems": "Kenar Çubuğu",
     "agent": "Ajan",
     "notification": "Bildirim",
-    "system": "Sistem"
+    "system": "Sistem",
+    "codex": "Codex"
   },
   "general": {
     "theme": "Tema",
@@ -67,18 +67,12 @@
     "errorHttpRequired": "URL http:// veya https:// ile başlamalıdır",
     "errorCustomTemplate": "Şablon {folder} veya {folderEncoded} içermelidir"
   },
-  "claude": {
-    "skipPermissions": "İzin Kontrollerini Atla",
-    "skipPermissionsDescription": "Claude CLI çalıştırılırken --dangerously-skip-permissions seçeneğini ekler.",
-    "showTerminal": "Terminali Claude ile Göster",
-    "showTerminalDescription": "Terminal alanını Claude Code ile birlikte gösterir. Kapalıyken yeni Claude sekmeleri terminal kapalı olarak açılır."
-  },
   "auth": {
     "changePassword": "Şifre Değiştir",
     "changePasswordDescription": "Yeni şifreler kaydedilmeden önce SHA-512 ile hashlenir.",
     "newPasswordPlaceholder": "Yeni şifre girin (en az 4 karakter)",
     "passwordPlaceholder": "Şifre girin (en az 4 karakter)",
-    "resetHint": "Sıfırlamak için ~/.purplemux/config.json dosyasını silin ve {action}.",
+    "resetHint": "Sıfırlamak için ~/.codexmux/config.json dosyasını silin ve {action}.",
     "restartServer": "sunucuyu yeniden başlatın",
     "restartApp": "uygulamadan çıkıp yeniden başlatın",
     "savedRestart": "Kaydedildi. Değişiklikler {action} sonrasında uygulanacaktır.",
@@ -87,7 +81,7 @@
   },
   "notification": {
     "enable": "Bildirimleri Etkinleştir",
-    "enableDescription": "Claude görevleri tamamlandığında sistem bildirimleri gösterir. Yalnızca Electron uygulamasında çalışır.",
+    "enableDescription": "Show system notifications when Codex tasks complete.",
     "permissionDenied": "Tarayıcı bildirim izni reddedildi. Lütfen tarayıcı ayarlarından izin verin.",
     "notSupported": "Web Push bu tarayıcıda desteklenmiyor.",
     "toastSection": "Uygulama içi toast",
@@ -116,7 +110,7 @@
   },
   "system": {
     "networkAccess": "Ağ erişimi",
-    "networkAccessDescription": "Hangi ağların purplemux'a erişebileceğini kontrol eder. Sunucu yeniden başlatıldıktan sonra uygulanır.",
+    "networkAccessDescription": "Hangi ağların codexmux'a erişebileceğini kontrol eder. Sunucu yeniden başlatıldıktan sonra uygulanır.",
     "networkAccessLocked": "HOST ortam değişkeni tarafından kontrol ediliyor.",
     "restartRequired": "Değişiklikler sunucu yeniden başlatıldıktan sonra uygulanır.",
     "networkAccessOptions": {
@@ -136,7 +130,7 @@
     "showResources": "Sistem kaynaklarını göster",
     "showResourcesDescription": "Başlıkta CPU, bellek ve tmux oturum kullanımını görüntüler.",
     "attachedImages": "Eklenen görseller",
-    "attachedImagesDescription": "Giriş çubuğuna eklenen görseller ~/.purplemux/uploads/ altında saklanır. 24 saatten eski dosyalar sunucu başlangıcında otomatik olarak silinir.",
+    "attachedImagesDescription": "Giriş çubuğuna eklenen görseller ~/.codexmux/uploads/ altında saklanır. 24 saatten eski dosyalar sunucu başlangıcında otomatik olarak silinir.",
     "cleanAttachedImages": "Şimdi temizle",
     "attachedImagesCleaned": "{count} dosya silindi",
     "attachedImagesNothing": "Silinecek görsel yok",
@@ -234,5 +228,31 @@
     "deleteCancel": "İptal",
     "deleteConfirm": "Sil"
   },
-  "saveFailed": "Ayarlar kaydedilemedi"
+  "saveFailed": "Ayarlar kaydedilemedi",
+  "codex": {
+    "model": "Model",
+    "modelDescription": "Optional model passed as --model. Leave blank to use the Codex CLI default.",
+    "modelPlaceholder": "e.g. gpt-5.2",
+    "cliDefault": "CLI default",
+    "sandbox": "Sandbox",
+    "sandboxDescription": "Controls the --sandbox mode for new and resumed Codex sessions.",
+    "sandboxOptions": {
+      "read-only": "read-only",
+      "workspace-write": "workspace-write",
+      "danger-full-access": "danger-full-access"
+    },
+    "approvalPolicy": "Approval policy",
+    "approvalPolicyDescription": "Controls when Codex asks before running commands.",
+    "approvalOptions": {
+      "untrusted": "untrusted",
+      "on-failure": "on-failure",
+      "on-request": "on-request",
+      "never": "never"
+    },
+    "webSearch": "Web search",
+    "webSearchDescription": "Adds --search so Codex can use live web search.",
+    "showTerminal": "Show terminal with Codex",
+    "showTerminalDescription": "Display the terminal area alongside Codex. When off, new Codex tabs open with the terminal collapsed.",
+    "commandPreview": "Command preview"
+  }
 }

@@ -4,11 +4,12 @@ import os from 'os';
 import { createReadStream } from 'fs';
 import readline from 'readline';
 import { execFile } from 'child_process';
+import { randomUUID } from 'crypto';
 import { getShellPath } from '@/lib/preflight';
 import { collectJsonlFiles } from './stats-cache';
 import type { IDailyReportDay } from '@/types/stats';
 
-const CACHE_DIR = path.join(os.homedir(), '.purplemux', 'stats', 'daily-reports');
+const CACHE_DIR = path.join(os.homedir(), '.codexmux', 'stats', 'daily-reports');
 
 // --- Cache read/write ---
 
@@ -90,6 +91,33 @@ const extractSessionsForDate = async (targetDate: string): Promise<ISessionData[
           if (!cwd && typeof entry.cwd === 'string') {
             cwd = entry.cwd;
           }
+          const payload = typeof entry.payload === 'object' && entry.payload !== null
+            ? entry.payload as Record<string, unknown>
+            : null;
+
+          if (
+            (type === 'session_meta' || type === 'turn_context')
+            && payload
+            && !cwd
+            && typeof payload.cwd === 'string'
+          ) {
+            cwd = payload.cwd;
+          }
+
+          if (type === 'event_msg' && payload && payload.type === 'user_message') {
+            const text = String(payload.message ?? '').slice(0, 300);
+            if (
+              text.trim()
+              && !text.includes('<environment_context>')
+              && !text.includes('<task-notification>')
+            ) {
+              userMessages.push({ time: ts.slice(11, 16), text: text.slice(0, 200) });
+            }
+          }
+
+          if (type === 'response_item' && payload && payload.type === 'function_call') {
+            toolCount++;
+          }
 
           if (type === 'user') {
             const message = entry.message as Record<string, unknown> | undefined;
@@ -155,7 +183,7 @@ const extractSessionsForDate = async (targetDate: string): Promise<ISessionData[
   return sessions;
 };
 
-// --- Claude CLI summary generation ---
+// --- Codex CLI summary generation ---
 
 const buildPromptData = (sessions: ISessionData[]): string => {
   return sessions
@@ -166,19 +194,41 @@ const buildPromptData = (sessions: ISessionData[]): string => {
     .join('\n');
 };
 
-const callClaudeCli = async (input: string, systemPrompt: string): Promise<string> => {
+const callCodexCli = async (input: string, systemPrompt: string): Promise<string> => {
   const resolvedPath = await getShellPath();
+  const outputPath = path.join(os.tmpdir(), `codexmux-daily-report-${process.pid}-${randomUUID()}.txt`);
+
   return new Promise((resolve, reject) => {
     const child = execFile(
-      'claude',
-      ['-p'],
-      { timeout: 120_000, maxBuffer: 1024 * 1024, env: { ...process.env, PATH: resolvedPath } },
-      (error, stdout) => {
+      'codex',
+      [
+        'exec',
+        '--skip-git-repo-check',
+        '--ephemeral',
+        '--sandbox',
+        'read-only',
+        '--ask-for-approval',
+        'never',
+        '--color',
+        'never',
+        '--output-last-message',
+        outputPath,
+        '-',
+      ],
+      { timeout: 180_000, maxBuffer: 1024 * 1024, env: { ...process.env, PATH: resolvedPath } },
+      (error, stdout, stderr) => {
         if (error) {
-          reject(new Error(`claude -p failed: ${error.message}`));
+          void fs.unlink(outputPath).catch(() => {});
+          reject(new Error(`codex exec failed: ${error.message}${stderr ? `\n${stderr}` : ''}`));
           return;
         }
-        resolve(stdout.trim());
+
+        void fs.readFile(outputPath, 'utf-8')
+          .then((content) => resolve(content.trim() || stdout.trim()))
+          .catch(() => resolve(stdout.trim()))
+          .finally(() => {
+            void fs.unlink(outputPath).catch(() => {});
+          });
       },
     );
     child.stdin?.write(`${systemPrompt}\n\n${input}`);
@@ -205,7 +255,7 @@ const resolveLanguageName = (locale: string): string =>
 
 const SUMMARY_PROMPT = (date: string, locale: string) => {
   const languageName = resolveLanguageName(locale);
-  return `Summarize the Claude session history for ${date}.
+  return `Summarize the Codex session history for ${date}.
 
 Output format (use exactly this structure):
 
@@ -228,6 +278,7 @@ Rules:
 - Use terse noun-form phrases (e.g. "Fix login logic", "Improve mobile layout"). Avoid finished-sentence / past-tense forms.
 - Focus on WHAT, not HOW.
 - Skip trivial chatter (greetings, one-off questions, commit commands).
+- Do not run tools or inspect files. Use only the data below.
 - IMPORTANT: Write ALL brief and detail content in ${languageName}. Keep the [BRIEF] / [DETAIL] tags and markdown syntax (##, ###, -) as-is in English.
 
 Data:`;
@@ -272,7 +323,7 @@ export const generateDailyReport = async (
   }
 
   const promptData = buildPromptData(sessions);
-  const response = await callClaudeCli(promptData, SUMMARY_PROMPT(date, locale));
+  const response = await callCodexCli(promptData, SUMMARY_PROMPT(date, locale));
   const { brief, detail } = parseSummaryResponse(response);
 
   const report: IDailyReportDay = {

@@ -15,13 +15,15 @@ import {
   equalizeNode,
   isEqualized,
 } from '@/lib/layout-tree';
+import { isAgentPanelType, normalizePanelType } from '@/lib/panel-type';
+import { normalizeAgentFields } from '@/lib/agent-tab-fields';
 import type { ITab, TLayoutNode, IPaneNode, ILayoutData, TPanelType } from '@/types/terminal';
 import type { TCliState } from '@/types/timeline';
 import type { IAgentProvider } from '@/lib/providers/types';
 
 const log = createLogger('layout');
 
-const BASE_DIR = path.join(os.homedir(), '.purplemux');
+const BASE_DIR = path.join(os.homedir(), '.codexmux');
 
 interface ILayoutReconciler {
   reconcileWorkspaceTabs: (wsId: string, validTabIds: readonly string[]) => void;
@@ -65,6 +67,18 @@ export const resolveLayoutDir = (wsId: string): string =>
 export const resolveLayoutFile = (wsId: string): string =>
   path.join(resolveLayoutDir(wsId), 'layout.json');
 
+const normalizeStoredLayout = (node: TLayoutNode): void => {
+  if (node.type === 'split') {
+    node.children.forEach(normalizeStoredLayout);
+    return;
+  }
+
+  for (const tab of node.tabs) {
+    tab.panelType = normalizePanelType(tab.panelType);
+    normalizeAgentFields(tab);
+  }
+};
+
 const createDefaultTab = (wsId: string, paneId: string, order = 0, cwd?: string): ITab => {
   const tabId = generateTabId();
   const tab: ITab = {
@@ -95,7 +109,9 @@ export const readLayoutFile = async (filePath: string): Promise<ILayoutData | nu
   }
 
   try {
-    return JSON.parse(raw) as ILayoutData;
+    const layout = JSON.parse(raw) as ILayoutData;
+    normalizeStoredLayout(layout.root);
+    return layout;
   } catch {
     log.warn(`${filePath} parse failed`);
     try {
@@ -185,9 +201,9 @@ export const crossCheckLayout = async (
       if (tab.panelType === 'web-browser') continue;
       layoutSessions.add(tab.sessionName);
 
-      if (!tmuxSet.has(tab.sessionName) && tab.panelType === 'claude-code') {
+      if (!tmuxSet.has(tab.sessionName) && isAgentPanelType(tab.panelType)) {
         const cwd = tab.cwd || defaultCwd;
-        log.debug(`crossCheck: Claude tab session recreated: ${tab.sessionName} (cwd: ${cwd})`);
+        log.debug(`crossCheck: agent tab session recreated: ${tab.sessionName} (cwd: ${cwd})`);
         await createSession(tab.sessionName, 80, 24, cwd);
         changed = true;
       }
@@ -503,25 +519,30 @@ export const updateTabAgentSummary = (
     return true;
   });
 
-export const updateTabClaudeSessionId = (
+export const updateTabAgentJsonlPath = (
   sessionName: string,
-  claudeSessionId: string | null,
+  provider: IAgentProvider,
+  jsonlPath: string | null,
 ): Promise<void> =>
   mutateTab(sessionName, (tab) => {
-    if (tab.claudeSessionId === claudeSessionId) return false;
-    tab.claudeSessionId = claudeSessionId;
+    if (provider.readJsonlPath(tab) === jsonlPath) return false;
+    provider.writeJsonlPath(tab, jsonlPath);
     return true;
   });
 
-export const updateTabClaudeSummary = (
+export const readTabAgentJsonlPath = async (
   sessionName: string,
-  claudeSummary: string | null,
-): Promise<void> =>
-  mutateTab(sessionName, (tab) => {
-    if (tab.claudeSummary === claudeSummary) return false;
-    tab.claudeSummary = claudeSummary;
-    return true;
-  });
+  provider: IAgentProvider,
+): Promise<string | null> => {
+  const parsed = parseSessionName(sessionName);
+  if (!parsed) return null;
+
+  const layout = await readLayoutFile(resolveLayoutFile(parsed.wsId));
+  if (!layout) return null;
+
+  const tab = collectAllTabs(layout.root).find((t) => t.sessionName === sessionName);
+  return tab ? provider.readJsonlPath(tab) : null;
+};
 
 export const updateTabLastUserMessage = (
   sessionName: string,

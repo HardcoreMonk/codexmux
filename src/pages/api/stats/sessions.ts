@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { parseAllSessions } from '@/lib/stats/jsonl-parser';
-import { readStatsCache } from '@/lib/stats/stats-cache-parser';
+import { getStatsCache } from '@/lib/stats/stats-cache';
 import { parsePeriod } from '@/lib/stats/period-filter';
 import { getCached, setCached } from '@/lib/stats/cache';
 import type { ISessionsResponse } from '@/types/stats';
@@ -19,7 +19,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   const [sessions, statsCache] = await Promise.all([
     parseAllSessions(period),
-    readStatsCache(),
+    getStatsCache(),
   ]);
 
   const durations = sessions

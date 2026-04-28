@@ -1,63 +1,63 @@
 ---
-title: Acesso via Tailscale
-description: Acesse o purplemux pelo celular via HTTPS através do Tailscale Serve — sem port forwarding, sem malabarismo de certificado.
-eyebrow: Mobile e Remoto
+title: Tailscale 접속
+description: Tailscale Serve로 휴대폰에서도 HTTPS로 codexmux에 접근합니다 — 포트 포워딩도, 인증서 고민도 없이.
+eyebrow: 모바일 & 원격
 permalink: /pt-BR/docs/tailscale/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Por padrão, o purplemux só escuta localmente. O Tailscale Serve é o jeito mais limpo de expô-lo aos seus outros dispositivos: criptografado por WireGuard, certificados Let's Encrypt automáticos e zero mudança de firewall.
+기본적으로 codexmux는 로컬에서만 listen 합니다. 다른 기기에서 안전하게 접근하기에 가장 깔끔한 방법은 Tailscale Serve입니다 — WireGuard 암호화, Let's Encrypt 인증서 자동 발급, 방화벽 변경 불필요.
 
-## Por que Tailscale
+## 왜 Tailscale인가
 
-- **WireGuard** — toda conexão é criptografada de dispositivo a dispositivo.
-- **HTTPS automático** — o Tailscale provisiona certificado real para `*.<tailnet>.ts.net`.
-- **Sem port forwarding** — sua máquina nunca abre uma porta para a internet pública.
-- **HTTPS é obrigatório no iOS** — instalação de PWA e Web Push se recusam a funcionar sem ele. Veja [Configuração de PWA](/purplemux/pt-BR/docs/pwa-setup/) e [Web Push](/purplemux/pt-BR/docs/web-push/).
+- **WireGuard** — 모든 연결이 기기 대 기기로 암호화됩니다.
+- **자동 HTTPS** — Tailscale이 `*.<tailnet>.ts.net`에 대한 실제 인증서를 발급해줍니다.
+- **포트 포워딩 불필요** — 머신이 공개 인터넷에 포트를 열지 않습니다.
+- **iOS는 HTTPS 필수** — PWA 설치와 Web Push 모두 HTTPS 없이는 거부됩니다. [PWA 설정](/codexmux/pt-BR/docs/pwa-setup/), [웹 푸시](/codexmux/pt-BR/docs/web-push/) 참고.
 
-## Pré-requisitos
+## 사전 준비
 
-- Uma conta Tailscale, com o daemon `tailscale` instalado e logado na máquina que roda o purplemux.
-- HTTPS habilitado no tailnet (Admin console → DNS → habilitar HTTPS Certificates, se ainda não estiver).
-- purplemux rodando na porta padrão `8022` (ou onde você setou `PORT`).
+- Tailscale 계정과, codexmux 실행 머신에 설치/로그인된 `tailscale` 데몬
+- 테일넷 HTTPS 활성화 (Admin console → DNS → HTTPS Certificates, 이미 켜져 있으면 패스)
+- codexmux가 기본 포트 `8022` (또는 `PORT`로 지정한 포트)에서 실행 중
 
-## Execute
+## 실행
 
-Uma linha:
-
-```bash
-tailscale serve --bg 8022
-```
-
-O Tailscale embrulha seu `http://localhost:8022` em HTTPS e o expõe dentro do tailnet em:
-
-```
-https://<máquina>.<tailnet>.ts.net
-```
-
-`<máquina>` é o hostname do servidor; `<tailnet>` é o sufixo MagicDNS do seu tailnet. Abra essa URL em qualquer outro dispositivo logado no mesmo tailnet e está dentro.
-
-Para parar de servir:
+한 줄이면 됩니다.
 
 ```bash
-tailscale serve --bg off 8022
+tailscale serve --bg --https=443 localhost:8022
 ```
 
-## O que dá pra fazer com isso
+Tailscale이 로컬 `http://localhost:8022`를 HTTPS로 감싸 테일넷 내부에 노출합니다.
 
-- Abra a URL no celular, toque em **Compartilhar → Adicionar à Tela de Início** e siga [Configuração de PWA](/purplemux/pt-BR/docs/pwa-setup/).
-- Ligue o push de dentro do PWA standalone: [Web Push](/purplemux/pt-BR/docs/web-push/).
-- Acesse o mesmo painel de um tablet, laptop ou outro desktop — o estado do workspace sincroniza em tempo real.
+```
+https://<machine>.<tailnet>.ts.net
+```
+
+`<machine>`은 머신의 호스트명, `<tailnet>`은 테일넷의 MagicDNS 접미사입니다. 같은 테일넷에 로그인한 다른 기기에서 이 URL을 열면 바로 접속됩니다.
+
+서빙 중지:
+
+```bash
+tailscale serve reset
+```
+
+## 동작 후 할 일
+
+- 휴대폰에서 URL을 열고 **공유 → 홈 화면에 추가** — [PWA 설정](/codexmux/pt-BR/docs/pwa-setup/) 참고
+- Standalone PWA 창 안에서 푸시 활성화 — [웹 푸시](/codexmux/pt-BR/docs/web-push/)
+- 태블릿, 노트북, 다른 데스크탑에서도 같은 대시보드에 접속 — 워크스페이스 상태가 실시간으로 동기화됩니다
 
 {% call callout('tip', 'Funnel vs Serve') %}
-`tailscale serve` mantém o purplemux privado para o seu tailnet — quase sempre é o que você quer. `tailscale funnel` o expõe para a internet pública, o que é exagerado (e arriscado) para um multiplexador pessoal.
+`tailscale serve`는 codexmux를 테일넷 내부에만 노출합니다 — 거의 모든 경우 이쪽이 정답입니다. `tailscale funnel`은 공개 인터넷에 노출하는 옵션이며, 개인용 멀티플렉서로는 과하고 위험합니다.
 {% endcall %}
 
-## Fallback com reverse proxy
+## 리버스 프록시 대안
 
-Se Tailscale não é uma opção, qualquer reverse proxy com certificado TLS de verdade serve. A única coisa que você precisa acertar é **upgrades de WebSocket** — o purplemux os usa para I/O de terminal, sync de status e a timeline ao vivo.
+Tailscale을 쓰기 어렵다면, 실제 TLS 인증서를 가진 리버스 프록시 중 어느 것이든 사용 가능합니다. 반드시 챙겨야 할 한 가지는 **WebSocket 업그레이드** — codexmux의 터미널 I/O, 상태 동기화, 라이브 타임라인이 모두 WebSocket을 사용합니다.
 
-Nginx (esboço):
+Nginx 예시:
 
 ```
 location / {
@@ -70,19 +70,19 @@ location / {
 }
 ```
 
-Caddy é mais simples — `reverse_proxy 127.0.0.1:8022` lida automaticamente com os headers de upgrade.
+Caddy는 더 간단합니다 — `reverse_proxy 127.0.0.1:8022`만 써도 업그레이드 헤더를 알아서 처리합니다.
 
-Sem o forwarding de `Upgrade` / `Connection`, o painel renderiza, mas os terminais nunca conectam e o status fica travado. Se algo parece meio funcionando, suspeite desses headers primeiro.
+`Upgrade` / `Connection` 포워딩이 빠지면 대시보드는 렌더링되지만 터미널이 연결되지 않고 상태도 그대로 멈춥니다. 반쪽짜리로 동작한다면 이 헤더부터 의심하세요.
 
-## Solucionando problemas
+## 문제 해결
 
-- **HTTPS ainda não provisionado** — o primeiro cert pode demorar um minuto. Re-rodar `tailscale serve --bg 8022` depois de uma breve espera geralmente resolve.
-- **Navegador alerta sobre o cert** — confira se você está acessando exatamente a URL `<máquina>.<tailnet>.ts.net`, não o IP da LAN.
-- **Mobile diz "não acessível"** — confirme que o celular está logado no mesmo tailnet e que o Tailscale está ativo nas configurações do SO.
-- **Certificados autoassinados** — o Web Push não registra. Use Tailscale Serve ou um cert ACME real via reverse proxy.
+- **HTTPS 인증서 미발급** — 첫 발급은 1분 정도 걸릴 수 있습니다. 잠시 기다린 후 `tailscale serve --bg --https=443 localhost:8022`를 다시 실행하면 보통 해결됩니다.
+- **브라우저가 인증서 경고** — `<machine>.<tailnet>.ts.net` URL을 정확히 사용하고 있는지, LAN IP를 쓰고 있지 않은지 확인하세요.
+- **모바일에서 접근 불가** — 휴대폰이 같은 테일넷에 로그인되어 있고 OS 설정에서 Tailscale이 활성 상태인지 확인하세요.
+- **자체 서명 인증서** — Web Push 등록이 거부됩니다. Tailscale Serve 또는 ACME가 발급한 실제 인증서를 사용하세요.
 
-## Próximos passos
+## 다음으로
 
-- **[Configuração de PWA](/purplemux/pt-BR/docs/pwa-setup/)** — instale na tela de início agora que você tem HTTPS.
-- **[Notificações Web Push](/purplemux/pt-BR/docs/web-push/)** — ligue alertas em background.
-- **[Segurança e autenticação](/purplemux/pt-BR/docs/security-auth/)** — senha, hashing e o que a exposição via tailnet implica.
+- **[PWA 설정](/codexmux/pt-BR/docs/pwa-setup/)** — HTTPS 확보 후 홈 화면에 설치
+- **[웹 푸시 알림](/codexmux/pt-BR/docs/web-push/)** — 백그라운드 알림 켜기
+- **[보안과 인증](/codexmux/pt-BR/docs/security-auth/)** — 비밀번호, 해싱, 그리고 테일넷 노출이 의미하는 것

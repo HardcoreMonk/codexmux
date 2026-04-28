@@ -14,7 +14,7 @@ let cachedSource = '';
 const resolveSource = (): string => {
   const envHost = process.env.HOST?.trim();
   if (envHost) return envHost;
-  const raw = process.env.__PMUX_NETWORK_ACCESS;
+  const raw = process.env.__CMUX_NETWORK_ACCESS;
   if (raw && (VALID_NETWORK_ACCESS as readonly string[]).includes(raw)) {
     return networkAccessToSpec(raw as TNetworkAccess);
   }
@@ -32,7 +32,7 @@ const getSpec = (): IAccessSpec => {
 
 export const initAccessFilter = (envHost: string | undefined, networkAccess: TNetworkAccess | undefined) => {
   if (!envHost?.trim()) {
-    process.env.__PMUX_NETWORK_ACCESS = networkAccess ?? DEFAULT_NETWORK_ACCESS;
+    process.env.__CMUX_NETWORK_ACCESS = networkAccess ?? DEFAULT_NETWORK_ACCESS;
   }
   cachedSpec = null;
   cachedSource = '';
@@ -40,7 +40,7 @@ export const initAccessFilter = (envHost: string | undefined, networkAccess: TNe
 
 export const updateAccessFromConfig = (networkAccess: TNetworkAccess) => {
   if (process.env.HOST?.trim()) return;
-  process.env.__PMUX_NETWORK_ACCESS = networkAccess;
+  process.env.__CMUX_NETWORK_ACCESS = networkAccess;
   cachedSpec = null;
   cachedSource = '';
 };
@@ -53,9 +53,9 @@ export const getCurrentSpec = (): IAccessSpec => getSpec();
 export const isAccessFilterEnvLocked = (): boolean => !!process.env.HOST?.trim();
 
 export const setBoundHost = (host: string) => {
-  process.env.__PMUX_BOUND_HOST = host;
+  process.env.__CMUX_BOUND_HOST = host;
 };
 
-export const getBoundHost = (): string => process.env.__PMUX_BOUND_HOST ?? '0.0.0.0';
+export const getBoundHost = (): string => process.env.__CMUX_BOUND_HOST ?? '0.0.0.0';
 
 export const isBoundToLocalhostOnly = (): boolean => getBoundHost() === '127.0.0.1';

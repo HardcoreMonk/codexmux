@@ -1,65 +1,65 @@
 ---
-title: Tarayıcı desteği
-description: Masaüstü ve mobil uyumluluk matrisi, karşılaşacağınız tarayıcıya özgü tuhaflıklarla birlikte.
-eyebrow: Başlarken
+title: 브라우저 지원
+description: 데스크탑과 모바일 호환성 매트릭스, 브라우저별 주의사항.
+eyebrow: 시작하기
 permalink: /tr/docs/browser-support/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux bir web uygulamasıdır; yani deneyim açtığınız tarayıcıya bağlıdır. Aşağıdakiler aktif olarak test ettiğimiz sürümlerdir — daha eski tarayıcılar çalışabilir ama desteklenmez.
+codexmux는 웹 앱이므로 사용 경험은 브라우저에 따라 달라집니다. 아래는 저희가 실제로 테스트하는 버전들입니다 — 더 오래된 버전은 동작할 수도 있지만 공식 지원은 하지 않습니다.
 
-## Masaüstü
+## 데스크탑
 
-| Tarayıcı | Asgari | Notlar |
+| 브라우저 | 최소 버전 | 비고 |
 |---|---|---|
-| Chrome | 110+ | Önerilir. Tam PWA + Web Push. |
-| Edge | 110+ | Chrome ile aynı motor, aynı destek. |
-| Safari | 17+ | macOS Sonoma+ üzerinde tam PWA. Web Push, macOS 13+ ve kurulu bir PWA gerektirir. |
-| Firefox | 115+ ESR | İyi çalışır. PWA kurulumu manueldir (kurulum istemi yok). |
+| Chrome | 110+ | 권장. PWA와 Web Push 완전 지원. |
+| Edge | 110+ | Chrome과 같은 엔진, 같은 수준 지원. |
+| Safari | 17+ | macOS Sonoma 이상에서 PWA 완전 지원. Web Push는 macOS 13+ 에서 PWA 설치 후 사용 가능. |
+| Firefox | 115+ ESR | 정상 동작. PWA 설치는 수동 (설치 프롬프트 없음). |
 
-Tüm özellikler — xterm.js terminal, canlı zaman tüneli, Claude oturum görünümü, Git diff paneli — bu motorlarda aynı şekilde çalışır.
+xterm.js 터미널, 라이브 타임라인, Codex 세션 뷰, Git diff 패널 — 모든 기능이 이들 엔진에서 동일하게 동작합니다.
 
-## Mobil
+## 모바일
 
-| Tarayıcı | Asgari | Notlar |
+| 브라우저 | 최소 버전 | 비고 |
 |---|---|---|
-| iOS Safari | **16.4+** | Web Push için zorunlu. Önce **Ana Ekrana Ekle** yapılmalı; bildirim sıradan bir sekmeden tetiklenmez. |
-| Android Chrome | 110+ | Web Push sıradan sekmeden de çalışır, ama tam ekran düzen için PWA olarak kurmanızı öneririz. |
-| Samsung Internet | 22+ | Çalışır. Kurulum istemi otomatik gelir. |
+| iOS Safari | **16.4+** | Web Push 필수 조건. **홈 화면에 추가**로 PWA 설치한 경우에만 푸시 알림 수신. |
+| Android Chrome | 110+ | 일반 탭에서도 Web Push 동작. PWA 설치 시 전체 화면 레이아웃 권장. |
+| Samsung Internet | 22+ | 정상 동작. 설치 프롬프트 자동 노출. |
 
-{% call callout('warning', 'iOS Safari ≥ 16.4 sınır çizgisidir') %}
-Apple Web Push'u iOS'a yalnızca Safari 16.4 (Mart 2023) ile ekledi. Daha eski iOS sürümleri panel kullanabilir ama PWA kurulsa bile push bildirim gelmez.
+{% call callout('warning', 'iOS Safari 16.4 이상이 기준') %}
+Apple은 iOS에 Web Push를 Safari 16.4(2023년 3월)에서야 추가했습니다. 그 이전 iOS 버전은 대시보드는 사용할 수 있지만, PWA로 설치해도 푸시 알림이 오지 않습니다.
 {% endcall %}
 
-## Özellik gereksinimleri
+## 기능 요구사항
 
-purplemux birkaç modern tarayıcı API'sine yaslanır. Eksik olduklarında uygulama kibarca düşer ama ilgili özelliği kaybeder.
+codexmux는 몇 가지 최신 브라우저 API에 의존합니다. 빠진 API가 있으면 앱은 그레이스풀하게 폴백하지만 해당 기능은 사용할 수 없습니다.
 
-| API | Kullanıldığı yer | Yedek |
+| API | 사용 목적 | 폴백 |
 |---|---|---|
-| WebSocket | Terminal G/Ç, durum senkronizasyonu, zaman tüneli | Zorunlu — yedek yok. |
-| Clipboard API | `npx purplemux` kopyala, kod bloğu kopyala | Mevcut değilse düğme gizlenir. |
-| Notifications API | Masaüstü / mobil push | Atlanır — uygulama içi durum yine görünür. |
-| Service Workers | PWA + Web Push | Yalnızca normal web uygulaması olarak sunulur. |
-| IntersectionObserver | Canlı oturum zaman tüneli, gezinti açılışları | Öğeler animasyonsuz çizilir. |
-| `backdrop-filter` | Yarı saydam gezinti, modallar | Düz tonlu arka plana düşer. |
-| CSS `color-mix()` + OKLCH | Tema değişkenleri | Safari < 16.4 bazı tonlu durumları kaybeder. |
+| WebSocket | 터미널 I/O, 상태 동기화, 타임라인 | 필수 — 폴백 없음 |
+| Clipboard API | `npx codexmux` 복사, 코드블록 복사 | 사용 불가 시 버튼 숨김 |
+| Notifications API | 데스크탑/모바일 푸시 | 건너뜀 — 앱 내 상태는 그대로 표시 |
+| Service Workers | PWA + Web Push | 일반 웹 앱으로만 서빙 |
+| IntersectionObserver | 라이브 타임라인, nav reveal | 애니메이션 없이 렌더링 |
+| `backdrop-filter` | 반투명 nav, 모달 | 단색 tint 배경으로 폴백 |
+| CSS `color-mix()` + OKLCH | 테마 변수 | Safari < 16.4 에서 일부 tint 상태 손실 |
 
-## Tarayıcım uygun mu?
+## 내 브라우저 괜찮나요?
 
-purplemux **Ayarlar → Tarayıcı kontrolü** içinde yerleşik bir öz denetim sunar. Yukarıdaki kontrolleri çalıştırır ve özellik başına yeşil / sarı / kırmızı bir rozet gösterir, böylece bir spesifikasyon okumadan doğrulayabilirsiniz.
+codexmux 앱 안에 **설정 → 브라우저 체크** 자체 진단기가 있습니다. 위에 나열된 것과 동일한 API를 검사하고 기능별로 녹색/황색/빨간색 배지를 보여주니 스펙 시트를 읽지 않아도 됩니다.
 
-## Bilinen tuhaflıklar
+## 알려진 quirk
 
-- **Safari 17 + özel pencereler** — IndexedDB devre dışıdır, çalışma alanı önbelleğiniz yeniden başlatmalar arasında kalmaz. Normal pencere kullanın.
-- **iOS Safari + arka plan sekmesi** — terminaller arka planda yaklaşık 30 saniye sonra otomatik kapatılır. Tmux gerçek oturumu canlı tutar; geri döndüğünüzde arayüz yeniden bağlanır.
-- **Firefox + Tailscale Serve sertifikası** — `ts.net` içinde olmayan özel bir tailnet adı kullanırsanız Firefox HTTPS güveni konusunda Chrome'dan daha titiz olabilir. Sertifikayı bir kez kabul edin, yapışır.
-- **Self-signed sertifikalar** — Web Push kayıt olmaz. Tailscale Serve (otomatik Let's Encrypt) ya da gerçek bir alan adı + ters proxy kullanın.
+- **Safari 17 + 프라이빗 창** — IndexedDB가 비활성화되므로 워크스페이스 캐시가 재시작 후 유지되지 않습니다. 일반 창을 사용하세요.
+- **iOS Safari + 백그라운드 탭** — 약 30초 후 터미널이 자동 종료됩니다. tmux는 실제 세션을 계속 유지하므로, 돌아오면 UI가 재연결됩니다.
+- **Firefox + Tailscale Serve 인증서** — `ts.net`이 아닌 커스텀 tailnet 이름을 쓰면 Firefox가 Chrome보다 HTTPS 신뢰에 까다로울 수 있습니다. 한 번 수락하면 계속 유지됩니다.
+- **자체 서명 인증서** — Web Push 등록 자체가 안 됩니다. Tailscale Serve(자동 Let's Encrypt)나 실제 도메인 + 리버스 프록시를 쓰세요.
 
-## Desteklenmeyenler
+## 미지원
 
-- **Internet Explorer** — hiçbir zaman desteklenmedi.
-- **UC Browser, Opera Mini, Puffin** — proxy tabanlı tarayıcılar WebSocket'i bozar. Çalışmaz.
-- **3 yıldan eski herhangi bir tarayıcı** — CSS'imiz 2023 sonrası bir motor gerektiren OKLCH renk ve container query'leri kullanır.
+- **Internet Explorer** — 지원하지 않습니다.
+- **UC Browser, Opera Mini, Puffin** — 프록시 기반 브라우저는 WebSocket이 끊깁니다. 동작 안 합니다.
+- **3년 이상 된 브라우저** — OKLCH 컬러와 컨테이너 쿼리를 써서 2023년 이후 엔진이 필요합니다.
 
-Sıra dışı bir kurulumdaysanız ve bir şey çalışmıyorsa, lütfen user agent ve öz denetim çıktısıyla [bir issue açın](https://github.com/subicura/purplemux/issues).
+특이한 환경에서 문제가 발생하면 유저 에이전트와 자체 진단 결과를 첨부해 [이슈를 열어주세요](https://github.com/subicura/codexmux/issues).

@@ -1,83 +1,83 @@
 ---
-title: Canlı oturum görünümü
-description: Zaman tüneli panelinin gerçekte ne gösterdiği — mesajlar, araç çağrıları, görevler ve istemler, CLI kaydırma tamponu yerine olaylar olarak düzenlenmiş.
-eyebrow: Claude Code
+title: 라이브 세션 뷰
+description: 타임라인 패널이 실제로 보여주는 것 — 메시지, 툴 호출, 작업, 프롬프트가 CLI 스크롤백이 아니라 이벤트 단위로 정리되어 표시됩니다.
+eyebrow: Codex
 permalink: /tr/docs/live-session-view/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Bir sekme Claude Code çalıştırırken purplemux ham terminal görünümünün yerine yapılandırılmış bir zaman tüneli koyar. Aynı oturum, aynı JSONL transkripti — ama tarayıp kaydırabileceğiniz ve bağlantı kurabileceğiniz ayrık olaylar olarak düzenlenmiş.
+탭에서 Codex가 실행 중일 때, codexmux는 raw 터미널 뷰 대신 구조화된 타임라인을 보여줍니다. 같은 세션, 같은 JSONL 트랜스크립트지만 — 스캔하고 스크롤하고 링크할 수 있는 개별 이벤트로 펼쳐서 보여줍니다.
 
-## Neden zaman tüneli kaydırma tamponunu yener
+## 왜 타임라인이 스크롤백보다 나은가
 
-Claude CLI etkileşimlidir. Onun on beş dakika önce ne yaptığını terminalde izlemek, sonradan olan her şeyi geçerek kaydırmak, sarmalanmış satırları okumak ve bir araç çağrısının nerede bitip diğerinin nerede başladığını tahmin etmek demektir.
+Codex CLI는 인터랙티브합니다. 15분 전에 무엇을 했는지 터미널에서 보려면 그 사이의 모든 출력을 스크롤해서 지나가고, 줄바꿈된 라인을 읽고, 어디서 한 툴 호출이 끝나고 다음이 시작되는지 짐작해야 합니다.
 
-Zaman tüneli aynı veriyi tutar ve yapı ekler:
+타임라인은 같은 데이터에 구조를 더합니다:
 
-- Mesaj, araç çağrısı, görev veya istem başına bir satır
-- Birlikte gruplanmış araç girdi ve çıktıları
-- Kalıcı çapalar — olaylar tampon dolduğunda yukarıdan kaymaz
-- Geçerli adım her zaman geçen-süre sayacı ile altta sabittir
+- 메시지·툴 호출·작업·프롬프트마다 한 행씩
+- 툴 입력과 출력이 함께 그룹화됨
+- 영구 앵커 — 버퍼가 차도 이벤트가 위로 사라지지 않음
+- 현재 진행 중인 단계는 항상 하단에 고정되며 경과 시간 카운터 표시
 
-Üst çubuktaki mod düğmesiyle istediğiniz an terminale geçebilirsiniz. Zaman tüneli aynı oturuma açılan bir görünümdür, ayrı bir oturum değil.
+상단 모드 토글로 언제든 터미널로 들어갈 수 있습니다. 타임라인은 같은 세션을 보는 다른 뷰일 뿐, 별개의 세션이 아닙니다.
 
-## Göreceğiniz şeyler
+## 보이는 것들
 
-Zaman tünelindeki her satır, Claude Code JSONL transkriptindeki bir girdiye karşılık gelir:
+타임라인의 각 행은 Codex JSONL 트랜스크립트의 항목에 대응합니다:
 
-| Tür | Gösterdiği |
+| 타입 | 내용 |
 |---|---|
-| **Kullanıcı mesajı** | Sohbet baloncuğu olarak prompt'unuz. |
-| **Asistan mesajı** | Markdown olarak işlenen Claude yanıtı. |
-| **Araç çağrısı** | Araç adı, anahtar argümanlar ve yanıt — `read`, `edit`, `bash`, vb. |
-| **Araç grubu** | Ardışık araç çağrıları tek karta daraltılır. |
-| **Görev / plan** | Onay kutulu ilerlemeli çok adımlı planlar. |
-| **Alt-ajan** | Kendi ilerlemesiyle gruplanmış ajan çağrıları. |
-| **İzin istemi** | Claude'un sunduğu seçeneklerle yakalanmış istem. |
-| **Sıkıştırma** | Claude bağlamı otomatik sıkıştırırken küçük bir gösterge. |
+| **사용자 메시지** | 작성한 프롬프트가 채팅 버블로 |
+| **어시스턴트 메시지** | Codex의 답변, Markdown으로 렌더링 |
+| **툴 호출** | 툴 이름·핵심 인자·응답 — `read`, `edit`, `bash` 등 |
+| **툴 그룹** | 연속된 툴 호출이 한 카드로 collapse |
+| **태스크 / 플랜** | 다단계 플랜과 체크박스 진행 상황 |
+| **서브 에이전트** | 에이전트 호출이 진행 상황과 함께 그룹화 |
+| **권한 프롬프트** | 가로챈 프롬프트가 Codex가 제시한 옵션 그대로 |
+| **Compacting** | Codex가 컨텍스트 자동 압축 중일 때의 미묘한 인디케이터 |
 
-Uzun asistan mesajları genişletme imkanıyla bir parçacığa daralır; uzun araç çıktıları "daha fazla göster" düğmesiyle kısaltılır.
+긴 어시스턴트 메시지는 스니펫으로 collapse되고 펼침 affordance가 붙습니다. 긴 툴 출력은 잘려서 "더 보기" 토글로 표시됩니다.
 
-## Nasıl canlı kalır
+## 어떻게 라이브로 유지되는가
 
-Zaman tüneli `/api/timeline` üzerinden bir WebSocket ile beslenir. Sunucu aktif JSONL dosyası üzerinde bir `fs.watch` çalıştırır, eklenen girdileri ayrıştırır ve olduğu gibi tarayıcıya gönderir. Polling yoktur, tam yeniden alma yoktur — ilk yük mevcut girdileri gönderir, sonrası artımlıdır.
+타임라인은 `/api/timeline` WebSocket이 데이터를 공급합니다. 서버는 활성 JSONL 파일에 `fs.watch`를 걸고 추가되는 항목을 파싱해서 발생 즉시 브라우저로 푸시합니다. polling도, 전체 재요청도 없습니다 — 초기 페이로드는 기존 항목을 보내고, 그 이후는 모두 incremental입니다.
 
-Claude `busy` iken ayrıca şunları görürsünüz:
+Codex가 `busy`인 동안에는 이런 것도 함께 보입니다:
 
-- Geçerli adım için canlı geçen-süre sayaçlı bir spinner
-- Geçerli araç çağrısı (örn. "Reading src/lib/auth.ts")
-- En son asistan metninden kısa bir parçacık
+- 현재 단계의 라이브 경과 시간이 붙은 스피너
+- 진행 중인 툴 호출 (예: "Reading src/lib/auth.ts")
+- 가장 최근 어시스턴트 텍스트의 짧은 스니펫
 
-Bunlar JSONL izleyicisinin metadata geçişinden gelir ve oturum durumunu değiştirmeden güncellenir.
+이 값들은 JSONL watcher의 메타데이터 패스에서 오며, 세션 상태를 바꾸지 않고 갱신됩니다.
 
-## Kaydırma, çapalar ve geçmiş
+## 스크롤, 앵커, 히스토리
 
-Zaten en alttaysanız zaman tüneli otomatik kayar; bir şey okumak için yukarı kaydırırsanız yerinde kalır. En son girişten bir ekran daha yukarı gittiğinizde kayan bir **En alta kaydır** düğmesi belirir.
+이미 하단에 있을 때는 자동 스크롤이 따라가고, 위로 스크롤해서 무언가를 읽고 있을 때는 그 자리에 머무릅니다. 최신 항목에서 한 화면 이상 위로 올라가면 floating **하단으로 이동** 버튼이 나타납니다.
 
-Uzun oturumlar için, yukarı kaydırdıkça eski girişler talep üzerine yüklenir. Claude oturum kimliği sürdürmeler arasında korunur, böylece dünden bir oturumu açtığınızda kaldığınız yere düşersiniz.
+긴 세션에서는 위로 스크롤할 때 오래된 항목이 on-demand로 로드됩니다. Codex 세션 ID는 resume 사이에서도 보존되므로, 어제의 세션을 이어 받으면 멈췄던 위치에서 시작합니다.
 
-{% call callout('tip', 'Girdiye atla') %}
-Zaman tünelinin herhangi bir yerinden <kbd>⌘I</kbd> ile alttaki girdi çubuğuna odaklanın. <kbd>Esc</kbd>, çalışan Claude sürecine bir kesinti gönderir.
+{% call callout('tip', '입력으로 이동') %}
+세션 뷰 어디서든 <kbd>⌘I</kbd>로 하단의 입력 바에 포커스를 줄 수 있습니다. <kbd>Esc</kbd>는 실행 중인 Codex 프로세스에 interrupt를 보냅니다.
 {% endcall %}
 
-## Satır içi izin istemleri
+## 인라인 권한 프롬프트
 
-Claude bir aracı çalıştırmak veya bir dosyayı düzenlemek istediğinde, istem zaman tüneli içinde modal yerine satır içi belirir. Seçeneğe tıklayabilir, eşleşen sayı tuşuna basabilir veya yok sayıp telefonunuzdan Web Push üzerinden yanıtlayabilirsiniz. Tam akış için [İzin istemleri](/purplemux/tr/docs/permission-prompts/) sayfasına bakın.
+Codex가 툴 실행이나 파일 편집 권한을 요청하면, 모달이 아니라 타임라인 인라인으로 프롬프트가 나타납니다. 옵션을 클릭하거나, 매칭되는 숫자 키를 누르거나, 무시하고 휴대폰의 Web Push로 응답할 수 있습니다. 전체 흐름은 [권한 프롬프트](/codexmux/tr/docs/permission-prompts/) 참고.
 
-## Tek bir sekmede modlar
+## 한 탭의 여러 모드
 
-Üst çubuk, sağdaki panelin aynı oturum için neyi göstereceğini değiştirmenize izin verir:
+상단 바에서 같은 세션에 대해 우측 패널이 보여줄 내용을 전환할 수 있습니다:
 
-- **Claude** — zaman tüneli (varsayılan)
-- **Terminal** — ham xterm.js görünümü
-- **Diff** — çalışma dizini için Git değişiklikleri
+- **Codex** — 타임라인 (기본)
+- **터미널** — 원시 xterm.js 뷰
+- **Diff** — 작업 디렉토리의 Git 변경
 
-Modları değiştirmek hiçbir şeyi yeniden başlatmaz. Oturum üç görünümün arkasında da tmux üzerinde çalışmaya devam eder.
+모드 전환은 아무것도 재시작하지 않습니다. 세션은 세 뷰 모두의 뒤에서 tmux 위에서 계속 실행됩니다.
 
-Kısayollar: <kbd>⌘⇧C</kbd> · <kbd>⌘⇧T</kbd> · <kbd>⌘⇧F</kbd>.
+단축키: <kbd>⌘⇧C</kbd> · <kbd>⌘⇧T</kbd> · <kbd>⌘⇧F</kbd>.
 
-## Sıradaki adımlar
+## 다음으로
 
-- **[İzin istemleri](/purplemux/tr/docs/permission-prompts/)** — satır içi onay akışı.
-- **[Oturum durumu](/purplemux/tr/docs/session-status/)** — zaman tüneli göstergelerini süren rozetler.
-- **[Hızlı promptlar & ekler](/purplemux/tr/docs/quick-prompts-attachments/)** — alttaki girdi çubuğunun yapabilecekleri.
+- **[권한 프롬프트](/codexmux/tr/docs/permission-prompts/)** — 인라인 승인 흐름
+- **[세션 상태](/codexmux/tr/docs/session-status/)** — 타임라인 인디케이터를 구동하는 배지들
+- **[퀵 프롬프트 & 첨부](/codexmux/tr/docs/quick-prompts-attachments/)** — 하단 입력 바가 할 수 있는 일들

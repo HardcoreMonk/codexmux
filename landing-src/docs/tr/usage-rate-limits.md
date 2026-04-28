@@ -1,84 +1,43 @@
 ---
-title: Kullanım & kota sınırları
-description: Kenar çubuğunda gerçek zamanlı 5 saatlik ve 7 günlük kota sayaçları, ayrıca tokenler, maliyet ve proje dağılımları için bir istatistik paneli.
-eyebrow: Claude Code
+title: 사용량 & rate limit
+description: 5시간/7일 quota와 token, cost, project 통계.
+eyebrow: Codex
 permalink: /tr/docs/usage-rate-limits/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Görev ortasında kota sınırına çarpmak en kötü kesinti türüdür. purplemux, Claude Code'un kota sayılarını kenar çubuğuna çeker ve bir istatistik paneli ekler, böylece kullanım ritminizi bir bakışta görebilirsiniz.
+codexmux는 Codex quota와 사용량 통계를 sidebar와 dashboard에 표시합니다. live quota는 statusline payload가 있을 때 사용하고, 과거 통계는 Codex JSONL에서 계산합니다.
 
-## Kenar çubuğu widget'ı
+## sidebar widget
 
-Kenar çubuğunun altında iki ince çubuk oturur: **5h** ve **7d**. Her biri şunları gösterir:
+sidebar 하단의 **5h**, **7d** bar는 다음 정보를 보여줍니다.
 
-- Pencerenin tükettiğiniz yüzdesi
-- Sıfırlamaya kalan süre
-- Mevcut hızınızı korursanız nereye varacağınızı gösteren soluk bir projeksiyon çubuğu
+- 현재 window 사용 비율.
+- reset까지 남은 시간.
+- 현재 속도를 유지할 때의 예상 사용량.
 
-Tam dağılım için herhangi bir çubuğun üzerine gelin — kullanılan yüzde, projeksiyon yüzdesi ve sıfırlama zamanı bağıl bir süre olarak.
+색상은 50% 미만 teal, 50-79% amber, 80% 이상 red입니다.
 
-Sayılar Claude Code'un kendi statusline JSON'undan gelir. purplemux, Claude statusline'ını her yenilediğinde verileri yerel sunucuya gönderen küçük bir `~/.purplemux/statusline.sh` betiği kurar; bir `fs.watch` arayüzü senkronize tutar.
+## stats dashboard
 
-## Renk eşikleri
+Dashboard는 다음 정보를 제공합니다.
 
-Her iki çubuk da kullanım yüzdesine göre renk değiştirir:
+- 전체 session, 전체 cost, 오늘 cost, 이번 달 cost.
+- model별 input/output/cache token 사용량.
+- project별 session, message, token, cost.
+- 30일 활동 chart와 streak.
+- 최근 1주일의 day x hour usage grid.
 
-| Kullanılan | Renk |
-|---|---|
-| 0–49 % | mavi-yeşil — rahat |
-| 50–79 % | sarı — kendinizi tutun |
-| 80–100 % | kırmızı — duvara çarpmak üzeresiniz |
+## 데이터 출처
 
-Eşikler açılış sayfasının kota widget'ıyla eşleşir. Sarıyı birkaç kez gördükten sonra kenar çubuğu çevresel bir hız aleti olur — bilinçli olarak fark etmemeye başlar, ama işi pencereler arasında yaymaya başlarsınız.
+모든 dashboard 값은 `~/.codex/sessions/` 아래 JSONL에서 로컬로 계산됩니다. cache는 `~/.codexmux/stats/`에 저장되며 외부로 전송되지 않습니다.
 
-{% call callout('tip', 'Projeksiyon yüzdeyi yener') %}
-Tam çubuğun arkasındaki soluk çubuk bir projeksiyondur — mevcut hızda devam ederseniz sıfırlama zamanında bulunacağınız yer. Projeksiyonun gerçek kullanımdan çok önce %80'i geçmesini izlemek en temiz erken uyarıdır.
-{% endcall %}
+## reset 동작
 
-## İstatistik paneli
+5시간과 7일 window는 Codex 계정의 rolling window입니다. reset 시점이 지나면 다음 statusline tick에서 bar와 남은 시간이 자동 보정됩니다.
 
-Paneli kenar çubuğundan (veya <kbd>⌘⇧U</kbd> ile) açın. Yukarıdan aşağıya beş bölüm:
+## 다음 단계
 
-### Genel bakış kartları
-
-Dört kart: **Toplam oturum**, **Toplam maliyet**, **Bugünün maliyeti**, **Bu ayın maliyeti**. Her kart, önceki döneme göre değişimi yeşil veya kırmızı gösterir.
-
-### Modele göre token kullanımı
-
-Modele ve token türüne — input, output, cache reads, cache writes — göre bölünmüş günlük yığın çubuk grafiği. Model lejandı Claude'un görünen adlarını (Opus / Sonnet / Haiku) ve kenar çubuğu çubuklarıyla aynı renk işlemini kullanır.
-
-Bu, beklenmedik bir maliyet artışının Opus ağırlıklı bir gün olduğunu veya cache reads'in işin çoğunu yaptığını görmenin en kolay yeridir.
-
-### Proje başına dağılım
-
-Kullandığınız her Claude Code projesinin (çalışma dizini) bir tablosu — oturumlar, mesajlar, tokenler ve maliyetle. Yalnızca o proje için günlük grafiği görmek için bir satıra tıklayın.
-
-Paylaşılan makineler veya müşteri işini kişisel hack'lerden ayırmak için yararlıdır.
-
-### Etkinlik & seri
-
-30 günlük günlük etkinlik alan grafiği, ayrıca dört seri metriği:
-
-- **En uzun seri** — ardışık çalışma günlerinin rekoru
-- **Mevcut seri** — şu anda art arda kaç gündür çalıştığınız
-- **Toplam aktif gün** — dönem içinde sayım
-- **Gün başına ortalama oturum**
-
-### Haftalık zaman çizelgesi
-
-Son haftada Claude'u gerçekte ne zaman kullandığınızı gösteren gün × saat ızgarası. Eşzamanlı oturumlar görsel olarak yığılır, böylece "Salı 15:00'te beş oturum" kolayca fark edilir.
-
-## Veri nereden geliyor
-
-Paneldeki her şey, `~/.claude/projects/` altındaki Claude Code'un kendi oturum JSONL'lerinden yerel olarak hesaplanır. purplemux onları okur, ayrıştırılmış sayıları `~/.purplemux/stats/` altında önbelleğe alır ve makineden bir bayt bile göndermez. Dilleri değiştirmek veya önbelleği yeniden oluşturmak hiçbir yere ulaşmaz.
-
-## Sıfırlama davranışı
-
-5 saatlik ve 7 günlük pencereler kayan ve Claude Code hesabınıza bağlıdır. Bir pencere sıfırlandığında çubuk %0'a düşer ve yüzde ile kalan süre bir sonraki sıfırlama zaman damgasından yeniden hesaplanır. purplemux sıfırlamayı kaçırdıysa (sunucu kapalıydı), widget bir sonraki statusline tikinde kendini düzeltir.
-
-## Sıradaki adımlar
-
-- **[Notlar (AI günlük raporu)](/purplemux/tr/docs/notes-daily-report/)** — aynı veri, gün başına özet olarak yazılmış.
-- **[Oturum durumu](/purplemux/tr/docs/session-status/)** — kenar çubuğunun sekme başına izlediği diğer şey.
-- **[Klavye kısayolları](/purplemux/tr/docs/keyboard-shortcuts/)** — istatistik için <kbd>⌘⇧U</kbd> dahil.
+- **[세션 상태](/codexmux/tr/docs/session-status/)**
+- **[데일리 리포트](/codexmux/tr/docs/notes-daily-report/)**
+- **[데이터 디렉터리](/codexmux/tr/docs/data-directory/)**

@@ -17,10 +17,10 @@ const uploadFile = async (file: File, options: IUploadFileOptions = {}): Promise
 
   const headers: Record<string, string> = {
     'Content-Type': file.type || 'application/octet-stream',
-    'X-Pmux-Filename': encodeURIComponent(file.name || 'file'),
+    'X-Cmux-Filename': encodeURIComponent(file.name || 'file'),
   };
-  if (options.wsId) headers['X-Pmux-Ws-Id'] = options.wsId;
-  if (options.tabId) headers['X-Pmux-Tab-Id'] = options.tabId;
+  if (options.wsId) headers['X-Cmux-Ws-Id'] = options.wsId;
+  if (options.tabId) headers['X-Cmux-Tab-Id'] = options.tabId;
 
   const res = await fetch('/api/upload-file', {
     method: 'POST',

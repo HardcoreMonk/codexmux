@@ -1,5 +1,5 @@
 module.exports = {
-  baseUrl: 'https://subicura.com/purplemux',
+  baseUrl: 'https://subicura.com/codexmux',
   assetVersion: {
     css: '71',
     downloadJs: '1',

@@ -1,63 +1,39 @@
 ---
-title: Temas y fuentes
-description: Claro, oscuro o sistema; tres tamaños de fuente; un panel de configuración.
-eyebrow: Personalización
+title: 테마 & 글꼴
+description: 앱 테마, 글꼴 크기, 터미널 팔레트 설정.
+eyebrow: 설정
 permalink: /es/docs/themes-fonts/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux trae un look único y coherente y un pequeño grupo de interruptores: tema de la app, tamaño de fuente y una paleta separada para la terminal. Esta página cubre los dos primeros — los colores de terminal viven en su propia página.
+codexmux는 앱 테마, 글꼴 크기, 터미널 팔레트를 전역 설정으로 제공합니다. 이 문서는 앱 테마와 글꼴 크기를 다룹니다.
 
-## Abrir Configuración
+## 앱 테마
 
-Pulsa <kbd>⌘,</kbd> (macOS) o <kbd>Ctrl,</kbd> (Linux) para abrir Configuración. La pestaña **General** es donde viven el tema y el tamaño de fuente.
-
-También puedes hacer clic en el icono del engranaje en la barra superior.
-
-## Tema de la app
-
-Tres modos, aplicados al instante:
-
-| Modo | Comportamiento |
+| 값 | 동작 |
 |---|---|
-| **Claro** | Fuerza el tema claro independientemente de la preferencia del SO. |
-| **Oscuro** | Fuerza el tema oscuro. |
-| **Sistema** | Sigue al SO — cambia automáticamente cuando macOS / GNOME / KDE alterna entre claro y oscuro. |
+| `System` | OS 설정을 따름 |
+| `Light` | 밝은 테마 고정 |
+| `Dark` | 어두운 테마 고정 |
 
-El tema se almacena en `~/.purplemux/config.json` bajo `appTheme` y se sincroniza con cada pestaña de navegador conectada al servidor. En la app nativa de macOS, la barra de título del SO también se actualiza.
+선택 값은 `~/.codexmux/config.json`의 `appTheme`에 저장되고 연결된 browser tab에 동기화됩니다.
 
-{% call callout('note', 'Diseñado dark-first') %}
-La marca está construida alrededor de un neutro tintado de morado profundo, y el modo oscuro mantiene el chroma a cero para una superficie estrictamente acromática. El modo claro aplica un tinte morado apenas perceptible (tono 287) por calidez. Ambos están afinados para sesiones largas; elige el que prefieran tus ojos.
-{% endcall %}
+## 글꼴 크기
 
-## Tamaño de fuente
+| preset | 용도 |
+|---|---|
+| `Small` | 좁은 화면에서 정보 밀도 우선 |
+| `Default` | 일반 desktop 환경 |
+| `Large` | 큰 화면 또는 높은 가독성 필요 |
 
-Tres presets, expuestos como un grupo de botones:
+UI는 `rem` 단위를 사용하므로 sidebar, dialog, table이 함께 scale됩니다.
 
-- **Normal** — el por defecto; el tamaño raíz sigue al navegador.
-- **Grande** — tamaño raíz a `18px`.
-- **Extra grande** — tamaño raíz a `20px`.
+## 터미널 색상
 
-Como toda la UI está dimensionada en `rem`, cambiar de preset escala toda la interfaz — barra lateral, diálogos, terminal — a la vez. El cambio se aplica en tiempo real sin recargar.
+터미널 palette는 앱 theme와 별도로 관리됩니다. 자세한 내용은 [터미널 테마](/codexmux/es/docs/terminal-themes/)를 참고하세요.
 
-## Qué cambia, qué no
+## 다음 단계
 
-El tamaño de fuente escala el **chrome de la UI y el texto de terminal**. No cambia:
-
-- La jerarquía de encabezados (los tamaños relativos se mantienen)
-- El espaciado — las proporciones se preservan
-- El estilo de sintaxis de los bloques de código
-
-Si quieres ajustar elementos individuales (p. ej. solo la terminal, o solo la barra lateral), consulta [CSS personalizado](/purplemux/es/docs/custom-css/).
-
-## Por dispositivo, no por navegador
-
-Los ajustes se almacenan en el servidor, no en localStorage. Cambiar a oscuro en el portátil cambiará también el móvil — abre `https://<host>/` desde el móvil y el cambio ya está ahí.
-
-Si prefieres mantener móvil y escritorio diferentes, eso no está soportado actualmente; abre una issue si lo necesitas.
-
-## Siguientes pasos
-
-- **[CSS personalizado](/purplemux/es/docs/custom-css/)** — sobrescribe colores y espaciado individuales.
-- **[Temas de terminal](/purplemux/es/docs/terminal-themes/)** — paleta separada para xterm.js.
-- **[Atajos de teclado](/purplemux/es/docs/keyboard-shortcuts/)** — todos los atajos en una tabla.
+- **[커스텀 CSS](/codexmux/es/docs/custom-css/)**
+- **[터미널 테마](/codexmux/es/docs/terminal-themes/)**
+- **[사이드바 & Codex 옵션](/codexmux/es/docs/sidebar-options/)**

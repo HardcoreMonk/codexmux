@@ -1,66 +1,66 @@
 ---
-title: Git workflow panel
-description: A diff viewer, history browser, and sync controls that live next to your terminal — with a one-click handoff to Claude when something breaks.
-eyebrow: Workspaces & Terminal
+title: Git 워크플로 패널
+description: 터미널 옆에 있는 diff 뷰어, 히스토리 브라우저, 동기화 컨트롤. 막히면 한 번에 Codex로 넘기세요.
+eyebrow: 워크스페이스 & 터미널
 permalink: /docs/git-workflow/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-The Git panel is a tab type, just like a terminal. Open it next to a Claude session and you can read changes, walk history, and push without leaving the dashboard. When git itself misbehaves, "Ask Claude" hands the problem to a session in one click.
+Git 패널은 터미널과 동일한 형태의 탭 타입입니다. Codex 세션 옆에 띄워두면 변경 내용 보기, 히스토리 탐색, 푸시까지 대시보드 안에서 끝납니다. git이 막혔을 때는 "Ask Codex" 한 번으로 세션에 문제를 넘길 수 있습니다.
 
-## Open the panel
+## 패널 열기
 
-Add a new tab and pick **Diff** as the panel type, or switch to it from the tab type menu on an existing tab. The panel binds to the same working directory as its sibling shells — if your tab is in `~/code/api`, the diff panel reads that repo.
+새 탭을 추가하면서 패널 타입을 **Diff**로 선택하거나, 기존 탭의 패널 타입 메뉴에서 전환합니다. 패널은 같은 워크스페이스의 쉘과 동일한 작업 디렉토리에 묶입니다 — 탭이 `~/code/api`라면 패널도 그 레포를 읽습니다.
 
-| Action | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Switch the active tab to Diff mode | <kbd>⌘⇧F</kbd> | <kbd>Ctrl+Shift+F</kbd> |
+| 활성 탭을 Diff 모드로 전환 | <kbd>⌘⇧F</kbd> | <kbd>Ctrl+Shift+F</kbd> |
 
-If the directory isn't a git repo, the panel says so and stays out of your way.
+해당 디렉토리가 git 레포가 아니면 패널이 그 사실을 표시하고 조용히 비켜섭니다.
 
-## The diff viewer
+## Diff 뷰어
 
-The Changes tab shows working-tree changes per file.
+Changes 탭이 작업 트리의 파일별 변경을 보여줍니다.
 
-- **Side-by-side or inline** — toggle in the panel header. Side-by-side mirrors GitHub's split view; inline is GitHub's unified view.
-- **Syntax highlighting** — full language detection for the languages your editor would highlight.
-- **Inline hunk expansion** — click context lines around a hunk to expand the surrounding code without leaving the panel.
-- **File list** — navigate between changed files in the sidebar of the panel.
+- **Side-by-side / Inline** — 패널 헤더에서 토글. Side-by-side는 GitHub의 분할 뷰, Inline은 통합 뷰와 동일합니다.
+- **신택스 하이라이팅** — 에디터에서 하이라이팅되는 언어는 모두 지원.
+- **Inline hunk 확장** — hunk 주변 컨텍스트 라인을 클릭해서 패널을 떠나지 않고 주변 코드를 펼쳐볼 수 있습니다.
+- **파일 목록** — 패널 사이드바에서 변경 파일 사이를 이동합니다.
 
-Changes refresh every 10 seconds while the panel is visible, and immediately when you save in another tool.
+패널이 보이는 동안에는 10초마다 변경을 리프레시하고, 외부 도구에서 저장이 일어나면 즉시 갱신합니다.
 
-## Commit history
+## 커밋 히스토리
 
-Switch to the **History** tab for paginated commit log on the current branch. Each entry shows the hash, subject, author, and time; click to see the diff that landed in that commit. Useful when you want to remind yourself why a file looks the way it does without dropping back to the terminal for `git log`.
+**History** 탭은 현재 브랜치의 페이지네이션된 커밋 로그를 보여줍니다. 각 항목에 해시, 제목, 작성자, 시각이 나옵니다. 클릭하면 해당 커밋의 diff가 열립니다. 터미널로 빠져나가 `git log`를 칠 필요 없이 "이 파일이 왜 이렇게 됐지?"를 그 자리에서 확인할 수 있습니다.
 
-## Sync panel
+## 동기화 패널
 
-The header strip shows the current branch, upstream, and an ahead/behind counter. Three actions:
+헤더 스트립에 현재 브랜치, 업스트림, ahead/behind 카운터가 표시됩니다. 액션은 셋:
 
-- **Fetch** — `git fetch` against the upstream every 3 minutes in the background, plus on demand.
-- **Pull** — fast-forward when possible.
-- **Push** — push to the configured upstream.
+- **Fetch** — 백그라운드에서 3분마다 `git fetch`를 돌리고, 수동 실행도 가능합니다.
+- **Pull** — 가능하면 fast-forward.
+- **Push** — 설정된 업스트림으로 push.
 
-Sync is intentionally narrow. It refuses anything that needs a decision — diverged branches, dirty worktrees, missing upstream — and tells you why.
+Sync는 의도적으로 좁게 만들어졌습니다. 사람의 판단이 필요한 상황 — 브랜치가 갈라졌거나, 워킹 트리가 더럽거나, 업스트림이 없거나 — 은 거부하고 그 이유를 알려줍니다.
 
-{% call callout('warning', "When sync won't go") %}
-Common failures the panel reports clearly:
+{% call callout('warning', '동기화가 막힐 때') %}
+패널이 명확하게 보고하는 실패들:
 
-- **No upstream** — `git push -u` hasn't been run yet.
-- **Auth** — credentials missing or rejected.
-- **Diverged** — local and remote both have unique commits; rebase or merge first.
-- **Local changes** — uncommitted work blocks the pull.
-- **Rejected** — push rejected for non-fast-forward.
+- **No upstream** — `git push -u`가 아직 실행되지 않음
+- **Auth** — 자격증명이 없거나 거부됨
+- **Diverged** — 로컬과 원격이 각자 고유 커밋을 가짐. rebase 또는 merge 필요
+- **로컬 변경 사항** — 커밋되지 않은 작업이 pull을 막음
+- **Rejected** — non-fast-forward로 push 거부됨
 {% endcall %}
 
-## Ask Claude
+## Ask Codex
 
-When sync fails, the error toast offers an **Ask Claude** button. Clicking it pipes the failure context — the error kind, the relevant `git` output, and the current branch state — into the Claude tab in the same workspace as a prompt. Claude then walks the recovery: rebasing, resolving conflicts, configuring an upstream, whatever the error called for.
+Sync가 실패하면 에러 토스트에 **Ask Codex** 버튼이 함께 떠오릅니다. 클릭하면 실패 컨텍스트 — 에러 종류, 관련 `git` 출력, 현재 브랜치 상태 — 가 같은 워크스페이스의 Codex 탭에 프롬프트로 전달됩니다. 이후 Codex가 rebase, 충돌 해결, 업스트림 설정 등 필요한 복구 단계를 안내합니다.
 
-This is the panel's main bet: tooling for the common case, an LLM for the long tail. You don't switch contexts; the prompt arrives in the session you were already going to use.
+이 패널의 핵심 베팅은 이것입니다 — 일반적인 케이스는 도구로, 그 외 long tail은 LLM에게. 컨텍스트를 전환하지 않습니다. 어차피 갈 세션에 프롬프트가 도착해 있을 뿐입니다.
 
-## What's next
+## 다음으로
 
-- **[Tabs & panes](/purplemux/docs/tabs-panes/)** — splitting the diff panel next to a Claude session.
-- **[First session](/purplemux/docs/first-session/)** — how Claude permission prompts surface in the dashboard.
-- **[Web browser panel](/purplemux/docs/web-browser-panel/)** — the other panel type worth running side-by-side with a terminal.
+- **[탭 & 창](/codexmux/docs/tabs-panes/)** — Codex 세션 옆에 diff 패널 분할로 띄우기
+- **[첫 세션](/codexmux/docs/first-session/)** — 권한 프롬프트가 대시보드에 어떻게 노출되는지
+- **[웹 브라우저 패널](/codexmux/docs/web-browser-panel/)** — 터미널 옆에 두면 좋은 또 하나의 패널 타입

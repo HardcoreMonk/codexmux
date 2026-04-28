@@ -1,6 +1,6 @@
 {
   "title": "Usage Statistics",
-  "pageTitle": "Usage Statistics — purplemux",
+  "pageTitle": "Usage Statistics — codexmux",
   "dataLoadError": "Unable to load data",
   "collectingInitial": "Collecting initial data",
   "collectingToday": "Collecting today's data",
@@ -12,7 +12,6 @@
   "activityPattern": "Activity Pattern",
   "project": "Projects",
   "session": "Sessions",
-
   "tokenLabel": "Tokens",
   "inputLabel": "Input",
   "outputLabel": "Output",
@@ -22,9 +21,7 @@
   "modelTokens": "Tokens by Model",
   "dailyTokenTrend": "Daily Token Trend",
   "total": "Total",
-
   "errorLoadFailed": "Unable to load data",
-
   "today": "Today",
   "generating": "Generating...",
   "sessionCount": "{count} sessions",
@@ -37,7 +34,6 @@
   "collapse": "Collapse",
   "showMore": "Show more",
   "noActivity": "No activity",
-
   "messages": "Messages",
   "sessions": "Sessions",
   "toolCalls": "Tool Calls",
@@ -50,20 +46,17 @@
   "more": "More",
   "hourSuffix": "h",
   "messageCount": "{count} messages",
-
   "totalSessions": "Total Sessions",
   "totalCost": "Total Cost",
   "todayCost": "Today's Cost",
   "thisMonthCost": "This Month's Cost",
   "dailyActivityTrend": "Daily Activity Trend",
   "vsPreviousPeriod": "vs previous period",
-
   "projectAnalysis": "Project Analysis",
   "projectTokenUsageTop": "Token Usage by Project (TOP {count})",
   "noProjectData": "No project data",
   "sessionCountLabel": "{count} sessions",
   "messageCountLabel": "{count} messages",
-
   "longestStreak": "Longest Streak",
   "currentStreak": "Current Streak",
   "streakCount": "Total Streaks",
@@ -76,9 +69,8 @@
   "concurrentUsage": "Concurrent Usage",
   "concurrentOrMore": "{level}+ concurrent",
   "accumulated": "Total {duration}",
-  "noRecentActivity": "No Claude usage in the last 7 days",
+  "noRecentActivity": "No Codex usage in the last 7 days",
   "currentlyRunning": "Currently running — {duration} streak",
-
   "avgSessionLength": "Avg Session Length",
   "longestSession": "Longest Session",
   "totalToolCalls": "Total Tool Calls",
@@ -90,7 +82,6 @@
   "goalAchievement": "Goal Achievement",
   "topCommands": "Top 10 Commands",
   "inputLengthDist": "Input Length Distribution",
-
   "periodToday": "Today",
   "period7d": "7 Days",
   "period30d": "30 Days",

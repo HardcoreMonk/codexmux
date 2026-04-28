@@ -1,7 +1,7 @@
 ---
 title: 퀵 프롬프트 & 첨부
 description: 저장된 프롬프트 라이브러리, 이미지 드래그 앤 드롭, 파일 첨부, 재사용 가능한 메시지 히스토리 — 모두 타임라인 하단의 입력 바에서.
-eyebrow: Claude Code
+eyebrow: Codex
 permalink: /ko/docs/quick-prompts-attachments/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
@@ -10,12 +10,11 @@ permalink: /ko/docs/quick-prompts-attachments/index.html
 
 ## 퀵 프롬프트
 
-퀵 프롬프트는 `~/.purplemux/quick-prompts.json`에 저장되는 짧은 이름이 붙은 항목입니다. 입력 바 위에 칩으로 나타나며 — 한 번 클릭하면 직접 입력한 것처럼 프롬프트가 전송됩니다.
+퀵 프롬프트는 `~/.codexmux/quick-prompts.json`에 저장되는 짧은 이름이 붙은 항목입니다. 입력 바 위에 칩으로 나타나며 — 한 번 클릭하면 직접 입력한 것처럼 프롬프트가 전송됩니다.
 
-기본 제공되는 두 개의 빌트인이 있고, 언제든 비활성화할 수 있습니다:
+기본 제공되는 빌트인이 있고, 언제든 비활성화할 수 있습니다:
 
 - **Commit** — `/commit-commands:commit` 실행
-- **Simplify** — `/simplify` 실행
 
 직접 추가하려면 **설정 → 퀵 프롬프트**에서:
 
@@ -26,12 +25,12 @@ permalink: /ko/docs/quick-prompts-attachments/index.html
 본문에 작성한 내용은 그대로 전송됩니다 — 슬래시 커맨드, 멀티라인 프롬프트, "에디터에 열린 파일을 설명하고 개선점을 한 가지 제안해줘" 같은 템플릿 요청도 가능합니다.
 
 {% call callout('tip', '슬래시 커맨드도 됩니다') %}
-퀵 프롬프트는 Claude Code 슬래시 커맨드를 한 번에 트리거하는 용도로 잘 어울립니다. `/review`를 가리키는 "Review this PR" 칩 하나로 매번 몇 번의 키 입력을 줄일 수 있습니다.
+퀵 프롬프트는 Codex 슬래시 커맨드를 한 번에 트리거하는 용도로 잘 어울립니다. `/review`를 가리키는 "Review this PR" 칩 하나로 매번 몇 번의 키 입력을 줄일 수 있습니다.
 {% endcall %}
 
 ## 이미지 드래그 앤 드롭
 
-이미지 파일(PNG, JPG, WebP 등)을 입력 바 어디에든 드롭하면 첨부됩니다. purplemux는 파일을 서버의 임시 경로에 업로드하고 프롬프트에 자동으로 reference를 삽입합니다.
+이미지 파일(PNG, JPG, WebP 등)을 입력 바 어디에든 드롭하면 첨부됩니다. codexmux는 파일을 서버의 임시 경로에 업로드하고 프롬프트에 자동으로 reference를 삽입합니다.
 
 추가로:
 
@@ -43,9 +42,9 @@ permalink: /ko/docs/quick-prompts-attachments/index.html
 
 ## 그 외 파일 첨부
 
-같은 클립 아이콘은 이미지가 아닌 파일에도 동작합니다 — markdown, JSON, CSV, 소스 파일 등 무엇이든. purplemux가 임시 디렉토리에 두고 경로를 삽입해주면, Claude가 요청의 일부로 `read`할 수 있습니다.
+같은 클립 아이콘은 이미지가 아닌 파일에도 동작합니다 — markdown, JSON, CSV, 소스 파일 등 무엇이든. codexmux가 임시 디렉토리에 두고 경로를 삽입해주면, Codex가 요청의 일부로 `read`할 수 있습니다.
 
-다른 머신에서 붙여넣은 스택 트레이스나 다른 프로젝트의 설정 파일처럼, Claude가 직접 닿을 수 없는 것을 공유하기에 가장 쉬운 방법입니다.
+다른 머신에서 붙여넣은 스택 트레이스나 다른 프로젝트의 설정 파일처럼, Codex가 직접 닿을 수 없는 것을 공유하기에 가장 쉬운 방법입니다.
 
 ## 모바일 친화
 
@@ -60,7 +59,7 @@ permalink: /ko/docs/quick-prompts-attachments/index.html
 - 비어 있는 입력 바에서 <kbd>↑</kbd>로 최근 메시지 순회
 - 또는 검색 가능한 목록을 위해 **History** 피커를 열기
 
-오래된 항목은 피커에서 삭제할 수 있습니다. 히스토리는 다른 워크스페이스 데이터와 함께 `~/.purplemux/` 아래에 저장되며, 머신 외부로 전송되지 않습니다.
+오래된 항목은 피커에서 삭제할 수 있습니다. 히스토리는 다른 워크스페이스 데이터와 함께 `~/.codexmux/` 아래에 저장되며, 머신 외부로 전송되지 않습니다.
 
 ## 키보드
 
@@ -69,11 +68,11 @@ permalink: /ko/docs/quick-prompts-attachments/index.html
 | <kbd>⌘I</kbd> | 세션 뷰 어디서든 입력에 포커스 |
 | <kbd>Enter</kbd> | 전송 |
 | <kbd>⇧Enter</kbd> | 줄바꿈 삽입 |
-| <kbd>Esc</kbd> | Claude가 busy일 때 interrupt 전송 |
+| <kbd>Esc</kbd> | Codex가 busy일 때 interrupt 전송 |
 | <kbd>↑</kbd> | (입력 비어 있을 때) 메시지 히스토리 거슬러 올라가기 |
 
 ## 다음으로
 
-- **[라이브 세션 뷰](/purplemux/ko/docs/live-session-view/)** — 프롬프트와 Claude의 답변이 표시되는 곳
-- **[키보드 단축키](/purplemux/ko/docs/keyboard-shortcuts/)** — 전체 바인딩 표
-- **[권한 프롬프트](/purplemux/ko/docs/permission-prompts/)** — 승인이 필요한 요청을 보낸 뒤 일어나는 일
+- **[라이브 세션 뷰](/codexmux/ko/docs/live-session-view/)** — 프롬프트와 Codex의 답변이 표시되는 곳
+- **[키보드 단축키](/codexmux/ko/docs/keyboard-shortcuts/)** — 전체 바인딩 표
+- **[권한 프롬프트](/codexmux/ko/docs/permission-prompts/)** — 승인이 필요한 요청을 보낸 뒤 일어나는 일

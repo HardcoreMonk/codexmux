@@ -1,65 +1,43 @@
 ---
-title: Prompts de permissão
-description: Como o purplemux intercepta os diálogos "posso rodar isto?" do Claude Code e te deixa aprovar pelo painel, pelo teclado ou pelo celular.
-eyebrow: Claude Code
+title: 권한 프롬프트
+description: Codex의 실행 허가 질문을 대시보드, 키보드, 휴대폰에서 승인하는 방법.
+eyebrow: Codex
 permalink: /pt-BR/docs/permission-prompts/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Por padrão, o Claude Code bloqueia em diálogos de permissão — para chamadas de ferramenta, escrita em arquivos e similares. O purplemux captura esses diálogos no momento em que aparecem e os roteia para o dispositivo que estiver mais perto de você.
+Codex는 tool call, 파일 쓰기, 권한이 필요한 작업에서 사용자의 승인을 기다릴 수 있습니다. codexmux는 terminal prompt를 감지해 timeline 안에 선택지를 표시합니다.
 
-## O que é interceptado
+## 감지 방식
 
-O Claude Code dispara um hook `Notification` por vários motivos. O purplemux só trata dois tipos de notificação como prompts de permissão:
+- tmux pane 내용을 캡처해 option을 파싱합니다.
+- 생성된 hook bridge event가 있으면 이를 보조 신호로 사용합니다.
+- permission prompt가 아닌 notification은 상태를 바꾸지 않습니다.
 
-- `permission_prompt` — o diálogo padrão "Permitir que esta ferramenta rode?"
-- `worker_permission_prompt` — o mesmo, vindo de um sub-agente
+## 동작 흐름
 
-Qualquer outra coisa (lembretes de inatividade etc.) é ignorada do lado do status e não vira a aba para **needs-input** nem dispara push.
+1. tab이 입력 대기 상태임을 감지합니다.
+2. 상태를 **needs-input**으로 바꾸고 WebSocket으로 broadcast합니다.
+3. timeline 안에 Codex가 보여준 선택지를 표시합니다.
+4. notification permission이 있으면 Web Push 또는 desktop notification을 보냅니다.
+5. 사용자가 선택하면 값을 tmux stdin으로 전달하고 tab을 다시 **busy**로 바꿉니다.
 
-## O que acontece quando um dispara
+## 답하는 방법
 
-1. O Claude Code emite um hook `Notification`. O script de shell em `~/.purplemux/status-hook.sh` dá POST do evento e do tipo de notificação para o servidor local.
-2. O servidor vira o estado da aba para **needs-input** (pulso âmbar) e propaga a mudança pelo WebSocket de status.
-3. O painel renderiza o prompt **inline na timeline**, com as mesmas opções que o Claude ofereceu — sem modal, sem troca de contexto.
-4. Se você concedeu permissão de notificações, dispara um Web Push e/ou notificação de desktop para `needs-input`.
+- timeline에서 option 클릭.
+- option 번호에 맞는 숫자 key 입력.
+- 모바일 push를 눌러 해당 tab으로 이동한 뒤 선택.
 
-O CLI do Claude continua aguardando no stdin. O purplemux está lendo as opções do prompt pelo tmux e devolvendo a sua escolha quando você seleciona uma.
-
-## Como responder
-
-Três caminhos equivalentes:
-
-- **Clicar** na opção dentro da timeline.
-- **Pressionar o número** — <kbd>1</kbd>, <kbd>2</kbd>, <kbd>3</kbd> — correspondente ao índice da opção.
-- **Tocar no push** no celular, que faz deep-link direto para o prompt; escolha por ali.
-
-Assim que você seleciona, o purplemux envia o input ao tmux, a aba transita de volta para **busy** e o Claude continua de onde estava. Você não precisa confirmar mais nada — o clique *é* a confirmação.
-
-{% call callout('tip', 'Prompts consecutivos atualizam automaticamente') %}
-Se o Claude faz várias perguntas em sequência, o prompt inline re-renderiza com as novas opções assim que a próxima `Notification` chega. Você não precisa dispensar a anterior.
+{% call callout('tip', '연속 prompt') %}
+Codex가 질문을 여러 번 이어서 하면 codexmux는 pane 내용을 다시 읽어 새 선택지를 표시합니다.
 {% endcall %}
 
-## Fluxo mobile
+## 실패 시 fallback
 
-Com o PWA instalado e notificações concedidas, o Web Push dispara independentemente da aba do navegador estar aberta, em background ou fechada:
+프롬프트가 scrollback에서 사라졌거나 형식이 예상과 다르면 option parsing이 실패할 수 있습니다. 이 경우 **터미널** mode로 전환해 raw CLI에서 직접 답하면 됩니다.
 
-- A notificação diz "Input Required" e identifica a sessão.
-- Tocar nela abre o purplemux focado naquela aba.
-- O prompt inline já está renderizado; escolha uma opção com um toque.
+## 다음 단계
 
-Esse é o motivo principal para configurar [Tailscale + PWA](/purplemux/pt-BR/docs/quickstart/#acesse-pelo-celular) — assim as aprovações te seguem para fora da mesa.
-
-## Quando as opções não podem ser parseadas
-
-Em casos raros (um prompt que rolou para fora do scrollback do tmux antes do purplemux conseguir lê-lo), a lista de opções volta vazia. A timeline mostra um cartão "não foi possível ler o prompt" e tenta de novo até quatro vezes com backoff. Se ainda assim falhar, troque para o modo **Terminal** dessa aba e responda no CLI cru — o processo Claude por baixo continua aguardando.
-
-## E os lembretes de idle?
-
-Os outros tipos de notificação do Claude — por exemplo, lembretes de inatividade — ainda chegam ao endpoint de hook. O servidor os registra, mas não muda o estado da aba, não dispara push e não exibe prompt na UI. Isso é proposital: só eventos que *bloqueiam* o Claude precisam da sua atenção.
-
-## Próximos passos
-
-- **[Status da sessão](/purplemux/pt-BR/docs/session-status/)** — o que o estado **needs-input** significa e como é detectado.
-- **[Visualização de sessão ao vivo](/purplemux/pt-BR/docs/live-session-view/)** — onde o prompt inline é renderizado.
-- **[Suporte a navegadores](/purplemux/pt-BR/docs/browser-support/)** — requisitos de Web Push (especialmente iOS Safari 16.4+).
+- **[세션 상태](/codexmux/pt-BR/docs/session-status/)**
+- **[라이브 세션 뷰](/codexmux/pt-BR/docs/live-session-view/)**
+- **[웹 푸시 알림](/codexmux/pt-BR/docs/web-push/)**

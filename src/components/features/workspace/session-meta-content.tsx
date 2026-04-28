@@ -4,7 +4,7 @@ import dayjs from 'dayjs';
 import { GitBranch, GitCommit, CircleDot, FilePen, FileQuestion, ArrowUp, ArrowDown, Archive, Copy, Check } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { formatTokenCount, formatTokenDetail, formatCost } from '@/lib/claude-tokens';
+import { formatTokenCount, formatTokenDetail, formatCost } from '@/lib/model-tokens';
 import type { IGitStatus } from '@/lib/git-status';
 import ContextRing from '@/components/features/workspace/context-ring';
 
@@ -426,7 +426,7 @@ export const MetaDetail = ({
                   </span>
                 )}
                 {gitStatus.behind > 0 && (
-                  <span className="flex items-center gap-1 font-mono text-xs text-claude-active">
+                  <span className="flex items-center gap-1 font-mono text-xs text-agent-active">
                     <ArrowDown size={11} />
                     {gitStatus.behind} behind
                   </span>

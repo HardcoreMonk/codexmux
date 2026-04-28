@@ -5,11 +5,10 @@ import { collectPanes } from '@/lib/layout-tree';
 import { getWorkspaceById, getWorkspaces } from '@/lib/workspace-store';
 import { resolveFirstPaneId } from '@/lib/cli-utils';
 import { createLogger } from '@/lib/logger';
+import { normalizePanelType } from '@/lib/panel-type';
 import type { TPanelType } from '@/types/terminal';
 
 const log = createLogger('api:cli:tabs');
-
-const VALID_PANEL_TYPES: TPanelType[] = ['terminal', 'claude-code', 'web-browser', 'diff'];
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (!verifyCliToken(req)) {
@@ -58,9 +57,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     if (!paneId) {
       return res.status(500).json({ error: 'No pane available in workspace' });
     }
-    const resolvedType: TPanelType = VALID_PANEL_TYPES.includes(panelType as TPanelType)
-      ? (panelType as TPanelType)
-      : 'terminal';
+    const resolvedType: TPanelType = normalizePanelType(panelType) ?? 'terminal';
 
     try {
       const tab = await addTabToPane(workspaceId, paneId, name, ws.directories[0], resolvedType);

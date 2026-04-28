@@ -1,36 +1,36 @@
 ---
-title: CSS personalizado
-description: Sobrescreva variáveis CSS para reajustar cores, espaçamento e superfícies individuais.
-eyebrow: Personalização
+title: 커스텀 CSS
+description: CSS 변수를 오버라이드해서 컬러·여백·개별 영역을 재조정합니다.
+eyebrow: 커스터마이즈
 permalink: /pt-BR/docs/custom-css/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-O purplemux é construído sobre um sistema de variáveis CSS. Você pode mudar quase qualquer coisa visual sem tocar no código — cole regras na aba **Aparência**, clique em Aplicar, e elas entram em vigor imediatamente em todos os clientes conectados.
+codexmux는 CSS 변수 시스템 위에 만들어져 있습니다. 소스를 건드리지 않고도 거의 모든 시각 요소를 바꿀 수 있습니다. **외형** 탭에 규칙을 붙여넣고 Apply를 누르면 연결된 모든 클라이언트에 즉시 반영됩니다.
 
-## Onde colocar
+## 어디에 작성하나요
 
-Abra as Configurações (<kbd>⌘,</kbd>) e escolha **Aparência**. Você verá um único textarea rotulado Custom CSS.
+설정(<kbd>⌘,</kbd>)을 열고 **외형** 탭을 선택합니다. 사용자 CSS라는 라벨이 붙은 텍스트영역이 하나 있습니다.
 
-1. Escreva suas regras.
-2. Clique em **Aplicar**. O CSS é injetado em uma tag `<style>` em todas as páginas.
-3. Clique em **Resetar** para limpar todos os overrides.
+1. 규칙을 작성합니다.
+2. **Apply**를 누르면 모든 페이지의 `<style>` 태그에 주입됩니다.
+3. **초기화**로 전체 초기화.
 
-O CSS é guardado no servidor em `~/.purplemux/config.json` (`customCSS`), então se aplica em todos os dispositivos que conectam.
+작성한 CSS는 서버의 `~/.codexmux/config.json`(`customCSS`)에 저장되므로, 접속하는 모든 디바이스에 동일하게 적용됩니다.
 
-{% call callout('note', 'Servidor inteiro, não por dispositivo') %}
-O CSS personalizado vive na config do servidor e te segue em todos os navegadores. Se você quer um dispositivo diferente do outro, isso não é suportado atualmente.
+{% call callout('note', '디바이스별이 아닌 서버 단위') %}
+커스텀 CSS는 서버 설정에 저장되어 어떤 브라우저로 접속하든 따라옵니다. 디바이스별로 다른 외형을 원한다면 현재는 지원하지 않습니다.
 {% endcall %}
 
-## Como funciona
+## 동작 원리
 
-A maioria das cores, superfícies e acentos no purplemux é exposta como variáveis CSS sob `:root` (claro) e `.dark`. Sobrescrever a variável cascateia a mudança para todos os lugares onde ela é usada — barra lateral, diálogos, gráficos, badges de status.
+codexmux의 컬러·서피스·악센트는 대부분 `:root`(라이트)와 `.dark`(다크) 아래의 CSS 변수로 노출됩니다. 변수 하나만 덮어쓰면 그 변수를 참조하는 모든 컴포넌트(사이드바·다이얼로그·차트·상태 배지)가 한 번에 따라 바뀝니다.
 
-Mudar uma única variável é quase sempre melhor do que sobrescrever seletores de componente direto. Classes de componente não são uma API estável; variáveis são.
+컴포넌트 셀렉터를 직접 오버라이드하는 것보다 변수를 바꾸는 편이 거의 항상 낫습니다. 컴포넌트 클래스는 안정적인 API가 아니지만 변수는 그렇습니다.
 
-## Um exemplo mínimo
+## 최소 예시
 
-Aqueça um pouco a barra lateral no modo claro e empurre a superfície escura para mais escuro:
+라이트 모드 사이드바를 살짝 따뜻하게, 다크 모드 배경은 더 어둡게.
 
 ```css
 :root {
@@ -42,7 +42,7 @@ Aqueça um pouco a barra lateral no modo claro e empurre a superfície escura pa
 }
 ```
 
-Ou recolora a marca sem mexer no resto:
+브랜드 컬러만 바꾸려면.
 
 ```css
 :root {
@@ -54,22 +54,22 @@ Ou recolora a marca sem mexer no resto:
 }
 ```
 
-## Grupos de variáveis
+## 변수 그룹
 
-O painel de Aparência expõe a lista completa em **Variáveis disponíveis**. Os grandes baldes são:
+외형 패널의 **사용 가능한 변수** 섹션을 펼치면 전체 목록이 보입니다. 주요 묶음은 다음과 같습니다.
 
 - **Surface** — `--background`, `--card`, `--popover`, `--muted`, `--secondary`, `--accent`, `--sidebar`
-- **Text** — `--foreground` e as variantes `*-foreground` correspondentes
+- **Text** — `--foreground` 및 대응 `*-foreground`
 - **Interactive** — `--primary`, `--primary-foreground`, `--destructive`
 - **Border** — `--border`, `--input`, `--ring`
 - **Palette** — `--ui-blue`, `--ui-teal`, `--ui-coral`, `--ui-amber`, `--ui-purple`, `--ui-pink`, `--ui-green`, `--ui-gray`, `--ui-red`
-- **Semantic** — `--positive`, `--negative`, `--accent-color`, `--brand`, `--focus-indicator`, `--claude-active`
+- **Semantic** — `--positive`, `--negative`, `--accent-color`, `--brand`, `--focus-indicator`, `--agent-active`
 
-Para a lista completa de tokens com valores oklch padrão e o racional de design, veja [`docs/STYLE.md`](https://github.com/subicura/purplemux/blob/main/docs/STYLE.md) no repositório. Esse documento é a fonte da verdade.
+전체 토큰 목록과 기본 oklch 값, 디자인 의도는 저장소의 [`docs/STYLE.md`](https://github.com/subicura/codexmux/blob/main/docs/STYLE.md)에 정리되어 있습니다. 이 문서가 단일 소스입니다.
 
-## Mirando só um modo
+## 모드별로만 적용하기
 
-Embrulhe regras em `:root` para o claro e `.dark` para o escuro. A classe é colocada em `<html>` pelo `next-themes`.
+라이트는 `:root`, 다크는 `.dark`로 감쌉니다. `.dark` 클래스는 `next-themes`가 `<html>`에 자동으로 붙입니다.
 
 ```css
 :root {
@@ -81,14 +81,14 @@ Embrulhe regras em `:root` para o claro e `.dark` para o escuro. A classe é col
 }
 ```
 
-Se você só precisa mudar um modo, deixe o outro em paz.
+한쪽만 바꾸고 싶으면 다른 쪽은 그대로 두세요.
 
-## E o terminal?
+## 터미널은요?
 
-O terminal xterm.js usa sua própria paleta, escolhida de uma lista curada — não é dirigido por essas variáveis CSS. Troque na aba **Terminal**. Veja [Temas do terminal](/purplemux/pt-BR/docs/terminal-themes/).
+xterm.js 터미널은 위 CSS 변수가 아니라 별도의 큐레이션된 팔레트를 씁니다. **터미널** 탭에서 전환하세요. [터미널 테마](/codexmux/pt-BR/docs/terminal-themes/) 참고.
 
-## Próximos passos
+## 다음으로
 
-- **[Temas e fontes](/purplemux/pt-BR/docs/themes-fonts/)** — claro, escuro, sistema; presets de tamanho de fonte.
-- **[Temas do terminal](/purplemux/pt-BR/docs/terminal-themes/)** — paleta separada para a área do terminal.
-- **[Barra lateral e opções do Claude](/purplemux/pt-BR/docs/sidebar-options/)** — reordene itens, alterne flags do Claude.
+- **[테마 & 폰트](/codexmux/pt-BR/docs/themes-fonts/)** — 라이트/다크/시스템, 폰트 크기 프리셋
+- **[터미널 테마](/codexmux/pt-BR/docs/terminal-themes/)** — 터미널 영역 전용 팔레트
+- **[사이드바 & Codex 옵션](/codexmux/pt-BR/docs/sidebar-options/)** — 항목 정렬, Codex 플래그 토글

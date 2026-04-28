@@ -17,21 +17,21 @@ const FALLBACK_SHELL_OTHER = '/bin/bash';
 const SENTINEL_ENV: Record<string, string> = {
   ELECTRON_RUN_AS_NODE: '1',
   ELECTRON_NO_ATTACH_CONSOLE: '1',
-  PURPLEMUX_RESOLVING_ENV: '1',
+  CODEXMUX_RESOLVING_ENV: '1',
 };
 
 const STRIP_KEYS = [
   'ELECTRON_RUN_AS_NODE',
   'ELECTRON_NO_ATTACH_CONSOLE',
-  'PURPLEMUX_RESOLVING_ENV',
+  'CODEXMUX_RESOLVING_ENV',
   // https://github.com/microsoft/vscode/issues/22593
   'XDG_RUNTIME_DIR',
 ];
 
 const shouldResolveShellEnv = (): boolean => {
   if (process.platform === 'win32') return false;
-  if (process.env.PURPLEMUX_CLI === '1') return false;
-  if (process.env.PURPLEMUX_DISABLE_SHELL_ENV === '1') return false;
+  if (process.env.CODEXMUX_CLI === '1') return false;
+  if (process.env.CODEXMUX_DISABLE_SHELL_ENV === '1') return false;
   return true;
 };
 

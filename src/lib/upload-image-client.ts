@@ -55,10 +55,10 @@ const uploadImage = async (file: File, options: IUploadOptions = {}): Promise<IU
 
   const headers: Record<string, string> = {
     'Content-Type': payload.type,
-    'X-Pmux-Filename': encodeURIComponent(payload.name || 'image'),
+    'X-Cmux-Filename': encodeURIComponent(payload.name || 'image'),
   };
-  if (options.wsId) headers['X-Pmux-Ws-Id'] = options.wsId;
-  if (options.tabId) headers['X-Pmux-Tab-Id'] = options.tabId;
+  if (options.wsId) headers['X-Cmux-Ws-Id'] = options.wsId;
+  if (options.tabId) headers['X-Cmux-Tab-Id'] = options.tabId;
 
   const res = await fetch('/api/upload-image', {
     method: 'POST',

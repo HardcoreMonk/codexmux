@@ -1,21 +1,21 @@
 ---
-title: 疑難排解與 FAQ
-description: 常見問題、快速解答，以及最常被問到的疑問。
-eyebrow: 參考資料
+title: 문제 해결 & FAQ
+description: 자주 마주치는 이슈, 빠른 답, 그리고 가장 많이 들어오는 질문들.
+eyebrow: 레퍼런스
 permalink: /zh-TW/docs/troubleshooting/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-如果這裡的內容與你看到的情況不符，請[提交 issue](https://github.com/subicura/purplemux/issues)，附上你的平台、瀏覽器，以及 `~/.purplemux/logs/` 中的相關紀錄檔。
+여기 적힌 내용과 다른 증상이라면, 플랫폼·브라우저와 `~/.codexmux/logs/`의 로그 파일을 첨부해 [이슈를 열어주세요](https://github.com/subicura/codexmux/issues).
 
-## 安裝與啟動
+## 설치와 시작
 
 ### `tmux: command not found`
 
-purplemux 需要主機上有 tmux 3.0+。安裝它：
+호스트에 tmux 3.0 이상이 필요합니다. 설치:
 
 ```bash
-# macOS（Homebrew）
+# macOS (Homebrew)
 brew install tmux
 
 # Ubuntu / Debian
@@ -25,128 +25,128 @@ sudo apt install tmux
 sudo dnf install tmux
 ```
 
-用 `tmux -V` 確認。tmux 2.9+ 在技術上能通過預檢查，但我們測試的版本是 3.0+。
+`tmux -V`로 확인. 기술적으로는 2.9+가 preflight를 통과하지만, 테스트 기준은 3.0+입니다.
 
-### `node: command not found` 或「Node.js 20 or newer」
+### `node: command not found` 또는 Node.js 20 이상 오류
 
-請安裝 Node 20 LTS 或更新版本。用 `node -v` 檢查。macOS 原生 App 已內建自己的 Node，所以這只適用於 `npx` / `npm install -g` 路徑。
+Node.js 20 LTS 이상을 설치하세요. `node -v`로 확인. macOS 네이티브 앱은 자체 Node를 번들하므로 이 항목은 `npx` / `npm install -g` 경로에만 해당됩니다.
 
-### "purplemux is already running (pid=…, port=…)"
+### "codexmux is already running (pid=…, port=…)"
 
-另一個 purplemux 實例正在執行並回應 `/api/health`。你可以使用那個（打開印出的 URL）或先停掉：
-
-```bash
-# 找它
-ps aux | grep purplemux
-
-# 或直接透過 lock 檔殺掉
-kill $(jq -r .pid ~/.purplemux/pmux.lock)
-```
-
-### 過期 lock — 無法啟動，但沒有程序在跑
-
-`~/.purplemux/pmux.lock` 殘留了。移除它：
+다른 codexmux 인스턴스가 살아 있고 `/api/health`에 응답합니다. 그것을 그대로 쓰거나(출력된 URL 열기), 먼저 종료하세요:
 
 ```bash
-rm ~/.purplemux/pmux.lock
+# 찾기
+ps aux | grep codexmux
+
+# 또는 lock 파일로 바로 종료
+kill $(jq -r .pid ~/.codexmux/cmux.lock)
 ```
 
-如果你曾用 `sudo` 執行過 purplemux，該檔案可能屬於 root — 用 `sudo rm` 一次。
+### Stale 락 — 시작이 거부되는데 프로세스는 없음
+
+`~/.codexmux/cmux.lock`이 남았습니다. 제거:
+
+```bash
+rm ~/.codexmux/cmux.lock
+```
+
+과거에 `sudo`로 실행한 적이 있다면 root 소유일 수 있으니 `sudo rm`로 한 번 정리하세요.
 
 ### `Port 8022 is in use, finding an available port...`
 
-另一個程序持有 `8022`。伺服器會回退到隨機可用連接埠並印出新 URL。如果你想自己選連接埠：
+다른 프로세스가 `8022`를 사용 중입니다. 서버는 임의의 빈 포트로 폴백하고 새 URL을 출력합니다. 직접 포트를 지정하려면:
 
 ```bash
-PORT=9000 purplemux
+PORT=9000 codexmux
 ```
 
-用 `lsof -iTCP:8022 -sTCP:LISTEN -n -P` 找出誰持有 `8022`。
+`8022`을 잡고 있는 프로세스는 `lsof -iTCP:8022 -sTCP:LISTEN -n -P`로 찾을 수 있습니다.
 
-### Windows 上能跑嗎？
+### Windows에서 동작하나요?
 
-**官方不支援。** purplemux 倚賴 `node-pty` 與 tmux，這兩者在 Windows 上都無法原生運作。WSL2 通常可以（在那裡你實際上是 Linux），但不在我們的測試範圍內。
+**공식 지원 X.** codexmux는 `node-pty`와 tmux에 의존하는데, 둘 다 Windows 네이티브로 동작하지 않습니다. WSL2에서는 대체로 동작하지만 (사실상 Linux이므로) 테스트 범위 밖입니다.
 
-## 工作階段與還原
+## 세션과 복원
 
-### 關閉瀏覽器把所有東西都殺了
+### 브라우저를 닫았더니 다 사라졌어요
 
-不應該如此 — tmux 在伺服器上保留每個 shell 持續運作。如果重新整理沒讓分頁回來：
+그럴 리가 없습니다 — tmux가 모든 셸을 서버에서 유지합니다. 새로고침해도 탭이 돌아오지 않으면:
 
-1. 確認伺服器仍在執行（`http://localhost:8022/api/health`）。
-2. 確認 tmux 工作階段存在：`tmux -L purple ls`。
-3. 看 `~/.purplemux/logs/purplemux.YYYY-MM-DD.N.log` 中 `autoResumeOnStartup` 期間的錯誤。
+1. 서버가 살아 있는지 확인 (`http://localhost:8022/api/health`).
+2. tmux 세션 존재 확인: `tmux -L codexmux ls`.
+3. `autoResumeOnStartup` 중 에러가 없었는지 `~/.codexmux/logs/codexmux.YYYY-MM-DD.N.log` 확인.
 
-如果 tmux 說「no server running」，主機重啟過或有東西殺掉了 tmux。工作階段不見了，但版面（工作區、分頁、工作目錄）保留在 `~/.purplemux/workspaces/{wsId}/layout.json`，下次 purplemux 啟動時會重新啟動。
+tmux가 "no server running"이라면 호스트가 재부팅됐거나 tmux가 죽은 것입니다. 세션은 사라지지만 레이아웃(워크스페이스, 탭, 작업 디렉토리)은 `~/.codexmux/workspaces/{wsId}/layout.json`에 보존되어 있어 다음 codexmux 시작 시 다시 launch됩니다.
 
-### Claude 工作階段無法 resume
+### Codex 세션이 resume되지 않아요
 
-`autoResumeOnStartup` 會為每個分頁重新執行儲存的 `claude --resume <uuid>`，但若對應的 `~/.claude/projects/.../sessionId.jsonl` 已不存在（被刪、封存，或專案搬走），resume 會失敗。打開分頁開始一個新對話即可。
+`autoResumeOnStartup`이 각 탭의 저장된 `codex resume <uuid>`를 다시 실행하지만, 대응되는 `~/.codex/sessions/.../sessionId.jsonl`이 더 이상 없으면(삭제, 아카이브, 프로젝트 이동) resume이 실패합니다. 탭을 열어 새 대화를 시작하세요.
 
-### 我的分頁全部顯示「unknown」
+### 모든 탭이 "unknown" 상태입니다
 
-`unknown` 表示分頁在伺服器重啟前處於 `busy`，恢復仍在進行中。`resolveUnknown` 會在背景執行並確認 `idle`（Claude 已結束）或 `ready-for-review`（最後一則助理訊息已存在）。如果分頁卡在 `unknown` 超過十分鐘，**busy stuck safety net** 會悄悄把它翻成 `idle`。完整狀態機請見 [STATUS.md](https://github.com/subicura/purplemux/blob/main/docs/STATUS.md)。
+`unknown`은 서버 재시작 전에 `busy`였던 탭이 아직 복구 중임을 의미합니다. `resolveUnknown`이 백그라운드에서 돌면서 `idle` (Codex 종료) 또는 `ready-for-review` (마지막 어시스턴트 메시지 있음)를 확정합니다. 10분 이상 `unknown`에 머무르면 **busy stuck safety net**이 조용히 `idle`로 넘깁니다. 전체 상태 머신은 [STATUS.md](https://github.com/subicura/codexmux/blob/main/docs/STATUS.md) 참고.
 
-## 瀏覽器與 UI
+## 브라우저와 UI
 
-### Web Push 通知從來不會觸發
+### Web Push 알림이 오지 않아요
 
-依序檢查：
+체크리스트:
 
-1. **僅 iOS Safari ≥ 16.4**。較舊的 iOS 完全沒有 Web Push。
-2. **iOS 必須是 PWA**。先點選 **分享 → 加入主畫面**；普通 Safari 分頁不會觸發推播。
-3. **必須是 HTTPS**。自簽憑證不行 — Web Push 會靜默拒絕註冊。請使用 Tailscale Serve（免費 Let's Encrypt）或在 Nginx / Caddy 後面的真實網域。
-4. **通知權限已授予**。purplemux 中的 **設定 → 通知 → 開** *與* 瀏覽器層級的權限都必須允許。
-5. **訂閱已存在**。`~/.purplemux/push-subscriptions.json` 應該有該裝置的條目。若是空的，請重新授予權限。
+1. **iOS Safari ≥ 16.4 만 가능.** 이전 iOS는 Web Push 자체가 없습니다.
+2. **iOS는 PWA 필수.** **공유 → 홈 화면에 추가** 후에만 푸시가 옵니다 — 일반 Safari 탭에서는 안 옵니다.
+3. **HTTPS 필수.** 자체 서명 인증서로는 안 됩니다 — Web Push 등록 자체가 조용히 거부됩니다. Tailscale Serve(자동 Let's Encrypt)나 실제 도메인 + Nginx / Caddy를 쓰세요.
+4. **알림 권한 허용.** codexmux 안의 **설정 → 알림 → On** *과* 브라우저 레벨 권한 둘 다 허용되어야 합니다.
+5. **구독이 존재해야 함.** `~/.codexmux/push-subscriptions.json`에 해당 디바이스 항목이 있어야 합니다. 비어 있으면 권한을 다시 부여하세요.
 
-完整相容性表請見 [瀏覽器支援](/purplemux/zh-TW/docs/browser-support/)。
+전체 호환성 매트릭스는 [브라우저 지원](/codexmux/zh-TW/docs/browser-support/) 참고.
 
-### iOS Safari 16.4+，但仍沒有通知
+### iOS Safari 16.4+인데도 알림이 안 와요
 
-某些 iOS 版本會在 PWA 長期關閉後遺失訂閱。打開 PWA、拒絕後再重新授予通知權限，再檢查一次 `push-subscriptions.json`。
+일부 iOS 버전은 PWA가 오래 닫혀 있으면 구독을 잃습니다. PWA를 열어 알림 권한을 거부했다가 다시 허용하고 `push-subscriptions.json`을 다시 확인하세요.
 
-### Safari 私密視窗不會持久化任何東西
+### Safari 프라이빗 창에서 아무 것도 저장되지 않아요
 
-Safari 17+ 的私密視窗已停用 IndexedDB，所以工作區快取不會跨重啟保留。請改用一般視窗。
+Safari 17+ 프라이빗 창은 IndexedDB가 비활성화되어 워크스페이스 캐시가 재시작 후 살아남지 않습니다. 일반 창을 사용하세요.
 
-### 行動裝置上的終端機背景後消失
+### 모바일 터미널이 백그라운드 후 사라져요
 
-iOS Safari 在背景約 30 秒後會關閉 WebSocket。tmux 仍維持實際工作階段運作 — 當你回到分頁時，purplemux 會重新連線並重新渲染。這是 iOS 的問題，不是我們的。
+iOS Safari는 약 30초 백그라운드면 WebSocket을 끊어버립니다. tmux는 실제 세션을 계속 유지하므로 — 탭으로 돌아오면 codexmux가 재연결하고 다시 렌더링합니다. iOS 동작이지 codexmux 문제가 아닙니다.
 
-### Firefox + Tailscale serve = 憑證警告
+### Firefox + Tailscale serve 인증서 경고
 
-如果你的 tailnet 使用非 `*.ts.net` 的自訂網域，Firefox 對 HTTPS 信任會比 Chrome 嚴格。接受憑證一次後就會記住。
+`*.ts.net`이 아닌 커스텀 도메인을 tailnet에 쓰면 Firefox가 Chrome보다 HTTPS 신뢰에 까다롭습니다. 한 번 수락하면 계속 유지됩니다.
 
-### 「瀏覽器太舊」或缺少功能
+### 브라우저가 너무 오래되었거나 일부 기능이 안 보여요
 
-執行 **設定 → 瀏覽器檢查** 取得逐 API 報告。任何低於 [瀏覽器支援](/purplemux/zh-TW/docs/browser-support/) 中最低需求的會優雅降級，但不在支援之列。
+**설정 → 브라우저 체크**를 실행해 API별 리포트를 보세요. [브라우저 지원](/codexmux/zh-TW/docs/browser-support/)의 최소 버전 미만은 기능을 그레이스풀하게 잃지만 공식 지원은 아닙니다.
 
-## 網路與遠端存取
+## 네트워크와 외부 접근
 
-### 我可以把 purplemux 公開到網際網路嗎？
+### 인터넷에 노출해도 되나요?
 
-可以，但永遠走 HTTPS。建議：
+가능하지만 항상 HTTPS로. 권장:
 
-1. **Tailscale Serve** — `tailscale serve --bg 8022` 提供 WireGuard 加密 + 自動憑證。不需連接埠轉送。
-2. **反向代理** — Nginx / Caddy / Traefik。記得轉送 `Upgrade` 與 `Connection` headers，否則 WebSocket 會壞。
+1. **Tailscale Serve** — `tailscale serve --bg --https=443 localhost:8022`로 WireGuard 암호화 + 자동 인증서. 포트 포워딩 불필요.
+2. **리버스 프록시** — Nginx / Caddy / Traefik. `Upgrade`와 `Connection` 헤더를 반드시 포워딩하세요. 안 그러면 WebSocket이 깨집니다.
 
-在開放網路上走純 HTTP 是個壞主意 — 認證 cookie 是 HMAC 簽署的，但 WebSocket payload（終端機位元組！）並未加密。
+오픈 인터넷 위 평문 HTTP는 권하지 않습니다 — 인증 쿠키는 HMAC 서명이지만 WebSocket 페이로드(터미널 바이트!)는 암호화되지 않습니다.
 
-### LAN 上的其他裝置連不到 purplemux
+### LAN의 다른 디바이스에서 접근이 안 돼요
 
-預設情況下 purplemux 只允許 localhost。透過 env 或 App 內設定打開存取：
+기본은 localhost 전용입니다. env 또는 앱 설정으로 접근 범위를 엽니다:
 
 ```bash
-HOST=lan,localhost purplemux       # 對 LAN 友善
-HOST=tailscale,localhost purplemux # 對 tailnet 友善
-HOST=all purplemux                 # 全部開
+HOST=lan,localhost codexmux       # LAN
+HOST=tailscale,localhost codexmux # tailnet
+HOST=all codexmux                 # 모두
 ```
 
-或使用 App 中的 **設定 → 網路存取**，它會寫入 `~/.purplemux/config.json`。（透過 env 設定 `HOST` 時，該欄位會被鎖定。）關鍵字與 CIDR 語法請見 [連接埠與環境變數](/purplemux/zh-TW/docs/ports-env-vars/)。
+또는 앱의 **설정 → 네트워크 접근** (이 값은 `~/.codexmux/config.json`에 기록). env로 `HOST`를 지정한 경우 이 필드는 잠깁니다. 키워드와 CIDR 문법은 [포트 & 환경변수](/codexmux/zh-TW/docs/ports-env-vars/) 참고.
 
-### 反向代理 WebSocket 問題
+### 리버스 프록시 WebSocket 이슈
 
-如果 `/api/terminal` 連線後立即斷開，代理可能正在剝除 `Upgrade` / `Connection` headers。最小 Nginx：
+`/api/terminal`이 연결됐다가 즉시 끊긴다면 프록시가 `Upgrade` / `Connection` 헤더를 떨어뜨리고 있습니다. 최소 Nginx 설정:
 
 ```nginx
 location / {
@@ -158,42 +158,42 @@ location / {
 }
 ```
 
-Caddy：WebSocket 轉送是預設的；只要 `reverse_proxy 127.0.0.1:8022` 即可。
+Caddy는 WebSocket 포워딩이 기본이므로 `reverse_proxy 127.0.0.1:8022`만 적으면 됩니다.
 
-## 資料與儲存
+## 데이터와 저장소
 
-### 我的資料在哪裡？
+### 데이터는 어디에 저장되나요?
 
-全部都在本機的 `~/.purplemux/`。沒有東西離開你的機器。登入密碼是 `config.json` 中的 scrypt 雜湊。完整配置請見 [資料目錄](/purplemux/zh-TW/docs/data-directory/)。
+전부 로컬 `~/.codexmux/` 안. 외부로 나가는 데이터는 없습니다. 로그인 비밀번호는 `config.json` 안의 scrypt 해시. 전체 구조는 [데이터 디렉토리](/codexmux/zh-TW/docs/data-directory/) 참고.
 
-### 我忘記密碼了
+### 비밀번호를 잊었어요
 
-刪掉 `~/.purplemux/config.json` 並重啟。引導會重新開始。工作區、版面與歷史會保留（它們是分開的檔案）。
+`~/.codexmux/config.json`을 지우고 재시작하세요. 온보딩이 처음부터 다시 시작됩니다. 워크스페이스, 레이아웃, 히스토리는 별도 파일이라 유지됩니다.
 
-### 分頁指示燈永遠卡在「busy」
+### 탭 인디케이터가 영원히 "busy"에서 멈춰요
 
-在 Claude 程序已死的情況下，`busy stuck safety net` 會在十分鐘後悄悄把分頁翻成 `idle`。如果你不想等，關閉再重新打開分頁 — 這會重設本機狀態，下個 hook 事件會從乾淨的狀態開始。要進行根因調查，請以 `LOG_LEVELS=hooks=debug,status=debug` 執行。
+`busy stuck safety net`이 Codex 프로세스가 죽었다면 10분 후 조용히 `idle`로 전환합니다. 기다리기 싫다면 탭을 닫았다 다시 열어 로컬 상태를 리셋하세요 — 다음 상태 업데이트가 깨끗한 상태에서 재개됩니다. 근본 원인 추적은 `LOG_LEVELS=status=debug,tmux=trace`로 실행하세요.
 
-### 它會與我現有的 tmux 設定衝突嗎？
+### 기존 tmux 설정과 충돌하나요?
 
-不會。purplemux 在專屬 socket 上執行隔離的 tmux（`-L purple`），有自己的設定（`src/config/tmux.conf`）。你的 `~/.tmux.conf` 與任何既有的 tmux 工作階段都不會被動到。
+아니요. codexmux는 전용 소켓(`-L codexmux`)에서 자체 설정(`src/config/tmux.conf`)으로 격리된 tmux를 실행합니다. `~/.tmux.conf`나 기존 tmux 세션은 건드리지 않습니다.
 
-## 費用與用量
+## 비용과 사용량
 
-### purplemux 會幫我省錢嗎？
+### codexmux를 쓰면 비용이 절약되나요?
 
-它不會直接省錢。它做的是**讓用量透明**：今日 / 本月 / 每專案的費用、每模型 token 拆解、5 小時 / 7 天用量倒數，全部都在同一個畫面上，讓你能在撞牆前就調整節奏。
+직접 절약시키지는 않습니다. 다만 **사용량을 투명하게** 만듭니다: 오늘/이달/프로젝트별 비용, 모델별 토큰 분해, 5시간/7일 rate-limit 카운트다운이 한 화면에 모여 있어 한도에 부딪치기 전에 페이스를 조절할 수 있습니다.
 
-### purplemux 本身要付費嗎？
+### codexmux 자체에 비용이 드나요?
 
-不需要。purplemux 是 MIT 授權的開源軟體。Claude Code 的用量是 Anthropic 另外計費。
+아니요. codexmux는 MIT 라이선스 오픈소스입니다. Codex 사용료는 OpenAI이 별도로 청구합니다.
 
-### 我的資料會被傳到任何地方嗎？
+### 데이터가 외부로 전송되나요?
 
-不會。purplemux 完全是自架。它做的網路呼叫只有：發給你本機 Claude CLI 的（CLI 自己會跟 Anthropic 通訊），以及啟動時透過 `update-notifier` 的版本檢查。停用版本檢查請設 `NO_UPDATE_NOTIFIER=1`。
+아니요. codexmux는 완전히 셀프호스팅입니다. 외부로 나가는 네트워크 호출은 (1) 로컬 Codex CLI가 알아서 OpenAI과 통신하는 것, (2) 시작 시 `update-notifier`의 버전 확인뿐입니다. 버전 확인을 끄려면 `NO_UPDATE_NOTIFIER=1`.
 
-## 下一步
+## 다음으로
 
-- **[瀏覽器支援](/purplemux/zh-TW/docs/browser-support/)** — 詳細的相容性表與已知瀏覽器差異。
-- **[資料目錄](/purplemux/zh-TW/docs/data-directory/)** — 每個檔案的用途以及哪些可以安全刪除。
-- **[架構](/purplemux/zh-TW/docs/architecture/)** — 當需要更深入挖掘時，各部分如何拼在一起。
+- **[브라우저 지원](/codexmux/zh-TW/docs/browser-support/)** — 자세한 호환성 매트릭스와 알려진 quirk
+- **[데이터 디렉토리](/codexmux/zh-TW/docs/data-directory/)** — 각 파일의 역할과 삭제 안전성
+- **[아키텍처](/codexmux/zh-TW/docs/architecture/)** — 더 깊이 파야 할 때 컴포넌트가 어떻게 맞물리는지

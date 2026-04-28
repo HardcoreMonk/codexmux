@@ -1,65 +1,43 @@
 ---
-title: 権限プロンプト
-description: purplemux が Claude Code の「これを実行してもよいですか?」ダイアログをインターセプトし、ダッシュボード・キーボード・スマートフォンから承認できるようにする方法。
-eyebrow: Claude Code
+title: 권한 프롬프트
+description: Codex의 실행 허가 질문을 대시보드, 키보드, 휴대폰에서 승인하는 방법.
+eyebrow: Codex
 permalink: /ja/docs/permission-prompts/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Claude Code はデフォルトで権限ダイアログ — ツール呼び出し、ファイル書き込みなど — でブロックします。purplemux はそれが現れた瞬間にダイアログを捕まえ、あなたが今そばにいるデバイスに届けます。
+Codex는 tool call, 파일 쓰기, 권한이 필요한 작업에서 사용자의 승인을 기다릴 수 있습니다. codexmux는 terminal prompt를 감지해 timeline 안에 선택지를 표시합니다.
 
-## インターセプトされるもの
+## 감지 방식
 
-Claude Code はいくつかの理由で `Notification` フックを発火します。purplemux は次の 2 種類の通知タイプだけを権限プロンプトとして扱います:
+- tmux pane 내용을 캡처해 option을 파싱합니다.
+- 생성된 hook bridge event가 있으면 이를 보조 신호로 사용합니다.
+- permission prompt가 아닌 notification은 상태를 바꾸지 않습니다.
 
-- `permission_prompt` — 標準の「このツールを実行しますか?」ダイアログ
-- `worker_permission_prompt` — サブエージェントから来る同じもの
+## 동작 흐름
 
-それ以外 (アイドル時のリマインダーなど) はステータス側で無視され、タブを **入力待ち** に切り替えたりプッシュを送ったりしません。
+1. tab이 입력 대기 상태임을 감지합니다.
+2. 상태를 **needs-input**으로 바꾸고 WebSocket으로 broadcast합니다.
+3. timeline 안에 Codex가 보여준 선택지를 표시합니다.
+4. notification permission이 있으면 Web Push 또는 desktop notification을 보냅니다.
+5. 사용자가 선택하면 값을 tmux stdin으로 전달하고 tab을 다시 **busy**로 바꿉니다.
 
-## 発火したときに何が起きるか
+## 답하는 방법
 
-1. Claude Code が `Notification` フックを発行します。`~/.purplemux/status-hook.sh` のシェルスクリプトがイベントと通知タイプをローカルサーバに POST します。
-2. サーバはタブの状態を **入力待ち** (アンバーのパルス) に切り替え、ステータス WebSocket で変更をブロードキャストします。
-3. ダッシュボードはプロンプトを **タイムラインのインライン** にレンダリングし、Claude が提供したのと同じオプションを表示します — モーダルもコンテキストスイッチもありません。
-4. 通知許可を与えていれば、`needs-input` で Web Push やデスクトップ通知が発火します。
+- timeline에서 option 클릭.
+- option 번호에 맞는 숫자 key 입력.
+- 모바일 push를 눌러 해당 tab으로 이동한 뒤 선택.
 
-Claude CLI 自体は依然として stdin で待機しています。purplemux は tmux からプロンプトのオプションを読み、あなたが選んだら回答を送り返します。
-
-## 応答方法
-
-3 つの等価な方法があります:
-
-- タイムラインで **オプションをクリック**。
-- **数字キーを押す** — <kbd>1</kbd>、<kbd>2</kbd>、<kbd>3</kbd>。
-- スマートフォンで **プッシュをタップ** — プロンプトに直接ディープリンクするので、そこで選択できます。
-
-選択すると、purplemux が tmux に入力を送り、タブは **ビジー** に戻り、Claude はストリームの途中から再開します。他に確認すべきことはありません — クリック自体が確認になります。
-
-{% call callout('tip', '連続するプロンプトは自動的に再取得') %}
-Claude が立て続けにいくつもの質問をすると、次の `Notification` が届くと同時にインラインプロンプトが新しいオプションで再描画されます。前のものを明示的に閉じる必要はありません。
+{% call callout('tip', '연속 prompt') %}
+Codex가 질문을 여러 번 이어서 하면 codexmux는 pane 내용을 다시 읽어 새 선택지를 표시합니다.
 {% endcall %}
 
-## モバイルフロー
+## 실패 시 fallback
 
-PWA がインストールされていて通知が許可されていれば、ブラウザタブが開いていても、バックグラウンドでも、閉じていても Web Push が発火します:
+프롬프트가 scrollback에서 사라졌거나 형식이 예상과 다르면 option parsing이 실패할 수 있습니다. 이 경우 **터미널** mode로 전환해 raw CLI에서 직접 답하면 됩니다.
 
-- 通知は「Input Required」と表示し、セッションを識別します。
-- タップすると、そのタブにフォーカスして purplemux が開きます。
-- インラインプロンプトはすでに描画されているので、ワンタップで選べます。
+## 다음 단계
 
-これが [Tailscale + PWA](/purplemux/ja/docs/quickstart/#reach-it-from-your-phone) のセットアップを推奨する一番の理由です — 承認をデスクから持ち出せます。
-
-## オプションをパースできない場合
-
-まれに (purplemux が読み取る前にプロンプトが tmux のスクロールバックから流れてしまった場合)、オプションリストが空で返ってくることがあります。タイムラインには「プロンプトを読めませんでした」というカードが表示され、バックオフ付きで最大 4 回リトライします。それでも失敗したら、そのタブの **ターミナル** モードに切り替えて、生の CLI で答えてください — 内部の Claude プロセスはまだ待機しています。
-
-## アイドル時のリマインダーは?
-
-Claude の他の通知タイプ — 例えばアイドル時のリマインダー — もフックエンドポイントに届きます。サーバはそれらをログに記録しますが、タブの状態を変えたり、プッシュを送ったり、UI プロンプトを表示したりはしません。これは意図的です: Claude を *ブロック* するイベントだけがあなたの注意を必要とするからです。
-
-## 次のステップ
-
-- **[セッションステータス](/purplemux/ja/docs/session-status/)** — **入力待ち** 状態の意味と検出方法。
-- **[ライブセッションビュー](/purplemux/ja/docs/live-session-view/)** — インラインプロンプトがレンダリングされる場所。
-- **[ブラウザサポート](/purplemux/ja/docs/browser-support/)** — Web Push の要件 (特に iOS Safari 16.4+)。
+- **[세션 상태](/codexmux/ja/docs/session-status/)**
+- **[라이브 세션 뷰](/codexmux/ja/docs/live-session-view/)**
+- **[웹 푸시 알림](/codexmux/ja/docs/web-push/)**

@@ -2,25 +2,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { collectAgentJsonlFiles } from '@/lib/stats/agent-jsonl-files';
 
-const CACHE_PATH = path.join(os.homedir(), '.purplemux', 'stats', 'cache.json');
-const PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
+const CACHE_PATH = path.join(os.homedir(), '.codexmux', 'stats', 'cache.json');
 
 const countJsonlFiles = async (): Promise<number> => {
-  let count = 0;
-  try {
-    const dirs = await fs.readdir(PROJECTS_DIR);
-    for (const dir of dirs) {
-      const dirPath = path.join(PROJECTS_DIR, dir);
-      const stat = await fs.stat(dirPath).catch(() => null);
-      if (!stat?.isDirectory()) continue;
-      const files = await fs.readdir(dirPath).catch(() => []);
-      count += files.filter((f) => f.endsWith('.jsonl') && !/^agent-/.test(f)).length;
-    }
-  } catch {
-    // ignore
-  }
-  return count;
+  const files = await collectAgentJsonlFiles();
+  return files.length;
 };
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {

@@ -67,7 +67,6 @@ import {
   Shield,
   FileArchive,
 } from 'lucide-react';
-import ClaudeCodeIcon from '@/components/icons/claude-code-icon';
 import OpenAIIcon from '@/components/icons/openai-icon';
 
 type TProcessIconComponent = IconType | React.ComponentType<{ className?: string }>;
@@ -174,7 +173,6 @@ const PROCESS_ICON_MAP: Record<string, TProcessIconComponent> = {
   zip: FileArchive,
   unzip: FileArchive,
   jest: SiJest,
-  claude: ClaudeCodeIcon,
   codex: OpenAIIcon,
 };
 

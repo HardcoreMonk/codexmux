@@ -1,83 +1,83 @@
 ---
-title: Pestañas y paneles
-description: Cómo funcionan las pestañas dentro de un espacio de trabajo, cómo dividir paneles y los atajos para mover el foco entre ellos.
-eyebrow: Espacios de trabajo y terminal
+title: 탭 & 창
+description: 워크스페이스 안에서 탭이 동작하는 방식, 창을 분할하는 법, 그리고 그 사이를 오가는 단축키.
+eyebrow: 워크스페이스 & 터미널
 permalink: /es/docs/tabs-panes/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Un espacio de trabajo se divide en **paneles**, y cada panel contiene una pila de **pestañas**. Las divisiones te dan vistas paralelas; las pestañas permiten que un mismo panel aloje varios shells sin robar espacio en pantalla.
+워크스페이스는 **창(pane)**으로 나뉘고, 각 창은 여러 **탭**을 쌓아 가집니다. 분할은 동시에 여러 화면을 보기 위한 것이고, 탭은 한 창 안에서 여러 쉘을 화면 면적을 빼앗기지 않고 유지하기 위한 것입니다.
 
-## Pestañas
+## 탭
 
-Cada pestaña es un shell real anclado a una sesión de tmux. El título de la pestaña proviene del proceso en primer plano — escribe `vim` y la pestaña se renombra; sal y vuelve al nombre del directorio.
+모든 탭은 tmux 세션에 붙은 실제 쉘입니다. 탭 제목은 포어그라운드 프로세스에서 따옵니다 — `vim`을 실행하면 탭 이름이 바뀌고, 종료하면 디렉토리 이름으로 돌아옵니다.
 
-| Acción | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Nueva pestaña | <kbd>⌘T</kbd> | <kbd>Ctrl+T</kbd> |
-| Cerrar pestaña | <kbd>⌘W</kbd> | <kbd>Ctrl+W</kbd> |
-| Pestaña anterior | <kbd>⌘⇧[</kbd> | <kbd>Ctrl+Shift+[</kbd> |
-| Pestaña siguiente | <kbd>⌘⇧]</kbd> | <kbd>Ctrl+Shift+]</kbd> |
-| Ir a pestaña 1–9 | <kbd>⌃1</kbd> – <kbd>⌃9</kbd> | <kbd>Alt+1</kbd> – <kbd>Alt+9</kbd> |
+| 새 탭 | <kbd>⌘T</kbd> | <kbd>Ctrl+T</kbd> |
+| 탭 닫기 | <kbd>⌘W</kbd> | <kbd>Ctrl+W</kbd> |
+| 이전 탭 | <kbd>⌘⇧[</kbd> | <kbd>Ctrl+Shift+[</kbd> |
+| 다음 탭 | <kbd>⌘⇧]</kbd> | <kbd>Ctrl+Shift+]</kbd> |
+| 1–9번 탭으로 이동 | <kbd>⌃1</kbd> – <kbd>⌃9</kbd> | <kbd>Alt+1</kbd> – <kbd>Alt+9</kbd> |
 
-Arrastra una pestaña dentro de la barra de pestañas para reordenarla. El botón **+** al final de la barra abre el mismo selector de plantilla que <kbd>⌘T</kbd>.
+탭 바에서 탭을 드래그하면 순서가 바뀝니다. 탭 바 끝의 **+** 버튼은 <kbd>⌘T</kbd>와 같은 템플릿 선택 메뉴를 엽니다.
 
-{% call callout('tip', 'Plantillas más allá de Terminal') %}
-El menú de nueva pestaña te deja elegir **Terminal**, **Claude**, **Diff** o **Navegador web** como tipo de panel. Todas son pestañas — puedes mezclarlas en el mismo panel y alternar entre ellas con los atajos de arriba.
+{% call callout('tip', '터미널 외의 템플릿') %}
+새 탭 메뉴에서는 **터미널**, **Codex**, **Diff**, **웹 브라우저** 중 패널 타입을 고를 수 있습니다. 모두 탭이므로 한 창 안에 섞어두고 위 단축키로 자유롭게 전환할 수 있습니다.
 {% endcall %}
 
-## Dividir paneles
+## 창 분할
 
-Las pestañas comparten espacio de pantalla. Para ver dos cosas a la vez, divide el panel.
+탭은 화면을 공유합니다. 동시에 두 개를 보고 싶으면 창을 분할하세요.
 
-| Acción | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Dividir a la derecha | <kbd>⌘D</kbd> | <kbd>Ctrl+D</kbd> |
-| Dividir abajo | <kbd>⌘⇧D</kbd> | <kbd>Ctrl+Shift+D</kbd> |
+| 오른쪽으로 분할 | <kbd>⌘D</kbd> | <kbd>Ctrl+D</kbd> |
+| 아래로 분할 | <kbd>⌘⇧D</kbd> | <kbd>Ctrl+Shift+D</kbd> |
 
-Una nueva división hereda el directorio por defecto del espacio y empieza con una pestaña de terminal vacía. Cada panel tiene su propia barra de pestañas, así que el panel de la derecha puede alojar el visor de diff mientras el de la izquierda ejecuta `claude`.
+새로 만들어지는 분할은 워크스페이스의 기본 디렉토리를 상속받고 빈 터미널 탭으로 시작합니다. 각 창은 자체 탭 바를 가지므로 오른쪽 창에서는 diff 뷰어를, 왼쪽 창에서는 `codex`를 돌리는 식으로 쓸 수 있습니다.
 
-## Mover el foco entre paneles
+## 창 사이 포커스 이동
 
-Usa los atajos direccionales — recorren el árbol de divisiones, así que <kbd>⌘⌥→</kbd> desde un panel anidado profundamente sigue aterrizando en el visualmente adyacente.
+방향 단축키로 이동합니다 — 분할 트리를 따라 걷기 때문에, 깊게 중첩된 창에서 <kbd>⌘⌥→</kbd>를 눌러도 화면상 인접한 창으로 정확히 이동합니다.
 
-| Acción | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Foco a la izquierda | <kbd>⌘⌥←</kbd> | <kbd>Ctrl+Alt+←</kbd> |
-| Foco a la derecha | <kbd>⌘⌥→</kbd> | <kbd>Ctrl+Alt+→</kbd> |
-| Foco arriba | <kbd>⌘⌥↑</kbd> | <kbd>Ctrl+Alt+↑</kbd> |
-| Foco abajo | <kbd>⌘⌥↓</kbd> | <kbd>Ctrl+Alt+↓</kbd> |
+| 왼쪽으로 포커스 | <kbd>⌘⌥←</kbd> | <kbd>Ctrl+Alt+←</kbd> |
+| 오른쪽으로 포커스 | <kbd>⌘⌥→</kbd> | <kbd>Ctrl+Alt+→</kbd> |
+| 위로 포커스 | <kbd>⌘⌥↑</kbd> | <kbd>Ctrl+Alt+↑</kbd> |
+| 아래로 포커스 | <kbd>⌘⌥↓</kbd> | <kbd>Ctrl+Alt+↓</kbd> |
 
-## Redimensionar y equilibrar
+## 크기 조정과 균등화
 
-Arrastra el separador entre paneles para ajustar finamente, o usa el teclado.
+창 사이의 분리선을 드래그하거나 키보드로 조정합니다.
 
-| Acción | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Redimensionar izquierda | <kbd>⌘⌃⇧←</kbd> | <kbd>Ctrl+Alt+Shift+←</kbd> |
-| Redimensionar derecha | <kbd>⌘⌃⇧→</kbd> | <kbd>Ctrl+Alt+Shift+→</kbd> |
-| Redimensionar arriba | <kbd>⌘⌃⇧↑</kbd> | <kbd>Ctrl+Alt+Shift+↑</kbd> |
-| Redimensionar abajo | <kbd>⌘⌃⇧↓</kbd> | <kbd>Ctrl+Alt+Shift+↓</kbd> |
-| Igualar divisiones | <kbd>⌘⌥=</kbd> | <kbd>Ctrl+Alt+=</kbd> |
+| 왼쪽 크기 조정 | <kbd>⌘⌃⇧←</kbd> | <kbd>Ctrl+Alt+Shift+←</kbd> |
+| 오른쪽 크기 조정 | <kbd>⌘⌃⇧→</kbd> | <kbd>Ctrl+Alt+Shift+→</kbd> |
+| 위쪽 크기 조정 | <kbd>⌘⌃⇧↑</kbd> | <kbd>Ctrl+Alt+Shift+↑</kbd> |
+| 아래쪽 크기 조정 | <kbd>⌘⌃⇧↓</kbd> | <kbd>Ctrl+Alt+Shift+↓</kbd> |
+| 분할 균등화 | <kbd>⌘⌥=</kbd> | <kbd>Ctrl+Alt+=</kbd> |
 
-Igualar es la forma más rápida de reiniciar una disposición que se ha desplazado a extremos inutilizables.
+레이아웃이 한쪽으로 너무 치우쳐 못 쓸 정도가 됐을 때 균등화가 가장 빠른 리셋 방법입니다.
 
-## Limpiar la pantalla
+## 화면 비우기
 
-<kbd>⌘K</kbd> limpia la terminal del panel actual, igual que la mayoría de terminales nativos. El proceso del shell sigue corriendo; solo se borra el buffer visible.
+<kbd>⌘K</kbd>는 현재 창의 터미널 화면을 비웁니다. 네이티브 터미널과 동일한 방식입니다. 쉘 프로세스는 계속 살아있고, 보이는 버퍼만 지워집니다.
 
-| Acción | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Limpiar pantalla | <kbd>⌘K</kbd> | <kbd>Ctrl+K</kbd> |
+| 화면 비우기 | <kbd>⌘K</kbd> | <kbd>Ctrl+K</kbd> |
 
-## Las pestañas sobreviven a todo
+## 탭은 어떤 상황에서도 살아남습니다
 
-Cerrar una pestaña mata su sesión de tmux. Cerrar el *navegador*, refrescar o perder la red, no — todas las pestañas siguen corriendo en el servidor. Vuelve a abrir y los mismos paneles, divisiones y pestañas regresan.
+탭을 닫으면 해당 tmux 세션이 종료됩니다. *브라우저*를 닫거나, 새로고침하거나, 네트워크가 끊어져도 탭은 종료되지 않고 서버에서 계속 돌아갑니다. 다시 열면 같은 창, 분할, 탭이 그대로 돌아옵니다.
 
-Para la historia de recuperación tras un reinicio del servidor, consulta [Guardar y restaurar disposiciones](/purplemux/es/docs/save-restore/).
+서버 재부팅 이후의 복구 동작은 [레이아웃 저장 & 복원](/codexmux/es/docs/save-restore/)에서 다룹니다.
 
-## Siguientes pasos
+## 다음으로
 
-- **[Guardar y restaurar disposiciones](/purplemux/es/docs/save-restore/)** — cómo se mantiene esta disposición.
-- **[Atajos de teclado](/purplemux/es/docs/keyboard-shortcuts/)** — todos los atajos en una sola tabla.
-- **[Panel de flujo de Git](/purplemux/es/docs/git-workflow/)** — un tipo de pestaña útil para colocar en una división.
+- **[레이아웃 저장 & 복원](/codexmux/es/docs/save-restore/)** — 이 레이아웃이 어떻게 유지되는지
+- **[키보드 단축키](/codexmux/es/docs/keyboard-shortcuts/)** — 전체 바인딩
+- **[Git 워크플로 패널](/codexmux/es/docs/git-workflow/)** — 분할에 띄워두면 유용한 탭 타입

@@ -1,64 +1,64 @@
 ---
-title: 網頁瀏覽器面板
-description: 內建瀏覽器分頁，可測試開發產出，能用 purplemux CLI 操控，並支援行動裝置視窗的裝置模擬器。
-eyebrow: 工作區與終端機
+title: 웹 브라우저 패널
+description: 개발 결과 확인용 내장 브라우저 탭. codexmux CLI로 제어하고, 모바일 뷰포트는 디바이스 에뮬레이터로 확인합니다.
+eyebrow: 워크스페이스 & 터미널
 permalink: /zh-TW/docs/web-browser-panel/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-把網頁瀏覽器分頁放在終端機與 Claude 工作階段旁邊。它能跑你的本機開發伺服器、staging 站、任何能連上的內容 — 而且你可以從 `purplemux` CLI 操控它，不必離開 shell。
+터미널과 Codex 세션 옆에 웹 브라우저 탭을 띄워두세요. 로컬 개발 서버, 스테이징, 닿을 수 있는 어느 사이트든 띄울 수 있고, 같은 쉘에서 `codexmux` CLI로 제어할 수 있습니다.
 
-## 開啟瀏覽器分頁
+## 브라우저 탭 열기
 
-新增分頁並選擇 **Web browser** 面板類型。在網址列輸入 URL — `localhost:3000`、IP，或完整的 https URL。網址列會將輸入正規化：純主機名稱與 IP 會走 `http://`，其餘走 `https://`。
+새 탭을 추가하면서 패널 타입을 **Web browser**로 선택합니다. 주소 입력창에 `localhost:3000`, IP, 또는 전체 https URL을 입력하세요. 입력은 정규화됩니다 — 호스트명이나 IP는 `http://`로, 그 외는 `https://`로 자동 보정됩니다.
 
-當 purplemux 是 macOS 原生 App（Electron build）時，面板會以真正的 Chromium webview 執行；從一般瀏覽器存取時則會回退為 iframe。iframe 路徑能應付大多數頁面，但無法執行送出 `X-Frame-Options: deny` 的網站；Electron 路徑沒有這個限制。
+codexmux를 macOS 네이티브 앱(Electron 빌드)으로 띄웠을 때는 실제 Chromium webview로 동작하고, 일반 브라우저에서 접근했을 때는 iframe으로 폴백합니다. iframe도 대부분의 페이지를 다루지만 `X-Frame-Options: deny`를 보내는 사이트는 막힙니다 — Electron 경로는 그런 제한이 없습니다.
 
-{% call callout('note', '原生 App 上體驗最佳') %}
-裝置模擬、CLI 截圖、console / network 擷取只在 Electron build 中可用。瀏覽器分頁的回退方案提供網址列、上一頁 / 下一頁與重新整理，但更深的整合需要 webview。
+{% call callout('note', '네이티브 앱에서 가장 잘 동작') %}
+디바이스 에뮬레이션, CLI 스크린샷, 콘솔/네트워크 캡처는 Electron 빌드에서만 동작합니다. 브라우저 탭 폴백에서는 주소창, 뒤/앞, 새로고침 정도만 됩니다 — 깊은 통합은 webview가 필요합니다.
 {% endcall %}
 
-## CLI 驅動的導覽
+## CLI 기반 제어
 
-面板提供一個小型 HTTP API，內建的 `purplemux` CLI 對其作了封裝。從任何終端機 — 包括緊鄰瀏覽器面板的那一個 — 都能：
+패널은 작은 HTTP API를 노출하고, 번들된 `codexmux` CLI가 이를 감쌉니다. 어느 터미널에서든 — 브라우저 패널 옆 터미널 포함 — 다음을 실행할 수 있습니다.
 
 ```bash
-# 列出分頁，找出 web-browser 分頁的 ID
-purplemux tab list -w <workspace-id>
+# 탭 목록에서 web-browser 탭 ID 찾기
+codexmux tab list -w <workspace-id>
 
-# 讀取目前 URL + 標題
-purplemux tab browser url -w <ws> <tabId>
+# 현재 URL과 타이틀
+codexmux tab browser url -w <ws> <tabId>
 
-# 截圖到檔案（或用 --full 截整頁）
-purplemux tab browser screenshot -w <ws> <tabId> -o shot.png --full
+# 스크린샷을 파일로 (전체 페이지는 --full)
+codexmux tab browser screenshot -w <ws> <tabId> -o shot.png --full
 
-# 取得最近的 console log（500 筆 ring buffer）
-purplemux tab browser console -w <ws> <tabId> --since 60000 --level error
+# 최근 콘솔 로그 (500개 ring buffer)
+codexmux tab browser console -w <ws> <tabId> --since 60000 --level error
 
-# 檢視網路活動，可選擇取得單一回應 body
-purplemux tab browser network -w <ws> <tabId> --method POST --status 500
-purplemux tab browser network -w <ws> <tabId> --request <id>
+# 네트워크 활동 조회, 단일 응답 본문은 --request로
+codexmux tab browser network -w <ws> <tabId> --method POST --status 500
+codexmux tab browser network -w <ws> <tabId> --request <id>
 
-# 在分頁中執行 JavaScript 並取得序列化結果
-purplemux tab browser eval -w <ws> <tabId> "document.title"
+# 탭 안에서 JS 평가, 직렬화된 결과 반환
+codexmux tab browser eval -w <ws> <tabId> "document.title"
 ```
 
-CLI 會透過 `~/.purplemux/cli-token` 中的權杖驗證，並從 `~/.purplemux/port` 讀取連接埠。在同一台機器上執行時不需要任何旗標。執行 `purplemux help` 可看到完整指令，`purplemux api-guide` 則顯示底層 HTTP endpoints。
+CLI는 `~/.codexmux/cli-token`의 토큰으로 인증하고 `~/.codexmux/port`에서 포트를 읽습니다. 같은 머신에서 실행할 때는 별도 플래그가 필요 없습니다. `codexmux help`로 전체 명령을 보거나 `codexmux api-guide`로 그 아래 HTTP 엔드포인트를 확인할 수 있습니다.
 
-這正是面板對 Claude 的價值：請 Claude 截圖、檢查 console 錯誤、執行測試指令稿 — Claude 用的是和你一樣的 CLI。
+이 점이 Codex와의 조합에서 중요합니다 — 스크린샷을 찍어 달라거나, 콘솔에서 에러를 확인해 달라거나, probe 스크립트를 돌려 달라고 시킬 때 Codex도 똑같은 CLI를 갖고 있습니다.
 
-## 裝置模擬器
+## 디바이스 에뮬레이터
 
-針對行動裝置工作，可把面板切到行動模式。裝置選擇器提供 iPhone SE 到 14 Pro Max、Pixel 7、Galaxy S20 Ultra、iPad Mini 與 iPad Pro 12.9" 的預設值。每個預設包含：
+모바일 작업을 위해 패널을 모바일 모드로 전환할 수 있습니다. 디바이스 피커에는 iPhone SE부터 14 Pro Max, Pixel 7, Galaxy S20 Ultra, iPad Mini, iPad Pro 12.9" 프리셋이 들어있습니다. 각 프리셋이 함께 적용하는 것:
 
-- 寬 / 高
-- 裝置像素比
-- 對應的行動裝置 user agent
+- 가로 / 세로 픽셀
+- Device pixel ratio
+- 해당 디바이스에 맞는 모바일 user agent
 
-切換直立 / 橫向，並選擇縮放等級（`fit` 適配面板，或固定 `50% / 75% / 100% / 125% / 150%`）。當你切換裝置時，webview 會以新的 UA 重新載入，這樣伺服器端的行動偵測就能看到與你手機相同的內容。
+세로 / 가로 회전을 토글할 수 있고, 줌 레벨 (`fit`으로 패널에 맞춤, 또는 고정 `50% / 75% / 100% / 125% / 150%`) 도 선택할 수 있습니다. 디바이스를 바꾸면 새 UA로 webview가 다시 로드되므로 서버 사이드 모바일 감지도 실제 폰처럼 동작합니다.
 
-## 下一步
+## 다음으로
 
-- **[分頁與窗格](/purplemux/zh-TW/docs/tabs-panes/)** — 把瀏覽器放在 Claude 旁邊的分割中。
-- **[Git 工作流面板](/purplemux/zh-TW/docs/git-workflow/)** — 另一個專用面板類型。
-- **[安裝](/purplemux/zh-TW/docs/installation/)** — macOS 原生 App，完整 webview 整合所在之處。
+- **[탭 & 창](/codexmux/zh-TW/docs/tabs-panes/)** — Codex 옆에 브라우저를 분할로 띄우기
+- **[Git 워크플로 패널](/codexmux/zh-TW/docs/git-workflow/)** — 또 다른 전용 패널 타입
+- **[설치](/codexmux/zh-TW/docs/installation/)** — webview 통합이 동작하는 macOS 네이티브 앱

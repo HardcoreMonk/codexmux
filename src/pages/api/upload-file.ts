@@ -54,9 +54,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(400).json({ error: 'Empty body' });
   }
 
-  const wsId = headerString(req.headers['x-pmux-ws-id']);
-  const tabId = headerString(req.headers['x-pmux-tab-id']);
-  const originalName = headerString(req.headers['x-pmux-filename']);
+  const wsId = headerString(req.headers['x-cmux-ws-id']);
+  const tabId = headerString(req.headers['x-cmux-tab-id']);
+  const originalName = headerString(req.headers['x-cmux-filename']);
 
   try {
     const saved = await saveFile({

@@ -6,11 +6,11 @@ permalink: /ko/docs/terminal-themes/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-터미널 영역은 UI와는 독립된 xterm.js 팔레트를 씁니다. 다크 테마와 라이트 테마를 각각 하나씩 골라두면, 앱 테마가 바뀔 때 purplemux가 자동으로 전환합니다.
+터미널 영역은 UI와는 독립된 xterm.js 팔레트를 씁니다. 다크 테마와 라이트 테마를 각각 하나씩 골라두면, 앱 테마가 바뀔 때 codexmux가 자동으로 전환합니다.
 
 ## 선택 화면 열기
 
-설정(<kbd>⌘,</kbd>) → **Terminal** 탭. Dark / Light 서브 탭 안에 카드 그리드가 있습니다. 카드를 누르면 열려 있는 모든 터미널에 즉시 반영됩니다.
+설정(<kbd>⌘,</kbd>) → **터미널** 탭의 어두운/밝은 서브 탭 안에 카드 그리드가 있습니다. 카드를 누르면 열려 있는 모든 터미널에 즉시 반영됩니다.
 
 ## 왜 따로 둘까
 
@@ -60,7 +60,7 @@ UI와 같은 톤의 터미널을 선호하는 사람도 있고, 라이트 앱에
 
 ## 탭별이 아닌 전역 설정
 
-선택은 전역입니다. 모든 터미널 pane과 Claude 세션이 같은 활성 테마를 씁니다. 탭별 오버라이드는 현재 없습니다. 필요하면 이슈로 알려주세요.
+선택은 전역입니다. 모든 터미널 pane과 Codex 세션이 같은 활성 테마를 씁니다. 탭별 오버라이드는 현재 없습니다. 필요하면 이슈로 알려주세요.
 
 ## 직접 추가하려면
 
@@ -68,6 +68,6 @@ UI에서 커스텀 테마를 등록하는 기능은 아직 없습니다. 기본 
 
 ## 다음으로
 
-- **[테마 & 폰트](/purplemux/ko/docs/themes-fonts/)** — 앱 테마와 폰트 크기
-- **[커스텀 CSS](/purplemux/ko/docs/custom-css/)** — 나머지 UI 오버라이드
-- **[에디터 연동](/purplemux/ko/docs/editor-integration/)** — 외부 에디터로 파일 열기
+- **[테마 & 폰트](/codexmux/ko/docs/themes-fonts/)** — 앱 테마와 폰트 크기
+- **[커스텀 CSS](/codexmux/ko/docs/custom-css/)** — 나머지 UI 오버라이드
+- **[에디터 연동](/codexmux/ko/docs/editor-integration/)** — 외부 에디터로 파일 열기

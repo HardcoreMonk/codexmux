@@ -1,18 +1,13 @@
 import { createReadStream } from 'fs';
-import path from 'path';
-import os from 'os';
 import readline from 'readline';
 import dayjs from 'dayjs';
 import type { IHistoryResponse, TPeriod } from '@/types/stats';
 import { isWithinPeriod } from './period-filter';
-
-const HISTORY_PATH = path.join(os.homedir(), '.claude', 'history.jsonl');
+import { collectAgentJsonlFiles, type IAgentJsonlFile } from './agent-jsonl-files';
 
 interface IRawHistoryEntry {
   display: string;
-  timestamp: number;
-  project: string;
-  sessionId: string;
+  timestamp: string;
 }
 
 const LENGTH_BUCKETS = [
@@ -32,6 +27,74 @@ const extractCommand = (display: string): string | null => {
   return null;
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const extractCodexUserText = (entry: Record<string, unknown>): string => {
+  if (entry.type !== 'event_msg') return '';
+  const payload = isRecord(entry.payload) ? entry.payload : null;
+  if (payload?.type !== 'user_message') return '';
+  return String(payload.message ?? '');
+};
+
+const parseHistoryFile = async (
+  file: IAgentJsonlFile,
+  period: TPeriod,
+): Promise<IRawHistoryEntry[]> => {
+  const result: IRawHistoryEntry[] = [];
+
+  try {
+    const stream = createReadStream(file.filePath, { encoding: 'utf-8' });
+    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+
+    for await (const line of rl) {
+      if (!line.trim()) continue;
+      try {
+        const entry = JSON.parse(line) as Record<string, unknown>;
+        const timestamp = String(entry.timestamp ?? '');
+        if (!timestamp || !isWithinPeriod(timestamp, period)) continue;
+
+        const display = extractCodexUserText(entry);
+
+        if (
+          !display.trim()
+          || display.includes('<local-command-caveat>')
+          || display.includes('<task-notification>')
+          || display.includes('<environment_context>')
+        ) {
+          continue;
+        }
+
+        result.push({ display, timestamp });
+      } catch {
+        // skip malformed lines
+      }
+    }
+  } catch {
+    // file doesn't exist or is unreadable
+  }
+
+  return result;
+};
+
+const runWithConcurrency = async <T>(
+  tasks: (() => Promise<T>)[],
+  limit: number,
+): Promise<T[]> => {
+  const results: T[] = [];
+  let index = 0;
+
+  const run = async () => {
+    while (index < tasks.length) {
+      const i = index++;
+      results[i] = await tasks[i]();
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, () => run()));
+  return results;
+};
+
 export const parseHistory = async (period: TPeriod, limit: number = 10): Promise<IHistoryResponse> => {
   const commandCounts = new Map<string, number>();
   const lengthCounts = new Map<string, number>();
@@ -42,43 +105,31 @@ export const parseHistory = async (period: TPeriod, limit: number = 10): Promise
     lengthCounts.set(bucket.label, 0);
   }
 
-  try {
-    const stream = createReadStream(HISTORY_PATH, { encoding: 'utf-8' });
-    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+  const files = await collectAgentJsonlFiles();
+  const entriesByFile = await runWithConcurrency(
+    files.map((file) => () => parseHistoryFile(file, period)),
+    10,
+  );
 
-    for await (const line of rl) {
-      if (!line.trim()) continue;
-      try {
-        const entry = JSON.parse(line) as Partial<IRawHistoryEntry>;
-        const timestamp = Number(entry.timestamp ?? 0);
-        if (!timestamp) continue;
+  for (const entry of entriesByFile.flat()) {
+    totalEntries++;
+    const display = entry.display;
 
-        if (!isWithinPeriod(new Date(timestamp), period)) continue;
+    const command = extractCommand(display);
+    if (command) {
+      commandCounts.set(command, (commandCounts.get(command) ?? 0) + 1);
+    }
 
-        totalEntries++;
-        const display = String(entry.display ?? '');
-
-        const command = extractCommand(display);
-        if (command) {
-          commandCounts.set(command, (commandCounts.get(command) ?? 0) + 1);
-        }
-
-        const len = display.length;
-        for (const bucket of LENGTH_BUCKETS) {
-          if (len <= bucket.max) {
-            lengthCounts.set(bucket.label, (lengthCounts.get(bucket.label) ?? 0) + 1);
-            break;
-          }
-        }
-
-        const hour = String(dayjs(timestamp).hour());
-        hourCounts[hour] = (hourCounts[hour] ?? 0) + 1;
-      } catch {
-        // skip malformed lines
+    const len = display.length;
+    for (const bucket of LENGTH_BUCKETS) {
+      if (len <= bucket.max) {
+        lengthCounts.set(bucket.label, (lengthCounts.get(bucket.label) ?? 0) + 1);
+        break;
       }
     }
-  } catch {
-    // file doesn't exist
+
+    const hour = String(dayjs(entry.timestamp).hour());
+    hourCounts[hour] = (hourCounts[hour] ?? 0) + 1;
   }
 
   const topCommands = Array.from(commandCounts.entries())

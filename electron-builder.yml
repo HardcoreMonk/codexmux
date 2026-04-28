@@ -1,5 +1,5 @@
-appId: com.subicura.purplemux
-productName: purplemux
+appId: com.subicura.codexmux
+productName: codexmux
 directories:
   buildResources: build-resources
   output: release
@@ -25,7 +25,7 @@ mac:
 publish:
   provider: github
   owner: subicura
-  repo: purplemux
+  repo: codexmux
 
 dmg:
   contents:

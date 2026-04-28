@@ -1,65 +1,65 @@
 ---
-title: Compatibilité navigateur
-description: Matrice de compatibilité desktop et mobile, avec les particularités à connaître par navigateur.
-eyebrow: Commencer
+title: 브라우저 지원
+description: 데스크탑과 모바일 호환성 매트릭스, 브라우저별 주의사항.
+eyebrow: 시작하기
 permalink: /fr/docs/browser-support/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux est une application web : l'expérience dépend donc du navigateur dans lequel vous l'ouvrez. Voici les versions sur lesquelles nous testons activement — les navigateurs plus anciens peuvent fonctionner mais ne sont pas pris en charge.
+codexmux는 웹 앱이므로 사용 경험은 브라우저에 따라 달라집니다. 아래는 저희가 실제로 테스트하는 버전들입니다 — 더 오래된 버전은 동작할 수도 있지만 공식 지원은 하지 않습니다.
 
-## Desktop
+## 데스크탑
 
-| Navigateur | Minimum | Notes |
+| 브라우저 | 최소 버전 | 비고 |
 |---|---|---|
-| Chrome | 110+ | Recommandé. PWA + Web Push complets. |
-| Edge | 110+ | Même moteur que Chrome, même niveau de support. |
-| Safari | 17+ | PWA complète sur macOS Sonoma+. Web Push nécessite macOS 13+ et une PWA installée. |
-| Firefox | 115+ ESR | Fonctionne bien. Installation PWA manuelle (pas d'invite d'installation). |
+| Chrome | 110+ | 권장. PWA와 Web Push 완전 지원. |
+| Edge | 110+ | Chrome과 같은 엔진, 같은 수준 지원. |
+| Safari | 17+ | macOS Sonoma 이상에서 PWA 완전 지원. Web Push는 macOS 13+ 에서 PWA 설치 후 사용 가능. |
+| Firefox | 115+ ESR | 정상 동작. PWA 설치는 수동 (설치 프롬프트 없음). |
 
-Toutes les fonctionnalités — terminal xterm.js, timeline en direct, vue de session Claude, panneau Git diff — fonctionnent à l'identique sur ces moteurs.
+xterm.js 터미널, 라이브 타임라인, Codex 세션 뷰, Git diff 패널 — 모든 기능이 이들 엔진에서 동일하게 동작합니다.
 
-## Mobile
+## 모바일
 
-| Navigateur | Minimum | Notes |
+| 브라우저 | 최소 버전 | 비고 |
 |---|---|---|
-| iOS Safari | **16.4+** | Requis pour Web Push. Il faut d'abord **ajouter à l'écran d'accueil** ; les push ne se déclenchent pas depuis un onglet classique. |
-| Android Chrome | 110+ | Web Push fonctionne aussi depuis un onglet classique, mais nous recommandons l'installation en PWA pour une mise en page plein écran. |
-| Samsung Internet | 22+ | Fonctionne. L'invite d'installation apparaît automatiquement. |
+| iOS Safari | **16.4+** | Web Push 필수 조건. **홈 화면에 추가**로 PWA 설치한 경우에만 푸시 알림 수신. |
+| Android Chrome | 110+ | 일반 탭에서도 Web Push 동작. PWA 설치 시 전체 화면 레이아웃 권장. |
+| Samsung Internet | 22+ | 정상 동작. 설치 프롬프트 자동 노출. |
 
-{% call callout('warning', 'iOS Safari ≥ 16.4 est la limite') %}
-Apple n'a ajouté Web Push à iOS qu'avec Safari 16.4 (mars 2023). Les versions iOS antérieures peuvent toujours utiliser le tableau de bord, mais vous ne recevrez pas de notifications push même après installation de la PWA.
+{% call callout('warning', 'iOS Safari 16.4 이상이 기준') %}
+Apple은 iOS에 Web Push를 Safari 16.4(2023년 3월)에서야 추가했습니다. 그 이전 iOS 버전은 대시보드는 사용할 수 있지만, PWA로 설치해도 푸시 알림이 오지 않습니다.
 {% endcall %}
 
-## Exigences fonctionnelles
+## 기능 요구사항
 
-purplemux s'appuie sur quelques API navigateur modernes. Si l'une d'elles manque, l'application bascule en mode dégradé mais perd la fonctionnalité correspondante.
+codexmux는 몇 가지 최신 브라우저 API에 의존합니다. 빠진 API가 있으면 앱은 그레이스풀하게 폴백하지만 해당 기능은 사용할 수 없습니다.
 
-| API | Utilisée pour | Repli |
+| API | 사용 목적 | 폴백 |
 |---|---|---|
-| WebSocket | E/S terminal, sync de statut, timeline | Requis — pas de repli. |
-| Clipboard API | Copie de `npx purplemux`, copie de blocs de code | Bouton masqué si indisponible. |
-| Notifications API | Push desktop / mobile | Ignoré — le statut intégré reste affiché. |
-| Service Workers | PWA + Web Push | Servi uniquement comme app web classique. |
-| IntersectionObserver | Timeline en direct, apparition de la nav | Éléments rendus sans animation. |
-| `backdrop-filter` | Nav translucide, modales | Repli sur fond teinté plein. |
-| CSS `color-mix()` + OKLCH | Variables de thème | Safari < 16.4 perd certains états teintés. |
+| WebSocket | 터미널 I/O, 상태 동기화, 타임라인 | 필수 — 폴백 없음 |
+| Clipboard API | `npx codexmux` 복사, 코드블록 복사 | 사용 불가 시 버튼 숨김 |
+| Notifications API | 데스크탑/모바일 푸시 | 건너뜀 — 앱 내 상태는 그대로 표시 |
+| Service Workers | PWA + Web Push | 일반 웹 앱으로만 서빙 |
+| IntersectionObserver | 라이브 타임라인, nav reveal | 애니메이션 없이 렌더링 |
+| `backdrop-filter` | 반투명 nav, 모달 | 단색 tint 배경으로 폴백 |
+| CSS `color-mix()` + OKLCH | 테마 변수 | Safari < 16.4 에서 일부 tint 상태 손실 |
 
-## Mon navigateur convient-il ?
+## 내 브라우저 괜찮나요?
 
-purplemux embarque un auto-diagnostic dans **Paramètres → Vérification du navigateur**. Il exécute les mêmes sondes que celles listées ci-dessus et affiche un badge vert / orange / rouge par fonctionnalité, sans avoir à lire de fiche technique.
+codexmux 앱 안에 **설정 → 브라우저 체크** 자체 진단기가 있습니다. 위에 나열된 것과 동일한 API를 검사하고 기능별로 녹색/황색/빨간색 배지를 보여주니 스펙 시트를 읽지 않아도 됩니다.
 
-## Particularités connues
+## 알려진 quirk
 
-- **Safari 17 + fenêtres privées** — IndexedDB est désactivé, donc le cache de votre espace de travail ne survit pas aux redémarrages. Utilisez une fenêtre normale.
-- **iOS Safari + onglet en arrière-plan** — les terminaux sont automatiquement détruits après ~30 s en arrière-plan. tmux maintient la session réelle en vie ; l'interface se reconnecte à votre retour.
-- **Firefox + certificat Tailscale Serve** — si vous utilisez un nom de tailnet personnalisé hors `ts.net`, Firefox peut être plus exigeant que Chrome sur la confiance HTTPS. Acceptez le certificat une fois et c'est réglé.
-- **Certificats auto-signés** — Web Push refuse purement et simplement de s'enregistrer. Utilisez Tailscale Serve (Let's Encrypt automatique) ou un vrai domaine + reverse proxy.
+- **Safari 17 + 프라이빗 창** — IndexedDB가 비활성화되므로 워크스페이스 캐시가 재시작 후 유지되지 않습니다. 일반 창을 사용하세요.
+- **iOS Safari + 백그라운드 탭** — 약 30초 후 터미널이 자동 종료됩니다. tmux는 실제 세션을 계속 유지하므로, 돌아오면 UI가 재연결됩니다.
+- **Firefox + Tailscale Serve 인증서** — `ts.net`이 아닌 커스텀 tailnet 이름을 쓰면 Firefox가 Chrome보다 HTTPS 신뢰에 까다로울 수 있습니다. 한 번 수락하면 계속 유지됩니다.
+- **자체 서명 인증서** — Web Push 등록 자체가 안 됩니다. Tailscale Serve(자동 Let's Encrypt)나 실제 도메인 + 리버스 프록시를 쓰세요.
 
-## Non pris en charge
+## 미지원
 
-- **Internet Explorer** — jamais pris en charge.
-- **UC Browser, Opera Mini, Puffin** — les navigateurs basés sur un proxy cassent les WebSockets. Ne fonctionnent pas.
-- **Tout navigateur de plus de 3 ans** — notre CSS utilise les couleurs OKLCH et les container queries, qui nécessitent un moteur de l'ère 2023.
+- **Internet Explorer** — 지원하지 않습니다.
+- **UC Browser, Opera Mini, Puffin** — 프록시 기반 브라우저는 WebSocket이 끊깁니다. 동작 안 합니다.
+- **3년 이상 된 브라우저** — OKLCH 컬러와 컨테이너 쿼리를 써서 2023년 이후 엔진이 필요합니다.
 
-Si vous êtes dans une configuration inhabituelle et que quelque chose ne fonctionne pas, [ouvrez une issue](https://github.com/subicura/purplemux/issues) en y joignant votre user agent et le résultat de l'auto-diagnostic.
+특이한 환경에서 문제가 발생하면 유저 에이전트와 자체 진단 결과를 첨부해 [이슈를 열어주세요](https://github.com/subicura/codexmux/issues).

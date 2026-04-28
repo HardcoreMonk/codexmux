@@ -1,8 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import fs from 'fs/promises';
-import path from 'path';
-import os from 'os';
-import { spawn } from 'child_process';
 import { verifyCliToken } from '@/lib/cli-token';
 import { RATE_LIMITS_FILE } from '@/lib/statusline-script';
 import { writeSessionStats, readSessionStats } from '@/lib/session-stats';
@@ -12,7 +9,7 @@ import type { ISessionStats } from '@/types/timeline';
 
 const log = createLogger('statusline');
 
-interface IClaudeStatusInput {
+interface IStatuslineInput {
   session_id?: string;
   transcript_path?: string;
   model?: { id?: string; display_name?: string };
@@ -42,51 +39,7 @@ interface IClaudeStatusInput {
   exceeds_200k_tokens?: boolean;
 }
 
-const readUserStatusLineCommand = async (input: IClaudeStatusInput): Promise<string | null> => {
-  const projectDir = input.workspace?.project_dir;
-  const candidates: string[] = [];
-  if (projectDir) {
-    candidates.push(path.join(projectDir, '.claude', 'settings.local.json'));
-    candidates.push(path.join(projectDir, '.claude', 'settings.json'));
-  }
-  candidates.push(path.join(os.homedir(), '.claude', 'settings.json'));
-
-  for (const file of candidates) {
-    try {
-      const raw = await fs.readFile(file, 'utf-8');
-      const parsed = JSON.parse(raw);
-      const cmd = parsed?.statusLine?.command;
-      if (typeof cmd === 'string' && cmd.trim()) return cmd;
-    } catch {
-      // missing or invalid; try next
-    }
-  }
-  return null;
-};
-
-const runUserCommand = (cmd: string, input: string): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const child = spawn('sh', ['-c', cmd], { stdio: ['pipe', 'pipe', 'pipe'] });
-    let stdout = '';
-    let stderr = '';
-    child.stdout.on('data', (d: Buffer) => {
-      stdout += d.toString();
-    });
-    child.stderr.on('data', (d: Buffer) => {
-      stderr += d.toString();
-    });
-    child.on('error', reject);
-    child.on('close', (code) => {
-      if (code !== 0 && stderr) {
-        log.debug({ code, stderr }, 'user statusLine exited non-zero');
-      }
-      resolve(stdout);
-    });
-    child.stdin.write(input);
-    child.stdin.end();
-  });
-
-const writeRateLimitsIfPresent = async (input: IClaudeStatusInput): Promise<void> => {
+const writeRateLimitsIfPresent = async (input: IStatuslineInput): Promise<void> => {
   const fiveHour = input.rate_limits?.five_hour ?? null;
   const sevenDay = input.rate_limits?.seven_day ?? null;
   if (!fiveHour && !sevenDay) return;
@@ -104,7 +57,7 @@ const writeRateLimitsIfPresent = async (input: IClaudeStatusInput): Promise<void
   }
 };
 
-const buildSessionStats = (input: IClaudeStatusInput): ISessionStats | null => {
+const buildSessionStats = (input: IStatuslineInput): ISessionStats | null => {
   const sessionId = input.session_id;
   if (!sessionId) return null;
 
@@ -131,7 +84,7 @@ const buildSessionStats = (input: IClaudeStatusInput): ISessionStats | null => {
   };
 };
 
-const persistSessionStatsIfPresent = async (input: IClaudeStatusInput): Promise<void> => {
+const persistSessionStatsIfPresent = async (input: IStatuslineInput): Promise<void> => {
   const stats = buildSessionStats(input);
   if (!stats) return;
   await writeSessionStats(stats);
@@ -152,24 +105,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  const input = (req.body ?? {}) as IClaudeStatusInput;
+  const input = (req.body ?? {}) as IStatuslineInput;
 
   await Promise.all([
     writeRateLimitsIfPresent(input),
     persistSessionStatsIfPresent(input),
   ]);
-
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-
-  try {
-    const userCmd = await readUserStatusLineCommand(input);
-    if (userCmd) {
-      const out = await runUserCommand(userCmd, JSON.stringify(input));
-      return res.status(200).send(out);
-    }
-  } catch (err) {
-    log.debug({ err }, 'user statusLine failed');
-  }
 
   return res.status(204).end();
 };

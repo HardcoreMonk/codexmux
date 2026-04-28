@@ -1,16 +1,16 @@
 import { IncomingMessage } from 'http';
 import { WebSocket } from 'ws';
 import { watch, type FSWatcher } from 'fs';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync } from 'fs';
 import { type ISessionWatcher } from './session-detection';
-import { readTailEntries, parseIncremental, parseJsonlContent } from './session-parser';
 import { open as fsOpen } from 'fs/promises';
 import { createReadStream } from 'fs';
 import { createInterface } from 'readline';
-import { getSessionPanePid, checkTerminalProcess, sendKeys, getSessionCwd, getPaneTitle } from './tmux';
-import { cwdToProjectPath } from './session-list';
+import { getSessionPanePid, checkTerminalProcess, sendKeys, getSessionCwd } from './tmux';
 import {
+  readTabAgentJsonlPath,
   updateTabAgentSessionId,
+  updateTabAgentJsonlPath,
   updateTabAgentSummary,
   updateTabLastUserMessage,
   parseSessionName,
@@ -35,21 +35,12 @@ const MAX_CONNECTIONS = 32;
 const MAX_WATCHER_RETRIES = 3;
 const MAX_INIT_ENTRIES = 64;
 
-const CLAUDE_TITLE_RE = /^[✳⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⠐⠈]\s+/;
-
-const parseClaudePaneTitle = (paneTitle: string | null): string | null => {
-  if (!paneTitle) return null;
-  if (!CLAUDE_TITLE_RE.test(paneTitle)) return null;
-  const cleaned = paneTitle.replace(CLAUDE_TITLE_RE, '').trim();
-  return cleaned || null;
-};
-
-const resolveClaudeSummary = async (
-  sessionName: string,
+const resolveAgentSummary = async (
+  _provider: IAgentProvider,
+  _sessionName: string,
   jsonlSummary: string | null | undefined,
 ): Promise<string | null> => {
-  const paneTitle = await getPaneTitle(sessionName);
-  return parseClaudePaneTitle(paneTitle) ?? jsonlSummary ?? null;
+  return jsonlSummary ?? null;
 };
 
 interface ITimelineConnection {
@@ -79,26 +70,19 @@ interface IFileWatcher {
   initOffsets: Map<WebSocket, number>;
 }
 
-interface IJsonlWatcher {
-  stop: () => void;
-}
-
 const gTimeline = globalThis as unknown as {
-  __pmuxTimelineConnections?: Map<WebSocket, ITimelineConnection>;
-  __pmuxTimelineFileWatchers?: Map<string, IFileWatcher>;
-  __pmuxTimelineSessionWatchers?: Map<string, ISessionWatcher>;
-  __pmuxTimelinePendingJsonlWatchers?: Map<string, IJsonlWatcher>;
+  __cmuxTimelineConnections?: Map<WebSocket, ITimelineConnection>;
+  __cmuxTimelineFileWatchers?: Map<string, IFileWatcher>;
+  __cmuxTimelineSessionWatchers?: Map<string, ISessionWatcher>;
 };
 
-if (!gTimeline.__pmuxTimelineConnections) gTimeline.__pmuxTimelineConnections = new Map();
-if (!gTimeline.__pmuxTimelineFileWatchers) gTimeline.__pmuxTimelineFileWatchers = new Map();
-if (!gTimeline.__pmuxTimelineSessionWatchers) gTimeline.__pmuxTimelineSessionWatchers = new Map();
-if (!gTimeline.__pmuxTimelinePendingJsonlWatchers) gTimeline.__pmuxTimelinePendingJsonlWatchers = new Map();
+if (!gTimeline.__cmuxTimelineConnections) gTimeline.__cmuxTimelineConnections = new Map();
+if (!gTimeline.__cmuxTimelineFileWatchers) gTimeline.__cmuxTimelineFileWatchers = new Map();
+if (!gTimeline.__cmuxTimelineSessionWatchers) gTimeline.__cmuxTimelineSessionWatchers = new Map();
 
-const connections = gTimeline.__pmuxTimelineConnections;
-const fileWatchers = gTimeline.__pmuxTimelineFileWatchers;
-const sessionWatchers = gTimeline.__pmuxTimelineSessionWatchers;
-const pendingJsonlWatchers = gTimeline.__pmuxTimelinePendingJsonlWatchers;
+const connections = gTimeline.__cmuxTimelineConnections;
+const fileWatchers = gTimeline.__cmuxTimelineFileWatchers;
+const sessionWatchers = gTimeline.__cmuxTimelineSessionWatchers;
 
 const canSend = (ws: WebSocket): boolean =>
   ws.readyState === WebSocket.OPEN && ws.bufferedAmount < BACKPRESSURE_LIMIT;
@@ -118,7 +102,7 @@ export const broadcastSessionStats = (stats: ISessionStats) => {
   }
 };
 
-const sendEmptyInit = (ws: WebSocket, sessionId = '', isClaudeStarting = false) => {
+const sendEmptyInit = (ws: WebSocket, sessionId = '', isAgentStarting = false) => {
   sendJson(ws, {
     type: 'timeline:init',
     entries: [],
@@ -126,7 +110,7 @@ const sendEmptyInit = (ws: WebSocket, sessionId = '', isClaudeStarting = false) 
     totalEntries: 0,
     startByteOffset: 0,
     hasMore: false,
-    ...(isClaudeStarting && { isClaudeStarting: true }),
+    ...(isAgentStarting && { isAgentStarting: true }),
   });
 };
 
@@ -152,8 +136,9 @@ const subscribeAndUpdateSummary = async (
   sessionName: string,
   provider: IAgentProvider,
 ) => {
+  await updateTabAgentJsonlPath(sessionName, provider, jsonlPath).catch(() => {});
   const jsonlSummary = await subscribeToFile(ws, jsonlPath, sessionId, sessionName, provider);
-  const summary = await resolveClaudeSummary(sessionName, jsonlSummary);
+  const summary = await resolveAgentSummary(provider, sessionName, jsonlSummary);
   await updateTabAgentSummary(sessionName, provider, summary).catch(() => {});
 };
 
@@ -169,7 +154,7 @@ const broadcastToWatcher = (watcherKey: string, msg: TTimelineServerMessage) => 
 };
 
 const readBoundedEntries = async (
-  filePath: string, from: number, to: number,
+  filePath: string, from: number, to: number, provider: IAgentProvider,
 ): Promise<import('@/types/timeline').ITimelineEntry[]> => {
   const readSize = to - from;
   if (readSize <= 0) return [];
@@ -177,7 +162,7 @@ const readBoundedEntries = async (
   try {
     const buf = Buffer.alloc(readSize);
     await handle.read(buf, 0, readSize, from);
-    return parseJsonlContent(buf.toString('utf-8'));
+    return provider.parseJsonlContent(buf.toString('utf-8'));
   } finally {
     await handle.close();
   }
@@ -191,7 +176,7 @@ const processFileChange = async (fw: IFileWatcher) => {
   fw.processing = true;
   try {
     const prevOffset = fw.offset;
-    const { newEntries, newOffset, pendingBuffer } = await parseIncremental(
+    const { newEntries, newOffset, pendingBuffer } = await fw.provider.parseIncremental(
       fw.jsonlPath, fw.offset, fw.pendingBuffer,
     );
     fw.pendingBuffer = pendingBuffer;
@@ -211,7 +196,7 @@ const processFileChange = async (fw: IFileWatcher) => {
           fw.initOffsets.delete(ws);
           if (prevOffset < initOffset) {
             partialReads.push(
-              readBoundedEntries(fw.jsonlPath, initOffset, newOffset)
+              readBoundedEntries(fw.jsonlPath, initOffset, newOffset, fw.provider)
                 .then((entries) => {
                   if (entries.length > 0 && canSend(ws)) {
                     const partialMsg: TTimelineServerMessage = { type: 'timeline:append', entries };
@@ -237,7 +222,7 @@ const processFileChange = async (fw: IFileWatcher) => {
 
       if (!fw.summaryResolved && newEntries.some((e) => e.type === 'assistant-message')) {
         fw.summaryResolved = true;
-        const summary = await resolveClaudeSummary(fw.sessionName, undefined);
+        const summary = await resolveAgentSummary(fw.provider, fw.sessionName, undefined);
         if (summary) {
           await updateTabAgentSummary(fw.sessionName, fw.provider, summary).catch(() => {});
         }
@@ -379,7 +364,7 @@ const subscribeToFile = async (
 
   fw.connections.add(ws);
 
-  const result = await readTailEntries(jsonlPath, MAX_INIT_ENTRIES);
+  const result = await provider.readTailEntries(jsonlPath, MAX_INIT_ENTRIES);
 
   if (result.errorCount > 0) {
     sendJson(ws, {
@@ -448,106 +433,6 @@ const getSessionConnections = (sessionName: string): ITimelineConnection[] => {
   return result;
 };
 
-const cancelJsonlWatcher = (sessionName: string) => {
-  const w = pendingJsonlWatchers.get(sessionName);
-  if (w) {
-    w.stop();
-    pendingJsonlWatchers.delete(sessionName);
-  }
-};
-
-const watchForJsonlFile = (
-  sessionName: string,
-  sessionId: string,
-  cwd: string,
-  provider: IAgentProvider,
-) => {
-  cancelJsonlWatcher(sessionName);
-
-  const projectDir = cwdToProjectPath(cwd);
-  const jsonlFilename = `${sessionId}.jsonl`;
-  const expectedJsonlPath = path.join(projectDir, jsonlFilename);
-
-  let dirWatcher: FSWatcher | null = null;
-  let parentWatcher: FSWatcher | null = null;
-  let stopped = false;
-
-  const stop = () => {
-    if (stopped) return;
-    stopped = true;
-    if (dirWatcher) { dirWatcher.close(); dirWatcher = null; }
-    if (parentWatcher) { parentWatcher.close(); parentWatcher = null; }
-  };
-
-  const onJsonlFound = async () => {
-    stop();
-    pendingJsonlWatchers.delete(sessionName);
-    await updateTabAgentSessionId(sessionName, provider, sessionId).catch(() => {});
-
-    const wsConns = getSessionConnections(sessionName);
-    for (const c of wsConns) {
-      if (expectedJsonlPath !== c.currentJsonlPath) {
-        if (c.currentJsonlPath) {
-          unsubscribeFromFile(c.ws, c.currentJsonlPath);
-        }
-        c.currentJsonlPath = expectedJsonlPath;
-        await subscribeAndUpdateSummary(c.ws, expectedJsonlPath, sessionId, sessionName, provider);
-      }
-    }
-  };
-
-  const watchProjectDir = () => {
-    if (stopped) return;
-    try {
-      dirWatcher = watch(projectDir, (_event, filename) => {
-        if (stopped) return;
-        if (filename === jsonlFilename && existsSync(expectedJsonlPath)) {
-          onJsonlFound();
-        }
-      });
-      dirWatcher.on('error', () => {});
-    } catch {
-    }
-  };
-
-  if (existsSync(expectedJsonlPath)) {
-    onJsonlFound();
-    return;
-  }
-
-  if (existsSync(projectDir)) {
-    watchProjectDir();
-    // Re-check after watch setup: file may have been created between existsSync and watch()
-    if (!stopped && existsSync(expectedJsonlPath)) {
-      onJsonlFound();
-    }
-  } else {
-    const projectsDir = path.dirname(projectDir);
-    const projectDirName = path.basename(projectDir);
-    try {
-      mkdirSync(projectsDir, { recursive: true });
-      parentWatcher = watch(projectsDir, (_event, filename) => {
-        if (stopped) return;
-        if (filename === projectDirName && existsSync(projectDir)) {
-          if (parentWatcher) { parentWatcher.close(); parentWatcher = null; }
-          if (existsSync(expectedJsonlPath)) {
-            onJsonlFound();
-          } else {
-            watchProjectDir();
-            if (!stopped && existsSync(expectedJsonlPath)) {
-              onJsonlFound();
-            }
-          }
-        }
-      });
-      parentWatcher.on('error', () => {});
-    } catch {
-    }
-  }
-
-  pendingJsonlWatchers.set(sessionName, { stop });
-};
-
 const cleanup = (conn: ITimelineConnection) => {
   if (conn.cleaned) return;
   conn.cleaned = true;
@@ -562,7 +447,6 @@ const cleanup = (conn: ITimelineConnection) => {
   const wsKey = conn.sessionName;
   const hasOtherConn = getSessionConnections(conn.sessionName).length > 0;
   if (!hasOtherConn) {
-    cancelJsonlWatcher(wsKey);
     const sw = sessionWatchers.get(wsKey);
     if (sw) {
       sw.stop();
@@ -572,14 +456,24 @@ const cleanup = (conn: ITimelineConnection) => {
 };
 
 const resolveJsonlPath = async (
+  provider: IAgentProvider,
   tmuxSession: string,
   sessionId: string,
 ): Promise<string | null> => {
   const cwd = await getSessionCwd(tmuxSession);
   if (!cwd) return null;
-  const projectDir = cwdToProjectPath(cwd);
-  const jsonlPath = path.join(projectDir, `${sessionId}.jsonl`);
+  const jsonlPath = await provider.resolveJsonlPath(sessionId, cwd);
+  if (!jsonlPath) return null;
   return existsSync(jsonlPath) ? jsonlPath : null;
+};
+
+const resolveCachedJsonlPath = async (
+  sessionName: string,
+  provider: IAgentProvider,
+): Promise<string | null> => {
+  const cached = await readTabAgentJsonlPath(sessionName, provider);
+  if (!cached || !isAllowedJsonlPath(cached) || !existsSync(cached)) return null;
+  return cached;
 };
 
 const handleResumeMessage = async (
@@ -607,7 +501,7 @@ const handleResumeMessage = async (
 
     await updateTabAgentSessionId(conn.sessionName, conn.provider, sessionId).catch(() => {});
 
-    const jsonlPath = await resolveJsonlPath(tmuxSession, sessionId);
+    const jsonlPath = await resolveJsonlPath(conn.provider, tmuxSession, sessionId);
 
     sendJson(ws, {
       type: 'timeline:resume-started',
@@ -623,10 +517,6 @@ const handleResumeMessage = async (
       await subscribeAndUpdateSummary(ws, jsonlPath, sessionId, conn.sessionName, conn.provider);
     } else {
       sendEmptyInit(ws, sessionId);
-      const cwd = await getSessionCwd(tmuxSession);
-      if (cwd) {
-        watchForJsonlFile(conn.sessionName, sessionId, cwd, conn.provider);
-      }
     }
   } catch (err) {
     sendJson(ws, {
@@ -650,7 +540,7 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
     return;
   }
 
-  const panelType = url.searchParams.get('panelType') ?? 'claude-code';
+  const panelType = url.searchParams.get('panelType') ?? 'codex';
   const provider = getProviderByPanelType(panelType);
   if (!provider) {
     ws.close(1008, 'Unknown panel type');
@@ -733,7 +623,7 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
     cleanup(conn);
   });
 
-  const hintSessionId = url.searchParams.get('agentSessionId') ?? url.searchParams.get('claudeSessionId');
+  const hintSessionId = url.searchParams.get('agentSessionId');
   const sessionInfo = await provider.detectActiveSession(panePid);
 
   if (conn.cleaned) return;
@@ -742,11 +632,6 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
     sendJson(ws, { type: 'timeline:error', code: 'not-installed', message: `${provider.displayName} is not installed` });
     sendEmptyInit(ws);
     return;
-  }
-
-  if (hintSessionId && sessionInfo.status === 'not-running') {
-    await updateTabAgentSessionId(conn.sessionName, provider, null).catch(() => {});
-    await updateTabAgentSummary(conn.sessionName, provider, null).catch(() => {});
   }
 
   // Check if agent process is running in pane before PID file is created
@@ -780,7 +665,8 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
     if (sessionInfo.sessionId) {
       await updateTabAgentSessionId(conn.sessionName, provider, sessionInfo.sessionId).catch(() => {});
     }
-    const jsonlPath = await resolveJsonlPath(sessionName, effectiveSessionId);
+    const jsonlPath = await resolveCachedJsonlPath(conn.sessionName, provider)
+      ?? await resolveJsonlPath(provider, sessionName, effectiveSessionId);
     if (jsonlPath) {
       conn.currentJsonlPath = jsonlPath;
       await subscribeAndUpdateSummary(ws, jsonlPath, effectiveSessionId, conn.sessionName, provider);
@@ -800,8 +686,7 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
       const wsConns = getSessionConnections(sessionName);
       for (const c of wsConns) {
         if (newInfo.jsonlPath && newInfo.jsonlPath !== c.currentJsonlPath) {
-          cancelJsonlWatcher(sessionName);
-          if (c.currentJsonlPath) {
+      if (c.currentJsonlPath) {
             unsubscribeFromFile(c.ws, c.currentJsonlPath);
           }
           c.currentJsonlPath = newInfo.jsonlPath;
@@ -818,13 +703,10 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
 
           await subscribeAndUpdateSummary(c.ws, newInfo.jsonlPath, newInfo.sessionId ?? undefined, sessionName, provider);
         } else if (!newInfo.jsonlPath && newInfo.status === 'not-running') {
-          cancelJsonlWatcher(sessionName);
           if (c.currentJsonlPath) {
             unsubscribeFromFile(c.ws, c.currentJsonlPath);
             c.currentJsonlPath = null;
           }
-          await updateTabAgentSessionId(sessionName, provider, null).catch(() => {});
-          await updateTabAgentSummary(sessionName, provider, null).catch(() => {});
           sendJson(c.ws, {
             type: 'timeline:session-changed',
             newSessionId: '',
@@ -847,27 +729,15 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
               continue;
             }
           }
-          if (pendingJsonlWatchers.has(sessionName)) continue;
           sendJson(c.ws, {
             type: 'timeline:session-changed',
             newSessionId: newInfo.sessionId ?? '',
             reason: 'session-waiting',
           });
         }
-        if (newInfo.sessionId && newInfo.cwd) {
-          const hasActiveSubscription = wsConns.some((c) => c.currentJsonlPath !== null);
-          if (!hasActiveSubscription && wsConns.length > 0) {
-            cancelJsonlWatcher(sessionName);
-            watchForJsonlFile(sessionName, newInfo.sessionId, newInfo.cwd, provider);
-          }
-        }
       }
     }, { skipInitial: true });
     sessionWatchers.set(wsKey, sw);
-  }
-
-  if (sessionInfo.status === 'running' && !sessionInfo.jsonlPath && sessionInfo.sessionId && sessionInfo.cwd) {
-    watchForJsonlFile(sessionName, sessionInfo.sessionId, sessionInfo.cwd, provider);
   }
 
   // Race condition mitigation for isAgentStarting:
@@ -896,7 +766,6 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
           reason: 'session-waiting',
         });
         sendEmptyInit(ws, recheckInfo.sessionId, true);
-        watchForJsonlFile(sessionName, recheckInfo.sessionId, recheckInfo.cwd, provider);
       }
     } else {
       sendEmptyInit(ws, '', true);
@@ -915,9 +784,6 @@ export const gracefulTimelineShutdown = () => {
     sw.stop();
   }
   sessionWatchers.clear();
-  for (const [name] of pendingJsonlWatchers) {
-    cancelJsonlWatcher(name);
-  }
   for (const [jsonlPath] of fileWatchers) {
     removeFileWatcher(jsonlPath);
   }

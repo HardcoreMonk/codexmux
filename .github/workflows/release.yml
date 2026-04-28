@@ -119,10 +119,8 @@ jobs:
           name: electron-mac
           path: mac/
 
-      - name: Generate changelog with Claude
+      - name: Generate changelog with Codex
         id: changelog
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           set +e
           BODY=$(node scripts/generate-changelog.mjs 2>changelog.err)

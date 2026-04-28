@@ -1,79 +1,79 @@
 ---
-title: Notizen (AI-Tagesbericht)
-description: Eine End-of-Day-Zusammenfassung jeder Claude-Code-Session, von einem LLM geschrieben, lokal als Markdown gespeichert.
-eyebrow: Claude Code
+title: 노트 (AI 데일리 리포트)
+description: 하루 동안의 모든 Codex 세션을 LLM이 요약해 Markdown으로 로컬에 저장하는 데일리 리포트.
+eyebrow: Codex
 permalink: /de/docs/notes-daily-report/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Wenn der Tag vorbei ist, kann purplemux die Session-Logs des Tages lesen und dir ein einzeiliges Briefing plus eine pro-Projekt-Markdown-Zusammenfassung schreiben. Das Ganze lebt in der Seitenleiste als **Notizen** und existiert, damit Retros, Standups und 1:1s nicht mit „Was hab ich gestern gemacht?" anfangen.
+하루가 끝나면 codexmux가 그날의 세션 로그를 읽어서, 한 줄짜리 브리프와 프로젝트별 Markdown 요약을 작성해줍니다. 사이드바의 **노트**에 살고 있고, 회고·스탠드업·1:1이 더 이상 "어제 뭐 했지?"로 시작하지 않게 만들기 위한 기능입니다.
 
-## Was du pro Tag bekommst
+## 하루치에 들어가는 것
 
-Jeder Eintrag hat zwei Schichten:
+각 항목은 두 레이어로 구성됩니다:
 
-- **Einzeiliges Briefing** — ein einzelner Satz, der die Form des Tages einfängt. Direkt in der Notizen-Liste sichtbar.
-- **Detail-Ansicht** — klapp das Briefing aus, um einen pro Projekt gruppierten Markdown-Bericht mit H3-Sektionen pro Thema und gepunkteten Highlights darunter zu sehen.
+- **한 줄 브리프** — 하루의 형태를 한 문장으로 포착. 노트 목록에서 바로 보임
+- **상세 뷰** — 브리프를 펼치면 프로젝트별로 그룹화된 Markdown 리포트. 주제별 H3 섹션과 그 아래 글머리 기호 하이라이트
 
-Das Briefing ist, was du scannst; die Detail-Ansicht ist, was du in ein Retro-Doc kopierst.
+브리프는 스캔용, 상세 뷰는 회고 문서에 붙여넣는 용도입니다.
 
-Ein kleiner Header pro Tag zeigt die Session-Anzahl und Gesamtkosten — dieselben Zahlen wie das [Statistik-Dashboard](/purplemux/de/docs/usage-rate-limits/), in Kurzform.
+각 날짜의 작은 헤더는 세션 수와 총 비용을 보여줍니다 — [통계 대시보드](/codexmux/de/docs/usage-rate-limits/)와 같은 수치를 요약 형태로.
 
-## Bericht generieren
+## 리포트 생성
 
-Berichte werden on-demand generiert, nicht automatisch. In der Notizen-Ansicht:
+리포트는 자동이 아니라 on-demand로 생성됩니다. 노트 뷰에서:
 
-- **Generieren** neben einem fehlenden Tag erstellt den Bericht des Tages aus den JSONL-Transkripten.
-- **Neu generieren** auf einem bestehenden Eintrag baut denselben Tag mit frischem Inhalt neu (nützlich, wenn du Kontext ergänzt oder die Sprache gewechselt hast).
-- **Alle generieren** geht jeden fehlenden Tag durch und füllt sie sequentiell. Du kannst die Batch-Aktion jederzeit stoppen.
+- 비어 있는 날 옆의 **Generate**가 JSONL 트랜스크립트로부터 그날의 리포트를 만듭니다
+- 기존 항목의 **Regenerate**는 같은 날을 새 내용으로 다시 만듭니다 (컨텍스트를 추가했거나 언어를 바꾼 경우 유용)
+- **Generate all**은 비어 있는 모든 날을 순차적으로 채웁니다. 배치는 언제든 멈출 수 있습니다
 
-Das LLM verarbeitet jede Session einzeln, bevor sie pro Projekt gemergt werden, sodass an langen Tagen mit vielen Tabs kein Kontext verloren geht.
+LLM은 각 세션을 개별적으로 처리한 뒤 프로젝트별로 병합하므로, 탭이 많은 긴 하루에도 컨텍스트가 사라지지 않습니다.
 
-{% call callout('note', 'Locale folgt der App') %}
-Berichte werden in der Sprache geschrieben, auf die purplemux gesetzt ist. Sprache wechseln und neu generieren liefert denselben Inhalt in der neuen Locale.
+{% call callout('note', '로케일은 앱을 따라감') %}
+리포트는 codexmux에 설정된 언어로 작성됩니다. 앱 언어를 바꾸고 regenerate하면 같은 내용을 새 로케일로 받을 수 있습니다.
 {% endcall %}
 
-## Wo es lebt
+## 어디에 있는가
 
-| Oberfläche | Pfad |
+| 위치 | 경로 |
 |---|---|
-| Seitenleiste | **Notizen**-Eintrag öffnet die Listenansicht |
-| Shortcut | <kbd>⌘⇧E</kbd> auf macOS, <kbd>Ctrl⇧E</kbd> auf Linux |
-| Speicherung | `~/.purplemux/stats/daily-reports/<datum>.json` |
+| 사이드바 | **노트** 항목, 목록 뷰 열기 |
+| 단축키 | macOS는 <kbd>⌘⇧E</kbd>, Linux는 <kbd>Ctrl⇧E</kbd> |
+| 저장 | `~/.codexmux/stats/daily-reports/<date>.json` |
 
-Jeder Tag ist eine JSON-Datei mit Briefing, detailliertem Markdown, Locale und den Session-Metadaten. Nichts verlässt deine Maschine außer dem LLM-Call selbst, der durch den Claude-Code-Account geht, der auf dem Host konfiguriert ist.
+각 날짜는 브리프, 상세 Markdown, 로케일, 세션 메타데이터를 담은 JSON 파일 하나입니다. LLM 호출 자체를 제외하면 머신 밖으로 나가는 것은 없으며, 그 호출은 호스트에 설정된 Codex 계정을 통해 이루어집니다.
 
-## Pro-Projekt-Struktur
+## 프로젝트별 구조
 
-In der Detail-Ansicht sieht ein typischer Tag so aus:
+상세 뷰 안에서 일반적인 하루는 이런 모양입니다:
 
 ```markdown
-**purplemux**
+**codexmux**
 
-### Landing-Page-Entwurf
-- Acht-Sektionen-Struktur mit Hero-/Why-/Mobile-/Stats-Layouts entworfen
-- Lila Marken-Farbe als OKLCH-Variable gemacht
-- Desktop-/Mobile-Screenshot-Mockup-Frames angewendet
+### 랜딩 페이지 초안
+- Hero / 이유 / 모바일 / 통계 레이아웃의 8섹션 구조 설계
+- 퍼플 브랜드 색상을 OKLCH 변수로 정리
+- 데스크탑/모바일 스크린샷 mockup 프레임 적용
 
-### Feature-Card-Mockups
-- Echte Spinner-/Pulse-Indikatoren auf dem Multi-Session-Dashboard reproduziert
-- Git-Diff-, Workspace- und Self-Hosted-Mockup-CSS verschärft
+### 피처 카드 mockup
+- 멀티 세션 대시보드의 spinner / pulse 인디케이터 실물 재현
+- Git Diff, 워크스페이스, 셀프호스트 mockup CSS 정리
 ```
 
-Sessions, die im selben Projekt gearbeitet haben, werden unter einer Projekt-Überschrift gemergt; Themen innerhalb eines Projekts werden zu H3-Sektionen. Du kannst das gerenderte Markdown direkt in ein Retro-Template kopieren.
+같은 프로젝트에서 작업한 세션들은 하나의 프로젝트 헤딩 아래 병합되고, 프로젝트 안의 주제는 H3 섹션이 됩니다. 렌더링된 Markdown을 그대로 회고 템플릿에 붙여넣을 수 있습니다.
 
-## Wenn Tage nicht zusammengefasst werden müssen
+## 요약할 가치가 없는 날
 
-Ein Tag ohne Claude-Sessions bekommt keinen Eintrag. Ein Tag mit einer winzigen Session erzeugt vielleicht ein sehr kurzes Briefing — das ist okay; beim nächsten Mal, an dem du wirklich arbeitest, generiert es länger.
+Codex 세션이 없는 날은 항목이 만들어지지 않습니다. 작은 세션 하나만 있는 날은 매우 짧은 브리프가 나올 수 있습니다 — 괜찮습니다. 다음에 실제 작업을 했을 때 더 길어집니다.
 
-Der Batch-Generator überspringt Tage, die schon einen Bericht in der aktuellen Locale haben, und füllt nur echte Lücken.
+배치 생성기는 현재 로케일로 이미 리포트가 있는 날은 건너뛰고, 진짜로 비어 있는 날만 채웁니다.
 
-## Privatsphäre
+## 프라이버시
 
-Der Text, der zum Bauen eines Berichts genutzt wird, sind dieselben JSONL-Transkripte, die du selbst in `~/.claude/projects/` lesen kannst. Die Summarization-Anfrage ist ein einzelner LLM-Call pro Tag; der gecachte Output bleibt unter `~/.purplemux/`. Es gibt keine Telemetrie, keinen Upload, keinen Shared-Cache.
+리포트를 만드는 데 사용되는 텍스트는 `~/.codex/sessions/`에서 직접 읽을 수 있는 같은 JSONL 트랜스크립트입니다. 요약 요청은 하루당 한 번의 LLM 호출이고, 캐시된 출력은 `~/.codexmux/` 아래에 머무릅니다. 텔레메트리도, 업로드도, 공유 캐시도 없습니다.
 
-## Wie es weitergeht
+## 다음으로
 
-- **[Nutzung & Rate-Limits](/purplemux/de/docs/usage-rate-limits/)** — das Dashboard, aus dem die Session-Counts und -Kosten kommen.
-- **[Live-Session-Ansicht](/purplemux/de/docs/live-session-view/)** — die Quelldaten, in Echtzeit.
-- **[Tastenkürzel](/purplemux/de/docs/keyboard-shortcuts/)** — inklusive <kbd>⌘⇧E</kbd> für Notizen.
+- **[사용량 & 요금 제한](/codexmux/de/docs/usage-rate-limits/)** — 세션 수와 비용이 오는 대시보드
+- **[라이브 세션 뷰](/codexmux/de/docs/live-session-view/)** — 원본 데이터, 실시간으로
+- **[키보드 단축키](/codexmux/de/docs/keyboard-shortcuts/)** — 노트용 <kbd>⌘⇧E</kbd> 포함

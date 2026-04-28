@@ -1,21 +1,13 @@
-import fs from 'fs/promises';
-import path from 'path';
-import os from 'os';
 import dayjs from 'dayjs';
 import type {
   IStatsCache,
   IStatsCacheDailyActivity,
   IStatsCacheDailyTokens,
-  IStatsCacheModelUsage,
-  IStatsCacheLongestSession,
-  ITokenBreakdown,
   IOverviewResponse,
   TPeriod,
 } from '@/types/stats';
 import { isDateStringWithinPeriod } from './period-filter';
-import { calculateCostByFullId } from '@/lib/claude-tokens';
-
-const STATS_CACHE_PATH = path.join(os.homedir(), '.claude', 'stats-cache.json');
+import { calculateCostByFullId } from '@/lib/model-tokens';
 
 const estimateCostFromUsage = (
   model: string,
@@ -41,120 +33,10 @@ const EMPTY_CACHE: IStatsCache = {
   totalSpeculationTimeSavedMs: 0,
 };
 
-const safeParseDailyActivity = (raw: unknown): IStatsCacheDailyActivity[] => {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
-    .map((item) => ({
-      date: String(item.date ?? ''),
-      messageCount: Number(item.messageCount ?? 0),
-      sessionCount: Number(item.sessionCount ?? 0),
-      toolCallCount: Number(item.toolCallCount ?? 0),
-    }));
-};
-
-const parseTokenBreakdown = (v: unknown): ITokenBreakdown => {
-  if (typeof v === 'number') {
-    return { input: v, output: 0, cacheRead: 0, cacheCreation: 0, cacheCreation5m: 0, cacheCreation1h: 0 };
-  }
-  if (typeof v === 'object' && v !== null) {
-    const o = v as Record<string, unknown>;
-    const cacheCreation = Number(o.cacheCreation ?? 0);
-    const cacheCreation1h = Number(o.cacheCreation1h ?? 0);
-    const cacheCreation5m = o.cacheCreation5m != null
-      ? Number(o.cacheCreation5m)
-      : Math.max(0, cacheCreation - cacheCreation1h);
-    return {
-      input: Number(o.input ?? 0),
-      output: Number(o.output ?? 0),
-      cacheRead: Number(o.cacheRead ?? 0),
-      cacheCreation,
-      cacheCreation5m,
-      cacheCreation1h,
-    };
-  }
-  return { input: 0, output: 0, cacheRead: 0, cacheCreation: 0, cacheCreation5m: 0, cacheCreation1h: 0 };
-};
-
-const safeParseDailyTokens = (raw: unknown): IStatsCacheDailyTokens[] => {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
-    .map((item) => ({
-      date: String(item.date ?? ''),
-      tokensByModel: typeof item.tokensByModel === 'object' && item.tokensByModel !== null
-        ? Object.fromEntries(
-            Object.entries(item.tokensByModel as Record<string, unknown>).map(([k, v]) => [k, parseTokenBreakdown(v)]),
-          )
-        : {},
-    }));
-};
-
-const safeParseModelUsage = (raw: unknown): Record<string, IStatsCacheModelUsage> => {
-  if (typeof raw !== 'object' || raw === null) return {};
-  const result: Record<string, IStatsCacheModelUsage> = {};
-  for (const [model, usage] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof usage !== 'object' || usage === null) continue;
-    const u = usage as Record<string, unknown>;
-    const cacheCreationTotal = Number(u.cacheCreationInputTokens ?? 0);
-    const cacheCreation1h = Number(u.cacheCreation1hInputTokens ?? 0);
-    const cacheCreation5m = u.cacheCreation5mInputTokens != null
-      ? Number(u.cacheCreation5mInputTokens)
-      : Math.max(0, cacheCreationTotal - cacheCreation1h);
-    result[model] = {
-      inputTokens: Number(u.inputTokens ?? 0),
-      outputTokens: Number(u.outputTokens ?? 0),
-      cacheReadInputTokens: Number(u.cacheReadInputTokens ?? 0),
-      cacheCreationInputTokens: cacheCreationTotal,
-      cacheCreation5mInputTokens: cacheCreation5m,
-      cacheCreation1hInputTokens: cacheCreation1h,
-      webSearchRequests: Number(u.webSearchRequests ?? 0),
-      costUSD: Number(u.costUSD ?? 0),
-      contextWindow: Number(u.contextWindow ?? 0),
-      maxOutputTokens: Number(u.maxOutputTokens ?? 0),
-    };
-  }
-  return result;
-};
-
-const safeParseLongestSession = (raw: unknown): IStatsCacheLongestSession => {
-  if (typeof raw !== 'object' || raw === null) {
-    return { sessionId: '', duration: 0, messageCount: 0, timestamp: '' };
-  }
-  const r = raw as Record<string, unknown>;
-  return {
-    sessionId: String(r.sessionId ?? ''),
-    duration: Number(r.duration ?? 0),
-    messageCount: Number(r.messageCount ?? 0),
-    timestamp: String(r.timestamp ?? ''),
-  };
-};
-
-const safeParseHourCounts = (raw: unknown): Record<string, number> => {
-  if (typeof raw !== 'object' || raw === null) return {};
-  return Object.fromEntries(
-    Object.entries(raw as Record<string, unknown>).map(([k, v]) => [k, Number(v ?? 0)]),
-  );
-};
-
 export const readStatsCache = async (): Promise<IStatsCache> => {
   try {
-    const content = await fs.readFile(STATS_CACHE_PATH, 'utf-8');
-    const raw = JSON.parse(content) as Record<string, unknown>;
-    return {
-      version: Number(raw.version ?? 0),
-      lastComputedDate: String(raw.lastComputedDate ?? ''),
-      dailyActivity: safeParseDailyActivity(raw.dailyActivity),
-      dailyModelTokens: safeParseDailyTokens(raw.dailyModelTokens),
-      modelUsage: safeParseModelUsage(raw.modelUsage),
-      totalSessions: Number(raw.totalSessions ?? 0),
-      totalMessages: Number(raw.totalMessages ?? 0),
-      longestSession: safeParseLongestSession(raw.longestSession),
-      firstSessionDate: String(raw.firstSessionDate ?? ''),
-      hourCounts: safeParseHourCounts(raw.hourCounts),
-      dayHourCounts: safeParseHourCounts(raw.dayHourCounts),
-      totalSpeculationTimeSavedMs: Number(raw.totalSpeculationTimeSavedMs ?? 0),
-    };
+    const { getStatsCache } = await import('./stats-cache');
+    return await getStatsCache();
   } catch {
     return EMPTY_CACHE;
   }

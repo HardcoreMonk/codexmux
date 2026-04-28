@@ -1,84 +1,43 @@
 ---
-title: Nutzung & Rate-Limits
-description: Echtzeit-Countdowns für 5h- und 7d-Rate-Limits in der Seitenleiste, plus ein Statistik-Dashboard für Tokens, Kosten und Projekt-Aufschlüsselungen.
-eyebrow: Claude Code
+title: 사용량 & rate limit
+description: 5시간/7일 quota와 token, cost, project 통계.
+eyebrow: Codex
 permalink: /de/docs/usage-rate-limits/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Mitten in der Arbeit ein Rate-Limit zu reißen, ist die schlimmste Art von Unterbrechung. purplemux zieht Claude Codes Quota-Zahlen in die Seitenleiste und ergänzt ein Statistik-Dashboard, sodass du deinen Nutzungsrhythmus auf einen Blick siehst.
+codexmux는 Codex quota와 사용량 통계를 sidebar와 dashboard에 표시합니다. live quota는 statusline payload가 있을 때 사용하고, 과거 통계는 Codex JSONL에서 계산합니다.
 
-## Das Sidebar-Widget
+## sidebar widget
 
-Zwei dünne Balken sitzen unten in der Seitenleiste: **5h** und **7d**. Jeder zeigt:
+sidebar 하단의 **5h**, **7d** bar는 다음 정보를 보여줍니다.
 
-- Den Prozentsatz des Fensters, den du verbraucht hast
-- Die Restzeit bis zum Reset
-- Einen schwachen Projektions-Balken dafür, wo du landest, wenn du dein aktuelles Tempo hältst
+- 현재 window 사용 비율.
+- reset까지 남은 시간.
+- 현재 속도를 유지할 때의 예상 사용량.
 
-Hover einen Balken für die volle Aufschlüsselung — verbrauchter Prozent, projizierter Prozent und Reset-Zeit als relative Dauer.
+색상은 50% 미만 teal, 50-79% amber, 80% 이상 red입니다.
 
-Die Zahlen kommen aus Claude Codes eigenem statusline-JSON. purplemux installiert ein winziges `~/.purplemux/statusline.sh`-Skript, das die Daten jedes Mal an den lokalen Server postet, wenn Claude seine Statusline auffrischt; ein `fs.watch` hält die UI synchron.
+## stats dashboard
 
-## Farb-Schwellen
+Dashboard는 다음 정보를 제공합니다.
 
-Beide Balken wechseln die Farbe, abhängig vom Verbrauchsprozent:
+- 전체 session, 전체 cost, 오늘 cost, 이번 달 cost.
+- model별 input/output/cache token 사용량.
+- project별 session, message, token, cost.
+- 30일 활동 chart와 streak.
+- 최근 1주일의 day x hour usage grid.
 
-| Verbrauch | Farbe |
-|---|---|
-| 0–49 % | teal — entspannt |
-| 50–79 % | gelb — Tempo runter |
-| 80–100 % | rot — gleich an die Wand |
+## 데이터 출처
 
-Die Schwellen passen zum Rate-Limit-Widget der Landingpage. Hast du Gelb ein paar Mal gesehen, wird die Seitenleiste zum peripheren Pacing-Tool — du nimmst es nicht mehr bewusst wahr, aber du verteilst Arbeit über Fenster.
+모든 dashboard 값은 `~/.codex/sessions/` 아래 JSONL에서 로컬로 계산됩니다. cache는 `~/.codexmux/stats/`에 저장되며 외부로 전송되지 않습니다.
 
-{% call callout('tip', 'Projektion schlägt Prozent') %}
-Der schwache Balken hinter dem soliden ist eine Projektion — wenn du in deinem aktuellen Tempo weitermachst, landest du beim Reset hier. Die Projektion lange vor dem tatsächlichen Verbrauch über 80 % wandern zu sehen, ist die sauberste Frühwarnung.
-{% endcall %}
+## reset 동작
 
-## Das Statistik-Dashboard
+5시간과 7일 window는 Codex 계정의 rolling window입니다. reset 시점이 지나면 다음 statusline tick에서 bar와 남은 시간이 자동 보정됩니다.
 
-Öffne das Dashboard aus der Seitenleiste (oder mit <kbd>⌘⇧U</kbd>). Fünf Sektionen, von oben nach unten:
+## 다음 단계
 
-### Übersichts-Karten
-
-Vier Karten: **Sessions gesamt**, **Gesamtkosten**, **Heutige Kosten**, **Kosten dieses Monats**. Jede Karte zeigt die Veränderung gegenüber dem Vorzeitraum in Grün oder Rot.
-
-### Token-Nutzung pro Modell
-
-Ein gestapeltes Balkendiagramm pro Tag, aufgeschlüsselt nach Modell und Token-Typ — Input, Output, Cache-Reads, Cache-Writes. Die Modell-Legende nutzt Claudes Anzeigenamen (Opus / Sonnet / Haiku) und dieselbe Farb-Behandlung wie die Sidebar-Balken.
-
-Das ist der einfachste Ort, um z. B. zu sehen, dass ein unerwarteter Kosten-Spike ein Opus-lastiger Tag war oder dass Cache-Reads die meiste Arbeit machen.
-
-### Pro-Projekt-Aufschlüsselung
-
-Eine Tabelle mit jedem Claude-Code-Projekt (Arbeitsverzeichnis), das du genutzt hast, mit Sessions, Nachrichten, Tokens und Kosten. Klick eine Zeile, um ein Pro-Tag-Diagramm nur für dieses Projekt zu sehen.
-
-Nützlich für Shared-Maschinen oder zum Trennen von Kundenarbeit und privaten Hacks.
-
-### Aktivität & Streaks
-
-Ein 30-Tage-Daily-Activity-Area-Chart, plus vier Streak-Metriken:
-
-- **Längster Streak** — dein Rekord an aufeinanderfolgenden Arbeitstagen
-- **Aktueller Streak** — wie viele Tage du gerade in Folge gearbeitet hast
-- **Gesamt aktive Tage** — Anzahl im Zeitraum
-- **Durchschnittliche Sessions pro Tag**
-
-### Wochen-Timeline
-
-Ein Tag × Stunde-Raster, das zeigt, wann du Claude in der letzten Woche tatsächlich genutzt hast. Gleichzeitige Sessions stapeln sich visuell, sodass ein „fünf Sessions um 15 Uhr"-Dienstag leicht zu spotten ist.
-
-## Woher die Daten kommen
-
-Alles im Dashboard wird lokal aus Claude Codes eigenen Session-JSONLs unter `~/.claude/projects/` berechnet. purplemux liest sie, cached die geparsten Counts in `~/.purplemux/stats/` und sendet kein Byte aus der Maschine. Sprache wechseln oder den Cache neu generieren reicht nirgendwohin nach außen.
-
-## Reset-Verhalten
-
-Die 5h- und 7d-Fenster sind rollend und an deinen Claude-Code-Account gebunden. Wenn ein Fenster resettet, fällt der Balken auf 0 %, und Prozent und Restzeit rechnen sich aus dem nächsten Reset-Timestamp neu. Wenn purplemux den Reset verpasst (Server war aus), korrigiert sich das Widget beim nächsten Statusline-Tick selbst.
-
-## Wie es weitergeht
-
-- **[Notizen (AI-Tagesbericht)](/purplemux/de/docs/notes-daily-report/)** — dieselben Daten, als pro-Tag-Briefing geschrieben.
-- **[Session-Status](/purplemux/de/docs/session-status/)** — was die Seitenleiste sonst noch pro Tab verfolgt.
-- **[Tastenkürzel](/purplemux/de/docs/keyboard-shortcuts/)** — inklusive <kbd>⌘⇧U</kbd> für Statistiken.
+- **[세션 상태](/codexmux/de/docs/session-status/)**
+- **[데일리 리포트](/codexmux/de/docs/notes-daily-report/)**
+- **[데이터 디렉터리](/codexmux/de/docs/data-directory/)**

@@ -10,6 +10,7 @@ const commitHash = (() => {
 })();
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ['127.0.0.1', 'localhost'],
   env: {
     NEXT_PUBLIC_COMMIT_HASH: commitHash,
   },
@@ -18,12 +19,10 @@ const nextConfig: NextConfig = {
   outputFileTracingExcludes: {
     '*': [
       './release/**',
-      './CLAUDE.md',
       './AGENTS.md',
       './README*.md',
       './docs/**',
       './.specs/**',
-      './.claude/**',
       './tests/**',
     ],
   },

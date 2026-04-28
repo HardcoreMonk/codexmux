@@ -1,63 +1,39 @@
 ---
-title: 主题与字体
-description: 浅色、深色,或跟随系统;三档字号;统一在一个设置面板。
-eyebrow: 自定义
+title: 테마 & 글꼴
+description: 앱 테마, 글꼴 크기, 터미널 팔레트 설정.
+eyebrow: 설정
 permalink: /zh-CN/docs/themes-fonts/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux 走一致的视觉风格,只提供一小组开关:应用主题、字号,以及独立的终端调色板。本页讲前两项 — 终端配色单独有一页。
+codexmux는 앱 테마, 글꼴 크기, 터미널 팔레트를 전역 설정으로 제공합니다. 이 문서는 앱 테마와 글꼴 크기를 다룹니다.
 
-## 打开设置
+## 앱 테마
 
-按 <kbd>⌘,</kbd>(macOS)或 <kbd>Ctrl,</kbd>(Linux)打开设置。**通用** 标签页就是主题和字号所在。
-
-也可以点击顶栏的齿轮图标。
-
-## 应用主题
-
-三种模式,即时生效:
-
-| 模式 | 行为 |
+| 값 | 동작 |
 |---|---|
-| **浅色** | 强制浅色主题,不论 OS 偏好。 |
-| **深色** | 强制深色主题。 |
-| **跟随系统** | 跟随 OS — macOS / GNOME / KDE 在浅深之间切换时自动同步。 |
+| `System` | OS 설정을 따름 |
+| `Light` | 밝은 테마 고정 |
+| `Dark` | 어두운 테마 고정 |
 
-主题存放在 `~/.purplemux/config.json` 的 `appTheme` 字段,并同步到连接到该服务的每个浏览器标签。在 macOS 原生应用里,OS 标题栏也会跟着更新。
+선택 값은 `~/.codexmux/config.json`의 `appTheme`에 저장되고 연결된 browser tab에 동기화됩니다.
 
-{% call callout('note', '深色优先设计') %}
-品牌围绕深紫调中性色构建,深色模式把饱和度压到零,得到严格的无色表面。浅色模式应用了几乎察觉不到的紫色色调(色相 287)以增添温暖。两者都为长会话调过;选你眼睛喜欢的。
-{% endcall %}
+## 글꼴 크기
 
-## 字号
+| preset | 용도 |
+|---|---|
+| `Small` | 좁은 화면에서 정보 밀도 우선 |
+| `Default` | 일반 desktop 환경 |
+| `Large` | 큰 화면 또는 높은 가독성 필요 |
 
-三个预设,以按钮组形式呈现:
+UI는 `rem` 단위를 사용하므로 sidebar, dialog, table이 함께 scale됩니다.
 
-- **正常** — 默认;根字号跟随浏览器。
-- **大** — 根字号设为 `18px`。
-- **超大** — 根字号设为 `20px`。
+## 터미널 색상
 
-因为整个 UI 用 `rem` 度量,切换预设会同时缩放整个界面 — 侧边栏、对话框、终端。改动实时生效,不需要刷新。
+터미널 palette는 앱 theme와 별도로 관리됩니다. 자세한 내용은 [터미널 테마](/codexmux/zh-CN/docs/terminal-themes/)를 참고하세요.
 
-## 哪些会变,哪些不变
+## 다음 단계
 
-字号会缩放 **UI 框架和终端文本**。它不改变:
-
-- 标题层级(相对大小保持不变)
-- 间距 — 比例被保留
-- 代码块的语法配色
-
-如果想单独调整某些元素(例如只改终端,或只改侧边栏),见 [自定义 CSS](/purplemux/zh-CN/docs/custom-css/)。
-
-## 按设备,而非按浏览器
-
-设置存放在服务端,不是 localStorage。你在笔记本上切到深色,手机也会切到深色 — 从手机打开 `https://<host>/`,改动已经在那里。
-
-如果想让移动和桌面保持不同,目前不支持;有需要请提 issue。
-
-## 下一步
-
-- **[自定义 CSS](/purplemux/zh-CN/docs/custom-css/)** — 覆盖单独的颜色和间距。
-- **[终端主题](/purplemux/zh-CN/docs/terminal-themes/)** — xterm.js 的独立调色板。
-- **[键盘快捷键](/purplemux/zh-CN/docs/keyboard-shortcuts/)** — 完整按键绑定表。
+- **[커스텀 CSS](/codexmux/zh-CN/docs/custom-css/)**
+- **[터미널 테마](/codexmux/zh-CN/docs/terminal-themes/)**
+- **[사이드바 & Codex 옵션](/codexmux/zh-CN/docs/sidebar-options/)**

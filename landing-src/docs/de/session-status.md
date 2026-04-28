@@ -1,88 +1,47 @@
 ---
-title: Session-Status
-description: Wie purplemux Claude-Code-Aktivität in ein Vier-Zustands-Badge übersetzt — und warum es nahezu in Echtzeit aktualisiert.
-eyebrow: Claude Code
+title: 세션 상태
+description: Codex 활동을 네 가지 badge 상태로 바꾸는 방식.
+eyebrow: Codex
 permalink: /de/docs/session-status/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Jede Session in der Seitenleiste trägt einen farbigen Punkt, der auf einen Blick sagt, was Claude tut. Diese Seite erklärt, woher die vier Zustände kommen und wie sie synchron bleiben, ohne dass du ins Terminal greifen musst.
+sidebar의 session dot은 Codex가 무엇을 하고 있는지 보여줍니다. codexmux는 process, JSONL, terminal state를 조합해 상태를 유지합니다.
 
-## Die vier Zustände
+## 상태
 
-| Zustand | Indikator | Bedeutung |
-|---|---|---|
-| **Idle** | keiner / grau | Claude wartet auf deinen nächsten Prompt. |
-| **Busy** | lila Spinner | Claude arbeitet — liest, editiert, führt Tools aus. |
-| **Eingabe nötig** | gelber Puls | Ein Berechtigungs-Prompt oder eine Frage wartet auf dich. |
-| **Review** | lila Puls | Claude ist fertig, und es gibt etwas zu prüfen. |
-
-Ein fünfter Wert, **unknown**, erscheint kurz für Tabs, die `busy` waren, als der Server neu gestartet wurde. Er löst sich von selbst auf, sobald purplemux die Session erneut verifizieren kann.
-
-## Hooks sind die Quelle der Wahrheit
-
-purplemux installiert eine Claude-Code-Hook-Konfiguration unter `~/.purplemux/hooks.json` und ein winziges Shell-Skript unter `~/.purplemux/status-hook.sh`. Das Skript ist für fünf Claude-Code-Hook-Events registriert und POSTet jedes davon an den lokalen Server mit einem CLI-Token:
-
-| Claude-Code-Hook | Resultierender Zustand |
+| 상태 | 의미 |
 |---|---|
-| `SessionStart` | idle |
-| `UserPromptSubmit` | busy |
-| `Notification` (nur Permission) | needs-input |
-| `Stop` / `StopFailure` | review |
-| `PreCompact` / `PostCompact` | zeigt den Compacting-Indikator (Zustand unverändert) |
+| **Idle** | Codex가 다음 prompt를 기다림 |
+| **Busy** | Codex가 작업 중 |
+| **Needs input** | permission prompt 또는 질문 대기 |
+| **Review** | 작업 완료, 확인 필요 |
+| **Unknown** | 서버 재시작 후 복구 중 |
 
-Weil Hooks im Moment des Übergangs feuern, aktualisiert sich die Seitenleiste, bevor du es im Terminal überhaupt bemerken würdest.
+## 상태 출처
 
-{% call callout('note', 'Nur Permission-Notifications') %}
-Claudes `Notification`-Hook feuert aus mehreren Gründen. purplemux schaltet nur dann auf **Eingabe nötig**, wenn die Notification `permission_prompt` oder `worker_permission_prompt` ist. Idle-Erinnerungen und andere Notification-Typen lösen das Badge nicht aus.
-{% endcall %}
+| 신호 | 정보 |
+|---|---|
+| tmux foreground command | pane이 shell인지 Codex인지 |
+| process tree detection | live `codex` process 존재 여부 |
+| Codex JSONL tail | session id, model, current action, token usage |
 
-## Prozess-Erkennung läuft parallel
+생성된 hook bridge file도 event를 보낼 수 있지만 Codex status는 이 파일에 의존하지 않습니다.
 
-Ob die Claude-CLI tatsächlich läuft, wird getrennt vom Arbeitszustand verfolgt. Zwei Pfade kooperieren:
+## JSONL watcher
 
-- **tmux-Title-Änderungen** — jedes Panel meldet `pane_current_command|pane_current_path` als Titel. xterm.js liefert die Änderung über `onTitleChange`, und purplemux pingt `/api/check-claude` zur Bestätigung.
-- **Process-Tree-Walk** — server-seitig schaut `detectActiveSession` auf die Shell-PID des Panels, läuft seine Kinder ab und gleicht sie gegen die PID-Dateien ab, die Claude unter `~/.claude/sessions/` schreibt.
+Codex는 `~/.codex/sessions/` 아래에 transcript JSONL을 씁니다. codexmux는 active tab의 JSONL을 감시해 last assistant message, current action, token count를 갱신합니다. 사용자가 실행 중 <kbd>Esc</kbd>를 누른 경우 interruption marker를 감지해 tab이 `busy`에 갇히지 않게 합니다.
 
-Existiert das Verzeichnis nicht, zeigt die UI einen „Claude nicht installiert"-Screen statt eines Status-Punkts.
+## polling
 
-## Der JSONL-Watcher schließt die Lücken
+30-60초 간격의 metadata poll은 놓친 event를 보정하는 안전망입니다. 죽은 process, stale `busy`, 새 tmux pane, title metadata를 확인합니다.
 
-Claude Code schreibt eine Transkript-JSONL pro Session unter `~/.claude/projects/`. Solange ein Tab `busy`, `needs-input`, `unknown` oder `ready-for-review` ist, beobachtet purplemux diese Datei mit `fs.watch` aus zwei Gründen:
+## 재시작 복구
 
-- **Metadaten** — aktuelles Tool, letzter Assistant-Snippet, Token-Counts. Diese fließen in Timeline und Seitenleiste, ohne den Zustand zu ändern.
-- **Synthetischer Interrupt** — wenn du mitten im Stream Esc drückst, schreibt Claude `[Request interrupted by user]` in die JSONL, feuert aber keinen Hook. Der Watcher erkennt diese Zeile und synthetisiert ein `interrupt`-Event, sodass der Tab zu idle zurückkehrt, statt auf busy hängen zu bleiben.
+재시작 전 `busy`였던 tab은 `unknown`으로 시작합니다. Codex process가 없으면 `idle`, JSONL이 정상 종료되었으면 `review`로 전환합니다. 복구 중 자동 전환은 push notification을 보내지 않습니다.
 
-## Polling ist ein Sicherheitsnetz, nicht der Motor
+## 다음 단계
 
-Ein Metadaten-Poll läuft alle 30–60 Sekunden, abhängig von der Tab-Anzahl. Er entscheidet **nicht** den Zustand — das ist strikt der Hook-Pfad. Der Poll existiert, um:
-
-- Neue tmux-Panels zu entdecken
-- Sessions wiederherzustellen, die mit totem Claude-Prozess länger als 10 Minuten busy sind
-- Prozess-Info, Ports und Titel zu aktualisieren
-
-Das ist das „5–15s-Fallback-Polling", das die Landing-Page erwähnt, abgebremst und eingeengt, sobald sich Hooks als zuverlässig erwiesen.
-
-## Server-Restart überleben
-
-Hooks können nicht feuern, während purplemux down ist, jeder in-flight-Zustand könnte also veraltet sein. Die Recovery-Regel ist konservativ:
-
-- Persistierter `busy` wird zu `unknown` und wird re-checkt: läuft Claude nicht mehr, kippt der Tab still auf idle; trailt die JSONL sauber aus, wird er review.
-- Jeder andere Zustand — `idle`, `needs-input`, `ready-for-review` — hat den Ball in deinem Spielfeld, wird also unangetastet persistiert.
-
-Während der Recovery werden keine automatischen Zustandsänderungen gepusht. Du wirst nur gepingt, wenn *neue* Arbeit nach needs-input oder review übergeht.
-
-## Wo der Zustand auftaucht
-
-- Punkt in der Session-Zeile der Seitenleiste
-- Tab-Leisten-Punkt in jedem Panel
-- Workspace-Punkt (höchste Priorität über den Workspace)
-- Bell-Icon-Counts und das Notification-Sheet
-- Browser-Tab-Titel (zählt Aufmerksamkeitsitems)
-- Web Push und Desktop-Benachrichtigungen für `needs-input` und `ready-for-review`
-
-## Wie es weitergeht
-
-- **[Berechtigungs-Prompts](/purplemux/de/docs/permission-prompts/)** — der Workflow hinter dem **Eingabe nötig**-Zustand.
-- **[Live-Session-Ansicht](/purplemux/de/docs/live-session-view/)** — was die Timeline zeigt, sobald ein Tab `busy` ist.
-- **[Erste Session](/purplemux/de/docs/first-session/)** — die Dashboard-Tour im Kontext.
+- **[권한 프롬프트](/codexmux/de/docs/permission-prompts/)**
+- **[라이브 세션 뷰](/codexmux/de/docs/live-session-view/)**
+- **[데이터 디렉터리](/codexmux/de/docs/data-directory/)**

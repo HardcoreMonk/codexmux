@@ -36,7 +36,7 @@ module.exports = function (eleventyConfig) {
   };
 
   const docsUrlFor = (locale, tail) => {
-    const prefix = locale === 'en' ? '/purplemux/docs/' : `/purplemux/${locale}/docs/`;
+    const prefix = locale === 'en' ? '/codexmux/docs/' : `/codexmux/${locale}/docs/`;
     return prefix + tail;
   };
 
@@ -78,7 +78,7 @@ module.exports = function (eleventyConfig) {
       includes: '_includes',
       data: '_data',
     },
-    pathPrefix: '/purplemux/',
+    pathPrefix: '/codexmux/',
     markdownTemplateEngine: 'njk',
     htmlTemplateEngine: 'njk',
     templateFormats: ['njk', 'html', 'md'],

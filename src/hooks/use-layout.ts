@@ -18,6 +18,7 @@ import {
   updateRatioAtPath,
   updatePaneInTree,
 } from '@/lib/layout-tree';
+import { readAgentSessionId, writeAgentSessionId } from '@/lib/agent-tab-fields';
 
 export { collectPanes, equalizeNode, getFirstPaneId, findAdjacentPaneInDirection } from '@/lib/layout-tree';
 export type { TDirection } from '@/lib/layout-tree';
@@ -594,7 +595,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
       tabs: pane.tabs.map((t) => {
         if (t.id !== tabId) return t;
         const updated: ITab = { ...t, panelType };
-        if (panelType === 'terminal') updated.claudeSessionId = null;
+        if (panelType === 'terminal') writeAgentSessionId(updated, null);
         return updated;
       }),
     }));
@@ -736,7 +737,7 @@ export const navigateToTab = (workspaceId: string, tabId: string) => {
 export const navigateToTabOrCreate = async (
   workspaceId: string,
   tabId: string,
-  claudeSessionId: string | null,
+  agentSessionId: string | null,
   workspaceName: string,
   workspaceDir: string | null,
 ): Promise<void> => {
@@ -747,7 +748,7 @@ export const navigateToTabOrCreate = async (
 
   if (!ws) {
     if (!workspaceDir) return;
-    const created = await wsStore.createWorkspace(workspaceDir, workspaceName, claudeSessionId ?? undefined);
+    const created = await wsStore.createWorkspace(workspaceDir, workspaceName, agentSessionId ?? undefined);
     if (!created) return;
     targetWsId = created.id;
 
@@ -757,8 +758,8 @@ export const navigateToTabOrCreate = async (
     const firstTab = collectAllTabs(layout.root)[0];
     if (!firstTab) return;
 
-    if (claudeSessionId) {
-      useTabStore.getState().initTab(firstTab.id, { panelType: 'claude-code', sessionView: 'check' });
+    if (agentSessionId) {
+      useTabStore.getState().initTab(firstTab.id, { panelType: 'codex', sessionView: 'check' });
     }
 
     navigateToTab(targetWsId, firstTab.id);
@@ -769,8 +770,8 @@ export const navigateToTabOrCreate = async (
   if (!layoutRes.ok) return;
   const layout: ILayoutData = await layoutRes.json();
 
-  if (claudeSessionId) {
-    const matchingTab = collectAllTabs(layout.root).find((t) => t.claudeSessionId === claudeSessionId);
+  if (agentSessionId) {
+    const matchingTab = collectAllTabs(layout.root).find((t) => readAgentSessionId(t) === agentSessionId);
     if (matchingTab) {
       useTabStore.getState().setSessionView(matchingTab.id, 'timeline');
       navigateToTab(targetWsId, matchingTab.id);
@@ -786,8 +787,8 @@ export const navigateToTabOrCreate = async (
 
   const paneId = layout.activePaneId ?? getFirstPaneId(layout.root);
   const cwd = ws.directories[0];
-  const body: Record<string, string | undefined> = { panelType: 'claude-code', cwd };
-  if (claudeSessionId) body.resumeSessionId = claudeSessionId;
+  const body: Record<string, string | undefined> = { panelType: 'codex', cwd };
+  if (agentSessionId) body.resumeSessionId = agentSessionId;
 
   const tabRes = await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs`, targetWsId), {
     method: 'POST',
@@ -797,8 +798,8 @@ export const navigateToTabOrCreate = async (
   if (!tabRes.ok) return;
   const newTab: ITab = await tabRes.json();
 
-  if (claudeSessionId) {
-    useTabStore.getState().initTab(newTab.id, { panelType: 'claude-code', sessionView: 'check' });
+  if (agentSessionId) {
+    useTabStore.getState().initTab(newTab.id, { panelType: 'codex', sessionView: 'check' });
   }
 
   if (targetWsId === useLayoutStore.getState().workspaceId) {

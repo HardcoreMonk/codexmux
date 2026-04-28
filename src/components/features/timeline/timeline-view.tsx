@@ -160,8 +160,8 @@ const SkeletonLoader = () => (
     <div className="animate-delayed-fade-in flex flex-col gap-4 p-4">
       {[48, 36, 40].map((w, i) => (
         <div key={i} className="flex flex-col gap-2">
-          <div className="h-4 animate-pulse rounded bg-claude-active/20" style={{ width: `${w}%` }} />
-          <div className="h-4 animate-pulse rounded bg-claude-active/20" style={{ width: `${w - 10}%` }} />
+          <div className="h-4 animate-pulse rounded bg-agent-active/20" style={{ width: `${w}%` }} />
+          <div className="h-4 animate-pulse rounded bg-agent-active/20" style={{ width: `${w - 10}%` }} />
         </div>
       ))}
     </div>
@@ -555,13 +555,13 @@ const TimelineView = ({
           )}
           {cliState === 'busy' && !needsInput && (
             <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
-              <Spinner size={10} className="text-claude-active" />
+              <Spinner size={10} className="text-agent-active" />
               <ElapsedTime since={entries[entries.length - 1].timestamp} />
             </div>
           )}
           {isCompacting && (
             <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
-              <Spinner size={10} className="text-claude-active" />
+              <Spinner size={10} className="text-agent-active" />
               <span>컨텍스트 압축 중…</span>
             </div>
           )}

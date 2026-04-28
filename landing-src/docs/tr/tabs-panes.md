@@ -1,83 +1,83 @@
 ---
-title: Sekmeler & paneller
-description: Bir çalışma alanı içinde sekmelerin nasıl çalıştığı, panellerin nasıl bölüneceği ve aralarında odağı taşıyan kısayollar.
-eyebrow: Çalışma alanları & Terminal
+title: 탭 & 창
+description: 워크스페이스 안에서 탭이 동작하는 방식, 창을 분할하는 법, 그리고 그 사이를 오가는 단축키.
+eyebrow: 워크스페이스 & 터미널
 permalink: /tr/docs/tabs-panes/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Bir çalışma alanı **panellere** ayrılır ve her panel bir **sekme** yığını barındırır. Bölmeler size paralel görünümler verir; sekmeler ise tek panelin ekran alanı çalmadan birden fazla shell barındırmasını sağlar.
+워크스페이스는 **창(pane)**으로 나뉘고, 각 창은 여러 **탭**을 쌓아 가집니다. 분할은 동시에 여러 화면을 보기 위한 것이고, 탭은 한 창 안에서 여러 쉘을 화면 면적을 빼앗기지 않고 유지하기 위한 것입니다.
 
-## Sekmeler
+## 탭
 
-Her sekme, bir tmux oturumuna bağlı gerçek bir shell'dir. Sekme başlığı ön plandaki süreçten gelir — `vim` yazın, sekme kendini yeniden adlandırır; çıkın, dizin adına geri döner.
+모든 탭은 tmux 세션에 붙은 실제 쉘입니다. 탭 제목은 포어그라운드 프로세스에서 따옵니다 — `vim`을 실행하면 탭 이름이 바뀌고, 종료하면 디렉토리 이름으로 돌아옵니다.
 
-| Eylem | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Yeni sekme | <kbd>⌘T</kbd> | <kbd>Ctrl+T</kbd> |
-| Sekmeyi kapat | <kbd>⌘W</kbd> | <kbd>Ctrl+W</kbd> |
-| Önceki sekme | <kbd>⌘⇧[</kbd> | <kbd>Ctrl+Shift+[</kbd> |
-| Sonraki sekme | <kbd>⌘⇧]</kbd> | <kbd>Ctrl+Shift+]</kbd> |
-| 1–9 sekmeye git | <kbd>⌃1</kbd> – <kbd>⌃9</kbd> | <kbd>Alt+1</kbd> – <kbd>Alt+9</kbd> |
+| 새 탭 | <kbd>⌘T</kbd> | <kbd>Ctrl+T</kbd> |
+| 탭 닫기 | <kbd>⌘W</kbd> | <kbd>Ctrl+W</kbd> |
+| 이전 탭 | <kbd>⌘⇧[</kbd> | <kbd>Ctrl+Shift+[</kbd> |
+| 다음 탭 | <kbd>⌘⇧]</kbd> | <kbd>Ctrl+Shift+]</kbd> |
+| 1–9번 탭으로 이동 | <kbd>⌃1</kbd> – <kbd>⌃9</kbd> | <kbd>Alt+1</kbd> – <kbd>Alt+9</kbd> |
 
-Sekme çubuğunda bir sekmeyi sürükleyerek yeniden sıralayın. Sekme çubuğunun sonundaki **+** düğmesi <kbd>⌘T</kbd> ile aynı şablon seçiciyi açar.
+탭 바에서 탭을 드래그하면 순서가 바뀝니다. 탭 바 끝의 **+** 버튼은 <kbd>⌘T</kbd>와 같은 템플릿 선택 메뉴를 엽니다.
 
-{% call callout('tip', 'Terminal dışındaki şablonlar') %}
-Yeni sekme menüsü panel türü olarak **Terminal**, **Claude**, **Diff** veya **Web tarayıcı** seçmenize izin verir. Hepsi sekmedir — aynı panelde karıştırabilir, yukarıdaki kısayollarla aralarında geçiş yapabilirsiniz.
+{% call callout('tip', '터미널 외의 템플릿') %}
+새 탭 메뉴에서는 **터미널**, **Codex**, **Diff**, **웹 브라우저** 중 패널 타입을 고를 수 있습니다. 모두 탭이므로 한 창 안에 섞어두고 위 단축키로 자유롭게 전환할 수 있습니다.
 {% endcall %}
 
-## Panelleri bölme
+## 창 분할
 
-Sekmeler ekran alanını paylaşır. İki şeyi aynı anda görmek için paneli bölün.
+탭은 화면을 공유합니다. 동시에 두 개를 보고 싶으면 창을 분할하세요.
 
-| Eylem | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Sağa böl | <kbd>⌘D</kbd> | <kbd>Ctrl+D</kbd> |
-| Aşağı böl | <kbd>⌘⇧D</kbd> | <kbd>Ctrl+Shift+D</kbd> |
+| 오른쪽으로 분할 | <kbd>⌘D</kbd> | <kbd>Ctrl+D</kbd> |
+| 아래로 분할 | <kbd>⌘⇧D</kbd> | <kbd>Ctrl+Shift+D</kbd> |
 
-Yeni bölme çalışma alanının varsayılan dizinini miras alır ve boş bir terminal sekmesiyle başlar. Her panelin kendi sekme çubuğu vardır, bu yüzden sağdaki panel diff görüntüleyicisini barındırırken soldaki panel `claude`'u çalıştırabilir.
+새로 만들어지는 분할은 워크스페이스의 기본 디렉토리를 상속받고 빈 터미널 탭으로 시작합니다. 각 창은 자체 탭 바를 가지므로 오른쪽 창에서는 diff 뷰어를, 왼쪽 창에서는 `codex`를 돌리는 식으로 쓸 수 있습니다.
 
-## Paneller arasında odağı taşıma
+## 창 사이 포커스 이동
 
-Yön kısayollarını kullanın — bölme ağacında dolaşırlar, böylece derin iç içe bir panelden gelen <kbd>⌘⌥→</kbd> hâlâ görsel olarak komşu olana iner.
+방향 단축키로 이동합니다 — 분할 트리를 따라 걷기 때문에, 깊게 중첩된 창에서 <kbd>⌘⌥→</kbd>를 눌러도 화면상 인접한 창으로 정확히 이동합니다.
 
-| Eylem | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Sola odakla | <kbd>⌘⌥←</kbd> | <kbd>Ctrl+Alt+←</kbd> |
-| Sağa odakla | <kbd>⌘⌥→</kbd> | <kbd>Ctrl+Alt+→</kbd> |
-| Yukarı odakla | <kbd>⌘⌥↑</kbd> | <kbd>Ctrl+Alt+↑</kbd> |
-| Aşağı odakla | <kbd>⌘⌥↓</kbd> | <kbd>Ctrl+Alt+↓</kbd> |
+| 왼쪽으로 포커스 | <kbd>⌘⌥←</kbd> | <kbd>Ctrl+Alt+←</kbd> |
+| 오른쪽으로 포커스 | <kbd>⌘⌥→</kbd> | <kbd>Ctrl+Alt+→</kbd> |
+| 위로 포커스 | <kbd>⌘⌥↑</kbd> | <kbd>Ctrl+Alt+↑</kbd> |
+| 아래로 포커스 | <kbd>⌘⌥↓</kbd> | <kbd>Ctrl+Alt+↓</kbd> |
 
-## Yeniden boyutlandır ve eşitle
+## 크기 조정과 균등화
 
-İnce kontrol için paneller arasındaki bölücüyü sürükleyin ya da klavyeyi kullanın.
+창 사이의 분리선을 드래그하거나 키보드로 조정합니다.
 
-| Eylem | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Sola yeniden boyutlandır | <kbd>⌘⌃⇧←</kbd> | <kbd>Ctrl+Alt+Shift+←</kbd> |
-| Sağa yeniden boyutlandır | <kbd>⌘⌃⇧→</kbd> | <kbd>Ctrl+Alt+Shift+→</kbd> |
-| Yukarı yeniden boyutlandır | <kbd>⌘⌃⇧↑</kbd> | <kbd>Ctrl+Alt+Shift+↑</kbd> |
-| Aşağı yeniden boyutlandır | <kbd>⌘⌃⇧↓</kbd> | <kbd>Ctrl+Alt+Shift+↓</kbd> |
-| Bölmeleri eşitle | <kbd>⌘⌥=</kbd> | <kbd>Ctrl+Alt+=</kbd> |
+| 왼쪽 크기 조정 | <kbd>⌘⌃⇧←</kbd> | <kbd>Ctrl+Alt+Shift+←</kbd> |
+| 오른쪽 크기 조정 | <kbd>⌘⌃⇧→</kbd> | <kbd>Ctrl+Alt+Shift+→</kbd> |
+| 위쪽 크기 조정 | <kbd>⌘⌃⇧↑</kbd> | <kbd>Ctrl+Alt+Shift+↑</kbd> |
+| 아래쪽 크기 조정 | <kbd>⌘⌃⇧↓</kbd> | <kbd>Ctrl+Alt+Shift+↓</kbd> |
+| 분할 균등화 | <kbd>⌘⌥=</kbd> | <kbd>Ctrl+Alt+=</kbd> |
 
-Eşitleme, kullanılamaz uçlara doğru kaymış bir düzeni sıfırlamanın en hızlı yoludur.
+레이아웃이 한쪽으로 너무 치우쳐 못 쓸 정도가 됐을 때 균등화가 가장 빠른 리셋 방법입니다.
 
-## Ekranı temizle
+## 화면 비우기
 
-<kbd>⌘K</kbd> geçerli panelin terminalini temizler — çoğu yerel terminalin yaptığı gibi. Shell süreci çalışmaya devam eder; yalnızca görünür arabellek silinir.
+<kbd>⌘K</kbd>는 현재 창의 터미널 화면을 비웁니다. 네이티브 터미널과 동일한 방식입니다. 쉘 프로세스는 계속 살아있고, 보이는 버퍼만 지워집니다.
 
-| Eylem | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Ekranı temizle | <kbd>⌘K</kbd> | <kbd>Ctrl+K</kbd> |
+| 화면 비우기 | <kbd>⌘K</kbd> | <kbd>Ctrl+K</kbd> |
 
-## Sekmeler her şeye dayanır
+## 탭은 어떤 상황에서도 살아남습니다
 
-Bir sekmeyi kapatmak tmux oturumunu sonlandırır. *Tarayıcıyı* kapatmak, yenilemek veya ağı kaybetmek bunu yapmaz — her sekme sunucuda çalışmaya devam eder. Yeniden açın, aynı paneller, bölmeler ve sekmeler geri gelir.
+탭을 닫으면 해당 tmux 세션이 종료됩니다. *브라우저*를 닫거나, 새로고침하거나, 네트워크가 끊어져도 탭은 종료되지 않고 서버에서 계속 돌아갑니다. 다시 열면 같은 창, 분할, 탭이 그대로 돌아옵니다.
 
-Sunucu yeniden başlatmaları arasındaki kurtarma hikayesi için [Düzenleri kaydet & geri yükle](/purplemux/tr/docs/save-restore/) sayfasına bakın.
+서버 재부팅 이후의 복구 동작은 [레이아웃 저장 & 복원](/codexmux/tr/docs/save-restore/)에서 다룹니다.
 
-## Sıradaki adımlar
+## 다음으로
 
-- **[Düzenleri kaydet & geri yükle](/purplemux/tr/docs/save-restore/)** — bu düzen nasıl kalıcı kalır.
-- **[Klavye kısayolları](/purplemux/tr/docs/keyboard-shortcuts/)** — tüm bağlamalar tek tabloda.
-- **[Git workflow paneli](/purplemux/tr/docs/git-workflow/)** — bir bölmeye atılacak kullanışlı bir sekme türü.
+- **[레이아웃 저장 & 복원](/codexmux/tr/docs/save-restore/)** — 이 레이아웃이 어떻게 유지되는지
+- **[키보드 단축키](/codexmux/tr/docs/keyboard-shortcuts/)** — 전체 바인딩
+- **[Git 워크플로 패널](/codexmux/tr/docs/git-workflow/)** — 분할에 띄워두면 유용한 탭 타입

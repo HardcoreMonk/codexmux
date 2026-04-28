@@ -1,102 +1,51 @@
 ---
-title: Primera sesión
-description: Un recorrido guiado por el panel — desde un espacio de trabajo vacío hasta tu primera sesión de Claude, en marcha y monitorizada.
-eyebrow: Primeros pasos
+title: 첫 세션
+description: 빈 workspace에서 Codex 세션을 만들고 확인하는 흐름.
+eyebrow: 시작하기
 permalink: /es/docs/first-session/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux ya está en marcha (si no, consulta [Inicio rápido](/purplemux/es/docs/quickstart/)). Esta página explica qué hace realmente la UI para que los primeros minutos sean menos abstractos.
+이 문서는 codexmux가 이미 실행 중이라고 가정합니다. 아직 실행하지 않았다면 [빠른 시작](/codexmux/es/docs/quickstart/)부터 진행하세요.
 
-## El panel
+## workspace 만들기
 
-Cuando abres `http://localhost:8022` aterrizas en un **espacio de trabajo**. Piensa en un espacio de trabajo como una carpeta con pestañas relacionadas — una para el proyecto en el que estás programando con Claude, otra para la documentación que escribes, otra para tareas puntuales en el shell.
+1. sidebar의 workspace 영역에서 **+**를 누릅니다.
+2. 이름과 기본 디렉터리를 입력합니다.
+3. Enter를 누르면 빈 workspace가 열립니다.
 
-La disposición:
+기본 디렉터리는 새 shell과 Codex tab의 cwd로 사용됩니다.
 
-- **Barra lateral izquierda** — espacios de trabajo y sesiones, insignias de estado de Claude, widget de límites de uso, notas, estadísticas.
-- **Área principal** — paneles dentro del espacio actual; cada panel puede tener varias pestañas.
-- **Barra superior** — nombre del espacio, controles de división, configuración.
+## 첫 tab 열기
 
-Alterna la barra lateral en cualquier momento con <kbd>⌘B</kbd>. Cambia el modo Espacio/Sesiones en la barra lateral con <kbd>⌘⇧B</kbd>.
+<kbd>⌘T</kbd> 또는 tab bar의 **+** 버튼을 누릅니다.
 
-## Crear un espacio de trabajo
+- **터미널**: 빈 shell.
+- **Codex**: shell 안에서 `codex`를 실행.
+- **Diff**: Git 변경 사항 확인.
+- **Web browser**: Electron browser panel.
 
-El primer arranque te crea un espacio por defecto. Para añadir otro:
+Codex 템플릿은 terminal을 열고 `codex`를 실행하는 shortcut입니다. 터미널 tab에서 직접 `codex`를 실행해도 codexmux가 감지합니다.
 
-1. Haz clic en **+ Nuevo espacio de trabajo** en la parte superior de la barra lateral (<kbd>⌘N</kbd>).
-2. Ponle nombre y elige un directorio por defecto — ahí arrancarán los nuevos shells.
-3. Pulsa Enter. Se abre el espacio vacío.
+## 상태 badge
 
-Puedes reordenar y renombrar espacios después arrastrándolos en la barra lateral.
-
-## Abre tu primera pestaña
-
-Un espacio de trabajo arranca vacío. Añade una pestaña con <kbd>⌘T</kbd> o el botón **+** de la barra de pestañas.
-
-Elige una **plantilla**:
-
-- **Terminal** — un shell vacío. Perfecto para `vim`, `docker`, scripts.
-- **Claude** — arranca con `claude` ya en marcha en el shell.
-
-{% call callout('tip', 'Las plantillas son solo atajos') %}
-Por dentro, cada pestaña es un shell normal. La plantilla Claude es solo "abre una terminal y ejecuta `claude`". Si más tarde ejecutas `claude` manualmente en una pestaña Terminal, purplemux lo nota y empieza a mostrar su estado igual.
-{% endcall %}
-
-## Lee el estado de la sesión
-
-Mira la **fila de sesión en la barra lateral** de tu pestaña. Verás uno de estos indicadores:
-
-| Estado | Significado |
+| 상태 | 의미 |
 |---|---|
-| **Inactivo** (gris) | Claude espera tu siguiente entrada. |
-| **Ocupado** (spinner morado) | Claude está trabajando — leyendo archivos, ejecutando herramientas. |
-| **Necesita entrada** (ámbar) | Claude llegó a un aviso de permisos o hizo una pregunta. |
-| **Revisión** (azul) | Trabajo terminado, Claude se detuvo; hay algo que revisar. |
+| **Idle** | Codex가 다음 입력을 기다림 |
+| **Busy** | Codex가 작업 중 |
+| **Needs input** | permission prompt 또는 질문 대기 |
+| **Review** | 작업 완료, 확인 필요 |
 
-Las transiciones son casi instantáneas. Consulta [Estado de la sesión](/purplemux/es/docs/session-status/) para ver cómo se detecta.
+## permission prompt
 
-## Responder a un aviso de permisos
+Codex가 tool 실행이나 파일 변경 허가를 요청하면 codexmux는 timeline 안에 prompt를 표시합니다. option을 클릭하거나 숫자 key를 누르거나 모바일 push에서 답할 수 있습니다.
 
-Cuando Claude pide ejecutar una herramienta o editar un archivo, purplemux **intercepta el aviso** y lo muestra en línea dentro de la vista de la sesión. Puedes:
+## 복구
 
-- Hacer clic en **1 · Sí** / **2 · Sí, siempre** / **3 · No**, o
-- Pulsar las teclas numéricas, o
-- Ignorarlo y responder desde el móvil — el Web Push móvil dispara la misma alerta.
+브라우저를 닫아도 tmux session은 유지됩니다. 서버가 재시작되면 layout을 읽고 가능한 경우 `codex resume <sessionId>`로 Codex session을 이어 붙입니다.
 
-El CLI de Claude nunca se queda realmente bloqueado en el aviso interceptado; purplemux le devuelve tu respuesta.
+## 다음 단계
 
-## Dividir y cambiar
-
-Una vez tengas una pestaña en marcha, prueba:
-
-- <kbd>⌘D</kbd> — divide el panel actual hacia la derecha
-- <kbd>⌘⇧D</kbd> — divide hacia abajo
-- <kbd>⌘⌥←/→/↑/↓</kbd> — mueve el foco entre divisiones
-- <kbd>⌘⇧[</kbd> / <kbd>⌘⇧]</kbd> — pestaña anterior/siguiente
-
-Lista completa en la página [Atajos de teclado](/purplemux/es/docs/keyboard-shortcuts/).
-
-## Guardar y restaurar
-
-Cierra el navegador. Tus pestañas no se pierden — tmux las mantiene abiertas en el servidor. Refresca dentro de una hora (o de una semana) y purplemux restaurará exactamente la misma disposición, incluyendo las proporciones de las divisiones y los directorios de trabajo.
-
-Incluso un reinicio del servidor es recuperable: al volver a arrancar, purplemux lee la disposición guardada en `~/.purplemux/workspaces.json`, vuelve a lanzar los shells en los directorios correctos y reconecta las sesiones de Claude cuando es posible.
-
-## Acceder desde el móvil
-
-Ejecuta:
-
-```bash
-tailscale serve --bg 8022
-```
-
-En el móvil, abre `https://<machine>.<tailnet>.ts.net`, toca **Compartir → Añadir a pantalla de inicio** y concede el permiso de notificaciones. Ya recibirás avisos push para los estados **necesita entrada** y **revisión** incluso con la pestaña cerrada.
-
-Recorrido completo: [Configuración de PWA](/purplemux/es/docs/pwa-setup/) · [Web Push](/purplemux/es/docs/web-push/) · [Tailscale](/purplemux/es/docs/tailscale/).
-
-## Siguientes pasos
-
-- **[Atajos de teclado](/purplemux/es/docs/keyboard-shortcuts/)** — todos los atajos en una tabla.
-- **[Compatibilidad de navegadores](/purplemux/es/docs/browser-support/)** — matriz de compatibilidad, sobre todo iOS Safari 16.4+.
-- Explora la barra lateral: **Notas** (<kbd>⌘⇧E</kbd>) para el informe diario de IA, **Estadísticas** (<kbd>⌘⇧U</kbd>) para el análisis de uso.
+- **[세션 상태](/codexmux/es/docs/session-status/)**
+- **[권한 프롬프트](/codexmux/es/docs/permission-prompts/)**
+- **[브라우저 지원](/codexmux/es/docs/browser-support/)**

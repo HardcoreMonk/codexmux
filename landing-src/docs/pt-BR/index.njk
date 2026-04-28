@@ -1,17 +1,17 @@
 ---
-title: Documentação
-description: Tudo o que você precisa para executar, personalizar e estender o purplemux.
-eyebrow: Comece aqui
+title: 문서
+description: codexmux를 실행하고, 커스터마이즈하고, 확장하기 위한 모든 것.
+eyebrow: 여기서 시작
 permalink: /pt-BR/docs/index.html
 ---
-<p>Estes guias passam pela instalação, uso no dia a dia e os detalhes internos. Se é a primeira vez, comece pelo <a href="/purplemux/pt-BR/docs/quickstart/">Início rápido</a>.</p>
+<p>설치, 일상적인 사용, 내부 구조까지 다룹니다. 처음이라면 <a href="/codexmux/pt-BR/docs/quickstart/">빠른 시작</a>부터 읽어보세요.</p>
 
 <div class="doc-home-grid">
 {%- for group in docsNav %}
 {%- for item in group.items %}
-  <a class="doc-home-card" href="/purplemux/pt-BR/docs/{{ item.slug }}/">
-    <span class="doc-home-card-title">{{ item.label['pt-BR'] }}</span>
-    <span class="doc-home-card-desc">{{ group.group['pt-BR'] }}</span>
+  <a class="doc-home-card" href="/codexmux/pt-BR/docs/{{ item.slug }}/">
+    <span class="doc-home-card-title">{{ item.label.ko }}</span>
+    <span class="doc-home-card-desc">{{ group.group.ko }}</span>
   </a>
 {%- endfor %}
 {%- endfor %}

@@ -1,192 +1,70 @@
-# Style Guide
+# 스타일 가이드
 
-Aim for the calm, professional tone of an enterprise system.
-Avoid using Tailwind's high-saturation/high-lightness defaults directly; rely on the Muted Palette to keep the look consistent.
+codexmux의 시각 톤은 차분한 enterprise SaaS에 맞춘다. Tailwind의 고채도 기본색을 직접 쓰지 않고, 낮은 채도의 muted palette와 얇은 구분선으로 계층을 만든다.
 
-## Design Principles
+## 원칙
 
-- **Muted Palette**: Lower saturation to reduce the "AI-generated" feel and aim for an enterprise SaaS aesthetic
-- **No direct Tailwind base colors**: Use custom muted tokens like `text-ui-blue`, `bg-ui-teal/20` instead of Tailwind defaults like `text-blue-600` or `bg-green-100`
-- **Restrained typography**: For numbers and metrics use `text-2xl font-semibold` (avoid heavy `text-3xl font-bold`)
-- **Use Tailwind utilities for font size**: Use `text-sm`, `text-base`, etc. instead of writing `font-size: 14px` directly
-- **Prefer shadcn/ui**: Use shadcn/ui's `Button`, `Input`, `Table`, etc. instead of native HTML elements like `<button>`, `<input>`, `<table>`
+- Tailwind base color를 직접 쓰지 않는다. `text-blue-600` 대신 `text-ui-blue` 같은 token을 쓴다.
+- 숫자와 metric은 절제한다. `text-3xl font-bold`보다 `text-2xl font-semibold`를 우선한다.
+- font size는 `text-sm`, `text-base` 같은 utility를 사용한다.
+- 기본 control은 shadcn/ui의 `Button`, `Input`, `Table` 등을 사용한다.
+- emoji 대신 `lucide-react` icon을 사용한다.
 
----
+## theme
 
-## Theme Composition
+- base color는 Neutral이며 light mode에는 아주 약한 cool tint만 둔다.
+- dark mode는 거의 무채색으로 유지한다.
+- radius는 `0.5rem` 또는 8px를 기본으로 한다.
 
-### Base: Purple-tinted Neutral
+## color token
 
-The shadcn base color is Neutral, but in light mode a subtle tint toward hue 287 (purple) is applied. This is intentional, to subconsciously reinforce the "purplemux" brand.
+| token | 용도 |
+|---|---|
+| `ui-blue` | info, link, project |
+| `ui-teal` | success, completion, positive |
+| `ui-coral` | warm accent |
+| `ui-amber` | warning, caution, money |
+| `ui-purple` | analytics |
+| `ui-pink` | image, creative |
+| `ui-green` | environment |
+| `ui-gray` | disabled, secondary |
+| `ui-red` | error, delete, danger |
 
-- Light mode: chroma 0.003–0.015 (hue 287) — barely perceivable individually, providing an overall warm cohesion
-- Dark mode: chroma 0 (pure achromatic) — dark mode stays achromatic
-- Primary: dark purple-tinted Neutral (light) / bright Neutral (dark)
+Semantic alias는 `positive`, `negative`, `accent-color`를 사용한다.
 
-### Radius: 0.5rem (8px)
+## chart color
 
-A trim corner that fits enterprise SaaS — not too round (casual), not too sharp (rigid).
-
----
-
-## Muted Palette
-
-Composed of 9 colors plus 3 semantic aliases. Light/dark values differ per token.
-
-### Color Tokens
-
-| Token       | Purpose                       | Light (oklch)       | Dark (oklch)        |
-| ----------- | ----------------------------- | ------------------- | ------------------- |
-| `ui-blue`   | Info, links, projects         | `0.596 0.068 243.5` | `0.69 0.056 243.5`  |
-| `ui-teal`   | Success, completion, positive | `0.589 0.071 171.9` | `0.69 0.07 171.5`   |
-| `ui-coral`  | Warm accent                   | `0.624 0.079 44`    | `0.711 0.071 43.9`  |
-| `ui-amber`  | Warning, caution, money       | `0.606 0.086 82.8`  | `0.715 0.081 78`    |
-| `ui-purple` | AX index, analytics           | `0.608 0.065 287.5` | `0.71 0.051 289`    |
-| `ui-pink`   | Image, creative               | `0.601 0.081 358.3` | `0.704 0.069 359.6` |
-| `ui-green`  | Nature, environment           | `0.594 0.093 131.6` | `0.694 0.087 130.6` |
-| `ui-gray`   | Disabled, secondary           | `0.619 0.012 100.9` | `0.708 0.01 100.1`  |
-| `ui-red`    | Error, delete, danger         | `0.592 0.101 20.5`  | `0.703 0.085 19.4`  |
-
-### Semantic Aliases
-
-| Token          | Refers to    | Purpose                       |
-| -------------- | ------------ | ----------------------------- |
-| `positive`     | `ui-teal`    | Success, increase, active     |
-| `negative`     | `ui-red`     | Error, decrease, failure      |
-| `accent-color` | `ui-blue`    | Emphasis, info, links         |
-
-### Saturation Range
-
-- **Light**: Lightness 0.59–0.62, Chroma 0.065–0.101
-- **Dark**: Lightness 0.69–0.72, Chroma 0.051–0.087
-- Light → Dark: lightness +0.1, chroma slightly lower
-
----
-
-## Chart Colors
-
-`--chart-1` through `--chart-9` reference the muted palette.
-
-| Chart variable | Refers to   |
-| -------------- | ----------- |
-| `--chart-1`    | `ui-blue`   |
-| `--chart-2`    | `ui-teal`   |
-| `--chart-3`    | `ui-coral`  |
-| `--chart-4`    | `ui-amber`  |
-| `--chart-5`    | `ui-purple` |
-| `--chart-6`    | `ui-pink`   |
-| `--chart-7`    | `ui-green`  |
-| `--chart-8`    | `ui-gray`   |
-| `--chart-9`    | `ui-red`    |
-
-### Color Selection Guidelines
-
-- **Color must encode meaning**: Don't use chart-1 onward in order. Pick colors that fit the data's meaning.
-- **2–3 colors per chart is ideal**: Multi-color is acceptable only for categorical data.
-- **Beware UI conventions**: blue (info), teal/green (success), red (danger), and amber (warning) already carry meaning, so prefer `purple`, `coral`, `pink`, or `gray` for categorical data where those meanings don't apply.
-
-```
-// Cost vs profit → match meaning
-API cost: ui-red (cost = negative)   // ✅
-Net profit: ui-teal (profit = positive)  // ✅
-
-// Categorical (no inherent meaning) → avoid convention colors
-Project: ui-blue     // ⚠️ may collide with the "info" meaning
-Library: ui-purple  // ✅ neutral
-AI recipe: ui-coral // ✅ neutral
-App: ui-pink         // ✅ neutral
-```
-
-For SVG-based charts (recharts, etc.), use the CSS variables directly:
+Chart 색상은 순서가 아니라 의미로 고른다. 비용은 red, 성공은 teal처럼 의미가 분명한 색을 사용한다. 의미 없는 category에는 convention이 강한 blue, green, red, amber보다 purple, coral, pink, gray를 우선한다.
 
 ```tsx
 <Bar fill="var(--ui-teal)" />
 <Area stroke="var(--ui-purple)" />
-<linearGradient>
-  <stop stopColor="var(--ui-blue)" />
-</linearGradient>
 ```
 
----
+## 금지 장식
 
-## Minimal Decoration
+- gradient background, gradient button, gradient card.
+- blur, backdrop-filter.
+- glow, neon.
+- drop shadow.
+- full border가 없는 일방향 accent의 radius.
 
-> "Flat, clean, white surfaces. No gradients, drop shadows, blur, glow, or neon effects."
->
-> Subtraction is the rule; addition only when there is a functional reason.
+계층은 shadow가 아니라 whitespace와 background difference로 만든다. table과 grid는 얇은 가로선 위주로 구성하고 불필요한 hover highlight와 animation을 줄인다.
 
-### Core Philosophy
-
-Don't express hierarchy with shadows or thick borders. Instead, build hierarchy with **whitespace** and **background color differences**.
-
-### Border Rules
-
-All borders default to 0.5px with low opacity.
-
-| Use                   | Spec                                              |
-| --------------------- | ------------------------------------------------- |
-| Default               | `0.5px solid` — about 15% opacity                 |
-| Hover / emphasis      | `0.5px solid` — about 30% opacity                 |
-| Strong divider        | `0.5px solid` — about 40% opacity                 |
-| Featured / promoted   | `2px solid` — the only exception, intentional emphasis |
-
-### Forbidden Decoration
-
-- **Gradient** — not allowed for backgrounds, buttons, or cards. Use flat fills only
-- **Blur / Backdrop-filter** — not allowed
-- **Glow / Neon** — not allowed
-- **Drop shadow** — not allowed. Use whitespace and background color for hierarchy
-- **Overuse of rounded corners** — `border-radius` only when there is a full border. For one-sided accents like `border-left`, `border-radius: 0` is required
-
-### Grids / Tables
-
-- Grid lines should be **horizontal only**, thin and faint
-- Suppress unnecessary hover highlights
-- Minimize animation — only use it for functional feedback (loading, transitions)
-
-### Icons
-
-- Avoid emoji; use **lucide-react icons**
-- Minimize decorative icon backgrounds (use about `/20` opacity if needed)
-
----
-
-## Forbidden Patterns
+## 금지 패턴 예시
 
 ```tsx
-// Don't use Tailwind base palette directly
-bg-blue-100 text-blue-600    // ❌
-bg-green-100 text-green-700  // ❌
-text-red-500                 // ❌
-fill="#3b82f6"               // ❌
-
-// Use the muted palette instead
-bg-ui-blue/20 text-ui-blue   // ✅
-bg-ui-teal/20 text-ui-teal   // ✅
-text-negative                // ✅
-fill="var(--ui-blue)"        // ✅
+bg-blue-100 text-blue-600
+bg-green-100 text-green-700
+text-red-500
+fill="#3b82f6"
 ```
 
-```tsx
-// Don't overdo typography
-text-3xl font-bold     // ❌ too heavy for a metric number
-text-2xl font-semibold // ✅ restrained
-```
+대신 다음처럼 쓴다.
 
 ```tsx
-// Don't hardcode font size in px
-style={{ fontSize: '14px' }}  // ❌
-className="text-sm"           // ✅
-```
-
-```tsx
-// Don't use raw HTML elements
-<button onClick={handleClick}>Save</button>     // ❌
-<Button onClick={handleClick}>Save</Button>      // ✅
-
-<input type="text" />                            // ❌
-<Input type="text" />                            // ✅
-
-<table><tr><td>...</td></tr></table>             // ❌
-<Table><TableRow><TableCell>...</TableCell></TableRow></Table> // ✅
+bg-ui-blue/20 text-ui-blue
+bg-ui-teal/20 text-ui-teal
+text-negative
+fill="var(--ui-blue)"
 ```

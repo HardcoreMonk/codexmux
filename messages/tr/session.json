@@ -14,7 +14,7 @@
   "empty": {
     "closeLabel": "Kapat",
     "noSession": "Oturum yok",
-    "startNewSession": "Yeni bir oturum başlatmak için{br}terminalde claude komutunu çalıştırın",
+    "startNewSession": "Run codex in the terminal{br}to start a new session",
     "newConversation": "Yeni sohbet",
     "close": "Kapat"
   },

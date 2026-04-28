@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/spinner';
 import useTabStore, { selectTabDisplayStatus } from '@/hooks/use-tab-store';
 import ProcessIcon from '@/components/icons/process-icon';
+import { isAgentPanelType } from '@/lib/panel-type';
 import type { TTabDisplayStatus, TTerminalStatus } from '@/types/status';
 import type { ITab, TPanelType } from '@/types/terminal';
 
@@ -15,11 +16,11 @@ interface IWorkspaceStatusIndicatorProps {
 const DotByStatus = ({ status, panelType, terminalStatus, process }: { status: TTabDisplayStatus; panelType?: TPanelType; terminalStatus?: TTerminalStatus; process?: string | null }) => {
   let inner: React.ReactNode;
 
-  if (panelType === 'claude-code') {
+  if (isAgentPanelType(panelType)) {
     if (status === 'busy') {
       inner = <Spinner className="h-2 w-2 text-muted-foreground" />;
     } else if (status === 'ready-for-review') {
-      inner = <span className="h-2 w-2 rounded-full bg-claude-active animate-pulse" aria-hidden="true" />;
+      inner = <span className="h-2 w-2 rounded-full bg-agent-active animate-pulse" aria-hidden="true" />;
     } else if (status === 'needs-input') {
       inner = <span className="h-2 w-2 rounded-full bg-ui-amber animate-pulse" aria-hidden="true" />;
     } else if (status === 'unknown') {

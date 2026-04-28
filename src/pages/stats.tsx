@@ -70,7 +70,7 @@ const StatsPage = () => {
       <div className="mx-auto max-w-content px-4 py-6">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-claude-active" />
+            <BarChart3 className="h-5 w-5 text-agent-active" />
             <h1 className="text-base font-semibold">{t('title')}</h1>
           </div>
           <div className="overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
@@ -80,7 +80,7 @@ const StatsPage = () => {
 
         {overviewLoading && fileCount > 0 && (
           <div className="mb-6 flex items-center gap-3 rounded-xl bg-card px-5 py-4 ring-1 ring-foreground/10">
-            <Spinner className="h-3 w-3 text-claude-active" />
+            <Spinner className="h-3 w-3 text-agent-active" />
             <div>
               <p className="text-sm font-medium">
                 {initializing ? t('collectingInitial') : t('collectingToday')}

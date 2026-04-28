@@ -85,15 +85,15 @@ const computeMeta = (
   sessionStats: ISessionStats | null | undefined,
   initMeta: IInitMeta | undefined,
   newSessionTitle: string,
-  claudeSummary: string | null | undefined,
+  agentSummary: string | null | undefined,
   lastUserMessage: string | null | undefined,
 ): ISessionMetaData => {
   const base = createEmptyMeta(newSessionTitle);
-  const tail = claudeSummary ?? lastUserMessage ?? newSessionTitle;
+  const tail = agentSummary ?? lastUserMessage ?? newSessionTitle;
 
   if (initMeta) {
     const { userCount, assistantCount, updatedAt } = countMessages(entries, initMeta.lastTimestamp);
-    const title = initMeta.customTitle ?? claudeSummary ?? findFirstUserMessage(entries) ?? lastUserMessage ?? newSessionTitle;
+    const title = initMeta.customTitle ?? agentSummary ?? findFirstUserMessage(entries) ?? lastUserMessage ?? newSessionTitle;
     return applyStats({
       ...base,
       title,
@@ -108,7 +108,7 @@ const computeMeta = (
   if (entries.length === 0) return applyStats({ ...base, title: tail }, sessionStats);
 
   const { userCount, assistantCount, updatedAt } = countMessages(entries);
-  const title = claudeSummary ?? findFirstUserMessage(entries) ?? lastUserMessage ?? newSessionTitle;
+  const title = agentSummary ?? findFirstUserMessage(entries) ?? lastUserMessage ?? newSessionTitle;
   const createdAt = entries[0].timestamp ? new Date(entries[0].timestamp).toISOString() : null;
 
   return applyStats({
@@ -126,16 +126,16 @@ export const useSessionMetaCompute = (
   sessionSummary?: string,
   initMeta?: IInitMeta,
   sessionStats?: ISessionStats | null,
-  claudeSummary?: string | null,
+  agentSummary?: string | null,
   lastUserMessage?: string | null,
 ): ISessionMetaData => {
   const t = useTranslations('session');
   const newSessionTitle = t('newSessionTitle');
   return useMemo(() => {
-    const computed = computeMeta(entries, sessionStats, initMeta, newSessionTitle, claudeSummary, lastUserMessage);
+    const computed = computeMeta(entries, sessionStats, initMeta, newSessionTitle, agentSummary, lastUserMessage);
     if (sessionSummary) return { ...computed, title: sessionSummary };
     return computed;
-  }, [entries, sessionSummary, initMeta, sessionStats, newSessionTitle, claudeSummary, lastUserMessage]);
+  }, [entries, sessionSummary, initMeta, sessionStats, newSessionTitle, agentSummary, lastUserMessage]);
 };
 
 const useSessionMeta = (
@@ -143,10 +143,10 @@ const useSessionMeta = (
   sessionSummary?: string,
   initMeta?: IInitMeta,
   sessionStats?: ISessionStats | null,
-  claudeSummary?: string | null,
+  agentSummary?: string | null,
   lastUserMessage?: string | null,
 ): IUseSessionMetaReturn => {
-  const meta = useSessionMetaCompute(entries, sessionSummary, initMeta, sessionStats, claudeSummary, lastUserMessage);
+  const meta = useSessionMetaCompute(entries, sessionSummary, initMeta, sessionStats, agentSummary, lastUserMessage);
   const [isExpanded, setIsExpanded] = useState(false);
 
   const toggleExpanded = useCallback(() => {

@@ -1,13 +1,14 @@
-import fs from 'fs/promises';
 import { createReadStream } from 'fs';
-import path from 'path';
-import os from 'os';
 import readline from 'readline';
 import type { IProjectStats, ISessionStats, TPeriod } from '@/types/stats';
 import { isWithinPeriod } from './period-filter';
 import { shortenCwd } from './daily-report-builder';
+import {
+  collectAgentJsonlFiles,
+  extractSessionIdFromAgentJsonlPath,
+  type IAgentJsonlFile,
+} from './agent-jsonl-files';
 
-const PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
 const CONCURRENCY_LIMIT = 10;
 
 interface IRawSessionAgg {
@@ -21,36 +22,58 @@ interface IRawSessionAgg {
   model: string;
 }
 
-const isAgentFile = (filename: string): boolean => /^agent-/.test(filename);
+interface ICodexTokenUsage {
+  input_tokens: number;
+  output_tokens: number;
+}
 
-const collectJsonlFiles = async (): Promise<{ filePath: string; project: string }[]> => {
-  const result: { filePath: string; project: string }[] = [];
-  try {
-    const projectDirs = await fs.readdir(PROJECTS_DIR);
-    for (const dir of projectDirs) {
-      const projectPath = path.join(PROJECTS_DIR, dir);
-      const stat = await fs.stat(projectPath).catch(() => null);
-      if (!stat?.isDirectory()) continue;
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
 
-      const files = await fs.readdir(projectPath).catch(() => []);
-      for (const file of files) {
-        if (!file.endsWith('.jsonl') || isAgentFile(file)) continue;
-        result.push({ filePath: path.join(projectPath, file), project: dir });
-      }
-    }
-  } catch {
-    // projects dir doesn't exist
-  }
-  return result;
+const parseCodexUsage = (raw: unknown): ICodexTokenUsage | null => {
+  if (!isRecord(raw)) return null;
+  return {
+    input_tokens: Number(raw.input_tokens ?? 0),
+    output_tokens: Number(raw.output_tokens ?? 0),
+  };
 };
 
 const parseJsonlStream = async (
-  filePath: string,
-  project: string,
+  file: IAgentJsonlFile,
   period: TPeriod,
 ): Promise<IRawSessionAgg[]> => {
   const sessions = new Map<string, IRawSessionAgg>();
+  const filePath = file.filePath;
+  let project = file.project || (file.source === 'codex' ? 'Codex' : '');
   let cwd = '';
+  let codexSessionId = file.source === 'codex'
+    ? extractSessionIdFromAgentJsonlPath(filePath) ?? ''
+    : '';
+  let codexModel = 'codex';
+  const previousCodexTotals = new Map<string, ICodexTokenUsage>();
+
+  const ensureSession = (sessionId: string, timestamp: string): IRawSessionAgg | null => {
+    if (!sessionId) return null;
+    let agg = sessions.get(sessionId);
+    if (!agg) {
+      agg = {
+        sessionId,
+        project,
+        startedAt: timestamp,
+        lastActivityAt: timestamp,
+        messageCount: 0,
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        model: '',
+      };
+      sessions.set(sessionId, agg);
+    }
+
+    if (timestamp < agg.startedAt) agg.startedAt = timestamp;
+    if (timestamp > agg.lastActivityAt) agg.lastActivityAt = timestamp;
+    if (project && !agg.project) agg.project = project;
+    return agg;
+  };
 
   try {
     const stream = createReadStream(filePath, { encoding: 'utf-8' });
@@ -62,35 +85,102 @@ const parseJsonlStream = async (
         const entry = JSON.parse(line) as Record<string, unknown>;
         const timestamp = String(entry.timestamp ?? '');
 
-        if (!cwd && typeof entry.cwd === 'string') {
-          cwd = entry.cwd;
+        const type = String(entry.type ?? '');
+        if (file.source === 'codex' && (type === 'session_meta' || type === 'turn_context')) {
+          const payload = isRecord(entry.payload) ? entry.payload : null;
+          if (payload) {
+            if (type === 'session_meta') {
+              codexSessionId = String(payload.id ?? codexSessionId);
+            }
+            const model = String(payload.model ?? '');
+            if (model) codexModel = model;
+            if (!cwd && typeof payload.cwd === 'string') {
+              cwd = payload.cwd;
+              project = shortenCwd(cwd);
+            }
+          }
+          continue;
         }
 
         if (!timestamp || !isWithinPeriod(timestamp, period)) continue;
 
+        if (file.source === 'codex') {
+          const payload = isRecord(entry.payload) ? entry.payload : null;
+          if (!payload) continue;
+
+          if (type === 'event_msg') {
+            const eventType = String(payload.type ?? '');
+            if (eventType === 'user_message') {
+              const agg = ensureSession(codexSessionId, timestamp);
+              if (agg) {
+                agg.messageCount++;
+                if (!agg.model) agg.model = codexModel;
+              }
+              continue;
+            }
+
+            if (eventType === 'agent_message') {
+              const agg = ensureSession(codexSessionId, timestamp);
+              if (agg && !agg.model) agg.model = codexModel;
+              continue;
+            }
+
+            if (eventType === 'token_count') {
+              const info = isRecord(payload.info) ? payload.info : null;
+              if (!info) continue;
+
+              const model = codexModel || 'codex';
+              const lastUsage = parseCodexUsage(info.last_token_usage);
+              const totalUsage = parseCodexUsage(info.total_token_usage);
+              let usage = lastUsage;
+
+              if (totalUsage) {
+                const previous = previousCodexTotals.get(model);
+                previousCodexTotals.set(model, totalUsage);
+                if (!usage && previous) {
+                  usage = {
+                    input_tokens: Math.max(0, totalUsage.input_tokens - previous.input_tokens),
+                    output_tokens: Math.max(0, totalUsage.output_tokens - previous.output_tokens),
+                  };
+                } else if (!usage) {
+                  usage = totalUsage;
+                }
+              }
+
+              if (!usage) continue;
+
+              const agg = ensureSession(codexSessionId, timestamp);
+              if (agg) {
+                agg.totalInputTokens += usage.input_tokens;
+                agg.totalOutputTokens += usage.output_tokens;
+                agg.model = model;
+              }
+              continue;
+            }
+          }
+
+          if (type === 'response_item' && payload.type === 'message') {
+            const role = String(payload.role ?? '');
+            if (role === 'assistant') {
+              const agg = ensureSession(codexSessionId, timestamp);
+              if (agg && !agg.model) agg.model = codexModel;
+            }
+          }
+
+          continue;
+        }
+
+        if (!cwd && typeof entry.cwd === 'string') {
+          cwd = entry.cwd;
+        }
+
         const sessionId = String(entry.sessionId ?? '');
         if (!sessionId) continue;
 
-        const type = String(entry.type ?? '');
         if (type !== 'user' && type !== 'assistant') continue;
 
-        let agg = sessions.get(sessionId);
-        if (!agg) {
-          agg = {
-            sessionId,
-            project,
-            startedAt: timestamp,
-            lastActivityAt: timestamp,
-            messageCount: 0,
-            totalInputTokens: 0,
-            totalOutputTokens: 0,
-            model: '',
-          };
-          sessions.set(sessionId, agg);
-        }
-
-        if (timestamp < agg.startedAt) agg.startedAt = timestamp;
-        if (timestamp > agg.lastActivityAt) agg.lastActivityAt = timestamp;
+        const agg = ensureSession(sessionId, timestamp);
+        if (!agg) continue;
 
         if (type === 'user') {
           agg.messageCount++;
@@ -147,10 +237,14 @@ const runWithConcurrency = async <T>(
 };
 
 const parseJsonlTimestampsByDay = async (
-  filePath: string,
+  file: IAgentJsonlFile,
   targetDates: Set<string>,
 ): Promise<Map<string, Map<string, number[]>>> => {
   const days = new Map<string, Map<string, number[]>>();
+  const filePath = file.filePath;
+  let codexSessionId = file.source === 'codex'
+    ? extractSessionIdFromAgentJsonlPath(filePath) ?? ''
+    : '';
 
   try {
     const stream = createReadStream(filePath, { encoding: 'utf-8' });
@@ -163,14 +257,39 @@ const parseJsonlTimestampsByDay = async (
         const timestamp = String(entry.timestamp ?? '');
         if (!timestamp) continue;
 
+        const type = String(entry.type ?? '');
+        if (file.source === 'codex' && (type === 'session_meta' || type === 'turn_context')) {
+          const payload = isRecord(entry.payload) ? entry.payload : null;
+          if (payload && type === 'session_meta') {
+            codexSessionId = String(payload.id ?? codexSessionId);
+          }
+          continue;
+        }
+
         const date = timestamp.slice(0, 10);
         if (!targetDates.has(date)) continue;
 
-        const sessionId = String(entry.sessionId ?? '');
-        if (!sessionId) continue;
+        let sessionId = String(entry.sessionId ?? '');
+        if (file.source === 'codex') {
+          const payload = isRecord(entry.payload) ? entry.payload : null;
+          if (!payload) continue;
 
-        const type = String(entry.type ?? '');
-        if (type !== 'user' && type !== 'assistant') continue;
+          const eventType = type === 'event_msg' ? String(payload.type ?? '') : '';
+          const responseItemType = type === 'response_item' ? String(payload.type ?? '') : '';
+          const responseRole = type === 'response_item' ? String(payload.role ?? '') : '';
+
+          if (
+            eventType !== 'user_message'
+            && eventType !== 'agent_message'
+            && !(responseItemType === 'message' && responseRole === 'assistant')
+          ) {
+            continue;
+          }
+
+          sessionId = codexSessionId;
+        }
+
+        if (!sessionId) continue;
 
         const ts = new Date(timestamp).getTime();
         if (isNaN(ts)) continue;
@@ -201,10 +320,10 @@ const parseJsonlTimestampsByDay = async (
 export const parseTimestampsByDay = async (
   targetDates: Set<string>,
 ): Promise<Map<string, Map<string, number[]>>> => {
-  const files = await collectJsonlFiles();
+  const files = await collectAgentJsonlFiles();
   if (files.length === 0) return new Map();
 
-  const tasks = files.map((f) => () => parseJsonlTimestampsByDay(f.filePath, targetDates));
+  const tasks = files.map((f) => () => parseJsonlTimestampsByDay(f, targetDates));
   const allResults = await runWithConcurrency(tasks, CONCURRENCY_LIMIT);
 
   const merged = new Map<string, Map<string, number[]>>();
@@ -230,10 +349,10 @@ export const parseTimestampsByDay = async (
 };
 
 export const parseAllProjects = async (period: TPeriod): Promise<IProjectStats[]> => {
-  const files = await collectJsonlFiles();
+  const files = await collectAgentJsonlFiles();
   if (files.length === 0) return [];
 
-  const tasks = files.map((f) => () => parseJsonlStream(f.filePath, f.project, period));
+  const tasks = files.map((f) => () => parseJsonlStream(f, period));
   const allResults = await runWithConcurrency(tasks, CONCURRENCY_LIMIT);
 
   const projectMap = new Map<string, IProjectStats>();
@@ -260,10 +379,10 @@ export const parseAllProjects = async (period: TPeriod): Promise<IProjectStats[]
 };
 
 export const parseAllSessions = async (period: TPeriod): Promise<ISessionStats[]> => {
-  const files = await collectJsonlFiles();
+  const files = await collectAgentJsonlFiles();
   if (files.length === 0) return [];
 
-  const tasks = files.map((f) => () => parseJsonlStream(f.filePath, f.project, period));
+  const tasks = files.map((f) => () => parseJsonlStream(f, period));
   const allResults = await runWithConcurrency(tasks, CONCURRENCY_LIMIT);
 
   const sessions: ISessionStats[] = [];

@@ -4,7 +4,7 @@ export interface ISessionHistoryEntry {
   workspaceName: string;
   workspaceDir: string | null;
   tabId: string;
-  claudeSessionId: string | null;
+  agentSessionId: string | null;
   prompt: string | null;
   result: string | null;
   startedAt: number;

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import AppLogo from '@/components/layout/app-logo';
 import InstallDialog from '@/components/features/login/install-dialog';
 import { useRuntimePreflight } from '@/hooks/use-runtime-preflight';
-import { isRuntimeOk } from '@/types/preflight';
+import { isRuntimeOk, readRuntimeAgentStatus } from '@/types/preflight';
 import type { IRuntimePreflightResult } from '@/types/preflight';
 
 const getNextInstall = (
@@ -25,8 +25,9 @@ const getNextInstall = (
   if (!status.git.installed) {
     return { command: 'git', label: t('installGit') };
   }
-  if (!status.claude.installed) {
-    return { command: 'claude', label: t('installClaude') };
+  const agent = readRuntimeAgentStatus(status);
+  if (!agent.installed) {
+    return { command: 'codex', label: t('installCodex') };
   }
   return null;
 };
@@ -49,7 +50,11 @@ const ToolsRequiredPage = () => {
     ? [
         { name: 'tmux', ok: status.tmux.installed && status.tmux.compatible, version: status.tmux.version },
         { name: 'Git', ok: status.git.installed, version: status.git.version },
-        { name: 'Claude CLI', ok: status.claude.installed, version: status.claude.version },
+        {
+          name: 'Codex CLI',
+          ok: readRuntimeAgentStatus(status).installed,
+          version: readRuntimeAgentStatus(status).version,
+        },
       ]
     : [];
 

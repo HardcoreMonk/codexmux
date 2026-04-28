@@ -29,13 +29,14 @@ import { cn } from '@/lib/utils';
 import useTabStore from '@/hooks/use-tab-store';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
 import useSessionHistoryStore from '@/hooks/use-session-history-store';
-import { dismissTab } from '@/hooks/use-claude-status';
+import { dismissTab } from '@/hooks/use-agent-status';
 import { navigateToTab, navigateToTabOrCreate, useLayoutStore } from '@/hooks/use-layout';
 import { findPane } from '@/lib/layout-tree';
 import type { ITabState } from '@/hooks/use-tab-store';
 import type { ICurrentAction } from '@/types/status';
 import type { ISessionHistoryEntry } from '@/types/session-history';
 import { stripMarkdown } from '@/lib/strip-markdown';
+import { readAgentSessionId } from '@/lib/agent-tab-fields';
 
 const ACTION_ICONS: Record<string, typeof FileText> = {
   Read: FileText,
@@ -56,16 +57,16 @@ const ITEM_MOTION = {
 };
 
 
-const useActiveTab = (): { id: string | null; claudeSessionId: string | null } => {
+const useActiveTab = (): { id: string | null; agentSessionId: string | null } => {
   const router = useRouter();
   const isTerminalPage = router.pathname === '/';
   return useLayoutStore(useShallow((s) => {
-    if (!isTerminalPage) return { id: null, claudeSessionId: null };
-    if (!s.layout?.activePaneId) return { id: null, claudeSessionId: null };
+    if (!isTerminalPage) return { id: null, agentSessionId: null };
+    if (!s.layout?.activePaneId) return { id: null, agentSessionId: null };
     const pane = findPane(s.layout.root, s.layout.activePaneId);
-    if (!pane?.activeTabId) return { id: null, claudeSessionId: null };
+    if (!pane?.activeTabId) return { id: null, agentSessionId: null };
     const tab = pane.tabs.find((t) => t.id === pane.activeTabId);
-    return { id: pane.activeTabId, claudeSessionId: tab?.claudeSessionId ?? null };
+    return { id: pane.activeTabId, agentSessionId: tab ? readAgentSessionId(tab) : null };
   }));
 };
 
@@ -92,7 +93,7 @@ interface INotificationItem {
   readyForReviewAt?: number | null;
   busySince?: number | null;
   dismissedAt?: number | null;
-  claudeSessionId?: string | null;
+  agentSessionId?: string | null;
 }
 
 interface INotificationSheetProps {
@@ -120,7 +121,7 @@ const collectItems = (
       readyForReviewAt: tab.readyForReviewAt,
       busySince: tab.busySince,
       dismissedAt: tab.dismissedAt,
-      claudeSessionId: tab.claudeSessionId,
+      agentSessionId: readAgentSessionId(tab),
     });
   }
 
@@ -145,7 +146,7 @@ const groupHistoryBySession = (entries: ISessionHistoryEntry[]): ISessionHistory
   const sessionMap = new Map<string, ISessionHistoryEntry[]>();
 
   for (const entry of entries) {
-    const key = entry.claudeSessionId ?? entry.id;
+    const key = readAgentSessionId(entry) ?? entry.id;
     const existing = sessionMap.get(key);
     if (existing) existing.push(entry);
     else sessionMap.set(key, [entry]);
@@ -270,7 +271,7 @@ const SessionHistoryItem = ({
       className={cn(
         'flex items-start gap-3 rounded-md px-3 py-2.5 transition-colors',
         isActiveSession
-          ? 'bg-claude-active/10'
+          ? 'bg-agent-active/10'
           : 'hover:bg-muted cursor-pointer',
       )}
       onClick={isActiveSession ? undefined : onClick}
@@ -343,7 +344,7 @@ const NotificationItem = ({
       className={cn(
         'flex items-start gap-3 rounded-md px-3 py-2.5 transition-colors',
         isActiveTab
-          ? 'bg-claude-active/10'
+          ? 'bg-agent-active/10'
           : 'hover:bg-muted cursor-pointer',
       )}
       onClick={isActiveTab ? undefined : () => onNavigate?.(item.workspaceId, item.tabId)}
@@ -354,9 +355,9 @@ const NotificationItem = ({
         ) : variant === 'needs-input' ? (
           <span className="block h-2 w-2 rounded-full bg-ui-amber animate-pulse" />
         ) : showActions ? (
-          <span className="mt-px block h-2 w-2 rounded-full bg-claude-active" />
+          <span className="mt-px block h-2 w-2 rounded-full bg-agent-active" />
         ) : (
-          <Spinner className="h-3 w-3 text-claude-active/70" />
+          <Spinner className="h-3 w-3 text-agent-active/70" />
         )}
       </span>
       <div className="min-w-0 flex-1">
@@ -408,12 +409,13 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
   const t = useTranslations('notification');
   const tabs = useTabStore((s) => s.tabs);
   const workspaces = useWorkspaceStore((s) => s.workspaces);
-  const { id: activeTabId, claudeSessionId: activeClaudeSessionId } = useActiveTab();
+  const { id: activeTabId, agentSessionId: activeAgentSessionId } = useActiveTab();
   const historyEntries = useSessionHistoryStore((s) => s.entries);
   const sessionTabMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const [tabId, tab] of Object.entries(tabs)) {
-      if (tab.claudeSessionId) map.set(tab.claudeSessionId, tabId);
+      const sessionId = readAgentSessionId(tab);
+      if (sessionId) map.set(sessionId, tabId);
     }
     return map;
   }, [tabs]);
@@ -425,8 +427,9 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
   const liveSessionIds = useMemo(() => {
     const ids = new Set<string>();
     for (const [, tab] of Object.entries(tabs)) {
-      if ((tab.cliState === 'busy' || tab.cliState === 'needs-input' || tab.cliState === 'ready-for-review') && tab.claudeSessionId) {
-        ids.add(tab.claudeSessionId);
+      const sessionId = readAgentSessionId(tab);
+      if ((tab.cliState === 'busy' || tab.cliState === 'needs-input' || tab.cliState === 'ready-for-review') && sessionId) {
+        ids.add(sessionId);
       }
     }
     return ids;
@@ -434,24 +437,29 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
   const reviewSessionIds = useMemo(() => {
     const ids = new Set<string>();
     for (const [, tab] of Object.entries(tabs)) {
-      if (tab.cliState === 'ready-for-review' && tab.claudeSessionId) ids.add(tab.claudeSessionId);
+      const sessionId = readAgentSessionId(tab);
+      if (tab.cliState === 'ready-for-review' && sessionId) ids.add(sessionId);
     }
     return ids;
   }, [tabs]);
   const reviewHistoryMap = useMemo(() => {
     const map = new Map<string, ISessionHistoryEntry>();
     for (const entry of historyEntries) {
-      if (!entry.claudeSessionId || !reviewSessionIds.has(entry.claudeSessionId)) continue;
-      const existing = map.get(entry.claudeSessionId);
+      const sessionId = readAgentSessionId(entry);
+      if (!sessionId || !reviewSessionIds.has(sessionId)) continue;
+      const existing = map.get(sessionId);
       if (!existing || entry.completedAt > existing.completedAt) {
-        map.set(entry.claudeSessionId, entry);
+        map.set(sessionId, entry);
       }
     }
     return map;
   }, [historyEntries, reviewSessionIds]);
   const sessionGroups = useMemo(() => {
     const filtered = liveSessionIds.size > 0
-      ? historyEntries.filter((e) => !e.claudeSessionId || !liveSessionIds.has(e.claudeSessionId))
+      ? historyEntries.filter((e) => {
+        const sessionId = readAgentSessionId(e);
+        return !sessionId || !liveSessionIds.has(sessionId);
+      })
       : historyEntries;
     return groupHistoryBySession(filtered);
   }, [historyEntries, liveSessionIds]);
@@ -478,7 +486,7 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
     if (resolvedTabId) {
       navigateToTab(entry.workspaceId, resolvedTabId);
     } else {
-      navigateToTabOrCreate(entry.workspaceId, entry.tabId, entry.claudeSessionId, entry.workspaceName, entry.workspaceDir);
+      navigateToTabOrCreate(entry.workspaceId, entry.tabId, readAgentSessionId(entry), entry.workspaceName, entry.workspaceDir);
     }
   }, [onNavigated]);
 
@@ -532,7 +540,7 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
               <div className="flex flex-col gap-2">
                 <AnimatePresence mode="popLayout" initial={false}>
                   {reviewItems.map((item) => {
-                    const entry = item.claudeSessionId ? reviewHistoryMap.get(item.claudeSessionId) : undefined;
+                    const entry = item.agentSessionId ? reviewHistoryMap.get(item.agentSessionId) : undefined;
                     const isActive = item.tabId === activeTabId;
                     if (!entry) {
                       return (
@@ -546,7 +554,7 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
                         <SessionHistoryItem
                           entry={entry}
                           isActiveSession={isActive}
-                          icon={<span className="mt-px block h-2 w-2 rounded-full bg-claude-active" />}
+                          icon={<span className="mt-px block h-2 w-2 rounded-full bg-agent-active" />}
                           onClick={isActive ? undefined : () => handleNavigate(item.workspaceId, item.tabId)}
                         />
                         {!isActive && (
@@ -585,7 +593,7 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
                       {sessions.map((group) => {
                         const isExpanded = expandedTabs.has(group.sessionId);
                         const hasOlder = group.olderEntries.length > 0;
-                        const isActive = activeClaudeSessionId !== null && group.sessionId === activeClaudeSessionId && !liveSessionIds.has(group.sessionId);
+                        const isActive = activeAgentSessionId !== null && group.sessionId === activeAgentSessionId && !liveSessionIds.has(group.sessionId);
                         const resolvedTabId = sessionTabMap.get(group.sessionId) ?? null;
                         return (
                           <motion.div key={group.sessionId} {...ITEM_MOTION}>

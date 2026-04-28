@@ -1,72 +1,47 @@
 ---
-title: Barre latérale & options Claude
-description: Réordonnez et masquez les raccourcis de la barre latérale, gérez la bibliothèque de prompts rapides, et basculez les flags de la CLI Claude.
-eyebrow: Personnalisation
+title: 사이드바 & Codex 옵션
+description: 사이드바 단축 항목, 퀵 프롬프트, Codex CLI option 설정.
+eyebrow: 설정
 permalink: /fr/docs/sidebar-options/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-La barre latérale et la barre de saisie sont composées de petites listes que vous pouvez remodeler — liens raccourcis en bas de la barre latérale, boutons de prompt au-dessus de la saisie. L'onglet Claude dans Paramètres contient les bascules au niveau CLI pour les sessions que vous lancez depuis le tableau de bord.
+sidebar, quick prompt, Codex launch option은 Settings에서 조정합니다. 이 값은 새 session과 dashboard 사용 흐름에 영향을 줍니다.
 
-## Éléments de la barre latérale
+## sidebar shortcut
 
-Paramètres (<kbd>⌘,</kbd>) → onglet **Barre latérale**. La liste contrôle la rangée de raccourcis qui vit en bas de la barre latérale — liens vers des dashboards, outils internes, n'importe quoi adressable par URL.
+**Settings** -> **Sidebar**에서 sidebar 하단 shortcut을 관리합니다.
 
-Chaque ligne a une poignée de glisser, un nom, une URL et un interrupteur. Vous pouvez :
+- drag로 순서 변경.
+- switch로 표시/숨김.
+- custom item 추가와 삭제.
+- 기본값으로 reset.
 
-- **Glisser** la poignée pour réordonner. Les éléments intégrés et personnalisés bougent librement.
-- **Basculer** l'interrupteur pour masquer un élément sans le supprimer.
-- **Modifier** les éléments personnalisés (icône crayon) — changer nom, icône ou URL.
-- **Supprimer** les éléments personnalisés (icône poubelle).
-- **Réinitialiser aux défauts** — restaure les éléments intégrés, supprime tous les personnalisés, efface l'ordre.
+## quick prompt
 
-### Ajouter un élément personnalisé
+**Settings** -> **Quick Prompts**에서 input 위에 표시되는 prompt button을 관리합니다. 자주 쓰는 요청을 버튼 하나로 보낼 수 있습니다.
 
-Cliquez **Ajouter un élément** en bas. Vous obtiendrez un petit formulaire :
+예시:
 
-- **Nom** — apparaît comme tooltip et label.
-- **Icône** — choisie dans une galerie cherchable lucide-react.
-- **URL** — n'importe quoi en `http(s)://...` marche. Grafana interne, dashboards Vercel, un outil d'admin interne.
+- 테스트 실행.
+- 현재 diff review.
+- 마지막 commit 요약.
+- release note 초안 작성.
 
-Cliquez Enregistrer et la ligne apparaît en bas de la liste. Glissez-la où vous voulez.
+## Codex option
 
-{% call callout('note', 'Les intégrés peuvent être masqués, pas supprimés') %}
-Les éléments intégrés (ceux que purplemux livre) n'ont qu'un interrupteur et une poignée — pas d'édition ni de suppression. Ils sont toujours là au cas où vous changiez d'avis. Les éléments personnalisés ont le kit complet.
-{% endcall %}
+**Settings** -> **Codex**의 값은 새로 여는 Codex tab에 적용됩니다. 이미 실행 중인 session은 바꾸지 않습니다.
 
-## Prompts rapides
+| option | 의미 |
+|---|---|
+| model | `codex --model` 값 |
+| sandbox | `codex --sandbox` 값 |
+| approval policy | `codex --ask-for-approval` 값 |
+| web search | `--search` 추가 여부 |
+| terminal 표시 | timeline과 raw terminal을 함께 보여줄지 여부 |
 
-Paramètres → onglet **Prompts rapides**. Ce sont les boutons qui s'asseyent au-dessus du champ de saisie Claude — clic unique pour envoyer un message pré-écrit.
+## 다음 단계
 
-Même schéma que les éléments de barre latérale :
-
-- Glisser pour réordonner.
-- Basculer pour masquer.
-- Modifier / supprimer les prompts personnalisés.
-- Réinitialiser aux défauts.
-
-Ajouter un prompt demande un **nom** (le label du bouton) et le **prompt** lui-même (texte multi-lignes). Utilisez-les pour ce que vous tapez souvent : « Lance la suite de tests », « Résume le dernier commit », « Review le diff courant ».
-
-## Options de la CLI Claude
-
-Paramètres → onglet **Claude**. Ces flags affectent *comment purplemux lance la CLI Claude* dans les nouveaux onglets — ils ne changent pas le comportement d'une session déjà lancée.
-
-### Skip Permission Checks
-
-Ajoute `--dangerously-skip-permissions` à la commande `claude`. Claude exécutera les outils et modifiera les fichiers sans demander d'approbation à chaque fois.
-
-C'est le même flag que la CLI officielle expose — purplemux n'allège aucune sécurité par-dessus. Lisez la [documentation d'Anthropic](https://docs.anthropic.com/en/docs/claude-code/cli-reference) avant de l'activer. À traiter comme opt-in pour des espaces de travail de confiance uniquement.
-
-### Show Terminal with Claude
-
-Quand **on** (par défaut) : un onglet Claude affiche la vue de session en direct *et* le volet terminal sous-jacent côte à côte, donc vous pouvez plonger dans le shell quand vous voulez.
-
-Quand **off** : les nouveaux onglets Claude s'ouvrent avec le terminal replié. La vue de session remplit tout le volet. Vous pouvez toujours étendre le terminal manuellement par onglet ; ceci ne change que le défaut pour les onglets nouvellement créés.
-
-Utilisez le réglage off si vous pilotez surtout Claude via la timeline et voulez un défaut plus propre.
-
-## Pour aller plus loin
-
-- **[Thèmes & polices](/purplemux/fr/docs/themes-fonts/)** — clair, sombre, système ; préréglages de taille de police.
-- **[Intégration éditeur](/purplemux/fr/docs/editor-integration/)** — câbler VS Code, Cursor, code-server.
-- **[Première session](/purplemux/fr/docs/first-session/)** — rappel sur la mise en page du tableau de bord.
+- **[퀵 프롬프트 & 첨부](/codexmux/fr/docs/quick-prompts-attachments/)**
+- **[테마 & 글꼴](/codexmux/fr/docs/themes-fonts/)**
+- **[권한 프롬프트](/codexmux/fr/docs/permission-prompts/)**

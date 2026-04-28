@@ -1,79 +1,78 @@
 ---
-title: Hızlı promptlar & ekler
-description: Kayıtlı bir prompt kütüphanesi, sürükle-bırak görüntüler, dosya ekleri ve yeniden kullanılabilir bir mesaj geçmişi — hepsi zaman tünelinin altındaki girdi çubuğundan.
-eyebrow: Claude Code
+title: 퀵 프롬프트 & 첨부
+description: 저장된 프롬프트 라이브러리, 이미지 드래그 앤 드롭, 파일 첨부, 재사용 가능한 메시지 히스토리 — 모두 타임라인 하단의 입력 바에서.
+eyebrow: Codex
 permalink: /tr/docs/quick-prompts-attachments/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Zaman tünelinin altındaki girdi çubuğu bir textarea'dan fazlasıdır. Kayıtlı promptlar, ekler ve mesaj geçmişinin yaşadığı yerdir — böylece günde on kez yazdığınız şeyler size günde on yazma maliyetinden kurtulur.
+타임라인 아래의 입력 바는 단순한 textarea가 아닙니다. 저장된 프롬프트, 첨부, 메시지 히스토리가 여기에 살고 있어, 하루에 열 번 입력하던 것이 더 이상 열 번의 타이핑을 요구하지 않습니다.
 
-## Hızlı promptlar
+## 퀵 프롬프트
 
-Hızlı promptlar `~/.purplemux/quick-prompts.json`'da saklanan kısa, adlandırılmış girişlerdir. Girdi çubuğunun üstünde çipler olarak görünürler — tek tıkla, sanki yazmışsınız gibi prompt'u gönderir.
+퀵 프롬프트는 `~/.codexmux/quick-prompts.json`에 저장되는 짧은 이름이 붙은 항목입니다. 입력 바 위에 칩으로 나타나며 — 한 번 클릭하면 직접 입력한 것처럼 프롬프트가 전송됩니다.
 
-Kutudan iki yerleşik gelir ve istediğiniz zaman devre dışı bırakılabilir:
+기본 제공되는 빌트인이 있고, 언제든 비활성화할 수 있습니다:
 
-- **Commit** — `/commit-commands:commit` çalıştırır
-- **Simplify** — `/simplify` çalıştırır
+- **Commit** — `/commit-commands:commit` 실행
 
-**Ayarlar → Hızlı promptlar**'dan kendinizinkini ekleyin:
+직접 추가하려면 **설정 → 퀵 프롬프트**에서:
 
-1. **Prompt ekle**'ye tıklayın.
-2. Bir ad (çip etiketi) ve gövde (gönderilecek) verin.
-3. Yeniden sıralamak için sürükleyin. Silmeden gizlemek için kapatın.
+1. **Add prompt** 클릭
+2. 이름(칩 라벨)과 본문(전송될 내용) 입력
+3. 드래그로 순서 조정. 토글 off로 삭제 없이 숨기기
 
-Gövdeye yazdığınız her şey aynen gönderilir — slash komutları, çok satırlı promptlar veya "Editörde açık dosyayı açıkla ve bir iyileştirme öner" gibi şablonlanmış istekler dahil.
+본문에 작성한 내용은 그대로 전송됩니다 — 슬래시 커맨드, 멀티라인 프롬프트, "에디터에 열린 파일을 설명하고 개선점을 한 가지 제안해줘" 같은 템플릿 요청도 가능합니다.
 
-{% call callout('tip', 'Slash komutları sayılır') %}
-Hızlı promptlar Claude Code slash komutları için tek tıklamalı tetikleyiciler olarak güzel çalışır. `/review`'a işaret eden bir "Bu PR'ı incele" çipi her seferinde birkaç tuş vuruşu kazandırır.
+{% call callout('tip', '슬래시 커맨드도 됩니다') %}
+퀵 프롬프트는 Codex 슬래시 커맨드를 한 번에 트리거하는 용도로 잘 어울립니다. `/review`를 가리키는 "Review this PR" 칩 하나로 매번 몇 번의 키 입력을 줄일 수 있습니다.
 {% endcall %}
 
-## Görüntüleri sürükle-bırak
+## 이미지 드래그 앤 드롭
 
-Bir görüntü dosyasını (PNG, JPG, WebP, vb.) girdi çubuğunun herhangi bir yerine bırakarak ekleyin. purplemux dosyayı sunucuda geçici bir yola yükler ve prompt'unuza otomatik bir referans ekler.
+이미지 파일(PNG, JPG, WebP 등)을 입력 바 어디에든 드롭하면 첨부됩니다. codexmux는 파일을 서버의 임시 경로에 업로드하고 프롬프트에 자동으로 reference를 삽입합니다.
 
-Ayrıca şunları yapabilirsiniz:
+추가로:
 
-- Panodan doğrudan bir görüntü **yapıştırın**
-- Dosya iletişim kutusundan seçmek için **ataşı tıklayın**
-- Mesaj başına **20 dosyaya kadar** ekleyin
+- 클립보드에서 이미지 직접 **붙여넣기**
+- **클립 아이콘**을 클릭해 파일 다이얼로그에서 선택
+- 메시지당 **최대 20개 파일** 첨부 가능
 
-Ekler beklerken girdinin üstünde bir küçük resim şeridi belirir. Her küçük resmin göndermeden önce kaldırmak için bir X'i vardır.
+첨부 대기 중에는 입력 바 위에 썸네일 스트립이 나타납니다. 각 썸네일에는 X 버튼이 있어 전송 전에 제거할 수 있습니다.
 
-## Diğer dosya ekleri
+## 그 외 파일 첨부
 
-Aynı ataş, görüntü olmayan dosyalar için de çalışır — markdown, JSON, CSV, kaynak dosyalar, her şey. purplemux onları geçici bir dizine koyar ve Claude'un istek kapsamında `read` edebilmesi için yolu ekler.
+같은 클립 아이콘은 이미지가 아닌 파일에도 동작합니다 — markdown, JSON, CSV, 소스 파일 등 무엇이든. codexmux가 임시 디렉토리에 두고 경로를 삽입해주면, Codex가 요청의 일부로 `read`할 수 있습니다.
 
-Bu, başka bir makineden yapıştırılan bir yığın izi veya farklı bir projeden bir yapılandırma dosyası gibi Claude'un kendisi ulaşamadığı şeyleri paylaşmanın en kolay yoludur.
+다른 머신에서 붙여넣은 스택 트레이스나 다른 프로젝트의 설정 파일처럼, Codex가 직접 닿을 수 없는 것을 공유하기에 가장 쉬운 방법입니다.
 
-## Mobil dostu
+## 모바일 친화
 
-Ekler ve ataş, telefonlarda tam boyuttadır. iOS paylaşım sayfasından bir ekran görüntüsü bırakın veya kamera düğmesini (Android) kullanarak doğrudan kameraya bir fotoğraf ekleyin.
+첨부와 클립 아이콘은 휴대폰에서도 풀사이즈입니다. iOS 공유 시트에서 스크린샷을 드롭하거나, 카메라 버튼(Android)으로 카메라 롤에서 사진을 바로 첨부할 수 있습니다.
 
-Girdi çubuğu dar ekranlar için yeniden akar — çipler yatay bir kaydırıcı olur, textarea kaydırma öncesi beş satıra kadar büyür.
+입력 바는 좁은 화면에 맞게 reflow됩니다 — 칩은 가로 스크롤러가 되고, textarea는 5라인까지 확장된 뒤 스크롤됩니다.
 
-## Mesaj geçmişi
+## 메시지 히스토리
 
-Bir çalışma alanında gönderdiğiniz her prompt çalışma alanı başına geçmişte tutulur. Birini yeniden kullanmak için:
+워크스페이스 안에서 보낸 모든 프롬프트는 워크스페이스별 히스토리로 보관됩니다. 재사용하려면:
 
-- Boş bir girdi çubuğunda son mesajları gezmek için <kbd>↑</kbd>'ya basın
-- Veya aranabilir bir liste için **Geçmiş** seçicisini açın
+- 비어 있는 입력 바에서 <kbd>↑</kbd>로 최근 메시지 순회
+- 또는 검색 가능한 목록을 위해 **History** 피커를 열기
 
-Eski girdiler seçiciden silinebilir. Geçmiş diğer çalışma alanı verileriyle birlikte `~/.purplemux/` altında saklanır, makineden hiç çıkmaz.
+오래된 항목은 피커에서 삭제할 수 있습니다. 히스토리는 다른 워크스페이스 데이터와 함께 `~/.codexmux/` 아래에 저장되며, 머신 외부로 전송되지 않습니다.
 
-## Klavye
+## 키보드
 
-| Tuş | Eylem |
+| 키 | 동작 |
 |---|---|
-| <kbd>⌘I</kbd> | Oturum görünümünün herhangi bir yerinden girdiye odaklan |
-| <kbd>Enter</kbd> | Gönder |
-| <kbd>⇧Enter</kbd> | Yeni satır ekle |
-| <kbd>Esc</kbd> | Claude meşgulken bir kesinti gönder |
-| <kbd>↑</kbd> | (Boşken) mesaj geçmişinde geri adım at |
+| <kbd>⌘I</kbd> | 세션 뷰 어디서든 입력에 포커스 |
+| <kbd>Enter</kbd> | 전송 |
+| <kbd>⇧Enter</kbd> | 줄바꿈 삽입 |
+| <kbd>Esc</kbd> | Codex가 busy일 때 interrupt 전송 |
+| <kbd>↑</kbd> | (입력 비어 있을 때) 메시지 히스토리 거슬러 올라가기 |
 
-## Sıradaki adımlar
+## 다음으로
 
-- **[Canlı oturum görünümü](/purplemux/tr/docs/live-session-view/)** — promptlarınızın ve Claude'un yanıtlarının göründüğü yer.
-- **[Klavye kısayolları](/purplemux/tr/docs/keyboard-shortcuts/)** — tam bağlama tablosu.
-- **[İzin istemleri](/purplemux/tr/docs/permission-prompts/)** — onay gerektiren bir istek gönderdikten sonra olanlar.
+- **[라이브 세션 뷰](/codexmux/tr/docs/live-session-view/)** — 프롬프트와 Codex의 답변이 표시되는 곳
+- **[키보드 단축키](/codexmux/tr/docs/keyboard-shortcuts/)** — 전체 바인딩 표
+- **[권한 프롬프트](/codexmux/tr/docs/permission-prompts/)** — 승인이 필요한 요청을 보낸 뒤 일어나는 일

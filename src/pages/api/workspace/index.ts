@@ -1,7 +1,7 @@
 import os from 'os';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getWorkspaces, createWorkspace } from '@/lib/workspace-store';
-import { readLayoutFile, resolveLayoutFile, collectAllTabs } from '@/lib/layout-store';
+import { readLayoutFile, resolveLayoutFile, collectAllTabs, updateTabAgentSessionId } from '@/lib/layout-store';
 import { getProviderByPanelType } from '@/lib/providers';
 import { sendKeys } from '@/lib/tmux';
 import { getStatusManager } from '@/lib/status-manager';
@@ -19,7 +19,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   if (req.method === 'POST') {
     const { directory, name, resumeSessionId, panelType } = req.body ?? {};
-    const provider = resumeSessionId ? getProviderByPanelType(panelType ?? 'claude-code') : null;
+    const provider = resumeSessionId ? getProviderByPanelType(panelType ?? 'codex') : null;
     if (resumeSessionId) {
       if (!provider) {
         return res.status(400).json({ error: 'Unknown panel type for resume' });
@@ -50,6 +50,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       }
 
       if (resumeSessionId && provider && defaultTab) {
+        await updateTabAgentSessionId(defaultTab.sessionName, provider, resumeSessionId);
+        provider.writeSessionId(defaultTab, resumeSessionId);
         setTimeout(async () => {
           try {
             const resumeCmd = await provider.buildResumeCommand(resumeSessionId, { workspaceId: workspace.id });

@@ -14,14 +14,13 @@ import { useLayoutStore } from '@/hooks/use-layout';
 import useConfigStore from '@/hooks/use-config-store';
 import { useShallow } from 'zustand/react/shallow';
 import TerminalContainer from '@/components/features/workspace/terminal-container';
-import ClaudeCodePanel from '@/components/features/workspace/claude-code-panel';
+import AgentPanel from '@/components/features/workspace/agent-panel';
 import WebInputBar from '@/components/features/workspace/web-input-bar';
 import QuickPromptBar from '@/components/features/workspace/quick-prompt-bar';
 import ConnectionStatus from '@/components/features/workspace/connection-status';
 import WebBrowserPanel from '@/components/features/workspace/web-browser-panel';
 import DiffPanel from '@/components/features/workspace/diff-panel';
 import PaneDisconnectedOverlay from '@/components/features/workspace/pane-disconnected-overlay';
-import PaneClaudeModePrompt from '@/components/features/workspace/pane-claude-mode-prompt';
 import PanePathInputOverlay from '@/components/features/workspace/pane-path-input-overlay';
 import useQuickPrompts from '@/hooks/use-quick-prompts';
 import useFileDrop from '@/hooks/use-file-drop';
@@ -29,8 +28,11 @@ import PaneTabBar from '@/components/features/workspace/pane-tab-bar';
 import { formatTabTitle, parseCurrentCommand, isShellProcess } from '@/lib/tab-title';
 import { isAppShortcut, isClearShortcut, isFocusInputShortcut, isShiftEnter } from '@/lib/keyboard-shortcuts';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
-import useTabStore, { selectSessionView, isCliIdle } from '@/hooks/use-tab-store';
-import { dismissTab as dismissStatusTab } from '@/hooks/use-claude-status';
+import useTabStore, { selectAgentProcess, selectAgentProcessCheckedAt, selectSessionView, isCliIdle } from '@/hooks/use-tab-store';
+import { dismissTab as dismissStatusTab } from '@/hooks/use-agent-status';
+import { buildCodexCommandFromStore } from '@/lib/codex-client-command';
+import { readAgentSessionId } from '@/lib/agent-tab-fields';
+import { isAgentPanelType } from '@/lib/panel-type';
 
 
 interface ITermActions {
@@ -62,10 +64,10 @@ interface IPaneContainerProps {
   paneNumber: number;
 }
 
-const TERMINAL_FONT_SIZES: Record<string, { normal: number; claudeCode: number }> = {
-  normal: { normal: 12, claudeCode: 10 },
-  large: { normal: 14, claudeCode: 12 },
-  'x-large': { normal: 16, claudeCode: 14 },
+const TERMINAL_FONT_SIZES: Record<string, { normal: number; agent: number }> = {
+  normal: { normal: 12, agent: 10 },
+  large: { normal: 14, agent: 12 },
+  'x-large': { normal: 16, agent: 14 },
 };
 
 const EMPTY_TABS: ITab[] = [];
@@ -93,14 +95,15 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const activePanelType: TPanelType = activeTab?.panelType ?? 'terminal';
-  const isClaudeCode = activePanelType === 'claude-code';
+  const isAgentPanel = isAgentPanelType(activePanelType);
   const isWebBrowser = activePanelType === 'web-browser';
   const isDiff = activePanelType === 'diff';
 
   const { theme: terminalTheme } = useTerminalTheme();
   const configFontSize = useConfigStore((s) => s.fontSize);
-  const claudeShowTerminal = useConfigStore((s) => s.claudeShowTerminal);
-  const effectiveTerminalCollapsed = activeTab?.terminalCollapsed ?? !claudeShowTerminal;
+  const codexShowTerminal = useConfigStore((s) => s.codexShowTerminal);
+  const showAgentTerminal = codexShowTerminal;
+  const effectiveTerminalCollapsed = activeTab?.terminalCollapsed ?? !showAgentTerminal;
   const [hasEverConnected, setHasEverConnected] = useState(false);
   const [sessionSwitching, setSessionSwitching] = useState(false);
   const sessionSwitchTimerRef = useRef(0);
@@ -179,7 +182,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   const clearRef = useRef<() => void>(() => {});
   const focusInputRef = useRef<(() => void) | undefined>(undefined);
   const setInputValueRef = useRef<((v: string) => void) | undefined>(undefined);
-  const pendingClaudeInputRef = useRef<string | null>(null);
+  const pendingAgentInputRef = useRef<string | null>(null);
   const clickedTerminalRef = useRef(false);
   const pointerDownPosRef = useRef<{ x: number; y: number } | null>(null);
   const pendingFocusRef = useRef<(() => void) | null>(null);
@@ -192,11 +195,10 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   const pendingRestartRef = useRef<string | null>(null);
   const lastTitleRef = useRef('');
 
-  const claudeCliState = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.cliState ?? 'inactive' : 'inactive');
-  const claudeProcess = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.claudeProcess ?? null : null);
-  const claudeSessionId = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.claudeSessionId ?? null : null);
+  const agentCliState = useTabStore((s) => activeTabId ? s.tabs[activeTabId]?.cliState ?? 'inactive' : 'inactive');
+  const agentProcess = useTabStore((s) => activeTabId ? selectAgentProcess(s.tabs, activeTabId) : null);
   const sessionView = useTabStore((s) => activeTabId ? selectSessionView(s.tabs, activeTabId) : 'session-list');
-  const claudeInputVisible = sessionView === 'timeline';
+  const agentInputVisible = sessionView === 'timeline';
 
   const deferredFocusInput = useCallback((fn: () => void) => {
     if (wasDragRef.current) return;
@@ -229,15 +231,12 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
 
   const { prompts: quickPrompts } = useQuickPrompts();
 
-  const claudeModeShownTabsRef = useRef<Set<string>>(new Set());
-  const [showClaudeModePrompt, setShowClaudeModePrompt] = useState(false);
-
   useEffect(() => {
-    if (!activeTabId || !isClaudeCode) return;
-    if (isFocused && isCliIdle(claudeCliState)) {
+    if (!activeTabId || !isAgentPanel) return;
+    if (isFocused && isCliIdle(agentCliState)) {
       dismissStatusTab(activeTabId);
     }
-  }, [activeTabId, claudeCliState, isClaudeCode, isFocused]);
+  }, [activeTabId, agentCliState, isAgentPanel, isFocused]);
 
   useEffect(() => {
     if (activeTabId && isFocused) {
@@ -246,9 +245,9 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   }, [activeTabId, isFocused]);
 
   const handleScrollToBottom = useCallback(() => {
-    if (claudeCliState !== 'idle') return;
+    if (agentCliState !== 'idle') return;
     scrollToBottomRef.current?.();
-  }, [claudeCliState]);
+  }, [agentCliState]);
 
   const handleOptimisticSend = useCallback((text: string) => {
     addPendingMessageRef.current?.(text);
@@ -302,7 +301,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
 
   const { terminalRef, write, clear, reset, fit, focus, isReady } = useTerminal({
     theme: terminalTheme.colors,
-    fontSize: (TERMINAL_FONT_SIZES[configFontSize] ?? TERMINAL_FONT_SIZES.normal)[isClaudeCode ? 'claudeCode' : 'normal'],
+    fontSize: (TERMINAL_FONT_SIZES[configFontSize] ?? TERMINAL_FONT_SIZES.normal)[isAgentPanel ? 'agent' : 'normal'],
     onInput: (data) => {
       wsActionsRef.current.sendStdin(data);
     },
@@ -326,25 +325,25 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
       }
       const tab = tabsRef.current.find((t) => t.id === tabId);
       if (tab) {
-        const prevCheckedAt = useTabStore.getState().tabs[tabId]?.claudeProcessCheckedAt ?? 0;
-        fetch(`/api/check-claude?session=${tab.sessionName}`)
+        const prevCheckedAt = selectAgentProcessCheckedAt(useTabStore.getState().tabs, tabId);
+        fetch(`/api/check-agent?session=${tab.sessionName}`)
           .then((res) => res.json())
           .then(({ running, checkedAt }) => {
             const current = useTabStore.getState().tabs[tabId];
-            if (current && current.claudeProcessCheckedAt !== prevCheckedAt) {
-              if (current.claudeProcess !== running) {
+            if (current && selectAgentProcessCheckedAt(useTabStore.getState().tabs, tabId) !== prevCheckedAt) {
+              if (selectAgentProcess(useTabStore.getState().tabs, tabId) !== running) {
                 setTimeout(() => {
-                  fetch(`/api/check-claude?session=${tab.sessionName}`)
+                  fetch(`/api/check-agent?session=${tab.sessionName}`)
                     .then((r) => r.json())
                     .then(({ running, checkedAt }) => {
-                      useTabStore.getState().setClaudeProcess(tabId, running, checkedAt);
+                      useTabStore.getState().setAgentProcess(tabId, running, checkedAt);
                     })
                     .catch(() => {});
                 }, 500);
               }
               return;
             }
-            useTabStore.getState().setClaudeProcess(tabId, running, checkedAt);
+            useTabStore.getState().setAgentProcess(tabId, running, checkedAt);
           })
           .catch(() => {});
       }
@@ -507,7 +506,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
       wsActionsRef.current.sendResize(cols, rows);
       const targetTerminal = clickedTerminalRef.current;
       clickedTerminalRef.current = false;
-      if (targetTerminal || !isClaudeCode || !claudeInputVisible) {
+      if (targetTerminal || !isAgentPanel || !agentInputVisible) {
         focus();
       } else {
         deferredFocusInput(() => focusInputRef.current?.());
@@ -613,15 +612,15 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
     updateTabPanelType(paneId, activeTabId, next);
   }, [paneId, activeTabId, updateTabPanelType]);
 
-  const handleSendToClaude = useCallback((text: string) => {
-    pendingClaudeInputRef.current = text;
-    handleSwitchPanelType('claude-code');
+  const handleSendToAgent = useCallback((text: string) => {
+    pendingAgentInputRef.current = text;
+    handleSwitchPanelType('codex');
   }, [handleSwitchPanelType]);
 
   useEffect(() => {
-    if (activePanelType !== 'claude-code' || !pendingClaudeInputRef.current) return;
-    const text = pendingClaudeInputRef.current;
-    pendingClaudeInputRef.current = null;
+    if (activePanelType !== 'codex' || !pendingAgentInputRef.current) return;
+    const text = pendingAgentInputRef.current;
+    pendingAgentInputRef.current = null;
     const timer = window.setTimeout(() => {
       setInputValueRef.current?.(text);
       focusInputRef.current?.();
@@ -638,17 +637,6 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
     }).catch(() => {});
   }, [activeTabId, paneId, layoutWsId]);
 
-  useEffect(() => {
-    if (!activeTabId || claudeProcess !== true || activePanelType !== 'terminal') {
-      setShowClaudeModePrompt(false);
-      return;
-    }
-    if (claudeModeShownTabsRef.current.has(activeTabId)) return;
-
-    claudeModeShownTabsRef.current.add(activeTabId);
-    setShowClaudeModePrompt(true);
-  }, [activeTabId, claudeProcess, activePanelType]);
-
   const {
     showPathInput,
     droppedFileHint,
@@ -663,64 +651,31 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
     tabId: activeTabId ?? undefined,
   });
 
-  const buildClaudeCommand = useCallback((sessionId: string | null): string => {
-    const dangerous = useConfigStore.getState().dangerouslySkipPermissions;
-    const settings = '--settings ~/.purplemux/hooks.json';
-    const prompt = layoutWsId ? `--append-system-prompt-file ~/.purplemux/workspaces/${layoutWsId}/claude-prompt.md` : '';
-    const flags = [settings, prompt].filter(Boolean).join(' ');
-    const base = sessionId
-      ? `claude --resume ${sessionId} ${flags}`
-      : `claude ${flags}`;
-    return dangerous ? `${base} --dangerously-skip-permissions` : base;
-  }, [layoutWsId]);
+  const buildAgentCommand = useCallback((sessionId: string | null): string => {
+    return buildCodexCommandFromStore(sessionId);
+  }, []);
 
-  const handleNewClaudeSession = useCallback(() => {
+  const handleNewAgentSession = useCallback(() => {
     if (status !== 'connected' || !activeTabId) return;
     useTabStore.getState().setSessionView(activeTabId, 'check');
-    sendStdin(`${buildClaudeCommand(null)}\r`);
-  }, [status, sendStdin, activeTabId, buildClaudeCommand]);
+    sendStdin(`${buildAgentCommand(null)}\r`);
+  }, [status, sendStdin, activeTabId, buildAgentCommand]);
 
-  const handleRestartClaudeSession = useCallback(() => {
+  const handleRestartAgentSession = useCallback(() => {
     if (status !== 'connected' || !activeTabId) return;
-    pendingRestartRef.current = buildClaudeCommand(null);
+    pendingRestartRef.current = buildAgentCommand(null);
     useTabStore.getState().setSessionView(activeTabId, 'check');
     sendStdin('/exit\r');
-  }, [status, sendStdin, activeTabId, buildClaudeCommand]);
-
-  const handleSwitchToClaudeMode = useCallback(async () => {
-    if (!activeTabId) return;
-    setShowClaudeModePrompt(false);
-    handleSwitchPanelType('claude-code');
-    if (status !== 'connected') return;
-
-    let resumeSessionId = claudeSessionId;
-    if (!resumeSessionId) {
-      const tab = tabsRef.current.find((t) => t.id === activeTabId);
-      if (tab) {
-        try {
-          const res = await fetch(`/api/check-claude?session=${tab.sessionName}`);
-          const data = await res.json();
-          resumeSessionId = typeof data.sessionId === 'string' && data.resumable ? data.sessionId : null;
-        } catch {
-          // fall through with null
-        }
-      }
-    }
-
-    pendingRestartRef.current = buildClaudeCommand(resumeSessionId);
-    useTabStore.getState().setSessionView(activeTabId, 'check');
-    sendStdin('\x03');
-    setTimeout(() => sendStdin('\x03'), 300);
-  }, [activeTabId, status, sendStdin, claudeSessionId, buildClaudeCommand, handleSwitchPanelType]);
+  }, [status, sendStdin, activeTabId, buildAgentCommand]);
 
   useEffect(() => {
-    if (!pendingRestartRef.current || claudeProcess === true) return;
+    if (!pendingRestartRef.current || agentProcess === true) return;
     if (status !== 'connected') return;
     if (!isShellProcess(lastTitleRef.current)) return;
     const cmd = pendingRestartRef.current;
     pendingRestartRef.current = null;
     sendStdin(`${cmd}\r`);
-  }, [claudeProcess, status, sendStdin]);
+  }, [agentProcess, status, sendStdin]);
 
   const splitGroupRef = useRef<GroupImperativeHandle>(null);
   const [isTerminalCollapsed, setIsTerminalCollapsed] = useState(false);
@@ -738,7 +693,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
         ? { timeline: 100, 'terminal-area': 0 }
         : { timeline: 100 - ratio, 'terminal-area': ratio },
     );
-    if (isClaudeCode && activeTabId) {
+    if (isAgentPanel && activeTabId) {
       updateTabTerminalLayout(paneId, activeTabId, { terminalCollapsed: next });
     }
     setTimeout(() => {
@@ -748,12 +703,12 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
       const { cols, rows } = fit();
       wsActionsRef.current.sendResize(cols, rows);
     }, 150);
-  }, [isTerminalCollapsed, isReady, status, fit, isClaudeCode, activeTabId, paneId, activeTab?.terminalRatio, updateTabTerminalLayout]);
+  }, [isTerminalCollapsed, isReady, status, fit, isAgentPanel, activeTabId, paneId, activeTab?.terminalRatio, updateTabTerminalLayout]);
 
   useEffect(() => {
     if (!splitGroupRef.current) return;
     suppressTerminalSaveRef.current = true;
-    if (isClaudeCode) {
+    if (isAgentPanel) {
       const ratio = activeTab?.terminalRatio ?? 30;
       setIsTerminalCollapsed(effectiveTerminalCollapsed);
       splitGroupRef.current.setLayout(
@@ -772,21 +727,21 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
       const { cols, rows } = fit();
       wsActionsRef.current.sendResize(cols, rows);
       if (isFocused) {
-        if (isClaudeCode) {
-          if (claudeInputVisible) deferredFocusInput(() => focusInputRef.current?.());
+        if (isAgentPanel) {
+          if (agentInputVisible) deferredFocusInput(() => focusInputRef.current?.());
         } else {
           focus();
         }
       }
     }, 150);
     return () => clearTimeout(timer);
-  }, [isClaudeCode, activeTabId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAgentPanel, activeTabId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (isFocused && isClaudeCode && claudeInputVisible) {
+    if (isFocused && isAgentPanel && agentInputVisible) {
       deferredFocusInput(() => focusInputRef.current?.());
     }
-  }, [claudeInputVisible]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [agentInputVisible]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const noTabs = tabs.length === 0;
   const ready = isReady && (status === 'connected' || hasEverConnected) && !noTabs && !sessionSwitching;
@@ -854,14 +809,14 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
           <DiffPanel
             key={activeTab.sessionName}
             sessionName={activeTab.sessionName}
-            onSendToClaude={handleSendToClaude}
+            onSendToAgent={handleSendToAgent}
           />
         )}
 
         <Group
           groupRef={splitGroupRef}
           orientation="vertical"
-          defaultLayout={isClaudeCode
+          defaultLayout={isAgentPanel
             ? (() => {
                 const ratio = activeTab?.terminalRatio ?? 30;
                 return effectiveTerminalCollapsed
@@ -872,7 +827,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
           }
           onLayoutChanged={(layout) => {
             if (suppressTerminalSaveRef.current) return;
-            if (!isClaudeCode || !activeTabId) return;
+            if (!isAgentPanel || !activeTabId) return;
             const area = layout['terminal-area'];
             if (area === undefined) return;
             const collapsed = area <= 0;
@@ -897,42 +852,43 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
             minSize={0}
             collapsible
             collapsedSize={0}
-            disabled={!isClaudeCode}
+            disabled={!isAgentPanel}
           >
             <div
               className={cn('flex h-full flex-col bg-card', isTerminalCollapsed && 'pb-3')}
-              onDragOver={isClaudeCode ? handleTimelineDragOver : undefined}
-              onDrop={isClaudeCode ? handleTimelineDrop : undefined}
+              onDragOver={isAgentPanel ? handleTimelineDragOver : undefined}
+              onDrop={isAgentPanel ? handleTimelineDrop : undefined}
             >
-              {isClaudeCode && activeTab && !showInitialLoading && activeTabId && (
-                <ClaudeCodePanel
-                  key={activeTab.sessionName}
+              {isAgentPanel && activeTab && !showInitialLoading && activeTabId && (
+                <AgentPanel
+                  key={`${activeTab.sessionName}:${activePanelType}`}
                   tabId={activeTabId}
                   sessionName={activeTab.sessionName}
-                  claudeSessionId={activeTab.claudeSessionId}
+                  agentSessionId={readAgentSessionId(activeTab)}
+                  panelType={activePanelType}
                   cwd={activeTabCwd || activeTab.cwd}
                   onClose={() => handleSwitchPanelType('terminal')}
-                  onNewSession={handleNewClaudeSession}
+                  onNewSession={handleNewAgentSession}
                   scrollToBottomRef={scrollToBottomRef}
                   addPendingMessageRef={addPendingMessageRef}
                   removePendingMessageRef={removePendingMessageRef}
                 />
               )}
-              {isClaudeCode && !showInitialLoading && claudeInputVisible && (
+              {isAgentPanel && !showInitialLoading && agentInputVisible && (
                 <WebInputBar
                   key={activeTabId}
                   tabId={activeTabId ?? undefined}
                   wsId={layoutWsId ?? undefined}
                   sessionName={activeTab?.sessionName}
-                  claudeSessionId={activeTab?.claudeSessionId}
-                  cliState={claudeCliState}
+                  agentSessionId={activeTab ? readAgentSessionId(activeTab) : null}
+                  cliState={agentCliState}
                   sendStdin={sendWebStdin}
                   terminalWsConnected={status === 'connected'}
                   visible
                   focusTerminal={focus}
                   focusInputRef={focusInputRef}
                   setInputValueRef={setInputValueRef}
-                  onRestartSession={handleRestartClaudeSession}
+                  onRestartSession={handleRestartAgentSession}
                   onSend={handleScrollToBottom}
                   onOptimisticSend={handleOptimisticSend}
                   onAddPendingMessage={handleAddPendingMessage}
@@ -940,7 +896,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
                   attachFilesRef={attachFilesRef}
                 />
               )}
-              {isClaudeCode && !showInitialLoading && claudeInputVisible && activeTabId && (
+              {isAgentPanel && !showInitialLoading && agentInputVisible && activeTabId && (
                 <QuickPromptBar
                   prompts={quickPrompts}
                   visible
@@ -953,14 +909,14 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
           <Separator
             className={cn(
               'group flex items-center justify-center overflow-hidden bg-card',
-              isClaudeCode && !isTerminalCollapsed ? 'h-3' : 'h-0',
+              isAgentPanel && !isTerminalCollapsed ? 'h-3' : 'h-0',
             )}
-            disabled={!isClaudeCode || isTerminalCollapsed}
+            disabled={!isAgentPanel || isTerminalCollapsed}
           >
             <div className="h-px w-16 rounded-full bg-border transition-colors group-hover:bg-muted-foreground group-data-[resize-handle-active]:bg-muted-foreground" />
           </Separator>
 
-          {isClaudeCode && (
+          {isAgentPanel && (
             <button
               className="flex h-6 w-full shrink-0 cursor-pointer items-center gap-1.5 border-t border-border bg-black/3 px-2 text-muted-foreground transition-colors hover:bg-black/5 dark:bg-white/3 dark:hover:bg-white/5"
               onClick={handleToggleTerminal}
@@ -982,11 +938,11 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
             <div className="flex h-full flex-col" onMouseDown={() => { clickedTerminalRef.current = true; }}>
               <TerminalContainer
                 ref={terminalRef}
-                minHeight={isClaudeCode ? 256 : undefined}
+                minHeight={isAgentPanel ? 256 : undefined}
                 className={cn(
                   'min-h-0 flex-1',
                   ready ? 'opacity-100' : 'opacity-0',
-                  isClaudeCode && 'py-0 pl-2 pr-0.5',
+                  isAgentPanel && 'py-0 pl-2 pr-0.5',
                 )}
               />
             </div>
@@ -1015,14 +971,6 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
             onRestartNew={() => handleRestartTab(activeTabId)}
           />
         )}
-
-        {showClaudeModePrompt && (
-          <PaneClaudeModePrompt
-            onSwitch={handleSwitchToClaudeMode}
-            onDismiss={() => setShowClaudeModePrompt(false)}
-          />
-        )}
-
         {showPathInput && (
           <PanePathInputOverlay
             hint={droppedFileHint}

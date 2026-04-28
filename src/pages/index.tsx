@@ -40,7 +40,7 @@ interface IIndexProps {
 const Index = ({ initialConfig, initialQuickPrompts, initialSidebarItems }: IIndexProps) => {
   const isMobile = useIsMobile();
   const { setTheme } = useTheme();
-  useBrowserTitle('purplemux');
+  useBrowserTitle('codexmux');
   const themeInitRef = useRef(false);
   useEffect(() => {
     if (!themeInitRef.current) {
@@ -57,7 +57,7 @@ const Index = ({ initialConfig, initialQuickPrompts, initialSidebarItems }: IInd
   return (
     <SWRConfig value={{ fallback: { '/api/quick-prompts': initialQuickPrompts, '/api/sidebar-items': initialSidebarItems } }}>
       <Head>
-        <title>purplemux</title>
+        <title>codexmux</title>
       </Head>
       {isMobile ? <MobileTerminalPage /> : <TerminalPage />}
     </SWRConfig>
@@ -74,12 +74,16 @@ export const getServerSideProps: GetServerSideProps<IIndexProps> = async (contex
       const ws = await createWorkspace(os.homedir());
       data.workspaces.push(ws);
     }
+    const initialWorkspace = {
+      ...data,
+      activeWorkspaceId: data.activeWorkspaceId ?? data.workspaces[0]?.id ?? null,
+    };
 
     const { authPassword, authSecret: _, ...safeConfig } = configData;
     const hostEnvLocked = typeof process.env.HOST === 'string' && process.env.HOST.trim().length > 0;
     const { isBoundToLocalhostOnly } = await import('@/lib/access-filter');
     const bindHostIsLocal = isBoundToLocalhostOnly();
-    return { props: { initialWorkspace: data, initialConfig: { ...safeConfig, hasAuthPassword: !!authPassword, hostEnvLocked, bindHostIsLocal }, initialQuickPrompts: quickPrompts, initialSidebarItems: sidebarItems, messages } };
+    return { props: { initialWorkspace, initialConfig: { ...safeConfig, hasAuthPassword: !!authPassword, hostEnvLocked, bindHostIsLocal }, initialQuickPrompts: quickPrompts, initialSidebarItems: sidebarItems, messages } };
   });
 
 export default Index;

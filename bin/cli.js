@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// purplemux CLI — workspace-scoped HTTP API wrapper
-// Falls back to ~/.purplemux/{port,cli-token} when env vars absent.
+// codexmux CLI — workspace-scoped HTTP API wrapper
+// Falls back to ~/.codexmux/{port,cli-token} when env vars absent.
 
 'use strict';
 
@@ -16,8 +16,8 @@ const readFileOrNull = (file) => {
   }
 };
 
-const PORT = process.env.PMUX_PORT || readFileOrNull(path.join(os.homedir(), '.purplemux', 'port'));
-const TOKEN = process.env.PMUX_TOKEN || readFileOrNull(path.join(os.homedir(), '.purplemux', 'cli-token'));
+const PORT = process.env.CMUX_PORT || readFileOrNull(path.join(os.homedir(), '.codexmux', 'port'));
+const TOKEN = process.env.CMUX_TOKEN || readFileOrNull(path.join(os.homedir(), '.codexmux', 'cli-token'));
 const BASE = `http://localhost:${PORT}`;
 
 const die = (msg) => {
@@ -26,8 +26,8 @@ const die = (msg) => {
 };
 
 const requireEnv = () => {
-  if (!PORT) die('PMUX_PORT not set and ~/.purplemux/port missing (is the server running?)');
-  if (!TOKEN) die('PMUX_TOKEN not set and ~/.purplemux/cli-token missing (is the server running?)');
+  if (!PORT) die('CMUX_PORT not set and ~/.codexmux/port missing (is the server running?)');
+  if (!TOKEN) die('CMUX_TOKEN not set and ~/.codexmux/cli-token missing (is the server running?)');
 };
 
 const out = (body) => {
@@ -38,7 +38,7 @@ const api = async (method, path, data) => {
   const url = `${BASE}${path}`;
   const opts = {
     method,
-    headers: { 'X-Pmux-Token': TOKEN, 'Content-Type': 'application/json' },
+    headers: { 'X-Cmux-Token': TOKEN, 'Content-Type': 'application/json' },
   };
   if (data !== undefined) opts.body = JSON.stringify(data);
   const resp = await fetch(url, opts);
@@ -56,7 +56,7 @@ const apiRaw = async (method, path) => {
   const url = `${BASE}${path}`;
   const resp = await fetch(url, {
     method,
-    headers: { 'X-Pmux-Token': TOKEN },
+    headers: { 'X-Cmux-Token': TOKEN },
   });
   if (!resp.ok) {
     const ct = resp.headers.get('content-type') || '';
@@ -230,7 +230,7 @@ const cmdTabBrowser = async (args) => {
 const cmdApiGuide = async () => {
   requireEnv();
   const resp = await fetch(`${BASE}/api/cli/api-guide`, {
-    headers: { 'X-Pmux-Token': TOKEN },
+    headers: { 'X-Cmux-Token': TOKEN },
   });
   if (!resp.ok) die(`HTTP ${resp.status}`);
   process.stdout.write((await resp.text()) + '\n');
@@ -257,14 +257,14 @@ const stripFlags = (args, names) => {
 };
 
 const usage = () => {
-  process.stdout.write(`purplemux CLI
+  process.stdout.write(`codexmux CLI
 
-Usage: purplemux <command> [args...]
+Usage: codexmux <command> [args...]
 
 Commands:
   workspaces                               List workspaces
   tab list [-w WS]                         List tabs (optionally scoped to workspace)
-  tab create -w WS [-n NAME] [-t TYPE]     Create a tab in workspace (type: terminal | claude-code | web-browser | diff)
+  tab create -w WS [-n NAME] [-t TYPE]     Create a tab in workspace (type: terminal | codex | web-browser | diff)
   tab send -w WS TAB_ID CONTENT...         Send input to a tab
   tab status -w WS TAB_ID                  Tab status
   tab result -w WS TAB_ID                  Capture tab pane content
@@ -281,8 +281,8 @@ Commands:
   help                                     Show this usage
 
 Environment:
-  PMUX_PORT       Server port (required)
-  PMUX_TOKEN      CLI token (required)
+  CMUX_PORT       Server port (required)
+  CMUX_TOKEN      CLI token (required)
 `);
 };
 
@@ -304,7 +304,7 @@ const main = async () => {
         case 'result': return cmdTabResult(rest);
         case 'close': return cmdTabClose(rest);
         case 'browser': return cmdTabBrowser(rest);
-        default: die(`unknown tab command: ${sub || '(none)'}. Run 'purplemux help' for usage.`);
+        default: die(`unknown tab command: ${sub || '(none)'}. Run 'codexmux help' for usage.`);
       }
       break;
     case 'api-guide':
@@ -314,7 +314,7 @@ const main = async () => {
     case '--help':
       return usage();
     default:
-      die(`unknown command: ${cmd}. Run 'purplemux help' for usage.`);
+      die(`unknown command: ${cmd}. Run 'codexmux help' for usage.`);
   }
 };
 

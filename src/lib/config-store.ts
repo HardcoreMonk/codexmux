@@ -7,6 +7,7 @@ import { createLogger } from '@/lib/logger';
 import type { TNetworkAccess } from '@/lib/network-access';
 import type { TEditorPreset } from '@/lib/editor-url';
 import type { TToastPosition } from '@/lib/toast-position';
+import type { TCodexApprovalPolicy, TCodexSandboxMode } from '@/lib/codex-command';
 
 const log = createLogger('config');
 
@@ -17,7 +18,11 @@ export interface IConfigData {
   terminalTheme?: { light: string; dark: string };
   customCSS?: string;
   dangerouslySkipPermissions?: boolean;
-  claudeShowTerminal?: boolean;
+  codexModel?: string | null;
+  codexSandbox?: TCodexSandboxMode | null;
+  codexApprovalPolicy?: TCodexApprovalPolicy | null;
+  codexSearchEnabled?: boolean;
+  codexShowTerminal?: boolean;
   editorUrl?: string;
   editorPreset?: TEditorPreset;
   notificationsEnabled?: boolean;
@@ -32,7 +37,7 @@ export interface IConfigData {
   updatedAt: string;
 }
 
-const BASE_DIR = path.join(os.homedir(), '.purplemux');
+const BASE_DIR = path.join(os.homedir(), '.codexmux');
 const CONFIG_FILE = path.join(BASE_DIR, 'config.json');
 
 const g = globalThis as unknown as {

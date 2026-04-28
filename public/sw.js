@@ -5,17 +5,18 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('push', (event) => {
   const data = event.data?.json() ?? {};
+  const sessionId = data.agentSessionId || null;
   const title = data.title || 'Task Complete';
   const options = {
     body: data.body || '',
     icon: '/android-chrome-192x192.png',
     badge: '/favicon-32x32.png',
-    tag: data.claudeSessionId ? `session:${data.claudeSessionId}` : undefined,
-    renotify: !!data.claudeSessionId,
+    tag: sessionId ? `session:${sessionId}` : undefined,
+    renotify: !!sessionId,
     data: {
       tabId: data.tabId,
       workspaceId: data.workspaceId,
-      claudeSessionId: data.claudeSessionId || null,
+      agentSessionId: sessionId,
       workspaceName: data.workspaceName || '',
       workspaceDir: data.workspaceDir || null,
     },
@@ -39,8 +40,8 @@ const PUSH_NAV_KEY = '/_push-pending';
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const { tabId, workspaceId, claudeSessionId, workspaceName, workspaceDir } = event.notification.data || {};
-  const navData = { tabId, workspaceId, claudeSessionId, workspaceName, workspaceDir };
+  const { tabId, workspaceId, agentSessionId, workspaceName, workspaceDir } = event.notification.data || {};
+  const navData = { tabId, workspaceId, agentSessionId, workspaceName, workspaceDir };
 
   event.waitUntil(
     caches.open(PUSH_NAV_CACHE).then((cache) =>

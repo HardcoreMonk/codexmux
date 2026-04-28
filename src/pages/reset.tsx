@@ -15,7 +15,7 @@ interface IStep {
 const StepIcon = ({ status }: { status: TStepStatus }) => {
   switch (status) {
     case 'running':
-      return <Spinner className="h-4 w-4 text-claude-active" />;
+      return <Spinner className="h-4 w-4 text-agent-active" />;
     case 'done':
       return <Check className="h-4 w-4 text-positive" />;
     case 'error':

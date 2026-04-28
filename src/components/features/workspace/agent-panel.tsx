@@ -6,18 +6,21 @@ import { cn } from '@/lib/utils';
 import useTimeline from '@/hooks/use-timeline';
 import useSessionList from '@/hooks/use-session-list';
 import useStartingPrompt from '@/hooks/use-starting-prompt';
-import useTabStore, { selectSessionView } from '@/hooks/use-tab-store';
+import useTabStore, { selectAgentInstalled, selectAgentProcess, selectSessionView } from '@/hooks/use-tab-store';
 import { useSessionMetaCompute } from '@/hooks/use-session-meta';
 import SessionListView from '@/components/features/workspace/session-list-view';
 import SessionEmptyView from '@/components/features/workspace/session-empty-view';
 import BypassPromptCard from '@/components/features/workspace/bypass-prompt-card';
 import TimelineView from '@/components/features/timeline/timeline-view';
 import SessionMetaBar, { SessionMetaBarSkeleton } from '@/components/features/workspace/session-meta-bar';
+import { isAgentPanelType } from '@/lib/panel-type';
+import type { TPanelType } from '@/types/terminal';
 
-interface IClaudeCodePanelProps {
+interface IAgentPanelProps {
   tabId: string;
   sessionName: string;
-  claudeSessionId?: string | null;
+  agentSessionId?: string | null;
+  panelType?: TPanelType;
   cwd?: string;
   className?: string;
   onClose?: () => void;
@@ -27,10 +30,11 @@ interface IClaudeCodePanelProps {
   removePendingMessageRef?: React.MutableRefObject<((id: string) => void) | undefined>;
 }
 
-const ClaudeCodePanel = ({
+const AgentPanel = ({
   tabId,
   sessionName,
-  claudeSessionId,
+  agentSessionId,
+  panelType = 'codex',
   cwd,
   className,
   onClose,
@@ -38,18 +42,19 @@ const ClaudeCodePanel = ({
   scrollToBottomRef,
   addPendingMessageRef,
   removePendingMessageRef,
-}: IClaudeCodePanelProps) => {
+}: IAgentPanelProps) => {
   const t = useTranslations('terminal');
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(null);
 
-  const claudeProcess = useTabStore((s) => s.tabs[tabId]?.claudeProcess ?? null);
-  const claudeInstalled = useTabStore((s) => s.tabs[tabId]?.claudeInstalled ?? true);
+  const agentProcess = useTabStore((s) => selectAgentProcess(s.tabs, tabId));
+  const agentInstalled = useTabStore((s) => selectAgentInstalled(s.tabs, tabId));
   const storeCliState = useTabStore((s) => s.tabs[tabId]?.cliState ?? 'inactive');
   const compactingSince = useTabStore((s) => s.tabs[tabId]?.compactingSince ?? null);
   const view = useTabStore((s) => selectSessionView(s.tabs, tabId));
   const cachedSessionMeta = useTabStore((s) => s.tabs[tabId]?.sessionMetaCache ?? null);
-  const tabClaudeSummary = useTabStore((s) => s.tabs[tabId]?.claudeSummary ?? null);
+  const tabAgentSummary = useTabStore((s) => s.tabs[tabId]?.agentSummary ?? null);
   const tabLastUserMessage = useTabStore((s) => s.tabs[tabId]?.lastUserMessage ?? null);
+  const isAgentPanel = isAgentPanelType(panelType);
 
   const handleResumeStarted = useCallback(
     () => {
@@ -83,7 +88,7 @@ const ClaudeCodePanel = ({
     sessionSummary,
     initMeta,
     sessionStats,
-    claudeProcess: claudeProcessFromTimeline,
+    agentProcess: agentProcessFromTimeline,
     wsStatus,
     isLoading: isTimelineLoading,
     error: timelineError,
@@ -95,7 +100,8 @@ const ClaudeCodePanel = ({
     removePendingUserMessage,
   } = useTimeline({
     sessionName,
-    claudeSessionId,
+    agentSessionId,
+    panelType,
     enabled: !!sessionName,
     resumeCallbacks: {
       onResumeStarted: handleResumeStarted,
@@ -104,11 +110,11 @@ const ClaudeCodePanel = ({
     },
     onSync: (state) => {
       const checkedAt = Date.now();
-      if (state.claudeProcess !== null) {
-        useTabStore.getState().setClaudeProcess(tabId, state.claudeProcess, checkedAt);
+      if (state.agentProcess !== null) {
+        useTabStore.getState().setAgentProcess(tabId, state.agentProcess, checkedAt);
       }
-      if (!state.claudeInstalled) {
-        useTabStore.getState().setClaudeInstalled(tabId, false);
+      if (!state.agentInstalled) {
+        useTabStore.getState().setAgentInstalled(tabId, false);
       }
       useTabStore.getState().setTimelineLoading(tabId, state.isLoading);
     },
@@ -125,8 +131,9 @@ const ClaudeCodePanel = ({
     loadMore: loadMoreSessions,
   } = useSessionList({
     tmuxSession: sessionName,
-    enabled: !!sessionName && claudeProcess !== true,
+    enabled: isAgentPanel && !!sessionName && agentProcess !== true,
     cwd,
+    panelType,
   });
 
   useEffect(() => {
@@ -138,14 +145,14 @@ const ClaudeCodePanel = ({
     };
   }, [addPendingMessageRef, removePendingMessageRef, addPendingUserMessage, removePendingUserMessage]);
 
-  const prevClaudeProcessRef = useRef(claudeProcess);
+  const prevAgentProcessRef = useRef(agentProcess);
   useEffect(() => {
-    const prev = prevClaudeProcessRef.current;
-    prevClaudeProcessRef.current = claudeProcess;
-    if (prev !== true && claudeProcess === true && claudeProcessFromTimeline !== true) {
+    const prev = prevAgentProcessRef.current;
+    prevAgentProcessRef.current = agentProcess;
+    if (prev !== true && agentProcess === true && agentProcessFromTimeline !== true) {
       retrySession();
     }
-  }, [claudeProcess, claudeProcessFromTimeline, retrySession]);
+  }, [agentProcess, agentProcessFromTimeline, retrySession]);
 
   useEffect(() => {
     if (storeCliState !== 'unknown') return;
@@ -161,8 +168,8 @@ const ClaudeCodePanel = ({
 
   const startingPromptOptions = useStartingPrompt(view === 'check', sessionName);
 
-  const isHeaderLoading = claudeProcess === null || (entries.length === 0 && isTimelineLoading);
-  const freshMeta = useSessionMetaCompute(entries, sessionSummary, initMeta, sessionStats, tabClaudeSummary, tabLastUserMessage);
+  const isHeaderLoading = agentProcess === null || (entries.length === 0 && isTimelineLoading);
+  const freshMeta = useSessionMetaCompute(entries, sessionSummary, initMeta, sessionStats, tabAgentSummary, tabLastUserMessage);
 
   useEffect(() => {
     if (!isHeaderLoading) {
@@ -179,11 +186,11 @@ const ClaudeCodePanel = ({
     [resumingSessionId, sendResume, sessionName],
   );
 
-  if (!claudeInstalled) {
+  if (!agentInstalled) {
     return (
       <div className={cn('flex h-full w-full flex-col items-center justify-center gap-3 text-muted-foreground', className)}>
-        <span className="text-sm font-medium">{t('installClaude')}</span>
-        <span className="text-xs">{t('installClaudeHint')}</span>
+        <span className="text-sm font-medium">{t('installCodex')}</span>
+        <span className="text-xs">{t('installCodexHint')}</span>
       </div>
     );
   }
@@ -192,7 +199,7 @@ const ClaudeCodePanel = ({
     return (
       <div className={cn('flex h-full w-full flex-col items-center justify-center animate-delayed-fade-in', className)}>
         <Spinner className="h-4 w-4 text-muted-foreground" />
-        <span className="mt-2 text-sm text-muted-foreground">{(claudeSessionId || sessionId) ? t('resumingSession') : t('creatingConversation')}</span>
+        <span className="mt-2 text-sm text-muted-foreground">{(agentSessionId || sessionId) ? t('resumingSession') : t('creatingConversation')}</span>
         {startingPromptOptions && (
           startingPromptOptions.isBypassPrompt && startingPromptOptions.options.length > 0 ? (
             <BypassPromptCard
@@ -221,7 +228,14 @@ const ClaudeCodePanel = ({
   }
 
   if (view === 'session-list') {
-    if (claudeProcess === null || (isSessionListLoading && sessions.length === 0)) {
+    if (!isAgentPanel) {
+      return (
+        <div className={cn('h-full w-full', className)}>
+          <SessionEmptyView onClose={onClose} onNewSession={onNewSession} />
+        </div>
+      );
+    }
+    if (agentProcess === null || (isSessionListLoading && sessions.length === 0)) {
       return (
         <div className={cn('flex h-full w-full flex-col items-center justify-center animate-delayed-fade-in', className)}>
           <Spinner className="h-4 w-4 text-muted-foreground" />
@@ -293,4 +307,4 @@ const ClaudeCodePanel = ({
   );
 };
 
-export default ClaudeCodePanel;
+export default AgentPanel;

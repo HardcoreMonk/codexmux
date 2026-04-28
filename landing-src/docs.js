@@ -227,7 +227,7 @@
 
     var currentLocale = searchState.input.dataset.locale || 'en';
 
-    fetch('/purplemux/search-index.json')
+    fetch('/codexmux/search-index.json')
       .then(function (r) { return r.json(); })
       .then(function (data) {
         var scoped = data.filter(function (d) { return (d.locale || 'en') === currentLocale; });

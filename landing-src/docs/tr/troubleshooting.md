@@ -1,18 +1,18 @@
 ---
-title: Sorun giderme & SSS
-description: Yaygın sorunlar, hızlı yanıtlar ve en sık gelen sorular.
-eyebrow: Referans
+title: 문제 해결 & FAQ
+description: 자주 마주치는 이슈, 빠른 답, 그리고 가장 많이 들어오는 질문들.
+eyebrow: 레퍼런스
 permalink: /tr/docs/troubleshooting/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Burada bir şey gördüğünüzle eşleşmiyorsa, lütfen platformunuz, tarayıcınız ve `~/.purplemux/logs/` içindeki ilgili log dosyasıyla [bir issue açın](https://github.com/subicura/purplemux/issues).
+여기 적힌 내용과 다른 증상이라면, 플랫폼·브라우저와 `~/.codexmux/logs/`의 로그 파일을 첨부해 [이슈를 열어주세요](https://github.com/subicura/codexmux/issues).
 
-## Kurulum & başlangıç
+## 설치와 시작
 
 ### `tmux: command not found`
 
-purplemux host'ta tmux 3.0+ gerektirir. Kurun:
+호스트에 tmux 3.0 이상이 필요합니다. 설치:
 
 ```bash
 # macOS (Homebrew)
@@ -25,128 +25,128 @@ sudo apt install tmux
 sudo dnf install tmux
 ```
 
-`tmux -V` ile doğrulayın. tmux 2.9+ teknik olarak preflight kontrolünden geçer ama 3.0+ test ettiğimizdir.
+`tmux -V`로 확인. 기술적으로는 2.9+가 preflight를 통과하지만, 테스트 기준은 3.0+입니다.
 
-### `node: command not found` veya "Node.js 20 or newer"
+### `node: command not found` 또는 Node.js 20 이상 오류
 
-Node 20 LTS veya daha yenisini kurun. `node -v` ile kontrol edin. macOS yerel uygulaması kendi Node'unu paketler, dolayısıyla bu yalnızca `npx` / `npm install -g` yolları için geçerlidir.
+Node.js 20 LTS 이상을 설치하세요. `node -v`로 확인. macOS 네이티브 앱은 자체 Node를 번들하므로 이 항목은 `npx` / `npm install -g` 경로에만 해당됩니다.
 
-### "purplemux is already running (pid=…, port=…)"
+### "codexmux is already running (pid=…, port=…)"
 
-Başka bir purplemux örneği canlı ve `/api/health`'te yanıt veriyor. Onu kullanın (yazdırılan URL'yi açın) veya önce durdurun:
-
-```bash
-# bul
-ps aux | grep purplemux
-
-# veya kilit dosyasından öldür
-kill $(jq -r .pid ~/.purplemux/pmux.lock)
-```
-
-### Eski kilit — başlamayı reddediyor ama hiçbir süreç çalışmıyor
-
-`~/.purplemux/pmux.lock` arkasında kalmıştır. Kaldırın:
+다른 codexmux 인스턴스가 살아 있고 `/api/health`에 응답합니다. 그것을 그대로 쓰거나(출력된 URL 열기), 먼저 종료하세요:
 
 ```bash
-rm ~/.purplemux/pmux.lock
+# 찾기
+ps aux | grep codexmux
+
+# 또는 lock 파일로 바로 종료
+kill $(jq -r .pid ~/.codexmux/cmux.lock)
 ```
 
-purplemux'ı bir kez `sudo` ile çalıştırdıysanız, dosya root'a ait olabilir — bir kez `sudo rm` ile silin.
+### Stale 락 — 시작이 거부되는데 프로세스는 없음
+
+`~/.codexmux/cmux.lock`이 남았습니다. 제거:
+
+```bash
+rm ~/.codexmux/cmux.lock
+```
+
+과거에 `sudo`로 실행한 적이 있다면 root 소유일 수 있으니 `sudo rm`로 한 번 정리하세요.
 
 ### `Port 8022 is in use, finding an available port...`
 
-Başka bir süreç `8022`'ye sahip. Sunucu rastgele bir boş porta düşer ve yeni URL'yi yazdırır. Portu kendiniz seçmek için:
+다른 프로세스가 `8022`를 사용 중입니다. 서버는 임의의 빈 포트로 폴백하고 새 URL을 출력합니다. 직접 포트를 지정하려면:
 
 ```bash
-PORT=9000 purplemux
+PORT=9000 codexmux
 ```
 
-`8022`'yi tutanı `lsof -iTCP:8022 -sTCP:LISTEN -n -P` ile bulun.
+`8022`을 잡고 있는 프로세스는 `lsof -iTCP:8022 -sTCP:LISTEN -n -P`로 찾을 수 있습니다.
 
-### Windows'ta çalışıyor mu?
+### Windows에서 동작하나요?
 
-**Resmi olarak hayır.** purplemux, Windows'ta yerel olarak çalışmayan `node-pty` ve tmux'a dayanır. WSL2 genelde çalışır (orada etkin olarak Linux'tasınız) ama test matrisimizin dışındadır.
+**공식 지원 X.** codexmux는 `node-pty`와 tmux에 의존하는데, 둘 다 Windows 네이티브로 동작하지 않습니다. WSL2에서는 대체로 동작하지만 (사실상 Linux이므로) 테스트 범위 밖입니다.
 
-## Oturumlar & geri yükleme
+## 세션과 복원
 
-### Tarayıcıyı kapatmak her şeyi öldürdü
+### 브라우저를 닫았더니 다 사라졌어요
 
-Öldürmemeli — tmux her shell'i sunucuda açık tutar. Bir yenileme sekmeleri geri getirmiyorsa:
+그럴 리가 없습니다 — tmux가 모든 셸을 서버에서 유지합니다. 새로고침해도 탭이 돌아오지 않으면:
 
-1. Sunucunun hâlâ çalıştığını kontrol edin (`http://localhost:8022/api/health`).
-2. tmux oturumlarının var olduğunu kontrol edin: `tmux -L purple ls`.
-3. `autoResumeOnStartup` sırasındaki hatalar için `~/.purplemux/logs/purplemux.YYYY-MM-DD.N.log`'a bakın.
+1. 서버가 살아 있는지 확인 (`http://localhost:8022/api/health`).
+2. tmux 세션 존재 확인: `tmux -L codexmux ls`.
+3. `autoResumeOnStartup` 중 에러가 없었는지 `~/.codexmux/logs/codexmux.YYYY-MM-DD.N.log` 확인.
 
-tmux "no server running" diyorsa, host yeniden başlamış veya bir şey tmux'u öldürmüştür. Oturumlar gitti, ama düzen (çalışma alanları, sekmeler, çalışma dizinleri) `~/.purplemux/workspaces/{wsId}/layout.json`'da korunur ve bir sonraki purplemux başlangıcında yeniden başlatılır.
+tmux가 "no server running"이라면 호스트가 재부팅됐거나 tmux가 죽은 것입니다. 세션은 사라지지만 레이아웃(워크스페이스, 탭, 작업 디렉토리)은 `~/.codexmux/workspaces/{wsId}/layout.json`에 보존되어 있어 다음 codexmux 시작 시 다시 launch됩니다.
 
-### Bir Claude oturumu sürdürülmüyor
+### Codex 세션이 resume되지 않아요
 
-`autoResumeOnStartup` her sekme için kayıtlı `claude --resume <uuid>`'yu yeniden çalıştırır, ama karşılık gelen `~/.claude/projects/.../sessionId.jsonl` artık yoksa (silindi, arşivlendi veya proje taşındı) sürdürme başarısız olur. Sekmeyi açın ve yeni bir konuşma başlatın.
+`autoResumeOnStartup`이 각 탭의 저장된 `codex resume <uuid>`를 다시 실행하지만, 대응되는 `~/.codex/sessions/.../sessionId.jsonl`이 더 이상 없으면(삭제, 아카이브, 프로젝트 이동) resume이 실패합니다. 탭을 열어 새 대화를 시작하세요.
 
-### Sekmelerimin hepsi "unknown" gösteriyor
+### 모든 탭이 "unknown" 상태입니다
 
-`unknown`, bir sunucu yeniden başlatması öncesinde bir sekmenin `busy` olduğu ve kurtarmanın hâlâ devam ettiği anlamına gelir. `resolveUnknown` arka planda çalışır ve `idle` (Claude çıktı) veya `ready-for-review` (son asistan mesajı mevcut) olduğunu doğrular. Bir sekme on dakikadan uzun süre `unknown`'da takılı kalırsa, **busy stuck safety net** sessizce `idle`'a çevirir. Tam durum makinesi için [STATUS.md](https://github.com/subicura/purplemux/blob/main/docs/STATUS.md) sayfasına bakın.
+`unknown`은 서버 재시작 전에 `busy`였던 탭이 아직 복구 중임을 의미합니다. `resolveUnknown`이 백그라운드에서 돌면서 `idle` (Codex 종료) 또는 `ready-for-review` (마지막 어시스턴트 메시지 있음)를 확정합니다. 10분 이상 `unknown`에 머무르면 **busy stuck safety net**이 조용히 `idle`로 넘깁니다. 전체 상태 머신은 [STATUS.md](https://github.com/subicura/codexmux/blob/main/docs/STATUS.md) 참고.
 
-## Tarayıcı & UI
+## 브라우저와 UI
 
-### Web Push bildirimleri asla tetiklenmiyor
+### Web Push 알림이 오지 않아요
 
-Bu kontrol listesini gözden geçirin:
+체크리스트:
 
-1. **Yalnızca iOS Safari ≥ 16.4.** Daha eski iOS'ta Web Push hiç yok.
-2. **iOS'ta PWA olmalı.** Önce **Paylaş → Ana Ekrana Ekle**'ye dokunun; push sıradan bir Safari sekmesinden tetiklenmez.
-3. **HTTPS gerekli.** Self-signed sertifikalar çalışmaz — Web Push sessizce kayıt olmayı reddeder. Tailscale Serve (ücretsiz Let's Encrypt) veya Nginx / Caddy arkasında gerçek bir alan adı kullanın.
-4. **Bildirim izni verilmiş.** purplemux'ta **Ayarlar → Bildirim → Açık** *ve* tarayıcı seviyesi izin ikisi de izinli olmalı.
-5. **Abonelikler var.** `~/.purplemux/push-subscriptions.json` cihaz için bir girişe sahip olmalı. Boşsa, izni yeniden verin.
+1. **iOS Safari ≥ 16.4 만 가능.** 이전 iOS는 Web Push 자체가 없습니다.
+2. **iOS는 PWA 필수.** **공유 → 홈 화면에 추가** 후에만 푸시가 옵니다 — 일반 Safari 탭에서는 안 옵니다.
+3. **HTTPS 필수.** 자체 서명 인증서로는 안 됩니다 — Web Push 등록 자체가 조용히 거부됩니다. Tailscale Serve(자동 Let's Encrypt)나 실제 도메인 + Nginx / Caddy를 쓰세요.
+4. **알림 권한 허용.** codexmux 안의 **설정 → 알림 → On** *과* 브라우저 레벨 권한 둘 다 허용되어야 합니다.
+5. **구독이 존재해야 함.** `~/.codexmux/push-subscriptions.json`에 해당 디바이스 항목이 있어야 합니다. 비어 있으면 권한을 다시 부여하세요.
 
-Tam uyumluluk matrisi için [Tarayıcı desteği](/purplemux/tr/docs/browser-support/) sayfasına bakın.
+전체 호환성 매트릭스는 [브라우저 지원](/codexmux/tr/docs/browser-support/) 참고.
 
-### iOS Safari 16.4+ ama hâlâ bildirim yok
+### iOS Safari 16.4+인데도 알림이 안 와요
 
-Bazı iOS sürümleri, uzun PWA-kapalı dönemden sonra aboneliği kaybeder. PWA'yı açın, bildirim iznini reddedin sonra yeniden verin ve `push-subscriptions.json`'u tekrar kontrol edin.
+일부 iOS 버전은 PWA가 오래 닫혀 있으면 구독을 잃습니다. PWA를 열어 알림 권한을 거부했다가 다시 허용하고 `push-subscriptions.json`을 다시 확인하세요.
 
-### Safari özel pencere hiçbir şey kalıcılaştırmıyor
+### Safari 프라이빗 창에서 아무 것도 저장되지 않아요
 
-IndexedDB, Safari 17+ özel pencerelerinde devre dışıdır, dolayısıyla çalışma alanı önbelleği yeniden başlatmadan sağ çıkmaz. Normal pencere kullanın.
+Safari 17+ 프라이빗 창은 IndexedDB가 비활성화되어 워크스페이스 캐시가 재시작 후 살아남지 않습니다. 일반 창을 사용하세요.
 
-### Mobil terminal arka plana alınınca kayboluyor
+### 모바일 터미널이 백그라운드 후 사라져요
 
-iOS Safari, yaklaşık 30 saniye arka planda olduktan sonra WebSocket'i kapatır. tmux gerçek oturumu canlı tutar — sekmeye döndüğünüzde purplemux yeniden bağlanır ve yeniden çizer. Bu iOS, biz değil.
+iOS Safari는 약 30초 백그라운드면 WebSocket을 끊어버립니다. tmux는 실제 세션을 계속 유지하므로 — 탭으로 돌아오면 codexmux가 재연결하고 다시 렌더링합니다. iOS 동작이지 codexmux 문제가 아닙니다.
 
-### Firefox + Tailscale serve = sertifika uyarısı
+### Firefox + Tailscale serve 인증서 경고
 
-Tailnet'iniz `*.ts.net` olmayan özel bir alan adı kullanıyorsa, Firefox HTTPS güveni konusunda Chrome'dan daha titizdir. Sertifikayı bir kez kabul edin, yapışır.
+`*.ts.net`이 아닌 커스텀 도메인을 tailnet에 쓰면 Firefox가 Chrome보다 HTTPS 신뢰에 까다롭습니다. 한 번 수락하면 계속 유지됩니다.
 
-### "Tarayıcı çok eski" veya özellikler eksik
+### 브라우저가 너무 오래되었거나 일부 기능이 안 보여요
 
-API başına rapor için **Ayarlar → Tarayıcı kontrolü**'nü çalıştırın. [Tarayıcı desteği](/purplemux/tr/docs/browser-support/) altındaki minimumların altındaki herhangi bir şey özellikleri kibarca kaybeder ama desteklenmez.
+**설정 → 브라우저 체크**를 실행해 API별 리포트를 보세요. [브라우저 지원](/codexmux/tr/docs/browser-support/)의 최소 버전 미만은 기능을 그레이스풀하게 잃지만 공식 지원은 아닙니다.
 
-## Ağ & uzak erişim
+## 네트워크와 외부 접근
 
-### purplemux'ı internete açabilir miyim?
+### 인터넷에 노출해도 되나요?
 
-Açabilirsiniz, ama her zaman HTTPS üzerinden. Önerilen:
+가능하지만 항상 HTTPS로. 권장:
 
-1. **Tailscale Serve** — `tailscale serve --bg 8022` size WireGuard şifrelemesi + otomatik sertifikalar verir. Port yönlendirmeye gerek yok.
-2. **Ters proxy** — Nginx / Caddy / Traefik. `Upgrade` ve `Connection` başlıklarını yönlendirdiğinizden emin olun, aksi halde WebSocket'ler bozulur.
+1. **Tailscale Serve** — `tailscale serve --bg --https=443 localhost:8022`로 WireGuard 암호화 + 자동 인증서. 포트 포워딩 불필요.
+2. **리버스 프록시** — Nginx / Caddy / Traefik. `Upgrade`와 `Connection` 헤더를 반드시 포워딩하세요. 안 그러면 WebSocket이 깨집니다.
 
-Açık internet üzerinden düz HTTP kötü bir fikir — auth çerezi HMAC-imzalıdır ama WebSocket yükleri (terminal baytları!) şifrelenmez.
+오픈 인터넷 위 평문 HTTP는 권하지 않습니다 — 인증 쿠키는 HMAC 서명이지만 WebSocket 페이로드(터미널 바이트!)는 암호화되지 않습니다.
 
-### LAN'imdeki diğer cihazlar purplemux'a ulaşamıyor
+### LAN의 다른 디바이스에서 접근이 안 돼요
 
-Varsayılan olarak purplemux yalnızca localhost'a izin verir. Erişimi env veya uygulama içi ayarlardan açın:
+기본은 localhost 전용입니다. env 또는 앱 설정으로 접근 범위를 엽니다:
 
 ```bash
-HOST=lan,localhost purplemux       # LAN dostu
-HOST=tailscale,localhost purplemux # tailnet dostu
-HOST=all purplemux                 # her şey
+HOST=lan,localhost codexmux       # LAN
+HOST=tailscale,localhost codexmux # tailnet
+HOST=all codexmux                 # 모두
 ```
 
-Veya uygulamada **Ayarlar → Ağ erişimi**, `~/.purplemux/config.json`'a yazar. (`HOST` env üzerinden ayarlandığında o alan kilitlidir.) Anahtar kelime ve CIDR sözdizimi için [Portlar & ortam değişkenleri](/purplemux/tr/docs/ports-env-vars/) sayfasına bakın.
+또는 앱의 **설정 → 네트워크 접근** (이 값은 `~/.codexmux/config.json`에 기록). env로 `HOST`를 지정한 경우 이 필드는 잠깁니다. 키워드와 CIDR 문법은 [포트 & 환경변수](/codexmux/tr/docs/ports-env-vars/) 참고.
 
-### Ters proxy WebSocket sorunları
+### 리버스 프록시 WebSocket 이슈
 
-`/api/terminal` bağlanır sonra hemen düşerse, proxy `Upgrade` / `Connection` başlıklarını çıkarıyordur. Asgari Nginx:
+`/api/terminal`이 연결됐다가 즉시 끊긴다면 프록시가 `Upgrade` / `Connection` 헤더를 떨어뜨리고 있습니다. 최소 Nginx 설정:
 
 ```nginx
 location / {
@@ -158,42 +158,42 @@ location / {
 }
 ```
 
-Caddy: WebSocket yönlendirme varsayılandır; sadece `reverse_proxy 127.0.0.1:8022`.
+Caddy는 WebSocket 포워딩이 기본이므로 `reverse_proxy 127.0.0.1:8022`만 적으면 됩니다.
 
-## Veri & saklama
+## 데이터와 저장소
 
-### Verim nerede?
+### 데이터는 어디에 저장되나요?
 
-Her şey yerel olarak `~/.purplemux/` altında. Hiçbir şey makinenizden çıkmaz. Login parolası `config.json` içinde bir scrypt hash'i. Tam düzen için [Veri dizini](/purplemux/tr/docs/data-directory/) sayfasına bakın.
+전부 로컬 `~/.codexmux/` 안. 외부로 나가는 데이터는 없습니다. 로그인 비밀번호는 `config.json` 안의 scrypt 해시. 전체 구조는 [데이터 디렉토리](/codexmux/tr/docs/data-directory/) 참고.
 
-### Parolamı unuttum
+### 비밀번호를 잊었어요
 
-`~/.purplemux/config.json`'u silin ve yeniden başlatın. Onboarding baştan başlar. Çalışma alanları, düzenler ve geçmiş tutulur (ayrı dosyalardır).
+`~/.codexmux/config.json`을 지우고 재시작하세요. 온보딩이 처음부터 다시 시작됩니다. 워크스페이스, 레이아웃, 히스토리는 별도 파일이라 유지됩니다.
 
-### Sekme göstergesi sürekli "busy"de takılı
+### 탭 인디케이터가 영원히 "busy"에서 멈춰요
 
-`busy stuck safety net`, Claude süreci ölmüşse on dakika sonra bir sekmeyi sessizce `idle`'a çevirir. Beklemek istemezseniz, sekmeyi kapatıp yeniden açın — bu yerel durumu sıfırlar ve bir sonraki hook olayı temiz bir sayfadan devam eder. Kök neden incelemesi için `LOG_LEVELS=hooks=debug,status=debug` ile çalıştırın.
+`busy stuck safety net`이 Codex 프로세스가 죽었다면 10분 후 조용히 `idle`로 전환합니다. 기다리기 싫다면 탭을 닫았다 다시 열어 로컬 상태를 리셋하세요 — 다음 상태 업데이트가 깨끗한 상태에서 재개됩니다. 근본 원인 추적은 `LOG_LEVELS=status=debug,tmux=trace`로 실행하세요.
 
-### Mevcut tmux yapılandırmamla çakışıyor mu?
+### 기존 tmux 설정과 충돌하나요?
 
-Hayır. purplemux kendi yapılandırmasıyla (`src/config/tmux.conf`) özel bir sokette (`-L purple`) yalıtılmış bir tmux çalıştırır. Sizin `~/.tmux.conf`'unuza ve mevcut tmux oturumlarınıza dokunulmaz.
+아니요. codexmux는 전용 소켓(`-L codexmux`)에서 자체 설정(`src/config/tmux.conf`)으로 격리된 tmux를 실행합니다. `~/.tmux.conf`나 기존 tmux 세션은 건드리지 않습니다.
 
-## Maliyet & kullanım
+## 비용과 사용량
 
-### purplemux bana para tasarrufu sağlar mı?
+### codexmux를 쓰면 비용이 절약되나요?
 
-Doğrudan değil. Yaptığı şey **kullanımı şeffaf yapmak**: bugün / ay / proje başına maliyet, model başına token dağılımları ve 5h / 7d kota sayaçları hep tek ekranda, böylece duvara çarpmadan kendinizi ayarlayabilirsiniz.
+직접 절약시키지는 않습니다. 다만 **사용량을 투명하게** 만듭니다: 오늘/이달/프로젝트별 비용, 모델별 토큰 분해, 5시간/7일 rate-limit 카운트다운이 한 화면에 모여 있어 한도에 부딪치기 전에 페이스를 조절할 수 있습니다.
 
-### purplemux kendisi ücretli mi?
+### codexmux 자체에 비용이 드나요?
 
-Hayır. purplemux MIT lisanslı açık kaynaktır. Claude Code kullanımı Anthropic tarafından ayrıca faturalandırılır.
+아니요. codexmux는 MIT 라이선스 오픈소스입니다. Codex 사용료는 OpenAI이 별도로 청구합니다.
 
-### Verim bir yere gönderiliyor mu?
+### 데이터가 외부로 전송되나요?
 
-Hayır. purplemux tamamen kendi-host'lanır. Yaptığı tek ağ çağrıları yerel Claude CLI'nızadır (kendi başına Anthropic ile konuşur) ve açılışta `update-notifier` ile sürüm kontrolüdür. `NO_UPDATE_NOTIFIER=1` ile sürüm kontrolünü devre dışı bırakın.
+아니요. codexmux는 완전히 셀프호스팅입니다. 외부로 나가는 네트워크 호출은 (1) 로컬 Codex CLI가 알아서 OpenAI과 통신하는 것, (2) 시작 시 `update-notifier`의 버전 확인뿐입니다. 버전 확인을 끄려면 `NO_UPDATE_NOTIFIER=1`.
 
-## Sıradaki adımlar
+## 다음으로
 
-- **[Tarayıcı desteği](/purplemux/tr/docs/browser-support/)** — ayrıntılı uyumluluk matrisi ve bilinen tarayıcı tuhaflıkları.
-- **[Veri dizini](/purplemux/tr/docs/data-directory/)** — her dosyanın ne yaptığı ve neyi silmek güvenli.
-- **[Mimari](/purplemux/tr/docs/architecture/)** — derinlere inilmesi gereken bir şey olduğunda parçaların nasıl bir araya geldiği.
+- **[브라우저 지원](/codexmux/tr/docs/browser-support/)** — 자세한 호환성 매트릭스와 알려진 quirk
+- **[데이터 디렉토리](/codexmux/tr/docs/data-directory/)** — 각 파일의 역할과 삭제 안전성
+- **[아키텍처](/codexmux/tr/docs/architecture/)** — 더 깊이 파야 할 때 컴포넌트가 어떻게 맞물리는지

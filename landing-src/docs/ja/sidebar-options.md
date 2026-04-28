@@ -1,72 +1,47 @@
 ---
-title: サイドバーと Claude オプション
-description: サイドバーショートカットの並び替えと非表示、クイックプロンプトライブラリの管理、Claude CLI フラグの切り替え。
-eyebrow: カスタマイズ
+title: 사이드바 & Codex 옵션
+description: 사이드바 단축 항목, 퀵 프롬프트, Codex CLI option 설정.
+eyebrow: 설정
 permalink: /ja/docs/sidebar-options/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-サイドバーと入力バーは、形を変えられる小さなリストでできています — サイドバー下部のショートカットリンク、入力欄上部のプロンプトボタン。設定の Claude タブには、ダッシュボードから起動するセッション用の CLI レベルのトグルがあります。
+sidebar, quick prompt, Codex launch option은 Settings에서 조정합니다. 이 값은 새 session과 dashboard 사용 흐름에 영향을 줍니다.
 
-## サイドバー項目
+## sidebar shortcut
 
-設定 (<kbd>⌘,</kbd>) → **サイドバー** タブ。このリストは、サイドバー下部のショートカット行 — ダッシュボード、内部ツール、URL アドレス指定可能なものへのリンク — を制御します。
+**Settings** -> **Sidebar**에서 sidebar 하단 shortcut을 관리합니다.
 
-各行にはグリップハンドル、名前、URL、スイッチがあります。以下が可能です:
+- drag로 순서 변경.
+- switch로 표시/숨김.
+- custom item 추가와 삭제.
+- 기본값으로 reset.
 
-- **ドラッグ** で並び替え。ビルトインもカスタムも自由に動かせます。
-- **トグル** で削除せず項目を非表示。
-- **編集** (鉛筆アイコン) でカスタム項目を編集 — 名前、アイコン、URL を変更。
-- **削除** (ゴミ箱アイコン) でカスタム項目を削除。
-- **デフォルトにリセット** — ビルトインを復元、すべてのカスタムを削除、順序をクリア。
+## quick prompt
 
-### カスタム項目を追加する
+**Settings** -> **Quick Prompts**에서 input 위에 표시되는 prompt button을 관리합니다. 자주 쓰는 요청을 버튼 하나로 보낼 수 있습니다.
 
-下部の **項目を追加** をクリックすると、小さなフォームが現れます:
+예시:
 
-- **名前** — ツールチップとラベルとして表示。
-- **アイコン** — 検索可能な lucide-react ギャラリーから選択。
-- **URL** — `http(s)://...` なら何でも。社内 Grafana、Vercel ダッシュボード、社内管理ツールなど。
+- 테스트 실행.
+- 현재 diff review.
+- 마지막 commit 요약.
+- release note 초안 작성.
 
-Save を押すとリスト下部に行が現れます。好きな位置にドラッグしてください。
+## Codex option
 
-{% call callout('note', 'ビルトインは隠せても削除できない') %}
-ビルトイン項目 (purplemux に同梱されているもの) はスイッチとグリップだけがあります — 編集や削除はできません。気が変わったときのために常にそこにあります。カスタム項目はフルセットの操作が可能です。
-{% endcall %}
+**Settings** -> **Codex**의 값은 새로 여는 Codex tab에 적용됩니다. 이미 실행 중인 session은 바꾸지 않습니다.
 
-## クイックプロンプト
+| option | 의미 |
+|---|---|
+| model | `codex --model` 값 |
+| sandbox | `codex --sandbox` 값 |
+| approval policy | `codex --ask-for-approval` 값 |
+| web search | `--search` 추가 여부 |
+| terminal 표시 | timeline과 raw terminal을 함께 보여줄지 여부 |
 
-設定 → **クイックプロンプト** タブ。これらは Claude 入力欄の上に並ぶボタンで、ワンクリックで定型メッセージを送ります。
+## 다음 단계
 
-サイドバー項目と同じパターン:
-
-- ドラッグで並び替え。
-- トグルで非表示。
-- カスタムプロンプトの編集 / 削除。
-- デフォルトにリセット。
-
-プロンプトを追加するときは、**名前** (ボタンラベル) と **プロンプト** 自体 (複数行テキスト) を入力します。よく打つもの: 「テストスイートを実行」「直近のコミットを要約」「現在の diff をレビュー」など。
-
-## Claude CLI オプション
-
-設定 → **Claude** タブ。これらのフラグは *purplemux が新しいタブで Claude CLI を起動する方法* に影響します — 既に動作中のセッションの動作は変わりません。
-
-### Skip Permission Checks
-
-`claude` コマンドに `--dangerously-skip-permissions` を追加します。Claude が毎回承認を求めずにツールを実行しファイルを編集するようになります。
-
-これは公式 CLI が公開しているのと同じフラグで、purplemux はその上に追加の安全性を緩めることはしていません。有効化する前に [Anthropic のドキュメント](https://docs.anthropic.com/en/docs/claude-code/cli-reference) を読んでください。信頼できるワークスペースに限って使うものとして扱ってください。
-
-### Show Terminal with Claude
-
-**オン** のとき (デフォルト): Claude タブはライブセッションビューと内部のターミナルペインをサイドバイサイドで表示するので、いつでもシェルに飛び込めます。
-
-**オフ** のとき: 新しい Claude タブはターミナルが折り畳まれた状態で開きます。セッションビューがペイン全体を埋めます。タブごとに手動でターミナルを展開できます。これは新規作成タブのデフォルトを変えるだけです。
-
-タイムラインビューを中心に Claude を運転し、デフォルトをすっきりさせたい場合はオフを使ってください。
-
-## 次のステップ
-
-- **[テーマとフォント](/purplemux/ja/docs/themes-fonts/)** — ライト、ダーク、システム; フォントサイズプリセット。
-- **[エディタ連携](/purplemux/ja/docs/editor-integration/)** — VS Code、Cursor、code-server を接続。
-- **[最初のセッション](/purplemux/ja/docs/first-session/)** — ダッシュボードレイアウトを再確認。
+- **[퀵 프롬프트 & 첨부](/codexmux/ja/docs/quick-prompts-attachments/)**
+- **[테마 & 글꼴](/codexmux/ja/docs/themes-fonts/)**
+- **[권한 프롬프트](/codexmux/ja/docs/permission-prompts/)**

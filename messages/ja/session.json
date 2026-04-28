@@ -14,7 +14,7 @@
   "empty": {
     "closeLabel": "閉じる",
     "noSession": "セッションがありません",
-    "startNewSession": "ターミナルでclaudeを実行して{br}新しいセッションを開始します",
+    "startNewSession": "Run codex in the terminal{br}to start a new session",
     "newConversation": "新しい会話",
     "close": "閉じる"
   },

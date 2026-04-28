@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, Download, Eye, EyeOff, Globe, ListChecks, Lock, Loader2, LogIn, Network, RefreshCcw, Terminal, Bot, Sun, Moon, Monitor, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, Download, Eye, EyeOff, Globe, ListChecks, Lock, Loader2, LogIn, Network, RefreshCcw, Terminal, Sun, Moon, Monitor, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { TERMINAL_THEMES, DEFAULT_THEME_IDS } from '@/lib/terminal-themes';
@@ -14,12 +13,13 @@ import AppLogo from '@/components/layout/app-logo';
 import InstallDialog from '@/components/features/login/install-dialog';
 import { usePreflight } from '@/hooks/use-preflight';
 import useConfigStore from '@/hooks/use-config-store';
+import type { IPreflightResult } from '@/types/preflight';
 
-type TStep = 'preflight' | 'password' | 'language' | 'appearance' | 'theme' | 'claude' | 'network' | 'complete';
+type TStep = 'preflight' | 'password' | 'language' | 'appearance' | 'theme' | 'network' | 'complete';
 type TAppTheme = 'dark' | 'light' | 'system';
 type TNetworkAccess = 'localhost' | 'tailscale' | 'all';
 
-const ALL_STEPS: TStep[] = ['preflight', 'password', 'language', 'appearance', 'theme', 'claude', 'network', 'complete'];
+const ALL_STEPS: TStep[] = ['preflight', 'password', 'language', 'appearance', 'theme', 'network', 'complete'];
 
 const NETWORK_ACCESS_OPTIONS: TNetworkAccess[] = ['localhost', 'tailscale', 'all'];
 
@@ -105,7 +105,6 @@ const STEP_ICONS: Record<TStep, React.ReactNode> = {
   language: <Globe className="h-5 w-5" />,
   appearance: <Sun className="h-5 w-5" />,
   theme: <Terminal className="h-5 w-5" />,
-  claude: <Bot className="h-5 w-5" />,
   network: <Network className="h-5 w-5" />,
   complete: <Check className="h-5 w-5" />,
 };
@@ -114,6 +113,8 @@ interface IOnboardingWizardProps {
   onComplete: () => void;
   hostEnvLocked?: boolean;
 }
+
+const readPreflightAgent = (status: IPreflightResult) => status.agent;
 
 const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWizardProps) => {
   const t = useTranslations('onboarding');
@@ -126,17 +127,18 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
   const [appTheme, setAppTheme] = useState<TAppTheme>((currentTheme as TAppTheme) ?? 'dark');
   const [darkTheme, setDarkTheme] = useState(DEFAULT_THEME_IDS.dark);
   const [lightTheme, setLightTheme] = useState(DEFAULT_THEME_IDS.light);
-  const [skipPermissions, setSkipPermissions] = useState(true);
   const [networkAccess, setNetworkAccess] = useState<TNetworkAccess>('localhost');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { status: preflightStatus, checking: preflightChecking } = usePreflight({
     onReady: (data) => {
-      if (data.tmux.installed && data.tmux.compatible && data.git.installed && data.claude.installed && data.claude.loggedIn) {
+      const agent = readPreflightAgent(data);
+      if (data.tmux.installed && data.tmux.compatible && data.git.installed && agent.installed && agent.loggedIn) {
         setStep('password');
       }
     },
   });
+  const preflightAgent = preflightStatus ? readPreflightAgent(preflightStatus) : null;
   const [installTarget, setInstallTarget] = useState<{ command: string; label: string } | null>(null);
   const [direction, setDirection] = useState<'forward' | 'back'>('forward');
   const storeLocale = useConfigStore((s) => s.locale);
@@ -212,7 +214,6 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
           locale: selectedLocale,
           appTheme,
           terminalTheme: { light: lightTheme, dark: darkTheme },
-          dangerouslySkipPermissions: skipPermissions,
           ...(hostEnvLocked ? {} : { networkAccess }),
         }),
       });
@@ -263,19 +264,19 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
               <Loader2 className="h-5 w-5 animate-spin" />
               <span className="text-sm">{t('checking')}</span>
             </div>
-          ) : preflightStatus && preflightStatus.tmux.installed && preflightStatus.tmux.compatible &&
-            preflightStatus.git.installed && preflightStatus.claude.installed &&
-            !preflightStatus.claude.loggedIn ? (
+          ) : preflightStatus && preflightAgent && preflightStatus.tmux.installed && preflightStatus.tmux.compatible &&
+            preflightStatus.git.installed && preflightAgent.installed &&
+            !preflightAgent.loggedIn ? (
             <div className="flex flex-col gap-4">
-              <p className="text-sm text-muted-foreground">{t('claudeLoginDescription')}</p>
+              <p className="text-sm text-muted-foreground">{t('codexLoginDescription')}</p>
               <div className="flex flex-col gap-2">
                 <Button
                   size="lg"
                   className="h-12 w-full"
-                  onClick={() => setInstallTarget({ command: 'claude-login', label: t('claudeLogin') })}
+                  onClick={() => setInstallTarget({ command: 'codex-login', label: t('codexLogin') })}
                 >
                   <LogIn className="mr-1 h-4 w-4" />
-                  {t('claudeLogin')}
+                  {t('codexLogin')}
                 </Button>
                 <Button
                   variant="outline"
@@ -299,9 +300,10 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
           ) : preflightStatus && !(
             preflightStatus.tmux.installed && preflightStatus.tmux.compatible &&
             preflightStatus.git.installed &&
-            preflightStatus.claude.installed
+            preflightAgent?.installed
           ) ? (() => {
-            const claudeNeedsPath = !preflightStatus.claude.installed && !!preflightStatus.claude.binaryPath;
+            const agent = preflightStatus.agent;
+            const codexNeedsPath = !agent.installed && !!agent.binaryPath;
             const brewInstalled = preflightStatus.brew?.installed ?? true;
             const cltInstalled = preflightStatus.clt?.installed ?? true;
             const missingTools: { name: string; show: boolean }[] = [
@@ -309,7 +311,7 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
               { name: 'Homebrew', show: !brewInstalled },
               { name: 'tmux', show: !(preflightStatus.tmux.installed && preflightStatus.tmux.compatible) },
               { name: 'Git', show: !preflightStatus.git.installed },
-              { name: claudeNeedsPath ? t('claudePathMissing') : 'Claude Code', show: !preflightStatus.claude.installed },
+              { name: codexNeedsPath ? t('codexPathMissing') : 'Codex CLI', show: !agent.installed },
             ];
 
             const needsUpgrade = preflightStatus.tmux.installed && !preflightStatus.tmux.compatible;
@@ -322,9 +324,9 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
                 ? { command: needsUpgrade ? 'tmux-upgrade' : 'tmux-install', label: needsUpgrade ? t('upgradeTmux') : t('installTmux') }
               : !preflightStatus.git.installed
                 ? { command: 'git', label: t('installGit') }
-              : claudeNeedsPath
-                ? { command: 'claude-path', label: t('fixClaudePath') }
-              : { command: 'claude', label: t('installClaude') };
+              : codexNeedsPath
+                ? { command: 'codex-path', label: t('fixCodexPath') }
+              : { command: 'codex', label: t('installCodex') };
 
             return (
             <div className="flex flex-col gap-4">
@@ -513,32 +515,6 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
           </div>
         </div>
 
-        <div className={stepPanelClass('claude')} aria-hidden={step !== 'claude'}>
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="space-y-1 pr-4">
-              <p className="text-sm font-medium">{t('skipPermissions')}</p>
-              <p className="text-sm text-muted-foreground">
-                {t('skipPermissionsDescription')}
-              </p>
-            </div>
-            <Switch
-              checked={skipPermissions}
-              onCheckedChange={setSkipPermissions}
-              tabIndex={step === 'claude' ? 0 : -1}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="lg" className="h-12" tabIndex={step === 'claude' ? 0 : -1} onClick={goBack}>
-              <ArrowLeft className="mr-1 h-4 w-4" />
-              {tc('back')}
-            </Button>
-            <Button size="lg" className="h-12 flex-1" tabIndex={step === 'claude' ? 0 : -1} onClick={goNext}>
-              {tc('next')}
-              <ArrowRight className="ml-1 h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
         <div className={stepPanelClass('network')} aria-hidden={step !== 'network'}>
           <p className="text-sm text-muted-foreground">{t('networkDescription')}</p>
           <div className="flex flex-col gap-2">
@@ -594,10 +570,6 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t('summary.lightTheme')}</span>
               <span>{TERMINAL_THEMES.find((th) => th.id === lightTheme)?.name}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">{t('summary.skipPermissions')}</span>
-              <span>{skipPermissions ? t('summary.enabled') : t('summary.disabled')}</span>
             </div>
             {!hostEnvLocked && (
               <div className="flex justify-between">

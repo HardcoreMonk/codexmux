@@ -1,5 +1,5 @@
 {
-  "pageTitle": "Réinitialisation - purplemux",
+  "pageTitle": "Réinitialisation - codexmux",
   "title": "Réinitialisation tmux",
   "stepCleanup": "Nettoyage des connexions",
   "stepReset": "Arrêt et réinitialisation du serveur tmux",

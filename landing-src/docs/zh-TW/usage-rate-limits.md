@@ -1,84 +1,43 @@
 ---
-title: 用量與用量限制
-description: 即時的 5 小時與 7 天用量倒數位於側邊欄，加上 token、費用與每專案分項的統計儀表板。
-eyebrow: Claude Code
+title: 사용량 & rate limit
+description: 5시간/7일 quota와 token, cost, project 통계.
+eyebrow: Codex
 permalink: /zh-TW/docs/usage-rate-limits/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-在工作中途撞到用量上限是最糟糕的中斷。purplemux 把 Claude Code 的用量數字拉到側邊欄，並提供統計儀表板，讓你一眼掌握自己的使用節奏。
+codexmux는 Codex quota와 사용량 통계를 sidebar와 dashboard에 표시합니다. live quota는 statusline payload가 있을 때 사용하고, 과거 통계는 Codex JSONL에서 계산합니다.
 
-## 側邊欄小工具
+## sidebar widget
 
-側邊欄底部有兩條細長的條：**5h** 與 **7d**。每條顯示：
+sidebar 하단의 **5h**, **7d** bar는 다음 정보를 보여줍니다.
 
-- 已耗用該視窗的百分比
-- 距重設還剩多少時間
-- 一條淡色的預測條，顯示若維持目前步調最終會落在哪
+- 현재 window 사용 비율.
+- reset까지 남은 시간.
+- 현재 속도를 유지할 때의 예상 사용량.
 
-把游標停在任一條上即可看到完整明細 — 已使用百分比、預測百分比，以及以相對時間表示的重設時間。
+색상은 50% 미만 teal, 50-79% amber, 80% 이상 red입니다.
 
-數字來自 Claude Code 自己的 statusline JSON。purplemux 會安裝一支精簡的 `~/.purplemux/statusline.sh` 指令稿，每次 Claude 重新整理 statusline 時都會 POST 資料給本機伺服器；`fs.watch` 維持 UI 同步。
+## stats dashboard
 
-## 顏色閾值
+Dashboard는 다음 정보를 제공합니다.
 
-兩條的顏色都會依使用百分比改變：
+- 전체 session, 전체 cost, 오늘 cost, 이번 달 cost.
+- model별 input/output/cache token 사용량.
+- project별 session, message, token, cost.
+- 30일 활동 chart와 streak.
+- 최근 1주일의 day x hour usage grid.
 
-| 已使用 | 顏色 |
-|---|---|
-| 0–49 % | 青色 — 從容 |
-| 50–79 % | 琥珀色 — 控制節奏 |
-| 80–100 % | 紅色 — 即將撞牆 |
+## 데이터 출처
 
-閾值與著陸頁的用量小工具相同。當你看過幾次琥珀色之後，側邊欄就成了周邊節奏工具 — 你不再有意識地注意它，但會開始把工作分散到不同視窗。
+모든 dashboard 값은 `~/.codex/sessions/` 아래 JSONL에서 로컬로 계산됩니다. cache는 `~/.codexmux/stats/`에 저장되며 외부로 전송되지 않습니다.
 
-{% call callout('tip', '預測勝過百分比') %}
-實線後方的淡色條是預測 — 若維持目前步調，到重設時你會落在這裡。看著預測在實際使用之前先越過 80 %，就是最乾淨的早期警訊。
-{% endcall %}
+## reset 동작
 
-## 統計儀表板
+5시간과 7일 window는 Codex 계정의 rolling window입니다. reset 시점이 지나면 다음 statusline tick에서 bar와 남은 시간이 자동 보정됩니다.
 
-從側邊欄打開儀表板（或按 <kbd>⌘⇧U</kbd>）。從上到下五個區塊：
+## 다음 단계
 
-### 概覽卡片
-
-四張卡片：**總工作階段數**、**總費用**、**今日費用**、**本月費用**。每張卡片以綠色或紅色顯示與前期相比的變化。
-
-### 各模型 token 用量
-
-按日的堆疊長條圖，依模型與 token 類型 — 輸入、輸出、cache reads、cache writes — 拆解。模型圖例使用 Claude 的顯示名稱（Opus / Sonnet / Haiku），並使用與側邊欄條相同的色彩處理。
-
-這是最能看到「某天費用暴漲是因為 Opus 用得多」或「cache reads 才是主力」的地方。
-
-### 每專案分項
-
-一張表格，列出你用過的每個 Claude Code 專案（工作目錄），含工作階段、訊息、token 與費用。點一列可看到僅該專案的每日圖表。
-
-對共用機器或想把客戶工作與個人實驗分開的人很有用。
-
-### 活動與連勝
-
-30 天的每日活動面積圖，加上四個連勝指標：
-
-- **最長連勝** — 你連續工作日的紀錄
-- **目前連勝** — 你目前已連續工作幾天
-- **總活躍天數** — 該期間的總計
-- **平均每日工作階段數**
-
-### 週時間軸
-
-一張日 × 小時的格子，顯示你在過去一週實際使用 Claude 的時間。同時進行的工作階段會堆疊呈現，所以「週二下午三點同時五個工作階段」一眼就能看出。
-
-## 資料從哪來
-
-儀表板上的所有東西都是從 `~/.claude/projects/` 下 Claude Code 自己的工作階段 JSONL 在本地計算出來的。purplemux 讀取它們，把解析後的計數快取在 `~/.purplemux/stats/`，永遠不會送出任何位元組到機外。切換語言或重建快取都不會對外連線。
-
-## 重設行為
-
-5 小時與 7 天視窗是滾動的，並與你的 Claude Code 帳號繫結。當視窗重設時，條會掉到 0 %，百分比與剩餘時間會從下個重設時間戳重新計算。如果 purplemux 錯過了重設（伺服器當時已關閉），下一個 statusline tick 時小工具會自我更正。
-
-## 下一步
-
-- **[筆記（AI 每日報告）](/purplemux/zh-TW/docs/notes-daily-report/)** — 同樣的資料，寫成每日簡報。
-- **[工作階段狀態](/purplemux/zh-TW/docs/session-status/)** — 側邊欄按分頁追蹤的另一件事。
-- **[鍵盤快速鍵](/purplemux/zh-TW/docs/keyboard-shortcuts/)** — 包含開啟統計的 <kbd>⌘⇧U</kbd>。
+- **[세션 상태](/codexmux/zh-TW/docs/session-status/)**
+- **[데일리 리포트](/codexmux/zh-TW/docs/notes-daily-report/)**
+- **[데이터 디렉터리](/codexmux/zh-TW/docs/data-directory/)**

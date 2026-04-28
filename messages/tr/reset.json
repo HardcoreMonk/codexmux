@@ -1,5 +1,5 @@
 {
-  "pageTitle": "Sıfırla - purplemux",
+  "pageTitle": "Sıfırla - codexmux",
   "title": "tmux Sıfırlama",
   "stepCleanup": "Bağlantılar temizleniyor",
   "stepReset": "tmux sunucusu durduruluyor ve sıfırlanıyor",

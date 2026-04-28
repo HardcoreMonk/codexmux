@@ -1,4 +1,4 @@
-import type { ISessionInfo } from '@/types/timeline';
+import type { IChunkReadResult, IIncrementalResult, ISessionInfo, ITimelineEntry } from '@/types/timeline';
 import type { ISessionWatcher } from '@/lib/session-detection';
 import type { ITab, TPanelType } from '@/types/terminal';
 
@@ -32,6 +32,15 @@ export interface IAgentProvider {
 
   buildResumeCommand(sessionId: string, options: IAgentResumeCommandOptions): Promise<string>;
   buildLaunchCommand(options: IAgentLaunchCommandOptions): Promise<string>;
+  resolveJsonlPath(sessionId: string, cwd: string): Promise<string | null>;
+  parseJsonlContent(content: string): ITimelineEntry[];
+  readTailEntries(filePath: string, maxEntries: number): Promise<IChunkReadResult>;
+  readEntriesBefore(filePath: string, beforeByte: number, maxEntries: number): Promise<IChunkReadResult>;
+  parseIncremental(
+    filePath: string,
+    fromOffset: number,
+    pendingBuffer?: string,
+  ): Promise<IIncrementalResult>;
 
   readSessionId(tab: ITab): string | null;
   writeSessionId(tab: ITab, sessionId: string | null | undefined): void;

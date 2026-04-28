@@ -7,7 +7,7 @@ const log = createLogger('tmux');
 
 // Option line pattern: `❯ label`, `  label`, `❯ 1. label`, `  2. label`
 const INDICATOR_RE = /^\s*(?:[❯›>]\s+)?(?:\d+\.\s+)?(.+)$/;
-const PLAN_OPTION_KEYWORDS = ['Yes,', 'Yes ', 'No,', 'No ', 'Tell Claude'];
+const PLAN_OPTION_KEYWORDS = ['Yes,', 'Yes ', 'No,', 'No ', 'Tell Codex'];
 
 const isOptionLine = (line: string): boolean =>
   /^\s+\S/.test(line) || /^\s*[❯›>]/.test(line);

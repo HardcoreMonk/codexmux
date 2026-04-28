@@ -30,9 +30,9 @@ interface ICacheEntry {
 
 const CACHE_LIMIT = 100;
 
-const g = globalThis as unknown as { __pmuxMessageCountsCache?: Map<string, ICacheEntry> };
-if (!g.__pmuxMessageCountsCache) g.__pmuxMessageCountsCache = new Map();
-const cache = g.__pmuxMessageCountsCache;
+const g = globalThis as unknown as { __cmuxMessageCountsCache?: Map<string, ICacheEntry> };
+if (!g.__cmuxMessageCountsCache) g.__cmuxMessageCountsCache = new Map();
+const cache = g.__cmuxMessageCountsCache;
 
 const cacheGet = (key: string, mtime: number, size: number): ICountResult | null => {
   const entry = cache.get(key);

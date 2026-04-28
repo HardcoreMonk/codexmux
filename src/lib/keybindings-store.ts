@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { ACTIONS } from '@/lib/keyboard-shortcuts';
 
 export type TKeybindingOverride = string | null;
 
@@ -8,21 +9,27 @@ export interface IKeybindingsFile {
   overrides: Record<string, TKeybindingOverride>;
 }
 
-const BASE_DIR = path.join(os.homedir(), '.purplemux');
+const BASE_DIR = path.join(os.homedir(), '.codexmux');
 const FILE_PATH = path.join(BASE_DIR, 'keybindings.json');
 
 const EMPTY: IKeybindingsFile = { overrides: {} };
+
+export const normalizeKeybindingOverrides = (src: Record<string, unknown>): Record<string, TKeybindingOverride> => {
+  const overrides: Record<string, TKeybindingOverride> = {};
+  for (const [k, v] of Object.entries(src)) {
+    if (typeof k !== 'string') continue;
+    if (v !== null && typeof v !== 'string') continue;
+    if (!(k in ACTIONS)) continue;
+    if (overrides[k] === undefined) overrides[k] = v;
+  }
+  return overrides;
+};
 
 const sanitize = (raw: unknown): IKeybindingsFile => {
   if (!raw || typeof raw !== 'object') return EMPTY;
   const src = (raw as { overrides?: unknown }).overrides;
   if (!src || typeof src !== 'object') return EMPTY;
-  const overrides: Record<string, TKeybindingOverride> = {};
-  for (const [k, v] of Object.entries(src)) {
-    if (typeof k !== 'string') continue;
-    if (v === null || typeof v === 'string') overrides[k] = v;
-  }
-  return { overrides };
+  return { overrides: normalizeKeybindingOverrides(src as Record<string, unknown>) };
 };
 
 export const readKeybindings = async (): Promise<IKeybindingsFile> => {

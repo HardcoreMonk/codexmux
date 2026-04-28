@@ -1,69 +1,69 @@
 ---
-title: 儲存與還原版面
-description: 為什麼即使伺服器重啟，分頁也會回到你離開時的位置。
-eyebrow: 工作區與終端機
+title: 레이아웃 저장 & 복원
+description: 브라우저를 닫거나 서버를 재부팅해도 탭이 정확히 그 자리에 돌아오는 이유.
+eyebrow: 워크스페이스 & 터미널
 permalink: /zh-TW/docs/save-restore/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux 的核心理念之一就是：在瀏覽器關閉一個分頁不應該結束工作階段。兩個機制協同運作 — tmux 維持 shell 持續運行，而 `~/.purplemux/workspaces.json` 記住版面配置。
+codexmux는 "브라우저 탭을 닫는 것이 세션을 끝내는 것이어선 안 된다"는 전제로 설계됐습니다. 두 축이 함께 동작합니다 — tmux가 쉘을 살려두고, `~/.codexmux/workspaces.json`이 레이아웃을 기억합니다.
 
-## 哪些東西會被保留
+## 저장되는 것
 
-任何在工作區看得見的內容：
+워크스페이스에서 눈에 보이는 모든 것:
 
-- 分頁與其順序
-- 窗格分割與比例
-- 每個分頁的面板類型 — Terminal、Claude、Diff、Web browser
-- 每個 shell 的工作目錄
-- 工作區群組、名稱與順序
+- 탭과 그 순서
+- 창 분할과 분할 비율
+- 각 탭의 패널 타입 — 터미널, Codex, diff, 웹 브라우저
+- 모든 쉘의 작업 디렉토리
+- 워크스페이스 그룹, 이름, 순서
 
-`workspaces.json` 會在每次版面變更時以交易方式更新，因此檔案永遠反映目前狀態。完整的磁碟檔案地圖請見 [資料目錄](/purplemux/zh-TW/docs/data-directory/)。
+`workspaces.json`은 레이아웃 변경 때마다 트랜잭션 단위로 업데이트되므로 파일은 항상 현재 상태를 반영합니다. 디스크 파일 구조는 [데이터 디렉토리](/codexmux/zh-TW/docs/data-directory/)를 참고하세요.
 
-## 關閉瀏覽器
+## 브라우저 닫기
 
-關掉分頁、重新整理、闔上筆電 — 都不會結束工作階段。
+탭을 닫든, 새로고침하든, 노트북을 덮든 — 세션이 끝나지 않습니다.
 
-每個 shell 都活在 `purple` 專屬 socket 上的 tmux 工作階段裡，與你個人的 `~/.tmux.conf` 完全隔離。一小時後再打開 `http://localhost:8022`，WebSocket 會重新連到同一個 tmux 工作階段，重播 scrollback，把仍在運作的 PTY 交還給 xterm.js。
+모든 쉘은 전용 `codexmux` 소켓의 tmux 세션 안에 살아있습니다. 사용자의 `~/.tmux.conf`와 완전히 격리됩니다. 한 시간 뒤에 `http://localhost:8022`를 다시 열면 WebSocket이 동일한 tmux 세션에 재연결되고, 스크롤백을 재생한 뒤 살아있는 PTY를 xterm.js로 넘겨줍니다.
 
-你不是在還原任何東西，而是在重新連線。
+복원이 아니라 재연결입니다.
 
-{% call callout('tip', '手機也一樣') %}
-手機上同樣適用。關掉 PWA、鎖屏、隔天再回來 — 儀表板會帶著一切重新連上。
+{% call callout('tip', '모바일도 똑같이') %}
+휴대폰에서도 동일합니다. PWA를 닫고, 기기를 잠그고, 다음 날 다시 열어도 — 대시보드는 모든 것을 그대로 둔 채 재연결합니다.
 {% endcall %}
 
-## 從伺服器重啟中恢復
+## 서버 재부팅 후 복구
 
-重啟確實會殺掉 tmux 程序 — 它們只是普通的 OS 程序。purplemux 在下次啟動時會處理這件事：
+재부팅은 tmux 프로세스를 종료시킵니다 — 결국은 OS 프로세스니까요. codexmux는 다음 시작 시 이 상황을 처리합니다.
 
-1. **讀取版面** — `workspaces.json` 描述每一個工作區、窗格與分頁。
-2. **平行重建工作階段** — 為每個分頁在儲存的工作目錄中產生新的 tmux 工作階段。
-3. **自動恢復 Claude** — 原本有 Claude 工作階段的分頁會以 `claude --resume {sessionId}` 重新啟動，讓對話從中斷處繼續。
+1. **레이아웃 읽기** — `workspaces.json`이 모든 워크스페이스, 창, 탭을 기술합니다.
+2. **세션 병렬 재생성** — 각 탭마다 저장된 작업 디렉토리에서 새 tmux 세션이 생성됩니다.
+3. **Codex 자동 재개** — Codex 세션이 돌고 있던 탭은 `codex resume {sessionId}`로 다시 시작되어 대화가 끊긴 지점에서 이어집니다.
 
-「平行」很重要：如果你有十個分頁，十個 tmux 工作階段會同時建立，而非一個接一個。當你打開瀏覽器時，版面已經就緒。
+"병렬"이라는 점이 중요합니다 — 탭이 10개라면 10개 tmux 세션이 한 번에 올라옵니다. 차례대로가 아니라 동시에. 브라우저를 열 때쯤에는 이미 레이아웃이 준비되어 있습니다.
 
-## 哪些東西無法還原
+## 돌아오지 않는 것
 
-有少數東西無法持久化：
+몇 가지는 저장이 불가능합니다.
 
-- **記憶體中的 shell 狀態** — 你設定的環境變數、背景作業、思考一半的 REPL。
-- **進行中的權限提示** — 如果伺服器在 Claude 等待權限決定時掛掉，恢復後你會再次看到提示。
-- **`claude` 以外的前景程序** — `vim` 緩衝區、`htop`、`docker logs -f`。shell 會回到相同目錄，但程序不會。
+- **인메모리 쉘 상태** — 직접 설정한 환경변수, 백그라운드 잡, 진행 중이던 REPL
+- **응답 대기 중이던 권한 프롬프트** — 서버가 죽을 때 Codex가 권한 결정을 기다리고 있었다면, 재개 시 같은 프롬프트가 다시 보입니다
+- **`codex` 외의 포어그라운드 프로세스** — `vim` 버퍼, `htop`, `docker logs -f`. 쉘은 같은 디렉토리에 있지만 그 안에서 돌던 프로세스는 없습니다
 
-這就是 tmux 的標準合約：shell 會存活，但其中的程序不一定。
+이건 표준 tmux 계약입니다 — 쉘은 살아남지만 그 안의 프로세스는 반드시 그렇진 않습니다.
 
-## 手動控制
+## 수동 제어
 
-平常不需要碰，但若你好奇：
+평소엔 건드릴 일이 없지만 호기심을 위해:
 
-- tmux socket 名稱是 `purple`。可用 `tmux -L purple ls` 檢視。
-- 工作階段命名格式為 `pt-{workspaceId}-{paneId}-{tabId}`。
-- 在 purplemux 執行中時編輯 `workspaces.json` 並不安全 — 伺服器會持續打開並寫入。
+- tmux 소켓 이름은 `codexmux`입니다. `tmux -L codexmux ls`로 직접 확인할 수 있습니다.
+- 세션 이름 형식은 `pt-{workspaceId}-{paneId}-{tabId}`입니다.
+- 서버 실행 중에 `workspaces.json`을 직접 편집하는 것은 안전하지 않습니다 — 서버가 파일을 잡고 있고 변경을 즉시 써내려갑니다.
 
-更深入的說明（二進位協定、背壓、JSONL 監看）請見著陸頁的 [How it works](/purplemux/#how)。
+이진 프로토콜, 백프레셔, JSONL 워처 같은 더 깊은 이야기는 랜딩의 [동작 방식](/codexmux/zh-TW/#how) 섹션을 참고하세요.
 
-## 下一步
+## 다음으로
 
-- **[工作區與群組](/purplemux/zh-TW/docs/workspaces-groups/)** — 工作區會儲存什麼。
-- **[分頁與窗格](/purplemux/zh-TW/docs/tabs-panes/)** — 分頁會儲存什麼。
-- **[瀏覽器支援](/purplemux/zh-TW/docs/browser-support/)** — 行動裝置背景分頁與重新連線的已知差異。
+- **[워크스페이스와 그룹](/codexmux/zh-TW/docs/workspaces-groups/)** — 워크스페이스 단위로 저장되는 것
+- **[탭 & 창](/codexmux/zh-TW/docs/tabs-panes/)** — 탭 단위로 저장되는 것
+- **[브라우저 지원](/codexmux/zh-TW/docs/browser-support/)** — 모바일 백그라운드 탭과 재연결의 알려진 이슈

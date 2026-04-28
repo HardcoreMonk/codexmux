@@ -8,6 +8,10 @@ export const registerProvider = (provider: IAgentProvider): void => {
   providers.set(provider.id, provider);
 };
 
+export const clearProviders = (): void => {
+  providers.clear();
+};
+
 export const getProvider = (id: string): IAgentProvider | null => providers.get(id) ?? null;
 
 export const getProviderByPanelType = (panelType: string | undefined): IAgentProvider | null => {

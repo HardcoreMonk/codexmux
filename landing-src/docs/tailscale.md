@@ -1,63 +1,63 @@
 ---
-title: Tailscale access
-description: Reach purplemux from your phone over HTTPS via Tailscale Serve — no port forwarding, no certificate juggling.
-eyebrow: Mobile & Remote
+title: Tailscale 접속
+description: Tailscale Serve로 휴대폰에서도 HTTPS로 codexmux에 접근합니다 — 포트 포워딩도, 인증서 고민도 없이.
+eyebrow: 모바일 & 원격
 permalink: /docs/tailscale/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-By default purplemux only listens locally. Tailscale Serve is the cleanest way to expose it to your other devices: WireGuard-encrypted, automatic Let's Encrypt certificates, and zero firewall changes.
+기본적으로 codexmux는 로컬에서만 listen 합니다. 다른 기기에서 안전하게 접근하기에 가장 깔끔한 방법은 Tailscale Serve입니다 — WireGuard 암호화, Let's Encrypt 인증서 자동 발급, 방화벽 변경 불필요.
 
-## Why Tailscale
+## 왜 Tailscale인가
 
-- **WireGuard** — every connection is encrypted device-to-device.
-- **Automatic HTTPS** — Tailscale provisions a real cert for `*.<tailnet>.ts.net`.
-- **No port forwarding** — your machine never opens a port to the public internet.
-- **HTTPS is mandatory for iOS** — PWA install and Web Push both refuse to work without it. See [PWA setup](/purplemux/docs/pwa-setup/) and [Web Push](/purplemux/docs/web-push/).
+- **WireGuard** — 모든 연결이 기기 대 기기로 암호화됩니다.
+- **자동 HTTPS** — Tailscale이 `*.<tailnet>.ts.net`에 대한 실제 인증서를 발급해줍니다.
+- **포트 포워딩 불필요** — 머신이 공개 인터넷에 포트를 열지 않습니다.
+- **iOS는 HTTPS 필수** — PWA 설치와 Web Push 모두 HTTPS 없이는 거부됩니다. [PWA 설정](/codexmux/docs/pwa-setup/), [웹 푸시](/codexmux/docs/web-push/) 참고.
 
-## Prerequisites
+## 사전 준비
 
-- A Tailscale account, with the `tailscale` daemon installed and signed in on the machine running purplemux.
-- HTTPS enabled on the tailnet (Admin console → DNS → enable HTTPS Certificates, if it isn't already).
-- purplemux running on the default port `8022` (or wherever you've set `PORT`).
+- Tailscale 계정과, codexmux 실행 머신에 설치/로그인된 `tailscale` 데몬
+- 테일넷 HTTPS 활성화 (Admin console → DNS → HTTPS Certificates, 이미 켜져 있으면 패스)
+- codexmux가 기본 포트 `8022` (또는 `PORT`로 지정한 포트)에서 실행 중
 
-## Run it
+## 실행
 
-One line:
+한 줄이면 됩니다.
 
 ```bash
-tailscale serve --bg 8022
+tailscale serve --bg --https=443 localhost:8022
 ```
 
-Tailscale wraps your local `http://localhost:8022` in HTTPS and exposes it inside the tailnet at:
+Tailscale이 로컬 `http://localhost:8022`를 HTTPS로 감싸 테일넷 내부에 노출합니다.
 
 ```
 https://<machine>.<tailnet>.ts.net
 ```
 
-`<machine>` is the hostname of the box; `<tailnet>` is your tailnet's MagicDNS suffix. Open that URL on any other device signed into the same tailnet and you're in.
+`<machine>`은 머신의 호스트명, `<tailnet>`은 테일넷의 MagicDNS 접미사입니다. 같은 테일넷에 로그인한 다른 기기에서 이 URL을 열면 바로 접속됩니다.
 
-To stop serving:
+서빙 중지:
 
 ```bash
-tailscale serve --bg off 8022
+tailscale serve reset
 ```
 
-## What you can do once it works
+## 동작 후 할 일
 
-- Open the URL on your phone, tap **Share → Add to Home Screen**, and follow [PWA setup](/purplemux/docs/pwa-setup/).
-- Turn on push from inside the standalone PWA: [Web Push](/purplemux/docs/web-push/).
-- Reach the same dashboard from a tablet, a laptop, or another desktop — workspace state syncs in real time.
+- 휴대폰에서 URL을 열고 **공유 → 홈 화면에 추가** — [PWA 설정](/codexmux/docs/pwa-setup/) 참고
+- Standalone PWA 창 안에서 푸시 활성화 — [웹 푸시](/codexmux/docs/web-push/)
+- 태블릿, 노트북, 다른 데스크탑에서도 같은 대시보드에 접속 — 워크스페이스 상태가 실시간으로 동기화됩니다
 
 {% call callout('tip', 'Funnel vs Serve') %}
-`tailscale serve` keeps purplemux private to your tailnet — that's almost always what you want. `tailscale funnel` would expose it to the public internet, which is overkill (and risky) for a personal multiplexer.
+`tailscale serve`는 codexmux를 테일넷 내부에만 노출합니다 — 거의 모든 경우 이쪽이 정답입니다. `tailscale funnel`은 공개 인터넷에 노출하는 옵션이며, 개인용 멀티플렉서로는 과하고 위험합니다.
 {% endcall %}
 
-## Reverse-proxy fallback
+## 리버스 프록시 대안
 
-If Tailscale isn't an option, any reverse proxy with a real TLS certificate will do. The one thing you must get right is **WebSocket upgrades** — purplemux uses them for terminal I/O, status sync, and the live timeline.
+Tailscale을 쓰기 어렵다면, 실제 TLS 인증서를 가진 리버스 프록시 중 어느 것이든 사용 가능합니다. 반드시 챙겨야 할 한 가지는 **WebSocket 업그레이드** — codexmux의 터미널 I/O, 상태 동기화, 라이브 타임라인이 모두 WebSocket을 사용합니다.
 
-Nginx (sketch):
+Nginx 예시:
 
 ```
 location / {
@@ -70,19 +70,19 @@ location / {
 }
 ```
 
-Caddy is simpler — `reverse_proxy 127.0.0.1:8022` handles upgrade headers automatically.
+Caddy는 더 간단합니다 — `reverse_proxy 127.0.0.1:8022`만 써도 업그레이드 헤더를 알아서 처리합니다.
 
-Without `Upgrade` / `Connection` forwarding the dashboard renders, but terminals never connect and status stays stuck. If something feels half-working, suspect those headers first.
+`Upgrade` / `Connection` 포워딩이 빠지면 대시보드는 렌더링되지만 터미널이 연결되지 않고 상태도 그대로 멈춥니다. 반쪽짜리로 동작한다면 이 헤더부터 의심하세요.
 
-## Troubleshooting
+## 문제 해결
 
-- **HTTPS not provisioned yet** — first cert can take a minute. Re-running `tailscale serve --bg 8022` after a short wait usually settles it.
-- **Browser warns about cert** — make sure you're hitting the `<machine>.<tailnet>.ts.net` URL exactly, not the LAN IP.
-- **Mobile says "not reachable"** — confirm the phone is signed into the same tailnet and that Tailscale is active in the OS settings.
-- **Self-signed certs** — Web Push won't register. Use Tailscale Serve or a real ACME-issued cert via your reverse proxy.
+- **HTTPS 인증서 미발급** — 첫 발급은 1분 정도 걸릴 수 있습니다. 잠시 기다린 후 `tailscale serve --bg --https=443 localhost:8022`를 다시 실행하면 보통 해결됩니다.
+- **브라우저가 인증서 경고** — `<machine>.<tailnet>.ts.net` URL을 정확히 사용하고 있는지, LAN IP를 쓰고 있지 않은지 확인하세요.
+- **모바일에서 접근 불가** — 휴대폰이 같은 테일넷에 로그인되어 있고 OS 설정에서 Tailscale이 활성 상태인지 확인하세요.
+- **자체 서명 인증서** — Web Push 등록이 거부됩니다. Tailscale Serve 또는 ACME가 발급한 실제 인증서를 사용하세요.
 
-## What's next
+## 다음으로
 
-- **[PWA setup](/purplemux/docs/pwa-setup/)** — install on the home screen now that you have HTTPS.
-- **[Web Push notifications](/purplemux/docs/web-push/)** — turn on background alerts.
-- **[Security & auth](/purplemux/docs/security-auth/)** — password, hashing, and what the tailnet exposure implies.
+- **[PWA 설정](/codexmux/docs/pwa-setup/)** — HTTPS 확보 후 홈 화면에 설치
+- **[웹 푸시 알림](/codexmux/docs/web-push/)** — 백그라운드 알림 켜기
+- **[보안과 인증](/codexmux/docs/security-auth/)** — 비밀번호, 해싱, 그리고 테일넷 노출이 의미하는 것

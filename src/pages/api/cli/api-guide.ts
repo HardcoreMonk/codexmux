@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifyCliToken } from '@/lib/cli-token';
 
-const GUIDE = `# purplemux CLI HTTP API
+const GUIDE = `# codexmux CLI HTTP API
 
-All endpoints require header \`x-pmux-token: <PMUX_TOKEN>\`.
+All endpoints require header \`x-cmux-token: <CMUX_TOKEN>\`.
 
 ## Workspaces
 
@@ -17,7 +17,7 @@ GET /api/cli/tabs?workspaceId=WS
   Response: { "tabs": [{ "tabId", "workspaceId", "name", "sessionName", "panelType" }] }
 
 POST /api/cli/tabs
-  Body: { "workspaceId": "WS", "name"?: "...", "panelType"?: "terminal" | "claude-code" | "web-browser" | "diff" }
+  Body: { "workspaceId": "WS", "name"?: "...", "panelType"?: "terminal" | "codex" | "web-browser" | "diff" }
   Creates a tab in the first pane of the workspace.
   Response: { "tabId", "workspaceId", "paneId", "sessionName", "name" }
 
@@ -33,7 +33,7 @@ POST /api/cli/tabs/<tabId>/send?workspaceId=WS
   Response: { "status": "sent" }
 
 GET /api/cli/tabs/<tabId>/status?workspaceId=WS
-  Response: { "tabId", "workspaceId", "alive", "command", "cliState", "claudeSessionId" }
+  Response: { "tabId", "workspaceId", "alive", "command", "cliState", "agentSessionId" }
 
 GET /api/cli/tabs/<tabId>/result?workspaceId=WS
   Capture the current pane content.

@@ -1,70 +1,69 @@
 ---
-layout: layouts/doc.njk
-title: Quickstart
-description: Get purplemux running in under a minute with Node.js and tmux.
-eyebrow: Getting Started
+title: 빠른 시작
+description: Node.js와 tmux만 있으면 1분 안에 codexmux를 실행할 수 있습니다.
+eyebrow: 시작하기
 permalink: /docs/quickstart/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux is a web-native multiplexer that manages every Claude Code session on one dashboard, backed by `tmux` for persistence and built for use from both your desk and your phone.
+codexmux는 웹 기반 터미널 멀티플렉서입니다. 모든 Codex 세션을 하나의 대시보드에서 관리하고, `tmux`로 세션을 유지하며, 책상에서도 휴대폰에서도 바로 이어서 작업할 수 있습니다.
 
-## Before you start
+## 시작하기 전에
 
-You need two things on the machine that will host purplemux.
+실행할 머신에 두 가지가 필요합니다.
 
-- **Node.js 20 or newer** — check with `node -v`.
-- **tmux** — check with `tmux -V`. Any version 3.0+ is fine.
+- **Node.js 20 이상** — `node -v`로 확인
+- **tmux** — `tmux -V`로 확인. 3.0 이상이면 OK
 
-{% call callout('note', 'macOS / Linux only') %}
-Windows is not officially supported. purplemux relies on `node-pty` and tmux, which don't run natively on Windows. WSL2 usually works but is outside our test matrix.
+{% call callout('note', 'macOS / Linux 전용') %}
+Windows는 공식 지원하지 않습니다. `node-pty`와 tmux가 Windows 네이티브로 동작하지 않기 때문입니다. WSL2에서는 대체로 동작하지만 테스트 범위 밖입니다.
 {% endcall %}
 
-## Run it
+## 실행
 
-One command. No global install required.
+명령어 하나. 글로벌 설치도 필요 없습니다.
 
 ```bash
-npx purplemux
+npx codexmux
 ```
 
-You'll see purplemux start on port `8022`. Open a browser:
+`8022` 포트에서 서버가 뜹니다. 브라우저로 열어보세요.
 
 ```
 http://localhost:8022
 ```
 
-First launch walks you through creating a password and your first workspace.
+처음 실행 시 비밀번호 설정과 첫 워크스페이스 생성 절차가 안내됩니다.
 
 {% call callout('tip') %}
-Prefer a persistent install? `pnpm add -g purplemux && purplemux` works the same way. Upgrades are one `pnpm up -g purplemux` away.
+영구 설치를 원하시면 `pnpm add -g codexmux && codexmux`로 쓸 수도 있습니다. 업데이트는 `pnpm up -g codexmux` 한 번이면 됩니다.
 {% endcall %}
 
-## Open a Claude session
+## Codex 세션 열기
 
-From the dashboard:
+대시보드에서:
 
-1. Click **New tab** in any workspace.
-2. Pick the **Claude** template (or just run `claude` in a plain terminal).
-3. purplemux detects the running Claude CLI and starts surfacing status, the live timeline, and permission prompts.
+1. 원하는 워크스페이스에서 **새 탭**을 누릅니다.
+2. **Codex** 템플릿을 선택하거나, 일반 터미널에서 `codex`를 직접 실행해도 됩니다.
+3. codexmux가 실행 중인 Codex CLI를 자동으로 인식해 상태·타임라인·권한 프롬프트를 실시간으로 보여줍니다.
 
-Your session now persists even if you close the browser — tmux keeps the process alive on the server.
+브라우저를 닫아도 세션은 유지됩니다 — tmux가 프로세스를 계속 살려두기 때문입니다.
 
-## Reach it from your phone
+## 휴대폰에서 접근
 
-By default purplemux only listens on `localhost`. For safe external access, use Tailscale Serve (WireGuard + automatic HTTPS, no port forwarding):
+기본값으로 codexmux는 `localhost`에만 바인드합니다. 외부에서 안전하게 접근하려면 Tailscale Serve를 쓰세요 (WireGuard + 자동 HTTPS, 포트 포워딩 불필요):
 
 ```bash
-tailscale serve --bg 8022
+tailscale serve --bg --https=443 localhost:8022
 ```
 
-Open `https://<machine>.<tailnet>.ts.net` on your phone, tap **Share → Add to Home Screen**, and purplemux becomes a PWA that receives Web Push notifications in the background.
+휴대폰에서 `https://<machine>.<tailnet>.ts.net`를 열고 **공유 → 홈 화면에 추가**하면 PWA로 설치되고, 백그라운드에서도 Web Push 알림을 받을 수 있습니다.
 
-See [Tailscale access](/purplemux/docs/tailscale/) for the full setup, or jump to [PWA setup](/purplemux/docs/pwa-setup/) for iOS and Android specifics.
+자세한 설정은 [Tailscale 접속](/codexmux/docs/tailscale/), iOS/Android 구체 방법은 [PWA 설정](/codexmux/docs/pwa-setup/)을 참고하세요.
 
-## What's next
+## 다음으로
 
-- **[Installation](/purplemux/docs/installation/)** — platform details, native macOS app, autostart.
-- **[Browser support](/purplemux/docs/browser-support/)** — desktop and mobile compatibility matrix.
-- **[First session](/purplemux/docs/first-session/)** — a guided tour of the dashboard.
-- **[Keyboard shortcuts](/purplemux/docs/keyboard-shortcuts/)** — every binding in one table.
+- **[설치](/codexmux/docs/installation/)** — 플랫폼별 세부 사항, macOS 네이티브 앱, 자동 시작
+- **[브라우저 지원](/codexmux/docs/browser-support/)** — 데스크탑/모바일 호환성 매트릭스
+- **[첫 세션](/codexmux/docs/first-session/)** — 대시보드 투어
+- **[키보드 단축키](/codexmux/docs/keyboard-shortcuts/)** — 전체 바인딩 한눈에

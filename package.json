@@ -1,23 +1,24 @@
 {
-  "name": "purplemux",
+  "name": "codexmux",
   "version": "0.2.4",
-  "description": "Manage multiple Claude Code sessions from your browser",
+  "description": "Manage multiple Codex sessions from your browser",
   "license": "MIT",
   "author": "subicura",
   "repository": {
     "type": "git",
-    "url": "https://github.com/subicura/purplemux.git"
+    "url": "https://github.com/subicura/codexmux.git"
   },
-  "homepage": "https://github.com/subicura/purplemux",
+  "homepage": "https://github.com/subicura/codexmux",
   "bugs": {
-    "url": "https://github.com/subicura/purplemux/issues"
+    "url": "https://github.com/subicura/codexmux/issues"
   },
   "keywords": [
-    "claude",
+    "codex",
+    "openai",
     "terminal",
     "multiplexer",
     "tmux",
-    "claude-code"
+    "codex-cli"
   ],
   "engines": {
     "node": ">=20.0.0"
@@ -25,8 +26,8 @@
   "packageManager": "pnpm@10.32.1",
   "main": "dist-electron/main.js",
   "bin": {
-    "purplemux": "./bin/purplemux.js",
-    "pmux": "./bin/purplemux.js"
+    "codexmux": "./bin/codexmux.js",
+    "cmux": "./bin/codexmux.js"
   },
   "files": [
     "bin/",
@@ -49,7 +50,6 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "ralph": "node ralph-loop.js",
     "prepublishOnly": "rm -rf .next dist dist-electron && pnpm build",
     "postinstall": "chmod +x node_modules/.pnpm/node-pty@*/node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null; exit 0"
   },

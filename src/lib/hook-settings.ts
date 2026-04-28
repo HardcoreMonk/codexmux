@@ -6,7 +6,7 @@ import { STATUSLINE_SCRIPT_PATH, STATUSLINE_SCRIPT_CONTENT } from '@/lib/statusl
 
 const log = createLogger('hooks');
 
-const BASE_DIR = path.join(os.homedir(), '.purplemux');
+const BASE_DIR = path.join(os.homedir(), '.codexmux');
 const HOOKS_FILE = path.join(BASE_DIR, 'hooks.json');
 const PORT_FILE = path.join(BASE_DIR, 'port');
 const HOOK_SCRIPT = path.join(BASE_DIR, 'status-hook.sh');
@@ -15,8 +15,8 @@ export const HOOK_SETTINGS_PATH = HOOKS_FILE;
 
 const HOOK_SCRIPT_CONTENT = `#!/bin/sh
 EVENT="\${1:-poll}"
-PORT_FILE="$HOME/.purplemux/port"
-TOKEN_FILE="$HOME/.purplemux/cli-token"
+PORT_FILE="$HOME/.codexmux/port"
+TOKEN_FILE="$HOME/.codexmux/cli-token"
 [ -f "$PORT_FILE" ] || exit 0
 [ -f "$TOKEN_FILE" ] || exit 0
 PORT=$(cat "$PORT_FILE")
@@ -34,7 +34,7 @@ if [ -n "$NOTIFICATION_TYPE" ]; then
 fi
 PAYLOAD="\${PAYLOAD}}"
 
-curl -s -X POST -o /dev/null -H 'Content-Type: application/json' -H "x-pmux-token: \${TOKEN}" -d "$PAYLOAD" "http://localhost:\${PORT}/api/status/hook" 2>/dev/null
+curl -s -X POST -o /dev/null -H 'Content-Type: application/json' -H "x-cmux-token: \${TOKEN}" -d "$PAYLOAD" "http://localhost:\${PORT}/api/status/hook" 2>/dev/null
 exit 0
 `;
 

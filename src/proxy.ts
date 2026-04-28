@@ -9,7 +9,7 @@ import {
 import { verifyTokenValue } from '@/lib/cli-token';
 
 export const proxy = async (request: NextRequest) => {
-  const cliToken = request.headers.get('x-pmux-token');
+  const cliToken = request.headers.get('x-cmux-token');
   if (cliToken && verifyTokenValue(cliToken)) {
     return NextResponse.next();
   }
@@ -38,6 +38,6 @@ export const proxy = async (request: NextRequest) => {
 
 export const config = {
   matcher: [
-    '/((?!login|api/auth|api/install|api/cli/|api/status/hook|api/health|api/manifest|_next|favicon\\.ico|fonts|.*\\.(?:svg|png|ico|jpg|jpeg|webp|webmanifest|ttf|woff|woff2)).*)',
+    '/((?!login|__nextjs_original-stack-frames|api/auth|api/install|api/cli/|api/status/hook|api/health|api/manifest|_next|favicon\\.ico|fonts|.*\\.(?:svg|png|ico|jpg|jpeg|webp|webmanifest|ttf|woff|woff2)).*)',
   ],
 };

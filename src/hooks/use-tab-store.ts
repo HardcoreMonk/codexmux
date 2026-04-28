@@ -14,9 +14,9 @@ export interface ISessionMetaCache {
 
 export interface ITabState {
   terminalConnected: boolean;
-  claudeProcess: boolean | null;
-  claudeProcessCheckedAt: number;
-  claudeInstalled: boolean;
+  agentProcess: boolean | null;
+  agentProcessCheckedAt: number;
+  agentInstalled: boolean;
   sessionView: TSessionView;
   cliState: TCliState;
   isTimelineLoading: boolean;
@@ -26,14 +26,14 @@ export interface ITabState {
   terminalStatus?: TTerminalStatus;
   listeningPorts?: number[];
   currentProcess?: string;
-  claudeSummary?: string | null;
+  agentSummary?: string | null;
   lastUserMessage?: string | null;
   lastAssistantMessage?: string | null;
   currentAction?: ICurrentAction | null;
   readyForReviewAt?: number | null;
   busySince?: number | null;
   dismissedAt?: number | null;
-  claudeSessionId?: string | null;
+  agentSessionId?: string | null;
   compactingSince?: number | null;
   lastEvent?: ILastEvent | null;
   eventSeq?: number;
@@ -45,9 +45,9 @@ const SYNC_GRACE_MS = 30_000;
 
 const DEFAULT_TAB_STATE: ITabState = {
   terminalConnected: false,
-  claudeProcess: null,
-  claudeProcessCheckedAt: 0,
-  claudeInstalled: true,
+  agentProcess: null,
+  agentProcessCheckedAt: 0,
+  agentInstalled: true,
   sessionView: 'session-list',
   cliState: 'inactive',
   isTimelineLoading: true,
@@ -63,8 +63,8 @@ interface ITabStore {
   removeTab: (tabId: string) => void;
 
   setTerminalConnected: (tabId: string, connected: boolean) => void;
-  setClaudeProcess: (tabId: string, process: boolean | null, checkedAt: number) => void;
-  setClaudeInstalled: (tabId: string, installed: boolean) => void;
+  setAgentProcess: (tabId: string, process: boolean | null, checkedAt: number) => void;
+  setAgentInstalled: (tabId: string, installed: boolean) => void;
   setSessionView: (tabId: string, view: TSessionView) => void;
   setTimelineLoading: (tabId: string, loading: boolean) => void;
   setSessionMetaCache: (tabId: string, cache: ISessionMetaCache) => void;
@@ -75,8 +75,8 @@ interface ITabStore {
   setCurrentProcess: (tabId: string, process: string | null) => void;
   setTabOrder: (workspaceId: string, tabIds: string[]) => void;
   setStatusWsConnected: (connected: boolean) => void;
-  syncAllFromServer: (serverTabs: Record<string, { cliState: TCliState; workspaceId: string; tabName?: string; panelType?: TPanelType; terminalStatus?: TTerminalStatus; listeningPorts?: number[]; currentProcess?: string; claudeSummary?: string | null; lastUserMessage?: string | null; lastAssistantMessage?: string | null; currentAction?: ICurrentAction | null; readyForReviewAt?: number | null; busySince?: number | null; dismissedAt?: number | null; claudeSessionId?: string | null; compactingSince?: number | null; lastEvent?: ILastEvent | null; eventSeq?: number }>) => void;
-  updateFromServer: (tabId: string, update: { cliState: TCliState | null; workspaceId: string; tabName?: string; panelType?: TPanelType; terminalStatus?: TTerminalStatus; listeningPorts?: number[]; currentProcess?: string; claudeSummary?: string | null; lastUserMessage?: string | null; lastAssistantMessage?: string | null; currentAction?: ICurrentAction | null; readyForReviewAt?: number | null; busySince?: number | null; dismissedAt?: number | null; claudeSessionId?: string | null; compactingSince?: number | null; lastEvent?: ILastEvent | null; eventSeq?: number }) => void;
+  syncAllFromServer: (serverTabs: Record<string, { cliState: TCliState; workspaceId: string; tabName?: string; panelType?: TPanelType; terminalStatus?: TTerminalStatus; listeningPorts?: number[]; currentProcess?: string; agentSummary?: string | null; lastUserMessage?: string | null; lastAssistantMessage?: string | null; currentAction?: ICurrentAction | null; readyForReviewAt?: number | null; busySince?: number | null; dismissedAt?: number | null; agentSessionId?: string | null; compactingSince?: number | null; lastEvent?: ILastEvent | null; eventSeq?: number }>) => void;
+  updateFromServer: (tabId: string, update: { cliState: TCliState | null; workspaceId: string; tabName?: string; panelType?: TPanelType; terminalStatus?: TTerminalStatus; listeningPorts?: number[]; currentProcess?: string; agentSummary?: string | null; lastUserMessage?: string | null; lastAssistantMessage?: string | null; currentAction?: ICurrentAction | null; readyForReviewAt?: number | null; busySince?: number | null; dismissedAt?: number | null; agentSessionId?: string | null; compactingSince?: number | null; lastEvent?: ILastEvent | null; eventSeq?: number }) => void;
   applyHookEvent: (tabId: string, event: ILastEvent) => void;
 }
 
@@ -88,6 +88,62 @@ const updateTab = (
   const prev = tabs[tabId];
   if (!prev) return tabs;
   return { ...tabs, [tabId]: { ...prev, ...patch } };
+};
+
+const readAgentProcessValue = (tab: ITabState): boolean | null =>
+  tab.agentProcess ?? null;
+
+const readAgentInstalledValue = (tab: ITabState): boolean =>
+  tab.agentInstalled ?? true;
+
+const readAgentProcessCheckedAtValue = (tab: ITabState): number =>
+  tab.agentProcessCheckedAt ?? 0;
+
+const applyAgentProcessUpdate = (
+  state: { tabs: Record<string, ITabState> },
+  tabId: string,
+  process: boolean | null,
+  checkedAt: number,
+) => {
+  const prev = state.tabs[tabId];
+  if (!prev || readAgentProcessCheckedAtValue(prev) > checkedAt) return state;
+  if (
+    readAgentProcessValue(prev) === process
+    && prev.agentProcess === process
+    && prev.agentProcessCheckedAt === checkedAt
+  ) {
+    return state;
+  }
+  const patch: Partial<ITabState> = {
+    agentProcess: process,
+    agentProcessCheckedAt: checkedAt,
+  };
+  if (process === true && (prev.sessionView === 'check' || prev.sessionView === 'session-list')) {
+    patch.sessionView = 'timeline';
+  }
+  return { tabs: updateTab(state.tabs, tabId, patch) };
+};
+
+const applyAgentInstalledUpdate = (
+  state: { tabs: Record<string, ITabState> },
+  tabId: string,
+  installed: boolean,
+) => {
+  const prev = state.tabs[tabId];
+  if (
+    !prev
+    || (
+      readAgentInstalledValue(prev) === installed
+      && prev.agentInstalled === installed
+    )
+  ) {
+    return state;
+  }
+  return {
+    tabs: updateTab(state.tabs, tabId, {
+      agentInstalled: installed,
+    }),
+  };
 };
 
 const useTabStore = create<ITabStore>((set) => ({
@@ -119,27 +175,11 @@ const useTabStore = create<ITabStore>((set) => ({
       return { tabs: updateTab(state.tabs, tabId, { terminalConnected: connected }) };
     }),
 
-  setClaudeProcess: (tabId, process, checkedAt) =>
-    set((state) => {
-      const prev = state.tabs[tabId];
-      if (!prev || prev.claudeProcessCheckedAt > checkedAt) return state;
-      if (prev.claudeProcess === process) return state;
-      const patch: Partial<ITabState> = { claudeProcess: process, claudeProcessCheckedAt: checkedAt };
-      if (process === true && (prev.sessionView === 'check' || prev.sessionView === 'session-list')) {
-        patch.sessionView = 'timeline';
-      }
-      if (process === false && prev.claudeProcess === true && prev.sessionView === 'timeline') {
-        patch.sessionView = 'session-list';
-      }
-      return { tabs: updateTab(state.tabs, tabId, patch) };
-    }),
+  setAgentProcess: (tabId, process, checkedAt) =>
+    set((state) => applyAgentProcessUpdate(state, tabId, process, checkedAt)),
 
-  setClaudeInstalled: (tabId, installed) =>
-    set((state) => {
-      const prev = state.tabs[tabId];
-      if (!prev || prev.claudeInstalled === installed) return state;
-      return { tabs: updateTab(state.tabs, tabId, { claudeInstalled: installed }) };
-    }),
+  setAgentInstalled: (tabId, installed) =>
+    set((state) => applyAgentInstalledUpdate(state, tabId, installed)),
 
   setSessionView: (tabId, view) =>
     set((state) => {
@@ -229,12 +269,14 @@ const useTabStore = create<ITabStore>((set) => ({
           continue;
         }
         const graceActive = existing?.localUpdatedAt && now - existing.localUpdatedAt < SYNC_GRACE_MS;
+        const agentSummary = entry.agentSummary ?? null;
+        const agentSessionId = entry.agentSessionId ?? null;
         if (graceActive) {
-          next[tabId] = { ...existing, cliState: entry.cliState, workspaceId: entry.workspaceId, tabName: entry.tabName, terminalStatus: entry.terminalStatus, listeningPorts: entry.listeningPorts, claudeSummary: entry.claudeSummary, lastUserMessage: entry.lastUserMessage, lastAssistantMessage: entry.lastAssistantMessage, currentAction: entry.currentAction, readyForReviewAt: entry.readyForReviewAt, busySince: entry.busySince, dismissedAt: entry.dismissedAt, claudeSessionId: entry.claudeSessionId, compactingSince: entry.compactingSince, lastEvent: entry.lastEvent, eventSeq: entry.eventSeq };
+          next[tabId] = { ...existing, cliState: entry.cliState, workspaceId: entry.workspaceId, tabName: entry.tabName, terminalStatus: entry.terminalStatus, listeningPorts: entry.listeningPorts, agentSummary, lastUserMessage: entry.lastUserMessage, lastAssistantMessage: entry.lastAssistantMessage, currentAction: entry.currentAction, readyForReviewAt: entry.readyForReviewAt, busySince: entry.busySince, dismissedAt: entry.dismissedAt, agentSessionId, compactingSince: entry.compactingSince, lastEvent: entry.lastEvent, eventSeq: entry.eventSeq };
         } else if (existing) {
-          next[tabId] = { ...existing, cliState: entry.cliState, workspaceId: entry.workspaceId, tabName: entry.tabName, panelType: entry.panelType ?? existing.panelType, terminalStatus: entry.terminalStatus, listeningPorts: entry.listeningPorts, currentProcess: entry.currentProcess, claudeSummary: entry.claudeSummary, lastUserMessage: entry.lastUserMessage, lastAssistantMessage: entry.lastAssistantMessage, currentAction: entry.currentAction, readyForReviewAt: entry.readyForReviewAt, busySince: entry.busySince, dismissedAt: entry.dismissedAt, claudeSessionId: entry.claudeSessionId, compactingSince: entry.compactingSince, lastEvent: entry.lastEvent, eventSeq: entry.eventSeq };
+          next[tabId] = { ...existing, cliState: entry.cliState, workspaceId: entry.workspaceId, tabName: entry.tabName, panelType: entry.panelType ?? existing.panelType, terminalStatus: entry.terminalStatus, listeningPorts: entry.listeningPorts, currentProcess: entry.currentProcess, agentSummary, lastUserMessage: entry.lastUserMessage, lastAssistantMessage: entry.lastAssistantMessage, currentAction: entry.currentAction, readyForReviewAt: entry.readyForReviewAt, busySince: entry.busySince, dismissedAt: entry.dismissedAt, agentSessionId, compactingSince: entry.compactingSince, lastEvent: entry.lastEvent, eventSeq: entry.eventSeq };
         } else {
-          next[tabId] = { ...DEFAULT_TAB_STATE, cliState: entry.cliState, workspaceId: entry.workspaceId, tabName: entry.tabName, panelType: entry.panelType, terminalStatus: entry.terminalStatus, listeningPorts: entry.listeningPorts, currentProcess: entry.currentProcess, claudeSummary: entry.claudeSummary, lastUserMessage: entry.lastUserMessage, lastAssistantMessage: entry.lastAssistantMessage, currentAction: entry.currentAction, readyForReviewAt: entry.readyForReviewAt, busySince: entry.busySince, dismissedAt: entry.dismissedAt, claudeSessionId: entry.claudeSessionId, compactingSince: entry.compactingSince, lastEvent: entry.lastEvent, eventSeq: entry.eventSeq, ...(entry.claudeSessionId ? { sessionView: 'timeline' as const } : {}) };
+          next[tabId] = { ...DEFAULT_TAB_STATE, cliState: entry.cliState, workspaceId: entry.workspaceId, tabName: entry.tabName, panelType: entry.panelType, terminalStatus: entry.terminalStatus, listeningPorts: entry.listeningPorts, currentProcess: entry.currentProcess, agentSummary, lastUserMessage: entry.lastUserMessage, lastAssistantMessage: entry.lastAssistantMessage, currentAction: entry.currentAction, readyForReviewAt: entry.readyForReviewAt, busySince: entry.busySince, dismissedAt: entry.dismissedAt, agentSessionId, compactingSince: entry.compactingSince, lastEvent: entry.lastEvent, eventSeq: entry.eventSeq, ...(agentSessionId ? { sessionView: 'timeline' as const } : {}) };
         }
       }
       // 서버에 아직 반영되지 않은 로컬 탭 보존 (split 직후 레이스 컨디션 방지)
@@ -268,12 +310,16 @@ const useTabStore = create<ITabStore>((set) => ({
         const stateFields = isStale
           ? { cliState: existing.cliState, readyForReviewAt: existing.readyForReviewAt, busySince: existing.busySince, dismissedAt: existing.dismissedAt }
           : { cliState: update.cliState, readyForReviewAt: update.readyForReviewAt, busySince: update.busySince, dismissedAt: update.dismissedAt };
-        return { tabs: updateTab(state.tabs, tabId, { ...stateFields, workspaceId: update.workspaceId, tabName: update.tabName, panelType: update.panelType ?? existing.panelType, terminalStatus: update.terminalStatus, listeningPorts: update.listeningPorts, currentProcess: update.currentProcess, claudeSummary: update.claudeSummary, lastUserMessage: update.lastUserMessage, lastAssistantMessage: update.lastAssistantMessage, currentAction: update.currentAction, claudeSessionId: update.claudeSessionId, compactingSince: update.compactingSince, ...eventPatch }) };
+        const agentSummary = update.agentSummary ?? null;
+        const agentSessionId = update.agentSessionId ?? null;
+        return { tabs: updateTab(state.tabs, tabId, { ...stateFields, workspaceId: update.workspaceId, tabName: update.tabName, panelType: update.panelType ?? existing.panelType, terminalStatus: update.terminalStatus, listeningPorts: update.listeningPorts, currentProcess: update.currentProcess, agentSummary, lastUserMessage: update.lastUserMessage, lastAssistantMessage: update.lastAssistantMessage, currentAction: update.currentAction, agentSessionId, compactingSince: update.compactingSince, ...eventPatch }) };
       }
+      const agentSummary = update.agentSummary ?? null;
+      const agentSessionId = update.agentSessionId ?? null;
       return {
         tabs: {
           ...state.tabs,
-          [tabId]: { ...DEFAULT_TAB_STATE, cliState: update.cliState, workspaceId: update.workspaceId, tabName: update.tabName, panelType: update.panelType, terminalStatus: update.terminalStatus, listeningPorts: update.listeningPorts, currentProcess: update.currentProcess, claudeSummary: update.claudeSummary, lastUserMessage: update.lastUserMessage, lastAssistantMessage: update.lastAssistantMessage, readyForReviewAt: update.readyForReviewAt, busySince: update.busySince, dismissedAt: update.dismissedAt, claudeSessionId: update.claudeSessionId, compactingSince: update.compactingSince, lastEvent: update.lastEvent, eventSeq: update.eventSeq, ...(update.claudeSessionId ? { sessionView: 'timeline' as const } : {}) },
+          [tabId]: { ...DEFAULT_TAB_STATE, cliState: update.cliState, workspaceId: update.workspaceId, tabName: update.tabName, panelType: update.panelType, terminalStatus: update.terminalStatus, listeningPorts: update.listeningPorts, currentProcess: update.currentProcess, agentSummary, lastUserMessage: update.lastUserMessage, lastAssistantMessage: update.lastAssistantMessage, readyForReviewAt: update.readyForReviewAt, busySince: update.busySince, dismissedAt: update.dismissedAt, agentSessionId, compactingSince: update.compactingSince, lastEvent: update.lastEvent, eventSeq: update.eventSeq, ...(agentSessionId ? { sessionView: 'timeline' as const } : {}) },
         },
       };
     }),
@@ -294,6 +340,24 @@ export const isCliIdle = (cliState: TCliState): boolean =>
   cliState === 'idle' || cliState === 'ready-for-review';
 
 // --- 파생 selectors ---
+
+export const selectAgentProcess = (tabs: Record<string, ITabState>, tabId: string): boolean | null => {
+  const tab = tabs[tabId];
+  if (!tab) return null;
+  return readAgentProcessValue(tab);
+};
+
+export const selectAgentProcessCheckedAt = (tabs: Record<string, ITabState>, tabId: string): number => {
+  const tab = tabs[tabId];
+  if (!tab) return 0;
+  return readAgentProcessCheckedAtValue(tab);
+};
+
+export const selectAgentInstalled = (tabs: Record<string, ITabState>, tabId: string): boolean => {
+  const tab = tabs[tabId];
+  if (!tab) return true;
+  return readAgentInstalledValue(tab);
+};
 
 export const selectSessionView = (tabs: Record<string, ITabState>, tabId: string): TSessionView => {
   const tab = tabs[tabId];

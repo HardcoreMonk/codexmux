@@ -1,6 +1,6 @@
 {
   "title": "Estatisticas de Uso",
-  "pageTitle": "Estatisticas de Uso — purplemux",
+  "pageTitle": "Estatisticas de Uso — codexmux",
   "dataLoadError": "Nao foi possivel carregar os dados",
   "collectingInitial": "Coletando dados iniciais",
   "collectingToday": "Coletando dados de hoje",
@@ -12,7 +12,6 @@
   "activityPattern": "Padrao de Atividade",
   "project": "Projetos",
   "session": "Sessoes",
-
   "tokenLabel": "Tokens",
   "inputLabel": "Entrada",
   "outputLabel": "Saida",
@@ -22,9 +21,7 @@
   "modelTokens": "Tokens por Modelo",
   "dailyTokenTrend": "Tendencia Diaria de Tokens",
   "total": "Total",
-
   "errorLoadFailed": "Nao foi possivel carregar os dados",
-
   "today": "Hoje",
   "generating": "Gerando...",
   "sessionCount": "{count} sessoes",
@@ -37,7 +34,6 @@
   "collapse": "Recolher",
   "showMore": "Mostrar mais",
   "noActivity": "Sem atividade",
-
   "messages": "Mensagens",
   "sessions": "Sessoes",
   "toolCalls": "Chamadas de Ferramentas",
@@ -50,20 +46,17 @@
   "more": "Mais",
   "hourSuffix": "h",
   "messageCount": "{count} mensagens",
-
   "totalSessions": "Total de Sessoes",
   "totalCost": "Custo Total",
   "todayCost": "Custo de Hoje",
   "thisMonthCost": "Custo deste Mes",
   "dailyActivityTrend": "Tendencia de Atividade Diaria",
   "vsPreviousPeriod": "vs periodo anterior",
-
   "projectAnalysis": "Analise de Projetos",
   "projectTokenUsageTop": "Uso de Tokens por Projeto (TOP {count})",
   "noProjectData": "Sem dados de projeto",
   "sessionCountLabel": "{count} sessoes",
   "messageCountLabel": "{count} mensagens",
-
   "longestStreak": "Maior Sequencia",
   "currentStreak": "Sequencia Atual",
   "streakCount": "Total de Sequencias",
@@ -76,9 +69,8 @@
   "concurrentUsage": "Uso Simultaneo",
   "concurrentOrMore": "{level}+ simultaneos",
   "accumulated": "Total {duration}",
-  "noRecentActivity": "Nenhum uso do Claude nos ultimos 7 dias",
+  "noRecentActivity": "No Codex usage in the last 7 days",
   "currentlyRunning": "Em execucao — sequencia de {duration}",
-
   "avgSessionLength": "Duracao Media da Sessao",
   "longestSession": "Sessao Mais Longa",
   "totalToolCalls": "Total de Chamadas de Ferramentas",
@@ -90,7 +82,6 @@
   "goalAchievement": "Alcance de Objetivos",
   "topCommands": "Top 10 Comandos",
   "inputLengthDist": "Distribuicao de Tamanho de Entrada",
-
   "periodToday": "Hoje",
   "period7d": "7 Dias",
   "period30d": "30 Dias",

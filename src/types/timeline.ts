@@ -253,7 +253,7 @@ export interface ITimelineInitMessage {
   summary?: string;
   meta?: IInitMeta;
   sessionStats?: ISessionStats | null;
-  isClaudeStarting?: boolean;
+  isAgentStarting?: boolean;
 }
 
 export interface ITimelineStatsUpdateMessage {

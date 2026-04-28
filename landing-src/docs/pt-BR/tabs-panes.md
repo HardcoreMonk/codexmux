@@ -1,83 +1,83 @@
 ---
-title: Abas e painéis
-description: Como funcionam as abas dentro de um workspace, como dividir painéis e os atalhos para mover o foco entre eles.
-eyebrow: Workspaces e Terminal
+title: 탭 & 창
+description: 워크스페이스 안에서 탭이 동작하는 방식, 창을 분할하는 법, 그리고 그 사이를 오가는 단축키.
+eyebrow: 워크스페이스 & 터미널
 permalink: /pt-BR/docs/tabs-panes/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Um workspace é dividido em **painéis**, e cada painel guarda uma pilha de **abas**. As divisões dão visualizações paralelas; as abas permitem que um único painel hospede vários shells sem roubar espaço da tela.
+워크스페이스는 **창(pane)**으로 나뉘고, 각 창은 여러 **탭**을 쌓아 가집니다. 분할은 동시에 여러 화면을 보기 위한 것이고, 탭은 한 창 안에서 여러 쉘을 화면 면적을 빼앗기지 않고 유지하기 위한 것입니다.
 
-## Abas
+## 탭
 
-Toda aba é um shell de verdade conectado a uma sessão tmux. O título da aba vem do processo em primeiro plano — digite `vim` e a aba renomeia sozinha; saia e ela volta a mostrar o nome do diretório.
+모든 탭은 tmux 세션에 붙은 실제 쉘입니다. 탭 제목은 포어그라운드 프로세스에서 따옵니다 — `vim`을 실행하면 탭 이름이 바뀌고, 종료하면 디렉토리 이름으로 돌아옵니다.
 
-| Ação | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Nova aba | <kbd>⌘T</kbd> | <kbd>Ctrl+T</kbd> |
-| Fechar aba | <kbd>⌘W</kbd> | <kbd>Ctrl+W</kbd> |
-| Aba anterior | <kbd>⌘⇧[</kbd> | <kbd>Ctrl+Shift+[</kbd> |
-| Próxima aba | <kbd>⌘⇧]</kbd> | <kbd>Ctrl+Shift+]</kbd> |
-| Ir para aba 1–9 | <kbd>⌃1</kbd> – <kbd>⌃9</kbd> | <kbd>Alt+1</kbd> – <kbd>Alt+9</kbd> |
+| 새 탭 | <kbd>⌘T</kbd> | <kbd>Ctrl+T</kbd> |
+| 탭 닫기 | <kbd>⌘W</kbd> | <kbd>Ctrl+W</kbd> |
+| 이전 탭 | <kbd>⌘⇧[</kbd> | <kbd>Ctrl+Shift+[</kbd> |
+| 다음 탭 | <kbd>⌘⇧]</kbd> | <kbd>Ctrl+Shift+]</kbd> |
+| 1–9번 탭으로 이동 | <kbd>⌃1</kbd> – <kbd>⌃9</kbd> | <kbd>Alt+1</kbd> – <kbd>Alt+9</kbd> |
 
-Arraste uma aba na barra de abas para reordenar. O botão **+** ao final da barra abre o mesmo seletor de templates que <kbd>⌘T</kbd>.
+탭 바에서 탭을 드래그하면 순서가 바뀝니다. 탭 바 끝의 **+** 버튼은 <kbd>⌘T</kbd>와 같은 템플릿 선택 메뉴를 엽니다.
 
-{% call callout('tip', 'Templates além do Terminal') %}
-O menu de nova aba permite escolher **Terminal**, **Claude**, **Diff** ou **Navegador web** como tipo de painel. Todos são abas — você pode misturá-los no mesmo painel e alternar com os atalhos acima.
+{% call callout('tip', '터미널 외의 템플릿') %}
+새 탭 메뉴에서는 **터미널**, **Codex**, **Diff**, **웹 브라우저** 중 패널 타입을 고를 수 있습니다. 모두 탭이므로 한 창 안에 섞어두고 위 단축키로 자유롭게 전환할 수 있습니다.
 {% endcall %}
 
-## Dividindo painéis
+## 창 분할
 
-As abas compartilham o mesmo espaço de tela. Para ver duas coisas ao mesmo tempo, divida o painel.
+탭은 화면을 공유합니다. 동시에 두 개를 보고 싶으면 창을 분할하세요.
 
-| Ação | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Dividir à direita | <kbd>⌘D</kbd> | <kbd>Ctrl+D</kbd> |
-| Dividir para baixo | <kbd>⌘⇧D</kbd> | <kbd>Ctrl+Shift+D</kbd> |
+| 오른쪽으로 분할 | <kbd>⌘D</kbd> | <kbd>Ctrl+D</kbd> |
+| 아래로 분할 | <kbd>⌘⇧D</kbd> | <kbd>Ctrl+Shift+D</kbd> |
 
-Uma nova divisão herda o diretório padrão do workspace e começa com uma aba de terminal vazia. Cada painel tem sua própria barra de abas, então o painel da direita pode hospedar o visualizador de diff enquanto o da esquerda roda `claude`.
+새로 만들어지는 분할은 워크스페이스의 기본 디렉토리를 상속받고 빈 터미널 탭으로 시작합니다. 각 창은 자체 탭 바를 가지므로 오른쪽 창에서는 diff 뷰어를, 왼쪽 창에서는 `codex`를 돌리는 식으로 쓸 수 있습니다.
 
-## Mova o foco entre painéis
+## 창 사이 포커스 이동
 
-Use os atalhos direcionais — eles percorrem a árvore de divisões, então <kbd>⌘⌥→</kbd> a partir de um painel profundamente aninhado ainda cai no painel visualmente adjacente.
+방향 단축키로 이동합니다 — 분할 트리를 따라 걷기 때문에, 깊게 중첩된 창에서 <kbd>⌘⌥→</kbd>를 눌러도 화면상 인접한 창으로 정확히 이동합니다.
 
-| Ação | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Foco à esquerda | <kbd>⌘⌥←</kbd> | <kbd>Ctrl+Alt+←</kbd> |
-| Foco à direita | <kbd>⌘⌥→</kbd> | <kbd>Ctrl+Alt+→</kbd> |
-| Foco acima | <kbd>⌘⌥↑</kbd> | <kbd>Ctrl+Alt+↑</kbd> |
-| Foco abaixo | <kbd>⌘⌥↓</kbd> | <kbd>Ctrl+Alt+↓</kbd> |
+| 왼쪽으로 포커스 | <kbd>⌘⌥←</kbd> | <kbd>Ctrl+Alt+←</kbd> |
+| 오른쪽으로 포커스 | <kbd>⌘⌥→</kbd> | <kbd>Ctrl+Alt+→</kbd> |
+| 위로 포커스 | <kbd>⌘⌥↑</kbd> | <kbd>Ctrl+Alt+↑</kbd> |
+| 아래로 포커스 | <kbd>⌘⌥↓</kbd> | <kbd>Ctrl+Alt+↓</kbd> |
 
-## Redimensionar e equalizar
+## 크기 조정과 균등화
 
-Arraste o divisor entre painéis para controle fino, ou use o teclado.
+창 사이의 분리선을 드래그하거나 키보드로 조정합니다.
 
-| Ação | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Redimensionar à esquerda | <kbd>⌘⌃⇧←</kbd> | <kbd>Ctrl+Alt+Shift+←</kbd> |
-| Redimensionar à direita | <kbd>⌘⌃⇧→</kbd> | <kbd>Ctrl+Alt+Shift+→</kbd> |
-| Redimensionar acima | <kbd>⌘⌃⇧↑</kbd> | <kbd>Ctrl+Alt+Shift+↑</kbd> |
-| Redimensionar abaixo | <kbd>⌘⌃⇧↓</kbd> | <kbd>Ctrl+Alt+Shift+↓</kbd> |
-| Equalizar divisões | <kbd>⌘⌥=</kbd> | <kbd>Ctrl+Alt+=</kbd> |
+| 왼쪽 크기 조정 | <kbd>⌘⌃⇧←</kbd> | <kbd>Ctrl+Alt+Shift+←</kbd> |
+| 오른쪽 크기 조정 | <kbd>⌘⌃⇧→</kbd> | <kbd>Ctrl+Alt+Shift+→</kbd> |
+| 위쪽 크기 조정 | <kbd>⌘⌃⇧↑</kbd> | <kbd>Ctrl+Alt+Shift+↑</kbd> |
+| 아래쪽 크기 조정 | <kbd>⌘⌃⇧↓</kbd> | <kbd>Ctrl+Alt+Shift+↓</kbd> |
+| 분할 균등화 | <kbd>⌘⌥=</kbd> | <kbd>Ctrl+Alt+=</kbd> |
 
-Equalizar é o jeito mais rápido de resetar um layout que tomou proporções extremas e ficou inutilizável.
+레이아웃이 한쪽으로 너무 치우쳐 못 쓸 정도가 됐을 때 균등화가 가장 빠른 리셋 방법입니다.
 
-## Limpar a tela
+## 화면 비우기
 
-<kbd>⌘K</kbd> limpa o terminal do painel atual, do mesmo jeito que a maioria dos terminais nativos. O processo do shell continua rodando; só o buffer visível é apagado.
+<kbd>⌘K</kbd>는 현재 창의 터미널 화면을 비웁니다. 네이티브 터미널과 동일한 방식입니다. 쉘 프로세스는 계속 살아있고, 보이는 버퍼만 지워집니다.
 
-| Ação | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| Limpar tela | <kbd>⌘K</kbd> | <kbd>Ctrl+K</kbd> |
+| 화면 비우기 | <kbd>⌘K</kbd> | <kbd>Ctrl+K</kbd> |
 
-## Abas sobrevivem a tudo
+## 탭은 어떤 상황에서도 살아남습니다
 
-Fechar uma aba mata a sua sessão tmux. Fechar o *navegador*, atualizar a página ou perder a rede não — toda aba continua rodando no servidor. Volte e os mesmos painéis, divisões e abas ressurgem.
+탭을 닫으면 해당 tmux 세션이 종료됩니다. *브라우저*를 닫거나, 새로고침하거나, 네트워크가 끊어져도 탭은 종료되지 않고 서버에서 계속 돌아갑니다. 다시 열면 같은 창, 분할, 탭이 그대로 돌아옵니다.
 
-Para a história de recuperação após reboots do servidor, veja [Salvar e restaurar layouts](/purplemux/pt-BR/docs/save-restore/).
+서버 재부팅 이후의 복구 동작은 [레이아웃 저장 & 복원](/codexmux/pt-BR/docs/save-restore/)에서 다룹니다.
 
-## Próximos passos
+## 다음으로
 
-- **[Salvar e restaurar layouts](/purplemux/pt-BR/docs/save-restore/)** — como esse layout fica preservado.
-- **[Atalhos de teclado](/purplemux/pt-BR/docs/keyboard-shortcuts/)** — todos os atalhos em uma tabela.
-- **[Painel de Git workflow](/purplemux/pt-BR/docs/git-workflow/)** — um tipo de aba útil para colocar em uma divisão.
+- **[레이아웃 저장 & 복원](/codexmux/pt-BR/docs/save-restore/)** — 이 레이아웃이 어떻게 유지되는지
+- **[키보드 단축키](/codexmux/pt-BR/docs/keyboard-shortcuts/)** — 전체 바인딩
+- **[Git 워크플로 패널](/codexmux/pt-BR/docs/git-workflow/)** — 분할에 띄워두면 유용한 탭 타입

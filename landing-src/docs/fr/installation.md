@@ -1,102 +1,102 @@
 ---
-title: Installation
-description: Options d'installation — npx, global, app native macOS ou depuis les sources.
-eyebrow: Commencer
+title: 설치
+description: 설치 방법 — npx, 글로벌, macOS 네이티브 앱, 소스에서 실행.
+eyebrow: 시작하기
 permalink: /fr/docs/installation/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Si vous avez exécuté `npx purplemux` dans le [Démarrage rapide](/purplemux/fr/docs/quickstart/) et que cela vous suffit, c'est terminé. Cette page est destinée à celles et ceux qui veulent une installation persistante, une application desktop ou exécuter depuis les sources.
+[빠른 시작](/codexmux/fr/docs/quickstart/)에서 `npx codexmux`로 충분했다면 더 읽을 필요 없습니다. 이 페이지는 영구 설치, 데스크탑 앱, 또는 소스에서 실행하고 싶은 경우를 위한 안내입니다.
 
-## Prérequis
+## 요구사항
 
-- **macOS 13+ ou Linux** — Windows n'est pas pris en charge. WSL2 fonctionne en général, mais ne fait pas partie de notre matrice de tests.
-- **[Node.js](https://nodejs.org) 20 ou plus récent** — vérifiez avec `node -v`.
-- **[tmux](https://github.com/tmux/tmux)** — toute version 3.0+ convient.
+- **macOS 13 이상 또는 Linux** — Windows는 지원하지 않습니다. WSL2는 대체로 동작하지만 테스트 범위 밖입니다.
+- **[Node.js](https://nodejs.org) 20 이상** — `node -v`로 확인하세요.
+- **[tmux](https://github.com/tmux/tmux)** — 3.0 이상이면 OK.
 
-## Méthodes d'installation
+## 설치 방법
 
-### npx (sans installation)
+### npx (설치 없이)
 
 ```bash
-npx purplemux
+npx codexmux
 ```
 
-Télécharge purplemux au premier lancement et le met en cache dans `~/.npm/_npx/`. Idéal pour essayer ou pour un usage ponctuel sur une machine distante. Chaque exécution utilise la dernière version publiée.
+첫 실행 시 `~/.npm/_npx/`에 캐시됩니다. 잠깐 써보거나 원격 서버에서 일회성으로 돌릴 때 좋습니다. 매 실행마다 최신 버전을 사용합니다.
 
-### Installation globale
+### 글로벌 설치
 
 ```bash
-npm install -g purplemux
-purplemux
+npm install -g codexmux
+codexmux
 ```
 
-pnpm et yarn fonctionnent de la même façon (`pnpm add -g purplemux` / `yarn global add purplemux`). Démarre plus vite ensuite parce qu'il n'y a plus rien à résoudre. Mise à jour avec `npm update -g purplemux`.
+pnpm과 yarn도 같은 방식입니다 (`pnpm add -g codexmux` / `yarn global add codexmux`). 이후 실행이 더 빠르고, 업데이트는 `npm update -g codexmux`로 합니다.
 
-Le binaire est aussi disponible sous le nom plus court `pmux`.
+짧은 별칭 `cmux`로도 실행할 수 있습니다.
 
-### Application native macOS
+### macOS 네이티브 앱
 
-Téléchargez le dernier `.dmg` depuis [Releases](https://github.com/subicura/purplemux/releases/latest) — des builds Apple Silicon et Intel sont fournis. La mise à jour automatique est intégrée.
+[Releases](https://github.com/subicura/codexmux/releases/latest)에서 최신 `.dmg`를 내려받으세요 — Apple Silicon과 Intel 빌드가 모두 제공됩니다. 자동 업데이트 내장.
 
-L'application embarque Node, tmux et le serveur purplemux, et ajoute :
+앱에는 Node, tmux, codexmux 서버가 번들되어 있고 다음 기능이 추가됩니다:
 
-- Une icône dans la barre de menu indiquant l'état du serveur
-- Des notifications natives (distinctes des Web Push)
-- Le démarrage automatique à la connexion (à activer dans **Paramètres → Général**)
+- 서버 상태를 보여주는 메뉴바 아이콘
+- 네이티브 알림 (Web Push와는 별개)
+- 로그인 시 자동 실행 (**설정 → 일반**에서 토글)
 
-### Exécuter depuis les sources
+### 소스에서 실행
 
 ```bash
-git clone https://github.com/subicura/purplemux.git
-cd purplemux
+git clone https://github.com/subicura/codexmux.git
+cd codexmux
 pnpm install
 pnpm start
 ```
 
-Pour le développement (rechargement à chaud) :
+개발 모드(핫 리로드):
 
 ```bash
 pnpm dev
 ```
 
-## Port et variables d'environnement
+## 포트와 환경변수
 
-purplemux écoute sur **8022** (web + ssh, pour la blague). Vous pouvez le changer avec `PORT` :
-
-```bash
-PORT=9000 purplemux
-```
-
-Le logging se contrôle avec `LOG_LEVEL` (par défaut `info`) et `LOG_LEVELS` pour des surcharges par module :
+codexmux는 **8022** 포트에서 listen합니다 (web + ssh 합성, 농담). `PORT`로 바꿀 수 있습니다:
 
 ```bash
-LOG_LEVEL=debug purplemux
-# debug uniquement le module de hook Claude
-LOG_LEVELS=hooks=debug purplemux
-# plusieurs modules à la fois
-LOG_LEVELS=hooks=debug,status=warn purplemux
+PORT=9000 codexmux
 ```
 
-Niveaux disponibles : `trace` · `debug` · `info` · `warn` · `error` · `fatal`. Les modules absents de `LOG_LEVELS` retombent sur `LOG_LEVEL`.
+로그는 `LOG_LEVEL` (기본 `info`)과 모듈별 오버라이드용 `LOG_LEVELS`로 제어합니다:
 
-Voir [Ports & variables d'environnement](/purplemux/fr/docs/ports-env-vars/) pour la liste complète.
+```bash
+LOG_LEVEL=debug codexmux
+# Codex 훅 모듈만 debug로
+LOG_LEVELS=status=debug codexmux
+# 여러 모듈 한 번에
+LOG_LEVELS=status=debug,tmux=trace codexmux
+```
 
-## Démarrage automatique
+레벨: `trace` · `debug` · `info` · `warn` · `error` · `fatal`. `LOG_LEVELS`에 없는 모듈은 `LOG_LEVEL`을 따릅니다.
 
-{% call callout('tip', 'Option la plus simple') %}
-Si vous utilisez l'application macOS, activez **Paramètres → Général → Lancer à la connexion**. Pas de script à écrire.
+전체 목록은 [포트 & 환경변수](/codexmux/fr/docs/ports-env-vars/)를 참고하세요.
+
+## 자동 시작
+
+{% call callout('tip', '가장 쉬운 방법') %}
+macOS 앱을 쓴다면 **설정 → 일반 → 로그인 시 실행**을 켜기만 하면 됩니다. 별도 스크립트 불필요.
 {% endcall %}
 
-Pour une installation CLI, encapsulez-la dans launchd (macOS) ou systemd (Linux). Une unité systemd minimale ressemble à ceci :
+CLI 설치라면 launchd (macOS) 또는 systemd (Linux)로 감싸면 됩니다. 최소 systemd 유닛 예시:
 
 ```ini
-# ~/.config/systemd/user/purplemux.service
+# ~/.config/systemd/user/codexmux.service
 [Unit]
-Description=purplemux
+Description=codexmux
 
 [Service]
-ExecStart=/usr/local/bin/purplemux
+ExecStart=/usr/local/bin/codexmux
 Restart=on-failure
 
 [Install]
@@ -104,23 +104,23 @@ WantedBy=default.target
 ```
 
 ```bash
-systemctl --user enable --now purplemux
+systemctl --user enable --now codexmux
 ```
 
-## Mise à jour
+## 업데이트
 
-| Méthode | Commande |
+| 방법 | 명령 |
 |---|---|
-| npx | automatique (dernière version à chaque exécution) |
-| npm global | `npm update -g purplemux` |
-| App macOS | automatique (mise à jour au lancement) |
-| Depuis les sources | `git pull && pnpm install && pnpm start` |
+| npx | 자동 (매 실행 최신) |
+| 글로벌 npm | `npm update -g codexmux` |
+| macOS 앱 | 자동 (실행 시 업데이트) |
+| 소스에서 | `git pull && pnpm install && pnpm start` |
 
-## Désinstallation
+## 제거
 
 ```bash
-npm uninstall -g purplemux          # ou pnpm remove -g / yarn global remove
-rm -rf ~/.purplemux                 # efface paramètres et données de session
+npm uninstall -g codexmux          # pnpm remove -g / yarn global remove 도 가능
+rm -rf ~/.codexmux                 # 설정과 세션 데이터 전체 삭제
 ```
 
-L'application native se glisse dans la Corbeille comme d'habitude. Voir [Répertoire de données](/purplemux/fr/docs/data-directory/) pour le détail de ce qui est stocké dans `~/.purplemux/`.
+네이티브 앱은 휴지통으로 드래그. `~/.codexmux/` 안에 무엇이 저장되는지는 [데이터 디렉토리](/codexmux/fr/docs/data-directory/)를 참고하세요.

@@ -1,82 +1,82 @@
 ---
-title: Интеграция с редактором
-description: Откройте текущую папку в редакторе — VS Code, Cursor, Zed, code-server или по кастомному URL — прямо из шапки.
-eyebrow: Кастомизация
+title: 에디터 연동
+description: 헤더의 EDITOR 버튼으로 현재 폴더를 VS Code · Cursor · Zed · code-server · 커스텀 URL로 엽니다.
+eyebrow: 커스터마이즈
 permalink: /ru/docs/editor-integration/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-В каждом рабочем пространстве в шапке есть кнопка **EDITOR**. Клик по ней открывает папку активной сессии в выбранном вами редакторе. Выберите пресет, укажите URL или положитесь на системный обработчик — и готово.
+워크스페이스 헤더에 **EDITOR** 버튼이 있습니다. 누르면 현재 세션의 폴더가 선택한 에디터로 열립니다. 프리셋을 고르고 URL을 입력하거나 OS 핸들러에 맡기면 끝입니다.
 
-## Откройте picker
+## 설정 화면 열기
 
-Настройки (<kbd>⌘,</kbd>) → вкладка **Редактор**. Вы увидите список пресетов и, в зависимости от выбора, поле URL.
+설정(<kbd>⌘,</kbd>) → **Editor** 탭. 프리셋 목록과, 선택에 따라 URL 입력란이 나타납니다.
 
-## Доступные пресеты
+## 제공 프리셋
 
-| Пресет | Что делает |
+| 프리셋 | 동작 |
 |---|---|
-| **Code Server (Web)** | Открывает хостовый [code-server](https://github.com/coder/code-server) с `?folder=<path>`. Требует URL. |
-| **VS Code** | Триггерит `vscode://file/<path>?windowId=_blank`. |
+| **Code Server (Web)** | 호스팅 중인 [code-server](https://github.com/coder/code-server)에 `?folder=<path>`를 붙여 엽니다. URL 필요. |
+| **VS Code** | `vscode://file/<path>?windowId=_blank` 호출 |
 | **VS Code Insiders** | `vscode-insiders://...` |
 | **Cursor** | `cursor://...` |
 | **Windsurf** | `windsurf://...` |
 | **Zed** | `zed://file<path>` |
-| **Custom URL** | Шаблон URL под вашим контролем, с плейсхолдерами `{folder}` / `{folderEncoded}`. |
-| **Disabled** | Прячет кнопку EDITOR полностью. |
+| **사용자 URL** | 직접 정의하는 URL 템플릿. `{folder}` / `{folderEncoded}` 플레이스홀더를 사용 |
+| **Disabled** | EDITOR 버튼을 숨깁니다 |
 
-Четыре десктоп-IDE пресета (VS Code, Cursor, Windsurf, Zed) полагаются на ОС, регистрирующую URI-обработчик. Если IDE установлена локально, ссылка отрабатывает как ожидаемо.
+데스크탑 IDE 4종(VS Code, Cursor, Windsurf, Zed)은 OS에 등록된 URI 핸들러를 통해 동작합니다. 로컬에 IDE가 설치되어 있으면 그대로 열립니다.
 
-## Web vs локально
+## 웹 방식과 로컬 방식
 
-Между тем, как пресеты открывают папку, есть существенная разница:
+폴더를 여는 방식에 의미 있는 차이가 있습니다.
 
-- **code-server** работает внутри браузера. URL указывает на сервер, который вы хостите (свой, в сети, прикрытый Tailscale). Клик по EDITOR открывает новую вкладку с папкой.
-- **Локальные IDE** (VS Code, Cursor, Windsurf, Zed) требуют, чтобы IDE была установлена на *машине, где работает браузер*. Ссылка отдаётся ОС, которая запускает зарегистрированный обработчик.
+- **code-server**는 브라우저 안에서 동작합니다. URL은 호스팅 중인 서버(로컬·사내망·Tailscale 뒤)를 가리킵니다. 버튼을 누르면 새 탭이 열리며 폴더가 로드됩니다.
+- **로컬 IDE**(VS Code, Cursor, Windsurf, Zed)는 *브라우저가 실행 중인 머신*에 IDE가 설치되어 있어야 합니다. OS가 등록된 URI 핸들러를 호출하는 방식입니다.
 
-Если вы используете purplemux с телефона, работает только пресет code-server — телефон не может открыть `vscode://` URL в десктопное приложение.
+휴대폰에서 codexmux를 쓴다면 code-server 프리셋만 의미가 있습니다. 휴대폰에서 `vscode://`로 데스크탑 앱을 열 수는 없습니다.
 
-## Настройка code-server
+## code-server 설정
 
-Типичная локальная установка, дублируется и в продукте:
+설정 화면에 그대로 노출되는 표준 셋업입니다.
 
 ```bash
-# Установка на macOS
+# macOS 설치
 brew install code-server
 
-# Запуск
+# 실행
 code-server --port 8080
 
-# Внешний доступ через Tailscale (опционально)
+# 외부 접속 (선택) — Tailscale
 tailscale serve --bg --https=8443 http://localhost:8080
 ```
 
-Затем в вкладке Редактор задайте URL, по которому доступен code-server: `http://localhost:8080` локально или `https://<machine>.<tailnet>.ts.net:8443`, если поставили его за Tailscale Serve. purplemux проверяет, что URL начинается с `http://` или `https://`, и автоматически добавляет `?folder=<абсолютный путь>`.
+그다음 Editor 탭에 code-server 주소를 입력합니다. 로컬이면 `http://localhost:8080`, Tailscale Serve를 통한다면 `https://<machine>.<tailnet>.ts.net:8443`처럼 입력합니다. codexmux가 `http://` 또는 `https://` 여부를 검증한 뒤, 절대 경로를 `?folder=<path>` 형태로 자동 부착합니다.
 
-{% call callout('note', 'Выберите порт, отличный от 8022') %}
-purplemux уже стоит на `8022`. Запускайте code-server на другом порту (в примере `8080`), чтобы они не конфликтовали.
+{% call callout('note', '8022 포트는 피하세요') %}
+codexmux가 이미 `8022`를 씁니다. code-server는 다른 포트(예시는 `8080`)에서 띄우세요.
 {% endcall %}
 
-## Custom URL шаблон
+## 커스텀 URL 템플릿
 
-Пресет Custom позволяет указать на что угодно, что принимает папку в URL — Coder workspaces, Gitpod, Theia, внутренний инструмент. Шаблон **обязан** содержать хотя бы один из плейсхолдеров:
+사용자 프리셋은 폴더를 URL에 받는 어떤 도구든 연결할 수 있습니다 — Coder 워크스페이스, Gitpod, Theia, 사내 도구 등. 템플릿에는 다음 플레이스홀더가 **반드시** 하나 이상 있어야 합니다.
 
-- `{folder}` — абсолютный путь, без кодирования.
-- `{folderEncoded}` — URL-кодированный.
+- `{folder}` — 절대 경로(인코딩 없음)
+- `{folderEncoded}` — URL 인코딩된 경로
 
 ```
 myeditor://open?path={folderEncoded}
 https://my.coder.example/workspace?dir={folderEncoded}
 ```
 
-purplemux валидирует шаблон на сохранении и отказывает, если плейсхолдера нет.
+저장 시점에 검증하며, 플레이스홀더가 없으면 저장이 거부됩니다.
 
-## Отключение кнопки
+## 버튼 숨기기
 
-Выберите **Disabled**. Кнопка исчезает из шапки рабочего пространства.
+**Disabled**를 선택하면 워크스페이스 헤더에서 EDITOR 버튼이 사라집니다.
 
-## Что дальше
+## 다음으로
 
-- **[Боковая панель и опции Claude](/purplemux/ru/docs/sidebar-options/)** — порядок элементов боковой панели, флаги Claude.
-- **[Custom CSS](/purplemux/ru/docs/custom-css/)** — дальнейшая визуальная настройка.
-- **[Tailscale](/purplemux/ru/docs/tailscale/)** — безопасный внешний доступ и для code-server.
+- **[사이드바 & Codex 옵션](/codexmux/ru/docs/sidebar-options/)** — 사이드바 정렬, Codex 플래그 토글
+- **[커스텀 CSS](/codexmux/ru/docs/custom-css/)** — 시각 요소 추가 조정
+- **[Tailscale](/codexmux/ru/docs/tailscale/)** — code-server 외부 접속도 동일하게 활용

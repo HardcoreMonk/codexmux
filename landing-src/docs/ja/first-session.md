@@ -1,102 +1,51 @@
 ---
-title: 最初のセッション
-description: ダッシュボードのガイドツアー — 空のワークスペースから、最初の Claude セッションを起動・モニタリングするまで。
-eyebrow: はじめに
+title: 첫 세션
+description: 빈 workspace에서 Codex 세션을 만들고 확인하는 흐름.
+eyebrow: 시작하기
 permalink: /ja/docs/first-session/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux はすでに動作している前提です (まだなら [クイックスタート](/purplemux/ja/docs/quickstart/) を参照)。このページでは UI が実際に何をするのかを順に解説し、最初の数分の抽象度を下げます。
+이 문서는 codexmux가 이미 실행 중이라고 가정합니다. 아직 실행하지 않았다면 [빠른 시작](/codexmux/ja/docs/quickstart/)부터 진행하세요.
 
-## ダッシュボード
+## workspace 만들기
 
-`http://localhost:8022` を開くと、**ワークスペース** に着地します。ワークスペースは関連タブをまとめたフォルダのようなものです — Claude でコーディングしているプロジェクト用、ドキュメントを書くためのもの、アドホックなシェル作業用、といった形です。
+1. sidebar의 workspace 영역에서 **+**를 누릅니다.
+2. 이름과 기본 디렉터리를 입력합니다.
+3. Enter를 누르면 빈 workspace가 열립니다.
 
-レイアウト:
+기본 디렉터리는 새 shell과 Codex tab의 cwd로 사용됩니다.
 
-- **左サイドバー** — ワークスペースとセッション、Claude ステータスバッジ、レート制限ウィジェット、ノート、統計
-- **メインエリア** — 現在のワークスペース内のペイン。各ペインは複数のタブを持てます
-- **トップバー** — ワークスペース名、分割コントロール、設定
+## 첫 tab 열기
 
-サイドバーは <kbd>⌘B</kbd> でいつでも切り替えられます。サイドバーの ワークスペース / セッション モード切り替えは <kbd>⌘⇧B</kbd> です。
+<kbd>⌘T</kbd> 또는 tab bar의 **+** 버튼을 누릅니다.
 
-## ワークスペースを作る
+- **터미널**: 빈 shell.
+- **Codex**: shell 안에서 `codex`를 실행.
+- **Diff**: Git 변경 사항 확인.
+- **Web browser**: Electron browser panel.
 
-初回起動時にデフォルトのワークスペースが 1 つ用意されます。追加するには:
+Codex 템플릿은 terminal을 열고 `codex`를 실행하는 shortcut입니다. 터미널 tab에서 직접 `codex`를 실행해도 codexmux가 감지합니다.
 
-1. サイドバー上部の **+ 新しいワークスペース** をクリック (<kbd>⌘N</kbd>)。
-2. 名前とデフォルトディレクトリを指定 — これが新しいタブのシェル開始位置になります。
-3. Enter を押すと、空のワークスペースが開きます。
+## 상태 badge
 
-ワークスペースは後からサイドバー上でドラッグして並び替え・名前変更できます。
-
-## 最初のタブを開く
-
-ワークスペースは空の状態で始まります。<kbd>⌘T</kbd> またはタブバーの **+** ボタンでタブを追加します。
-
-**テンプレート** を選択:
-
-- **Terminal** — 空のシェル。`vim`、`docker`、スクリプト用に。
-- **Claude** — `claude` がすでに実行された状態で起動。
-
-{% call callout('tip', 'テンプレートはただのショートカット') %}
-内部的にはどのタブも普通のシェルです。Claude テンプレートは「ターミナルを開いて `claude` を実行する」だけのもの。後から Terminal タブで手動で `claude` を実行しても、purplemux はそれを認識して同じ方法でステータスを表示します。
-{% endcall %}
-
-## セッションステータスを読む
-
-タブの **サイドバーセッション行** を見てください。次のいずれかのインジケータが表示されます:
-
-| 状態 | 意味 |
+| 상태 | 의미 |
 |---|---|
-| **アイドル** (グレー) | Claude があなたの入力を待っています。 |
-| **ビジー** (パープルのスピナー) | Claude が作業中 — ファイル読込、ツール実行など。 |
-| **入力待ち** (アンバー) | Claude が権限プロンプトに到達したか、質問しています。 |
-| **レビュー** (ブルー) | 作業完了、Claude は停止。確認すべきものがあります。 |
+| **Idle** | Codex가 다음 입력을 기다림 |
+| **Busy** | Codex가 작업 중 |
+| **Needs input** | permission prompt 또는 질문 대기 |
+| **Review** | 작업 완료, 확인 필요 |
 
-遷移はほぼ瞬時です。検出方法は [セッションステータス](/purplemux/ja/docs/session-status/) を参照してください。
+## permission prompt
 
-## 権限プロンプトに応答する
+Codex가 tool 실행이나 파일 변경 허가를 요청하면 codexmux는 timeline 안에 prompt를 표시합니다. option을 클릭하거나 숫자 key를 누르거나 모바일 push에서 답할 수 있습니다.
 
-Claude がツール実行やファイル編集の許可を求めると、purplemux は**プロンプトをインターセプトして** セッションビュー内にインラインで表示します。次のいずれかで応答できます:
+## 복구
 
-- **1 · はい** / **2 · 常にはい** / **3 · いいえ** をクリック
-- キーボードの数字キーを押す
-- 無視してスマートフォンで答える — モバイル Web Push が同じアラートを発火します
+브라우저를 닫아도 tmux session은 유지됩니다. 서버가 재시작되면 layout을 읽고 가능한 경우 `codex resume <sessionId>`로 Codex session을 이어 붙입니다.
 
-Claude CLI 自体はインターセプトされたプロンプトでブロックされ続けることはありません。purplemux があなたの回答を返してくれます。
+## 다음 단계
 
-## 分割と切り替え
-
-タブが起動したら試してみてください:
-
-- <kbd>⌘D</kbd> — 現在のペインを右に分割
-- <kbd>⌘⇧D</kbd> — 下に分割
-- <kbd>⌘⌥←/→/↑/↓</kbd> — 分割間でフォーカス移動
-- <kbd>⌘⇧[</kbd> / <kbd>⌘⇧]</kbd> — 前 / 次のタブ
-
-すべては [キーボードショートカット](/purplemux/ja/docs/keyboard-shortcuts/) のページにまとめてあります。
-
-## 保存と復元
-
-ブラウザを閉じてください。タブはどこにも行きません — tmux がサーバ上で開いたままにします。1 時間後 (あるいは 1 週間後) にリフレッシュすると、purplemux は分割比率や作業ディレクトリも含めた完全なレイアウトを復元します。
-
-サーバ再起動からも復旧可能です: 再起動時に purplemux は `~/.purplemux/workspaces.json` から保存されたレイアウトを読み込み、シェルを正しいディレクトリで再起動し、可能な限り Claude セッションを再アタッチします。
-
-## スマートフォンから接続する
-
-実行:
-
-```bash
-tailscale serve --bg 8022
-```
-
-スマートフォンで `https://<machine>.<tailnet>.ts.net` を開き、**共有 → ホーム画面に追加** をタップして通知の許可を与えます。これで、タブを閉じていても **入力待ち** や **レビュー** のステータスでプッシュアラートを受け取れます。
-
-詳しい手順: [PWA セットアップ](/purplemux/ja/docs/pwa-setup/) · [Web Push](/purplemux/ja/docs/web-push/) · [Tailscale](/purplemux/ja/docs/tailscale/)。
-
-## 次のステップ
-
-- **[キーボードショートカット](/purplemux/ja/docs/keyboard-shortcuts/)** — すべてのバインディングを 1 つの表で。
-- **[ブラウザサポート](/purplemux/ja/docs/browser-support/)** — 互換性マトリクス。特に iOS Safari 16.4+。
-- サイドバーを探索: **ノート** (<kbd>⌘⇧E</kbd>) で AI 日次レポート、**統計** (<kbd>⌘⇧U</kbd>) で利用状況分析。
+- **[세션 상태](/codexmux/ja/docs/session-status/)**
+- **[권한 프롬프트](/codexmux/ja/docs/permission-prompts/)**
+- **[브라우저 지원](/codexmux/ja/docs/browser-support/)**

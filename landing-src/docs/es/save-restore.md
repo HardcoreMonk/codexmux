@@ -1,69 +1,69 @@
 ---
-title: Guardar y restaurar disposiciones
-description: Por qué tus pestañas vuelven exactamente donde las dejaste, incluso después de reiniciar el servidor.
-eyebrow: Espacios de trabajo y terminal
+title: 레이아웃 저장 & 복원
+description: 브라우저를 닫거나 서버를 재부팅해도 탭이 정확히 그 자리에 돌아오는 이유.
+eyebrow: 워크스페이스 & 터미널
 permalink: /es/docs/save-restore/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux se construye sobre la idea de que cerrar una pestaña en el navegador no debería terminar una sesión. Dos piezas trabajan juntas: tmux mantiene los shells en marcha, y `~/.purplemux/workspaces.json` recuerda la disposición.
+codexmux는 "브라우저 탭을 닫는 것이 세션을 끝내는 것이어선 안 된다"는 전제로 설계됐습니다. 두 축이 함께 동작합니다 — tmux가 쉘을 살려두고, `~/.codexmux/workspaces.json`이 레이아웃을 기억합니다.
 
-## Qué se persiste
+## 저장되는 것
 
-Cualquier cosa visible en un espacio de trabajo:
+워크스페이스에서 눈에 보이는 모든 것:
 
-- Las pestañas y su orden
-- Las divisiones de paneles y sus proporciones
-- El tipo de panel de cada pestaña — Terminal, Claude, Diff, Navegador web
-- El directorio de trabajo de cada shell
-- Los grupos, nombres y orden de espacios de trabajo
+- 탭과 그 순서
+- 창 분할과 분할 비율
+- 각 탭의 패널 타입 — 터미널, Codex, diff, 웹 브라우저
+- 모든 쉘의 작업 디렉토리
+- 워크스페이스 그룹, 이름, 순서
 
-`workspaces.json` se actualiza transaccionalmente en cada cambio de disposición, así que el archivo siempre refleja el estado actual. Consulta [Directorio de datos](/purplemux/es/docs/data-directory/) para el mapa de archivos en disco.
+`workspaces.json`은 레이아웃 변경 때마다 트랜잭션 단위로 업데이트되므로 파일은 항상 현재 상태를 반영합니다. 디스크 파일 구조는 [데이터 디렉토리](/codexmux/es/docs/data-directory/)를 참고하세요.
 
-## Cerrar el navegador
+## 브라우저 닫기
 
-Cierra la pestaña, refresca o cierra la tapa del portátil. Nada de eso mata las sesiones.
+탭을 닫든, 새로고침하든, 노트북을 덮든 — 세션이 끝나지 않습니다.
 
-Cada shell vive en una sesión de tmux sobre el socket dedicado `purple` — totalmente aislado de tu `~/.tmux.conf` personal. Vuelve a abrir `http://localhost:8022` una hora después y el WebSocket se reconecta a la misma sesión de tmux, reproduce el scrollback y devuelve el PTY en directo a xterm.js.
+모든 쉘은 전용 `codexmux` 소켓의 tmux 세션 안에 살아있습니다. 사용자의 `~/.tmux.conf`와 완전히 격리됩니다. 한 시간 뒤에 `http://localhost:8022`를 다시 열면 WebSocket이 동일한 tmux 세션에 재연결되고, 스크롤백을 재생한 뒤 살아있는 PTY를 xterm.js로 넘겨줍니다.
 
-No restauras nada; te reconectas.
+복원이 아니라 재연결입니다.
 
-{% call callout('tip', 'También en el móvil') %}
-Lo mismo aplica en el móvil. Cierra la PWA, bloquea el dispositivo, vuelve mañana — el panel se reconecta con todo en su sitio.
+{% call callout('tip', '모바일도 똑같이') %}
+휴대폰에서도 동일합니다. PWA를 닫고, 기기를 잠그고, 다음 날 다시 열어도 — 대시보드는 모든 것을 그대로 둔 채 재연결합니다.
 {% endcall %}
 
-## Recuperarse tras reiniciar el servidor
+## 서버 재부팅 후 복구
 
-Un reinicio sí mata los procesos de tmux — son procesos del sistema operativo. purplemux gestiona esto en el siguiente arranque:
+재부팅은 tmux 프로세스를 종료시킵니다 — 결국은 OS 프로세스니까요. codexmux는 다음 시작 시 이 상황을 처리합니다.
 
-1. **Lee la disposición** — `workspaces.json` describe cada espacio, panel y pestaña.
-2. **Recrea sesiones en paralelo** — para cada pestaña se lanza una nueva sesión de tmux en su directorio de trabajo guardado.
-3. **Auto-resume de Claude** — las pestañas que tenían una sesión de Claude se relanzan con `claude --resume {sessionId}` para continuar la conversación donde quedó.
+1. **레이아웃 읽기** — `workspaces.json`이 모든 워크스페이스, 창, 탭을 기술합니다.
+2. **세션 병렬 재생성** — 각 탭마다 저장된 작업 디렉토리에서 새 tmux 세션이 생성됩니다.
+3. **Codex 자동 재개** — Codex 세션이 돌고 있던 탭은 `codex resume {sessionId}`로 다시 시작되어 대화가 끊긴 지점에서 이어집니다.
 
-La parte "en paralelo" importa: si tenías diez pestañas, las diez sesiones de tmux suben a la vez en lugar de una tras otra. Cuando abras el navegador, la disposición ya está ahí.
+"병렬"이라는 점이 중요합니다 — 탭이 10개라면 10개 tmux 세션이 한 번에 올라옵니다. 차례대로가 아니라 동시에. 브라우저를 열 때쯤에는 이미 레이아웃이 준비되어 있습니다.
 
-## Lo que no vuelve
+## 돌아오지 않는 것
 
-Hay algunas cosas que no se pueden persistir:
+몇 가지는 저장이 불가능합니다.
 
-- **Estado en memoria del shell** — variables de entorno que hayas establecido, jobs en segundo plano, REPLs a medio pensar.
-- **Avisos de permisos en curso** — si Claude estaba esperando una decisión de permiso cuando murió el servidor, verás el aviso de nuevo al reanudar.
-- **Procesos en primer plano distintos de `claude`** — buffers de `vim`, `htop`, `docker logs -f`. El shell vuelve al mismo directorio; el proceso no.
+- **인메모리 쉘 상태** — 직접 설정한 환경변수, 백그라운드 잡, 진행 중이던 REPL
+- **응답 대기 중이던 권한 프롬프트** — 서버가 죽을 때 Codex가 권한 결정을 기다리고 있었다면, 재개 시 같은 프롬프트가 다시 보입니다
+- **`codex` 외의 포어그라운드 프로세스** — `vim` 버퍼, `htop`, `docker logs -f`. 쉘은 같은 디렉토리에 있지만 그 안에서 돌던 프로세스는 없습니다
 
-Es el contrato estándar de tmux: el shell sobrevive, los procesos dentro de él no necesariamente.
+이건 표준 tmux 계약입니다 — 쉘은 살아남지만 그 안의 프로세스는 반드시 그렇진 않습니다.
 
-## Control manual
+## 수동 제어
 
-Normalmente no necesitas tocar esto, pero por si acaso:
+평소엔 건드릴 일이 없지만 호기심을 위해:
 
-- El socket de tmux se llama `purple`. Inspecciónalo con `tmux -L purple ls`.
-- Las sesiones se llaman `pt-{workspaceId}-{paneId}-{tabId}`.
-- Editar `workspaces.json` mientras purplemux corre no es seguro — el servidor lo tiene abierto y escribe a través de él.
+- tmux 소켓 이름은 `codexmux`입니다. `tmux -L codexmux ls`로 직접 확인할 수 있습니다.
+- 세션 이름 형식은 `pt-{workspaceId}-{paneId}-{tabId}`입니다.
+- 서버 실행 중에 `workspaces.json`을 직접 편집하는 것은 안전하지 않습니다 — 서버가 파일을 잡고 있고 변경을 즉시 써내려갑니다.
 
-Para la historia más profunda (protocolo binario, backpressure, vigilancia de JSONL) consulta [Cómo funciona](/purplemux/#how) en la página principal.
+이진 프로토콜, 백프레셔, JSONL 워처 같은 더 깊은 이야기는 랜딩의 [동작 방식](/codexmux/es/#how) 섹션을 참고하세요.
 
-## Siguientes pasos
+## 다음으로
 
-- **[Espacios de trabajo y grupos](/purplemux/es/docs/workspaces-groups/)** — qué se guarda por espacio.
-- **[Pestañas y paneles](/purplemux/es/docs/tabs-panes/)** — qué se guarda por pestaña.
-- **[Compatibilidad de navegadores](/purplemux/es/docs/browser-support/)** — particularidades conocidas con pestañas móviles en segundo plano y reconexiones.
+- **[워크스페이스와 그룹](/codexmux/es/docs/workspaces-groups/)** — 워크스페이스 단위로 저장되는 것
+- **[탭 & 창](/codexmux/es/docs/tabs-panes/)** — 탭 단위로 저장되는 것
+- **[브라우저 지원](/codexmux/es/docs/browser-support/)** — 모바일 백그라운드 탭과 재연결의 알려진 이슈

@@ -1,102 +1,51 @@
 ---
-title: Erste Session
-description: Eine geführte Tour durchs Dashboard — vom leeren Workspace zur ersten laufenden, überwachten Claude-Session.
-eyebrow: Erste Schritte
+title: 첫 세션
+description: 빈 workspace에서 Codex 세션을 만들고 확인하는 흐름.
+eyebrow: 시작하기
 permalink: /de/docs/first-session/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux läuft bereits (falls nicht, siehe [Schnellstart](/purplemux/de/docs/quickstart/)). Diese Seite erklärt, was die UI tatsächlich macht, damit sich die ersten Minuten weniger abstrakt anfühlen.
+이 문서는 codexmux가 이미 실행 중이라고 가정합니다. 아직 실행하지 않았다면 [빠른 시작](/codexmux/de/docs/quickstart/)부터 진행하세요.
 
-## Das Dashboard
+## workspace 만들기
 
-Wenn du `http://localhost:8022` öffnest, landest du in einem **Workspace**. Stell dir einen Workspace als Ordner zusammenhängender Tabs vor — einer für das Projekt, das du gerade Claude-codest, einer für die Docs, die du schreibst, einer für ad-hoc-Shell-Arbeit.
+1. sidebar의 workspace 영역에서 **+**를 누릅니다.
+2. 이름과 기본 디렉터리를 입력합니다.
+3. Enter를 누르면 빈 workspace가 열립니다.
 
-Das Layout:
+기본 디렉터리는 새 shell과 Codex tab의 cwd로 사용됩니다.
 
-- **Linke Seitenleiste** — Workspaces und Sessions, Claude-Status-Badges, Rate-Limit-Widget, Notizen, Statistiken
-- **Hauptbereich** — Panels innerhalb des aktuellen Workspaces; jedes Panel kann mehrere Tabs enthalten
-- **Obere Leiste** — Workspace-Name, Split-Steuerung, Einstellungen
+## 첫 tab 열기
 
-Schalte die Seitenleiste jederzeit mit <kbd>⌘B</kbd> ein/aus. Wechsel zwischen Workspace- und Session-Modus mit <kbd>⌘⇧B</kbd>.
+<kbd>⌘T</kbd> 또는 tab bar의 **+** 버튼을 누릅니다.
 
-## Einen Workspace anlegen
+- **터미널**: 빈 shell.
+- **Codex**: shell 안에서 `codex`를 실행.
+- **Diff**: Git 변경 사항 확인.
+- **Web browser**: Electron browser panel.
 
-Beim ersten Start hast du einen Standard-Workspace. Um einen weiteren hinzuzufügen:
+Codex 템플릿은 terminal을 열고 `codex`를 실행하는 shortcut입니다. 터미널 tab에서 직접 `codex`를 실행해도 codexmux가 감지합니다.
 
-1. Klicke **+ Neuer Workspace** oben in der Seitenleiste (<kbd>⌘N</kbd>).
-2. Benenne ihn und wähle ein Standard-Verzeichnis — hier starten die Shells neuer Tabs.
-3. Drücke Enter. Der leere Workspace öffnet sich.
+## 상태 badge
 
-Du kannst Workspaces später per Drag-and-Drop in der Seitenleiste umsortieren und umbenennen.
-
-## Den ersten Tab öffnen
-
-Ein Workspace startet leer. Füge einen Tab mit <kbd>⌘T</kbd> oder dem **+**-Button in der Tab-Leiste hinzu.
-
-Wähle ein **Template**:
-
-- **Terminal** — eine leere Shell. Gut für `vim`, `docker`, Skripte.
-- **Claude** — startet mit bereits laufendem `claude` in der Shell.
-
-{% call callout('tip', 'Templates sind nur Shortcuts') %}
-Unter der Haube ist jeder Tab eine normale Shell. Das Claude-Template ist nichts anderes als „öffne ein Terminal und führe `claude` aus". Wenn du später `claude` manuell in einem Terminal-Tab startest, bemerkt purplemux das und beginnt genauso, den Status anzuzeigen.
-{% endcall %}
-
-## Den Session-Status lesen
-
-Schau auf die **Session-Zeile in der Seitenleiste** für deinen Tab. Du siehst einen dieser Indikatoren:
-
-| Zustand | Bedeutung |
+| 상태 | 의미 |
 |---|---|
-| **Idle** (grau) | Claude wartet auf deine Eingabe. |
-| **Busy** (lila Spinner) | Claude arbeitet — liest Dateien, führt Tools aus. |
-| **Eingabe nötig** (gelb) | Claude hat einen Berechtigungs-Prompt oder eine Frage. |
-| **Review** (blau) | Arbeit erledigt, Claude ist gestoppt; es gibt etwas zu prüfen. |
+| **Idle** | Codex가 다음 입력을 기다림 |
+| **Busy** | Codex가 작업 중 |
+| **Needs input** | permission prompt 또는 질문 대기 |
+| **Review** | 작업 완료, 확인 필요 |
 
-Übergänge sind nahezu sofort. Siehe [Session-Status](/purplemux/de/docs/session-status/) für die Erkennungslogik.
+## permission prompt
 
-## Auf einen Berechtigungs-Prompt antworten
+Codex가 tool 실행이나 파일 변경 허가를 요청하면 codexmux는 timeline 안에 prompt를 표시합니다. option을 클릭하거나 숫자 key를 누르거나 모바일 push에서 답할 수 있습니다.
 
-Wenn Claude bittet, ein Tool auszuführen oder eine Datei zu bearbeiten, **fängt purplemux den Prompt ab** und zeigt ihn inline in der Session-Ansicht. Du kannst:
+## 복구
 
-- **1 · Yes** / **2 · Yes, always** / **3 · No** klicken, oder
-- die Zifferntasten auf der Tastatur drücken, oder
-- ihn ignorieren und am Handy beantworten — Mobile Web Push feuert dieselbe Benachrichtigung.
+브라우저를 닫아도 tmux session은 유지됩니다. 서버가 재시작되면 layout을 읽고 가능한 경우 `codex resume <sessionId>`로 Codex session을 이어 붙입니다.
 
-Die Claude-CLI blockiert beim abgefangenen Prompt nie wirklich; purplemux leitet deine Antwort zurück.
+## 다음 단계
 
-## Splitten und wechseln
-
-Wenn ein Tab läuft, probier:
-
-- <kbd>⌘D</kbd> — aktuelles Panel nach rechts splitten
-- <kbd>⌘⇧D</kbd> — nach unten splitten
-- <kbd>⌘⌥←/→/↑/↓</kbd> — Fokus zwischen Splits bewegen
-- <kbd>⌘⇧[</kbd> / <kbd>⌘⇧]</kbd> — voriger / nächster Tab
-
-Vollständige Liste auf der Seite [Tastenkürzel](/purplemux/de/docs/keyboard-shortcuts/).
-
-## Speichern und wiederherstellen
-
-Schließ den Browser. Deine Tabs verschwinden nicht — tmux hält sie auf dem Server offen. Aktualisiere in einer Stunde (oder einer Woche), und purplemux stellt das exakte Layout wieder her, inklusive Split-Verhältnissen und Arbeitsverzeichnissen.
-
-Sogar ein Server-Reboot ist erholbar: Beim Neustart liest purplemux das gespeicherte Layout aus `~/.purplemux/workspaces.json`, startet Shells in den richtigen Verzeichnissen und hängt Claude-Sessions möglichst wieder an.
-
-## Vom Handy aus erreichen
-
-Führe aus:
-
-```bash
-tailscale serve --bg 8022
-```
-
-Öffne auf dem Handy `https://<machine>.<tailnet>.ts.net`, tippe **Teilen → Zum Home-Bildschirm** und erteile Benachrichtigungs-Berechtigungen. Du erhältst jetzt Push-Alerts für **Eingabe nötig**- und **Review**-Zustände, auch wenn der Tab geschlossen ist.
-
-Vollständige Anleitung: [PWA-Setup](/purplemux/de/docs/pwa-setup/) · [Web Push](/purplemux/de/docs/web-push/) · [Tailscale](/purplemux/de/docs/tailscale/).
-
-## Wie es weitergeht
-
-- **[Tastenkürzel](/purplemux/de/docs/keyboard-shortcuts/)** — alle Bindings auf einen Blick.
-- **[Browser-Unterstützung](/purplemux/de/docs/browser-support/)** — Kompatibilitätsmatrix, vor allem iOS Safari 16.4+.
-- Erkunde die Seitenleiste: **Notizen** (<kbd>⌘⇧E</kbd>) für den AI-Tagesbericht, **Statistiken** (<kbd>⌘⇧U</kbd>) für Nutzungsanalysen.
+- **[세션 상태](/codexmux/de/docs/session-status/)**
+- **[권한 프롬프트](/codexmux/de/docs/permission-prompts/)**
+- **[브라우저 지원](/codexmux/de/docs/browser-support/)**

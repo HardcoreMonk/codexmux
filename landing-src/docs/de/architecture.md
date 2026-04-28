@@ -1,137 +1,72 @@
 ---
-title: Architektur
-description: Wie Browser, Node.js-Server, tmux und die Claude-CLI zusammenpassen.
-eyebrow: Referenz
+title: 아키텍처
+description: 브라우저, Node.js 서버, tmux, Codex CLI가 맞물리는 구조.
+eyebrow: 레퍼런스
 permalink: /de/docs/architecture/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux sind drei zusammengenähte Schichten: ein Browser-Frontend, ein Node.js-Server auf `:8022` und tmux + die Claude-CLI auf dem Host. Alles dazwischen ist entweder ein binärer WebSocket oder ein kleiner HTTP-POST.
+codexmux는 브라우저, Node.js 서버, 호스트의 tmux와 Codex CLI로 구성됩니다. 터미널 입출력은 tmux에 남기고 Codex 상태는 process tree와 `~/.codex/sessions/**/*.jsonl`에서 읽습니다.
 
-## Die drei Schichten
+## 전체 구조
 
-```
-Browser                         Node.js-Server (:8022)            Host
-─────────                       ────────────────────────          ──────────────
-xterm.js  ◀──ws /api/terminal──▶  terminal-server.ts  ──node-pty──▶ tmux (purple-Socket)
-Timeline  ◀──ws /api/timeline──▶  timeline-server.ts                    │
-Status    ◀──ws /api/status────▶  status-server.ts                      └─▶ shell ─▶ claude
-Sync      ◀──ws /api/sync──────▶  sync-server.ts
-                                  status-manager.ts ◀──POST /api/status/hook── status-hook.sh
-                                  rate-limits-watcher.ts ◀──POST /api/status/statusline── statusline.sh
-                                  JSONL-Watcher ──liest── ~/.claude/projects/**/*.jsonl
+```text
+브라우저
+  ├─ /api/terminal -> terminal-server.ts -> node-pty -> tmux -L codexmux -> codex
+  ├─ /api/timeline -> timeline-server.ts -> Codex JSONL
+  ├─ /api/status   -> status-server.ts   -> status-manager.ts
+  └─ /api/sync     -> sync-server.ts     -> workspace/layout store
 ```
 
-Jeder WebSocket hat einen einzigen Zweck; sie multiplexen nicht. Authentifizierung ist ein NextAuth-JWT-Cookie, der beim WS-Upgrade verifiziert wird.
+WebSocket은 역할별로 분리되어 있고 upgrade 시 NextAuth JWT cookie로 인증합니다.
 
-## Browser
+## 브라우저
 
-Das Frontend ist eine Next.js-(Pages-Router-)App. Die Teile, die mit dem Server reden:
+| 구성 | 역할 |
+|---|---|
+| xterm.js terminal | tmux output 렌더링, key/resize/title event 전송 |
+| live timeline | Codex JSONL에서 파싱한 message, tool call, reasoning 표시 |
+| status badge | `/api/status`를 통해 idle, busy, needs-input, review 표시 |
+| sync client | 다른 기기에서 변경한 workspace와 layout 반영 |
 
-| Komponente | Bibliothek | Zweck |
-|---|---|---|
-| Terminal-Panel | `xterm.js` | Rendert Bytes von `/api/terminal`. Emittiert Tastendrücke, Resize-Events, Title-Changes (`onTitleChange`). |
-| Session-Timeline | React + `useTimeline` | Rendert Claude-Turns von `/api/timeline`. Keine `cliState`-Ableitung — das ist alles server-seitig. |
-| Status-Indikatoren | Zustand `useTabStore` | Tab-Badges, Sidebar-Punkte, Notification-Counts, getrieben durch `/api/status`-Nachrichten. |
-| Multi-Device-Sync | `useSyncClient` | Beobachtet Workspace-/Layout-Edits von einem anderen Gerät via `/api/sync`. |
+## 서버
 
-Tab-Titel und der Vordergrundprozess kommen aus xterm.js' `onTitleChange`-Event — tmux ist (`src/config/tmux.conf`) so konfiguriert, dass es alle zwei Sekunden `#{pane_current_command}|#{pane_current_path}` emittiert, und `lib/tab-title.ts` parst das.
+`server.ts`는 Next.js와 WebSocket server를 같은 port에서 제공합니다. `/api/install`은 첫 실행 설정을 처리하고, `/api/cli/*`는 `x-cmux-token`을 요구합니다.
 
-## Node.js-Server
+| 경로 | 용도 |
+|---|---|
+| `/api/terminal` | terminal I/O stream |
+| `/api/timeline` | Codex session timeline stream |
+| `/api/status` | tab status sync와 notification ack |
+| `/api/sync` | workspace state 동기화 |
 
-`server.ts` ist ein Custom-HTTP-Server, der Next.js plus vier `ws`-`WebSocketServer`-Instanzen auf demselben Port hostet.
+## tmux
 
-### WebSocket-Endpunkte
+codexmux는 `codexmux` socket에 격리된 tmux session을 만들고 `src/config/tmux.conf`를 적용합니다. 사용자의 `~/.tmux.conf`는 읽지 않습니다. session 이름은 `pt-{workspaceId}-{paneId}-{tabId}`입니다.
 
-| Pfad | Handler | Richtung | Zweck |
-|---|---|---|---|
-| `/api/terminal` | `terminal-server.ts` | bidirektional, binär | Terminal-I/O via `node-pty`, an eine tmux-Session gebunden |
-| `/api/timeline` | `timeline-server.ts` | Server → Client | Streamt Claude-Session-Einträge, geparst aus JSONL |
-| `/api/status` | `status-server.ts` | bidirektional, JSON | `status:sync` / `status:update` / `status:hook-event` vom Server, `status:tab-dismissed` / `status:ack-notification` / `status:request-sync` vom Client |
-| `/api/sync` | `sync-server.ts` | bidirektional, JSON | Cross-Device-Workspace-State |
+## Codex 연동
 
-Plus `/api/install` für den First-Run-Installer (keine Auth nötig).
+- `src/lib/codex-command.ts`가 `codex`와 `codex resume <sessionId>` command를 만듭니다.
+- `src/lib/codex-session-detection.ts`가 pane process tree에서 `codex` process를 찾습니다.
+- `src/lib/codex-session-parser.ts`가 JSONL을 timeline entry로 변환합니다.
+- stats와 daily report는 같은 JSONL을 읽어 계산합니다.
 
-### Terminal-Binärprotokoll
+## 시작 순서
 
-`/api/terminal` nutzt ein winziges Binärprotokoll, definiert in `src/lib/terminal-protocol.ts`:
+1. lock 획득.
+2. config, shell path, auth 초기화.
+3. tmux session scan과 config 적용.
+4. workspace와 layout 로드.
+5. 저장된 shell과 Codex session 자동 복구.
+6. StatusManager와 WebSocket route 준비.
+7. port, CLI token, bridge script 갱신.
 
-| Code | Name | Richtung | Payload |
-|---|---|---|---|
-| `0x00` | `MSG_STDIN` | Client → Server | Key-Bytes |
-| `0x01` | `MSG_STDOUT` | Server → Client | Terminal-Output |
-| `0x02` | `MSG_RESIZE` | Client → Server | `cols: u16, rows: u16` |
-| `0x03` | `MSG_HEARTBEAT` | beide | 30 s Intervall, 90 s Timeout |
-| `0x04` | `MSG_KILL_SESSION` | Client → Server | Beendet die zugrundeliegende tmux-Session |
-| `0x05` | `MSG_WEB_STDIN` | Client → Server | Web-Eingabeleisten-Text (geliefert nach Copy-Mode-Ausstieg) |
-
-Backpressure: `pty.pause` wenn WS `bufferedAmount > 1 MB`, Resume unter `256 KB`. Maximal 32 gleichzeitige Verbindungen pro Server, älteste werden darüber hinaus verworfen.
-
-### Status-Manager
-
-`src/lib/status-manager.ts` ist die einzige Quelle der Wahrheit für `cliState`. Hook-Events fließen durch `/api/status/hook` (token-authentifiziertes POST), werden sequenziert (`eventSeq` pro Tab) und durch `deriveStateFromEvent` zu `idle` / `busy` / `needs-input` / `ready-for-review` / `unknown` reduziert. Der JSONL-Watcher aktualisiert nur Metadaten, mit Ausnahme eines synthetischen `interrupt`-Events.
-
-Für die vollständige State-Machine siehe [Session-Status (STATUS.md)](https://github.com/subicura/purplemux/blob/main/docs/STATUS.md).
-
-## tmux-Schicht
-
-purplemux betreibt ein isoliertes tmux auf einem dedizierten Socket — `-L purple` — mit eigener Config in `src/config/tmux.conf`. Deine `~/.tmux.conf` wird nie gelesen.
-
-Sessions heißen `pt-{workspaceId}-{paneId}-{tabId}`. Ein Terminal-Panel im Browser entspricht einer tmux-Session, angebunden via `node-pty`.
-
-```
-tmux-Socket: purple
-├── pt-ws-MMKl07-pa-1-tb-1   ← Browser-Tab 1
-├── pt-ws-MMKl07-pa-1-tb-2   ← Browser-Tab 2
-└── pt-ws-MMKl07-pa-2-tb-1   ← Split-Panel, Tab 1
-```
-
-`prefix` ist deaktiviert, die Status-Bar ist aus (xterm.js zeichnet das Chrome), `set-titles` ist an, und `mouse on` legt das Mausrad in den Copy-Modus. tmux ist der Grund, warum Sessions einen geschlossenen Browser, einen WLAN-Drop oder einen Server-Restart überleben.
-
-Für das vollständige tmux-Setup, den Command-Wrapper und die Prozess-Detection siehe [tmux & Prozess-Detection (TMUX.md)](https://github.com/subicura/purplemux/blob/main/docs/TMUX.md).
-
-## Claude-CLI-Integration
-
-purplemux forkt oder wrappt Claude nicht — das `claude`-Binary ist genau das, was du installiert hast. Zwei Dinge werden ergänzt:
-
-1. **Hook-Settings** — beim Startup schreibt `ensureHookSettings()` `~/.purplemux/hooks.json`, `status-hook.sh` und `statusline.sh`. Jeder Claude-Tab startet mit `--settings ~/.purplemux/hooks.json`, sodass `SessionStart`, `UserPromptSubmit`, `Notification`, `Stop`, `PreCompact`, `PostCompact` alle an den Server zurück-POSTen.
-2. **JSONL-Reads** — `~/.claude/projects/**/*.jsonl` wird von `timeline-server.ts` für die Live-Konversations-Ansicht geparst und von `session-detection.ts` beobachtet, um einen laufenden Claude-Prozess über die PID-Dateien unter `~/.claude/sessions/` zu erkennen.
-
-Hook-Skripte lesen `~/.purplemux/port` und `~/.purplemux/cli-token` und POSTen mit `x-pmux-token`. Sie schlagen still fehl, wenn der Server down ist, sodass das Schließen von purplemux während Claude läuft nichts crasht.
-
-## Startup-Sequenz
-
-`server.ts:start()` läuft diese in Reihenfolge durch:
-
-1. `acquireLock(port)` — Single-Instance-Guard via `~/.purplemux/pmux.lock`
-2. `initConfigStore()` + `initShellPath()` (löst den Login-Shell-`PATH` des Users auf)
-3. `initAuthCredentials()` — lädt scrypt-gehashtes Passwort und HMAC-Secret in die Env
-4. `scanSessions()` + `applyConfig()` — räumt tote tmux-Sessions auf, wendet `tmux.conf` an
-5. `initWorkspaceStore()` — lädt `workspaces.json` und pro-Workspace-`layout.json`
-6. `autoResumeOnStartup()` — startet Shells in gespeicherten Verzeichnissen neu, versucht Claude-Resume
-7. `getStatusManager().init()` — startet das Metadaten-Polling
-8. `app.prepare()` (Next.js dev) oder `require('.next/standalone/server.js')` (prod)
-9. `listenWithFallback()` auf `bindPlan.host:port` (`0.0.0.0` oder `127.0.0.1` je nach Access-Policy)
-10. `ensureHookSettings(result.port)` — schreibt oder aktualisiert Hook-Skripte mit dem tatsächlichen Port
-11. `getCliToken()` — liest oder generiert `~/.purplemux/cli-token`
-12. `writeAllClaudePromptFiles()` — refreshet jedes Workspace-`claude-prompt.md`
-
-Das Fenster zwischen Port-Auflösung und Schritt 10 ist der Grund, warum Hook-Skripte bei jedem Start regeneriert werden: Sie brauchen den Live-Port eingebrannt.
-
-## Custom-Server vs. Next.js-Modul-Graph
-
-{% call callout('warning', 'Zwei Modul-Graphen in einem Prozess') %}
-Der Outer-Custom-Server (`server.ts`) und Next.js (Pages + API-Routes) teilen sich einen Node-Prozess, aber **nicht** ihre Modul-Graphen. Alles unter `src/lib/*`, das von beiden Seiten importiert wird, wird zweimal instanziiert. Singletons, die geteilt werden müssen (StatusManager, WebSocket-Client-Sets, CLI-Token, File-Write-Locks), hängen an `globalThis.__pt*`-Keys. Siehe `CLAUDE.md §18` für die vollständige Begründung.
+{% call callout('warning', 'module graph 주의') %}
+custom server와 Next.js route는 같은 process 안에 있지만 module graph가 다릅니다. 공유 singleton은 `globalThis` convention을 사용해야 합니다.
 {% endcall %}
 
-## Wo du mehr lesen kannst
+## 다음 단계
 
-- [`docs/TMUX.md`](https://github.com/subicura/purplemux/blob/main/docs/TMUX.md) — tmux-Config, Command-Wrapper, Process-Tree-Walking, Terminal-Binärprotokoll.
-- [`docs/STATUS.md`](https://github.com/subicura/purplemux/blob/main/docs/STATUS.md) — Claude-CLI-State-Machine, Hook-Flow, synthetisches Interrupt-Event, JSONL-Watcher.
-- [`docs/DATA-DIR.md`](https://github.com/subicura/purplemux/blob/main/docs/DATA-DIR.md) — jede Datei, die purplemux schreibt.
-
-## Wie es weitergeht
-
-- **[Daten-Verzeichnis](/purplemux/de/docs/data-directory/)** — jede Datei, die die obige Architektur berührt.
-- **[CLI-Referenz](/purplemux/de/docs/cli-reference/)** — von außerhalb des Browsers mit dem Server reden.
-- **[Troubleshooting](/purplemux/de/docs/troubleshooting/)** — diagnostizieren, wenn etwas hier daneben läuft.
+- **[데이터 디렉터리](/codexmux/de/docs/data-directory/)**
+- **[CLI 레퍼런스](/codexmux/de/docs/cli-reference/)**
+- **[문제 해결](/codexmux/de/docs/troubleshooting/)**

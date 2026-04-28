@@ -2,28 +2,22 @@ import fs from 'fs/promises';
 import { createReadStream } from 'fs';
 import path from 'path';
 import readline from 'readline';
-import { toClaudeProjectName } from '@/lib/session-detection';
 import { getSessionCwd } from '@/lib/tmux';
 import { createLogger } from '@/lib/logger';
 import { createMetaCache } from '@/lib/session-meta-cache';
+import { isAgentPanelType } from '@/lib/panel-type';
 import type { ISessionMeta } from '@/types/timeline';
+import type { TPanelType } from '@/types/terminal';
 
 const log = createLogger('session-list');
 
-const PROJECTS_DIR = path.join(
-  process.env.HOME || process.env.USERPROFILE || '/',
-  '.claude',
-  'projects',
-);
+const HOME_DIR = process.env.HOME || process.env.USERPROFILE || '/';
+const CODEX_SESSIONS_DIR = path.join(HOME_DIR, '.codex', 'sessions');
 const MAX_CONCURRENCY = 10;
 const MAX_FIRST_MESSAGE_LENGTH = 200;
+const CODEX_THREAD_ID_RE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
 
 const metaCache = createMetaCache();
-
-export const cwdToProjectPath = (cwd: string): string => {
-  const projectName = toClaudeProjectName(cwd);
-  return path.join(PROJECTS_DIR, projectName);
-};
 
 const runWithConcurrency = async <T>(
   tasks: (() => Promise<T>)[],
@@ -60,56 +54,103 @@ interface IJsonlScanResult {
   turnCount: number;
 }
 
-const scanJsonl = async (filePath: string): Promise<IJsonlScanResult> => {
+interface ICodexJsonlScanResult extends IJsonlScanResult {
+  sessionId: string | null;
+  cwd: string | null;
+}
+
+
+const collectCodexJsonlFiles = async (dir: string, depth = 0): Promise<string[]> => {
+  if (depth > 4) return [];
+
+  let entries: import('fs').Dirent[];
+  try {
+    entries = await fs.readdir(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+
+  const files: string[] = [];
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await collectCodexJsonlFiles(fullPath, depth + 1));
+    } else if (entry.isFile() && entry.name.endsWith('.jsonl')) {
+      files.push(fullPath);
+    }
+  }
+  return files;
+};
+
+const extractCodexText = (content: unknown): string => {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+
+  return content
+    .map((item) => {
+      if (!item || typeof item !== 'object') return '';
+      const block = item as Record<string, unknown>;
+      return typeof block.text === 'string' ? block.text : '';
+    })
+    .filter(Boolean)
+    .join('\n\n');
+};
+
+const scanCodexJsonl = async (filePath: string): Promise<ICodexJsonlScanResult> => {
   const stream = createReadStream(filePath, { encoding: 'utf-8' });
   const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
 
+  let sessionId = path.basename(filePath, '.jsonl').match(CODEX_THREAD_ID_RE)?.[1] ?? null;
+  let cwd: string | null = null;
   let startedAt: string | null = null;
   let firstMessage = '';
   let turnCount = 0;
-  let isFirstLine = true;
+  let fallbackFirstMessage = '';
+  let fallbackTurnCount = 0;
 
   try {
     for await (const line of rl) {
-      if (isFirstLine) {
-        isFirstLine = false;
-        if (line.trim()) {
-          try {
-            const entry = JSON.parse(line);
-            if (entry.timestamp) {
-              startedAt = new Date(entry.timestamp).toISOString();
-            }
-          } catch {}
-        }
+      if (!line.trim()) continue;
+
+      let record: Record<string, unknown>;
+      try {
+        record = JSON.parse(line);
+      } catch {
+        continue;
       }
 
-      const isHumanOrUser =
-        line.includes('"type":"human"') ||
-        line.includes('"type": "human"') ||
-        line.includes('"type":"user"') ||
-        line.includes('"type": "user"');
-      if (isHumanOrUser && !line.includes('"isMeta":true') && !line.includes('"isMeta": true')) {
-        turnCount++;
+      const timestamp = typeof record.timestamp === 'string' ? record.timestamp : null;
+      if (!startedAt && timestamp) {
+        const ts = new Date(timestamp);
+        if (!Number.isNaN(ts.getTime())) startedAt = ts.toISOString();
+      }
 
-        if (!firstMessage) {
-          try {
-            const entry = JSON.parse(line);
-            if ((entry.type === 'human' || entry.type === 'user') && !entry.isMeta) {
-              const msg = entry.message;
-              if (msg) {
-                if (typeof msg === 'string') {
-                  firstMessage = truncateMessage(msg);
-                } else if (Array.isArray(msg.content)) {
-                  const textBlock = msg.content.find(
-                    (b: { type: string; text?: string }) => b.type === 'text' && b.text,
-                  );
-                  if (textBlock) firstMessage = truncateMessage(textBlock.text);
-                } else if (typeof msg.content === 'string') {
-                  firstMessage = truncateMessage(msg.content);
-                }
-              }
-            }
-          } catch {}
+      const payload = record.payload;
+      if (!payload || typeof payload !== 'object') continue;
+      const data = payload as Record<string, unknown>;
+
+      if (record.type === 'session_meta') {
+        if (typeof data.id === 'string') sessionId = data.id;
+        if (typeof data.cwd === 'string') cwd = data.cwd;
+        if (typeof data.timestamp === 'string') {
+          const ts = new Date(data.timestamp);
+          if (!Number.isNaN(ts.getTime())) startedAt = ts.toISOString();
+        }
+        continue;
+      }
+
+      let text = '';
+      if (record.type === 'event_msg' && data.type === 'user_message') {
+        text = typeof data.message === 'string' ? data.message : '';
+        if (text.trim()) {
+          turnCount++;
+          if (!firstMessage) firstMessage = truncateMessage(text.trim());
+        }
+      } else if (record.type === 'response_item' && data.role === 'user') {
+        text = extractCodexText(data.content);
+        if (text.trim() && !text.trim().startsWith('<environment_context>')) {
+          fallbackTurnCount++;
+          if (!fallbackFirstMessage) fallbackFirstMessage = truncateMessage(text.trim());
         }
       }
     }
@@ -118,55 +159,74 @@ const scanJsonl = async (filePath: string): Promise<IJsonlScanResult> => {
     stream.destroy();
   }
 
-  return { startedAt, firstMessage, turnCount };
+  return {
+    sessionId,
+    cwd,
+    startedAt,
+    firstMessage: firstMessage || fallbackFirstMessage,
+    turnCount: turnCount || fallbackTurnCount,
+  };
 };
 
-export const parseSessionMeta = async (jsonlPath: string): Promise<ISessionMeta | null> => {
+export const parseCodexSessionMeta = async (jsonlPath: string): Promise<ISessionMeta | null> => {
   try {
     const stat = await fs.stat(jsonlPath);
-    const sessionId = path.basename(jsonlPath, '.jsonl');
+    const fallbackSessionId = path.basename(jsonlPath, '.jsonl').match(CODEX_THREAD_ID_RE)?.[1] ?? path.basename(jsonlPath, '.jsonl');
 
-    const cached = metaCache.get(sessionId);
-    if (cached && !metaCache.isStale(sessionId, stat.mtimeMs)) {
+    const cacheKey = `codex:${fallbackSessionId}`;
+    const cached = metaCache.get(cacheKey);
+    if (cached && !metaCache.isStale(cacheKey, stat.mtimeMs)) {
       return cached;
     }
 
-    const { startedAt: startedAtFromFile, firstMessage, turnCount } = await scanJsonl(jsonlPath);
-
-    const startedAt = startedAtFromFile || stat.birthtime.toISOString();
-    const lastActivityAt = stat.mtime.toISOString();
+    const { sessionId, startedAt: startedAtFromFile, firstMessage, turnCount } = await scanCodexJsonl(jsonlPath);
+    if (!sessionId) return null;
 
     const meta: ISessionMeta = {
       sessionId,
-      startedAt,
-      lastActivityAt,
+      startedAt: startedAtFromFile || stat.birthtime.toISOString(),
+      lastActivityAt: stat.mtime.toISOString(),
       firstMessage,
       turnCount,
     };
 
-    metaCache.set(sessionId, meta, stat.mtimeMs);
+    metaCache.set(cacheKey, meta, stat.mtimeMs);
     return meta;
   } catch (err) {
-    log.warn({ err }, `failed to parse session meta: ${jsonlPath}`);
+    log.warn({ err }, `failed to parse Codex session meta: ${jsonlPath}`);
     return null;
   }
 };
 
-export const listSessions = async (tmuxSession: string, cwdHint?: string): Promise<ISessionMeta[]> => {
-  const cwd = cwdHint || await getSessionCwd(tmuxSession);
-  if (!cwd) throw new Error('cwd-lookup-failed');
+const listCodexSessions = async (cwd?: string): Promise<ISessionMeta[]> => {
+  const files = await collectCodexJsonlFiles(CODEX_SESSIONS_DIR);
+  const tasks = files.map((file) => async () => {
+    try {
+      const scan = await scanCodexJsonl(file);
+      if (cwd && scan.cwd !== cwd) return null;
 
-  const projectDir = cwdToProjectPath(cwd);
+      const stat = await fs.stat(file);
+      const sessionId = scan.sessionId ?? path.basename(file, '.jsonl').match(CODEX_THREAD_ID_RE)?.[1];
+      if (!sessionId) return null;
 
-  let files: string[];
-  try {
-    const entries = await fs.readdir(projectDir);
-    files = entries.filter((f) => f.endsWith('.jsonl'));
-  } catch {
-    return [];
-  }
+      const cacheKey = `codex:${sessionId}`;
+      const cached = metaCache.get(cacheKey);
+      if (cached && !metaCache.isStale(cacheKey, stat.mtimeMs)) return cached;
 
-  const tasks = files.map((file) => () => parseSessionMeta(path.join(projectDir, file)));
+      const meta: ISessionMeta = {
+        sessionId,
+        startedAt: scan.startedAt || stat.birthtime.toISOString(),
+        lastActivityAt: stat.mtime.toISOString(),
+        firstMessage: scan.firstMessage,
+        turnCount: scan.turnCount,
+      };
+      metaCache.set(cacheKey, meta, stat.mtimeMs);
+      return meta;
+    } catch (err) {
+      log.warn({ err }, `failed to parse Codex session meta: ${file}`);
+      return null;
+    }
+  });
   const results = await runWithConcurrency(tasks, MAX_CONCURRENCY);
 
   const sessions: ISessionMeta[] = [];
@@ -181,4 +241,19 @@ export const listSessions = async (tmuxSession: string, cwdHint?: string): Promi
   );
 
   return sessions;
+};
+
+export const listSessions = async (
+  tmuxSession: string,
+  cwdHint?: string,
+  panelType: TPanelType = 'codex',
+): Promise<ISessionMeta[]> => {
+  const cwd = cwdHint || await getSessionCwd(tmuxSession);
+  if (!cwd) throw new Error('cwd-lookup-failed');
+
+  if (isAgentPanelType(panelType)) {
+    return listCodexSessions(cwd);
+  }
+
+  return [];
 };

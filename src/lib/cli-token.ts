@@ -4,7 +4,7 @@ import path from 'path';
 import os from 'os';
 import type { NextApiRequest } from 'next';
 
-const TOKEN_FILE = path.join(os.homedir(), '.purplemux', 'cli-token');
+const TOKEN_FILE = path.join(os.homedir(), '.codexmux', 'cli-token');
 
 const g = globalThis as unknown as { __ptCliToken?: string };
 
@@ -47,6 +47,6 @@ export const verifyTokenValue = (value: string | null | undefined): boolean => {
 };
 
 export const verifyCliToken = (req: NextApiRequest): boolean => {
-  const value = req.headers['x-pmux-token'];
+  const value = req.headers['x-cmux-token'];
   return verifyTokenValue(typeof value === 'string' ? value : undefined);
 };

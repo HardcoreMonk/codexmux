@@ -23,12 +23,12 @@
   "syncErrorLocalChanges": "로컬 변경사항이 덮어써질 수 있어요. 먼저 커밋하거나 stash 하세요",
   "syncErrorTimeout": "동기화 시간 초과",
   "syncErrorGeneric": "동기화 실패",
-  "askClaude": "Claude에게 묻기",
-  "claudePromptDiverged": "Git sync에 실패했어. {branch}가 {upstream}와 분기됐어. 최신 origin을 받아서 rebase하고 충돌이 있으면 해결해줘.",
-  "claudePromptRejected": "Git push가 거부됐어. {upstream}에 새 커밋이 있는 것 같아. pull로 병합 후 다시 push해줘.",
-  "claudePromptAuth": "Git 인증에 실패했어. credential helper나 SSH 설정을 확인하고 다시 시도해줘.",
-  "claudePromptNoUpstream": "{branch} 브랜치에 upstream이 없어. origin에 push하고 tracking 브랜치 설정해줘.",
-  "claudePromptLocalChanges": "Git pull이 실패했어. 로컬에 커밋 안 된 변경사항이 있어서 merge가 취소됐어. 지금 변경사항을 stash하거나 커밋한 다음 {upstream}에서 pull하고, stash했다면 다시 적용해줘.",
-  "claudePromptTimeout": "Git sync가 시간 초과로 실패했어. 네트워크 상태 확인하고 다시 시도해줘.",
-  "claudePromptGeneric": "Git sync가 실패했어. 아래 에러 메시지를 보고 해결해줘."
+  "askCodex": "Codex에게 묻기",
+  "agentPromptDiverged": "Git sync에 실패했어. {branch}가 {upstream}와 분기됐어. 최신 origin을 받아서 rebase하고 충돌이 있으면 해결해줘.",
+  "agentPromptRejected": "Git push가 거부됐어. {upstream}에 새 커밋이 있는 것 같아. pull로 병합 후 다시 push해줘.",
+  "agentPromptAuth": "Git 인증에 실패했어. credential helper나 SSH 설정을 확인하고 다시 시도해줘.",
+  "agentPromptNoUpstream": "{branch} 브랜치에 upstream이 없어. origin에 push하고 tracking 브랜치 설정해줘.",
+  "agentPromptLocalChanges": "Git pull이 실패했어. 로컬에 커밋 안 된 변경사항이 있어서 merge가 취소됐어. 지금 변경사항을 stash하거나 커밋한 다음 {upstream}에서 pull하고, stash했다면 다시 적용해줘.",
+  "agentPromptTimeout": "Git sync가 시간 초과로 실패했어. 네트워크 상태 확인하고 다시 시도해줘.",
+  "agentPromptGeneric": "Git sync가 실패했어. 아래 에러 메시지를 보고 해결해줘."
 }

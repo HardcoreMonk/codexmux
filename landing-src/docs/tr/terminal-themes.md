@@ -1,73 +1,73 @@
 ---
-title: Terminal temaları
-description: xterm.js terminali için ayrı bir renk paleti — biri açık, biri koyu için seçin.
-eyebrow: Özelleştirme
+title: 터미널 테마
+description: xterm.js 터미널 전용 팔레트 — 다크와 라이트를 각각 한 개씩 고릅니다.
+eyebrow: 커스터마이즈
 permalink: /tr/docs/terminal-themes/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Terminal paneli, UI'nın geri kalanından bağımsız kendi paletiyle xterm.js kullanır. Bir koyu tema ve bir açık tema seçersiniz; uygulama teması değiştikçe purplemux aralarında geçiş yapar.
+터미널 영역은 UI와는 독립된 xterm.js 팔레트를 씁니다. 다크 테마와 라이트 테마를 각각 하나씩 골라두면, 앱 테마가 바뀔 때 codexmux가 자동으로 전환합니다.
 
-## Seçiciyi açın
+## 선택 화면 열기
 
-Ayarlar (<kbd>⌘,</kbd>) → **Terminal** sekmesi. Dark ve Light etiketli iki alt sekme göreceksiniz, her biri tema kartlarından oluşan bir ızgaraya sahip. Birine tıklayın — açık olan her terminale canlı uygulanır.
+설정(<kbd>⌘,</kbd>) → **터미널** 탭의 어두운/밝은 서브 탭 안에 카드 그리드가 있습니다. 카드를 누르면 열려 있는 모든 터미널에 즉시 반영됩니다.
 
-## Neden ayrı bir palet
+## 왜 따로 둘까
 
-Terminal uygulamaları 16 renkli ANSI paletine bağlıdır (kırmızı, yeşil, sarı, mavi, magenta, cyan, artı parlak varyantları). UI paleti tasarımı gereği soluktur ve terminal çıktısını okunmaz hale getirirdi. Amaca yönelik bir palet `vim`, `git diff`, sözdizimi vurgulama ve TUI araçlarının doğru çizilmesini sağlar.
+터미널 앱은 16색 ANSI 팔레트(red, green, yellow, blue, magenta, cyan과 bright 버전)에 의존합니다. UI 팔레트는 의도적으로 채도를 낮춰 두었기 때문에 그대로 쓰면 터미널 출력이 읽히지 않습니다. 별도 팔레트가 있어야 `vim`, `git diff`, 신택스 하이라이트, TUI 도구가 제대로 보입니다.
 
-Her tema şunları tanımlar:
+각 테마는 다음을 정의합니다.
 
-- Arka plan, ön plan, imleç, seçim
-- Sekiz temel ANSI rengi (siyah, kırmızı, yeşil, sarı, mavi, magenta, cyan, beyaz)
-- Sekiz parlak varyant
+- background, foreground, cursor, selection
+- 8개 기본 ANSI 컬러(black, red, green, yellow, blue, magenta, cyan, white)
+- 8개 bright 변형
 
-## Paketlenmiş temalar
+## 기본 제공 테마
 
-**Koyu**
+**Dark**
 
-- Snazzy *(varsayılan)*
+- Snazzy *(기본값)*
 - Dracula
 - One Dark
 - Tokyo Night
 - Nord
 - Catppuccin Mocha
 
-**Açık**
+**Light**
 
-- Catppuccin Latte *(varsayılan)*
+- Catppuccin Latte *(기본값)*
 - GitHub Light
 - One Light
 - Solarized Light
 - Tokyo Night Light
 - Nord Light
 
-Kart önizlemesi, temanın arka planında yedi temel ANSI rengini gösterir, böylece taahhütten önce kontrastı göz kararı kontrol edebilirsiniz.
+카드 미리보기에 테마 배경 위 7개 ANSI 컬러가 표시되어, 선택 전에 대비를 가늠할 수 있습니다.
 
-## Açık/koyu geçişi nasıl çalışır
+## 라이트/다크 전환 방식
 
-**Bir koyu tema** ve **bir açık tema**'yı bağımsız seçersiniz. Aktif tema, çözümlenmiş uygulama temasıyla belirlenir:
+다크 테마와 라이트 테마를 각각 **독립적으로** 선택합니다. 활성 테마는 앱 테마에 따라 결정됩니다.
 
-- Uygulama teması **Koyu** → seçtiğiniz koyu tema.
-- Uygulama teması **Açık** → seçtiğiniz açık tema.
-- Uygulama teması **Sistem** → OS'u takip eder, otomatik değişir.
+- 앱 테마 **Dark** → 선택한 다크 테마
+- 앱 테마 **Light** → 선택한 라이트 테마
+- 앱 테마 **System** → OS 모드에 따라 자동 전환
 
-Yani uygulama teması için Sistem seçmek ve her iki tarafı yapılandırmak, ek bir bağlantı olmadan OS gece/gündüzünüzü takip eden bir terminal verir.
+앱 테마를 System으로 두고 양쪽을 설정해두면, 추가 작업 없이 OS의 낮/밤 모드를 따라가는 터미널이 됩니다.
 
-{% call callout('tip', 'Uygulamayla eşleştir veya kontrast yap') %}
-Bazıları terminalin UI'nın geri kalanıyla eşleşmesini sever. Diğerleri açık bir uygulamada bile yüksek kontrastlı Dracula veya Tokyo Night terminali tercih eder. İkisi de işe yarar; seçici hiçbir şeyi zorlamaz.
+{% call callout('tip', '맞춰도 되고 어긋나게 해도 됩니다') %}
+UI와 같은 톤의 터미널을 선호하는 사람도 있고, 라이트 앱에서도 강한 대비의 Dracula·Tokyo Night을 쓰는 사람도 있습니다. 둘 다 됩니다. 선택을 강제하지 않습니다.
 {% endcall %}
 
-## Tema başına, sekme başına değil
+## 탭별이 아닌 전역 설정
 
-Seçim küreseldir. Her terminal paneli ve her Claude oturumu aynı aktif temayı kullanır. Sekme başına geçersiz kılma yok; ihtiyacınız varsa bir issue açın.
+선택은 전역입니다. 모든 터미널 pane과 Codex 세션이 같은 활성 테마를 씁니다. 탭별 오버라이드는 현재 없습니다. 필요하면 이슈로 알려주세요.
 
-## Kendinizinkini ekleme
+## 직접 추가하려면
 
-Özel tema girişleri şu anda UI'nın bir parçası değil. Paketlenmiş liste `src/lib/terminal-themes.ts`'de yaşar. Kaynaktan derlerseniz kendinizinkini ekleyebilirsiniz; aksi halde desteklenen yol, yeni temayla bir PR açmaktır.
+UI에서 커스텀 테마를 등록하는 기능은 아직 없습니다. 기본 목록은 `src/lib/terminal-themes.ts`에 정의되어 있으며, 소스에서 빌드한다면 직접 추가할 수 있습니다. 그 외에는 PR로 기여하는 것이 권장 경로입니다.
 
-## Sıradaki adımlar
+## 다음으로
 
-- **[Temalar & fontlar](/purplemux/tr/docs/themes-fonts/)** — uygulama teması ve font boyutu.
-- **[Özel CSS](/purplemux/tr/docs/custom-css/)** — UI'nın geri kalanını geçersiz kılın.
-- **[Editör entegrasyonu](/purplemux/tr/docs/editor-integration/)** — dosyaları harici bir editörde açın.
+- **[테마 & 폰트](/codexmux/tr/docs/themes-fonts/)** — 앱 테마와 폰트 크기
+- **[커스텀 CSS](/codexmux/tr/docs/custom-css/)** — 나머지 UI 오버라이드
+- **[에디터 연동](/codexmux/tr/docs/editor-integration/)** — 외부 에디터로 파일 열기

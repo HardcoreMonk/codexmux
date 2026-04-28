@@ -1,151 +1,65 @@
 ---
-title: Каталог данных
-description: Что лежит в ~/.purplemux/, что можно безопасно удалить и как сделать резервную копию.
-eyebrow: Справочник
+title: 데이터 디렉터리
+description: ~/.codexmux/ 아래에 저장되는 파일과 삭제 기준.
+eyebrow: 레퍼런스
 permalink: /ru/docs/data-directory/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Каждый кусочек устойчивого состояния, который держит purplemux — настройки, раскладки, история сессий, кэши — лежит в `~/.purplemux/`. Больше нигде. Никаких `localStorage`, никакого системного keychain, никакого внешнего сервиса.
+codexmux의 영속 상태는 `~/.codexmux/` 아래에 저장됩니다. Codex CLI의 원본 session JSONL은 `~/.codex/sessions/`에 있으며 codexmux는 읽기 전용으로만 접근합니다.
 
-## Раскладка с одного взгляда
+## 구조
 
-```
-~/.purplemux/
-├── config.json              # конфиг приложения (auth, тема, локаль, …)
-├── workspaces.json          # список рабочих пространств + состояние боковой панели
-├── workspaces/
-│   └── {wsId}/
-│       ├── layout.json           # дерево панелей/вкладок
-│       ├── message-history.json  # история ввода по рабочему пространству
-│       └── claude-prompt.md      # содержимое --append-system-prompt-file
-├── hooks.json               # конфиг хуков Claude Code + statusline (генерируется)
-├── status-hook.sh           # скрипт хука (генерируется, 0755)
-├── statusline.sh            # скрипт statusline (генерируется, 0755)
-├── rate-limits.json         # последний JSON statusline
-├── session-history.json     # лог завершённых сессий Claude (между рабочими пространствами)
-├── quick-prompts.json       # кастомные быстрые промпты + отключённые встроенные
-├── sidebar-items.json       # кастомные элементы боковой панели + отключённые встроенные
-├── vapid-keys.json          # пара VAPID-ключей Web Push (генерируется)
-├── push-subscriptions.json  # подписки Web Push на эндпоинты
-├── cli-token                # CLI auth-токен (генерируется)
-├── port                     # текущий порт сервера
-├── pmux.lock                # блокировка единственного экземпляра {pid, port, startedAt}
-├── logs/                    # логи pino-roll
-├── uploads/                 # изображения, прикреплённые через строку ввода
-└── stats/                   # кэш статистики использования Claude
+```text
+~/.codexmux/
+├── config.json
+├── workspaces.json
+├── workspaces/{wsId}/layout.json
+├── hooks.json
+├── status-hook.sh
+├── statusline.sh
+├── rate-limits.json
+├── session-history.json
+├── quick-prompts.json
+├── sidebar-items.json
+├── keybindings.json
+├── vapid-keys.json
+├── push-subscriptions.json
+├── cli-token
+├── port
+├── cmux.lock
+├── logs/
+├── uploads/
+└── stats/
 ```
 
-Файлы с секретами (config, токены, раскладки, VAPID-ключи, lock) пишутся с режимом `0600` через паттерн `tmpFile → rename`.
+`hooks.json`, `status-hook.sh`, `statusline.sh`는 local hook/statusline bridge용 생성 파일입니다. Codex tab 실행에는 필요하지 않습니다.
 
-## Файлы верхнего уровня
+## 주요 파일
 
-| Файл | Что хранит | Безопасно удалить? |
+| 파일 | 내용 | 삭제 가능 여부 |
 |---|---|---|
-| `config.json` | scrypt-хеш пароля для логина, HMAC-секрет сессии, тема, локаль, размер шрифта, переключатель уведомлений, URL редактора, сетевой доступ, custom CSS | Да — перезапускает онбординг |
-| `workspaces.json` | Индекс рабочих пространств, ширина / свернутость боковой панели, ID активного рабочего пространства | Да — стирает все рабочие пространства и вкладки |
-| `hooks.json` | Маппинг `--settings` Claude Code (event → script) + `statusLine.command` | Да — регенерируется при следующем старте |
-| `status-hook.sh`, `statusline.sh` | POST на `/api/status/hook` и `/api/status/statusline` с `x-pmux-token` | Да — регенерируется при следующем старте |
-| `rate-limits.json` | Последний JSON statusline Claude: `ts`, `model`, `five_hour`, `seven_day`, `context`, `cost` | Да — заполняется по ходу работы Claude |
-| `session-history.json` | Последние 200 завершённых сессий Claude (промпты, результаты, длительности, инструменты, файлы) | Да — очищает историю |
-| `quick-prompts.json`, `sidebar-items.json` | `{ custom: […], disabledBuiltinIds: […], order: […] }` поверх встроенных списков | Да — восстанавливает дефолты |
-| `vapid-keys.json` | Пара VAPID-ключей Web Push, генерируется при первом запуске | Не удаляйте без `push-subscriptions.json` (существующие подписки сломаются) |
-| `push-subscriptions.json` | Push-эндпоинты по браузерам | Да — переподписаться на каждом устройстве |
-| `cli-token` | 32-байтовый hex-токен для CLI `purplemux` и скриптов хуков (заголовок `x-pmux-token`) | Да — регенерируется при следующем старте, но уже сгенерированный скрипт хука сохраняет старый токен, пока сервер его не перезапишет |
-| `port` | Текущий порт plain-text, читается скриптами хуков и CLI | Да — регенерируется при следующем старте |
-| `pmux.lock` | Защита единственного экземпляра `{ pid, port, startedAt }` | Только если ни один процесс purplemux не жив |
+| `config.json` | login hash, session secret, theme, Codex option | 가능. onboarding 재실행 |
+| `workspaces.json` | workspace 목록과 sidebar 상태 | 가능. 모든 workspace 초기화 |
+| `layout.json` | pane/tab tree와 tab metadata | 가능. 해당 workspace layout 초기화 |
+| `cli-token` | CLI와 bridge script token | 가능. 재시작 시 재생성 |
+| `port` | 현재 server port | 가능. 재시작 시 재생성 |
+| `cmux.lock` | 단일 인스턴스 guard | process가 없을 때만 삭제 |
+| `stats/` | usage cache와 daily report | 가능. 다음 요청에서 재계산 |
 
-{% call callout('warning', 'Подводные камни lock-файла') %}
-Если purplemux отказывается стартовать с «already running», но процесс не жив — `pmux.lock` устарел. `rm ~/.purplemux/pmux.lock` и попробуйте снова. Если когда-то запускали purplemux под `sudo`, файл может принадлежать root — один раз удалите его через `sudo rm`.
-{% endcall %}
-
-## Каталог рабочего пространства (`workspaces/{wsId}/`)
-
-У каждого рабочего пространства своя папка, названная по сгенерированному ID.
-
-| Файл | Содержимое |
-|---|---|
-| `layout.json` | Рекурсивное дерево панелей/вкладок: листовые узлы `pane` с `tabs[]`, узлы `split` с `children[]` и `ratio`. Каждая вкладка несёт имя tmux-сессии (`pt-{wsId}-{paneId}-{tabId}`), кэшированный `cliState`, `claudeSessionId`, последнюю команду resume. |
-| `message-history.json` | История ввода Claude в этом рабочем пространстве. Лимит — 500 записей. |
-| `claude-prompt.md` | Содержимое `--append-system-prompt-file`, передаваемое каждой вкладке Claude в этом рабочем пространстве. Регенерируется при создании / переименовании / смене каталога. |
-
-Удалите один `workspaces/{wsId}/layout.json`, чтобы сбросить раскладку только этого рабочего пространства до панели по умолчанию, не трогая остальные.
-
-## `logs/`
-
-Вывод Pino-roll, по одному файлу на UTC-сутки, с числовым суффиксом при превышении лимитов размера:
-
-```
-logs/purplemux.2026-04-19.1.log
-```
-
-Уровень по умолчанию — `info`. Переопределите через `LOG_LEVEL` или попроще на модуль через `LOG_LEVELS` — см. [Порты и переменные окружения](/purplemux/ru/docs/ports-env-vars/).
-
-Логи ротируются еженедельно (предел 7 файлов). Можно удалять в любое время.
-
-## `uploads/`
-
-Изображения, прикреплённые через строку ввода (drag, paste, скрепка):
-
-```
-uploads/{wsId}/{tabId}/{timestamp}-{rand}-{name}.{ext}
-```
-
-- Разрешено: `image/png`, `image/jpeg`, `image/gif`, `image/webp`
-- Максимум 10 МБ на файл, режим `0600`
-- Авто-чистка на старте сервера: всё старше 24 часов удаляется
-- Ручная чистка в **Настройки → Система → Прикреплённые изображения → Очистить сейчас**
-
-## `stats/`
-
-Чистый кэш. Производное от `~/.claude/projects/**/*.jsonl` — purplemux только читает этот каталог.
-
-| Файл | Содержимое |
-|---|---|
-| `cache.json` | Дневные агрегаты: сообщения, сессии, вызовы инструментов, почасовые счётчики, потребление токенов по моделям |
-| `uptime-cache.json` | Дневной uptime / активные минуты, свод |
-| `daily-reports/{YYYY-MM-DD}.json` | AI-сгенерированный дневной бриф |
-
-Удалите всю папку, чтобы форсировать пересчёт при следующем запросе статистики.
-
-## Матрица сброса
-
-| Сбросить… | Удалите |
-|---|---|
-| Пароль для логина (повторный онбординг) | `config.json` |
-| Все рабочие пространства и вкладки | `workspaces.json` + `workspaces/` |
-| Раскладку одного рабочего пространства | `workspaces/{wsId}/layout.json` |
-| Статистику использования | `stats/` |
-| Push-подписки | `push-subscriptions.json` |
-| Застрявшее «already running» | `pmux.lock` (только если процесс не жив) |
-| Всё (factory reset) | `~/.purplemux/` |
-
-`hooks.json`, `status-hook.sh`, `statusline.sh`, `port`, `cli-token` и `vapid-keys.json` все авто-регенерируются при следующем старте, поэтому удаление безвредно.
-
-## Резервные копии
-
-Весь каталог — это plain JSON плюс несколько shell-скриптов. Чтобы забэкапить:
+## 백업
 
 ```bash
-tar czf purplemux-backup.tgz -C ~ .purplemux
+tar czf codexmux-backup.tgz -C ~ .codexmux
 ```
 
-Чтобы восстановить на свежей машине, распакуйте и запустите purplemux. Скрипты хуков перепишутся с портом нового сервера; всё остальное (рабочие пространства, история, настройки) переезжает как есть.
+복원 전에는 codexmux를 종료하고 같은 위치에 풀어 넣습니다.
 
-{% call callout('warning') %}
-Не восстанавливайте `pmux.lock` — он привязан к конкретному PID и заблокирует старт. Исключите его: `--exclude pmux.lock`.
-{% endcall %}
+## reset 기준
 
-## Полная очистка
+- 로그인만 초기화: `config.json` 삭제.
+- 모든 workspace 초기화: `workspaces.json`과 `workspaces/` 삭제.
+- 통계 재계산: `stats/` 삭제.
+- 전체 초기화: `~/.codexmux/` 삭제.
 
-```bash
-rm -rf ~/.purplemux
-```
-
-Сначала убедитесь, что purplemux не запущен. Следующий запуск снова будет первым.
-
-## Что дальше
-
-- **[Порты и переменные окружения](/purplemux/ru/docs/ports-env-vars/)** — каждая переменная, влияющая на этот каталог.
-- **[Архитектура](/purplemux/ru/docs/architecture/)** — как файлы связаны с работающим сервером.
-- **[Поиск проблем](/purplemux/ru/docs/troubleshooting/)** — типичные проблемы и решения.
+`~/.codex/`는 Codex CLI의 auth와 session history를 포함하므로 일반적인 codexmux reset에서는 삭제하지 않습니다.

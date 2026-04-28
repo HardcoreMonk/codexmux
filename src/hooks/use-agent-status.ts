@@ -30,7 +30,7 @@ export const ackNotificationInput = (tabId: string, seq: number) => {
   }
 };
 
-const useClaudeStatus = () => {
+const useAgentStatus = () => {
   const retryCountRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
@@ -76,14 +76,14 @@ const useClaudeStatus = () => {
                 terminalStatus: msg.terminalStatus,
                 listeningPorts: msg.listeningPorts,
                 currentProcess: msg.currentProcess,
-                claudeSummary: msg.claudeSummary,
+                agentSummary: msg.agentSummary,
                 lastUserMessage: msg.lastUserMessage,
                 lastAssistantMessage: msg.lastAssistantMessage,
                 currentAction: msg.currentAction,
                 readyForReviewAt: msg.readyForReviewAt,
                 busySince: msg.busySince,
                 dismissedAt: msg.dismissedAt,
-                claudeSessionId: msg.claudeSessionId,
+                agentSessionId: msg.agentSessionId,
                 compactingSince: msg.compactingSince,
                 lastEvent: msg.lastEvent,
                 eventSeq: msg.eventSeq,
@@ -162,4 +162,4 @@ const useClaudeStatus = () => {
   }, []);
 };
 
-export default useClaudeStatus;
+export default useAgentStatus;

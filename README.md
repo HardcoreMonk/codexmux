@@ -1,223 +1,223 @@
-# purplemux
+# codexmux
 
-**Claude Code, many tasks at once. Faster.**
+**Codex, 여러 작업을 동시에. 더 빠르게.**
 
-Every session on a single screen. Uninterrupted, even on your phone.
+한 화면에서 모든 세션을, 폰에서도 끊김 없이.
 
-English | <a href="README.ko.md">한국어</a> | <a href="README.ja.md">日本語</a> | <a href="README.zh-CN.md">简体中文</a> | <a href="README.zh-TW.md">繁體中文</a> | <a href="README.de.md">Deutsch</a> | <a href="README.es.md">Español</a> | <a href="README.fr.md">Français</a> | <a href="README.ru.md">Русский</a> | <a href="README.pt-BR.md">Português (Brasil)</a> | <a href="README.tr.md">Türkçe</a>
+**문서 언어: 한국어**
 
-![purplemux](docs/images/screenshot.png)
+![codexmux](docs/images/screenshot.png)
 
-![purplemux mobile](docs/images/screenshot-mobile.png)
+![codexmux mobile](docs/images/screenshot-mobile.png)
 
-## Install
+## 설치
 
 ```bash
-npx purplemux
+npx codexmux
 ```
 
-Open [http://localhost:8022](http://localhost:8022) in your browser. Done.
+브라우저에서 [http://localhost:8022](http://localhost:8022)으로 접속합니다. 끝.
 
-> Requires Node.js 20+ and tmux. macOS or Linux.
+> Node.js 20+, tmux 필요. macOS 또는 Linux.
 
-Prefer a native app? Grab the macOS Electron build from the [latest release](https://github.com/subicura/purplemux/releases/latest) (`.dmg` for Apple Silicon & Intel).
+네이티브 앱을 선호한다면, [최신 릴리스](https://github.com/subicura/codexmux/releases/latest)에서 macOS Electron 빌드를 받을 수 있습니다 (Apple Silicon & Intel용 `.dmg`).
 
-## Why purplemux
+## 왜 codexmux인가
 
-- **Multi-session dashboard** — See working/needs-input status for every Claude Code session at a glance
-- **Rate limit monitoring** — 5-hour / 7-day remaining usage with reset countdown
-- **Push notifications** — Desktop and mobile alerts when a task finishes or needs input
-- **Mobile & multi-device** — Reach the same session from a phone, tablet, or another desktop
-- **Live session view** — No more scrolling CLI output. Progress is organized as a timeline
+- **멀티 세션 대시보드** — 모든 Codex 세션의 작업중/사용자 요청 상태를 한눈에 확인
+- **Rate Limit 모니터링** — 5시간/7일 잔여량과 리셋 카운트다운 표시
+- **푸시 알림** — 작업 완료나 입력이 필요하면 데스크탑/모바일 알림
+- **모바일 & 멀티 디바이스** — 폰, 태블릿, 다른 데스크탑 어디서든 같은 세션에 접속
+- **라이브 세션 뷰** — CLI 출력을 스크롤할 필요 없이, 진행 상황을 타임라인으로 정리해서 표시
 
-Plus
+그리고
 
-- **Uninterrupted sessions** — Built on tmux. Close the browser and everything stays put. Reconnect and your tabs, panels, and directories are exactly where you left them
-- **Self-hosted & open source** — Code and session data never leave your machine. No external servers
-- **Encrypted remote access** — HTTPS from anywhere via Tailscale
+- **끊김 없는 세션** — tmux 기반. 브라우저를 닫아도 세션과 작업 환경이 그대로 유지. 재접속하면 탭, 패널, 디렉토리까지 마지막 상태 그대로
+- **셀프 호스팅 & 오픈소스** — 코드와 세션 데이터가 내 머신에만 존재. 외부 서버 경유 없음
+- **암호화된 원격 접근** — Tailscale로 어디서든 HTTPS 접속
 
-## How it differs from the official Remote Control
+## 공식 Remote Control과 차이점
 
-> The official Remote Control focuses on single-session remote control. Use purplemux when you need multi-session management, push notifications, and persistent sessions.
+> 공식 Remote Control은 단일 세션 원격 제어에 초점을 둡니다. codexmux는 멀티 세션 관리, 푸시 알림, 세션 지속성이 필요할 때 사용합니다.
 
-## Features
+## 특징
 
-### Terminal
+### 터미널
 
-- **Split panels** — Horizontal / vertical splits, drag to resize
-- **Tab management** — Multiple tabs, drag to reorder, auto titles from process names
-- **Keyboard shortcuts** — Splits, tab switching, focus movement
-- **Terminal themes** — Dark / light mode, multiple color themes
-- **Workspaces & groups** — Save and restore panel layouts, tabs, and working directories. Organize workspaces into groups with drag-and-drop
-- **Git workflow** — Side-by-side / line-by-line diff with syntax highlighting, inline hunk expansion, and a paginated history tab. Fetch / pull / push from the panel with ahead/behind indicators — if sync fails (dirty worktree, conflicts), Ask Claude in one click
-- **Web browser panel** — Embedded browser for checking dev output (Electron). Drive it from the `purplemux` CLI and switch viewports with a built-in device emulator
+- **패널 분할** — 가로/세로 자유 분할, 드래그로 크기 조절
+- **탭 관리** — 다중 탭, 드래그 순서 변경, 프로세스명 기반 자동 타이틀
+- **키보드 단축키** — 분할, 탭 전환, 포커스 이동
+- **터미널 테마** — 다크/라이트 모드, 다양한 컬러 테마
+- **워크스페이스 & 그룹** — 패널 레이아웃, 탭, 작업 디렉토리를 워크스페이스 단위로 저장/복원. 드래그 앤 드롭으로 워크스페이스를 그룹으로 묶어 관리
+- **Git 워크플로** — Side-by-side / Line-by-line 뷰 전환과 Syntax highlighting, 인라인 hunk 펼치기, 페이지네이션 히스토리 탭. 패널에서 바로 fetch / pull / push (ahead/behind 표시). 동기화 실패(dirty worktree, 충돌)는 원클릭으로 Codex에 전달
+- **웹 브라우저 패널** — 터미널 옆 내장 브라우저로 개발 결과 확인 (Electron). `codexmux` CLI로 제어하고, 내장 디바이스 에뮬레이터로 뷰포트 전환
 
-### Claude Code integration
+### Codex 연동
 
-- **Real-time status** — Working / needs-input indicators with session switching
-- **Live session view** — Messages, tool calls, tasks, permission prompts, thinking blocks
-- **One-click resume** — Restart a paused session directly from the browser
-- **Auto resume** — Recover previous Claude sessions on server start
-- **Quick prompts** — Register frequently used prompts and send with one click
-- **Attachments** — Drop images into the chat input, or attach files to insert their paths. Works on mobile
-- **Message history** — Reuse previous messages
-- **Usage analytics** — Tokens (input / output / cache read / cache write), cost, per-project breakdowns, daily AI reports
-- **Rate limits** — 5-hour / 7-day remaining usage with reset countdown
+- **실시간 상태** — 작업중/사용자 요청 상태 표시, 세션 간 전환
+- **라이브 세션 뷰** — 메시지, 도구 호출, 태스크, 권한 요청, thinking 블록
+- **원클릭 Resume** — 중단된 세션을 브라우저에서 바로 재개
+- **자동 Resume** — 서버 시작 시 이전 Codex 세션 자동 복구
+- **빠른 프롬프트** — 자주 쓰는 프롬프트 등록, 원클릭 전송
+- **첨부** — 채팅 입력에 이미지 드롭, 파일 첨부 시 경로 자동 삽입. 모바일에서도 동작
+- **메시지 히스토리** — 이전 메시지 재사용
+- **사용량 통계** — 토큰(input/output/cache read/cache write), 비용, 프로젝트별 분석, 일별 AI 리포트
+- **Rate Limit** — 5시간/7일 잔여량, 리셋 카운트다운
 
-### Mobile & accessibility
+### 모바일 & 접근성
 
-- **Responsive UI** — Terminal and timeline on phones and tablets
-- **PWA** — Add to home screen for a native-app feel
-- **Web Push** — Receive notifications even after closing the tab
-- **Multi-device sync** — Workspace changes reflected in real time
-- **Tailscale** — HTTPS access from outside via a WireGuard-encrypted tunnel
-- **Password authentication** — scrypt hashing, safe even when exposed externally
-- **Multilingual** — 11 languages including 한국어, English, 日本語, 中文
+- **반응형 UI** — 폰/태블릿에서 터미널과 타임라인 사용
+- **PWA** — 홈 화면 추가, 네이티브 앱 느낌
+- **Web Push** — 탭을 닫아도 알림 수신
+- **멀티 디바이스 동기화** — 워크스페이스 변경사항 실시간 반영
+- **Tailscale** — WireGuard 암호화 터널로 외부에서 HTTPS 접속
+- **비밀번호 인증** — scrypt 해싱, 외부 노출 시에도 안전
+- **다국어 지원** — 한국어, English, 日本語, 中文 등 11개 언어
 
-## Supported platforms
+## 지원 플랫폼
 
-| Platform | Status | Notes |
+| 플랫폼 | 상태 | 비고 |
 |---|---|---|
-| macOS (Apple Silicon / Intel) | ✅ | Electron app included |
-| Linux | ✅ | No Electron |
-| Windows | ❌ | Not supported |
+| macOS (Apple Silicon / Intel) | ✅ | Electron 앱 포함 |
+| Linux | ✅ | Electron 제외 |
+| Windows | ❌ | 미지원 |
 
-## Install details
+## 설치 상세
 
-### Requirements
+### 필수 요구사항
 
-- macOS 13+ or Linux
+- macOS 13+ 또는 Linux
 - [Node.js](https://nodejs.org/) 20+
 - [tmux](https://github.com/tmux/tmux)
 
-### npx (fastest)
+### npx (가장 빠름)
 
 ```bash
-npx purplemux
+npx codexmux
 ```
 
-### Global install
+### 글로벌 설치
 
 ```bash
-npm install -g purplemux
-purplemux
+npm install -g codexmux
+codexmux
 ```
 
-### Run from source
+### 소스에서 실행
 
 ```bash
-git clone https://github.com/subicura/purplemux.git
-cd purplemux
+git clone https://github.com/subicura/codexmux.git
+cd codexmux
 pnpm install
 pnpm start
 ```
 
-Development mode:
+개발 모드:
 
 ```bash
 pnpm dev
 ```
 
-#### Log level
+#### 로그 레벨 설정
 
-Set the overall level with `LOG_LEVEL` (default `info`).
+전체 레벨은 `LOG_LEVEL`(기본 `info`)로 조절합니다.
 
 ```bash
 LOG_LEVEL=debug pnpm dev
 ```
 
-To enable specific modules only, list `module=level` pairs in `LOG_LEVELS`, separated by commas. Available levels: `trace` / `debug` / `info` / `warn` / `error` / `fatal`.
+특정 모듈만 따로 켜고 싶으면 `LOG_LEVELS`에 `모듈=레벨` 쌍을 콤마로 나열합니다. 사용 가능한 레벨: `trace` / `debug` / `info` / `warn` / `error` / `fatal`.
 
 ```bash
-# Trace only Claude Code hook behavior at debug
-LOG_LEVELS=hooks=debug pnpm dev
+# 에이전트 상태 동작만 debug로 추적
+LOG_LEVELS=status=debug pnpm dev
 
-# Multiple modules at once
-LOG_LEVELS=hooks=debug,status=warn pnpm dev
+# 여러 모듈 동시
+LOG_LEVELS=status=debug,tmux=trace pnpm dev
 ```
 
-Modules not listed in `LOG_LEVELS` fall back to `LOG_LEVEL`.
+`LOG_LEVELS`에 명시되지 않은 모듈은 `LOG_LEVEL` 값을 사용합니다.
 
-## Remote access (Tailscale Serve)
+## 외부 접속 (Tailscale Serve)
 
 ```bash
 tailscale serve --bg 8022
 ```
 
-Access at `https://<machine>.<tailnet>.ts.net`. To disable:
+`https://<machine>.<tailnet>.ts.net`으로 접속. 해제:
 
 ```bash
 tailscale serve --bg off 8022
 ```
 
-## Security
+## 보안
 
-### Password
+### 비밀번호
 
-Set a password on first access. It is hashed with scrypt and stored in `~/.purplemux/config.json`.
+최초 접속 시 비밀번호를 설정합니다. scrypt로 해싱되어 `~/.codexmux/config.json`에 저장됩니다.
 
-To reset, delete `~/.purplemux/config.json` and restart — the onboarding screen will appear again.
+초기화하려면 `~/.codexmux/config.json`을 삭제하고 재시작하면 온보딩 화면이 다시 나타납니다.
 
 ### HTTPS
 
-The default is HTTP. Always use HTTPS when exposing the app externally:
+기본은 HTTP입니다. 외부 노출 시 반드시 HTTPS를 적용하세요:
 
-- **Tailscale Serve** — WireGuard encryption with automatic certificates
-- **Nginx / Caddy** — Must forward WebSocket upgrade headers (`Upgrade`, `Connection`)
+- **Tailscale Serve** — WireGuard 암호화 + 인증서 자동 적용
+- **Nginx / Caddy** — WebSocket 업그레이드 헤더(`Upgrade`, `Connection`) 전달 필수
 
-### Data directory (`~/.purplemux/`)
+### 데이터 디렉토리 (`~/.codexmux/`)
 
-| File | Description |
+| 파일 | 설명 |
 |---|---|
-| `config.json` | Authentication (hashed) and app settings |
-| `workspaces.json` | Workspace layouts, tabs, directories |
-| `vapid-keys.json` | Web Push VAPID keys (auto-generated) |
-| `push-subscriptions.json` | Push subscription data |
-| `hooks/` | User-defined hooks |
+| `config.json` | 인증 정보(해싱), 앱 설정 |
+| `workspaces.json` | 워크스페이스 레이아웃, 탭, 디렉토리 |
+| `vapid-keys.json` | Web Push VAPID 키 (자동 생성) |
+| `push-subscriptions.json` | 푸시 구독 정보 |
+| `stats/` | 사용량 통계 캐시 |
 
-## Architecture
+## 아키텍처
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Browser                                                    │
+│  브라우저                                                   │
 │  ┌───────────┐ ┌───────────┐ ┌──────────┐ ┌─────────────┐   │
-│  │  xterm.js │ │ Timeline  │ │ Status   │ │ Multi-device│   │
-│  │  Terminal │ │           │ │          │ │ Sync        │   │
+│  │  xterm.js │ │ 타임라인  │ │ 상태     │ │ 멀티 기기   │   │
+│  │  터미널   │ │           │ │          │ │ 동기화      │   │
 │  └─────┬─────┘ └─────┬─────┘ └────┬─────┘ └──────┬──────┘   │
 └────────┼─────────────┼────────────┼──────────────┼──────────┘
          │ws           │ws          │ws            │ws
          │/terminal    │/timeline   │/status       │/sync
          ▼             ▼            ▼              ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Node.js Server (:8022)                                     │
+│  Node.js 서버 (:8022)                                       │
 │  ┌──────────┐  ┌───────────────┐  ┌─────────────────────┐   │
-│  │ node-pty │  │ JSONL Watcher │  │ Status Manager      │   │
-│  │ PTY↔WS   │  │ File watch →  │  │ Process tree +      │   │
-│  │ Binary   │  │ Parse → Send  │  │ JSONL tail analysis │   │
+│  │ node-pty │  │ JSONL 감시    │  │ 상태 관리자         │   │
+│  │ PTY↔WS   │  │ 파일 감시 →   │  │ process tree +      │   │
+│  │ binary   │  │ 파싱 → 전송   │  │ JSONL tail 분석     │   │
 │  └────┬─────┘  └───────┬───────┘  └──────────┬──────────┘   │
 └───────┼────────────────┼─────────────────────┼──────────────┘
         ▼                ▼                     ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  System                                                     │
-│  tmux (purple socket)         Claude Code                   │
+│  시스템                                                     │
+│  tmux (codexmux socket)       Codex                         │
 │  ┌────────┐ ┌────────┐       ┌────────────────────────────┐ │
-│  │Session1│ │Session2│  ...  │ ~/.claude/sessions/        │ │
-│  │ (shell)│ │ (shell)│       │ ~/.claude/projects/        │ │
-│  └────────┘ └────────┘       │   └─ {project}/{sid}.jsonl │ │
+│  │세션 1 │ │세션 2 │  ...  │ ~/.codex/sessions/         │ │
+│  │ (shell)│ │ (shell)│       │   └─ YYYY/MM/DD/*.jsonl    │ │
+│  └────────┘ └────────┘       │                            │ │
 │                              └────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Terminal I/O** — xterm.js connects to node-pty via WebSocket; node-pty attaches to tmux sessions. A binary protocol handles stdin/stdout/resize with backpressure control.
+**터미널 I/O** — xterm.js가 WebSocket으로 node-pty에 연결되고, node-pty는 tmux 세션에 연결됩니다. 이진 프로토콜로 stdin/stdout/resize를 처리하며 백프레셔를 제어합니다.
 
-**Status detection** — Claude Code event hooks (`SessionStart`, `Stop`, `Notification`) deliver instant updates via HTTP POST. Polling every 5–15s inspects process trees and analyzes the last 8KB of JSONL files.
+**상태 감지** — 서버가 tmux 프로세스 트리를 검사하고 실행 중인 `codex` 프로세스와 Codex JSONL 변경을 추적합니다.
 
-**Timeline** — Watches JSONL session logs under `~/.claude/projects/`, parses new lines on change, and streams structured entries to the browser.
+**타임라인** — `~/.codex/sessions/` 아래 JSONL 세션 로그를 감시하여 변경 시 새 줄을 파싱하고 구조화된 항목을 브라우저에 스트리밍합니다.
 
-**tmux isolation** — Uses a dedicated `purple` socket, completely separate from your existing tmux. No prefix key, no status bar.
+**tmux 격리** — 전용 `codexmux` 소켓을 사용하여 기존 tmux와 완전히 분리됩니다. prefix 키 없음, status bar 없음.
 
-**Auto recovery** — On server start, restores previous Claude sessions via `claude --resume {sessionId}`.
+**자동 복구** — 서버 시작 시 `codex resume {sessionId}`로 이전 Codex 세션을 복원합니다.
 
-## License
+## 라이선스
 
 [MIT](LICENSE)

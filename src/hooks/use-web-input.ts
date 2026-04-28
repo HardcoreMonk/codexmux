@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { toast } from 'sonner';
 import { t } from '@/lib/i18n';
 import type { TCliState } from '@/types/timeline';
@@ -63,7 +63,7 @@ const useWebInput = (
   options?: IUseWebInputOptions,
 ): IUseWebInputReturn => {
   const tabId = options?.tabId;
-  const [value, setValue] = useState(() => (tabId ? loadDraft(tabId) : ''));
+  const [value, setValueState] = useState(() => (tabId ? loadDraft(tabId) : ''));
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const mode: TWebInputMode = useMemo(() => {
     if (isCliIdle(cliState) || cliState === 'unknown') return 'input';
@@ -74,19 +74,14 @@ const useWebInput = (
   const onRestartSession = options?.onRestartSession;
   const onMessageSent = options?.onMessageSent;
 
-  const draftTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
-  useEffect(() => {
-    if (!tabId) return;
-    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
-    draftTimerRef.current = setTimeout(() => saveDraft(tabId, value), 300);
-    return () => {
-      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
-    };
-  }, [tabId, value]);
+  const setValue = useCallback((next: string) => {
+    setValueState(next);
+    if (tabId) saveDraft(tabId, next);
+  }, [tabId]);
 
   const send = useCallback(() => {
     if (mode === 'disabled') {
-      toast.error('Claude Code가 실행 중이 아닙니다');
+      toast.error(t('terminal', 'inputDisabledPlaceholder'));
       return;
     }
 
@@ -118,7 +113,7 @@ const useWebInput = (
 
     setValue('');
     if (tabId) clearDraft(tabId);
-  }, [mode, value, sendStdin, terminalWsConnected, onRestartSession, onMessageSent, tabId]);
+  }, [mode, value, sendStdin, terminalWsConnected, onRestartSession, onMessageSent, tabId, setValue]);
 
   const interrupt = useCallback(() => {
     if (!terminalWsConnected) {

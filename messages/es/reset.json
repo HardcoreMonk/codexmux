@@ -1,5 +1,5 @@
 {
-  "pageTitle": "Restablecer - purplemux",
+  "pageTitle": "Restablecer - codexmux",
   "title": "Restablecer tmux",
   "stepCleanup": "Limpiando conexiones",
   "stepReset": "Deteniendo y restableciendo servidor tmux",

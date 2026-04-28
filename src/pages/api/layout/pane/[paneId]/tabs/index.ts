@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { addTabToPane, updateTabClaudeSessionId } from '@/lib/layout-store';
+import { addTabToPane, updateTabAgentSessionId } from '@/lib/layout-store';
 import { getActiveWorkspaceId } from '@/lib/workspace-store';
 import { getStatusManager } from '@/lib/status-manager';
 import { getProviderByPanelType } from '@/lib/providers';
@@ -24,7 +24,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const paneId = req.query.paneId as string;
   const { name, cwd, panelType, command, resumeSessionId } = req.body ?? {};
 
-  const provider = resumeSessionId ? getProviderByPanelType(panelType ?? 'claude-code') : null;
+  const provider = resumeSessionId ? getProviderByPanelType(panelType ?? 'codex') : null;
   if (resumeSessionId) {
     if (!provider) {
       return res.status(400).json({ error: 'Unknown panel type for resume' });
@@ -51,7 +51,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     if (resumeSessionId && provider && !command) {
-      await updateTabClaudeSessionId(tab.sessionName, resumeSessionId);
+      await updateTabAgentSessionId(tab.sessionName, provider, resumeSessionId);
       provider.writeSessionId(tab, resumeSessionId);
       setTimeout(async () => {
         try {

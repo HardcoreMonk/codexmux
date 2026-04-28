@@ -1,64 +1,64 @@
 ---
-title: Notificaciones Web Push
-description: Alertas push en segundo plano para los estados necesita-entrada y tarea completada, incluso con la pestaña del navegador cerrada.
-eyebrow: Móvil y remoto
+title: 웹 푸시 알림
+description: 탭이 닫혀 있어도 needs-input과 작업 완료 상태에 대한 백그라운드 푸시 알림을 받습니다.
+eyebrow: 모바일 & 원격
 permalink: /es/docs/web-push/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Web Push permite a purplemux avisarte cuando una sesión de Claude requiere tu atención — un aviso de permisos, una tarea terminada — incluso después de cerrar la pestaña. Toca la notificación y aterrizas directamente en esa sesión.
+Web Push는 Codex 세션이 사람을 필요로 하는 순간 — 권한 프롬프트, 작업 완료 — 탭을 닫아둔 상태에서도 알림을 띄워줍니다. 알림을 누르면 해당 세션으로 바로 이동합니다.
 
-## Qué dispara una notificación
+## 무엇이 알림을 트리거하나
 
-purplemux dispara un push para las mismas transiciones que ves como insignias coloreadas en la barra lateral.
+사이드바의 컬러 배지에서 볼 수 있는 전환과 동일한 시점에 푸시가 발송됩니다.
 
-- **Necesita entrada** — Claude llegó a un aviso de permisos o hizo una pregunta.
-- **Tarea completada** — Claude terminó un turno (el estado **revisión**).
+- **Needs input** — Codex가 권한 프롬프트나 질문 대기
+- **작업 완료** — Codex가 한 턴을 마침 (**review** 상태)
 
-Las transiciones a inactivo y ocupado intencionalmente no se empujan. Son ruido.
+idle, busy 전환은 의도적으로 푸시하지 않습니다. 노이즈입니다.
 
-## Activarlo
+## 활성화
 
-El interruptor está en **Configuración → Notificación**. Pasos:
+토글 위치는 **설정 → 알림**입니다. 순서:
 
-1. Abre **Configuración → Notificación** y ponlo en **On**.
-2. El navegador te pide permiso de notificaciones — concédelo.
-3. purplemux registra una suscripción Web Push contra las claves VAPID del servidor.
+1. **설정 → 알림**을 열고 **On**으로 토글합니다.
+2. 브라우저가 알림 권한을 요청하면 허용합니다.
+3. codexmux가 서버의 VAPID 키로 Web Push 구독을 등록합니다.
 
-La suscripción se guarda en `~/.purplemux/push-subscriptions.json` e identifica tu navegador/dispositivo concreto. Repite los pasos en cada dispositivo en el que quieras recibir notificaciones.
+구독 정보는 `~/.codexmux/push-subscriptions.json`에 저장되며 브라우저/기기 단위로 식별됩니다. 알림을 받을 기기마다 같은 절차를 반복하세요.
 
-{% call callout('warning', 'iOS requiere Safari 16.4 + una PWA') %}
-En iPhone y iPad, Web Push solo funciona después de añadir purplemux a la pantalla de inicio y lanzarlo desde ese icono. Abre la página de Configuración desde la ventana standalone de la PWA — el aviso de permisos en una pestaña normal de Safari no hará nada. Configura la PWA primero: [Configuración de PWA](/purplemux/es/docs/pwa-setup/).
+{% call callout('warning', 'iOS는 Safari 16.4와 PWA 필수') %}
+iPhone, iPad에서는 codexmux를 홈 화면에 추가하고 그 아이콘으로 실행한 상태에서만 Web Push가 동작합니다. 일반 Safari 탭에서 알림 권한을 요청해도 의미가 없습니다. PWA부터 설정하세요: [PWA 설정](/codexmux/es/docs/pwa-setup/).
 {% endcall %}
 
-## Claves VAPID
+## VAPID 키
 
-purplemux genera un keypair VAPID de servidor de aplicación en el primer arranque y lo guarda en `~/.purplemux/vapid-keys.json` (modo `0600`). No tienes que hacer nada — la clave pública se sirve al navegador automáticamente cuando te suscribes.
+codexmux는 첫 실행 시 application-server VAPID 키페어를 생성해 `~/.codexmux/vapid-keys.json`(권한 `0600`)에 저장합니다. 별도 작업이 필요 없습니다 — 구독 시 공개 키가 브라우저에 자동 전달됩니다.
 
-Si alguna vez quieres resetear todas las suscripciones (por ejemplo tras rotar las claves), borra `vapid-keys.json` y `push-subscriptions.json` y reinicia purplemux. Cada dispositivo tendrá que volver a suscribirse.
+키 회전 등의 이유로 모든 구독을 초기화하고 싶다면 `vapid-keys.json`과 `push-subscriptions.json`을 삭제하고 codexmux를 재시작하세요. 모든 기기는 다시 구독해야 합니다.
 
-## Entrega en segundo plano
+## 백그라운드 전송
 
-Una vez suscrito, tu móvil recibe la notificación a través del servicio push del SO:
+구독 후에는 OS 푸시 서비스를 통해 알림이 전달됩니다.
 
-- **iOS** — APNs, vía el puente Web Push de Safari. La entrega es best-effort y puede coalescerse si el móvil está muy throttled.
-- **Android** — FCM vía Chrome. Generalmente instantáneo.
+- **iOS** — Safari의 Web Push 브리지를 거쳐 APNs로 전달. 최선 노력 방식이며 기기 상태에 따라 묶여서 올 수 있습니다.
+- **Android** — Chrome을 통해 FCM. 일반적으로 즉시 도착합니다.
 
-La notificación llega tanto si purplemux está en primer plano como si no. Si el panel está visible en _alguno_ de tus dispositivos, purplemux se salta el push para evitar el doble zumbido.
+codexmux가 포어그라운드인지와 무관하게 알림이 옵니다. 단, 어느 기기에서든 대시보드가 현재 보이고 있다면 중복 알림을 피하기 위해 푸시 발송을 건너뜁니다.
 
-## Tocar para saltar dentro
+## 알림 탭 → 세션 이동
 
-Tocar una notificación abre purplemux directamente en la sesión que la disparó. Si la PWA ya está corriendo, el foco cambia a la pestaña correcta; si no, la app se lanza y navega ahí.
+알림을 누르면 알림을 발생시킨 세션으로 바로 열립니다. PWA가 이미 실행 중이라면 해당 탭으로 포커스가 이동하고, 아니라면 앱이 실행되며 곧장 이동합니다.
 
-## Solución de problemas
+## 문제 해결
 
-- **El interruptor está en gris** — Service Workers o Notifications API no están soportados. Ejecuta **Configuración → Verificación del navegador**, o consulta [Compatibilidad de navegadores](/purplemux/es/docs/browser-support/).
-- **Permiso denegado** — limpia el permiso de notificaciones del sitio en la configuración del navegador, luego vuelve a activar el interruptor en purplemux.
-- **No llegan pushes en iOS** — confirma que estás lanzando desde el icono de la pantalla de inicio, no desde Safari. Confirma que iOS es **16.4 o superior**.
-- **Certificado autofirmado** — Web Push se negará a registrarse. Usa Tailscale Serve o un reverse proxy con un certificado real. Consulta [Acceso por Tailscale](/purplemux/es/docs/tailscale/).
+- **토글이 비활성** — Service Worker 또는 Notifications API 미지원. **설정 → 브라우저 체크** 또는 [브라우저 지원](/codexmux/es/docs/browser-support/) 확인.
+- **권한 거부됨** — 브라우저 설정에서 해당 사이트의 알림 권한을 초기화한 후 codexmux에서 다시 토글합니다.
+- **iOS에서 알림이 안 옴** — 홈 화면 아이콘에서 실행 중인지, iOS가 **16.4 이상**인지 확인하세요.
+- **자체 서명 인증서** — Web Push 등록 자체가 거부됩니다. Tailscale Serve나 실제 인증서를 가진 리버스 프록시를 사용하세요. [Tailscale 접속](/codexmux/es/docs/tailscale/) 참고.
 
-## Siguientes pasos
+## 다음으로
 
-- **[Configuración de PWA](/purplemux/es/docs/pwa-setup/)** — requerido para push en iOS.
-- **[Acceso por Tailscale](/purplemux/es/docs/tailscale/)** — HTTPS para entrega externa.
-- **[Seguridad y autenticación](/purplemux/es/docs/security-auth/)** — qué más vive bajo `~/.purplemux/`.
+- **[PWA 설정](/codexmux/es/docs/pwa-setup/)** — iOS 푸시의 필수 단계
+- **[Tailscale 접속](/codexmux/es/docs/tailscale/)** — 외부 전송용 HTTPS 확보
+- **[보안과 인증](/codexmux/es/docs/security-auth/)** — `~/.codexmux/` 안의 다른 파일들

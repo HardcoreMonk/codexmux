@@ -86,7 +86,7 @@ const getEndpoint = async (): Promise<string | null> => {
   }
 };
 
-const DEVICE_ID_KEY = 'purplemux-device-id';
+const DEVICE_ID_KEY = 'codexmux-device-id';
 
 const getDeviceId = (): string => {
   let id = localStorage.getItem(DEVICE_ID_KEY);
@@ -153,15 +153,16 @@ const useWebPush = () => {
     const handlePushNavigation = (params: {
       workspaceId: string;
       tabId?: string;
-      claudeSessionId?: string | null;
+      agentSessionId?: string | null;
       workspaceName?: string;
       workspaceDir?: string | null;
     }) => {
-      if (params.claudeSessionId) {
+      const sessionId = params.agentSessionId;
+      if (sessionId) {
         navigateToTabOrCreate(
           params.workspaceId,
           params.tabId ?? '',
-          params.claudeSessionId,
+          sessionId,
           params.workspaceName ?? '',
           params.workspaceDir ?? null,
         );
@@ -188,7 +189,7 @@ const useWebPush = () => {
           handlePushNavigation({
             workspaceId: data.workspaceId,
             tabId: data.tabId ?? undefined,
-            claudeSessionId: data.claudeSessionId,
+            agentSessionId: data.agentSessionId,
             workspaceName: data.workspaceName ?? '',
             workspaceDir: data.workspaceDir,
           });

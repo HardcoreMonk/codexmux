@@ -5,14 +5,14 @@
     "appearance": "外觀",
     "terminal": "終端機",
     "editor": "編輯器",
-    "claude": "Claude",
     "auth": "認證",
     "tailscale": "Tailscale",
     "quickPrompts": "快速提示",
     "sidebarItems": "側邊欄",
     "agent": "代理",
     "notification": "通知",
-    "system": "系統"
+    "system": "系統",
+    "codex": "Codex"
   },
   "general": {
     "theme": "主題",
@@ -67,18 +67,12 @@
     "errorHttpRequired": "URL 必須以 http:// 或 https:// 開頭。",
     "errorCustomTemplate": "範本必須包含 {folder} 或 {folderEncoded}。"
   },
-  "claude": {
-    "skipPermissions": "跳過權限檢查",
-    "skipPermissionsDescription": "執行 Claude CLI 時加入 --dangerously-skip-permissions 選項。",
-    "showTerminal": "在 Claude 中一同顯示終端機",
-    "showTerminalDescription": "在 Claude Code 旁顯示終端機區域。關閉時，新的 Claude 分頁將以收合的終端機開啟。"
-  },
   "auth": {
     "changePassword": "變更密碼",
     "changePasswordDescription": "新密碼會以 SHA-512 雜湊後儲存。",
     "newPasswordPlaceholder": "輸入新密碼（至少 4 個字元）",
     "passwordPlaceholder": "輸入密碼（至少 4 個字元）",
-    "resetHint": "若要重設，請刪除 ~/.purplemux/config.json 並{action}。",
+    "resetHint": "若要重設，請刪除 ~/.codexmux/config.json 並{action}。",
     "restartServer": "重新啟動伺服器",
     "restartApp": "關閉並重新啟動應用程式",
     "savedRestart": "已儲存。變更將在{action}後生效。",
@@ -87,7 +81,7 @@
   },
   "notification": {
     "enable": "啟用通知",
-    "enableDescription": "Claude 任務完成時顯示系統通知。僅在 Electron 應用程式中有效。",
+    "enableDescription": "Show system notifications when Codex tasks complete.",
     "permissionDenied": "瀏覽器通知權限被拒絕。請在瀏覽器設定中允許。",
     "notSupported": "此瀏覽器不支援 Web Push。",
     "toastSection": "應用程式內提示",
@@ -116,7 +110,7 @@
   },
   "system": {
     "networkAccess": "網路存取",
-    "networkAccessDescription": "控制哪些網路可以存取 purplemux。伺服器重新啟動後生效。",
+    "networkAccessDescription": "控制哪些網路可以存取 codexmux。伺服器重新啟動後生效。",
     "networkAccessLocked": "由 HOST 環境變數控制。",
     "restartRequired": "變更需要重新啟動伺服器後才會生效。",
     "networkAccessOptions": {
@@ -136,7 +130,7 @@
     "showResources": "顯示系統資源",
     "showResourcesDescription": "在標題列顯示 CPU、記憶體和 tmux 工作階段使用狀況。",
     "attachedImages": "附加圖片",
-    "attachedImagesDescription": "在輸入列附加的圖片儲存在 ~/.purplemux/uploads/ 下。超過 24 小時的檔案會在伺服器啟動時自動清理。",
+    "attachedImagesDescription": "在輸入列附加的圖片儲存在 ~/.codexmux/uploads/ 下。超過 24 小時的檔案會在伺服器啟動時自動清理。",
     "cleanAttachedImages": "立即清理",
     "attachedImagesCleaned": "已刪除 {count} 個檔案",
     "attachedImagesNothing": "沒有可刪除的圖片",
@@ -234,5 +228,31 @@
     "deleteCancel": "取消",
     "deleteConfirm": "刪除"
   },
-  "saveFailed": "無法儲存設定"
+  "saveFailed": "無法儲存設定",
+  "codex": {
+    "model": "Model",
+    "modelDescription": "Optional model passed as --model. Leave blank to use the Codex CLI default.",
+    "modelPlaceholder": "e.g. gpt-5.2",
+    "cliDefault": "CLI default",
+    "sandbox": "Sandbox",
+    "sandboxDescription": "Controls the --sandbox mode for new and resumed Codex sessions.",
+    "sandboxOptions": {
+      "read-only": "read-only",
+      "workspace-write": "workspace-write",
+      "danger-full-access": "danger-full-access"
+    },
+    "approvalPolicy": "Approval policy",
+    "approvalPolicyDescription": "Controls when Codex asks before running commands.",
+    "approvalOptions": {
+      "untrusted": "untrusted",
+      "on-failure": "on-failure",
+      "on-request": "on-request",
+      "never": "never"
+    },
+    "webSearch": "Web search",
+    "webSearchDescription": "Adds --search so Codex can use live web search.",
+    "showTerminal": "Show terminal with Codex",
+    "showTerminalDescription": "Display the terminal area alongside Codex. When off, new Codex tabs open with the terminal collapsed.",
+    "commandPreview": "Command preview"
+  }
 }

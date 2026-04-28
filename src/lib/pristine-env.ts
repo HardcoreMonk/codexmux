@@ -1,9 +1,9 @@
-const cached = process.env.__PMUX_PRISTINE_ENV;
+const cached = process.env.__CMUX_PRISTINE_ENV;
 
 export const PRISTINE_ENV: NodeJS.ProcessEnv = Object.freeze(
   cached ? (JSON.parse(cached) as NodeJS.ProcessEnv) : { ...process.env },
 );
 
 if (!cached) {
-  process.env.__PMUX_PRISTINE_ENV = JSON.stringify(PRISTINE_ENV);
+  process.env.__CMUX_PRISTINE_ENV = JSON.stringify(PRISTINE_ENV);
 }

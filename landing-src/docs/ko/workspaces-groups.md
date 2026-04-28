@@ -6,17 +6,17 @@ permalink: /ko/docs/workspaces-groups/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-워크스페이스는 관련된 탭을 한 묶음으로 모아두는 단위입니다 — 프로젝트의 터미널, diff 패널, Claude 세션이 한 곳에 있습니다. 여러 개를 만들고 나면 사이드바의 그룹으로 깔끔하게 정리할 수 있습니다.
+워크스페이스는 관련된 탭을 한 묶음으로 모아두는 단위입니다 — 프로젝트의 터미널, diff 패널, Codex 세션이 한 곳에 있습니다. 여러 개를 만들고 나면 사이드바의 그룹으로 깔끔하게 정리할 수 있습니다.
 
 ## 워크스페이스에 들어가는 것
 
 워크스페이스마다 고유하게 가지는 것:
 
 - **기본 디렉토리** — 새 탭의 쉘이 시작되는 위치
-- **탭과 pane** — 터미널, Claude 세션, diff 패널, 웹 브라우저 패널
+- **탭과 pane** — 터미널, Codex 세션, diff 패널, 웹 브라우저 패널
 - **레이아웃** — 분할 비율, 포커스, 각 pane의 활성 탭
 
-모든 정보가 `~/.purplemux/workspaces.json`에 저장됩니다. 워크스페이스는 purplemux가 저장하고 복원하는 단위입니다. 브라우저를 닫아도 워크스페이스가 사라지지 않고, tmux가 쉘을 살려두며 레이아웃도 그대로 유지됩니다.
+모든 정보가 `~/.codexmux/workspaces.json`에 저장됩니다. 워크스페이스는 codexmux가 저장하고 복원하는 단위입니다. 브라우저를 닫아도 워크스페이스가 사라지지 않고, tmux가 쉘을 살려두며 레이아웃도 그대로 유지됩니다.
 
 ## 워크스페이스 만들기
 
@@ -27,7 +27,7 @@ permalink: /ko/docs/workspaces-groups/index.html
 3. Enter로 확정. 빈 워크스페이스가 열립니다.
 
 {% call callout('tip', '시작 디렉토리를 잘 고르세요') %}
-기본 디렉토리는 이 워크스페이스에서 만들어지는 모든 새 쉘의 cwd입니다. 프로젝트 루트로 지정해두면 새 탭에서 바로 `pnpm dev`, `git status`, Claude 세션 시작이 가능해집니다.
+기본 디렉토리는 이 워크스페이스에서 만들어지는 모든 새 쉘의 cwd입니다. 프로젝트 루트로 지정해두면 새 탭에서 바로 `pnpm dev`, `git status`, Codex 세션 시작이 가능해집니다.
 {% endcall %}
 
 ## 이름 변경과 삭제
@@ -44,7 +44,7 @@ permalink: /ko/docs/workspaces-groups/index.html
 |---|---|---|
 | 워크스페이스 1–9로 이동 | <kbd>⌘1</kbd> – <kbd>⌘9</kbd> | <kbd>Ctrl+1</kbd> – <kbd>Ctrl+9</kbd> |
 | 사이드바 토글 | <kbd>⌘B</kbd> | <kbd>Ctrl+B</kbd> |
-| 사이드바 모드 전환 (Workspace ↔ Sessions) | <kbd>⌘⇧B</kbd> | <kbd>Ctrl+Shift+B</kbd> |
+| 사이드바 모드 전환 (워크스페이스 ↔ 세션) | <kbd>⌘⇧B</kbd> | <kbd>Ctrl+Shift+B</kbd> |
 
 사이드바의 순서가 그대로 숫자 키 매핑입니다. 위/아래로 드래그하면 해당 슬롯이 바뀝니다.
 
@@ -61,10 +61,10 @@ permalink: /ko/docs/workspaces-groups/index.html
 
 ## 디스크에 저장되는 위치
 
-모든 변경은 즉시 `~/.purplemux/workspaces.json`에 반영됩니다. 직접 열어 백업할 수도 있습니다 — 전체 파일 구조는 [데이터 디렉토리](/purplemux/ko/docs/data-directory/) 참고. 서버 실행 중에 이 파일을 지우면 purplemux는 빈 워크스페이스로 폴백해 처음부터 다시 시작합니다.
+모든 변경은 즉시 `~/.codexmux/workspaces.json`에 반영됩니다. 직접 열어 백업할 수도 있습니다 — 전체 파일 구조는 [데이터 디렉토리](/codexmux/ko/docs/data-directory/) 참고. 서버 실행 중에 이 파일을 지우면 codexmux는 빈 워크스페이스로 폴백해 처음부터 다시 시작합니다.
 
 ## 다음으로
 
-- **[탭 & 창](/purplemux/ko/docs/tabs-panes/)** — 워크스페이스 안에서 분할, 순서 변경, 포커스 이동
-- **[레이아웃 저장 & 복원](/purplemux/ko/docs/save-restore/)** — 브라우저 종료와 서버 재부팅에서 워크스페이스가 살아남는 방식
-- **[키보드 단축키](/purplemux/ko/docs/keyboard-shortcuts/)** — 전체 바인딩 테이블
+- **[탭 & 창](/codexmux/ko/docs/tabs-panes/)** — 워크스페이스 안에서 분할, 순서 변경, 포커스 이동
+- **[레이아웃 저장 & 복원](/codexmux/ko/docs/save-restore/)** — 브라우저 종료와 서버 재부팅에서 워크스페이스가 살아남는 방식
+- **[키보드 단축키](/codexmux/ko/docs/keyboard-shortcuts/)** — 전체 바인딩 테이블

@@ -14,7 +14,7 @@
   "empty": {
     "closeLabel": "Schließen",
     "noSession": "Keine Sitzungen",
-    "startNewSession": "Führe claude im Terminal aus,{br}um eine neue Sitzung zu starten",
+    "startNewSession": "Run codex in the terminal{br}to start a new session",
     "newConversation": "Neues Gespräch",
     "close": "Schließen"
   },

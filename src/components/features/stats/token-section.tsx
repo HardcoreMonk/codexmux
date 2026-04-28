@@ -15,7 +15,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import type { ChartConfig } from '@/components/ui/chart';
 import type { IOverviewResponse } from '@/types/stats';
 import { formatNumber, formatNumberWithComma, formatDate, formatAxisTick, formatCostWithComma } from '@/components/features/stats/stats-utils';
-import { formatModelDisplayName, normalizeModelName } from '@/lib/claude-tokens';
+import { formatModelDisplayName, normalizeModelName } from '@/lib/model-tokens';
 
 const pct = (value: number, total: number): string =>
   total > 0 ? `${Math.round((value / total) * 100)}%` : '0%';
@@ -25,21 +25,21 @@ interface ITokenSectionProps {
 }
 
 const MODEL_COLOR_MAP: Record<string, string> = {
-  'claude-opus-4-7': 'var(--ui-purple)',
-  'claude-opus-4-6': 'var(--ui-pink)',
-  'claude-opus-4-5': 'var(--ui-red)',
-  'claude-sonnet-4-6': 'var(--ui-coral)',
-  'claude-sonnet-4-5': 'var(--ui-amber)',
-  'claude-haiku-4-5': 'var(--ui-teal)',
+  'gpt-5.5': 'var(--ui-purple)',
+  'gpt-5.4': 'var(--ui-pink)',
+  'gpt-5.4-mini': 'var(--ui-coral)',
+  'gpt-5.2-codex': 'var(--ui-blue)',
+  'gpt-5.1-codex': 'var(--ui-teal)',
+  'gpt-5-codex': 'var(--ui-amber)',
 };
 
 const getModelColor = (model: string): string => {
   const key = normalizeModelName(model);
   if (MODEL_COLOR_MAP[key]) return MODEL_COLOR_MAP[key];
   const lower = model.toLowerCase();
-  if (lower.includes('opus')) return 'var(--ui-purple)';
-  if (lower.includes('sonnet')) return 'var(--ui-coral)';
-  if (lower.includes('haiku')) return 'var(--ui-teal)';
+  if (lower.includes('mini')) return 'var(--ui-coral)';
+  if (lower.includes('nano')) return 'var(--ui-teal)';
+  if (lower.includes('codex')) return 'var(--ui-blue)';
   return 'var(--ui-gray)';
 };
 

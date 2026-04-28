@@ -1,66 +1,66 @@
 ---
-title: Git 工作流面板
-description: 與終端機並排的 diff 檢視器、歷史瀏覽器與同步控制 — 出問題時可一鍵把問題交給 Claude。
-eyebrow: 工作區與終端機
+title: Git 워크플로 패널
+description: 터미널 옆에 있는 diff 뷰어, 히스토리 브라우저, 동기화 컨트롤. 막히면 한 번에 Codex로 넘기세요.
+eyebrow: 워크스페이스 & 터미널
 permalink: /zh-TW/docs/git-workflow/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Git 面板是一種分頁類型，就像終端機一樣。把它放在 Claude 工作階段旁邊，你就能讀取變更、瀏覽歷史並推送，全程不必離開儀表板。當 git 自己出狀況時，「詢問 Claude」會把問題一鍵交給某個工作階段處理。
+Git 패널은 터미널과 동일한 형태의 탭 타입입니다. Codex 세션 옆에 띄워두면 변경 내용 보기, 히스토리 탐색, 푸시까지 대시보드 안에서 끝납니다. git이 막혔을 때는 "Ask Codex" 한 번으로 세션에 문제를 넘길 수 있습니다.
 
-## 開啟面板
+## 패널 열기
 
-新增分頁並選擇 **Diff** 作為面板類型，或在現有分頁的面板類型選單切換到它。面板會綁定到與其同層級 shell 相同的工作目錄 — 如果分頁位於 `~/code/api`，diff 面板就會讀取那個 repo。
+새 탭을 추가하면서 패널 타입을 **Diff**로 선택하거나, 기존 탭의 패널 타입 메뉴에서 전환합니다. 패널은 같은 워크스페이스의 쉘과 동일한 작업 디렉토리에 묶입니다 — 탭이 `~/code/api`라면 패널도 그 레포를 읽습니다.
 
-| 動作 | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| 把目前分頁切換到 Diff 模式 | <kbd>⌘⇧F</kbd> | <kbd>Ctrl+Shift+F</kbd> |
+| 활성 탭을 Diff 모드로 전환 | <kbd>⌘⇧F</kbd> | <kbd>Ctrl+Shift+F</kbd> |
 
-如果該目錄不是 git repo，面板會明說，且不會擋路。
+해당 디렉토리가 git 레포가 아니면 패널이 그 사실을 표시하고 조용히 비켜섭니다.
 
-## Diff 檢視器
+## Diff 뷰어
 
-Changes 分頁會以檔案為單位顯示工作目錄的變更。
+Changes 탭이 작업 트리의 파일별 변경을 보여줍니다.
 
-- **並排或行內** — 在面板標頭切換。並排視圖類似 GitHub 的 split view；行內視圖則類似 GitHub 的 unified view。
-- **語法高亮** — 你的編輯器會高亮的語言，這裡都會偵測到。
-- **行內 hunk 展開** — 點選 hunk 旁的 context lines 即可展開周圍程式碼，無須離開面板。
-- **檔案清單** — 在面板側邊欄裡瀏覽變更檔案。
+- **Side-by-side / Inline** — 패널 헤더에서 토글. Side-by-side는 GitHub의 분할 뷰, Inline은 통합 뷰와 동일합니다.
+- **신택스 하이라이팅** — 에디터에서 하이라이팅되는 언어는 모두 지원.
+- **Inline hunk 확장** — hunk 주변 컨텍스트 라인을 클릭해서 패널을 떠나지 않고 주변 코드를 펼쳐볼 수 있습니다.
+- **파일 목록** — 패널 사이드바에서 변경 파일 사이를 이동합니다.
 
-當面板可見時，每 10 秒會重新整理；在其他工具中存檔時則會立即更新。
+패널이 보이는 동안에는 10초마다 변경을 리프레시하고, 외부 도구에서 저장이 일어나면 즉시 갱신합니다.
 
-## 提交歷史
+## 커밋 히스토리
 
-切換到 **History** 分頁可看到目前分支的分頁式 commit log。每筆條目顯示 hash、標題、作者與時間；點選即可看到該 commit 帶來的 diff。當你想想起某個檔案為何長這樣，又不想跳回終端機跑 `git log` 時非常實用。
+**History** 탭은 현재 브랜치의 페이지네이션된 커밋 로그를 보여줍니다. 각 항목에 해시, 제목, 작성자, 시각이 나옵니다. 클릭하면 해당 커밋의 diff가 열립니다. 터미널로 빠져나가 `git log`를 칠 필요 없이 "이 파일이 왜 이렇게 됐지?"를 그 자리에서 확인할 수 있습니다.
 
-## 同步面板
+## 동기화 패널
 
-標頭列顯示目前分支、上游與 ahead/behind 計數，提供三種動作：
+헤더 스트립에 현재 브랜치, 업스트림, ahead/behind 카운터가 표시됩니다. 액션은 셋:
 
-- **Fetch** — 在背景每 3 分鐘對上游執行 `git fetch`，亦可手動觸發。
-- **Pull** — 條件允許時做 fast-forward。
-- **Push** — 推送到設定的上游。
+- **Fetch** — 백그라운드에서 3분마다 `git fetch`를 돌리고, 수동 실행도 가능합니다.
+- **Pull** — 가능하면 fast-forward.
+- **Push** — 설정된 업스트림으로 push.
 
-同步刻意設計得很狹窄。需要做決定的情況都會被拒絕 — 分支已分歧、工作目錄髒、缺少上游 — 並告訴你原因。
+Sync는 의도적으로 좁게 만들어졌습니다. 사람의 판단이 필요한 상황 — 브랜치가 갈라졌거나, 워킹 트리가 더럽거나, 업스트림이 없거나 — 은 거부하고 그 이유를 알려줍니다.
 
-{% call callout('warning', '同步無法進行時') %}
-面板會清楚回報的常見失敗：
+{% call callout('warning', '동기화가 막힐 때') %}
+패널이 명확하게 보고하는 실패들:
 
-- **沒有 upstream** — 還沒執行 `git push -u`。
-- **驗證問題** — 憑證遺失或被拒。
-- **分歧** — 本地與遠端各有獨立 commit；需先 rebase 或 merge。
-- **本地有變更** — 未提交的工作會擋住 pull。
-- **被拒絕** — push 因 non-fast-forward 被拒。
+- **No upstream** — `git push -u`가 아직 실행되지 않음
+- **Auth** — 자격증명이 없거나 거부됨
+- **Diverged** — 로컬과 원격이 각자 고유 커밋을 가짐. rebase 또는 merge 필요
+- **로컬 변경 사항** — 커밋되지 않은 작업이 pull을 막음
+- **Rejected** — non-fast-forward로 push 거부됨
 {% endcall %}
 
-## 詢問 Claude
+## Ask Codex
 
-當同步失敗時，錯誤的 toast 會提供 **詢問 Claude** 按鈕。點下去會把失敗的脈絡 — 錯誤類型、相關的 `git` 輸出、目前分支狀態 — 當作 prompt 送進同一工作區的 Claude 分頁。Claude 會接著走完恢復流程：rebase、解決衝突、設定 upstream，無論錯誤是什麼。
+Sync가 실패하면 에러 토스트에 **Ask Codex** 버튼이 함께 떠오릅니다. 클릭하면 실패 컨텍스트 — 에러 종류, 관련 `git` 출력, 현재 브랜치 상태 — 가 같은 워크스페이스의 Codex 탭에 프롬프트로 전달됩니다. 이후 Codex가 rebase, 충돌 해결, 업스트림 설정 등 필요한 복구 단계를 안내합니다.
 
-這就是這個面板的核心賭注：常見情境靠工具，長尾交給 LLM。你不必切換脈絡；prompt 會直接出現在你本來就要用的工作階段裡。
+이 패널의 핵심 베팅은 이것입니다 — 일반적인 케이스는 도구로, 그 외 long tail은 LLM에게. 컨텍스트를 전환하지 않습니다. 어차피 갈 세션에 프롬프트가 도착해 있을 뿐입니다.
 
-## 下一步
+## 다음으로
 
-- **[分頁與窗格](/purplemux/zh-TW/docs/tabs-panes/)** — 把 diff 面板分割在 Claude 工作階段旁邊。
-- **[第一個工作階段](/purplemux/zh-TW/docs/first-session/)** — Claude 權限提示如何在儀表板上呈現。
-- **[網頁瀏覽器面板](/purplemux/zh-TW/docs/web-browser-panel/)** — 另一個值得與終端機並排執行的面板類型。
+- **[탭 & 창](/codexmux/zh-TW/docs/tabs-panes/)** — Codex 세션 옆에 diff 패널 분할로 띄우기
+- **[첫 세션](/codexmux/zh-TW/docs/first-session/)** — 권한 프롬프트가 대시보드에 어떻게 노출되는지
+- **[웹 브라우저 패널](/codexmux/zh-TW/docs/web-browser-panel/)** — 터미널 옆에 두면 좋은 또 하나의 패널 타입

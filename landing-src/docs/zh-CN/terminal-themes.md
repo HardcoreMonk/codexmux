@@ -1,73 +1,73 @@
 ---
-title: 终端主题
-description: xterm.js 终端的独立调色板 — 浅色一套、深色一套。
-eyebrow: 自定义
+title: 터미널 테마
+description: xterm.js 터미널 전용 팔레트 — 다크와 라이트를 각각 한 개씩 고릅니다.
+eyebrow: 커스터마이즈
 permalink: /zh-CN/docs/terminal-themes/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-终端窗格使用 xterm.js,自带调色板,与其余 UI 独立。你为深色和浅色各挑一套主题;purplemux 会跟着应用主题切换。
+터미널 영역은 UI와는 독립된 xterm.js 팔레트를 씁니다. 다크 테마와 라이트 테마를 각각 하나씩 골라두면, 앱 테마가 바뀔 때 codexmux가 자동으로 전환합니다.
 
-## 打开选择器
+## 선택 화면 열기
 
-设置(<kbd>⌘,</kbd>) → **终端** 标签页。会看到 Dark 和 Light 两个子标签,每个都是一组主题卡片。点击其中一个,所有打开的终端立刻应用。
+설정(<kbd>⌘,</kbd>) → **터미널** 탭의 어두운/밝은 서브 탭 안에 카드 그리드가 있습니다. 카드를 누르면 열려 있는 모든 터미널에 즉시 반영됩니다.
 
-## 为什么要独立调色板
+## 왜 따로 둘까
 
-终端应用依赖 16 色 ANSI 调色板(red、green、yellow、blue、magenta、cyan,加上各自的 bright 变体)。UI 调色板是有意压低饱和度的,直接用会让终端输出难以阅读。专门的调色板让 `vim`、`git diff`、语法高亮和 TUI 工具能正确渲染。
+터미널 앱은 16색 ANSI 팔레트(red, green, yellow, blue, magenta, cyan과 bright 버전)에 의존합니다. UI 팔레트는 의도적으로 채도를 낮춰 두었기 때문에 그대로 쓰면 터미널 출력이 읽히지 않습니다. 별도 팔레트가 있어야 `vim`, `git diff`, 신택스 하이라이트, TUI 도구가 제대로 보입니다.
 
-每个主题定义:
+각 테마는 다음을 정의합니다.
 
-- 背景、前景、光标、选区
-- 八种基本 ANSI 颜色(black、red、green、yellow、blue、magenta、cyan、white)
-- 八种 bright 变体
+- background, foreground, cursor, selection
+- 8개 기본 ANSI 컬러(black, red, green, yellow, blue, magenta, cyan, white)
+- 8개 bright 변형
 
-## 内置主题
+## 기본 제공 테마
 
-**深色**
+**Dark**
 
-- Snazzy *(默认)*
+- Snazzy *(기본값)*
 - Dracula
 - One Dark
 - Tokyo Night
 - Nord
 - Catppuccin Mocha
 
-**浅色**
+**Light**
 
-- Catppuccin Latte *(默认)*
+- Catppuccin Latte *(기본값)*
 - GitHub Light
 - One Light
 - Solarized Light
 - Tokyo Night Light
 - Nord Light
 
-卡片预览把七种核心 ANSI 颜色置于主题背景上,可以在确定之前肉眼判断对比度。
+카드 미리보기에 테마 배경 위 7개 ANSI 컬러가 표시되어, 선택 전에 대비를 가늠할 수 있습니다.
 
-## 浅 / 深切换怎么工作
+## 라이트/다크 전환 방식
 
-你独立挑选 **一个深色主题** 和 **一个浅色主题**。当前激活由解析后的应用主题决定:
+다크 테마와 라이트 테마를 각각 **독립적으로** 선택합니다. 활성 테마는 앱 테마에 따라 결정됩니다.
 
-- 应用主题为 **深色** → 使用你选的深色主题。
-- 应用主题为 **浅色** → 使用你选的浅色主题。
-- 应用主题为 **跟随系统** → 跟随 OS,自动切换。
+- 앱 테마 **Dark** → 선택한 다크 테마
+- 앱 테마 **Light** → 선택한 라이트 테마
+- 앱 테마 **System** → OS 모드에 따라 자동 전환
 
-所以应用主题选 "跟随系统",两侧都配置好,就能得到一个跟随 OS 昼夜切换的终端,不需要额外设置。
+앱 테마를 System으로 두고 양쪽을 설정해두면, 추가 작업 없이 OS의 낮/밤 모드를 따라가는 터미널이 됩니다.
 
-{% call callout('tip', '匹配应用,或刻意对比') %}
-有人喜欢终端跟其他 UI 一致。也有人偏爱在浅色应用里用高对比度的 Dracula 或 Tokyo Night 终端。两种都行;选择器不强制。
+{% call callout('tip', '맞춰도 되고 어긋나게 해도 됩니다') %}
+UI와 같은 톤의 터미널을 선호하는 사람도 있고, 라이트 앱에서도 강한 대비의 Dracula·Tokyo Night을 쓰는 사람도 있습니다. 둘 다 됩니다. 선택을 강제하지 않습니다.
 {% endcall %}
 
-## 按主题,而非按标签页
+## 탭별이 아닌 전역 설정
 
-选择是全局的。每个终端窗格、每个 Claude 会话都用相同的激活主题。没有按标签页覆盖;有需要请提 issue。
+선택은 전역입니다. 모든 터미널 pane과 Codex 세션이 같은 활성 테마를 씁니다. 탭별 오버라이드는 현재 없습니다. 필요하면 이슈로 알려주세요.
 
-## 添加自己的主题
+## 직접 추가하려면
 
-UI 中目前没有自定义主题入口。内置列表在 `src/lib/terminal-themes.ts`。如果你从源码构建可以追加自己的;否则的话,正规途径是提 PR 加入新主题。
+UI에서 커스텀 테마를 등록하는 기능은 아직 없습니다. 기본 목록은 `src/lib/terminal-themes.ts`에 정의되어 있으며, 소스에서 빌드한다면 직접 추가할 수 있습니다. 그 외에는 PR로 기여하는 것이 권장 경로입니다.
 
-## 下一步
+## 다음으로
 
-- **[主题与字体](/purplemux/zh-CN/docs/themes-fonts/)** — 应用主题和字号。
-- **[自定义 CSS](/purplemux/zh-CN/docs/custom-css/)** — 覆盖其余 UI。
-- **[编辑器集成](/purplemux/zh-CN/docs/editor-integration/)** — 用外部编辑器打开文件。
+- **[테마 & 폰트](/codexmux/zh-CN/docs/themes-fonts/)** — 앱 테마와 폰트 크기
+- **[커스텀 CSS](/codexmux/zh-CN/docs/custom-css/)** — 나머지 UI 오버라이드
+- **[에디터 연동](/codexmux/zh-CN/docs/editor-integration/)** — 외부 에디터로 파일 열기

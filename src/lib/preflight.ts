@@ -3,7 +3,7 @@ import { access } from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { promisify } from 'util';
-import type { IRuntimePreflightResult } from '@/types/preflight';
+import type { IPreflightResult, IRuntimePreflightResult } from '@/types/preflight';
 import { buildShellEnv, defaultShell as resolveDefaultShell } from '@/lib/shell-env';
 import { PRISTINE_ENV } from '@/lib/pristine-env';
 
@@ -55,14 +55,6 @@ interface IToolStatus {
   version: string | null;
 }
 
-interface IPreflightResult {
-  tmux: IToolStatus & { compatible: boolean };
-  git: IToolStatus;
-  claude: IToolStatus & { binaryPath: string | null; loggedIn: boolean };
-  brew?: IToolStatus;
-  clt?: { installed: boolean };
-}
-
 const checkTool = async (
   cmd: string,
   args: string[],
@@ -80,12 +72,12 @@ const checkTool = async (
 const parseSemanticVersion = (stdout: string): string | null =>
   stdout.trim().match(/(\d+\.\d+[\d.]*)/)?.[1] ?? null;
 
-const CLAUDE_KNOWN_DIRS = [path.join(os.homedir(), '.local', 'bin')];
+const CODEX_KNOWN_DIRS = [path.join(os.homedir(), '.local', 'bin')];
 
-const findClaudeBinary = async (): Promise<string | null> => {
-  for (const dir of CLAUDE_KNOWN_DIRS) {
+const findCodexBinary = async (): Promise<string | null> => {
+  for (const dir of CODEX_KNOWN_DIRS) {
     try {
-      await access(path.join(dir, 'claude'));
+      await access(path.join(dir, 'codex'));
       return dir;
     } catch {
       // not found
@@ -108,29 +100,30 @@ const checkClt = async (): Promise<{ installed: boolean }> => {
 
 export const getPreflightStatus = async (): Promise<IPreflightResult> => {
   shellPathCache = await resolveShellPathAsync();
-  const [tmux, git, claude] = await Promise.all([
+  const [tmux, git, codex] = await Promise.all([
     checkTool('tmux', ['-V'], parseSemanticVersion),
     checkTool('git', ['--version'], parseSemanticVersion),
-    checkTool('claude', ['--version'], parseSemanticVersion),
+    checkTool('codex', ['--version'], parseSemanticVersion),
   ]);
 
-  const coreReady = isTmuxCompatible(tmux) && git.installed && claude.installed;
+  const coreReady = isTmuxCompatible(tmux) && git.installed && codex.installed;
 
-  const claudeBinaryPath = claude.installed ? null : await findClaudeBinary();
-  let claudeLoggedIn = false;
-  if (claude.installed || claudeBinaryPath) {
+  const codexBinaryPath = codex.installed ? null : await findCodexBinary();
+  let codexLoggedIn = false;
+  if (codex.installed || codexBinaryPath) {
     try {
-      await access(path.join(os.homedir(), '.claude'));
-      claudeLoggedIn = true;
+      await access(path.join(os.homedir(), '.codex'));
+      codexLoggedIn = true;
     } catch {
       // not logged in yet
     }
   }
 
+  const codexStatus = { ...codex, binaryPath: codexBinaryPath, loggedIn: codexLoggedIn };
   const result: IPreflightResult = {
     tmux: { ...tmux, compatible: isTmuxCompatible(tmux) },
     git,
-    claude: { ...claude, binaryPath: claudeBinaryPath, loggedIn: claudeLoggedIn },
+    agent: codexStatus,
   };
 
   if (!coreReady) {
@@ -177,16 +170,16 @@ export const getCachedPreflightStatus = async (): Promise<IPreflightResult> => {
 
 export const getRuntimePreflightStatus = async (): Promise<IRuntimePreflightResult> => {
   shellPathCache = await resolveShellPathAsync();
-  const [tmux, git, claude] = await Promise.all([
+  const [tmux, git, codex] = await Promise.all([
     checkTool('tmux', ['-V'], parseSemanticVersion),
     checkTool('git', ['--version'], parseSemanticVersion),
-    checkTool('claude', ['--version'], parseSemanticVersion),
+    checkTool('codex', ['--version'], parseSemanticVersion),
   ]);
 
   return {
     tmux: { ...tmux, compatible: isTmuxCompatible(tmux) },
     git,
-    claude,
+    agent: codex,
   };
 };
 

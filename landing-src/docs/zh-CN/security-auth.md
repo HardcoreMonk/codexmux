@@ -1,75 +1,75 @@
 ---
-title: 安全与认证
-description: purplemux 如何保护你的仪表盘 — scrypt 哈希密码、纯本地数据、外部访问走 HTTPS。
-eyebrow: 移动与远程
+title: 보안과 인증
+description: codexmux가 대시보드를 보호하는 방식 — scrypt 해시 비밀번호, 로컬 전용 데이터, 외부 접속 시 HTTPS.
+eyebrow: 모바일 & 원격
 permalink: /zh-CN/docs/security-auth/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux 是自托管的,完全留在你的机器上。没有外部服务、没有遥测、没有云端账户。下面只描述真正用来守护仪表盘的那几块东西。
+codexmux는 셀프 호스팅 방식이며 모든 데이터가 사용자의 머신에 머무릅니다. 외부 서버도, 텔레메트리도, 클라우드 계정도 없습니다. 아래는 대시보드를 실제로 지키는 몇 안 되는 장치들입니다.
 
-## 密码设置
+## 비밀번호 설정
 
-第一次打开 purplemux 时,引导界面要求你设一个密码。提交之后:
+처음 codexmux를 열면 온보딩 화면이 비밀번호를 입력받습니다. 제출 후:
 
-- 密码用 **scrypt** 哈希(随机 16 字节盐、64 字节派生密钥)。
-- 哈希以 `scrypt:{salt}:{hash}` 形式写入 `~/.purplemux/config.json` — 明文从不存储。
-- 同时生成一个独立的 `authSecret`(随机 hex)存放在旁边。purplemux 用它对登录后签发的会话 cookie 签名。
+- 비밀번호는 **scrypt**로 해싱됩니다 (랜덤 16바이트 salt, 64바이트 derived key).
+- 해시는 `~/.codexmux/config.json`에 `scrypt:{salt}:{hash}` 형태로 저장됩니다 — 평문은 어디에도 저장되지 않습니다.
+- 별도의 `authSecret`(랜덤 hex)이 함께 생성되며, 로그인 후 발급되는 세션 쿠키 서명에 사용됩니다.
 
-之后访问时显示登录界面,用 `crypto.timingSafeEqual` 把密码与存储的哈希比对。
+이후 접속에는 로그인 화면이 나타나고, `crypto.timingSafeEqual`로 저장된 해시와 비교합니다.
 
-{% call callout('note', '密码长度') %}
-最小长度很短(4 字符)以免本地设置被打扰。如果你把 purplemux 暴露到 tailnet 或别处,选个更强的。失败登录每个进程每 15 分钟限制 16 次。
+{% call callout('note', '비밀번호 길이') %}
+최소 길이는 짧게(4자) 잡혀 있어 localhost 전용 환경에서는 부담이 없습니다. 테일넷이든 어디든 외부에 노출한다면 더 강한 비밀번호를 사용하세요. 로그인 실패는 프로세스당 15분에 16회로 rate-limit이 걸려 있습니다.
 {% endcall %}
 
-## 重置密码
+## 비밀번호 재설정
 
-忘了?只要有主机的 shell 访问权限就够:
+잊어버렸다면 호스트에 셸 접근만 있으면 됩니다.
 
 ```bash
-rm ~/.purplemux/config.json
+rm ~/.codexmux/config.json
 ```
 
-重启 purplemux(`pnpm start`、`npx purplemux`,或者你启动的方式),引导界面再次出现,可以选新密码。
+codexmux를 재시작하면 (`pnpm start`, `npx codexmux` 등 평소 실행 방법) 온보딩 화면이 다시 나타나 새 비밀번호를 설정할 수 있습니다.
 
-这会清掉同一文件中存放的其他设置(主题、语言、字体大小、通知开关等)。工作区和标签页存放在 `workspaces.json` 和 `workspaces/` 目录下,布局不受影响。
+이 작업은 같은 파일에 저장된 다른 설정(테마, 언어, 폰트 크기, 알림 토글 등)도 함께 초기화합니다. 워크스페이스와 탭은 `workspaces.json`과 `workspaces/` 디렉토리에 들어 있으니 레이아웃은 영향받지 않습니다.
 
-## 外部访问的 HTTPS
+## 외부 접속에는 HTTPS
 
-默认绑到 `localhost`,通过纯 HTTP 提供。在同一台机器上没问题 — 但只要从另一台设备访问 purplemux,就该走 HTTPS。
+기본 바인드는 `localhost`이고 평문 HTTP로 서빙됩니다. 같은 머신에서 쓸 때는 문제가 없지만, 다른 기기에서 접근하는 순간부터는 HTTPS가 기본입니다.
 
-- **Tailscale Serve** 是推荐路径:WireGuard 加密 + 自动 Let's Encrypt 证书。见 [Tailscale 访问](/purplemux/zh-CN/docs/tailscale/)。
-- **反向代理**(Nginx、Caddy 等)也行,只要正确转发 WebSocket 的 `Upgrade` 和 `Connection` header。
+- **Tailscale Serve** 권장 — WireGuard 암호화에 Let's Encrypt 인증서 자동 발급. [Tailscale 접속](/codexmux/zh-CN/docs/tailscale/) 참고.
+- **리버스 프록시** (Nginx, Caddy 등)도 가능 — WebSocket의 `Upgrade`, `Connection` 헤더를 반드시 포워딩해야 합니다.
 
-iOS Safari 还要求 HTTPS 才能装 PWA 和注册 Web Push。见 [PWA 设置](/purplemux/zh-CN/docs/pwa-setup/) 和 [Web Push](/purplemux/zh-CN/docs/web-push/)。
+iOS Safari는 PWA 설치와 Web Push 등록에 HTTPS를 추가로 요구합니다. [PWA 설정](/codexmux/zh-CN/docs/pwa-setup/), [웹 푸시](/codexmux/zh-CN/docs/web-push/) 참고.
 
-## `~/.purplemux/` 里有什么
+## `~/.codexmux/`에 있는 것
 
-一切都在本地。敏感文件的权限是 `0600`。
+모두 로컬에 있습니다. 민감 파일의 권한은 `0600`입니다.
 
-| 文件 | 内容 |
+| 파일 | 내용 |
 |---|---|
-| `config.json` | scrypt 密码哈希、会话密钥、应用偏好 |
-| `workspaces.json` + `workspaces/` | 工作区列表与每个工作区的窗格 / 标签页布局 |
-| `vapid-keys.json` | Web Push VAPID 密钥对(自动生成) |
-| `push-subscriptions.json` | 各设备的推送订阅 |
-| `cli-token` | hook / CLI 与本地服务通信的共享 token |
-| `pmux.lock` | 单实例锁(`pid`、`port`、`startedAt`) |
-| `logs/` | 滚动的 pino 日志文件 |
+| `config.json` | scrypt 비밀번호 해시, 세션 secret, 앱 환경 설정 |
+| `workspaces.json` + `workspaces/` | 워크스페이스 목록과 워크스페이스별 pane/탭 레이아웃 |
+| `vapid-keys.json` | Web Push VAPID 키페어 (자동 생성) |
+| `push-subscriptions.json` | 기기별 푸시 구독 정보 |
+| `cli-token` | 훅과 CLI가 로컬 서버와 통신할 때 쓰는 공유 토큰 |
+| `cmux.lock` | 단일 인스턴스 락 (`pid`, `port`, `startedAt`) |
+| `logs/` | pino-roll 로그 파일 |
 
-完整清单和重置表见仓库内的 [docs/DATA-DIR.md](https://github.com/subicura/purplemux/blob/main/docs/DATA-DIR.md)。
+전체 목록과 리셋 표는 source-of-truth인 [docs/DATA-DIR.md](https://github.com/subicura/codexmux/blob/main/docs/DATA-DIR.md)에 정리되어 있습니다.
 
-## 没有遥测
+## 텔레메트리 없음
 
-purplemux 自己不发起任何外部请求。它发起的网络调用只有:
+codexmux 자체가 외부로 보내는 요청은 없습니다. 발생하는 네트워크 호출은 다음뿐입니다.
 
-- 你订阅的 Web Push 通知,通过 OS 推送服务发送。
-- Claude CLI 自己做的事 — 那是你和 Anthropic 之间的事,与 purplemux 无关。
+- 사용자가 구독한 Web Push 알림 — OS 푸시 서비스로 전달됩니다.
+- Codex CLI 자체가 하는 통신 — OpenAI과 사용자 사이의 일이며 codexmux와 무관합니다.
 
-代码和会话数据从不离开你的机器。
+코드와 세션 데이터는 머신을 벗어나지 않습니다.
 
-## 下一步
+## 다음으로
 
-- **[Tailscale 访问](/purplemux/zh-CN/docs/tailscale/)** — 通向外部 HTTPS 的安全路径。
-- **[PWA 设置](/purplemux/zh-CN/docs/pwa-setup/)** — 处理好认证之后,装到主屏幕。
-- **[Web Push 通知](/purplemux/zh-CN/docs/web-push/)** — 后台提醒。
+- **[Tailscale 접속](/codexmux/zh-CN/docs/tailscale/)** — 외부 HTTPS의 안전한 경로
+- **[PWA 설정](/codexmux/zh-CN/docs/pwa-setup/)** — 인증 정리 후 홈 화면에 설치
+- **[웹 푸시 알림](/codexmux/zh-CN/docs/web-push/)** — 백그라운드 알림

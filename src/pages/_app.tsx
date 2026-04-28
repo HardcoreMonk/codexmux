@@ -23,7 +23,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { ThemeProvider, useTheme } from "next-themes";
 import { Toaster } from "sonner";
 import useTerminalTheme from "@/hooks/use-terminal-theme";
-import useClaudeStatus from "@/hooks/use-claude-status";
+import useAgentStatus from "@/hooks/use-agent-status";
 import useNativeNotification from "@/hooks/use-native-notification";
 import useToastNotification from "@/hooks/use-toast-notification";
 import useWebPush from "@/hooks/use-web-push";
@@ -75,7 +75,7 @@ const CustomCSSSync = () => {
   const customCSS = useConfigStore((s) => s.customCSS);
 
   useEffect(() => {
-    const id = 'purplemux-custom-css';
+    const id = 'codexmux-custom-css';
     let el = document.getElementById(id) as HTMLStyleElement | null;
     if (!customCSS) {
       el?.remove();
@@ -92,8 +92,8 @@ const CustomCSSSync = () => {
   return null;
 };
 
-const ClaudeStatusProvider = () => {
-  useClaudeStatus();
+const AgentStatusProvider = () => {
+  useAgentStatus();
   useNativeNotification();
   useToastNotification();
   useWebPush();
@@ -221,7 +221,7 @@ export default function App({ Component, pageProps }: TAppPropsWithLayout) {
           <TerminalThemeSync />
           <FontSizeSync />
           <CustomCSSSync />
-          <ClaudeStatusProvider />
+          <AgentStatusProvider />
           <ThemedToaster />
         </main>
       </ThemeProvider>

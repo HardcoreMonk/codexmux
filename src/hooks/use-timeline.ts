@@ -7,6 +7,7 @@ import type {
   TCliState,
   TTimelineConnectionStatus,
 } from '@/types/timeline';
+import type { TPanelType } from '@/types/terminal';
 import useTimelineWebSocket from '@/hooks/use-timeline-websocket';
 
 interface IResumeCallbacks {
@@ -16,14 +17,15 @@ interface IResumeCallbacks {
 }
 
 export interface ITimelineSyncState {
-  claudeProcess: boolean | null;
-  claudeInstalled: boolean;
+  agentProcess: boolean | null;
+  agentInstalled: boolean;
   isLoading: boolean;
 }
 
 interface IUseTimelineOptions {
   sessionName: string;
-  claudeSessionId?: string | null;
+  agentSessionId?: string | null;
+  panelType?: TPanelType;
   enabled: boolean;
   resumeCallbacks?: IResumeCallbacks;
   onSync?: (state: ITimelineSyncState) => void;
@@ -42,8 +44,8 @@ interface IUseTimelineReturn {
   sessionSummary: string | undefined;
   initMeta: IInitMeta | undefined;
   sessionStats: ISessionStats | null;
-  claudeProcess: boolean | null;
-  claudeInstalled: boolean;
+  agentProcess: boolean | null;
+  agentInstalled: boolean;
   wsStatus: TTimelineConnectionStatus;
   isLoading: boolean;
   error: string | null;
@@ -57,15 +59,16 @@ interface IUseTimelineReturn {
 
 const useTimeline = ({
   sessionName,
-  claudeSessionId,
+  agentSessionId,
+  panelType,
   enabled,
   resumeCallbacks,
   onSync,
   getCliState,
 }: IUseTimelineOptions): IUseTimelineReturn => {
   const [entries, setEntries] = useState<ITimelineEntry[]>([]);
-  const [claudeProcess, setClaudeProcess] = useState<boolean | null>(null);
-  const [claudeInstalled, setClaudeInstalled] = useState(true);
+  const [agentProcessState, setAgentProcessState] = useState<boolean | null>(null);
+  const [agentInstalledState, setAgentInstalledState] = useState(true);
   const [wsInitReceived, setWsInitReceived] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -93,8 +96,8 @@ const useTimeline = ({
   if (sessionName !== prevSessionName) {
     setPrevSessionName(sessionName);
     setWsInitReceived(false);
-    setClaudeProcess(null);
-    setClaudeInstalled(true);
+    setAgentProcessState(null);
+    setAgentInstalledState(true);
     setEntries([]);
     setError(null);
     setHasMore(false);
@@ -109,9 +112,9 @@ const useTimeline = ({
 
   const isLoading = !wsInitReceived;
 
-  const handleInit = useCallback((newEntries: ITimelineEntry[], _totalEntries: number, initSessionId: string, summary?: string, meta?: IInitMeta, startByteOffset?: number, hasMoreInit?: boolean, jsonlPath?: string | null, isClaudeStarting?: boolean, initStats?: ISessionStats | null) => {
+  const handleInit = useCallback((newEntries: ITimelineEntry[], _totalEntries: number, initSessionId: string, summary?: string, meta?: IInitMeta, startByteOffset?: number, hasMoreInit?: boolean, jsonlPath?: string | null, isAgentStarting?: boolean, initStats?: ISessionStats | null) => {
     setWsInitReceived(true);
-    setClaudeInstalled(true);
+    setAgentInstalledState(true);
     setEntries((prev) => {
       const pendings = prev.filter(
         (e): e is ITimelineEntry & { type: 'user-message'; pending: true } =>
@@ -141,8 +144,8 @@ const useTimeline = ({
     }
     if (initSessionId) {
       setSessionId(initSessionId);
-    } else if (!isClaudeStarting) {
-      setClaudeProcess(false);
+    } else if (!isAgentStarting) {
+      setAgentProcessState(false);
     }
     setError(null);
   }, []);
@@ -240,8 +243,11 @@ const useTimeline = ({
 
   const handleSessionChanged = useCallback((newSessionId: string, reason: string) => {
     if (reason === 'session-ended') {
-      setClaudeProcess(false);
+      setAgentProcessState(false);
       setWsInitReceived(true);
+      if (panelType === 'codex') {
+        return;
+      }
       setEntries([]);
       setSessionSummary(undefined);
       setInitMeta(undefined);
@@ -251,22 +257,22 @@ const useTimeline = ({
     }
     if (reason === 'session-waiting') {
       if (newSessionId) {
-        setClaudeProcess(true);
+        setAgentProcessState(true);
         setSessionId(newSessionId);
       } else {
-        setClaudeProcess(true);
+        setAgentProcessState(true);
       }
       return;
     }
     setSessionId(newSessionId || null);
-    setClaudeProcess(true);
+    setAgentProcessState(true);
     setEntries([]);
     setSessionSummary(undefined);
     setInitMeta(undefined);
     setSessionStats(null);
     setHasMore(false);
     setWsInitReceived(false);
-  }, []);
+  }, [panelType]);
 
   const handleStatsUpdate = useCallback((stats: ISessionStats) => {
     setSessionStats(stats);
@@ -280,8 +286,14 @@ const useTimeline = ({
     }
     isLoadingMoreRef.current = true;
     try {
+      const params = new URLSearchParams({
+        jsonlPath: jsonlPathRef.current,
+        beforeByte: String(startByteOffsetRef.current),
+        limit: '128',
+      });
+      if (panelType) params.set('panelType', panelType);
       const res = await fetch(
-        `/api/timeline/entries?jsonlPath=${encodeURIComponent(jsonlPathRef.current)}&beforeByte=${startByteOffsetRef.current}&limit=128`,
+        `/api/timeline/entries?${params}`,
       );
       if (!res.ok) return;
       const data = await res.json();
@@ -291,11 +303,11 @@ const useTimeline = ({
     } finally {
       isLoadingMoreRef.current = false;
     }
-  }, [hasMore]);
+  }, [hasMore, panelType]);
 
   const handleError = useCallback((err: { code: string; message: string }) => {
     if (err.code === 'not-installed') {
-      setClaudeInstalled(false);
+      setAgentInstalledState(false);
       return;
     }
     console.warn(`[timeline] WebSocket error: ${err.code} — ${err.message}`);
@@ -312,7 +324,7 @@ const useTimeline = ({
         jsonlPathRef.current = payload.jsonlPath;
       }
       setSessionId(payload.sessionId);
-      setClaudeProcess(true);
+      setAgentProcessState(true);
       setEntries([]);
       setWsInitReceived(false);
       resumeCallbacksRef.current?.onResumeStarted?.(payload);
@@ -336,7 +348,8 @@ const useTimeline = ({
 
   const { status: wsStatus, reconnect, sendResume } = useTimelineWebSocket({
     sessionName,
-    claudeSessionId,
+    agentSessionId,
+    panelType,
     enabled,
     onInit: handleInit,
     onAppend: handleAppend,
@@ -357,8 +370,12 @@ const useTimeline = ({
   useEffect(() => { onSyncRef.current = onSync; }, [onSync]);
 
   useEffect(() => {
-    onSyncRef.current?.({ claudeProcess, claudeInstalled, isLoading });
-  }, [claudeProcess, claudeInstalled, isLoading]);
+    onSyncRef.current?.({
+      agentProcess: agentProcessState,
+      agentInstalled: agentInstalledState,
+      isLoading,
+    });
+  }, [agentProcessState, agentInstalledState, isLoading]);
 
   const tasks = useMemo((): ITaskItem[] => {
     const items: ITaskItem[] = [];
@@ -394,8 +411,8 @@ const useTimeline = ({
     sessionSummary,
     initMeta,
     sessionStats,
-    claudeProcess,
-    claudeInstalled,
+    agentProcess: agentProcessState,
+    agentInstalled: agentInstalledState,
     wsStatus,
     isLoading,
     error,

@@ -1,6 +1,6 @@
 {
   "title": "Nutzungsstatistiken",
-  "pageTitle": "Nutzungsstatistiken — purplemux",
+  "pageTitle": "Nutzungsstatistiken — codexmux",
   "dataLoadError": "Daten konnten nicht geladen werden",
   "collectingInitial": "Erste Daten werden erfasst",
   "collectingToday": "Heutige Daten werden erfasst",
@@ -12,7 +12,6 @@
   "activityPattern": "Aktivitätsmuster",
   "project": "Projekte",
   "session": "Sitzungen",
-
   "tokenLabel": "Tokens",
   "inputLabel": "Eingabe",
   "outputLabel": "Ausgabe",
@@ -22,9 +21,7 @@
   "modelTokens": "Tokens nach Modell",
   "dailyTokenTrend": "Täglicher Token-Trend",
   "total": "Gesamt",
-
   "errorLoadFailed": "Daten konnten nicht geladen werden",
-
   "today": "Heute",
   "generating": "Wird generiert...",
   "sessionCount": "{count} Sitzungen",
@@ -37,7 +34,6 @@
   "collapse": "Einklappen",
   "showMore": "Mehr anzeigen",
   "noActivity": "Keine Aktivität",
-
   "messages": "Nachrichten",
   "sessions": "Sitzungen",
   "toolCalls": "Tool-Aufrufe",
@@ -50,20 +46,17 @@
   "more": "Mehr",
   "hourSuffix": " Uhr",
   "messageCount": "{count} Nachrichten",
-
   "totalSessions": "Sitzungen gesamt",
   "totalCost": "Gesamtkosten",
   "todayCost": "Kosten heute",
   "thisMonthCost": "Kosten diesen Monat",
   "dailyActivityTrend": "Täglicher Aktivitätstrend",
   "vsPreviousPeriod": "im Vergleich zum Vorzeitraum",
-
   "projectAnalysis": "Projektanalyse",
   "projectTokenUsageTop": "Token-Verbrauch nach Projekt (TOP {count})",
   "noProjectData": "Keine Projektdaten",
   "sessionCountLabel": "{count} Sitzungen",
   "messageCountLabel": "{count} Nachrichten",
-
   "longestStreak": "Längste Streak",
   "currentStreak": "Aktuelle Streak",
   "streakCount": "Streaks gesamt",
@@ -76,9 +69,8 @@
   "concurrentUsage": "Gleichzeitige Nutzung",
   "concurrentOrMore": "{level}+ gleichzeitig",
   "accumulated": "Gesamt {duration}",
-  "noRecentActivity": "Keine Claude-Nutzung in den letzten 7 Tagen",
+  "noRecentActivity": "No Codex usage in the last 7 days",
   "currentlyRunning": "Läuft gerade — {duration} Streak",
-
   "avgSessionLength": "Durchschnittl. Sitzungslänge",
   "longestSession": "Längste Sitzung",
   "totalToolCalls": "Tool-Aufrufe gesamt",
@@ -90,7 +82,6 @@
   "goalAchievement": "Zielerreichung",
   "topCommands": "Top 10 Befehle",
   "inputLengthDist": "Eingabelängenverteilung",
-
   "periodToday": "Heute",
   "period7d": "7 Tage",
   "period30d": "30 Tage",

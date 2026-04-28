@@ -1,142 +1,62 @@
 ---
-title: Referencia del CLI
-description: Cada subcomando y flag de los binarios purplemux y pmux.
-eyebrow: Referencia
+title: CLI 레퍼런스
+description: codexmux와 cmux 명령, tab 제어, token 인증.
+eyebrow: 레퍼런스
 permalink: /es/docs/cli-reference/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-`purplemux` viene con dos formas de usar el binario: como arrancador del servidor (`purplemux` / `purplemux start`) y como wrapper de la API HTTP (`purplemux <subcomando>`) que habla con un servidor en marcha. El alias corto `pmux` es idéntico.
+`codexmux`는 서버 시작 명령이면서 실행 중인 서버를 제어하는 CLI입니다. `cmux`는 같은 기능을 제공하는 짧은 별칭입니다.
 
-## Dos roles, un binario
-
-| Forma | Qué hace |
-|---|---|
-| `purplemux` | Arranca el servidor. Igual que `purplemux start`. |
-| `purplemux <subcomando>` | Habla con la API HTTP del CLI de un servidor en marcha. |
-| `pmux ...` | Alias para `purplemux ...`. |
-
-El dispatcher en `bin/purplemux.js` separa el primer argumento: los subcomandos conocidos van a `bin/cli.js`, cualquier otra cosa (o sin argumento) lanza el servidor.
-
-## Arrancar el servidor
+## 서버 시작
 
 ```bash
-purplemux              # por defecto
-purplemux start        # lo mismo, explícito
-PORT=9000 purplemux    # puerto personalizado
-HOST=all purplemux     # enlazar en todas partes
+codexmux
+codexmux start
+PORT=9000 HOST=localhost,tailscale codexmux
 ```
 
-Consulta [Puertos y variables de entorno](/purplemux/es/docs/ports-env-vars/) para la superficie env completa.
+`8022`가 이미 사용 중이면 codexmux는 비어 있는 port를 찾아 바인딩하고 실제 port를 `~/.codexmux/port`에 기록합니다.
 
-El servidor imprime sus URLs enlazadas, modo y estado de auth:
-
-```
-  ⚡ purplemux  v0.x.x
-  ➜  Available on:
-       http://127.0.0.1:8022
-       http://192.168.1.42:8022
-  ➜  Mode:   production
-  ➜  Auth:   configured
-```
-
-Si `8022` ya está en uso, el servidor avisa y enlaza a un puerto libre aleatorio.
-
-## Subcomandos
-
-Todos los subcomandos requieren un servidor en marcha. Leen el puerto desde `~/.purplemux/port` y el token de auth desde `~/.purplemux/cli-token`, ambos escritos automáticamente al arrancar el servidor.
-
-| Comando | Propósito |
-|---|---|
-| `purplemux workspaces` | Listar espacios de trabajo |
-| `purplemux tab list [-w WS]` | Listar pestañas (opcionalmente acotadas a un espacio) |
-| `purplemux tab create -w WS [-n NAME] [-t TYPE]` | Crear una nueva pestaña |
-| `purplemux tab send -w WS TAB_ID CONTENT...` | Enviar entrada a una pestaña |
-| `purplemux tab status -w WS TAB_ID` | Inspeccionar el estado de una pestaña |
-| `purplemux tab result -w WS TAB_ID` | Capturar el contenido actual del panel de la pestaña |
-| `purplemux tab close -w WS TAB_ID` | Cerrar una pestaña |
-| `purplemux tab browser ...` | Manejar una pestaña `web-browser` (solo Electron) |
-| `purplemux api-guide` | Imprimir la referencia HTTP API completa |
-| `purplemux help` | Mostrar uso |
-
-La salida es JSON salvo que se indique. `--workspace` y `-w` son intercambiables.
-
-### Tipos de panel para `tab create`
-
-El flag `-t` / `--type` elige el tipo de panel. Valores válidos:
-
-| Valor | Panel |
-|---|---|
-| `terminal` | Shell normal |
-| `claude-code` | Shell con `claude` ya en marcha |
-| `web-browser` | Navegador embebido (solo Electron) |
-| `diff` | Panel de diff de Git |
-
-Sin `-t`, obtienes una terminal normal.
-
-### Subcomandos de `tab browser`
-
-Solo funcionan cuando el tipo de panel de la pestaña es `web-browser`, y solo en la app Electron de macOS — el puente devuelve 503 en otro caso.
-
-| Subcomando | Qué devuelve |
-|---|---|
-| `purplemux tab browser url -w WS TAB_ID` | URL actual + título de la página |
-| `purplemux tab browser screenshot -w WS TAB_ID [-o FILE] [--full]` | PNG. Con `-o` guarda en disco; sin él, devuelve base64. `--full` captura la página completa. |
-| `purplemux tab browser console -w WS TAB_ID [--since MS] [--level LEVEL]` | Entradas recientes de consola (buffer circular, 500 entradas) |
-| `purplemux tab browser network -w WS TAB_ID [--since MS] [--method M] [--url SUBSTR] [--status CODE] [--request ID]` | Entradas recientes de red; `--request ID` recupera un body |
-| `purplemux tab browser eval -w WS TAB_ID EXPR` | Evalúa una expresión JS y serializa el resultado |
-
-## Ejemplos
+## tab 생성
 
 ```bash
-# Encontrar tu espacio de trabajo
-purplemux workspaces
-
-# Crear una pestaña Claude en el espacio ws-MMKl07
-purplemux tab create -w ws-MMKl07 -t claude-code -n "refactor auth"
-
-# Enviar un prompt (TAB_ID viene de `tab list`)
-purplemux tab send -w ws-MMKl07 tb-abc "Refactoriza src/lib/auth.ts para quitar el cookie path"
-
-# Ver su estado
-purplemux tab status -w ws-MMKl07 tb-abc
-
-# Snapshot del panel
-purplemux tab result -w ws-MMKl07 tb-abc
-
-# Captura de página completa de una pestaña web-browser
-purplemux tab browser screenshot -w ws-MMKl07 tb-xyz -o page.png --full
+codexmux tab create -w WS_ID --type codex --cwd /path/to/project
+cmux tab create -w WS_ID --type terminal --cwd /tmp
 ```
 
-## Autenticación
+| type | 의미 |
+|---|---|
+| `codex` | Codex session tab |
+| `terminal` | 일반 shell tab |
+| `diff` | Git diff panel |
+| `browser` | Electron web browser panel |
 
-Cada subcomando envía `x-pmux-token: $(cat ~/.purplemux/cli-token)` y se verifica del lado del servidor con `timingSafeEqual`. El archivo `~/.purplemux/cli-token` se genera en el primer arranque del servidor con `randomBytes(32)` y se almacena con modo `0600`.
-
-Si necesitas manejar el CLI desde otro shell o un script que no puede ver `~/.purplemux/`, define las variables de entorno:
-
-| Variable | Por defecto | Efecto |
-|---|---|---|
-| `PMUX_PORT` | contenido de `~/.purplemux/port` | Puerto al que habla el CLI |
-| `PMUX_TOKEN` | contenido de `~/.purplemux/cli-token` | Bearer token enviado como `x-pmux-token` |
+## browser tab 제어
 
 ```bash
-PMUX_PORT=8022 PMUX_TOKEN=$(cat ~/.purplemux/cli-token) purplemux workspaces
+codexmux tab browser url -w WS_ID TAB_ID
+codexmux tab browser navigate -w WS_ID TAB_ID http://localhost:3000
+codexmux tab browser screenshot -w WS_ID TAB_ID -o screenshot.png --full
 ```
 
-{% call callout('warning') %}
-El token CLI da acceso completo al servidor. Trátalo como una contraseña. No lo pegues en chat, no lo commitees, no lo expongas como variable de build. Rótalo borrando `~/.purplemux/cli-token` y reiniciando el servidor.
+Screenshot은 `-o`가 있으면 파일로 저장하고 없으면 base64로 반환합니다. `--full`은 전체 페이지를 캡처합니다.
+
+## 인증
+
+모든 subcommand는 `x-cmux-token`을 보냅니다. token은 `~/.codexmux/cli-token`에 있으며 첫 서버 시작 시 생성됩니다. 다른 shell에서 실행해야 하면 다음 env var를 사용할 수 있습니다.
+
+| 변수 | 의미 |
+|---|---|
+| `CMUX_PORT` | CLI가 접속할 port |
+| `CMUX_TOKEN` | `x-cmux-token`으로 보낼 token |
+
+{% call callout('warning', 'CLI token 관리') %}
+CLI token은 서버 전체 접근 권한을 줍니다. chat, repository, build log에 노출하지 마세요. 회전하려면 `~/.codexmux/cli-token`을 삭제하고 서버를 재시작합니다.
 {% endcall %}
 
-## update-notifier
+## 다음 단계
 
-`purplemux` consulta npm en cada arranque por una versión más nueva (vía `update-notifier`) e imprime un banner si existe una. Desactiva con `NO_UPDATE_NOTIFIER=1` o cualquiera de los [opt-outs estándar de `update-notifier`](https://github.com/yeoman/update-notifier#user-settings).
-
-## API HTTP completa
-
-`purplemux api-guide` imprime la referencia HTTP API completa para cada endpoint `/api/cli/*`, incluyendo cuerpos de petición y formas de respuesta — útil cuando quieres manejar purplemux directamente desde `curl` u otro runtime.
-
-## Siguientes pasos
-
-- **[Puertos y variables de entorno](/purplemux/es/docs/ports-env-vars/)** — `PMUX_PORT` / `PMUX_TOKEN` en la superficie env más amplia.
-- **[Arquitectura](/purplemux/es/docs/architecture/)** — con qué está hablando realmente el CLI.
-- **[Solución de problemas](/purplemux/es/docs/troubleshooting/)** — cuando el CLI dice "¿está corriendo el servidor?".
+- **[포트 & 환경 변수](/codexmux/es/docs/ports-env-vars/)**
+- **[탭 & 창](/codexmux/es/docs/tabs-panes/)**
+- **[웹 브라우저 패널](/codexmux/es/docs/web-browser-panel/)**

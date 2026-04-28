@@ -16,7 +16,6 @@ import {
   createDefaultLayout,
 } from '@/lib/layout-store';
 import type { ICreateLayoutOptions } from '@/lib/layout-store';
-import { writeClaudePromptFile } from '@/lib/claude-prompt';
 import { getVisuallyOrderedWorkspaces } from '@/lib/workspace-order';
 import type { IWorkspace, IWorkspaceGroup, IWorkspacesData, ILayoutData } from '@/types/terminal';
 
@@ -35,24 +34,24 @@ const nextWorkspaceName = (workspaces: IWorkspace[]): string => {
   return `${WORKSPACE_PREFIX}${max + 1}`;
 };
 
-const BASE_DIR = path.join(os.homedir(), '.purplemux');
+const BASE_DIR = path.join(os.homedir(), '.codexmux');
 const WORKSPACES_FILE = path.join(BASE_DIR, 'workspaces.json');
 const LEGACY_LAYOUT_FILE = path.join(BASE_DIR, 'layout.json');
 const LEGACY_TABS_FILE = path.join(BASE_DIR, 'tabs.json');
 
 const g = globalThis as unknown as {
-  __purplemuxWorkspaceLock?: Promise<void>;
-  __purplemuxWorkspacesContentCache?: string;
+  __codexmuxWorkspaceLock?: Promise<void>;
+  __codexmuxWorkspacesContentCache?: string;
 };
-if (!g.__purplemuxWorkspaceLock) g.__purplemuxWorkspaceLock = Promise.resolve();
+if (!g.__codexmuxWorkspaceLock) g.__codexmuxWorkspaceLock = Promise.resolve();
 
 const withLock = async <T>(fn: () => Promise<T>): Promise<T> => {
   let release: () => void;
   const next = new Promise<void>((r) => {
     release = r;
   });
-  const prev = g.__purplemuxWorkspaceLock!;
-  g.__purplemuxWorkspaceLock = next;
+  const prev = g.__codexmuxWorkspaceLock!;
+  g.__codexmuxWorkspaceLock = next;
   await prev;
   try {
     return await fn();
@@ -122,7 +121,7 @@ const writeWorkspacesFile = async (data: IWorkspacesData): Promise<void> => {
   const { workspaces, groups, activeWorkspaceId, sidebarCollapsed, sidebarWidth } = data;
   const contentKey = JSON.stringify({ workspaces, groups: groups ?? [], activeWorkspaceId, sidebarCollapsed, sidebarWidth });
 
-  if (g.__purplemuxWorkspacesContentCache === contentKey) return;
+  if (g.__codexmuxWorkspacesContentCache === contentKey) return;
 
   data.updatedAt = new Date().toISOString();
   const tmpFile = WORKSPACES_FILE + '.tmp';
@@ -134,7 +133,7 @@ const writeWorkspacesFile = async (data: IWorkspacesData): Promise<void> => {
     throw err;
   }
 
-  g.__purplemuxWorkspacesContentCache = contentKey;
+  g.__codexmuxWorkspacesContentCache = contentKey;
   broadcastSync({ type: 'workspace' });
 };
 
@@ -314,7 +313,6 @@ export const createWorkspace = async (directory: string, name?: string, layoutOp
     const workspace: IWorkspace = { id: wsId, name: wsName, directories: [directory] };
     data.workspaces.push(workspace);
     await writeWorkspacesFile(data);
-    await writeClaudePromptFile(workspace);
 
     log.debug(`Created: ${wsId} (${wsName}, ${directory})`);
     return workspace;
@@ -359,7 +357,6 @@ export const renameWorkspace = async (workspaceId: string, name: string): Promis
 
     ws.name = name;
     await writeWorkspacesFile(data);
-    await writeClaudePromptFile(ws);
 
     log.debug(`Renamed: ${workspaceId} → "${name}"`);
     return { ...ws };
@@ -388,7 +385,6 @@ export const updateWorkspaceDirectories = async (workspaceId: string, directorie
     if (current === JSON.stringify(directories)) return;
     ws.directories = directories;
     await writeWorkspacesFile(data);
-    await writeClaudePromptFile(ws);
   });
 
 export interface IReorderItem {

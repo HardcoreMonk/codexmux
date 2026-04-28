@@ -21,7 +21,7 @@ for (const f of fs.readdirSync(standalone)) {
 }
 
 // Dev-only files occasionally picked up by NFT — strip them out
-for (const f of ['CLAUDE.md', 'AGENTS.md']) {
+for (const f of ['AGENTS.md']) {
   const p = path.join(standalone, f);
   if (fs.existsSync(p)) {
     fs.rmSync(p, { force: true });
@@ -75,7 +75,7 @@ if (fs.existsSync(turbopackExternals)) {
 }
 
 if (!electronMode) {
-  // Web mode ships purplemux via npm; the consumer's install already contains
+  // Web mode ships codexmux via npm; the consumer's install already contains
   // every runtime dependency (next, react-dom, pino, node-pty, ...) thanks to
   // package.json#dependencies, so Node resolves them via the normal walk-up
   // from standalone/. Dropping standalone/node_modules reclaims ~30MB and

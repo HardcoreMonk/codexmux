@@ -1,25 +1,25 @@
 ---
-title: Raccourcis clavier
-description: Tous les raccourcis — générés automatiquement à partir de src/lib/keyboard-shortcuts.ts.
-eyebrow: Référence
+title: 키보드 단축키
+description: 모든 바인딩 — src/lib/keyboard-shortcuts.ts 에서 자동 생성.
+eyebrow: 레퍼런스
 permalink: /fr/docs/keyboard-shortcuts/index.html
 ---
-<p>Les raccourcis ci-dessous sont lus directement depuis <code>src/lib/keyboard-shortcuts.ts</code>. La page est régénérée à chaque déploiement, elle reste donc toujours synchronisée avec l'application.</p>
+<p>아래 바인딩은 <code>src/lib/keyboard-shortcuts.ts</code>에서 직접 읽어 생성됩니다. 배포 시마다 재빌드되므로 앱과 항상 동기화됩니다.</p>
 
-<p>Sur macOS les modificateurs s'affichent comme <kbd>⌘</kbd> (Cmd), <kbd>⌃</kbd> (Ctrl), <kbd>⌥</kbd> (Option), <kbd>⇧</kbd> (Shift). Sur Linux / Windows les mêmes actions utilisent <kbd>Ctrl</kbd> / <kbd>Alt</kbd> / <kbd>Shift</kbd>.</p>
+<p>macOS에서는 <kbd>⌘</kbd>(Cmd), <kbd>⌃</kbd>(Ctrl), <kbd>⌥</kbd>(Option), <kbd>⇧</kbd>(Shift)로 표시됩니다. Linux/Windows에서는 같은 동작을 <kbd>Ctrl</kbd>/<kbd>Alt</kbd>/<kbd>Shift</kbd>로 사용합니다.</p>
 
 <div class="callout callout--tip">
-  <div class="callout-title">Personnaliser</div>
-  <div class="callout-body">Ouvrez <strong>Paramètres → Raccourcis</strong> pour réassigner toute action modifiable. Les raccourcis désactivés (<code>editable: false</code> dans la source) sont réservés aux raccourcis de la rangée des chiffres.</div>
+  <div class="callout-title">커스터마이즈</div>
+  <div class="callout-body"><strong>설정 → 단축키</strong>에서 편집 가능한 모든 액션을 재지정할 수 있습니다. 비활성 바인딩(<code>editable: false</code>)은 숫자 행 단축키 전용으로 예약되어 있습니다.</div>
 </div>
 
 {%- set localizedLabels = {
-  'Workspace': 'Espace de travail',
-  'Tabs': 'Onglets',
-  'Panes & splits': 'Volets & divisions',
-  'Panel': 'Panneau',
-  'Views & modes': 'Vues & modes',
-  'App': 'Application'
+  'Workspace': '워크스페이스',
+  'Tabs': '탭',
+  'Panes & splits': '창 & 분할',
+  'Panel': '패널',
+  'Views & modes': '뷰 & 모드',
+  'App': '앱'
 } %}
 
 {%- for group in shortcuts %}
@@ -27,7 +27,7 @@ permalink: /fr/docs/keyboard-shortcuts/index.html
 <table class="shortcut-table">
   <thead>
     <tr>
-      <th>Action</th>
+      <th>동작</th>
       <th>macOS</th>
       <th>Linux / Windows</th>
     </tr>

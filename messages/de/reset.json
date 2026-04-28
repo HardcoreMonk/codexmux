@@ -1,5 +1,5 @@
 {
-  "pageTitle": "Zurücksetzen - purplemux",
+  "pageTitle": "Zurücksetzen - codexmux",
   "title": "tmux zurücksetzen",
   "stepCleanup": "Verbindungen werden bereinigt",
   "stepReset": "tmux-Server wird gestoppt und zurückgesetzt",

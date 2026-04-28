@@ -1,83 +1,83 @@
 ---
-title: 分頁與窗格
-description: 工作區內分頁的運作方式、分割窗格的方法，以及在窗格之間移動焦點的快速鍵。
-eyebrow: 工作區與終端機
+title: 탭 & 창
+description: 워크스페이스 안에서 탭이 동작하는 방식, 창을 분할하는 법, 그리고 그 사이를 오가는 단축키.
+eyebrow: 워크스페이스 & 터미널
 permalink: /zh-TW/docs/tabs-panes/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-工作區會被切分為多個 **窗格**（pane），每個窗格內又包含一疊 **分頁**（tab）。分割可以讓你並排檢視多個內容；分頁則允許單一窗格容納多個 shell，又不會搶占螢幕空間。
+워크스페이스는 **창(pane)**으로 나뉘고, 각 창은 여러 **탭**을 쌓아 가집니다. 분할은 동시에 여러 화면을 보기 위한 것이고, 탭은 한 창 안에서 여러 쉘을 화면 면적을 빼앗기지 않고 유지하기 위한 것입니다.
 
-## 分頁
+## 탭
 
-每個分頁都是真實的 shell，連到一個 tmux 工作階段。分頁標題來自前景程序 — 輸入 `vim`，分頁就會自動更名；離開 vim 後又會回到目錄名稱。
+모든 탭은 tmux 세션에 붙은 실제 쉘입니다. 탭 제목은 포어그라운드 프로세스에서 따옵니다 — `vim`을 실행하면 탭 이름이 바뀌고, 종료하면 디렉토리 이름으로 돌아옵니다.
 
-| 動作 | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| 新分頁 | <kbd>⌘T</kbd> | <kbd>Ctrl+T</kbd> |
-| 關閉分頁 | <kbd>⌘W</kbd> | <kbd>Ctrl+W</kbd> |
-| 上一個分頁 | <kbd>⌘⇧[</kbd> | <kbd>Ctrl+Shift+[</kbd> |
-| 下一個分頁 | <kbd>⌘⇧]</kbd> | <kbd>Ctrl+Shift+]</kbd> |
-| 切換到分頁 1–9 | <kbd>⌃1</kbd> – <kbd>⌃9</kbd> | <kbd>Alt+1</kbd> – <kbd>Alt+9</kbd> |
+| 새 탭 | <kbd>⌘T</kbd> | <kbd>Ctrl+T</kbd> |
+| 탭 닫기 | <kbd>⌘W</kbd> | <kbd>Ctrl+W</kbd> |
+| 이전 탭 | <kbd>⌘⇧[</kbd> | <kbd>Ctrl+Shift+[</kbd> |
+| 다음 탭 | <kbd>⌘⇧]</kbd> | <kbd>Ctrl+Shift+]</kbd> |
+| 1–9번 탭으로 이동 | <kbd>⌃1</kbd> – <kbd>⌃9</kbd> | <kbd>Alt+1</kbd> – <kbd>Alt+9</kbd> |
 
-直接在分頁列上拖曳分頁即可重新排序。分頁列尾端的 **+** 按鈕會打開與 <kbd>⌘T</kbd> 相同的範本選擇器。
+탭 바에서 탭을 드래그하면 순서가 바뀝니다. 탭 바 끝의 **+** 버튼은 <kbd>⌘T</kbd>와 같은 템플릿 선택 메뉴를 엽니다.
 
-{% call callout('tip', 'Terminal 之外的範本') %}
-新分頁選單可以選擇 **Terminal**、**Claude**、**Diff** 或 **Web browser** 作為面板類型。它們都是分頁 — 可以混用在同一個窗格中，並用上述快速鍵在它們之間切換。
+{% call callout('tip', '터미널 외의 템플릿') %}
+새 탭 메뉴에서는 **터미널**, **Codex**, **Diff**, **웹 브라우저** 중 패널 타입을 고를 수 있습니다. 모두 탭이므로 한 창 안에 섞어두고 위 단축키로 자유롭게 전환할 수 있습니다.
 {% endcall %}
 
-## 分割窗格
+## 창 분할
 
-分頁會共用螢幕空間。若想同時看到兩件事，就分割窗格。
+탭은 화면을 공유합니다. 동시에 두 개를 보고 싶으면 창을 분할하세요.
 
-| 動作 | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| 往右分割 | <kbd>⌘D</kbd> | <kbd>Ctrl+D</kbd> |
-| 往下分割 | <kbd>⌘⇧D</kbd> | <kbd>Ctrl+Shift+D</kbd> |
+| 오른쪽으로 분할 | <kbd>⌘D</kbd> | <kbd>Ctrl+D</kbd> |
+| 아래로 분할 | <kbd>⌘⇧D</kbd> | <kbd>Ctrl+Shift+D</kbd> |
 
-新分割會繼承工作區的預設目錄，並從一個空的終端機分頁開始。每個窗格都有自己的分頁列，因此右側窗格可以放 diff 檢視，左側窗格則執行 `claude`。
+새로 만들어지는 분할은 워크스페이스의 기본 디렉토리를 상속받고 빈 터미널 탭으로 시작합니다. 각 창은 자체 탭 바를 가지므로 오른쪽 창에서는 diff 뷰어를, 왼쪽 창에서는 `codex`를 돌리는 식으로 쓸 수 있습니다.
 
-## 在窗格間移動焦點
+## 창 사이 포커스 이동
 
-使用方向鍵的快速鍵 — 它會走訪分割樹，所以從一個深層巢狀的窗格按 <kbd>⌘⌥→</kbd>，仍會落到視覺上相鄰的那一個。
+방향 단축키로 이동합니다 — 분할 트리를 따라 걷기 때문에, 깊게 중첩된 창에서 <kbd>⌘⌥→</kbd>를 눌러도 화면상 인접한 창으로 정확히 이동합니다.
 
-| 動作 | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| 焦點往左 | <kbd>⌘⌥←</kbd> | <kbd>Ctrl+Alt+←</kbd> |
-| 焦點往右 | <kbd>⌘⌥→</kbd> | <kbd>Ctrl+Alt+→</kbd> |
-| 焦點往上 | <kbd>⌘⌥↑</kbd> | <kbd>Ctrl+Alt+↑</kbd> |
-| 焦點往下 | <kbd>⌘⌥↓</kbd> | <kbd>Ctrl+Alt+↓</kbd> |
+| 왼쪽으로 포커스 | <kbd>⌘⌥←</kbd> | <kbd>Ctrl+Alt+←</kbd> |
+| 오른쪽으로 포커스 | <kbd>⌘⌥→</kbd> | <kbd>Ctrl+Alt+→</kbd> |
+| 위로 포커스 | <kbd>⌘⌥↑</kbd> | <kbd>Ctrl+Alt+↑</kbd> |
+| 아래로 포커스 | <kbd>⌘⌥↓</kbd> | <kbd>Ctrl+Alt+↓</kbd> |
 
-## 調整大小與平均
+## 크기 조정과 균등화
 
-直接拖曳窗格之間的分隔條可做精細控制，也能用鍵盤。
+창 사이의 분리선을 드래그하거나 키보드로 조정합니다.
 
-| 動作 | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| 縮小左側 | <kbd>⌘⌃⇧←</kbd> | <kbd>Ctrl+Alt+Shift+←</kbd> |
-| 縮小右側 | <kbd>⌘⌃⇧→</kbd> | <kbd>Ctrl+Alt+Shift+→</kbd> |
-| 縮小上方 | <kbd>⌘⌃⇧↑</kbd> | <kbd>Ctrl+Alt+Shift+↑</kbd> |
-| 縮小下方 | <kbd>⌘⌃⇧↓</kbd> | <kbd>Ctrl+Alt+Shift+↓</kbd> |
-| 平均分割 | <kbd>⌘⌥=</kbd> | <kbd>Ctrl+Alt+=</kbd> |
+| 왼쪽 크기 조정 | <kbd>⌘⌃⇧←</kbd> | <kbd>Ctrl+Alt+Shift+←</kbd> |
+| 오른쪽 크기 조정 | <kbd>⌘⌃⇧→</kbd> | <kbd>Ctrl+Alt+Shift+→</kbd> |
+| 위쪽 크기 조정 | <kbd>⌘⌃⇧↑</kbd> | <kbd>Ctrl+Alt+Shift+↑</kbd> |
+| 아래쪽 크기 조정 | <kbd>⌘⌃⇧↓</kbd> | <kbd>Ctrl+Alt+Shift+↓</kbd> |
+| 분할 균등화 | <kbd>⌘⌥=</kbd> | <kbd>Ctrl+Alt+=</kbd> |
 
-當版面被拉到難以使用的極端時，平均分割是最快的重置方式。
+레이아웃이 한쪽으로 너무 치우쳐 못 쓸 정도가 됐을 때 균등화가 가장 빠른 리셋 방법입니다.
 
-## 清除畫面
+## 화면 비우기
 
-<kbd>⌘K</kbd> 會清除目前窗格的終端機畫面，與大多數原生終端機相同。shell 程序仍會持續執行；只有可見的緩衝區被清空。
+<kbd>⌘K</kbd>는 현재 창의 터미널 화면을 비웁니다. 네이티브 터미널과 동일한 방식입니다. 쉘 프로세스는 계속 살아있고, 보이는 버퍼만 지워집니다.
 
-| 動作 | macOS | Linux / Windows |
+| 동작 | macOS | Linux / Windows |
 |---|---|---|
-| 清除畫面 | <kbd>⌘K</kbd> | <kbd>Ctrl+K</kbd> |
+| 화면 비우기 | <kbd>⌘K</kbd> | <kbd>Ctrl+K</kbd> |
 
-## 分頁能撐過任何情況
+## 탭은 어떤 상황에서도 살아남습니다
 
-關閉分頁會終止它對應的 tmux 工作階段。但是關閉 *瀏覽器*、重新整理、網路斷線都不會 — 每個分頁會繼續在伺服器上運作。重新打開後，相同的窗格、分割與分頁都會回來。
+탭을 닫으면 해당 tmux 세션이 종료됩니다. *브라우저*를 닫거나, 새로고침하거나, 네트워크가 끊어져도 탭은 종료되지 않고 서버에서 계속 돌아갑니다. 다시 열면 같은 창, 분할, 탭이 그대로 돌아옵니다.
 
-伺服器重啟時的還原機制請見 [儲存與還原版面](/purplemux/zh-TW/docs/save-restore/)。
+서버 재부팅 이후의 복구 동작은 [레이아웃 저장 & 복원](/codexmux/zh-TW/docs/save-restore/)에서 다룹니다.
 
-## 下一步
+## 다음으로
 
-- **[儲存與還原版面](/purplemux/zh-TW/docs/save-restore/)** — 版面是如何保留下來的。
-- **[鍵盤快速鍵](/purplemux/zh-TW/docs/keyboard-shortcuts/)** — 所有繫結一覽表。
-- **[Git 工作流面板](/purplemux/zh-TW/docs/git-workflow/)** — 一個值得擺進分割視窗的好用分頁類型。
+- **[레이아웃 저장 & 복원](/codexmux/zh-TW/docs/save-restore/)** — 이 레이아웃이 어떻게 유지되는지
+- **[키보드 단축키](/codexmux/zh-TW/docs/keyboard-shortcuts/)** — 전체 바인딩
+- **[Git 워크플로 패널](/codexmux/zh-TW/docs/git-workflow/)** — 분할에 띄워두면 유용한 탭 타입

@@ -1,69 +1,69 @@
 ---
-title: 快速开始
-description: 只要 Node.js 和 tmux,一分钟内即可让 purplemux 跑起来。
-eyebrow: 入门
+title: 빠른 시작
+description: Node.js와 tmux만 있으면 1분 안에 codexmux를 실행할 수 있습니다.
+eyebrow: 시작하기
 permalink: /zh-CN/docs/quickstart/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux 是一个基于 Web 的终端复用器。它在一个仪表盘里集中管理所有 Claude Code 会话,用 `tmux` 保持会话存活,无论坐在桌前还是拿着手机,都能继续之前的工作。
+codexmux는 웹 기반 터미널 멀티플렉서입니다. 모든 Codex 세션을 하나의 대시보드에서 관리하고, `tmux`로 세션을 유지하며, 책상에서도 휴대폰에서도 바로 이어서 작업할 수 있습니다.
 
-## 开始之前
+## 시작하기 전에
 
-你要运行 purplemux 的机器上需要两样东西。
+실행할 머신에 두 가지가 필요합니다.
 
-- **Node.js 20 或更新版本** — 用 `node -v` 检查
-- **tmux** — 用 `tmux -V` 检查。3.0 以上即可
+- **Node.js 20 이상** — `node -v`로 확인
+- **tmux** — `tmux -V`로 확인. 3.0 이상이면 OK
 
-{% call callout('note', '仅支持 macOS / Linux') %}
-不官方支持 Windows。purplemux 依赖 `node-pty` 和 tmux,这两者都不能在 Windows 上原生运行。WSL2 一般可以正常工作,但不在我们的测试范围内。
+{% call callout('note', 'macOS / Linux 전용') %}
+Windows는 공식 지원하지 않습니다. `node-pty`와 tmux가 Windows 네이티브로 동작하지 않기 때문입니다. WSL2에서는 대체로 동작하지만 테스트 범위 밖입니다.
 {% endcall %}
 
-## 启动
+## 실행
 
-一条命令搞定。无需全局安装。
+명령어 하나. 글로벌 설치도 필요 없습니다.
 
 ```bash
-npx purplemux
+npx codexmux
 ```
 
-服务会在 `8022` 端口启动。打开浏览器访问:
+`8022` 포트에서 서버가 뜹니다. 브라우저로 열어보세요.
 
 ```
 http://localhost:8022
 ```
 
-首次启动时会引导你设置密码并创建第一个工作区。
+처음 실행 시 비밀번호 설정과 첫 워크스페이스 생성 절차가 안내됩니다.
 
 {% call callout('tip') %}
-想要永久安装?用 `pnpm add -g purplemux && purplemux` 也可以。升级一句 `pnpm up -g purplemux` 即可。
+영구 설치를 원하시면 `pnpm add -g codexmux && codexmux`로 쓸 수도 있습니다. 업데이트는 `pnpm up -g codexmux` 한 번이면 됩니다.
 {% endcall %}
 
-## 打开一个 Claude 会话
+## Codex 세션 열기
 
-在仪表盘中:
+대시보드에서:
 
-1. 在任意工作区点击 **新标签页**。
-2. 选择 **Claude** 模板,或者在普通终端里直接运行 `claude`。
-3. purplemux 会自动识别正在运行的 Claude CLI,实时展示状态、时间线和权限提示。
+1. 원하는 워크스페이스에서 **새 탭**을 누릅니다.
+2. **Codex** 템플릿을 선택하거나, 일반 터미널에서 `codex`를 직접 실행해도 됩니다.
+3. codexmux가 실행 중인 Codex CLI를 자동으로 인식해 상태·타임라인·권한 프롬프트를 실시간으로 보여줍니다.
 
-即使关掉浏览器,会话也会继续存活 — tmux 在服务端保持进程一直运行。
+브라우저를 닫아도 세션은 유지됩니다 — tmux가 프로세스를 계속 살려두기 때문입니다.
 
-## 从手机上访问
+## 휴대폰에서 접근
 
-默认情况下 purplemux 只绑定 `localhost`。要安全地从外部访问,推荐使用 Tailscale Serve(WireGuard 加密 + 自动 HTTPS,无需端口转发):
+기본값으로 codexmux는 `localhost`에만 바인드합니다. 외부에서 안전하게 접근하려면 Tailscale Serve를 쓰세요 (WireGuard + 자동 HTTPS, 포트 포워딩 불필요):
 
 ```bash
-tailscale serve --bg 8022
+tailscale serve --bg --https=443 localhost:8022
 ```
 
-在手机上打开 `https://<machine>.<tailnet>.ts.net`,点 **分享 → 添加到主屏幕**,purplemux 就以 PWA 的形式安装,可以在后台收到 Web Push 通知。
+휴대폰에서 `https://<machine>.<tailnet>.ts.net`를 열고 **공유 → 홈 화면에 추가**하면 PWA로 설치되고, 백그라운드에서도 Web Push 알림을 받을 수 있습니다.
 
-完整设置见 [Tailscale 访问](/purplemux/zh-CN/docs/tailscale/),iOS / Android 的具体步骤见 [PWA 设置](/purplemux/zh-CN/docs/pwa-setup/)。
+자세한 설정은 [Tailscale 접속](/codexmux/zh-CN/docs/tailscale/), iOS/Android 구체 방법은 [PWA 설정](/codexmux/zh-CN/docs/pwa-setup/)을 참고하세요.
 
-## 下一步
+## 다음으로
 
-- **[安装](/purplemux/zh-CN/docs/installation/)** — 各平台细节、macOS 原生应用、开机自启动
-- **[浏览器支持](/purplemux/zh-CN/docs/browser-support/)** — 桌面 / 移动端兼容性矩阵
-- **[第一个会话](/purplemux/zh-CN/docs/first-session/)** — 仪表盘导览
-- **[键盘快捷键](/purplemux/zh-CN/docs/keyboard-shortcuts/)** — 所有按键绑定一览
+- **[설치](/codexmux/zh-CN/docs/installation/)** — 플랫폼별 세부 사항, macOS 네이티브 앱, 자동 시작
+- **[브라우저 지원](/codexmux/zh-CN/docs/browser-support/)** — 데스크탑/모바일 호환성 매트릭스
+- **[첫 세션](/codexmux/zh-CN/docs/first-session/)** — 대시보드 투어
+- **[키보드 단축키](/codexmux/zh-CN/docs/keyboard-shortcuts/)** — 전체 바인딩 한눈에

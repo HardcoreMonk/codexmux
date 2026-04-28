@@ -22,7 +22,7 @@ interface ISidebarItemsData {
   order: string[];
 }
 
-const BASE_DIR = path.join(os.homedir(), '.purplemux');
+const BASE_DIR = path.join(os.homedir(), '.codexmux');
 const FILE_PATH = path.join(BASE_DIR, 'sidebar-items.json');
 
 const BUILTIN_ITEMS: ISidebarItem[] = [

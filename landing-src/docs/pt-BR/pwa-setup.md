@@ -1,65 +1,65 @@
 ---
-title: Configuração de PWA
-description: Adicione o purplemux à tela de início no iOS Safari e Android Chrome para uma experiência em tela cheia, igualzinha a um app.
-eyebrow: Mobile e Remoto
+title: PWA 설정
+description: iOS Safari와 Android Chrome에서 codexmux를 홈 화면에 추가해 전체 화면 앱처럼 사용합니다.
+eyebrow: 모바일 & 원격
 permalink: /pt-BR/docs/pwa-setup/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Instalar o purplemux como Progressive Web App transforma a aba do navegador em um ícone autônomo na tela de início, com layout em tela cheia e splash screens decentes. No iOS, é também o pré-requisito para o Web Push.
+codexmux를 PWA로 설치하면 브라우저 탭이 홈 화면 아이콘으로 바뀌고, 전체 화면 레이아웃과 스플래시 스크린이 적용됩니다. iOS에서는 Web Push를 받기 위한 필수 단계이기도 합니다.
 
-## O que você ganha
+## 무엇이 좋아지나
 
-- **Layout em tela cheia** — sem chrome do navegador, mais espaço vertical para terminal e timeline.
-- **Ícone do app** — o purplemux é aberto a partir da tela de início, como qualquer app nativo.
-- **Splash screens** — o purplemux entrega imagens de splash por dispositivo para iPhones, então a transição de abertura parece nativa.
-- **Web Push** (apenas iOS) — notificações push só disparam após a instalação como PWA.
+- **전체 화면 레이아웃** — 브라우저 chrome이 사라져 터미널과 타임라인에 쓸 수 있는 세로 공간이 늘어납니다.
+- **앱 아이콘** — 다른 네이티브 앱처럼 홈 화면에서 바로 실행됩니다.
+- **스플래시 스크린** — iPhone 기종별 스플래시 이미지를 포함해서 실행 전환이 자연스럽습니다.
+- **Web Push** (iOS 한정) — PWA 설치 이후에만 푸시 알림이 동작합니다.
 
-O manifest é servido em `/api/manifest` e registra `display: standalone` com a marca purplemux e a cor do tema.
+매니페스트는 `/api/manifest`에서 제공되며 `display: standalone`과 codexmux 아이콘, 테마 컬러로 등록됩니다.
 
-## Antes de instalar
+## 설치 전 확인
 
-A página precisa estar acessível por **HTTPS** para o PWA funcionar. De `localhost` funciona no Chrome (exceção do loopback), mas o iOS Safari recusa instalar via HTTP plano. O caminho limpo é o Tailscale Serve — veja [Acesso via Tailscale](/purplemux/pt-BR/docs/tailscale/).
+페이지가 **HTTPS**로 접근 가능해야 PWA가 동작합니다. `localhost`는 Chrome에서는 예외적으로 허용되지만 iOS Safari는 평문 HTTP에서 설치를 허용하지 않습니다. 가장 깔끔한 경로는 Tailscale Serve입니다 — [Tailscale 접속](/codexmux/pt-BR/docs/tailscale/) 참고.
 
-{% call callout('warning', 'iOS exige Safari 16.4 ou mais novo') %}
-Versões anteriores do iOS conseguem instalar o PWA, mas não entregam Web Push. Se push importa para você, atualize o iOS primeiro. Detalhes navegador a navegador estão em [Suporte a navegadores](/purplemux/pt-BR/docs/browser-support/).
+{% call callout('warning', 'iOS는 Safari 16.4 이상 필요') %}
+이전 iOS에서도 PWA 설치는 됩니다만 Web Push는 동작하지 않습니다. 푸시가 중요하다면 iOS를 먼저 업데이트하세요. 브라우저별 자세한 호환성은 [브라우저 지원](/codexmux/pt-BR/docs/browser-support/)에 정리되어 있습니다.
 {% endcall %}
 
 ## iOS Safari
 
-1. Abra a URL do purplemux no **Safari** (outros navegadores iOS não expõem o Adicionar à Tela de Início para PWAs).
-2. Toque no ícone **Compartilhar** na barra de ferramentas inferior.
-3. Role o action sheet e escolha **Adicionar à Tela de Início**.
-4. Edite o nome se quiser e toque em **Adicionar** no canto superior direito.
-5. Abra o purplemux pelo novo ícone na tela de início — ele abre em tela cheia.
+1. **Safari**에서 codexmux URL을 엽니다 (다른 iOS 브라우저는 PWA용 홈 화면에 추가를 노출하지 않습니다).
+2. 하단 툴바의 **공유** 아이콘을 누릅니다.
+3. 액션 시트를 아래로 스크롤해서 **홈 화면에 추가**를 선택합니다.
+4. 이름을 원하는 대로 수정하고 우측 상단의 **추가**를 누릅니다.
+5. 홈 화면에 새로 생긴 아이콘을 누르면 전체 화면으로 실행됩니다.
 
-A primeira abertura pelo ícone é o momento em que o iOS trata aquilo como um PWA real. Qualquer prompt de permissão para push deve ser disparado dentro dessa janela standalone, não de uma aba comum do Safari.
+이 아이콘으로 처음 실행하는 순간부터 iOS가 PWA로 취급합니다. 푸시 권한 프롬프트도 일반 Safari 탭이 아니라 이 standalone 창 안에서 띄워야 합니다.
 
 ## Android Chrome
 
-O Chrome detecta automaticamente um manifest instalável e oferece um banner. Se ele não aparecer:
+Chrome은 매니페스트를 자동 감지해서 설치 배너를 띄웁니다. 보이지 않는다면:
 
-1. Abra a URL do purplemux no **Chrome**.
-2. Toque no menu **⋮** no canto superior direito.
-3. Escolha **Instalar app** (às vezes rotulado **Adicionar à Tela de início**).
-4. Confirme. O ícone aparece na tela de início e na gaveta de apps.
+1. **Chrome**에서 codexmux URL을 엽니다.
+2. 우측 상단 **⋮** 메뉴를 누릅니다.
+3. **앱 설치** (또는 **홈 화면에 추가**)를 선택합니다.
+4. 확인하면 홈 화면과 앱 서랍에 아이콘이 생깁니다.
 
-O Samsung Internet se comporta da mesma forma — o prompt de instalação geralmente aparece automaticamente.
+Samsung Internet도 동일합니다 — 설치 프롬프트가 자동으로 노출됩니다.
 
-## Verificando a instalação
+## 설치 확인
 
-Abra o purplemux pelo ícone da tela de início. A barra de endereços do navegador deve ter sumido. Se você ainda vê UI do navegador, o manifest não foi aplicado — geralmente porque a página está sendo carregada por HTTP plano ou via algum proxy incomum.
+홈 화면 아이콘으로 codexmux를 실행해보세요. 브라우저 주소창이 보이지 않아야 정상입니다. 여전히 브라우저 UI가 보인다면 매니페스트가 적용되지 않은 것이고, 보통 평문 HTTP 또는 비정상적인 프록시 환경이 원인입니다.
 
-Você também pode confirmar em **Configurações → Notificações** — quando o PWA está instalado e o Web Push é suportado, o toggle fica habilitado.
+**설정 → 알림**에서도 확인할 수 있습니다 — PWA 설치 후 Web Push 지원 환경이라면 토글이 활성화됩니다.
 
-## Atualizando o PWA
+## 업데이트
 
-Não há nada a fazer. O PWA carrega o mesmo `index.html` servido pela sua instância purplemux, então atualizar o purplemux atualiza o app instalado na próxima abertura.
+별도로 할 일은 없습니다. PWA는 codexmux 인스턴스가 서빙하는 같은 `index.html`을 그대로 로드하므로, codexmux를 업그레이드하면 다음 실행 시 자동으로 반영됩니다.
 
-Para remover, segure o ícone e use a ação de desinstalar nativa do SO.
+제거하려면 아이콘을 길게 눌러 OS 기본 삭제 동작을 사용하세요.
 
-## Próximos passos
+## 다음으로
 
-- **[Notificações Web Push](/purplemux/pt-BR/docs/web-push/)** — ative os alertas em background agora que o PWA está instalado.
-- **[Acesso via Tailscale](/purplemux/pt-BR/docs/tailscale/)** — obtenha a URL HTTPS que o iOS exige.
-- **[Suporte a navegadores](/purplemux/pt-BR/docs/browser-support/)** — matriz de compatibilidade completa.
+- **[웹 푸시 알림](/codexmux/pt-BR/docs/web-push/)** — PWA 설치 이후 백그라운드 알림 켜기
+- **[Tailscale 접속](/codexmux/pt-BR/docs/tailscale/)** — iOS가 요구하는 HTTPS URL 확보하기
+- **[브라우저 지원](/codexmux/pt-BR/docs/browser-support/)** — 전체 호환성 매트릭스

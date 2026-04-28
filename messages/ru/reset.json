@@ -1,5 +1,5 @@
 {
-  "pageTitle": "Сброс - purplemux",
+  "pageTitle": "Сброс - codexmux",
   "title": "Сброс tmux",
   "stepCleanup": "Закрытие подключений",
   "stepReset": "Остановка и сброс сервера tmux",

@@ -1,63 +1,39 @@
 ---
-title: Temalar & fontlar
-description: Açık, koyu veya sistem; üç font boyutu; tek bir ayar paneli.
-eyebrow: Özelleştirme
+title: 테마 & 글꼴
+description: 앱 테마, 글꼴 크기, 터미널 팔레트 설정.
+eyebrow: 설정
 permalink: /tr/docs/themes-fonts/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux, tutarlı tek bir görünüm ve küçük bir anahtar setiyle gelir: uygulama teması, font boyutu ve ayrı bir terminal paleti. Bu sayfa ilk ikisini ele alıyor — terminal renkleri kendi sayfasında.
+codexmux는 앱 테마, 글꼴 크기, 터미널 팔레트를 전역 설정으로 제공합니다. 이 문서는 앱 테마와 글꼴 크기를 다룹니다.
 
-## Ayarlar'ı açın
+## 앱 테마
 
-Ayarlar'ı açmak için <kbd>⌘,</kbd> (macOS) veya <kbd>Ctrl,</kbd> (Linux) tuşlarına basın. **Genel** sekmesi, tema ve font boyutunun bulunduğu yerdir.
-
-Üst çubuktaki dişli simgesine de tıklayabilirsiniz.
-
-## Uygulama teması
-
-Üç mod, anında uygulanır:
-
-| Mod | Davranış |
+| 값 | 동작 |
 |---|---|
-| **Açık** | OS tercihinden bağımsız olarak açık temayı zorla. |
-| **Koyu** | Koyu temayı zorla. |
-| **Sistem** | OS'u takip et — macOS / GNOME / KDE açık ile koyu arasında geçtiğinde otomatik değişir. |
+| `System` | OS 설정을 따름 |
+| `Light` | 밝은 테마 고정 |
+| `Dark` | 어두운 테마 고정 |
 
-Tema, `~/.purplemux/config.json`'da `appTheme` altında saklanır ve sunucuya bağlı her tarayıcı sekmesine senkronize edilir. macOS yerel uygulamasında, OS başlık çubuğu da güncellenir.
+선택 값은 `~/.codexmux/config.json`의 `appTheme`에 저장되고 연결된 browser tab에 동기화됩니다.
 
-{% call callout('note', 'Önce-koyu tasarlandı') %}
-Marka, derin mor tonlu bir nötr etrafında kuruludur ve koyu mod, kesinlikle akromatik bir yüzey için chroma'yı sıfırda tutar. Açık mod, sıcaklık için neredeyse algılanmaz bir mor ton (hue 287) uygular. İkisi de uzun seanslar için ayarlanmıştır; gözünüz hangisini tercih ederse onu seçin.
-{% endcall %}
+## 글꼴 크기
 
-## Font boyutu
+| preset | 용도 |
+|---|---|
+| `Small` | 좁은 화면에서 정보 밀도 우선 |
+| `Default` | 일반 desktop 환경 |
+| `Large` | 큰 화면 또는 높은 가독성 필요 |
 
-Üç ön ayar, düğme grubu olarak yüzeye çıkar:
+UI는 `rem` 단위를 사용하므로 sidebar, dialog, table이 함께 scale됩니다.
 
-- **Normal** — varsayılan; kök font-size tarayıcıyı takip eder.
-- **Büyük** — kök font-size `18px`'e ayarlanır.
-- **X-Large** — kök font-size `20px`'e ayarlanır.
+## 터미널 색상
 
-Tüm UI `rem` ile boyutlandığından, ön ayarları değiştirmek tüm arayüzü — kenar çubuğu, diyaloglar, terminal — bir anda ölçeklendirir. Değişiklik yeniden yüklemeden gerçek zamanlı uygulanır.
+터미널 palette는 앱 theme와 별도로 관리됩니다. 자세한 내용은 [터미널 테마](/codexmux/tr/docs/terminal-themes/)를 참고하세요.
 
-## Ne değişir, ne değişmez
+## 다음 단계
 
-Font boyutu **UI kromu ve terminal metnini** ölçeklendirir. Şunları değiştirmez:
-
-- Başlık hiyerarşisi (göreli boyutlar aynı kalır)
-- Boşluk — oranlar korunur
-- Kod bloğu sözdizimi stili
-
-Tek tek öğeleri ince ayarlamak istiyorsanız (örneğin yalnızca terminal veya yalnızca kenar çubuğu), [Özel CSS](/purplemux/tr/docs/custom-css/) sayfasına bakın.
-
-## Cihaz başına, tarayıcı başına değil
-
-Ayarlar localStorage'da değil, sunucuda saklanır. Dizüstünüzde koyuya geçmek telefonunuzu da geçirir — telefondan `https://<host>/`'u açın, değişiklik zaten orada.
-
-Mobil ile masaüstünü farklı tutmayı tercih ediyorsanız, bu şu anda desteklenmiyor; ihtiyacınız varsa bir issue açın.
-
-## Sıradaki adımlar
-
-- **[Özel CSS](/purplemux/tr/docs/custom-css/)** — tek tek renkleri ve boşlukları geçersiz kılın.
-- **[Terminal temaları](/purplemux/tr/docs/terminal-themes/)** — xterm.js için ayrı palet.
-- **[Klavye kısayolları](/purplemux/tr/docs/keyboard-shortcuts/)** — tüm bağlamalar tek tabloda.
+- **[커스텀 CSS](/codexmux/tr/docs/custom-css/)**
+- **[터미널 테마](/codexmux/tr/docs/terminal-themes/)**
+- **[사이드바 & Codex 옵션](/codexmux/tr/docs/sidebar-options/)**

@@ -1,75 +1,75 @@
 ---
-title: Seguridad y autenticación
-description: Cómo purplemux protege tu panel — contraseña hasheada con scrypt, datos solo locales y HTTPS para acceso externo.
-eyebrow: Móvil y remoto
+title: 보안과 인증
+description: codexmux가 대시보드를 보호하는 방식 — scrypt 해시 비밀번호, 로컬 전용 데이터, 외부 접속 시 HTTPS.
+eyebrow: 모바일 & 원격
 permalink: /es/docs/security-auth/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux es self-hosted y se queda en tu máquina. No hay servidores externos, ni telemetría, ni cuenta en la nube. Lo siguiente describe las pocas piezas que realmente protegen tu panel.
+codexmux는 셀프 호스팅 방식이며 모든 데이터가 사용자의 머신에 머무릅니다. 외부 서버도, 텔레메트리도, 클라우드 계정도 없습니다. 아래는 대시보드를 실제로 지키는 몇 안 되는 장치들입니다.
 
-## Configurar la contraseña
+## 비밀번호 설정
 
-La primera vez que abres purplemux, la pantalla de onboarding te pide elegir una contraseña. Tras enviarla:
+처음 codexmux를 열면 온보딩 화면이 비밀번호를 입력받습니다. 제출 후:
 
-- La contraseña se hashea con **scrypt** (sal aleatoria de 16 bytes, clave derivada de 64 bytes).
-- El hash se escribe en `~/.purplemux/config.json` como `scrypt:{salt}:{hash}` — el texto plano nunca se guarda.
-- Se genera un `authSecret` separado (hex aleatorio) y se almacena junto al hash. purplemux lo usa para firmar la cookie de sesión emitida tras login.
+- 비밀번호는 **scrypt**로 해싱됩니다 (랜덤 16바이트 salt, 64바이트 derived key).
+- 해시는 `~/.codexmux/config.json`에 `scrypt:{salt}:{hash}` 형태로 저장됩니다 — 평문은 어디에도 저장되지 않습니다.
+- 별도의 `authSecret`(랜덤 hex)이 함께 생성되며, 로그인 후 발급되는 세션 쿠키 서명에 사용됩니다.
 
-Las visitas siguientes muestran una pantalla de login que verifica la contraseña con `crypto.timingSafeEqual` contra el hash almacenado.
+이후 접속에는 로그인 화면이 나타나고, `crypto.timingSafeEqual`로 저장된 해시와 비교합니다.
 
-{% call callout('note', 'Longitud de contraseña') %}
-El mínimo es corto (4 caracteres) para que las configuraciones solo-localhost no sean molestas. Si expones purplemux a un tailnet — o a cualquier otro lugar — elige algo más fuerte. Los logins fallidos están limitados a 16 intentos por 15 minutos por proceso.
+{% call callout('note', '비밀번호 길이') %}
+최소 길이는 짧게(4자) 잡혀 있어 localhost 전용 환경에서는 부담이 없습니다. 테일넷이든 어디든 외부에 노출한다면 더 강한 비밀번호를 사용하세요. 로그인 실패는 프로세스당 15분에 16회로 rate-limit이 걸려 있습니다.
 {% endcall %}
 
-## Resetear la contraseña
+## 비밀번호 재설정
 
-¿Se te olvidó? Solo necesitas acceso por shell al host:
+잊어버렸다면 호스트에 셸 접근만 있으면 됩니다.
 
 ```bash
-rm ~/.purplemux/config.json
+rm ~/.codexmux/config.json
 ```
 
-Reinicia purplemux (`pnpm start`, `npx purplemux`, o como lo hayas lanzado) y la pantalla de onboarding reaparece para que elijas una nueva contraseña.
+codexmux를 재시작하면 (`pnpm start`, `npx codexmux` 등 평소 실행 방법) 온보딩 화면이 다시 나타나 새 비밀번호를 설정할 수 있습니다.
 
-Esto borra otros ajustes guardados en el mismo archivo (tema, locale, tamaño de fuente, interruptor de notificaciones, etc.). Tus espacios de trabajo y pestañas viven en `workspaces.json` y el directorio `workspaces/`, así que las disposiciones no se ven afectadas.
+이 작업은 같은 파일에 저장된 다른 설정(테마, 언어, 폰트 크기, 알림 토글 등)도 함께 초기화합니다. 워크스페이스와 탭은 `workspaces.json`과 `workspaces/` 디렉토리에 들어 있으니 레이아웃은 영향받지 않습니다.
 
-## HTTPS para acceso externo
+## 외부 접속에는 HTTPS
 
-El bind por defecto es `localhost`, sirviendo HTTP plano. Está bien en la misma máquina — pero en el momento que llegas a purplemux desde otro dispositivo, deberías estar sobre HTTPS.
+기본 바인드는 `localhost`이고 평문 HTTP로 서빙됩니다. 같은 머신에서 쓸 때는 문제가 없지만, 다른 기기에서 접근하는 순간부터는 HTTPS가 기본입니다.
 
-- **Tailscale Serve** es la ruta recomendada: cifrado WireGuard más certificados Let's Encrypt automáticos. Consulta [Acceso por Tailscale](/purplemux/es/docs/tailscale/).
-- **Reverse proxy** (Nginx, Caddy, etc.) también funciona, mientras reenvíes las cabeceras WebSocket `Upgrade` y `Connection`.
+- **Tailscale Serve** 권장 — WireGuard 암호화에 Let's Encrypt 인증서 자동 발급. [Tailscale 접속](/codexmux/es/docs/tailscale/) 참고.
+- **리버스 프록시** (Nginx, Caddy 등)도 가능 — WebSocket의 `Upgrade`, `Connection` 헤더를 반드시 포워딩해야 합니다.
 
-iOS Safari requiere además HTTPS para la instalación de PWA y el registro de Web Push. Consulta [Configuración de PWA](/purplemux/es/docs/pwa-setup/) y [Web Push](/purplemux/es/docs/web-push/).
+iOS Safari는 PWA 설치와 Web Push 등록에 HTTPS를 추가로 요구합니다. [PWA 설정](/codexmux/es/docs/pwa-setup/), [웹 푸시](/codexmux/es/docs/web-push/) 참고.
 
-## Qué vive en `~/.purplemux/`
+## `~/.codexmux/`에 있는 것
 
-Todo es local. Los permisos en archivos sensibles son `0600`.
+모두 로컬에 있습니다. 민감 파일의 권한은 `0600`입니다.
 
-| Archivo | Qué guarda |
+| 파일 | 내용 |
 |---|---|
-| `config.json` | hash scrypt de la contraseña, secreto de sesión, preferencias de la app |
-| `workspaces.json` + `workspaces/` | lista de espacios y disposiciones de paneles/pestañas por espacio |
-| `vapid-keys.json` | keypair VAPID de Web Push (auto-generado) |
-| `push-subscriptions.json` | suscripciones push por dispositivo |
-| `cli-token` | token compartido para que hooks/CLI hablen con el servidor local |
-| `pmux.lock` | lock de instancia única (`pid`, `port`, `startedAt`) |
-| `logs/` | archivos de log rotantes de pino |
+| `config.json` | scrypt 비밀번호 해시, 세션 secret, 앱 환경 설정 |
+| `workspaces.json` + `workspaces/` | 워크스페이스 목록과 워크스페이스별 pane/탭 레이아웃 |
+| `vapid-keys.json` | Web Push VAPID 키페어 (자동 생성) |
+| `push-subscriptions.json` | 기기별 푸시 구독 정보 |
+| `cli-token` | 훅과 CLI가 로컬 서버와 통신할 때 쓰는 공유 토큰 |
+| `cmux.lock` | 단일 인스턴스 락 (`pid`, `port`, `startedAt`) |
+| `logs/` | pino-roll 로그 파일 |
 
-Para el inventario completo y la tabla de reseteo, consulta el listado fuente en [docs/DATA-DIR.md](https://github.com/subicura/purplemux/blob/main/docs/DATA-DIR.md).
+전체 목록과 리셋 표는 source-of-truth인 [docs/DATA-DIR.md](https://github.com/subicura/codexmux/blob/main/docs/DATA-DIR.md)에 정리되어 있습니다.
 
-## Sin telemetría
+## 텔레메트리 없음
 
-purplemux no hace peticiones salientes por su cuenta. Las únicas llamadas de red que inicia son:
+codexmux 자체가 외부로 보내는 요청은 없습니다. 발생하는 네트워크 호출은 다음뿐입니다.
 
-- Notificaciones Web Push a las que te suscribiste, enviadas a través de los servicios push del SO.
-- Lo que haga el propio CLI de Claude — eso es entre tú y Anthropic, no purplemux.
+- 사용자가 구독한 Web Push 알림 — OS 푸시 서비스로 전달됩니다.
+- Codex CLI 자체가 하는 통신 — OpenAI과 사용자 사이의 일이며 codexmux와 무관합니다.
 
-Tu código y datos de sesión nunca salen de la máquina.
+코드와 세션 데이터는 머신을 벗어나지 않습니다.
 
-## Siguientes pasos
+## 다음으로
 
-- **[Acceso por Tailscale](/purplemux/es/docs/tailscale/)** — la ruta segura a HTTPS externo.
-- **[Configuración de PWA](/purplemux/es/docs/pwa-setup/)** — una vez resuelta la auth, instálalo en la pantalla de inicio.
-- **[Notificaciones Web Push](/purplemux/es/docs/web-push/)** — alertas en segundo plano.
+- **[Tailscale 접속](/codexmux/es/docs/tailscale/)** — 외부 HTTPS의 안전한 경로
+- **[PWA 설정](/codexmux/es/docs/pwa-setup/)** — 인증 정리 후 홈 화면에 설치
+- **[웹 푸시 알림](/codexmux/es/docs/web-push/)** — 백그라운드 알림

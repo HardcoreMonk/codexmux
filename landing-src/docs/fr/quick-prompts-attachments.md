@@ -1,79 +1,78 @@
 ---
-title: Prompts rapides & pièces jointes
-description: Une bibliothèque de prompts enregistrés, glisser-déposer d'images, pièces jointes et historique de messages réutilisable — tout depuis la barre de saisie en bas de la timeline.
-eyebrow: Claude Code
+title: 퀵 프롬프트 & 첨부
+description: 저장된 프롬프트 라이브러리, 이미지 드래그 앤 드롭, 파일 첨부, 재사용 가능한 메시지 히스토리 — 모두 타임라인 하단의 입력 바에서.
+eyebrow: Codex
 permalink: /fr/docs/quick-prompts-attachments/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-La barre de saisie sous la timeline est plus qu'un textarea. C'est là que vivent les prompts enregistrés, les pièces jointes et l'historique de messages, pour que ce que vous tapez dix fois par jour cesse de vous coûter dix frappes par jour.
+타임라인 아래의 입력 바는 단순한 textarea가 아닙니다. 저장된 프롬프트, 첨부, 메시지 히스토리가 여기에 살고 있어, 하루에 열 번 입력하던 것이 더 이상 열 번의 타이핑을 요구하지 않습니다.
 
-## Prompts rapides
+## 퀵 프롬프트
 
-Les prompts rapides sont de courtes entrées nommées stockées dans `~/.purplemux/quick-prompts.json`. Ils apparaissent comme des chips au-dessus de la barre de saisie — un clic envoie le prompt comme si vous l'aviez tapé.
+퀵 프롬프트는 `~/.codexmux/quick-prompts.json`에 저장되는 짧은 이름이 붙은 항목입니다. 입력 바 위에 칩으로 나타나며 — 한 번 클릭하면 직접 입력한 것처럼 프롬프트가 전송됩니다.
 
-Deux préréglages sont livrés et peuvent être désactivés à tout moment :
+기본 제공되는 빌트인이 있고, 언제든 비활성화할 수 있습니다:
 
-- **Commit** — exécute `/commit-commands:commit`
-- **Simplify** — exécute `/simplify`
+- **Commit** — `/commit-commands:commit` 실행
 
-Ajoutez les vôtres depuis **Paramètres → Prompts rapides** :
+직접 추가하려면 **설정 → 퀵 프롬프트**에서:
 
-1. Cliquez sur **Ajouter un prompt**.
-2. Donnez-lui un nom (le label du chip) et un corps (ce qui est envoyé).
-3. Glissez pour réordonner. Désactivez pour cacher sans supprimer.
+1. **Add prompt** 클릭
+2. 이름(칩 라벨)과 본문(전송될 내용) 입력
+3. 드래그로 순서 조정. 토글 off로 삭제 없이 숨기기
 
-Tout ce que vous tapez dans le corps est envoyé tel quel — y compris commandes slash, prompts multi-lignes, ou requêtes templatisées comme « Explique le fichier ouvert dans l'éditeur et propose une amélioration. »
+본문에 작성한 내용은 그대로 전송됩니다 — 슬래시 커맨드, 멀티라인 프롬프트, "에디터에 열린 파일을 설명하고 개선점을 한 가지 제안해줘" 같은 템플릿 요청도 가능합니다.
 
-{% call callout('tip', 'Les commandes slash comptent') %}
-Les prompts rapides marchent très bien comme déclencheurs en un clic pour les commandes slash de Claude Code. Un chip « Review this PR » qui pointe vers `/review` économise quelques frappes à chaque fois.
+{% call callout('tip', '슬래시 커맨드도 됩니다') %}
+퀵 프롬프트는 Codex 슬래시 커맨드를 한 번에 트리거하는 용도로 잘 어울립니다. `/review`를 가리키는 "Review this PR" 칩 하나로 매번 몇 번의 키 입력을 줄일 수 있습니다.
 {% endcall %}
 
-## Glisser-déposer d'images
+## 이미지 드래그 앤 드롭
 
-Déposez un fichier image (PNG, JPG, WebP, etc.) n'importe où sur la barre de saisie pour l'attacher. purplemux upload le fichier dans un chemin temporaire sur le serveur et insère automatiquement une référence dans votre prompt.
+이미지 파일(PNG, JPG, WebP 등)을 입력 바 어디에든 드롭하면 첨부됩니다. codexmux는 파일을 서버의 임시 경로에 업로드하고 프롬프트에 자동으로 reference를 삽입합니다.
 
-Vous pouvez aussi :
+추가로:
 
-- **Coller** une image directement depuis le presse-papiers
-- **Cliquer le trombone** pour ouvrir un dialogue de fichier
-- Attacher **jusqu'à 20 fichiers** par message
+- 클립보드에서 이미지 직접 **붙여넣기**
+- **클립 아이콘**을 클릭해 파일 다이얼로그에서 선택
+- 메시지당 **최대 20개 파일** 첨부 가능
 
-Une bande de miniatures apparaît au-dessus de la saisie pendant que les pièces jointes sont en attente. Chaque miniature a une croix pour la retirer avant l'envoi.
+첨부 대기 중에는 입력 바 위에 썸네일 스트립이 나타납니다. 각 썸네일에는 X 버튼이 있어 전송 전에 제거할 수 있습니다.
 
-## Autres pièces jointes
+## 그 외 파일 첨부
 
-Le même trombone marche pour les fichiers non-image — markdown, JSON, CSV, fichiers source, n'importe quoi. purplemux les met dans un répertoire temporaire et insère le chemin pour que Claude puisse les `read` dans la requête.
+같은 클립 아이콘은 이미지가 아닌 파일에도 동작합니다 — markdown, JSON, CSV, 소스 파일 등 무엇이든. codexmux가 임시 디렉토리에 두고 경로를 삽입해주면, Codex가 요청의 일부로 `read`할 수 있습니다.
 
-C'est le moyen le plus simple de partager quelque chose que Claude ne peut pas atteindre seul, comme une stack trace collée depuis une autre machine ou un fichier de config d'un autre projet.
+다른 머신에서 붙여넣은 스택 트레이스나 다른 프로젝트의 설정 파일처럼, Codex가 직접 닿을 수 없는 것을 공유하기에 가장 쉬운 방법입니다.
 
-## Adapté au mobile
+## 모바일 친화
 
-Les pièces jointes et le trombone sont en pleine taille sur téléphone. Déposez une copie d'écran depuis la feuille de partage iOS, ou utilisez le bouton appareil photo (Android) pour attacher une photo directement depuis la pellicule.
+첨부와 클립 아이콘은 휴대폰에서도 풀사이즈입니다. iOS 공유 시트에서 스크린샷을 드롭하거나, 카메라 버튼(Android)으로 카메라 롤에서 사진을 바로 첨부할 수 있습니다.
 
-La barre de saisie se réagence pour les écrans étroits — les chips deviennent un défilement horizontal, le textarea grossit jusqu'à cinq lignes avant de scroller.
+입력 바는 좁은 화면에 맞게 reflow됩니다 — 칩은 가로 스크롤러가 되고, textarea는 5라인까지 확장된 뒤 스크롤됩니다.
 
-## Historique de messages
+## 메시지 히스토리
 
-Chaque prompt que vous avez envoyé dans un espace est gardé dans un historique par espace. Pour en réutiliser un :
+워크스페이스 안에서 보낸 모든 프롬프트는 워크스페이스별 히스토리로 보관됩니다. 재사용하려면:
 
-- Pressez <kbd>↑</kbd> dans une barre de saisie vide pour parcourir les messages récents
-- Ou ouvrez le sélecteur **Historique** pour une liste cherchable
+- 비어 있는 입력 바에서 <kbd>↑</kbd>로 최근 메시지 순회
+- 또는 검색 가능한 목록을 위해 **History** 피커를 열기
 
-Les vieilles entrées peuvent être supprimées depuis le sélecteur. L'historique est stocké à côté des autres données d'espace dans `~/.purplemux/`, jamais envoyé hors de la machine.
+오래된 항목은 피커에서 삭제할 수 있습니다. 히스토리는 다른 워크스페이스 데이터와 함께 `~/.codexmux/` 아래에 저장되며, 머신 외부로 전송되지 않습니다.
 
-## Clavier
+## 키보드
 
-| Touche | Action |
+| 키 | 동작 |
 |---|---|
-| <kbd>⌘I</kbd> | Focaliser la saisie depuis n'importe où dans la vue de session |
-| <kbd>Enter</kbd> | Envoyer |
-| <kbd>⇧Enter</kbd> | Insérer un saut de ligne |
-| <kbd>Esc</kbd> | Pendant que Claude est busy, envoyer un interrupt |
-| <kbd>↑</kbd> | Remonter dans l'historique de messages (quand vide) |
+| <kbd>⌘I</kbd> | 세션 뷰 어디서든 입력에 포커스 |
+| <kbd>Enter</kbd> | 전송 |
+| <kbd>⇧Enter</kbd> | 줄바꿈 삽입 |
+| <kbd>Esc</kbd> | Codex가 busy일 때 interrupt 전송 |
+| <kbd>↑</kbd> | (입력 비어 있을 때) 메시지 히스토리 거슬러 올라가기 |
 
-## Pour aller plus loin
+## 다음으로
 
-- **[Vue de session en direct](/purplemux/fr/docs/live-session-view/)** — où vos prompts et les réponses de Claude apparaissent.
-- **[Raccourcis clavier](/purplemux/fr/docs/keyboard-shortcuts/)** — le tableau complet.
-- **[Invites de permission](/purplemux/fr/docs/permission-prompts/)** — ce qui se passe après l'envoi d'une requête nécessitant approbation.
+- **[라이브 세션 뷰](/codexmux/fr/docs/live-session-view/)** — 프롬프트와 Codex의 답변이 표시되는 곳
+- **[키보드 단축키](/codexmux/fr/docs/keyboard-shortcuts/)** — 전체 바인딩 표
+- **[권한 프롬프트](/codexmux/fr/docs/permission-prompts/)** — 승인이 필요한 요청을 보낸 뒤 일어나는 일

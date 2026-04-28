@@ -1,65 +1,65 @@
 ---
-title: Configuration PWA
-description: Ajoutez purplemux à votre écran d'accueil sur iOS Safari et Android Chrome pour une expérience plein écran, façon application.
-eyebrow: Mobile & distant
+title: PWA 설정
+description: iOS Safari와 Android Chrome에서 codexmux를 홈 화면에 추가해 전체 화면 앱처럼 사용합니다.
+eyebrow: 모바일 & 원격
 permalink: /fr/docs/pwa-setup/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Installer purplemux comme Progressive Web App transforme l'onglet du navigateur en icône autonome sur votre écran d'accueil, avec mise en page plein écran et écrans de splash propres. Sur iOS, c'est aussi le prérequis pour Web Push.
+codexmux를 PWA로 설치하면 브라우저 탭이 홈 화면 아이콘으로 바뀌고, 전체 화면 레이아웃과 스플래시 스크린이 적용됩니다. iOS에서는 Web Push를 받기 위한 필수 단계이기도 합니다.
 
-## Ce que vous gagnez
+## 무엇이 좋아지나
 
-- **Mise en page plein écran** — pas de chrome navigateur, plus d'espace vertical pour terminal et timeline.
-- **Icône d'app** — purplemux se lance depuis l'écran d'accueil comme n'importe quelle app native.
-- **Écrans de splash** — purplemux livre des images de splash par appareil pour iPhones, donc la transition de lancement paraît native.
-- **Web Push** (iOS uniquement) — les notifications push ne se déclenchent qu'après installation PWA.
+- **전체 화면 레이아웃** — 브라우저 chrome이 사라져 터미널과 타임라인에 쓸 수 있는 세로 공간이 늘어납니다.
+- **앱 아이콘** — 다른 네이티브 앱처럼 홈 화면에서 바로 실행됩니다.
+- **스플래시 스크린** — iPhone 기종별 스플래시 이미지를 포함해서 실행 전환이 자연스럽습니다.
+- **Web Push** (iOS 한정) — PWA 설치 이후에만 푸시 알림이 동작합니다.
 
-Le manifeste est servi à `/api/manifest` et enregistre `display: standalone` avec la marque purplemux et la couleur de thème.
+매니페스트는 `/api/manifest`에서 제공되며 `display: standalone`과 codexmux 아이콘, 테마 컬러로 등록됩니다.
 
-## Avant l'installation
+## 설치 전 확인
 
-La page doit être joignable en **HTTPS** pour que les PWA marchent. Depuis `localhost` ça marche dans Chrome (exception loopback) mais iOS Safari refuse d'installer en HTTP. Le chemin propre est Tailscale Serve — voir [Accès Tailscale](/purplemux/fr/docs/tailscale/).
+페이지가 **HTTPS**로 접근 가능해야 PWA가 동작합니다. `localhost`는 Chrome에서는 예외적으로 허용되지만 iOS Safari는 평문 HTTP에서 설치를 허용하지 않습니다. 가장 깔끔한 경로는 Tailscale Serve입니다 — [Tailscale 접속](/codexmux/fr/docs/tailscale/) 참고.
 
-{% call callout('warning', 'iOS demande Safari 16.4 ou plus récent') %}
-Les versions iOS antérieures peuvent installer la PWA mais ne livreront pas Web Push. Si la push compte pour vous, mettez d'abord iOS à jour. Détail navigateur par navigateur dans [Compatibilité navigateur](/purplemux/fr/docs/browser-support/).
+{% call callout('warning', 'iOS는 Safari 16.4 이상 필요') %}
+이전 iOS에서도 PWA 설치는 됩니다만 Web Push는 동작하지 않습니다. 푸시가 중요하다면 iOS를 먼저 업데이트하세요. 브라우저별 자세한 호환성은 [브라우저 지원](/codexmux/fr/docs/browser-support/)에 정리되어 있습니다.
 {% endcall %}
 
 ## iOS Safari
 
-1. Ouvrez l'URL purplemux dans **Safari** (les autres navigateurs iOS n'exposent pas Sur l'écran d'accueil pour les PWA).
-2. Touchez l'icône **Partager** dans la barre du bas.
-3. Faites défiler la feuille d'action et choisissez **Sur l'écran d'accueil**.
-4. Modifiez le nom si vous voulez, puis touchez **Ajouter** en haut à droite.
-5. Lancez purplemux depuis la nouvelle icône d'écran d'accueil — il s'ouvre en plein écran.
+1. **Safari**에서 codexmux URL을 엽니다 (다른 iOS 브라우저는 PWA용 홈 화면에 추가를 노출하지 않습니다).
+2. 하단 툴바의 **공유** 아이콘을 누릅니다.
+3. 액션 시트를 아래로 스크롤해서 **홈 화면에 추가**를 선택합니다.
+4. 이름을 원하는 대로 수정하고 우측 상단의 **추가**를 누릅니다.
+5. 홈 화면에 새로 생긴 아이콘을 누르면 전체 화면으로 실행됩니다.
 
-Le premier lancement depuis l'icône est le moment où iOS le traite comme une vraie PWA. Toute invite de permission push doit être déclenchée depuis l'intérieur de cette fenêtre standalone, pas depuis un onglet Safari classique.
+이 아이콘으로 처음 실행하는 순간부터 iOS가 PWA로 취급합니다. 푸시 권한 프롬프트도 일반 Safari 탭이 아니라 이 standalone 창 안에서 띄워야 합니다.
 
 ## Android Chrome
 
-Chrome détecte automatiquement un manifeste installable et propose une bannière. Si vous ne la voyez pas :
+Chrome은 매니페스트를 자동 감지해서 설치 배너를 띄웁니다. 보이지 않는다면:
 
-1. Ouvrez l'URL purplemux dans **Chrome**.
-2. Touchez le menu **⋮** en haut à droite.
-3. Choisissez **Installer l'application** (parfois libellé **Sur l'écran d'accueil**).
-4. Confirmez. L'icône apparaît sur l'écran d'accueil et dans le tiroir d'apps.
+1. **Chrome**에서 codexmux URL을 엽니다.
+2. 우측 상단 **⋮** 메뉴를 누릅니다.
+3. **앱 설치** (또는 **홈 화면에 추가**)를 선택합니다.
+4. 확인하면 홈 화면과 앱 서랍에 아이콘이 생깁니다.
 
-Samsung Internet se comporte pareil — l'invite d'installation apparaît en général automatiquement.
+Samsung Internet도 동일합니다 — 설치 프롬프트가 자동으로 노출됩니다.
 
-## Vérifier l'installation
+## 설치 확인
 
-Ouvrez purplemux depuis l'icône de l'écran d'accueil. La barre d'adresse du navigateur doit avoir disparu. Si vous voyez encore l'UI navigateur, le manifeste ne s'est pas appliqué — généralement parce que la page est chargée en HTTP simple ou via un proxy inhabituel.
+홈 화면 아이콘으로 codexmux를 실행해보세요. 브라우저 주소창이 보이지 않아야 정상입니다. 여전히 브라우저 UI가 보인다면 매니페스트가 적용되지 않은 것이고, 보통 평문 HTTP 또는 비정상적인 프록시 환경이 원인입니다.
 
-Vous pouvez aussi confirmer dans **Paramètres → Notification** — une fois la PWA installée et Web Push pris en charge, le toggle devient activable.
+**설정 → 알림**에서도 확인할 수 있습니다 — PWA 설치 후 Web Push 지원 환경이라면 토글이 활성화됩니다.
 
-## Mettre à jour la PWA
+## 업데이트
 
-Rien à faire. La PWA charge le même `index.html` servi par votre instance purplemux, donc mettre à jour purplemux met à jour l'app installée au prochain lancement.
+별도로 할 일은 없습니다. PWA는 codexmux 인스턴스가 서빙하는 같은 `index.html`을 그대로 로드하므로, codexmux를 업그레이드하면 다음 실행 시 자동으로 반영됩니다.
 
-Pour la retirer, appui long sur l'icône et choisir l'action de désinstallation native de l'OS.
+제거하려면 아이콘을 길게 눌러 OS 기본 삭제 동작을 사용하세요.
 
-## Pour aller plus loin
+## 다음으로
 
-- **[Notifications Web Push](/purplemux/fr/docs/web-push/)** — activer les alertes en arrière-plan maintenant que la PWA est installée.
-- **[Accès Tailscale](/purplemux/fr/docs/tailscale/)** — obtenir l'URL HTTPS qu'iOS exige.
-- **[Compatibilité navigateur](/purplemux/fr/docs/browser-support/)** — matrice de compatibilité complète.
+- **[웹 푸시 알림](/codexmux/fr/docs/web-push/)** — PWA 설치 이후 백그라운드 알림 켜기
+- **[Tailscale 접속](/codexmux/fr/docs/tailscale/)** — iOS가 요구하는 HTTPS URL 확보하기
+- **[브라우저 지원](/codexmux/fr/docs/browser-support/)** — 전체 호환성 매트릭스

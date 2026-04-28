@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { ISessionMeta } from '@/types/timeline';
+import type { TPanelType } from '@/types/terminal';
 
 const DEFAULT_LIMIT = 50;
 
@@ -7,6 +8,7 @@ interface IUseSessionListOptions {
   tmuxSession: string;
   enabled: boolean;
   cwd?: string;
+  panelType?: TPanelType;
 }
 
 interface IUseSessionListReturn {
@@ -24,6 +26,7 @@ const useSessionList = ({
   tmuxSession,
   enabled,
   cwd,
+  panelType = 'codex',
 }: IUseSessionListOptions): IUseSessionListReturn => {
   const [sessions, setSessions] = useState<ISessionMeta[]>([]);
   const [total, setTotal] = useState(0);
@@ -34,9 +37,10 @@ const useSessionList = ({
 
   const isLoadingMoreRef = useRef(false);
 
-  const [prevTmuxSession, setPrevTmuxSession] = useState(tmuxSession);
-  if (tmuxSession !== prevTmuxSession) {
-    setPrevTmuxSession(tmuxSession);
+  const sessionKey = `${panelType}:${tmuxSession}:${cwd ?? ''}`;
+  const [prevSessionKey, setPrevSessionKey] = useState(sessionKey);
+  if (sessionKey !== prevSessionKey) {
+    setPrevSessionKey(sessionKey);
     setSessions([]);
     setTotal(0);
     setHasMore(false);
@@ -46,6 +50,8 @@ const useSessionList = ({
 
   const cwdRef = useRef(cwd);
   cwdRef.current = cwd;
+  const panelTypeRef = useRef(panelType);
+  panelTypeRef.current = panelType;
 
   const fetchSessions = useCallback(async () => {
     if (!tmuxSession) return;
@@ -53,7 +59,7 @@ const useSessionList = ({
     setError(null);
 
     try {
-      let url = `/api/timeline/sessions?tmuxSession=${encodeURIComponent(tmuxSession)}&limit=${DEFAULT_LIMIT}&offset=0`;
+      let url = `/api/timeline/sessions?tmuxSession=${encodeURIComponent(tmuxSession)}&limit=${DEFAULT_LIMIT}&offset=0&panelType=${encodeURIComponent(panelTypeRef.current)}`;
       if (cwdRef.current) {
         url += `&cwd=${encodeURIComponent(cwdRef.current)}`;
       }
@@ -97,9 +103,11 @@ const useSessionList = ({
 
     try {
       const offset = sessions.length;
-      const res = await fetch(
-        `/api/timeline/sessions?tmuxSession=${encodeURIComponent(tmuxSession)}&limit=${DEFAULT_LIMIT}&offset=${offset}`,
-      );
+      let url = `/api/timeline/sessions?tmuxSession=${encodeURIComponent(tmuxSession)}&limit=${DEFAULT_LIMIT}&offset=${offset}&panelType=${encodeURIComponent(panelTypeRef.current)}`;
+      if (cwdRef.current) {
+        url += `&cwd=${encodeURIComponent(cwdRef.current)}`;
+      }
+      const res = await fetch(url);
       if (!res.ok) return;
       const data = await res.json();
       setSessions((prev) => [...prev, ...data.sessions]);

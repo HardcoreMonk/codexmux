@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifyCliToken } from '@/lib/cli-token';
 import { findTab } from '@/lib/cli-utils';
 import { hasSession, getPaneCurrentCommand } from '@/lib/tmux';
+import { readAgentSessionId } from '@/lib/agent-tab-fields';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'GET') {
@@ -33,7 +34,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     alive: true,
     command,
     cliState: found.tab.cliState ?? null,
-    claudeSessionId: found.tab.claudeSessionId ?? null,
+    agentSessionId: readAgentSessionId(found.tab),
   });
 };
 

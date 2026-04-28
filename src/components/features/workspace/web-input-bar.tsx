@@ -37,7 +37,7 @@ interface IWebInputBarProps {
   tabId?: string;
   wsId?: string;
   sessionName?: string;
-  claudeSessionId?: string | null;
+  agentSessionId?: string | null;
   cliState: TCliState;
   sendStdin: (data: string) => void;
   terminalWsConnected: boolean;
@@ -58,7 +58,7 @@ const WebInputBar = ({
   tabId,
   wsId,
   sessionName,
-  claudeSessionId,
+  agentSessionId,
   cliState,
   sendStdin,
   terminalWsConnected,
@@ -131,13 +131,6 @@ const WebInputBar = ({
     };
   }, [focusInput, focusInputRef, setValue, setInputValueRef]);
 
-  useEffect(() => {
-    if (!visible) {
-      setValue('');
-    }
-  }, [visible, setValue]);
-
-
   const adjustHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -160,7 +153,7 @@ const WebInputBar = ({
 
     if (!hasAttach) {
       onSend?.();
-      if (claudeSessionId) registerPushTarget(claudeSessionId);
+      if (agentSessionId) registerPushTarget(agentSessionId);
       send();
       return;
     }
@@ -177,7 +170,7 @@ const WebInputBar = ({
       addHistory(trimmed);
     }
     onSend?.();
-    if (claudeSessionId) registerPushTarget(claudeSessionId);
+    if (agentSessionId) registerPushTarget(agentSessionId);
 
     setIsDispatching(true);
     const pendingId = onAddPendingMessage?.(
@@ -244,7 +237,7 @@ const WebInputBar = ({
     } finally {
       setIsDispatching(false);
     }
-  }, [canSend, isDispatching, value, attachments, send, sendStdin, setValue, onSend, claudeSessionId, sessionName, tabId, addHistory, onAddPendingMessage, onRemovePendingMessage, t]);
+  }, [canSend, isDispatching, value, attachments, send, sendStdin, setValue, onSend, agentSessionId, sessionName, tabId, addHistory, onAddPendingMessage, onRemovePendingMessage, t]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
@@ -444,7 +437,7 @@ const WebInputBar = ({
           <div className="mx-auto w-full max-w-content px-3 pb-1">
             <div className="grid grid-cols-[1fr_auto_1fr] items-center px-2 text-[11px] text-muted-foreground/70">
               <Loader2 size={10} className="mr-1.5 justify-self-end animate-spin" />
-              <span>{t('claudeConnecting')}</span>
+              <span>{t('agentConnecting')}</span>
               <span />
             </div>
           </div>
@@ -558,7 +551,7 @@ const WebInputBar = ({
                 size="sm"
                 className={cn(
                   'h-7 w-7 shrink-0 p-0 text-muted-foreground hover:text-foreground',
-                  canDispatch && 'text-claude-active',
+                  canDispatch && 'text-agent-active',
                   !canDispatch && 'opacity-30',
                 )}
                 onClick={handleSendClick}

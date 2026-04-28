@@ -13,12 +13,13 @@ import MobileTabHeader from '@/components/features/mobile/mobile-tab-header';
 import MobileSurfaceView from '@/components/features/mobile/mobile-surface-view';
 import MobileNewTabDialog from '@/components/features/mobile/mobile-new-tab-dialog';
 import { formatTabTitle } from '@/lib/tab-title';
-import { dismissTab } from '@/hooks/use-claude-status';
+import { dismissTab } from '@/hooks/use-agent-status';
 import useTabStore from '@/hooks/use-tab-store';
 import type { TCliState } from '@/types/timeline';
-import useConfigStore from '@/hooks/use-config-store';
 import useMobileLayoutActions from '@/hooks/use-mobile-layout-actions';
 import { useAutoDeleteEmptyWorkspace } from '@/hooks/use-auto-delete-empty-workspace';
+import { buildCodexCommandFromStore } from '@/lib/codex-client-command';
+import { isAgentPanelType } from '@/lib/panel-type';
 
 const MobileTerminalPage = () => {
   const t = useTranslations('terminal');
@@ -111,10 +112,10 @@ const MobileTerminalPage = () => {
   }, [handleSelectWorkspace]);
 
   const [newTabDialogOpen, setNewTabDialogOpen] = useState(false);
-  const [claudeCliState, setClaudeCliState] = useState<TCliState>('inactive');
+  const [agentCliState, setAgentCliState] = useState<TCliState>('inactive');
 
   const handleCliStateChange = useCallback((state: TCliState) => {
-    setClaudeCliState(state);
+    setAgentCliState(state);
   }, []);
 
   useEffect(() => {
@@ -122,11 +123,11 @@ const MobileTerminalPage = () => {
   }, [selectedTabId]);
 
   useEffect(() => {
-    if (!selectedTabId || currentPanelType !== 'claude-code' || claudeCliState === 'inactive') return;
-    if (claudeCliState === 'idle') {
+    if (!selectedTabId || !isAgentPanelType(currentPanelType) || agentCliState === 'inactive') return;
+    if (agentCliState === 'idle') {
       dismissTab(selectedTabId);
     }
-  }, [selectedTabId, claudeCliState, currentPanelType]);
+  }, [selectedTabId, agentCliState, currentPanelType]);
 
   const currentTabNeedsAttention = useTabStore((s) => {
     if (!selectedTabId) return false;
@@ -164,17 +165,14 @@ const MobileTerminalPage = () => {
   const handleCreateTab = useCallback(async (panelType?: TPanelType, options?: { command?: string }) => {
     if (!currentPane) return;
     let cmd: string | undefined;
-    if (options?.command === 'claude-new') {
-      const dangerous = useConfigStore.getState().dangerouslySkipPermissions;
-      const settings = '--settings ~/.purplemux/hooks.json';
-      const prompt = activeWorkspaceId ? `--append-system-prompt-file ~/.purplemux/workspaces/${activeWorkspaceId}/claude-prompt.md` : '';
-      const flags = [settings, prompt].filter(Boolean).join(' ');
-      cmd = dangerous ? `claude ${flags} --dangerously-skip-permissions` : `claude ${flags}`;
+    const startAgent = options?.command === 'codex-new';
+    if (startAgent) {
+      cmd = buildCodexCommandFromStore();
     }
     const newTab = await layout.createTabInPane(currentPane.id, panelType, cmd);
     if (newTab) {
       useTabStore.getState().initTab(newTab.id, { panelType, workspaceId: activeWorkspaceId ?? '' });
-      if (options?.command === 'claude-new') {
+      if (startAgent) {
         useTabStore.getState().setSessionView(newTab.id, 'check');
       }
     }

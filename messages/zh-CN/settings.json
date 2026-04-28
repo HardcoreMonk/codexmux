@@ -5,14 +5,14 @@
     "appearance": "外观",
     "terminal": "终端",
     "editor": "编辑器",
-    "claude": "Claude",
     "auth": "认证",
     "tailscale": "Tailscale",
     "quickPrompts": "快捷提示",
     "sidebarItems": "侧边栏",
     "agent": "智能体",
     "notification": "通知",
-    "system": "系统"
+    "system": "系统",
+    "codex": "Codex"
   },
   "general": {
     "theme": "主题",
@@ -67,18 +67,12 @@
     "errorHttpRequired": "URL 必须以 http:// 或 https:// 开头。",
     "errorCustomTemplate": "模板必须包含 {folder} 或 {folderEncoded}。"
   },
-  "claude": {
-    "skipPermissions": "跳过权限检查",
-    "skipPermissionsDescription": "运行Claude CLI时添加--dangerously-skip-permissions选项。",
-    "showTerminal": "在 Claude 中一同显示终端",
-    "showTerminalDescription": "在 Claude Code 旁显示终端区域。关闭时，新的 Claude 标签页将以折叠的终端打开。"
-  },
   "auth": {
     "changePassword": "更改密码",
     "changePasswordDescription": "新密码将使用SHA-512哈希后保存。",
     "newPasswordPlaceholder": "输入新密码（至少4个字符）",
     "passwordPlaceholder": "输入密码（至少4个字符）",
-    "resetHint": "要重置，请删除~/.purplemux/config.json文件并{action}。",
+    "resetHint": "要重置，请删除~/.codexmux/config.json文件并{action}。",
     "restartServer": "重启服务器",
     "restartApp": "退出并重启应用",
     "savedRestart": "已保存。{action}后生效。",
@@ -87,7 +81,7 @@
   },
   "notification": {
     "enable": "启用通知",
-    "enableDescription": "Claude任务完成时显示系统通知。仅在Electron应用中有效。",
+    "enableDescription": "Show system notifications when Codex tasks complete.",
     "permissionDenied": "浏览器通知权限被拒绝。请在浏览器设置中允许。",
     "notSupported": "此浏览器不支持 Web Push。",
     "toastSection": "应用内提示",
@@ -116,7 +110,7 @@
   },
   "system": {
     "networkAccess": "网络访问",
-    "networkAccessDescription": "控制哪些网络可以访问 purplemux。服务器重启后生效。",
+    "networkAccessDescription": "控制哪些网络可以访问 codexmux。服务器重启后生效。",
     "networkAccessLocked": "由 HOST 环境变量控制。",
     "restartRequired": "更改需要重启服务器后生效。",
     "networkAccessOptions": {
@@ -136,7 +130,7 @@
     "showResources": "显示系统资源",
     "showResourcesDescription": "在标题栏显示CPU、内存和tmux会话使用情况。",
     "attachedImages": "附加图片",
-    "attachedImagesDescription": "在输入栏附加的图片保存在 ~/.purplemux/uploads/ 下。超过 24 小时的文件会在服务器启动时自动清理。",
+    "attachedImagesDescription": "在输入栏附加的图片保存在 ~/.codexmux/uploads/ 下。超过 24 小时的文件会在服务器启动时自动清理。",
     "cleanAttachedImages": "立即清理",
     "attachedImagesCleaned": "已删除 {count} 个文件",
     "attachedImagesNothing": "没有可删除的图片",
@@ -234,5 +228,31 @@
     "deleteCancel": "取消",
     "deleteConfirm": "删除"
   },
-  "saveFailed": "无法保存设置"
+  "saveFailed": "无法保存设置",
+  "codex": {
+    "model": "Model",
+    "modelDescription": "Optional model passed as --model. Leave blank to use the Codex CLI default.",
+    "modelPlaceholder": "e.g. gpt-5.2",
+    "cliDefault": "CLI default",
+    "sandbox": "Sandbox",
+    "sandboxDescription": "Controls the --sandbox mode for new and resumed Codex sessions.",
+    "sandboxOptions": {
+      "read-only": "read-only",
+      "workspace-write": "workspace-write",
+      "danger-full-access": "danger-full-access"
+    },
+    "approvalPolicy": "Approval policy",
+    "approvalPolicyDescription": "Controls when Codex asks before running commands.",
+    "approvalOptions": {
+      "untrusted": "untrusted",
+      "on-failure": "on-failure",
+      "on-request": "on-request",
+      "never": "never"
+    },
+    "webSearch": "Web search",
+    "webSearchDescription": "Adds --search so Codex can use live web search.",
+    "showTerminal": "Show terminal with Codex",
+    "showTerminalDescription": "Display the terminal area alongside Codex. When off, new Codex tabs open with the terminal collapsed.",
+    "commandPreview": "Command preview"
+  }
 }

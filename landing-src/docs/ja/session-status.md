@@ -1,88 +1,47 @@
 ---
-title: セッションステータス
-description: purplemux が Claude Code の活動を 4 状態のバッジに変換する仕組みと、ほぼ瞬時に更新される理由。
-eyebrow: Claude Code
+title: 세션 상태
+description: Codex 활동을 네 가지 badge 상태로 바꾸는 방식.
+eyebrow: Codex
 permalink: /ja/docs/session-status/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-サイドバー上のすべてのセッションには色付きのドットがあり、Claude が何をしているかを一目で教えてくれます。このページでは、4 つの状態がどこから来て、ターミナルに手を伸ばさずに同期され続けるかを説明します。
+sidebar의 session dot은 Codex가 무엇을 하고 있는지 보여줍니다. codexmux는 process, JSONL, terminal state를 조합해 상태를 유지합니다.
 
-## 4 つの状態
+## 상태
 
-| 状態 | インジケータ | 意味 |
-|---|---|---|
-| **アイドル** | なし / グレー | Claude は次のプロンプトを待っています。 |
-| **ビジー** | パープルのスピナー | Claude が処理中 — 読込、編集、ツール実行。 |
-| **入力待ち** | アンバーのパルス | 権限プロンプトまたは質問があなたを待っています。 |
-| **レビュー** | パープルのパルス | Claude が完了し、確認すべきものがあります。 |
-
-5 つ目の値 **unknown** は、サーバ再起動時に `busy` だったタブに一時的に表示されます。purplemux がセッションを再検証できると自動的に解消されます。
-
-## 信頼できるソースはフック
-
-purplemux は Claude Code のフック設定を `~/.purplemux/hooks.json` に、小さなシェルスクリプトを `~/.purplemux/status-hook.sh` にインストールします。このスクリプトは 5 つの Claude Code フックイベントに登録され、それぞれを CLI トークン付きでローカルサーバに POST します:
-
-| Claude Code フック | 結果の状態 |
+| 상태 | 의미 |
 |---|---|
-| `SessionStart` | アイドル |
-| `UserPromptSubmit` | ビジー |
-| `Notification` (権限のみ) | 入力待ち |
-| `Stop` / `StopFailure` | レビュー |
-| `PreCompact` / `PostCompact` | コンパクト中インジケータを表示 (状態は不変) |
+| **Idle** | Codex가 다음 prompt를 기다림 |
+| **Busy** | Codex가 작업 중 |
+| **Needs input** | permission prompt 또는 질문 대기 |
+| **Review** | 작업 완료, 확인 필요 |
+| **Unknown** | 서버 재시작 후 복구 중 |
 
-フックは Claude Code が遷移した瞬間に発火するため、サイドバーはターミナルで気づくよりも先に更新されます。
+## 상태 출처
 
-{% call callout('note', '権限通知のみ') %}
-Claude の `Notification` フックはいくつかの理由で発火します。purplemux は通知タイプが `permission_prompt` または `worker_permission_prompt` のときだけ **入力待ち** に切り替えます。アイドル時のリマインダーやその他の通知タイプではバッジは変化しません。
-{% endcall %}
+| 신호 | 정보 |
+|---|---|
+| tmux foreground command | pane이 shell인지 Codex인지 |
+| process tree detection | live `codex` process 존재 여부 |
+| Codex JSONL tail | session id, model, current action, token usage |
 
-## プロセス検出は並行で動作
+생성된 hook bridge file도 event를 보낼 수 있지만 Codex status는 이 파일에 의존하지 않습니다.
 
-Claude CLI が実際に動作しているかどうかは、作業状態とは別個に追跡されます。2 つの経路が連携します:
+## JSONL watcher
 
-- **tmux のタイトル変更** — 各ペインは `pane_current_command|pane_current_path` をタイトルとして報告します。xterm.js が `onTitleChange` で変更を届け、purplemux は `/api/check-claude` で確認します。
-- **プロセスツリー走査** — サーバ側で `detectActiveSession` がペインのシェル PID を見て子プロセスをたどり、Claude が `~/.claude/sessions/` に書き込む PID ファイルと突き合わせます。
+Codex는 `~/.codex/sessions/` 아래에 transcript JSONL을 씁니다. codexmux는 active tab의 JSONL을 감시해 last assistant message, current action, token count를 갱신합니다. 사용자가 실행 중 <kbd>Esc</kbd>를 누른 경우 interruption marker를 감지해 tab이 `busy`에 갇히지 않게 합니다.
 
-ディレクトリが存在しない場合、ステータスドットの代わりに「Claude がインストールされていません」画面が表示されます。
+## polling
 
-## JSONL ウォッチャーが穴を埋める
+30-60초 간격의 metadata poll은 놓친 event를 보정하는 안전망입니다. 죽은 process, stale `busy`, 새 tmux pane, title metadata를 확인합니다.
 
-Claude Code は各セッションのトランスクリプト JSONL を `~/.claude/projects/` の下に書き込みます。タブが `busy`、`needs-input`、`unknown`、`ready-for-review` の間、purplemux は 2 つの理由でこのファイルを `fs.watch` で監視します:
+## 재시작 복구
 
-- **メタデータ** — 現在のツール、最新のアシスタントスニペット、トークンカウント。これらは状態を変えずにタイムラインとサイドバーに流れます。
-- **合成 interrupt** — ストリーム途中で Esc を押すと、Claude は `[Request interrupted by user]` を JSONL に書き込みますがフックは発火しません。ウォッチャーがその行を検出して合成 `interrupt` イベントを生成し、タブが busy のまま固まらずに idle に戻ります。
+재시작 전 `busy`였던 tab은 `unknown`으로 시작합니다. Codex process가 없으면 `idle`, JSONL이 정상 종료되었으면 `review`로 전환합니다. 복구 중 자동 전환은 push notification을 보내지 않습니다.
 
-## ポーリングはエンジンではなく安全網
+## 다음 단계
 
-メタデータのポーリングはタブ数に応じて 30〜60 秒ごとに実行されます。状態を決めるわけでは**ありません** — それは厳密にフック経路です。ポーリングは以下のために存在します:
-
-- 新しい tmux ペインを発見する
-- Claude プロセスが死んでいる状態で busy が 10 分以上続いているセッションを復旧する
-- プロセス情報、ポート、タイトルをリフレッシュする
-
-これがランディングページで触れている「5〜15 秒のフォールバックポーリング」です。フックの信頼性が証明されてから速度を落とし、対象を絞っています。
-
-## サーバ再起動を生き延びる
-
-purplemux がダウンしている間はフックが発火できないため、進行中の状態は古くなる可能性があります。復旧ルールは保守的です:
-
-- 永続化された `busy` は `unknown` になり、再チェックされます: Claude がもう動作していなければタブは静かに idle に戻り、JSONL がきれいに終わっていれば review になります。
-- それ以外のすべての状態 — `idle`、`needs-input`、`ready-for-review` — はあなたの対応待ちなので、そのまま残ります。
-
-復旧中の自動状態遷移ではプッシュ通知は飛びません。*新しい* 作業が needs-input または review に入ったときだけ通知されます。
-
-## 状態が表示される場所
-
-- サイドバーセッション行のドット
-- 各ペインのタブバーのドット
-- ワークスペースのドット (ワークスペース全体で最も優先度の高い状態)
-- ベルアイコンのカウントと通知シート
-- ブラウザのタブタイトル (注意項目数)
-- `needs-input` と `ready-for-review` の Web Push とデスクトップ通知
-
-## 次のステップ
-
-- **[権限プロンプト](/purplemux/ja/docs/permission-prompts/)** — **入力待ち** 状態の背後のワークフロー。
-- **[ライブセッションビュー](/purplemux/ja/docs/live-session-view/)** — `busy` になったタブのタイムラインに何が表示されるか。
-- **[最初のセッション](/purplemux/ja/docs/first-session/)** — ダッシュボードツアーの文脈の中で。
+- **[권한 프롬프트](/codexmux/ja/docs/permission-prompts/)**
+- **[라이브 세션 뷰](/codexmux/ja/docs/live-session-view/)**
+- **[데이터 디렉터리](/codexmux/ja/docs/data-directory/)**

@@ -1,6 +1,6 @@
 {
   "title": "사용량 통계",
-  "pageTitle": "사용량 통계 — purplemux",
+  "pageTitle": "사용량 통계 — codexmux",
   "dataLoadError": "데이터를 불러올 수 없습니다",
   "collectingInitial": "초기 데이터를 수집하고 있습니다",
   "collectingToday": "오늘 데이터를 수집하고 있습니다",
@@ -12,7 +12,6 @@
   "activityPattern": "활동 패턴",
   "project": "프로젝트",
   "session": "세션",
-
   "tokenLabel": "토큰",
   "inputLabel": "입력",
   "outputLabel": "출력",
@@ -22,9 +21,7 @@
   "modelTokens": "모델별 토큰",
   "dailyTokenTrend": "일별 토큰 추이",
   "total": "합계",
-
   "errorLoadFailed": "데이터를 불러올 수 없습니다",
-
   "today": "오늘",
   "generating": "생성 중...",
   "sessionCount": "세션 {count}",
@@ -37,7 +34,6 @@
   "collapse": "접기",
   "showMore": "더보기",
   "noActivity": "활동 내역이 없습니다",
-
   "messages": "메시지",
   "sessions": "세션",
   "toolCalls": "도구 호출",
@@ -50,20 +46,17 @@
   "more": "많음",
   "hourSuffix": "시",
   "messageCount": "{count} 메시지",
-
   "totalSessions": "총 세션 수",
   "totalCost": "총 비용",
   "todayCost": "오늘 비용",
   "thisMonthCost": "이번 달 비용",
   "dailyActivityTrend": "일별 활동 추이",
   "vsPreviousPeriod": "vs 이전 기간",
-
   "projectAnalysis": "프로젝트별 분석",
   "projectTokenUsageTop": "프로젝트별 토큰 사용량 (TOP {count})",
   "noProjectData": "프로젝트 데이터가 없습니다",
   "sessionCountLabel": "{count}세션",
   "messageCountLabel": "{count}메시지",
-
   "longestStreak": "최장 연속",
   "currentStreak": "현재 연속",
   "streakCount": "가동 횟수",
@@ -76,9 +69,8 @@
   "concurrentUsage": "동시 사용",
   "concurrentOrMore": "{level}개 이상 동시",
   "accumulated": "누적 {duration}",
-  "noRecentActivity": "최근 7일 동안 Claude 사용 기록이 없습니다",
+  "noRecentActivity": "최근 7일 동안 Codex 사용 기록이 없습니다",
   "currentlyRunning": "현재 가동 중 — {duration} 연속",
-
   "avgSessionLength": "평균 세션 길이",
   "longestSession": "최장 세션",
   "totalToolCalls": "총 도구 호출 수",
@@ -90,7 +82,6 @@
   "goalAchievement": "목표 달성도",
   "topCommands": "자주 사용하는 명령어 TOP 10",
   "inputLengthDist": "입력 길이 분포",
-
   "periodToday": "오늘",
   "period7d": "7일",
   "period30d": "30일",

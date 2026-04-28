@@ -1,63 +1,39 @@
 ---
-title: 主題與字型
-description: 淺色、深色或跟隨系統；三種字級；單一設定面板。
-eyebrow: 自訂
+title: 테마 & 글꼴
+description: 앱 테마, 글꼴 크기, 터미널 팔레트 설정.
+eyebrow: 설정
 permalink: /zh-TW/docs/themes-fonts/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux 提供一套一致的視覺風格，加上一小組切換：應用程式主題、字級，以及獨立的終端機調色盤。本頁涵蓋前兩者 — 終端機色彩在另一頁說明。
+codexmux는 앱 테마, 글꼴 크기, 터미널 팔레트를 전역 설정으로 제공합니다. 이 문서는 앱 테마와 글꼴 크기를 다룹니다.
 
-## 開啟設定
+## 앱 테마
 
-按 <kbd>⌘,</kbd>（macOS）或 <kbd>Ctrl,</kbd>（Linux）開啟設定。**一般** 分頁就是主題與字級的所在位置。
-
-你也可以點選頂部列的齒輪圖示。
-
-## 應用程式主題
-
-三種模式，立即套用：
-
-| 模式 | 行為 |
+| 값 | 동작 |
 |---|---|
-| **淺色** | 不論 OS 偏好設定，強制淺色主題。 |
-| **深色** | 強制深色主題。 |
-| **跟隨系統** | 跟隨 OS — macOS / GNOME / KDE 在淺/深之間切換時自動跟著切換。 |
+| `System` | OS 설정을 따름 |
+| `Light` | 밝은 테마 고정 |
+| `Dark` | 어두운 테마 고정 |
 
-主題儲存於 `~/.purplemux/config.json` 的 `appTheme`，並同步到所有連線到伺服器的瀏覽器分頁。在 macOS 原生 App 上，OS 標題列也會跟著更新。
+선택 값은 `~/.codexmux/config.json`의 `appTheme`에 저장되고 연결된 browser tab에 동기화됩니다.
 
-{% call callout('note', '為深色而設計') %}
-品牌建立在帶有深紫色調的中性色之上，深色模式把 chroma 維持在零，呈現嚴格無彩的表面。淺色模式套用幾乎不可察覺的紫色色相（hue 287）以增加溫度。兩者都為長時間工作調校過；選你眼睛喜歡的就好。
-{% endcall %}
+## 글꼴 크기
 
-## 字級
+| preset | 용도 |
+|---|---|
+| `Small` | 좁은 화면에서 정보 밀도 우선 |
+| `Default` | 일반 desktop 환경 |
+| `Large` | 큰 화면 또는 높은 가독성 필요 |
 
-三個預設值，以按鈕群組呈現：
+UI는 `rem` 단위를 사용하므로 sidebar, dialog, table이 함께 scale됩니다.
 
-- **一般** — 預設；root font-size 跟隨瀏覽器。
-- **大** — root font-size 設為 `18px`。
-- **特大** — root font-size 設為 `20px`。
+## 터미널 색상
 
-由於整個 UI 都以 `rem` 為單位，切換預設值會同時縮放整個介面 — 側邊欄、對話框、終端機。變更會即時套用，無需重新載入。
+터미널 palette는 앱 theme와 별도로 관리됩니다. 자세한 내용은 [터미널 테마](/codexmux/zh-TW/docs/terminal-themes/)를 참고하세요.
 
-## 哪些會變、哪些不會
+## 다음 단계
 
-字級會縮放 **UI 外框與終端機文字**。它不會改變：
-
-- 標題層級（相對大小維持不變）
-- 間距 — 比例保留
-- 程式碼區塊語法樣式
-
-如果你想微調個別元素（例如只調整終端機，或只調整側邊欄），請見 [自訂 CSS](/purplemux/zh-TW/docs/custom-css/)。
-
-## 跨裝置共用，非每瀏覽器獨立
-
-設定儲存在伺服器，不在 localStorage。在筆電切到深色，手機也會跟著切到深色 — 從手機打開 `https://<host>/`，變更已經就緒。
-
-如果你想讓行動裝置與桌面看起來不同，目前還不支援；如果你需要請開 issue。
-
-## 下一步
-
-- **[自訂 CSS](/purplemux/zh-TW/docs/custom-css/)** — 覆寫個別色彩與間距。
-- **[終端機主題](/purplemux/zh-TW/docs/terminal-themes/)** — xterm.js 獨立的調色盤。
-- **[鍵盤快速鍵](/purplemux/zh-TW/docs/keyboard-shortcuts/)** — 所有繫結一覽表。
+- **[커스텀 CSS](/codexmux/zh-TW/docs/custom-css/)**
+- **[터미널 테마](/codexmux/zh-TW/docs/terminal-themes/)**
+- **[사이드바 & Codex 옵션](/codexmux/zh-TW/docs/sidebar-options/)**

@@ -5,14 +5,14 @@
     "appearance": "Apparence",
     "terminal": "Terminal",
     "editor": "Éditeur",
-    "claude": "Claude",
     "auth": "Authentification",
     "tailscale": "Tailscale",
     "quickPrompts": "Prompts rapides",
     "sidebarItems": "Barre latérale",
     "agent": "Agent",
     "notification": "Notification",
-    "system": "Système"
+    "system": "Système",
+    "codex": "Codex"
   },
   "general": {
     "theme": "Thème",
@@ -67,18 +67,12 @@
     "errorHttpRequired": "L'URL doit commencer par http:// ou https://",
     "errorCustomTemplate": "Le modèle doit contenir {folder} ou {folderEncoded}"
   },
-  "claude": {
-    "skipPermissions": "Ignorer les vérifications de permissions",
-    "skipPermissionsDescription": "Ajoute l'option --dangerously-skip-permissions lors de l'exécution de Claude CLI.",
-    "showTerminal": "Afficher le terminal avec Claude",
-    "showTerminalDescription": "Affiche la zone du terminal à côté de Claude Code. Désactivé, les nouveaux onglets Claude s'ouvrent avec le terminal réduit."
-  },
   "auth": {
     "changePassword": "Changer le mot de passe",
     "changePasswordDescription": "Les nouveaux mots de passe sont hachés en SHA-512 avant enregistrement.",
     "newPasswordPlaceholder": "Saisissez un nouveau mot de passe (4 car. min.)",
     "passwordPlaceholder": "Saisissez un mot de passe (4 car. min.)",
-    "resetHint": "Pour réinitialiser, supprimez ~/.purplemux/config.json et {action}.",
+    "resetHint": "Pour réinitialiser, supprimez ~/.codexmux/config.json et {action}.",
     "restartServer": "redémarrez le serveur",
     "restartApp": "quittez et redémarrez l'application",
     "savedRestart": "Enregistré. Les modifications prendront effet après le {action}.",
@@ -87,7 +81,7 @@
   },
   "notification": {
     "enable": "Activer les notifications",
-    "enableDescription": "Affiche des notifications système lorsque les tâches Claude sont terminées. Fonctionne uniquement dans l'application Electron.",
+    "enableDescription": "Show system notifications when Codex tasks complete.",
     "permissionDenied": "Autorisation des notifications du navigateur refusée. Veuillez l'autoriser dans les paramètres du navigateur.",
     "notSupported": "Web Push n'est pas pris en charge par ce navigateur.",
     "toastSection": "Toast dans l'application",
@@ -116,7 +110,7 @@
   },
   "system": {
     "networkAccess": "Accès réseau",
-    "networkAccessDescription": "Contrôle quels réseaux peuvent accéder à purplemux. Prend effet après redémarrage du serveur.",
+    "networkAccessDescription": "Contrôle quels réseaux peuvent accéder à codexmux. Prend effet après redémarrage du serveur.",
     "networkAccessLocked": "Contrôlé par la variable d'environnement HOST.",
     "restartRequired": "Les modifications prennent effet après redémarrage du serveur.",
     "networkAccessOptions": {
@@ -136,7 +130,7 @@
     "showResources": "Afficher les ressources système",
     "showResourcesDescription": "Affiche l'utilisation du CPU, de la mémoire et des sessions tmux dans l'en-tête.",
     "attachedImages": "Images jointes",
-    "attachedImagesDescription": "Les images jointes dans la barre de saisie sont stockées dans ~/.purplemux/uploads/. Les fichiers de plus de 24 heures sont supprimés automatiquement au démarrage du serveur.",
+    "attachedImagesDescription": "Les images jointes dans la barre de saisie sont stockées dans ~/.codexmux/uploads/. Les fichiers de plus de 24 heures sont supprimés automatiquement au démarrage du serveur.",
     "cleanAttachedImages": "Nettoyer maintenant",
     "attachedImagesCleaned": "{count} fichiers supprimés",
     "attachedImagesNothing": "Aucune image à supprimer",
@@ -234,5 +228,31 @@
     "deleteCancel": "Annuler",
     "deleteConfirm": "Supprimer"
   },
-  "saveFailed": "Impossible de sauvegarder les paramètres"
+  "saveFailed": "Impossible de sauvegarder les paramètres",
+  "codex": {
+    "model": "Model",
+    "modelDescription": "Optional model passed as --model. Leave blank to use the Codex CLI default.",
+    "modelPlaceholder": "e.g. gpt-5.2",
+    "cliDefault": "CLI default",
+    "sandbox": "Sandbox",
+    "sandboxDescription": "Controls the --sandbox mode for new and resumed Codex sessions.",
+    "sandboxOptions": {
+      "read-only": "read-only",
+      "workspace-write": "workspace-write",
+      "danger-full-access": "danger-full-access"
+    },
+    "approvalPolicy": "Approval policy",
+    "approvalPolicyDescription": "Controls when Codex asks before running commands.",
+    "approvalOptions": {
+      "untrusted": "untrusted",
+      "on-failure": "on-failure",
+      "on-request": "on-request",
+      "never": "never"
+    },
+    "webSearch": "Web search",
+    "webSearchDescription": "Adds --search so Codex can use live web search.",
+    "showTerminal": "Show terminal with Codex",
+    "showTerminalDescription": "Display the terminal area alongside Codex. When off, new Codex tabs open with the terminal collapsed.",
+    "commandPreview": "Command preview"
+  }
 }

@@ -1,64 +1,64 @@
 ---
-title: Web Push notifications
-description: Background push alerts for needs-input and task-completion states, even when the browser tab is closed.
-eyebrow: Mobile & Remote
+title: 웹 푸시 알림
+description: 탭이 닫혀 있어도 needs-input과 작업 완료 상태에 대한 백그라운드 푸시 알림을 받습니다.
+eyebrow: 모바일 & 원격
 permalink: /docs/web-push/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Web Push lets purplemux nudge you when a Claude session needs your attention — a permission prompt, a finished task — even after you've closed the tab. Tap the notification and you land directly on that session.
+Web Push는 Codex 세션이 사람을 필요로 하는 순간 — 권한 프롬프트, 작업 완료 — 탭을 닫아둔 상태에서도 알림을 띄워줍니다. 알림을 누르면 해당 세션으로 바로 이동합니다.
 
-## What triggers a notification
+## 무엇이 알림을 트리거하나
 
-purplemux fires a push for the same transitions you see as colored badges in the sidebar.
+사이드바의 컬러 배지에서 볼 수 있는 전환과 동일한 시점에 푸시가 발송됩니다.
 
-- **Needs input** — Claude hit a permission prompt or asked a question.
-- **Task completion** — Claude finished a turn (the **review** state).
+- **Needs input** — Codex가 권한 프롬프트나 질문 대기
+- **작업 완료** — Codex가 한 턴을 마침 (**review** 상태)
 
-Idle and busy transitions are intentionally not pushed. They're noise.
+idle, busy 전환은 의도적으로 푸시하지 않습니다. 노이즈입니다.
 
-## Enable it
+## 활성화
 
-The toggle is at **Settings → Notification**. Steps:
+토글 위치는 **설정 → 알림**입니다. 순서:
 
-1. Open **Settings → Notification** and turn it **On**.
-2. The browser asks for notification permission — grant it.
-3. purplemux registers a Web Push subscription against the server's VAPID keys.
+1. **설정 → 알림**을 열고 **On**으로 토글합니다.
+2. 브라우저가 알림 권한을 요청하면 허용합니다.
+3. codexmux가 서버의 VAPID 키로 Web Push 구독을 등록합니다.
 
-The subscription is stored in `~/.purplemux/push-subscriptions.json` and identifies your specific browser/device. Repeat the steps on each device you want to be notified on.
+구독 정보는 `~/.codexmux/push-subscriptions.json`에 저장되며 브라우저/기기 단위로 식별됩니다. 알림을 받을 기기마다 같은 절차를 반복하세요.
 
-{% call callout('warning', 'iOS requires Safari 16.4 + a PWA') %}
-On iPhone and iPad, Web Push only works after you've added purplemux to the home screen and launched it from that icon. Open the Settings page from the standalone PWA window — the notification permission prompt will be a no-op in a regular Safari tab. Set up the PWA first: [PWA setup](/purplemux/docs/pwa-setup/).
+{% call callout('warning', 'iOS는 Safari 16.4와 PWA 필수') %}
+iPhone, iPad에서는 codexmux를 홈 화면에 추가하고 그 아이콘으로 실행한 상태에서만 Web Push가 동작합니다. 일반 Safari 탭에서 알림 권한을 요청해도 의미가 없습니다. PWA부터 설정하세요: [PWA 설정](/codexmux/docs/pwa-setup/).
 {% endcall %}
 
-## VAPID keys
+## VAPID 키
 
-purplemux generates an application-server VAPID keypair on first run and stores it at `~/.purplemux/vapid-keys.json` (mode `0600`). You don't need to do anything — the public key is served to the browser automatically when you subscribe.
+codexmux는 첫 실행 시 application-server VAPID 키페어를 생성해 `~/.codexmux/vapid-keys.json`(권한 `0600`)에 저장합니다. 별도 작업이 필요 없습니다 — 구독 시 공개 키가 브라우저에 자동 전달됩니다.
 
-If you ever want to reset all subscriptions (for example after rotating keys), delete `vapid-keys.json` and `push-subscriptions.json` and restart purplemux. Every device will need to re-subscribe.
+키 회전 등의 이유로 모든 구독을 초기화하고 싶다면 `vapid-keys.json`과 `push-subscriptions.json`을 삭제하고 codexmux를 재시작하세요. 모든 기기는 다시 구독해야 합니다.
 
-## Background delivery
+## 백그라운드 전송
 
-Once subscribed, your phone receives the notification through the OS push service:
+구독 후에는 OS 푸시 서비스를 통해 알림이 전달됩니다.
 
-- **iOS** — APNs, via Safari's Web Push bridge. Delivery is best-effort and can be coalesced if your phone is heavily throttled.
-- **Android** — FCM via Chrome. Generally instant.
+- **iOS** — Safari의 Web Push 브리지를 거쳐 APNs로 전달. 최선 노력 방식이며 기기 상태에 따라 묶여서 올 수 있습니다.
+- **Android** — Chrome을 통해 FCM. 일반적으로 즉시 도착합니다.
 
-The notification arrives whether or not purplemux is in the foreground. If the dashboard is currently visible on _any_ of your devices, purplemux skips the push to avoid double-buzz.
+codexmux가 포어그라운드인지와 무관하게 알림이 옵니다. 단, 어느 기기에서든 대시보드가 현재 보이고 있다면 중복 알림을 피하기 위해 푸시 발송을 건너뜁니다.
 
-## Tap to jump in
+## 알림 탭 → 세션 이동
 
-Tapping a notification opens purplemux directly to the session that fired it. If the PWA is already running, focus shifts to the right tab; otherwise the app launches and navigates straight there.
+알림을 누르면 알림을 발생시킨 세션으로 바로 열립니다. PWA가 이미 실행 중이라면 해당 탭으로 포커스가 이동하고, 아니라면 앱이 실행되며 곧장 이동합니다.
 
-## Troubleshooting
+## 문제 해결
 
-- **Toggle is greyed out** — Service Workers or Notifications API aren't supported. Run **Settings → Browser check**, or see [Browser support](/purplemux/docs/browser-support/).
-- **Permission was denied** — clear the site's notification permission in your browser settings, then re-toggle in purplemux.
-- **No pushes on iOS** — confirm you're launching from the home-screen icon, not Safari. Confirm iOS is **16.4 or newer**.
-- **Self-signed cert** — Web Push will refuse to register. Use Tailscale Serve or a reverse proxy with a real certificate. See [Tailscale access](/purplemux/docs/tailscale/).
+- **토글이 비활성** — Service Worker 또는 Notifications API 미지원. **설정 → 브라우저 체크** 또는 [브라우저 지원](/codexmux/docs/browser-support/) 확인.
+- **권한 거부됨** — 브라우저 설정에서 해당 사이트의 알림 권한을 초기화한 후 codexmux에서 다시 토글합니다.
+- **iOS에서 알림이 안 옴** — 홈 화면 아이콘에서 실행 중인지, iOS가 **16.4 이상**인지 확인하세요.
+- **자체 서명 인증서** — Web Push 등록 자체가 거부됩니다. Tailscale Serve나 실제 인증서를 가진 리버스 프록시를 사용하세요. [Tailscale 접속](/codexmux/docs/tailscale/) 참고.
 
-## What's next
+## 다음으로
 
-- **[PWA setup](/purplemux/docs/pwa-setup/)** — required for iOS push.
-- **[Tailscale access](/purplemux/docs/tailscale/)** — HTTPS for external delivery.
-- **[Security & auth](/purplemux/docs/security-auth/)** — what else lives under `~/.purplemux/`.
+- **[PWA 설정](/codexmux/docs/pwa-setup/)** — iOS 푸시의 필수 단계
+- **[Tailscale 접속](/codexmux/docs/tailscale/)** — 외부 전송용 HTTPS 확보
+- **[보안과 인증](/codexmux/docs/security-auth/)** — `~/.codexmux/` 안의 다른 파일들

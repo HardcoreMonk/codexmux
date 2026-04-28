@@ -22,19 +22,19 @@ permalink: /ko/docs/editor-integration/index.html
 | **Cursor** | `cursor://...` |
 | **Windsurf** | `windsurf://...` |
 | **Zed** | `zed://file<path>` |
-| **Custom URL** | 직접 정의하는 URL 템플릿. `{folder}` / `{folderEncoded}` 플레이스홀더를 사용 |
+| **사용자 URL** | 직접 정의하는 URL 템플릿. `{folder}` / `{folderEncoded}` 플레이스홀더를 사용 |
 | **Disabled** | EDITOR 버튼을 숨깁니다 |
 
 데스크탑 IDE 4종(VS Code, Cursor, Windsurf, Zed)은 OS에 등록된 URI 핸들러를 통해 동작합니다. 로컬에 IDE가 설치되어 있으면 그대로 열립니다.
 
-## Web vs. Local
+## 웹 방식과 로컬 방식
 
 폴더를 여는 방식에 의미 있는 차이가 있습니다.
 
 - **code-server**는 브라우저 안에서 동작합니다. URL은 호스팅 중인 서버(로컬·사내망·Tailscale 뒤)를 가리킵니다. 버튼을 누르면 새 탭이 열리며 폴더가 로드됩니다.
 - **로컬 IDE**(VS Code, Cursor, Windsurf, Zed)는 *브라우저가 실행 중인 머신*에 IDE가 설치되어 있어야 합니다. OS가 등록된 URI 핸들러를 호출하는 방식입니다.
 
-휴대폰에서 purplemux를 쓴다면 code-server 프리셋만 의미가 있습니다. 휴대폰에서 `vscode://`로 데스크탑 앱을 열 수는 없습니다.
+휴대폰에서 codexmux를 쓴다면 code-server 프리셋만 의미가 있습니다. 휴대폰에서 `vscode://`로 데스크탑 앱을 열 수는 없습니다.
 
 ## code-server 설정
 
@@ -51,15 +51,15 @@ code-server --port 8080
 tailscale serve --bg --https=8443 http://localhost:8080
 ```
 
-그다음 Editor 탭에 code-server 주소를 입력합니다. 로컬이면 `http://localhost:8080`, Tailscale Serve를 통한다면 `https://<machine>.<tailnet>.ts.net:8443`처럼 입력합니다. purplemux가 `http://` 또는 `https://` 여부를 검증한 뒤, 절대 경로를 `?folder=<path>` 형태로 자동 부착합니다.
+그다음 Editor 탭에 code-server 주소를 입력합니다. 로컬이면 `http://localhost:8080`, Tailscale Serve를 통한다면 `https://<machine>.<tailnet>.ts.net:8443`처럼 입력합니다. codexmux가 `http://` 또는 `https://` 여부를 검증한 뒤, 절대 경로를 `?folder=<path>` 형태로 자동 부착합니다.
 
 {% call callout('note', '8022 포트는 피하세요') %}
-purplemux가 이미 `8022`를 씁니다. code-server는 다른 포트(예시는 `8080`)에서 띄우세요.
+codexmux가 이미 `8022`를 씁니다. code-server는 다른 포트(예시는 `8080`)에서 띄우세요.
 {% endcall %}
 
 ## 커스텀 URL 템플릿
 
-Custom 프리셋은 폴더를 URL에 받는 어떤 도구든 연결할 수 있습니다 — Coder 워크스페이스, Gitpod, Theia, 사내 도구 등. 템플릿에는 다음 플레이스홀더가 **반드시** 하나 이상 있어야 합니다.
+사용자 프리셋은 폴더를 URL에 받는 어떤 도구든 연결할 수 있습니다 — Coder 워크스페이스, Gitpod, Theia, 사내 도구 등. 템플릿에는 다음 플레이스홀더가 **반드시** 하나 이상 있어야 합니다.
 
 - `{folder}` — 절대 경로(인코딩 없음)
 - `{folderEncoded}` — URL 인코딩된 경로
@@ -77,6 +77,6 @@ https://my.coder.example/workspace?dir={folderEncoded}
 
 ## 다음으로
 
-- **[사이드바 & Claude 옵션](/purplemux/ko/docs/sidebar-options/)** — 사이드바 정렬, Claude 플래그 토글
-- **[커스텀 CSS](/purplemux/ko/docs/custom-css/)** — 시각 요소 추가 조정
-- **[Tailscale](/purplemux/ko/docs/tailscale/)** — code-server 외부 접속도 동일하게 활용
+- **[사이드바 & Codex 옵션](/codexmux/ko/docs/sidebar-options/)** — 사이드바 정렬, Codex 플래그 토글
+- **[커스텀 CSS](/codexmux/ko/docs/custom-css/)** — 시각 요소 추가 조정
+- **[Tailscale](/codexmux/ko/docs/tailscale/)** — code-server 외부 접속도 동일하게 활용

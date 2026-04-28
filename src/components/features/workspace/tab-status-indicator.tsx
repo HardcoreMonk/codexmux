@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/spinner';
 import useTabStore, { selectTabDisplayStatus } from '@/hooks/use-tab-store';
+import { isAgentPanelType } from '@/lib/panel-type';
 import type { TPanelType } from '@/types/terminal';
 
 interface ITabStatusIndicatorProps {
@@ -15,8 +16,8 @@ const TabStatusIndicator = ({ tabId, panelType }: ITabStatusIndicatorProps) => {
     (state) => selectTabDisplayStatus(state.tabs, tabId),
   );
 
-  const isClaude = panelType === 'claude-code';
-  const visible = isClaude && status !== 'idle';
+  const isAgentPanel = isAgentPanelType(panelType);
+  const visible = isAgentPanel && status !== 'idle';
 
   return (
     <span
@@ -28,11 +29,11 @@ const TabStatusIndicator = ({ tabId, panelType }: ITabStatusIndicatorProps) => {
       }}
       aria-hidden={!visible || undefined}
     >
-      {!isClaude ? null : status === 'busy' ? (
+      {!isAgentPanel ? null : status === 'busy' ? (
         <Spinner className="h-2.5 w-2.5 text-muted-foreground" />
       ) : status === 'ready-for-review' ? (
         <span
-          className="h-2 w-2 shrink-0 rounded-full bg-claude-active animate-pulse"
+          className="h-2 w-2 shrink-0 rounded-full bg-agent-active animate-pulse"
           aria-hidden="true"
         />
       ) : status === 'needs-input' ? (

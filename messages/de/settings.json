@@ -5,14 +5,14 @@
     "appearance": "Darstellung",
     "terminal": "Terminal",
     "editor": "Editor",
-    "claude": "Claude",
     "auth": "Authentifizierung",
     "tailscale": "Tailscale",
     "quickPrompts": "Schnellbefehle",
     "sidebarItems": "Seitenleiste",
     "agent": "Agent",
     "notification": "Benachrichtigung",
-    "system": "System"
+    "system": "System",
+    "codex": "Codex"
   },
   "general": {
     "theme": "Theme",
@@ -67,18 +67,12 @@
     "errorHttpRequired": "URL muss mit http:// oder https:// beginnen",
     "errorCustomTemplate": "Vorlage muss {folder} oder {folderEncoded} enthalten"
   },
-  "claude": {
-    "skipPermissions": "Berechtigungsprüfungen überspringen",
-    "skipPermissionsDescription": "Fügt die Option --dangerously-skip-permissions beim Ausführen der Claude CLI hinzu.",
-    "showTerminal": "Terminal zusammen mit Claude anzeigen",
-    "showTerminalDescription": "Zeigt den Terminalbereich neben Claude Code an. Wenn deaktiviert, werden neue Claude-Tabs mit eingeklapptem Terminal geöffnet."
-  },
   "auth": {
     "changePassword": "Passwort ändern",
     "changePasswordDescription": "Neue Passwörter werden vor dem Speichern mit SHA-512 gehasht.",
     "newPasswordPlaceholder": "Neues Passwort eingeben (mind. 4 Zeichen)",
     "passwordPlaceholder": "Passwort eingeben (mind. 4 Zeichen)",
-    "resetHint": "Zum Zurücksetzen ~/.purplemux/config.json löschen und {action}.",
+    "resetHint": "Zum Zurücksetzen ~/.codexmux/config.json löschen und {action}.",
     "restartServer": "den Server neustarten",
     "restartApp": "die App beenden und neu starten",
     "savedRestart": "Gespeichert. Änderungen werden nach {action} wirksam.",
@@ -87,7 +81,7 @@
   },
   "notification": {
     "enable": "Benachrichtigungen aktivieren",
-    "enableDescription": "Systembenachrichtigungen anzeigen, wenn Claude-Aufgaben abgeschlossen sind. Funktioniert nur in der Electron-App.",
+    "enableDescription": "Show system notifications when Codex tasks complete.",
     "permissionDenied": "Browser-Benachrichtigungsberechtigung verweigert. Bitte in den Browser-Einstellungen erlauben.",
     "notSupported": "Web Push wird in diesem Browser nicht unterstützt.",
     "toastSection": "In-App-Toast",
@@ -116,7 +110,7 @@
   },
   "system": {
     "networkAccess": "Netzwerkzugriff",
-    "networkAccessDescription": "Steuert, welche Netzwerke auf purplemux zugreifen können. Wirkt nach Server-Neustart.",
+    "networkAccessDescription": "Steuert, welche Netzwerke auf codexmux zugreifen können. Wirkt nach Server-Neustart.",
     "networkAccessLocked": "Wird durch die Umgebungsvariable HOST gesteuert.",
     "restartRequired": "Änderungen erfordern einen Server-Neustart.",
     "networkAccessOptions": {
@@ -136,7 +130,7 @@
     "showResources": "Systemressourcen anzeigen",
     "showResourcesDescription": "CPU-, Arbeitsspeicher- und tmux-Sitzungsauslastung in der Kopfzeile anzeigen.",
     "attachedImages": "Angehängte Bilder",
-    "attachedImagesDescription": "Im Eingabefeld angehängte Bilder werden unter ~/.purplemux/uploads/ gespeichert. Dateien, die älter als 24 Stunden sind, werden beim Serverstart automatisch entfernt.",
+    "attachedImagesDescription": "Im Eingabefeld angehängte Bilder werden unter ~/.codexmux/uploads/ gespeichert. Dateien, die älter als 24 Stunden sind, werden beim Serverstart automatisch entfernt.",
     "cleanAttachedImages": "Jetzt aufräumen",
     "attachedImagesCleaned": "{count} Dateien entfernt",
     "attachedImagesNothing": "Keine Bilder zum Entfernen",
@@ -234,5 +228,31 @@
     "deleteCancel": "Abbrechen",
     "deleteConfirm": "Löschen"
   },
-  "saveFailed": "Einstellungen konnten nicht gespeichert werden"
+  "saveFailed": "Einstellungen konnten nicht gespeichert werden",
+  "codex": {
+    "model": "Model",
+    "modelDescription": "Optional model passed as --model. Leave blank to use the Codex CLI default.",
+    "modelPlaceholder": "e.g. gpt-5.2",
+    "cliDefault": "CLI default",
+    "sandbox": "Sandbox",
+    "sandboxDescription": "Controls the --sandbox mode for new and resumed Codex sessions.",
+    "sandboxOptions": {
+      "read-only": "read-only",
+      "workspace-write": "workspace-write",
+      "danger-full-access": "danger-full-access"
+    },
+    "approvalPolicy": "Approval policy",
+    "approvalPolicyDescription": "Controls when Codex asks before running commands.",
+    "approvalOptions": {
+      "untrusted": "untrusted",
+      "on-failure": "on-failure",
+      "on-request": "on-request",
+      "never": "never"
+    },
+    "webSearch": "Web search",
+    "webSearchDescription": "Adds --search so Codex can use live web search.",
+    "showTerminal": "Show terminal with Codex",
+    "showTerminalDescription": "Display the terminal area alongside Codex. When off, new Codex tabs open with the terminal collapsed.",
+    "commandPreview": "Command preview"
+  }
 }

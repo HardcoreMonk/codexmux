@@ -1,12 +1,12 @@
 ---
 title: Git 워크플로 패널
-description: 터미널 옆에 있는 diff 뷰어, 히스토리 브라우저, 동기화 컨트롤. 막히면 한 번에 Claude로 넘기세요.
+description: 터미널 옆에 있는 diff 뷰어, 히스토리 브라우저, 동기화 컨트롤. 막히면 한 번에 Codex로 넘기세요.
 eyebrow: 워크스페이스 & 터미널
 permalink: /ko/docs/git-workflow/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Git 패널은 터미널과 동일한 형태의 탭 타입입니다. Claude 세션 옆에 띄워두면 변경 내용 보기, 히스토리 탐색, 푸시까지 대시보드 안에서 끝납니다. git이 막혔을 때는 "Ask Claude" 한 번으로 세션에 문제를 넘길 수 있습니다.
+Git 패널은 터미널과 동일한 형태의 탭 타입입니다. Codex 세션 옆에 띄워두면 변경 내용 보기, 히스토리 탐색, 푸시까지 대시보드 안에서 끝납니다. git이 막혔을 때는 "Ask Codex" 한 번으로 세션에 문제를 넘길 수 있습니다.
 
 ## 패널 열기
 
@@ -49,18 +49,18 @@ Sync는 의도적으로 좁게 만들어졌습니다. 사람의 판단이 필요
 - **No upstream** — `git push -u`가 아직 실행되지 않음
 - **Auth** — 자격증명이 없거나 거부됨
 - **Diverged** — 로컬과 원격이 각자 고유 커밋을 가짐. rebase 또는 merge 필요
-- **Local changes** — 커밋되지 않은 작업이 pull을 막음
+- **로컬 변경 사항** — 커밋되지 않은 작업이 pull을 막음
 - **Rejected** — non-fast-forward로 push 거부됨
 {% endcall %}
 
-## Ask Claude
+## Ask Codex
 
-Sync가 실패하면 에러 토스트에 **Ask Claude** 버튼이 함께 떠오릅니다. 클릭하면 실패 컨텍스트 — 에러 종류, 관련 `git` 출력, 현재 브랜치 상태 — 가 같은 워크스페이스의 Claude 탭에 프롬프트로 전달됩니다. 이후 Claude가 rebase, 충돌 해결, 업스트림 설정 등 필요한 복구 단계를 안내합니다.
+Sync가 실패하면 에러 토스트에 **Ask Codex** 버튼이 함께 떠오릅니다. 클릭하면 실패 컨텍스트 — 에러 종류, 관련 `git` 출력, 현재 브랜치 상태 — 가 같은 워크스페이스의 Codex 탭에 프롬프트로 전달됩니다. 이후 Codex가 rebase, 충돌 해결, 업스트림 설정 등 필요한 복구 단계를 안내합니다.
 
 이 패널의 핵심 베팅은 이것입니다 — 일반적인 케이스는 도구로, 그 외 long tail은 LLM에게. 컨텍스트를 전환하지 않습니다. 어차피 갈 세션에 프롬프트가 도착해 있을 뿐입니다.
 
 ## 다음으로
 
-- **[탭 & 창](/purplemux/ko/docs/tabs-panes/)** — Claude 세션 옆에 diff 패널 분할로 띄우기
-- **[첫 세션](/purplemux/ko/docs/first-session/)** — 권한 프롬프트가 대시보드에 어떻게 노출되는지
-- **[웹 브라우저 패널](/purplemux/ko/docs/web-browser-panel/)** — 터미널 옆에 두면 좋은 또 하나의 패널 타입
+- **[탭 & 창](/codexmux/ko/docs/tabs-panes/)** — Codex 세션 옆에 diff 패널 분할로 띄우기
+- **[첫 세션](/codexmux/ko/docs/first-session/)** — 권한 프롬프트가 대시보드에 어떻게 노출되는지
+- **[웹 브라우저 패널](/codexmux/ko/docs/web-browser-panel/)** — 터미널 옆에 두면 좋은 또 하나의 패널 타입

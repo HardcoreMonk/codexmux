@@ -1,79 +1,78 @@
 ---
-title: Quick prompts & attachments
-description: A saved prompt library, drag-drop images, file attachments, and a reusable message history — all from the input bar at the bottom of the timeline.
-eyebrow: Claude Code
+title: 퀵 프롬프트 & 첨부
+description: 저장된 프롬프트 라이브러리, 이미지 드래그 앤 드롭, 파일 첨부, 재사용 가능한 메시지 히스토리 — 모두 타임라인 하단의 입력 바에서.
+eyebrow: Codex
 permalink: /docs/quick-prompts-attachments/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-The input bar under the timeline is more than a textarea. It's where saved prompts, attachments, and message history live, so the things you type ten times a day stop costing you ten typings a day.
+타임라인 아래의 입력 바는 단순한 textarea가 아닙니다. 저장된 프롬프트, 첨부, 메시지 히스토리가 여기에 살고 있어, 하루에 열 번 입력하던 것이 더 이상 열 번의 타이핑을 요구하지 않습니다.
 
-## Quick prompts
+## 퀵 프롬프트
 
-Quick prompts are short, named entries stored in `~/.purplemux/quick-prompts.json`. They appear as chips above the input bar — one click sends the prompt as if you typed it.
+퀵 프롬프트는 `~/.codexmux/quick-prompts.json`에 저장되는 짧은 이름이 붙은 항목입니다. 입력 바 위에 칩으로 나타나며 — 한 번 클릭하면 직접 입력한 것처럼 프롬프트가 전송됩니다.
 
-Two built-ins ship out of the box and can be disabled at any time:
+기본 제공되는 빌트인이 있고, 언제든 비활성화할 수 있습니다:
 
-- **Commit** — runs `/commit-commands:commit`
-- **Simplify** — runs `/simplify`
+- **Commit** — `/commit-commands:commit` 실행
 
-Add your own from **Settings → Quick prompts**:
+직접 추가하려면 **설정 → 퀵 프롬프트**에서:
 
-1. Click **Add prompt**.
-2. Give it a name (the chip label) and a body (what gets sent).
-3. Drag to reorder. Toggle off to hide without deleting.
+1. **Add prompt** 클릭
+2. 이름(칩 라벨)과 본문(전송될 내용) 입력
+3. 드래그로 순서 조정. 토글 off로 삭제 없이 숨기기
 
-Anything you type in the body is sent verbatim — including slash commands, multi-line prompts, or templated requests like "Explain the file open in the editor and suggest one improvement."
+본문에 작성한 내용은 그대로 전송됩니다 — 슬래시 커맨드, 멀티라인 프롬프트, "에디터에 열린 파일을 설명하고 개선점을 한 가지 제안해줘" 같은 템플릿 요청도 가능합니다.
 
-{% call callout('tip', 'Slash commands count') %}
-Quick prompts work nicely as one-click triggers for Claude Code slash commands. A "Review this PR" chip pointing at `/review` saves a few keystrokes every time.
+{% call callout('tip', '슬래시 커맨드도 됩니다') %}
+퀵 프롬프트는 Codex 슬래시 커맨드를 한 번에 트리거하는 용도로 잘 어울립니다. `/review`를 가리키는 "Review this PR" 칩 하나로 매번 몇 번의 키 입력을 줄일 수 있습니다.
 {% endcall %}
 
-## Drag and drop images
+## 이미지 드래그 앤 드롭
 
-Drop an image file (PNG, JPG, WebP, etc.) anywhere on the input bar to attach it. purplemux uploads the file to a temp path on the server and inserts a reference into your prompt automatically.
+이미지 파일(PNG, JPG, WebP 등)을 입력 바 어디에든 드롭하면 첨부됩니다. codexmux는 파일을 서버의 임시 경로에 업로드하고 프롬프트에 자동으로 reference를 삽입합니다.
 
-You can also:
+추가로:
 
-- **Paste** an image directly from the clipboard
-- **Click the paperclip** to pick from a file dialog
-- Attach **up to 20 files** per message
+- 클립보드에서 이미지 직접 **붙여넣기**
+- **클립 아이콘**을 클릭해 파일 다이얼로그에서 선택
+- 메시지당 **최대 20개 파일** 첨부 가능
 
-A thumbnail strip appears above the input while attachments are pending. Each thumbnail has an X to remove it before sending.
+첨부 대기 중에는 입력 바 위에 썸네일 스트립이 나타납니다. 각 썸네일에는 X 버튼이 있어 전송 전에 제거할 수 있습니다.
 
-## Other file attachments
+## 그 외 파일 첨부
 
-The same paperclip works for non-image files too — markdown, JSON, CSV, source files, anything. purplemux puts them in a temp directory and inserts the path so Claude can `read` them as part of the request.
+같은 클립 아이콘은 이미지가 아닌 파일에도 동작합니다 — markdown, JSON, CSV, 소스 파일 등 무엇이든. codexmux가 임시 디렉토리에 두고 경로를 삽입해주면, Codex가 요청의 일부로 `read`할 수 있습니다.
 
-This is the easiest way to share something Claude can't reach by itself, like a stack trace pasted from another machine or a config file from a different project.
+다른 머신에서 붙여넣은 스택 트레이스나 다른 프로젝트의 설정 파일처럼, Codex가 직접 닿을 수 없는 것을 공유하기에 가장 쉬운 방법입니다.
 
-## Mobile-friendly
+## 모바일 친화
 
-Attachments and the paperclip are full-size on phones. Drop a screenshot from the iOS share sheet, or use the camera button (Android) to attach a photo straight from the camera roll.
+첨부와 클립 아이콘은 휴대폰에서도 풀사이즈입니다. iOS 공유 시트에서 스크린샷을 드롭하거나, 카메라 버튼(Android)으로 카메라 롤에서 사진을 바로 첨부할 수 있습니다.
 
-The input bar reflows for narrow screens — the chips become a horizontal scroller, the textarea grows up to five lines before scrolling.
+입력 바는 좁은 화면에 맞게 reflow됩니다 — 칩은 가로 스크롤러가 되고, textarea는 5라인까지 확장된 뒤 스크롤됩니다.
 
-## Message history
+## 메시지 히스토리
 
-Every prompt you've sent in a workspace is kept in a per-workspace history. To reuse one:
+워크스페이스 안에서 보낸 모든 프롬프트는 워크스페이스별 히스토리로 보관됩니다. 재사용하려면:
 
-- Press <kbd>↑</kbd> in an empty input bar to step through recent messages
-- Or open the **History** picker for a searchable list
+- 비어 있는 입력 바에서 <kbd>↑</kbd>로 최근 메시지 순회
+- 또는 검색 가능한 목록을 위해 **History** 피커를 열기
 
-Old entries can be deleted from the picker. History is stored alongside other workspace data under `~/.purplemux/`, never sent off-machine.
+오래된 항목은 피커에서 삭제할 수 있습니다. 히스토리는 다른 워크스페이스 데이터와 함께 `~/.codexmux/` 아래에 저장되며, 머신 외부로 전송되지 않습니다.
 
-## Keyboard
+## 키보드
 
-| Key | Action |
+| 키 | 동작 |
 |---|---|
-| <kbd>⌘I</kbd> | Focus the input from anywhere in the session view |
-| <kbd>Enter</kbd> | Send |
-| <kbd>⇧Enter</kbd> | Insert a newline |
-| <kbd>Esc</kbd> | While Claude is busy, send an interrupt |
-| <kbd>↑</kbd> | Step back through message history (when empty) |
+| <kbd>⌘I</kbd> | 세션 뷰 어디서든 입력에 포커스 |
+| <kbd>Enter</kbd> | 전송 |
+| <kbd>⇧Enter</kbd> | 줄바꿈 삽입 |
+| <kbd>Esc</kbd> | Codex가 busy일 때 interrupt 전송 |
+| <kbd>↑</kbd> | (입력 비어 있을 때) 메시지 히스토리 거슬러 올라가기 |
 
-## What's next
+## 다음으로
 
-- **[Live session view](/purplemux/docs/live-session-view/)** — where your prompts and Claude's replies show up.
-- **[Keyboard shortcuts](/purplemux/docs/keyboard-shortcuts/)** — the full binding table.
-- **[Permission prompts](/purplemux/docs/permission-prompts/)** — what happens after you send a request that needs approval.
+- **[라이브 세션 뷰](/codexmux/docs/live-session-view/)** — 프롬프트와 Codex의 답변이 표시되는 곳
+- **[키보드 단축키](/codexmux/docs/keyboard-shortcuts/)** — 전체 바인딩 표
+- **[권한 프롬프트](/codexmux/docs/permission-prompts/)** — 승인이 필요한 요청을 보낸 뒤 일어나는 일

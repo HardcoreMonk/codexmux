@@ -1,65 +1,585 @@
-// Each item here produces a real page. Add entries only when the underlying
-// markdown/njk file exists in both /docs and /docs/<locale> so the sidebar never
-// hands visitors a 404.
+// 모든 문서 경로는 한국어 문서를 제공한다. locale별 URL은 유지하되 label은 한국어로 통일한다.
 module.exports = [
   {
-    group: { en: 'Getting Started', ko: '시작하기', fr: 'Commencer', ja: 'はじめに', 'zh-CN': '入门', 'zh-TW': '開始上手', de: 'Erste Schritte', es: 'Primeros pasos', 'pt-BR': 'Primeiros passos', ru: 'Начало работы', tr: 'Başlarken' },
+    group: {
+      en: '시작하기',
+      ko: '시작하기',
+      fr: '시작하기',
+      ja: '시작하기',
+      'zh-CN': '시작하기',
+      'zh-TW': '시작하기',
+      de: '시작하기',
+      es: '시작하기',
+      'pt-BR': '시작하기',
+      ru: '시작하기',
+      tr: '시작하기'
+    },
     items: [
-      { slug: 'quickstart', label: { en: 'Quickstart', ko: '빠른 시작', fr: 'Démarrage rapide', ja: 'クイックスタート', 'zh-CN': '快速开始', 'zh-TW': '快速開始', de: 'Schnellstart', es: 'Inicio rápido', 'pt-BR': 'Início rápido', ru: 'Быстрый старт', tr: 'Hızlı başlangıç' } },
-      { slug: 'installation', label: { en: 'Installation', ko: '설치', fr: 'Installation', ja: 'インストール', 'zh-CN': '安装', 'zh-TW': '安裝', de: 'Installation', es: 'Instalación', 'pt-BR': 'Instalação', ru: 'Установка', tr: 'Kurulum' } },
-      { slug: 'browser-support', label: { en: 'Browser support', ko: '브라우저 지원', fr: 'Compatibilité navigateur', ja: 'ブラウザサポート', 'zh-CN': '浏览器支持', 'zh-TW': '瀏覽器支援', de: 'Browser-Unterstützung', es: 'Compatibilidad de navegadores', 'pt-BR': 'Suporte a navegadores', ru: 'Поддержка браузеров', tr: 'Tarayıcı desteği' } },
-      { slug: 'first-session', label: { en: 'First session', ko: '첫 세션', fr: 'Première session', ja: '最初のセッション', 'zh-CN': '第一个会话', 'zh-TW': '第一個工作階段', de: 'Erste Session', es: 'Primera sesión', 'pt-BR': 'Primeira sessão', ru: 'Первая сессия', tr: 'İlk oturum' } },
-    ],
+      {
+        slug: 'quickstart',
+        label: {
+          en: '빠른 시작',
+          ko: '빠른 시작',
+          fr: '빠른 시작',
+          ja: '빠른 시작',
+          'zh-CN': '빠른 시작',
+          'zh-TW': '빠른 시작',
+          de: '빠른 시작',
+          es: '빠른 시작',
+          'pt-BR': '빠른 시작',
+          ru: '빠른 시작',
+          tr: '빠른 시작'
+        }
+      },
+      {
+        slug: 'installation',
+        label: {
+          en: '설치',
+          ko: '설치',
+          fr: '설치',
+          ja: '설치',
+          'zh-CN': '설치',
+          'zh-TW': '설치',
+          de: '설치',
+          es: '설치',
+          'pt-BR': '설치',
+          ru: '설치',
+          tr: '설치'
+        }
+      },
+      {
+        slug: 'browser-support',
+        label: {
+          en: '브라우저 지원',
+          ko: '브라우저 지원',
+          fr: '브라우저 지원',
+          ja: '브라우저 지원',
+          'zh-CN': '브라우저 지원',
+          'zh-TW': '브라우저 지원',
+          de: '브라우저 지원',
+          es: '브라우저 지원',
+          'pt-BR': '브라우저 지원',
+          ru: '브라우저 지원',
+          tr: '브라우저 지원'
+        }
+      },
+      {
+        slug: 'first-session',
+        label: {
+          en: '첫 세션',
+          ko: '첫 세션',
+          fr: '첫 세션',
+          ja: '첫 세션',
+          'zh-CN': '첫 세션',
+          'zh-TW': '첫 세션',
+          de: '첫 세션',
+          es: '첫 세션',
+          'pt-BR': '첫 세션',
+          ru: '첫 세션',
+          tr: '첫 세션'
+        }
+      }
+    ]
   },
   {
-    group: { en: 'Workspaces & Terminal', ko: '워크스페이스 & 터미널', fr: 'Espaces de travail & terminal', ja: 'ワークスペース & ターミナル', 'zh-CN': '工作区与终端', 'zh-TW': '工作區與終端機', de: 'Workspaces & Terminal', es: 'Espacios de trabajo y terminal', 'pt-BR': 'Workspaces e Terminal', ru: 'Рабочие пространства и терминал', tr: 'Çalışma alanları & Terminal' },
+    group: {
+      en: '워크스페이스 & 터미널',
+      ko: '워크스페이스 & 터미널',
+      fr: '워크스페이스 & 터미널',
+      ja: '워크스페이스 & 터미널',
+      'zh-CN': '워크스페이스 & 터미널',
+      'zh-TW': '워크스페이스 & 터미널',
+      de: '워크스페이스 & 터미널',
+      es: '워크스페이스 & 터미널',
+      'pt-BR': '워크스페이스 & 터미널',
+      ru: '워크스페이스 & 터미널',
+      tr: '워크스페이스 & 터미널'
+    },
     items: [
-      { slug: 'workspaces-groups', label: { en: 'Workspaces & groups', ko: '워크스페이스와 그룹', fr: 'Espaces de travail & groupes', ja: 'ワークスペースとグループ', 'zh-CN': '工作区与分组', 'zh-TW': '工作區與群組', de: 'Workspaces & Gruppen', es: 'Espacios de trabajo y grupos', 'pt-BR': 'Workspaces e grupos', ru: 'Рабочие пространства и группы', tr: 'Çalışma alanları & gruplar' } },
-      { slug: 'tabs-panes', label: { en: 'Tabs & panes', ko: '탭 & 창', fr: 'Onglets & volets', ja: 'タブとペイン', 'zh-CN': '标签页与窗格', 'zh-TW': '分頁與窗格', de: 'Tabs & Panels', es: 'Pestañas y paneles', 'pt-BR': 'Abas e painéis', ru: 'Вкладки и панели', tr: 'Sekmeler & paneller' } },
-      { slug: 'save-restore', label: { en: 'Save & restore layouts', ko: '레이아웃 저장 & 복원', fr: 'Sauvegarder & restaurer les mises en page', ja: 'レイアウトの保存と復元', 'zh-CN': '保存与恢复布局', 'zh-TW': '儲存與還原版面', de: 'Layouts speichern & wiederherstellen', es: 'Guardar y restaurar disposiciones', 'pt-BR': 'Salvar e restaurar layouts', ru: 'Сохранение и восстановление раскладок', tr: 'Düzenleri kaydet & geri yükle' } },
-      { slug: 'git-workflow', label: { en: 'Git workflow panel', ko: 'Git 워크플로 패널', fr: 'Panneau de workflow Git', ja: 'Git ワークフローパネル', 'zh-CN': 'Git 工作流面板', 'zh-TW': 'Git 工作流面板', de: 'Git-Workflow-Panel', es: 'Panel de flujo de Git', 'pt-BR': 'Painel de Git workflow', ru: 'Панель Git workflow', tr: 'Git workflow paneli' } },
-      { slug: 'web-browser-panel', label: { en: 'Web browser panel', ko: '웹 브라우저 패널', fr: 'Panneau navigateur web', ja: 'Web ブラウザパネル', 'zh-CN': 'Web 浏览器面板', 'zh-TW': '網頁瀏覽器面板', de: 'Web-Browser-Panel', es: 'Panel de navegador web', 'pt-BR': 'Painel de navegador web', ru: 'Панель веб-браузера', tr: 'Web tarayıcı paneli' } },
-    ],
+      {
+        slug: 'workspaces-groups',
+        label: {
+          en: '워크스페이스와 그룹',
+          ko: '워크스페이스와 그룹',
+          fr: '워크스페이스와 그룹',
+          ja: '워크스페이스와 그룹',
+          'zh-CN': '워크스페이스와 그룹',
+          'zh-TW': '워크스페이스와 그룹',
+          de: '워크스페이스와 그룹',
+          es: '워크스페이스와 그룹',
+          'pt-BR': '워크스페이스와 그룹',
+          ru: '워크스페이스와 그룹',
+          tr: '워크스페이스와 그룹'
+        }
+      },
+      {
+        slug: 'tabs-panes',
+        label: {
+          en: '탭 & 창',
+          ko: '탭 & 창',
+          fr: '탭 & 창',
+          ja: '탭 & 창',
+          'zh-CN': '탭 & 창',
+          'zh-TW': '탭 & 창',
+          de: '탭 & 창',
+          es: '탭 & 창',
+          'pt-BR': '탭 & 창',
+          ru: '탭 & 창',
+          tr: '탭 & 창'
+        }
+      },
+      {
+        slug: 'save-restore',
+        label: {
+          en: '레이아웃 저장 & 복원',
+          ko: '레이아웃 저장 & 복원',
+          fr: '레이아웃 저장 & 복원',
+          ja: '레이아웃 저장 & 복원',
+          'zh-CN': '레이아웃 저장 & 복원',
+          'zh-TW': '레이아웃 저장 & 복원',
+          de: '레이아웃 저장 & 복원',
+          es: '레이아웃 저장 & 복원',
+          'pt-BR': '레이아웃 저장 & 복원',
+          ru: '레이아웃 저장 & 복원',
+          tr: '레이아웃 저장 & 복원'
+        }
+      },
+      {
+        slug: 'git-workflow',
+        label: {
+          en: 'Git 워크플로 패널',
+          ko: 'Git 워크플로 패널',
+          fr: 'Git 워크플로 패널',
+          ja: 'Git 워크플로 패널',
+          'zh-CN': 'Git 워크플로 패널',
+          'zh-TW': 'Git 워크플로 패널',
+          de: 'Git 워크플로 패널',
+          es: 'Git 워크플로 패널',
+          'pt-BR': 'Git 워크플로 패널',
+          ru: 'Git 워크플로 패널',
+          tr: 'Git 워크플로 패널'
+        }
+      },
+      {
+        slug: 'web-browser-panel',
+        label: {
+          en: '웹 브라우저 패널',
+          ko: '웹 브라우저 패널',
+          fr: '웹 브라우저 패널',
+          ja: '웹 브라우저 패널',
+          'zh-CN': '웹 브라우저 패널',
+          'zh-TW': '웹 브라우저 패널',
+          de: '웹 브라우저 패널',
+          es: '웹 브라우저 패널',
+          'pt-BR': '웹 브라우저 패널',
+          ru: '웹 브라우저 패널',
+          tr: '웹 브라우저 패널'
+        }
+      }
+    ]
   },
   {
-    group: { en: 'Claude Code', ko: 'Claude Code', fr: 'Claude Code', ja: 'Claude Code', 'zh-CN': 'Claude Code', 'zh-TW': 'Claude Code', de: 'Claude Code', es: 'Claude Code', 'pt-BR': 'Claude Code', ru: 'Claude Code', tr: 'Claude Code' },
+    group: {
+      en: 'Codex',
+      ko: 'Codex',
+      fr: 'Codex',
+      ja: 'Codex',
+      'zh-CN': 'Codex',
+      'zh-TW': 'Codex',
+      de: 'Codex',
+      es: 'Codex',
+      'pt-BR': 'Codex',
+      ru: 'Codex',
+      tr: 'Codex'
+    },
     items: [
-      { slug: 'session-status', label: { en: 'Session status', ko: '세션 상태', fr: 'Statut de session', ja: 'セッションステータス', 'zh-CN': '会话状态', 'zh-TW': '工作階段狀態', de: 'Session-Status', es: 'Estado de la sesión', 'pt-BR': 'Status da sessão', ru: 'Статус сессии', tr: 'Oturum durumu' } },
-      { slug: 'live-session-view', label: { en: 'Live session view', ko: '라이브 세션 뷰', fr: 'Vue de session en direct', ja: 'ライブセッションビュー', 'zh-CN': '实时会话视图', 'zh-TW': '即時工作階段檢視', de: 'Live-Session-Ansicht', es: 'Vista de sesión en directo', 'pt-BR': 'Visualização de sessão ao vivo', ru: 'Живой вид сессии', tr: 'Canlı oturum görünümü' } },
-      { slug: 'permission-prompts', label: { en: 'Permission prompts', ko: '권한 프롬프트', fr: 'Invites de permission', ja: '権限プロンプト', 'zh-CN': '权限提示', 'zh-TW': '權限提示', de: 'Berechtigungs-Prompts', es: 'Avisos de permisos', 'pt-BR': 'Prompts de permissão', ru: 'Запросы разрешений', tr: 'İzin istemleri' } },
-      { slug: 'quick-prompts-attachments', label: { en: 'Quick prompts & attachments', ko: '퀵 프롬프트 & 첨부', fr: 'Prompts rapides & pièces jointes', ja: 'クイックプロンプト & 添付', 'zh-CN': '快捷提示与附件', 'zh-TW': '快速 prompts 與附件', de: 'Quick-Prompts & Anhänge', es: 'Prompts rápidos y adjuntos', 'pt-BR': 'Quick prompts e anexos', ru: 'Быстрые промпты и вложения', tr: 'Hızlı promptlar & ekler' } },
-      { slug: 'usage-rate-limits', label: { en: 'Usage & rate limits', ko: '사용량 & 요금 제한', fr: 'Usage & limites de débit', ja: '使用量とレート制限', 'zh-CN': '用量与速率限制', 'zh-TW': '用量與用量限制', de: 'Nutzung & Rate-Limits', es: 'Uso y límites de tasa', 'pt-BR': 'Uso e rate limits', ru: 'Использование и лимиты', tr: 'Kullanım & kota sınırları' } },
-      { slug: 'notes-daily-report', label: { en: 'Notes (AI daily report)', ko: '노트 (AI 데일리 리포트)', fr: 'Notes (rapport quotidien IA)', ja: 'ノート (AI 日次レポート)', 'zh-CN': '笔记(AI 每日报告)', 'zh-TW': '筆記（AI 每日報告）', de: 'Notizen (AI-Tagesbericht)', es: 'Notas (informe diario de IA)', 'pt-BR': 'Notas (relatório diário com IA)', ru: 'Заметки (AI-дайджест дня)', tr: 'Notlar (AI günlük raporu)' } },
-    ],
+      {
+        slug: 'session-status',
+        label: {
+          en: '세션 상태',
+          ko: '세션 상태',
+          fr: '세션 상태',
+          ja: '세션 상태',
+          'zh-CN': '세션 상태',
+          'zh-TW': '세션 상태',
+          de: '세션 상태',
+          es: '세션 상태',
+          'pt-BR': '세션 상태',
+          ru: '세션 상태',
+          tr: '세션 상태'
+        }
+      },
+      {
+        slug: 'live-session-view',
+        label: {
+          en: '라이브 세션 뷰',
+          ko: '라이브 세션 뷰',
+          fr: '라이브 세션 뷰',
+          ja: '라이브 세션 뷰',
+          'zh-CN': '라이브 세션 뷰',
+          'zh-TW': '라이브 세션 뷰',
+          de: '라이브 세션 뷰',
+          es: '라이브 세션 뷰',
+          'pt-BR': '라이브 세션 뷰',
+          ru: '라이브 세션 뷰',
+          tr: '라이브 세션 뷰'
+        }
+      },
+      {
+        slug: 'permission-prompts',
+        label: {
+          en: '권한 프롬프트',
+          ko: '권한 프롬프트',
+          fr: '권한 프롬프트',
+          ja: '권한 프롬프트',
+          'zh-CN': '권한 프롬프트',
+          'zh-TW': '권한 프롬프트',
+          de: '권한 프롬프트',
+          es: '권한 프롬프트',
+          'pt-BR': '권한 프롬프트',
+          ru: '권한 프롬프트',
+          tr: '권한 프롬프트'
+        }
+      },
+      {
+        slug: 'quick-prompts-attachments',
+        label: {
+          en: '퀵 프롬프트 & 첨부',
+          ko: '퀵 프롬프트 & 첨부',
+          fr: '퀵 프롬프트 & 첨부',
+          ja: '퀵 프롬프트 & 첨부',
+          'zh-CN': '퀵 프롬프트 & 첨부',
+          'zh-TW': '퀵 프롬프트 & 첨부',
+          de: '퀵 프롬프트 & 첨부',
+          es: '퀵 프롬프트 & 첨부',
+          'pt-BR': '퀵 프롬프트 & 첨부',
+          ru: '퀵 프롬프트 & 첨부',
+          tr: '퀵 프롬프트 & 첨부'
+        }
+      },
+      {
+        slug: 'usage-rate-limits',
+        label: {
+          en: '사용량 & 요금 제한',
+          ko: '사용량 & 요금 제한',
+          fr: '사용량 & 요금 제한',
+          ja: '사용량 & 요금 제한',
+          'zh-CN': '사용량 & 요금 제한',
+          'zh-TW': '사용량 & 요금 제한',
+          de: '사용량 & 요금 제한',
+          es: '사용량 & 요금 제한',
+          'pt-BR': '사용량 & 요금 제한',
+          ru: '사용량 & 요금 제한',
+          tr: '사용량 & 요금 제한'
+        }
+      },
+      {
+        slug: 'notes-daily-report',
+        label: {
+          en: '노트 (AI 데일리 리포트)',
+          ko: '노트 (AI 데일리 리포트)',
+          fr: '노트 (AI 데일리 리포트)',
+          ja: '노트 (AI 데일리 리포트)',
+          'zh-CN': '노트 (AI 데일리 리포트)',
+          'zh-TW': '노트 (AI 데일리 리포트)',
+          de: '노트 (AI 데일리 리포트)',
+          es: '노트 (AI 데일리 리포트)',
+          'pt-BR': '노트 (AI 데일리 리포트)',
+          ru: '노트 (AI 데일리 리포트)',
+          tr: '노트 (AI 데일리 리포트)'
+        }
+      }
+    ]
   },
   {
-    group: { en: 'Mobile & Remote', ko: '모바일 & 원격', fr: 'Mobile & distant', ja: 'モバイル & リモート', 'zh-CN': '移动与远程', 'zh-TW': '行動與遠端', de: 'Mobile & Remote', es: 'Móvil y remoto', 'pt-BR': 'Mobile e Remoto', ru: 'Мобильные и удалённый доступ', tr: 'Mobil & Uzaktan' },
+    group: {
+      en: '모바일 & 원격',
+      ko: '모바일 & 원격',
+      fr: '모바일 & 원격',
+      ja: '모바일 & 원격',
+      'zh-CN': '모바일 & 원격',
+      'zh-TW': '모바일 & 원격',
+      de: '모바일 & 원격',
+      es: '모바일 & 원격',
+      'pt-BR': '모바일 & 원격',
+      ru: '모바일 & 원격',
+      tr: '모바일 & 원격'
+    },
     items: [
-      { slug: 'pwa-setup', label: { en: 'PWA setup', ko: 'PWA 설정', fr: 'Configuration PWA', ja: 'PWA セットアップ', 'zh-CN': 'PWA 设置', 'zh-TW': 'PWA 設定', de: 'PWA-Setup', es: 'Configuración de PWA', 'pt-BR': 'Configuração de PWA', ru: 'Настройка PWA', tr: 'PWA kurulumu' } },
-      { slug: 'web-push', label: { en: 'Web Push notifications', ko: '웹 푸시 알림', fr: 'Notifications Web Push', ja: 'Web Push 通知', 'zh-CN': 'Web Push 通知', 'zh-TW': 'Web Push 通知', de: 'Web-Push-Notifications', es: 'Notificaciones Web Push', 'pt-BR': 'Notificações Web Push', ru: 'Web Push уведомления', tr: 'Web Push bildirimleri' } },
-      { slug: 'tailscale', label: { en: 'Tailscale access', ko: 'Tailscale 접속', fr: 'Accès Tailscale', ja: 'Tailscale アクセス', 'zh-CN': 'Tailscale 访问', 'zh-TW': 'Tailscale 存取', de: 'Tailscale-Zugriff', es: 'Acceso por Tailscale', 'pt-BR': 'Acesso via Tailscale', ru: 'Доступ через Tailscale', tr: 'Tailscale erişimi' } },
-      { slug: 'security-auth', label: { en: 'Security & auth', ko: '보안 & 인증', fr: 'Sécurité & auth', ja: 'セキュリティと認証', 'zh-CN': '安全与认证', 'zh-TW': '安全與認證', de: 'Sicherheit & Auth', es: 'Seguridad y autenticación', 'pt-BR': 'Segurança e autenticação', ru: 'Безопасность и аутентификация', tr: 'Güvenlik & kimlik doğrulama' } },
-    ],
+      {
+        slug: 'pwa-setup',
+        label: {
+          en: 'PWA 설정',
+          ko: 'PWA 설정',
+          fr: 'PWA 설정',
+          ja: 'PWA 설정',
+          'zh-CN': 'PWA 설정',
+          'zh-TW': 'PWA 설정',
+          de: 'PWA 설정',
+          es: 'PWA 설정',
+          'pt-BR': 'PWA 설정',
+          ru: 'PWA 설정',
+          tr: 'PWA 설정'
+        }
+      },
+      {
+        slug: 'web-push',
+        label: {
+          en: '웹 푸시 알림',
+          ko: '웹 푸시 알림',
+          fr: '웹 푸시 알림',
+          ja: '웹 푸시 알림',
+          'zh-CN': '웹 푸시 알림',
+          'zh-TW': '웹 푸시 알림',
+          de: '웹 푸시 알림',
+          es: '웹 푸시 알림',
+          'pt-BR': '웹 푸시 알림',
+          ru: '웹 푸시 알림',
+          tr: '웹 푸시 알림'
+        }
+      },
+      {
+        slug: 'tailscale',
+        label: {
+          en: 'Tailscale 접속',
+          ko: 'Tailscale 접속',
+          fr: 'Tailscale 접속',
+          ja: 'Tailscale 접속',
+          'zh-CN': 'Tailscale 접속',
+          'zh-TW': 'Tailscale 접속',
+          de: 'Tailscale 접속',
+          es: 'Tailscale 접속',
+          'pt-BR': 'Tailscale 접속',
+          ru: 'Tailscale 접속',
+          tr: 'Tailscale 접속'
+        }
+      },
+      {
+        slug: 'security-auth',
+        label: {
+          en: '보안 & 인증',
+          ko: '보안 & 인증',
+          fr: '보안 & 인증',
+          ja: '보안 & 인증',
+          'zh-CN': '보안 & 인증',
+          'zh-TW': '보안 & 인증',
+          de: '보안 & 인증',
+          es: '보안 & 인증',
+          'pt-BR': '보안 & 인증',
+          ru: '보안 & 인증',
+          tr: '보안 & 인증'
+        }
+      }
+    ]
   },
   {
-    group: { en: 'Customization', ko: '커스터마이즈', fr: 'Personnalisation', ja: 'カスタマイズ', 'zh-CN': '自定义', 'zh-TW': '自訂', de: 'Anpassung', es: 'Personalización', 'pt-BR': 'Personalização', ru: 'Кастомизация', tr: 'Özelleştirme' },
+    group: {
+      en: '커스터마이즈',
+      ko: '커스터마이즈',
+      fr: '커스터마이즈',
+      ja: '커스터마이즈',
+      'zh-CN': '커스터마이즈',
+      'zh-TW': '커스터마이즈',
+      de: '커스터마이즈',
+      es: '커스터마이즈',
+      'pt-BR': '커스터마이즈',
+      ru: '커스터마이즈',
+      tr: '커스터마이즈'
+    },
     items: [
-      { slug: 'themes-fonts', label: { en: 'Themes & fonts', ko: '테마 & 폰트', fr: 'Thèmes & polices', ja: 'テーマとフォント', 'zh-CN': '主题与字体', 'zh-TW': '主題與字型', de: 'Themes & Schriften', es: 'Temas y fuentes', 'pt-BR': 'Temas e fontes', ru: 'Темы и шрифты', tr: 'Temalar & fontlar' } },
-      { slug: 'custom-css', label: { en: 'Custom CSS', ko: '커스텀 CSS', fr: 'CSS personnalisé', ja: 'カスタム CSS', 'zh-CN': '自定义 CSS', 'zh-TW': '自訂 CSS', de: 'Custom CSS', es: 'CSS personalizado', 'pt-BR': 'CSS personalizado', ru: 'Custom CSS', tr: 'Özel CSS' } },
-      { slug: 'terminal-themes', label: { en: 'Terminal themes', ko: '터미널 테마', fr: 'Thèmes terminal', ja: 'ターミナルテーマ', 'zh-CN': '终端主题', 'zh-TW': '終端機主題', de: 'Terminal-Themes', es: 'Temas de terminal', 'pt-BR': 'Temas do terminal', ru: 'Темы терминала', tr: 'Terminal temaları' } },
-      { slug: 'editor-integration', label: { en: 'Editor integration', ko: '에디터 연동', fr: 'Intégration éditeur', ja: 'エディタ連携', 'zh-CN': '编辑器集成', 'zh-TW': '編輯器整合', de: 'Editor-Integration', es: 'Integración con el editor', 'pt-BR': 'Integração com editor', ru: 'Интеграция с редактором', tr: 'Editör entegrasyonu' } },
-      { slug: 'sidebar-options', label: { en: 'Sidebar & Claude options', ko: '사이드바 & Claude 옵션', fr: 'Barre latérale & options Claude', ja: 'サイドバーと Claude オプション', 'zh-CN': '侧边栏与 Claude 选项', 'zh-TW': '側邊欄與 Claude 選項', de: 'Seitenleiste & Claude-Optionen', es: 'Barra lateral y opciones de Claude', 'pt-BR': 'Barra lateral e opções do Claude', ru: 'Боковая панель и опции Claude', tr: 'Kenar çubuğu & Claude seçenekleri' } },
-    ],
+      {
+        slug: 'themes-fonts',
+        label: {
+          en: '테마 & 폰트',
+          ko: '테마 & 폰트',
+          fr: '테마 & 폰트',
+          ja: '테마 & 폰트',
+          'zh-CN': '테마 & 폰트',
+          'zh-TW': '테마 & 폰트',
+          de: '테마 & 폰트',
+          es: '테마 & 폰트',
+          'pt-BR': '테마 & 폰트',
+          ru: '테마 & 폰트',
+          tr: '테마 & 폰트'
+        }
+      },
+      {
+        slug: 'custom-css',
+        label: {
+          en: '커스텀 CSS',
+          ko: '커스텀 CSS',
+          fr: '커스텀 CSS',
+          ja: '커스텀 CSS',
+          'zh-CN': '커스텀 CSS',
+          'zh-TW': '커스텀 CSS',
+          de: '커스텀 CSS',
+          es: '커스텀 CSS',
+          'pt-BR': '커스텀 CSS',
+          ru: '커스텀 CSS',
+          tr: '커스텀 CSS'
+        }
+      },
+      {
+        slug: 'terminal-themes',
+        label: {
+          en: '터미널 테마',
+          ko: '터미널 테마',
+          fr: '터미널 테마',
+          ja: '터미널 테마',
+          'zh-CN': '터미널 테마',
+          'zh-TW': '터미널 테마',
+          de: '터미널 테마',
+          es: '터미널 테마',
+          'pt-BR': '터미널 테마',
+          ru: '터미널 테마',
+          tr: '터미널 테마'
+        }
+      },
+      {
+        slug: 'editor-integration',
+        label: {
+          en: '에디터 연동',
+          ko: '에디터 연동',
+          fr: '에디터 연동',
+          ja: '에디터 연동',
+          'zh-CN': '에디터 연동',
+          'zh-TW': '에디터 연동',
+          de: '에디터 연동',
+          es: '에디터 연동',
+          'pt-BR': '에디터 연동',
+          ru: '에디터 연동',
+          tr: '에디터 연동'
+        }
+      },
+      {
+        slug: 'sidebar-options',
+        label: {
+          en: '사이드바 & Codex 옵션',
+          ko: '사이드바 & Codex 옵션',
+          fr: '사이드바 & Codex 옵션',
+          ja: '사이드바 & Codex 옵션',
+          'zh-CN': '사이드바 & Codex 옵션',
+          'zh-TW': '사이드바 & Codex 옵션',
+          de: '사이드바 & Codex 옵션',
+          es: '사이드바 & Codex 옵션',
+          'pt-BR': '사이드바 & Codex 옵션',
+          ru: '사이드바 & Codex 옵션',
+          tr: '사이드바 & Codex 옵션'
+        }
+      }
+    ]
   },
   {
-    group: { en: 'Reference', ko: '레퍼런스', fr: 'Référence', ja: 'リファレンス', 'zh-CN': '参考', 'zh-TW': '參考資料', de: 'Referenz', es: 'Referencia', 'pt-BR': 'Referência', ru: 'Справочник', tr: 'Referans' },
+    group: {
+      en: '레퍼런스',
+      ko: '레퍼런스',
+      fr: '레퍼런스',
+      ja: '레퍼런스',
+      'zh-CN': '레퍼런스',
+      'zh-TW': '레퍼런스',
+      de: '레퍼런스',
+      es: '레퍼런스',
+      'pt-BR': '레퍼런스',
+      ru: '레퍼런스',
+      tr: '레퍼런스'
+    },
     items: [
-      { slug: 'keyboard-shortcuts', label: { en: 'Keyboard shortcuts', ko: '키보드 단축키', fr: 'Raccourcis clavier', ja: 'キーボードショートカット', 'zh-CN': '键盘快捷键', 'zh-TW': '鍵盤快速鍵', de: 'Tastenkürzel', es: 'Atajos de teclado', 'pt-BR': 'Atalhos de teclado', ru: 'Клавиатурные сокращения', tr: 'Klavye kısayolları' } },
-      { slug: 'data-directory', label: { en: 'Data directory', ko: '데이터 디렉토리', fr: 'Répertoire de données', ja: 'データディレクトリ', 'zh-CN': '数据目录', 'zh-TW': '資料目錄', de: 'Daten-Verzeichnis', es: 'Directorio de datos', 'pt-BR': 'Diretório de dados', ru: 'Каталог данных', tr: 'Veri dizini' } },
-      { slug: 'ports-env-vars', label: { en: 'Ports & env vars', ko: '포트 & 환경변수', fr: "Ports & variables d'environnement", ja: 'ポートと環境変数', 'zh-CN': '端口与环境变量', 'zh-TW': '連接埠與環境變數', de: 'Ports & Umgebungsvariablen', es: 'Puertos y variables de entorno', 'pt-BR': 'Portas e variáveis de ambiente', ru: 'Порты и переменные окружения', tr: 'Portlar & ortam değişkenleri' } },
-      { slug: 'architecture', label: { en: 'Architecture', ko: '아키텍처', fr: 'Architecture', ja: 'アーキテクチャ', 'zh-CN': '架构', 'zh-TW': '架構', de: 'Architektur', es: 'Arquitectura', 'pt-BR': 'Arquitetura', ru: 'Архитектура', tr: 'Mimari' } },
-      { slug: 'cli-reference', label: { en: 'CLI reference', ko: 'CLI 레퍼런스', fr: 'Référence CLI', ja: 'CLI リファレンス', 'zh-CN': 'CLI 参考', 'zh-TW': 'CLI 參考', de: 'CLI-Referenz', es: 'Referencia del CLI', 'pt-BR': 'Referência da CLI', ru: 'CLI reference', tr: 'CLI referansı' } },
-      { slug: 'troubleshooting', label: { en: 'Troubleshooting & FAQ', ko: '문제 해결 & FAQ', fr: 'Dépannage & FAQ', ja: 'トラブルシューティング & FAQ', 'zh-CN': '故障排查与 FAQ', 'zh-TW': '疑難排解與 FAQ', de: 'Troubleshooting & FAQ', es: 'Solución de problemas y FAQ', 'pt-BR': 'Solução de problemas e FAQ', ru: 'Поиск проблем и FAQ', tr: 'Sorun giderme & SSS' } },
-    ],
-  },
+      {
+        slug: 'keyboard-shortcuts',
+        label: {
+          en: '키보드 단축키',
+          ko: '키보드 단축키',
+          fr: '키보드 단축키',
+          ja: '키보드 단축키',
+          'zh-CN': '키보드 단축키',
+          'zh-TW': '키보드 단축키',
+          de: '키보드 단축키',
+          es: '키보드 단축키',
+          'pt-BR': '키보드 단축키',
+          ru: '키보드 단축키',
+          tr: '키보드 단축키'
+        }
+      },
+      {
+        slug: 'data-directory',
+        label: {
+          en: '데이터 디렉토리',
+          ko: '데이터 디렉토리',
+          fr: '데이터 디렉토리',
+          ja: '데이터 디렉토리',
+          'zh-CN': '데이터 디렉토리',
+          'zh-TW': '데이터 디렉토리',
+          de: '데이터 디렉토리',
+          es: '데이터 디렉토리',
+          'pt-BR': '데이터 디렉토리',
+          ru: '데이터 디렉토리',
+          tr: '데이터 디렉토리'
+        }
+      },
+      {
+        slug: 'ports-env-vars',
+        label: {
+          en: '포트 & 환경변수',
+          ko: '포트 & 환경변수',
+          fr: '포트 & 환경변수',
+          ja: '포트 & 환경변수',
+          'zh-CN': '포트 & 환경변수',
+          'zh-TW': '포트 & 환경변수',
+          de: '포트 & 환경변수',
+          es: '포트 & 환경변수',
+          'pt-BR': '포트 & 환경변수',
+          ru: '포트 & 환경변수',
+          tr: '포트 & 환경변수'
+        }
+      },
+      {
+        slug: 'architecture',
+        label: {
+          en: '아키텍처',
+          ko: '아키텍처',
+          fr: '아키텍처',
+          ja: '아키텍처',
+          'zh-CN': '아키텍처',
+          'zh-TW': '아키텍처',
+          de: '아키텍처',
+          es: '아키텍처',
+          'pt-BR': '아키텍처',
+          ru: '아키텍처',
+          tr: '아키텍처'
+        }
+      },
+      {
+        slug: 'cli-reference',
+        label: {
+          en: 'CLI 레퍼런스',
+          ko: 'CLI 레퍼런스',
+          fr: 'CLI 레퍼런스',
+          ja: 'CLI 레퍼런스',
+          'zh-CN': 'CLI 레퍼런스',
+          'zh-TW': 'CLI 레퍼런스',
+          de: 'CLI 레퍼런스',
+          es: 'CLI 레퍼런스',
+          'pt-BR': 'CLI 레퍼런스',
+          ru: 'CLI 레퍼런스',
+          tr: 'CLI 레퍼런스'
+        }
+      },
+      {
+        slug: 'troubleshooting',
+        label: {
+          en: '문제 해결 & FAQ',
+          ko: '문제 해결 & FAQ',
+          fr: '문제 해결 & FAQ',
+          ja: '문제 해결 & FAQ',
+          'zh-CN': '문제 해결 & FAQ',
+          'zh-TW': '문제 해결 & FAQ',
+          de: '문제 해결 & FAQ',
+          es: '문제 해결 & FAQ',
+          'pt-BR': '문제 해결 & FAQ',
+          ru: '문제 해결 & FAQ',
+          tr: '문제 해결 & FAQ'
+        }
+      }
+    ]
+  }
 ];

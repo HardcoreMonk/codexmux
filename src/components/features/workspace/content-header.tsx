@@ -100,6 +100,11 @@ const ContentHeader = ({
   };
 
   const paneId = focusedPane?.id;
+  const panelButtons: Array<{ value: TPanelType; label: string; mac?: string; other?: string }> = [
+    { value: 'terminal', label: 'TERMINAL', mac: '⌘⇧T', other: '^⇧T' },
+    { value: 'codex', label: 'CODEX' },
+    { value: 'diff', label: 'DIFF', mac: '⌘⇧F', other: '^⇧F' },
+  ];
 
   return (
     <div className="shrink-0 bg-background">
@@ -116,11 +121,7 @@ const ContentHeader = ({
           {...(isElectron ? { style: { WebkitAppRegion: 'no-drag' } as React.CSSProperties } : {})}
         >
           <div className={cn('flex items-center gap-px border-r border-border pr-2', isToggling && 'pointer-events-none opacity-80')}>
-            {([
-              { value: 'terminal', label: 'TERMINAL', mac: '⌘⇧T', other: '^⇧T' },
-              { value: 'claude-code', label: 'CLAUDE', mac: '⌘⇧C', other: '^⇧C' },
-              { value: 'diff', label: 'DIFF', mac: '⌘⇧F', other: '^⇧F' },
-            ] as const).map((item) => (
+            {panelButtons.map((item) => (
               <div key={item.value} className="relative">
                 <button
                   className={cn(
@@ -133,7 +134,7 @@ const ContentHeader = ({
                 >
                   {item.label}
                 </button>
-                {activePanelType !== item.value && (
+                {activePanelType !== item.value && item.mac && item.other && (
                   <ShortcutKey
                     mac={item.mac}
                     other={item.other}

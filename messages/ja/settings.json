@@ -5,14 +5,14 @@
     "appearance": "外観",
     "terminal": "ターミナル",
     "editor": "エディタ",
-    "claude": "Claude",
     "auth": "認証",
     "tailscale": "Tailscale",
     "quickPrompts": "クイックプロンプト",
     "sidebarItems": "サイドバー",
     "agent": "エージェント",
     "notification": "通知",
-    "system": "システム"
+    "system": "システム",
+    "codex": "Codex"
   },
   "general": {
     "theme": "テーマ",
@@ -67,18 +67,12 @@
     "errorHttpRequired": "URL は http:// または https:// で始まる必要があります。",
     "errorCustomTemplate": "テンプレートには {folder} または {folderEncoded} を含める必要があります。"
   },
-  "claude": {
-    "skipPermissions": "権限チェックをスキップ",
-    "skipPermissionsDescription": "Claude CLI実行時に--dangerously-skip-permissionsオプションを追加します。",
-    "showTerminal": "Claudeでターミナルを一緒に表示",
-    "showTerminalDescription": "Claude Codeと並べてターミナル領域を表示します。オフにすると、新しいClaudeタブはターミナルを閉じた状態で開きます。"
-  },
   "auth": {
     "changePassword": "パスワード変更",
     "changePasswordDescription": "新しいパスワードはSHA-512でハッシュ化されて保存されます。",
     "newPasswordPlaceholder": "新しいパスワードを入力（4文字以上）",
     "passwordPlaceholder": "パスワードを入力（4文字以上）",
-    "resetHint": "リセットするには~/.purplemux/config.jsonファイルを削除し、{action}してください。",
+    "resetHint": "リセットするには~/.codexmux/config.jsonファイルを削除し、{action}してください。",
     "restartServer": "サーバーを再起動",
     "restartApp": "アプリを終了して再起動",
     "savedRestart": "保存しました。{action}後に適用されます。",
@@ -87,7 +81,7 @@
   },
   "notification": {
     "enable": "通知を有効化",
-    "enableDescription": "Claudeタスク完了時にシステム通知を表示します。Electronアプリでのみ動作します。",
+    "enableDescription": "Show system notifications when Codex tasks complete.",
     "permissionDenied": "ブラウザの通知許可が拒否されました。ブラウザの設定で許可してください。",
     "notSupported": "このブラウザは Web Push に対応していません。",
     "toastSection": "アプリ内トースト",
@@ -116,7 +110,7 @@
   },
   "system": {
     "networkAccess": "ネットワークアクセス",
-    "networkAccessDescription": "どのネットワークから purplemux にアクセスできるかを設定します。サーバー再起動後に適用されます。",
+    "networkAccessDescription": "どのネットワークから codexmux にアクセスできるかを設定します。サーバー再起動後に適用されます。",
     "networkAccessLocked": "HOST 環境変数で制御されています。",
     "restartRequired": "変更はサーバー再起動後に適用されます。",
     "networkAccessOptions": {
@@ -136,7 +130,7 @@
     "showResources": "システムリソースを表示",
     "showResourcesDescription": "ヘッダーにCPU、メモリ、tmuxセッションの使用状況を表示します。",
     "attachedImages": "添付画像",
-    "attachedImagesDescription": "入力欄に添付した画像は ~/.purplemux/uploads/ に保存されます。24時間経過したファイルはサーバー起動時に自動で削除されます。",
+    "attachedImagesDescription": "入力欄に添付した画像は ~/.codexmux/uploads/ に保存されます。24時間経過したファイルはサーバー起動時に自動で削除されます。",
     "cleanAttachedImages": "今すぐ整理",
     "attachedImagesCleaned": "{count}個のファイルを削除しました",
     "attachedImagesNothing": "削除する画像がありません",
@@ -234,5 +228,31 @@
     "deleteCancel": "キャンセル",
     "deleteConfirm": "削除"
   },
-  "saveFailed": "設定を保存できません"
+  "saveFailed": "設定を保存できません",
+  "codex": {
+    "model": "Model",
+    "modelDescription": "Optional model passed as --model. Leave blank to use the Codex CLI default.",
+    "modelPlaceholder": "e.g. gpt-5.2",
+    "cliDefault": "CLI default",
+    "sandbox": "Sandbox",
+    "sandboxDescription": "Controls the --sandbox mode for new and resumed Codex sessions.",
+    "sandboxOptions": {
+      "read-only": "read-only",
+      "workspace-write": "workspace-write",
+      "danger-full-access": "danger-full-access"
+    },
+    "approvalPolicy": "Approval policy",
+    "approvalPolicyDescription": "Controls when Codex asks before running commands.",
+    "approvalOptions": {
+      "untrusted": "untrusted",
+      "on-failure": "on-failure",
+      "on-request": "on-request",
+      "never": "never"
+    },
+    "webSearch": "Web search",
+    "webSearchDescription": "Adds --search so Codex can use live web search.",
+    "showTerminal": "Show terminal with Codex",
+    "showTerminalDescription": "Display the terminal area alongside Codex. When off, new Codex tabs open with the terminal collapsed.",
+    "commandPreview": "Command preview"
+  }
 }

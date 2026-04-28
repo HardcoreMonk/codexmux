@@ -7,8 +7,8 @@ import { createLogger } from '@/lib/logger';
 
 const log = createLogger('lock');
 
-const BASE_DIR = path.join(os.homedir(), '.purplemux');
-const LOCK_FILE = path.join(BASE_DIR, 'pmux.lock');
+const BASE_DIR = path.join(os.homedir(), '.codexmux');
+const LOCK_FILE = path.join(BASE_DIR, 'cmux.lock');
 
 interface ILockData {
   pid: number;
@@ -54,7 +54,7 @@ const checkHealth = (port: number): Promise<boolean> =>
       res.on('end', () => {
         try {
           const data = JSON.parse(body);
-          resolve(data.app === 'purplemux');
+          resolve(data.app === 'codexmux');
         } catch {
           resolve(false);
         }
@@ -89,7 +89,7 @@ export const acquireLock = async (port: number): Promise<void> => {
 
     if (code === 'EACCES') {
       console.error(`\x1b[31mCannot acquire lock: ${LOCK_FILE} has wrong permissions.\x1b[0m`);
-      console.error('If you previously ran purplemux with sudo, remove the lock file manually:');
+      console.error('If you previously ran codexmux with sudo, remove the lock file manually:');
       console.error(`  sudo rm ${LOCK_FILE}`);
       process.exit(1);
     }
@@ -121,11 +121,11 @@ export const acquireLock = async (port: number): Promise<void> => {
 
   const healthy = await checkHealth(existing.port);
   if (healthy) {
-    console.error(`\x1b[31mpurplemux is already running (pid=${existing.pid}, port=${existing.port})\x1b[0m`);
+    console.error(`\x1b[31mcodexmux is already running (pid=${existing.pid}, port=${existing.port})\x1b[0m`);
     process.exit(1);
   }
 
-  log.warn(`PID ${existing.pid} is alive but not purplemux, reclaiming lock`);
+  log.warn(`PID ${existing.pid} is alive but not codexmux, reclaiming lock`);
   await removeStaleLock();
   await writeLockData(data);
   log.debug(`Lock acquired (pid=${process.pid})`);

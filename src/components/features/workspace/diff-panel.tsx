@@ -11,7 +11,7 @@ import DiffFileList from '@/components/features/workspace/diff-file-list';
 
 interface IDiffPanelProps {
   sessionName: string;
-  onSendToClaude?: (text: string) => void;
+  onSendToAgent?: (text: string) => void;
 }
 
 interface IHeadCommit {
@@ -49,17 +49,17 @@ const ERROR_MESSAGE_KEYS = {
   unknown: 'syncErrorGeneric',
 } as const;
 
-const CLAUDE_PROMPT_KEYS = {
-  'no-upstream': 'claudePromptNoUpstream',
-  auth: 'claudePromptAuth',
-  diverged: 'claudePromptDiverged',
-  rejected: 'claudePromptRejected',
-  'local-changes': 'claudePromptLocalChanges',
-  timeout: 'claudePromptTimeout',
-  unknown: 'claudePromptGeneric',
+const AGENT_PROMPT_KEYS = {
+  'no-upstream': 'agentPromptNoUpstream',
+  auth: 'agentPromptAuth',
+  diverged: 'agentPromptDiverged',
+  rejected: 'agentPromptRejected',
+  'local-changes': 'agentPromptLocalChanges',
+  timeout: 'agentPromptTimeout',
+  unknown: 'agentPromptGeneric',
 } as const;
 
-const DiffPanel = ({ sessionName, onSendToClaude }: IDiffPanelProps) => {
+const DiffPanel = ({ sessionName, onSendToAgent }: IDiffPanelProps) => {
   const t = useTranslations('diff');
   const isMobile = useIsMobile();
 
@@ -177,10 +177,10 @@ const DiffPanel = ({ sessionName, onSendToClaude }: IDiffPanelProps) => {
 
         toast.error(t(messageKey), {
           duration: ERROR_TOAST_DURATION,
-          action: onSendToClaude ? {
-            label: t('askClaude'),
+          action: onSendToAgent ? {
+            label: t('askCodex'),
             onClick: () => {
-              const promptKey = CLAUDE_PROMPT_KEYS[kind];
+              const promptKey = AGENT_PROMPT_KEYS[kind];
               const intro = t(promptKey, {
                 branch: branch || 'HEAD',
                 upstream: data.upstream ?? '',
@@ -191,7 +191,7 @@ const DiffPanel = ({ sessionName, onSendToClaude }: IDiffPanelProps) => {
               const body = trimmedStderr
                 ? `${intro}\n\n\`\`\`\n${trimmedStderr.trim()}\n\`\`\``
                 : intro;
-              onSendToClaude(body);
+              onSendToAgent(body);
             },
           } : undefined,
         });
@@ -204,7 +204,7 @@ const DiffPanel = ({ sessionName, onSendToClaude }: IDiffPanelProps) => {
     } finally {
       setSyncing(false);
     }
-  }, [sessionName, syncing, t, fetchDiff, onSendToClaude, branch]);
+  }, [sessionName, syncing, t, fetchDiff, onSendToAgent, branch]);
 
   useEffect(() => {
     fetchDiff().then(() => pollForChanges());
@@ -379,7 +379,7 @@ const DiffPanel = ({ sessionName, onSendToClaude }: IDiffPanelProps) => {
                 </span>
               )}
               {behind > 0 && (
-                <span className="flex items-center gap-0.5 text-claude-active" title={`${behind} commit(s) to pull`}>
+                <span className="flex items-center gap-0.5 text-agent-active" title={`${behind} commit(s) to pull`}>
                   <ArrowDown className="h-3 w-3" />
                   {behind}
                 </span>

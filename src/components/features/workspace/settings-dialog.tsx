@@ -5,7 +5,6 @@ import { useTheme } from 'next-themes';
 import packageJson from '../../../../package.json';
 import isElectron from '@/hooks/use-is-electron';
 import { Bell, ChevronDown, ChevronRight, Dices, FolderCode, Globe, ImageIcon, Keyboard, Layout, Lock, Monitor, Moon, Network, Palette, RotateCcw, Settings, Sun, Terminal, Trash2, Wrench, X, Zap } from 'lucide-react';
-import ClaudeLogo from '@/components/icons/claude-logo';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Input } from '@/components/ui/input';
@@ -34,6 +33,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import {
+  buildCodexLaunchCommand,
+  CODEX_APPROVAL_POLICIES,
+  CODEX_SANDBOX_MODES,
+  type TCodexApprovalPolicy,
+  type TCodexSandboxMode,
+} from '@/lib/codex-command';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
 import useConfigStore from '@/hooks/use-config-store';
 import { TOAST_POSITIONS, type TToastPosition } from '@/lib/toast-position';
@@ -41,12 +47,13 @@ import useWorkspaceStore from '@/hooks/use-workspace-store';
 import { TERMINAL_THEMES } from '@/lib/terminal-themes';
 import { EDITOR_PRESETS, buildEditorUrl, type TEditorPreset } from '@/lib/editor-url';
 import { EditorIcon } from '@/components/icons/editor-icons';
+import OpenAIIcon from '@/components/icons/openai-icon';
 import type { ITerminalThemeColors } from '@/lib/terminal-themes';
 import QuickPromptsSettings from '@/components/features/settings/quick-prompts-settings';
 import SidebarItemsSettings from '@/components/features/settings/sidebar-items-settings';
 import TailscaleSettings from '@/components/features/settings/tailscale-settings';
 
-type TSettingsTab = 'general' | 'appearance' | 'terminal' | 'notification' | 'editor' | 'claude' | 'auth' | 'tailscale' | 'quick-prompts' | 'sidebar-items' | 'system';
+type TSettingsTab = 'general' | 'appearance' | 'terminal' | 'notification' | 'editor' | 'codex' | 'auth' | 'tailscale' | 'quick-prompts' | 'sidebar-items' | 'system';
 
 interface ISettingsItem {
   id: TSettingsTab;
@@ -61,7 +68,7 @@ const settingsItems: ISettingsItem[] = [
   { id: 'terminal', labelKey: 'terminal', icon: <Terminal className="h-4 w-4" /> },
   { id: 'notification', labelKey: 'notification', icon: <Bell className="h-4 w-4" /> },
   { id: 'editor', labelKey: 'editor', icon: <FolderCode className="h-4 w-4" /> },
-  { id: 'claude', labelKey: 'claude', icon: <ClaudeLogo className="h-4 w-4" /> },
+  { id: 'codex', labelKey: 'codex', icon: <OpenAIIcon className="h-4 w-4" /> },
   { id: 'auth', labelKey: 'auth', icon: <Lock className="h-4 w-4" /> },
   { id: 'tailscale', labelKey: 'tailscale', icon: <Globe className="h-4 w-4" /> },
   { id: 'quick-prompts', labelKey: 'quickPrompts', icon: <Zap className="h-4 w-4" /> },
@@ -194,7 +201,7 @@ const GeneralTab = () => {
       </div>
 
       <a
-        href="https://github.com/subicura/purplemux/releases"
+        href="https://github.com/subicura/codexmux/releases"
         target="_blank"
         rel="noopener noreferrer"
         className="text-xs text-muted-foreground/50 hover:text-muted-foreground hover:underline w-fit"
@@ -228,7 +235,7 @@ const CSS_VARIABLE_GROUPS = [
   },
   {
     label: 'Semantic',
-    vars: ['--positive', '--negative', '--accent-color', '--brand', '--focus-indicator', '--claude-active'],
+    vars: ['--positive', '--negative', '--accent-color', '--brand', '--focus-indicator', '--agent-active'],
   },
 ] as const;
 
@@ -554,33 +561,132 @@ const EditorTab = () => {
   );
 };
 
-const ClaudeTab = () => {
-  const t = useTranslations('settings.claude');
-  const dangerouslySkipPermissions = useConfigStore((state) => state.dangerouslySkipPermissions);
-  const setDangerouslySkipPermissions = useConfigStore((state) => state.setDangerouslySkipPermissions);
-  const claudeShowTerminal = useConfigStore((state) => state.claudeShowTerminal);
-  const setClaudeShowTerminal = useConfigStore((state) => state.setClaudeShowTerminal);
+const CodexTab = () => {
+  const t = useTranslations('settings.codex');
+  const tc = useTranslations('common');
+  const codexModel = useConfigStore((state) => state.codexModel);
+  const setCodexModel = useConfigStore((state) => state.setCodexModel);
+  const codexSandbox = useConfigStore((state) => state.codexSandbox);
+  const setCodexSandbox = useConfigStore((state) => state.setCodexSandbox);
+  const codexApprovalPolicy = useConfigStore((state) => state.codexApprovalPolicy);
+  const setCodexApprovalPolicy = useConfigStore((state) => state.setCodexApprovalPolicy);
+  const codexSearchEnabled = useConfigStore((state) => state.codexSearchEnabled);
+  const setCodexSearchEnabled = useConfigStore((state) => state.setCodexSearchEnabled);
+  const codexShowTerminal = useConfigStore((state) => state.codexShowTerminal);
+  const setCodexShowTerminal = useConfigStore((state) => state.setCodexShowTerminal);
+  const [localModel, setLocalModel] = useState(codexModel);
+
+  useEffect(() => {
+    setLocalModel(codexModel);
+  }, [codexModel]);
+
+  const modelDirty = localModel !== codexModel;
+  const sandboxValue = codexSandbox || 'default';
+  const approvalValue = codexApprovalPolicy || 'default';
+  const previewCommand = buildCodexLaunchCommand({
+    model: localModel.trim() || undefined,
+    sandbox: codexSandbox || undefined,
+    approvalPolicy: codexApprovalPolicy || undefined,
+    search: codexSearchEnabled,
+  });
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <div>
+          <p className="text-sm font-medium">{t('model')}</p>
+          <p className="text-sm text-muted-foreground">{t('modelDescription')}</p>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            value={localModel}
+            onChange={(e) => setLocalModel(e.target.value)}
+            placeholder={t('modelPlaceholder')}
+            className="font-mono"
+          />
+          <Button
+            variant="outline"
+            disabled={!modelDirty}
+            onClick={() => setCodexModel(localModel.trim())}
+          >
+            {tc('save')}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-medium">{t('sandbox')}</p>
+          <p className="text-sm text-muted-foreground">{t('sandboxDescription')}</p>
+        </div>
+        <Select
+          items={[
+            { label: t('cliDefault'), value: 'default' },
+            ...CODEX_SANDBOX_MODES.map((mode) => ({ label: t(`sandboxOptions.${mode}`), value: mode })),
+          ]}
+          value={sandboxValue}
+          onValueChange={(v) => setCodexSandbox(v === 'default' ? '' : v as TCodexSandboxMode)}
+        >
+          <SelectTrigger className="min-w-[220px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">{t('cliDefault')}</SelectItem>
+            {CODEX_SANDBOX_MODES.map((mode) => (
+              <SelectItem key={mode} value={mode}>
+                {t(`sandboxOptions.${mode}`)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-medium">{t('approvalPolicy')}</p>
+          <p className="text-sm text-muted-foreground">{t('approvalPolicyDescription')}</p>
+        </div>
+        <Select
+          items={[
+            { label: t('cliDefault'), value: 'default' },
+            ...CODEX_APPROVAL_POLICIES.map((policy) => ({ label: t(`approvalOptions.${policy}`), value: policy })),
+          ]}
+          value={approvalValue}
+          onValueChange={(v) => setCodexApprovalPolicy(v === 'default' ? '' : v as TCodexApprovalPolicy)}
+        >
+          <SelectTrigger className="min-w-[220px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">{t('cliDefault')}</SelectItem>
+            {CODEX_APPROVAL_POLICIES.map((policy) => (
+              <SelectItem key={policy} value={policy}>
+                {t(`approvalOptions.${policy}`)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center justify-between gap-4">
         <div className="space-y-0.5">
-          <Label htmlFor="skip-permissions" className="text-sm font-medium">
-            {t('skipPermissions')}
+          <Label htmlFor="codex-search" className="text-sm font-medium">
+            {t('webSearch')}
           </Label>
           <p className="text-sm text-muted-foreground">
-            {t('skipPermissionsDescription')}
+            {t('webSearchDescription')}
           </p>
         </div>
         <Switch
-          id="skip-permissions"
-          checked={dangerouslySkipPermissions}
-          onCheckedChange={setDangerouslySkipPermissions}
+          id="codex-search"
+          checked={codexSearchEnabled}
+          onCheckedChange={setCodexSearchEnabled}
         />
       </div>
-      <div className="flex items-center justify-between">
+
+      <div className="flex items-center justify-between gap-4">
         <div className="space-y-0.5">
-          <Label htmlFor="show-terminal" className="text-sm font-medium">
+          <Label htmlFor="codex-show-terminal" className="text-sm font-medium">
             {t('showTerminal')}
           </Label>
           <p className="text-sm text-muted-foreground">
@@ -588,10 +694,17 @@ const ClaudeTab = () => {
           </p>
         </div>
         <Switch
-          id="show-terminal"
-          checked={claudeShowTerminal}
-          onCheckedChange={setClaudeShowTerminal}
+          id="codex-show-terminal"
+          checked={codexShowTerminal}
+          onCheckedChange={setCodexShowTerminal}
         />
+      </div>
+
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-muted-foreground">{t('commandPreview')}</p>
+        <code className="block break-all rounded-md bg-muted p-2 font-mono text-xs">
+          {previewCommand}
+        </code>
       </div>
     </div>
   );
@@ -1057,7 +1170,7 @@ const SettingsDialog = ({ open, onOpenChange }: ISettingsDialogProps) => {
             {activeTab === 'terminal' && <TerminalTab />}
             {activeTab === 'notification' && <NotificationTab />}
             {activeTab === 'editor' && <EditorTab />}
-            {activeTab === 'claude' && <ClaudeTab />}
+            {activeTab === 'codex' && <CodexTab />}
             {activeTab === 'auth' && <AuthTab />}
             {activeTab === 'tailscale' && <TailscaleSettings />}
             {activeTab === 'quick-prompts' && <QuickPromptsSettings />}

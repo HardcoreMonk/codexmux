@@ -1,4 +1,4 @@
-if (!process.env.PURPLEMUX_CLI) process.env.PURPLEMUX_CLI = '1';
+if (!process.env.CODEXMUX_CLI) process.env.CODEXMUX_CLI = '1';
 import './src/lib/pristine-env';
 import { createServer, request as httpRequest } from 'http';
 import type { IncomingMessage, ServerResponse } from 'http';
@@ -14,11 +14,10 @@ import { handleSyncConnection, gracefulSyncShutdown } from './src/lib/sync-serve
 import { handleStatusConnection, gracefulStatusShutdown } from './src/lib/status-server';
 import { getStatusManager } from './src/lib/status-manager';
 import { ensureHookSettings, removePortFile } from './src/lib/hook-settings';
-import { writeAllClaudePromptFiles } from './src/lib/claude-prompt';
 import { getCliToken } from './src/lib/cli-token';
 import { acquireLock, releaseLock, registerLockCleanup } from './src/lib/lock';
 import { scanSessions, applyConfig } from './src/lib/tmux';
-import { initWorkspaceStore, getWorkspaces } from './src/lib/workspace-store';
+import { initWorkspaceStore } from './src/lib/workspace-store';
 import { autoResumeOnStartup } from './src/lib/auto-resume';
 import { initAuthCredentials } from './src/lib/auth-credentials';
 import { initConfigStore, getConfig } from './src/lib/config-store';
@@ -284,7 +283,7 @@ const startProd = async (port: number, appDir: string, bindHost: string): Promis
   process.env.PORT = String(internalPort);
   process.env.HOSTNAME = '127.0.0.1';
 
-  const standaloneDir = process.env.__PMUX_APP_DIR_UNPACKED || appDir;
+  const standaloneDir = process.env.__CMUX_APP_DIR_UNPACKED || appDir;
   const standalonePath = path.join(standaloneDir, '.next', 'standalone', 'server.js');
   require(standalonePath); // eslint-disable-line @typescript-eslint/no-require-imports
 
@@ -352,7 +351,7 @@ export const DEFAULT_PORT = 8022;
 
 export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   const port = opts?.port ?? parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
-  const appDir = process.env.__PMUX_APP_DIR || process.cwd();
+  const appDir = process.env.__CMUX_APP_DIR || process.cwd();
 
   await acquireLock(port);
   registerLockCleanup();
@@ -386,8 +385,6 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
 
   await ensureHookSettings(result.port);
   getCliToken();
-  const { workspaces } = await getWorkspaces();
-  await writeAllClaudePromptFiles(workspaces);
 
   cleanupExpiredUploads()
     .then((r) => {
@@ -402,7 +399,7 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   const mode = dev ? 'development' : process.env.NODE_ENV;
   const urls = listInterfaceIps(accessSpec, result.port);
   console.log('');
-  console.log(`  \x1b[1m\x1b[35m⚡ purplemux\x1b[0m  \x1b[2mv${pkg.version}\x1b[0m`);
+  console.log(`  \x1b[1m\x1b[35m⚡ codexmux\x1b[0m  \x1b[2mv${pkg.version}\x1b[0m`);
   console.log(`  \x1b[2m➜\x1b[0m  Available on:`);
   for (const url of urls) {
     console.log(`       \x1b[36m${url}\x1b[0m`);
@@ -422,6 +419,6 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   return result;
 };
 
-if (!process.env.__PMUX_ELECTRON) {
+if (!process.env.__CMUX_ELECTRON) {
   start();
 }

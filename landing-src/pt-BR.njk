@@ -1,10 +1,10 @@
 ---
 layout: layouts/base.njk
 lang: pt-BR
-title: "purplemux — Um multiplexador de terminal web-nativo para Claude Code"
-description: "Rode várias sessões do Claude Code em um único painel. Baseado em tmux, web-nativo, pronto pra mobile. Open source MIT."
-canonical: https://subicura.com/purplemux/pt-BR/
-ogUrl: https://subicura.com/purplemux/pt-BR/
+title: "codexmux — Um multiplexador de terminal web-nativo para Codex"
+description: "Rode várias sessões do Codex em um único painel. Baseado em tmux, web-nativo, pronto pra mobile. Open source MIT."
+canonical: https://subicura.com/codexmux/pt-BR/
+ogUrl: https://subicura.com/codexmux/pt-BR/
 ogLocale: pt_BR
 ogLocaleAlternate: en_US
 permalink: /pt-BR/index.html
@@ -14,7 +14,7 @@ isRoot: false
   <nav class="nav" data-ph-capture-attribute-location="nav">
     <a href="#top" class="nav-brand is-hidden">
       <svg class="brand-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
-      <span class="wordmark"><strong>purple</strong>mux</span>
+      <span class="wordmark"><strong>codex</strong>mux</span>
     </a>
     <div class="nav-links">
       <a href="#mobile">Mobile</a>
@@ -26,7 +26,7 @@ isRoot: false
       <a href="#faq">FAQ</a>
     </div>
     <div class="nav-spacer"></div>
-    <a href="/purplemux/pt-BR/docs/" class="nav-docs">Docs</a>
+    <a href="/codexmux/pt-BR/docs/" class="nav-docs">Docs</a>
     <details class="nav-lang">
       <summary aria-label="Selecionar idioma">
         <span class="lang-current">PT</span>
@@ -46,7 +46,7 @@ isRoot: false
         <a href="../tr/" class="lang-opt" lang="tr" hreflang="tr">Türkçe</a>
       </div>
     </details>
-    <a href="https://github.com/subicura/purplemux" class="nav-github" data-ph-capture-attribute-cta="github" target="_blank" rel="noopener" aria-label="GitHub">
+    <a href="https://github.com/subicura/codexmux" class="nav-github" data-ph-capture-attribute-cta="github" target="_blank" rel="noopener" aria-label="GitHub">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
         <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.69-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.18-3.09-.12-.29-.51-1.46.11-3.04 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.62 1.58.23 2.75.11 3.04.74.8 1.18 1.83 1.18 3.09 0 4.42-2.69 5.4-5.26 5.68.41.35.78 1.05.78 2.12 0 1.53-.01 2.77-.01 3.15 0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/>
       </svg>
@@ -62,13 +62,13 @@ isRoot: false
         <div class="hero-text">
           <div class="hero-eyebrow">
             <svg class="brand-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
-            <span class="eyebrow-mark"><strong>purple</strong>mux</span>
+            <span class="eyebrow-mark"><strong>codex</strong>mux</span>
             <span class="eyebrow-sep">/</span>
-            <span class="eyebrow-sub">for Claude Code</span>
+            <span class="eyebrow-sub">for Codex</span>
           </div>
 
           <h1 class="hero-title">
-            <span class="line">Claude Code<span class="punct">,</span></span>
+            <span class="line">Codex<span class="punct">,</span></span>
             <span class="line">várias sessões<span class="punct">,</span></span>
             <span class="line line--brand">tudo do seu celular<span class="punct">.</span></span>
           </h1>
@@ -81,10 +81,10 @@ isRoot: false
           <div class="install-block">
             <div class="install-cmd">
               <span class="prompt">$</span>
-              <span>npx purplemux</span>
-              <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="Copiar" onclick="(function(b){navigator.clipboard.writeText('npx purplemux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
+              <span>npx codexmux</span>
+              <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="Copiar" onclick="(function(b){navigator.clipboard.writeText('npx codexmux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
             </div>
-            <a href="https://github.com/subicura/purplemux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-mac>
+            <a href="https://github.com/subicura/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-mac>
               <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
                 <path d="M17.05 20.28c-.98.95-2.05.88-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
               </svg>
@@ -110,7 +110,7 @@ isRoot: false
             <div class="stack-card-inner">
               <header class="card-head">
                 <span class="card-dot busy"></span>
-                <span class="card-name">purplemux</span>
+                <span class="card-name">codexmux</span>
                 <span class="card-time">02:14</span>
               </header>
               <div class="card-body">
@@ -167,9 +167,9 @@ isRoot: false
         <div class="shot shot--desktop preview-desktop">
           <div class="swiper">
             <div class="swiper-wrapper">
-              <div class="swiper-slide"><picture><source srcset="../images/screenshot-desktop-busy.webp" type="image/webp" /><img src="../images/screenshot-desktop-busy.png" alt="painel purplemux no desktop" width="2832" height="1552" loading="lazy" decoding="async" /></picture></div>
+              <div class="swiper-slide"><picture><source srcset="../images/screenshot-desktop-busy.webp" type="image/webp" /><img src="../images/screenshot-desktop-busy.png" alt="painel codexmux no desktop" width="2832" height="1552" loading="lazy" decoding="async" /></picture></div>
               <div class="swiper-slide"><picture><source srcset="../images/screenshot-desktop-diff.webp" type="image/webp" /><img src="../images/screenshot-desktop-diff.png" alt="" width="2832" height="1552" loading="lazy" decoding="async" /></picture></div>
-              <div class="swiper-slide"><picture><source srcset="../images/screenshot-desktop-claude.webp" type="image/webp" /><img src="../images/screenshot-desktop-claude.png" alt="" width="2832" height="1552" loading="lazy" decoding="async" /></picture></div>
+              <div class="swiper-slide"><picture><source srcset="../images/screenshot-desktop-codex.webp" type="image/webp" /><img src="../images/screenshot-desktop-codex.png" alt="" width="2832" height="1552" loading="lazy" decoding="async" /></picture></div>
             </div>
             <div class="swiper-pagination"></div>
           </div>
@@ -177,7 +177,7 @@ isRoot: false
         <div class="shot shot--mobile preview-mobile">
           <div class="swiper">
             <div class="swiper-wrapper">
-              <div class="swiper-slide"><picture><source srcset="../images/screenshot-mobile-push.webp" type="image/webp" /><img src="../images/screenshot-mobile-push.png" alt="purplemux no mobile" width="1206" height="2622" loading="lazy" decoding="async" /></picture></div>
+              <div class="swiper-slide"><picture><source srcset="../images/screenshot-mobile-push.webp" type="image/webp" /><img src="../images/screenshot-mobile-push.png" alt="codexmux no mobile" width="1206" height="2622" loading="lazy" decoding="async" /></picture></div>
               <div class="swiper-slide"><picture><source srcset="../images/screenshot-mobile-done.webp" type="image/webp" /><img src="../images/screenshot-mobile-done.png" alt="" width="1206" height="2622" loading="lazy" decoding="async" /></picture></div>
               <div class="swiper-slide"><picture><source srcset="../images/screenshot-mobile-new-tab.webp" type="image/webp" /><img src="../images/screenshot-mobile-new-tab.png" alt="" width="1206" height="2622" loading="lazy" decoding="async" /></picture></div>
               <div class="swiper-slide"><picture><source srcset="../images/screenshot-mobile-input.webp" type="image/webp" /><img src="../images/screenshot-mobile-input.png" alt="" width="1206" height="2622" loading="lazy" decoding="async" /></picture></div>
@@ -191,11 +191,11 @@ isRoot: false
 
     <!-- ── Why ── -->
     <section id="why">
-      <div class="eyebrow">Por que purplemux</div>
+      <div class="eyebrow">Por que codexmux</div>
       <h2>Cada sessão, em um painel só.</h2>
       <p class="lead">
         Quanto mais sessões, mais difícil fica acompanhar o estado.<br />
-        O purplemux junta todas numa só tela pra você ver <strong>o que está rodando e onde precisa da sua ação</strong> num piscar.
+        O codexmux junta todas numa só tela pra você ver <strong>o que está rodando e onde precisa da sua ação</strong> num piscar.
       </p>
 
       <div class="pain-highlight">
@@ -234,7 +234,7 @@ isRoot: false
             Enquanto espera o próximo reset, o trabalho fica parado.
           </p>
           <p>
-            O purplemux deixa as cotas de 5 horas e 7 dias fixas na barra lateral.
+            O codexmux deixa as cotas de 5 horas e 7 dias fixas na barra lateral.
             As cores mudam em <span class="hl amber">50%</span> e <span class="hl red">80%</span>, pra você dosar o ritmo antes de bater no teto.
           </p>
         </div>
@@ -246,7 +246,7 @@ isRoot: false
             <div class="mockup mockup-dashboard">
               <div class="tile">
                 <span class="indicator busy"></span>
-                <div class="meta"><span class="name">purplemux</span><span class="sub">in progress</span></div>
+                <div class="meta"><span class="name">codexmux</span><span class="sub">in progress</span></div>
               </div>
               <div class="tile">
                 <span class="indicator input"></span>
@@ -264,7 +264,7 @@ isRoot: false
           </div>
           <div class="feature-body">
             <div class="feature-title">Painel multi-sessão</div>
-            <div class="feature-desc">Veja o estado <strong>running / needs-input</strong> de cada sessão Claude Code num relance.</div>
+            <div class="feature-desc">Veja o estado <strong>running / needs-input</strong> de cada sessão Codex num relance.</div>
           </div>
         </div>
         <div class="feature-card green">
@@ -365,7 +365,7 @@ isRoot: false
           </div>
           <div class="feature-body">
             <div class="feature-title">Um terminal de verdade</div>
-            <div class="feature-desc">Não só Claude. Terminal completo com xterm.js + node-pty pra <strong>vim, docker, ssh, REPLs</strong> — o que você quiser.</div>
+            <div class="feature-desc">Não só Codex. Terminal completo com xterm.js + node-pty pra <strong>vim, docker, ssh, REPLs</strong> — o que você quiser.</div>
           </div>
         </div>
       </div>
@@ -384,7 +384,7 @@ isRoot: false
         <div class="mobile-showcase">
           <picture class="shot shot--mobile">
             <source srcset="../images/mobile-push.webp" type="image/webp" />
-            <img src="../images/mobile-push.png" alt="notificação push do purplemux no mobile" width="1206" height="2622" loading="lazy" decoding="async" />
+            <img src="../images/mobile-push.png" alt="notificação push do codexmux no mobile" width="1206" height="2622" loading="lazy" decoding="async" />
           </picture>
         </div>
 
@@ -493,7 +493,7 @@ isRoot: false
       <div class="stats-showcase">
         <picture class="stats-screen">
           <source srcset="../images/stat.webp" type="image/webp" />
-          <img src="../images/stat.png" alt="painel de estatísticas de uso do purplemux" width="2068" height="1682" loading="lazy" decoding="async" />
+          <img src="../images/stat.png" alt="painel de estatísticas de uso do codexmux" width="2068" height="1682" loading="lazy" decoding="async" />
         </picture>
 
         <div class="stats-callout" style="--x:22%; --y:20%">
@@ -547,16 +547,16 @@ isRoot: false
           </div>
           <div class="notes-mockup-body">
             <div class="md-brief">
-              Rascunhada a landing do purplemux. Seção mobile / PWA conectada ao dashboard de stats. Copy unificada no tom Apple e todos os mockups de feature cards substituídos.
+              Rascunhada a landing do codexmux. Seção mobile / PWA conectada ao dashboard de stats. Copy unificada no tom Apple e todos os mockups de feature cards substituídos.
             </div>
             <div class="md-collapse">∧ Collapse</div>
 
-            <div class="md-project">purplemux</div>
+            <div class="md-project">codexmux</div>
 
             <div class="md-h3">Rascunho da landing</div>
             <ul class="md-ul">
               <li>Estrutura de oito seções com os layouts Hero / Why / Mobile / Stats</li>
-              <li>Cor de marca purple convertida em variável OKLCH</li>
+              <li>Paleta muted accent convertida em variável OKLCH</li>
               <li>Molduras de mockup aplicadas às capturas desktop e mobile</li>
             </ul>
 
@@ -611,14 +611,14 @@ isRoot: false
           <li><strong>Atalhos</strong><span class="sub">Dividir · trocar de aba · mover foco</span></li>
           <li><strong>Temas</strong><span class="sub">Escuro / claro · vários conjuntos de cores</span></li>
           <li><strong>Workspaces e grupos</strong><span class="sub">Salvar / restaurar · grupos com arrastar e soltar</span></li>
-          <li><strong>Fluxo Git</strong><span class="sub">Diff · histórico · sync · Ask Claude</span></li>
+          <li><strong>Fluxo Git</strong><span class="sub">Diff · histórico · sync · Ask Codex</span></li>
           <li><strong>Painel de navegador</strong><span class="sub">Electron · controlado via CLI · emulador de dispositivo</span></li>
         </ul>
       </div>
 
       <div class="category">
         <div class="category-head">
-          <span class="category-name">Integração com Claude Code</span>
+          <span class="category-name">Integração com Codex</span>
           <span class="category-count">11</span>
         </div>
         <ul class="category-list">
@@ -666,7 +666,7 @@ isRoot: false
           <li><strong>Biblioteca de Quick Prompts</strong><span class="sub">Adicione prompts custom · arraste pra ordenar</span></li>
           <li><strong>Integração com editor</strong><span class="sub">Editor externo via URL do code-server</span></li>
           <li><strong>Controle de notificações</strong><span class="sub">Notificações do sistema on/off</span></li>
-          <li><strong>Opções do Claude</strong><span class="sub">Toggle de opções do CLI como skip permissions</span></li>
+          <li><strong>Opções do Codex</strong><span class="sub">Toggle de opções do CLI como skip permissions</span></li>
         </ul>
       </div>
     </section>
@@ -674,10 +674,10 @@ isRoot: false
     <!-- ── How it works ── -->
     <section id="how">
       <div class="eyebrow coral">Arquitetura</div>
-      <h2>Navegador ↔ Node.js ↔ tmux · Claude Code.</h2>
+      <h2>Navegador ↔ Node.js ↔ tmux · Codex.</h2>
       <p class="lead">
-        O xterm.js conecta no node-pty via WebSocket, e o node-pty gruda numa sessão tmux no socket dedicado <code>purple</code>.
-        O estado é acompanhado por hooks do Claude Code e um watcher de log JSONL juntos.
+        O xterm.js conecta no node-pty via WebSocket, e o node-pty gruda numa sessão tmux no socket dedicado <code>codexmux</code>.
+        State is tracked by process detection and Codex JSONL watchers.
       </p>
 
       <div class="arch-diagram">
@@ -754,22 +754,22 @@ isRoot: false
           </div>
           <div class="arch-split">
             <div class="arch-group">
-              <div class="arch-group-label">tmux · purple socket</div>
+              <div class="arch-group-label">tmux · codexmux socket</div>
               <div class="arch-mini-row">
                 <span class="arch-mini">session 1</span>
                 <span class="arch-mini">session 2</span>
                 <span class="arch-mini">…</span>
               </div>
               <div class="arch-highlights arch-highlights--inline">
-                <span class="arch-hl">Socket purple isolado</span>
+                <span class="arch-hl">Socket codexmux isolado</span>
                 <span class="arch-hl">Restore paralelo após reboot</span>
               </div>
             </div>
             <div class="arch-group">
-              <div class="arch-group-label">Claude Code</div>
+              <div class="arch-group-label">Codex</div>
               <div class="arch-mini-col">
-                <span class="arch-mini">~/.claude/sessions/</span>
-                <span class="arch-mini">~/.claude/projects/{id}.jsonl</span>
+                <span class="arch-mini">~/.codex/sessions/</span>
+                <span class="arch-mini">~/.codex/sessions/{id}.jsonl</span>
               </div>
             </div>
           </div>
@@ -782,8 +782,8 @@ isRoot: false
       <div class="eyebrow teal">vs. Remote Control oficial</div>
       <h2>Além do controle remoto — um workspace unificado.</h2>
       <p class="lead">
-        O Remote Control oficial é uma ferramenta de acesso remoto pra <em>continuar sessões do Claude Code em outro dispositivo</em>.
-        O purplemux põe por cima <em>um painel multi-sessão, extensões de terminal e analytics de uso</em> — um ambiente operacional self-hosted.
+        O Remote Control oficial é uma ferramenta de acesso remoto pra <em>continuar sessões do Codex em outro dispositivo</em>.
+        O codexmux põe por cima <em>um painel multi-sessão, extensões de terminal e analytics de uso</em> — um ambiente operacional self-hosted.
       </p>
 
       <table class="compare">
@@ -791,7 +791,7 @@ isRoot: false
           <tr>
             <th>Item</th>
             <th>Remote Control oficial</th>
-            <th>purplemux</th>
+            <th>codexmux</th>
           </tr>
         </thead>
         <tbody>
@@ -807,17 +807,17 @@ isRoot: false
           </tr>
           <tr>
             <td>Notificações push</td>
-            <td class="cross">Precisa do app móvel do Claude</td>
+            <td class="cross">Precisa do app móvel do Codex</td>
             <td class="check">Web Push · qualquer navegador, sem instalar</td>
           </tr>
           <tr>
             <td>Persistência do terminal</td>
-            <td class="cross">Só enquanto o processo claude roda</td>
+            <td class="cross">Só enquanto o processo codex roda</td>
             <td class="check">Baseado em tmux · restore automático após restart</td>
           </tr>
           <tr>
             <td>Ferramentas incluídas</td>
-            <td class="cross">Somente sessão do Claude Code</td>
+            <td class="cross">Somente sessão do Codex</td>
             <td class="check">Terminal dividido · Git diff · salvar workspace</td>
           </tr>
           <tr>
@@ -827,7 +827,7 @@ isRoot: false
           </tr>
           <tr class="tradeoff">
             <td>Pontos fortes</td>
-            <td>Oficial da Anthropic · integração com o app móvel do Claude · auto-update</td>
+            <td>Oficial da OpenAI · integração com o app móvel do Codex · auto-update</td>
             <td>OSS de terceiros · instalação & manutenção manuais</td>
           </tr>
         </tbody>
@@ -848,7 +848,7 @@ isRoot: false
           <div class="step-body">
             <h3>Executar</h3>
             <p>Já começa com npx. Instalação global também rola.</p>
-<pre class="code"><span class="c">$</span> npx purplemux</pre>
+<pre class="code"><span class="c">$</span> npx codexmux</pre>
           </div>
         </div>
 
@@ -875,7 +875,7 @@ isRoot: false
           <div class="step-body">
             <h3>App nativo (opcional)</h3>
             <p>No macOS você também pode usar o build Electron. Apple Silicon e Intel suportados.</p>
-            <a href="https://github.com/subicura/purplemux/releases/latest" class="btn-primary" target="_blank" rel="noopener" style="margin-top:0.5rem" data-ph-capture-attribute-cta="download">
+            <a href="https://github.com/subicura/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" style="margin-top:0.5rem" data-ph-capture-attribute-cta="download">
               Baixar a última release →
             </a>
           </div>
@@ -897,20 +897,20 @@ isRoot: false
 
         <details>
           <summary>Dá pra aprovar permission prompts do celular?</summary>
-          <p>Dá. O purplemux intercepta os diálogos de permissão do Claude Code no terminal e encaminha pra dashboard e pras notificações mobile.
+          <p>Dá. O codexmux intercepta os diálogos de permissão do Codex no terminal e encaminha pra dashboard e pras notificações mobile.
             Aprove de qualquer lugar — sem tarefa parada.</p>
         </details>
 
         <details>
           <summary>Se o sistema travar, perco as sessões?</summary>
           <p>Fechar o navegador ou perder a rede não é problema — o tmux mantém as sessões vivas.
-            Mesmo após um reboot completo, o purplemux varre o layout do workspace e <strong>restaura as sessões Claude anteriores em paralelo</strong>.
+            Mesmo após um reboot completo, o codexmux varre o layout do workspace e <strong>restaura as sessões Codex anteriores em paralelo</strong>.
             Sem restore manual.</p>
         </details>
 
         <details>
           <summary>Onde meus dados ficam?</summary>
-          <p>Todas as configurações e dados de sessão ficam localmente em <code>~/.purplemux/</code>.
+          <p>Todas as configurações e dados de sessão ficam localmente em <code>~/.codexmux/</code>.
             Nada é enviado pra servidores externos. A autenticação é guardada como hash scrypt em <code>config.json</code>.</p>
         </details>
 
@@ -922,7 +922,7 @@ isRoot: false
 
         <details>
           <summary>Conflita com minhas sessões tmux existentes?</summary>
-          <p>O purplemux sobe uma instância tmux isolada num socket <code>purple</code> dedicado.
+          <p>O codexmux sobe uma instância tmux isolada num socket <code>codexmux</code> dedicado.
             É completamente independente das suas sessões tmux e do <code>~/.tmux.conf</code>.</p>
         </details>
 
@@ -934,7 +934,7 @@ isRoot: false
 
         <details>
           <summary>Tem algum custo?</summary>
-          <p>O purplemux em si é open source MIT e gratuito. O uso do Claude Code é cobrado à parte.</p>
+          <p>O codexmux em si é open source MIT e gratuito. O uso do Codex é cobrado à parte.</p>
         </details>
 
         <details>
@@ -961,10 +961,10 @@ isRoot: false
         <div class="install-block cta-install">
           <div class="install-cmd">
             <span class="prompt">$</span>
-            <span>npx purplemux</span>
-            <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="Copiar" onclick="(function(b){navigator.clipboard.writeText('npx purplemux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
+            <span>npx codexmux</span>
+            <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="Copiar" onclick="(function(b){navigator.clipboard.writeText('npx codexmux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
           </div>
-          <a href="https://github.com/subicura/purplemux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-mac>
+          <a href="https://github.com/subicura/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-mac>
             <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
               <path d="M17.05 20.28c-.98.95-2.05.88-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
             </svg>
@@ -981,8 +981,8 @@ isRoot: false
           <div class="eyebrow amber">Self-hosted · open source</div>
           <h2>Na sua máquina, seu.</h2>
           <p class="lead">
-            O purplemux é uma ferramenta self-hosted que roda localmente.
-            Dados de sessão, configurações e histórico ficam só em <code>~/.purplemux/</code> e nunca saem da sua máquina.
+            O codexmux é uma ferramenta self-hosted que roda localmente.
+            Dados de sessão, configurações e histórico ficam só em <code>~/.codexmux/</code> e nunca saem da sua máquina.
             O código é MIT — leia, modifique, contribua.
           </p>
           <div class="selfhost-badges">
@@ -994,7 +994,7 @@ isRoot: false
         <div class="selfhost-visual">
           <div class="mockup mockup-selfhost">
             <div class="tree">
-              <div class="tline root">~/.purplemux/</div>
+              <div class="tline root">~/.codexmux/</div>
               <div class="tline sub">├─ config.json</div>
               <div class="tline sub">├─ workspaces.json</div>
               <div class="tline sub">└─ sessions/</div>

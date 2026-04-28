@@ -1,120 +1,76 @@
 ---
-title: Ports & env vars
-description: Every port purplemux opens and every environment variable that influences how it runs.
-eyebrow: Reference
+title: 포트 & 환경 변수
+description: codexmux가 사용하는 port, network access, logging, CLI token 설정.
+eyebrow: 레퍼런스
 permalink: /docs/ports-env-vars/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-purplemux is meant to be a one-line install, but the runtime is configurable. This page lists every port it opens and every environment variable that the server reads.
+codexmux는 기본적으로 `localhost:8022`에서 실행됩니다. 필요하면 환경 변수로 port, network access, logging을 조정할 수 있습니다.
 
-## Ports
-
-| Port | Default | Override | Notes |
-|---|---|---|---|
-| HTTP + WebSocket | `8022` | `PORT=9000 purplemux` | If `8022` is already in use the server logs a warning and binds to a random free port instead. |
-| Internal Next.js (production) | random | — | In `pnpm start` / `purplemux start` the outer server proxies to a Next.js standalone bound to `127.0.0.1:<random>`. Not exposed. |
-
-`8022` is `web` + `ssh` glued together. The choice is humour, not protocol.
-
-{% call callout('note', 'Bound interface follows the access policy') %}
-purplemux only binds to `0.0.0.0` if the access policy actually allows external clients. Localhost-only setups bind to `127.0.0.1` so other machines on the LAN can't even open a TCP connection. See `HOST` below.
-{% endcall %}
-
-## Server env vars
-
-Read by `server.ts` and the modules it loads on startup.
-
-| Variable | Default | Effect |
-|---|---|---|
-| `PORT` | `8022` | HTTP/WS listen port. Falls back to a random port on `EADDRINUSE`. |
-| `HOST` | unset | Comma-separated CIDR/keyword spec for which clients are allowed. Keywords: `localhost`, `tailscale`, `lan`, `all` (or `*` / `0.0.0.0`). Examples: `HOST=localhost`, `HOST=localhost,tailscale`, `HOST=10.0.0.0/8,localhost`. When set via env, the in-app **Settings → Network access** is locked. |
-| `NODE_ENV` | `production` (in `purplemux start`), `development` (in `pnpm dev`) | Selects between the dev pipeline (`tsx watch`, Next dev) and the prod pipeline (`tsup` bundle proxying to Next standalone). |
-| `__PMUX_APP_DIR` | `process.cwd()` | Override the directory that holds `dist/server.js` and `.next/standalone/`. Set automatically by `bin/purplemux.js`; you usually shouldn't touch it. |
-| `__PMUX_APP_DIR_UNPACKED` | unset | Variant of `__PMUX_APP_DIR` for the asar-unpacked path inside the macOS Electron app. |
-| `__PMUX_ELECTRON` | unset | When the Electron main process starts the server in-process, it sets this so `server.ts` skips the auto `start()` call and lets Electron drive the lifecycle. |
-| `PURPLEMUX_CLI` | `1` (set by `bin/purplemux.js`) | Marker that lets shared modules know the process is the CLI / server, not Electron. Used by `pristine-env.ts`. |
-| `__PMUX_PRISTINE_ENV` | unset | JSON snapshot of the parent shell env, captured by `bin/purplemux.js` so child processes (claude, tmux) inherit the user's `PATH` rather than a sanitized one. Internal — set automatically. |
-| `AUTH_PASSWORD` | unset | Set by the server from `config.json`'s scrypt hash before Next starts. NextAuth reads it from there. Don't set it manually. |
-| `NEXTAUTH_SECRET` | unset | Same story — populated from `config.json` at startup. |
-
-## Logging env vars
-
-Read by `src/lib/logger.ts`.
-
-| Variable | Default | Effect |
-|---|---|---|
-| `LOG_LEVEL` | `info` | Root level for everything not named in `LOG_LEVELS`. |
-| `LOG_LEVELS` | unset | Per-module overrides as `name=level` pairs separated by commas. |
-
-Levels, in order: `trace` · `debug` · `info` · `warn` · `error` · `fatal`.
+## port와 host
 
 ```bash
-LOG_LEVEL=debug purplemux
-
-# only debug the Claude hook module
-LOG_LEVELS=hooks=debug purplemux
-
-# multiple modules at once
-LOG_LEVELS=hooks=debug,status=warn,tmux=trace purplemux
+PORT=9000 codexmux
+HOST=localhost,tailscale codexmux
+HOST=localhost,tailscale PORT=8122 codexmux
+HOST=all PORT=9000 codexmux
 ```
 
-The most useful module names:
-
-| Module | Source | What you see |
+| 변수 | 기본값 | 의미 |
 |---|---|---|
-| `hooks` | `pages/api/status/hook.ts`, parts of `status-manager.ts` | Hook receive / process / state transitions |
-| `status` | `status-manager.ts` | Polling, JSONL watcher, broadcast |
-| `tmux` | `lib/tmux.ts` | Every tmux command and its result |
-| `server`, `lock`, etc. | matching `lib/*.ts` | Process lifecycle |
+| `PORT` | `8022` | 외부 server port |
+| `HOST` | `localhost` | 허용할 접근 범위. env로 지정하면 앱의 네트워크 접근 설정이 잠김 |
+| `NODE_ENV` | 실행 방식에 따라 다름 | development/production pipeline 선택 |
+| `NO_UPDATE_NOTIFIER` | unset | `1`이면 version check 비활성화 |
 
-Log files land under `~/.purplemux/logs/` regardless of level.
+`HOST`는 단순 bind 주소가 아니라 접근 필터입니다. 사용할 수 있는 키워드는 `localhost`, `tailscale`, `lan`, `all`이고, CIDR도 직접 지정할 수 있습니다. 예를 들어 `HOST=localhost,tailscale`은 로컬 브라우저와 Tailscale 대역만 허용합니다.
 
-## Files (env-equivalent)
+`8022`가 사용 중이면 빈 port를 찾아 바인딩하고 `~/.codexmux/port`에 기록합니다.
 
-A few values behave like environment variables but live on disk so the CLI and hook scripts can find them without an env handshake:
+## shell 기본값 고정
 
-| File | Holds | Used by |
-|---|---|---|
-| `~/.purplemux/port` | Current server port (plain text) | `bin/cli.js`, `status-hook.sh`, `statusline.sh` |
-| `~/.purplemux/cli-token` | 32-byte hex CLI token | `bin/cli.js`, hook scripts (sent as `x-pmux-token`) |
+매번 같은 port와 접근 범위로 실행한다면 shell 함수로 감쌀 수 있습니다. zsh의 `$HOST`는 기본적으로 호스트명을 담는 특수 파라미터라서, 사용자가 실제로 export한 환경 변수만 읽도록 `printenv`를 사용합니다.
 
-The CLI also accepts these via env, which take precedence:
+```zsh
+codexmux() {
+  local host="$(printenv HOST 2>/dev/null)"
+  local port="$(printenv PORT 2>/dev/null)"
+  [[ -n "$host" ]] || host="localhost,tailscale"
+  [[ -n "$port" ]] || port="8122"
 
-| Variable | Default | Effect |
-|---|---|---|
-| `PMUX_PORT` | contents of `~/.purplemux/port` | Port the CLI talks to. |
-| `PMUX_TOKEN` | contents of `~/.purplemux/cli-token` | Bearer token sent as `x-pmux-token`. |
+  HOST="$host" PORT="$port" command codexmux "$@"
+}
+```
 
-See [CLI reference](/purplemux/docs/cli-reference/) for the full surface.
+소스 체크아웃에서 직접 실행 중이고 아직 빌드하지 않았다면 함수 안의 마지막 줄을 `cd /path/to/codexmux && HOST="$host" PORT="$port" corepack pnpm dev` 형태로 바꾸세요.
 
-## Putting it together
-
-A few common combinations:
+## logging
 
 ```bash
-# Default: localhost only, port 8022
-purplemux
-
-# Bind everywhere (LAN + Tailscale + remote)
-HOST=all purplemux
-
-# Localhost + Tailscale only
-HOST=localhost,tailscale purplemux
-
-# Custom port + verbose hook tracing
-PORT=9000 LOG_LEVELS=hooks=debug purplemux
-
-# Kitchen sink for debugging
-PORT=9000 HOST=localhost LOG_LEVEL=debug LOG_LEVELS=tmux=trace purplemux
+LOG_LEVEL=debug codexmux
+LOG_LEVELS=status=debug codexmux
+LOG_LEVELS=status=debug,tmux=trace codexmux
 ```
 
-{% call callout('tip') %}
-For a persistent install, set these in your launchd / systemd unit's `Environment=` block. See [Installation](/purplemux/docs/installation/#start-on-boot) for an example unit file.
-{% endcall %}
+| 변수 | 의미 |
+|---|---|
+| `LOG_LEVEL` | 기본 log level |
+| `LOG_LEVELS` | module별 `name=level` override |
 
-## What's next
+주요 module은 `status`, `tmux`, `hooks`, `server`, `lock`입니다. log file은 `~/.codexmux/logs/`에 저장됩니다.
 
-- **[Installation](/purplemux/docs/installation/)** — where these vars usually go.
-- **[Data directory](/purplemux/docs/data-directory/)** — how `port` and `cli-token` interact with hook scripts.
-- **[CLI reference](/purplemux/docs/cli-reference/)** — `PMUX_PORT` / `PMUX_TOKEN` in context.
+## 파일 기반 값
+
+| 파일 | 내용 | 사용처 |
+|---|---|---|
+| `~/.codexmux/port` | 현재 server port | CLI, bridge script |
+| `~/.codexmux/cli-token` | 32-byte CLI token | `x-cmux-token` 인증 |
+
+CLI는 `CMUX_PORT`, `CMUX_TOKEN` 환경 변수가 있으면 파일보다 우선합니다.
+
+## 다음 단계
+
+- **[설치](/codexmux/docs/installation/)**
+- **[데이터 디렉터리](/codexmux/docs/data-directory/)**
+- **[CLI 레퍼런스](/codexmux/docs/cli-reference/)**

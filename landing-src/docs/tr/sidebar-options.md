@@ -1,72 +1,47 @@
 ---
-title: Kenar çubuğu & Claude seçenekleri
-description: Kenar çubuğu kısayollarını yeniden sıralayın ve gizleyin, hızlı prompt kütüphanesini yönetin ve Claude CLI bayraklarını açıp kapatın.
-eyebrow: Özelleştirme
+title: 사이드바 & Codex 옵션
+description: 사이드바 단축 항목, 퀵 프롬프트, Codex CLI option 설정.
+eyebrow: 설정
 permalink: /tr/docs/sidebar-options/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Kenar çubuğu ve girdi çubuğu, yeniden şekillendirebileceğiniz küçük listelerden oluşur — kenar çubuğunun altındaki kısayol bağlantıları, girdinin üstündeki prompt düğmeleri. Ayarlar'daki Claude sekmesi, panelden başlattığınız oturumlar için CLI seviyesi anahtarları barındırır.
+sidebar, quick prompt, Codex launch option은 Settings에서 조정합니다. 이 값은 새 session과 dashboard 사용 흐름에 영향을 줍니다.
 
-## Kenar çubuğu öğeleri
+## sidebar shortcut
 
-Ayarlar (<kbd>⌘,</kbd>) → **Kenar çubuğu** sekmesi. Liste, kenar çubuğunun altında oturan kısayol satırını kontrol eder — panellere, dahili araçlara, URL'lenebilir herhangi bir şeye bağlantılar.
+**Settings** -> **Sidebar**에서 sidebar 하단 shortcut을 관리합니다.
 
-Her satırda bir tutamaç, ad, URL ve anahtar vardır. Şunları yapabilirsiniz:
+- drag로 순서 변경.
+- switch로 표시/숨김.
+- custom item 추가와 삭제.
+- 기본값으로 reset.
 
-- **Sürükle** — yeniden sıralamak için tutamacı sürükleyin. Hem yerleşik hem özel öğeler serbestçe hareket eder.
-- **Aç/kapat** — silmeden gizlemek için anahtarı çevirin.
-- **Düzenle** — özel öğeleri (kalem simgesi) — adı, simgeyi veya URL'yi değiştirin.
-- **Sil** — özel öğeleri (çöp simgesi).
-- **Varsayılana sıfırla** — yerleşik öğeleri geri yükler, tüm özelleri siler, sıralamayı temizler.
+## quick prompt
 
-### Özel bir öğe ekleme
+**Settings** -> **Quick Prompts**에서 input 위에 표시되는 prompt button을 관리합니다. 자주 쓰는 요청을 버튼 하나로 보낼 수 있습니다.
 
-Altta **Öğe Ekle**'ye tıklayın. Küçük bir form alırsınız:
+예시:
 
-- **Ad** — ipucu ve etiket olarak görünür.
-- **Simge** — aranabilir bir lucide-react galerisinden seçilir.
-- **URL** — `http(s)://...` herhangi bir şey çalışır. Dahili Grafana, Vercel panelleri, dahili bir admin aracı.
+- 테스트 실행.
+- 현재 diff review.
+- 마지막 commit 요약.
+- release note 초안 작성.
 
-Save'e tıklayın ve satır listenin altında belirir. İstediğiniz yere sürükleyin.
+## Codex option
 
-{% call callout('note', 'Yerleşikler gizlenebilir, silinemez') %}
-Yerleşik öğeler (purplemux'ın getirdiği) yalnızca bir anahtar ve bir tutamaç içerir — düzenleme veya silme yoktur. Fikriniz değişirse diye her zaman oradadırlar. Özel öğeler tam seti alır.
-{% endcall %}
+**Settings** -> **Codex**의 값은 새로 여는 Codex tab에 적용됩니다. 이미 실행 중인 session은 바꾸지 않습니다.
 
-## Hızlı promptlar
+| option | 의미 |
+|---|---|
+| model | `codex --model` 값 |
+| sandbox | `codex --sandbox` 값 |
+| approval policy | `codex --ask-for-approval` 값 |
+| web search | `--search` 추가 여부 |
+| terminal 표시 | timeline과 raw terminal을 함께 보여줄지 여부 |
 
-Ayarlar → **Hızlı Promptlar** sekmesi. Bunlar Claude girdi alanının üstünde oturan düğmelerdir — önceden hazırlanmış bir mesaj göndermek için tek tıklama.
+## 다음 단계
 
-Kenar çubuğu öğeleriyle aynı desen:
-
-- Yeniden sıralamak için sürükleyin.
-- Gizlemek için açıp kapatın.
-- Özel promptları düzenleyin / silin.
-- Varsayılana sıfırla.
-
-Bir prompt eklemek bir **ad** (düğme etiketi) ve **prompt**'un kendisini (çok satırlı metin) ister. Sık yazdığınız şeyler için kullanın: "Test paketini çalıştır", "Son commit'i özetle", "Mevcut diff'i incele".
-
-## Claude CLI seçenekleri
-
-Ayarlar → **Claude** sekmesi. Bu bayraklar *purplemux'ın yeni sekmelerde Claude CLI'sını nasıl başlattığını* etkiler — zaten çalışan bir oturumun davranışını değiştirmezler.
-
-### İzin Kontrollerini Atla
-
-`claude` komutuna `--dangerously-skip-permissions` ekler. Claude araçları çalıştırır ve dosyaları her seferinde onay istemeden düzenler.
-
-Bu, resmi CLI'nın sunduğu aynı bayraktır — purplemux üstüne hiçbir güvenlik gevşetmez. Açmadan önce [Anthropic'in dokümantasyonunu](https://docs.anthropic.com/en/docs/claude-code/cli-reference) okuyun. Yalnızca güvenilir çalışma alanları için seçmeli olarak değerlendirin.
-
-### Claude ile Terminali Göster
-
-**Açıkken** (varsayılan): Bir Claude sekmesi canlı oturum görünümünü *ve* alttaki terminal panelini yan yana gösterir, böylece istediğinizde shell'e atlayabilirsiniz.
-
-**Kapalıyken**: Yeni Claude sekmeleri terminal daraltılmış olarak açılır. Oturum görünümü tüm paneli doldurur. Sekme başına terminal'i yine de manuel olarak genişletebilirsiniz; bu yalnızca yeni oluşturulan sekmeler için varsayılanı değiştirir.
-
-Claude'u çoğunlukla zaman tüneli görünümünden sürerseniz ve daha temiz bir varsayılan istiyorsanız kapalı ayarını kullanın.
-
-## Sıradaki adımlar
-
-- **[Temalar & fontlar](/purplemux/tr/docs/themes-fonts/)** — açık, koyu, sistem; font boyutu ön ayarları.
-- **[Editör entegrasyonu](/purplemux/tr/docs/editor-integration/)** — VS Code, Cursor, code-server'ı bağlayın.
-- **[İlk oturum](/purplemux/tr/docs/first-session/)** — panel düzeni hatırlatıcı.
+- **[퀵 프롬프트 & 첨부](/codexmux/tr/docs/quick-prompts-attachments/)**
+- **[테마 & 글꼴](/codexmux/tr/docs/themes-fonts/)**
+- **[권한 프롬프트](/codexmux/tr/docs/permission-prompts/)**

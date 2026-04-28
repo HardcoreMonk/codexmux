@@ -1,6 +1,6 @@
 {
   "title": "使用统计",
-  "pageTitle": "使用统计 — purplemux",
+  "pageTitle": "使用统计 — codexmux",
   "dataLoadError": "无法加载数据",
   "collectingInitial": "正在收集初始数据",
   "collectingToday": "正在收集今日数据",
@@ -69,7 +69,7 @@
   "concurrentUsage": "并发使用",
   "concurrentOrMore": "{level}+并发",
   "accumulated": "累计 {duration}",
-  "noRecentActivity": "过去7天无Claude使用记录",
+  "noRecentActivity": "No Codex usage in the last 7 days",
   "currentlyRunning": "运行中 — 已连续{duration}",
   "avgSessionLength": "平均会话时长",
   "longestSession": "最长会话",

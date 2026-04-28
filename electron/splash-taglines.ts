@@ -6,12 +6,12 @@ const HOLIDAY_TAGLINES = {
   stPatricks: "May your builds be green, your logs be clean, and your deploys land where you mean.",
   aprilFools: "This terminal has mass: it bends time, light, and deadlines around it.",
   halloween: "Spooky season: haunted processes, cursed configs, and the ghost of node_modules past.",
-  christmas: "Santa uses purplemux—how else would he manage a billion deliveries in one night?",
+  christmas: "Santa uses codexmux—how else would he manage a billion deliveries in one night?",
 } as const;
 
 const TAGLINES: string[] = [
   // workspace & terminal
-  "Your terminal, but make it purple.",
+  "Your terminal, tuned for Codex.",
   "Where ideas compile and side projects actually ship.",
   "Hot reload for configs, cold sweat for deploys.",
   "Finally, a terminal that matches your aesthetic ambitions.",
@@ -23,14 +23,14 @@ const TAGLINES: string[] = [
   "Ship code, not excuses.",
   "One workspace to rule them all.",
   "Built for people who think in terminals.",
-  "Productivity wrapped in purple.",
+  "Productivity wrapped in focus.",
   "The only app where splitting things makes you more productive.",
   "Because alt-tabbing between 12 terminals is not a personality.",
   "Works on my machine. And now, beautifully.",
   "A terminal so nice you'll forget it's a terminal.",
   "Ctrl+C your old workflow. Ctrl+V into something better.",
   "Where every pixel earns its keep.",
-  "You had me at 'purplemux'.",
+  "You had me at 'codexmux'.",
   "All your sessions in one place. Finally.",
   // vibe coding
   "Vibe coding: where the cursor moves and the code just happens.",
@@ -40,7 +40,7 @@ const TAGLINES: string[] = [
   // agent
   "Humans steer, agents execute. You're the pilot.",
   "Your agent is ready. Just say what you need.",
-  "Claude lives here now. Be nice.",
+  "Codex is ready when you are.",
   "Like having a senior engineer on call—minus the sighing.",
   "Your AI pair programmer's favorite workspace.",
   "The agent does the work. You take the credit.",
@@ -50,11 +50,11 @@ const TAGLINES: string[] = [
   "AI writes the code. You bring the taste.",
   "Good defaults, better aesthetics, zero compromises.",
   "Your dev environment, minus the existential dread.",
-  // thin client / purpleio
+  // thin client
   "Terminal, CLI, markdown. Everything else is noise.",
   "Thin client energy. Thick productivity.",
-  "Crafted by purpleio. Powered by purple.",
-  "A purpleio product. Obviously purple.",
+  "Crafted for Codex sessions that stay organized.",
+  "A focused workspace for serious agent work.",
 ];
 
 const DAY_MS = 24 * 60 * 60 * 1000;

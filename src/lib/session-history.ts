@@ -7,22 +7,22 @@ import type { ISessionHistoryEntry, ISessionHistoryData } from '@/types/session-
 const log = createLogger('session-history');
 
 const MAX_ENTRIES = 200;
-const BASE_DIR = path.join(os.homedir(), '.purplemux');
+const BASE_DIR = path.join(os.homedir(), '.codexmux');
 const SESSION_HISTORY_FILE = path.join(BASE_DIR, 'session-history.json');
 
 const g = globalThis as unknown as {
-  __purplemuxSessionHistoryLock?: Promise<void>;
-  __purplemuxSessionHistoryContentCache?: string;
+  __codexmuxSessionHistoryLock?: Promise<void>;
+  __codexmuxSessionHistoryContentCache?: string;
 };
-if (!g.__purplemuxSessionHistoryLock) g.__purplemuxSessionHistoryLock = Promise.resolve();
+if (!g.__codexmuxSessionHistoryLock) g.__codexmuxSessionHistoryLock = Promise.resolve();
 
 const withLock = async <T>(fn: () => Promise<T>): Promise<T> => {
   let release: () => void;
   const next = new Promise<void>((r) => {
     release = r;
   });
-  const prev = g.__purplemuxSessionHistoryLock!;
-  g.__purplemuxSessionHistoryLock = next;
+  const prev = g.__codexmuxSessionHistoryLock!;
+  g.__codexmuxSessionHistoryLock = next;
   await prev;
   try {
     return await fn();
@@ -33,6 +33,14 @@ const withLock = async <T>(fn: () => Promise<T>): Promise<T> => {
 
 const emptyData = (): ISessionHistoryData => ({ version: 1, entries: [] });
 
+export const normalizeSessionHistoryData = (data: ISessionHistoryData): ISessionHistoryData => ({
+  version: 1,
+  entries: data.entries.map((entry) => ({
+    ...entry,
+    agentSessionId: entry.agentSessionId ?? null,
+  })),
+});
+
 const readSessionHistory = async (): Promise<ISessionHistoryData> => {
   let raw: string;
   try {
@@ -41,7 +49,7 @@ const readSessionHistory = async (): Promise<ISessionHistoryData> => {
     return emptyData();
   }
   try {
-    return JSON.parse(raw) as ISessionHistoryData;
+    return normalizeSessionHistoryData(JSON.parse(raw) as ISessionHistoryData);
   } catch {
     log.warn('Failed to parse session-history.json, starting empty');
     try {
@@ -53,7 +61,7 @@ const readSessionHistory = async (): Promise<ISessionHistoryData> => {
 
 const writeSessionHistory = async (data: ISessionHistoryData): Promise<void> => {
   const contentKey = JSON.stringify(data.entries);
-  if (g.__purplemuxSessionHistoryContentCache === contentKey) return;
+  if (g.__codexmuxSessionHistoryContentCache === contentKey) return;
 
   const tmpFile = SESSION_HISTORY_FILE + '.tmp';
   try {
@@ -64,7 +72,7 @@ const writeSessionHistory = async (data: ISessionHistoryData): Promise<void> => 
     throw err;
   }
 
-  g.__purplemuxSessionHistoryContentCache = contentKey;
+  g.__codexmuxSessionHistoryContentCache = contentKey;
 };
 
 export const addSessionHistoryEntry = async (entry: ISessionHistoryEntry): Promise<void> => {

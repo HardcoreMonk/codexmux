@@ -1,11 +1,9 @@
 #!/usr/bin/env node
-import { execSync } from 'node:child_process';
-
-const apiKey = process.env.ANTHROPIC_API_KEY;
-if (!apiKey) {
-  console.error('ANTHROPIC_API_KEY is not set');
-  process.exit(1);
-}
+import { execFile, execSync } from 'node:child_process';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 const currentRef = (
   process.env.GITHUB_REF_NAME ||
@@ -72,30 +70,51 @@ Rules:
 Commits for ${currentRef}:
 ${commitBlock}`;
 
-const response = await fetch('https://api.anthropic.com/v1/messages', {
-  method: 'POST',
-  headers: {
-    'x-api-key': apiKey,
-    'anthropic-version': '2023-06-01',
-    'content-type': 'application/json',
-  },
-  body: JSON.stringify({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 2048,
-    messages: [{ role: 'user', content: prompt }],
-  }),
-});
+const callCodexCli = async (input) => {
+  const outputPath = path.join(os.tmpdir(), `codexmux-changelog-${process.pid}-${randomUUID()}.md`);
 
-if (!response.ok) {
-  const errBody = await response.text();
-  console.error(`Anthropic API error ${response.status}: ${errBody}`);
-  process.exit(1);
-}
+  return new Promise((resolve, reject) => {
+    const child = execFile(
+      'codex',
+      [
+        'exec',
+        '--skip-git-repo-check',
+        '--ephemeral',
+        '--sandbox',
+        'read-only',
+        '--ask-for-approval',
+        'never',
+        '--color',
+        'never',
+        '--output-last-message',
+        outputPath,
+        '-',
+      ],
+      { timeout: 180_000, maxBuffer: 1024 * 1024 },
+      (error, stdout, stderr) => {
+        if (error) {
+          void fs.unlink(outputPath).catch(() => {});
+          reject(new Error(`codex exec failed: ${error.message}${stderr ? `\n${stderr}` : ''}`));
+          return;
+        }
 
-const data = await response.json();
-const text = data?.content?.[0]?.text?.trim();
+        void fs.readFile(outputPath, 'utf-8')
+          .then((content) => resolve(content.trim() || stdout.trim()))
+          .catch(() => resolve(stdout.trim()))
+          .finally(() => {
+            void fs.unlink(outputPath).catch(() => {});
+          });
+      },
+    );
+
+    child.stdin?.write(input);
+    child.stdin?.end();
+  });
+};
+
+const text = String(await callCodexCli(prompt)).trim();
 if (!text) {
-  console.error('Empty response from Anthropic API');
+  console.error('Empty response from Codex CLI');
   process.exit(1);
 }
 

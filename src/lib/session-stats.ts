@@ -4,11 +4,11 @@ import os from 'os';
 import { existsSync } from 'fs';
 import { createLogger } from '@/lib/logger';
 import type { ISessionStats } from '@/types/timeline';
+import { collectAgentJsonlFiles, extractSessionIdFromAgentJsonlPath } from '@/lib/stats/agent-jsonl-files';
 
 const log = createLogger('session-stats');
 
-const SESSION_STATS_DIR = path.join(os.homedir(), '.purplemux', 'session-stats');
-const PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
+const SESSION_STATS_DIR = path.join(os.homedir(), '.codexmux', 'session-stats');
 
 const SESSION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -18,8 +18,8 @@ const statsFilePath = (sessionId: string): string =>
   path.join(SESSION_STATS_DIR, `${sessionId}.json`);
 
 export const extractSessionIdFromJsonlPath = (jsonlPath: string): string | null => {
-  const base = path.basename(jsonlPath, '.jsonl');
-  return isValidSessionId(base) ? base : null;
+  const id = extractSessionIdFromAgentJsonlPath(jsonlPath);
+  return id && isValidSessionId(id) ? id : null;
 };
 
 export const readSessionStats = async (sessionId: string): Promise<ISessionStats | null> => {
@@ -76,22 +76,10 @@ const listStatsSessionIds = async (): Promise<string[]> => {
 
 const listJsonlSessionIds = async (): Promise<Set<string>> => {
   const ids = new Set<string>();
-  try {
-    const projectDirs = await fs.readdir(PROJECTS_DIR);
-    for (const dir of projectDirs) {
-      const projectPath = path.join(PROJECTS_DIR, dir);
-      const stat = await fs.stat(projectPath).catch(() => null);
-      if (!stat?.isDirectory()) continue;
-
-      const files = await fs.readdir(projectPath).catch(() => []);
-      for (const file of files) {
-        if (!file.endsWith('.jsonl')) continue;
-        const id = file.slice(0, -6);
-        if (isValidSessionId(id)) ids.add(id);
-      }
-    }
-  } catch {
-    // projects dir missing
+  const files = await collectAgentJsonlFiles();
+  for (const file of files) {
+    const id = extractSessionIdFromJsonlPath(file.filePath);
+    if (id) ids.add(id);
   }
   return ids;
 };

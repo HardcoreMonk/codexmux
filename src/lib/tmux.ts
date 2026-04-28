@@ -12,8 +12,8 @@ const log = createLogger('terminal');
 
 const execFile = promisify(execFileCb);
 
-const TMUX_SOCKET = 'purple';
-const TMUX_CONFIG_PATH = path.join(process.env.__PMUX_APP_DIR_UNPACKED || process.env.__PMUX_APP_DIR || process.cwd(), 'src', 'config', 'tmux.conf');
+const TMUX_SOCKET = 'codexmux';
+const TMUX_CONFIG_PATH = path.join(process.env.__CMUX_APP_DIR_UNPACKED || process.env.__CMUX_APP_DIR || process.cwd(), 'src', 'config', 'tmux.conf');
 const CMD_TIMEOUT = 5000;
 
 export const listSessions = async (): Promise<string[]> => {
@@ -348,7 +348,7 @@ export const sendRawKeys = async (
   );
 };
 
-/** Send text via bracketed paste mode and press Enter twice (handles Claude Code long input confirmation) */
+/** Send text via bracketed paste mode and press Enter twice (handles long agent CLI input confirmation) */
 export const sendBracketedPaste = async (
   sessionName: string,
   content: string,

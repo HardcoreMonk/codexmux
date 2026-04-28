@@ -13,7 +13,7 @@ const StatusIcon = ({ status }: { status: ITimelineTaskProgress['status'] }) => 
   if (status === 'in_progress') {
     return (
       <span className="flex h-3 w-3 items-center justify-center">
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-claude-active" />
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-agent-active" />
       </span>
     );
   }
