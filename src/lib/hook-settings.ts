@@ -57,7 +57,7 @@ const buildHookSettings = () => ({
     UserPromptSubmit: hookEntry('prompt-submit'),
     Notification: hookEntry('notification'),
     Stop: hookEntry('stop'),
-    StopFailure: hookEntry('stop'),
+    StopFailure: hookEntry('stop-failure'),
     PreCompact: hookEntry('pre-compact'),
     PostCompact: hookEntry('post-compact'),
   },

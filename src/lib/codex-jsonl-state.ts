@@ -7,6 +7,25 @@ const READ_TAIL_BYTES = 256_000;
 const MAX_SNIPPET_LENGTH = 200;
 const STALE_MS_AWAITING_AGENT = 90_000;
 
+interface ICodexRawRecord {
+  type?: string;
+  timestamp?: string;
+  payload?: Record<string, unknown>;
+}
+
+interface ITaskCompleteMarker {
+  lineIndex: number;
+  timestamp: number | null;
+  snippet: string | null;
+}
+
+interface ICodexRawMarkers {
+  lastTaskComplete: ITaskCompleteMarker | null;
+  lastTurnActivityLineIndex: number;
+  lastUserLineIndex: number;
+  lastEntryTs: number | null;
+}
+
 export interface ICodexJsonlState {
   idle: boolean;
   stale: boolean;
@@ -29,6 +48,93 @@ const EMPTY_STATE: ICodexJsonlState = {
 
 const truncate = (value: string): string =>
   value.length > MAX_SNIPPET_LENGTH ? `${value.slice(0, MAX_SNIPPET_LENGTH)}...` : value;
+
+const toTimestamp = (value: unknown): number | null => {
+  if (typeof value !== 'string') return null;
+  const ts = new Date(value).getTime();
+  return Number.isFinite(ts) ? ts : null;
+};
+
+const payloadType = (record: ICodexRawRecord): string | null =>
+  typeof record.payload?.type === 'string' ? record.payload.type : null;
+
+const extractCompletionSnippet = (payload: Record<string, unknown>): string | null => {
+  const lastAgentMessage = payload.last_agent_message;
+  if (typeof lastAgentMessage === 'string' && lastAgentMessage.trim()) {
+    return truncate(lastAgentMessage.trim());
+  }
+
+  const message = payload.message;
+  if (typeof message === 'string' && message.trim()) {
+    return truncate(message.trim());
+  }
+
+  return null;
+};
+
+const isUserActivity = (record: ICodexRawRecord): boolean => {
+  if (record.type === 'event_msg' && payloadType(record) === 'user_message') return true;
+  if (record.type === 'response_item' && record.payload?.role === 'user') return true;
+  return record.type === 'user';
+};
+
+const isTurnActivity = (record: ICodexRawRecord): boolean => {
+  if (isUserActivity(record)) return true;
+  if (record.type === 'response_item') return true;
+  if (record.type !== 'event_msg') return false;
+
+  const type = payloadType(record);
+  return type === 'task_started'
+    || type === 'agent_message'
+    || type === 'user_message';
+};
+
+const scanRawMarkers = (content: string): ICodexRawMarkers => {
+  let lastTaskComplete: ITaskCompleteMarker | null = null;
+  let lastTurnActivityLineIndex = -1;
+  let lastUserLineIndex = -1;
+  let lastEntryTs: number | null = null;
+
+  const lines = content.split('\n');
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const trimmed = lines[lineIndex].trim();
+    if (!trimmed) continue;
+
+    let record: ICodexRawRecord;
+    try {
+      record = JSON.parse(trimmed) as ICodexRawRecord;
+    } catch {
+      continue;
+    }
+
+    const ts = toTimestamp(record.timestamp);
+    if (ts !== null) lastEntryTs = ts;
+
+    if (isUserActivity(record)) {
+      lastUserLineIndex = lineIndex;
+    }
+
+    if (record.type === 'event_msg' && payloadType(record) === 'task_complete') {
+      lastTaskComplete = {
+        lineIndex,
+        timestamp: ts,
+        snippet: record.payload ? extractCompletionSnippet(record.payload) : null,
+      };
+      continue;
+    }
+
+    if (isTurnActivity(record)) {
+      lastTurnActivityLineIndex = lineIndex;
+    }
+  }
+
+  return {
+    lastTaskComplete,
+    lastTurnActivityLineIndex,
+    lastUserLineIndex,
+    lastEntryTs,
+  };
+};
 
 const readTail = async (filePath: string): Promise<{ content: string; mtimeMs: number }> => {
   const stat = await fs.stat(filePath);
@@ -73,16 +179,41 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
     const { content, mtimeMs } = await readTail(filePath);
     if (!content.trim()) return EMPTY_STATE;
 
+    const stale = Date.now() - mtimeMs > STALE_MS_AWAITING_AGENT;
+    const markers = scanRawMarkers(content);
     const entries = parseCodexJsonlContent(content);
+    const taskComplete = markers.lastTaskComplete;
+    const hasCurrentTaskComplete = taskComplete !== null
+      && taskComplete.lineIndex > markers.lastUserLineIndex
+      && taskComplete.lineIndex > markers.lastTurnActivityLineIndex;
+
     if (entries.length === 0) {
+      if (hasCurrentTaskComplete && taskComplete) {
+        return {
+          idle: true,
+          stale: false,
+          lastAssistantSnippet: taskComplete.snippet,
+          currentAction: taskComplete.snippet
+            ? {
+                toolName: null,
+                summary: taskComplete.snippet,
+              }
+            : null,
+          reset: false,
+          lastEntryTs: taskComplete.timestamp ?? markers.lastEntryTs,
+          interrupted: false,
+        };
+      }
+
       return {
         ...EMPTY_STATE,
-        stale: Date.now() - mtimeMs > STALE_MS_AWAITING_AGENT,
+        stale,
+        lastEntryTs: markers.lastEntryTs,
       };
     }
 
     const lastEntry = entries[entries.length - 1];
-    const lastEntryTs = lastEntry.timestamp || null;
+    const lastEntryTs = markers.lastEntryTs ?? lastEntry.timestamp ?? null;
     const lastAssistantIdx = latestIndex(entries, (entry) => entry.type === 'assistant-message');
     const lastUserIdx = latestIndex(entries, (entry) => entry.type === 'user-message');
     const pendingToolIdx = latestIndex(entries, isPendingToolCall);
@@ -90,6 +221,24 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
     const lastAssistantSnippet = lastAssistant?.type === 'assistant-message'
       ? truncate(lastAssistant.markdown.trim())
       : null;
+    const completionSnippet = taskComplete?.snippet ?? lastAssistantSnippet;
+
+    if (hasCurrentTaskComplete && taskComplete) {
+      return {
+        idle: true,
+        stale: false,
+        lastAssistantSnippet: completionSnippet,
+        currentAction: completionSnippet
+          ? {
+              toolName: null,
+              summary: completionSnippet,
+            }
+          : null,
+        reset: false,
+        lastEntryTs,
+        interrupted: false,
+      };
+    }
 
     const pendingTool = pendingToolIdx > lastAssistantIdx && pendingToolIdx > lastUserIdx
       ? entries[pendingToolIdx]
@@ -97,7 +246,7 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
     if (pendingTool && pendingTool.type === 'tool-call') {
       return {
         idle: false,
-        stale: Date.now() - mtimeMs > STALE_MS_AWAITING_AGENT,
+        stale,
         lastAssistantSnippet,
         currentAction: currentActionFromTool(pendingTool),
         reset: false,
@@ -109,7 +258,7 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
     if (lastUserIdx > lastAssistantIdx) {
       return {
         idle: false,
-        stale: Date.now() - mtimeMs > STALE_MS_AWAITING_AGENT,
+        stale,
         lastAssistantSnippet: null,
         currentAction: null,
         reset: true,
@@ -120,8 +269,8 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
 
     if (lastAssistantSnippet) {
       return {
-        idle: true,
-        stale: false,
+        idle: false,
+        stale,
         lastAssistantSnippet,
         currentAction: {
           toolName: null,
@@ -135,7 +284,7 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
 
     return {
       ...EMPTY_STATE,
-      stale: Date.now() - mtimeMs > STALE_MS_AWAITING_AGENT,
+      stale,
       lastEntryTs,
     };
   } catch {

@@ -108,7 +108,7 @@ describe('checkCodexJsonlState', () => {
     expect(state.currentAction).toBeNull();
   });
 
-  it('reports idle when the latest Codex turn has an assistant message', async () => {
+  it('keeps an assistant message busy until Codex writes task_complete', async () => {
     await writeJsonl([
       {
         type: 'event_msg',
@@ -124,11 +124,121 @@ describe('checkCodexJsonlState', () => {
 
     const state = await checkCodexJsonlState(filePath);
 
-    expect(state.idle).toBe(true);
+    expect(state.idle).toBe(false);
     expect(state.lastAssistantSnippet).toBe('Done.');
     expect(state.currentAction).toEqual({
       toolName: null,
       summary: 'Done.',
+    });
+  });
+
+  it('keeps a commentary agent_message busy when a later function_call exists', async () => {
+    await writeJsonl([
+      {
+        type: 'event_msg',
+        timestamp: '2026-04-28T00:59:00.000Z',
+        payload: { type: 'user_message', message: 'Edit files' },
+      },
+      {
+        type: 'event_msg',
+        timestamp: '2026-04-28T00:59:10.000Z',
+        payload: { type: 'agent_message', message: 'Now editing files.', phase: 'commentary' },
+      },
+      {
+        type: 'response_item',
+        timestamp: '2026-04-28T00:59:11.000Z',
+        payload: {
+          type: 'function_call',
+          name: 'exec_command',
+          call_id: 'call_2',
+          arguments: JSON.stringify({ cmd: 'pnpm test' }),
+        },
+      },
+    ]);
+
+    const state = await checkCodexJsonlState(filePath);
+
+    expect(state.idle).toBe(false);
+    expect(state.lastAssistantSnippet).toBe('Now editing files.');
+    expect(state.currentAction).toEqual({
+      toolName: 'exec_command',
+      summary: '$ pnpm test',
+    });
+  });
+
+  it('reports idle only after the current Codex turn has task_complete', async () => {
+    await writeJsonl([
+      {
+        type: 'event_msg',
+        timestamp: '2026-04-28T00:59:00.000Z',
+        payload: { type: 'task_started', turn_id: 'turn-1' },
+      },
+      {
+        type: 'event_msg',
+        timestamp: '2026-04-28T00:59:01.000Z',
+        payload: { type: 'user_message', message: 'Finish' },
+      },
+      {
+        type: 'event_msg',
+        timestamp: '2026-04-28T00:59:30.000Z',
+        payload: { type: 'agent_message', message: 'Intermediate note.' },
+      },
+      {
+        type: 'event_msg',
+        timestamp: '2026-04-28T00:59:45.000Z',
+        payload: {
+          type: 'task_complete',
+          turn_id: 'turn-1',
+          last_agent_message: 'Final answer.',
+        },
+      },
+    ]);
+
+    const state = await checkCodexJsonlState(filePath);
+
+    expect(state.idle).toBe(true);
+    expect(state.lastAssistantSnippet).toBe('Final answer.');
+    expect(state.currentAction).toEqual({
+      toolName: null,
+      summary: 'Final answer.',
+    });
+  });
+
+  it('does not reuse an older task_complete when a newer turn has started', async () => {
+    await writeJsonl([
+      {
+        type: 'event_msg',
+        timestamp: '2026-04-28T00:58:00.000Z',
+        payload: {
+          type: 'task_complete',
+          turn_id: 'turn-1',
+          last_agent_message: 'Old final answer.',
+        },
+      },
+      {
+        type: 'event_msg',
+        timestamp: '2026-04-28T00:59:00.000Z',
+        payload: { type: 'task_started', turn_id: 'turn-2' },
+      },
+      {
+        type: 'event_msg',
+        timestamp: '2026-04-28T00:59:01.000Z',
+        payload: { type: 'user_message', message: 'New task' },
+      },
+      {
+        type: 'event_msg',
+        timestamp: '2026-04-28T00:59:30.000Z',
+        payload: { type: 'agent_message', message: 'Working on it.' },
+      },
+    ]);
+
+    const state = await checkCodexJsonlState(filePath);
+
+    expect(state.idle).toBe(false);
+    expect(state.lastAssistantSnippet).toBe('Working on it.');
+    expect(state.currentAction).toEqual({
+      toolName: null,
+      summary: 'Working on it.',
     });
   });
 });

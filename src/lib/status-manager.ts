@@ -67,6 +67,7 @@ const STALE_MS_INTERRUPTED = 20_000;
 const STALE_MS_AWAITING_API = 90_000;
 const PROCESS_RETRY_COUNT = 3;
 const JSONL_WATCH_DEBOUNCE_MS = 100;
+const CODEX_STOP_RECHECK_MS = 500;
 
 interface IJsonlIdleCache {
   mtimeMs: number;
@@ -1003,6 +1004,7 @@ class StatusManager {
       return;
     }
     const eventName = event as TEventName;
+    const provider = getProviderByPanelType(entry.panelType);
 
     if (eventName === 'notification' && notificationType && !INPUT_REQUESTING_NOTIFICATION_TYPES.has(notificationType)) {
       hookLog.debug({ tabId, event: eventName, notificationType }, 'non-input notification, skipping state transition');
@@ -1016,6 +1018,12 @@ class StatusManager {
     this.broadcast({ type: 'status:hook-event', tabId, event: entry.lastEvent });
 
     const prevState = entry.cliState;
+    if (eventName === 'stop' && provider?.id === 'codex') {
+      hookLog.debug({ tabId, event: eventName, notificationType, seq, prevState }, 'queued Codex stop JSONL verification');
+      this.recheckCodexStop(tabId, tmuxSession);
+      return;
+    }
+
     const newState = prevState === 'cancelled'
       ? prevState
       : deriveStateFromEvent(entry.lastEvent, prevState);
@@ -1065,6 +1073,28 @@ class StatusManager {
         refreshSnippet();
       }, 500);
     }
+  }
+
+  private recheckCodexStop(tabId: string, tmuxSession: string): void {
+    setTimeout(() => {
+      const refresh = async () => {
+        let entry = this.tabs.get(tabId);
+        if (!entry) return;
+
+        if (!entry.jsonlPath) {
+          await this.resolveAndWatchJsonl(tabId, tmuxSession);
+          entry = this.tabs.get(tabId);
+        }
+
+        if (!entry?.jsonlPath) return;
+        jsonlIdleCache.delete(entry.jsonlPath);
+        await this.onJsonlFileChange(tabId, entry.jsonlPath);
+      };
+
+      refresh().catch((err) => {
+        hookLog.warn('Codex stop JSONL verification failed: %s', err);
+      });
+    }, CODEX_STOP_RECHECK_MS);
   }
 
   private setCompacting(tabId: string, entry: ITabStatusEntry, since: number | null): void {

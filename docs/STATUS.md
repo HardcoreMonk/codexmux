@@ -68,7 +68,7 @@ export type TEventName =
   | 'interrupt';
 ```
 
-상태 전이는 다음처럼 단순하게 유지한다.
+일반 hook 상태 전이는 다음처럼 단순하게 유지한다.
 
 ```text
 session-start -> idle
@@ -78,11 +78,21 @@ stop          -> ready-for-review
 interrupt     -> idle
 ```
 
+Codex tab에서는 `stop` hook을 바로 `ready-for-review`로 전환하지 않는다. `stop`은
+JSONL 재확인을 예약하는 신호이며, 실제 완료 판정은 같은 turn의
+`event_msg.payload.type="task_complete"` 기록이 확인될 때만 한다. `StopFailure`는
+`stop-failure`로 전달되며 상태 전이를 만들지 않는다.
+
 생성된 hook/statusline bridge file도 event를 POST할 수 있지만 Codex 상태의 주 경로는 process detection, JSONL metadata, terminal state, polling이다.
 
 ## JSONL metadata
 
 Codex parser는 `session_meta`, `turn_context`, `event_msg`, `response_item` 계열 record를 읽어 message, tool call, tool result, reasoning summary, token usage를 추출한다. StatusManager는 active tab의 JSONL을 tail하면서 `lastAssistantMessage`, `currentAction`, `agentSessionId`, `jsonlPath`를 갱신한다.
+
+`agent_message`는 commentary/final text 모두에 쓰일 수 있어 완료 신호로 보지 않는다.
+예를 들어 "이제 파일을 편집합니다" 같은 중간 commentary 뒤에 바로 tool call이 이어질
+수 있다. 따라서 작업 완료 알림과 `ready-for-review` 전환은 현재 turn의
+`task_complete`가 가장 최근 turn activity 뒤에 기록된 경우에만 발생한다.
 
 ## client field
 
