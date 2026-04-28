@@ -732,6 +732,8 @@ const NotificationTab = () => {
   const t = useTranslations('settings.notification');
   const notificationsEnabled = useConfigStore((state) => state.notificationsEnabled);
   const setNotificationsEnabled = useConfigStore((state) => state.setNotificationsEnabled);
+  const soundOnCompleteEnabled = useConfigStore((state) => state.soundOnCompleteEnabled);
+  const setSoundOnCompleteEnabled = useConfigStore((state) => state.setSoundOnCompleteEnabled);
   const toastOnCompleteEnabled = useConfigStore((state) => state.toastOnCompleteEnabled);
   const setToastOnCompleteEnabled = useConfigStore((state) => state.setToastOnCompleteEnabled);
   const toastDuration = useConfigStore((state) => state.toastDuration);
@@ -787,6 +789,20 @@ const NotificationTab = () => {
         {showWebPushHint && (
           <p className="text-sm text-muted-foreground">{t('notSupported')}</p>
         )}
+
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="sound-complete-enabled" className="text-sm font-medium">
+              {t('soundEnable')}
+            </Label>
+            <p className="text-sm text-muted-foreground">{t('soundEnableDescription')}</p>
+          </div>
+          <Switch
+            id="sound-complete-enabled"
+            checked={soundOnCompleteEnabled}
+            onCheckedChange={setSoundOnCompleteEnabled}
+          />
+        </div>
       </div>
 
       <div className="border-t pt-6 space-y-4">

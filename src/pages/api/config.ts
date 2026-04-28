@@ -9,7 +9,7 @@ import { CODEX_APPROVAL_POLICIES, CODEX_SANDBOX_MODES } from '@/lib/codex-comman
 import { isSupportedLocale, normalizeLocale } from '@/lib/locales';
 
 const ALLOWED_FIELDS: (keyof Omit<IConfigData, 'updatedAt' | 'authSecret'>)[] = [
-  'appTheme', 'terminalTheme', 'customCSS', 'dangerouslySkipPermissions', 'codexModel', 'codexSandbox', 'codexApprovalPolicy', 'codexSearchEnabled', 'codexShowTerminal', 'editorUrl', 'editorPreset', 'authPassword', 'notificationsEnabled', 'toastOnCompleteEnabled', 'toastDuration', 'toastPositionDesktop', 'toastPositionMobile', 'locale', 'fontSize', 'systemResourcesEnabled', 'networkAccess',
+  'appTheme', 'terminalTheme', 'customCSS', 'dangerouslySkipPermissions', 'codexModel', 'codexSandbox', 'codexApprovalPolicy', 'codexSearchEnabled', 'codexShowTerminal', 'editorUrl', 'editorPreset', 'authPassword', 'notificationsEnabled', 'soundOnCompleteEnabled', 'toastOnCompleteEnabled', 'toastDuration', 'toastPositionDesktop', 'toastPositionMobile', 'locale', 'fontSize', 'systemResourcesEnabled', 'networkAccess',
 ];
 
 const NETWORK_ACCESS_VALUES = ['localhost', 'tailscale', 'all'] as const;
@@ -73,6 +73,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     if ('toastDuration' in updates && !isValidToastDuration(updates.toastDuration)) {
       return res.status(400).json({ error: 'toastDuration must be a number between 1000 and 60000.' });
+    }
+
+    if ('soundOnCompleteEnabled' in updates && typeof updates.soundOnCompleteEnabled !== 'boolean') {
+      return res.status(400).json({ error: 'soundOnCompleteEnabled must be a boolean.' });
     }
 
     if ('locale' in updates && !isSupportedLocale(updates.locale)) {

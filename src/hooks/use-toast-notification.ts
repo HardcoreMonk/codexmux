@@ -7,6 +7,7 @@ import useWorkspaceStore from '@/hooks/use-workspace-store';
 import useConfigStore from '@/hooks/use-config-store';
 import { navigateToTab, useLayoutStore } from '@/hooks/use-layout';
 import { findPane } from '@/lib/layout-tree';
+import { playCompletionSound } from '@/lib/notification-sound';
 
 const truncate = (s: string, n: number): string =>
   s.length <= n ? s : s.slice(0, n).trimEnd() + '…';
@@ -24,11 +25,12 @@ const toastIdFor = (tabId: string) => `tab-complete:${tabId}`;
 const useToastNotification = () => {
   useEffect(() => {
     const unsubTabs = useTabStore.subscribe((state, prev) => {
-      const { toastOnCompleteEnabled, toastDuration } = useConfigStore.getState();
+      const { toastOnCompleteEnabled, soundOnCompleteEnabled, toastDuration } = useConfigStore.getState();
       if (!toastOnCompleteEnabled) return;
       if (typeof document === 'undefined' || document.hidden) return;
 
       let focusedTabId: string | null | undefined;
+      let playedSound = false;
 
       for (const [tabId, tab] of Object.entries(state.tabs)) {
         const prevTab = prev.tabs[tabId];
@@ -56,6 +58,11 @@ const useToastNotification = () => {
             onClick: () => navigateToTab(workspaceId, tabId),
           },
         });
+
+        if (soundOnCompleteEnabled && !playedSound) {
+          playCompletionSound();
+          playedSound = true;
+        }
       }
     });
 

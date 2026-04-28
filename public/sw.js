@@ -13,6 +13,7 @@ self.addEventListener('push', (event) => {
     badge: '/favicon-32x32.png',
     tag: sessionId ? `session:${sessionId}` : undefined,
     renotify: !!sessionId,
+    silent: !!data.silent,
     data: {
       tabId: data.tabId,
       workspaceId: data.workspaceId,

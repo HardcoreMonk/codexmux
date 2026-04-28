@@ -84,6 +84,8 @@
     "enableDescription": "Codex 작업 완료 시 시스템 알림을 표시합니다.",
     "permissionDenied": "브라우저 알림 권한이 거부되었습니다. 브라우저 설정에서 허용해주세요.",
     "notSupported": "이 브라우저에서는 Web Push를 지원하지 않습니다.",
+    "soundEnable": "작업 완료 사운드",
+    "soundEnableDescription": "작업 완료 알림을 받을 때 사운드를 재생합니다. 끄면 백그라운드 시스템 알림도 무음으로 표시됩니다.",
     "toastSection": "앱 내 토스트",
     "toastSectionDescription": "창이 활성화된 상태에서만 표시됩니다. 백그라운드는 시스템 알림이 담당합니다.",
     "toastEnable": "작업 완료 시 토스트 표시",

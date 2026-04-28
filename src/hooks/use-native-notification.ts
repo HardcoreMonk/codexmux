@@ -5,7 +5,7 @@ import { navigateToTab } from '@/hooks/use-layout';
 import isElectron from '@/hooks/use-is-electron';
 
 interface IElectronAPI {
-  showNotification: (title: string, body: string) => Promise<boolean>;
+  showNotification: (title: string, body: string, options?: { silent?: boolean }) => Promise<boolean>;
   setDockBadge: (count: number) => Promise<void>;
   onNotificationClick: (callback: () => void) => () => void;
 }
@@ -30,7 +30,7 @@ const useNativeNotification = () => {
     });
 
     const unsubStore = useTabStore.subscribe((state, prev) => {
-      const enabled = useConfigStore.getState().notificationsEnabled;
+      const { notificationsEnabled: enabled, soundOnCompleteEnabled } = useConfigStore.getState();
       let notified = false;
       let attentionCount = 0;
 
@@ -44,7 +44,7 @@ const useNativeNotification = () => {
           ? tab.lastUserMessage.slice(0, 100)
           : tab.tabName || tabId;
         if (tab.cliState === 'ready-for-review') {
-          api.showNotification('Task Complete', body);
+          api.showNotification('Task Complete', body, { silent: !soundOnCompleteEnabled });
           lastNotifiedTabId = tabId;
           lastNotifiedWorkspaceId = tab.workspaceId;
           notified = true;

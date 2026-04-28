@@ -26,6 +26,7 @@ export interface IConfigData {
   editorUrl?: string;
   editorPreset?: TEditorPreset;
   notificationsEnabled?: boolean;
+  soundOnCompleteEnabled?: boolean;
   toastOnCompleteEnabled?: boolean;
   toastDuration?: number;
   toastPositionDesktop?: TToastPosition;

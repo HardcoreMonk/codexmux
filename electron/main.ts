@@ -804,11 +804,11 @@ ipcMain.handle('set-locale', (_event, locale: string) => {
 
 // --- Native Notifications ---
 
-ipcMain.handle('show-notification', (event, title: string, body: string) => {
+ipcMain.handle('show-notification', (event, title: string, body: string, options?: { silent?: boolean }) => {
   const anyFocused = BrowserWindow.getAllWindows().some((w) => !w.isDestroyed() && w.isFocused());
   if (anyFocused) return false;
   const senderWin = BrowserWindow.fromWebContents(event.sender);
-  const notification = new Notification({ title, body });
+  const notification = new Notification({ title, body, silent: !!options?.silent });
   notification.on('click', () => {
     const target = senderWin && !senderWin.isDestroyed() ? senderWin : getPrimaryWindow();
     target?.show();

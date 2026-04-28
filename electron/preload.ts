@@ -6,7 +6,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
   getSystemResources: () => ipcRenderer.invoke('get-system-resources'),
-  showNotification: (title: string, body: string) => ipcRenderer.invoke('show-notification', title, body),
+  showNotification: (title: string, body: string, options?: { silent?: boolean }) =>
+    ipcRenderer.invoke('show-notification', title, body, options),
   openNewWindow: () => ipcRenderer.invoke('open-new-window'),
   setDockBadge: (count: number) => ipcRenderer.invoke('set-dock-badge', count),
   setLocale: (locale: string) => ipcRenderer.invoke('set-locale', locale),

@@ -84,6 +84,8 @@
     "enableDescription": "Show system notifications when Codex tasks complete.",
     "permissionDenied": "Browser notification permission denied. Please allow in browser settings.",
     "notSupported": "Web Push is not supported in this browser.",
+    "soundEnable": "Task complete sound",
+    "soundEnableDescription": "Play a sound when a task-complete notification arrives. Background system notifications are silent when this is off.",
     "toastSection": "In-app Toast",
     "toastSectionDescription": "Shows only while the window is in the foreground. System notifications handle the background.",
     "toastEnable": "Show toast on task complete",

@@ -25,6 +25,7 @@ export interface IConfigInitialData {
   editorUrl?: string;
   editorPreset?: TEditorPreset;
   notificationsEnabled?: boolean;
+  soundOnCompleteEnabled?: boolean;
   toastOnCompleteEnabled?: boolean;
   toastDuration?: number;
   toastPositionDesktop?: TToastPosition;
@@ -48,6 +49,7 @@ interface IConfigState {
   editorUrl: string;
   editorPreset: TEditorPreset;
   notificationsEnabled: boolean;
+  soundOnCompleteEnabled: boolean;
   toastOnCompleteEnabled: boolean;
   toastDuration: number;
   toastPositionDesktop: TToastPosition;
@@ -71,6 +73,7 @@ interface IConfigState {
   setEditorUrl: (url: string) => void;
   setEditorPreset: (preset: TEditorPreset) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
+  setSoundOnCompleteEnabled: (enabled: boolean) => void;
   setToastOnCompleteEnabled: (enabled: boolean) => void;
   setToastDuration: (duration: number) => void;
   setToastPositionDesktop: (position: TToastPosition) => void;
@@ -85,6 +88,7 @@ interface IConfigState {
 
 const initialConfig = {
   notificationsEnabled: true,
+  soundOnCompleteEnabled: true,
   toastOnCompleteEnabled: true,
   toastDuration: DEFAULT_TOAST_DURATION,
   toastPositionDesktop: DEFAULT_TOAST_POSITION_DESKTOP,
@@ -127,6 +131,7 @@ const useConfigStore = create<IConfigState>((set, get) => ({
   editorUrl: initialConfig.editorUrl,
   editorPreset: initialConfig.editorPreset,
   notificationsEnabled: initialConfig.notificationsEnabled,
+  soundOnCompleteEnabled: initialConfig.soundOnCompleteEnabled,
   toastOnCompleteEnabled: initialConfig.toastOnCompleteEnabled,
   toastDuration: initialConfig.toastDuration,
   toastPositionDesktop: initialConfig.toastPositionDesktop,
@@ -151,6 +156,7 @@ const useConfigStore = create<IConfigState>((set, get) => ({
       editorUrl: data.editorUrl ?? '',
       editorPreset: data.editorPreset ?? 'code-server',
       notificationsEnabled: data.notificationsEnabled ?? true,
+      soundOnCompleteEnabled: data.soundOnCompleteEnabled ?? true,
       toastOnCompleteEnabled: data.toastOnCompleteEnabled ?? true,
       toastDuration: data.toastDuration ?? DEFAULT_TOAST_DURATION,
       toastPositionDesktop: data.toastPositionDesktop ?? DEFAULT_TOAST_POSITION_DESKTOP,
@@ -216,6 +222,12 @@ const useConfigStore = create<IConfigState>((set, get) => ({
   setNotificationsEnabled: (enabled) => {
     set({ notificationsEnabled: enabled });
     saveConfig({ notificationsEnabled: enabled });
+  },
+
+  setSoundOnCompleteEnabled: (enabled) => {
+    if (get().soundOnCompleteEnabled === enabled) return;
+    set({ soundOnCompleteEnabled: enabled });
+    saveConfig({ soundOnCompleteEnabled: enabled });
   },
 
   setToastOnCompleteEnabled: (enabled) => {

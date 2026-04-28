@@ -28,6 +28,7 @@ import { watch, type FSWatcher } from 'fs';
 import path from 'path';
 import { readAgentSessionId, readAgentSummary } from '@/lib/agent-tab-fields';
 import { checkCodexJsonlState } from '@/lib/codex-jsonl-state';
+import { getConfig } from '@/lib/config-store';
 
 const log = createLogger('status');
 const hookLog = createLogger('hooks');
@@ -1357,9 +1358,11 @@ class StatusManager {
     const title = pushType === 'needs-input' ? 'Input Required' : 'Task Complete';
     const body = entry.lastUserMessage?.slice(0, 100) || entry.tabName || tabId;
     const ws = (await getWorkspaces()).workspaces.find((w) => w.id === entry.workspaceId);
+    const config = await getConfig();
     const payload = JSON.stringify({
       title,
       body,
+      silent: pushType === 'review' && config.soundOnCompleteEnabled === false,
       tabId,
       workspaceId: entry.workspaceId,
       agentSessionId: entry.agentSessionId ?? null,
