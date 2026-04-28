@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>codexmux</title>
+    <style>
+      :root {
+        color-scheme: dark light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #0b0c0f;
+        color: #f5f7fa;
+        --border: #313743;
+        --muted: #a7b0bd;
+        --panel: #12151b;
+        --accent: #7aa2f7;
+        --danger: #f87171;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100svh;
+        margin: 0;
+        background: #0b0c0f;
+      }
+
+      main {
+        display: grid;
+        min-height: 100svh;
+        align-items: center;
+        padding: max(28px, env(safe-area-inset-top)) 20px max(28px, env(safe-area-inset-bottom));
+      }
+
+      section {
+        width: min(100%, 460px);
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin: 0 0 10px;
+        font-size: 2rem;
+        line-height: 1.05;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0 0 22px;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      form,
+      .server-panel,
+      .recent,
+      .app-info {
+        display: grid;
+        gap: 12px;
+      }
+
+      form[hidden],
+      .server-panel[hidden],
+      .recent[hidden] {
+        display: none;
+      }
+
+      label {
+        display: grid;
+        gap: 8px;
+        color: #c8ced8;
+        font-size: 0.875rem;
+      }
+
+      input {
+        width: 100%;
+        min-height: 48px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--panel);
+        color: #f5f7fa;
+        font: inherit;
+        padding: 0 13px;
+        outline: none;
+      }
+
+      input:focus {
+        border-color: var(--accent);
+      }
+
+      button {
+        min-height: 48px;
+        border: 0;
+        border-radius: 8px;
+        background: #f5f7fa;
+        color: #111318;
+        font: inherit;
+        font-weight: 700;
+      }
+
+      button.secondary {
+        border: 1px solid var(--border);
+        background: transparent;
+        color: #f5f7fa;
+        font-weight: 600;
+      }
+
+      button.link {
+        min-height: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--accent);
+        font-size: 0.875rem;
+        font-weight: 700;
+        text-align: left;
+      }
+
+      .source {
+        color: #8ea0b7;
+        font-size: 0.8125rem;
+        font-weight: 700;
+      }
+
+      .server {
+        overflow-wrap: anywhere;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--panel);
+        padding: 12px;
+        color: #d9e0ea;
+        line-height: 1.35;
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .recent {
+        margin-top: 20px;
+      }
+
+      .recent-title {
+        color: #c8ced8;
+        font-size: 0.875rem;
+        font-weight: 700;
+      }
+
+      .recent-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .recent-item {
+        min-height: 44px;
+        overflow-wrap: anywhere;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: transparent;
+        color: #d9e0ea;
+        font-size: 0.875rem;
+        font-weight: 600;
+        padding: 10px 12px;
+        text-align: left;
+      }
+
+      .status {
+        min-height: 22px;
+        margin: 14px 0 0;
+        color: #8ea0b7;
+        font-size: 0.875rem;
+      }
+
+      .status.error {
+        color: var(--danger);
+      }
+
+      .hint {
+        margin-top: 14px;
+        font-size: 0.8125rem;
+        color: #7d8794;
+      }
+
+      details {
+        margin-top: 20px;
+        border-top: 1px solid var(--border);
+        padding-top: 14px;
+      }
+
+      summary {
+        color: #c8ced8;
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 700;
+      }
+
+      .app-info {
+        margin-top: 12px;
+      }
+
+      .info-row {
+        display: grid;
+        grid-template-columns: 92px 1fr;
+        gap: 12px;
+        color: #d9e0ea;
+        font-size: 0.8125rem;
+        line-height: 1.4;
+      }
+
+      .info-row span:first-child {
+        color: #7d8794;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section>
+        <h1>codexmux</h1>
+        <p>실행 중인 codexmux 서버에 연결합니다.</p>
+
+        <div class="server-panel" id="server-panel" hidden>
+          <div class="source" id="server-source"></div>
+          <div class="server" id="server-url"></div>
+          <div class="actions">
+            <button type="button" id="connect-current">연결</button>
+            <button type="button" class="secondary" id="change-server">변경</button>
+          </div>
+        </div>
+
+        <form id="connect-form" hidden>
+          <label>
+            Server URL
+            <input
+              id="server-input"
+              name="server-url"
+              type="url"
+              inputmode="url"
+              autocomplete="url"
+              placeholder="https://machine.tailnet.ts.net"
+              required
+            />
+          </label>
+          <button type="submit">저장 후 연결</button>
+          <button type="button" class="link" id="use-default">기본 서버 사용</button>
+        </form>
+
+        <div class="recent" id="recent" hidden>
+          <div class="recent-title">최근 서버</div>
+          <div class="recent-list" id="recent-list"></div>
+        </div>
+
+        <p class="status" id="status"></p>
+        <p class="hint">기본 서버와 최근 서버를 저장해 다음 실행부터 자동 연결합니다.</p>
+
+        <details>
+          <summary>앱 정보</summary>
+          <div class="app-info">
+            <div class="info-row"><span>Version</span><span id="app-version">-</span></div>
+            <div class="info-row"><span>Build</span><span id="app-build">-</span></div>
+            <div class="info-row"><span>Package</span><span id="app-package">-</span></div>
+            <div class="info-row"><span>Device</span><span id="app-device">-</span></div>
+            <div class="info-row"><span>Android</span><span id="app-android">-</span></div>
+          </div>
+        </details>
+      </section>
+    </main>
+    <script>
+      const DEFAULT_SERVER_URL = 'https://gti12.tail73c4be.ts.net';
+      const CURRENT_KEY = 'codexmux:server-url';
+      const RECENT_KEY = 'codexmux:recent-server-urls';
+      const MAX_RECENT = 5;
+
+      const serverPanel = document.getElementById('server-panel');
+      const serverSource = document.getElementById('server-source');
+      const serverUrl = document.getElementById('server-url');
+      const connectCurrent = document.getElementById('connect-current');
+      const changeServer = document.getElementById('change-server');
+      const form = document.getElementById('connect-form');
+      const input = document.getElementById('server-input');
+      const useDefault = document.getElementById('use-default');
+      const recent = document.getElementById('recent');
+      const recentList = document.getElementById('recent-list');
+      const status = document.getElementById('status');
+      const appVersion = document.getElementById('app-version');
+      const appBuild = document.getElementById('app-build');
+      const appPackage = document.getElementById('app-package');
+      const appDevice = document.getElementById('app-device');
+      const appAndroid = document.getElementById('app-android');
+      const params = new URLSearchParams(window.location.search);
+      const hasConnectionFailure = params.get('connection') === 'failed';
+
+      let autoConnectTimer = null;
+      let currentUrl = '';
+
+      const normalizeUrl = (raw) => {
+        const value = String(raw || '').trim();
+        if (!value) return '';
+        const withScheme = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+        try {
+          const url = new URL(withScheme);
+          if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
+          return url.toString().replace(/\/$/, '');
+        } catch {
+          return '';
+        }
+      };
+
+      const readRecent = () => {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+          return Array.isArray(parsed) ? parsed.map(normalizeUrl).filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      };
+
+      const writeRecent = (urls) => {
+        const unique = [];
+        for (const url of urls.map(normalizeUrl).filter(Boolean)) {
+          if (!unique.includes(url)) unique.push(url);
+        }
+        localStorage.setItem(RECENT_KEY, JSON.stringify(unique.slice(0, MAX_RECENT)));
+      };
+
+      const rememberServer = (url) => {
+        const normalized = normalizeUrl(url);
+        if (!normalized) return '';
+        localStorage.setItem(CURRENT_KEY, normalized);
+        writeRecent([normalized, ...readRecent()]);
+        return normalized;
+      };
+
+      const setStatus = (message, tone = 'normal') => {
+        status.textContent = message;
+        status.classList.toggle('error', tone === 'error');
+      };
+
+      const renderRecent = () => {
+        const urls = readRecent().filter((url) => url !== currentUrl);
+        recent.hidden = urls.length === 0;
+        recentList.replaceChildren();
+        for (const url of urls) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'recent-item';
+          button.textContent = url;
+          button.addEventListener('click', () => {
+            const nextUrl = rememberServer(url);
+            if (nextUrl) openServer(nextUrl);
+          });
+          recentList.appendChild(button);
+        }
+      };
+
+      const openServer = (url) => {
+        const normalized = rememberServer(url);
+        if (!normalized) {
+          setStatus('서버 주소를 확인해 주세요.', 'error');
+          return;
+        }
+        setStatus('연결 중...');
+        window.location.href = normalized;
+      };
+
+      const showForm = (value = '') => {
+        if (autoConnectTimer) window.clearTimeout(autoConnectTimer);
+        serverPanel.hidden = true;
+        form.hidden = false;
+        input.value = value;
+        input.focus();
+        input.select();
+        setStatus('');
+        renderRecent();
+      };
+
+      const showServer = (url, source, autoConnect) => {
+        currentUrl = rememberServer(url);
+        if (!currentUrl) {
+          showForm();
+          return;
+        }
+        form.hidden = true;
+        serverPanel.hidden = false;
+        serverSource.textContent = source === 'default' ? '기본 서버' : '저장된 서버';
+        serverUrl.textContent = currentUrl;
+        renderRecent();
+        if (hasConnectionFailure) {
+          setStatus('서버에 연결하지 못했습니다. 네트워크와 Tailscale 상태를 확인한 뒤 다시 시도해 주세요.', 'error');
+          return;
+        }
+        setStatus(`${serverSource.textContent}로 자동 연결합니다.`);
+        if (autoConnect) {
+          autoConnectTimer = window.setTimeout(() => openServer(currentUrl), 300);
+        }
+      };
+
+      const boot = () => {
+        renderAppInfo();
+        const saved = normalizeUrl(localStorage.getItem(CURRENT_KEY));
+        if (saved) {
+          showServer(saved, 'saved', true);
+          return;
+        }
+        showServer(DEFAULT_SERVER_URL, 'default', true);
+      };
+
+      const getNativeAppInfo = () => {
+        const api = window.CodexmuxAndroid;
+        if (!api) return null;
+        return {
+          versionName: api.getVersionName?.() || '-',
+          versionCode: api.getVersionCode?.() || '-',
+          packageName: api.getPackageName?.() || '-',
+          deviceModel: api.getDeviceModel?.() || '-',
+          androidVersion: api.getAndroidVersion?.() || '-',
+        };
+      };
+
+      const renderAppInfo = () => {
+        const info = getNativeAppInfo();
+        if (!info) return;
+        appVersion.textContent = info.versionName;
+        appBuild.textContent = info.versionCode;
+        appPackage.textContent = info.packageName;
+        appDevice.textContent = info.deviceModel;
+        appAndroid.textContent = info.androidVersion;
+      };
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        openServer(input.value);
+      });
+
+      connectCurrent.addEventListener('click', () => {
+        if (autoConnectTimer) window.clearTimeout(autoConnectTimer);
+        openServer(currentUrl || localStorage.getItem(CURRENT_KEY) || DEFAULT_SERVER_URL);
+      });
+
+      changeServer.addEventListener('click', () => {
+        showForm(currentUrl || localStorage.getItem(CURRENT_KEY) || DEFAULT_SERVER_URL);
+      });
+
+      useDefault.addEventListener('click', () => {
+        const nextUrl = rememberServer(DEFAULT_SERVER_URL);
+        if (nextUrl) openServer(nextUrl);
+      });
+
+      boot();
+    </script>
+  </body>
+</html>

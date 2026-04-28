@@ -180,6 +180,10 @@ interface IMenuMessages {
   server: string;
   useLocalServer: string;
   connectRemoteServer: string;
+  edit: string;
+  view: string;
+  window: string;
+  newWindow: string;
   serverConnection: string;
   serverAddress: string;
   cancel: string;
@@ -198,8 +202,8 @@ interface IMenuMessages {
 }
 
 const menuMessages: Record<string, IMenuMessages> = {
-  en: { server: 'Server', useLocalServer: 'Use Local Server', connectRemoteServer: 'Connect to Remote Server…', serverConnection: 'Server Connection', serverAddress: 'Server Address', cancel: 'Cancel', connect: 'Connect', checkForUpdates: 'Check for Updates…', updateAvailableMessage: 'A new version ({version}) is available', updateAvailableDetail: 'Would you like to download it now?', download: 'Download', later: 'Later', updateReadyMessage: 'Version {version} is ready to install', updateReadyDetail: 'Restart codexmux to apply the update.', restartNow: 'Restart Now', upToDateMessage: "You're up to date", upToDateDetail: 'codexmux {version} is the latest version.', updateErrorMessage: 'Failed to check for updates' },
-  ko: { server: '서버', useLocalServer: '로컬 서버 사용', connectRemoteServer: '원격 서버 연결…', serverConnection: '서버 연결', serverAddress: '서버 주소', cancel: '취소', connect: '연결', checkForUpdates: '업데이트 확인…', updateAvailableMessage: '새 버전({version})이 있습니다', updateAvailableDetail: '지금 다운로드할까요?', download: '다운로드', later: '나중에', updateReadyMessage: '{version} 버전 설치 준비 완료', updateReadyDetail: 'codexmux를 재시작하면 업데이트가 적용됩니다.', restartNow: '지금 재시작', upToDateMessage: '최신 버전입니다', upToDateDetail: 'codexmux {version}을 사용 중입니다.', updateErrorMessage: '업데이트 확인에 실패했습니다' },
+  en: { server: 'Server', useLocalServer: 'Use Local Server', connectRemoteServer: 'Connect to Remote Server…', edit: 'Edit', view: 'View', window: 'Window', newWindow: 'New Window', serverConnection: 'Server Connection', serverAddress: 'Server Address', cancel: 'Cancel', connect: 'Connect', checkForUpdates: 'Check for Updates…', updateAvailableMessage: 'A new version ({version}) is available', updateAvailableDetail: 'Would you like to download it now?', download: 'Download', later: 'Later', updateReadyMessage: 'Version {version} is ready to install', updateReadyDetail: 'Restart codexmux to apply the update.', restartNow: 'Restart Now', upToDateMessage: "You're up to date", upToDateDetail: 'codexmux {version} is the latest version.', updateErrorMessage: 'Failed to check for updates' },
+  ko: { server: '서버', useLocalServer: '로컬 서버 사용', connectRemoteServer: '원격 서버 연결…', edit: '편집', view: '보기', window: '창', newWindow: '새 창', serverConnection: '서버 연결', serverAddress: '서버 주소', cancel: '취소', connect: '연결', checkForUpdates: '업데이트 확인…', updateAvailableMessage: '새 버전({version})이 있습니다', updateAvailableDetail: '지금 다운로드할까요?', download: '다운로드', later: '나중에', updateReadyMessage: '{version} 버전 설치 준비 완료', updateReadyDetail: 'codexmux를 재시작하면 업데이트가 적용됩니다.', restartNow: '지금 재시작', upToDateMessage: '최신 버전입니다', upToDateDetail: 'codexmux {version}을 사용 중입니다.', updateErrorMessage: '업데이트 확인에 실패했습니다' },
 };
 
 let currentLocale = 'en';
@@ -424,6 +428,19 @@ const getServerLabel = (): string => {
   return localPort ? `localhost:${localPort}` : 'localhost';
 };
 
+const normalizeServerUrl = (raw: string): string | null => {
+  const value = raw.trim();
+  if (!value) return null;
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? value : `http://${value}`;
+  try {
+    const url = new URL(withScheme);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return null;
+  }
+};
+
 const updateMenu = () => {
   const template: Electron.MenuItemConstructorOptions[] = [
     {
@@ -446,14 +463,14 @@ const updateMenu = () => {
       ],
     },
     {
-      label: 'Edit',
+      label: mt().edit,
       submenu: [
         { role: 'undo' }, { role: 'redo' }, { type: 'separator' },
         { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' },
       ],
     },
     {
-      label: 'View',
+      label: mt().view,
       submenu: [
         { role: 'reload' }, { role: 'forceReload' }, { role: 'toggleDevTools' },
         { type: 'separator' },
@@ -463,10 +480,10 @@ const updateMenu = () => {
       ],
     },
     {
-      label: 'Window',
+      label: mt().window,
       submenu: [
         {
-          label: 'New Window',
+          label: mt().newWindow,
           accelerator: 'CommandOrControl+Shift+N',
           registerAccelerator: false,
           click: openNewWindow,
@@ -502,7 +519,7 @@ const handleSwitchToRemote = async () => {
   const parent = getPrimaryWindow();
   if (!parent) return;
 
-  const url = await showServerPrompt(parent, serverConfig.remoteUrl);
+  const url = normalizeServerUrl(await showServerPrompt(parent, serverConfig.remoteUrl) ?? '');
   if (!url) {
     updateMenu();
     return;

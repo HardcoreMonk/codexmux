@@ -1,0 +1,49 @@
+package com.hardcoremonk.codexmux;
+
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebView;
+import com.getcapacitor.Bridge;
+import com.getcapacitor.BridgeWebViewClient;
+
+public class CodexmuxWebViewClient extends BridgeWebViewClient {
+    private final Bridge bridge;
+
+    public CodexmuxWebViewClient(Bridge bridge) {
+        super(bridge);
+        this.bridge = bridge;
+    }
+
+    @Override
+    public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+        if (shouldShowLauncher(request)) {
+            loadLauncher(view);
+            return;
+        }
+        super.onReceivedError(view, request, error);
+    }
+
+    @Override
+    public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
+        if (shouldShowLauncher(request) && errorResponse != null && errorResponse.getStatusCode() >= 500) {
+            loadLauncher(view);
+            return;
+        }
+        super.onReceivedHttpError(view, request, errorResponse);
+    }
+
+    private boolean shouldShowLauncher(WebResourceRequest request) {
+        if (request == null || !request.isForMainFrame() || request.getUrl() == null) return false;
+        String url = request.getUrl().toString();
+        String localUrl = bridge.getLocalUrl();
+        return localUrl != null && !url.startsWith(localUrl);
+    }
+
+    private void loadLauncher(WebView view) {
+        String localUrl = bridge.getLocalUrl();
+        if (localUrl == null) return;
+        String separator = localUrl.endsWith("/") ? "" : "/";
+        view.loadUrl(localUrl + separator + "?connection=failed");
+    }
+}

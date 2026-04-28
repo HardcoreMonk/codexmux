@@ -26,6 +26,10 @@ const eslintConfig = defineConfig([
     "electron/**",
     "release/**",
     "scripts/**",
+    "android/.gradle/**",
+    "android/**/build/**",
+    "android/app/src/main/assets/**",
+    "android/capacitor-cordova-android-plugins/**",
     // Landing site (Eleventy / CJS, separate build)
     "landing-src/**",
     "eleventy.config.js",

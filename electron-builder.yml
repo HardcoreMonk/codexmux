@@ -1,4 +1,4 @@
-appId: com.subicura.codexmux
+appId: com.hardcoremonk.codexmux
 productName: codexmux
 directories:
   buildResources: build-resources
@@ -24,7 +24,7 @@ mac:
 
 publish:
   provider: github
-  owner: subicura
+  owner: HardcoreMonk
   repo: codexmux
 
 dmg:

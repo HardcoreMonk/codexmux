@@ -1,0 +1,97 @@
+# Android Development
+
+codexmux Android 앱은 Capacitor 기반 WebView shell입니다. Android 기기에서 Codex나 tmux를 직접 실행하지 않고, 데스크톱 또는 서버에서 실행 중인 codexmux에 접속합니다.
+
+## Commands
+
+```bash
+corepack pnpm android:sync
+corepack pnpm android:open
+corepack pnpm android:run
+corepack pnpm android:build
+corepack pnpm android:install
+corepack pnpm android:keystore
+corepack pnpm android:build:release
+corepack pnpm android:bundle:release
+```
+
+- `android:sync`: `android-web/` asset과 Capacitor 설정을 `android/` 프로젝트에 반영합니다.
+- `android:open`: Android Studio를 엽니다.
+- `android:run`: 연결된 기기 또는 에뮬레이터에서 실행합니다.
+- `android:build`: debug APK를 생성합니다.
+- `android:install`: 연결된 기기에 debug APK를 설치합니다.
+- `android:keystore`: 로컬 release keystore와 `android/keystore.properties`를 생성합니다.
+- `android:build:release`: signed release APK를 생성합니다.
+- `android:bundle:release`: signed release AAB를 생성합니다.
+
+## Versioning
+
+Android 앱 버전은 repo root의 `package.json` 버전을 사용합니다.
+
+| Source | Android |
+| --- | --- |
+| `package.json` `version` | `versionName` |
+| `major * 10000 + minor * 100 + patch` | `versionCode` |
+
+예: `0.2.4`는 `versionName=0.2.4`, `versionCode=204`입니다. CI나 수동 배포에서 `ANDROID_VERSION_CODE` 환경변수를 주면 `versionCode`만 override할 수 있습니다.
+
+## Local SDK
+
+현재 개발 머신 기준:
+
+| Item | Value |
+| --- | --- |
+| SDK path | `/home/hardcoremonk/Android/Sdk` |
+| compile SDK | `android-36` |
+| build tools | `36.0.0` |
+| platform tools | `37.0.0` |
+| JDK | OpenJDK 21 |
+
+프로젝트별 SDK 경로는 `android/local.properties`에 둡니다. 이 파일은 git에 커밋하지 않습니다.
+
+## App Structure
+
+| Path | Purpose |
+| --- | --- |
+| `capacitor.config.ts` | app id, WebView navigation, cookie 설정 |
+| `android-web/index.html` | 서버 URL 저장/자동 재접속 런처 |
+| `android/` | Capacitor Android native project |
+| `android/app/src/main/AndroidManifest.xml` | Android 권한과 cleartext 개발 설정 |
+| `android/app/src/main/java/com/hardcoremonk/codexmux/CodexmuxAppInfo.java` | 런처에 앱 버전/기기 정보를 노출하는 native bridge |
+| `android/app/src/main/java/com/hardcoremonk/codexmux/CodexmuxWebViewClient.java` | 원격 서버 로딩 실패 시 런처 복귀 |
+
+## Connection Flow
+
+1. 앱에 저장된 서버 URL이 있으면 바로 자동 재접속합니다.
+2. 저장된 URL이 없으면 기본 서버 URL을 저장한 뒤 자동 연결합니다.
+3. 최근 서버 목록에서 이전 서버를 바로 다시 선택할 수 있습니다.
+4. 서버를 바꿔야 하면 런처의 변경 버튼으로 URL을 수정합니다.
+5. 변경한 URL은 `localStorage`에 저장되고 다음 실행부터 우선 사용됩니다.
+6. 원격 서버 로딩 실패나 5xx 응답은 native WebViewClient가 런처로 되돌리고 재시도/변경 흐름을 제공합니다.
+7. 앱 정보 영역에서 versionName, versionCode, package, device, Android version을 확인할 수 있습니다.
+
+Tailscale Serve HTTPS 주소를 우선 사용합니다. 로컬 개발용 `http://` 접근은 manifest와 Capacitor 설정에서 허용하지만, 실사용은 HTTPS가 더 안정적입니다.
+
+Capacitor Android의 `allowNavigation` wildcard는 domain label 개수를 정확히 맞춰야 합니다. Tailscale Serve 주소가 보통 `<machine>.<tailnet>.ts.net` 형태이므로 `capacitor.config.ts`에는 `*.ts.net`뿐 아니라 `*.*.ts.net`도 함께 허용합니다.
+
+## Build Output
+
+Debug APK:
+
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Signed release APK:
+
+```text
+android/app/build/outputs/apk/release/app-release.apk
+```
+
+Signed release AAB:
+
+```text
+android/app/build/outputs/bundle/release/app-release.aab
+```
+
+`android/release.keystore`와 `android/keystore.properties`는 로컬 비밀 파일이며 git에 커밋하지 않습니다. 새 환경에서는 `corepack pnpm android:keystore`로 생성하거나 기존 keystore를 복원합니다.

@@ -1,5 +1,13 @@
 # codexmux
 
+**언어 선택 / Language:** [한국어 기본](#ko) | [English](#en)
+
+> 기본 표시 언어는 한국어입니다. English is available below.
+
+<a id="ko"></a>
+
+## 한국어
+
 Codex 작업을 tmux 기반 웹 세션으로 관리하는 self-hosted session manager입니다.
 
 한 화면에서 여러 Codex 세션을 확인하고, 모바일에서도 같은 작업 공간에 다시 접속할 수 있습니다.
@@ -179,12 +187,23 @@ codexmux 상태는 `~/.codexmux/`에 저장됩니다. Codex CLI 원본 세션은
 
 ```bash
 corepack pnpm dev
+corepack pnpm dev:electron
+corepack pnpm dev:electron:attach
 corepack pnpm build
+corepack pnpm build:electron
 corepack pnpm start
 corepack pnpm lint
 corepack pnpm tsc --noEmit
 corepack pnpm test
 corepack pnpm build:landing
+corepack pnpm android:sync
+corepack pnpm android:open
+corepack pnpm android:run
+corepack pnpm android:build
+corepack pnpm android:build:release
+corepack pnpm android:bundle:release
+corepack pnpm android:install
+corepack pnpm android:keystore
 ```
 
 로그 레벨:
@@ -193,6 +212,102 @@ corepack pnpm build:landing
 LOG_LEVEL=debug corepack pnpm dev
 LOG_LEVELS=status=debug,tmux=trace corepack pnpm dev
 ```
+
+## Electron 개발
+
+Electron 데스크톱 앱은 `electron/` 아래 main/preload 코드와 Next.js 웹 서버를 함께 사용합니다.
+
+개발 모드는 한 명령으로 실행합니다.
+
+```bash
+corepack pnpm dev:electron
+```
+
+이미 `corepack pnpm dev`로 웹 서버를 띄운 상태에서 Electron만 붙이고 싶으면 attach 명령을 사용합니다.
+
+```bash
+corepack pnpm dev:electron:attach
+```
+
+Electron 빌드 확인:
+
+```bash
+corepack pnpm build:electron
+```
+
+로컬 macOS 패키징 확인:
+
+```bash
+corepack pnpm pack:electron:dev
+```
+
+릴리스용 패키징은 서명/노터라이즈 환경을 준비한 뒤 실행합니다.
+
+```bash
+corepack pnpm pack:electron
+```
+
+세부 구조와 운영 메모는 [docs/ELECTRON.md](docs/ELECTRON.md)를 참고합니다.
+
+## Android 앱 개발
+
+Android 앱은 Capacitor 기반 클라이언트 shell로 `android/`에 포함되어 있습니다. 모바일 기기에서 Codex/tmux를 직접 실행하는 구조가 아니라, 데스크톱 또는 서버에서 실행 중인 codexmux에 안전하게 접속합니다.
+
+구성:
+
+- `capacitor.config.ts`: Android 앱 ID, WebView navigation, cookie 설정
+- `android-web/index.html`: 서버 URL을 입력하고 저장하는 Android 런처
+- `android/`: Capacitor가 생성한 Android native project
+
+Android 프로젝트 동기화:
+
+```bash
+corepack pnpm android:sync
+```
+
+Android Studio 열기:
+
+```bash
+corepack pnpm android:open
+```
+
+기기 또는 에뮬레이터 실행:
+
+```bash
+corepack pnpm android:run
+```
+
+Debug APK 빌드:
+
+```bash
+corepack pnpm android:build
+```
+
+기기에 debug APK 설치:
+
+```bash
+corepack pnpm android:install
+```
+
+릴리스 빌드는 keystore signing 설정을 준비한 뒤 실행합니다.
+
+```bash
+corepack pnpm android:keystore
+corepack pnpm android:build:release
+corepack pnpm android:bundle:release
+```
+
+예상 개발 전제:
+
+- Android Studio
+- JDK 17 이상
+- Android SDK
+- 모바일 기기에 Tailscale 설치 및 같은 tailnet 로그인
+- codexmux 서버는 `HOST=localhost,tailscale` 또는 Tailscale Serve HTTPS로 노출
+
+앱은 저장된 서버 또는 기본 Tailscale 서버로 자동 연결합니다. 최근 서버 목록, 서버 변경, 연결 실패 시 재시도 흐름, 앱 정보 화면을 제공합니다. Android 버전은 `package.json` 버전과 자동 동기화됩니다. HTTPS Tailscale Serve 주소를 우선 사용하고, 로컬 개발용 HTTP는 Android manifest와 Capacitor 설정에서 허용합니다.
+
+세부 구조와 빌드 메모는 [docs/ANDROID.md](docs/ANDROID.md)를 참고합니다.
 
 ## CLI
 
@@ -246,6 +361,10 @@ Codex JSONL
 | [docs/TMUX.md](docs/TMUX.md) | tmux, terminal WebSocket, session 관리 |
 | [docs/DATA-DIR.md](docs/DATA-DIR.md) | `~/.codexmux/` 구조와 삭제 기준 |
 | [docs/STYLE.md](docs/STYLE.md) | theme와 color 사용 규칙 |
+| [docs/ELECTRON.md](docs/ELECTRON.md) | Electron desktop app 개발과 패키징 |
+| [docs/ANDROID.md](docs/ANDROID.md) | Android Capacitor app 개발과 빌드 |
+
+<a id="en"></a>
 
 ## English
 
@@ -309,6 +428,98 @@ Production check:
 corepack pnpm build
 corepack pnpm start
 ```
+
+### Electron Development
+
+The Electron desktop app uses the main/preload code under `electron/` together with the Next.js web server.
+
+Run the development flow with one command:
+
+```bash
+corepack pnpm dev:electron
+```
+
+If `corepack pnpm dev` is already running, attach Electron only:
+
+```bash
+corepack pnpm dev:electron:attach
+```
+
+Build the Electron app:
+
+```bash
+corepack pnpm build:electron
+```
+
+Local macOS packaging check:
+
+```bash
+corepack pnpm pack:electron:dev
+```
+
+Release packaging requires the signing and notarization environment:
+
+```bash
+corepack pnpm pack:electron
+```
+
+### Android App Development
+
+The Android app is included under `android/` as a Capacitor-based client shell. It connects to a running codexmux server instead of running Codex/tmux directly on the phone.
+
+Structure:
+
+- `capacitor.config.ts`: Android app id, WebView navigation, and cookie settings
+- `android-web/index.html`: Android launcher that stores and opens the server URL
+- `android/`: generated Capacitor Android native project
+
+Sync Android project files:
+
+```bash
+corepack pnpm android:sync
+```
+
+Open Android Studio:
+
+```bash
+corepack pnpm android:open
+```
+
+Run on a device or emulator:
+
+```bash
+corepack pnpm android:run
+```
+
+Build Android:
+
+```bash
+corepack pnpm android:build
+```
+
+Install the debug APK on a device:
+
+```bash
+corepack pnpm android:install
+```
+
+Release builds require keystore signing settings:
+
+```bash
+corepack pnpm android:keystore
+corepack pnpm android:build:release
+corepack pnpm android:bundle:release
+```
+
+Expected prerequisites:
+
+- Android Studio
+- JDK 17 or newer
+- Android SDK
+- Tailscale installed on the phone and logged into the same tailnet
+- codexmux exposed through `HOST=localhost,tailscale` or Tailscale Serve HTTPS
+
+The app automatically connects to the saved server or the default Tailscale server. The launcher supports recent servers, server changes, retry flow after connection failures, and app info. Android versioning is synchronized with `package.json`. Prefer HTTPS through Tailscale Serve; HTTP is enabled only for local development paths.
 
 ### Tailscale
 
