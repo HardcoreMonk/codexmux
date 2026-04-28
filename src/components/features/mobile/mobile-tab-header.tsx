@@ -81,12 +81,13 @@ const MobileTabHeader = ({
             <button
               key={mode.type}
               className={cn(
-                'rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide transition-colors',
+                'touch-manipulation rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide transition-colors active:bg-accent/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                 panelType === mode.type
                   ? 'bg-accent text-foreground'
-                  : 'text-muted-foreground/60 hover:text-muted-foreground',
+                  : 'text-muted-foreground/60 hover:bg-accent/40 hover:text-muted-foreground',
               )}
               onClick={() => onSwitchPanelType(mode.type)}
+              aria-pressed={panelType === mode.type}
             >
               {mode.label}
             </button>
@@ -95,7 +96,7 @@ const MobileTabHeader = ({
 
         {showCopy && (
           <button
-            className="flex h-10 w-10 items-center justify-center text-muted-foreground transition-colors"
+            className="flex h-10 w-10 touch-manipulation items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/40 active:bg-accent/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             onClick={() => setCopyOpen(true)}
             aria-label={tt('copyPaneLabel')}
           >
@@ -104,7 +105,7 @@ const MobileTabHeader = ({
         )}
 
         <button
-          className="flex h-10 w-10 items-center justify-center text-muted-foreground transition-colors"
+          className="flex h-10 w-10 touch-manipulation items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/40 active:bg-accent/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           onClick={onCreateTab}
           aria-label={t('newTab')}
         >
@@ -113,7 +114,7 @@ const MobileTabHeader = ({
 
         <AlertDialog>
           <AlertDialogTrigger
-            className="flex h-10 w-10 items-center justify-center text-muted-foreground transition-colors"
+            className="flex h-10 w-10 touch-manipulation items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/40 active:bg-accent/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             aria-label={t('closeTab')}
           >
             <X size={16} />

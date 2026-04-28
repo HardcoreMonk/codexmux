@@ -45,7 +45,7 @@ export const LoginForm = ({ className, onSuccess, ...props }: ILoginFormProps) =
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
-      <div className="flex flex-col gap-14">
+      <div className="flex flex-col gap-10">
         <AppLogo shimmer size="xl" className="justify-center" />
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
@@ -64,7 +64,7 @@ export const LoginForm = ({ className, onSuccess, ...props }: ILoginFormProps) =
             />
             {error && <p className="text-destructive text-sm">{error}</p>}
           </div>
-          <Button type="submit" disabled={isLoading || !password} size="lg" className="h-12 w-full">
+          <Button type="submit" disabled={isLoading || !password} size="lg" className="h-12 w-full transition-transform duration-200 active:scale-[0.99]">
             <Lock className="size-4" />
             {isLoading ? t('loggingIn') : t('loginButton')}
           </Button>

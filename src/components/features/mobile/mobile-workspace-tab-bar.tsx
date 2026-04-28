@@ -1,5 +1,6 @@
 import { useRef, useEffect, useMemo } from 'react';
 import { Globe, GitCompareArrows } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/spinner';
 import useTabStore, { selectTabDisplayStatus } from '@/hooks/use-tab-store';
 import { cn } from '@/lib/utils';
@@ -31,8 +32,13 @@ const MobileWorkspaceTabBar = ({
   selectedTabId,
   onSelect,
 }: IMobileWorkspaceTabBarProps) => {
+  const t = useTranslations('mobile');
   const activeRef = useRef<HTMLButtonElement>(null);
   const statusTabs = useTabStore((s) => s.tabs);
+  const workspaceNameById = useMemo(
+    () => new Map(workspaces.map((ws) => [ws.id, ws.name])),
+    [workspaces],
+  );
   const items = useMemo(() => {
     const result: (ITabDot | 'divider')[] = [];
 
@@ -97,9 +103,17 @@ const MobileWorkspaceTabBar = ({
             <button
               key={item.tabId}
               ref={isActive ? activeRef : undefined}
-              className="flex h-8 w-8 shrink-0 items-center justify-center"
+              className={cn(
+                'flex h-8 w-8 shrink-0 touch-manipulation items-center justify-center rounded-md transition-colors hover:bg-accent/40 active:bg-accent/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                isActive && 'bg-accent/30',
+              )}
               onClick={() => onSelect(item.workspaceId, item.paneId, item.tabId)}
               aria-current={isActive ? 'true' : undefined}
+              aria-label={
+                isActive
+                  ? t('currentTab', { name: workspaceNameById.get(item.workspaceId) ?? 'Workspace' })
+                  : t('switchTab', { name: workspaceNameById.get(item.workspaceId) ?? 'Workspace' })
+              }
             >
               {isActive ? (
                 <span className="h-2 w-2 rounded-[2px] bg-foreground" />

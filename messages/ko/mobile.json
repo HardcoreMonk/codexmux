@@ -5,6 +5,8 @@
   "closeTab": "탭 닫기",
   "closeTabConfirm": "''{name}'' 탭을 닫으시겠습니까?",
   "closeMenu": "메뉴 닫기",
+  "switchTab": "{name} 탭으로 이동",
+  "currentTab": "현재 탭: {name}",
   "notes": "노트",
   "stats": "통계",
   "disconnectedMaxConnections": "동시 접속 수를 초과했습니다. 다른 탭을 닫아주세요.",

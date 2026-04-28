@@ -234,14 +234,14 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
   const lightThemes = TERMINAL_THEMES.filter((th) => th.variant === 'light');
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <AppLogo shimmer size="xl" className="justify-center" />
 
       <StepIndicator current={step} steps={steps} />
 
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        {STEP_ICONS[step]}
-        <span className="font-medium text-foreground">{t(`steps.${step}`)}</span>
+      <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+        <span className="text-agent-active">{STEP_ICONS[step]}</span>
+        <span className="font-semibold text-foreground">{t(`steps.${step}`)}</span>
       </div>
 
       <div className="grid">

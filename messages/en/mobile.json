@@ -5,6 +5,8 @@
   "closeTab": "Close Tab",
   "closeTabConfirm": "Close ''{name}'' tab?",
   "closeMenu": "Close menu",
+  "switchTab": "Switch to {name} tab",
+  "currentTab": "Current tab: {name}",
   "notes": "Notes",
   "stats": "Statistics",
   "disconnectedMaxConnections": "Too many connections. Please close other tabs.",

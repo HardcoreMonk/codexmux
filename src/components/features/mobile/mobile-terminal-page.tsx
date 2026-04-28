@@ -194,39 +194,43 @@ const MobileTerminalPage = () => {
 
   if (error && !workspaceCount) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3">
-        <AlertTriangle className="h-5 w-5 text-ui-amber" />
-        <span className="text-sm text-muted-foreground">{error}</span>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
-          onClick={useWorkspaceStore.getState().fetchWorkspaces}
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          {tc('retry')}
-        </Button>
+      <div className="flex flex-1 items-center justify-center px-6 text-center">
+        <div className="flex w-full max-w-xs flex-col items-center gap-3 rounded-xl border border-border/70 bg-card/80 px-5 py-5 ring-1 ring-border/30">
+          <AlertTriangle className="h-5 w-5 text-ui-amber" />
+          <span className="text-sm text-muted-foreground">{error}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 transition-transform active:scale-[0.99]"
+            onClick={useWorkspaceStore.getState().fetchWorkspaces}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            {tc('retry')}
+          </Button>
+        </div>
       </div>
     );
   }
 
   if (!activeWorkspaceId && !isLoading && !error) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-        <Monitor className="h-8 w-8 text-muted-foreground" />
-        <span className="text-sm font-medium text-muted-foreground">{tm('noWorkspace')}</span>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
-          onClick={async () => {
-            const created = await useWorkspaceStore.getState().createWorkspace('');
-            if (created) useWorkspaceStore.getState().switchWorkspace(created.id);
-          }}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {t('newWorkspace')}
-        </Button>
+      <div className="flex flex-1 items-center justify-center px-6 text-center">
+        <div className="flex w-full max-w-xs flex-col items-center gap-3 rounded-xl border border-border/70 bg-card/80 px-5 py-5 ring-1 ring-border/30">
+          <Monitor className="h-8 w-8 text-muted-foreground" />
+          <span className="text-sm font-medium text-muted-foreground">{tm('noWorkspace')}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 transition-transform active:scale-[0.99]"
+            onClick={async () => {
+              const created = await useWorkspaceStore.getState().createWorkspace('');
+              if (created) useWorkspaceStore.getState().switchWorkspace(created.id);
+            }}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t('newWorkspace')}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -241,18 +245,20 @@ const MobileTerminalPage = () => {
 
   if (layout.error && !layout.isLoading) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3">
-        <AlertTriangle className="h-5 w-5 text-ui-amber" />
-        <span className="text-sm text-muted-foreground">{layout.error}</span>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
-          onClick={() => layout.fetchLayout()}
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          {tc('retry')}
-        </Button>
+      <div className="flex flex-1 items-center justify-center px-6 text-center">
+        <div className="flex w-full max-w-xs flex-col items-center gap-3 rounded-xl border border-border/70 bg-card/80 px-5 py-5 ring-1 ring-border/30">
+          <AlertTriangle className="h-5 w-5 text-ui-amber" />
+          <span className="text-sm text-muted-foreground">{layout.error}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 transition-transform active:scale-[0.99]"
+            onClick={() => layout.fetchLayout()}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            {tc('retry')}
+          </Button>
+        </div>
       </div>
     );
   }

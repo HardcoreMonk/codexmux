@@ -169,11 +169,11 @@ const MobileNavigationSheet = ({
       <div key={tab.id} className="relative flex items-center">
         <button
           className={cn(
-            'flex w-full items-center gap-2 py-2.5 pr-4 text-left text-sm transition-colors',
+            'flex min-h-11 w-full touch-manipulation items-center gap-2 py-2.5 pr-4 text-left text-sm transition-colors focus-visible:outline-none',
             indent,
             isTabActive
-              ? 'bg-accent font-medium text-foreground'
-              : 'text-muted-foreground hover:bg-accent/50',
+              ? 'bg-accent/80 font-medium text-foreground active:bg-accent'
+              : 'text-muted-foreground hover:bg-accent/50 active:bg-accent/70',
           )}
           onClick={() => {
             if (longPressTabId) {
@@ -276,10 +276,10 @@ const MobileNavigationSheet = ({
       <div key={ws.id}>
         <button
           className={cn(
-            'flex w-full items-center gap-2 px-4 py-3 text-left text-sm transition-colors',
+            'flex min-h-11 w-full touch-manipulation items-center gap-2 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none',
             isActive
-              ? 'font-medium text-foreground'
-              : 'text-foreground hover:bg-accent/50',
+              ? 'bg-accent/30 font-medium text-foreground active:bg-accent/70'
+              : 'text-foreground hover:bg-accent/50 active:bg-accent/70',
           )}
           onClick={() => handleToggleWorkspace(ws.id)}
         >
@@ -320,7 +320,7 @@ const MobileNavigationSheet = ({
       <SheetContent side="left" className="w-72 gap-0 p-0" showCloseButton={false}>
         <SheetHeader className="flex-row items-center border-b py-1.5 pl-1 pr-3">
           <button
-            className="flex h-11 w-11 shrink-0 items-center justify-center text-muted-foreground focus-visible:outline-none"
+            className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/40 active:bg-accent/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             onClick={() => onOpenChange(false)}
             aria-label={t('closeMenu')}
           >
@@ -333,10 +333,10 @@ const MobileNavigationSheet = ({
             className="min-w-0 flex-1 gap-0"
           >
             <TabsList className="h-7 w-full">
-              <TabsTrigger value="workspace" className="h-full flex-1 px-2.5 text-[11px] tracking-wide">
+              <TabsTrigger value="workspace" className="h-full flex-1 touch-manipulation px-2.5 text-[11px] tracking-wide">
                 WORKSPACE
               </TabsTrigger>
-              <TabsTrigger value="sessions" className="h-full flex-1 px-2.5 text-[11px] tracking-wide">
+              <TabsTrigger value="sessions" className="h-full flex-1 touch-manipulation px-2.5 text-[11px] tracking-wide">
                 SESSIONS
                 {sessionsBadge > 0 && (
                   <span className="ml-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded bg-[var(--ui-coral)] px-0.5 text-[9px] font-medium leading-none text-white">
@@ -390,14 +390,14 @@ const MobileNavigationSheet = ({
           {mobileTab === 'workspace' && (
             <div className="flex items-stretch">
               <button
-                className="flex flex-1 items-center gap-2 px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-accent"
+                className="flex min-h-11 flex-1 touch-manipulation items-center gap-2 px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-accent active:bg-accent/70 focus-visible:outline-none"
                 onClick={onCreateWorkspace}
               >
                 <Plus size={16} />
                 Workspace
               </button>
               <button
-                className="flex w-12 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:bg-accent"
+                className="flex min-h-11 w-12 shrink-0 touch-manipulation items-center justify-center text-muted-foreground transition-colors hover:bg-accent active:bg-accent/70 focus-visible:outline-none"
                 onClick={handleCreateGroup}
                 aria-label={ts('newGroup')}
               >
@@ -413,7 +413,7 @@ const MobileNavigationSheet = ({
               return (
                 <button
                   key={item.id}
-                  className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent"
+                  className="flex h-8 w-8 touch-manipulation items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent active:bg-accent/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   onClick={() => {
                     onOpenChange(false);
                     router.push(navPath);
@@ -426,7 +426,7 @@ const MobileNavigationSheet = ({
               );
             })}
             <button
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent"
+              className="flex h-8 w-8 touch-manipulation items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent active:bg-accent/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               onClick={() => {
                 onOpenChange(false);
                 onOpenSettings();

@@ -9,6 +9,7 @@ corepack pnpm android:sync
 corepack pnpm android:open
 corepack pnpm android:run
 corepack pnpm android:build
+corepack pnpm android:build:debug
 corepack pnpm android:install
 corepack pnpm android:keystore
 corepack pnpm android:build:release
@@ -18,7 +19,7 @@ corepack pnpm android:bundle:release
 - `android:sync`: `android-web/` asset과 Capacitor 설정을 `android/` 프로젝트에 반영합니다.
 - `android:open`: Android Studio를 엽니다.
 - `android:run`: 연결된 기기 또는 에뮬레이터에서 실행합니다.
-- `android:build`: debug APK를 생성합니다.
+- `android:build`, `android:build:debug`: debug APK를 생성합니다.
 - `android:install`: 연결된 기기에 debug APK를 설치합니다.
 - `android:keystore`: 로컬 release keystore와 `android/keystore.properties`를 생성합니다.
 - `android:build:release`: signed release APK를 생성합니다.
@@ -34,6 +35,8 @@ Android 앱 버전은 repo root의 `package.json` 버전을 사용합니다.
 | `major * 10000 + minor * 100 + patch` | `versionCode` |
 
 예: `0.2.4`는 `versionName=0.2.4`, `versionCode=204`입니다. CI나 수동 배포에서 `ANDROID_VERSION_CODE` 환경변수를 주면 `versionCode`만 override할 수 있습니다.
+
+현재 앱 ID는 `com.hardcoremonk.codexmux`입니다.
 
 ## Local SDK
 
@@ -60,6 +63,14 @@ Android 앱 버전은 repo root의 `package.json` 버전을 사용합니다.
 | `android/app/src/main/java/com/hardcoremonk/codexmux/CodexmuxAppInfo.java` | 런처에 앱 버전/기기 정보를 노출하는 native bridge |
 | `android/app/src/main/java/com/hardcoremonk/codexmux/CodexmuxWebViewClient.java` | 원격 서버 로딩 실패 시 런처 복귀 |
 
+## Mobile UX
+
+- `android-web/index.html`은 한국어 우선 font stack, `word-break: keep-all`, safe-area padding, `100dvh`/`100svh` fallback을 사용합니다.
+- URL 입력, 현재 서버, 최근 서버처럼 주소가 들어가는 영역은 `overflow-wrap: anywhere`와 일반 줄바꿈을 유지합니다.
+- 런처 버튼은 `touch-action: manipulation`, `:active`, `:focus-visible` 상태를 제공합니다.
+- React 모바일 화면은 워크스페이스/탭 선택 항목, 하단 탭 바, 그룹 헤더, 상태 화면에 터치 눌림 상태와 focus-visible ring을 제공합니다.
+- terminal input, reconnect flow, WebView navigation은 안정성을 우선하므로 시각 개선보다 구조 변경을 최소화합니다.
+
 ## Connection Flow
 
 1. 앱에 저장된 서버 URL이 있으면 바로 자동 재접속합니다.
@@ -81,6 +92,17 @@ Debug APK:
 ```text
 android/app/build/outputs/apk/debug/app-debug.apk
 ```
+
+기기 설치 확인:
+
+```bash
+~/Android/Sdk/platform-tools/adb devices -l
+~/Android/Sdk/platform-tools/adb shell pm path com.hardcoremonk.codexmux
+~/Android/Sdk/platform-tools/adb shell dumpsys package com.hardcoremonk.codexmux | rg "versionName|versionCode|lastUpdateTime|Package \\["
+~/Android/Sdk/platform-tools/adb shell cmd package resolve-activity --brief com.hardcoremonk.codexmux
+```
+
+정상 설치 시 `pm path`는 `/data/app/.../base.apk`를 반환하고, launcher activity는 `com.hardcoremonk.codexmux/.MainActivity`로 resolve됩니다.
 
 Signed release APK:
 

@@ -510,8 +510,12 @@ const MobileSurfaceView = ({
       )}
 
       {noTabs && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3">
-          <Button className="gap-1.5" onClick={onOpenNewTabDialog ?? handleCreateTab} disabled={isCreating}>
+        <div className="absolute inset-0 z-20 flex items-center justify-center px-6 text-center">
+          <Button
+            className="gap-1.5 transition-transform active:scale-[0.99]"
+            onClick={onOpenNewTabDialog ?? handleCreateTab}
+            disabled={isCreating}
+          >
             {isCreating ? (
               <Spinner className="h-3 w-3" />
             ) : (
@@ -524,42 +528,51 @@ const MobileSurfaceView = ({
 
 
       {!noTabs && !isWebBrowser && status === 'disconnected' && !isFirstConnectionForTab && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3">
-          <WifiOff className="h-5 w-5 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
-            {disconnectReason === 'max-connections'
-              ? t('disconnectedMaxConnections')
-              : disconnectReason === 'pty-error'
-                ? t('disconnectedPtyError')
-                : disconnectReason === 'session-not-found'
-                  ? tt('disconnectedSessionNotFound')
-                  : t('cannotConnectServer')}
-          </span>
-          {disconnectReason === 'session-not-found' && activeTabId ? (
-            <div className="flex gap-2">
+        <div className="absolute inset-0 z-20 flex items-center justify-center px-6 text-center">
+          <div className="flex w-full max-w-xs flex-col items-center gap-3 rounded-xl border border-border/70 bg-card/90 px-5 py-5 ring-1 ring-border/30">
+            <WifiOff className="h-5 w-5 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              {disconnectReason === 'max-connections'
+                ? t('disconnectedMaxConnections')
+                : disconnectReason === 'pty-error'
+                  ? t('disconnectedPtyError')
+                  : disconnectReason === 'session-not-found'
+                    ? tt('disconnectedSessionNotFound')
+                    : t('cannotConnectServer')}
+            </span>
+            {disconnectReason === 'session-not-found' && activeTabId ? (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="transition-transform active:scale-[0.99]"
+                  onClick={async () => {
+                    const ok = await useLayoutStore.getState().restartTabInPane(paneId, activeTabId);
+                    if (ok) handleReconnect();
+                  }}
+                >
+                  {t('restart')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="transition-transform active:scale-[0.99]"
+                  onClick={() => onDeleteTab(paneId, activeTabId)}
+                >
+                  {tt('closeTabLabel')}
+                </Button>
+              </div>
+            ) : (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={async () => {
-                  const ok = await useLayoutStore.getState().restartTabInPane(paneId, activeTabId);
-                  if (ok) handleReconnect();
-                }}
+                className="transition-transform active:scale-[0.99]"
+                onClick={handleReconnect}
               >
-                {t('restart')}
+                {t('reconnect')}
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onDeleteTab(paneId, activeTabId)}
-              >
-                {tt('closeTabLabel')}
-              </Button>
-            </div>
-          ) : (
-            <Button variant="outline" size="sm" onClick={handleReconnect}>
-              {t('reconnect')}
-            </Button>
-          )}
+            )}
+          </div>
         </div>
       )}
 

@@ -1,4 +1,4 @@
-# Agent Instructions
+# AGENTS.md
 
 AI-generated code should look as if a senior engineer wrote it. Avoid excessive
 comments, unnecessary explanations, and AI-specific patterns.
@@ -8,11 +8,14 @@ Always respond in the same language the user wrote in. Project rules like
 
 ## Project Overview
 
-- Framework: Next.js Pages Router.
-- Package manager: pnpm.
+- Product: codexmux, a Codex-focused web session manager.
+- Framework: Next.js Pages Router with a custom Node server.
+- Package manager: pnpm. Prefer `corepack pnpm ...` when running commands.
 - Styling: Tailwind CSS v4 and shadcn/ui.
 - Language: TypeScript.
-- Product target: codexmux is a Codex-focused web session manager.
+- Runtime state: tmux-backed sessions plus `~/.codexmux/` persisted app state.
+- Platform shells: Electron desktop app and Capacitor Android app connect to a running codexmux server.
+- Supported UI languages: Korean and English. Default locale is Korean.
 
 ## Core Rules
 
@@ -27,14 +30,18 @@ Always respond in the same language the user wrote in. Project rules like
 - Use react-hook-form, zod, and @hookform/resolvers for forms.
 - Use dayjs for date/time handling.
 - Use sonner for notifications.
+- Keep app screens dense and operational. Do not introduce marketing-style hero layouts into the product UI.
+- Preserve terminal/input/reconnect stability over visual polish.
 
 ## Commands
 
 ```bash
-pnpm dev
-pnpm build
-pnpm lint
-pnpm tsc --noEmit
+corepack pnpm dev
+corepack pnpm build
+corepack pnpm lint
+corepack pnpm tsc --noEmit
+corepack pnpm build:electron
+corepack pnpm android:build:debug
 ```
 
 Use pnpm for package management. The shadcn CLI is the one exception:
@@ -42,6 +49,13 @@ Use pnpm for package management. The shadcn CLI is the one exception:
 ```bash
 npx shadcn@latest add <component-name>
 ```
+
+## Platform Notes
+
+- Electron code lives under `electron/` and is documented in `docs/ELECTRON.md`.
+- Android code lives under `android/`, with launcher assets in `android-web/`, and is documented in `docs/ANDROID.md`.
+- Android app ID is `com.hardcoremonk.codexmux`.
+- Android debug install verification uses SDK adb, for example `~/Android/Sdk/platform-tools/adb shell pm path com.hardcoremonk.codexmux`.
 
 ## Codex And Terminal Rules
 
@@ -85,20 +99,34 @@ Preserve nearby key conventions. New shared state should generally use `__pt`
 plus a PascalCase name. Keep existing `__codexmux*` or `__cmux*` keys as-is when
 editing nearby code.
 
+## UI And Locale Rules
+
+- Default locale is `ko`; keep English support in parallel.
+- When changing server-rendered pages that load messages, preserve SSR locale hydration.
+- Korean-first screens should use the project font stack and `word-break: keep-all`; terminal, code, diff, path, input, textarea, and xterm areas are exceptions.
+- Mobile touch targets should be at least 44px where practical and include `active` plus `focus-visible` states.
+- Use notification settings consistently: `notificationsEnabled`, `soundOnCompleteEnabled`, and toast settings all live in `config.json`.
+
 ## Documentation
 
 Complex topics live under `docs/`:
 
 | Document | Purpose |
 | --- | --- |
+| `docs/ADR.md` | Architecture decisions and decision triggers |
 | `docs/STATUS.md` | Codex work-state detection and status flow |
 | `docs/TMUX.md` | tmux, terminal management, and WebSocket flow |
 | `docs/DATA-DIR.md` | `~/.codexmux/` directory structure |
 | `docs/STYLE.md` | Theme and color usage rules |
+| `docs/ELECTRON.md` | Electron desktop development and packaging |
+| `docs/ANDROID.md` | Android Capacitor development, build, and install |
+| `docs/FOLLOW-UP.md` | Release checks and post-MVP backlog |
 
 When modifying status-related code (`TCliState`, `ITabState`, `StatusManager`,
 `selectSessionView`, `agentSessionId`, provider detection, etc.), update
 `docs/STATUS.md` together.
+
+When changing durable architecture decisions, update `docs/ADR.md`. This includes framework/router choices, custom server boundaries, shared state placement, tmux/session strategy, provider model, storage layout, platform shells, auth/security, notification semantics, and locale policy. Small component styling changes do not need an ADR unless they change a documented design rule.
 
 ## Comment Policy
 

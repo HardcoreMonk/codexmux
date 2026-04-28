@@ -144,10 +144,10 @@ const ToolsRequiredPage = () => {
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const { requireAuth } = await import('@/lib/require-auth');
-  const { loadMessagesServer } = await import('@/lib/load-messages');
+  const { loadMessagesServerBundle } = await import('@/lib/load-messages');
   return requireAuth(context, async () => {
-    const messages = await loadMessagesServer();
-    return { props: { messages } };
+    const { locale, messages } = await loadMessagesServerBundle();
+    return { props: { messages, messagesLocale: locale } };
   }, { skipPreflight: true });
 };
 

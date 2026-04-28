@@ -20,7 +20,7 @@ StatusManager
   ├─ tab별 status 저장
   ├─ layout.json에 cliState/session metadata 저장
   ├─ /api/status WebSocket broadcast
-  └─ review/input 상태에서 Web Push 전송
+  └─ review/input 상태에서 toast/native/Web Push 알림 전송
 ```
 
 ## process state
@@ -48,6 +48,14 @@ Codex 감지는 pane PID 아래 child process를 따라가며 `codex`를 찾고,
 | `cancelled` | tab close 중인 client-local 상태 |
 
 `ready-for-review`는 사용자가 tab을 focus하거나 dismiss할 때만 `idle`로 돌아간다.
+
+## notification
+
+- foreground window는 `use-toast-notification`이 작업 완료 toast를 표시한다.
+- Electron/native notification은 `use-native-notification`이 처리한다.
+- background Web Push는 `StatusManager`가 전송한다.
+- `soundOnCompleteEnabled=false`이면 작업 완료 toast sound를 재생하지 않고, native/background system notification도 silent로 요청한다.
+- permission/input 요청성 notification은 `needs-input`으로 전환하고, 일반 작업 완료 notification은 review flow를 따른다.
 
 ## event model
 

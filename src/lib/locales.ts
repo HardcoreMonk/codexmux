@@ -1,6 +1,6 @@
 export type TSupportedLocale = 'en' | 'ko';
 
-export const DEFAULT_LOCALE: TSupportedLocale = 'en';
+export const DEFAULT_LOCALE: TSupportedLocale = 'ko';
 
 export const LOCALE_OPTIONS: ReadonlyArray<{ id: TSupportedLocale; label: string }> = [
   { id: 'en', label: 'English' },

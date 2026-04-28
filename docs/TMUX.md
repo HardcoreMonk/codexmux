@@ -64,9 +64,20 @@ tmux title은 다음 형식이다.
 
 1. `codex --version` 또는 `~/.codex/` 존재 확인.
 2. pane shell PID 아래 child process 탐색.
-3. `ps`로 `codex` process 확인.
-4. process cwd 읽기.
+3. Linux는 `/proc/{pid}/task/{pid}/children`을 우선 사용하고, 다른 플랫폼은 process utility fallback을 사용한다.
+4. process command에서 `codex`를 확인하고 cwd를 읽는다.
 5. `~/.codex/sessions/` 아래 JSONL을 session id 또는 cwd로 매칭.
+
+새 코드에서 process/title/session 정보를 다룰 때는 직접 process command를 흩뿌리지 않고 기존 helper를 우선 사용한다.
+
+| helper | 파일 | 용도 |
+|---|---|---|
+| `getPaneCurrentCommand(session)` | `src/lib/tmux.ts` | foreground process name |
+| `getSessionCwd(session)` | `src/lib/tmux.ts` | pane cwd |
+| `getSessionPanePid(session)` | `src/lib/tmux.ts` | pane shell PID |
+| `checkTerminalProcess(session)` | `src/lib/tmux.ts` | resume 전 shell 확인 |
+| `isCodexRunning(panePid)` | `src/lib/codex-session-detection.ts` | Codex process 감지 |
+| `detectActiveCodexSession(panePid)` | `src/lib/codex-session-detection.ts` | active Codex session metadata |
 
 ## 서버 시작 순서
 

@@ -47,6 +47,19 @@ codexmux의 영속 상태는 `~/.codexmux/`에 저장된다. Codex CLI의 원본
 
 비밀값이 들어갈 수 있는 파일은 `0600` 권한으로 쓰며, 저장은 임시 파일을 쓴 뒤 rename하는 방식으로 처리한다.
 
+## `config.json` 주요 설정
+
+| 필드 | 내용 |
+|---|---|
+| `locale` | UI 언어. 기본값은 `ko`이고 지원값은 `ko`, `en`이다. |
+| `appTheme`, `terminalTheme`, `customCSS` | 앱/터미널 표시 설정 |
+| `networkAccess` | 서버 listen 범위 설정 |
+| `codexModel`, `codexSandbox`, `codexApprovalPolicy`, `codexSearchEnabled`, `codexShowTerminal` | Codex 실행 option |
+| `notificationsEnabled` | 작업 완료 시스템 알림 사용 여부 |
+| `soundOnCompleteEnabled` | 작업 완료 toast/native/Web Push 알림 사운드 사용 여부 |
+| `toastOnCompleteEnabled`, `toastDuration`, `toastPositionDesktop`, `toastPositionMobile` | foreground toast 동작 |
+| `editorUrl`, `editorPreset` | 외부 editor deep link 설정 |
+
 ## 삭제 기준
 
 | 초기화 대상 | 삭제할 것 |

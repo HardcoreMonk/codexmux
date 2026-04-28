@@ -21,6 +21,7 @@ Codex 작업을 tmux 기반 웹 세션으로 관리하는 self-hosted session ma
 - Runtime: Next.js Pages Router + custom Node server + tmux
 - Package manager: pnpm
 - Supported languages: 한국어, English
+- Default language: 한국어
 - Target: Codex-focused web session manager
 
 ## 빠른 시작
@@ -100,7 +101,8 @@ corepack pnpm start
 - 멀티 워크스페이스: 패널 분할, 탭, 작업 디렉터리, 사이드바 상태 저장
 - Codex 상태 감지: 작업중, 입력 대기, 리뷰 대기, 세션 resume 상태 표시
 - 라이브 타임라인: Codex JSONL을 읽어 메시지, tool call, permission prompt, reasoning summary 표시
-- 모바일 UI: PWA, Web Push, 재접속, 입력 draft 보존
+- 모바일 UI: PWA, Android 앱, Web Push, 재접속, 입력 draft 보존
+- 알림 제어: 작업 완료 toast, 시스템 알림, 완료 사운드 on/off
 - Git 워크플로: status, diff, history, fetch, pull, push, 충돌/dirty 상태 전달
 - 사용량 통계: token, cache read/write, 비용 추정, 프로젝트별 분석, 일별 리포트
 - 빠른 프롬프트: 기본 내장 프롬프트는 `Commit`만 제공하며 사용자 프롬프트를 추가할 수 있음
@@ -200,6 +202,7 @@ corepack pnpm android:sync
 corepack pnpm android:open
 corepack pnpm android:run
 corepack pnpm android:build
+corepack pnpm android:build:debug
 corepack pnpm android:build:release
 corepack pnpm android:bundle:release
 corepack pnpm android:install
@@ -256,7 +259,7 @@ Android 앱은 Capacitor 기반 클라이언트 shell로 `android/`에 포함되
 구성:
 
 - `capacitor.config.ts`: Android 앱 ID, WebView navigation, cookie 설정
-- `android-web/index.html`: 서버 URL을 입력하고 저장하는 Android 런처
+- `android-web/index.html`: 서버 URL 저장, 최근 서버, 자동 연결, 연결 실패 복구를 담당하는 Android 런처
 - `android/`: Capacitor가 생성한 Android native project
 
 Android 프로젝트 동기화:
@@ -289,6 +292,13 @@ corepack pnpm android:build
 corepack pnpm android:install
 ```
 
+설치 상태 확인:
+
+```bash
+~/Android/Sdk/platform-tools/adb shell pm path com.hardcoremonk.codexmux
+~/Android/Sdk/platform-tools/adb shell dumpsys package com.hardcoremonk.codexmux
+```
+
 릴리스 빌드는 keystore signing 설정을 준비한 뒤 실행합니다.
 
 ```bash
@@ -305,7 +315,7 @@ corepack pnpm android:bundle:release
 - 모바일 기기에 Tailscale 설치 및 같은 tailnet 로그인
 - codexmux 서버는 `HOST=localhost,tailscale` 또는 Tailscale Serve HTTPS로 노출
 
-앱은 저장된 서버 또는 기본 Tailscale 서버로 자동 연결합니다. 최근 서버 목록, 서버 변경, 연결 실패 시 재시도 흐름, 앱 정보 화면을 제공합니다. Android 버전은 `package.json` 버전과 자동 동기화됩니다. HTTPS Tailscale Serve 주소를 우선 사용하고, 로컬 개발용 HTTP는 Android manifest와 Capacitor 설정에서 허용합니다.
+앱은 저장된 서버 또는 기본 Tailscale 서버로 자동 연결합니다. 최근 서버 목록, 서버 변경, 연결 실패 시 재시도 흐름, 앱 정보 화면을 제공합니다. 런처와 모바일 내비게이션은 한국어 우선 타이포그래피, safe-area, 터치 눌림 상태, focus-visible 상태를 기준으로 조정되어 있습니다. Android 버전은 `package.json` 버전과 자동 동기화됩니다. HTTPS Tailscale Serve 주소를 우선 사용하고, 로컬 개발용 HTTP는 Android manifest와 Capacitor 설정에서 허용합니다.
 
 세부 구조와 빌드 메모는 [docs/ANDROID.md](docs/ANDROID.md)를 참고합니다.
 
@@ -357,12 +367,14 @@ Codex JSONL
 
 | 문서 | 내용 |
 |---|---|
+| [docs/ADR.md](docs/ADR.md) | 아키텍처 결정 기록과 변경 기준 |
 | [docs/STATUS.md](docs/STATUS.md) | Codex 작업 상태 감지와 status flow |
 | [docs/TMUX.md](docs/TMUX.md) | tmux, terminal WebSocket, session 관리 |
 | [docs/DATA-DIR.md](docs/DATA-DIR.md) | `~/.codexmux/` 구조와 삭제 기준 |
 | [docs/STYLE.md](docs/STYLE.md) | theme와 color 사용 규칙 |
 | [docs/ELECTRON.md](docs/ELECTRON.md) | Electron desktop app 개발과 패키징 |
 | [docs/ANDROID.md](docs/ANDROID.md) | Android Capacitor app 개발과 빌드 |
+| [docs/FOLLOW-UP.md](docs/FOLLOW-UP.md) | 릴리스 전 확인과 post-MVP 백로그 |
 
 <a id="en"></a>
 
@@ -377,6 +389,7 @@ codexmux is a self-hosted web session manager for Codex. It keeps Codex work in 
 - Runtime: Next.js Pages Router + custom Node server + tmux
 - Package manager: pnpm
 - Supported languages: English, Korean
+- Default language: Korean
 
 ### Quick Start
 
@@ -470,7 +483,7 @@ The Android app is included under `android/` as a Capacitor-based client shell. 
 Structure:
 
 - `capacitor.config.ts`: Android app id, WebView navigation, and cookie settings
-- `android-web/index.html`: Android launcher that stores and opens the server URL
+- `android-web/index.html`: Android launcher for saved servers, recent servers, auto-connect, and connection-failure recovery
 - `android/`: generated Capacitor Android native project
 
 Sync Android project files:
@@ -503,6 +516,13 @@ Install the debug APK on a device:
 corepack pnpm android:install
 ```
 
+Verify installation:
+
+```bash
+~/Android/Sdk/platform-tools/adb shell pm path com.hardcoremonk.codexmux
+~/Android/Sdk/platform-tools/adb shell dumpsys package com.hardcoremonk.codexmux
+```
+
 Release builds require keystore signing settings:
 
 ```bash
@@ -519,7 +539,7 @@ Expected prerequisites:
 - Tailscale installed on the phone and logged into the same tailnet
 - codexmux exposed through `HOST=localhost,tailscale` or Tailscale Serve HTTPS
 
-The app automatically connects to the saved server or the default Tailscale server. The launcher supports recent servers, server changes, retry flow after connection failures, and app info. Android versioning is synchronized with `package.json`. Prefer HTTPS through Tailscale Serve; HTTP is enabled only for local development paths.
+The app automatically connects to the saved server or the default Tailscale server. The launcher supports recent servers, server changes, retry flow after connection failures, and app info. Launcher and mobile navigation surfaces are tuned for Korean-first typography, safe-area handling, touch pressed states, and focus-visible states. Android versioning is synchronized with `package.json`. Prefer HTTPS through Tailscale Serve; HTTP is enabled only for local development paths.
 
 ### Tailscale
 
@@ -553,7 +573,8 @@ tailscale serve off --https=443
 - Multi-workspace layout with panes, tabs, working directories, and sidebar state
 - Codex status detection for busy, idle, input-needed, review-needed, and resume states
 - Live timeline from Codex JSONL logs
-- PWA, Web Push, mobile reconnect, and input draft preservation
+- PWA, Android app, Web Push, mobile reconnect, and input draft preservation
+- Notification controls for task-complete toast, system notifications, and completion sound
 - Git status, diff, history, fetch, pull, and push flows
 - Usage stats, token cache analysis, cost estimates, and daily reports
 - Quick prompts with the built-in `Commit` prompt plus user-defined prompts

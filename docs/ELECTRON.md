@@ -32,6 +32,12 @@ corepack pnpm pack:electron
 
 앱 설정은 `~/.codexmux/config.json`에 저장합니다. Electron 전용 설정도 같은 파일을 사용하며, 서버 모드는 `server.mode`과 `server.remoteUrl`로 관리합니다.
 
+## Notifications
+
+- 작업 완료 상태는 foreground toast와 Electron native notification으로 표시할 수 있습니다.
+- `soundOnCompleteEnabled=false`이면 completion sound를 재생하지 않고 native notification도 silent로 요청합니다.
+- notification 설정은 웹/PWA와 같은 `~/.codexmux/config.json` 값을 공유합니다.
+
 ## Server Modes
 
 로컬 서버:

@@ -1,26 +1,30 @@
 import Document, { Html, Head, Main, NextScript, type DocumentContext, type DocumentInitialProps } from 'next/document';
 import { getWorkspaces } from '@/lib/workspace-store';
+import { getConfig } from '@/lib/config-store';
+import { DEFAULT_LOCALE, normalizeLocale, type TSupportedLocale } from '@/lib/locales';
 
 interface IDocumentProps extends DocumentInitialProps {
   activeWorkspaceId: string;
   sidebarWidth: number;
   sidebarCollapsed: boolean;
+  locale: TSupportedLocale;
 }
 
 class MyDocument extends Document<IDocumentProps> {
   static async getInitialProps(ctx: DocumentContext): Promise<IDocumentProps> {
     const initialProps = await Document.getInitialProps(ctx);
-    try {
-      const wsData = await getWorkspaces();
-      return {
-        ...initialProps,
-        activeWorkspaceId: wsData.activeWorkspaceId ?? '',
-        sidebarWidth: wsData.sidebarWidth,
-        sidebarCollapsed: wsData.sidebarCollapsed,
-      };
-    } catch {
-      return { ...initialProps, activeWorkspaceId: '', sidebarWidth: 240, sidebarCollapsed: false };
-    }
+    const [wsData, config] = await Promise.all([
+      getWorkspaces().catch(() => null),
+      getConfig().catch(() => null),
+    ]);
+
+    return {
+      ...initialProps,
+      activeWorkspaceId: wsData?.activeWorkspaceId ?? '',
+      sidebarWidth: wsData?.sidebarWidth ?? 240,
+      sidebarCollapsed: wsData?.sidebarCollapsed ?? false,
+      locale: normalizeLocale(config?.locale ?? DEFAULT_LOCALE),
+    };
   }
 
   render() {
@@ -33,14 +37,11 @@ class MyDocument extends Document<IDocumentProps> {
     const initScript = `window.__SB__=(function(){var s=sessionStorage,l=localStorage,t=l.getItem("sidebar-tab"),a=s.getItem("active-ws")||${serverActiveWs};return{w:${sidebarWidth},c:${sidebarCollapsed},t:t==="sessions"?"sessions":"workspace",a:a||""}})()`;
 
     return (
-      <Html lang="en" suppressHydrationWarning>
+      <Html lang={this.props.locale} suppressHydrationWarning>
         <Head>
           <link rel="preload" as="font" type="font/woff2" href="/fonts/PretendardVariable.woff2" crossOrigin="anonymous" />
           <link rel="preload" as="font" type="font/woff2" href="/fonts/MesloLGLDZNerdFont-Regular.woff2" crossOrigin="anonymous" />
           <link rel="preload" as="font" type="font/woff2" href="/fonts/MesloLGLDZNerdFont-Bold.woff2" crossOrigin="anonymous" />
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-          <script dangerouslySetInnerHTML={{ __html: `(function(){var l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Noto+Sans+JP:wght@100..900&display=swap';document.head.appendChild(l)})()` }} />
           <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
           <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
           <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
