@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import { z } from 'zod';
-import { nanoid } from 'nanoid';
 import { diffLines } from 'diff';
+import { assignStableTimelineEntryIds, createTimelineEntryId } from '@/lib/timeline-entry-id';
 import type {
   ITimelineEntry,
   ITimelineUserMessage,
@@ -249,7 +249,7 @@ const parseTaskNotification = (text: string, timestamp: number): ITimelineTaskNo
     : undefined;
 
   return {
-    id: nanoid(),
+    id: '',
     type: 'task-notification',
     timestamp,
     taskId,
@@ -302,14 +302,14 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
     for (const content of parsed.data.message.content) {
       if (content.type === 'thinking') {
         entries.push({
-          id: nanoid(),
+          id: '',
           type: 'thinking',
           timestamp,
           thinking: (content as { thinking?: string }).thinking ?? '',
         } satisfies ITimelineThinking);
       } else if (content.type === 'text' && 'text' in content) {
         const entry: ITimelineAssistantMessage = {
-          id: nanoid(),
+          id: '',
           type: 'assistant-message',
           timestamp,
           markdown: (content as { text: string }).text,
@@ -328,7 +328,7 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
         if (toolName === 'ExitPlanMode' && input.plan != null) {
           const planText = typeof input.plan === 'string' ? input.plan : JSON.stringify(input.plan, null, 2);
           entries.push({
-            id: nanoid(),
+            id: '',
             type: 'plan',
             timestamp,
             toolUseId,
@@ -344,7 +344,7 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
           } satisfies ITimelinePlan);
         } else if (toolName === 'TaskCreate') {
           entries.push({
-            id: nanoid(),
+            id: '',
             type: 'task-progress',
             timestamp,
             action: 'create',
@@ -359,7 +359,7 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
             ? (input.status as 'in_progress' | 'completed' | 'blocked')
             : 'pending';
           entries.push({
-            id: nanoid(),
+            id: '',
             type: 'task-progress',
             timestamp,
             action: 'update',
@@ -380,7 +380,7 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
           } satisfies IAskUserQuestionItem));
 
           entries.push({
-            id: nanoid(),
+            id: '',
             type: 'ask-user-question',
             timestamp,
             toolUseId,
@@ -392,7 +392,7 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
           const { filePath, diff } = extractDiff(toolName, input);
 
           entries.push({
-            id: nanoid(),
+            id: '',
             type: 'tool-call',
             timestamp,
             toolUseId,
@@ -437,13 +437,13 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
       if (commandName) {
         if (commandName === '/exit') {
           return [{
-            id: nanoid(),
+            id: '',
             type: 'session-exit',
             timestamp,
           } satisfies ITimelineSessionExit];
         }
         entries.push({
-          id: nanoid(),
+          id: '',
           type: 'user-message',
           timestamp,
           text: commandName,
@@ -453,7 +453,7 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
       const cleaned = stripProtocolTags(content);
       if (cleaned) {
         entries.push({
-          id: nanoid(),
+          id: '',
           type: 'user-message',
           timestamp,
           text: cleaned,
@@ -469,7 +469,7 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
       (content[0] as { text: string }).text.startsWith(INTERRUPT_PREFIX)
     ) {
       return [{
-        id: nanoid(),
+        id: '',
         type: 'interrupt',
         timestamp,
       } satisfies ITimelineInterrupt];
@@ -490,7 +490,7 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
     }
     if (userTextParts.length > 0 || userImages.length > 0) {
       entries.push({
-        id: nanoid(),
+        id: '',
         type: 'user-message',
         timestamp,
         text: userTextParts.join('\n'),
@@ -514,7 +514,7 @@ const parseSingleEntry = (raw: unknown, base: z.infer<typeof BaseEntrySchema>): 
         );
 
         entries.push({
-          id: nanoid(),
+          id: '',
           type: 'tool-result',
           timestamp,
           toolUseId: c.tool_use_id,
@@ -537,14 +537,23 @@ const createAgentGroup = (
   const timestamp = first.timestamp ? new Date(first.timestamp).getTime() : Date.now();
 
   const parsed: ITimelineEntry[] = [];
-  for (const { base, raw } of rawEntries) {
-    parsed.push(...parseSingleEntry(raw, base));
+  for (const { base, raw, lineOffset } of rawEntries) {
+    parsed.push(...assignStableTimelineEntryIds(parseSingleEntry(raw, base), {
+      lineOffset,
+      source: raw,
+    }));
   }
   const entries = mergeToolResults(parsed);
+  const id = createTimelineEntryId({
+    lineOffset: rawEntries[0].lineOffset,
+    entryIndex: 0,
+    type: 'agent-group',
+    source: rawEntries.map((entry) => entry.raw),
+  });
 
   if (agentHint) {
     return {
-      id: nanoid(),
+      id,
       type: 'agent-group',
       timestamp,
       agentType: agentHint.agentType,
@@ -578,7 +587,7 @@ const createAgentGroup = (
   }
 
   return {
-    id: nanoid(),
+    id,
     type: 'agent-group',
     timestamp,
     agentType: 'Unknown',
@@ -657,7 +666,7 @@ const mergeToolResults = (entries: ITimelineEntry[]): ITimelineEntry[] => {
 
 // --- Core Parsing ---
 
-const parseContent = (content: string): IParseResult => {
+const parseContent = (content: string, baseOffset = 0): IParseResult => {
   const splitLines = content.split('\n');
   const rawEntries: IRawEntry[] = [];
   let errorCount = 0;
@@ -667,7 +676,7 @@ const parseContent = (content: string): IParseResult => {
 
   let bytePos = 0;
   for (const rawLine of splitLines) {
-    const lineByteOffset = bytePos;
+    const lineByteOffset = baseOffset + bytePos;
     bytePos += Buffer.byteLength(rawLine, 'utf-8') + 1;
     if (!rawLine.trim()) continue;
     lineCount++;
@@ -744,7 +753,12 @@ const parseContent = (content: string): IParseResult => {
       if (att?.type === 'plan_file_reference' && typeof att.planContent === 'string' && att.planContent.length > 0) {
         const timestamp = base.timestamp ? new Date(base.timestamp).getTime() : Date.now();
         entries.push({
-          id: nanoid(),
+          id: createTimelineEntryId({
+            lineOffset,
+            entryIndex: 0,
+            type: 'plan',
+            source: raw,
+          }),
           type: 'plan',
           timestamp,
           toolUseId: '',
@@ -760,7 +774,12 @@ const parseContent = (content: string): IParseResult => {
     if (base.type === 'system') {
       const timestamp = base.timestamp ? new Date(base.timestamp).getTime() : Date.now();
       entries.push({
-        id: nanoid(),
+        id: createTimelineEntryId({
+          lineOffset,
+          entryIndex: 0,
+          type: 'turn-end',
+          source: raw,
+        }),
         type: 'turn-end',
         timestamp,
       } satisfies ITimelineTurnEnd);
@@ -788,7 +807,10 @@ const parseContent = (content: string): IParseResult => {
       continue;
     }
 
-    const parsed = parseSingleEntry(raw, base);
+    const parsed = assignStableTimelineEntryIds(parseSingleEntry(raw, base), {
+      lineOffset,
+      source: raw,
+    });
 
     for (const entry of parsed) {
       if (entry.type === 'user-message' && entry.text.startsWith('/')) {
@@ -877,8 +899,11 @@ const parseTailMode = async (filePath: string, fileSize: number): Promise<IParse
     const content = buffer.toString('utf-8');
     const firstNewline = content.indexOf('\n');
     const validContent = firstNewline >= 0 ? content.slice(firstNewline + 1) : content;
+    const validFrom = firstNewline >= 0
+      ? offset + Buffer.byteLength(content.slice(0, firstNewline + 1), 'utf-8')
+      : offset;
 
-    const result = parseContent(validContent);
+    const result = parseContent(validContent, validFrom);
     result.lastOffset = fileSize;
     return result;
   } finally {
@@ -942,13 +967,13 @@ export const readTailEntries = async (
       const from = Math.max(0, fileSize - chunkSize);
       const { content, validFrom } = await readChunk(filePath, from, fileSize);
       if (!content) { chunkSize *= 2; continue; }
-      const result = parseContent(content);
+      const result = parseContent(content, validFrom);
       if (result.entries.length >= maxEntries || from === 0) {
         const sliced = result.entries.length > maxEntries;
         const sliceStart = sliced ? result.entries.length - maxEntries : 0;
         const entries = sliced ? result.entries.slice(-maxEntries) : result.entries;
         const startByteOffset = sliced
-          ? validFrom + result.entryLineOffsets[sliceStart]
+          ? result.entryLineOffsets[sliceStart]
           : (from === 0 ? 0 : validFrom);
         return {
           entries,
@@ -984,13 +1009,13 @@ export const readEntriesBefore = async (
       const from = Math.max(0, beforeByte - chunkSize);
       const { content, validFrom } = await readChunk(filePath, from, beforeByte);
       if (content) {
-        const result = parseContent(content);
+        const result = parseContent(content, validFrom);
         if (result.entries.length >= maxEntries || from === 0) {
           const sliced = result.entries.length > maxEntries;
           const sliceStart = sliced ? result.entries.length - maxEntries : 0;
           const entries = sliced ? result.entries.slice(-maxEntries) : result.entries;
           const startByteOffset = sliced
-            ? validFrom + result.entryLineOffsets[sliceStart]
+            ? result.entryLineOffsets[sliceStart]
             : (from === 0 ? 0 : validFrom);
           return {
             entries,
@@ -1051,7 +1076,8 @@ export const parseIncremental = async (
       }
     }
     const completeContent = segments.join('\n');
-    const result = parseContent(completeContent);
+    const contentBaseOffset = Math.max(0, fromOffset - Buffer.byteLength(pendingBuffer, 'utf-8'));
+    const result = parseContent(completeContent, contentBaseOffset);
 
     return {
       newEntries: result.entries,

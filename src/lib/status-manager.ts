@@ -25,33 +25,22 @@ import { getVAPIDKeys } from '@/lib/vapid-keys';
 import { nanoid } from 'nanoid';
 import fs from 'fs/promises';
 import { watch, type FSWatcher } from 'fs';
-import path from 'path';
 import { readAgentSessionId, readAgentSummary } from '@/lib/agent-tab-fields';
 import { checkCodexJsonlState } from '@/lib/codex-jsonl-state';
 import { getConfig } from '@/lib/config-store';
 import { reduceCodexState, reduceHookState } from '@/lib/status-state-machine';
 import { createDedupeKeyStore } from '@/lib/dedupe-key-store';
+import { completionKeyFor, normalizeSessionId, resolveAgentSessionId, sessionIdFromJsonlPath } from '@/lib/status-session-mapping';
+import { shouldProcessHookEvent, shouldSendNeedsInputNotification, shouldSendReviewNotification } from '@/lib/status-notification-policy';
+import { mergeStatusMetadata } from '@/lib/status-metadata';
 
 const log = createLogger('status');
 const hookLog = createLogger('hooks');
-const THREAD_ID_RE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
 
 interface IReadTabMetadataOptions {
   sessionId?: string | null;
   jsonlPath?: string | null;
 }
-
-const sessionIdFromJsonlPath = (jsonlPath: string | null | undefined): string | null => {
-  if (!jsonlPath) return null;
-  return path.basename(jsonlPath, '.jsonl').match(THREAD_ID_RE)?.[1] ?? null;
-};
-
-const normalizeSessionId = (sessionId: string | null | undefined): string | null =>
-  sessionId?.match(THREAD_ID_RE)?.[1] ?? null;
-
-// Notification hook의 notification_type 중 권한 요청류만 needs-input으로 전환.
-// idle_prompt(응답 후 60s idle 알람), computer_use_*, elicitation_*, auth_success 등은 상태 변경 없이 무시한다.
-const INPUT_REQUESTING_NOTIFICATION_TYPES = new Set(['permission_prompt', 'worker_permission_prompt']);
 
 const COMPACT_STALE_MS = 60_000;
 
@@ -466,9 +455,11 @@ class StatusManager {
           ? { name: 'notification', at: Date.now(), seq: 0 }
           : null;
         const agentSummary = readAgentSummary(tab);
-        const agentSessionId = detected.sessionId
-          ?? sessionIdFromJsonlPath(detected.jsonlPath)
-          ?? normalizeSessionId(readAgentSessionId(tab));
+        const agentSessionId = resolveAgentSessionId({
+          detectedSessionId: detected.sessionId,
+          jsonlPath: detected.jsonlPath,
+          persistedSessionId: readAgentSessionId(tab),
+        });
         this.tabs.set(tab.id, {
           cliState,
           workspaceId: ws.id,
@@ -566,32 +557,12 @@ class StatusManager {
   }
 
   private mergeJsonlMetadata(entry: ITabStatusEntry, metadata: IJsonlCheckResult): boolean {
-    let changed = false;
-    if (metadata.reset) {
-      if (entry.currentAction !== null) { entry.currentAction = null; changed = true; }
-      if (entry.lastAssistantMessage !== null) { entry.lastAssistantMessage = null; changed = true; }
-      return changed;
-    }
-
-    if (metadata.currentAction !== null && metadata.currentAction.summary !== entry.currentAction?.summary) {
-      entry.currentAction = metadata.currentAction;
-      changed = true;
-    }
-    if (metadata.lastAssistantSnippet !== null && entry.lastAssistantMessage !== metadata.lastAssistantSnippet) {
-      entry.lastAssistantMessage = metadata.lastAssistantSnippet;
-      changed = true;
+    const { next, changed } = mergeStatusMetadata(entry, metadata);
+    if (changed) {
+      entry.currentAction = next.currentAction;
+      entry.lastAssistantMessage = next.lastAssistantMessage;
     }
     return changed;
-  }
-
-  private completionKeyFor(entry: ITabStatusEntry, metadata: IReadTabMetadataResult): string | null {
-    if (!metadata.completionTurnId) return null;
-    const scope = metadata.sessionId
-      ?? entry.agentSessionId
-      ?? sessionIdFromJsonlPath(metadata.jsonlPath)
-      ?? metadata.jsonlPath
-      ?? entry.tmuxSession;
-    return `${scope}:${metadata.completionTurnId}`;
   }
 
   private reconcileCodexState(
@@ -613,7 +584,13 @@ class StatusManager {
     this.applyCliState(tabId, entry, decision.nextState, {
       silent: decision.silent,
       skipHistory: decision.skipHistory,
-      completionKey: this.completionKeyFor(entry, metadata),
+      completionKey: completionKeyFor({
+        completionTurnId: metadata.completionTurnId,
+        metadataSessionId: metadata.sessionId,
+        entrySessionId: entry.agentSessionId,
+        jsonlPath: metadata.jsonlPath,
+        tmuxSession: entry.tmuxSession,
+      }),
     });
     return true;
   }
@@ -707,9 +684,11 @@ class StatusManager {
             ? { name: 'notification', at: Date.now(), seq: 0 }
             : null;
           const agentSummary = readAgentSummary(tab);
-          const agentSessionId = detected.sessionId
-            ?? sessionIdFromJsonlPath(detected.jsonlPath)
-            ?? normalizeSessionId(readAgentSessionId(tab));
+          const agentSessionId = resolveAgentSessionId({
+            detectedSessionId: detected.sessionId,
+            jsonlPath: detected.jsonlPath,
+            persistedSessionId: readAgentSessionId(tab),
+          });
           const entry: ITabStatusEntry = {
             cliState: initialState,
             workspaceId: ws.id,
@@ -753,11 +732,12 @@ class StatusManager {
         existing.paneTitle = newPaneTitle;
         existing.workspaceId = ws.id;
         existing.panelType = tab.panelType;
-        existing.agentSessionId = refreshed.sessionId
-          ?? sessionIdFromJsonlPath(refreshed.jsonlPath)
-          ?? normalizeSessionId(readAgentSessionId(tab))
-          ?? existing.agentSessionId
-          ?? null;
+        existing.agentSessionId = resolveAgentSessionId({
+          detectedSessionId: refreshed.sessionId,
+          jsonlPath: refreshed.jsonlPath,
+          persistedSessionId: readAgentSessionId(tab),
+          currentSessionId: existing.agentSessionId,
+        });
         existing.jsonlPath = refreshed.jsonlPath ?? existing.jsonlPath;
         existing.lastUserMessage = tab.lastUserMessage;
         const metadataChanged = this.mergeJsonlMetadata(existing, refreshed);
@@ -879,8 +859,7 @@ class StatusManager {
     }
 
     if (
-      newState === 'ready-for-review'
-      && !opts.silent
+      shouldSendReviewNotification(newState, opts.silent)
       && this.reviewNotificationDedupe.remember(opts.completionKey)
     ) {
       this.sendWebPush(tabId, entry, 'review').catch((err) => {
@@ -888,7 +867,7 @@ class StatusManager {
       });
     }
 
-    if (newState === 'needs-input' && !opts.silent) {
+    if (shouldSendNeedsInputNotification(newState, opts.silent)) {
       this.sendWebPush(tabId, entry, 'needs-input').catch((err) => {
         log.warn('Web push failed: %s', err);
       });
@@ -1026,7 +1005,7 @@ class StatusManager {
     const eventName = event as TEventName;
     const provider = getProviderByPanelType(entry.panelType);
 
-    if (eventName === 'notification' && notificationType && !INPUT_REQUESTING_NOTIFICATION_TYPES.has(notificationType)) {
+    if (!shouldProcessHookEvent(eventName, notificationType)) {
       hookLog.debug({ tabId, event: eventName, notificationType }, 'non-input notification, skipping state transition');
       return;
     }
@@ -1074,20 +1053,16 @@ class StatusManager {
           ? checkProviderJsonlIdle(provider, entry.jsonlPath!)
           : checkJsonlIdle(entry.jsonlPath!);
         check.then(({ currentAction, lastAssistantSnippet, reset }) => {
-          let updated = false;
-          if (reset) {
-            if (entry.currentAction !== null) { entry.currentAction = null; updated = true; }
-            if (entry.lastAssistantMessage !== null) { entry.lastAssistantMessage = null; updated = true; }
-          } else {
-            if (currentAction !== null && currentAction.summary !== entry.currentAction?.summary) {
-              entry.currentAction = currentAction;
-              updated = true;
-            }
-            if (lastAssistantSnippet !== null && entry.lastAssistantMessage !== lastAssistantSnippet) {
-              entry.lastAssistantMessage = lastAssistantSnippet;
-              updated = true;
-            }
+          const { next, changed } = mergeStatusMetadata(entry, {
+            currentAction,
+            lastAssistantSnippet,
+            reset,
+          });
+          if (changed) {
+            entry.currentAction = next.currentAction;
+            entry.lastAssistantMessage = next.lastAssistantMessage;
           }
+          const updated = changed;
           if (updated) this.broadcastUpdate(tabId, entry);
         }).catch(() => {});
       };
@@ -1287,7 +1262,10 @@ class StatusManager {
     if (!jsonlPath) return;
 
     entry.jsonlPath = jsonlPath;
-    entry.agentSessionId = normalizeSessionId(entry.agentSessionId) ?? sessionIdFromJsonlPath(jsonlPath);
+    entry.agentSessionId = resolveAgentSessionId({
+      currentSessionId: entry.agentSessionId,
+      jsonlPath,
+    });
 
     if ((entry.cliState === 'busy' || entry.cliState === 'needs-input') && !this.jsonlWatchers.has(tabId)) {
       this.startJsonlWatch(tabId, jsonlPath);

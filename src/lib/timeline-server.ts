@@ -1,8 +1,7 @@
 import { IncomingMessage } from 'http';
 import { WebSocket } from 'ws';
-import { watch, type FSWatcher } from 'fs';
+import { watch } from 'fs';
 import { existsSync } from 'fs';
-import { type ISessionWatcher } from './session-detection';
 import { open as fsOpen } from 'fs/promises';
 import { createReadStream } from 'fs';
 import { createInterface } from 'readline';
@@ -23,13 +22,22 @@ import type { TTimelineServerMessage, IInitMeta, ITimelineEntry, ISessionStats }
 import path from 'path';
 import { isAllowedJsonlPath } from './path-validation';
 import { createLogger } from '@/lib/logger';
+import {
+  broadcastTimelineWatcher as broadcastToWatcher,
+  canSendTimelineMessage as canSend,
+  fileWatchers,
+  type IFileWatcher,
+  type ITimelineConnection,
+  sendTimelineJson as sendJson,
+  sessionWatchers,
+  timelineConnections as connections,
+} from '@/lib/timeline-server-state';
 
 const log = createLogger('timeline');
 
 const HEARTBEAT_INTERVAL = 30_000;
 const HEARTBEAT_TIMEOUT = 90_000;
 const DEBOUNCE_MS = 50;
-const BACKPRESSURE_LIMIT = 1024 * 1024;
 const MAX_WATCHERS = 32;
 const MAX_CONNECTIONS = 32;
 const MAX_WATCHER_RETRIES = 3;
@@ -41,56 +49,6 @@ const resolveAgentSummary = async (
   jsonlSummary: string | null | undefined,
 ): Promise<string | null> => {
   return jsonlSummary ?? null;
-};
-
-interface ITimelineConnection {
-  ws: WebSocket;
-  sessionName: string;
-  panePid: number;
-  provider: IAgentProvider;
-  heartbeatTimer: ReturnType<typeof setInterval>;
-  lastHeartbeat: number;
-  currentJsonlPath: string | null;
-  cleaned: boolean;
-}
-
-interface IFileWatcher {
-  watcher: FSWatcher | null;
-  jsonlPath: string;
-  offset: number;
-  pendingBuffer: string;
-  connections: Set<WebSocket>;
-  debounceTimer: ReturnType<typeof setTimeout> | null;
-  retryCount: number;
-  sessionName: string;
-  provider: IAgentProvider;
-  summaryResolved: boolean;
-  processing: boolean;
-  pendingChange: boolean;
-  initOffsets: Map<WebSocket, number>;
-}
-
-const gTimeline = globalThis as unknown as {
-  __cmuxTimelineConnections?: Map<WebSocket, ITimelineConnection>;
-  __cmuxTimelineFileWatchers?: Map<string, IFileWatcher>;
-  __cmuxTimelineSessionWatchers?: Map<string, ISessionWatcher>;
-};
-
-if (!gTimeline.__cmuxTimelineConnections) gTimeline.__cmuxTimelineConnections = new Map();
-if (!gTimeline.__cmuxTimelineFileWatchers) gTimeline.__cmuxTimelineFileWatchers = new Map();
-if (!gTimeline.__cmuxTimelineSessionWatchers) gTimeline.__cmuxTimelineSessionWatchers = new Map();
-
-const connections = gTimeline.__cmuxTimelineConnections;
-const fileWatchers = gTimeline.__cmuxTimelineFileWatchers;
-const sessionWatchers = gTimeline.__cmuxTimelineSessionWatchers;
-
-const canSend = (ws: WebSocket): boolean =>
-  ws.readyState === WebSocket.OPEN && ws.bufferedAmount < BACKPRESSURE_LIMIT;
-
-const sendJson = (ws: WebSocket, msg: TTimelineServerMessage) => {
-  if (canSend(ws)) {
-    ws.send(JSON.stringify(msg));
-  }
 };
 
 export const broadcastSessionStats = (stats: ISessionStats) => {
@@ -140,17 +98,6 @@ const subscribeAndUpdateSummary = async (
   const jsonlSummary = await subscribeToFile(ws, jsonlPath, sessionId, sessionName, provider);
   const summary = await resolveAgentSummary(provider, sessionName, jsonlSummary);
   await updateTabAgentSummary(sessionName, provider, summary).catch(() => {});
-};
-
-const broadcastToWatcher = (watcherKey: string, msg: TTimelineServerMessage) => {
-  const fw = fileWatchers.get(watcherKey);
-  if (!fw) return;
-  const str = JSON.stringify(msg);
-  for (const ws of fw.connections) {
-    if (canSend(ws)) {
-      ws.send(str);
-    }
-  }
 };
 
 const readBoundedEntries = async (
