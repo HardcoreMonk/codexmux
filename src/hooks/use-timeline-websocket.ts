@@ -6,9 +6,7 @@ import type {
   TTimelineConnectionStatus,
   TTimelineServerMessage,
 } from '@/types/timeline';
-
-const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16000];
-const MAX_RETRIES = 5;
+import { nextReconnectDelay } from '@/lib/reconnect-policy';
 
 interface IResumeStartedPayload {
   sessionId: string;
@@ -162,16 +160,12 @@ const useTimelineWebSocket = ({
         clearTimers();
         wsRef.current = null;
 
-        if (retryCountRef.current < MAX_RETRIES) {
-          const delay = RECONNECT_DELAYS[retryCountRef.current] ?? 16000;
-          retryCountRef.current++;
-          setStatus('reconnecting');
-          retryTimerRef.current = setTimeout(() => {
-            doConnectRef.current(connectId);
-          }, delay);
-        } else {
-          setStatus('disconnected');
-        }
+        const delay = nextReconnectDelay(retryCountRef.current);
+        retryCountRef.current++;
+        setStatus('reconnecting');
+        retryTimerRef.current = setTimeout(() => {
+          doConnectRef.current(connectId);
+        }, delay);
       };
 
       ws.onerror = () => {
@@ -214,8 +208,8 @@ const useTimelineWebSocket = ({
   }, [enabled, sessionName, connectTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState !== 'visible') return;
+    const handleForegroundReconnect = () => {
+      if (document.visibilityState === 'hidden') return;
       if (!enabled) return;
       const ws = wsRef.current;
       if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
@@ -223,8 +217,17 @@ const useTimelineWebSocket = ({
       const id = ++connectIdRef.current;
       doConnectRef.current(id);
     };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+    document.addEventListener('visibilitychange', handleForegroundReconnect);
+    window.addEventListener('focus', handleForegroundReconnect);
+    window.addEventListener('online', handleForegroundReconnect);
+    window.addEventListener('pageshow', handleForegroundReconnect);
+    return () => {
+      document.removeEventListener('visibilitychange', handleForegroundReconnect);
+      window.removeEventListener('focus', handleForegroundReconnect);
+      window.removeEventListener('online', handleForegroundReconnect);
+      window.removeEventListener('pageshow', handleForegroundReconnect);
+    };
   }, [enabled]);
 
   const subscribe = useCallback((jsonlPath: string) => {

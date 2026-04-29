@@ -39,7 +39,7 @@ const ConnectionStatus = ({
         <>
           <Spinner className="h-3 w-3 text-muted-foreground" />
           <span className="text-muted-foreground">
-            {t('reconnecting', { count: retryCount, max: 5 })}
+            {t('reconnecting', { count: retryCount })}
           </span>
         </>
       )}

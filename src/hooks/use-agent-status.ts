@@ -134,8 +134,8 @@ const useAgentStatus = () => {
 
     connect();
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState !== 'visible') return;
+    const handleForegroundReconnect = () => {
+      if (document.visibilityState === 'hidden') return;
       const state = sharedWs?.readyState;
       if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) return;
       if (retryTimerRef.current) {
@@ -145,7 +145,10 @@ const useAgentStatus = () => {
       retryCountRef.current = 0;
       connect();
     };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleForegroundReconnect);
+    window.addEventListener('focus', handleForegroundReconnect);
+    window.addEventListener('online', handleForegroundReconnect);
+    window.addEventListener('pageshow', handleForegroundReconnect);
 
     return () => {
       mountedRef.current = false;
@@ -157,7 +160,10 @@ const useAgentStatus = () => {
         sharedWs.close();
         sharedWs = null;
       }
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleForegroundReconnect);
+      window.removeEventListener('focus', handleForegroundReconnect);
+      window.removeEventListener('online', handleForegroundReconnect);
+      window.removeEventListener('pageshow', handleForegroundReconnect);
     };
   }, []);
 };

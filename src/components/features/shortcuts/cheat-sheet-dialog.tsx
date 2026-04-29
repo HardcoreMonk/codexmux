@@ -16,7 +16,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
 import useKeybindingsStore, { useResolvedKey } from '@/hooks/use-keybindings-store';
-import useIsMac from '@/hooks/use-is-mac';
 import {
   ACTIONS,
   getActionIds,
@@ -41,6 +40,26 @@ const CATEGORY_ORDER: TActionCategory[] = [
 ];
 
 const ICON_CLASS = 'h-2.5 w-2.5';
+const PLATFORM_STORAGE_KEY = 'codexmux-shortcut-platform';
+
+type TShortcutDisplayPlatform = 'windows' | 'mac';
+
+const readDisplayPlatform = (): TShortcutDisplayPlatform => {
+  if (typeof window === 'undefined') return 'windows';
+  try {
+    return localStorage.getItem(PLATFORM_STORAGE_KEY) === 'mac' ? 'mac' : 'windows';
+  } catch {
+    return 'windows';
+  }
+};
+
+const saveDisplayPlatform = (platform: TShortcutDisplayPlatform) => {
+  try {
+    localStorage.setItem(PLATFORM_STORAGE_KEY, platform);
+  } catch {
+    // ignore storage failures
+  }
+};
 
 const formatPlainKey = (key: string): string => {
   const lower = key.toLowerCase();
@@ -62,9 +81,10 @@ const formatPlainKey = (key: string): string => {
 
 const renderHotkeyPart = (
   part: string,
-  isMac: boolean,
+  platform: TShortcutDisplayPlatform,
   key: number,
 ): ReactNode => {
+  const isMac = platform === 'mac';
   const lower = part.toLowerCase();
   if (lower === 'meta' || lower === 'cmd' || lower === 'super') {
     return isMac ? (
@@ -74,7 +94,11 @@ const renderHotkeyPart = (
     );
   }
   if (lower === 'ctrl' || lower === 'control') {
-    return <PiControl key={key} className={ICON_CLASS} />;
+    return isMac ? (
+      <PiControl key={key} className={ICON_CLASS} />
+    ) : (
+      <span key={key}>Ctrl</span>
+    );
   }
   if (lower === 'alt' || lower === 'opt' || lower === 'option') {
     return isMac ? (
@@ -83,7 +107,13 @@ const renderHotkeyPart = (
       <span key={key}>Alt</span>
     );
   }
-  if (lower === 'shift') return <BsShift key={key} className={ICON_CLASS} />;
+  if (lower === 'shift') {
+    return isMac ? (
+      <BsShift key={key} className={ICON_CLASS} />
+    ) : (
+      <span key={key}>Shift</span>
+    );
+  }
   if (lower === 'arrowup') return <BsArrowUp key={key} className={ICON_CLASS} />;
   if (lower === 'arrowdown') return <BsArrowDown key={key} className={ICON_CLASS} />;
   if (lower === 'arrowleft') return <BsArrowLeft key={key} className={ICON_CLASS} />;
@@ -91,26 +121,29 @@ const renderHotkeyPart = (
   return <span key={key}>{formatPlainKey(part)}</span>;
 };
 
-const renderHotkey = (hotkey: string, isMac: boolean): ReactNode[] => {
+const renderHotkey = (hotkey: string, platform: TShortcutDisplayPlatform): ReactNode[] => {
   const parts = hotkey.split('+').map((s) => s.trim()).filter(Boolean);
-  return parts.map((p, i) => renderHotkeyPart(p, isMac, i));
+  return parts.map((p, i) => renderHotkeyPart(p, platform, i));
 };
 
 const KeyBadge = ({
   hotkey,
+  displayLabel,
+  platform,
   disabled,
   overridden,
   recording,
   className,
 }: {
   hotkey: string | null;
+  displayLabel?: string;
+  platform: TShortcutDisplayPlatform;
   disabled?: boolean;
   overridden?: boolean;
   recording?: boolean;
   className?: string;
 }) => {
   const t = useTranslations('shortcuts');
-  const isMac = useIsMac();
 
   if (recording) {
     return (
@@ -125,7 +158,7 @@ const KeyBadge = ({
     );
   }
 
-  if (disabled || !hotkey) {
+  if (disabled || (!hotkey && !displayLabel)) {
     return (
       <kbd
         className={cn(
@@ -137,15 +170,31 @@ const KeyBadge = ({
       </kbd>
     );
   }
+
+  if (displayLabel) {
+    return (
+      <kbd
+        className={cn(
+          'inline-flex h-6 shrink-0 items-center rounded border border-border bg-muted px-1.5 font-mono text-[11px] text-muted-foreground',
+          className,
+        )}
+      >
+        {displayLabel}
+      </kbd>
+    );
+  }
+
+  if (!hotkey) return null;
+
   const hotkeys = hotkey.split(',').map((s) => s.trim()).filter(Boolean);
   const rendered =
     hotkeys.length > 2
       ? [
-          { key: 'first', tokens: renderHotkey(hotkeys[0], isMac) },
+          { key: 'first', tokens: renderHotkey(hotkeys[0], platform) },
           { key: 'sep', tokens: ['–'] as ReactNode[] },
-          { key: 'last', tokens: renderHotkey(hotkeys[hotkeys.length - 1], isMac) },
+          { key: 'last', tokens: renderHotkey(hotkeys[hotkeys.length - 1], platform) },
         ]
-      : hotkeys.map((h, i) => ({ key: `h-${i}`, tokens: renderHotkey(h, isMac) }));
+      : hotkeys.map((h, i) => ({ key: `h-${i}`, tokens: renderHotkey(h, platform) }));
   return (
     <kbd
       className={cn(
@@ -178,6 +227,7 @@ interface IActionRowProps {
   onSave: () => void;
   onDisable: () => void;
   onReset: () => void;
+  displayPlatform: TShortcutDisplayPlatform;
 }
 
 const ActionRow = ({
@@ -190,6 +240,7 @@ const ActionRow = ({
   onSave,
   onDisable,
   onReset,
+  displayPlatform,
 }: IActionRowProps) => {
   const t = useTranslations('shortcuts');
   const action = ACTIONS[id];
@@ -200,6 +251,9 @@ const ActionRow = ({
   const isDisabled = resolved === null;
   const editable = isActionEditable(id);
   const inputRef = useRef<HTMLDivElement>(null);
+  const defaultDisplayLabel = !overridden && !isDisabled
+    ? action.display[displayPlatform === 'mac' ? 'mac' : 'other']
+    : undefined;
 
   const conflict = useMemo(
     () => (captured ? findConflict(captured, id) : null),
@@ -262,6 +316,7 @@ const ActionRow = ({
           >
             <KeyBadge
               hotkey={null}
+              platform={displayPlatform}
               recording
               className="cursor-text outline-none ring-2 ring-primary/20"
             />
@@ -285,7 +340,7 @@ const ActionRow = ({
         <div className="flex items-center gap-1 px-0">
           <div className="flex flex-1 items-center gap-2 px-2 py-1.5">
             <span className="truncate text-sm">{action.label}</span>
-            <KeyBadge hotkey={captured} overridden className="ml-auto" />
+            <KeyBadge hotkey={captured} platform={displayPlatform} overridden className="ml-auto" />
           </div>
           <Button
             size="sm"
@@ -341,6 +396,8 @@ const ActionRow = ({
         <span className="truncate">{action.label}</span>
         <KeyBadge
           hotkey={resolved}
+          displayLabel={defaultDisplayLabel}
+          platform={displayPlatform}
           disabled={isDisabled}
           overridden={overridden && !isDisabled}
           className="ml-auto"
@@ -378,6 +435,7 @@ const CheatSheetDialog = () => {
   const [query, setQuery] = useState('');
   const [editingId, setEditingId] = useState<TActionId | null>(null);
   const [captured, setCaptured] = useState<string | null>(null);
+  const [displayPlatform, setDisplayPlatform] = useState<TShortcutDisplayPlatform>(readDisplayPlatform);
 
   const grouped = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -427,6 +485,11 @@ const CheatSheetDialog = () => {
     cancelEdit();
   };
 
+  const handleDisplayPlatformChange = (next: TShortcutDisplayPlatform) => {
+    setDisplayPlatform(next);
+    saveDisplayPlatform(next);
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-5xl p-0 gap-0">
@@ -435,19 +498,41 @@ const CheatSheetDialog = () => {
           <DialogTitle className="text-sm font-medium">
             {t('title')}
           </DialogTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn(
-              'ml-auto h-7 text-xs',
-              !hasOverrides && 'invisible',
-            )}
-            onClick={resetAll}
-            disabled={!hasOverrides}
-          >
-            <RotateCcw className="h-3 w-3" />
-            {t('resetAll')}
-          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            <div
+              role="group"
+              aria-label={t('platformLabel')}
+              className="inline-flex h-7 rounded-md bg-muted p-0.5"
+            >
+              {(['windows', 'mac'] as const).map((platform) => (
+                <button
+                  key={platform}
+                  type="button"
+                  aria-pressed={displayPlatform === platform}
+                  onClick={() => handleDisplayPlatformChange(platform)}
+                  className={cn(
+                    'rounded px-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground',
+                    displayPlatform === platform && 'bg-background text-foreground shadow-sm',
+                  )}
+                >
+                  {t(platform === 'windows' ? 'platformWindows' : 'platformMac')}
+                </button>
+              ))}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                'h-7 text-xs',
+                !hasOverrides && 'invisible',
+              )}
+              onClick={resetAll}
+              disabled={!hasOverrides}
+            >
+              <RotateCcw className="h-3 w-3" />
+              {t('resetAll')}
+            </Button>
+          </div>
         </div>
 
         <div className="px-4 pt-3">
@@ -494,6 +579,7 @@ const CheatSheetDialog = () => {
                         onSave={saveEdit}
                         onDisable={() => setBinding(id, null)}
                         onReset={() => resetBinding(id)}
+                        displayPlatform={displayPlatform}
                       />
                     ))}
                   </ul>

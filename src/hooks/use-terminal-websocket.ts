@@ -10,9 +10,8 @@ import {
   encodeHeartbeat,
   decodeMessage,
 } from '@/lib/terminal-protocol';
+import { isRetriableTerminalClose, nextReconnectDelay } from '@/lib/reconnect-policy';
 
-const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16000];
-const MAX_RETRIES = 5;
 const HEARTBEAT_INTERVAL = 30_000;
 const CLIENT_ID_PREFIX = 'pt-ws-cid-';
 
@@ -141,17 +140,19 @@ const useTerminalWebSocket = ({
           return;
         }
 
-        if (retryCountRef.current < MAX_RETRIES) {
-          const delay = RECONNECT_DELAYS[retryCountRef.current] ?? 16000;
-          retryCountRef.current++;
-          setRetryCount(retryCountRef.current);
-          setStatus('reconnecting');
-          retryTimerRef.current = setTimeout(() => {
-            doConnectRef.current(sessionNameRef.current, connectId);
-          }, delay);
-        } else {
+        if (!isRetriableTerminalClose(event.code)) {
           setStatus('disconnected');
+          return;
         }
+
+        const delay = nextReconnectDelay(retryCountRef.current);
+        retryCountRef.current++;
+        setRetryCount(retryCountRef.current);
+        setStatus('reconnecting');
+        retryTimerRef.current = setTimeout(() => {
+          if (!sessionNameRef.current) return;
+          doConnectRef.current(sessionNameRef.current, connectId);
+        }, delay);
       };
 
       ws.onerror = () => {
@@ -229,8 +230,8 @@ const useTerminalWebSocket = ({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState !== 'visible') return;
+    const handleForegroundReconnect = () => {
+      if (document.visibilityState === 'hidden') return;
       if (!sessionNameRef.current) return;
       const ws = wsRef.current;
       if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
@@ -239,8 +240,17 @@ const useTerminalWebSocket = ({
       connectIdRef.current++;
       doConnectRef.current(sessionNameRef.current, connectIdRef.current);
     };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+    document.addEventListener('visibilitychange', handleForegroundReconnect);
+    window.addEventListener('focus', handleForegroundReconnect);
+    window.addEventListener('online', handleForegroundReconnect);
+    window.addEventListener('pageshow', handleForegroundReconnect);
+    return () => {
+      document.removeEventListener('visibilitychange', handleForegroundReconnect);
+      window.removeEventListener('focus', handleForegroundReconnect);
+      window.removeEventListener('online', handleForegroundReconnect);
+      window.removeEventListener('pageshow', handleForegroundReconnect);
+    };
   }, []);
 
   return {
