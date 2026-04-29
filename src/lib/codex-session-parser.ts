@@ -1,4 +1,3 @@
-import { nanoid } from 'nanoid';
 import type {
   IChunkReadResult,
   IIncrementalResult,
@@ -11,6 +10,7 @@ import type {
   TToolStatus,
 } from '@/types/timeline';
 import fs from 'fs/promises';
+import { createTimelineEntryId } from '@/lib/timeline-entry-id';
 
 interface ICodexRolloutRecord {
   type?: string;
@@ -47,6 +47,8 @@ const tryParseJson = (value: unknown): Record<string, unknown> => {
 const truncate = (value: string, max = 120): string =>
   value.length > max ? `${value.slice(0, max)}...` : value;
 
+const MESSAGE_PAIR_DEDUPE_WINDOW_MS = 1_000;
+
 const extractTextItems = (content: unknown): string[] => {
   if (typeof content === 'string') return [content];
   if (!Array.isArray(content)) return [];
@@ -60,6 +62,14 @@ const extractTextItems = (content: unknown): string[] => {
   }
   return result;
 };
+
+const isImageWrapperText = (text: string): boolean => {
+  const trimmed = text.trim();
+  return /^<image(?:\s|>|$)/.test(trimmed) || trimmed === '</image>';
+};
+
+const extractUserTextItems = (content: unknown): string[] =>
+  extractTextItems(content).filter((text) => !isImageWrapperText(text));
 
 const isSyntheticUserContext = (text: string): boolean => {
   const trimmed = text.trimStart();
@@ -91,13 +101,16 @@ const parseMessage = (
 ): ITimelineUserMessage | ITimelineAssistantMessage | null => {
   const role = payload.role;
   if (role !== 'user' && role !== 'assistant') return null;
-  const text = extractTextItems(payload.content).join('\n\n').trim();
+  const textItems = role === 'user'
+    ? extractUserTextItems(payload.content)
+    : extractTextItems(payload.content);
+  const text = textItems.join('\n\n').trim();
   if (!text) return null;
   if (role === 'user' && isSyntheticUserContext(text)) return null;
 
   if (role === 'user') {
     return {
-      id: nanoid(),
+      id: '',
       type: 'user-message',
       timestamp,
       text,
@@ -105,7 +118,7 @@ const parseMessage = (
   }
 
   return {
-    id: nanoid(),
+    id: '',
     type: 'assistant-message',
     timestamp,
     markdown: text,
@@ -120,7 +133,7 @@ const parseEventMessage = (
     const text = typeof payload.message === 'string' ? payload.message.trim() : '';
     if (!text) return null;
     return {
-      id: nanoid(),
+      id: '',
       type: 'user-message',
       timestamp,
       text,
@@ -131,7 +144,7 @@ const parseEventMessage = (
     const text = typeof payload.message === 'string' ? payload.message.trim() : '';
     if (!text) return null;
     return {
-      id: nanoid(),
+      id: '',
       type: 'assistant-message',
       timestamp,
       markdown: text,
@@ -139,6 +152,26 @@ const parseEventMessage = (
   }
 
   return null;
+};
+
+const getMessageText = (entry: ITimelineUserMessage | ITimelineAssistantMessage): string =>
+  entry.type === 'user-message' ? entry.text : entry.markdown;
+
+const getMessageDedupeKey = (entry: ITimelineUserMessage | ITimelineAssistantMessage): string =>
+  [entry.type, getMessageText(entry).replace(/\r\n/g, '\n').trim()].join(':');
+
+const hasRecentMessage = (
+  seenMessages: Map<string, number>,
+  entry: ITimelineUserMessage | ITimelineAssistantMessage,
+  timestamp: number,
+): boolean => {
+  const key = getMessageDedupeKey(entry);
+  const seenAt = seenMessages.get(key);
+  if (seenAt !== undefined && Math.abs(timestamp - seenAt) <= MESSAGE_PAIR_DEDUPE_WINDOW_MS) {
+    return true;
+  }
+  seenMessages.set(key, timestamp);
+  return false;
 };
 
 const parseReasoning = (
@@ -159,7 +192,7 @@ const parseReasoning = (
   const thinking = visible.join('\n\n').trim();
   if (!thinking) return null;
   return {
-    id: nanoid(),
+    id: '',
     type: 'thinking',
     timestamp,
     thinking,
@@ -172,10 +205,10 @@ const parseToolCall = (
 ): ITimelineToolCall | null => {
   if (payload.type !== 'function_call') return null;
   const name = typeof payload.name === 'string' ? payload.name : 'tool';
-  const callId = typeof payload.call_id === 'string' ? payload.call_id : nanoid();
+  const callId = typeof payload.call_id === 'string' ? payload.call_id : `missing-call-${timestamp}`;
   const input = tryParseJson(payload.arguments);
   return {
-    id: nanoid(),
+    id: '',
     type: 'tool-call',
     timestamp,
     toolUseId: callId,
@@ -190,13 +223,13 @@ const parseToolResult = (
   timestamp: number,
 ): ITimelineToolResult | null => {
   if (payload.type !== 'function_call_output') return null;
-  const callId = typeof payload.call_id === 'string' ? payload.call_id : nanoid();
+  const callId = typeof payload.call_id === 'string' ? payload.call_id : `missing-output-${timestamp}`;
   const output = typeof payload.output === 'string' ? payload.output : '';
   const isError = /status:\s*failed|Process exited with code [1-9]/i.test(output);
   const lines = output.split('\n').filter((line) => line.trim());
   const summary = lines.length > 1 ? `${lines.length} lines` : truncate(lines[0] ?? '');
   return {
-    id: nanoid(),
+    id: '',
     type: 'tool-result',
     timestamp,
     toolUseId: callId,
@@ -219,19 +252,33 @@ const updateToolStatuses = (entries: ITimelineEntry[]): ITimelineEntry[] => {
   });
 };
 
-const parseCodexContent = (content: string): ICodexParseResult => {
+const parseCodexContent = (content: string, baseOffset = 0): ICodexParseResult => {
   const entries: ITimelineEntry[] = [];
   const entryLineOffsets: number[] = [];
-  const seenMessages = new Set<string>();
+  const seenMessages = new Map<string, number>();
   let errorCount = 0;
   let summary: string | undefined;
   let bytePos = 0;
 
   for (const line of content.split('\n')) {
-    const lineByteOffset = bytePos;
+    const lineByteOffset = baseOffset + bytePos;
     bytePos += Buffer.byteLength(line, 'utf-8') + 1;
     const trimmed = line.trim();
     if (!trimmed) continue;
+    let lineEntryIndex = 0;
+    const pushEntry = (entry: ITimelineEntry) => {
+      entries.push({
+        ...entry,
+        id: createTimelineEntryId({
+          lineOffset: lineByteOffset,
+          entryIndex: lineEntryIndex,
+          type: entry.type,
+          source: trimmed,
+        }),
+      });
+      entryLineOffsets.push(lineByteOffset);
+      lineEntryIndex++;
+    };
 
     let record: ICodexRolloutRecord;
     try {
@@ -247,14 +294,9 @@ const parseCodexContent = (content: string): ICodexParseResult => {
 
     if (record.type === 'event_msg') {
       const message = parseEventMessage(payload, timestamp);
-      if (message) {
-        const key = `${message.type}:${timestamp}:${message.type === 'user-message' ? message.text : message.markdown}`;
-        if (!seenMessages.has(key)) {
-          seenMessages.add(key);
-          entries.push(message);
-          entryLineOffsets.push(lineByteOffset);
-          if (!summary && message.type === 'user-message') summary = truncate(message.text, 200);
-        }
+      if (message && !hasRecentMessage(seenMessages, message, timestamp)) {
+        pushEntry(message);
+        if (!summary && message.type === 'user-message') summary = truncate(message.text, 200);
       }
       continue;
     }
@@ -263,11 +305,8 @@ const parseCodexContent = (content: string): ICodexParseResult => {
 
     const message = parseMessage(payload, timestamp);
     if (message) {
-      const key = `${message.type}:${timestamp}:${message.type === 'user-message' ? message.text : message.markdown}`;
-      if (!seenMessages.has(key)) {
-        seenMessages.add(key);
-        entries.push(message);
-        entryLineOffsets.push(lineByteOffset);
+      if (!hasRecentMessage(seenMessages, message, timestamp)) {
+        pushEntry(message);
         if (!summary && message.type === 'user-message') summary = truncate(message.text, 200);
       }
       continue;
@@ -275,22 +314,19 @@ const parseCodexContent = (content: string): ICodexParseResult => {
 
     const reasoning = parseReasoning(payload, timestamp);
     if (reasoning) {
-      entries.push(reasoning);
-      entryLineOffsets.push(lineByteOffset);
+      pushEntry(reasoning);
       continue;
     }
 
     const toolCall = parseToolCall(payload, timestamp);
     if (toolCall) {
-      entries.push(toolCall);
-      entryLineOffsets.push(lineByteOffset);
+      pushEntry(toolCall);
       continue;
     }
 
     const toolResult = parseToolResult(payload, timestamp);
     if (toolResult) {
-      entries.push(toolResult);
-      entryLineOffsets.push(lineByteOffset);
+      pushEntry(toolResult);
     }
   }
 
@@ -375,7 +411,7 @@ export const readCodexTailEntries = async (
         chunkSize *= 2;
         continue;
       }
-      const result = parseCodexContent(content);
+      const result = parseCodexContent(content, validFrom);
       if (result.entries.length >= maxEntries || from === 0) {
         const sliced = result.entries.length > maxEntries;
         const sliceStart = sliced ? result.entries.length - maxEntries : 0;
@@ -422,7 +458,7 @@ export const readCodexEntriesBefore = async (
       const from = Math.max(0, beforeByte - chunkSize);
       const { content, validFrom } = await readChunk(filePath, from, beforeByte);
       if (content) {
-        const result = parseCodexContent(content);
+        const result = parseCodexContent(content, validFrom);
         if (result.entries.length >= maxEntries || from === 0) {
           const sliced = result.entries.length > maxEntries;
           const sliceStart = sliced ? result.entries.length - maxEntries : 0;
@@ -489,7 +525,8 @@ export const parseCodexIncremental = async (
       }
     }
 
-    const result = parseCodexContent(segments.join('\n'));
+    const contentBaseOffset = Math.max(0, fromOffset - Buffer.byteLength(pendingBuffer, 'utf-8'));
+    const result = parseCodexContent(segments.join('\n'), contentBaseOffset);
     return {
       newEntries: result.entries,
       newOffset: size,

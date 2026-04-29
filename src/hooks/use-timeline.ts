@@ -9,6 +9,11 @@ import type {
 } from '@/types/timeline';
 import type { TPanelType } from '@/types/terminal';
 import useTimelineWebSocket from '@/hooks/use-timeline-websocket';
+import {
+  appendTimelineEntries,
+  mergeTimelineInitEntries,
+  prependUniqueTimelineEntries,
+} from '@/lib/timeline-entry-merge';
 
 interface IResumeCallbacks {
   onResumeStarted?: (payload: { sessionId: string; jsonlPath: string | null }) => void;
@@ -115,24 +120,7 @@ const useTimeline = ({
   const handleInit = useCallback((newEntries: ITimelineEntry[], _totalEntries: number, initSessionId: string, summary?: string, meta?: IInitMeta, startByteOffset?: number, hasMoreInit?: boolean, jsonlPath?: string | null, isAgentStarting?: boolean, initStats?: ISessionStats | null) => {
     setWsInitReceived(true);
     setAgentInstalledState(true);
-    setEntries((prev) => {
-      const pendings = prev.filter(
-        (e): e is ITimelineEntry & { type: 'user-message'; pending: true } =>
-          e.type === 'user-message' && e.pending === true,
-      );
-      if (pendings.length === 0) return newEntries;
-
-      const merged = newEntries.map((entry) => {
-        if (entry.type !== 'user-message') return entry;
-        const target = entry.text.trim();
-        const matchIdx = pendings.findIndex((p) => p.text.trim() === target);
-        if (matchIdx === -1) return entry;
-        const matched = pendings[matchIdx];
-        pendings.splice(matchIdx, 1);
-        return { ...entry, id: matched.id };
-      });
-      return [...merged, ...pendings];
-    });
+    setEntries((prev) => mergeTimelineInitEntries(prev, newEntries));
     startByteOffsetRef.current = startByteOffset ?? 0;
     setHasMore(hasMoreInit ?? false);
     setSessionSummary(summary);
@@ -151,42 +139,7 @@ const useTimeline = ({
   }, []);
 
   const handleAppend = useCallback((newEntries: ITimelineEntry[]) => {
-    setEntries((prev) => {
-      const updated = [...prev];
-      for (const entry of newEntries) {
-        if (entry.type === 'user-message') {
-          const target = entry.text.trim();
-          const pendingIdx = updated.findIndex(
-            (e) => e.type === 'user-message' && e.pending && (e.attachmentPlaceholder || e.text.trim() === target),
-          );
-          if (pendingIdx !== -1) {
-            const pending = updated[pendingIdx] as ITimelineEntry & { type: 'user-message' };
-            updated[pendingIdx] = { ...entry, id: pending.id };
-            continue;
-          }
-        }
-        if (entry.type === 'tool-result') {
-          const status = entry.isError ? 'error' as const : 'success' as const;
-          const tcIdx = updated.findIndex(
-            (e) => e.type === 'tool-call' && e.toolUseId === entry.toolUseId,
-          );
-          if (tcIdx !== -1) {
-            const tc = updated[tcIdx] as ITimelineEntry & { type: 'tool-call'; status: string };
-            updated[tcIdx] = { ...tc, status };
-          } else {
-            const aqIdx = updated.findIndex(
-              (e) => e.type === 'ask-user-question' && e.toolUseId === entry.toolUseId,
-            );
-            if (aqIdx !== -1) {
-              const aq = updated[aqIdx] as ITimelineEntry & { type: 'ask-user-question'; status: string; answer?: string };
-              updated[aqIdx] = { ...aq, status, answer: entry.summary || undefined };
-            }
-          }
-        }
-        updated.push(entry);
-      }
-      return updated;
-    });
+    setEntries((prev) => appendTimelineEntries(prev, newEntries));
   }, []);
 
   const addPendingUserMessage = useCallback((text: string, options?: { autoHide?: boolean; attachmentPlaceholder?: boolean }): string => {
@@ -297,7 +250,7 @@ const useTimeline = ({
       );
       if (!res.ok) return;
       const data = await res.json();
-      setEntries((prev) => [...(data.entries as ITimelineEntry[]), ...prev]);
+      setEntries((prev) => prependUniqueTimelineEntries(prev, data.entries as ITimelineEntry[]));
       startByteOffsetRef.current = data.startByteOffset;
       setHasMore(data.hasMore);
     } finally {

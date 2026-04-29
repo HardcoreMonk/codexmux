@@ -6,7 +6,7 @@ const line = (value: unknown): string => JSON.stringify(value);
 
 describe('parseCodexJsonlContent', () => {
   it('parses Codex user and assistant event messages', () => {
-    const entries = parseCodexJsonlContent([
+    const content = [
       line({
         type: 'event_msg',
         timestamp: '2026-04-27T13:28:04.781Z',
@@ -17,11 +17,36 @@ describe('parseCodexJsonlContent', () => {
         timestamp: '2026-04-27T13:28:20.314Z',
         payload: { type: 'agent_message', message: 'Reading files', phase: 'commentary' },
       }),
-    ].join('\n'));
+    ].join('\n');
+    const entries = parseCodexJsonlContent(content);
 
     expect(entries).toHaveLength(2);
     expect(entries[0]).toMatchObject({ type: 'user-message', text: 'Start work' });
     expect(entries[1]).toMatchObject({ type: 'assistant-message', markdown: 'Reading files' });
+    expect(parseCodexJsonlContent(content).map((entry) => entry.id)).toEqual(entries.map((entry) => entry.id));
+  });
+
+  it('dedupes paired event and response assistant messages', () => {
+    const entries = parseCodexJsonlContent([
+      line({
+        type: 'event_msg',
+        timestamp: '2026-04-27T13:28:20.314Z',
+        payload: { type: 'agent_message', message: 'Reading files', phase: 'commentary' },
+      }),
+      line({
+        type: 'response_item',
+        timestamp: '2026-04-27T13:28:20.316Z',
+        payload: {
+          type: 'message',
+          role: 'assistant',
+          content: [{ type: 'output_text', text: 'Reading files' }],
+          phase: 'commentary',
+        },
+      }),
+    ].join('\n'));
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ type: 'assistant-message', markdown: 'Reading files' });
   });
 
   it('skips synthetic response_item user context records', () => {
@@ -57,6 +82,40 @@ describe('parseCodexJsonlContent', () => {
 
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({ type: 'user-message', text: 'Review the code changes' });
+  });
+
+  it('dedupes response user image wrappers against event user messages', () => {
+    const entries = parseCodexJsonlContent([
+      line({
+        type: 'response_item',
+        timestamp: '2026-04-27T13:28:01.000Z',
+        payload: {
+          type: 'message',
+          role: 'user',
+          content: [
+            { type: 'input_text', text: '<image name=[Image #1]>' },
+            { type: 'input_image', image_url: 'data:image/png;base64,AAAA' },
+            { type: 'input_text', text: '</image>' },
+            { type: 'input_text', text: '[Image #1] 메시지 2중 출력 버그' },
+          ],
+        },
+      }),
+      line({
+        type: 'event_msg',
+        timestamp: '2026-04-27T13:28:01.002Z',
+        payload: {
+          type: 'user_message',
+          message: '[Image #1] 메시지 2중 출력 버그',
+          images: [],
+        },
+      }),
+    ].join('\n'));
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      type: 'user-message',
+      text: '[Image #1] 메시지 2중 출력 버그',
+    });
   });
 
   it('parses visible reasoning summaries and skips encrypted-only reasoning', () => {
