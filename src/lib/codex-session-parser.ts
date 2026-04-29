@@ -61,6 +61,12 @@ const extractTextItems = (content: unknown): string[] => {
   return result;
 };
 
+const isSyntheticUserContext = (text: string): boolean => {
+  const trimmed = text.trimStart();
+  return trimmed.startsWith('<environment_context>')
+    || trimmed.startsWith('# AGENTS.md instructions for ');
+};
+
 const summarizeCodexToolCall = (name: string, input: Record<string, unknown>): string => {
   switch (name) {
     case 'exec_command': {
@@ -87,6 +93,7 @@ const parseMessage = (
   if (role !== 'user' && role !== 'assistant') return null;
   const text = extractTextItems(payload.content).join('\n\n').trim();
   if (!text) return null;
+  if (role === 'user' && isSyntheticUserContext(text)) return null;
 
   if (role === 'user') {
     return {

@@ -17,10 +17,13 @@ const CODEX_SESSIONS_DIR = path.join(CODEX_DIR, 'sessions');
 const SESSION_SCAN_LIMIT = 100;
 const WATCH_POLL_INTERVAL = 1500;
 const INSTALL_CHECK_INTERVAL = 60_000;
+const PROCESS_SESSION_START_TOLERANCE_MS = 60_000;
 
 interface ICodexProcess {
   pid: number;
   cwd: string | null;
+  sessionId: string | null;
+  startedAt: number | null;
 }
 
 interface ICodexSessionMeta {
@@ -32,6 +35,67 @@ interface ICodexSessionMeta {
 }
 
 const THREAD_ID_RE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
+
+interface IFindCodexSessionJsonlOptions {
+  processStartedAt?: number | null;
+  allowCwdFallback?: boolean;
+}
+
+let clockTicksCache: number | null = null;
+
+const extractThreadId = (value: string | null | undefined): string | null =>
+  value?.match(THREAD_ID_RE)?.[1] ?? null;
+
+const getClockTicks = async (): Promise<number> => {
+  if (clockTicksCache) return clockTicksCache;
+
+  try {
+    const { stdout } = await execFile('getconf', ['CLK_TCK']);
+    const parsed = Number.parseInt(stdout.trim(), 10);
+    clockTicksCache = Number.isFinite(parsed) && parsed > 0 ? parsed : 100;
+  } catch {
+    clockTicksCache = 100;
+  }
+  return clockTicksCache;
+};
+
+const parseLinuxStartTicks = (stat: string): number | null => {
+  const closeParen = stat.lastIndexOf(')');
+  if (closeParen < 0) return null;
+
+  const fieldsAfterComm = stat.slice(closeParen + 1).trim().split(/\s+/);
+  const raw = fieldsAfterComm[19];
+  if (!raw) return null;
+
+  const ticks = Number.parseInt(raw, 10);
+  return Number.isFinite(ticks) ? ticks : null;
+};
+
+const getProcessStartTime = async (pid: number): Promise<number | null> => {
+  if (isLinux) {
+    try {
+      const [stat, uptimeRaw, ticksPerSecond] = await Promise.all([
+        fs.readFile(`/proc/${pid}/stat`, 'utf-8'),
+        fs.readFile('/proc/uptime', 'utf-8'),
+        getClockTicks(),
+      ]);
+      const startTicks = parseLinuxStartTicks(stat);
+      const uptime = Number.parseFloat(uptimeRaw.split(/\s+/)[0]);
+      if (startTicks === null || !Number.isFinite(uptime)) return null;
+      return Date.now() - (uptime * 1000) + ((startTicks / ticksPerSecond) * 1000);
+    } catch {
+      return null;
+    }
+  }
+
+  try {
+    const { stdout } = await execFile('ps', ['-p', String(pid), '-o', 'lstart=']);
+    const ts = Date.parse(stdout.trim());
+    return Number.isFinite(ts) ? ts : null;
+  } catch {
+    return null;
+  }
+};
 
 const getProcessCwd = async (pid: number): Promise<string | null> => {
   if (isLinux) {
@@ -66,7 +130,12 @@ const findCodexProcess = async (
     try {
       const { stdout } = await execFile('ps', ['-p', String(pid), '-o', 'comm=', '-o', 'args=']);
       if (!/\bcodex\b/.test(stdout)) continue;
-      return { pid, cwd: await getProcessCwd(pid) };
+      return {
+        pid,
+        cwd: await getProcessCwd(pid),
+        sessionId: extractThreadId(stdout),
+        startedAt: await getProcessStartTime(pid),
+      };
     } catch {
       continue;
     }
@@ -115,7 +184,7 @@ const readSessionMeta = async (jsonlPath: string): Promise<ICodexSessionMeta | n
     return null;
   }
 
-  const fallbackId = path.basename(jsonlPath, '.jsonl').match(THREAD_ID_RE)?.[1] ?? null;
+  const fallbackId = extractThreadId(path.basename(jsonlPath, '.jsonl'));
   let sessionId = fallbackId;
   let cwd: string | null = null;
   let startedAt: number | null = null;
@@ -130,14 +199,30 @@ const readSessionMeta = async (jsonlPath: string): Promise<ICodexSessionMeta | n
         if (!line.trim()) continue;
         try {
           const record = JSON.parse(line);
-          if (record.type !== 'session_meta' || !record.payload) continue;
-          if (typeof record.payload.id === 'string') sessionId = record.payload.id;
-          if (typeof record.payload.cwd === 'string') cwd = record.payload.cwd;
-          const ts = typeof record.payload.timestamp === 'string'
-            ? Date.parse(record.payload.timestamp)
-            : Date.parse(record.timestamp);
-          if (Number.isFinite(ts)) startedAt = ts;
-          break;
+          if (!record.payload || typeof record.payload !== 'object') continue;
+          const payload = record.payload as Record<string, unknown>;
+
+          if (record.type === 'session_meta') {
+            if (typeof payload.id === 'string') sessionId = payload.id;
+            if (typeof payload.cwd === 'string') cwd = payload.cwd;
+            const ts = typeof payload.timestamp === 'string'
+              ? Date.parse(payload.timestamp)
+              : Date.parse(record.timestamp);
+            if (Number.isFinite(ts)) startedAt = ts;
+            continue;
+          }
+
+          if (record.type === 'turn_context') {
+            if (typeof payload.cwd === 'string') cwd = payload.cwd;
+            continue;
+          }
+
+          if (record.type === 'event_msg' && payload.type === 'task_started') {
+            const startedAtSeconds = payload.started_at;
+            if (typeof startedAtSeconds === 'number' && Number.isFinite(startedAtSeconds)) {
+              startedAt = startedAtSeconds * 1000;
+            }
+          }
         } catch {
           continue;
         }
@@ -156,16 +241,32 @@ const readSessionMeta = async (jsonlPath: string): Promise<ICodexSessionMeta | n
 export const findCodexSessionJsonl = async (
   sessionId?: string | null,
   cwd?: string | null,
+  options: IFindCodexSessionJsonlOptions = {},
 ): Promise<ICodexSessionMeta | null> => {
   const files = await collectJsonlFiles(CODEX_SESSIONS_DIR);
   const metas = (await Promise.all(files.map(readSessionMeta)))
     .filter((meta): meta is ICodexSessionMeta => !!meta)
     .sort((a, b) => b.mtimeMs - a.mtimeMs);
 
-  if (sessionId) {
-    const byId = metas.find((meta) => meta.sessionId === sessionId);
+  const normalizedSessionId = extractThreadId(sessionId) ?? sessionId;
+  if (normalizedSessionId) {
+    const byId = metas.find((meta) => meta.sessionId === normalizedSessionId);
     if (byId) return byId;
   }
+
+  if (cwd && options.processStartedAt !== undefined && options.processStartedAt !== null) {
+    const candidates = metas
+      .filter((meta) => meta.cwd === cwd && meta.startedAt !== null)
+      .map((meta) => ({
+        meta,
+        delta: Math.abs(meta.startedAt! - options.processStartedAt!),
+      }))
+      .filter((candidate) => candidate.delta <= PROCESS_SESSION_START_TOLERANCE_MS)
+      .sort((a, b) => a.delta - b.delta || b.meta.mtimeMs - a.meta.mtimeMs);
+    if (candidates[0]) return candidates[0].meta;
+  }
+
+  if (!options.allowCwdFallback) return null;
 
   const candidates = cwd
     ? metas.filter((meta) => meta.cwd === cwd)
@@ -201,7 +302,11 @@ export const detectActiveCodexSession = async (
     return { status: 'not-running', sessionId: null, jsonlPath: null, pid: null, startedAt: null, cwd: null };
   }
 
-  const session = await findCodexSessionJsonl(null, codexProcess.cwd);
+  const session = await findCodexSessionJsonl(
+    codexProcess.sessionId,
+    codexProcess.cwd,
+    { processStartedAt: codexProcess.startedAt },
+  );
   return {
     status: 'running',
     sessionId: session?.sessionId ?? null,

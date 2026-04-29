@@ -17,6 +17,7 @@ interface ITaskCompleteMarker {
   lineIndex: number;
   timestamp: number | null;
   snippet: string | null;
+  turnId: string | null;
 }
 
 interface ICodexRawMarkers {
@@ -34,6 +35,7 @@ export interface ICodexJsonlState {
   reset: boolean;
   lastEntryTs: number | null;
   interrupted: boolean;
+  completionTurnId: string | null;
 }
 
 const EMPTY_STATE: ICodexJsonlState = {
@@ -44,6 +46,7 @@ const EMPTY_STATE: ICodexJsonlState = {
   reset: false,
   lastEntryTs: null,
   interrupted: false,
+  completionTurnId: null,
 };
 
 const truncate = (value: string): string =>
@@ -119,6 +122,7 @@ const scanRawMarkers = (content: string): ICodexRawMarkers => {
         lineIndex,
         timestamp: ts,
         snippet: record.payload ? extractCompletionSnippet(record.payload) : null,
+        turnId: typeof record.payload?.turn_id === 'string' ? record.payload.turn_id : null,
       };
       continue;
     }
@@ -202,6 +206,7 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
           reset: false,
           lastEntryTs: taskComplete.timestamp ?? markers.lastEntryTs,
           interrupted: false,
+          completionTurnId: taskComplete.turnId,
         };
       }
 
@@ -237,6 +242,7 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
         reset: false,
         lastEntryTs,
         interrupted: false,
+        completionTurnId: taskComplete.turnId,
       };
     }
 
@@ -252,6 +258,7 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
         reset: false,
         lastEntryTs,
         interrupted: false,
+        completionTurnId: null,
       };
     }
 
@@ -264,6 +271,7 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
         reset: true,
         lastEntryTs,
         interrupted: false,
+        completionTurnId: null,
       };
     }
 
@@ -279,6 +287,7 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
         reset: false,
         lastEntryTs,
         interrupted: false,
+        completionTurnId: null,
       };
     }
 

@@ -197,6 +197,7 @@ describe('checkCodexJsonlState', () => {
     const state = await checkCodexJsonlState(filePath);
 
     expect(state.idle).toBe(true);
+    expect(state.completionTurnId).toBe('turn-1');
     expect(state.lastAssistantSnippet).toBe('Final answer.');
     expect(state.currentAction).toEqual({
       toolName: null,

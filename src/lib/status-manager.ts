@@ -29,31 +29,31 @@ import path from 'path';
 import { readAgentSessionId, readAgentSummary } from '@/lib/agent-tab-fields';
 import { checkCodexJsonlState } from '@/lib/codex-jsonl-state';
 import { getConfig } from '@/lib/config-store';
+import { reduceCodexState, reduceHookState } from '@/lib/status-state-machine';
+import { createDedupeKeyStore } from '@/lib/dedupe-key-store';
 
 const log = createLogger('status');
 const hookLog = createLogger('hooks');
+const THREAD_ID_RE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
+
+interface IReadTabMetadataOptions {
+  sessionId?: string | null;
+  jsonlPath?: string | null;
+}
 
 const sessionIdFromJsonlPath = (jsonlPath: string | null | undefined): string | null => {
   if (!jsonlPath) return null;
-  return path.basename(jsonlPath, '.jsonl');
+  return path.basename(jsonlPath, '.jsonl').match(THREAD_ID_RE)?.[1] ?? null;
 };
+
+const normalizeSessionId = (sessionId: string | null | undefined): string | null =>
+  sessionId?.match(THREAD_ID_RE)?.[1] ?? null;
 
 // Notification hook의 notification_type 중 권한 요청류만 needs-input으로 전환.
 // idle_prompt(응답 후 60s idle 알람), computer_use_*, elicitation_*, auth_success 등은 상태 변경 없이 무시한다.
 const INPUT_REQUESTING_NOTIFICATION_TYPES = new Set(['permission_prompt', 'worker_permission_prompt']);
 
 const COMPACT_STALE_MS = 60_000;
-
-export const deriveStateFromEvent = (event: ILastEvent | null, fallback: TCliState): TCliState => {
-  if (!event) return fallback;
-  switch (event.name) {
-    case 'session-start': return 'idle';
-    case 'prompt-submit': return 'busy';
-    case 'notification':  return 'needs-input';
-    case 'stop':          return 'ready-for-review';
-    case 'interrupt':     return 'idle';
-  }
-};
 
 const POLL_INTERVAL_SMALL = 30_000;
 const POLL_INTERVAL_MEDIUM = 45_000;
@@ -80,6 +80,7 @@ interface IJsonlIdleCache {
   reset: boolean;
   lastEntryTs: number | null;
   interrupted: boolean;
+  completionTurnId: string | null;
 }
 
 const MAX_JSONL_CACHE = 256;
@@ -213,11 +214,13 @@ interface IJsonlCheckResult {
   lastEntryTs: number | null;
   staleMs: number;
   interrupted: boolean;
+  completionTurnId: string | null;
 }
 
 interface IReadTabMetadataResult extends IJsonlCheckResult {
   jsonlPath: string | null;
   running: boolean;
+  sessionId?: string | null;
 }
 
 const emptyJsonlCheckResult = (): IJsonlCheckResult => ({
@@ -229,23 +232,24 @@ const emptyJsonlCheckResult = (): IJsonlCheckResult => ({
   lastEntryTs: null,
   staleMs: 0,
   interrupted: false,
+  completionTurnId: null,
 });
 
 const checkJsonlIdle = async (jsonlPath: string): Promise<IJsonlCheckResult> => {
   try {
     const stat = await fs.stat(jsonlPath);
-    if (stat.size === 0) return { idle: true, stale: false, lastAssistantSnippet: null, currentAction: null, reset: false, lastEntryTs: null, staleMs: 0, interrupted: false };
+    if (stat.size === 0) return { idle: true, stale: false, lastAssistantSnippet: null, currentAction: null, reset: false, lastEntryTs: null, staleMs: 0, interrupted: false, completionTurnId: null };
 
     const cached = jsonlIdleCache.get(jsonlPath);
     if (cached && cached.mtimeMs === stat.mtimeMs) {
       jsonlIdleCache.delete(jsonlPath);
       jsonlIdleCache.set(jsonlPath, cached);
-      if (cached.idle) return { idle: true, stale: cached.stale, lastAssistantSnippet: cached.lastAssistantSnippet, currentAction: cached.currentAction, reset: cached.reset, lastEntryTs: cached.lastEntryTs, staleMs: cached.staleMs, interrupted: cached.interrupted };
+      if (cached.idle) return { idle: true, stale: cached.stale, lastAssistantSnippet: cached.lastAssistantSnippet, currentAction: cached.currentAction, reset: cached.reset, lastEntryTs: cached.lastEntryTs, staleMs: cached.staleMs, interrupted: cached.interrupted, completionTurnId: cached.completionTurnId };
       if (cached.needsStaleRecheck) {
         const idle = Date.now() - stat.mtimeMs > cached.staleMs;
-        return { idle, stale: true, lastAssistantSnippet: cached.lastAssistantSnippet, currentAction: cached.currentAction, reset: cached.reset, lastEntryTs: cached.lastEntryTs, staleMs: cached.staleMs, interrupted: cached.interrupted };
+        return { idle, stale: true, lastAssistantSnippet: cached.lastAssistantSnippet, currentAction: cached.currentAction, reset: cached.reset, lastEntryTs: cached.lastEntryTs, staleMs: cached.staleMs, interrupted: cached.interrupted, completionTurnId: cached.completionTurnId };
       }
-      return { idle: false, stale: false, lastAssistantSnippet: cached.lastAssistantSnippet, currentAction: cached.currentAction, reset: cached.reset, lastEntryTs: cached.lastEntryTs, staleMs: cached.staleMs, interrupted: cached.interrupted };
+      return { idle: false, stale: false, lastAssistantSnippet: cached.lastAssistantSnippet, currentAction: cached.currentAction, reset: cached.reset, lastEntryTs: cached.lastEntryTs, staleMs: cached.staleMs, interrupted: cached.interrupted, completionTurnId: cached.completionTurnId };
     }
 
     const handle = await fs.open(jsonlPath, 'r');
@@ -272,13 +276,13 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<IJsonlCheckResult> => 
       if (jsonlIdleCache.size >= MAX_JSONL_CACHE) {
         jsonlIdleCache.delete(jsonlIdleCache.keys().next().value!);
       }
-      jsonlIdleCache.set(jsonlPath, { mtimeMs: stat.mtimeMs, idle: scan.idle, stale: scan.stale, needsStaleRecheck: scan.needsStaleRecheck, staleMs: scan.staleMs, lastAssistantSnippet: extracted.lastAssistantSnippet, currentAction: extracted.currentAction, reset: extracted.reset, lastEntryTs: scan.lastEntryTs, interrupted: scan.interrupted });
-      return { idle: scan.idle, stale: scan.stale, lastAssistantSnippet: extracted.lastAssistantSnippet, currentAction: extracted.currentAction, reset: extracted.reset, lastEntryTs: scan.lastEntryTs, staleMs: scan.staleMs, interrupted: scan.interrupted };
+      jsonlIdleCache.set(jsonlPath, { mtimeMs: stat.mtimeMs, idle: scan.idle, stale: scan.stale, needsStaleRecheck: scan.needsStaleRecheck, staleMs: scan.staleMs, lastAssistantSnippet: extracted.lastAssistantSnippet, currentAction: extracted.currentAction, reset: extracted.reset, lastEntryTs: scan.lastEntryTs, interrupted: scan.interrupted, completionTurnId: null });
+      return { idle: scan.idle, stale: scan.stale, lastAssistantSnippet: extracted.lastAssistantSnippet, currentAction: extracted.currentAction, reset: extracted.reset, lastEntryTs: scan.lastEntryTs, staleMs: scan.staleMs, interrupted: scan.interrupted, completionTurnId: null };
     } finally {
       await handle.close();
     }
   } catch {
-    return { idle: false, stale: false, lastAssistantSnippet: null, currentAction: null, reset: false, lastEntryTs: null, staleMs: 0, interrupted: false };
+    return { idle: false, stale: false, lastAssistantSnippet: null, currentAction: null, reset: false, lastEntryTs: null, staleMs: 0, interrupted: false, completionTurnId: null };
   }
 };
 
@@ -297,6 +301,7 @@ const checkProviderJsonlIdle = async (
     lastEntryTs: result.lastEntryTs,
     staleMs: 0,
     interrupted: result.interrupted,
+    completionTurnId: result.completionTurnId,
   };
 };
 
@@ -399,6 +404,8 @@ class StatusManager {
   private lastRateLimits: IRateLimitsData | null = null;
   private jsonlWatchers = new Map<string, { watcher: FSWatcher; jsonlPath: string; debounceTimer: ReturnType<typeof setTimeout> | null }>();
   private compactStaleTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private reviewNotificationDedupe = createDedupeKeyStore();
+  private sessionHistoryDedupe = createDedupeKeyStore();
 
   async init(): Promise<void> {
     if (this.initialized) return;
@@ -430,7 +437,10 @@ class StatusManager {
       for (const tab of tabs) {
         const paneInfo = panesInfo.get(tab.sessionName);
         const provider = getProviderByPanelType(tab.panelType);
-        const detected = await this.readTabMetadata(paneInfo, provider);
+        const detected = await this.readTabMetadata(paneInfo, provider, {
+          sessionId: provider?.readSessionId(tab) ?? null,
+          jsonlPath: provider?.readJsonlPath(tab) ?? null,
+        });
         const persisted: TCliState = (tab.cliState as TCliState | undefined) ?? 'idle';
         let cliState: TCliState = persisted === 'busy' ? 'unknown' : persisted;
         if (provider?.id === 'codex') {
@@ -456,7 +466,9 @@ class StatusManager {
           ? { name: 'notification', at: Date.now(), seq: 0 }
           : null;
         const agentSummary = readAgentSummary(tab);
-        const agentSessionId = sessionIdFromJsonlPath(detected.jsonlPath) ?? readAgentSessionId(tab);
+        const agentSessionId = detected.sessionId
+          ?? sessionIdFromJsonlPath(detected.jsonlPath)
+          ?? normalizeSessionId(readAgentSessionId(tab));
         this.tabs.set(tab.id, {
           cliState,
           workspaceId: ws.id,
@@ -530,8 +542,9 @@ class StatusManager {
   private async readTabMetadata(
     paneInfo: IPaneInfo | undefined,
     provider: IAgentProvider | null,
+    options: IReadTabMetadataOptions = {},
   ): Promise<IReadTabMetadataResult> {
-    const empty = { ...emptyJsonlCheckResult(), jsonlPath: null, running: false };
+    const empty = { ...emptyJsonlCheckResult(), jsonlPath: null, running: false, sessionId: null };
     if (!paneInfo || !paneInfo.pid || !provider) return empty;
 
     const childPids = await getChildPids(paneInfo.pid);
@@ -539,12 +552,17 @@ class StatusManager {
     if (!running) return empty;
 
     const session = await provider.detectActiveSession(paneInfo.pid, childPids);
-    if (session.status !== 'running' || !session.jsonlPath) {
-      return { ...emptyJsonlCheckResult(), jsonlPath: session.jsonlPath ?? null, running: true };
+    const jsonlPath = session.jsonlPath ?? options.jsonlPath ?? null;
+    const sessionId = session.sessionId
+      ?? sessionIdFromJsonlPath(jsonlPath)
+      ?? normalizeSessionId(options.sessionId);
+
+    if (session.status !== 'running' || !jsonlPath) {
+      return { ...emptyJsonlCheckResult(), jsonlPath, running: true, sessionId };
     }
 
-    const result = await checkProviderJsonlIdle(provider, session.jsonlPath);
-    return { ...result, jsonlPath: session.jsonlPath, running: true };
+    const result = await checkProviderJsonlIdle(provider, jsonlPath);
+    return { ...result, jsonlPath, running: true, sessionId };
   }
 
   private mergeJsonlMetadata(entry: ITabStatusEntry, metadata: IJsonlCheckResult): boolean {
@@ -566,6 +584,16 @@ class StatusManager {
     return changed;
   }
 
+  private completionKeyFor(entry: ITabStatusEntry, metadata: IReadTabMetadataResult): string | null {
+    if (!metadata.completionTurnId) return null;
+    const scope = metadata.sessionId
+      ?? entry.agentSessionId
+      ?? sessionIdFromJsonlPath(metadata.jsonlPath)
+      ?? metadata.jsonlPath
+      ?? entry.tmuxSession;
+    return `${scope}:${metadata.completionTurnId}`;
+  }
+
   private reconcileCodexState(
     tabId: string,
     entry: ITabStatusEntry,
@@ -573,50 +601,21 @@ class StatusManager {
   ): boolean {
     if (getProviderByPanelType(entry.panelType)?.id !== 'codex') return false;
 
-    let changed = false;
-    const prevState = entry.cliState;
+    const decision = reduceCodexState({
+      currentState: entry.cliState,
+      running: metadata.running,
+      hasJsonlPath: !!metadata.jsonlPath,
+      idle: metadata.idle,
+      hasCompletionSnippet: !!metadata.lastAssistantSnippet,
+    });
+    if (!decision.changed) return false;
 
-    if (!metadata.running) {
-      if (entry.cliState === 'busy' || entry.cliState === 'unknown' || entry.cliState === 'inactive') {
-        this.applyCliState(tabId, entry, 'idle', { silent: true, skipHistory: true });
-        changed = true;
-      }
-      return changed;
-    }
-
-    if (!metadata.jsonlPath) {
-      if (entry.cliState !== 'busy') {
-        this.applyCliState(tabId, entry, 'busy', { silent: prevState !== 'idle' });
-        changed = true;
-      }
-      return changed;
-    }
-
-    if (metadata.idle && metadata.lastAssistantSnippet) {
-      if (entry.cliState !== 'ready-for-review') {
-        const fromActiveTurn = prevState === 'busy' || prevState === 'needs-input';
-        this.applyCliState(tabId, entry, 'ready-for-review', {
-          silent: !fromActiveTurn,
-          skipHistory: !fromActiveTurn,
-        });
-        changed = true;
-      }
-      return changed;
-    }
-
-    if (!metadata.idle) {
-      if (entry.cliState !== 'busy') {
-        this.applyCliState(tabId, entry, 'busy', { silent: prevState !== 'idle' && prevState !== 'ready-for-review' });
-        changed = true;
-      }
-      return changed;
-    }
-
-    if (entry.cliState === 'busy' || entry.cliState === 'unknown' || entry.cliState === 'inactive') {
-      this.applyCliState(tabId, entry, 'idle', { silent: true, skipHistory: true });
-      changed = true;
-    }
-    return changed;
+    this.applyCliState(tabId, entry, decision.nextState, {
+      silent: decision.silent,
+      skipHistory: decision.skipHistory,
+      completionKey: this.completionKeyFor(entry, metadata),
+    });
+    return true;
   }
 
   private async detectTerminalStatus(
@@ -687,7 +686,10 @@ class StatusManager {
         if (!existing) {
           const persisted: TCliState = (tab.cliState as TCliState | undefined) ?? 'idle';
           let initialState: TCliState = persisted === 'busy' ? 'unknown' : persisted;
-          const detected = await this.readTabMetadata(paneInfo, provider);
+          const detected = await this.readTabMetadata(paneInfo, provider, {
+            sessionId: provider?.readSessionId(tab) ?? null,
+            jsonlPath: provider?.readJsonlPath(tab) ?? null,
+          });
           if (provider?.id === 'codex') {
             if (!detected.running && (initialState === 'unknown' || initialState === 'inactive')) {
               initialState = 'idle';
@@ -705,7 +707,9 @@ class StatusManager {
             ? { name: 'notification', at: Date.now(), seq: 0 }
             : null;
           const agentSummary = readAgentSummary(tab);
-          const agentSessionId = sessionIdFromJsonlPath(detected.jsonlPath) ?? readAgentSessionId(tab);
+          const agentSessionId = detected.sessionId
+            ?? sessionIdFromJsonlPath(detected.jsonlPath)
+            ?? normalizeSessionId(readAgentSessionId(tab));
           const entry: ITabStatusEntry = {
             cliState: initialState,
             workspaceId: ws.id,
@@ -740,13 +744,20 @@ class StatusManager {
         const processChanged = existing.currentProcess !== currentProcess;
         const messageChanged = existing.lastUserMessage !== tab.lastUserMessage;
         const panelTypeChanged = existing.panelType !== tab.panelType;
-        const refreshed = await this.readTabMetadata(paneInfo, provider);
+        const refreshed = await this.readTabMetadata(paneInfo, provider, {
+          sessionId: provider?.readSessionId(tab) ?? existing.agentSessionId ?? null,
+          jsonlPath: provider?.readJsonlPath(tab) ?? existing.jsonlPath ?? null,
+        });
         existing.tabName = tab.name || (newPaneTitle ? formatTabTitle(newPaneTitle) : '');
         existing.currentProcess = currentProcess;
         existing.paneTitle = newPaneTitle;
         existing.workspaceId = ws.id;
         existing.panelType = tab.panelType;
-        existing.agentSessionId = sessionIdFromJsonlPath(refreshed.jsonlPath) ?? readAgentSessionId(tab) ?? null;
+        existing.agentSessionId = refreshed.sessionId
+          ?? sessionIdFromJsonlPath(refreshed.jsonlPath)
+          ?? normalizeSessionId(readAgentSessionId(tab))
+          ?? existing.agentSessionId
+          ?? null;
         existing.jsonlPath = refreshed.jsonlPath ?? existing.jsonlPath;
         existing.lastUserMessage = tab.lastUserMessage;
         const metadataChanged = this.mergeJsonlMetadata(existing, refreshed);
@@ -845,7 +856,7 @@ class StatusManager {
     tabId: string,
     entry: ITabStatusEntry,
     newState: TCliState,
-    opts: { silent?: boolean; skipHistory?: boolean } = {},
+    opts: { silent?: boolean; skipHistory?: boolean; completionKey?: string | null } = {},
   ): void {
     const prevState = entry.cliState;
     if (prevState === newState) return;
@@ -855,14 +866,23 @@ class StatusManager {
     entry.busySince = newState === 'busy' ? Date.now() : null;
     if (newState === 'busy') entry.dismissedAt = null;
 
-    if (newState === 'ready-for-review' && entry.jsonlPath && !opts.skipHistory) {
+    if (
+      newState === 'ready-for-review'
+      && entry.jsonlPath
+      && !opts.skipHistory
+      && this.sessionHistoryDedupe.remember(opts.completionKey)
+    ) {
       const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
       delay(500).then(() => this.saveSessionHistory(tabId, entry, prevBusySince, false)).catch((err) => {
         log.warn('Failed to save session history: %s', err);
       });
     }
 
-    if (newState === 'ready-for-review' && !opts.silent) {
+    if (
+      newState === 'ready-for-review'
+      && !opts.silent
+      && this.reviewNotificationDedupe.remember(opts.completionKey)
+    ) {
       this.sendWebPush(tabId, entry, 'review').catch((err) => {
         log.warn('Web push failed: %s', err);
       });
@@ -1018,22 +1038,26 @@ class StatusManager {
     this.broadcast({ type: 'status:hook-event', tabId, event: entry.lastEvent });
 
     const prevState = entry.cliState;
-    if (eventName === 'stop' && provider?.id === 'codex') {
+    const decision = reduceHookState({
+      currentState: prevState,
+      eventName,
+      providerId: provider?.id ?? null,
+    });
+
+    if (decision.deferCodexStop) {
       hookLog.debug({ tabId, event: eventName, notificationType, seq, prevState }, 'queued Codex stop JSONL verification');
       this.recheckCodexStop(tabId, tmuxSession);
       return;
     }
 
-    const newState = prevState === 'cancelled'
-      ? prevState
-      : deriveStateFromEvent(entry.lastEvent, prevState);
+    const newState = decision.nextState;
 
     hookLog.debug(
-      { tabId, event: eventName, notificationType, seq, prevState, newState, transition: prevState !== newState },
+      { tabId, event: eventName, notificationType, seq, prevState, newState, transition: decision.changed },
       `processed ${eventName}${notificationType ? `(${notificationType})` : ''} ${prevState}→${newState}`,
     );
 
-    if (prevState !== newState) {
+    if (decision.changed) {
       this.applyCliState(tabId, entry, newState);
       this.persistToLayout(entry);
       this.broadcastUpdate(tabId, entry);
@@ -1236,7 +1260,7 @@ class StatusManager {
       if (layout) {
         const tab = collectAllTabs(layout.root).find((t) => t.sessionName === tmuxSession);
         const provider = getProviderByPanelType(entry.panelType);
-        const tabAgentSessionId = tab ? readAgentSessionId(tab) : null;
+        const tabAgentSessionId = tab ? normalizeSessionId(readAgentSessionId(tab)) : null;
         if (provider && tabAgentSessionId) {
           const cwd = await getSessionCwd(tmuxSession);
           if (cwd) {
@@ -1256,13 +1280,14 @@ class StatusManager {
       if (panePid) {
         const { info } = await detectAnyActiveSession(panePid);
         jsonlPath = info.jsonlPath;
+        if (info.sessionId) entry.agentSessionId = info.sessionId;
       }
     }
 
     if (!jsonlPath) return;
 
     entry.jsonlPath = jsonlPath;
-    entry.agentSessionId = sessionIdFromJsonlPath(jsonlPath) ?? entry.agentSessionId;
+    entry.agentSessionId = normalizeSessionId(entry.agentSessionId) ?? sessionIdFromJsonlPath(jsonlPath);
 
     if ((entry.cliState === 'busy' || entry.cliState === 'needs-input') && !this.jsonlWatchers.has(tabId)) {
       this.startJsonlWatch(tabId, jsonlPath);

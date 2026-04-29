@@ -18,6 +18,7 @@ tmux pane
 
 StatusManager
   ├─ tab별 status 저장
+  ├─ status-state-machine reducer로 상태 전이 판정
   ├─ layout.json에 cliState/session metadata 저장
   ├─ /api/status WebSocket broadcast
   └─ review/input 상태에서 toast/native/Web Push 알림 전송
@@ -33,7 +34,11 @@ StatusManager
 | `true` | Codex process를 찾음 |
 | `false` | Codex process가 없음 |
 
-Codex 감지는 pane PID 아래 child process를 따라가며 `codex`를 찾고, cwd와 `~/.codex/sessions/YYYY/MM/DD/*.jsonl`을 연결한다.
+Codex 감지는 pane PID 아래 child process를 따라가며 `codex`를 찾고, session id 또는
+process start time으로 `~/.codex/sessions/YYYY/MM/DD/*.jsonl`을 연결한다. cwd만으로
+가장 최근 JSONL을 선택하지 않는다. 같은 workspace에서 여러 Codex tab이 동시에
+실행될 수 있으므로, tab에 저장된 `agentSessionId`/`agentJsonlPath`를 우선 보존하고
+rollout 파일명은 plain Codex UUID로 정규화한다.
 
 ## work state
 
@@ -78,16 +83,29 @@ stop          -> ready-for-review
 interrupt     -> idle
 ```
 
+Hook event와 Codex JSONL/process metadata의 다음 상태 판단은
+`src/lib/status-state-machine.ts`의 순수 reducer가 담당한다. `StatusManager`는
+tmux/process/JSONL 신호 수집, 상태 적용, history 저장, notification 같은 부수효과를
+처리한다.
+
 Codex tab에서는 `stop` hook을 바로 `ready-for-review`로 전환하지 않는다. `stop`은
 JSONL 재확인을 예약하는 신호이며, 실제 완료 판정은 같은 turn의
 `event_msg.payload.type="task_complete"` 기록이 확인될 때만 한다. `StopFailure`는
 `stop-failure`로 전달되며 상태 전이를 만들지 않는다.
+
+`task_complete.turn_id`는 완료 correlation key의 일부로 사용한다. Web Push와 session
+history 저장은 `sessionId:turnId` 기준으로 dedupe되어, 같은 Codex turn이 JSONL watch,
+poll, stop-hook 재확인 경로에서 여러 번 관측되어도 완료 알림과 history가 중복 생성되지
+않는다. turn id를 확인할 수 없는 legacy 경로는 기존 상태 전이 동작을 유지한다.
 
 생성된 hook/statusline bridge file도 event를 POST할 수 있지만 Codex 상태의 주 경로는 process detection, JSONL metadata, terminal state, polling이다.
 
 ## JSONL metadata
 
 Codex parser는 `session_meta`, `turn_context`, `event_msg`, `response_item` 계열 record를 읽어 message, tool call, tool result, reasoning summary, token usage를 추출한다. StatusManager는 active tab의 JSONL을 tail하면서 `lastAssistantMessage`, `currentAction`, `agentSessionId`, `jsonlPath`를 갱신한다.
+
+`response_item`의 synthetic user context, 예를 들어 `# AGENTS.md instructions for ...`나
+`<environment_context>`는 visible timeline message로 표시하지 않는다.
 
 `agent_message`는 commentary/final text 모두에 쓰일 수 있어 완료 신호로 보지 않는다.
 예를 들어 "이제 파일을 편집합니다" 같은 중간 commentary 뒤에 바로 tool call이 이어질

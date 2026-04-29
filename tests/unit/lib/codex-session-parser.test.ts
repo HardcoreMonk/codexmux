@@ -24,6 +24,41 @@ describe('parseCodexJsonlContent', () => {
     expect(entries[1]).toMatchObject({ type: 'assistant-message', markdown: 'Reading files' });
   });
 
+  it('skips synthetic response_item user context records', () => {
+    const entries = parseCodexJsonlContent([
+      line({
+        type: 'response_item',
+        timestamp: '2026-04-27T13:28:01.000Z',
+        payload: {
+          type: 'message',
+          role: 'user',
+          content: [
+            {
+              type: 'input_text',
+              text: '# AGENTS.md instructions for /repo\n\n<INSTRUCTIONS>\ninternal rules\n</INSTRUCTIONS>',
+            },
+            {
+              type: 'input_text',
+              text: '<environment_context>\n  <cwd>/repo</cwd>\n</environment_context>',
+            },
+          ],
+        },
+      }),
+      line({
+        type: 'response_item',
+        timestamp: '2026-04-27T13:28:02.000Z',
+        payload: {
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text: 'Review the code changes' }],
+        },
+      }),
+    ].join('\n'));
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ type: 'user-message', text: 'Review the code changes' });
+  });
+
   it('parses visible reasoning summaries and skips encrypted-only reasoning', () => {
     const entries = parseCodexJsonlContent([
       line({
