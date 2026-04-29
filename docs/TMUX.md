@@ -79,6 +79,39 @@ tmux title은 다음 형식이다.
 | `isCodexRunning(panePid)` | `src/lib/codex-session-detection.ts` | Codex process 감지 |
 | `detectActiveCodexSession(panePid)` | `src/lib/codex-session-detection.ts` | active Codex session metadata |
 
+## Timeline WebSocket
+
+Endpoint는 `/api/timeline?session={name}&panelType={provider}`다. 서버는 provider가 감지한 JSONL을 tail하면서 초기 tail snapshot과 append event를 보낸다.
+
+| 모듈 | 책임 |
+|---|---|
+| `src/lib/timeline-server.ts` | timeline WebSocket request, subscribe/resume flow, file watch orchestration |
+| `src/lib/timeline-server-state.ts` | connection/file watcher/session watcher singleton, send/backpressure helper |
+| `src/lib/timeline-entry-id.ts` | JSONL offset과 record identity 기반 stable entry id |
+| `src/lib/timeline-entry-dedupe.ts` | 같은 record 재수신 방지용 fingerprint |
+| `src/lib/timeline-entry-merge.ts` | init/append/load-more 병합, pending user message 보존 |
+
+재연결이나 모바일 foreground 복귀 중 같은 JSONL 구간이 `timeline:init`과 `timeline:append`로 겹쳐 도착할 수 있다. client는 stable id와 fingerprint를 함께 사용해 중복 assistant output, tool result, pending user message를 한 번만 표시한다.
+
+## Git DIFF 패널
+
+DIFF 패널은 별도 git workspace를 저장하지 않고 현재 tab의 tmux session cwd를 기준으로 동작한다. `/api/layout/diff?session={name}`는 `getSessionCwd(session)`로 cwd를 얻고, 해당 디렉터리가 Git work tree이면 status, diff, history, sync 정보를 계산한다.
+
+대량 변경사항이 있는 저장소에서 DIFF 클릭이 terminal session을 막거나 browser render를 멈추지 않도록 다음 제한을 둔다.
+
+| 항목 | 정책 |
+|---|---|
+| tracked diff | `git diff --no-ext-diff HEAD`, 최대 5MB buffer |
+| untracked 목록 | `git ls-files --others --exclude-standard -z` 사용 |
+| untracked 포함 수 | 최대 50개 파일 |
+| untracked text 파일 | 256KB 이하만 inline diff 생성 |
+| untracked 전체 diff | 최대 2MB까지 포함 |
+| binary/대용량 파일 | 실제 내용을 읽지 않고 binary placeholder diff로 표시 |
+| client fetch | 15초 timeout 후 오류 toast와 panel message 표시 |
+| render | 파일 20개 초과 또는 hunk line 1200줄 초과 시 기본 접힘 |
+
+`hashOnly=true` polling은 전체 diff를 만들지 않고 hash, ahead/behind, fetch 여부만 확인한다. refresh나 최초 진입처럼 전체 diff가 필요한 경우에도 제한을 초과한 untracked 파일 수는 응답의 `untrackedSkipped`, `untrackedTotal`로 내려 보내 사용자에게 생략 안내를 표시한다.
+
 ## 서버 시작 순서
 
 1. `~/.codexmux/cmux.lock` 획득.
@@ -99,6 +132,8 @@ tmux title은 다음 형식이다.
 | `src/lib/tmux.ts` | tmux command wrapper |
 | `src/lib/terminal-server.ts` | terminal WebSocket과 node-pty bridge |
 | `src/lib/terminal-protocol.ts` | binary protocol constant |
+| `src/lib/timeline-server.ts` | timeline WebSocket과 JSONL watcher |
+| `src/lib/timeline-server-state.ts` | timeline shared singleton state |
 | `src/lib/codex-session-detection.ts` | Codex process/session detection |
 | `src/lib/status-manager.ts` | process/status polling |
 | `src/lib/tab-title.ts` | client title parser |

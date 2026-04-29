@@ -30,6 +30,10 @@ codexmux의 영속 상태는 `~/.codexmux/`에 저장된다. Codex CLI의 원본
 
 `hooks.json`, `status-hook.sh`, `statusline.sh`는 local hook/statusline bridge가 서버로 상태를 POST할 때 쓰는 생성 파일이다. Codex tab 실행 자체에는 필요하지 않다.
 
+Electron remote/local server mode는 같은 `~/.codexmux/config.json`을 사용한다. Android 런처의 최근 서버와 마지막 서버 URL은 Android WebView `localStorage`에 저장되며 `~/.codexmux/`에는 기록되지 않는다.
+
+Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service`에 둔다. 서비스 파일은 실행 방식과 `HOST`/`PORT`를 고정하는 운영 설정이며, codexmux 앱 상태인 `~/.codexmux/`에는 포함되지 않는다.
+
 ## 주요 파일
 
 | 파일 | 내용 |
@@ -37,11 +41,21 @@ codexmux의 영속 상태는 `~/.codexmux/`에 저장된다. Codex CLI의 원본
 | `config.json` | password hash, session secret, locale, theme, Codex option, editor/network/notification 설정 |
 | `workspaces.json` | workspace 목록, active workspace, sidebar 상태 |
 | `workspaces/{wsId}/layout.json` | pane/tab tree와 tab metadata |
+| `workspaces/{wsId}/message-history.json` | workspace별 web input history |
+| `hooks.json` | hook/statusline bridge 설정 |
+| `status-hook.sh`, `statusline.sh` | Codex hook/statusline bridge script |
 | `cli-token` | CLI와 bridge script가 `x-cmux-token`으로 보내는 token |
 | `port` | 현재 server port |
 | `cmux.lock` | 단일 인스턴스 guard |
 | `rate-limits.json` | optional statusline payload 최신값 |
 | `session-history.json` | 완료된 Codex session summary |
+| `sidebar-items.json` | sidebar 고정 항목과 표시 상태 |
+| `quick-prompts.json` | 사용자 quick prompt와 built-in prompt 표시 상태 |
+| `keybindings.json` | keyboard shortcut override |
+| `vapid-keys.json` | Web Push VAPID key pair |
+| `push-subscriptions.json` | Web Push subscription |
+| `uploads/` | 임시 첨부 파일 |
+| `logs/` | 서버 로그 |
 | `stats/cache.json` | Codex JSONL에서 계산한 usage cache |
 | `stats/daily-reports/` | `codex exec`로 생성한 일별 report |
 

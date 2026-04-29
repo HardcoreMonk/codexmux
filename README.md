@@ -68,9 +68,36 @@ HOST=localhost,tailscale PORT=8122 codexmux
 
 ```zsh
 codexmux() {
-  HOST=localhost,tailscale PORT=8122 command codexmux "$@"
+  HOST=localhost,tailscale,192.168.0.0/16 PORT=8122 command codexmux "$@"
 }
 ```
+
+Linux에서 상시 실행하려면 system-wide service보다 user service를 권장합니다. codexmux는 `~/.codexmux/`와 사용자 tmux socket을 사용하므로 `systemd --user`로 실행해야 권한과 데이터 경로가 자연스럽게 유지됩니다.
+
+현재 워크스테이션 등록값:
+
+```text
+~/.config/systemd/user/codexmux.service
+HOST=localhost,tailscale,192.168.0.0/16
+PORT=8122
+```
+
+관리 명령:
+
+```bash
+systemctl --user status codexmux.service
+systemctl --user restart codexmux.service
+systemctl --user stop codexmux.service
+journalctl --user -u codexmux.service -f
+```
+
+로그인하지 않은 상태에서도 user service를 자동 시작하려면 linger가 필요합니다.
+
+```bash
+loginctl enable-linger "$USER"
+```
+
+세부 등록 절차는 [docs/SYSTEMD.md](docs/SYSTEMD.md)를 참고하세요.
 
 소스 체크아웃 상태에서 `codexmux`가 `../dist/server.js`를 찾지 못하면 아직 배포용 빌드가 없는 상태입니다. 개발 중에는 아래 명령을 사용합니다.
 
@@ -101,9 +128,11 @@ corepack pnpm start
 - 멀티 워크스페이스: 패널 분할, 탭, 작업 디렉터리, 사이드바 상태 저장
 - Codex 상태 감지: 작업중, 입력 대기, 리뷰 대기, 세션 resume 상태 표시
 - 라이브 타임라인: Codex JSONL을 읽어 메시지, tool call, permission prompt, reasoning summary 표시
-- 모바일 UI: PWA, Android 앱, Web Push, 재접속, 입력 draft 보존
+- 안정적인 재연결: 타임라인 entry id와 중복 제거를 JSONL record identity 기준으로 처리
+- 모바일 UI: PWA, iPad Safari, Android 앱, Web Push, 재접속, 입력 draft 보존
 - 알림 제어: 작업 완료 toast, 시스템 알림, 완료 사운드 on/off
 - Git 워크플로: status, diff, history, fetch, pull, push, 충돌/dirty 상태 전달
+- DIFF 안정성: 대량 diff와 untracked 파일은 제한, 생략 안내, 기본 접힘, timeout으로 UI hang 방지
 - 사용량 통계: token, cache read/write, 비용 추정, 프로젝트별 분석, 일별 리포트
 - 빠른 프롬프트: 기본 내장 프롬프트는 `Commit`만 제공하며 사용자 프롬프트를 추가할 수 있음
 - CLI bridge: `codexmux tab ...` 명령으로 workspace/tab/browser API 제어
@@ -143,6 +172,8 @@ tailscale serve off --https=443
 ```bash
 tailscale serve --bg --https=443 http://localhost:8022
 ```
+
+iPad에서는 현재 Safari로 접속한 뒤 홈 화면에 추가하는 방식이 권장됩니다. iPadOS 네이티브 앱은 아직 포함되어 있지 않으며, 필요하면 Capacitor iOS project를 별도로 추가해야 합니다.
 
 ## 보안
 
@@ -315,7 +346,7 @@ corepack pnpm android:bundle:release
 - 모바일 기기에 Tailscale 설치 및 같은 tailnet 로그인
 - codexmux 서버는 `HOST=localhost,tailscale` 또는 Tailscale Serve HTTPS로 노출
 
-앱은 저장된 서버 또는 기본 Tailscale 서버로 자동 연결합니다. 최근 서버 목록, 서버 변경, 연결 실패 시 재시도 흐름, 앱 정보 화면을 제공합니다. 런처와 모바일 내비게이션은 한국어 우선 타이포그래피, safe-area, 터치 눌림 상태, focus-visible 상태를 기준으로 조정되어 있습니다. Android 버전은 `package.json` 버전과 자동 동기화됩니다. HTTPS Tailscale Serve 주소를 우선 사용하고, 로컬 개발용 HTTP는 Android manifest와 Capacitor 설정에서 허용합니다.
+앱은 저장된 서버 또는 기본 Tailscale 서버로 자동 연결합니다. 연결 전 `/api/health`를 확인하고, HTTPS/HTTP/network/timeout 실패를 구분해 재시도 또는 서버 변경 흐름으로 되돌립니다. 최근 서버 목록, 서버 변경, 연결 실패 시 재시도 흐름, 앱 정보 화면을 제공합니다. 런처와 모바일 내비게이션은 한국어 우선 타이포그래피, safe-area, 터치 눌림 상태, focus-visible 상태를 기준으로 조정되어 있습니다. Android 버전은 `package.json` 버전과 자동 동기화됩니다. HTTPS Tailscale Serve 주소를 우선 사용하고, 로컬 개발용 HTTP는 Android manifest와 Capacitor 설정에서 허용합니다.
 
 세부 구조와 빌드 메모는 [docs/ANDROID.md](docs/ANDROID.md)를 참고합니다.
 
@@ -360,6 +391,9 @@ Codex JSONL
 
 - 터미널 I/O는 xterm.js, WebSocket, node-pty, tmux로 연결됩니다.
 - 상태 감지는 tmux pane PID 아래 Codex process와 Codex JSONL 변경을 함께 봅니다.
+- 상태 전이, 알림 정책, session id mapping, 타임라인 병합/dedupe는 순수 모듈로 분리되어 있습니다.
+- 타임라인 entry id는 JSONL byte offset과 record identity 기반으로 생성되어 재연결 중복 출력을 줄입니다.
+- DIFF 패널은 tmux session cwd를 기준으로 Git 상태를 읽고, 대량 untracked 파일과 렌더링 비용을 제한합니다.
 - 서버와 Next.js API route의 공유 상태는 `globalThis` singleton으로 유지합니다.
 - 전용 tmux socket인 `codexmux`를 사용하므로 사용자의 기존 tmux 세션과 분리됩니다.
 
@@ -371,6 +405,7 @@ Codex JSONL
 | [docs/STATUS.md](docs/STATUS.md) | Codex 작업 상태 감지와 status flow |
 | [docs/TMUX.md](docs/TMUX.md) | tmux, terminal WebSocket, session 관리 |
 | [docs/DATA-DIR.md](docs/DATA-DIR.md) | `~/.codexmux/` 구조와 삭제 기준 |
+| [docs/SYSTEMD.md](docs/SYSTEMD.md) | Linux user service 등록과 운영 |
 | [docs/STYLE.md](docs/STYLE.md) | theme와 color 사용 규칙 |
 | [docs/ELECTRON.md](docs/ELECTRON.md) | Electron desktop app 개발과 패키징 |
 | [docs/ANDROID.md](docs/ANDROID.md) | Android Capacitor app 개발과 빌드 |
@@ -425,9 +460,36 @@ Recommended `~/.zshrc` wrapper:
 
 ```zsh
 codexmux() {
-  HOST=localhost,tailscale PORT=8122 command codexmux "$@"
+  HOST=localhost,tailscale,192.168.0.0/16 PORT=8122 command codexmux "$@"
 }
 ```
+
+For long-running Linux use, prefer a user service over a system-wide service. codexmux uses `~/.codexmux/` and the user's tmux socket, so `systemd --user` preserves the expected permissions and state paths.
+
+Current workstation registration:
+
+```text
+~/.config/systemd/user/codexmux.service
+HOST=localhost,tailscale,192.168.0.0/16
+PORT=8122
+```
+
+Service commands:
+
+```bash
+systemctl --user status codexmux.service
+systemctl --user restart codexmux.service
+systemctl --user stop codexmux.service
+journalctl --user -u codexmux.service -f
+```
+
+Enable linger if the service must start without an active login session:
+
+```bash
+loginctl enable-linger "$USER"
+```
+
+See [docs/SYSTEMD.md](docs/SYSTEMD.md) for the full service setup.
 
 When running from a source checkout, use the dev server unless the package has already been built:
 
@@ -539,7 +601,7 @@ Expected prerequisites:
 - Tailscale installed on the phone and logged into the same tailnet
 - codexmux exposed through `HOST=localhost,tailscale` or Tailscale Serve HTTPS
 
-The app automatically connects to the saved server or the default Tailscale server. The launcher supports recent servers, server changes, retry flow after connection failures, and app info. Launcher and mobile navigation surfaces are tuned for Korean-first typography, safe-area handling, touch pressed states, and focus-visible states. Android versioning is synchronized with `package.json`. Prefer HTTPS through Tailscale Serve; HTTP is enabled only for local development paths.
+The app automatically connects to the saved server or the default Tailscale server. Before navigation it probes `/api/health` and separates HTTPS, HTTP, network, and timeout failures so the launcher can return to retry or server-change flows. The launcher supports recent servers, server changes, retry flow after connection failures, and app info. Launcher and mobile navigation surfaces are tuned for Korean-first typography, safe-area handling, touch pressed states, and focus-visible states. Android versioning is synchronized with `package.json`. Prefer HTTPS through Tailscale Serve; HTTP is enabled only for local development paths.
 
 ### Tailscale
 
@@ -567,15 +629,19 @@ Disable Serve:
 tailscale serve off --https=443
 ```
 
+On iPad, use Safari and add codexmux to the Home Screen. A native iPadOS app is not included yet; it would require adding a Capacitor iOS target and building with Xcode.
+
 ### Features
 
 - Persistent tmux sessions for browser and mobile reconnects
 - Multi-workspace layout with panes, tabs, working directories, and sidebar state
 - Codex status detection for busy, idle, input-needed, review-needed, and resume states
 - Live timeline from Codex JSONL logs
-- PWA, Android app, Web Push, mobile reconnect, and input draft preservation
+- PWA, iPad Safari, Android app, Web Push, mobile reconnect, and input draft preservation
+- Stable timeline entry ids and duplicate suppression across reconnects
 - Notification controls for task-complete toast, system notifications, and completion sound
 - Git status, diff, history, fetch, pull, and push flows
+- Diff safety for large changes through bounded untracked handling, skipped-file notices, default collapse, and request timeouts
 - Usage stats, token cache analysis, cost estimates, and daily reports
 - Quick prompts with the built-in `Commit` prompt plus user-defined prompts
 - CLI bridge through `codexmux tab ...`

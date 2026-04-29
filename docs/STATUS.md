@@ -19,6 +19,8 @@ tmux pane
 StatusManager
   ├─ tab별 status 저장
   ├─ status-state-machine reducer로 상태 전이 판정
+  ├─ status-session-mapping으로 session id/completion key 정규화
+  ├─ status-notification-policy로 hook notification 처리 여부 판정
   ├─ layout.json에 cliState/session metadata 저장
   ├─ /api/status WebSocket broadcast
   └─ review/input 상태에서 toast/native/Web Push 알림 전송
@@ -84,9 +86,11 @@ interrupt     -> idle
 ```
 
 Hook event와 Codex JSONL/process metadata의 다음 상태 판단은
-`src/lib/status-state-machine.ts`의 순수 reducer가 담당한다. `StatusManager`는
-tmux/process/JSONL 신호 수집, 상태 적용, history 저장, notification 같은 부수효과를
-처리한다.
+`src/lib/status-state-machine.ts`의 순수 reducer가 담당한다. session id 추출,
+completion dedupe key, input 요청성 notification 판정, JSONL metadata merge는
+`status-session-mapping`, `status-notification-policy`, `status-metadata`의 순수
+helper가 담당한다. `StatusManager`는 tmux/process/JSONL 신호 수집, 상태 적용,
+history 저장, notification 같은 부수효과를 처리한다.
 
 Codex tab에서는 `stop` hook을 바로 `ready-for-review`로 전환하지 않는다. `stop`은
 JSONL 재확인을 예약하는 신호이며, 실제 완료 판정은 같은 turn의
@@ -106,6 +110,12 @@ Codex parser는 `session_meta`, `turn_context`, `event_msg`, `response_item` 계
 
 `response_item`의 synthetic user context, 예를 들어 `# AGENTS.md instructions for ...`나
 `<environment_context>`는 visible timeline message로 표시하지 않는다.
+
+Timeline entry id는 JSONL record offset과 record identity 기반으로 생성한다. 재연결,
+tail 재읽기, load-more 과정에서 같은 record가 다시 파싱되어도 entry id가 안정적으로
+유지되고, client merge/dedupe 로직은 id 재생성이나 중복 append에 의존하지 않는다.
+`use-timeline`은 WebSocket 상태와 React state 연결을 담당하고, init/append/load-more
+병합 정책은 `timeline-entry-merge`에서 처리한다.
 
 `agent_message`는 commentary/final text 모두에 쓰일 수 있어 완료 신호로 보지 않는다.
 예를 들어 "이제 파일을 편집합니다" 같은 중간 commentary 뒤에 바로 tool call이 이어질
@@ -131,9 +141,17 @@ Codex parser는 `session_meta`, `turn_context`, `event_msg`, `response_item` 계
 | 파일 | 역할 |
 |---|---|
 | `src/lib/status-manager.ts` | 서버 상태, polling, JSONL watch, Web Push |
+| `src/lib/status-state-machine.ts` | hook/process/JSONL 상태 전이 reducer |
+| `src/lib/status-session-mapping.ts` | Codex session id 정규화와 completion key 생성 |
+| `src/lib/status-notification-policy.ts` | notification hook 처리/전송 정책 |
+| `src/lib/status-metadata.ts` | JSONL metadata merge helper |
 | `src/hooks/use-agent-status.ts` | status WebSocket hook |
 | `src/hooks/use-tab-store.ts` | client tab state |
 | `src/lib/providers/codex/index.ts` | Codex provider adapter |
 | `src/lib/codex-session-detection.ts` | Codex process/session detection |
 | `src/lib/codex-session-parser.ts` | Codex JSONL parser |
+| `src/lib/timeline-entry-id.ts` | JSONL 기반 stable timeline entry id 생성 |
+| `src/lib/timeline-entry-dedupe.ts` | timeline entry fingerprint와 중복 제거 |
+| `src/lib/timeline-entry-merge.ts` | timeline init/append/load-more 병합 정책 |
+| `src/lib/timeline-server-state.ts` | timeline WebSocket shared singleton state |
 | `src/pages/api/check-agent.ts` | process check API |

@@ -52,6 +52,18 @@ corepack pnpm pack:electron
 - URL scheme이 없으면 `http://`를 붙입니다.
 - 허용 scheme은 `http://`와 `https://`입니다.
 
+## Build Output
+
+`corepack pnpm build:electron`은 실행 가능한 Electron main/preload bundle과 Next.js standalone server bundle을 생성하지만 `.app` 또는 `.dmg`를 만들지는 않습니다.
+
+| 명령 | 산출물 |
+| --- | --- |
+| `corepack pnpm build:electron` | `dist/`, `dist-electron/`, `.next/standalone/` |
+| `corepack pnpm pack:electron:dev` | `release/` 아래 unsigned local macOS package |
+| `corepack pnpm pack:electron` | `release/` 아래 signed/notarized release package |
+
+macOS에서 앱을 실제로 설치하려면 `release/*.dmg` 또는 `release/*/*.app` 산출물이 필요합니다. 현재 repository checkout에 `release/`가 없으면 아직 macOS 앱 패키징을 실행하지 않은 상태입니다.
+
 ## Packaging Notes
 
 현재 패키징 metadata는 `com.hardcoremonk.codexmux`와 `HardcoreMonk/codexmux`를 기준으로 맞춰져 있습니다.

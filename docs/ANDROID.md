@@ -78,12 +78,32 @@ Android 앱 버전은 repo root의 `package.json` 버전을 사용합니다.
 3. 최근 서버 목록에서 이전 서버를 바로 다시 선택할 수 있습니다.
 4. 서버를 바꿔야 하면 런처의 변경 버튼으로 URL을 수정합니다.
 5. 변경한 URL은 `localStorage`에 저장되고 다음 실행부터 우선 사용됩니다.
-6. 원격 서버 로딩 실패나 5xx 응답은 native WebViewClient가 런처로 되돌리고 재시도/변경 흐름을 제공합니다.
-7. 앱 정보 영역에서 versionName, versionCode, package, device, Android version을 확인할 수 있습니다.
+6. 원격 서버로 이동하기 전 `/api/health`를 확인합니다.
+7. CORS가 가능한 서버는 `GET /api/health` `200 OK`를 확인하고, 구버전 서버나 일부 WebView 환경은 `no-cors` fallback으로 접근 가능성만 확인합니다.
+8. timeout, network, HTTP 4xx/5xx, SSL 오류는 런처로 되돌아와 원인별 안내와 재시도/변경 흐름을 제공합니다.
+9. 앱 정보 영역에서 versionName, versionCode, package, device, Android version을 확인할 수 있습니다.
 
 Tailscale Serve HTTPS 주소를 우선 사용합니다. 로컬 개발용 `http://` 접근은 manifest와 Capacitor 설정에서 허용하지만, 실사용은 HTTPS가 더 안정적입니다.
 
 Capacitor Android의 `allowNavigation` wildcard는 domain label 개수를 정확히 맞춰야 합니다. Tailscale Serve 주소가 보통 `<machine>.<tailnet>.ts.net` 형태이므로 `capacitor.config.ts`에는 `*.ts.net`뿐 아니라 `*.*.ts.net`도 함께 허용합니다.
+
+## Failure Handling
+
+| 실패 유형 | 처리 |
+| --- | --- |
+| timeout | 8초 안에 `/api/health` 응답이 없으면 저장 URL을 유지한 채 재시도/변경 버튼을 표시 |
+| network | DNS, Tailscale 연결, 서버 미실행처럼 네트워크 연결 자체가 실패하면 런처로 복귀 |
+| HTTP | main-frame HTTP status `>=400`이면 native WebViewClient가 런처로 복귀 |
+| SSL | 인증서 또는 HTTPS 오류는 WebView load를 취소하고 런처로 복귀 |
+| old server | CORS header가 없는 구버전 서버는 `no-cors` probe fallback 후 접속 시도 |
+
+서버의 `/api/health`는 Android launcher probe를 위해 다음 CORS header를 반환합니다.
+
+```text
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, OPTIONS
+Access-Control-Allow-Headers: Content-Type
+```
 
 ## Build Output
 
