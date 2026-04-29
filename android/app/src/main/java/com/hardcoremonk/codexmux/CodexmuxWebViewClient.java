@@ -1,5 +1,8 @@
 package com.hardcoremonk.codexmux;
 
+import android.net.Uri;
+import android.net.http.SslError;
+import android.webkit.SslErrorHandler;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -18,7 +21,7 @@ public class CodexmuxWebViewClient extends BridgeWebViewClient {
     @Override
     public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
         if (shouldShowLauncher(request)) {
-            loadLauncher(view);
+            loadLauncher(view, "network");
             return;
         }
         super.onReceivedError(view, request, error);
@@ -26,24 +29,38 @@ public class CodexmuxWebViewClient extends BridgeWebViewClient {
 
     @Override
     public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
-        if (shouldShowLauncher(request) && errorResponse != null && errorResponse.getStatusCode() >= 500) {
-            loadLauncher(view);
+        if (shouldShowLauncher(request) && errorResponse != null && errorResponse.getStatusCode() >= 400) {
+            loadLauncher(view, "http");
             return;
         }
         super.onReceivedHttpError(view, request, errorResponse);
     }
 
+    @Override
+    public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+        if (shouldShowLauncher(error != null ? error.getUrl() : null, true)) {
+            handler.cancel();
+            loadLauncher(view, "ssl");
+            return;
+        }
+        super.onReceivedSslError(view, handler, error);
+    }
+
     private boolean shouldShowLauncher(WebResourceRequest request) {
         if (request == null || !request.isForMainFrame() || request.getUrl() == null) return false;
-        String url = request.getUrl().toString();
+        return shouldShowLauncher(request.getUrl().toString(), true);
+    }
+
+    private boolean shouldShowLauncher(String url, boolean mainFrame) {
+        if (!mainFrame || url == null) return false;
         String localUrl = bridge.getLocalUrl();
         return localUrl != null && !url.startsWith(localUrl);
     }
 
-    private void loadLauncher(WebView view) {
+    private void loadLauncher(WebView view, String reason) {
         String localUrl = bridge.getLocalUrl();
         if (localUrl == null) return;
         String separator = localUrl.endsWith("/") ? "" : "/";
-        view.loadUrl(localUrl + separator + "?connection=failed");
+        view.loadUrl(localUrl + separator + "?connection=failed&reason=" + Uri.encode(reason));
     }
 }

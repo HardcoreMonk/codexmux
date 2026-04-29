@@ -126,6 +126,11 @@
         box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.22);
       }
 
+      button:disabled {
+        opacity: 0.58;
+        transform: none;
+      }
+
       button.secondary {
         border: 1px solid var(--border);
         background: transparent;
@@ -213,6 +218,40 @@
         color: var(--danger);
       }
 
+      .troubleshooting {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+        border: 1px solid rgba(248, 113, 113, 0.34);
+        border-radius: 8px;
+        background: rgba(248, 113, 113, 0.08);
+        padding: 12px;
+        color: #d9e0ea;
+      }
+
+      .troubleshooting[hidden] {
+        display: none;
+      }
+
+      .troubleshooting-title {
+        color: #fecaca;
+        font-size: 0.875rem;
+        font-weight: 700;
+      }
+
+      .troubleshooting ul {
+        display: grid;
+        gap: 6px;
+        margin: 0;
+        padding-left: 18px;
+      }
+
+      .troubleshooting li {
+        color: #c8ced8;
+        font-size: 0.8125rem;
+        line-height: 1.45;
+      }
+
       .hint {
         margin-top: 14px;
         font-size: 0.8125rem;
@@ -288,6 +327,14 @@
         </div>
 
         <p class="status" id="status"></p>
+        <div class="troubleshooting" id="troubleshooting" hidden>
+          <div class="troubleshooting-title">서버에 접근할 수 없습니다</div>
+          <ul>
+            <li>Tailscale 앱이 연결됨 상태인지 확인하세요.</li>
+            <li>codexmux 서버가 실행 중이고 Tailscale Serve 또는 8122 포트가 열려 있는지 확인하세요.</li>
+            <li>서버 주소가 <code>https://...ts.net</code> 또는 Tailscale IP 주소인지 확인하세요.</li>
+          </ul>
+        </div>
         <p class="hint">기본 서버와 최근 서버를 저장해 다음 실행부터 자동 연결합니다.</p>
 
         <details>
@@ -307,6 +354,7 @@
       const CURRENT_KEY = 'codexmux:server-url';
       const RECENT_KEY = 'codexmux:recent-server-urls';
       const MAX_RECENT = 5;
+      const CONNECT_TIMEOUT_MS = 8000;
 
       const serverPanel = document.getElementById('server-panel');
       const serverSource = document.getElementById('server-source');
@@ -319,6 +367,7 @@
       const recent = document.getElementById('recent');
       const recentList = document.getElementById('recent-list');
       const status = document.getElementById('status');
+      const troubleshooting = document.getElementById('troubleshooting');
       const appVersion = document.getElementById('app-version');
       const appBuild = document.getElementById('app-build');
       const appPackage = document.getElementById('app-package');
@@ -326,9 +375,11 @@
       const appAndroid = document.getElementById('app-android');
       const params = new URLSearchParams(window.location.search);
       const hasConnectionFailure = params.get('connection') === 'failed';
+      const connectionFailureReason = params.get('reason') || 'native';
 
       let autoConnectTimer = null;
       let currentUrl = '';
+      let isConnecting = false;
 
       const normalizeUrl = (raw) => {
         const value = String(raw || '').trim();
@@ -373,6 +424,64 @@
         status.classList.toggle('error', tone === 'error');
       };
 
+      const setControlsDisabled = (disabled) => {
+        isConnecting = disabled;
+        connectCurrent.disabled = disabled;
+        changeServer.disabled = disabled;
+        useDefault.disabled = disabled;
+        form.querySelector('button[type="submit"]').disabled = disabled;
+      };
+
+      const hideTroubleshooting = () => {
+        troubleshooting.hidden = true;
+      };
+
+      const showConnectionFailure = (reason) => {
+        const messages = {
+          ssl: 'HTTPS 인증서 확인에 실패했습니다. Tailscale Serve 주소를 다시 확인해 주세요.',
+          http: '서버가 오류 응답을 반환했습니다. codexmux 서버 상태를 확인해 주세요.',
+          timeout: '서버 응답이 없습니다. Tailscale 연결 상태와 서버 실행 여부를 확인해 주세요.',
+          network: '네트워크 연결에 실패했습니다. Tailscale 앱과 서버 주소를 확인해 주세요.',
+          native: '서버에 연결하지 못했습니다. 네트워크와 Tailscale 상태를 확인한 뒤 다시 시도해 주세요.',
+        };
+        setStatus(messages[reason] || messages.native, 'error');
+        troubleshooting.hidden = false;
+      };
+
+      const probeServer = async (url) => {
+        const fetchHealth = async (options) => {
+          const controller = new AbortController();
+          const timer = window.setTimeout(() => controller.abort(), CONNECT_TIMEOUT_MS);
+          const healthUrl = new URL('/api/health', url);
+          healthUrl.searchParams.set('t', String(Date.now()));
+          try {
+            return await fetch(healthUrl.toString(), {
+              method: 'GET',
+              cache: 'no-store',
+              credentials: 'omit',
+              signal: controller.signal,
+              ...options,
+            });
+          } finally {
+            window.clearTimeout(timer);
+          }
+        };
+
+        try {
+          const response = await fetchHealth({ mode: 'cors' });
+          if (!response.ok) return { ok: false, reason: 'http' };
+          return { ok: true };
+        } catch (error) {
+          if (error?.name === 'AbortError') return { ok: false, reason: 'timeout' };
+          try {
+            await fetchHealth({ mode: 'no-cors' });
+            return { ok: true };
+          } catch (fallbackError) {
+            return { ok: false, reason: fallbackError?.name === 'AbortError' ? 'timeout' : 'network' };
+          }
+        }
+      };
+
       const renderRecent = () => {
         const urls = readRecent().filter((url) => url !== currentUrl);
         recent.hidden = urls.length === 0;
@@ -384,16 +493,26 @@
           button.textContent = url;
           button.addEventListener('click', () => {
             const nextUrl = rememberServer(url);
-            if (nextUrl) openServer(nextUrl);
+            if (nextUrl) void openServer(nextUrl);
           });
           recentList.appendChild(button);
         }
       };
 
-      const openServer = (url) => {
+      const openServer = async (url) => {
+        if (isConnecting) return;
         const normalized = rememberServer(url);
         if (!normalized) {
           setStatus('서버 주소를 확인해 주세요.', 'error');
+          return;
+        }
+        hideTroubleshooting();
+        setControlsDisabled(true);
+        setStatus('서버 상태 확인 중...');
+        const result = await probeServer(normalized);
+        setControlsDisabled(false);
+        if (!result.ok) {
+          showConnectionFailure(result.reason);
           return;
         }
         setStatus('연결 중...');
@@ -404,6 +523,8 @@
         if (autoConnectTimer) window.clearTimeout(autoConnectTimer);
         serverPanel.hidden = true;
         form.hidden = false;
+        hideTroubleshooting();
+        setControlsDisabled(false);
         input.value = value;
         input.focus();
         input.select();
@@ -423,12 +544,13 @@
         serverUrl.textContent = currentUrl;
         renderRecent();
         if (hasConnectionFailure) {
-          setStatus('서버에 연결하지 못했습니다. 네트워크와 Tailscale 상태를 확인한 뒤 다시 시도해 주세요.', 'error');
+          showConnectionFailure(connectionFailureReason);
           return;
         }
+        hideTroubleshooting();
         setStatus(`${serverSource.textContent}로 자동 연결합니다.`);
         if (autoConnect) {
-          autoConnectTimer = window.setTimeout(() => openServer(currentUrl), 300);
+          autoConnectTimer = window.setTimeout(() => { void openServer(currentUrl); }, 300);
         }
       };
 
@@ -466,12 +588,12 @@
 
       form.addEventListener('submit', (event) => {
         event.preventDefault();
-        openServer(input.value);
+        void openServer(input.value);
       });
 
       connectCurrent.addEventListener('click', () => {
         if (autoConnectTimer) window.clearTimeout(autoConnectTimer);
-        openServer(currentUrl || localStorage.getItem(CURRENT_KEY) || DEFAULT_SERVER_URL);
+        void openServer(currentUrl || localStorage.getItem(CURRENT_KEY) || DEFAULT_SERVER_URL);
       });
 
       changeServer.addEventListener('click', () => {
@@ -480,7 +602,7 @@
 
       useDefault.addEventListener('click', () => {
         const nextUrl = rememberServer(DEFAULT_SERVER_URL);
-        if (nextUrl) openServer(nextUrl);
+        if (nextUrl) void openServer(nextUrl);
       });
 
       boot();
