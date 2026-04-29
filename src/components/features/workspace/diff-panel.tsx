@@ -34,8 +34,25 @@ type TViewMode = 'split' | 'unified';
 type TTab = 'changes' | 'history';
 type TSyncErrorKind = 'no-upstream' | 'auth' | 'diverged' | 'rejected' | 'local-changes' | 'timeout' | 'unknown';
 
+interface IDiffResponse {
+  isGitRepo: boolean;
+  diff?: string;
+  hash?: string;
+  ahead?: number;
+  behind?: number;
+  branch?: string;
+  upstream?: string | null;
+  isDetached?: boolean;
+  stash?: number;
+  headCommit?: IHeadCommit | null;
+  fetched?: boolean;
+  untrackedSkipped?: number;
+  untrackedTotal?: number;
+}
+
 const POLL_INTERVAL = 10_000;
 const FETCH_INTERVAL = 3 * 60_000;
+const DIFF_FETCH_TIMEOUT_MS = 15_000;
 const ERROR_TOAST_DURATION = 15_000;
 const MAX_STDERR_LENGTH = 800;
 
@@ -59,6 +76,17 @@ const AGENT_PROMPT_KEYS = {
   unknown: 'agentPromptGeneric',
 } as const;
 
+const fetchWithTimeout = async (url: string) => {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), DIFF_FETCH_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeout);
+  }
+};
+
 const DiffPanel = ({ sessionName, onSendToAgent }: IDiffPanelProps) => {
   const t = useTranslations('diff');
   const isMobile = useIsMobile();
@@ -74,6 +102,9 @@ const DiffPanel = ({ sessionName, onSendToAgent }: IDiffPanelProps) => {
   const [isDetached, setIsDetached] = useState(false);
   const [stash, setStash] = useState(0);
   const [headCommit, setHeadCommit] = useState<IHeadCommit | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [skippedUntracked, setSkippedUntracked] = useState(0);
+  const [totalUntracked, setTotalUntracked] = useState(0);
   const [viewMode, setViewMode] = useState<TViewMode>(() => {
     if (typeof window === 'undefined') return 'split';
     const saved = localStorage.getItem('diff-output-format');
@@ -93,13 +124,16 @@ const DiffPanel = ({ sessionName, onSendToAgent }: IDiffPanelProps) => {
   const fetchDiff = useCallback(async (opts: { remoteFetch?: boolean } = {}) => {
     setLoading(true);
     setHasUpdate(false);
+    setError(null);
     try {
       const params = new URLSearchParams({ session: sessionName });
       if (opts.remoteFetch) params.set('fetch', 'true');
-      const res = await fetch(`/api/layout/diff?${params}`);
-      if (!res.ok) return;
-      const data = await res.json();
+      const res = await fetchWithTimeout(`/api/layout/diff?${params}`);
+      if (!res.ok) throw new Error(`diff request failed: ${res.status}`);
+      const data = await res.json() as IDiffResponse;
       setIsGitRepo(data.isGitRepo);
+      setSkippedUntracked(data.untrackedSkipped ?? 0);
+      setTotalUntracked(data.untrackedTotal ?? 0);
       if (data.isGitRepo) {
         setDiff(data.diff ?? '');
         setAhead(data.ahead ?? 0);
@@ -112,19 +146,25 @@ const DiffPanel = ({ sessionName, onSendToAgent }: IDiffPanelProps) => {
         currentHashRef.current = data.hash ?? '';
         if (data.fetched) lastFetchAtRef.current = Date.now();
       }
+    } catch (err) {
+      const message = (err as Error).name === 'AbortError'
+        ? t('loadTimeout')
+        : t('loadFailed');
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
-  }, [sessionName]);
+  }, [sessionName, t]);
 
   const pollForChanges = useCallback(async () => {
     const shouldFetch = Date.now() - lastFetchAtRef.current >= FETCH_INTERVAL;
     try {
       const params = new URLSearchParams({ session: sessionName, hashOnly: 'true' });
       if (shouldFetch) params.set('fetch', 'true');
-      const res = await fetch(`/api/layout/diff?${params}`);
+      const res = await fetchWithTimeout(`/api/layout/diff?${params}`);
       if (!res.ok) return;
-      const data = await res.json();
+      const data = await res.json() as IDiffResponse;
       if (!data.isGitRepo) return;
       if (data.fetched) lastFetchAtRef.current = Date.now();
       setAhead(data.ahead ?? 0);
@@ -405,7 +445,17 @@ const DiffPanel = ({ sessionName, onSendToAgent }: IDiffPanelProps) => {
           <DiffHistoryView sessionName={sessionName} refreshToken={historyRefreshToken} viewMode={viewMode} />
         ) : (
           <>
-            {!diff && (
+            {error && !loading && (
+              <div className="m-2 rounded border border-negative/30 bg-negative/10 px-3 py-2 text-xs text-negative">
+                {error}
+              </div>
+            )}
+            {skippedUntracked > 0 && (
+              <div className="m-2 rounded border border-ui-amber/30 bg-ui-amber/10 px-3 py-2 text-xs text-ui-amber">
+                {t('untrackedLimited', { skipped: skippedUntracked, total: totalUntracked })}
+              </div>
+            )}
+            {!diff && !error && (
               <div className="flex h-full items-center justify-center">
                 <div className="flex flex-col items-center gap-3 text-muted-foreground">
                   <GitBranch className="h-10 w-10 opacity-20" />

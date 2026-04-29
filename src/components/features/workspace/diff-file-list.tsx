@@ -16,11 +16,18 @@ interface IDiffFileListProps {
   newRef?: string;
 }
 
+interface ICollapseOverrides {
+  filesKey: string;
+  values: Record<string, boolean>;
+}
+
 const DIFF_FONT_SIZE: Record<string, number> = {
   normal: 11,
   large: 13,
   'x-large': 15,
 };
+const AUTO_COLLAPSE_FILE_COUNT = 20;
+const AUTO_COLLAPSE_HUNK_LINES = 1200;
 
 const DiffFileList = ({ diff, viewMode, sessionName, oldRef = 'HEAD', newRef = 'WORKTREE' }: IDiffFileListProps) => {
   const { resolvedTheme } = useTheme();
@@ -28,17 +35,6 @@ const DiffFileList = ({ diff, viewMode, sessionName, oldRef = 'HEAD', newRef = '
   const isMobile = useIsMobile();
   const fontSize = useConfigStore((s) => s.fontSize);
   const diffFontSize = DIFF_FONT_SIZE[fontSize] ?? DIFF_FONT_SIZE.normal;
-
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
-
-  const toggle = useCallback((key: string) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
 
   const files = useMemo(() => {
     if (!diff) return [];
@@ -51,6 +47,52 @@ const DiffFileList = ({ diff, viewMode, sessionName, oldRef = 'HEAD', newRef = '
       };
     });
   }, [diff]);
+
+  const filesKey = useMemo(() => files
+    .map((file) => [
+      file.displayName,
+      file.source.additions,
+      file.source.deletions,
+      file.source.hunks.length,
+    ].join(':'))
+    .join('|'), [files]);
+
+  const defaultCollapsed = useMemo(() => {
+    const collapseAll = files.length > AUTO_COLLAPSE_FILE_COUNT;
+    const next = new Set<string>();
+    for (const file of files) {
+      const hunkLines = file.source.hunks.reduce((sum, hunk) => sum + hunk.split('\n').length, 0);
+      if (collapseAll || hunkLines > AUTO_COLLAPSE_HUNK_LINES) {
+        next.add(file.key);
+      }
+    }
+    return next;
+  }, [files]);
+
+  const [collapseOverrides, setCollapseOverrides] = useState<ICollapseOverrides>(() => ({
+    filesKey: '',
+    values: {},
+  }));
+
+  const collapsed = useMemo(() => {
+    const next = new Set(defaultCollapsed);
+    if (collapseOverrides.filesKey !== filesKey) return next;
+
+    for (const [key, isCollapsed] of Object.entries(collapseOverrides.values)) {
+      if (isCollapsed) next.add(key);
+      else next.delete(key);
+    }
+
+    return next;
+  }, [defaultCollapsed, collapseOverrides, filesKey]);
+
+  const toggle = useCallback((key: string) => {
+    setCollapseOverrides((prev) => {
+      const values = prev.filesKey === filesKey ? { ...prev.values } : {};
+      values[key] = !collapsed.has(key);
+      return { filesKey, values };
+    });
+  }, [collapsed, filesKey]);
 
   const totals = useMemo(() => {
     let add = 0;

@@ -1,6 +1,9 @@
 {
   "notGitRepo": "Not a Git repository",
   "noChanges": "No changes",
+  "loadFailed": "Failed to load diff",
+  "loadTimeout": "Diff loading timed out",
+  "untrackedLimited": "Skipped {skipped} of {total} untracked files because of size or count limits",
   "hasChanges": "Changes detected",
   "refresh": "Refresh",
   "sideBySide": "Side by side",

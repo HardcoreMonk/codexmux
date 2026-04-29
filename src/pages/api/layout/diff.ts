@@ -2,6 +2,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { execFile as execFileCb } from 'child_process';
 import { createHash } from 'crypto';
 import { promisify } from 'util';
+import { readFile, stat } from 'fs/promises';
+import { resolve, sep } from 'path';
 import { getSessionCwd, hasSession } from '@/lib/tmux';
 import { createLogger } from '@/lib/logger';
 
@@ -9,6 +11,11 @@ const execFile = promisify(execFileCb);
 const log = createLogger('diff');
 const CMD_TIMEOUT = 10000;
 const FETCH_TIMEOUT = 20000;
+const MAX_DIFF_BYTES = 5 * 1024 * 1024;
+const MAX_UNTRACKED_FILES = 50;
+const MAX_UNTRACKED_TEXT_BYTES = 256 * 1024;
+const MAX_UNTRACKED_DIFF_BYTES = 2 * 1024 * 1024;
+const BINARY_SAMPLE_BYTES = 8192;
 
 const getAheadBehind = async (cwd: string): Promise<{ ahead: number; behind: number }> => {
   try {
@@ -41,6 +48,13 @@ interface IRepoMeta {
   isDetached: boolean;
   stash: number;
   headCommit: IHeadCommit | null;
+}
+
+interface IUntrackedDiffResult {
+  diff: string;
+  included: number;
+  skipped: number;
+  total: number;
 }
 
 const FIELD = '\x1f';
@@ -86,12 +100,105 @@ const computeDiffHash = async (cwd: string) => {
   const [{ stdout: headOut }, { stdout: statusOut }, { stdout: shortstatOut }] = await Promise.all([
     execFile('git', ['rev-parse', 'HEAD'], { cwd, timeout: CMD_TIMEOUT }),
     execFile('git', ['status', '--porcelain', '-uall'], { cwd, timeout: CMD_TIMEOUT }),
-    execFile('git', ['diff', 'HEAD', '--shortstat'], { cwd, timeout: CMD_TIMEOUT }),
+    execFile('git', ['diff', '--no-ext-diff', 'HEAD', '--shortstat'], { cwd, timeout: CMD_TIMEOUT }),
   ]);
   return createHash('sha1')
     .update(`${headOut.trim()}\n${statusOut}\n${shortstatOut}`)
     .digest('hex')
     .slice(0, 16);
+};
+
+const resolveRepoPath = (cwd: string, file: string): string | null => {
+  const resolved = resolve(/* turbopackIgnore: true */ cwd, file);
+  if (resolved === cwd || resolved.startsWith(cwd + sep)) return resolved;
+  return null;
+};
+
+const buildBinaryPlaceholder = (file: string): string => [
+  `diff --git a/${file} b/${file}`,
+  'new file mode 100644',
+  `Binary files /dev/null and b/${file} differ`,
+  '',
+].join('\n');
+
+const buildTextFileDiff = (file: string, content: string): string => {
+  const lines = content.split('\n');
+  if (lines.at(-1) === '') lines.pop();
+
+  return [
+    `diff --git a/${file} b/${file}`,
+    'new file mode 100644',
+    '--- /dev/null',
+    `+++ b/${file}`,
+    `@@ -0,0 +1,${lines.length} @@`,
+    ...lines.map((line) => `+${line}`),
+    '',
+  ].join('\n');
+};
+
+const listUntrackedFiles = async (cwd: string): Promise<string[]> => {
+  const { stdout } = await execFile(
+    'git',
+    ['ls-files', '--others', '--exclude-standard', '-z'],
+    { cwd, timeout: CMD_TIMEOUT, maxBuffer: 1024 * 1024 },
+  );
+  return stdout.split('\0').filter(Boolean);
+};
+
+const buildUntrackedDiff = async (cwd: string): Promise<IUntrackedDiffResult> => {
+  const files = await listUntrackedFiles(cwd);
+  let diff = '';
+  let included = 0;
+  let skipped = 0;
+
+  for (const file of files) {
+    if (included >= MAX_UNTRACKED_FILES || Buffer.byteLength(diff, 'utf8') >= MAX_UNTRACKED_DIFF_BYTES) {
+      skipped++;
+      continue;
+    }
+
+    const resolved = resolveRepoPath(cwd, file);
+    if (!resolved) {
+      skipped++;
+      continue;
+    }
+
+    try {
+      const info = await stat(/* turbopackIgnore: true */ resolved);
+      if (!info.isFile()) {
+        skipped++;
+        continue;
+      }
+
+      let fileDiff = '';
+      if (info.size > MAX_UNTRACKED_TEXT_BYTES) {
+        fileDiff = buildBinaryPlaceholder(file);
+      } else {
+        const content = await readFile(/* turbopackIgnore: true */ resolved);
+        const sample = content.subarray(0, BINARY_SAMPLE_BYTES);
+        fileDiff = sample.includes(0)
+          ? buildBinaryPlaceholder(file)
+          : buildTextFileDiff(file, content.toString('utf8'));
+      }
+
+      if (Buffer.byteLength(diff, 'utf8') + Buffer.byteLength(fileDiff, 'utf8') > MAX_UNTRACKED_DIFF_BYTES) {
+        skipped++;
+        continue;
+      }
+
+      diff += fileDiff;
+      included++;
+    } catch {
+      skipped++;
+    }
+  }
+
+  return {
+    diff,
+    included,
+    skipped,
+    total: files.length,
+  };
 };
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -149,30 +256,15 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       });
     }
 
-    const [{ stdout: diff }, { stdout: statusOut }, hash, aheadBehind, meta] = await Promise.all([
-      execFile('git', ['diff', 'HEAD'], { cwd, timeout: CMD_TIMEOUT, maxBuffer: 5 * 1024 * 1024 }),
-      execFile('git', ['status', '--porcelain', '-uall'], { cwd, timeout: CMD_TIMEOUT }),
+    const [{ stdout: diff }, hash, aheadBehind, meta, untracked] = await Promise.all([
+      execFile('git', ['diff', '--no-ext-diff', 'HEAD'], { cwd, timeout: CMD_TIMEOUT, maxBuffer: MAX_DIFF_BYTES }),
       computeDiffHash(cwd),
       getAheadBehind(cwd),
       getRepoMeta(cwd),
+      buildUntrackedDiff(cwd),
     ]);
 
-    const untrackedFiles = statusOut
-      .split('\n')
-      .filter((line) => line.startsWith('??'))
-      .map((line) => line.slice(3).trim());
-
-    let fullDiff = diff;
-    for (const file of untrackedFiles) {
-      try {
-        const { stdout: fileDiff } = await execFile('git', ['diff', '--no-index', '/dev/null', file], { cwd, timeout: CMD_TIMEOUT });
-        fullDiff += fileDiff;
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'stdout' in err) {
-          fullDiff += (err as { stdout: string }).stdout;
-        }
-      }
-    }
+    const fullDiff = diff + untracked.diff;
 
     return res.status(200).json({
       isGitRepo: true,
@@ -186,6 +278,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       stash: meta.stash,
       headCommit: meta.headCommit,
       fetched,
+      untrackedIncluded: untracked.included,
+      untrackedSkipped: untracked.skipped,
+      untrackedTotal: untracked.total,
     });
   } catch (err) {
     log.error(`git diff failed: ${err instanceof Error ? err.message : err}`);

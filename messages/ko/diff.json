@@ -1,6 +1,9 @@
 {
   "notGitRepo": "Git 저장소가 아닙니다",
   "noChanges": "변경사항 없음",
+  "loadFailed": "diff를 불러오지 못했습니다",
+  "loadTimeout": "diff 로딩 시간이 초과되었습니다",
+  "untrackedLimited": "untracked 파일 {total}개 중 {skipped}개는 크기 또는 개수 제한으로 생략했습니다",
   "hasChanges": "변경사항이 있습니다",
   "refresh": "새로고침",
   "sideBySide": "나란히 보기",
