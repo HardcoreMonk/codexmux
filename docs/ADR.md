@@ -11,7 +11,7 @@
 - provider model 또는 `agent*` metadata 의미 변경
 - `~/.codexmux/` 저장 구조나 auth/security 동작 변경
 - Electron/Android 같은 platform shell 동작 변경
-- notification, locale, mobile UX, reconnect/dedupe 같은 cross-platform 정책 변경
+- notification, locale, mobile UX, terminal input, reconnect/dedupe 같은 cross-platform 정책 변경
 
 작은 copy, 단일 컴포넌트 스타일, 버그 수정은 기존 ADR의 결정과 충돌하지 않으면 새 ADR이 필요 없다.
 
@@ -82,8 +82,8 @@
 
 - Status: Accepted
 - Decision: 완료 판정, 알림 판정, session id mapping, 타임라인 entry merge/dedupe, stable id 생성은 `StatusManager`나 React hook 내부가 아니라 순수 helper 모듈에서 처리한다.
-- Rationale: 모바일 재연결, JSONL watcher, polling, stop-hook 재확인이 같은 Codex turn을 여러 경로로 관측하므로 부수효과가 있는 서버 클래스 안에서 정책을 직접 유지하면 중복 알림과 중복 timeline 출력이 쉽게 생긴다.
-- Consequences: `status-state-machine`, `status-session-mapping`, `status-notification-policy`, `status-metadata`, `timeline-entry-id`, `timeline-entry-dedupe`, `timeline-entry-merge`는 단위 테스트를 동반한다. `StatusManager`, `timeline-server`, `use-timeline`은 신호 수집, 상태 적용, WebSocket 송신 같은 부수효과를 담당한다.
+- Rationale: 모바일 재연결, JSONL watcher, polling, stop-hook 재확인이 같은 Codex turn을 여러 경로로 관측하고, Codex CLI가 같은 assistant text를 paired `event_msg`/`response_item` record로 남길 수 있다. 부수효과가 있는 서버 클래스 안에서 정책을 직접 유지하면 중복 알림과 중복 timeline 출력이 쉽게 생긴다.
+- Consequences: `status-state-machine`, `status-session-mapping`, `status-notification-policy`, `status-metadata`, `timeline-entry-id`, `timeline-entry-dedupe`, `timeline-entry-merge`는 단위 테스트를 동반한다. timeline dedupe는 stable id뿐 아니라 normalized role/text 기반 near-duplicate도 다룬다. `StatusManager`, `timeline-server`, `use-timeline`은 신호 수집, 상태 적용, WebSocket 송신 같은 부수효과를 담당한다.
 
 ## ADR-011: DIFF 패널은 제한된 Git snapshot으로 렌더링한다
 
@@ -91,3 +91,10 @@
 - Decision: DIFF 패널은 현재 tmux session cwd의 Git snapshot을 보여주되 tracked diff, untracked 파일 수, untracked 파일 크기, 전체 untracked diff 크기, client fetch 시간을 제한한다.
 - Rationale: Codex 작업 디렉터리에는 screenshot, build output, generated file 같은 untracked 파일이 대량으로 생길 수 있다. 모든 파일을 diff로 만들고 한 번에 펼치면 API 응답과 browser render가 함께 hang처럼 보일 수 있다.
 - Consequences: `/api/layout/diff`는 제한을 초과한 untracked 파일을 생략하고 생략 수를 응답한다. binary와 대용량 파일은 placeholder로 표시한다. client는 대량 파일이나 큰 hunk를 기본 접힘으로 렌더링하고 timeout/error 상태를 사용자에게 표시한다.
+
+## ADR-012: 터미널 제어 입력은 앱 단축키보다 우선한다
+
+- Status: Accepted
+- Decision: 포커스된 xterm, Codex web input, 모바일 surface에서 `Ctrl+D`는 앱 단축키로 처리하지 않고 EOF/EOT(`0x04`)로 pty에 전달한다.
+- Rationale: codexmux는 Codex CLI를 웹에서 감싸는 제품이므로 shell/Codex CLI의 기본 제어 키가 유지되어야 한다. 특히 Codex CLI는 `Ctrl+D`로 프로세스 종료 흐름을 제공한다.
+- Consequences: Linux/Windows의 오른쪽 pane 분할 기본 단축키는 `Ctrl+D` 대신 `Ctrl+Alt+D`를 사용한다. macOS는 앱 분할을 `⌘D`로 유지한다. `keybindings.json`은 앱 단축키 override만 저장하며, terminal/Codex 입력 포커스의 `Ctrl+D` EOF 처리는 override보다 우선한다. 새 terminal key handling은 desktop xterm, web input bar, mobile surface를 함께 검증한다.

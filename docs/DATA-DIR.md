@@ -51,7 +51,7 @@ Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service
 | `session-history.json` | 완료된 Codex session summary |
 | `sidebar-items.json` | sidebar 고정 항목과 표시 상태 |
 | `quick-prompts.json` | 사용자 quick prompt와 built-in prompt 표시 상태 |
-| `keybindings.json` | keyboard shortcut override |
+| `keybindings.json` | 앱 keyboard shortcut override |
 | `vapid-keys.json` | Web Push VAPID key pair |
 | `push-subscriptions.json` | Web Push subscription |
 | `uploads/` | 임시 첨부 파일 |
@@ -73,6 +73,10 @@ Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service
 | `soundOnCompleteEnabled` | 작업 완료 toast/native/Web Push 알림 사운드 사용 여부 |
 | `toastOnCompleteEnabled`, `toastDuration`, `toastPositionDesktop`, `toastPositionMobile` | foreground toast 동작 |
 | `editorUrl`, `editorPreset` | 외부 editor deep link 설정 |
+
+## `keybindings.json` 범위
+
+`keybindings.json`은 pane 분할, tab 전환, mode 전환 같은 앱 단축키 override만 저장한다. 터미널 제어 입력은 저장 파일의 앱 단축키보다 우선한다. 예를 들어 `Ctrl+D`는 터미널과 Codex 입력창에 포커스가 있을 때 Codex CLI/shell EOF(`0x04`)로 전달되며, Linux/Windows 오른쪽 pane 분할 기본값은 `Ctrl+Alt+D`다.
 
 ## 삭제 기준
 

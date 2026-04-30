@@ -70,6 +70,7 @@ Android 앱 버전은 repo root의 `package.json` 버전을 사용합니다.
 - 런처 버튼은 `touch-action: manipulation`, `:active`, `:focus-visible` 상태를 제공합니다.
 - React 모바일 화면은 워크스페이스/탭 선택 항목, 하단 탭 바, 그룹 헤더, 상태 화면에 터치 눌림 상태와 focus-visible ring을 제공합니다.
 - terminal input, reconnect flow, WebView navigation은 안정성을 우선하므로 시각 개선보다 구조 변경을 최소화합니다.
+- 물리 키보드의 `Ctrl+D`와 terminal toolbar의 Ctrl 조합은 Codex CLI/shell 제어 입력으로 전달합니다. 앱 단축키가 이 입력을 가로채지 않아야 합니다.
 
 ## Connection Flow
 

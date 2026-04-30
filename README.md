@@ -99,6 +99,14 @@ loginctl enable-linger "$USER"
 
 세부 등록 절차는 [docs/SYSTEMD.md](docs/SYSTEMD.md)를 참고하세요.
 
+`systemd --user` 프로덕션 서비스는 소스 파일을 직접 실행하지 않고 `corepack pnpm build`가 만든 `dist/server.js`와 Next.js standalone 산출물을 실행합니다. 서버, 타임라인 parser, dedupe, 배포 관련 코드를 수정한 뒤에는 빌드 후 서비스를 재시작해야 실행 중인 8122 포트에 반영됩니다.
+
+```bash
+corepack pnpm build
+systemctl --user restart codexmux.service
+curl -fsS http://127.0.0.1:8122/api/health
+```
+
 소스 체크아웃 상태에서 `codexmux`가 `../dist/server.js`를 찾지 못하면 아직 배포용 빌드가 없는 상태입니다. 개발 중에는 아래 명령을 사용합니다.
 
 ```bash
@@ -127,6 +135,7 @@ corepack pnpm start
 - tmux 기반 영속 세션: 브라우저를 닫아도 터미널과 Codex 작업 상태 유지
 - 멀티 워크스페이스: 패널 분할, 탭, 작업 디렉터리, 사이드바 상태 저장
 - Codex 상태 감지: 작업중, 입력 대기, 리뷰 대기, 세션 resume 상태 표시
+- Codex CLI 호환 입력: 터미널과 Codex 입력창에서 `Ctrl+D`를 EOF로 전달해 프로세스 종료 처리
 - 라이브 타임라인: Codex JSONL을 읽어 메시지, tool call, permission prompt, reasoning summary 표시
 - 안정적인 재연결: 타임라인 entry id와 중복 제거를 JSONL record identity 기준으로 처리
 - 모바일 UI: PWA, iPad Safari, Android 앱, Web Push, 재접속, 입력 draft 보존
@@ -205,7 +214,7 @@ codexmux 상태는 `~/.codexmux/`에 저장됩니다. Codex CLI 원본 세션은
 | `workspaces.json` | workspace 목록, active workspace, sidebar 상태 |
 | `workspaces/{wsId}/layout.json` | pane/tab tree와 tab metadata |
 | `quick-prompts.json` | 사용자 quick prompt와 내장 prompt 표시 상태 |
-| `keybindings.json` | 단축키 override |
+| `keybindings.json` | 앱 단축키 override. 터미널 제어 입력인 `Ctrl+D`는 포커스된 터미널/Codex 입력창에서 EOF로 전달 |
 | `vapid-keys.json` | Web Push VAPID key |
 | `push-subscriptions.json` | Web Push 구독 정보 |
 | `cli-token` | CLI와 hook bridge의 `x-cmux-token` |
@@ -390,9 +399,10 @@ Codex JSONL
 ```
 
 - 터미널 I/O는 xterm.js, WebSocket, node-pty, tmux로 연결됩니다.
+- 터미널과 Codex 입력창에서 `Ctrl+D`는 앱 단축키보다 우선해 EOF(`0x04`)로 전달됩니다. Linux/Windows의 오른쪽 분할 기본 단축키는 `Ctrl+Alt+D`이고, macOS는 `⌘D`입니다.
 - 상태 감지는 tmux pane PID 아래 Codex process와 Codex JSONL 변경을 함께 봅니다.
 - 상태 전이, 알림 정책, session id mapping, 타임라인 병합/dedupe는 순수 모듈로 분리되어 있습니다.
-- 타임라인 entry id는 JSONL byte offset과 record identity 기반으로 생성되어 재연결 중복 출력을 줄입니다.
+- 타임라인 entry id는 JSONL byte offset과 record identity 기반으로 생성되며, Codex가 같은 assistant text를 `event_msg.agent_message`와 `response_item.message`로 나눠 기록하는 경우도 near-duplicate 규칙으로 한 번만 표시합니다.
 - DIFF 패널은 tmux session cwd를 기준으로 Git 상태를 읽고, 대량 untracked 파일과 렌더링 비용을 제한합니다.
 - 서버와 Next.js API route의 공유 상태는 `globalThis` singleton으로 유지합니다.
 - 전용 tmux socket인 `codexmux`를 사용하므로 사용자의 기존 tmux 세션과 분리됩니다.
@@ -636,9 +646,10 @@ On iPad, use Safari and add codexmux to the Home Screen. A native iPadOS app is 
 - Persistent tmux sessions for browser and mobile reconnects
 - Multi-workspace layout with panes, tabs, working directories, and sidebar state
 - Codex status detection for busy, idle, input-needed, review-needed, and resume states
+- Codex CLI-compatible input, including `Ctrl+D` EOF delivery from terminal and Codex input focus
 - Live timeline from Codex JSONL logs
 - PWA, iPad Safari, Android app, Web Push, mobile reconnect, and input draft preservation
-- Stable timeline entry ids and duplicate suppression across reconnects
+- Stable timeline entry ids and duplicate suppression across reconnects and paired Codex records
 - Notification controls for task-complete toast, system notifications, and completion sound
 - Git status, diff, history, fetch, pull, and push flows
 - Diff safety for large changes through bounded untracked handling, skipped-file notices, default collapse, and request timeouts

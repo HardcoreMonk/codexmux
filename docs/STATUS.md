@@ -117,6 +117,13 @@ tail 재읽기, load-more 과정에서 같은 record가 다시 파싱되어도 e
 `use-timeline`은 WebSocket 상태와 React state 연결을 담당하고, init/append/load-more
 병합 정책은 `timeline-entry-merge`에서 처리한다.
 
+Codex CLI는 정상 동작 중 같은 visible assistant text를 `event_msg.payload.type="agent_message"`와
+paired `response_item.payload.type="message"` record로 몇 ms 간격에 남길 수 있다.
+`codex-session-parser`는 같은 role/text가 `MESSAGE_PAIR_DEDUPE_WINDOW_MS` 안에 들어오면
+하나의 entry로 취급한다. file watch가 두 record를 서로 다른 append batch로 보낸 경우에는
+`timeline-entry-dedupe`와 `timeline-entry-merge`가 같은 near-duplicate 규칙으로 한 번만
+표시한다. 이 때문에 assistant message identity를 timestamp 단독으로 잡지 않는다.
+
 `agent_message`는 commentary/final text 모두에 쓰일 수 있어 완료 신호로 보지 않는다.
 예를 들어 "이제 파일을 편집합니다" 같은 중간 commentary 뒤에 바로 tool call이 이어질
 수 있다. 따라서 작업 완료 알림과 `ready-for-review` 전환은 현재 turn의

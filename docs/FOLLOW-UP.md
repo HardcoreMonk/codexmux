@@ -22,6 +22,7 @@
 - timeline 로직 1차 모듈화: shared server state, stable entry id, dedupe, init/append/load-more merge 분리.
 - provider contract 테스트 강화: Codex provider API shape, panel/process mapping, stable parser id 검증.
 - DIFF 패널 안정화: 대량 tracked/untracked diff 제한, binary/대용량 placeholder, client timeout, 기본 접힘 렌더링 적용.
+- 터미널 제어 입력: xterm, Codex web input, 모바일 surface에서 `Ctrl+D`를 Codex CLI/shell EOF로 전달하고 pane 분할 단축키 충돌 제거.
 - Linux 운영: `systemd --user` 서비스 등록, linger 설정, `HOST=localhost,tailscale,192.168.0.0/16`/`PORT=8122` 운영 문서화.
 
 ## 릴리스 전 확인
@@ -35,9 +36,10 @@
 7. 모바일 reconnect smoke test: Android WebView와 iPad Safari에서 foreground 복귀, 입력 draft 보존, timeline 중복 출력 방지 확인.
 8. Android Tailscale 실패 smoke test: 서버 중지, 잘못된 HTTPS, HTTP 4xx/5xx, Tailscale 미연결 상태에서 런처 복구 확인.
 9. DIFF smoke test: tracked 변경 20개 이상, untracked 50개 초과, binary/대용량 파일이 있는 저장소에서 응답 시간, 생략 안내, 기본 접힘 렌더링 확인.
-10. systemd smoke test: `systemctl --user restart codexmux.service`, `/api/health`, `journalctl --user -u codexmux.service` 확인.
-11. 설치/upgrade: `npx codexmux`, global install, 기존 `~/.codexmux` 유지 확인.
-12. release metadata: version bump, changelog, release workflow artifact 확인.
+10. systemd smoke test: `corepack pnpm build`, `systemctl --user restart codexmux.service`, `/api/health`, `journalctl --user -u codexmux.service` 확인.
+11. timeline 배포 smoke test: browser reload 후 같은 assistant 문장이 `event_msg.agent_message`와 `response_item.message` pair로 남은 JSONL에서도 한 번만 표시되는지 확인.
+12. 설치/upgrade: `npx codexmux`, global install, 기존 `~/.codexmux` 유지 확인.
+13. release metadata: version bump, changelog, release workflow artifact 확인.
 
 ## Post-MVP 백로그
 

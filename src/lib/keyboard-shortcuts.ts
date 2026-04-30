@@ -5,6 +5,9 @@ export const isMac =
 const mod = isMac ? 'meta' : 'ctrl';
 const secondaryMod = isMac ? 'ctrl' : 'alt';
 const resizeMods = isMac ? 'meta+ctrl+shift' : 'ctrl+alt+shift';
+const splitRightKey = isMac ? 'meta+d' : 'ctrl+alt+d';
+
+export const TERMINAL_EOF_INPUT = '\x04';
 
 export type TActionCategory =
   | 'workspace'
@@ -93,8 +96,8 @@ export const ACTIONS = {
     id: 'pane.split_right',
     label: 'Split pane right',
     category: 'pane',
-    defaultKey: `${mod}+d`,
-    display: { mac: '⌘D', other: 'Ctrl+D' },
+    defaultKey: splitRightKey,
+    display: { mac: '⌘D', other: 'Ctrl+Alt+D' },
   },
   'pane.split_down': {
     id: 'pane.split_down',
@@ -442,6 +445,14 @@ export const isClearShortcut = (event: KeyboardEvent): boolean =>
 
 export const isFocusInputShortcut = (event: KeyboardEvent): boolean =>
   matchesAction(event, 'panel.focus_input');
+
+export const isTerminalEofShortcut = (event: KeyboardEvent): boolean =>
+  event.type === 'keydown' &&
+  event.ctrlKey &&
+  !event.metaKey &&
+  !event.altKey &&
+  !event.shiftKey &&
+  (event.code === 'KeyD' || event.key.toLowerCase() === 'd');
 
 export const isShiftEnter = (event: KeyboardEvent): boolean =>
   event.type === 'keydown' && event.key === 'Enter' && event.shiftKey;

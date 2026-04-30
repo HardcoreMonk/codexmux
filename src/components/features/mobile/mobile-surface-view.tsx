@@ -15,7 +15,14 @@ import ConnectionStatus from '@/components/features/workspace/connection-status'
 import MobileAgentPanel from '@/components/features/mobile/mobile-agent-panel';
 import MobileTerminalToolbar from '@/components/features/mobile/mobile-terminal-toolbar';
 import { formatTabTitle, isShellProcess } from '@/lib/tab-title';
-import { isAppShortcut, isClearShortcut, isFocusInputShortcut, isShiftEnter } from '@/lib/keyboard-shortcuts';
+import {
+  isAppShortcut,
+  isClearShortcut,
+  isFocusInputShortcut,
+  isShiftEnter,
+  isTerminalEofShortcut,
+  TERMINAL_EOF_INPUT,
+} from '@/lib/keyboard-shortcuts';
 import type { TCliState } from '@/types/timeline';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
 import useTabStore, { selectAgentProcess, selectAgentProcessCheckedAt, selectSessionView } from '@/hooks/use-tab-store';
@@ -139,10 +146,15 @@ const MobileSurfaceView = ({
     onCliStateChange?.(state);
   }, [onCliStateChange]);
 
-   
   const handleInputVisibleChange = useCallback((_visible: boolean) => {}, []);
 
   const handleCustomKeyEvent = useCallback((event: KeyboardEvent): boolean => {
+    if (isTerminalEofShortcut(event)) {
+      event.preventDefault();
+      event.stopPropagation();
+      wsActionsRef.current.sendStdin(TERMINAL_EOF_INPUT);
+      return false;
+    }
     if (isAppShortcut(event)) {
       event.preventDefault();
       if (isClearShortcut(event)) clearRef.current();

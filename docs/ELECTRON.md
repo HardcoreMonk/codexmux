@@ -32,6 +32,8 @@ corepack pnpm pack:electron
 
 앱 설정은 `~/.codexmux/config.json`에 저장합니다. Electron 전용 설정도 같은 파일을 사용하며, 서버 모드는 `server.mode`과 `server.remoteUrl`로 관리합니다.
 
+Electron renderer는 웹/PWA와 같은 terminal input 정책을 사용합니다. 터미널이나 Codex 입력창에 포커스가 있으면 `Ctrl+D`는 앱 단축키가 아니라 Codex CLI/shell EOF(`0x04`)로 전달되고, macOS pane 분할은 `⌘D`를 사용합니다.
+
 ## Notifications
 
 - 작업 완료 상태는 foreground toast와 Electron native notification으로 표시할 수 있습니다.

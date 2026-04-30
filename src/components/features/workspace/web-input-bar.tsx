@@ -13,6 +13,7 @@ import MessageHistoryPicker from '@/components/features/workspace/message-histor
 import { isImageFile, uploadImage } from '@/lib/upload-image-client';
 import { uploadFile } from '@/lib/upload-file-client';
 import { countImageRefs, waitForImageAttachments } from '@/lib/image-attach-detector';
+import { isTerminalEofShortcut, TERMINAL_EOF_INPUT } from '@/lib/keyboard-shortcuts';
 import type { TCliState } from '@/types/timeline';
 
 const DEFAULT_MAX_ROWS = 5;
@@ -241,6 +242,13 @@ const WebInputBar = ({
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+
+    if (isTerminalEofShortcut(e.nativeEvent)) {
+      e.preventDefault();
+      e.stopPropagation();
+      sendStdin(TERMINAL_EOF_INPUT);
+      return;
+    }
 
     if (e.key === 'Escape') {
       e.preventDefault();

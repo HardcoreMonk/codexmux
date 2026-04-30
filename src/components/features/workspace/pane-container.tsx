@@ -26,7 +26,14 @@ import useQuickPrompts from '@/hooks/use-quick-prompts';
 import useFileDrop from '@/hooks/use-file-drop';
 import PaneTabBar from '@/components/features/workspace/pane-tab-bar';
 import { formatTabTitle, parseCurrentCommand, isShellProcess } from '@/lib/tab-title';
-import { isAppShortcut, isClearShortcut, isFocusInputShortcut, isShiftEnter } from '@/lib/keyboard-shortcuts';
+import {
+  isAppShortcut,
+  isClearShortcut,
+  isFocusInputShortcut,
+  isShiftEnter,
+  isTerminalEofShortcut,
+  TERMINAL_EOF_INPUT,
+} from '@/lib/keyboard-shortcuts';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
 import useTabStore, { selectAgentProcess, selectAgentProcessCheckedAt, selectSessionView, isCliIdle } from '@/hooks/use-tab-store';
 import { dismissTab as dismissStatusTab } from '@/hooks/use-agent-status';
@@ -283,8 +290,13 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
     focusInputRef.current?.();
   }, []);
 
-
   const handleCustomKeyEvent = useCallback((event: KeyboardEvent): boolean => {
+    if (isTerminalEofShortcut(event)) {
+      event.preventDefault();
+      event.stopPropagation();
+      wsActionsRef.current.sendStdin(TERMINAL_EOF_INPUT);
+      return false;
+    }
     if (isAppShortcut(event)) {
       event.preventDefault();
       if (isClearShortcut(event)) clearRef.current();

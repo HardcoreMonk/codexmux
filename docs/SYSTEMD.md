@@ -98,12 +98,15 @@ curl -sS http://127.0.0.1:8122/api/health
 
 ## 빌드와 재시작
 
-소스 체크아웃을 직접 실행하는 서비스이므로 배포 전에는 production build를 갱신한 뒤 서비스를 재시작한다.
+소스 체크아웃을 기준으로 실행하지만, 프로덕션 서비스는 `src/` 파일을 직접 로드하지 않는다. `bin/codexmux.js`는 빌드 산출물인 `dist/server.js`와 Next.js standalone/static asset을 실행하므로 서버, timeline parser, dedupe, API, 배포 관련 코드를 바꾼 뒤에는 production build를 갱신한 다음 서비스를 재시작한다.
 
 ```bash
 corepack pnpm build
 systemctl --user restart codexmux.service
+curl -fsS http://127.0.0.1:8122/api/health
 ```
+
+정상 응답은 `{"app":"codexmux"}`다. 브라우저가 이전 hashed chunk를 들고 있으면 UI 동작이 오래된 것처럼 보일 수 있으므로, 배포 후에도 타임라인 표시가 예전과 같으면 페이지를 새로고침한다. 이미 화면에 쌓인 중복 메시지는 새 parser로 초기 snapshot을 다시 읽을 때 정규화된다.
 
 서비스가 이미 8122 포트를 사용하므로 수동 실행을 병행하지 않는다. 임시로 수동 실행이 필요하면 먼저 서비스를 중지한다.
 

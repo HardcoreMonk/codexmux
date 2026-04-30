@@ -48,6 +48,18 @@ Endpoint는 `/api/terminal?session={name}&clientId={id}`다.
 
 WebSocket backpressure가 커지면 pty output을 잠시 멈추고 client가 따라잡으면 재개한다.
 
+## terminal input과 앱 단축키
+
+터미널 제어 입력은 앱 단축키보다 우선한다. 특히 `Ctrl+D`는 Codex CLI와 shell에서 EOF/EOT로 쓰이므로 포커스된 xterm 또는 Codex web input bar에서 `0x04`를 stdin으로 전달한다.
+
+| 입력 위치 | 전송 경로 | 동작 |
+|---|---|---|
+| xterm viewport | `MSG_STDIN` | `0x04`를 pty에 직접 write |
+| Codex web input bar | `MSG_WEB_STDIN` | tmux copy mode를 빠져나온 뒤 `0x04`를 pty에 write |
+| mobile surface | `MSG_STDIN` 또는 `MSG_WEB_STDIN` | desktop과 같은 EOF 처리 |
+
+이 정책 때문에 Linux/Windows의 오른쪽 pane 분할 기본 단축키는 `Ctrl+Alt+D`다. macOS는 terminal EOF가 `Ctrl+D`이고 앱 분할은 `⌘D`라 충돌하지 않는다. 사용자가 `keybindings.json`에서 앱 단축키를 바꾸더라도 터미널/Codex 입력에 포커스가 있으면 `Ctrl+D`는 EOF로 남긴다.
+
 ## title metadata
 
 tmux title은 다음 형식이다.
@@ -88,10 +100,12 @@ Endpoint는 `/api/timeline?session={name}&panelType={provider}`다. 서버는 pr
 | `src/lib/timeline-server.ts` | timeline WebSocket request, subscribe/resume flow, file watch orchestration |
 | `src/lib/timeline-server-state.ts` | connection/file watcher/session watcher singleton, send/backpressure helper |
 | `src/lib/timeline-entry-id.ts` | JSONL offset과 record identity 기반 stable entry id |
-| `src/lib/timeline-entry-dedupe.ts` | 같은 record 재수신 방지용 fingerprint |
+| `src/lib/timeline-entry-dedupe.ts` | 같은 record 재수신과 paired assistant record 중복 방지용 fingerprint |
 | `src/lib/timeline-entry-merge.ts` | init/append/load-more 병합, pending user message 보존 |
 
 재연결이나 모바일 foreground 복귀 중 같은 JSONL 구간이 `timeline:init`과 `timeline:append`로 겹쳐 도착할 수 있다. client는 stable id와 fingerprint를 함께 사용해 중복 assistant output, tool result, pending user message를 한 번만 표시한다.
+
+Codex CLI는 같은 assistant 문장을 `event_msg.agent_message`와 paired `response_item.message` 두 record로 기록할 수 있다. parser와 client merge는 exact timestamp가 아니라 normalized role/text와 짧은 시간창을 기준으로 near-duplicate를 제거한다.
 
 ## Git DIFF 패널
 

@@ -66,6 +66,7 @@ const ContentHeader = ({
   const t = useTranslations('terminal');
   const isMac = useIsMac();
   const mod = isMac ? '⌘' : 'Ctrl+';
+  const splitRightShortcut = isMac ? '⌘D' : 'Ctrl+Alt+D';
   const showShortcuts = useShortcutHints();
   const [isToggling, setIsToggling] = useState(false);
 
@@ -213,11 +214,11 @@ const ContentHeader = ({
                   <SplitVerticalIcon className="h-3.5 w-3.5" />
                 )}
               </TooltipTrigger>
-              <TooltipContent side="bottom">{t('splitVerticalShortcut', { shortcut: `${mod}D` })}</TooltipContent>
+              <TooltipContent side="bottom">{t('splitVerticalShortcut', { shortcut: splitRightShortcut })}</TooltipContent>
             </Tooltip>
             <ShortcutKey
               mac="⌘D"
-              other="^D"
+              other="^⌥D"
               className={cn(
                 'absolute -right-0.5 -top-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-medium leading-none text-muted-foreground transition-opacity duration-200 pointer-events-none',
                 showShortcuts ? 'opacity-100' : 'opacity-0',

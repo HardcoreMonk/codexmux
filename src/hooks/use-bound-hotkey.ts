@@ -1,6 +1,6 @@
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useResolvedKey } from '@/hooks/use-keybindings-store';
-import type { TActionId } from '@/lib/keyboard-shortcuts';
+import { isTerminalEofShortcut, type TActionId } from '@/lib/keyboard-shortcuts';
 
 const useBoundHotkey = (
   id: TActionId,
@@ -12,6 +12,7 @@ const useBoundHotkey = (
     preventDefault: true,
     enableOnFormTags: true,
     enabled: enabled && !!key,
+    ignoreEventWhen: (event) => id === 'pane.split_right' && isTerminalEofShortcut(event),
   });
 };
 
