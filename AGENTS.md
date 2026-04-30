@@ -128,6 +128,13 @@ When modifying status-related code (`TCliState`, `ITabState`, `StatusManager`,
 
 When changing durable architecture decisions, update `docs/ADR.md`. This includes framework/router choices, custom server boundaries, shared state placement, tmux/session strategy, provider model, storage layout, platform shells, auth/security, notification semantics, and locale policy. Small component styling changes do not need an ADR unless they change a documented design rule.
 
+## Agent Workflow Contract
+
+- Issue tracker rules live in `docs/agents/issue-tracker.md`.
+- Triage label/status mapping lives in `docs/agents/triage-labels.md`.
+- Domain docs and ADR consumption rules live in `docs/agents/domain.md`.
+- Do not create, close, or relabel issues, or commit/push changes, unless the user explicitly asks.
+
 ## Comment Policy
 
 Only add comments when they explain why something non-obvious is needed. Avoid
