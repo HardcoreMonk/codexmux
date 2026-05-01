@@ -25,12 +25,18 @@ codexmux의 영속 상태는 `~/.codexmux/`에 저장된다. Codex CLI의 원본
 ├── cmux.lock
 ├── logs/
 ├── uploads/
+├── remote/
+│   └── codex/{sourceId}/
+│       ├── {sessionId}.jsonl
+│       └── {sessionId}.jsonl.meta.json
 └── stats/
 ```
 
 `hooks.json`, `status-hook.sh`, `statusline.sh`는 local hook/statusline bridge가 서버로 상태를 POST할 때 쓰는 생성 파일이다. Codex tab 실행 자체에는 필요하지 않다.
 
 Electron remote/local server mode는 같은 `~/.codexmux/config.json`을 사용한다. Android 런처의 최근 서버와 마지막 서버 URL은 Android WebView `localStorage`에 저장되며 `~/.codexmux/`에는 기록되지 않는다. Android 앱 정보와 앱 재시작은 native package metadata와 현재 Activity를 사용하므로 codexmux 데이터 디렉터리에 별도 파일을 만들지 않는다.
+
+Windows companion sync는 Windows Codex CLI의 원본 `%USERPROFILE%\.codex\sessions\**\*.jsonl`을 직접 수정하지 않고, 서버로 보낸 chunk를 `~/.codexmux/remote/codex/{sourceId}/{sessionId}.jsonl`에 복사본으로 저장한다. 같은 이름의 `.meta.json` sidecar에는 Windows host, shell, cwd, 원본 Windows path, remote offset을 기록한다.
 
 Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service`에 둔다. 서비스 파일은 실행 방식과 `HOST`/`PORT`를 고정하는 운영 설정이며, codexmux 앱 상태인 `~/.codexmux/`에는 포함되지 않는다.
 
@@ -56,6 +62,8 @@ Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service
 | `push-subscriptions.json` | Web Push subscription |
 | `uploads/` | 임시 첨부 파일 |
 | `logs/` | 서버 로그 |
+| `remote/codex/{sourceId}/{sessionId}.jsonl` | Windows companion이 보낸 Codex CLI JSONL 복사본. timeline에서 읽기 전용으로 사용 |
+| `remote/codex/{sourceId}/{sessionId}.jsonl.meta.json` | remote source, host/shell/cwd/path, offset, activity metadata |
 | `stats/cache.json` | Codex JSONL에서 계산한 usage cache. 런타임 build는 in-flight promise로 중복 계산을 피함 |
 | `stats/daily-reports/` | `codex exec`로 생성한 일별 report |
 
@@ -88,10 +96,11 @@ Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service
 | 특정 workspace layout | `workspaces/{wsId}/layout.json` |
 | quick prompt/sidebar/keybinding | 해당 JSON 파일 |
 | 사용량 통계와 report | `stats/` |
+| Windows remote Codex 복사본 | `remote/codex/` |
 | push subscription | `push-subscriptions.json` |
 | stale lock | process가 없음을 확인한 뒤 `cmux.lock` |
 | 전체 앱 상태 | `~/.codexmux/` |
 
 비밀번호는 평문이 아니라 scrypt 해시로 저장된다. 잊어버린 비밀번호는 복구하지 않고 `authPassword`와 `authSecret`을 제거한 뒤 onboarding에서 새로 설정한다. `config.json` 전체를 삭제하면 network/theme/Codex option도 같이 초기화된다.
 
-`~/.codex/`는 Codex CLI의 auth, state, session history를 포함한다. 의도적으로 Codex 상태까지 지우려는 경우가 아니면 삭제하지 않는다.
+`~/.codex/`는 Codex CLI의 auth, state, session history를 포함한다. 의도적으로 Codex 상태까지 지우려는 경우가 아니면 삭제하지 않는다. Windows에서 동기화된 `remote/codex/` 복사본을 삭제해도 Windows 원본 Codex CLI 기록은 삭제되지 않으며, companion을 다시 실행하면 최근 파일부터 재동기화된다.

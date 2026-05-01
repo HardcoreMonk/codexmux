@@ -14,6 +14,9 @@ Browser / Electron / Android WebView
   ├─ /api/status WebSocket   -> status-server -> StatusManager
   └─ /api/sync WebSocket     -> sync-server -> workspace/layout/config broadcast
 
+Windows companion
+  └─ /api/remote/codex/sync  -> remote Codex JSONL chunk ingest
+
 Runtime state
   ├─ ~/.codexmux/            -> codexmux-owned app state
   ├─ tmux -L codexmux        -> live shell/Codex processes
@@ -30,6 +33,7 @@ Runtime state
 | Status | `src/lib/status-manager.ts`, `src/lib/status-server.ts` | tab status polling, hook event merge, notification dispatch |
 | Workspace | `src/lib/workspace-store.ts`, `src/lib/layout-store.ts` | workspace list, layout tree, pane/tab mutation, persisted metadata |
 | Provider | `src/lib/providers/*`, `src/lib/codex-session-detection.ts` | Codex command/session/jsonl adapter |
+| Remote Codex | `src/lib/remote-codex-store.ts`, `src/pages/api/remote/codex/sync.ts`, `scripts/windows-codex-sync.mjs` | Windows Codex JSONL chunk 수신, 복사본 저장, session list 노출 |
 | Sync | `src/lib/sync-server.ts` | workspace/layout/config change broadcast |
 | Config/Auth | `src/lib/config-store.ts`, `src/lib/auth*.ts` | config persistence, password/session token, onboarding |
 | Perf | `src/lib/perf-metrics.ts`, `src/pages/api/debug/perf.ts` | runtime snapshot, duration/counter aggregation |
@@ -70,6 +74,8 @@ WebSocket은 path별 전용 server로 분기한다.
 
 `/api/debug/perf`는 HTTP debug endpoint지만 middleware 예외가 아니다. session cookie 또는 `x-cmux-token` CLI token 인증을 통과한 요청에만 process memory, event loop, WebSocket count, watcher count, poll duration 같은 숫자 지표를 반환한다.
 
+`/api/remote/codex/sync`는 Windows companion 전용 HTTP endpoint다. session cookie가 아니라 `x-cmux-token` CLI token을 요구하고, base64 encoded JSONL chunk와 source metadata를 받아 서버의 remote Codex store에 append한다.
+
 ## 상태 저장 로직
 
 codexmux가 쓰는 영속 상태는 `~/.codexmux/` 아래에 둔다.
@@ -83,7 +89,7 @@ codexmux가 쓰는 영속 상태는 `~/.codexmux/` 아래에 둔다.
 | keybindings/sidebar/quick prompts | 각 JSON 파일 | 필요 시 sync/config 또는 client refresh |
 | status/session history/stats | `session-history.json`, `stats/` | status/timeline |
 | live terminal process | tmux | terminal/status/timeline |
-| Codex transcript | `~/.codex/sessions/**/*.jsonl` | timeline/status |
+| Codex transcript | `~/.codex/sessions/**/*.jsonl`, `~/.codexmux/remote/codex/**/*.jsonl` | timeline/status |
 
 custom server와 Next.js API route는 같은 Node process 안에서도 module graph가 분리될 수 있다. 공유 singleton은 `globalThis`에 저장하고 재초기화를 guard한다.
 
@@ -165,6 +171,26 @@ Timeline은 terminal scrollback을 그대로 보여주는 기능이 아니라 Co
 - 같은 assistant text가 `event_msg.agent_message`와 `response_item.message` pair로 들어오면 near-duplicate로 합친다.
 - foreground reconnect 중 init/append 범위가 겹쳐도 client merge에서 중복을 제거한다.
 - client render는 append burst를 frame 단위로 합치고, 기존 timeline row는 entry object reference가 유지되면 memo로 재렌더를 건너뛴다.
+
+## Windows Codex 동기화 로직
+
+Windows 11에서 `pwsh`로 실행한 Codex CLI는 Linux tmux tree 아래에 없으므로 codexmux가 process를 직접 attach하지 않는다. 1차 지원 범위는 Windows companion script가 Codex CLI JSONL을 읽어 서버에 chunk로 보내고, codexmux가 이를 읽기 전용 timeline session으로 노출하는 방식이다.
+
+```text
+Windows Codex CLI
+  -> %USERPROFILE%\.codex\sessions\**\*.jsonl
+  -> scripts/windows-codex-sync.mjs
+  -> POST /api/remote/codex/sync (x-cmux-token)
+  -> ~/.codexmux/remote/codex/{sourceId}/{sessionId}.jsonl
+  -> session list -> timeline subscribe by jsonlPath
+```
+
+운영 규칙:
+
+- companion은 원본 Windows JSONL을 수정하지 않고 byte offset 기반으로 append chunk만 전송한다.
+- 서버는 source id와 session id를 파일명으로 sanitize하고, offset mismatch가 나면 기대 offset을 반환한다.
+- remote session은 Linux workspace cwd 필터를 적용하지 않는다. Windows cwd는 session list의 source metadata로만 표시한다.
+- remote session 선택은 Codex resume이 아니라 저장된 JSONL path에 대한 timeline subscribe다. Windows `pwsh` 입력/제어는 이 범위에 포함하지 않는다.
 
 ## Status 서비스 로직
 

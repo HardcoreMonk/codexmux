@@ -57,6 +57,7 @@
     "android:install": "cap sync android && cd android && ./gradlew installDebug",
     "android:clean": "cd android && ./gradlew clean",
     "android:keystore": "node scripts/android-keystore.mjs",
+    "windows:codex-sync": "node scripts/windows-codex-sync.mjs",
     "start": "NODE_ENV=production tsx server.ts",
     "lint": "eslint",
     "test": "vitest run",

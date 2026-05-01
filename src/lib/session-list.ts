@@ -6,6 +6,7 @@ import { getSessionCwd } from '@/lib/tmux';
 import { createLogger } from '@/lib/logger';
 import { createMetaCache } from '@/lib/session-meta-cache';
 import { isAgentPanelType } from '@/lib/panel-type';
+import { collectRemoteCodexJsonlFiles, readRemoteCodexSidecar } from '@/lib/remote-codex-store';
 import type { ISessionMeta } from '@/types/timeline';
 import type { TPanelType } from '@/types/terminal';
 
@@ -58,7 +59,6 @@ interface ICodexJsonlScanResult extends IJsonlScanResult {
   sessionId: string | null;
   cwd: string | null;
 }
-
 
 const collectCodexJsonlFiles = async (dir: string, depth = 0): Promise<string[]> => {
   if (depth > 4) return [];
@@ -243,6 +243,58 @@ const listCodexSessions = async (cwd?: string): Promise<ISessionMeta[]> => {
   return sessions;
 };
 
+const buildRemoteSourceLabel = (host: string | null, shell: string | null): string => {
+  const left = host?.trim() || 'Windows';
+  const right = shell?.trim() || 'pwsh';
+  return `${left} / ${right}`;
+};
+
+const listRemoteCodexSessions = async (): Promise<ISessionMeta[]> => {
+  const files = await collectRemoteCodexJsonlFiles();
+  const tasks = files.map((file) => async () => {
+    try {
+      const sidecar = await readRemoteCodexSidecar(file);
+      const scan = await scanCodexJsonl(file);
+      const stat = await fs.stat(file);
+      const sessionId = sidecar?.sessionId ?? scan.sessionId ?? path.basename(file, '.jsonl').match(CODEX_THREAD_ID_RE)?.[1];
+      if (!sessionId) return null;
+
+      const cacheKey = `remote-codex:${sidecar?.sourceId ?? 'windows'}:${sessionId}`;
+      const cached = metaCache.get(cacheKey);
+      if (cached && !metaCache.isStale(cacheKey, stat.mtimeMs)) return cached;
+
+      const meta: ISessionMeta = {
+        sessionId,
+        startedAt: scan.startedAt || sidecar?.startedAt || stat.birthtime.toISOString(),
+        lastActivityAt: sidecar?.lastActivityAt || stat.mtime.toISOString(),
+        firstMessage: scan.firstMessage,
+        turnCount: scan.turnCount,
+        jsonlPath: file,
+        source: 'remote',
+        sourceLabel: buildRemoteSourceLabel(sidecar?.host ?? null, sidecar?.shell ?? null),
+        cwd: sidecar?.cwd ?? scan.cwd ?? null,
+        host: sidecar?.host ?? null,
+        shell: sidecar?.shell ?? null,
+        remotePath: sidecar?.windowsPath ?? null,
+      };
+      metaCache.set(cacheKey, meta, stat.mtimeMs);
+      return meta;
+    } catch (err) {
+      log.warn({ err }, `failed to parse remote Codex session meta: ${file}`);
+      return null;
+    }
+  });
+
+  const results = await runWithConcurrency(tasks, MAX_CONCURRENCY);
+  const sessions: ISessionMeta[] = [];
+  for (const result of results) {
+    if (result.status === 'fulfilled' && result.value) {
+      sessions.push(result.value);
+    }
+  }
+  return sessions;
+};
+
 export const listSessions = async (
   tmuxSession: string,
   cwdHint?: string,
@@ -252,7 +304,14 @@ export const listSessions = async (
   if (!cwd) throw new Error('cwd-lookup-failed');
 
   if (isAgentPanelType(panelType)) {
-    return listCodexSessions(cwd);
+    const sessions = [
+      ...await listCodexSessions(cwd),
+      ...await listRemoteCodexSessions(),
+    ];
+    sessions.sort(
+      (a, b) => new Date(b.lastActivityAt).getTime() - new Date(a.lastActivityAt).getTime(),
+    );
+    return sessions;
   }
 
   return [];

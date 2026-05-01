@@ -69,4 +69,52 @@ describe('session-list', () => {
       turnCount: 1,
     });
   });
+
+  it('includes remote Windows Codex sessions without Linux cwd filtering', async () => {
+    const { writeRemoteCodexChunk } = await import('@/lib/remote-codex-store');
+    const content = [
+      jsonLine({
+        timestamp: '2026-04-27T03:00:01.000Z',
+        type: 'session_meta',
+        payload: {
+          id: '019dcf30-3a02-73a0-a79e-8703b99a2f32',
+          timestamp: '2026-04-27T03:00:00.000Z',
+          cwd: 'C:\\Users\\monk\\project',
+        },
+      }),
+      jsonLine({
+        timestamp: '2026-04-27T03:00:02.000Z',
+        type: 'event_msg',
+        payload: { type: 'user_message', message: 'Windows pwsh work' },
+      }),
+    ].join('\n');
+
+    const result = await writeRemoteCodexChunk({
+      sourceId: 'win11',
+      host: 'WIN11',
+      shell: 'pwsh',
+      cwd: 'C:\\Users\\monk\\project',
+      windowsPath: 'C:\\Users\\monk\\.codex\\sessions\\rollout-019dcf30-3a02-73a0-a79e-8703b99a2f32.jsonl',
+      sessionId: '019dcf30-3a02-73a0-a79e-8703b99a2f32',
+      startedAt: '2026-04-27T03:00:00.000Z',
+      mtimeMs: new Date('2026-04-27T03:00:02.000Z').getTime(),
+      offset: 0,
+      reset: true,
+      content: Buffer.from(content),
+    });
+
+    const { listSessions } = await import('@/lib/session-list');
+    const sessions = await listSessions('tmux-session', '/work/project-a', 'codex');
+
+    expect(result.jsonlPath).toContain('019dcf30-3a02-73a0-a79e-8703b99a2f32');
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]).toMatchObject({
+      sessionId: '019dcf30-3a02-73a0-a79e-8703b99a2f32',
+      firstMessage: 'Windows pwsh work',
+      source: 'remote',
+      sourceLabel: 'WIN11 / pwsh',
+      cwd: 'C:\\Users\\monk\\project',
+      remotePath: 'C:\\Users\\monk\\.codex\\sessions\\rollout-019dcf30-3a02-73a0-a79e-8703b99a2f32.jsonl',
+    });
+  });
 });

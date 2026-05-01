@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { useTranslations } from 'next-intl';
 import dayjs from 'dayjs';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import type { ISessionMeta } from '@/types/timeline';
@@ -10,7 +10,7 @@ interface ISessionListItemProps {
   session: ISessionMeta;
   isResuming: boolean;
   isDisabled: boolean;
-  onSelect: (sessionId: string) => void;
+  onSelect: (session: ISessionMeta) => void;
 }
 
 const handleArrowNavigation = (e: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -68,7 +68,7 @@ const SessionListItem = ({
         isDisabled && !isResuming && 'pointer-events-none opacity-50',
         isResuming && 'bg-agent-active/5',
       )}
-      onClick={() => onSelect(session.sessionId)}
+      onClick={() => onSelect(session)}
       onKeyDown={handleArrowNavigation}
       disabled={isDisabled}
       aria-label={t('sessionLabel', { message: displayMessage })}
@@ -88,13 +88,19 @@ const SessionListItem = ({
           </span>
         </div>
         <span className="shrink-0 text-xs text-muted-foreground">
-            {relativeTime}
-          </span>
+          {relativeTime}
+        </span>
       </div>
+      {session.source === 'remote' && (
+        <div className="mt-1 flex items-center gap-1.5 pl-[12px] text-[11px] text-muted-foreground">
+          <Monitor size={11} />
+          <span className="min-w-0 truncate">{session.sourceLabel ?? 'Windows / pwsh'}</span>
+        </div>
+      )}
       <div className="mt-1 flex items-center justify-between gap-2 pl-[12px]">
         <span className="min-w-0 truncate text-sm font-medium text-left">
-            {displayMessage}
-          </span>
+          {displayMessage}
+        </span>
         <span className="shrink-0 text-xs text-muted-foreground">
           {t('turnCount', { count: session.turnCount })}
         </span>

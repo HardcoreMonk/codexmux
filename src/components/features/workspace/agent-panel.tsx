@@ -14,6 +14,7 @@ import BypassPromptCard from '@/components/features/workspace/bypass-prompt-card
 import TimelineView from '@/components/features/timeline/timeline-view';
 import SessionMetaBar, { SessionMetaBarSkeleton } from '@/components/features/workspace/session-meta-bar';
 import { isAgentPanelType } from '@/lib/panel-type';
+import type { ISessionMeta } from '@/types/timeline';
 import type { TPanelType } from '@/types/terminal';
 
 interface IAgentPanelProps {
@@ -96,6 +97,7 @@ const AgentPanel = ({
     hasMore: timelineHasMore,
     retrySession,
     sendResume,
+    openJsonlSession,
     addPendingUserMessage,
     removePendingUserMessage,
   } = useTimeline({
@@ -178,12 +180,21 @@ const AgentPanel = ({
   }, [isHeaderLoading, freshMeta, sessionId, jsonlPath, tabId]);
 
   const handleSelectSession = useCallback(
-    (sid: string) => {
+    (session: ISessionMeta) => {
       if (resumingSessionId) return;
-      setResumingSessionId(sid);
-      sendResume(sid, sessionName);
+      setResumingSessionId(session.sessionId);
+      if (session.jsonlPath) {
+        if (openJsonlSession(session.jsonlPath, session.sessionId)) {
+          useTabStore.getState().setSessionView(tabId, 'timeline');
+        } else {
+          retrySession();
+        }
+        setResumingSessionId(null);
+        return;
+      }
+      sendResume(session.sessionId, sessionName);
     },
-    [resumingSessionId, sendResume, sessionName],
+    [openJsonlSession, resumingSessionId, retrySession, sendResume, sessionName, tabId],
   );
 
   if (!agentInstalled) {

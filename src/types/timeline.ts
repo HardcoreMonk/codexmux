@@ -357,4 +357,11 @@ export interface ISessionMeta {
   lastActivityAt: string;
   firstMessage: string;
   turnCount: number;
+  jsonlPath?: string;
+  source?: 'local' | 'remote';
+  sourceLabel?: string;
+  cwd?: string | null;
+  host?: string | null;
+  shell?: string | null;
+  remotePath?: string | null;
 }

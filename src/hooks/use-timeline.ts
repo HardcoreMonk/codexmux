@@ -58,6 +58,7 @@ interface IUseTimelineReturn {
   hasMore: boolean;
   retrySession: () => void;
   sendResume: (sessionId: string, tmuxSession: string) => void;
+  openJsonlSession: (jsonlPath: string, nextSessionId: string) => boolean;
   addPendingUserMessage: (text: string, options?: { autoHide?: boolean; attachmentPlaceholder?: boolean }) => string;
   removePendingUserMessage: (id: string) => void;
 }
@@ -340,7 +341,7 @@ const useTimeline = ({
     [],
   );
 
-  const { status: wsStatus, reconnect, sendResume } = useTimelineWebSocket({
+  const { status: wsStatus, reconnect, sendResume, subscribe } = useTimelineWebSocket({
     sessionName,
     agentSessionId,
     panelType,
@@ -359,6 +360,27 @@ const useTimeline = ({
     setError(null);
     reconnect();
   }, [reconnect]);
+
+  const openJsonlSession = useCallback((nextJsonlPath: string, nextSessionId: string): boolean => {
+    const didSubscribe = subscribe(nextJsonlPath);
+    if (!didSubscribe) return false;
+
+    cancelAppendFlush();
+    pendingAppendRef.current = [];
+    jsonlPathRef.current = nextJsonlPath;
+    startByteOffsetRef.current = 0;
+    setJsonlPath(nextJsonlPath);
+    setSessionId(nextSessionId);
+    setAgentProcessState(true);
+    setEntries([]);
+    setSessionSummary(undefined);
+    setInitMeta(undefined);
+    setSessionStats(null);
+    setHasMore(false);
+    setWsInitReceived(false);
+    setError(null);
+    return true;
+  }, [cancelAppendFlush, subscribe]);
 
   const onSyncRef = useRef(onSync);
   useEffect(() => { onSyncRef.current = onSync; }, [onSync]);
@@ -417,6 +439,7 @@ const useTimeline = ({
     hasMore,
     retrySession,
     sendResume,
+    openJsonlSession,
     addPendingUserMessage,
     removePendingUserMessage,
   };

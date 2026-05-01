@@ -20,6 +20,7 @@
 | `SYSTEMD.md` | Linux `systemd --user` 서비스 등록, build/restart, 운영 점검 |
 | `ANDROID.md` | Android Capacitor shell, Tailscale 연결, foreground reconnect, 앱 정보/재시작, native build |
 | `ELECTRON.md` | Electron shell 개발, 패키징, native notification |
+| `WINDOWS.md` | Windows Codex CLI JSONL 동기화 client, PowerShell 실행, 보안 기준 |
 | `TAURI-EVALUATION.md` | Rust + Tauri 도입 타당성 조사와 PoC 기준 |
 | `STYLE.md` | theme, color, terminal/mobile UI 규칙 |
 
@@ -40,4 +41,4 @@
 - 성능 계측, polling, timeline render/cache, WebSocket batching을 바꾸면 `PERFORMANCE.md`를 갱신한다.
 - 성능 변경이 사용자 동작이나 운영 점검에 영향을 주면 `README.md`와 `landing-src/docs/`의 architecture/live-session/git/stats/troubleshooting 문서도 함께 갱신한다.
 - 저장 파일 구조나 삭제 기준을 바꾸면 `DATA-DIR.md`를 갱신한다.
-- Android/Electron shell, 모바일 reconnect, 앱 정보/재시작 bridge, native build 기준을 바꾸면 각 플랫폼 문서를 갱신한다.
+- Android/Electron/Windows client, 모바일 reconnect, 앱 정보/재시작 bridge, native build 기준을 바꾸면 각 플랫폼 문서를 갱신한다.

@@ -22,7 +22,7 @@ import { MetaCompact } from '@/components/features/workspace/session-meta-conten
 import MobileMetaSheet from './mobile-meta-sheet';
 import useQuickPrompts from '@/hooks/use-quick-prompts';
 import { isAgentPanelType } from '@/lib/panel-type';
-import type { TCliState } from '@/types/timeline';
+import type { ISessionMeta, TCliState } from '@/types/timeline';
 import type { TPanelType } from '@/types/terminal';
 
 interface IMobileAgentPanelProps {
@@ -111,6 +111,7 @@ const MobileAgentPanel = ({
     hasMore: timelineHasMore,
     retrySession,
     sendResume,
+    openJsonlSession,
     addPendingUserMessage,
     removePendingUserMessage,
   } = useTimeline({
@@ -173,7 +174,8 @@ const MobileAgentPanel = ({
     ? { ...meta, userCount: messageCounts.userCount, assistantCount: messageCounts.assistantCount }
     : meta;
 
-  const isInputVisible = view === 'timeline';
+  const isRemoteTimeline = Boolean(jsonlPath?.includes('/.codexmux/remote/codex/'));
+  const isInputVisible = view === 'timeline' && !isRemoteTimeline;
 
   const startingPromptOptions = useStartingPrompt(view === 'check', sessionName);
 
@@ -196,12 +198,23 @@ const MobileAgentPanel = ({
   }, [setInputValueRef, focusInputRef]);
 
   const handleSelectSession = useCallback(
-    (sid: string) => {
+    (session: ISessionMeta) => {
       if (resumingSessionId) return;
-      setResumingSessionId(sid);
-      sendResume(sid, sessionName);
+      setResumingSessionId(session.sessionId);
+      if (session.jsonlPath) {
+        if (openJsonlSession(session.jsonlPath, session.sessionId)) {
+          if (tabId) {
+            useTabStore.getState().setSessionView(tabId, 'timeline');
+          }
+        } else {
+          retrySession();
+        }
+        setResumingSessionId(null);
+        return;
+      }
+      sendResume(session.sessionId, sessionName);
     },
-    [resumingSessionId, sendResume, sessionName],
+    [openJsonlSession, resumingSessionId, retrySession, sendResume, sessionName, tabId],
   );
 
   if (!agentInstalled) {

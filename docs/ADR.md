@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-이 문서는 codexmux에서 이미 선택한 오래가는 설계 결정을 한 곳에 모은다. 세부 구현 흐름은 `ARCHITECTURE-LOGIC.md`에 두고, 영역별 구현 문서는 `STATUS.md`, `TMUX.md`, `DATA-DIR.md`, `SYSTEMD.md`, `STYLE.md`, `ELECTRON.md`, `ANDROID.md`에 둔다.
+이 문서는 codexmux에서 이미 선택한 오래가는 설계 결정을 한 곳에 모은다. 세부 구현 흐름은 `ARCHITECTURE-LOGIC.md`에 두고, 영역별 구현 문서는 `STATUS.md`, `TMUX.md`, `DATA-DIR.md`, `SYSTEMD.md`, `STYLE.md`, `ELECTRON.md`, `ANDROID.md`, `WINDOWS.md`에 둔다.
 
 ## ADR 작성 기준
 
@@ -10,7 +10,7 @@
 - tmux/session/process 감지 방식 변경
 - provider model 또는 `agent*` metadata 의미 변경
 - `~/.codexmux/` 저장 구조나 auth/security 동작 변경
-- Electron/Android 같은 platform shell 동작 변경
+- Electron/Android/Windows 같은 platform client 동작 변경
 - notification, locale, mobile UX, terminal input, reconnect/dedupe 같은 cross-platform 정책 변경
 
 작은 copy, 단일 컴포넌트 스타일, 버그 수정은 기존 ADR의 결정과 충돌하지 않으면 새 ADR이 필요 없다.
@@ -105,3 +105,10 @@
 - Decision: 성능 최적화는 먼저 `globalThis.__ptPerfStore` 기반 런타임 계측과 인증된 `/api/debug/perf` snapshot으로 관측한 뒤 좁게 진행한다.
 - Rationale: 현재 병목 후보는 Node server, WebSocket, tmux, JSONL parsing, React render 경로에 분산되어 있다. rewrite나 큰 구조 변경 전에 process memory, event loop, watcher, poll, WebSocket, parse 비용을 같은 기준으로 확인해야 한다.
 - Consequences: perf snapshot은 숫자와 duration/counter만 반환한다. session id, cwd, JSONL path, prompt, assistant text, terminal output 본문은 노출하지 않는다. endpoint는 middleware auth를 통과해야 하며 public health check로 쓰지 않는다. 성능 개선은 timeline append batching/row memo, JSONL tail snapshot cache, DIFF short cache, stats in-flight dedupe처럼 source of truth를 바꾸지 않는 좁은 변경을 우선한다.
+
+## ADR-014: Windows Codex 연동은 JSONL 동기화 Client로 시작한다
+
+- Status: Accepted
+- Decision: Windows 11 `pwsh`에서 실행하는 Codex CLI 연동은 우선 companion script가 `%USERPROFILE%\.codex\sessions` JSONL을 읽어 `/api/remote/codex/sync`로 보내는 read-only timeline sync로 제공한다.
+- Rationale: Windows shell process는 Linux 서버의 tmux/node-pty process tree 아래에 없어서 기존 terminal attach, process detection, resume path를 그대로 공유할 수 없다. JSONL 동기화는 Codex transcript source of truth를 보존하면서 모바일/웹 timeline 확인 문제를 먼저 해결한다.
+- Consequences: remote Codex 복사본은 `~/.codexmux/remote/codex/`에 저장하고 원본 Windows Codex 상태는 수정하지 않는다. remote session은 session list에 표시되지만 선택 시 `codex resume`이나 `pwsh` 제어가 아니라 저장된 JSONL path를 timeline WebSocket에 구독한다. Windows terminal 입력 제어가 필요하면 별도 pty relay 설계와 인증/권한 모델을 다시 ADR로 남긴다.

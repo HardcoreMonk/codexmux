@@ -45,7 +45,7 @@ interface IUseTimelineWebSocketOptions {
 
 interface IUseTimelineWebSocketReturn {
   status: TTimelineConnectionStatus;
-  subscribe: (jsonlPath: string) => void;
+  subscribe: (jsonlPath: string) => boolean;
   unsubscribe: () => void;
   reconnect: () => void;
   sendResume: (sessionId: string, tmuxSession: string) => void;
@@ -276,11 +276,13 @@ const useTimelineWebSocket = ({
     };
   }, [enabled]);
 
-  const subscribe = useCallback((jsonlPath: string) => {
+  const subscribe = useCallback((jsonlPath: string): boolean => {
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'timeline:subscribe', jsonlPath }));
+      return true;
     }
+    return false;
   }, []);
 
   const unsubscribe = useCallback(() => {

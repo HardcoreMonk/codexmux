@@ -14,7 +14,7 @@ interface ISessionListViewProps {
   hasMore: boolean;
   error: string | null;
   resumingSessionId: string | null;
-  onSelectSession: (sessionId: string) => void;
+  onSelectSession: (session: ISessionMeta) => void;
   onRefresh: () => Promise<void>;
   onLoadMore: () => Promise<void>;
   onNewSession?: () => void;
@@ -119,7 +119,7 @@ const SessionListView = ({
           <TooltipProvider delay={300}>
             {sessions.map((session) => (
               <SessionListItem
-                key={session.sessionId}
+                key={`${session.source ?? 'local'}:${session.sessionId}:${session.jsonlPath ?? ''}`}
                 session={session}
                 isResuming={session.sessionId === resumingSessionId}
                 isDisabled={isResumeInProgress}
