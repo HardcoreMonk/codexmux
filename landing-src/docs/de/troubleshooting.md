@@ -6,7 +6,7 @@ permalink: /de/docs/troubleshooting/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-여기 적힌 내용과 다른 증상이라면, 플랫폼·브라우저와 `~/.codexmux/logs/`의 로그 파일을 첨부해 [이슈를 열어주세요](https://github.com/subicura/codexmux/issues).
+여기 적힌 내용과 다른 증상이라면, 플랫폼·브라우저와 `~/.codexmux/logs/`의 로그 파일을 첨부해 [이슈를 열어주세요](https://github.com/HardcoreMonk/codexmux/issues).
 
 ## 설치와 시작
 
@@ -82,7 +82,7 @@ PORT=9000 codexmux
 
 ### Windows에서 동작하나요?
 
-**공식 지원 X.** codexmux는 `node-pty`와 tmux에 의존하는데, 둘 다 Windows 네이티브로 동작하지 않습니다. WSL2에서는 대체로 동작하지만 (사실상 Linux이므로) 테스트 범위 밖입니다.
+서버 실행은 macOS와 Linux를 기준으로 지원합니다. Windows 네이티브 서버는 아직 지원하지 않지만, Windows 11 `pwsh`에서 실행한 Codex CLI transcript는 companion client로 동기화할 수 있습니다. companion은 `%USERPROFILE%\.codex\sessions` JSONL을 서버의 `/api/remote/codex/sync`로 보내고, UI에서는 Windows source badge와 read-only timeline으로 표시합니다. 입력/resize/process lifecycle 원격 제어는 아직 범위 밖입니다.
 
 ## 세션과 복원
 
@@ -102,7 +102,7 @@ tmux가 "no server running"이라면 호스트가 재부팅됐거나 tmux가 죽
 
 ### 모든 탭이 "unknown" 상태입니다
 
-`unknown`은 서버 재시작 전에 `busy`였던 탭이 아직 복구 중임을 의미합니다. `resolveUnknown`이 백그라운드에서 돌면서 `idle` (Codex 종료) 또는 `ready-for-review` (마지막 어시스턴트 메시지 있음)를 확정합니다. 10분 이상 `unknown`에 머무르면 **busy stuck safety net**이 조용히 `idle`로 넘깁니다. 전체 상태 머신은 [STATUS.md](https://github.com/subicura/codexmux/blob/main/docs/STATUS.md) 참고.
+`unknown`은 서버 재시작 전에 `busy`였던 탭이 아직 복구 중임을 의미합니다. `resolveUnknown`이 백그라운드에서 돌면서 `idle` (Codex 종료) 또는 `ready-for-review` (마지막 어시스턴트 메시지 있음)를 확정합니다. 10분 이상 `unknown`에 머무르면 **busy stuck safety net**이 조용히 `idle`로 넘깁니다. 전체 상태 머신은 [STATUS.md](https://github.com/HardcoreMonk/codexmux/blob/main/docs/STATUS.md) 참고.
 
 ## 브라우저와 UI
 
@@ -142,7 +142,7 @@ Capacitor Android 앱에서는 모바일 메뉴의 앱 정보에서 Android 앱 
 
 ### 서버가 느리거나 메모리 사용량이 높아요
 
-빌드와 서비스 재시작 후 인증된 요청으로 `/api/debug/perf`를 확인하세요. 이 endpoint는 process memory, event loop delay, terminal/status/timeline/sync WebSocket 수, JSONL watcher, status poll duration, diff/stats cache counter를 숫자로만 반환합니다. prompt, assistant text, terminal output, cwd, JSONL path는 반환하지 않습니다. 운영 판단 기준은 [PERFORMANCE.md](https://github.com/subicura/codexmux/blob/main/docs/PERFORMANCE.md)를 참고하세요.
+빌드와 서비스 재시작 후 인증된 요청으로 `/api/debug/perf`를 확인하세요. 이 endpoint는 process memory, event loop delay, terminal/status/timeline/sync WebSocket 수, JSONL watcher, status poll duration, diff/stats cache counter를 숫자로만 반환합니다. prompt, assistant text, terminal output, cwd, JSONL path는 반환하지 않습니다. 운영 판단 기준은 [PERFORMANCE.md](https://github.com/HardcoreMonk/codexmux/blob/main/docs/PERFORMANCE.md)를 참고하세요.
 
 ## 네트워크와 외부 접근
 

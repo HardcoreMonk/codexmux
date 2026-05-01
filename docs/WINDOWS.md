@@ -1,6 +1,6 @@
 # Windows client
 
-Windows client 1차 범위는 Windows 11 `pwsh`에서 실행한 Codex CLI의 JSONL transcript를 codexmux 서버로 동기화하는 것이다. codexmux UI에서는 remote session이 session list에 나타나고, 선택하면 읽기 전용 timeline으로 열린다.
+Windows client 범위는 Windows 11 `pwsh`에서 실행한 Codex CLI의 JSONL transcript를 codexmux 서버로 동기화하는 것이다. codexmux UI에서는 remote session이 session list에 나타나고, source filter로 분리 조회할 수 있으며, 선택하면 읽기 전용 timeline으로 열린다.
 
 이 문서는 Windows terminal을 원격으로 제어하는 pty relay를 다루지 않는다. `pwsh` 입력, resize, process lifecycle 제어는 후속 설계 범위다.
 
@@ -25,7 +25,7 @@ Windows client 1차 범위는 Windows 11 `pwsh`에서 실행한 Codex CLI의 JSO
 - Node.js 20 이상
 - Codex CLI가 Windows에서 실행 중이거나 실행된 기록이 있어야 함
 - codexmux 서버가 Windows에서 접근 가능해야 함
-- 서버의 `~/.codexmux/cli-token` 값을 Windows 환경 변수로 전달해야 함
+- 서버의 `~/.codexmux/cli-token` 값을 Windows 환경 변수나 token file로 전달해야 함
 
 Tailscale로 연결할 때는 서버 URL을 Tailscale IP 또는 MagicDNS 이름으로 지정한다. 공용망에 노출하는 경우 HTTPS reverse proxy와 강한 비밀번호를 함께 사용한다.
 

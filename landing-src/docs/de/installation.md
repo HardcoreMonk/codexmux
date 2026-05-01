@@ -10,7 +10,7 @@ permalink: /de/docs/installation/index.html
 
 ## 요구사항
 
-- **macOS 13 이상 또는 Linux** — Windows는 지원하지 않습니다. WSL2는 대체로 동작하지만 테스트 범위 밖입니다.
+- **macOS 13 이상 또는 Linux** — 서버 실행 대상입니다. Windows 11은 서버 대신 `pwsh` Codex CLI JSONL을 동기화하는 companion client만 지원합니다.
 - **[Node.js](https://nodejs.org) 20 이상** — `node -v`로 확인하세요.
 - **[tmux](https://github.com/tmux/tmux)** — 3.0 이상이면 OK.
 
@@ -37,7 +37,7 @@ pnpm과 yarn도 같은 방식입니다 (`pnpm add -g codexmux` / `yarn global ad
 
 ### macOS 네이티브 앱
 
-[Releases](https://github.com/subicura/codexmux/releases/latest)에서 최신 `.dmg`를 내려받으세요 — Apple Silicon과 Intel 빌드가 모두 제공됩니다. 자동 업데이트 내장.
+[Releases](https://github.com/HardcoreMonk/codexmux/releases/latest)에서 최신 `.dmg`를 내려받으세요 — Apple Silicon과 Intel 빌드가 모두 제공됩니다. 자동 업데이트 내장.
 
 앱에는 Node, tmux, codexmux 서버가 번들되어 있고 다음 기능이 추가됩니다:
 
@@ -48,7 +48,7 @@ pnpm과 yarn도 같은 방식입니다 (`pnpm add -g codexmux` / `yarn global ad
 ### 소스에서 실행
 
 ```bash
-git clone https://github.com/subicura/codexmux.git
+git clone https://github.com/HardcoreMonk/codexmux.git
 cd codexmux
 pnpm install
 pnpm start

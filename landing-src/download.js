@@ -2,8 +2,8 @@
   var modal = document.getElementById('archModal');
   if (!modal) return;
 
-  var API = 'https://api.github.com/repos/subicura/codexmux/releases/latest';
-  var FALLBACK = 'https://github.com/subicura/codexmux/releases/latest';
+  var API = 'https://api.github.com/repos/HardcoreMonk/codexmux/releases/latest';
+  var FALLBACK = 'https://github.com/HardcoreMonk/codexmux/releases/latest';
   var releasePromise = null;
   var lastFocus = null;
 

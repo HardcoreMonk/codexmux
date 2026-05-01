@@ -26,7 +26,7 @@ sidebar의 session dot은 Codex가 무엇을 하고 있는지 보여줍니다. c
 | process tree detection | live `codex` process 존재 여부 |
 | Codex JSONL tail | session id, model, current action, token usage |
 
-생성된 hook bridge file도 event를 보낼 수 있지만 Codex status는 이 파일에 의존하지 않습니다.
+생성된 hook bridge file도 event를 보낼 수 있지만 Codex status는 이 파일에 의존하지 않습니다. Windows remote session은 서버 tmux process tree 아래에 없으므로 `codex resume` 대상이 아니라 source badge와 읽기 전용 timeline으로 표시됩니다.
 
 ## JSONL watcher
 

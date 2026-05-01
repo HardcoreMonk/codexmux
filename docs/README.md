@@ -20,7 +20,7 @@
 | `SYSTEMD.md` | Linux `systemd --user` 서비스 등록, build/restart, 운영 점검 |
 | `ANDROID.md` | Android Capacitor shell, Tailscale 연결, foreground reconnect, 앱 정보/재시작, native build |
 | `ELECTRON.md` | Electron shell 개발, 패키징, native notification |
-| `WINDOWS.md` | Windows Codex CLI JSONL 동기화 client, PowerShell 실행, 보안 기준 |
+| `WINDOWS.md` | Windows Codex CLI JSONL 동기화 client, source filter, Scheduled Task 운영, 보안 기준 |
 | `TAURI-EVALUATION.md` | Rust + Tauri 도입 타당성 조사와 PoC 기준 |
 | `STYLE.md` | theme, color, terminal/mobile UI 규칙 |
 

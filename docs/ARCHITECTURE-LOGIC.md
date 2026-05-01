@@ -177,7 +177,7 @@ Timeline은 terminal scrollback을 그대로 보여주는 기능이 아니라 Co
 
 ## Windows Codex 동기화 로직
 
-Windows 11에서 `pwsh`로 실행한 Codex CLI는 Linux tmux tree 아래에 없으므로 codexmux가 process를 직접 attach하지 않는다. 1차 지원 범위는 Windows companion script가 Codex CLI JSONL을 읽어 서버에 chunk로 보내고, codexmux가 이를 읽기 전용 timeline session으로 노출하는 방식이다.
+Windows 11에서 `pwsh`로 실행한 Codex CLI는 Linux tmux tree 아래에 없으므로 codexmux가 process를 직접 attach하지 않는다. 현재 지원 범위는 Windows companion script가 Codex CLI JSONL을 읽어 서버에 chunk로 보내고, codexmux가 이를 source filter가 가능한 읽기 전용 timeline session으로 노출하는 방식이다.
 
 ```text
 Windows Codex CLI

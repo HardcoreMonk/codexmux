@@ -222,6 +222,7 @@ codexmux 상태는 `~/.codexmux/`에 저장됩니다. Codex CLI 원본 세션은
 | `push-subscriptions.json` | Web Push 구독 정보 |
 | `cli-token` | CLI와 hook bridge의 `x-cmux-token` |
 | `port` | 현재 실행 중인 server port |
+| `session-index.json` | Linux/Windows Codex session list metadata cache |
 | `remote/codex/{sourceId}/{sessionId}.jsonl` | Windows companion이 보낸 Codex CLI JSONL 복사본 |
 | `remote/codex/{sourceId}/{sessionId}.jsonl.meta.json` | Windows host, shell, cwd, 원본 path, offset metadata |
 | `stats/` | Codex usage cache와 daily report. 런타임 stats build는 in-flight promise로 중복 계산을 피함 |
@@ -381,12 +382,23 @@ $env:CMUX_TOKEN = "<server ~/.codexmux/cli-token content>"
 corepack pnpm windows:codex-sync
 ```
 
+상시 운영은 현재 사용자 Scheduled Task로 감싸는 방식을 권장합니다.
+
+```powershell
+.\scripts\windows-codex-sync-task.ps1 `
+  -Action Install `
+  -Server "http://<codexmux-server>:8122" `
+  -Token "<server ~/.codexmux/cli-token content>" `
+  -SourceId "win11-main" `
+  -RunNow
+```
+
 주요 option:
 
 ```powershell
 node .\scripts\windows-codex-sync.mjs `
   --server http://100.x.y.z:8122 `
-  --token $env:CMUX_TOKEN `
+  --token-file "$env:USERPROFILE\.codexmux\cli-token" `
   --source-id win11-main `
   --shell pwsh
 ```
@@ -394,8 +406,9 @@ node .\scripts\windows-codex-sync.mjs `
 - 서버 endpoint: `POST /api/remote/codex/sync`
 - 인증: `x-cmux-token`
 - 서버 저장 위치: `~/.codexmux/remote/codex/{sourceId}/{sessionId}.jsonl`
-- UI 동작: session list에 `HOST / pwsh` badge로 표시되고, 선택하면 `codex resume`이 아니라 해당 JSONL timeline을 구독
+- UI 동작: session list에 `HOST / pwsh` badge와 Windows source summary가 표시되고, 전체/local/Windows/source별 filter로 분리 조회 가능
 - scan 방식: 시작 시 전체 scan 후 평상시에는 오늘/어제 date dir와 최근 활성 파일을 확인하고, 기본 60초마다 전체 scan
+- 진단: `--once --dry-run`으로 서버 전송 없이 pending upload와 scan summary 확인
 - 미지원 범위: Windows `pwsh` 입력/resize/process lifecycle 원격 제어
 
 세부 실행 옵션과 문제 해결은 [docs/WINDOWS.md](docs/WINDOWS.md)를 참고합니다.
@@ -469,7 +482,7 @@ Windows Codex companion
 | [docs/STYLE.md](docs/STYLE.md) | theme와 color 사용 규칙 |
 | [docs/ELECTRON.md](docs/ELECTRON.md) | Electron desktop app 개발과 패키징 |
 | [docs/ANDROID.md](docs/ANDROID.md) | Android Capacitor app 개발, 앱 정보/재시작, 빌드 |
-| [docs/WINDOWS.md](docs/WINDOWS.md) | Windows Codex CLI JSONL 동기화 client |
+| [docs/WINDOWS.md](docs/WINDOWS.md) | Windows Codex CLI JSONL sync client, source filter, Scheduled Task 운영 |
 | [docs/FOLLOW-UP.md](docs/FOLLOW-UP.md) | 릴리스 전 확인과 post-MVP 백로그 |
 
 <a id="en"></a>
@@ -679,12 +692,23 @@ $env:CMUX_TOKEN = "<server ~/.codexmux/cli-token content>"
 corepack pnpm windows:codex-sync
 ```
 
+For long-running operation, install the current-user Scheduled Task wrapper:
+
+```powershell
+.\scripts\windows-codex-sync-task.ps1 `
+  -Action Install `
+  -Server "http://<codexmux-server>:8122" `
+  -Token "<server ~/.codexmux/cli-token content>" `
+  -SourceId "win11-main" `
+  -RunNow
+```
+
 Example with explicit options:
 
 ```powershell
 node .\scripts\windows-codex-sync.mjs `
   --server http://100.x.y.z:8122 `
-  --token $env:CMUX_TOKEN `
+  --token-file "$env:USERPROFILE\.codexmux\cli-token" `
   --source-id win11-main `
   --shell pwsh
 ```
@@ -692,8 +716,10 @@ node .\scripts\windows-codex-sync.mjs `
 - Endpoint: `POST /api/remote/codex/sync`
 - Auth: `x-cmux-token`
 - Server storage: `~/.codexmux/remote/codex/{sourceId}/{sessionId}.jsonl`
-- UI behavior: remote sessions appear with a `HOST / pwsh` badge and open by subscribing to the stored JSONL timeline, not by running `codex resume`
+- UI behavior: remote sessions appear with a `HOST / pwsh` badge, Windows source summary, and all/local/Windows/source filters
 - Scan behavior: after the startup full scan, hot scans check today's/yesterday's date dirs and recently active files, with a full scan every 60 seconds by default
+- Diagnostics: use `--once --dry-run` to inspect pending uploads and scan summary without sending chunks
+- Operations: use `scripts/windows-codex-sync-task.ps1` to install a current-user Scheduled Task for login-time sync
 - Not included: remote control of Windows `pwsh` input, resize, or process lifecycle
 
 See [docs/WINDOWS.md](docs/WINDOWS.md) for all options and troubleshooting.
@@ -758,7 +784,7 @@ On iPad, use Safari and add codexmux to the Home Screen. A native iPadOS app is 
 | [docs/STYLE.md](docs/STYLE.md) | Theme and color rules |
 | [docs/ELECTRON.md](docs/ELECTRON.md) | Electron desktop development and packaging |
 | [docs/ANDROID.md](docs/ANDROID.md) | Android Capacitor development, app info/restart, and build |
-| [docs/WINDOWS.md](docs/WINDOWS.md) | Windows Codex CLI JSONL sync client |
+| [docs/WINDOWS.md](docs/WINDOWS.md) | Windows Codex CLI JSONL sync client, source filters, and Scheduled Task operation |
 | [docs/FOLLOW-UP.md](docs/FOLLOW-UP.md) | Release checks and post-MVP backlog |
 
 ### Security And Data

@@ -65,7 +65,7 @@ codexmux의 컬러·서피스·악센트는 대부분 `:root`(라이트)와 `.da
 - **Palette** — `--ui-blue`, `--ui-teal`, `--ui-coral`, `--ui-amber`, `--ui-purple`, `--ui-pink`, `--ui-green`, `--ui-gray`, `--ui-red`
 - **Semantic** — `--positive`, `--negative`, `--accent-color`, `--brand`, `--focus-indicator`, `--agent-active`
 
-전체 토큰 목록과 기본 oklch 값, 디자인 의도는 저장소의 [`docs/STYLE.md`](https://github.com/subicura/codexmux/blob/main/docs/STYLE.md)에 정리되어 있습니다. 이 문서가 단일 소스입니다.
+전체 토큰 목록과 기본 oklch 값, 디자인 의도는 저장소의 [`docs/STYLE.md`](https://github.com/HardcoreMonk/codexmux/blob/main/docs/STYLE.md)에 정리되어 있습니다. 이 문서가 단일 소스입니다.
 
 ## 모드별로만 적용하기
 

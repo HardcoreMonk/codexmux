@@ -15,6 +15,7 @@ codexmux의 영속 상태는 `~/.codexmux/`에 저장된다. Codex CLI의 원본
 ├── statusline.sh
 ├── rate-limits.json
 ├── session-history.json
+├── session-index.json
 ├── quick-prompts.json
 ├── sidebar-items.json
 ├── keybindings.json
