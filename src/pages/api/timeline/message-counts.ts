@@ -1,29 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createReadStream } from 'fs';
 import { stat } from 'fs/promises';
-import { createInterface } from 'readline';
 import { isAllowedJsonlPath } from '@/lib/path-validation';
-
-interface IRawEntry {
-  type?: string;
-  uuid?: string;
-  requestId?: string;
-  isMeta?: boolean;
-  isSidechain?: boolean;
-  message?: {
-    content?: unknown;
-  };
-}
-
-interface ICountResult {
-  userCount: number;
-  assistantCount: number;
-  toolCount: number;
-  toolBreakdown: Record<string, number>;
-}
+import { getPerfNow, recordPerfCounter, recordPerfDuration } from '@/lib/perf-metrics';
+import { countTimelineMessages, emptyMessageCounts, type IMessageCountResult } from '@/lib/timeline-message-counts';
 
 interface ICacheEntry {
-  counts: ICountResult;
+  counts: IMessageCountResult;
   mtime: number;
   size: number;
 }
@@ -34,7 +16,7 @@ const g = globalThis as unknown as { __cmuxMessageCountsCache?: Map<string, ICac
 if (!g.__cmuxMessageCountsCache) g.__cmuxMessageCountsCache = new Map();
 const cache = g.__cmuxMessageCountsCache;
 
-const cacheGet = (key: string, mtime: number, size: number): ICountResult | null => {
+const cacheGet = (key: string, mtime: number, size: number): IMessageCountResult | null => {
   const entry = cache.get(key);
   if (!entry) return null;
   if (entry.mtime !== mtime || entry.size !== size) {
@@ -46,7 +28,7 @@ const cacheGet = (key: string, mtime: number, size: number): ICountResult | null
   return entry.counts;
 };
 
-const cacheSet = (key: string, counts: ICountResult, mtime: number, size: number) => {
+const cacheSet = (key: string, counts: IMessageCountResult, mtime: number, size: number) => {
   if (cache.has(key)) cache.delete(key);
   cache.set(key, { counts, mtime, size });
   while (cache.size > CACHE_LIMIT) {
@@ -54,71 +36,6 @@ const cacheSet = (key: string, counts: ICountResult, mtime: number, size: number
     if (oldest === undefined) break;
     cache.delete(oldest);
   }
-};
-
-const isRealUserMessage = (entry: IRawEntry): boolean => {
-  const content = entry.message?.content;
-  if (typeof content === 'string') return content.length > 0;
-  if (Array.isArray(content)) {
-    return content.some((c) => {
-      if (typeof c !== 'object' || c === null) return false;
-      return (c as { type?: string }).type !== 'tool_result';
-    });
-  }
-  return false;
-};
-
-const countMessages = async (filePath: string): Promise<ICountResult> => {
-  let userCount = 0;
-  let toolCount = 0;
-  const assistantIds = new Set<string>();
-  const toolBreakdown: Record<string, number> = {};
-
-  const stream = createReadStream(filePath, { encoding: 'utf-8' });
-  const rl = createInterface({ input: stream, crlfDelay: Infinity });
-
-  try {
-    for await (const line of rl) {
-      if (!line.trim()) continue;
-      let obj: IRawEntry;
-      try {
-        obj = JSON.parse(line) as IRawEntry;
-      } catch {
-        continue;
-      }
-      if (obj.isMeta === true) continue;
-      if (obj.isSidechain === true) continue;
-
-      if (obj.type === 'assistant') {
-        const id = obj.requestId ?? obj.uuid;
-        if (id) assistantIds.add(id);
-
-        const content = obj.message?.content;
-        if (Array.isArray(content)) {
-          for (const item of content) {
-            if (typeof item !== 'object' || item === null) continue;
-            const itemType = (item as { type?: string }).type;
-            if (itemType !== 'tool_use') continue;
-            toolCount++;
-            const name = (item as { name?: string }).name;
-            if (name) toolBreakdown[name] = (toolBreakdown[name] ?? 0) + 1;
-          }
-        }
-      } else if (obj.type === 'user' && isRealUserMessage(obj)) {
-        userCount++;
-      }
-    }
-  } finally {
-    rl.close();
-    stream.destroy();
-  }
-
-  return {
-    userCount,
-    assistantCount: assistantIds.size,
-    toolCount,
-    toolBreakdown,
-  };
 };
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -142,13 +59,20 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const size = st.size;
 
     const cached = cacheGet(jsonlPath, mtime, size);
-    if (cached) return res.status(200).json(cached);
+    if (cached) {
+      recordPerfCounter('timeline.message_counts.cache_hit');
+      return res.status(200).json(cached);
+    }
 
-    const counts = await countMessages(jsonlPath);
+    recordPerfCounter('timeline.message_counts.cache_miss');
+    const startedAt = getPerfNow();
+    const counts = await countTimelineMessages(jsonlPath);
+    recordPerfDuration('timeline.message_counts.read', getPerfNow() - startedAt);
     cacheSet(jsonlPath, counts, mtime, size);
     return res.status(200).json(counts);
   } catch {
-    return res.status(200).json({ userCount: 0, assistantCount: 0, toolCount: 0, toolBreakdown: {} });
+    recordPerfCounter('timeline.message_counts.error');
+    return res.status(200).json(emptyMessageCounts());
   }
 };
 

@@ -97,6 +97,12 @@ Rust + Tauri 도입은 `docs/TAURI-EVALUATION.md` 기준으로 보류한다. Tau
 - Windows companion sync는 시작 시 전체 scan을 수행한 뒤, 평상시에는 오늘/어제 date dir와 최근 활성 파일만 확인한다. 전체 session tree 재귀 scan은 기본 60초 주기로 유지해 오래된 날짜 session을 다시 이어 쓰는 경우도 늦어도 다음 full scan에서 잡는다.
 - `--full-scan-interval-ms`와 `CMUX_FULL_SCAN_INTERVAL_MS`를 추가했다. 파일 수가 많은 Windows 환경에서는 1.5초 polling마다 전체 tree를 훑는 비용을 줄이고, 지연 허용 범위에 맞게 full scan 주기를 조정할 수 있다.
 
+### 2026-05-02 6차 구현 상태
+
+- `/api/timeline/message-counts`의 JSONL counting을 전용 streaming helper로 분리했다. meta panel 확장 시 전체 timeline entry를 만들지 않고 user/assistant/tool 숫자만 한 줄씩 계산한다.
+- Codex `event_msg`/`response_item` pair는 timeline parser와 같은 1초 window로 dedupe한다. synthetic environment/AGENTS user context와 image wrapper text는 count에서 제외한다.
+- cache hit/miss/error와 read duration을 perf runtime counter/timing에 기록해 긴 session에서 meta count 비용을 확인할 수 있다.
+
 ## 작업 상세
 
 ### 1. Perf Snapshot
