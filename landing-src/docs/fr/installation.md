@@ -98,13 +98,17 @@ Description=codexmux
 [Service]
 ExecStart=/usr/local/bin/codexmux
 Restart=on-failure
+KillSignal=SIGINT
+SuccessExitStatus=130
+TimeoutStopSec=20
 
 [Install]
 WantedBy=default.target
 ```
 
 ```bash
-systemctl --user enable --now codexmux
+systemctl --user daemon-reload
+systemctl --user enable --now codexmux.service
 ```
 
 ## 업데이트

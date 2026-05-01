@@ -32,6 +32,8 @@ sidebar의 session dot은 Codex가 무엇을 하고 있는지 보여줍니다. c
 
 Codex는 `~/.codex/sessions/` 아래에 transcript JSONL을 씁니다. codexmux는 active tab의 JSONL을 감시해 last assistant message, current action, token count를 갱신합니다. 사용자가 실행 중 <kbd>Esc</kbd>를 누른 경우 interruption marker를 감지해 tab이 `busy`에 갇히지 않게 합니다.
 
+Codex CLI가 process 시작 후 JSONL을 늦게 쓰는 경우를 고려해 session id, 같은 cwd의 process start time, live process 확인 후 cwd fallback 순서로 transcript를 연결합니다. 일반 JSONL 검색은 cwd만으로 최신 파일을 고르지 않습니다.
+
 ## polling
 
 30-60초 간격의 metadata poll은 놓친 event를 보정하는 안전망입니다. 죽은 process, stale `busy`, 새 tmux pane, title metadata를 확인합니다.

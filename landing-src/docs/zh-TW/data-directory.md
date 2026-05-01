@@ -45,7 +45,7 @@ codexmux의 영속 상태는 `~/.codexmux/` 아래에 저장됩니다. Codex CLI
 | `cli-token` | CLI와 bridge script token | 가능. 재시작 시 재생성 |
 | `port` | 현재 server port | 가능. 재시작 시 재생성 |
 | `cmux.lock` | 단일 인스턴스 guard | process가 없을 때만 삭제 |
-| `stats/` | usage cache와 daily report | 가능. 다음 요청에서 재계산 |
+| `stats/` | usage cache와 daily report. runtime build는 in-flight dedupe 적용 | 가능. 다음 요청에서 재계산 |
 
 ## 백업
 

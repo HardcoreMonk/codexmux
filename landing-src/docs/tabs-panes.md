@@ -32,8 +32,10 @@ permalink: /docs/tabs-panes/index.html
 
 | 동작 | macOS | Linux / Windows |
 |---|---|---|
-| 오른쪽으로 분할 | <kbd>⌘D</kbd> | <kbd>Ctrl+D</kbd> |
+| 오른쪽으로 분할 | <kbd>⌘D</kbd> | <kbd>Ctrl+Alt+D</kbd> |
 | 아래로 분할 | <kbd>⌘⇧D</kbd> | <kbd>Ctrl+Shift+D</kbd> |
+
+Linux/Windows에서 <kbd>Ctrl+D</kbd>는 터미널과 Codex CLI의 EOF 입력으로 예약되어 있어 오른쪽 분할은 <kbd>Ctrl+Alt+D</kbd>를 사용합니다.
 
 새로 만들어지는 분할은 워크스페이스의 기본 디렉토리를 상속받고 빈 터미널 탭으로 시작합니다. 각 창은 자체 탭 바를 가지므로 오른쪽 창에서는 diff 뷰어를, 왼쪽 창에서는 `codex`를 돌리는 식으로 쓸 수 있습니다.
 

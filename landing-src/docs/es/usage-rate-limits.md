@@ -30,7 +30,7 @@ Dashboard는 다음 정보를 제공합니다.
 
 ## 데이터 출처
 
-모든 dashboard 값은 `~/.codex/sessions/` 아래 JSONL에서 로컬로 계산됩니다. cache는 `~/.codexmux/stats/`에 저장되며 외부로 전송되지 않습니다.
+모든 dashboard 값은 `~/.codex/sessions/` 아래 JSONL에서 로컬로 계산됩니다. cache는 `~/.codexmux/stats/`에 저장되며 외부로 전송되지 않습니다. cold start에서 여러 stats endpoint가 동시에 들어와도 cache build는 하나의 in-flight 작업을 공유합니다. cache file이 이미 있으면 초기 상태 확인에서는 전체 JSONL 파일 수 scan을 생략합니다.
 
 ## reset 동작
 
