@@ -208,7 +208,8 @@ Windows Codex CLI
 5. `/api/timeline/sessions`는 index snapshot을 정렬/페이지네이션만 해서 반환한다.
 6. Codex provider의 `findCodexSessionJsonl()`은 먼저 index에서 session id, cwd, process start time 후보를 찾고, index miss 때만 기존 filesystem scan으로 fallback한다.
 7. Windows sync chunk 수신 후에는 index refresh를 debounce로 요청한다.
-8. `/api/debug/perf`는 session index의 indexed file 수, cache hit/miss, build duration을 숫자로 노출한다.
+8. refresh 결과가 이전 persisted snapshot과 같으면 `session-index.json` write를 건너뛴다.
+9. `/api/debug/perf`는 session index의 indexed file 수, cache hit/miss, build duration, persist write/skip count를 숫자로 노출한다.
 
 Linux session 선택은 `codex resume <sessionId>` 경로를 유지한다. Windows remote session 선택은 저장된 JSONL path를 timeline WebSocket에 구독한다.
 

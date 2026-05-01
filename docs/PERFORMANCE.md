@@ -103,6 +103,11 @@ Rust + Tauri 도입은 `docs/TAURI-EVALUATION.md` 기준으로 보류한다. Tau
 - Codex `event_msg`/`response_item` pair는 timeline parser와 같은 1초 window로 dedupe한다. synthetic environment/AGENTS user context와 image wrapper text는 count에서 제외한다.
 - cache hit/miss/error와 read duration을 perf runtime counter/timing에 기록해 긴 session에서 meta count 비용을 확인할 수 있다.
 
+### 2026-05-02 7차 구현 상태
+
+- Session index refresh 결과가 이전 persisted snapshot과 같으면 `~/.codexmux/session-index.json` write를 건너뛴다. 15초 백그라운드 refresh에서 파일 metadata가 모두 cache hit인 구간의 디스크 churn을 줄인다.
+- `/api/debug/perf`의 `sessionIndex` snapshot에 `persistWrites`, `persistSkips`, `lastPersistedAt`을 추가해 index build와 persist 비용을 분리해서 볼 수 있게 했다.
+
 ## 작업 상세
 
 ### 1. Perf Snapshot

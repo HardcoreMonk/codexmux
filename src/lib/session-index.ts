@@ -41,6 +41,10 @@ interface ISessionIndexState {
   indexedFiles: number;
   cacheHits: number;
   cacheMisses: number;
+  persistContentKey: string;
+  persistWrites: number;
+  persistSkips: number;
+  lastPersistedAt: number;
 }
 
 interface ICodexJsonlScanResult {
@@ -85,6 +89,10 @@ const state = g.__ptSessionIndex ??= {
   indexedFiles: 0,
   cacheHits: 0,
   cacheMisses: 0,
+  persistContentKey: '',
+  persistWrites: 0,
+  persistSkips: 0,
+  lastPersistedAt: 0,
 };
 
 const ensureCurrentRoot = (): void => {
@@ -104,6 +112,10 @@ const ensureCurrentRoot = (): void => {
   state.indexedFiles = 0;
   state.cacheHits = 0;
   state.cacheMisses = 0;
+  state.persistContentKey = '';
+  state.persistWrites = 0;
+  state.persistSkips = 0;
+  state.lastPersistedAt = 0;
 };
 
 const runWithConcurrency = async <T>(
@@ -264,6 +276,33 @@ const writeStoredIndex = async (sessions: IIndexedSessionMeta[]): Promise<void> 
   await fs.rename(tmp, filePath);
 };
 
+const buildPersistContentKey = (sessions: IIndexedSessionMeta[]): string =>
+  sessions
+    .map((session) => [
+      session.indexKey,
+      session.indexJsonlPath,
+      session.indexMtimeMs,
+      session.indexSize,
+      session.indexSidecarMtimeMs ?? '',
+      session.sessionId,
+      session.lastActivityAt,
+      session.turnCount,
+    ].join('\t'))
+    .join('\n');
+
+const persistStoredIndexIfChanged = async (sessions: IIndexedSessionMeta[]): Promise<void> => {
+  const contentKey = buildPersistContentKey(sessions);
+  if (contentKey === state.persistContentKey) {
+    state.persistSkips++;
+    return;
+  }
+
+  await writeStoredIndex(sessions);
+  state.persistContentKey = contentKey;
+  state.persistWrites++;
+  state.lastPersistedAt = Date.now();
+};
+
 const buildRemoteSourceLabel = (host: string | null, shell: string | null): string => {
   const left = host?.trim() || 'Windows';
   const right = shell?.trim() || 'pwsh';
@@ -415,7 +454,7 @@ export const refreshSessionIndex = async (): Promise<void> => {
     state.cacheHits = cacheHits;
     state.cacheMisses = cacheMisses;
     state.lastError = null;
-    await writeStoredIndex(state.sessions).catch((err) => {
+    await persistStoredIndexIfChanged(state.sessions).catch((err) => {
       log.warn({ err }, 'failed to persist session index');
     });
   })().catch((err) => {
@@ -443,6 +482,7 @@ export const initSessionIndexService = async (): Promise<void> => {
   if (state.initialized) return;
 
   state.sessions = replaceDuplicateSessions(await readStoredIndex());
+  state.persistContentKey = buildPersistContentKey(state.sessions);
   state.initialized = true;
   requestSessionIndexRefresh(0);
 
@@ -553,6 +593,9 @@ export const getSessionIndexPerfSnapshot = () => {
     lastBuildMs: state.lastBuildMs,
     cacheHits: state.cacheHits,
     cacheMisses: state.cacheMisses,
+    persistWrites: state.persistWrites,
+    persistSkips: state.persistSkips,
+    lastPersistedAt: state.lastPersistedAt,
     lastError: state.lastError,
   };
 };
