@@ -2,7 +2,12 @@ import { useEffect, useRef } from 'react';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
 import { useLayoutStore, collectPanes } from '@/hooks/use-layout';
 import useTabStore from '@/hooks/use-tab-store';
-import { shouldForceForegroundReconnect, wasPageRestored } from '@/lib/foreground-reconnect';
+import {
+  NATIVE_APP_STATE_EVENT,
+  readNativeAppStateActive,
+  shouldForceForegroundReconnect,
+  wasPageRestored,
+} from '@/lib/foreground-reconnect';
 import type { ILayoutData } from '@/types/terminal';
 
 const RECONNECT_DELAY = 3000;
@@ -85,8 +90,8 @@ const useSync = () => {
       }
     };
 
-    const handleForegroundReconnect = () => {
-      if (document.visibilityState !== 'visible') return;
+    const handleForegroundReconnect = (allowHidden = false) => {
+      if (!allowHidden && document.visibilityState !== 'visible') return;
       const ws = wsRef.current;
       const forceReconnect = shouldForceForegroundReconnect(hiddenAtRef.current);
       hiddenAtRef.current = null;
@@ -109,16 +114,33 @@ const useSync = () => {
       handleForegroundReconnect();
     };
 
+    const handleForegroundEvent = () => {
+      handleForegroundReconnect();
+    };
+
     const handlePageShow = (event: PageTransitionEvent) => {
       if (wasPageRestored(event)) hiddenAtRef.current = 0;
       handleForegroundReconnect();
     };
 
+    const handleNativeAppState = (event: Event) => {
+      const active = readNativeAppStateActive(event);
+      if (active === false) {
+        markHidden();
+        return;
+      }
+      if (active === true) {
+        hiddenAtRef.current = hiddenAtRef.current ?? 0;
+        handleForegroundReconnect(true);
+      }
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleForegroundReconnect);
-    window.addEventListener('online', handleForegroundReconnect);
+    window.addEventListener('focus', handleForegroundEvent);
+    window.addEventListener('online', handleForegroundEvent);
     window.addEventListener('pagehide', markHidden);
     window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener(NATIVE_APP_STATE_EVENT, handleNativeAppState);
 
     return () => {
       mountedRef.current = false;
@@ -131,10 +153,11 @@ const useSync = () => {
       }
       wsRef.current = null;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleForegroundReconnect);
-      window.removeEventListener('online', handleForegroundReconnect);
+      window.removeEventListener('focus', handleForegroundEvent);
+      window.removeEventListener('online', handleForegroundEvent);
       window.removeEventListener('pagehide', markHidden);
       window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener(NATIVE_APP_STATE_EVENT, handleNativeAppState);
     };
   }, []);
 };

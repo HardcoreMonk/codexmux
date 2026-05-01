@@ -7,7 +7,12 @@ import type {
   TTimelineServerMessage,
 } from '@/types/timeline';
 import { nextReconnectDelay } from '@/lib/reconnect-policy';
-import { shouldForceForegroundReconnect, wasPageRestored } from '@/lib/foreground-reconnect';
+import {
+  NATIVE_APP_STATE_EVENT,
+  readNativeAppStateActive,
+  shouldForceForegroundReconnect,
+  wasPageRestored,
+} from '@/lib/foreground-reconnect';
 
 interface IResumeStartedPayload {
   sessionId: string;
@@ -214,8 +219,8 @@ const useTimelineWebSocket = ({
       hiddenAtRef.current = Date.now();
     };
 
-    const handleForegroundReconnect = () => {
-      if (document.visibilityState === 'hidden') return;
+    const handleForegroundReconnect = (allowHidden = false) => {
+      if (!allowHidden && document.visibilityState === 'hidden') return;
       if (!enabled) return;
       const ws = wsRef.current;
       const forceReconnect = shouldForceForegroundReconnect(hiddenAtRef.current);
@@ -234,22 +239,40 @@ const useTimelineWebSocket = ({
       handleForegroundReconnect();
     };
 
+    const handleForegroundEvent = () => {
+      handleForegroundReconnect();
+    };
+
     const handlePageShow = (event: PageTransitionEvent) => {
       if (wasPageRestored(event)) hiddenAtRef.current = 0;
       handleForegroundReconnect();
     };
 
+    const handleNativeAppState = (event: Event) => {
+      const active = readNativeAppStateActive(event);
+      if (active === false) {
+        markHidden();
+        return;
+      }
+      if (active === true) {
+        hiddenAtRef.current = hiddenAtRef.current ?? 0;
+        handleForegroundReconnect(true);
+      }
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleForegroundReconnect);
-    window.addEventListener('online', handleForegroundReconnect);
+    window.addEventListener('focus', handleForegroundEvent);
+    window.addEventListener('online', handleForegroundEvent);
     window.addEventListener('pagehide', markHidden);
     window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener(NATIVE_APP_STATE_EVENT, handleNativeAppState);
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleForegroundReconnect);
-      window.removeEventListener('online', handleForegroundReconnect);
+      window.removeEventListener('focus', handleForegroundEvent);
+      window.removeEventListener('online', handleForegroundEvent);
       window.removeEventListener('pagehide', markHidden);
       window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener(NATIVE_APP_STATE_EVENT, handleNativeAppState);
     };
   }, [enabled]);
 

@@ -98,6 +98,8 @@ Capacitor Android의 `allowNavigation` wildcard는 domain label 개수를 정확
 
 Android WebView가 백그라운드로 들어가면 JavaScript timer와 네트워크 stack이 멈추면서 WebSocket 객체가 `OPEN` 상태로 남아도 실제 TCP 연결은 죽을 수 있습니다. 모바일 앱은 `visibilitychange`, `pagehide/pageshow`, `focus`, `online` 복귀 신호를 받으면 workspace/layout을 다시 동기화하고, 일정 시간 이상 hidden 상태였던 경우 terminal/status/timeline/sync WebSocket을 `readyState`와 관계없이 새로 연결합니다.
 
+Native Android shell은 `MainActivity.onPause/onResume`에서 WebView로 `codexmux:native-app-state` event를 전달합니다. Android WebView가 표준 browser lifecycle event를 늦게 보내거나 누락해도 이 native event를 받은 React hook이 foreground 복귀 시 terminal/status/timeline/sync 연결을 강제로 새로 엽니다.
+
 이 경로는 서버가 내려주는 React 코드이므로 native Android 파일을 바꾸지 않는 한 APK 재배포가 필요 없습니다. `corepack pnpm build` 후 실행 중인 codexmux 서비스를 재시작하면 기존 Android 앱 WebView가 새 reconnect 로직을 받습니다.
 
 ## Failure Handling

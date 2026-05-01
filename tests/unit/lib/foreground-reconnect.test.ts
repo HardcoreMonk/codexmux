@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { FOREGROUND_RECONNECT_GRACE_MS, shouldForceForegroundReconnect } from '@/lib/foreground-reconnect';
+import {
+  FOREGROUND_RECONNECT_GRACE_MS,
+  readNativeAppStateActive,
+  shouldForceForegroundReconnect,
+} from '@/lib/foreground-reconnect';
 
 describe('foreground reconnect policy', () => {
   it('does not force reconnect without a prior hidden timestamp', () => {
@@ -20,5 +24,11 @@ describe('foreground reconnect policy', () => {
 
   it('forces reconnect when the page is restored from cache', () => {
     expect(shouldForceForegroundReconnect(null, 10_000, true)).toBe(true);
+  });
+
+  it('reads native Android app state events', () => {
+    expect(readNativeAppStateActive(new Event('x'))).toBeNull();
+    expect(readNativeAppStateActive({ detail: { active: false } } as unknown as Event)).toBe(false);
+    expect(readNativeAppStateActive({ detail: { active: true } } as unknown as Event)).toBe(true);
   });
 });
