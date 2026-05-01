@@ -39,7 +39,7 @@
 3. stats smoke test: `/api/stats/*` endpoint와 실제 `~/.codex/sessions` 집계 확인.
 4. daily report smoke test: `codex exec` 성공/실패, cache 재사용 확인.
 5. macOS packaging: `corepack pnpm build:electron`, `corepack pnpm pack:electron:dev`.
-6. Android packaging: `corepack pnpm android:build:debug`, `corepack pnpm android:install`, package install state 확인. 현재 `0.3.1` 기준 `versionName=0.3.1`, `versionCode=301`이어야 한다.
+6. Android packaging: `corepack pnpm android:build:debug`, `corepack pnpm android:install`, package install state 확인. 현재 `0.3.3` 기준 `versionName=0.3.3`, `versionCode=303`이어야 한다.
 7. 모바일 reconnect smoke test: Android WebView와 iPad Safari에서 foreground 복귀, 입력 draft 보존, terminal/status/timeline/sync 재연결, timeline 중복 출력 방지 확인.
 8. Android Tailscale 실패 smoke test: 서버 중지, 잘못된 HTTPS, HTTP 4xx/5xx, Tailscale 미연결 상태에서 런처 복구 확인.
 9. Android app info/restart smoke test: launcher와 server 접속 후 mobile navigation에서 앱 정보가 표시되고 앱 재시작 버튼이 WebView/Activity를 다시 여는지 확인.
