@@ -195,6 +195,19 @@ const buildPromptData = (sessions: ISessionData[]): string => {
     .join('\n');
 };
 
+export const buildDailyReportCodexExecArgs = (outputPath: string): string[] => [
+  'exec',
+  '--skip-git-repo-check',
+  '--ephemeral',
+  '--sandbox',
+  'read-only',
+  '--color',
+  'never',
+  '--output-last-message',
+  outputPath,
+  '-',
+];
+
 const callCodexCli = async (input: string, systemPrompt: string): Promise<string> => {
   const resolvedPath = await getShellPath();
   const outputPath = path.join(os.tmpdir(), `codexmux-daily-report-${process.pid}-${randomUUID()}.txt`);
@@ -202,20 +215,7 @@ const callCodexCli = async (input: string, systemPrompt: string): Promise<string
   return new Promise((resolve, reject) => {
     const child = execFile(
       'codex',
-      [
-        'exec',
-        '--skip-git-repo-check',
-        '--ephemeral',
-        '--sandbox',
-        'read-only',
-        '--ask-for-approval',
-        'never',
-        '--color',
-        'never',
-        '--output-last-message',
-        outputPath,
-        '-',
-      ],
+      buildDailyReportCodexExecArgs(outputPath),
       { timeout: 180_000, maxBuffer: 1024 * 1024, env: { ...process.env, PATH: resolvedPath } },
       (error, stdout, stderr) => {
         if (error) {
