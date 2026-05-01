@@ -355,10 +355,13 @@ export const renameWorkspace = async (workspaceId: string, name: string): Promis
     const ws = data.workspaces.find((w) => w.id === workspaceId);
     if (!ws) return null;
 
-    ws.name = name;
+    const trimmed = name.trim();
+    if (!trimmed) return { ...ws };
+
+    ws.name = trimmed;
     await writeWorkspacesFile(data);
 
-    log.debug(`Renamed: ${workspaceId} → "${name}"`);
+    log.debug(`Renamed: ${workspaceId} → "${trimmed}"`);
     return { ...ws };
   });
 

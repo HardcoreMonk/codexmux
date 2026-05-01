@@ -7,6 +7,7 @@ import type {
   TTimelineServerMessage,
 } from '@/types/timeline';
 import { nextReconnectDelay } from '@/lib/reconnect-policy';
+import { shouldForceForegroundReconnect, wasPageRestored } from '@/lib/foreground-reconnect';
 
 interface IResumeStartedPayload {
   sessionId: string;
@@ -66,6 +67,7 @@ const useTimelineWebSocket = ({
   const retryCountRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectIdRef = useRef(0);
+  const hiddenAtRef = useRef<number | null>(null);
 
   const callbacksRef = useRef({
     onInit, onAppend, onSessionChanged, onStatsUpdate, onError,
@@ -208,25 +210,46 @@ const useTimelineWebSocket = ({
   }, [enabled, sessionName, connectTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    const markHidden = () => {
+      hiddenAtRef.current = Date.now();
+    };
+
     const handleForegroundReconnect = () => {
       if (document.visibilityState === 'hidden') return;
       if (!enabled) return;
       const ws = wsRef.current;
-      if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+      const forceReconnect = shouldForceForegroundReconnect(hiddenAtRef.current);
+      hiddenAtRef.current = null;
+      if (!forceReconnect && ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
       retryCountRef.current = 0;
       const id = ++connectIdRef.current;
       doConnectRef.current(id);
     };
 
-    document.addEventListener('visibilitychange', handleForegroundReconnect);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        markHidden();
+        return;
+      }
+      handleForegroundReconnect();
+    };
+
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (wasPageRestored(event)) hiddenAtRef.current = 0;
+      handleForegroundReconnect();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleForegroundReconnect);
     window.addEventListener('online', handleForegroundReconnect);
-    window.addEventListener('pageshow', handleForegroundReconnect);
+    window.addEventListener('pagehide', markHidden);
+    window.addEventListener('pageshow', handlePageShow);
     return () => {
-      document.removeEventListener('visibilitychange', handleForegroundReconnect);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleForegroundReconnect);
       window.removeEventListener('online', handleForegroundReconnect);
-      window.removeEventListener('pageshow', handleForegroundReconnect);
+      window.removeEventListener('pagehide', markHidden);
+      window.removeEventListener('pageshow', handlePageShow);
     };
   }, [enabled]);
 

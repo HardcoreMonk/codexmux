@@ -305,18 +305,25 @@ const useWorkspaceStore = create<IWorkspaceState>((set, get) => ({
   },
 
   renameWorkspace: async (workspaceId, name) => {
+    const nextName = name.trim();
+    if (!nextName) {
+      toast.error(t('workspace', 'renameFailed'));
+      return false;
+    }
     const prev = get().workspaces.find((w) => w.id === workspaceId);
     const previousName = prev?.name ?? '';
+    if (previousName === nextName) return true;
+    bumpMutationFence();
     set((state) => ({
       workspaces: state.workspaces.map((w) =>
-        w.id === workspaceId ? { ...w, name } : w,
+        w.id === workspaceId ? { ...w, name: nextName } : w,
       ),
     }));
     try {
       const res = await fetch(`/api/workspace/${workspaceId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name: nextName }),
       });
       if (!res.ok) throw new Error();
       return true;

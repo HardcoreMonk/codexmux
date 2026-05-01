@@ -4,6 +4,7 @@ import useTabMetadataStore from '@/hooks/use-tab-metadata-store';
 import useRateLimitsStore from '@/hooks/use-rate-limits-store';
 import useSessionHistoryStore from '@/hooks/use-session-history-store';
 import { formatTabTitle } from '@/lib/tab-title';
+import { shouldForceForegroundReconnect, wasPageRestored } from '@/lib/foreground-reconnect';
 import type { TStatusServerMessage } from '@/types/status';
 
 const RECONNECT_BASE = 1_000;
@@ -34,25 +35,33 @@ const useAgentStatus = () => {
   const retryCountRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
+  const connectIdRef = useRef(0);
+  const hiddenAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
 
     const connect = () => {
       if (!mountedRef.current) return;
+      const connectId = ++connectIdRef.current;
+      if (sharedWs && sharedWs.readyState !== WebSocket.CLOSED) {
+        sharedWs.onclose = null;
+        sharedWs.close(1000);
+        sharedWs = null;
+      }
 
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
       const ws = new WebSocket(`${protocol}//${location.host}/api/status`);
       sharedWs = ws;
 
       ws.onopen = () => {
-        if (!mountedRef.current) return;
+        if (!mountedRef.current || connectIdRef.current !== connectId) return;
         retryCountRef.current = 0;
         useTabStore.getState().setStatusWsConnected(true);
       };
 
       ws.onmessage = (event) => {
-        if (!mountedRef.current) return;
+        if (!mountedRef.current || connectIdRef.current !== connectId) return;
         try {
           const msg = JSON.parse(event.data) as TStatusServerMessage;
 
@@ -115,7 +124,7 @@ const useAgentStatus = () => {
       };
 
       ws.onclose = () => {
-        if (!mountedRef.current) return;
+        if (!mountedRef.current || connectIdRef.current !== connectId) return;
         useTabStore.getState().setStatusWsConnected(false);
         sharedWs = null;
 
@@ -134,10 +143,16 @@ const useAgentStatus = () => {
 
     connect();
 
+    const markHidden = () => {
+      hiddenAtRef.current = Date.now();
+    };
+
     const handleForegroundReconnect = () => {
       if (document.visibilityState === 'hidden') return;
       const state = sharedWs?.readyState;
-      if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) return;
+      const forceReconnect = shouldForceForegroundReconnect(hiddenAtRef.current);
+      hiddenAtRef.current = null;
+      if (!forceReconnect && (state === WebSocket.OPEN || state === WebSocket.CONNECTING)) return;
       if (retryTimerRef.current) {
         clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
@@ -145,25 +160,44 @@ const useAgentStatus = () => {
       retryCountRef.current = 0;
       connect();
     };
-    document.addEventListener('visibilitychange', handleForegroundReconnect);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        markHidden();
+        return;
+      }
+      handleForegroundReconnect();
+    };
+
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (wasPageRestored(event)) hiddenAtRef.current = 0;
+      handleForegroundReconnect();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleForegroundReconnect);
     window.addEventListener('online', handleForegroundReconnect);
-    window.addEventListener('pageshow', handleForegroundReconnect);
+    window.addEventListener('pagehide', markHidden);
+    window.addEventListener('pageshow', handlePageShow);
 
     return () => {
       mountedRef.current = false;
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- invalidate stale socket callbacks on unmount
+      connectIdRef.current++;
       if (retryTimerRef.current) {
         clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
       }
       if (sharedWs) {
+        sharedWs.onclose = null;
         sharedWs.close();
         sharedWs = null;
       }
-      document.removeEventListener('visibilitychange', handleForegroundReconnect);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleForegroundReconnect);
       window.removeEventListener('online', handleForegroundReconnect);
-      window.removeEventListener('pageshow', handleForegroundReconnect);
+      window.removeEventListener('pagehide', markHidden);
+      window.removeEventListener('pageshow', handlePageShow);
     };
   }, []);
 };

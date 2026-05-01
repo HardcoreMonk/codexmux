@@ -5,6 +5,7 @@ import {
   FolderPlus,
   GitCompareArrows,
   Globe,
+  Pencil,
   Plus,
   Settings,
   X,
@@ -36,6 +37,7 @@ import WorkspaceStatusIndicator from '@/components/features/workspace/workspace-
 import SidebarRateLimits from '@/components/layout/sidebar-rate-limits';
 import MobileWorkspaceGroupHeader from '@/components/features/mobile/mobile-workspace-group-header';
 import RenameGroupDialog from '@/components/features/workspace/rename-group-dialog';
+import EditWorkspaceDialog from '@/components/features/workspace/edit-workspace-dialog';
 
 const WorkspacePortsLabel = ({ workspaceId }: { workspaceId: string }) => {
   const label = useTabStore(
@@ -73,6 +75,7 @@ const MobileNavigationSheet = ({
   const t = useTranslations('mobile');
   const tc = useTranslations('common');
   const ts = useTranslations('sidebar');
+  const tw = useTranslations('workspace');
   const router = useRouter();
   const mobileTab = useWorkspaceStore((s) => s.sidebarTab);
   const groups = useWorkspaceStore((s) => s.groups);
@@ -83,6 +86,7 @@ const MobileNavigationSheet = ({
   const { attentionCount, busyCount } = useNotificationCount();
   const sessionsBadge = attentionCount + busyCount;
   const [expandedWsId, setExpandedWsId] = useState<string | null>(activeWorkspaceId);
+  const [editWorkspaceId, setEditWorkspaceId] = useState<string | null>(null);
   const [renameGroupId, setRenameGroupId] = useState<string | null>(null);
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
@@ -100,6 +104,10 @@ const MobileNavigationSheet = ({
 
   const handleRenameGroupRequest = useCallback((groupId: string) => {
     setRenameGroupId(groupId);
+  }, []);
+
+  const handleEditWorkspaceRequest = useCallback((workspaceId: string) => {
+    setEditWorkspaceId(workspaceId);
   }, []);
 
   const handleUngroupGroup = useCallback((groupId: string) => {
@@ -135,6 +143,7 @@ const MobileNavigationSheet = ({
     (v: boolean) => {
       onOpenChange(v);
       if (!v) setLongPressTabId(null);
+      if (!v) setEditWorkspaceId(null);
       if (v) setExpandedWsId(activeWorkspaceId);
     },
     [onOpenChange, activeWorkspaceId],
@@ -274,33 +283,47 @@ const MobileNavigationSheet = ({
     const isActive = ws.id === activeWorkspaceId;
     return (
       <div key={ws.id}>
-        <button
-          className={cn(
-            'flex min-h-11 w-full touch-manipulation items-center gap-2 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none',
-            isActive
-              ? 'bg-accent/30 font-medium text-foreground active:bg-accent/70'
-              : 'text-foreground hover:bg-accent/50 active:bg-accent/70',
-          )}
-          onClick={() => handleToggleWorkspace(ws.id)}
-        >
-          {isExpanded ? (
-            <ChevronDown size={14} className="shrink-0 text-muted-foreground" />
-          ) : (
-            <ChevronRight size={14} className="shrink-0 text-muted-foreground" />
-          )}
-          <div className="min-w-0 flex-1">
-            <span className="block truncate">{ws.name}</span>
-            <WorkspacePortsLabel workspaceId={ws.id} />
-            {!isExpanded && (
-              <WorkspaceStatusIndicator
-                workspaceId={ws.id}
-                tabs={(workspaceLayouts[ws.id] ?? []).flatMap((pane) =>
-                  [...pane.tabs].sort((a, b) => a.order - b.order),
-                )}
-              />
+        <div className="flex items-stretch">
+          <button
+            className={cn(
+              'flex min-h-11 min-w-0 flex-1 touch-manipulation items-center gap-2 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none',
+              isActive
+                ? 'bg-accent/30 font-medium text-foreground active:bg-accent/70'
+                : 'text-foreground hover:bg-accent/50 active:bg-accent/70',
             )}
-          </div>
-        </button>
+            onClick={() => handleToggleWorkspace(ws.id)}
+          >
+            {isExpanded ? (
+              <ChevronDown size={14} className="shrink-0 text-muted-foreground" />
+            ) : (
+              <ChevronRight size={14} className="shrink-0 text-muted-foreground" />
+            )}
+            <div className="min-w-0 flex-1">
+              <span className="block truncate">{ws.name}</span>
+              <WorkspacePortsLabel workspaceId={ws.id} />
+              {!isExpanded && (
+                <WorkspaceStatusIndicator
+                  workspaceId={ws.id}
+                  tabs={(workspaceLayouts[ws.id] ?? []).flatMap((pane) =>
+                    [...pane.tabs].sort((a, b) => a.order - b.order),
+                  )}
+                />
+              )}
+            </div>
+          </button>
+          <button
+            type="button"
+            className={cn(
+              'flex min-h-11 w-11 shrink-0 touch-manipulation items-center justify-center text-muted-foreground transition-colors hover:bg-accent/50 active:bg-accent/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+              isActive && 'bg-accent/30',
+            )}
+            onClick={() => handleEditWorkspaceRequest(ws.id)}
+            aria-label={tw('editTitle')}
+            title={tw('editTitle')}
+          >
+            <Pencil size={15} />
+          </button>
+        </div>
         <div
           className="grid transition-[grid-template-rows] duration-200 ease-in-out"
           style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}
@@ -313,6 +336,9 @@ const MobileNavigationSheet = ({
 
   const renameTargetGroup = renameGroupId
     ? groups.find((g) => g.id === renameGroupId) ?? null
+    : null;
+  const editTargetWorkspace = editWorkspaceId
+    ? workspaces.find((ws) => ws.id === editWorkspaceId) ?? null
     : null;
 
   return (
@@ -445,6 +471,14 @@ const MobileNavigationSheet = ({
           onOpenChange={(v) => { if (!v) setRenameGroupId(null); }}
           groupId={renameTargetGroup.id}
           currentName={renameTargetGroup.name}
+        />
+      )}
+      {editTargetWorkspace && (
+        <EditWorkspaceDialog
+          open={!!editTargetWorkspace}
+          onOpenChange={(v) => { if (!v) setEditWorkspaceId(null); }}
+          workspaceId={editTargetWorkspace.id}
+          currentName={editTargetWorkspace.name}
         />
       )}
     </Sheet>

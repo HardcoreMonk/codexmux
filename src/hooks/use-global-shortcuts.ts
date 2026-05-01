@@ -70,7 +70,7 @@ const useGlobalShortcuts = () => {
       const { activeWorkspaceId } = useWorkspaceStore.getState();
       if (!activeWorkspaceId) return;
       window.dispatchEvent(
-        new CustomEvent('rename-workspace', { detail: activeWorkspaceId }),
+        new CustomEvent('edit-workspace', { detail: activeWorkspaceId }),
       );
     },
     enabled,

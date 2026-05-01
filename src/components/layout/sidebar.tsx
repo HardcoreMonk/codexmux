@@ -32,6 +32,7 @@ import useWorkspaceStore from '@/hooks/use-workspace-store';
 import WorkspaceItem from '@/components/features/workspace/workspace-item';
 import WorkspaceGroupHeader from '@/components/features/workspace/workspace-group-header';
 import dynamic from 'next/dynamic';
+import EditWorkspaceDialog from '@/components/features/workspace/edit-workspace-dialog';
 
 const SettingsDialog = dynamic(
   () => import('@/components/features/workspace/settings-dialog'),
@@ -104,6 +105,7 @@ const Sidebar = () => {
 
   const [isCreating, setIsCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<IWorkspace | null>(null);
+  const [editWorkspaceId, setEditWorkspaceId] = useState<string | null>(null);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [fadingOutIds, setFadingOutIds] = useState<Set<string>>(new Set());
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -190,6 +192,15 @@ const Sidebar = () => {
     },
     [workspaces],
   );
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const workspaceId = (e as CustomEvent<string>).detail;
+      if (workspaceId) setEditWorkspaceId(workspaceId);
+    };
+    window.addEventListener('edit-workspace', handler);
+    return () => window.removeEventListener('edit-workspace', handler);
+  }, []);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
@@ -366,6 +377,10 @@ const Sidebar = () => {
     });
     return sections;
   }, [workspaces, groups]);
+
+  const editTargetWorkspace = editWorkspaceId
+    ? workspaces.find((ws) => ws.id === editWorkspaceId) ?? null
+    : null;
 
   const renderWorkspaceRow = (entry: TRenderEntry) => {
     const { ws, flatIdx } = entry;
@@ -756,6 +771,14 @@ const Sidebar = () => {
 
       {settingsOpen && <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />}
       <CheatSheetDialog />
+      {editTargetWorkspace && (
+        <EditWorkspaceDialog
+          open={!!editTargetWorkspace}
+          onOpenChange={(open) => { if (!open) setEditWorkspaceId(null); }}
+          workspaceId={editTargetWorkspace.id}
+          currentName={editTargetWorkspace.name}
+        />
+      )}
 
       <AlertDialog
         open={!!deleteTarget}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, memo } from 'react';
+import { useCallback, memo } from 'react';
 import { Pencil, Trash2, FolderPlus, FolderMinus, Folder } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
@@ -51,16 +51,6 @@ const WorkspaceItem = ({
       onEmpty: () =>
         (workspace.directories[0] ?? '').split('/').filter(Boolean).pop() || workspace.name,
     });
-
-  useEffect(() => {
-    const handler = (e: Event) => {
-      if ((e as CustomEvent).detail === workspace.id) {
-        startEditing();
-      }
-    };
-    window.addEventListener('rename-workspace', handler);
-    return () => window.removeEventListener('rename-workspace', handler);
-  }, [workspace.id, startEditing]);
 
   const handleClick = useCallback(() => {
     if (!isEditing && !isActive) {

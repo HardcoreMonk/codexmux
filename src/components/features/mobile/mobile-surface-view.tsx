@@ -141,6 +141,7 @@ const MobileSurfaceView = ({
   const lastTitleRef = useRef('');
   const agentProcess = useTabStore((s) => activeTabId ? selectAgentProcess(s.tabs, activeTabId) : null);
   const sessionView = useTabStore((s) => activeTabId ? selectSessionView(s.tabs, activeTabId) : null);
+  const showAgentTerminalPreview = isAgentPanel && sessionView === 'check';
 
   const handleCliStateChange = useCallback((state: TCliState) => {
     onCliStateChange?.(state);
@@ -171,7 +172,7 @@ const MobileSurfaceView = ({
 
   const { terminalRef, write, clear, reset, fit, focus, isReady } = useTerminal({
     theme: terminalTheme.colors,
-    fontSize: isAgentPanel ? undefined : MOBILE_FONT_SIZE,
+    fontSize: isAgentPanel && !showAgentTerminalPreview ? undefined : MOBILE_FONT_SIZE,
     onInput: (data) => wsActionsRef.current.sendStdin(data),
     onResize: (cols, rows) => {
       wsActionsRef.current.sendResize(cols, rows);
@@ -362,6 +363,11 @@ const MobileSurfaceView = ({
       waitingForResizeRef.current = false;
       if (showTimerRef.current) clearTimeout(showTimerRef.current);
       fetchAndUpdateCwd();
+      if (showAgentTerminalPreview) {
+        queueMicrotask(() => setShowTerminal(true));
+        const { cols, rows } = fit();
+        wsActionsRef.current.sendResize(cols, rows);
+      }
       return;
     }
     if (isReady && status === 'connected') {
@@ -377,7 +383,7 @@ const MobileSurfaceView = ({
       };
     }
     queueMicrotask(() => setShowTerminal(true));
-  }, [isAgentPanel]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAgentPanel, showAgentTerminalPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreateTab = useCallback(async () => {
     setIsCreating(true);
@@ -509,10 +515,13 @@ const MobileSurfaceView = ({
         <TerminalContainer
           ref={terminalRef}
           className={cn(
-            !isAgentPanel && 'transition-opacity duration-150',
-            isAgentPanel ? 'absolute inset-0 pointer-events-none opacity-0' : 'min-h-0 flex-1',
-            !isAgentPanel && ready && showTerminal ? 'opacity-100' : '',
-            !isAgentPanel && (!ready || !showTerminal) ? 'opacity-0' : '',
+            (!isAgentPanel || showAgentTerminalPreview) && 'transition-opacity duration-150',
+            isAgentPanel && !showAgentTerminalPreview
+              ? 'absolute inset-0 pointer-events-none opacity-0'
+              : 'min-h-0 flex-1',
+            showAgentTerminalPreview && 'border-t border-border/60',
+            (!isAgentPanel || showAgentTerminalPreview) && ready && showTerminal ? 'opacity-100' : '',
+            (!isAgentPanel || showAgentTerminalPreview) && (!ready || !showTerminal) ? 'opacity-0' : '',
           )}
         />
       )}

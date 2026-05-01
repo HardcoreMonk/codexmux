@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { LogOut, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,17 @@ const AppHeader = ({ onMenuOpen, workspaceId, workspaceName }: IAppHeaderProps) 
   const { attentionCount, busyCount } = useNotificationCount();
   const sessionsBadge = attentionCount + busyCount;
   const [editOpen, setEditOpen] = useState(false);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    const handler = (e: Event) => {
+      if ((e as CustomEvent<string>).detail === workspaceId) {
+        setEditOpen(true);
+      }
+    };
+    window.addEventListener('edit-workspace', handler);
+    return () => window.removeEventListener('edit-workspace', handler);
+  }, [workspaceId]);
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border bg-background px-3">

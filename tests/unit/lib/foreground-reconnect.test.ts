@@ -1,0 +1,24 @@
+import { describe, expect, it } from 'vitest';
+import { FOREGROUND_RECONNECT_GRACE_MS, shouldForceForegroundReconnect } from '@/lib/foreground-reconnect';
+
+describe('foreground reconnect policy', () => {
+  it('does not force reconnect without a prior hidden timestamp', () => {
+    expect(shouldForceForegroundReconnect(null, 10_000)).toBe(false);
+  });
+
+  it('forces reconnect after the app was hidden long enough', () => {
+    expect(
+      shouldForceForegroundReconnect(10_000, 10_000 + FOREGROUND_RECONNECT_GRACE_MS),
+    ).toBe(true);
+  });
+
+  it('does not force reconnect for short focus changes', () => {
+    expect(
+      shouldForceForegroundReconnect(10_000, 10_000 + FOREGROUND_RECONNECT_GRACE_MS - 1),
+    ).toBe(false);
+  });
+
+  it('forces reconnect when the page is restored from cache', () => {
+    expect(shouldForceForegroundReconnect(null, 10_000, true)).toBe(true);
+  });
+});
