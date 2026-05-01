@@ -3,8 +3,9 @@ apply plugin: 'com.android.application'
 import groovy.json.JsonSlurper
 
 def packageJson = new JsonSlurper().parse(new File(rootDir.parentFile, 'package.json'))
-def appVersionName = packageJson.version as String
-def versionParts = appVersionName.tokenize('.').collect { it.isInteger() ? it.toInteger() : 0 }
+def packageVersionName = packageJson.version as String
+def appVersionName = packageVersionName.replaceFirst(/\.0$/, '')
+def versionParts = packageVersionName.tokenize('.').collect { it.isInteger() ? it.toInteger() : 0 }
 while (versionParts.size() < 3) {
     versionParts.add(0)
 }

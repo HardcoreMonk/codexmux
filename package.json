@@ -1,6 +1,6 @@
 {
   "name": "codexmux",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "Manage multiple Codex sessions from your browser",
   "license": "MIT",
   "author": "HardcoreMonk",

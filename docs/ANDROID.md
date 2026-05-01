@@ -27,14 +27,19 @@ corepack pnpm android:bundle:release
 
 ## Versioning
 
-Android 앱 버전은 repo root의 `package.json` 버전을 사용합니다.
+Android 앱 버전은 repo root의 `package.json` semver를 기준으로 합니다. Android `versionName`은 patch가 `0`인 마일스톤 버전에서 마지막 `.0`을 생략해 표시합니다.
 
 | Source | Android |
 | --- | --- |
 | `package.json` `version` | `versionName` |
 | `major * 10000 + minor * 100 + patch` | `versionCode` |
 
-예: `0.2.4`는 `versionName=0.2.4`, `versionCode=204`입니다. CI나 수동 배포에서 `ANDROID_VERSION_CODE` 환경변수를 주면 `versionCode`만 override할 수 있습니다.
+예: `0.3.0`은 `versionName=0.3`, `versionCode=300`입니다. `0.3.1`은 `versionName=0.3.1`, `versionCode=301`입니다. CI나 수동 배포에서 `ANDROID_VERSION_CODE` 환경변수를 주면 `versionCode`만 override할 수 있습니다.
+
+버전 증가 규칙:
+
+- 마이너 기능 변경과 작은 수정 배포는 patch를 `0.0.1`씩 올립니다.
+- 메이저 기능 묶음은 minor를 `0.1`씩 올리고 patch를 `0`으로 되돌립니다.
 
 현재 앱 ID는 `com.hardcoremonk.codexmux`입니다.
 
