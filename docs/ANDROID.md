@@ -100,6 +100,8 @@ Android WebView가 백그라운드로 들어가면 JavaScript timer와 네트워
 
 Native Android shell은 `MainActivity.onPause/onResume`에서 WebView로 `codexmux:native-app-state` event를 전달합니다. Android WebView가 표준 browser lifecycle event를 늦게 보내거나 누락해도 이 native event를 받은 React hook이 foreground 복귀 시 terminal/status/timeline/sync 연결을 강제로 새로 엽니다.
 
+Sync WebSocket은 연결이 새로 열릴 때도 workspace/layout을 즉시 재조회합니다. 서버 재시작이나 네트워크 복구 뒤 Android WebView가 열린 socket만 복구하고 초기 invalidation event를 놓치는 경우를 방지하기 위한 동작입니다.
+
 이 경로는 서버가 내려주는 React 코드이므로 native Android 파일을 바꾸지 않는 한 APK 재배포가 필요 없습니다. `corepack pnpm build` 후 실행 중인 codexmux 서비스를 재시작하면 기존 Android 앱 WebView가 새 reconnect 로직을 받습니다.
 
 ## Failure Handling

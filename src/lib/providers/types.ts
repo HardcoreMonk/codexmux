@@ -14,6 +14,13 @@ export interface IAgentSessionWatchOptions {
   skipInitial?: boolean;
 }
 
+export interface IAgentJsonlResolution {
+  sessionId: string;
+  jsonlPath: string;
+  mtimeMs?: number;
+  startedAt?: number | null;
+}
+
 export interface IAgentProvider {
   readonly id: string;
   readonly displayName: string;
@@ -33,6 +40,7 @@ export interface IAgentProvider {
   buildResumeCommand(sessionId: string, options: IAgentResumeCommandOptions): Promise<string>;
   buildLaunchCommand(options: IAgentLaunchCommandOptions): Promise<string>;
   resolveJsonlPath(sessionId: string, cwd: string): Promise<string | null>;
+  resolveLatestJsonlPath?(cwd: string): Promise<IAgentJsonlResolution | null>;
   parseJsonlContent(content: string): ITimelineEntry[];
   readTailEntries(filePath: string, maxEntries: number): Promise<IChunkReadResult>;
   readEntriesBefore(filePath: string, beforeByte: number, maxEntries: number): Promise<IChunkReadResult>;

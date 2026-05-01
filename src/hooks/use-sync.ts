@@ -22,6 +22,14 @@ const useSync = () => {
   useEffect(() => {
     mountedRef.current = true;
 
+    const refreshVisibleState = () => {
+      useWorkspaceStore.getState().syncWorkspaces();
+      const activeWsId = useWorkspaceStore.getState().activeWorkspaceId;
+      if (activeWsId) {
+        useLayoutStore.getState().fetchLayout(activeWsId);
+      }
+    };
+
     const connect = () => {
       if (!mountedRef.current) return;
       const connectId = ++connectIdRef.current;
@@ -33,6 +41,11 @@ const useSync = () => {
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
       const ws = new WebSocket(`${protocol}//${location.host}/api/sync`);
       wsRef.current = ws;
+
+      ws.onopen = () => {
+        if (connectIdRef.current !== connectId) return;
+        refreshVisibleState();
+      };
 
       ws.onmessage = (event) => {
         if (connectIdRef.current !== connectId) return;
@@ -80,14 +93,6 @@ const useSync = () => {
 
     const markHidden = () => {
       hiddenAtRef.current = Date.now();
-    };
-
-    const refreshVisibleState = () => {
-      useWorkspaceStore.getState().syncWorkspaces();
-      const activeWsId = useWorkspaceStore.getState().activeWorkspaceId;
-      if (activeWsId) {
-        useLayoutStore.getState().fetchLayout(activeWsId);
-      }
     };
 
     const handleForegroundReconnect = (allowHidden = false) => {

@@ -212,7 +212,7 @@ const useTimelineWebSocket = ({
         wsRef.current = null;
       }
     };
-  }, [enabled, sessionName, connectTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enabled, sessionName, agentSessionId, panelType, connectTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const markHidden = () => {

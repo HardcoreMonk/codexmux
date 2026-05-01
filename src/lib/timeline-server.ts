@@ -16,8 +16,9 @@ import {
 } from './layout-store';
 import { getStatusManager } from './status-manager';
 import { getProviderByPanelType } from '@/lib/providers';
-import type { IAgentProvider } from '@/lib/providers';
+import type { IAgentJsonlResolution, IAgentProvider } from '@/lib/providers';
 import { extractSessionIdFromJsonlPath, readSessionStats } from './session-stats';
+import { checkCodexJsonlState } from '@/lib/codex-jsonl-state';
 import type { TTimelineServerMessage, IInitMeta, ITimelineEntry, ISessionStats } from '@/types/timeline';
 import path from 'path';
 import { isAllowedJsonlPath } from './path-validation';
@@ -466,6 +467,92 @@ const resolveCachedJsonlPath = async (
   return cached;
 };
 
+const statMtimeMs = async (filePath: string | null): Promise<number | null> => {
+  if (!filePath) return null;
+  try {
+    return (await fsStat(filePath)).mtimeMs;
+  } catch {
+    return null;
+  }
+};
+
+const resolveLatestCwdJsonl = async (
+  provider: IAgentProvider,
+  sessionName: string,
+  currentJsonlPath: string | null,
+): Promise<IAgentJsonlResolution | null> => {
+  if (!provider.resolveLatestJsonlPath) return null;
+
+  const cwd = await getSessionCwd(sessionName);
+  if (!cwd) return null;
+
+  const latest = await provider.resolveLatestJsonlPath(cwd);
+  if (!latest || !isAllowedJsonlPath(latest.jsonlPath) || !existsSync(latest.jsonlPath)) {
+    return null;
+  }
+  if (latest.jsonlPath === currentJsonlPath) return null;
+
+  const currentMtimeMs = await statMtimeMs(currentJsonlPath);
+  if (
+    currentMtimeMs !== null
+    && latest.mtimeMs !== undefined
+    && latest.mtimeMs <= currentMtimeMs
+  ) {
+    return null;
+  }
+
+  return latest;
+};
+
+const shouldPreferLatestCwdJsonl = async (
+  provider: IAgentProvider,
+  currentJsonlPath: string,
+): Promise<boolean> => {
+  if (provider.id !== 'codex') return false;
+  try {
+    const state = await checkCodexJsonlState(currentJsonlPath);
+    return state.interrupted;
+  } catch {
+    return false;
+  }
+};
+
+const resolveActiveOrLatestJsonl = async (
+  provider: IAgentProvider,
+  sessionName: string,
+  activeJsonlPath: string,
+  activeSessionId?: string | null,
+): Promise<IAgentJsonlResolution> => {
+  const latest = await resolveLatestCwdJsonl(provider, sessionName, activeJsonlPath);
+  if (latest && await shouldPreferLatestCwdJsonl(provider, activeJsonlPath)) {
+    return latest;
+  }
+
+  return {
+    jsonlPath: activeJsonlPath,
+    sessionId: activeSessionId ?? extractSessionIdFromJsonlPath(activeJsonlPath) ?? '',
+    mtimeMs: await statMtimeMs(activeJsonlPath) ?? undefined,
+  };
+};
+
+const resolveStoredOrLatestJsonl = async (
+  provider: IAgentProvider,
+  sessionName: string,
+  sessionId: string,
+): Promise<IAgentJsonlResolution | null> => {
+  const cachedPath = await resolveCachedJsonlPath(sessionName, provider);
+  const resolvedPath = cachedPath ?? await resolveJsonlPath(provider, sessionName, sessionId);
+  const latest = await resolveLatestCwdJsonl(provider, sessionName, resolvedPath);
+  if (latest) return latest;
+  if (!resolvedPath) return null;
+
+  return {
+    jsonlPath: resolvedPath,
+    sessionId: extractSessionIdFromJsonlPath(resolvedPath) ?? sessionId,
+    mtimeMs: await statMtimeMs(resolvedPath) ?? undefined,
+  };
+};
+
 const handleResumeMessage = async (
   ws: WebSocket,
   conn: ITimelineConnection,
@@ -646,20 +733,29 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
   const effectiveSessionId = sessionInfo.sessionId ?? hintSessionId;
 
   if (sessionInfo.jsonlPath) {
-    conn.currentJsonlPath = sessionInfo.jsonlPath;
-    if (sessionInfo.sessionId) {
-      await updateTabAgentSessionId(conn.sessionName, provider, sessionInfo.sessionId).catch(() => {});
+    const resolved = await resolveActiveOrLatestJsonl(provider, sessionName, sessionInfo.jsonlPath, sessionInfo.sessionId);
+    const switchedToLatest = resolved.jsonlPath !== sessionInfo.jsonlPath;
+    conn.currentJsonlPath = resolved.jsonlPath;
+    if (resolved.sessionId) {
+      await updateTabAgentSessionId(conn.sessionName, provider, resolved.sessionId).catch(() => {});
     }
-    await subscribeAndUpdateSummary(ws, sessionInfo.jsonlPath, sessionInfo.sessionId ?? undefined, conn.sessionName, provider);
+    if (switchedToLatest) {
+      sendJson(ws, {
+        type: 'timeline:session-changed',
+        newSessionId: resolved.sessionId,
+        reason: 'new-session-started',
+      });
+    }
+    await subscribeAndUpdateSummary(ws, resolved.jsonlPath, resolved.sessionId, conn.sessionName, provider);
   } else if (effectiveSessionId) {
     if (sessionInfo.sessionId) {
       await updateTabAgentSessionId(conn.sessionName, provider, sessionInfo.sessionId).catch(() => {});
     }
-    const jsonlPath = await resolveCachedJsonlPath(conn.sessionName, provider)
-      ?? await resolveJsonlPath(provider, sessionName, effectiveSessionId);
-    if (jsonlPath) {
-      conn.currentJsonlPath = jsonlPath;
-      await subscribeAndUpdateSummary(ws, jsonlPath, effectiveSessionId, conn.sessionName, provider);
+    const resolved = await resolveStoredOrLatestJsonl(provider, sessionName, effectiveSessionId);
+    if (resolved) {
+      conn.currentJsonlPath = resolved.jsonlPath;
+      await updateTabAgentSessionId(conn.sessionName, provider, resolved.sessionId).catch(() => {});
+      await subscribeAndUpdateSummary(ws, resolved.jsonlPath, resolved.sessionId, conn.sessionName, provider);
     } else {
       sendEmptyInit(ws, effectiveSessionId);
     }
@@ -676,23 +772,41 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
       const wsConns = getSessionConnections(sessionName);
       for (const c of wsConns) {
         if (newInfo.jsonlPath && newInfo.jsonlPath !== c.currentJsonlPath) {
-      if (c.currentJsonlPath) {
+          const resolved = await resolveActiveOrLatestJsonl(provider, sessionName, newInfo.jsonlPath, newInfo.sessionId);
+          if (c.currentJsonlPath) {
             unsubscribeFromFile(c.ws, c.currentJsonlPath);
           }
-          c.currentJsonlPath = newInfo.jsonlPath;
+          c.currentJsonlPath = resolved.jsonlPath;
 
-          if (newInfo.sessionId) {
-            await updateTabAgentSessionId(sessionName, provider, newInfo.sessionId).catch(() => {});
+          if (resolved.sessionId) {
+            await updateTabAgentSessionId(sessionName, provider, resolved.sessionId).catch(() => {});
           }
 
           sendJson(c.ws, {
             type: 'timeline:session-changed',
-            newSessionId: newInfo.sessionId ?? '',
+            newSessionId: resolved.sessionId,
             reason: 'new-session-started',
           });
 
-          await subscribeAndUpdateSummary(c.ws, newInfo.jsonlPath, newInfo.sessionId ?? undefined, sessionName, provider);
+          await subscribeAndUpdateSummary(c.ws, resolved.jsonlPath, resolved.sessionId, sessionName, provider);
         } else if (!newInfo.jsonlPath && newInfo.status === 'not-running') {
+          const latest = await resolveLatestCwdJsonl(provider, sessionName, c.currentJsonlPath);
+          if (latest) {
+            if (c.currentJsonlPath) {
+              unsubscribeFromFile(c.ws, c.currentJsonlPath);
+            }
+            c.currentJsonlPath = latest.jsonlPath;
+
+            await updateTabAgentSessionId(sessionName, provider, latest.sessionId).catch(() => {});
+            sendJson(c.ws, {
+              type: 'timeline:session-changed',
+              newSessionId: latest.sessionId,
+              reason: 'new-session-started',
+            });
+            await subscribeAndUpdateSummary(c.ws, latest.jsonlPath, latest.sessionId, sessionName, provider);
+            continue;
+          }
+
           if (c.currentJsonlPath) {
             unsubscribeFromFile(c.ws, c.currentJsonlPath);
             c.currentJsonlPath = null;

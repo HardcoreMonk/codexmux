@@ -55,6 +55,17 @@ export const codexProvider: IAgentProvider = {
     const meta = await findCodexSessionJsonl(sessionId, cwd);
     return meta?.jsonlPath ?? null;
   },
+  resolveLatestJsonlPath: async (cwd) => {
+    const meta = await findCodexSessionJsonl(null, cwd, { allowCwdFallback: true });
+    return meta
+      ? {
+          sessionId: meta.sessionId,
+          jsonlPath: meta.jsonlPath,
+          mtimeMs: meta.mtimeMs,
+          startedAt: meta.startedAt,
+        }
+      : null;
+  },
   parseJsonlContent: parseCodexJsonlContent,
   readTailEntries: readCodexTailEntries,
   readEntriesBefore: readCodexEntriesBefore,

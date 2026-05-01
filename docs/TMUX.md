@@ -96,7 +96,7 @@ Codex CLI가 process 시작 후 JSONL을 늦게 쓰는 경우가 있어 start ti
 
 ## Timeline WebSocket
 
-Endpoint는 `/api/timeline?session={name}&panelType={provider}`다. 서버는 provider가 감지한 JSONL을 tail하면서 초기 tail snapshot과 append event를 보낸다. 같은 JSONL의 file size/mtime/maxEntries가 그대로이면 watcher의 tail snapshot cache를 재사용해 foreground reconnect와 reload의 초기 tail 재파싱을 줄인다.
+Endpoint는 `/api/timeline?session={name}&panelType={provider}`다. 서버는 provider가 감지한 JSONL을 tail하면서 초기 tail snapshot과 append event를 보낸다. 같은 JSONL의 file size/mtime/maxEntries가 그대로이면 watcher의 tail snapshot cache를 재사용해 foreground reconnect와 reload의 초기 tail 재파싱을 줄인다. active process가 없거나 active JSONL이 interrupted 상태이고 저장된 JSONL보다 같은 cwd의 최신 JSONL이 더 새 파일이면 최신 파일로 전환해 API/외부 Codex 세션 내용도 CODEX 탭에 붙인다.
 
 | 모듈 | 책임 |
 |---|---|
@@ -106,7 +106,7 @@ Endpoint는 `/api/timeline?session={name}&panelType={provider}`다. 서버는 pr
 | `src/lib/timeline-entry-dedupe.ts` | 같은 record 재수신과 paired assistant record 중복 방지용 fingerprint |
 | `src/lib/timeline-entry-merge.ts` | init/append/load-more 병합, pending user message 보존 |
 
-재연결이나 모바일 foreground 복귀 중 같은 JSONL 구간이 `timeline:init`과 `timeline:append`로 겹쳐 도착할 수 있다. client는 stable id와 fingerprint를 함께 사용해 중복 assistant output, tool result, pending user message를 한 번만 표시한다. append burst는 animation frame 단위로 merge하고, 기존 timeline row는 entry reference가 유지되면 memo로 재렌더를 건너뛴다.
+재연결이나 모바일 foreground 복귀 중 같은 JSONL 구간이 `timeline:init`과 `timeline:append`로 겹쳐 도착할 수 있다. client는 stable id와 fingerprint를 함께 사용해 중복 assistant output, tool result, pending user message를 한 번만 표시한다. append burst는 animation frame 단위로 merge하고, 기존 timeline row는 entry reference가 유지되면 memo로 재렌더를 건너뛴다. 같은 tmux session에서 `agentSessionId`만 바뀐 경우도 timeline WebSocket을 다시 열어 stale JSONL에 머무르지 않게 한다.
 
 Codex CLI는 같은 assistant 문장을 `event_msg.agent_message`와 paired `response_item.message` 두 record로 기록할 수 있다. parser와 client merge는 exact timestamp가 아니라 normalized role/text와 짧은 시간창을 기준으로 near-duplicate를 제거한다.
 

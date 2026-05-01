@@ -92,6 +92,20 @@ describe('findCodexSessionJsonl', () => {
     expect(meta?.sessionId).toBe(sessionA);
   });
 
+  it('uses the newest same-cwd session for explicit cwd fallback', async () => {
+    const older = await writeSession(sessionA, '2026-04-29T00:00:00.000Z', '/work/project');
+    const newer = await writeSession(sessionB, '2026-04-29T00:05:00.000Z', '/work/project');
+    await fs.utimes(older, new Date('2026-04-29T00:00:00.000Z'), new Date('2026-04-29T00:00:00.000Z'));
+    await fs.utimes(newer, new Date('2026-04-29T00:10:00.000Z'), new Date('2026-04-29T00:10:00.000Z'));
+
+    const { findCodexSessionJsonl } = await import('@/lib/codex-session-detection');
+    const meta = await findCodexSessionJsonl(null, '/work/project', {
+      allowCwdFallback: true,
+    });
+
+    expect(meta?.sessionId).toBe(sessionB);
+  });
+
   it('normalizes rollout basenames to plain Codex UUIDs', async () => {
     await writeSession(sessionA, '2026-04-29T00:00:00.000Z', '/work/project');
 

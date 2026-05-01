@@ -25,7 +25,7 @@ interface ICodexProcess {
   startedAt: number | null;
 }
 
-interface ICodexSessionMeta {
+export interface ICodexSessionMeta {
   sessionId: string;
   jsonlPath: string;
   cwd: string | null;
