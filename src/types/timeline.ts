@@ -359,9 +359,25 @@ export interface ISessionMeta {
   turnCount: number;
   jsonlPath?: string;
   source?: 'local' | 'remote';
+  sourceId?: string | null;
   sourceLabel?: string;
   cwd?: string | null;
   host?: string | null;
   shell?: string | null;
   remotePath?: string | null;
+}
+
+export type TSessionSourceFilter = 'all' | 'local' | 'remote';
+
+export interface IRemoteCodexSourceStatus {
+  sourceId: string;
+  sourceLabel: string;
+  host: string | null;
+  shell: string | null;
+  sessionCount: number;
+  latestActivityAt: string | null;
+  latestSyncAt: string | null;
+  latestCwd: string | null;
+  latestRemotePath: string | null;
+  totalBytes: number;
 }

@@ -111,7 +111,7 @@
 - Status: Accepted
 - Decision: Windows 11 `pwsh`에서 실행하는 Codex CLI 연동은 우선 companion script가 `%USERPROFILE%\.codex\sessions` JSONL을 읽어 `/api/remote/codex/sync`로 보내는 read-only timeline sync로 제공한다.
 - Rationale: Windows shell process는 Linux 서버의 tmux/node-pty process tree 아래에 없어서 기존 terminal attach, process detection, resume path를 그대로 공유할 수 없다. JSONL 동기화는 Codex transcript source of truth를 보존하면서 모바일/웹 timeline 확인 문제를 먼저 해결한다.
-- Consequences: remote Codex 복사본은 `~/.codexmux/remote/codex/`에 저장하고 원본 Windows Codex 상태는 수정하지 않는다. Windows companion은 시작 시 전체 session history를 스캔하되 이후 polling은 hot scan으로 좁히고, 주기적 full scan과 local offset state로 누락과 반복 전송을 함께 피한다. session list는 sidecar metadata로 구성하고 JSONL 본문은 timeline subscribe 때 읽는다. remote session은 session list에 표시되지만 선택 시 `codex resume`이나 `pwsh` 제어가 아니라 저장된 JSONL path를 timeline WebSocket에 구독한다. Windows terminal 입력 제어가 필요하면 별도 pty relay 설계와 인증/권한 모델을 다시 ADR로 남긴다.
+- Consequences: remote Codex 복사본은 `~/.codexmux/remote/codex/`에 저장하고 원본 Windows Codex 상태는 수정하지 않는다. Windows companion은 시작 시 `/api/health`로 서버 version/commit을 확인하고 전체 session history를 스캔하되 이후 polling은 hot scan으로 좁히며, 주기적 full scan과 local offset state로 누락과 반복 전송을 함께 피한다. `--dry-run`은 전송 없이 pending upload와 scan summary를 확인하는 운영 진단 경로다. Windows 자동 실행은 현재 사용자 Scheduled Task wrapper로 제공하고, task 설정/token/state/log는 기본적으로 `%USERPROFILE%\.codexmux\` 아래에 둔다. session list는 sidecar metadata로 구성하고 source/sourceId filter와 remote source summary를 제공하며, JSONL 본문은 timeline subscribe 때 읽는다. remote session은 session list에 표시되지만 선택 시 `codex resume`이나 `pwsh` 제어가 아니라 저장된 JSONL path를 timeline WebSocket에 구독한다. Windows terminal 입력 제어가 필요하면 별도 pty relay 설계와 인증/권한 모델을 다시 ADR로 남긴다.
 
 ## ADR-015: Session list는 백그라운드 인덱스를 사용한다
 

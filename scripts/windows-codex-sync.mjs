@@ -7,6 +7,7 @@ import os from 'os';
 const DEFAULT_INTERVAL_MS = 1500;
 const DEFAULT_FULL_SCAN_INTERVAL_MS = 60_000;
 const MAX_CHUNK_BYTES = 512 * 1024;
+const MAX_OFFSET_RETRIES = 2;
 const HOT_DAY_COUNT = 2;
 const HOT_KNOWN_FILE_WINDOW_MS = 10 * 60 * 1000;
 const CODEX_THREAD_ID_RE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
@@ -26,6 +27,27 @@ const die = (message) => {
   process.exit(1);
 };
 
+const printHelp = () => {
+  process.stdout.write(`Usage: node scripts/windows-codex-sync.mjs [options]
+
+Options:
+  --server <url>                 codexmux server URL (CMUX_URL, CODEXMUX_URL)
+  --token <value>                CLI token sent as x-cmux-token (CMUX_TOKEN, CODEXMUX_TOKEN)
+  --token-file <path>            file containing the CLI token (CMUX_TOKEN_FILE, CODEXMUX_TOKEN_FILE)
+  --source-id <id>               source id shown in codexmux (default: Windows hostname)
+  --shell <name>                 shell label (default: pwsh)
+  --codex-dir <path>             Codex sessions root (default: ~/.codex/sessions)
+  --interval-ms <ms>             polling interval, >= 500 (default: ${DEFAULT_INTERVAL_MS})
+  --full-scan-interval-ms <ms>   full tree scan interval (default: ${DEFAULT_FULL_SCAN_INTERVAL_MS})
+  --since-hours <n|all|0>        scan range (default: all)
+  --state-file <path>            local offset state path
+  --dry-run                      scan and report pending uploads without sending chunks
+  --no-health-check              skip GET /api/health before syncing
+  --once                         scan once and exit
+  --help                         show this help
+`);
+};
+
 const normalizeServer = (value) => {
   if (!value) return '';
   const raw = String(value).trim().replace(/\/+$/, '');
@@ -41,8 +63,24 @@ const parseSinceHours = (value) => {
   return Number.isFinite(hours) && hours > 0 ? hours : NaN;
 };
 
+const readTokenFile = async (filePath) => {
+  try {
+    const raw = await fs.readFile(filePath, 'utf-8');
+    return raw.trim();
+  } catch (err) {
+    if (readArg('token-file') || process.env.CMUX_TOKEN_FILE || process.env.CODEXMUX_TOKEN_FILE) {
+      die(`Failed to read token file ${filePath}: ${err instanceof Error ? err.message : err}`);
+    }
+    return '';
+  }
+};
+
+if (hasFlag('help') || args.includes('-h')) {
+  printHelp();
+  process.exit(0);
+}
+
 const serverUrl = normalizeServer(readArg('server') || process.env.CMUX_URL || process.env.CODEXMUX_URL);
-const token = readArg('token') || process.env.CMUX_TOKEN || process.env.CODEXMUX_TOKEN;
 const sourceId = readArg('source-id') || process.env.CMUX_SOURCE_ID || os.hostname();
 const shellName = readArg('shell') || process.env.CMUX_SHELL || 'pwsh';
 const codexDir = path.resolve(
@@ -62,10 +100,19 @@ const stateFile = path.resolve(
   || process.env.CMUX_SYNC_STATE
   || path.join(os.homedir(), '.codexmux', 'windows-codex-sync-state.json'),
 );
+const tokenFile = path.resolve(
+  readArg('token-file')
+  || process.env.CMUX_TOKEN_FILE
+  || process.env.CODEXMUX_TOKEN_FILE
+  || path.join(os.homedir(), '.codexmux', 'cli-token'),
+);
 const once = hasFlag('once');
+const dryRun = hasFlag('dry-run');
+const healthCheck = !hasFlag('no-health-check');
+const token = readArg('token') || process.env.CMUX_TOKEN || process.env.CODEXMUX_TOKEN || await readTokenFile(tokenFile);
 
 if (!serverUrl) die('Missing --server or CMUX_URL');
-if (!token) die('Missing --token or CMUX_TOKEN');
+if (!token && !dryRun) die('Missing --token, --token-file, CMUX_TOKEN, or CMUX_TOKEN_FILE');
 if (!Number.isFinite(intervalMs) || intervalMs < 500) die('--interval-ms must be >= 500');
 if (!Number.isFinite(fullScanIntervalMs) || fullScanIntervalMs < intervalMs) {
   die('--full-scan-interval-ms must be >= --interval-ms');
@@ -76,6 +123,56 @@ const state = new Map();
 let lastFullScanAt = 0;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const formatBytes = (bytes) => {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KiB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)}MiB`;
+};
+
+const checkServerHealth = async () => {
+  if (!healthCheck) return;
+  const response = await fetch(`${serverUrl}/api/health`, { signal: AbortSignal.timeout(8000) });
+  if (!response.ok) {
+    throw new Error(`health check failed ${response.status}`);
+  }
+  const body = await response.json().catch(() => ({}));
+  const version = body.version ? ` v${body.version}` : '';
+  const commit = body.commit ? ` (${body.commit})` : '';
+  process.stdout.write(`[codexmux] server ready${version}${commit}\n`);
+};
+
+const createScanStats = (scanType, filesSeen) => ({
+  scanType,
+  filesSeen,
+  candidates: 0,
+  unchanged: 0,
+  syncedFiles: 0,
+  dryRunFiles: 0,
+  chunks: 0,
+  bytes: 0,
+  retries: 0,
+  skippedNoSessionId: 0,
+  errors: 0,
+});
+
+const addStats = (target, source) => {
+  for (const key of ['unchanged', 'syncedFiles', 'dryRunFiles', 'chunks', 'bytes', 'retries', 'skippedNoSessionId', 'errors']) {
+    target[key] += source[key] || 0;
+  }
+};
+
+const printScanSummary = (stats) => {
+  const changed = stats.syncedFiles + stats.dryRunFiles + stats.retries + stats.skippedNoSessionId + stats.errors;
+  if (!once && stats.scanType !== 'full' && changed === 0) return;
+
+  process.stdout.write(
+    `[scan] ${stats.scanType} files=${stats.filesSeen} candidates=${stats.candidates}`
+    + ` synced=${stats.syncedFiles} dryRun=${stats.dryRunFiles} unchanged=${stats.unchanged}`
+    + ` chunks=${stats.chunks} bytes=${formatBytes(stats.bytes)} retries=${stats.retries}`
+    + ` noSessionId=${stats.skippedNoSessionId} errors=${stats.errors}\n`,
+  );
+};
 
 const loadState = async () => {
   let raw;
@@ -255,11 +352,11 @@ const postChunk = async ({
   return { ok: true };
 };
 
-const syncFile = async (filePath, stat) => {
+const syncFile = async (filePath, stat, retryCount = 0) => {
   const prev = state.get(filePath);
   const reset = !prev || stat.size < prev.offset;
   const startOffset = reset ? 0 : prev.offset;
-  if (!reset && stat.size === startOffset) return;
+  if (!reset && stat.size === startOffset) return { unchanged: 1 };
 
   const handle = await fs.open(filePath, 'r');
   try {
@@ -271,11 +368,20 @@ const syncFile = async (filePath, stat) => {
     const sessionId = prev?.sessionId || await extractSessionId(filePath, firstChunk);
     if (!sessionId) {
       process.stderr.write(`[skip] no session id: ${filePath}\n`);
-      return;
+      return { skippedNoSessionId: 1 };
     }
     const meta = reset ? extractCwdAndStartedAt(firstChunk) : (prev?.meta || { cwd: null, startedAt: null });
 
+    if (dryRun) {
+      const pendingBytes = stat.size - startOffset;
+      const pendingChunks = Math.ceil(pendingBytes / MAX_CHUNK_BYTES);
+      process.stdout.write(`[dry-run] ${sessionId} ${formatBytes(pendingBytes)} ${filePath}\n`);
+      return { dryRunFiles: 1, bytes: pendingBytes, chunks: pendingChunks };
+    }
+
     let offset = startOffset;
+    let bytes = 0;
+    let chunks = 0;
     while (offset < stat.size) {
       const size = Math.min(MAX_CHUNK_BYTES, stat.size - offset);
       const chunk = Buffer.alloc(size);
@@ -291,17 +397,24 @@ const syncFile = async (filePath, stat) => {
         chunk,
       });
       if (!result.ok && result.offsetMismatch) {
+        if (retryCount >= MAX_OFFSET_RETRIES) {
+          throw new Error(`offset mismatch retry limit exceeded; server expected ${result.expectedOffset}`);
+        }
         state.delete(filePath);
         await saveState();
         process.stderr.write(`[retry] offset mismatch for ${filePath}; server expected ${result.expectedOffset}\n`);
-        return syncFile(filePath, stat);
+        const retryStats = await syncFile(filePath, stat, retryCount + 1);
+        return { ...retryStats, retries: (retryStats?.retries || 0) + 1 };
       }
       offset += size;
+      bytes += size;
+      chunks++;
     }
 
     state.set(filePath, { offset: stat.size, size: stat.size, mtimeMs: stat.mtimeMs, sessionId, meta });
     await saveState();
     process.stdout.write(`[synced] ${sessionId} ${stat.size} bytes ${filePath}\n`);
+    return { syncedFiles: 1, bytes, chunks };
   } finally {
     await handle.close();
   }
@@ -313,6 +426,7 @@ const scanOnce = async () => {
   const shouldFullScan = lastFullScanAt === 0 || now - lastFullScanAt >= fullScanIntervalMs;
   const files = shouldFullScan ? await collectJsonlFiles(codexDir) : await collectHotJsonlFiles();
   if (shouldFullScan) lastFullScanAt = now;
+  const stats = createScanStats(shouldFullScan ? 'full' : 'hot', files.length);
   const candidates = [];
   for (const file of files) {
     const stat = await fs.stat(file).catch(() => null);
@@ -320,17 +434,25 @@ const scanOnce = async () => {
     candidates.push({ file, stat });
   }
   candidates.sort((a, b) => a.stat.mtimeMs - b.stat.mtimeMs);
+  stats.candidates = candidates.length;
 
   for (const { file, stat } of candidates) {
-    await syncFile(file, stat).catch((err) => {
+    await syncFile(file, stat).then((fileStats) => {
+      if (fileStats) addStats(stats, fileStats);
+    }).catch((err) => {
+      stats.errors++;
       process.stderr.write(`[error] ${file}: ${err instanceof Error ? err.message : err}\n`);
     });
   }
+  printScanSummary(stats);
 };
 
 await loadState();
+await checkServerHealth().catch((err) => {
+  die(`[error] ${err instanceof Error ? err.message : err}`);
+});
 process.stdout.write(
-  `[codexmux] syncing ${codexDir} -> ${serverUrl} (${sinceHours === null ? 'all sessions' : `last ${sinceHours}h`}, full scan ${fullScanIntervalMs}ms)\n`,
+  `[codexmux] syncing ${codexDir} -> ${serverUrl} (${sinceHours === null ? 'all sessions' : `last ${sinceHours}h`}, full scan ${fullScanIntervalMs}ms${dryRun ? ', dry run' : ''})\n`,
 );
 
 do {

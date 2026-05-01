@@ -2,12 +2,18 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { hasSession } from '@/lib/tmux';
 import { listSessionPage } from '@/lib/session-list';
 import { isAgentPanelType, normalizePanelType } from '@/lib/panel-type';
+import type { TSessionSourceFilter } from '@/types/timeline';
 import type { TPanelType } from '@/types/terminal';
 
 const DEFAULT_LIMIT = 50;
 const parsePanelType = (value: string | string[] | undefined): TPanelType => {
   const candidate = Array.isArray(value) ? value[0] : value;
   return normalizePanelType(candidate) ?? 'codex';
+};
+
+const parseSourceFilter = (value: string | string[] | undefined): TSessionSourceFilter => {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return candidate === 'local' || candidate === 'remote' ? candidate : 'all';
 };
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -26,6 +32,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   const cwdHint = req.query.cwd as string | undefined;
   const panelType = parsePanelType(req.query.panelType);
+  const source = parseSourceFilter(req.query.source);
+  const sourceId = Array.isArray(req.query.sourceId) ? req.query.sourceId[0] : req.query.sourceId;
 
   if (!isAgentPanelType(panelType)) {
     const exists = await hasSession(tmuxSession);
@@ -35,7 +43,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   try {
-    const page = await listSessionPage(tmuxSession, cwdHint, panelType, { offset, limit });
+    const page = await listSessionPage(tmuxSession, cwdHint, panelType, {
+      offset,
+      limit,
+      source,
+      sourceId: sourceId || null,
+    });
     return res.status(200).json(page);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'unknown error';

@@ -1,20 +1,26 @@
 import { useCallback, useRef } from 'react';
-import { Plus } from 'lucide-react';
+import dayjs from 'dayjs';
+import { ListFilter, Monitor, Plus, Terminal } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import SessionListItem from '@/components/features/workspace/session-list-item';
-import type { ISessionMeta } from '@/types/timeline';
+import type { IRemoteCodexSourceStatus, ISessionMeta, TSessionSourceFilter } from '@/types/timeline';
 
 interface ISessionListViewProps {
   sessions: ISessionMeta[];
+  total: number;
   isLoading: boolean;
   isLoadingMore: boolean;
   hasMore: boolean;
   error: string | null;
+  sourceFilter: TSessionSourceFilter;
+  sourceIdFilter: string | null;
+  remoteSources: IRemoteCodexSourceStatus[];
   resumingSessionId: string | null;
   onSelectSession: (session: ISessionMeta) => void;
+  onFilterChange: (source: TSessionSourceFilter, sourceId?: string | null) => void;
   onRefresh: () => Promise<void>;
   onLoadMore: () => Promise<void>;
   onNewSession?: () => void;
@@ -56,12 +62,17 @@ const SessionListError = ({
 
 const SessionListView = ({
   sessions,
+  total,
   isLoading,
   isLoadingMore,
   hasMore,
   error,
+  sourceFilter,
+  sourceIdFilter,
+  remoteSources,
   resumingSessionId,
   onSelectSession,
+  onFilterChange,
   onRefresh,
   onLoadMore,
   onNewSession,
@@ -85,24 +96,88 @@ const SessionListView = ({
   }, [hasMore, isLoadingMore, onLoadMore]);
 
   const isResumeInProgress = !!resumingSessionId;
+  const latestRemoteSource = remoteSources[0];
+  const sessionCountLabel = total > 0 ? `(${total})` : '';
+  const sourceTime = latestRemoteSource?.latestSyncAt
+    ? dayjs(latestRemoteSource.latestSyncAt).format('MM/DD HH:mm')
+    : null;
+
+  const isFilterActive = (source: TSessionSourceFilter, sourceId?: string | null) =>
+    sourceFilter === source && (sourceIdFilter ?? null) === (sourceId ?? null);
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b px-4 py-2">
-        <span className="text-sm font-medium">
-          {t('sessions')}
-          {sessions.length > 0 &&
-            `(${sessions.length}${hasMore ? '+' : ''})`}
-        </span>
-        {onNewSession && (
+      <div className="border-b px-4 py-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm font-medium">
+            {t('sessions')}
+            {sessionCountLabel}
+          </span>
+          {onNewSession && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onNewSession}
+            >
+              <Plus size={12} />
+              {t('newConversation')}
+            </Button>
+          )}
+        </div>
+        <div className="mt-2 flex min-w-0 items-center gap-1 overflow-x-auto">
           <Button
-            variant="outline"
-            size="sm"
-            onClick={onNewSession}
+            variant={isFilterActive('all') ? 'secondary' : 'ghost'}
+            size="xs"
+            aria-pressed={isFilterActive('all')}
+            onClick={() => onFilterChange('all', null)}
           >
-            <Plus size={12} />
-            {t('newConversation')}
+            <ListFilter size={12} />
+            {t('sessionFilterAll')}
           </Button>
+          <Button
+            variant={isFilterActive('local') ? 'secondary' : 'ghost'}
+            size="xs"
+            aria-pressed={isFilterActive('local')}
+            onClick={() => onFilterChange('local', null)}
+          >
+            <Terminal size={12} />
+            {t('sessionFilterLocal')}
+          </Button>
+          <Button
+            variant={isFilterActive('remote') ? 'secondary' : 'ghost'}
+            size="xs"
+            aria-pressed={isFilterActive('remote')}
+            onClick={() => onFilterChange('remote', null)}
+          >
+            <Monitor size={12} />
+            {t('sessionFilterWindows')}
+          </Button>
+          {remoteSources.length > 1 && remoteSources.map((source) => (
+            <Button
+              key={source.sourceId}
+              variant={isFilterActive('remote', source.sourceId) ? 'secondary' : 'ghost'}
+              size="xs"
+              aria-pressed={isFilterActive('remote', source.sourceId)}
+              title={source.sourceLabel}
+              onClick={() => onFilterChange('remote', source.sourceId)}
+            >
+              <Monitor size={12} />
+              <span className="max-w-[120px] truncate">{source.sourceId}</span>
+              <span className="tabular-nums text-[10px] text-muted-foreground">{source.sessionCount}</span>
+            </Button>
+          ))}
+        </div>
+        {latestRemoteSource && sourceTime && (
+          <div className="mt-1 flex items-center gap-1.5 truncate text-[11px] text-muted-foreground">
+            <Monitor size={11} className="shrink-0" />
+            <span className="truncate">
+              {t('windowsSourceSummary', {
+                label: latestRemoteSource.sourceLabel,
+                time: sourceTime,
+                count: latestRemoteSource.sessionCount,
+              })}
+            </span>
+          </div>
         )}
       </div>
 

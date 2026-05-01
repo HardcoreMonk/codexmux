@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import useTimeline from '@/hooks/use-timeline';
 import useStartingPrompt from '@/hooks/use-starting-prompt';
 import useSessionList from '@/hooks/use-session-list';
+import useRemoteCodexSources from '@/hooks/use-remote-codex-sources';
 import useTabStore, { selectAgentInstalled, selectAgentProcess, selectSessionView } from '@/hooks/use-tab-store';
 import useSessionMeta from '@/hooks/use-session-meta';
 import useGitBranch from '@/hooks/use-git-branch';
@@ -22,7 +23,7 @@ import { MetaCompact } from '@/components/features/workspace/session-meta-conten
 import MobileMetaSheet from './mobile-meta-sheet';
 import useQuickPrompts from '@/hooks/use-quick-prompts';
 import { isAgentPanelType } from '@/lib/panel-type';
-import type { ISessionMeta, TCliState } from '@/types/timeline';
+import type { ISessionMeta, TCliState, TSessionSourceFilter } from '@/types/timeline';
 import type { TPanelType } from '@/types/terminal';
 
 interface IMobileAgentPanelProps {
@@ -64,6 +65,8 @@ const MobileAgentPanel = ({
   const { prompts: quickPrompts } = useQuickPrompts();
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(null);
   const [metaSheetOpen, setMetaSheetOpen] = useState(false);
+  const [sessionSourceFilter, setSessionSourceFilter] = useState<TSessionSourceFilter>('all');
+  const [sessionSourceIdFilter, setSessionSourceIdFilter] = useState<string | null>(null);
   const scrollToBottomRef = useRef<(() => void) | undefined>(undefined);
 
   const agentProcess = useTabStore((s) => tabId ? selectAgentProcess(s.tabs, tabId) : null);
@@ -141,6 +144,7 @@ const MobileAgentPanel = ({
 
   const {
     sessions,
+    total: sessionListTotal,
     hasMore: sessionListHasMore,
     isLoading: isSessionListLoading,
     isLoadingMore: isSessionListLoadingMore,
@@ -152,6 +156,15 @@ const MobileAgentPanel = ({
     enabled: isAgentPanel && !!sessionName && view === 'session-list',
     cwd,
     panelType,
+    source: sessionSourceFilter,
+    sourceId: sessionSourceIdFilter,
+  });
+
+  const {
+    sources: remoteSources,
+    refetch: refetchRemoteSources,
+  } = useRemoteCodexSources({
+    enabled: isAgentPanel && view === 'session-list',
   });
 
   const prevAgentProcessRef = useRef(agentProcess);
@@ -214,6 +227,15 @@ const MobileAgentPanel = ({
     },
     [openJsonlSession, resumingSessionId, retrySession, sendResume, sessionName, tabId],
   );
+
+  const handleFilterChange = useCallback((source: TSessionSourceFilter, sourceId: string | null = null) => {
+    setSessionSourceFilter(source);
+    setSessionSourceIdFilter(source === 'remote' ? sourceId : null);
+  }, []);
+
+  const handleRefreshSessions = useCallback(async () => {
+    await Promise.all([refetchSessions(), refetchRemoteSources()]);
+  }, [refetchRemoteSources, refetchSessions]);
 
   if (!agentInstalled) {
     return (
@@ -280,13 +302,18 @@ const MobileAgentPanel = ({
       <div className="flex min-h-0 flex-1 flex-col bg-muted">
         <SessionListView
           sessions={sessions}
+          total={sessionListTotal}
           isLoading={isSessionListLoading}
           isLoadingMore={isSessionListLoadingMore}
           hasMore={sessionListHasMore}
           error={sessionListError}
+          sourceFilter={sessionSourceFilter}
+          sourceIdFilter={sessionSourceIdFilter}
+          remoteSources={remoteSources}
           resumingSessionId={resumingSessionId}
           onSelectSession={handleSelectSession}
-          onRefresh={refetchSessions}
+          onFilterChange={handleFilterChange}
+          onRefresh={handleRefreshSessions}
           onLoadMore={loadMoreSessions}
           onNewSession={onNewSession}
         />

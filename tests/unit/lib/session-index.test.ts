@@ -79,4 +79,41 @@ describe('session-index', () => {
       persistSkips: 1,
     });
   });
+
+  it('filters legacy persisted remote rows by source id from the index key', async () => {
+    const indexDir = path.join(tempHome, '.codexmux');
+    await fs.mkdir(indexDir, { recursive: true });
+    await fs.writeFile(
+      path.join(indexDir, 'session-index.json'),
+      JSON.stringify({
+        version: 1,
+        updatedAt: '2026-05-02T00:00:00.000Z',
+        sessions: [
+          {
+            indexKey: 'remote:win11:019dcf70-3a02-73a0-a79e-8703b99a2f38:/remote/win11.jsonl',
+            indexJsonlPath: '/remote/win11.jsonl',
+            indexMtimeMs: 1,
+            indexSize: 1,
+            sessionId: '019dcf70-3a02-73a0-a79e-8703b99a2f38',
+            startedAt: '2026-05-02T00:00:00.000Z',
+            lastActivityAt: '2026-05-02T00:00:01.000Z',
+            firstMessage: 'Legacy Windows row',
+            turnCount: 1,
+            source: 'remote',
+            sourceLabel: 'WIN11 / pwsh',
+          },
+        ],
+      }),
+    );
+
+    const { getSessionIndexPage } = await import('@/lib/session-index');
+    const page = await getSessionIndexPage({ waitForInitial: true, source: 'remote', sourceId: 'win11' });
+
+    expect(page.total).toBe(1);
+    expect(page.sessions[0]).toMatchObject({
+      source: 'remote',
+      sourceId: 'win11',
+      firstMessage: 'Legacy Windows row',
+    });
+  });
 });

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { ISessionMeta } from '@/types/timeline';
+import type { ISessionMeta, TSessionSourceFilter } from '@/types/timeline';
 import type { TPanelType } from '@/types/terminal';
 
 const DEFAULT_LIMIT = 50;
@@ -9,6 +9,8 @@ interface IUseSessionListOptions {
   enabled: boolean;
   cwd?: string;
   panelType?: TPanelType;
+  source?: TSessionSourceFilter;
+  sourceId?: string | null;
 }
 
 interface IUseSessionListReturn {
@@ -27,6 +29,8 @@ const useSessionList = ({
   enabled,
   cwd,
   panelType = 'codex',
+  source = 'all',
+  sourceId = null,
 }: IUseSessionListOptions): IUseSessionListReturn => {
   const [sessions, setSessions] = useState<ISessionMeta[]>([]);
   const [total, setTotal] = useState(0);
@@ -37,7 +41,7 @@ const useSessionList = ({
 
   const isLoadingMoreRef = useRef(false);
 
-  const sessionKey = `${panelType}:${tmuxSession}:${cwd ?? ''}`;
+  const sessionKey = `${panelType}:${tmuxSession}:${cwd ?? ''}:${source}:${sourceId ?? ''}`;
   const [prevSessionKey, setPrevSessionKey] = useState(sessionKey);
   if (sessionKey !== prevSessionKey) {
     setPrevSessionKey(sessionKey);
@@ -52,6 +56,23 @@ const useSessionList = ({
   cwdRef.current = cwd;
   const panelTypeRef = useRef(panelType);
   panelTypeRef.current = panelType;
+  const sourceRef = useRef(source);
+  sourceRef.current = source;
+  const sourceIdRef = useRef(sourceId);
+  sourceIdRef.current = sourceId;
+
+  const buildUrl = useCallback((offset: number) => {
+    const params = new URLSearchParams({
+      tmuxSession,
+      limit: String(DEFAULT_LIMIT),
+      offset: String(offset),
+      panelType: panelTypeRef.current,
+      source: sourceRef.current,
+    });
+    if (cwdRef.current) params.set('cwd', cwdRef.current);
+    if (sourceIdRef.current) params.set('sourceId', sourceIdRef.current);
+    return `/api/timeline/sessions?${params.toString()}`;
+  }, [tmuxSession]);
 
   const fetchSessions = useCallback(async () => {
     if (!tmuxSession) return;
@@ -59,10 +80,7 @@ const useSessionList = ({
     setError(null);
 
     try {
-      let url = `/api/timeline/sessions?tmuxSession=${encodeURIComponent(tmuxSession)}&limit=${DEFAULT_LIMIT}&offset=0&panelType=${encodeURIComponent(panelTypeRef.current)}`;
-      if (cwdRef.current) {
-        url += `&cwd=${encodeURIComponent(cwdRef.current)}`;
-      }
+      const url = buildUrl(0);
       const res = await fetch(url);
       if (!res.ok) throw new Error('세션 목록을 불러올 수 없습니다');
       const data = await res.json();
@@ -74,13 +92,13 @@ const useSessionList = ({
     } finally {
       setIsLoading(false);
     }
-  }, [tmuxSession]);
+  }, [buildUrl, tmuxSession]);
 
   useEffect(() => {
     if (enabled) {
       fetchSessions();
     }
-  }, [enabled, fetchSessions]);
+  }, [enabled, fetchSessions, sessionKey]);
 
   const prevCwdRef = useRef(cwd);
   useEffect(() => {
@@ -103,10 +121,7 @@ const useSessionList = ({
 
     try {
       const offset = sessions.length;
-      let url = `/api/timeline/sessions?tmuxSession=${encodeURIComponent(tmuxSession)}&limit=${DEFAULT_LIMIT}&offset=${offset}&panelType=${encodeURIComponent(panelTypeRef.current)}`;
-      if (cwdRef.current) {
-        url += `&cwd=${encodeURIComponent(cwdRef.current)}`;
-      }
+      const url = buildUrl(offset);
       const res = await fetch(url);
       if (!res.ok) return;
       const data = await res.json();
@@ -117,7 +132,7 @@ const useSessionList = ({
       isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [tmuxSession, hasMore, sessions.length]);
+  }, [buildUrl, tmuxSession, hasMore, sessions.length]);
 
   return {
     sessions,

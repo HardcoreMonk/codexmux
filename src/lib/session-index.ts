@@ -5,7 +5,7 @@ import readline from 'readline';
 import os from 'os';
 import { createLogger } from '@/lib/logger';
 import { collectRemoteCodexJsonlFiles, readRemoteCodexSidecar } from '@/lib/remote-codex-store';
-import type { ISessionMeta } from '@/types/timeline';
+import type { ISessionMeta, TSessionSourceFilter } from '@/types/timeline';
 
 const log = createLogger('session-index');
 
@@ -67,6 +67,14 @@ export interface ISessionIndexPage {
   sessions: ISessionMeta[];
   total: number;
   hasMore: boolean;
+}
+
+export interface ISessionIndexPageOptions {
+  waitForInitial?: boolean;
+  offset?: number;
+  limit?: number;
+  source?: TSessionSourceFilter;
+  sourceId?: string | null;
 }
 
 const getHomeDir = (): string =>
@@ -330,6 +338,11 @@ const toPublicSession = (session: IIndexedSessionMeta): ISessionMeta => {
   void indexMtimeMs;
   void indexSize;
   void indexSidecarMtimeMs;
+  if (meta.source === 'remote' && !meta.sourceId) {
+    meta.sourceId = session.indexKey.startsWith('remote:')
+      ? session.indexKey.split(':')[1] ?? null
+      : null;
+  }
   return meta;
 };
 
@@ -373,18 +386,19 @@ const buildRemoteSession = async (
   const sidecarPath = `${file}.meta.json`;
   const sidecarStat = await fs.stat(sidecarPath).catch(() => null);
   const previous = previousByPath.get(file);
+  const sourceId = sidecar?.sourceId ?? 'windows';
   if (
     previous
     && previous.indexMtimeMs === stat.mtimeMs
     && previous.indexSize === stat.size
     && previous.indexSidecarMtimeMs === sidecarStat?.mtimeMs
+    && previous.sourceId === sourceId
   ) {
     return previous;
   }
 
   const sessionId = sidecar?.sessionId ?? path.basename(file, '.jsonl').match(CODEX_THREAD_ID_RE)?.[1];
   if (!sessionId) return null;
-  const sourceId = sidecar?.sourceId ?? 'windows';
 
   return {
     indexKey: `remote:${sourceId}:${sessionId}:${file}`,
@@ -399,6 +413,7 @@ const buildRemoteSession = async (
     turnCount: sidecar?.turnCount ?? 0,
     jsonlPath: file,
     source: 'remote',
+    sourceId,
     sourceLabel: buildRemoteSourceLabel(sidecar?.host ?? null, sidecar?.shell ?? null),
     cwd: sidecar?.cwd ?? null,
     host: sidecar?.host ?? null,
@@ -518,11 +533,21 @@ export const getSessionIndexSnapshot = async (options?: { waitForInitial?: boole
   return state.sessions.map(toPublicSession);
 };
 
-export const getSessionIndexPage = async (options?: {
-  waitForInitial?: boolean;
-  offset?: number;
-  limit?: number;
-}): Promise<ISessionIndexPage> => {
+const filterSessions = (
+  sessions: IIndexedSessionMeta[],
+  options?: Pick<ISessionIndexPageOptions, 'source' | 'sourceId'>,
+): IIndexedSessionMeta[] => {
+  const source = options?.source ?? 'all';
+  const sourceId = options?.sourceId?.trim();
+
+  return sessions.filter((session) => {
+    if (source !== 'all' && session.source !== source) return false;
+    if (sourceId && session.sourceId !== sourceId && !session.indexKey.startsWith(`remote:${sourceId}:`)) return false;
+    return true;
+  });
+};
+
+export const getSessionIndexPage = async (options?: ISessionIndexPageOptions): Promise<ISessionIndexPage> => {
   ensureCurrentRoot();
   if (!state.initialized) {
     await initSessionIndexService();
@@ -531,7 +556,8 @@ export const getSessionIndexPage = async (options?: {
     await refreshSessionIndex();
   }
 
-  const total = state.sessions.length;
+  const filteredSessions = filterSessions(state.sessions, options);
+  const total = filteredSessions.length;
   const offset = Math.max(0, Math.floor(options?.offset ?? 0));
   const limit = options?.limit;
   const end = typeof limit === 'number'
@@ -539,7 +565,7 @@ export const getSessionIndexPage = async (options?: {
     : total;
 
   return {
-    sessions: state.sessions.slice(offset, end).map(toPublicSession),
+    sessions: filteredSessions.slice(offset, end).map(toPublicSession),
     total,
     hasMore: end < total,
   };

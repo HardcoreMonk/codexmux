@@ -83,9 +83,30 @@ describe('/api/timeline/sessions', () => {
       'dead-tmux-session',
       undefined,
       'codex',
-      { offset: 0, limit: 50 },
+      { offset: 0, limit: 50, source: 'all', sourceId: null },
     );
     expect(response.body).toMatchObject({ total: 1, hasMore: false });
+  });
+
+  it('passes source filters to the session index page', async () => {
+    const response = createResponse();
+
+    await handler(createRequest({
+      tmuxSession: 'dead-tmux-session',
+      panelType: 'codex',
+      source: 'remote',
+      sourceId: 'win11',
+      limit: '10',
+      offset: '20',
+    }), response.res);
+
+    expect(response.statusCode).toBe(200);
+    expect(mocks.listSessionPage).toHaveBeenCalledWith(
+      'dead-tmux-session',
+      undefined,
+      'codex',
+      { offset: 20, limit: 10, source: 'remote', sourceId: 'win11' },
+    );
   });
 
   it('still rejects missing tmux sessions for non-agent panel types', async () => {

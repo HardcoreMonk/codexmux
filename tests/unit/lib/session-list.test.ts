@@ -184,6 +184,7 @@ describe('session-list', () => {
       firstMessage: 'Windows pwsh work',
       turnCount: 1,
       source: 'remote',
+      sourceId: 'win11',
       sourceLabel: 'WIN11 / pwsh',
       cwd: 'C:\\Users\\monk\\project',
       remotePath: 'C:\\Users\\monk\\.codex\\sessions\\rollout-019dcf30-3a02-73a0-a79e-8703b99a2f32.jsonl',
@@ -235,5 +236,129 @@ describe('session-list', () => {
       source: 'remote',
       sourceLabel: 'WIN11 / pwsh',
     });
+  });
+
+  it('filters session list pages by source and remote source id', async () => {
+    await fs.mkdir(path.join(tempHome, '.codex', 'sessions', '2026', '04', '27'), { recursive: true });
+    await fs.writeFile(
+      path.join(tempHome, '.codex', 'sessions', '2026', '04', '27', 'rollout-2026-04-27T01-00-00-019dcf50-3a02-73a0-a79e-8703b99a2f34.jsonl'),
+      [
+        jsonLine({
+          timestamp: '2026-04-27T01:00:00.000Z',
+          type: 'session_meta',
+          payload: {
+            id: '019dcf50-3a02-73a0-a79e-8703b99a2f34',
+            timestamp: '2026-04-27T01:00:00.000Z',
+            cwd: '/work/project',
+          },
+        }),
+      ].join('\n'),
+    );
+
+    const { writeRemoteCodexChunk } = await import('@/lib/remote-codex-store');
+    const buildRemoteContent = (id: string, message: string) => Buffer.from([
+      jsonLine({
+        timestamp: '2026-04-27T05:00:01.000Z',
+        type: 'session_meta',
+        payload: {
+          id,
+          timestamp: '2026-04-27T05:00:00.000Z',
+          cwd: 'C:\\Users\\monk\\project',
+        },
+      }),
+      jsonLine({
+        timestamp: '2026-04-27T05:00:02.000Z',
+        type: 'event_msg',
+        payload: { type: 'user_message', message },
+      }),
+    ].join('\n'));
+
+    await writeRemoteCodexChunk({
+      sourceId: 'win11-a',
+      host: 'WIN-A',
+      shell: 'pwsh',
+      cwd: 'C:\\Users\\monk\\project',
+      windowsPath: 'C:\\Users\\monk\\.codex\\sessions\\rollout-019dcf51-3a02-73a0-a79e-8703b99a2f35.jsonl',
+      sessionId: '019dcf51-3a02-73a0-a79e-8703b99a2f35',
+      startedAt: '2026-04-27T05:00:00.000Z',
+      mtimeMs: new Date('2026-04-27T05:00:02.000Z').getTime(),
+      offset: 0,
+      reset: true,
+      content: buildRemoteContent('019dcf51-3a02-73a0-a79e-8703b99a2f35', 'Windows A work'),
+    });
+    await writeRemoteCodexChunk({
+      sourceId: 'win11-b',
+      host: 'WIN-B',
+      shell: 'pwsh',
+      cwd: 'C:\\Users\\monk\\project',
+      windowsPath: 'C:\\Users\\monk\\.codex\\sessions\\rollout-019dcf52-3a02-73a0-a79e-8703b99a2f36.jsonl',
+      sessionId: '019dcf52-3a02-73a0-a79e-8703b99a2f36',
+      startedAt: '2026-04-27T05:01:00.000Z',
+      mtimeMs: new Date('2026-04-27T05:01:02.000Z').getTime(),
+      offset: 0,
+      reset: true,
+      content: buildRemoteContent('019dcf52-3a02-73a0-a79e-8703b99a2f36', 'Windows B work'),
+    });
+
+    const { listSessionPage } = await import('@/lib/session-list');
+    const remotePage = await listSessionPage('tmux-session', '/work/project', 'codex', { source: 'remote' });
+    const sourcePage = await listSessionPage('tmux-session', '/work/project', 'codex', { source: 'remote', sourceId: 'win11-a' });
+    const localPage = await listSessionPage('tmux-session', '/work/project', 'codex', { source: 'local' });
+
+    expect(remotePage.total).toBe(2);
+    expect(sourcePage.total).toBe(1);
+    expect(sourcePage.sessions[0]).toMatchObject({
+      source: 'remote',
+      sourceId: 'win11-a',
+      firstMessage: 'Windows A work',
+    });
+    expect(localPage.total).toBe(1);
+    expect(localPage.sessions[0]).toMatchObject({ source: 'local' });
+  });
+
+  it('summarizes remote Codex sources for UI status', async () => {
+    const { writeRemoteCodexChunk, listRemoteCodexSources } = await import('@/lib/remote-codex-store');
+    const content = [
+      jsonLine({
+        timestamp: '2026-04-27T06:00:01.000Z',
+        type: 'session_meta',
+        payload: {
+          id: '019dcf60-3a02-73a0-a79e-8703b99a2f37',
+          timestamp: '2026-04-27T06:00:00.000Z',
+          cwd: 'C:\\Users\\monk\\project',
+        },
+      }),
+      jsonLine({
+        timestamp: '2026-04-27T06:00:02.000Z',
+        type: 'event_msg',
+        payload: { type: 'user_message', message: 'Windows source work' },
+      }),
+    ].join('\n');
+
+    await writeRemoteCodexChunk({
+      sourceId: 'win11',
+      host: 'WIN11',
+      shell: 'pwsh',
+      cwd: 'C:\\Users\\monk\\project',
+      windowsPath: 'C:\\Users\\monk\\.codex\\sessions\\rollout-019dcf60-3a02-73a0-a79e-8703b99a2f37.jsonl',
+      sessionId: '019dcf60-3a02-73a0-a79e-8703b99a2f37',
+      startedAt: '2026-04-27T06:00:00.000Z',
+      mtimeMs: new Date('2026-04-27T06:00:02.000Z').getTime(),
+      offset: 0,
+      reset: true,
+      content: Buffer.from(content),
+    });
+
+    const sources = await listRemoteCodexSources();
+
+    expect(sources).toHaveLength(1);
+    expect(sources[0]).toMatchObject({
+      sourceId: 'win11',
+      sourceLabel: 'WIN11 / pwsh',
+      sessionCount: 1,
+      latestCwd: 'C:\\Users\\monk\\project',
+      latestRemotePath: 'C:\\Users\\monk\\.codex\\sessions\\rollout-019dcf60-3a02-73a0-a79e-8703b99a2f37.jsonl',
+    });
+    expect(sources[0].totalBytes).toBeGreaterThan(0);
   });
 });

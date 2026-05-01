@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import type { IRemoteCodexSourceStatus } from '@/types/timeline';
 
 const BASE_DIR = path.join(os.homedir(), '.codexmux');
 export const REMOTE_CODEX_DIR = path.join(BASE_DIR, 'remote', 'codex');
@@ -187,6 +188,12 @@ const writeSidecar = async (jsonlPath: string, sidecar: IRemoteCodexSidecar): Pr
   await fs.writeFile(filePath, JSON.stringify(sidecar, null, 2), { mode: 0o600 });
 };
 
+const buildSourceLabel = (host: string | null, shell: string | null): string => {
+  const left = host?.trim() || 'Windows';
+  const right = shell?.trim() || 'pwsh';
+  return `${left} / ${right}`;
+};
+
 export const writeRemoteCodexChunk = async (input: IRemoteCodexSyncInput): Promise<IRemoteCodexSyncResult> => {
   const sourceId = sanitizeRemoteCodexSourceId(input.sourceId || input.host || 'windows');
   const extracted = extractCodexMeta(input.content);
@@ -274,4 +281,55 @@ export const collectRemoteCodexJsonlFiles = async (dir = REMOTE_CODEX_DIR, depth
     }
   }
   return files;
+};
+
+export const listRemoteCodexSources = async (): Promise<IRemoteCodexSourceStatus[]> => {
+  const files = await collectRemoteCodexJsonlFiles();
+  const bySource = new Map<string, IRemoteCodexSourceStatus>();
+
+  await Promise.all(files.map(async (file) => {
+    const [sidecar, stat] = await Promise.all([
+      readRemoteCodexSidecar(file),
+      fs.stat(file).catch(() => null),
+    ]);
+    if (!sidecar) return;
+
+    const sourceId = sidecar.sourceId || 'windows';
+    const previous = bySource.get(sourceId);
+    const previousActivity = previous?.latestActivityAt ? Date.parse(previous.latestActivityAt) : 0;
+    const activity = sidecar.lastActivityAt ? Date.parse(sidecar.lastActivityAt) : 0;
+    const previousSync = previous?.latestSyncAt ? Date.parse(previous.latestSyncAt) : 0;
+    const sync = sidecar.updatedAt ? Date.parse(sidecar.updatedAt) : 0;
+    const isLatestActivity = !previous || activity >= previousActivity;
+    const isLatestSync = !previous || sync >= previousSync;
+
+    bySource.set(sourceId, {
+      sourceId,
+      sourceLabel: isLatestActivity
+        ? buildSourceLabel(sidecar.host, sidecar.shell)
+        : previous!.sourceLabel,
+      host: isLatestActivity ? sidecar.host : previous!.host,
+      shell: isLatestActivity ? sidecar.shell : previous!.shell,
+      sessionCount: (previous?.sessionCount ?? 0) + 1,
+      latestActivityAt: isLatestActivity
+        ? sidecar.lastActivityAt
+        : previous!.latestActivityAt,
+      latestSyncAt: isLatestSync
+        ? sidecar.updatedAt
+        : previous!.latestSyncAt,
+      latestCwd: isLatestActivity
+        ? sidecar.cwd
+        : previous!.latestCwd,
+      latestRemotePath: isLatestActivity
+        ? sidecar.windowsPath
+        : previous!.latestRemotePath,
+      totalBytes: (previous?.totalBytes ?? 0) + (stat?.size ?? 0),
+    });
+  }));
+
+  return [...bySource.values()].sort((a, b) => {
+    const bTime = b.latestActivityAt ? Date.parse(b.latestActivityAt) : 0;
+    const aTime = a.latestActivityAt ? Date.parse(a.latestActivityAt) : 0;
+    return bTime - aTime;
+  });
 };
