@@ -108,6 +108,10 @@ Rust + Tauri 도입은 `docs/TAURI-EVALUATION.md` 기준으로 보류한다. Tau
 - Session index refresh 결과가 이전 persisted snapshot과 같으면 `~/.codexmux/session-index.json` write를 건너뛴다. 15초 백그라운드 refresh에서 파일 metadata가 모두 cache hit인 구간의 디스크 churn을 줄인다.
 - `/api/debug/perf`의 `sessionIndex` snapshot에 `persistWrites`, `persistSkips`, `lastPersistedAt`을 추가해 index build와 persist 비용을 분리해서 볼 수 있게 했다.
 
+### 2026-05-02 8차 구현 상태
+
+- `/api/timeline/sessions`는 session index 전체를 매번 public session 배열로 변환한 뒤 slice하지 않고, index에서 요청 page만 변환한다. session history가 커져도 session list request path의 object allocation이 `limit` 크기로 제한된다.
+
 ## 작업 상세
 
 ### 1. Perf Snapshot

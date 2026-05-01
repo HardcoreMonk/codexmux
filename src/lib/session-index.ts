@@ -63,6 +63,12 @@ export interface IIndexedCodexSessionJsonl {
   mtimeMs: number;
 }
 
+export interface ISessionIndexPage {
+  sessions: ISessionMeta[];
+  total: number;
+  hasMore: boolean;
+}
+
 const getHomeDir = (): string =>
   process.env.HOME || process.env.USERPROFILE || os.homedir() || '/';
 
@@ -510,6 +516,33 @@ export const getSessionIndexSnapshot = async (options?: { waitForInitial?: boole
     await refreshSessionIndex();
   }
   return state.sessions.map(toPublicSession);
+};
+
+export const getSessionIndexPage = async (options?: {
+  waitForInitial?: boolean;
+  offset?: number;
+  limit?: number;
+}): Promise<ISessionIndexPage> => {
+  ensureCurrentRoot();
+  if (!state.initialized) {
+    await initSessionIndexService();
+  }
+  if (options?.waitForInitial && state.sessions.length === 0) {
+    await refreshSessionIndex();
+  }
+
+  const total = state.sessions.length;
+  const offset = Math.max(0, Math.floor(options?.offset ?? 0));
+  const limit = options?.limit;
+  const end = typeof limit === 'number'
+    ? offset + Math.max(0, Math.floor(limit))
+    : total;
+
+  return {
+    sessions: state.sessions.slice(offset, end).map(toPublicSession),
+    total,
+    hasMore: end < total,
+  };
 };
 
 export const findIndexedCodexSessionJsonl = async (

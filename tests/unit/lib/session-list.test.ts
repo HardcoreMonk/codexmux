@@ -79,6 +79,68 @@ describe('session-list', () => {
     });
   });
 
+  it('returns paginated session list pages from the index', async () => {
+    const dir = path.join(tempHome, '.codex', 'sessions', '2026', '04', '28');
+    await fs.mkdir(dir, { recursive: true });
+
+    const sessions = [
+      {
+        id: '019dd010-3a02-73a0-a79e-8703b99a2f30',
+        message: 'Oldest work',
+        startedAt: '2026-04-28T01:00:00.000Z',
+        mtime: '2026-04-28T01:10:00.000Z',
+      },
+      {
+        id: '019dd011-3a02-73a0-a79e-8703b99a2f31',
+        message: 'Middle work',
+        startedAt: '2026-04-28T02:00:00.000Z',
+        mtime: '2026-04-28T02:10:00.000Z',
+      },
+      {
+        id: '019dd012-3a02-73a0-a79e-8703b99a2f32',
+        message: 'Newest work',
+        startedAt: '2026-04-28T03:00:00.000Z',
+        mtime: '2026-04-28T03:10:00.000Z',
+      },
+    ];
+
+    for (const session of sessions) {
+      const filePath = path.join(dir, `rollout-${session.id}.jsonl`);
+      await fs.writeFile(
+        filePath,
+        [
+          jsonLine({
+            timestamp: session.startedAt,
+            type: 'session_meta',
+            payload: {
+              id: session.id,
+              timestamp: session.startedAt,
+              cwd: '/work/project',
+            },
+          }),
+          jsonLine({
+            timestamp: session.mtime,
+            type: 'event_msg',
+            payload: { type: 'user_message', message: session.message },
+          }),
+        ].join('\n'),
+      );
+      const mtime = new Date(session.mtime);
+      await fs.utimes(filePath, mtime, mtime);
+    }
+
+    const { listSessionPage } = await import('@/lib/session-list');
+    const page = await listSessionPage('tmux-session', '/work/project', 'codex', { offset: 1, limit: 1 });
+
+    expect(page.total).toBe(3);
+    expect(page.hasMore).toBe(true);
+    expect(page.sessions).toHaveLength(1);
+    expect(page.sessions[0]).toMatchObject({
+      sessionId: '019dd011-3a02-73a0-a79e-8703b99a2f31',
+      firstMessage: 'Middle work',
+    });
+  });
+
   it('includes remote Windows Codex sessions without Linux cwd filtering', async () => {
     const { writeRemoteCodexChunk } = await import('@/lib/remote-codex-store');
     const content = [

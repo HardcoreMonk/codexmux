@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { hasSession } from '@/lib/tmux';
-import { listSessions } from '@/lib/session-list';
+import { listSessionPage } from '@/lib/session-list';
 import { normalizePanelType } from '@/lib/panel-type';
 import type { TPanelType } from '@/types/terminal';
 
@@ -33,12 +33,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const panelType = parsePanelType(req.query.panelType);
 
   try {
-    const allSessions = await listSessions(tmuxSession, cwdHint, panelType);
-    const total = allSessions.length;
-    const sliced = allSessions.slice(offset, offset + limit);
-    const hasMore = offset + limit < total;
-
-    return res.status(200).json({ sessions: sliced, total, hasMore });
+    const page = await listSessionPage(tmuxSession, cwdHint, panelType, { offset, limit });
+    return res.status(200).json(page);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'unknown error';
     if (message === 'cwd-lookup-failed') {
