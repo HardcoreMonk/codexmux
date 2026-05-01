@@ -56,7 +56,7 @@ Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service
 | `push-subscriptions.json` | Web Push subscription |
 | `uploads/` | 임시 첨부 파일 |
 | `logs/` | 서버 로그 |
-| `stats/cache.json` | Codex JSONL에서 계산한 usage cache |
+| `stats/cache.json` | Codex JSONL에서 계산한 usage cache. 런타임 build는 in-flight promise로 중복 계산을 피함 |
 | `stats/daily-reports/` | `codex exec`로 생성한 일별 report |
 
 비밀값이 들어갈 수 있는 파일은 `0600` 권한으로 쓰며, 저장은 임시 파일을 쓴 뒤 rename하는 방식으로 처리한다.

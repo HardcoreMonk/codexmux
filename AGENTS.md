@@ -113,10 +113,14 @@ Complex topics live under `docs/`:
 
 | Document | Purpose |
 | --- | --- |
+| `docs/README.md` | Internal documentation map and update rules |
 | `docs/ADR.md` | Architecture decisions and decision triggers |
+| `docs/ARCHITECTURE-LOGIC.md` | Architecture flow and service logic |
 | `docs/STATUS.md` | Codex work-state detection and status flow |
 | `docs/TMUX.md` | tmux, terminal management, and WebSocket flow |
 | `docs/DATA-DIR.md` | `~/.codexmux/` directory structure |
+| `docs/SYSTEMD.md` | Linux user service operation |
+| `docs/PERFORMANCE.md` | Perf snapshot, render/cache optimization, and validation |
 | `docs/STYLE.md` | Theme and color usage rules |
 | `docs/ELECTRON.md` | Electron desktop development and packaging |
 | `docs/ANDROID.md` | Android Capacitor development, build, and install |

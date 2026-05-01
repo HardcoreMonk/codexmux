@@ -45,11 +45,14 @@ ExecStart=/home/hardcoremonk/.nvm/versions/node/v24.15.0/bin/node /data/projects
 Restart=on-failure
 RestartSec=3
 KillSignal=SIGINT
+SuccessExitStatus=130
 TimeoutStopSec=20
 
 [Install]
 WantedBy=default.target
 ```
+
+`KillSignal=SIGINT`는 terminal/WebSocket shutdown을 정리할 시간을 주기 위한 설정이다. Node 계열 프로세스는 SIGINT 종료를 exit code 130으로 남길 수 있으므로 `SuccessExitStatus=130`을 같이 둬서 `systemctl --user restart codexmux.service`가 의도된 중지인데도 journal에 실패처럼 남지 않게 한다.
 
 Node를 NVM으로 관리하는 환경에서는 `ExecStart`와 `PATH`의 Node 버전 경로가 실제 `command -v node` 결과와 일치해야 한다. Node 버전을 바꾸면 이 파일도 함께 갱신한다.
 
@@ -107,6 +110,8 @@ curl -fsS http://127.0.0.1:8122/api/health
 ```
 
 정상 응답은 `{"app":"codexmux"}`다. 브라우저가 이전 hashed chunk를 들고 있으면 UI 동작이 오래된 것처럼 보일 수 있으므로, 배포 후에도 타임라인 표시가 예전과 같으면 페이지를 새로고침한다. 이미 화면에 쌓인 중복 메시지는 새 parser로 초기 snapshot을 다시 읽을 때 정규화된다.
+
+성능 변경 배포 후에는 인증된 session cookie 또는 `x-cmux-token`으로 `/api/debug/perf`를 확인한다. 이 endpoint는 public health check가 아니며 process memory, event loop, WebSocket, watcher, status poll, diff/stats cache 숫자만 반환한다.
 
 서비스가 이미 8122 포트를 사용하므로 수동 실행을 병행하지 않는다. 임시로 수동 실행이 필요하면 먼저 서비스를 중지한다.
 

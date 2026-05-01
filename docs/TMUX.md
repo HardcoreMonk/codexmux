@@ -46,7 +46,7 @@ Endpoint는 `/api/terminal?session={name}&clientId={id}`다.
 | `0x04` | `MSG_KILL_SESSION` | client -> server | tmux session 종료 |
 | `0x05` | `MSG_WEB_STDIN` | client -> server | web input bar text |
 
-WebSocket backpressure가 커지면 pty output을 잠시 멈추고 client가 따라잡으면 재개한다.
+일반 stdout burst는 8ms 또는 64KiB 중 먼저 도달한 조건으로 짧게 coalescing한 뒤 `MSG_STDOUT`으로 보낸다. stdin, web stdin, resize, heartbeat, kill session message는 지연하지 않는다. WebSocket backpressure가 커지면 pty output을 잠시 멈추고 client가 따라잡으면 재개한다.
 
 ## terminal input과 앱 단축키
 
@@ -78,7 +78,9 @@ tmux title은 다음 형식이다.
 2. pane shell PID 아래 child process 탐색.
 3. Linux는 `/proc/{pid}/task/{pid}/children`을 우선 사용하고, 다른 플랫폼은 process utility fallback을 사용한다.
 4. process command에서 `codex`를 확인하고 cwd를 읽는다.
-5. `~/.codex/sessions/` 아래 JSONL을 session id 또는 cwd로 매칭.
+5. `~/.codex/sessions/` 아래 JSONL을 session id 또는 같은 cwd의 process start time으로 매칭.
+
+Codex CLI가 process 시작 후 JSONL을 늦게 쓰는 경우가 있어 start time 매칭은 120초 허용치를 둔다. `detectActiveCodexSession`은 live Codex process가 확인된 뒤에도 session id/start time으로 JSONL을 찾지 못하면 같은 cwd의 최신 JSONL을 마지막 보정으로 사용한다. 일반 JSONL 검색은 cwd만으로 최신 파일을 고르지 않는다.
 
 새 코드에서 process/title/session 정보를 다룰 때는 직접 process command를 흩뿌리지 않고 기존 helper를 우선 사용한다.
 
@@ -88,12 +90,13 @@ tmux title은 다음 형식이다.
 | `getSessionCwd(session)` | `src/lib/tmux.ts` | pane cwd |
 | `getSessionPanePid(session)` | `src/lib/tmux.ts` | pane shell PID |
 | `checkTerminalProcess(session)` | `src/lib/tmux.ts` | resume 전 shell 확인 |
+| `getChildPids(panePid)` | `src/lib/session-detection.ts` | pane 아래 process tree 조회 |
 | `isCodexRunning(panePid)` | `src/lib/codex-session-detection.ts` | Codex process 감지 |
 | `detectActiveCodexSession(panePid)` | `src/lib/codex-session-detection.ts` | active Codex session metadata |
 
 ## Timeline WebSocket
 
-Endpoint는 `/api/timeline?session={name}&panelType={provider}`다. 서버는 provider가 감지한 JSONL을 tail하면서 초기 tail snapshot과 append event를 보낸다.
+Endpoint는 `/api/timeline?session={name}&panelType={provider}`다. 서버는 provider가 감지한 JSONL을 tail하면서 초기 tail snapshot과 append event를 보낸다. 같은 JSONL의 file size/mtime/maxEntries가 그대로이면 watcher의 tail snapshot cache를 재사용해 foreground reconnect와 reload의 초기 tail 재파싱을 줄인다.
 
 | 모듈 | 책임 |
 |---|---|
@@ -103,7 +106,7 @@ Endpoint는 `/api/timeline?session={name}&panelType={provider}`다. 서버는 pr
 | `src/lib/timeline-entry-dedupe.ts` | 같은 record 재수신과 paired assistant record 중복 방지용 fingerprint |
 | `src/lib/timeline-entry-merge.ts` | init/append/load-more 병합, pending user message 보존 |
 
-재연결이나 모바일 foreground 복귀 중 같은 JSONL 구간이 `timeline:init`과 `timeline:append`로 겹쳐 도착할 수 있다. client는 stable id와 fingerprint를 함께 사용해 중복 assistant output, tool result, pending user message를 한 번만 표시한다.
+재연결이나 모바일 foreground 복귀 중 같은 JSONL 구간이 `timeline:init`과 `timeline:append`로 겹쳐 도착할 수 있다. client는 stable id와 fingerprint를 함께 사용해 중복 assistant output, tool result, pending user message를 한 번만 표시한다. append burst는 animation frame 단위로 merge하고, 기존 timeline row는 entry reference가 유지되면 memo로 재렌더를 건너뛴다.
 
 Codex CLI는 같은 assistant 문장을 `event_msg.agent_message`와 paired `response_item.message` 두 record로 기록할 수 있다. parser와 client merge는 exact timestamp가 아니라 normalized role/text와 짧은 시간창을 기준으로 near-duplicate를 제거한다.
 
@@ -123,8 +126,9 @@ DIFF 패널은 별도 git workspace를 저장하지 않고 현재 tab의 tmux se
 | binary/대용량 파일 | 실제 내용을 읽지 않고 binary placeholder diff로 표시 |
 | client fetch | 15초 timeout 후 오류 toast와 panel message 표시 |
 | render | 파일 20개 초과 또는 hunk line 1200줄 초과 시 기본 접힘 |
+| full diff cache | 같은 `cwd + diff hash`는 짧은 서버 메모리 cache로 재사용 |
 
-`hashOnly=true` polling은 전체 diff를 만들지 않고 hash, ahead/behind, fetch 여부만 확인한다. refresh나 최초 진입처럼 전체 diff가 필요한 경우에도 제한을 초과한 untracked 파일 수는 응답의 `untrackedSkipped`, `untrackedTotal`로 내려 보내 사용자에게 생략 안내를 표시한다.
+`hashOnly=true` polling은 전체 diff를 만들지 않고 hash, ahead/behind, fetch 여부만 확인한다. browser tab이 hidden 상태이면 client는 polling을 건너뛰고 visible 복귀 시 즉시 다시 확인한다. refresh나 최초 진입처럼 전체 diff가 필요한 경우에도 제한을 초과한 untracked 파일 수는 응답의 `untrackedSkipped`, `untrackedTotal`로 내려 보내 사용자에게 생략 안내를 표시한다.
 
 ## 서버 시작 순서
 
@@ -145,6 +149,7 @@ DIFF 패널은 별도 git workspace를 저장하지 않고 현재 tab의 tmux se
 |---|---|
 | `src/lib/tmux.ts` | tmux command wrapper |
 | `src/lib/terminal-server.ts` | terminal WebSocket과 node-pty bridge |
+| `src/lib/terminal-output-buffer.ts` | stdout burst coalescing helper |
 | `src/lib/terminal-protocol.ts` | binary protocol constant |
 | `src/lib/timeline-server.ts` | timeline WebSocket과 JSONL watcher |
 | `src/lib/timeline-server-state.ts` | timeline shared singleton state |

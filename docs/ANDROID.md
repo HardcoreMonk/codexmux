@@ -71,6 +71,7 @@ Android 앱 버전은 repo root의 `package.json` 버전을 사용합니다.
 - React 모바일 화면은 워크스페이스/탭 선택 항목, 하단 탭 바, 그룹 헤더, 상태 화면에 터치 눌림 상태와 focus-visible ring을 제공합니다.
 - terminal input, reconnect flow, WebView navigation은 안정성을 우선하므로 시각 개선보다 구조 변경을 최소화합니다.
 - 물리 키보드의 `Ctrl+D`와 terminal toolbar의 Ctrl 조합은 Codex CLI/shell 제어 입력으로 전달합니다. 앱 단축키가 이 입력을 가로채지 않아야 합니다.
+- CODEX 화면이 session 확인 또는 생성 중이면 timeline이 아직 붙지 않았더라도 하단 terminal preview를 표시해 tmux의 실제 Codex 출력을 확인할 수 있게 합니다.
 
 ## Connection Flow
 
@@ -87,6 +88,12 @@ Android 앱 버전은 repo root의 `package.json` 버전을 사용합니다.
 Tailscale Serve HTTPS 주소를 우선 사용합니다. 로컬 개발용 `http://` 접근은 manifest와 Capacitor 설정에서 허용하지만, 실사용은 HTTPS가 더 안정적입니다.
 
 Capacitor Android의 `allowNavigation` wildcard는 domain label 개수를 정확히 맞춰야 합니다. Tailscale Serve 주소가 보통 `<machine>.<tailnet>.ts.net` 형태이므로 `capacitor.config.ts`에는 `*.ts.net`뿐 아니라 `*.*.ts.net`도 함께 허용합니다.
+
+## Foreground Reconnect
+
+Android WebView가 백그라운드로 들어가면 JavaScript timer와 네트워크 stack이 멈추면서 WebSocket 객체가 `OPEN` 상태로 남아도 실제 TCP 연결은 죽을 수 있습니다. 모바일 앱은 `visibilitychange`, `pagehide/pageshow`, `focus`, `online` 복귀 신호를 받으면 workspace/layout을 다시 동기화하고, 일정 시간 이상 hidden 상태였던 경우 terminal/status/timeline/sync WebSocket을 `readyState`와 관계없이 새로 연결합니다.
+
+이 경로는 서버가 내려주는 React 코드이므로 native Android 파일을 바꾸지 않는 한 APK 재배포가 필요 없습니다. `corepack pnpm build` 후 실행 중인 codexmux 서비스를 재시작하면 기존 Android 앱 WebView가 새 reconnect 로직을 받습니다.
 
 ## Failure Handling
 

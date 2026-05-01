@@ -37,10 +37,15 @@ StatusManager
 | `false` | Codex process가 없음 |
 
 Codex 감지는 pane PID 아래 child process를 따라가며 `codex`를 찾고, session id 또는
-process start time으로 `~/.codex/sessions/YYYY/MM/DD/*.jsonl`을 연결한다. cwd만으로
-가장 최근 JSONL을 선택하지 않는다. 같은 workspace에서 여러 Codex tab이 동시에
-실행될 수 있으므로, tab에 저장된 `agentSessionId`/`agentJsonlPath`를 우선 보존하고
-rollout 파일명은 plain Codex UUID로 정규화한다.
+process start time으로 `~/.codex/sessions/YYYY/MM/DD/*.jsonl`을 연결한다. Linux에서는
+`src/lib/session-detection.ts`의 `/proc` 기반 helper로 child PID, command, cwd, start time을
+읽어 상태 polling 중 `pgrep`/`ps` subprocess 생성을 피한다. Codex CLI가
+프로세스 시작 후 늦게 JSONL을 남기는 경우를 고려해 process start time 매칭은 120초
+허용치를 둔다. cwd fallback은 live Codex process가 확인된 `detectActiveCodexSession`
+경로에서만 마지막 보정으로 사용한다. 일반 JSONL 검색은 cwd만으로 가장 최근 JSONL을
+선택하지 않는다. 같은 workspace에서 여러 Codex tab이 동시에 실행될 수 있으므로, tab에
+저장된 `agentSessionId`/`agentJsonlPath`를 우선 보존하고 rollout 파일명은 plain Codex
+UUID로 정규화한다.
 
 ## work state
 

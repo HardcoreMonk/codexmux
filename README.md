@@ -133,16 +133,17 @@ corepack pnpm start
 ## 주요 기능
 
 - tmux 기반 영속 세션: 브라우저를 닫아도 터미널과 Codex 작업 상태 유지
-- 멀티 워크스페이스: 패널 분할, 탭, 작업 디렉터리, 사이드바 상태 저장
-- Codex 상태 감지: 작업중, 입력 대기, 리뷰 대기, 세션 resume 상태 표시
+- 멀티 워크스페이스: 패널 분할, 탭, 작업 디렉터리, 이름/그룹 편집, 사이드바 상태 저장
+- Codex 상태 감지: 작업중, 입력 대기, 리뷰 대기, 세션 resume, 지연 생성 JSONL 연결 상태 표시
 - Codex CLI 호환 입력: 터미널과 Codex 입력창에서 `Ctrl+D`를 EOF로 전달해 프로세스 종료 처리
 - 라이브 타임라인: Codex JSONL을 읽어 메시지, tool call, permission prompt, reasoning summary 표시
 - 안정적인 재연결: 타임라인 entry id와 중복 제거를 JSONL record identity 기준으로 처리
-- 모바일 UI: PWA, iPad Safari, Android 앱, Web Push, 재접속, 입력 draft 보존
+- 모바일 UI: PWA, iPad Safari, Android 앱, Web Push, foreground 재접속, 입력 draft 보존, CODEX 확인 중 터미널 preview
 - 알림 제어: 작업 완료 toast, 시스템 알림, 완료 사운드 on/off
 - Git 워크플로: status, diff, history, fetch, pull, push, 충돌/dirty 상태 전달
-- DIFF 안정성: 대량 diff와 untracked 파일은 제한, 생략 안내, 기본 접힘, timeout으로 UI hang 방지
-- 사용량 통계: token, cache read/write, 비용 추정, 프로젝트별 분석, 일별 리포트
+- DIFF 안정성: 대량 diff와 untracked 파일은 제한, 생략 안내, 짧은 서버 캐시, 기본 접힘, timeout으로 UI hang 방지
+- 사용량 통계: token, cache read/write, 비용 추정, 프로젝트별 분석, 일별 리포트, cold-start 중복 계산 방지
+- 성능 관측: 인증된 `/api/debug/perf` snapshot으로 process/event loop/WebSocket/watcher/poll/cache/terminal stdout 지표 확인
 - 빠른 프롬프트: 기본 내장 프롬프트는 `Commit`만 제공하며 사용자 프롬프트를 추가할 수 있음
 - CLI bridge: `codexmux tab ...` 명령으로 workspace/tab/browser API 제어
 
@@ -219,7 +220,7 @@ codexmux 상태는 `~/.codexmux/`에 저장됩니다. Codex CLI 원본 세션은
 | `push-subscriptions.json` | Web Push 구독 정보 |
 | `cli-token` | CLI와 hook bridge의 `x-cmux-token` |
 | `port` | 현재 실행 중인 server port |
-| `stats/` | Codex usage cache와 daily report |
+| `stats/` | Codex usage cache와 daily report. 런타임 stats build는 in-flight promise로 중복 계산을 피함 |
 | `logs/` | 서버 로그 |
 | `uploads/` | 임시 첨부 파일 |
 
@@ -255,6 +256,8 @@ corepack pnpm android:keystore
 LOG_LEVEL=debug corepack pnpm dev
 LOG_LEVELS=status=debug,tmux=trace corepack pnpm dev
 ```
+
+인증된 session cookie 또는 `x-cmux-token`이 있으면 `/api/debug/perf`에서 process memory, event loop delay, WebSocket 연결 수, timeline watcher, status poll, diff/stats cache 지표를 확인할 수 있습니다. prompt, terminal output, cwd, JSONL path 같은 본문/경로 데이터는 반환하지 않습니다.
 
 ## Electron 개발
 
@@ -295,6 +298,8 @@ corepack pnpm pack:electron
 ## Android 앱 개발
 
 Android 앱은 Capacitor 기반 클라이언트 shell로 `android/`에 포함되어 있습니다. 모바일 기기에서 Codex/tmux를 직접 실행하는 구조가 아니라, 데스크톱 또는 서버에서 실행 중인 codexmux에 안전하게 접속합니다.
+
+서버가 내려주는 React 코드가 terminal/status/timeline/sync WebSocket의 foreground reconnect를 담당하므로, native Android 파일을 바꾸지 않는 UI/연결성 수정은 APK 재배포 없이 `corepack pnpm build`와 서비스 재시작으로 반영됩니다.
 
 구성:
 
@@ -400,7 +405,7 @@ Codex JSONL
 
 - 터미널 I/O는 xterm.js, WebSocket, node-pty, tmux로 연결됩니다.
 - 터미널과 Codex 입력창에서 `Ctrl+D`는 앱 단축키보다 우선해 EOF(`0x04`)로 전달됩니다. Linux/Windows의 오른쪽 분할 기본 단축키는 `Ctrl+Alt+D`이고, macOS는 `⌘D`입니다.
-- 상태 감지는 tmux pane PID 아래 Codex process와 Codex JSONL 변경을 함께 봅니다.
+- 상태 감지는 tmux pane PID 아래 Codex process와 Codex JSONL 변경을 함께 봅니다. Codex CLI가 프로세스 시작 후 JSONL을 늦게 남기는 경우를 고려해 session id, process start time, live process 확인 후 cwd fallback 순서로 연결합니다.
 - 상태 전이, 알림 정책, session id mapping, 타임라인 병합/dedupe는 순수 모듈로 분리되어 있습니다.
 - 타임라인 entry id는 JSONL byte offset과 record identity 기반으로 생성되며, Codex가 같은 assistant text를 `event_msg.agent_message`와 `response_item.message`로 나눠 기록하는 경우도 near-duplicate 규칙으로 한 번만 표시합니다.
 - DIFF 패널은 tmux session cwd를 기준으로 Git 상태를 읽고, 대량 untracked 파일과 렌더링 비용을 제한합니다.
@@ -411,7 +416,9 @@ Codex JSONL
 
 | 문서 | 내용 |
 |---|---|
+| [docs/README.md](docs/README.md) | 내부 문서 맵과 갱신 규칙 |
 | [docs/ADR.md](docs/ADR.md) | 아키텍처 결정 기록과 변경 기준 |
+| [docs/ARCHITECTURE-LOGIC.md](docs/ARCHITECTURE-LOGIC.md) | 아키텍처 흐름과 서비스 로직 |
 | [docs/STATUS.md](docs/STATUS.md) | Codex 작업 상태 감지와 status flow |
 | [docs/TMUX.md](docs/TMUX.md) | tmux, terminal WebSocket, session 관리 |
 | [docs/DATA-DIR.md](docs/DATA-DIR.md) | `~/.codexmux/` 구조와 삭제 기준 |
@@ -552,6 +559,8 @@ corepack pnpm pack:electron
 
 The Android app is included under `android/` as a Capacitor-based client shell. It connects to a running codexmux server instead of running Codex/tmux directly on the phone.
 
+Foreground reconnect for terminal/status/timeline/sync WebSockets lives in the React code served by the codexmux server. UI and connection fixes that do not touch native Android files are picked up after `corepack pnpm build` and a service restart, without rebuilding the APK.
+
 Structure:
 
 - `capacitor.config.ts`: Android app id, WebView navigation, and cookie settings
@@ -644,18 +653,35 @@ On iPad, use Safari and add codexmux to the Home Screen. A native iPadOS app is 
 ### Features
 
 - Persistent tmux sessions for browser and mobile reconnects
-- Multi-workspace layout with panes, tabs, working directories, and sidebar state
-- Codex status detection for busy, idle, input-needed, review-needed, and resume states
+- Multi-workspace layout with panes, tabs, working directories, workspace rename/group editing, and sidebar state
+- Codex status detection for busy, idle, input-needed, review-needed, resume, and delayed JSONL attach states
 - Codex CLI-compatible input, including `Ctrl+D` EOF delivery from terminal and Codex input focus
 - Live timeline from Codex JSONL logs
-- PWA, iPad Safari, Android app, Web Push, mobile reconnect, and input draft preservation
+- PWA, iPad Safari, Android app, Web Push, foreground reconnect, input draft preservation, and terminal preview while CODEX is checking
 - Stable timeline entry ids and duplicate suppression across reconnects and paired Codex records
 - Notification controls for task-complete toast, system notifications, and completion sound
 - Git status, diff, history, fetch, pull, and push flows
-- Diff safety for large changes through bounded untracked handling, skipped-file notices, default collapse, and request timeouts
-- Usage stats, token cache analysis, cost estimates, and daily reports
+- Diff safety for large changes through bounded untracked handling, skipped-file notices, short server cache, default collapse, and request timeouts
+- Usage stats, token cache analysis, cost estimates, daily reports, and in-flight cache build dedupe
+- Authenticated `/api/debug/perf` snapshot for process, event loop, WebSocket, watcher, polling, cache, and terminal stdout metrics
 - Quick prompts with the built-in `Commit` prompt plus user-defined prompts
 - CLI bridge through `codexmux tab ...`
+
+### Related Docs
+
+| Document | Contents |
+|---|---|
+| [docs/README.md](docs/README.md) | Internal documentation map and update rules |
+| [docs/ADR.md](docs/ADR.md) | Architecture decisions and change triggers |
+| [docs/ARCHITECTURE-LOGIC.md](docs/ARCHITECTURE-LOGIC.md) | Architecture flow and service logic |
+| [docs/STATUS.md](docs/STATUS.md) | Codex work-state detection and status flow |
+| [docs/TMUX.md](docs/TMUX.md) | tmux, terminal WebSocket, and session management |
+| [docs/DATA-DIR.md](docs/DATA-DIR.md) | `~/.codexmux/` layout and deletion guidance |
+| [docs/SYSTEMD.md](docs/SYSTEMD.md) | Linux user service operation |
+| [docs/STYLE.md](docs/STYLE.md) | Theme and color rules |
+| [docs/ELECTRON.md](docs/ELECTRON.md) | Electron desktop development and packaging |
+| [docs/ANDROID.md](docs/ANDROID.md) | Android Capacitor development and build |
+| [docs/FOLLOW-UP.md](docs/FOLLOW-UP.md) | Release checks and post-MVP backlog |
 
 ### Security And Data
 
