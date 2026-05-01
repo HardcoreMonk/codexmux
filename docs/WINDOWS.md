@@ -54,7 +54,8 @@ node .\scripts\windows-codex-sync.mjs
 | `--shell` | `pwsh` | source shell label |
 | `--codex-dir` | `%USERPROFILE%\.codex\sessions` | 감시할 Codex JSONL root |
 | `--interval-ms` | `1500` | polling interval |
-| `--since-hours` | `72` | 시작 시 스캔할 최근 파일 범위 |
+| `--since-hours` | `all` | 스캔할 파일 범위. 숫자는 최근 N시간, `0` 또는 `all`은 전체 |
+| `--state-file` | `%USERPROFILE%\.codexmux\windows-codex-sync-state.json` | local offset state 저장 위치 |
 | `--once` | false | 한 번 동기화하고 종료 |
 
 예시:
@@ -76,12 +77,12 @@ node .\scripts\windows-codex-sync.mjs `
 ~/.codexmux/remote/codex/{sourceId}/{sessionId}.jsonl.meta.json
 ```
 
-`.meta.json`에는 Windows host, shell, cwd, 원본 Windows path, remote offset, 마지막 활동 시간이 들어간다. 이 복사본을 삭제해도 Windows 원본 `%USERPROFILE%\.codex\sessions`는 삭제되지 않는다.
+`.meta.json`에는 Windows host, shell, cwd, 원본 Windows path, remote offset, 마지막 활동 시간, session list 표시용 첫 메시지와 turn count가 들어간다. 이 복사본을 삭제해도 Windows 원본 `%USERPROFILE%\.codex\sessions`는 삭제되지 않는다.
 
 ## UI 동작
 
 - session list에 `HOST / pwsh` source badge가 표시된다.
-- remote session은 Linux workspace cwd 필터를 적용하지 않고 최근 활동 순으로 섞인다.
+- remote session은 Linux local session과 함께 최근 활동 순으로 섞인다.
 - remote session을 선택하면 `codex resume`을 실행하지 않고 저장된 JSONL을 timeline WebSocket으로 구독한다.
 - 입력창으로 Windows `pwsh`에 명령을 보내는 동작은 아직 제공하지 않는다.
 
@@ -91,4 +92,4 @@ node .\scripts\windows-codex-sync.mjs `
 
 409 응답은 Windows companion의 local offset과 서버에 저장된 offset이 다르다는 뜻이다. companion은 해당 파일의 local sync state를 버리고 full resend를 시도한다.
 
-session list에 보이지 않으면 `--once`로 한 번 실행해 오류를 확인하고, 서버가 Windows에서 접근 가능한지 먼저 확인한다.
+session list에 보이지 않으면 `--once`로 한 번 실행해 오류를 확인하고, 서버가 Windows에서 접근 가능한지 먼저 확인한다. 과거 기록까지 모두 가져오려면 기본값 그대로 실행하거나 `--since-hours all`을 명시한다. 최근 파일만 동기화하고 싶을 때만 `--since-hours 72`처럼 범위를 줄인다.

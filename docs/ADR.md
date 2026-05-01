@@ -111,4 +111,11 @@
 - Status: Accepted
 - Decision: Windows 11 `pwsh`에서 실행하는 Codex CLI 연동은 우선 companion script가 `%USERPROFILE%\.codex\sessions` JSONL을 읽어 `/api/remote/codex/sync`로 보내는 read-only timeline sync로 제공한다.
 - Rationale: Windows shell process는 Linux 서버의 tmux/node-pty process tree 아래에 없어서 기존 terminal attach, process detection, resume path를 그대로 공유할 수 없다. JSONL 동기화는 Codex transcript source of truth를 보존하면서 모바일/웹 timeline 확인 문제를 먼저 해결한다.
-- Consequences: remote Codex 복사본은 `~/.codexmux/remote/codex/`에 저장하고 원본 Windows Codex 상태는 수정하지 않는다. remote session은 session list에 표시되지만 선택 시 `codex resume`이나 `pwsh` 제어가 아니라 저장된 JSONL path를 timeline WebSocket에 구독한다. Windows terminal 입력 제어가 필요하면 별도 pty relay 설계와 인증/권한 모델을 다시 ADR로 남긴다.
+- Consequences: remote Codex 복사본은 `~/.codexmux/remote/codex/`에 저장하고 원본 Windows Codex 상태는 수정하지 않는다. Windows companion은 기본적으로 전체 session history를 스캔하되 local offset state로 반복 전송을 피한다. session list는 sidecar metadata로 구성하고 JSONL 본문은 timeline subscribe 때 읽는다. remote session은 session list에 표시되지만 선택 시 `codex resume`이나 `pwsh` 제어가 아니라 저장된 JSONL path를 timeline WebSocket에 구독한다. Windows terminal 입력 제어가 필요하면 별도 pty relay 설계와 인증/권한 모델을 다시 ADR로 남긴다.
+
+## ADR-015: Session list는 백그라운드 인덱스를 사용한다
+
+- Status: Accepted
+- Decision: `/api/timeline/sessions`는 요청마다 Codex JSONL을 재귀 스캔하지 않고 `SessionIndexService`의 `globalThis.__ptSessionIndex` snapshot을 읽는다. 인덱스는 `~/.codexmux/session-index.json`에 persist하고 백그라운드 refresh로 갱신한다.
+- Rationale: Linux local 세션과 Windows remote 세션이 늘어나면 session list 요청 경로에서 전체 JSONL 파싱, 정렬, slice가 반복되어 메모리와 CPU가 급증한다. session 목록은 실시간 terminal byte stream보다 지연 허용치가 크므로 request path에서 source scan을 제거하는 편이 안정적이다.
+- Consequences: Linux Codex JSONL은 mtime/size가 바뀐 파일만 다시 파싱하고, Windows remote session은 sidecar metadata를 사용한다. session list API는 index snapshot을 페이지네이션만 해서 반환한다. Codex provider의 JSONL lookup은 index를 먼저 사용하고 miss 때만 filesystem scan으로 fallback한다. Windows sync 수신은 index refresh를 debounce로 요청한다. `/api/debug/perf`는 session index의 파일 수, cache hit/miss, build duration을 노출한다.

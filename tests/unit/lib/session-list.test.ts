@@ -19,7 +19,7 @@ describe('session-list', () => {
     await fs.rm(tempHome, { recursive: true, force: true });
   });
 
-  it('lists Codex sessions from ~/.codex/sessions filtered by cwd', async () => {
+  it('lists Linux Codex sessions across workspace cwd values', async () => {
     const dir = path.join(tempHome, '.codex', 'sessions', '2026', '04', '27');
     await fs.mkdir(dir, { recursive: true });
 
@@ -60,13 +60,22 @@ describe('session-list', () => {
 
     const { listSessions } = await import('@/lib/session-list');
     const sessions = await listSessions('tmux-session', '/work/project-a', 'codex');
+    const projectA = sessions.find((session) => session.sessionId === '019dcf1f-3a02-73a0-a79e-8703b99a2f30');
+    const projectB = sessions.find((session) => session.sessionId === '019dcf20-3a02-73a0-a79e-8703b99a2f31');
 
-    expect(sessions).toHaveLength(1);
-    expect(sessions[0]).toMatchObject({
+    expect(sessions).toHaveLength(2);
+    expect(projectA).toMatchObject({
       sessionId: '019dcf1f-3a02-73a0-a79e-8703b99a2f30',
       startedAt: '2026-04-27T01:00:00.000Z',
       firstMessage: 'Start Codex work',
       turnCount: 1,
+      source: 'local',
+      cwd: '/work/project-a',
+    });
+    expect(projectB).toMatchObject({
+      sessionId: '019dcf20-3a02-73a0-a79e-8703b99a2f31',
+      source: 'local',
+      cwd: '/work/project-b',
     });
   });
 
@@ -111,10 +120,58 @@ describe('session-list', () => {
     expect(sessions[0]).toMatchObject({
       sessionId: '019dcf30-3a02-73a0-a79e-8703b99a2f32',
       firstMessage: 'Windows pwsh work',
+      turnCount: 1,
       source: 'remote',
       sourceLabel: 'WIN11 / pwsh',
       cwd: 'C:\\Users\\monk\\project',
       remotePath: 'C:\\Users\\monk\\.codex\\sessions\\rollout-019dcf30-3a02-73a0-a79e-8703b99a2f32.jsonl',
+    });
+  });
+
+  it('uses remote sidecar metadata without parsing the JSONL body for session lists', async () => {
+    const { writeRemoteCodexChunk } = await import('@/lib/remote-codex-store');
+    const content = [
+      jsonLine({
+        timestamp: '2026-04-27T04:00:01.000Z',
+        type: 'session_meta',
+        payload: {
+          id: '019dcf40-3a02-73a0-a79e-8703b99a2f33',
+          timestamp: '2026-04-27T04:00:00.000Z',
+          cwd: 'C:\\Users\\monk\\large-project',
+        },
+      }),
+      jsonLine({
+        timestamp: '2026-04-27T04:00:02.000Z',
+        type: 'event_msg',
+        payload: { type: 'user_message', message: 'Cached remote preview' },
+      }),
+    ].join('\n');
+
+    const result = await writeRemoteCodexChunk({
+      sourceId: 'win11',
+      host: 'WIN11',
+      shell: 'pwsh',
+      cwd: 'C:\\Users\\monk\\large-project',
+      windowsPath: 'C:\\Users\\monk\\.codex\\sessions\\rollout-019dcf40-3a02-73a0-a79e-8703b99a2f33.jsonl',
+      sessionId: '019dcf40-3a02-73a0-a79e-8703b99a2f33',
+      startedAt: '2026-04-27T04:00:00.000Z',
+      mtimeMs: new Date('2026-04-27T04:00:02.000Z').getTime(),
+      offset: 0,
+      reset: true,
+      content: Buffer.from(content),
+    });
+    await fs.writeFile(result.jsonlPath, '{not-json}\n');
+
+    const { listSessions } = await import('@/lib/session-list');
+    const sessions = await listSessions('tmux-session', '/work/project-a', 'codex');
+
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]).toMatchObject({
+      sessionId: '019dcf40-3a02-73a0-a79e-8703b99a2f33',
+      firstMessage: 'Cached remote preview',
+      turnCount: 1,
+      source: 'remote',
+      sourceLabel: 'WIN11 / pwsh',
     });
   });
 });

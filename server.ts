@@ -26,6 +26,7 @@ import { getCurrentSpec, initAccessFilter, isRequestAllowed, setBoundHost } from
 import { initShellPath } from './src/lib/preflight';
 import { cleanupExpiredUploads } from './src/lib/uploads-store';
 import { cleanupOrphanSessionStats } from './src/lib/session-stats';
+import { initSessionIndexService, shutdownSessionIndexService } from './src/lib/session-index';
 import { createLogger } from './src/lib/logger';
 import pkg from './package.json';
 
@@ -95,6 +96,7 @@ const handleWsUpgrade = (
 const NO_AUTH_WS_PATHS = new Set(['/api/install']);
 
 const shutdownWs = async () => {
+  shutdownSessionIndexService();
   gracefulTimelineShutdown();
   gracefulSyncShutdown();
   gracefulStatusShutdown();
@@ -368,6 +370,7 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   await applyConfig();
   await initWorkspaceStore();
   await autoResumeOnStartup();
+  await initSessionIndexService();
   await getStatusManager().init();
 
   const envHost = process.env.HOST?.trim();

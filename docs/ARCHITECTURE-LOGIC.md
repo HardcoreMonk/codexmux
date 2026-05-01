@@ -30,6 +30,7 @@ Runtime state
 | Server entry | `server.ts` | process lifecycle, Next.js, WebSocket upgrade, auth gate, startup/shutdown |
 | Terminal | `src/lib/terminal-server.ts`, `src/lib/tmux.ts` | tmux attach, stdin/stdout/resize, terminal session lifecycle |
 | Timeline | `src/lib/timeline-server.ts`, `src/lib/timeline-server-state.ts` | Codex JSONL subscribe, file watch, resume, timeline init/append |
+| Session Index | `src/lib/session-index.ts`, `src/lib/session-list.ts`, `src/pages/api/timeline/sessions.ts` | Linux/remote Codex session 목록 인덱스, session list snapshot |
 | Status | `src/lib/status-manager.ts`, `src/lib/status-server.ts` | tab status polling, hook event merge, notification dispatch |
 | Workspace | `src/lib/workspace-store.ts`, `src/lib/layout-store.ts` | workspace list, layout tree, pane/tab mutation, persisted metadata |
 | Provider | `src/lib/providers/*`, `src/lib/codex-session-detection.ts` | Codex command/session/jsonl adapter |
@@ -51,10 +52,11 @@ Runtime state
 6. workspace store와 layout을 초기화한다.
 7. 저장된 Codex session이 있으면 startup resume을 시도한다.
 8. `StatusManager` polling과 상태 복구를 시작한다.
-9. network access 설정으로 bind host와 request allowlist를 결정한다.
-10. development이면 Next.js dev server를 직접 붙이고, production이면 standalone Next.js server를 내부 port에 띄운 뒤 외부 server가 proxy한다.
-11. WebSocket upgrade route를 연결한다.
-12. hook/statusline bridge, CLI token, upload/stats cleanup을 정리한다.
+9. `SessionIndexService`가 persisted index를 로드하고 백그라운드 refresh를 시작한다.
+10. network access 설정으로 bind host와 request allowlist를 결정한다.
+11. development이면 Next.js dev server를 직접 붙이고, production이면 standalone Next.js server를 내부 port에 띄운 뒤 외부 server가 proxy한다.
+12. WebSocket upgrade route를 연결한다.
+13. hook/statusline bridge, CLI token, upload/stats cleanup을 정리한다.
 
 ## HTTP와 WebSocket 라우팅
 
@@ -88,6 +90,7 @@ codexmux가 쓰는 영속 상태는 `~/.codexmux/` 아래에 둔다.
 | message history | `workspaces/{wsId}/message-history.json` | 없음 또는 API 응답 |
 | keybindings/sidebar/quick prompts | 각 JSON 파일 | 필요 시 sync/config 또는 client refresh |
 | status/session history/stats | `session-history.json`, `stats/` | status/timeline |
+| session list index | `session-index.json` | timeline/session-list |
 | live terminal process | tmux | terminal/status/timeline |
 | Codex transcript | `~/.codex/sessions/**/*.jsonl`, `~/.codexmux/remote/codex/**/*.jsonl` | timeline/status |
 
@@ -187,10 +190,27 @@ Windows Codex CLI
 
 운영 규칙:
 
-- companion은 원본 Windows JSONL을 수정하지 않고 byte offset 기반으로 append chunk만 전송한다.
+- companion은 원본 Windows JSONL을 수정하지 않고 byte offset 기반으로 append chunk만 전송한다. 기본 스캔 범위는 전체 session history이며, local state file로 전송 offset을 보존해 재시작 때 전체 파일을 반복 전송하지 않는다.
 - 서버는 source id와 session id를 파일명으로 sanitize하고, offset mismatch가 나면 기대 offset을 반환한다.
-- remote session은 Linux workspace cwd 필터를 적용하지 않는다. Windows cwd는 session list의 source metadata로만 표시한다.
+- session list는 Linux `~/.codex/sessions`와 Windows remote copy를 같은 최근 활동 목록으로 합친다. Linux session은 session id로 resume하고, Windows remote session은 저장된 JSONL path를 구독한다.
+- session list는 remote JSONL 본문 전체를 매번 파싱하지 않고 sidecar metadata로 목록을 만든다. JSONL 본문은 timeline subscribe 때만 읽는다.
+- Windows cwd는 session list의 source metadata로만 표시한다.
 - remote session 선택은 Codex resume이 아니라 저장된 JSONL path에 대한 timeline subscribe다. Windows `pwsh` 입력/제어는 이 범위에 포함하지 않는다.
+
+## Session Index 서비스 로직
+
+`SessionIndexService`는 session list API에서 JSONL 전체를 직접 스캔하지 않도록 Linux Codex JSONL과 Windows remote sidecar를 하나의 snapshot으로 정규화한다.
+
+1. startup에서 `~/.codexmux/session-index.json`을 읽어 즉시 사용 가능한 snapshot을 만든다.
+2. 백그라운드 refresh가 `~/.codex/sessions/**/*.jsonl`과 `~/.codexmux/remote/codex/**/*.jsonl`의 `mtime`/size를 비교한다.
+3. 변경된 Linux JSONL만 본문을 파싱해 첫 user message, turn count, cwd, activity time을 갱신한다.
+4. Windows remote session은 `.meta.json` sidecar만 읽어 목록 metadata를 만든다.
+5. `/api/timeline/sessions`는 index snapshot을 정렬/페이지네이션만 해서 반환한다.
+6. Codex provider의 `findCodexSessionJsonl()`은 먼저 index에서 session id, cwd, process start time 후보를 찾고, index miss 때만 기존 filesystem scan으로 fallback한다.
+7. Windows sync chunk 수신 후에는 index refresh를 debounce로 요청한다.
+8. `/api/debug/perf`는 session index의 indexed file 수, cache hit/miss, build duration을 숫자로 노출한다.
+
+Linux session 선택은 `codex resume <sessionId>` 경로를 유지한다. Windows remote session 선택은 저장된 JSONL path를 timeline WebSocket에 구독한다.
 
 ## Status 서비스 로직
 

@@ -36,7 +36,9 @@ codexmux의 영속 상태는 `~/.codexmux/`에 저장된다. Codex CLI의 원본
 
 Electron remote/local server mode는 같은 `~/.codexmux/config.json`을 사용한다. Android 런처의 최근 서버와 마지막 서버 URL은 Android WebView `localStorage`에 저장되며 `~/.codexmux/`에는 기록되지 않는다. Android 앱 정보와 앱 재시작은 native package metadata와 현재 Activity를 사용하므로 codexmux 데이터 디렉터리에 별도 파일을 만들지 않는다.
 
-Windows companion sync는 Windows Codex CLI의 원본 `%USERPROFILE%\.codex\sessions\**\*.jsonl`을 직접 수정하지 않고, 서버로 보낸 chunk를 `~/.codexmux/remote/codex/{sourceId}/{sessionId}.jsonl`에 복사본으로 저장한다. 같은 이름의 `.meta.json` sidecar에는 Windows host, shell, cwd, 원본 Windows path, remote offset을 기록한다.
+Windows companion sync는 Windows Codex CLI의 원본 `%USERPROFILE%\.codex\sessions\**\*.jsonl`을 직접 수정하지 않고, 서버로 보낸 chunk를 `~/.codexmux/remote/codex/{sourceId}/{sessionId}.jsonl`에 복사본으로 저장한다. 같은 이름의 `.meta.json` sidecar에는 Windows host, shell, cwd, 원본 Windows path, remote offset, 마지막 활동 시간, session list 표시용 첫 메시지와 turn count를 기록한다.
+
+`session-index.json`은 Linux `~/.codex/sessions`와 Windows remote copy의 session list metadata cache다. Codex JSONL 원본을 대체하지 않으며, 삭제해도 서버가 다음 refresh에서 다시 만든다.
 
 Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service`에 둔다. 서비스 파일은 실행 방식과 `HOST`/`PORT`를 고정하는 운영 설정이며, codexmux 앱 상태인 `~/.codexmux/`에는 포함되지 않는다.
 
@@ -55,6 +57,7 @@ Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service
 | `cmux.lock` | 단일 인스턴스 guard |
 | `rate-limits.json` | optional statusline payload 최신값 |
 | `session-history.json` | 완료된 Codex session summary |
+| `session-index.json` | Linux/Windows Codex session list metadata cache |
 | `sidebar-items.json` | sidebar 고정 항목과 표시 상태 |
 | `quick-prompts.json` | 사용자 quick prompt와 built-in prompt 표시 상태 |
 | `keybindings.json` | 앱 keyboard shortcut override |
@@ -63,7 +66,7 @@ Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service
 | `uploads/` | 임시 첨부 파일 |
 | `logs/` | 서버 로그 |
 | `remote/codex/{sourceId}/{sessionId}.jsonl` | Windows companion이 보낸 Codex CLI JSONL 복사본. timeline에서 읽기 전용으로 사용 |
-| `remote/codex/{sourceId}/{sessionId}.jsonl.meta.json` | remote source, host/shell/cwd/path, offset, activity metadata |
+| `remote/codex/{sourceId}/{sessionId}.jsonl.meta.json` | remote source, host/shell/cwd/path, offset, activity metadata, session list summary |
 | `stats/cache.json` | Codex JSONL에서 계산한 usage cache. 런타임 build는 in-flight promise로 중복 계산을 피함 |
 | `stats/daily-reports/` | `codex exec`로 생성한 일별 report |
 

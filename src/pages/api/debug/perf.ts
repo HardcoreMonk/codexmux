@@ -4,6 +4,7 @@ import { getStatusManager } from '@/lib/status-manager';
 import { getSyncPerfSnapshot } from '@/lib/sync-server';
 import { getTerminalPerfSnapshot } from '@/lib/terminal-server';
 import { getTimelinePerfSnapshot } from '@/lib/timeline-server-state';
+import { getSessionIndexPerfSnapshot } from '@/lib/session-index';
 
 const handler = (req: NextApiRequest, res: NextApiResponse): void => {
   if (req.method !== 'GET') {
@@ -20,6 +21,7 @@ const handler = (req: NextApiRequest, res: NextApiResponse): void => {
       terminal: getTerminalPerfSnapshot(),
       timeline: getTimelinePerfSnapshot(),
       sync: getSyncPerfSnapshot(),
+      sessionIndex: getSessionIndexPerfSnapshot(),
     },
   });
 };

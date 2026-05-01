@@ -8,6 +8,7 @@ import type { ISessionInfo } from '@/types/timeline';
 import type { ISessionWatcher } from '@/lib/session-detection';
 import { getChildPids, getDescendantPids, getProcessCommandLine, getProcessCwd, getProcessStartTime, isProcessRunning } from '@/lib/session-detection';
 import { getShellPath } from '@/lib/preflight';
+import { findIndexedCodexSessionJsonl } from '@/lib/session-index';
 
 const execFile = promisify(execFileCb);
 
@@ -171,6 +172,9 @@ export const findCodexSessionJsonl = async (
   cwd?: string | null,
   options: IFindCodexSessionJsonlOptions = {},
 ): Promise<ICodexSessionMeta | null> => {
+  const indexed = await findIndexedCodexSessionJsonl(sessionId, cwd, options);
+  if (indexed) return indexed;
+
   const files = await collectJsonlFiles(CODEX_SESSIONS_DIR);
   const metas = (await Promise.all(files.map(readSessionMeta)))
     .filter((meta): meta is ICodexSessionMeta => !!meta)

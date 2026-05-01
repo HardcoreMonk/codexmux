@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifyCliToken } from '@/lib/cli-token';
 import { writeRemoteCodexChunk } from '@/lib/remote-codex-store';
+import { requestSessionIndexRefresh } from '@/lib/session-index';
 
 const MAX_CONTENT_BYTES = 2 * 1024 * 1024;
 
@@ -60,6 +61,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       reset: body.reset === true,
       content,
     });
+    requestSessionIndexRefresh();
 
     return res.status(200).json({
       ok: true,

@@ -7,6 +7,7 @@ export const REMOTE_CODEX_DIR = path.join(BASE_DIR, 'remote', 'codex');
 
 const CODEX_THREAD_ID_RE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
 const MAX_SOURCE_ID_LENGTH = 80;
+const MAX_FIRST_MESSAGE_LENGTH = 200;
 
 export interface IRemoteCodexSyncInput {
   sourceId?: string | null;
@@ -42,6 +43,8 @@ export interface IRemoteCodexSidecar {
   lastActivityAt: string;
   remoteOffset: number;
   mtimeMs: number | null;
+  firstMessage?: string;
+  turnCount?: number;
   updatedAt: string;
 }
 
@@ -49,6 +52,8 @@ interface IExtractedCodexMeta {
   sessionId: string | null;
   cwd: string | null;
   startedAt: string | null;
+  firstMessage: string;
+  turnCount: number;
 }
 
 const safeSegment = (value: string): string => {
@@ -74,11 +79,34 @@ const parseIsoDate = (value: string | null | undefined): string | null => {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 };
 
+const truncateMessage = (text: string): string =>
+  text.length <= MAX_FIRST_MESSAGE_LENGTH
+    ? text
+    : text.slice(0, MAX_FIRST_MESSAGE_LENGTH) + '...';
+
+const extractCodexText = (content: unknown): string => {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+
+  return content
+    .map((item) => {
+      if (!item || typeof item !== 'object') return '';
+      const block = item as Record<string, unknown>;
+      return typeof block.text === 'string' ? block.text : '';
+    })
+    .filter(Boolean)
+    .join('\n\n');
+};
+
 const extractCodexMeta = (content: Buffer): IExtractedCodexMeta => {
   const text = content.toString('utf-8');
   let sessionId: string | null = null;
   let cwd: string | null = null;
   let startedAt: string | null = null;
+  let firstMessage = '';
+  let turnCount = 0;
+  let fallbackFirstMessage = '';
+  let fallbackTurnCount = 0;
 
   for (const line of text.split(/\r?\n/)) {
     if (!line.trim()) continue;
@@ -94,13 +122,44 @@ const extractCodexMeta = (content: Buffer): IExtractedCodexMeta => {
       if (typeof meta.id === 'string') sessionId = extractThreadId(meta.id) ?? meta.id;
       if (typeof meta.cwd === 'string') cwd = meta.cwd;
       if (typeof meta.timestamp === 'string') startedAt = parseIsoDate(meta.timestamp) ?? startedAt;
-      break;
     } catch {
       continue;
     }
   }
 
-  return { sessionId, cwd, startedAt };
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    try {
+      const record = JSON.parse(line) as Record<string, unknown>;
+      const payload = record.payload;
+      if (!payload || typeof payload !== 'object') continue;
+      const data = payload as Record<string, unknown>;
+
+      if (record.type === 'event_msg' && data.type === 'user_message') {
+        const message = typeof data.message === 'string' ? data.message.trim() : '';
+        if (message) {
+          turnCount++;
+          if (!firstMessage) firstMessage = truncateMessage(message);
+        }
+      } else if (record.type === 'response_item' && data.role === 'user') {
+        const message = extractCodexText(data.content).trim();
+        if (message && !message.startsWith('<environment_context>')) {
+          fallbackTurnCount++;
+          if (!fallbackFirstMessage) fallbackFirstMessage = truncateMessage(message);
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return {
+    sessionId,
+    cwd,
+    startedAt,
+    firstMessage: firstMessage || fallbackFirstMessage,
+    turnCount: turnCount || fallbackTurnCount,
+  };
 };
 
 const resolveRemoteJsonlPath = (sourceId: string, sessionId: string): string =>
@@ -180,6 +239,8 @@ export const writeRemoteCodexChunk = async (input: IRemoteCodexSyncInput): Promi
     lastActivityAt: input.mtimeMs ? new Date(input.mtimeMs).toISOString() : now,
     remoteOffset: nextOffset,
     mtimeMs: input.mtimeMs ?? previous?.mtimeMs ?? null,
+    firstMessage: extracted.firstMessage || (!isReset ? previous?.firstMessage : '') || '',
+    turnCount: isReset ? extracted.turnCount : (previous?.turnCount ?? 0) + extracted.turnCount,
     updatedAt: now,
   };
   await writeSidecar(jsonlPath, sidecar);

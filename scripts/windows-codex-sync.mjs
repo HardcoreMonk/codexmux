@@ -5,7 +5,6 @@ import path from 'path';
 import os from 'os';
 
 const DEFAULT_INTERVAL_MS = 1500;
-const DEFAULT_SINCE_HOURS = 72;
 const MAX_CHUNK_BYTES = 512 * 1024;
 const CODEX_THREAD_ID_RE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
 
@@ -31,6 +30,14 @@ const normalizeServer = (value) => {
   return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 };
 
+const parseSinceHours = (value) => {
+  if (!value) return null;
+  const raw = String(value).trim().toLowerCase();
+  if (raw === 'all' || raw === '0') return null;
+  const hours = Number(raw);
+  return Number.isFinite(hours) && hours > 0 ? hours : NaN;
+};
+
 const serverUrl = normalizeServer(readArg('server') || process.env.CMUX_URL || process.env.CODEXMUX_URL);
 const token = readArg('token') || process.env.CMUX_TOKEN || process.env.CODEXMUX_TOKEN;
 const sourceId = readArg('source-id') || process.env.CMUX_SOURCE_ID || os.hostname();
@@ -41,17 +48,67 @@ const codexDir = path.resolve(
   || path.join(os.homedir(), '.codex', 'sessions'),
 );
 const intervalMs = Number(readArg('interval-ms') || DEFAULT_INTERVAL_MS);
-const sinceHours = Number(readArg('since-hours') || DEFAULT_SINCE_HOURS);
+const sinceHours = parseSinceHours(readArg('since-hours') || process.env.CMUX_SINCE_HOURS);
+const stateFile = path.resolve(
+  readArg('state-file')
+  || process.env.CMUX_SYNC_STATE
+  || path.join(os.homedir(), '.codexmux', 'windows-codex-sync-state.json'),
+);
 const once = hasFlag('once');
 
 if (!serverUrl) die('Missing --server or CMUX_URL');
 if (!token) die('Missing --token or CMUX_TOKEN');
 if (!Number.isFinite(intervalMs) || intervalMs < 500) die('--interval-ms must be >= 500');
-if (!Number.isFinite(sinceHours) || sinceHours <= 0) die('--since-hours must be > 0');
+if (Number.isNaN(sinceHours)) die('--since-hours must be a positive number, 0, or all');
 
 const state = new Map();
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const loadState = async () => {
+  let raw;
+  try {
+    raw = await fs.readFile(stateFile, 'utf-8');
+  } catch {
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    const files = parsed?.files;
+    if (!files || typeof files !== 'object') return;
+    for (const [filePath, entry] of Object.entries(files)) {
+      if (!entry || typeof entry !== 'object') continue;
+      if (!Number.isFinite(entry.offset) || entry.offset < 0) continue;
+      state.set(filePath, {
+        offset: entry.offset,
+        sessionId: typeof entry.sessionId === 'string' ? entry.sessionId : null,
+        meta: entry.meta && typeof entry.meta === 'object' ? entry.meta : { cwd: null, startedAt: null },
+      });
+    }
+  } catch (err) {
+    process.stderr.write(`[warn] failed to read state file ${stateFile}: ${err instanceof Error ? err.message : err}\n`);
+  }
+};
+
+const saveState = async () => {
+  try {
+    await fs.mkdir(path.dirname(stateFile), { recursive: true });
+    const tmp = `${stateFile}.${process.pid}.tmp`;
+    await fs.writeFile(
+      tmp,
+      JSON.stringify({
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        files: Object.fromEntries(state),
+      }, null, 2),
+      { mode: 0o600 },
+    );
+    await fs.rename(tmp, stateFile);
+  } catch (err) {
+    process.stderr.write(`[warn] failed to write state file ${stateFile}: ${err instanceof Error ? err.message : err}\n`);
+  }
+};
 
 const collectJsonlFiles = async (dir, depth = 0) => {
   if (depth > 5) return [];
@@ -193,6 +250,7 @@ const syncFile = async (filePath, stat) => {
       });
       if (!result.ok && result.offsetMismatch) {
         state.delete(filePath);
+        await saveState();
         process.stderr.write(`[retry] offset mismatch for ${filePath}; server expected ${result.expectedOffset}\n`);
         return syncFile(filePath, stat);
       }
@@ -200,6 +258,7 @@ const syncFile = async (filePath, stat) => {
     }
 
     state.set(filePath, { offset: stat.size, sessionId, meta });
+    await saveState();
     process.stdout.write(`[synced] ${sessionId} ${stat.size} bytes ${filePath}\n`);
   } finally {
     await handle.close();
@@ -207,7 +266,7 @@ const syncFile = async (filePath, stat) => {
 };
 
 const scanOnce = async () => {
-  const cutoff = Date.now() - sinceHours * 60 * 60 * 1000;
+  const cutoff = sinceHours === null ? 0 : Date.now() - sinceHours * 60 * 60 * 1000;
   const files = await collectJsonlFiles(codexDir);
   const candidates = [];
   for (const file of files) {
@@ -224,7 +283,10 @@ const scanOnce = async () => {
   }
 };
 
-process.stdout.write(`[codexmux] syncing ${codexDir} -> ${serverUrl}\n`);
+await loadState();
+process.stdout.write(
+  `[codexmux] syncing ${codexDir} -> ${serverUrl} (${sinceHours === null ? 'all sessions' : `last ${sinceHours}h`})\n`,
+);
 
 do {
   await scanOnce();
