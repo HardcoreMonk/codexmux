@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { hasSession } from '@/lib/tmux';
 import { listSessionPage } from '@/lib/session-list';
-import { normalizePanelType } from '@/lib/panel-type';
+import { isAgentPanelType, normalizePanelType } from '@/lib/panel-type';
 import type { TPanelType } from '@/types/terminal';
 
 const DEFAULT_LIMIT = 50;
@@ -21,16 +21,18 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(400).json({ error: 'missing-param', message: 'tmuxSession parameter required' });
   }
 
-  const exists = await hasSession(tmuxSession);
-  if (!exists) {
-    return res.status(404).json({ error: 'tmux-session-not-found', message: `tmux session '${tmuxSession}' not found` });
-  }
-
   const limit = Math.max(1, parseInt(req.query.limit as string, 10) || DEFAULT_LIMIT);
   const offset = Math.max(0, parseInt(req.query.offset as string, 10) || 0);
 
   const cwdHint = req.query.cwd as string | undefined;
   const panelType = parsePanelType(req.query.panelType);
+
+  if (!isAgentPanelType(panelType)) {
+    const exists = await hasSession(tmuxSession);
+    if (!exists) {
+      return res.status(404).json({ error: 'tmux-session-not-found', message: `tmux session '${tmuxSession}' not found` });
+    }
+  }
 
   try {
     const page = await listSessionPage(tmuxSession, cwdHint, panelType, { offset, limit });

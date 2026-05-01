@@ -205,7 +205,7 @@ Windows Codex CLI
 2. 백그라운드 refresh가 `~/.codex/sessions/**/*.jsonl`과 `~/.codexmux/remote/codex/**/*.jsonl`의 `mtime`/size를 비교한다.
 3. 변경된 Linux JSONL만 본문을 파싱해 첫 user message, turn count, cwd, activity time을 갱신한다.
 4. Windows remote session은 `.meta.json` sidecar만 읽어 목록 metadata를 만든다.
-5. `/api/timeline/sessions`는 index snapshot에서 요청 page만 public session shape로 변환해 반환한다.
+5. `/api/timeline/sessions`는 `codex` panel 요청에서 live tmux session 존재 여부와 무관하게 index snapshot의 요청 page만 public session shape로 변환해 반환한다.
 6. Codex provider의 `findCodexSessionJsonl()`은 먼저 index에서 session id, cwd, process start time 후보를 찾고, index miss 때만 기존 filesystem scan으로 fallback한다.
 7. Windows sync chunk 수신 후에는 index refresh를 debounce로 요청한다.
 8. refresh 결과가 이전 persisted snapshot과 같으면 `session-index.json` write를 건너뛴다.

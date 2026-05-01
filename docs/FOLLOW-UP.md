@@ -16,6 +16,7 @@
 - Electron 개발/빌드 flow와 Android Capacitor shell 추가.
 - Android 런처: 저장 서버, 최근 서버, 기본 Tailscale 서버 자동 연결, 실패 복구, 앱 정보 표시, 앱 재시작.
 - Android 연결 방어: `/api/health` probe, timeout/network/HTTP/SSL 실패 복구, CORS header.
+- Release automation: `release:patch|minor|major`로 version bump, 검증, release commit/tag/push를 묶고, `deploy:local`로 build/service restart/health 확인을 수행.
 - 모바일 UI: Android 런처와 모바일 sheet/header/tab bar의 터치/focus 상태 정리.
 - 모바일 앱 정보: 서버 접속 후 mobile navigation에서 Android 앱 versionName/versionCode, package, device, Android version, 서버 버전 확인과 WebView/Activity 재시작 제공.
 - 알림 설정: 작업 완료 toast, system notification, 완료 사운드 on/off.
@@ -43,12 +44,12 @@
 8. Android Tailscale 실패 smoke test: 서버 중지, 잘못된 HTTPS, HTTP 4xx/5xx, Tailscale 미연결 상태에서 런처 복구 확인.
 9. Android app info/restart smoke test: launcher와 server 접속 후 mobile navigation에서 앱 정보가 표시되고 앱 재시작 버튼이 WebView/Activity를 다시 여는지 확인.
 10. DIFF smoke test: tracked 변경 20개 이상, untracked 50개 초과, binary/대용량 파일이 있는 저장소에서 응답 시간, 생략 안내, 기본 접힘 렌더링 확인.
-11. systemd smoke test: `corepack pnpm build`, `systemctl --user restart codexmux.service`, `/api/health`, `journalctl --user -u codexmux.service` 확인.
+11. systemd smoke test: `corepack pnpm deploy:local`, `/api/health`의 version/commit/buildTime, `journalctl --user -u codexmux.service` 확인.
 12. timeline 배포 smoke test: browser reload 후 같은 assistant 문장이 `event_msg.agent_message`와 `response_item.message` pair로 남은 JSONL에서도 한 번만 표시되는지 확인.
 13. Codex attach smoke test: Codex process 시작 후 JSONL이 늦게 생성된 session도 session id/jsonlPath가 붙고, 모바일 CODEX `check` 화면에서 terminal preview가 보이는지 확인.
 14. perf snapshot smoke test: 인증된 요청으로 `/api/debug/perf`가 process/event loop/WebSocket/watcher/status poll/diff/stats counter를 반환하고, prompt/cwd/JSONL path/terminal output 본문을 노출하지 않는지 확인.
 15. 설치/upgrade: `npx codexmux`, global install, 기존 `~/.codexmux` 유지 확인.
-16. release metadata: version bump, changelog, release workflow artifact 확인.
+16. release metadata: `corepack pnpm release:patch|minor|major`, changelog, release workflow artifact 확인.
 
 ## Post-MVP 백로그
 

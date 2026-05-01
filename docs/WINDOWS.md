@@ -80,6 +80,8 @@ node .\scripts\windows-codex-sync.mjs `
 
 `.meta.json`에는 Windows host, shell, cwd, 원본 Windows path, remote offset, 마지막 활동 시간, session list 표시용 첫 메시지와 turn count가 들어간다. 이 복사본을 삭제해도 Windows 원본 `%USERPROFILE%\.codex\sessions`는 삭제되지 않는다.
 
+Codex rollout 파일명에 들어가는 `2026-05-01T19-31-48` 같은 값은 Windows local time 기반 이름이고 `Z`가 붙은 UTC timestamp가 아니다. JSONL 내부 `timestamp`와 서버 sidecar의 `startedAt`/`lastActivityAt`은 ISO UTC로 저장하며, session list 정렬은 sidecar activity time을 사용한다.
+
 ## UI 동작
 
 - session list에 `HOST / pwsh` source badge가 표시된다.

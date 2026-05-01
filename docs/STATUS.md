@@ -36,6 +36,14 @@ StatusManager
 | `true` | Codex process를 찾음 |
 | `false` | Codex process가 없음 |
 
+client는 `check` view에서 `agentProcess=true`를 받으면 timeline으로 전환한다. 사용자가
+명시적으로 연 `session-list` view는 active Codex process가 있어도 유지한다. 이 목록에는
+Linux resume 대상과 Windows remote read-only timeline이 함께 표시되며, Windows remote
+session 선택은 tmux process 제어가 아니라 저장된 JSONL 구독이다. `codex` panel의
+session list API는 service restart 뒤 layout에 남은 tmux session이 사라져도 전역 session
+index를 반환하며, session list 화면도 process 감지 완료를 기다리지 않고 목록 fetch 상태만
+따른다.
+
 Codex 감지는 pane PID 아래 child process를 따라가며 `codex`를 찾고, session id 또는
 process start time으로 `~/.codex/sessions/YYYY/MM/DD/*.jsonl`을 연결한다. Linux에서는
 `src/lib/session-detection.ts`의 `/proc` 기반 helper로 child PID, command, cwd, start time을

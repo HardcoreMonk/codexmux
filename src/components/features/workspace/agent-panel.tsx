@@ -133,7 +133,7 @@ const AgentPanel = ({
     loadMore: loadMoreSessions,
   } = useSessionList({
     tmuxSession: sessionName,
-    enabled: isAgentPanel && !!sessionName && agentProcess !== true,
+    enabled: isAgentPanel && !!sessionName && view === 'session-list',
     cwd,
     panelType,
   });
@@ -246,7 +246,7 @@ const AgentPanel = ({
         </div>
       );
     }
-    if (agentProcess === null || (isSessionListLoading && sessions.length === 0)) {
+    if (isSessionListLoading && sessions.length === 0) {
       return (
         <div className={cn('flex h-full w-full flex-col items-center justify-center animate-delayed-fade-in', className)}>
           <Spinner className="h-4 w-4 text-muted-foreground" />

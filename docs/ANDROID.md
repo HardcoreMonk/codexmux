@@ -125,6 +125,8 @@ Access-Control-Allow-Methods: GET, OPTIONS
 Access-Control-Allow-Headers: Content-Type
 ```
 
+응답 body에는 `app`, `version`, `commit`, `buildTime`이 포함됩니다. Android 런처는 연결 가능성만 확인하고, React 모바일 앱 정보 화면은 서버 버전을 표시할 때 이 metadata를 사용합니다.
+
 ## Build Output
 
 Debug APK:

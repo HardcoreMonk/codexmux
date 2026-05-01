@@ -118,7 +118,7 @@ const applyAgentProcessUpdate = (
     agentProcess: process,
     agentProcessCheckedAt: checkedAt,
   };
-  if (process === true && (prev.sessionView === 'check' || prev.sessionView === 'session-list')) {
+  if (process === true && prev.sessionView === 'check') {
     patch.sessionView = 'timeline';
   }
   return { tabs: updateTab(state.tabs, tabId, patch) };

@@ -36,7 +36,7 @@ codexmux의 영속 상태는 `~/.codexmux/`에 저장된다. Codex CLI의 원본
 
 Electron remote/local server mode는 같은 `~/.codexmux/config.json`을 사용한다. Android 런처의 최근 서버와 마지막 서버 URL은 Android WebView `localStorage`에 저장되며 `~/.codexmux/`에는 기록되지 않는다. Android 앱 정보와 앱 재시작은 native package metadata와 현재 Activity를 사용하므로 codexmux 데이터 디렉터리에 별도 파일을 만들지 않는다.
 
-Windows companion sync는 Windows Codex CLI의 원본 `%USERPROFILE%\.codex\sessions\**\*.jsonl`을 직접 수정하지 않고, 서버로 보낸 chunk를 `~/.codexmux/remote/codex/{sourceId}/{sessionId}.jsonl`에 복사본으로 저장한다. 같은 이름의 `.meta.json` sidecar에는 Windows host, shell, cwd, 원본 Windows path, remote offset, 마지막 활동 시간, session list 표시용 첫 메시지와 turn count를 기록한다.
+Windows companion sync는 Windows Codex CLI의 원본 `%USERPROFILE%\.codex\sessions\**\*.jsonl`을 직접 수정하지 않고, 서버로 보낸 chunk를 `~/.codexmux/remote/codex/{sourceId}/{sessionId}.jsonl`에 복사본으로 저장한다. 같은 이름의 `.meta.json` sidecar에는 Windows host, shell, cwd, 원본 Windows path, remote offset, 마지막 활동 시간, session list 표시용 첫 메시지와 turn count를 기록한다. Windows 원본 파일명의 rollout timestamp는 host local time이고, sidecar의 activity timestamp는 ISO UTC다.
 
 `session-index.json`은 Linux `~/.codex/sessions`와 Windows remote copy의 session list metadata cache다. Codex JSONL 원본을 대체하지 않으며, 삭제해도 서버가 다음 refresh에서 다시 만든다.
 

@@ -137,7 +137,7 @@ const MobileAgentPanel = ({
     getCliState: tabId ? () => useTabStore.getState().tabs[tabId]?.cliState : undefined,
   });
 
-  const effectiveAgentProcess = tabId ? agentProcess : agentProcessFromTimeline;
+  const view = useTabStore((s) => tabId ? selectSessionView(s.tabs, tabId) : 'session-list' as const);
 
   const {
     sessions,
@@ -149,7 +149,7 @@ const MobileAgentPanel = ({
     loadMore: loadMoreSessions,
   } = useSessionList({
     tmuxSession: sessionName,
-    enabled: isAgentPanel && !!sessionName && effectiveAgentProcess !== true,
+    enabled: isAgentPanel && !!sessionName && view === 'session-list',
     cwd,
     panelType,
   });
@@ -162,8 +162,6 @@ const MobileAgentPanel = ({
       retrySession();
     }
   }, [agentProcess, agentProcessFromTimeline, retrySession]);
-
-  const view = useTabStore((s) => tabId ? selectSessionView(s.tabs, tabId) : 'session-list' as const);
 
   const { meta } = useSessionMeta(entries, sessionSummary, initMeta, sessionStats, tabAgentSummary, tabLastUserMessage);
   const { branch, isLoading: isBranchLoading } = useGitBranch(sessionName);
@@ -226,7 +224,7 @@ const MobileAgentPanel = ({
     );
   }
 
-  if (agentProcess === null && view !== 'check' && !(!isAgentPanel && view === 'session-list')) {
+  if (agentProcess === null && view !== 'check' && view !== 'session-list') {
     return (
       <div className="animate-delayed-fade-in flex min-h-0 flex-1 flex-col items-center justify-center bg-muted">
         <Spinner className="h-4 w-4 text-muted-foreground" />
