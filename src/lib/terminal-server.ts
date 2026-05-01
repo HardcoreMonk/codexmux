@@ -13,6 +13,8 @@ import { PRISTINE_ENV } from '@/lib/pristine-env';
 import { encodeStdout } from '@/lib/terminal-protocol';
 import { reconcileTabCwd } from '@/lib/layout-store';
 import { createLogger } from '@/lib/logger';
+import { recordPerfCounter } from '@/lib/perf-metrics';
+import { createTerminalOutputBuffer, type ITerminalOutputBuffer } from '@/lib/terminal-output-buffer';
 
 const log = createLogger('terminal');
 
@@ -29,6 +31,8 @@ const BACKPRESSURE_HIGH = 1024 * 1024;
 const BACKPRESSURE_LOW = 256 * 1024;
 const THROTTLE_WINDOW_MS = 500;
 const THROTTLE_FLUSH_INTERVAL_MS = 250;
+const STDOUT_FLUSH_DELAY_MS = 8;
+const STDOUT_MAX_BUFFER_BYTES = 64 * 1024;
 
 const TMUX_SOCKET = 'codexmux';
 const textDecoder = new TextDecoder();
@@ -49,6 +53,7 @@ interface IActiveConnection {
   throttleUntil: number;
   throttleBuffer: string;
   throttleInterval: ReturnType<typeof setInterval> | null;
+  stdoutBuffer: ITerminalOutputBuffer | null;
 }
 
 const globalStore = globalThis as unknown as {
@@ -62,6 +67,50 @@ const terminalOutputTimestamps = globalStore.__codexmux_terminal_output_ts ??= n
 export const getLastTerminalOutput = (sessionName: string): number | undefined =>
   terminalOutputTimestamps.get(sessionName);
 
+export const getTerminalPerfSnapshot = () => {
+  const sessions = new Set<string>();
+  let openConnections = 0;
+  let backpressurePaused = 0;
+  let capturePaused = 0;
+  let throttleActive = 0;
+  let throttleBufferBytes = 0;
+  let stdoutBufferBytes = 0;
+  let stdoutPendingFlushes = 0;
+  let totalBufferedAmount = 0;
+  let maxBufferedAmount = 0;
+  const now = Date.now();
+
+  for (const conn of connections.values()) {
+    if (!conn.cleaned) sessions.add(conn.sessionName);
+    if (conn.ws.readyState === WebSocket.OPEN) openConnections++;
+    if (conn.backpressurePaused) backpressurePaused++;
+    if (conn.capturePaused) capturePaused++;
+    if (now < conn.throttleUntil) throttleActive++;
+    throttleBufferBytes += Buffer.byteLength(conn.throttleBuffer, 'utf-8');
+    stdoutBufferBytes += conn.stdoutBuffer?.getBufferedBytes() ?? 0;
+    if (conn.stdoutBuffer?.hasPendingFlush()) stdoutPendingFlushes++;
+    totalBufferedAmount += conn.ws.bufferedAmount;
+    maxBufferedAmount = Math.max(maxBufferedAmount, conn.ws.bufferedAmount);
+  }
+
+  return {
+    connections: connections.size,
+    openConnections,
+    sessions: sessions.size,
+    backpressurePaused,
+    capturePaused,
+    throttleActive,
+    throttleBufferBytes,
+    stdoutBufferBytes,
+    stdoutPendingFlushes,
+    lastOutputSessions: terminalOutputTimestamps.size,
+    bufferedAmount: {
+      total: totalBufferedAmount,
+      max: maxBufferedAmount,
+    },
+  };
+};
+
 const attachToSession = (sessionName: string, cols: number, rows: number): pty.IPty =>
   pty.spawn('tmux', ['-u', '-L', TMUX_SOCKET, 'attach-session', '-t', sessionName], {
     name: 'xterm-256color',
@@ -73,6 +122,8 @@ const attachToSession = (sessionName: string, cols: number, rows: number): pty.I
 
 const cleanup = (conn: IActiveConnection, sessionExited = false) => {
   if (conn.cleaned) return;
+  conn.stdoutBuffer?.flush();
+  conn.stdoutBuffer?.clear();
   conn.cleaned = true;
   terminalOutputTimestamps.delete(conn.sessionName);
 
@@ -160,6 +211,8 @@ export const gracefulShutdown = (): Promise<void> => {
 
     connections.forEach((conn) => {
       if (conn.cleaned) return;
+      conn.stdoutBuffer?.flush();
+      conn.stdoutBuffer?.clear();
       conn.cleaned = true;
       conn.detaching = true;
       terminalOutputTimestamps.delete(conn.sessionName);
@@ -405,27 +458,51 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
     throttleUntil: 0,
     throttleBuffer: '',
     throttleInterval: null,
+    stdoutBuffer: null,
   };
 
   connections.set(ws, conn);
 
   const ptyPid = ptyProcess.pid;
 
-  const sendStdout = (data: string) => {
+  const writeStdout = (data: string) => {
+    recordPerfCounter('terminal.stdout.messages');
+    recordPerfCounter('terminal.stdout.bytes', Buffer.byteLength(data, 'utf-8'));
     ws.send(encodeStdout(data));
 
     if (ws.bufferedAmount > BACKPRESSURE_HIGH && !conn.backpressurePaused) {
       conn.backpressurePaused = true;
+      recordPerfCounter('terminal.backpressure_pause');
       ptyProcess!.pause();
     } else if (ws.bufferedAmount < BACKPRESSURE_LOW && conn.backpressurePaused) {
       conn.backpressurePaused = false;
+      recordPerfCounter('terminal.backpressure_resume');
       ptyProcess!.resume();
     }
   };
 
+  conn.stdoutBuffer = createTerminalOutputBuffer({
+    flushDelayMs: STDOUT_FLUSH_DELAY_MS,
+    maxBufferBytes: STDOUT_MAX_BUFFER_BYTES,
+    onFlush: (data, meta) => {
+      if (conn.cleaned || ws.readyState !== WebSocket.OPEN) return;
+      recordPerfCounter('terminal.stdout.flushes');
+      if (meta.chunkCount > 1) {
+        recordPerfCounter('terminal.stdout.coalesced_flushes');
+        recordPerfCounter('terminal.stdout.coalesced_chunks_saved', meta.chunkCount - 1);
+      }
+      if (meta.reason === 'max-buffer') recordPerfCounter('terminal.stdout.max_buffer_flushes');
+      writeStdout(data);
+    },
+  });
+
+  const queueStdout = (data: string) => {
+    conn.stdoutBuffer?.push(data);
+  };
+
   const flushThrottleBuffer = () => {
     if (conn.throttleBuffer.length === 0) return;
-    sendStdout(conn.throttleBuffer);
+    queueStdout(conn.throttleBuffer);
     conn.throttleBuffer = '';
   };
 
@@ -457,18 +534,21 @@ export const handleConnection = async (ws: WebSocket, request: IncomingMessage, 
       if (conn.cleaned || ws.readyState !== WebSocket.OPEN) return;
       terminalOutputTimestamps.set(sessionName, Date.now());
       if (conn.capturePaused) return;
+      recordPerfCounter('terminal.stdout.raw_chunks');
+      recordPerfCounter('terminal.stdout.raw_bytes', Buffer.byteLength(data, 'utf-8'));
 
       if (Date.now() < conn.throttleUntil) {
         conn.throttleBuffer += data;
         return;
       }
-      sendStdout(data);
+      queueStdout(data);
     }),
   );
 
   conn.disposables.push(
     ptyProcess.onExit(({ exitCode, signal }) => {
       if (conn.cleaned) return;
+      conn.stdoutBuffer?.flush();
       log.debug(
         `pty exited (pid: ${ptyProcess!.pid}, code: ${exitCode}, signal: ${signal}, detaching: ${conn.detaching})`,
       );

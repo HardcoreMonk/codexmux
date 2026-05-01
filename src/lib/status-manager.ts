@@ -33,6 +33,7 @@ import { createDedupeKeyStore } from '@/lib/dedupe-key-store';
 import { completionKeyFor, normalizeSessionId, resolveAgentSessionId, sessionIdFromJsonlPath } from '@/lib/status-session-mapping';
 import { shouldProcessHookEvent, shouldSendNeedsInputNotification, shouldSendReviewNotification } from '@/lib/status-notification-policy';
 import { mergeStatusMetadata } from '@/lib/status-metadata';
+import { getPerfNow, recordPerfCounter, recordPerfDuration } from '@/lib/perf-metrics';
 
 const log = createLogger('status');
 const hookLog = createLogger('hooks');
@@ -40,7 +41,10 @@ const hookLog = createLogger('hooks');
 interface IReadTabMetadataOptions {
   sessionId?: string | null;
   jsonlPath?: string | null;
+  childPids?: number[];
 }
+
+type TChildPidCache = Map<number, Promise<number[]>>;
 
 const COMPACT_STALE_MS = 60_000;
 
@@ -304,6 +308,19 @@ interface IJsonlStats {
   turnDurationMs: number | null;
 }
 
+interface IStatusPollSnapshot {
+  startedAt: string;
+  endedAt: string;
+  durationMs: number;
+  workspaceCount: number;
+  paneCount: number;
+  scannedTabCount: number;
+  providerTabCount: number;
+  terminalTabCount: number;
+  broadcastUpdateCount: number;
+  broadcastRemoveCount: number;
+}
+
 const parseJsonlStats = async (jsonlPath: string): Promise<IJsonlStats> => {
   const empty: IJsonlStats = { toolUsage: {}, touchedFiles: [], lastAssistantText: null, lastUserText: null, firstUserTs: null, lastAssistantTs: null, turnDurationMs: null };
   try {
@@ -395,6 +412,7 @@ class StatusManager {
   private compactStaleTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private reviewNotificationDedupe = createDedupeKeyStore();
   private sessionHistoryDedupe = createDedupeKeyStore();
+  private lastPoll: IStatusPollSnapshot | null = null;
 
   async init(): Promise<void> {
     if (this.initialized) return;
@@ -413,6 +431,7 @@ class StatusManager {
   private async scanAll(): Promise<void> {
     const { workspaces } = await getWorkspaces();
     const panesInfo = await getAllPanesInfo();
+    const childPidCache: TChildPidCache = new Map();
     for (const tabId of [...this.jsonlWatchers.keys()]) {
       this.stopJsonlWatch(tabId);
     }
@@ -429,6 +448,7 @@ class StatusManager {
         const detected = await this.readTabMetadata(paneInfo, provider, {
           sessionId: provider?.readSessionId(tab) ?? null,
           jsonlPath: provider?.readJsonlPath(tab) ?? null,
+          childPids: provider ? await this.getCachedChildPids(childPidCache, paneInfo) : undefined,
         });
         const persisted: TCliState = (tab.cliState as TCliState | undefined) ?? 'idle';
         let cliState: TCliState = persisted === 'busy' ? 'unknown' : persisted;
@@ -530,6 +550,17 @@ class StatusManager {
     }
   }
 
+  private getCachedChildPids(cache: TChildPidCache, paneInfo: IPaneInfo | undefined): Promise<number[]> {
+    if (!paneInfo?.pid) return Promise.resolve([]);
+
+    const existing = cache.get(paneInfo.pid);
+    if (existing) return existing;
+
+    const next = getChildPids(paneInfo.pid);
+    cache.set(paneInfo.pid, next);
+    return next;
+  }
+
   private async readTabMetadata(
     paneInfo: IPaneInfo | undefined,
     provider: IAgentProvider | null,
@@ -538,7 +569,7 @@ class StatusManager {
     const empty = { ...emptyJsonlCheckResult(), jsonlPath: null, running: false, sessionId: null };
     if (!paneInfo || !paneInfo.pid || !provider) return empty;
 
-    const childPids = await getChildPids(paneInfo.pid);
+    const childPids = options.childPids ?? await getChildPids(paneInfo.pid);
     const running = await provider.isAgentRunning(paneInfo.pid, childPids);
     if (!running) return empty;
 
@@ -623,6 +654,7 @@ class StatusManager {
     this.currentInterval = this.getPollingInterval();
     this.pollingTimer = setInterval(() => {
       this.poll().catch((err) => {
+        recordPerfCounter('status.poll.errors');
         log.error({ err }, 'Polling error');
       });
     }, this.currentInterval);
@@ -637,8 +669,21 @@ class StatusManager {
   }
 
   async poll(): Promise<void> {
+    const startedAtMs = Date.now();
+    const startedAtPerf = getPerfNow();
+    let workspaceCount = 0;
+    let paneCount = 0;
+    let scannedTabCount = 0;
+    let providerTabCount = 0;
+    let terminalTabCount = 0;
+    let broadcastUpdateCount = 0;
+    let broadcastRemoveCount = 0;
+
     const { workspaces } = await getWorkspaces();
+    workspaceCount = workspaces.length;
     const panesInfo = await getAllPanesInfo();
+    paneCount = panesInfo.size;
+    const childPidCache: TChildPidCache = new Map();
     const knownTabIds = new Set<string>();
     const tabsBeforePoll = new Set(this.tabs.keys());
     const now = Date.now();
@@ -649,10 +694,13 @@ class StatusManager {
 
       const tabs = collectAllTabs(layout.root);
       for (const tab of tabs) {
+        scannedTabCount++;
         knownTabIds.add(tab.id);
         const existing = this.tabs.get(tab.id);
         const paneInfo = panesInfo.get(tab.sessionName);
         const provider = getProviderByPanelType(tab.panelType);
+        if (provider) providerTabCount++;
+        else terminalTabCount++;
 
         const { terminalStatus, listeningPorts } = provider
           ? { terminalStatus: 'idle' as const, listeningPorts: [] as number[] }
@@ -666,6 +714,7 @@ class StatusManager {
           const detected = await this.readTabMetadata(paneInfo, provider, {
             sessionId: provider?.readSessionId(tab) ?? null,
             jsonlPath: provider?.readJsonlPath(tab) ?? null,
+            childPids: provider ? await this.getCachedChildPids(childPidCache, paneInfo) : undefined,
           });
           if (provider?.id === 'codex') {
             if (!detected.running && (initialState === 'unknown' || initialState === 'inactive')) {
@@ -711,6 +760,7 @@ class StatusManager {
           this.tabs.set(tab.id, entry);
           this.persistToLayout(entry);
           this.broadcastUpdate(tab.id, entry);
+          broadcastUpdateCount++;
           if (initialState === 'unknown') {
             this.resolveUnknown(tab.id).catch((err) => log.warn('resolveUnknown failed: %s', err));
           }
@@ -726,6 +776,7 @@ class StatusManager {
         const refreshed = await this.readTabMetadata(paneInfo, provider, {
           sessionId: provider?.readSessionId(tab) ?? existing.agentSessionId ?? null,
           jsonlPath: provider?.readJsonlPath(tab) ?? existing.jsonlPath ?? null,
+          childPids: provider ? await this.getCachedChildPids(childPidCache, paneInfo) : undefined,
         });
         existing.tabName = tab.name || (newPaneTitle ? formatTabTitle(newPaneTitle) : '');
         existing.currentProcess = currentProcess;
@@ -772,7 +823,7 @@ class StatusManager {
 
         if (existing.cliState === 'busy' && existing.lastEvent
             && now - existing.lastEvent.at > BUSY_STUCK_MS) {
-          const childPids = paneInfo?.pid ? await getChildPids(paneInfo.pid) : [];
+          const childPids = await this.getCachedChildPids(childPidCache, paneInfo);
           const agentRunning = paneInfo?.pid && provider
             ? await provider.isAgentRunning(paneInfo.pid, childPids)
             : false;
@@ -781,12 +832,14 @@ class StatusManager {
             this.applyCliState(tab.id, existing, 'idle', { silent: true });
             this.persistToLayout(existing);
             this.broadcastUpdate(tab.id, existing);
+            broadcastUpdateCount++;
             continue;
           }
         }
 
         if (terminalChanged || processChanged || processRetryNeeded || messageChanged || panelTypeChanged || summaryChanged || metadataChanged || codexStateChanged) {
           this.broadcastUpdate(tab.id, existing);
+          broadcastUpdateCount++;
         }
       }
     }
@@ -796,6 +849,7 @@ class StatusManager {
         this.stopJsonlWatch(tabId);
         this.tabs.delete(tabId);
         this.broadcastRemove(tabId);
+        broadcastRemoveCount++;
       }
     }
 
@@ -803,6 +857,21 @@ class StatusManager {
     if (this.pollingTimer && newInterval !== this.currentInterval) {
       this.startPolling();
     }
+
+    const durationMs = getPerfNow() - startedAtPerf;
+    this.lastPoll = {
+      startedAt: new Date(startedAtMs).toISOString(),
+      endedAt: new Date().toISOString(),
+      durationMs: Number(durationMs.toFixed(2)),
+      workspaceCount,
+      paneCount,
+      scannedTabCount,
+      providerTabCount,
+      terminalTabCount,
+      broadcastUpdateCount,
+      broadcastRemoveCount,
+    };
+    recordPerfDuration('status.poll', durationMs);
   }
 
   getAllForClient(): Record<string, IClientTabStatusEntry> {
@@ -830,6 +899,59 @@ class StatusManager {
       };
     }
     return result;
+  }
+
+  getPerfSnapshot() {
+    const stateCounts: Record<TCliState, number> = {
+      idle: 0,
+      busy: 0,
+      inactive: 0,
+      'ready-for-review': 0,
+      'needs-input': 0,
+      cancelled: 0,
+      unknown: 0,
+    };
+    const providerCounts: Record<string, number> = {};
+    let providerTabCount = 0;
+    let terminalTabCount = 0;
+    let openClients = 0;
+    let totalBufferedAmount = 0;
+    let maxBufferedAmount = 0;
+
+    for (const entry of this.tabs.values()) {
+      stateCounts[entry.cliState] += 1;
+      const provider = getProviderByPanelType(entry.panelType);
+      if (provider) {
+        providerTabCount++;
+        providerCounts[provider.id] = (providerCounts[provider.id] ?? 0) + 1;
+      } else {
+        terminalTabCount++;
+      }
+    }
+
+    for (const ws of this.clients) {
+      if (ws.readyState === WebSocket.OPEN) openClients++;
+      totalBufferedAmount += ws.bufferedAmount;
+      maxBufferedAmount = Math.max(maxBufferedAmount, ws.bufferedAmount);
+    }
+
+    return {
+      tabs: this.tabs.size,
+      providerTabs: providerTabCount,
+      terminalTabs: terminalTabCount,
+      stateCounts,
+      providerCounts,
+      clients: this.clients.size,
+      openClients,
+      bufferedAmount: {
+        total: totalBufferedAmount,
+        max: maxBufferedAmount,
+      },
+      jsonlWatchers: this.jsonlWatchers.size,
+      compactStaleTimers: this.compactStaleTimers.size,
+      currentIntervalMs: this.currentInterval,
+      lastPoll: this.lastPoll,
+    };
   }
 
   private applyCliState(
@@ -1216,10 +1338,20 @@ class StatusManager {
 
   broadcast(event: object, exclude?: WebSocket): void {
     const msg = JSON.stringify(event);
+    let sent = 0;
+    let skippedBackpressure = 0;
     for (const ws of this.clients) {
-      if (ws !== exclude && ws.readyState === WebSocket.OPEN && ws.bufferedAmount < StatusManager.BACKPRESSURE_LIMIT) {
-        ws.send(msg);
+      if (ws === exclude || ws.readyState !== WebSocket.OPEN) continue;
+      if (ws.bufferedAmount >= StatusManager.BACKPRESSURE_LIMIT) {
+        skippedBackpressure++;
+        continue;
       }
+      ws.send(msg);
+      sent++;
+    }
+    if (sent > 0) recordPerfCounter('status.ws.sent', sent);
+    if (skippedBackpressure > 0) {
+      recordPerfCounter('status.ws.backpressure_skipped', skippedBackpressure);
     }
   }
 

@@ -6,6 +6,7 @@ import { readFile, stat } from 'fs/promises';
 import { resolve, sep } from 'path';
 import { getSessionCwd, hasSession } from '@/lib/tmux';
 import { createLogger } from '@/lib/logger';
+import { getPerfNow, recordPerfCounter, recordPerfDuration } from '@/lib/perf-metrics';
 
 const execFile = promisify(execFileCb);
 const log = createLogger('diff');
@@ -16,8 +17,49 @@ const MAX_UNTRACKED_FILES = 50;
 const MAX_UNTRACKED_TEXT_BYTES = 256 * 1024;
 const MAX_UNTRACKED_DIFF_BYTES = 2 * 1024 * 1024;
 const BINARY_SAMPLE_BYTES = 8192;
+const DIFF_CACHE_TTL_MS = 60_000;
+const MAX_DIFF_CACHE_ENTRIES = 32;
+
+interface IDiffContentCacheEntry {
+  diff: string;
+  untrackedIncluded: number;
+  untrackedSkipped: number;
+  untrackedTotal: number;
+  updatedAt: number;
+}
+
+const g = globalThis as unknown as {
+  __ptDiffContentCache?: Map<string, IDiffContentCacheEntry>;
+};
+
+const diffContentCache = g.__ptDiffContentCache ??= new Map<string, IDiffContentCacheEntry>();
+
+const makeDiffCacheKey = (cwd: string, hash: string): string =>
+  createHash('sha1').update(`${cwd}\0${hash}`).digest('hex');
+
+const readDiffCache = (key: string): IDiffContentCacheEntry | null => {
+  const cached = diffContentCache.get(key);
+  if (!cached) return null;
+  if (Date.now() - cached.updatedAt > DIFF_CACHE_TTL_MS) {
+    diffContentCache.delete(key);
+    return null;
+  }
+  diffContentCache.delete(key);
+  diffContentCache.set(key, cached);
+  return cached;
+};
+
+const writeDiffCache = (key: string, entry: Omit<IDiffContentCacheEntry, 'updatedAt'>): void => {
+  diffContentCache.set(key, { ...entry, updatedAt: Date.now() });
+  while (diffContentCache.size > MAX_DIFF_CACHE_ENTRIES) {
+    const oldest = diffContentCache.keys().next().value;
+    if (!oldest) break;
+    diffContentCache.delete(oldest);
+  }
+};
 
 const getAheadBehind = async (cwd: string): Promise<{ ahead: number; behind: number }> => {
+  const startedAt = getPerfNow();
   try {
     const { stdout } = await execFile(
       'git',
@@ -31,6 +73,8 @@ const getAheadBehind = async (cwd: string): Promise<{ ahead: number; behind: num
     };
   } catch {
     return { ahead: 0, behind: 0 };
+  } finally {
+    recordPerfDuration('diff.ahead_behind', getPerfNow() - startedAt);
   }
 };
 
@@ -96,16 +140,30 @@ const getRepoMeta = async (cwd: string): Promise<IRepoMeta> => {
   };
 };
 
+const getMeasuredRepoMeta = async (cwd: string): Promise<IRepoMeta> => {
+  const startedAt = getPerfNow();
+  try {
+    return await getRepoMeta(cwd);
+  } finally {
+    recordPerfDuration('diff.repo_meta', getPerfNow() - startedAt);
+  }
+};
+
 const computeDiffHash = async (cwd: string) => {
-  const [{ stdout: headOut }, { stdout: statusOut }, { stdout: shortstatOut }] = await Promise.all([
-    execFile('git', ['rev-parse', 'HEAD'], { cwd, timeout: CMD_TIMEOUT }),
-    execFile('git', ['status', '--porcelain', '-uall'], { cwd, timeout: CMD_TIMEOUT }),
-    execFile('git', ['diff', '--no-ext-diff', 'HEAD', '--shortstat'], { cwd, timeout: CMD_TIMEOUT }),
-  ]);
-  return createHash('sha1')
-    .update(`${headOut.trim()}\n${statusOut}\n${shortstatOut}`)
-    .digest('hex')
-    .slice(0, 16);
+  const startedAt = getPerfNow();
+  try {
+    const [{ stdout: headOut }, { stdout: statusOut }, { stdout: shortstatOut }] = await Promise.all([
+      execFile('git', ['rev-parse', 'HEAD'], { cwd, timeout: CMD_TIMEOUT }),
+      execFile('git', ['status', '--porcelain', '-uall'], { cwd, timeout: CMD_TIMEOUT }),
+      execFile('git', ['diff', '--no-ext-diff', 'HEAD', '--shortstat'], { cwd, timeout: CMD_TIMEOUT }),
+    ]);
+    return createHash('sha1')
+      .update(`${headOut.trim()}\n${statusOut}\n${shortstatOut}`)
+      .digest('hex')
+      .slice(0, 16);
+  } finally {
+    recordPerfDuration('diff.compute_hash', getPerfNow() - startedAt);
+  }
 };
 
 const resolveRepoPath = (cwd: string, file: string): string | null => {
@@ -201,6 +259,19 @@ const buildUntrackedDiff = async (cwd: string): Promise<IUntrackedDiffResult> =>
   };
 };
 
+const buildMeasuredUntrackedDiff = async (cwd: string): Promise<IUntrackedDiffResult> => {
+  const startedAt = getPerfNow();
+  try {
+    const result = await buildUntrackedDiff(cwd);
+    recordPerfCounter('diff.untracked.files', result.total);
+    recordPerfCounter('diff.untracked.included', result.included);
+    recordPerfCounter('diff.untracked.skipped', result.skipped);
+    return result;
+  } finally {
+    recordPerfDuration('diff.untracked_build', getPerfNow() - startedAt);
+  }
+};
+
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
@@ -256,15 +327,48 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       });
     }
 
-    const [{ stdout: diff }, hash, aheadBehind, meta, untracked] = await Promise.all([
-      execFile('git', ['diff', '--no-ext-diff', 'HEAD'], { cwd, timeout: CMD_TIMEOUT, maxBuffer: MAX_DIFF_BYTES }),
+    const [hash, aheadBehind, meta] = await Promise.all([
       computeDiffHash(cwd),
       getAheadBehind(cwd),
-      getRepoMeta(cwd),
-      buildUntrackedDiff(cwd),
+      getMeasuredRepoMeta(cwd),
+    ]);
+    const cacheKey = makeDiffCacheKey(cwd, hash);
+    const cached = readDiffCache(cacheKey);
+    if (cached) {
+      recordPerfCounter('diff.cache_hit');
+      return res.status(200).json({
+        isGitRepo: true,
+        diff: cached.diff,
+        hash,
+        ahead: aheadBehind.ahead,
+        behind: aheadBehind.behind,
+        branch: meta.branch,
+        upstream: meta.upstream,
+        isDetached: meta.isDetached,
+        stash: meta.stash,
+        headCommit: meta.headCommit,
+        fetched,
+        untrackedIncluded: cached.untrackedIncluded,
+        untrackedSkipped: cached.untrackedSkipped,
+        untrackedTotal: cached.untrackedTotal,
+      });
+    }
+
+    recordPerfCounter('diff.cache_miss');
+    const trackedStartedAt = getPerfNow();
+    const [{ stdout: diff }, untracked] = await Promise.all([
+      execFile('git', ['diff', '--no-ext-diff', 'HEAD'], { cwd, timeout: CMD_TIMEOUT, maxBuffer: MAX_DIFF_BYTES })
+        .finally(() => recordPerfDuration('diff.tracked_build', getPerfNow() - trackedStartedAt)),
+      buildMeasuredUntrackedDiff(cwd),
     ]);
 
     const fullDiff = diff + untracked.diff;
+    writeDiffCache(cacheKey, {
+      diff: fullDiff,
+      untrackedIncluded: untracked.included,
+      untrackedSkipped: untracked.skipped,
+      untrackedTotal: untracked.total,
+    });
 
     return res.status(200).json({
       isGitRepo: true,

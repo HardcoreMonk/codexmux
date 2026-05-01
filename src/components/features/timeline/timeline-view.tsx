@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Terminal, RefreshCw, OctagonX, LogOut, ChevronsUp, MessageSquareMore } from 'lucide-react';
 import Spinner from '@/components/ui/spinner';
@@ -77,10 +77,16 @@ type TGroupedItem =
   | { type: 'entry'; id: string; entry: ITimelineEntry }
   | { type: 'tool-group'; id: string; toolCalls: ITimelineToolCall[]; toolResults: ITimelineToolResult[] };
 
-const groupTimelineEntries = (entries: ITimelineEntry[]): TGroupedItem[] => {
+interface IGroupedTimelineEntries {
+  items: TGroupedItem[];
+  lastUserMessageId: string | null;
+}
+
+const groupTimelineEntries = (entries: ITimelineEntry[]): IGroupedTimelineEntries => {
   const result: TGroupedItem[] = [];
   let toolCallBuffer: ITimelineToolCall[] = [];
   let toolResultBuffer: ITimelineToolResult[] = [];
+  let lastUserMessageId: string | null = null;
 
   const flushToolBuffer = () => {
     if (toolCallBuffer.length > 0) {
@@ -102,12 +108,13 @@ const groupTimelineEntries = (entries: ITimelineEntry[]): TGroupedItem[] => {
       toolResultBuffer.push(entry);
     } else {
       flushToolBuffer();
+      if (entry.type === 'user-message') lastUserMessageId = entry.id;
       result.push({ type: 'entry', id: entry.id, entry });
     }
   }
 
   flushToolBuffer();
-  return result;
+  return { items: result, lastUserMessageId };
 };
 
 const InterruptItem = () => {
@@ -130,7 +137,7 @@ const SessionExitItem = () => {
   );
 };
 
-const TimelineEntryRenderer = ({ entry, sessionName }: { entry: ITimelineEntry; sessionName?: string }) => {
+const TimelineEntryRenderer = memo(({ entry, sessionName }: { entry: ITimelineEntry; sessionName?: string }) => {
   switch (entry.type) {
     case 'user-message':
       return <UserMessageItem entry={entry} />;
@@ -153,7 +160,57 @@ const TimelineEntryRenderer = ({ entry, sessionName }: { entry: ITimelineEntry; 
     default:
       return null;
   }
+}, (prev, next) => prev.entry === next.entry && prev.sessionName === next.sessionName);
+
+TimelineEntryRenderer.displayName = 'TimelineEntryRenderer';
+
+interface ITimelineGroupedItemProps {
+  item: TGroupedItem;
+  anchorUserId: string | null;
+  anchorElRef: React.MutableRefObject<HTMLDivElement | null>;
+  sessionName?: string;
+}
+
+const sameItemRefs = <T,>(prev: T[], next: T[]): boolean =>
+  prev.length === next.length && prev.every((item, index) => item === next[index]);
+
+const sameGroupedItem = (prev: TGroupedItem, next: TGroupedItem): boolean => {
+  if (prev.id !== next.id || prev.type !== next.type) return false;
+  if (prev.type === 'entry' && next.type === 'entry') return prev.entry === next.entry;
+  if (prev.type === 'tool-group' && next.type === 'tool-group') {
+    return sameItemRefs(prev.toolCalls, next.toolCalls)
+      && sameItemRefs(prev.toolResults, next.toolResults);
+  }
+  return false;
 };
+
+const TimelineGroupedItem = memo(({
+  item,
+  anchorUserId,
+  anchorElRef,
+  sessionName,
+}: ITimelineGroupedItemProps) => {
+  const isAnchor = item.id === anchorUserId;
+
+  return (
+    <div
+      ref={isAnchor ? anchorElRef : undefined}
+      className={`${isAnchor ? '' : 'timeline-row-visibility '}px-4 py-1.5`}
+    >
+      {item.type === 'tool-group' ? (
+        <ToolGroupItem toolCalls={item.toolCalls} toolResults={item.toolResults} />
+      ) : (
+        <TimelineEntryRenderer entry={item.entry} sessionName={sessionName} />
+      )}
+    </div>
+  );
+}, (prev, next) => (
+  prev.sessionName === next.sessionName
+  && (prev.item.id === prev.anchorUserId) === (next.item.id === next.anchorUserId)
+  && sameGroupedItem(prev.item, next.item)
+));
+
+TimelineGroupedItem.displayName = 'TimelineGroupedItem';
 
 const SkeletonLoader = () => (
   <div className="mx-auto max-w-content">
@@ -286,13 +343,10 @@ const TimelineView = ({
     return () => { scrollToBottomRef.current = undefined; };
   }, [scrollToBottomRef, scrollToBottom]);
 
-  const groupedItems = useMemo(() => groupTimelineEntries(entries), [entries]);
+  const groupedTimeline = useMemo(() => groupTimelineEntries(entries), [entries]);
+  const groupedItems = groupedTimeline.items;
   const hasDisplayItems = groupedItems.length > 0;
-
-  const lastUserMessageId = useMemo(
-    () => groupedItems.findLast((item) => item.type === 'entry' && item.entry.type === 'user-message')?.id ?? null,
-    [groupedItems],
-  );
+  const lastUserMessageId = groupedTimeline.lastUserMessageId;
 
   useEffect(() => {
     if (armedRef.current && lastUserMessageId && lastUserMessageId !== anchorUserId) {
@@ -532,17 +586,13 @@ const TimelineView = ({
             <TaskChecklist tasks={tasks} cliState={cliState} />
           )}
           {groupedItems.map((item) => (
-            <div
+            <TimelineGroupedItem
               key={item.id}
-              ref={item.id === anchorUserId ? anchorElRef : undefined}
-              className="px-4 py-1.5"
-            >
-              {item.type === 'tool-group' ? (
-                <ToolGroupItem toolCalls={item.toolCalls} toolResults={item.toolResults} />
-              ) : (
-                <TimelineEntryRenderer entry={item.entry} sessionName={sessionName} />
-              )}
-            </div>
+              item={item}
+              anchorUserId={anchorUserId}
+              anchorElRef={anchorElRef}
+              sessionName={sessionName}
+            />
           ))}
           {(shouldProbeResumeDialog || needsInput) && sessionName && (
             <div className="px-4 py-1.5">

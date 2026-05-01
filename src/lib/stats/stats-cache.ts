@@ -10,6 +10,7 @@ import {
   extractSessionIdFromAgentJsonlPath,
   type IAgentJsonlFile,
 } from './agent-jsonl-files';
+import { getPerfNow, recordPerfCounter, recordPerfDuration } from '@/lib/perf-metrics';
 import type {
   IStatsCache,
   IStatsCacheDailyActivity,
@@ -372,6 +373,7 @@ const writeCache = async (cache: IStatsFileCache): Promise<void> => {
 
 const MEMORY_TTL = 300_000;
 let memoryCache: { data: IStatsCache; expiresAt: number } | null = null;
+let inFlightCache: Promise<IStatsCache> | null = null;
 
 // --- Main: build or update cache, return IStatsCache ---
 
@@ -430,11 +432,7 @@ const computeMissingDays = async (targetDates: Set<string>): Promise<Map<string,
   return merged;
 };
 
-export const getStatsCache = async (): Promise<IStatsCache> => {
-  if (memoryCache && Date.now() < memoryCache.expiresAt) {
-    return memoryCache.data;
-  }
-
+const buildStatsCacheFromFiles = async (): Promise<IStatsCache> => {
   const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
   const today = dayjs().format('YYYY-MM-DD');
 
@@ -484,6 +482,27 @@ export const getStatsCache = async (): Promise<IStatsCache> => {
 
   memoryCache = { data: result, expiresAt: Date.now() + MEMORY_TTL };
   return result;
+};
+
+export const getStatsCache = async (): Promise<IStatsCache> => {
+  if (memoryCache && Date.now() < memoryCache.expiresAt) {
+    recordPerfCounter('stats.cache.memory_hit');
+    return memoryCache.data;
+  }
+
+  if (inFlightCache) {
+    recordPerfCounter('stats.cache.inflight_join');
+    return inFlightCache;
+  }
+
+  recordPerfCounter('stats.cache.miss');
+  const startedAt = getPerfNow();
+  inFlightCache = buildStatsCacheFromFiles()
+    .finally(() => {
+      recordPerfDuration('stats.cache.build', getPerfNow() - startedAt);
+      inFlightCache = null;
+    });
+  return inFlightCache;
 };
 
 const buildStatsCache = (

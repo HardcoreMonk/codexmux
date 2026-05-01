@@ -158,6 +158,7 @@ const DiffPanel = ({ sessionName, onSendToAgent }: IDiffPanelProps) => {
   }, [sessionName, t]);
 
   const pollForChanges = useCallback(async () => {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
     const shouldFetch = Date.now() - lastFetchAtRef.current >= FETCH_INTERVAL;
     try {
       const params = new URLSearchParams({ session: sessionName, hashOnly: 'true' });

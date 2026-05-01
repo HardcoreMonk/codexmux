@@ -69,6 +69,29 @@ describe('findCodexSessionJsonl', () => {
     expect(meta?.sessionId).toBe(sessionA);
   });
 
+  it('matches sessions that write JSONL shortly after the Codex process starts', async () => {
+    await writeSession(sessionA, '2026-04-29T00:02:00.000Z', '/work/project');
+    await writeSession(sessionB, '2026-04-29T00:10:00.000Z', '/work/project');
+
+    const { findCodexSessionJsonl } = await import('@/lib/codex-session-detection');
+    const meta = await findCodexSessionJsonl(null, '/work/project', {
+      processStartedAt: Date.parse('2026-04-29T00:00:30.000Z'),
+    });
+
+    expect(meta?.sessionId).toBe(sessionA);
+  });
+
+  it('allows cwd fallback only when explicitly requested', async () => {
+    await writeSession(sessionA, '2026-04-29T00:00:00.000Z', '/work/project');
+
+    const { findCodexSessionJsonl } = await import('@/lib/codex-session-detection');
+    const meta = await findCodexSessionJsonl(null, '/work/project', {
+      allowCwdFallback: true,
+    });
+
+    expect(meta?.sessionId).toBe(sessionA);
+  });
+
   it('normalizes rollout basenames to plain Codex UUIDs', async () => {
     await writeSession(sessionA, '2026-04-29T00:00:00.000Z', '/work/project');
 

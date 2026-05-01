@@ -2,7 +2,7 @@ import { IncomingMessage } from 'http';
 import { WebSocket } from 'ws';
 import { watch } from 'fs';
 import { existsSync } from 'fs';
-import { open as fsOpen } from 'fs/promises';
+import { open as fsOpen, stat as fsStat } from 'fs/promises';
 import { createReadStream } from 'fs';
 import { createInterface } from 'readline';
 import { getSessionPanePid, checkTerminalProcess, sendKeys, getSessionCwd } from './tmux';
@@ -27,11 +27,13 @@ import {
   canSendTimelineMessage as canSend,
   fileWatchers,
   type IFileWatcher,
+  type ITimelineTailSnapshot,
   type ITimelineConnection,
   sendTimelineJson as sendJson,
   sessionWatchers,
   timelineConnections as connections,
 } from '@/lib/timeline-server-state';
+import { getPerfNow, recordPerfCounter, recordPerfDuration } from '@/lib/perf-metrics';
 
 const log = createLogger('timeline');
 
@@ -115,17 +117,57 @@ const readBoundedEntries = async (
   }
 };
 
+const readTailSnapshot = async (
+  fw: IFileWatcher,
+  jsonlPath: string,
+  provider: IAgentProvider,
+): Promise<ITimelineTailSnapshot> => {
+  const stat = await fsStat(jsonlPath);
+  const cached = fw.tailSnapshot;
+  if (
+    cached
+    && cached.maxEntries === MAX_INIT_ENTRIES
+    && cached.fileSize === stat.size
+    && cached.mtimeMs === stat.mtimeMs
+  ) {
+    recordPerfCounter('timeline.tail_cache_hit');
+    return cached;
+  }
+
+  recordPerfCounter('timeline.tail_cache_miss');
+  const startedAt = getPerfNow();
+  const result = await provider.readTailEntries(jsonlPath, MAX_INIT_ENTRIES);
+  recordPerfDuration('timeline.read_tail', getPerfNow() - startedAt);
+  recordPerfCounter('timeline.read_tail.entries', result.entries.length);
+
+  const firstTimestamp = result.hasMore ? await readFirstTimestamp(jsonlPath) : null;
+  const snapshot: ITimelineTailSnapshot = {
+    maxEntries: MAX_INIT_ENTRIES,
+    fileSize: result.fileSize,
+    mtimeMs: stat.mtimeMs,
+    result,
+    firstTimestamp,
+  };
+  fw.tailSnapshot = snapshot;
+  return snapshot;
+};
+
 const processFileChange = async (fw: IFileWatcher) => {
   if (fw.processing) {
     fw.pendingChange = true;
     return;
   }
+  const startedAt = getPerfNow();
   fw.processing = true;
   try {
     const prevOffset = fw.offset;
+    fw.tailSnapshot = undefined;
+    const parseStartedAt = getPerfNow();
     const { newEntries, newOffset, pendingBuffer } = await fw.provider.parseIncremental(
       fw.jsonlPath, fw.offset, fw.pendingBuffer,
     );
+    recordPerfDuration('timeline.parse_incremental', getPerfNow() - parseStartedAt);
+    recordPerfCounter('timeline.parse_incremental.entries', newEntries.length);
     fw.pendingBuffer = pendingBuffer;
     if (newEntries.length > 0) {
       fw.offset = newOffset;
@@ -176,6 +218,7 @@ const processFileChange = async (fw: IFileWatcher) => {
       }
     }
   } finally {
+    recordPerfDuration('timeline.process_file_change', getPerfNow() - startedAt);
     fw.processing = false;
     if (fw.pendingChange) {
       fw.pendingChange = false;
@@ -311,7 +354,8 @@ const subscribeToFile = async (
 
   fw.connections.add(ws);
 
-  const result = await provider.readTailEntries(jsonlPath, MAX_INIT_ENTRIES);
+  const snapshot = await readTailSnapshot(fw, jsonlPath, provider);
+  const result = snapshot.result;
 
   if (result.errorCount > 0) {
     sendJson(ws, {
@@ -326,8 +370,7 @@ const subscribeToFile = async (
     startFileWatch(fw);
   }
 
-  const firstTimestamp = result.hasMore ? await readFirstTimestamp(jsonlPath) : null;
-  const meta = computeInitMeta(result.entries, result.fileSize, firstTimestamp, result.customTitle);
+  const meta = computeInitMeta(result.entries, result.fileSize, snapshot.firstTimestamp, result.customTitle);
 
   const resolvedSessionId = sessionId ?? extractSessionIdFromJsonlPath(jsonlPath) ?? '';
   const sessionStats = resolvedSessionId ? await readSessionStats(resolvedSessionId) : null;

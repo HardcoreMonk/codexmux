@@ -91,6 +91,29 @@ const useTimeline = ({
   const jsonlPathRef = useRef<string | null>(null);
   const startByteOffsetRef = useRef(0);
   const isLoadingMoreRef = useRef(false);
+  const pendingAppendRef = useRef<ITimelineEntry[]>([]);
+  const appendFlushHandleRef = useRef<number | null>(null);
+  const appendFlushModeRef = useRef<'frame' | 'timeout' | null>(null);
+
+  const cancelAppendFlush = useCallback(() => {
+    if (appendFlushHandleRef.current === null) return;
+    if (appendFlushModeRef.current === 'frame') {
+      window.cancelAnimationFrame(appendFlushHandleRef.current);
+    } else {
+      window.clearTimeout(appendFlushHandleRef.current);
+    }
+    appendFlushHandleRef.current = null;
+    appendFlushModeRef.current = null;
+  }, []);
+
+  const flushPendingAppend = useCallback(() => {
+    appendFlushHandleRef.current = null;
+    appendFlushModeRef.current = null;
+    const pending = pendingAppendRef.current;
+    if (pending.length === 0) return;
+    pendingAppendRef.current = [];
+    setEntries((prev) => appendTimelineEntries(prev, pending));
+  }, []);
 
   const getCliStateRef = useRef(getCliState);
   useEffect(() => {
@@ -100,6 +123,8 @@ const useTimeline = ({
   const [prevSessionName, setPrevSessionName] = useState(sessionName);
   if (sessionName !== prevSessionName) {
     setPrevSessionName(sessionName);
+    cancelAppendFlush();
+    pendingAppendRef.current = [];
     setWsInitReceived(false);
     setAgentProcessState(null);
     setAgentInstalledState(true);
@@ -139,8 +164,24 @@ const useTimeline = ({
   }, []);
 
   const handleAppend = useCallback((newEntries: ITimelineEntry[]) => {
-    setEntries((prev) => appendTimelineEntries(prev, newEntries));
-  }, []);
+    if (newEntries.length === 0) return;
+    pendingAppendRef.current.push(...newEntries);
+    if (appendFlushHandleRef.current !== null) return;
+
+    if (typeof window.requestAnimationFrame === 'function') {
+      appendFlushModeRef.current = 'frame';
+      appendFlushHandleRef.current = window.requestAnimationFrame(flushPendingAppend);
+      return;
+    }
+
+    appendFlushModeRef.current = 'timeout';
+    appendFlushHandleRef.current = window.setTimeout(flushPendingAppend, 16);
+  }, [flushPendingAppend]);
+
+  useEffect(() => () => {
+    cancelAppendFlush();
+    pendingAppendRef.current = [];
+  }, [cancelAppendFlush]);
 
   const addPendingUserMessage = useCallback((text: string, options?: { autoHide?: boolean; attachmentPlaceholder?: boolean }): string => {
     const trimmed = text.trim();
@@ -332,6 +373,7 @@ const useTimeline = ({
 
   const tasks = useMemo((): ITaskItem[] => {
     const items: ITaskItem[] = [];
+    const byId = new Map<string, ITaskItem>();
     let createIndex = 0;
 
     for (const entry of entries) {
@@ -339,14 +381,16 @@ const useTimeline = ({
 
       if (entry.action === 'create') {
         createIndex++;
-        items.push({
+        const item = {
           taskId: entry.taskId || String(createIndex),
           subject: entry.subject ?? '',
           description: entry.description,
           status: entry.status,
-        });
+        };
+        items.push(item);
+        byId.set(item.taskId, item);
       } else if (entry.action === 'update') {
-        const target = items.find((t) => t.taskId === entry.taskId);
+        const target = byId.get(entry.taskId);
         if (target) {
           target.status = entry.status;
         }

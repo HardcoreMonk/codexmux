@@ -17,12 +17,11 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(405).json({ error: 'method-not-allowed' });
   }
 
-  const fileCount = await countJsonlFiles();
-
   try {
     await fs.access(CACHE_PATH);
-    return res.status(200).json({ exists: true, fileCount });
+    return res.status(200).json({ exists: true, fileCount: 0 });
   } catch {
+    const fileCount = await countJsonlFiles();
     return res.status(200).json({ exists: false, fileCount });
   }
 };

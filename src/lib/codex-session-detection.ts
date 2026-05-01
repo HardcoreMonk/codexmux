@@ -6,8 +6,7 @@ import { execFile as execFileCb } from 'child_process';
 import { promisify } from 'util';
 import type { ISessionInfo } from '@/types/timeline';
 import type { ISessionWatcher } from '@/lib/session-detection';
-import { getChildPids, isProcessRunning } from '@/lib/session-detection';
-import { isLinux } from '@/lib/platform';
+import { getChildPids, getDescendantPids, getProcessCommandLine, getProcessCwd, getProcessStartTime, isProcessRunning } from '@/lib/session-detection';
 import { getShellPath } from '@/lib/preflight';
 
 const execFile = promisify(execFileCb);
@@ -17,7 +16,7 @@ const CODEX_SESSIONS_DIR = path.join(CODEX_DIR, 'sessions');
 const SESSION_SCAN_LIMIT = 100;
 const WATCH_POLL_INTERVAL = 1500;
 const INSTALL_CHECK_INTERVAL = 60_000;
-const PROCESS_SESSION_START_TOLERANCE_MS = 60_000;
+const PROCESS_SESSION_START_TOLERANCE_MS = 120_000;
 
 interface ICodexProcess {
   pid: number;
@@ -41,84 +40,13 @@ interface IFindCodexSessionJsonlOptions {
   allowCwdFallback?: boolean;
 }
 
-let clockTicksCache: number | null = null;
-
 const extractThreadId = (value: string | null | undefined): string | null =>
   value?.match(THREAD_ID_RE)?.[1] ?? null;
 
-const getClockTicks = async (): Promise<number> => {
-  if (clockTicksCache) return clockTicksCache;
-
-  try {
-    const { stdout } = await execFile('getconf', ['CLK_TCK']);
-    const parsed = Number.parseInt(stdout.trim(), 10);
-    clockTicksCache = Number.isFinite(parsed) && parsed > 0 ? parsed : 100;
-  } catch {
-    clockTicksCache = 100;
-  }
-  return clockTicksCache;
-};
-
-const parseLinuxStartTicks = (stat: string): number | null => {
-  const closeParen = stat.lastIndexOf(')');
-  if (closeParen < 0) return null;
-
-  const fieldsAfterComm = stat.slice(closeParen + 1).trim().split(/\s+/);
-  const raw = fieldsAfterComm[19];
-  if (!raw) return null;
-
-  const ticks = Number.parseInt(raw, 10);
-  return Number.isFinite(ticks) ? ticks : null;
-};
-
-const getProcessStartTime = async (pid: number): Promise<number | null> => {
-  if (isLinux) {
-    try {
-      const [stat, uptimeRaw, ticksPerSecond] = await Promise.all([
-        fs.readFile(`/proc/${pid}/stat`, 'utf-8'),
-        fs.readFile('/proc/uptime', 'utf-8'),
-        getClockTicks(),
-      ]);
-      const startTicks = parseLinuxStartTicks(stat);
-      const uptime = Number.parseFloat(uptimeRaw.split(/\s+/)[0]);
-      if (startTicks === null || !Number.isFinite(uptime)) return null;
-      return Date.now() - (uptime * 1000) + ((startTicks / ticksPerSecond) * 1000);
-    } catch {
-      return null;
-    }
-  }
-
-  try {
-    const { stdout } = await execFile('ps', ['-p', String(pid), '-o', 'lstart=']);
-    const ts = Date.parse(stdout.trim());
-    return Number.isFinite(ts) ? ts : null;
-  } catch {
-    return null;
-  }
-};
-
-const getProcessCwd = async (pid: number): Promise<string | null> => {
-  if (isLinux) {
-    try {
-      return await fs.readlink(`/proc/${pid}/cwd`);
-    } catch {
-      return null;
-    }
-  }
-
-  try {
-    const { stdout } = await execFile('lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-Fn']);
-    const line = stdout.split('\n').find((l) => l.startsWith('n/'));
-    return line ? line.slice(1) : null;
-  } catch {
-    return null;
-  }
-};
-
 const collectProcessTree = async (panePid: number, preloadedChildPids?: number[]): Promise<number[]> => {
   const direct = preloadedChildPids ?? await getChildPids(panePid);
-  const grandchildren = (await Promise.all(direct.map(getChildPids))).flat();
-  return [...direct, ...grandchildren];
+  const descendants = (await Promise.all(direct.map(getDescendantPids))).flat();
+  return [...new Set([...direct, ...descendants])];
 };
 
 const findCodexProcess = async (
@@ -128,12 +56,12 @@ const findCodexProcess = async (
   const pids = await collectProcessTree(panePid, preloadedChildPids);
   for (const pid of pids) {
     try {
-      const { stdout } = await execFile('ps', ['-p', String(pid), '-o', 'comm=', '-o', 'args=']);
-      if (!/\bcodex\b/.test(stdout)) continue;
+      const commandLine = await getProcessCommandLine(pid);
+      if (!commandLine || !/\bcodex\b/.test(commandLine.raw)) continue;
       return {
         pid,
         cwd: await getProcessCwd(pid),
-        sessionId: extractThreadId(stdout),
+        sessionId: extractThreadId(commandLine.raw),
         startedAt: await getProcessStartTime(pid),
       };
     } catch {
@@ -305,7 +233,10 @@ export const detectActiveCodexSession = async (
   const session = await findCodexSessionJsonl(
     codexProcess.sessionId,
     codexProcess.cwd,
-    { processStartedAt: codexProcess.startedAt },
+    {
+      processStartedAt: codexProcess.startedAt,
+      allowCwdFallback: true,
+    },
   );
   return {
     status: 'running',

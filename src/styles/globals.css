@@ -281,6 +281,11 @@ body {
   animation: timeline-fade-in 150ms ease-out both;
 }
 
+.timeline-row-visibility {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 128px;
+}
+
 /* highlight.js syntax highlighting — muted palette */
 .hljs {
   color: var(--foreground);

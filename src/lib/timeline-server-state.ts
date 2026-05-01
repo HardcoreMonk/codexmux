@@ -2,7 +2,7 @@ import { WebSocket } from 'ws';
 import type { FSWatcher } from 'fs';
 import type { ISessionWatcher } from '@/lib/session-detection';
 import type { IAgentProvider } from '@/lib/providers';
-import type { TTimelineServerMessage } from '@/types/timeline';
+import type { IChunkReadResult, TTimelineServerMessage } from '@/types/timeline';
 
 const BACKPRESSURE_LIMIT = 1024 * 1024;
 
@@ -15,6 +15,14 @@ export interface ITimelineConnection {
   lastHeartbeat: number;
   currentJsonlPath: string | null;
   cleaned: boolean;
+}
+
+export interface ITimelineTailSnapshot {
+  maxEntries: number;
+  fileSize: number;
+  mtimeMs: number;
+  result: IChunkReadResult;
+  firstTimestamp: string | null;
 }
 
 export interface IFileWatcher {
@@ -31,6 +39,7 @@ export interface IFileWatcher {
   processing: boolean;
   pendingChange: boolean;
   initOffsets: Map<WebSocket, number>;
+  tailSnapshot?: ITimelineTailSnapshot;
 }
 
 const gTimeline = globalThis as unknown as {
@@ -68,4 +77,56 @@ export const broadcastTimelineWatcher = (
       ws.send(str);
     }
   }
+};
+
+export const getTimelinePerfSnapshot = () => {
+  const sockets = new Set<WebSocket>();
+  let watcherConnections = 0;
+  let maxWatcherConnections = 0;
+  let processingWatchers = 0;
+  let pendingChangeWatchers = 0;
+  let cachedTailSnapshots = 0;
+  let pendingBufferBytes = 0;
+
+  for (const ws of timelineConnections.keys()) {
+    sockets.add(ws);
+  }
+
+  for (const fw of fileWatchers.values()) {
+    watcherConnections += fw.connections.size;
+    maxWatcherConnections = Math.max(maxWatcherConnections, fw.connections.size);
+    if (fw.processing) processingWatchers++;
+    if (fw.pendingChange) pendingChangeWatchers++;
+    if (fw.tailSnapshot) cachedTailSnapshots++;
+    pendingBufferBytes += Buffer.byteLength(fw.pendingBuffer, 'utf-8');
+    for (const ws of fw.connections) {
+      sockets.add(ws);
+    }
+  }
+
+  let openSockets = 0;
+  let totalBufferedAmount = 0;
+  let maxBufferedAmount = 0;
+  for (const ws of sockets) {
+    if (ws.readyState === WebSocket.OPEN) openSockets++;
+    totalBufferedAmount += ws.bufferedAmount;
+    maxBufferedAmount = Math.max(maxBufferedAmount, ws.bufferedAmount);
+  }
+
+  return {
+    connections: timelineConnections.size,
+    openSockets,
+    fileWatchers: fileWatchers.size,
+    sessionWatchers: sessionWatchers.size,
+    watcherConnections,
+    maxWatcherConnections,
+    processingWatchers,
+    pendingChangeWatchers,
+    cachedTailSnapshots,
+    pendingBufferBytes,
+    bufferedAmount: {
+      total: totalBufferedAmount,
+      max: maxBufferedAmount,
+    },
+  };
 };

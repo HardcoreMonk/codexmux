@@ -7,6 +7,7 @@ import { PRISTINE_ENV } from '@/lib/pristine-env';
 import { buildShellLaunchCommand } from '@/lib/shell-env';
 import { createLogger } from '@/lib/logger';
 import { isLinux } from '@/lib/platform';
+import { getDescendantPids, getLatestChildPid, getProcessCommandLine, getProcessCwd } from '@/lib/session-detection';
 
 const log = createLogger('terminal');
 
@@ -171,27 +172,10 @@ export const scanSessions = async (): Promise<void> => {
   }
 };
 
-const readShellCwd = async (pid: number): Promise<string | null> => {
-  if (isLinux) {
-    try {
-      return await fs.readlink(`/proc/${pid}/cwd`);
-    } catch {
-      return null;
-    }
-  }
-  try {
-    const { stdout } = await execFile('lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-Fn'], { timeout: CMD_TIMEOUT });
-    const line = stdout.split('\n').find((l) => l.startsWith('n/'));
-    return line ? line.slice(1) : null;
-  } catch {
-    return null;
-  }
-};
-
 export const getSessionCwd = async (sessionName: string): Promise<string | null> => {
   const shellPid = await getSessionPanePid(sessionName);
   if (shellPid) {
-    const cwd = await readShellCwd(shellPid);
+    const cwd = await getProcessCwd(shellPid);
     if (cwd) return cwd;
   }
   try {
@@ -467,44 +451,6 @@ export const capturePaneContentWithHistory = async (
   }
 };
 
-const getChildPidsOf = async (parentPids: number[]): Promise<number[]> => {
-  if (isLinux) {
-    const results: number[] = [];
-    await Promise.all(
-      parentPids.map(async (pid) => {
-        try {
-          const raw = await fs.readFile(`/proc/${pid}/task/${pid}/children`, 'utf-8');
-          for (const s of raw.trim().split(/\s+/)) {
-            const n = parseInt(s, 10);
-            if (!Number.isNaN(n)) results.push(n);
-          }
-        } catch {
-          // process gone
-        }
-      }),
-    );
-    return results;
-  }
-  try {
-    const { stdout } = await execFile('pgrep', ['-P', parentPids.join(',')], { timeout: CMD_TIMEOUT });
-    return stdout.trim().split('\n').map((s) => parseInt(s, 10)).filter((n) => !Number.isNaN(n));
-  } catch {
-    return [];
-  }
-};
-
-const getDescendantPids = async (rootPid: number): Promise<number[]> => {
-  const all: number[] = [];
-  let frontier = [rootPid];
-  while (frontier.length > 0) {
-    const children = await getChildPidsOf(frontier);
-    if (children.length === 0) break;
-    all.push(...children);
-    frontier = children;
-  }
-  return all;
-};
-
 const getListeningPortsLinux = async (pids: number[]): Promise<number[]> => {
   try {
     const pidSet = new Set(pids);
@@ -554,18 +500,11 @@ export const getLastCommand = async (sessionName: string): Promise<string | null
   if (!shellPid) return null;
 
   try {
-    const { stdout: pgrepOut } = await execFile(
-      'pgrep', ['-n', '-P', String(shellPid)],
-      { timeout: CMD_TIMEOUT },
-    );
-    const childPid = pgrepOut.trim();
+    const childPid = await getLatestChildPid(shellPid);
     if (!childPid) return null;
 
-    const { stdout: psOut } = await execFile(
-      'ps', ['-o', 'args=', '-p', childPid],
-      { timeout: CMD_TIMEOUT },
-    );
-    const args = psOut.trim();
+    const commandLine = await getProcessCommandLine(childPid);
+    const args = commandLine?.args.trim() || commandLine?.raw.trim();
     if (!args) return null;
 
     return cleanCommandLine(args);
