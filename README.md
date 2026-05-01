@@ -20,6 +20,7 @@ Codex 작업을 tmux 기반 웹 세션으로 관리하는 self-hosted session ma
 - Upstream reference: <https://github.com/subicura/purplemux>
 - Runtime: Next.js Pages Router + custom Node server + tmux
 - Package manager: pnpm
+- Current version: 0.3.2
 - Supported languages: 한국어, English
 - Default language: 한국어
 - Target: Codex-focused web session manager
@@ -38,7 +39,7 @@ npx codexmux
 http://localhost:8022
 ```
 
-> Node.js 20 이상과 tmux가 필요합니다. macOS와 Linux를 지원하며 Windows는 지원하지 않습니다.
+> Node.js 20 이상과 tmux가 필요합니다. 서버 실행은 macOS와 Linux를 지원합니다. Windows 11은 서버 실행 대상이 아니라, `pwsh` Codex CLI JSONL을 codexmux 타임라인으로 동기화하는 companion client를 지원합니다.
 
 ## 서버 실행 옵션
 
@@ -139,6 +140,7 @@ corepack pnpm start
 - 라이브 타임라인: Codex JSONL을 읽어 메시지, tool call, permission prompt, reasoning summary 표시
 - 안정적인 재연결: 타임라인 entry id와 중복 제거를 JSONL record identity 기준으로 처리
 - 모바일 UI: PWA, iPad Safari, Android 앱, Web Push, foreground 재접속, 입력 draft 보존, CODEX 확인 중 터미널 preview
+- Windows client sync: Windows 11 `pwsh`에서 실행한 Codex CLI JSONL을 `x-cmux-token`으로 서버에 chunk 동기화하고 읽기 전용 timeline으로 표시
 - 알림 제어: 작업 완료 toast, 시스템 알림, 완료 사운드 on/off
 - Git 워크플로: status, diff, history, fetch, pull, push, 충돌/dirty 상태 전달
 - DIFF 안정성: 대량 diff와 untracked 파일은 제한, 생략 안내, 짧은 서버 캐시, 기본 접힘, timeout으로 UI hang 방지
@@ -220,6 +222,8 @@ codexmux 상태는 `~/.codexmux/`에 저장됩니다. Codex CLI 원본 세션은
 | `push-subscriptions.json` | Web Push 구독 정보 |
 | `cli-token` | CLI와 hook bridge의 `x-cmux-token` |
 | `port` | 현재 실행 중인 server port |
+| `remote/codex/{sourceId}/{sessionId}.jsonl` | Windows companion이 보낸 Codex CLI JSONL 복사본 |
+| `remote/codex/{sourceId}/{sessionId}.jsonl.meta.json` | Windows host, shell, cwd, 원본 path, offset metadata |
 | `stats/` | Codex usage cache와 daily report. 런타임 stats build는 in-flight promise로 중복 계산을 피함 |
 | `logs/` | 서버 로그 |
 | `uploads/` | 임시 첨부 파일 |
@@ -248,6 +252,7 @@ corepack pnpm android:build:release
 corepack pnpm android:bundle:release
 corepack pnpm android:install
 corepack pnpm android:keystore
+corepack pnpm windows:codex-sync
 ```
 
 로그 레벨:
@@ -360,9 +365,39 @@ corepack pnpm android:bundle:release
 - 모바일 기기에 Tailscale 설치 및 같은 tailnet 로그인
 - codexmux 서버는 `HOST=localhost,tailscale` 또는 Tailscale Serve HTTPS로 노출
 
-앱은 저장된 서버 또는 기본 Tailscale 서버로 자동 연결합니다. 연결 전 `/api/health`를 확인하고, HTTPS/HTTP/network/timeout 실패를 구분해 재시도 또는 서버 변경 흐름으로 되돌립니다. 최근 서버 목록, 서버 변경, 연결 실패 시 재시도 흐름, 앱 정보와 앱 재시작 기능을 제공합니다. 서버 접속 후에도 모바일 내비게이션의 앱 정보 화면에서 앱 versionName/versionCode, package, device, Android version, 서버 버전을 확인하고 WebView/Activity를 재시작할 수 있습니다. 런처와 모바일 내비게이션은 한국어 우선 타이포그래피, safe-area, 터치 눌림 상태, focus-visible 상태를 기준으로 조정되어 있습니다. Android 버전은 `package.json` semver와 자동 동기화되며, patch가 `0`이면 앱 표기에서 마지막 `.0`을 생략합니다. 마이너 기능 변경은 `0.0.1`, 메이저 기능 묶음은 `0.1` 단위로 올립니다. 현재 `package.json` version은 `0.3.1`이며 Android 설치 상태는 `versionName=0.3.1`, `versionCode=301`이어야 합니다. HTTPS Tailscale Serve 주소를 우선 사용하고, 로컬 개발용 HTTP는 Android manifest와 Capacitor 설정에서 허용합니다.
+앱은 저장된 서버 또는 기본 Tailscale 서버로 자동 연결합니다. 연결 전 `/api/health`를 확인하고, HTTPS/HTTP/network/timeout 실패를 구분해 재시도 또는 서버 변경 흐름으로 되돌립니다. 최근 서버 목록, 서버 변경, 연결 실패 시 재시도 흐름, 앱 정보와 앱 재시작 기능을 제공합니다. 서버 접속 후에도 모바일 내비게이션의 앱 정보 화면에서 앱 versionName/versionCode, package, device, Android version, 서버 버전을 확인하고 WebView/Activity를 재시작할 수 있습니다. 런처와 모바일 내비게이션은 한국어 우선 타이포그래피, safe-area, 터치 눌림 상태, focus-visible 상태를 기준으로 조정되어 있습니다. Android 버전은 `package.json` semver와 자동 동기화되며, patch가 `0`이면 앱 표기에서 마지막 `.0`을 생략합니다. 마이너 기능 변경은 `0.0.1`, 메이저 기능 묶음은 `0.1` 단위로 올립니다. 현재 `package.json` version은 `0.3.2`이며 Android 설치 상태는 다음 APK 빌드/설치 후 `versionName=0.3.2`, `versionCode=302`가 됩니다. HTTPS Tailscale Serve 주소를 우선 사용하고, 로컬 개발용 HTTP는 Android manifest와 Capacitor 설정에서 허용합니다.
 
 세부 구조와 빌드 메모는 [docs/ANDROID.md](docs/ANDROID.md)를 참고합니다.
+
+## Windows client 동기화
+
+Windows 11에서 `pwsh`로 실행한 Codex CLI 세션은 Linux 서버의 tmux process tree 아래에 없으므로 codexmux가 터미널을 직접 attach하지 않습니다. 현재 지원 범위는 Windows companion script가 `%USERPROFILE%\.codex\sessions\**\*.jsonl`을 읽어 codexmux 서버에 chunk로 보내고, 서버가 이를 session list와 읽기 전용 timeline으로 보여주는 방식입니다.
+
+Windows PowerShell에서 실행:
+
+```powershell
+$env:CMUX_URL = "http://<codexmux-server>:<port>"
+$env:CMUX_TOKEN = "<server ~/.codexmux/cli-token content>"
+corepack pnpm windows:codex-sync
+```
+
+주요 option:
+
+```powershell
+node .\scripts\windows-codex-sync.mjs `
+  --server http://100.x.y.z:8122 `
+  --token $env:CMUX_TOKEN `
+  --source-id win11-main `
+  --shell pwsh
+```
+
+- 서버 endpoint: `POST /api/remote/codex/sync`
+- 인증: `x-cmux-token`
+- 서버 저장 위치: `~/.codexmux/remote/codex/{sourceId}/{sessionId}.jsonl`
+- UI 동작: session list에 `HOST / pwsh` badge로 표시되고, 선택하면 `codex resume`이 아니라 해당 JSONL timeline을 구독
+- 미지원 범위: Windows `pwsh` 입력/resize/process lifecycle 원격 제어
+
+세부 실행 옵션과 문제 해결은 [docs/WINDOWS.md](docs/WINDOWS.md)를 참고합니다.
 
 ## CLI
 
@@ -401,6 +436,12 @@ shell / codex
 Codex JSONL
   ~/.codex/sessions/YYYY/MM/DD/*.jsonl
   -> timeline, status, stats
+
+Windows Codex companion
+  %USERPROFILE%\.codex\sessions\**\*.jsonl
+  -> /api/remote/codex/sync
+  -> ~/.codexmux/remote/codex/**/*.jsonl
+  -> timeline
 ```
 
 - 터미널 I/O는 xterm.js, WebSocket, node-pty, tmux로 연결됩니다.
@@ -411,6 +452,7 @@ Codex JSONL
 - DIFF 패널은 tmux session cwd를 기준으로 Git 상태를 읽고, 대량 untracked 파일과 렌더링 비용을 제한합니다.
 - 서버와 Next.js API route의 공유 상태는 `globalThis` singleton으로 유지합니다.
 - 전용 tmux socket인 `codexmux`를 사용하므로 사용자의 기존 tmux 세션과 분리됩니다.
+- Windows companion sync는 원본 Windows Codex JSONL을 수정하지 않고 서버에 복사본을 저장합니다.
 
 관련 문서:
 
@@ -426,6 +468,7 @@ Codex JSONL
 | [docs/STYLE.md](docs/STYLE.md) | theme와 color 사용 규칙 |
 | [docs/ELECTRON.md](docs/ELECTRON.md) | Electron desktop app 개발과 패키징 |
 | [docs/ANDROID.md](docs/ANDROID.md) | Android Capacitor app 개발, 앱 정보/재시작, 빌드 |
+| [docs/WINDOWS.md](docs/WINDOWS.md) | Windows Codex CLI JSONL 동기화 client |
 | [docs/FOLLOW-UP.md](docs/FOLLOW-UP.md) | 릴리스 전 확인과 post-MVP 백로그 |
 
 <a id="en"></a>
@@ -440,6 +483,7 @@ codexmux is a self-hosted web session manager for Codex. It keeps Codex work in 
 - Upstream reference: <https://github.com/subicura/purplemux>
 - Runtime: Next.js Pages Router + custom Node server + tmux
 - Package manager: pnpm
+- Current version: 0.3.2
 - Supported languages: English, Korean
 - Default language: Korean
 
@@ -457,7 +501,7 @@ Open:
 http://localhost:8022
 ```
 
-Requirements: Node.js 20 or newer, tmux, macOS or Linux.
+Requirements: Node.js 20 or newer and tmux. Server execution is supported on macOS and Linux. Windows 11 is supported as a companion client that syncs `pwsh` Codex CLI JSONL timelines to a running codexmux server.
 
 ### Server Options
 
@@ -620,7 +664,37 @@ Expected prerequisites:
 - Tailscale installed on the phone and logged into the same tailnet
 - codexmux exposed through `HOST=localhost,tailscale` or Tailscale Serve HTTPS
 
-The app automatically connects to the saved server or the default Tailscale server. Before navigation it probes `/api/health` and separates HTTPS, HTTP, network, and timeout failures so the launcher can return to retry or server-change flows. The launcher supports recent servers, server changes, retry flow after connection failures, app info, and app restart. After connecting to the server, the mobile navigation app info screen shows app versionName/versionCode, package, device, Android version, and server version, and can restart the WebView/Activity. Launcher and mobile navigation surfaces are tuned for Korean-first typography, safe-area handling, touch pressed states, and focus-visible states. Android versioning is synchronized with `package.json` semver, and milestone versions with patch `0` drop the final `.0` in the app label. Minor feature changes increment by `0.0.1`; major feature batches increment by `0.1`. The current `package.json` version is `0.3.1`, so Android installs should report `versionName=0.3.1` and `versionCode=301`. Prefer HTTPS through Tailscale Serve; HTTP is enabled only for local development paths.
+The app automatically connects to the saved server or the default Tailscale server. Before navigation it probes `/api/health` and separates HTTPS, HTTP, network, and timeout failures so the launcher can return to retry or server-change flows. The launcher supports recent servers, server changes, retry flow after connection failures, app info, and app restart. After connecting to the server, the mobile navigation app info screen shows app versionName/versionCode, package, device, Android version, and server version, and can restart the WebView/Activity. Launcher and mobile navigation surfaces are tuned for Korean-first typography, safe-area handling, touch pressed states, and focus-visible states. Android versioning is synchronized with `package.json` semver, and milestone versions with patch `0` drop the final `.0` in the app label. Minor feature changes increment by `0.0.1`; major feature batches increment by `0.1`. The current `package.json` version is `0.3.2`, so the next Android build/install should report `versionName=0.3.2` and `versionCode=302`. Prefer HTTPS through Tailscale Serve; HTTP is enabled only for local development paths.
+
+### Windows Client Sync
+
+Codex CLI sessions launched from Windows 11 `pwsh` are outside the Linux server's tmux process tree, so codexmux does not attach to the Windows terminal directly. The supported Windows path is a companion script that reads `%USERPROFILE%\.codex\sessions\**\*.jsonl`, sends chunks to the codexmux server, and shows those remote sessions as read-only timelines.
+
+PowerShell:
+
+```powershell
+$env:CMUX_URL = "http://<codexmux-server>:<port>"
+$env:CMUX_TOKEN = "<server ~/.codexmux/cli-token content>"
+corepack pnpm windows:codex-sync
+```
+
+Example with explicit options:
+
+```powershell
+node .\scripts\windows-codex-sync.mjs `
+  --server http://100.x.y.z:8122 `
+  --token $env:CMUX_TOKEN `
+  --source-id win11-main `
+  --shell pwsh
+```
+
+- Endpoint: `POST /api/remote/codex/sync`
+- Auth: `x-cmux-token`
+- Server storage: `~/.codexmux/remote/codex/{sourceId}/{sessionId}.jsonl`
+- UI behavior: remote sessions appear with a `HOST / pwsh` badge and open by subscribing to the stored JSONL timeline, not by running `codex resume`
+- Not included: remote control of Windows `pwsh` input, resize, or process lifecycle
+
+See [docs/WINDOWS.md](docs/WINDOWS.md) for all options and troubleshooting.
 
 ### Tailscale
 
@@ -658,6 +732,7 @@ On iPad, use Safari and add codexmux to the Home Screen. A native iPadOS app is 
 - Codex CLI-compatible input, including `Ctrl+D` EOF delivery from terminal and Codex input focus
 - Live timeline from Codex JSONL logs
 - PWA, iPad Safari, Android app, Web Push, foreground reconnect, input draft preservation, and terminal preview while CODEX is checking
+- Windows client sync for Codex CLI JSONL timelines created from `pwsh`
 - Stable timeline entry ids and duplicate suppression across reconnects and paired Codex records
 - Notification controls for task-complete toast, system notifications, and completion sound
 - Git status, diff, history, fetch, pull, and push flows
@@ -681,6 +756,7 @@ On iPad, use Safari and add codexmux to the Home Screen. A native iPadOS app is 
 | [docs/STYLE.md](docs/STYLE.md) | Theme and color rules |
 | [docs/ELECTRON.md](docs/ELECTRON.md) | Electron desktop development and packaging |
 | [docs/ANDROID.md](docs/ANDROID.md) | Android Capacitor development, app info/restart, and build |
+| [docs/WINDOWS.md](docs/WINDOWS.md) | Windows Codex CLI JSONL sync client |
 | [docs/FOLLOW-UP.md](docs/FOLLOW-UP.md) | Release checks and post-MVP backlog |
 
 ### Security And Data
@@ -698,7 +774,7 @@ To reset only the password, remove these fields from `config.json` and restart:
 
 Deleting the whole `config.json` also resets app settings such as locale, theme, network access, and Codex options.
 
-The app stores its own state in `~/.codexmux/` and reads Codex CLI JSONL sessions from `~/.codex/sessions/`.
+The app stores its own state in `~/.codexmux/` and reads Codex CLI JSONL sessions from `~/.codex/sessions/`. Windows companion sync stores copied remote JSONL files under `~/.codexmux/remote/codex/` and does not modify the original Windows Codex session files.
 
 ## 라이선스
 
