@@ -13,6 +13,16 @@
   "disconnectedPtyError": "터미널을 시작할 수 없습니다",
   "cannotConnectServer": "서버에 연결할 수 없습니다",
   "restart": "다시 시작",
+  "appInfo": "앱 정보",
+  "appVersion": "앱 버전",
+  "appBuild": "빌드",
+  "appPackage": "패키지",
+  "appDevice": "기기",
+  "appAndroid": "Android",
+  "serverVersion": "서버 버전",
+  "androidAppOnly": "Android 앱에서만 기기 정보를 확인할 수 있습니다.",
+  "restartApp": "앱 재시작",
+  "restartAppUnavailable": "Android 앱 재시작을 사용할 수 없습니다.",
   "reconnect": "다시 연결",
   "noWorkspace": "Workspace 없음"
 }

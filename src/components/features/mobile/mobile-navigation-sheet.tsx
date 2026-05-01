@@ -5,6 +5,7 @@ import {
   FolderPlus,
   GitCompareArrows,
   Globe,
+  Info,
   Pencil,
   Plus,
   Settings,
@@ -38,6 +39,7 @@ import SidebarRateLimits from '@/components/layout/sidebar-rate-limits';
 import MobileWorkspaceGroupHeader from '@/components/features/mobile/mobile-workspace-group-header';
 import RenameGroupDialog from '@/components/features/workspace/rename-group-dialog';
 import EditWorkspaceDialog from '@/components/features/workspace/edit-workspace-dialog';
+import MobileAndroidAppDialog from '@/components/features/mobile/mobile-android-app-dialog';
 
 const WorkspacePortsLabel = ({ workspaceId }: { workspaceId: string }) => {
   const label = useTabStore(
@@ -88,6 +90,7 @@ const MobileNavigationSheet = ({
   const [expandedWsId, setExpandedWsId] = useState<string | null>(activeWorkspaceId);
   const [editWorkspaceId, setEditWorkspaceId] = useState<string | null>(null);
   const [renameGroupId, setRenameGroupId] = useState<string | null>(null);
+  const [appInfoOpen, setAppInfoOpen] = useState(false);
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -453,6 +456,14 @@ const MobileNavigationSheet = ({
             })}
             <button
               className="flex h-8 w-8 touch-manipulation items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent active:bg-accent/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              onClick={() => setAppInfoOpen(true)}
+              aria-label={t('appInfo')}
+              title={t('appInfo')}
+            >
+              <Info size={15} />
+            </button>
+            <button
+              className="flex h-8 w-8 touch-manipulation items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent active:bg-accent/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               onClick={() => {
                 onOpenChange(false);
                 onOpenSettings();
@@ -481,6 +492,10 @@ const MobileNavigationSheet = ({
           currentName={editTargetWorkspace.name}
         />
       )}
+      <MobileAndroidAppDialog
+        open={appInfoOpen}
+        onOpenChange={setAppInfoOpen}
+      />
     </Sheet>
   );
 };

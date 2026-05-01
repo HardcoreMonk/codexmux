@@ -13,6 +13,16 @@
   "disconnectedPtyError": "Unable to start terminal",
   "cannotConnectServer": "Unable to connect to server",
   "restart": "Restart",
+  "appInfo": "App Info",
+  "appVersion": "App Version",
+  "appBuild": "Build",
+  "appPackage": "Package",
+  "appDevice": "Device",
+  "appAndroid": "Android",
+  "serverVersion": "Server Version",
+  "androidAppOnly": "Device details are available only in the Android app.",
+  "restartApp": "Restart App",
+  "restartAppUnavailable": "Android app restart is unavailable.",
   "reconnect": "Reconnect",
   "noWorkspace": "No Workspace"
 }

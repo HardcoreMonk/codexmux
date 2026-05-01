@@ -275,6 +275,12 @@
         margin-top: 12px;
       }
 
+      .app-actions {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
       .info-row {
         display: grid;
         grid-template-columns: 92px 1fr;
@@ -346,6 +352,9 @@
             <div class="info-row"><span>Device</span><span id="app-device">-</span></div>
             <div class="info-row"><span>Android</span><span id="app-android">-</span></div>
           </div>
+          <div class="app-actions">
+            <button type="button" class="secondary" id="restart-app" hidden>앱 재시작</button>
+          </div>
         </details>
       </section>
     </main>
@@ -373,6 +382,7 @@
       const appPackage = document.getElementById('app-package');
       const appDevice = document.getElementById('app-device');
       const appAndroid = document.getElementById('app-android');
+      const restartApp = document.getElementById('restart-app');
       const params = new URLSearchParams(window.location.search);
       const hasConnectionFailure = params.get('connection') === 'failed';
       const connectionFailureReason = params.get('reason') || 'native';
@@ -584,6 +594,7 @@
         appPackage.textContent = info.packageName;
         appDevice.textContent = info.deviceModel;
         appAndroid.textContent = info.androidVersion;
+        restartApp.hidden = typeof window.CodexmuxAndroid?.restartApp !== 'function';
       };
 
       form.addEventListener('submit', (event) => {
@@ -603,6 +614,10 @@
       useDefault.addEventListener('click', () => {
         const nextUrl = rememberServer(DEFAULT_SERVER_URL);
         if (nextUrl) void openServer(nextUrl);
+      });
+
+      restartApp.addEventListener('click', () => {
+        window.CodexmuxAndroid?.restartApp?.();
       });
 
       boot();

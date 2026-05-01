@@ -1,8 +1,12 @@
 package com.hardcoremonk.codexmux;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.webkit.JavascriptInterface;
 
 public class CodexmuxAppInfo {
@@ -48,6 +52,22 @@ public class CodexmuxAppInfo {
     @JavascriptInterface
     public String getDeviceModel() {
         return Build.MODEL;
+    }
+
+    @JavascriptInterface
+    public void restartApp() {
+        new Handler(Looper.getMainLooper()).post(() -> {
+            Intent intent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
+            if (intent == null) return;
+
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            context.startActivity(intent);
+
+            if (context instanceof Activity) {
+                Activity activity = (Activity) context;
+                activity.finish();
+            }
+        });
     }
 
     private PackageInfo getPackageInfo() throws Exception {
