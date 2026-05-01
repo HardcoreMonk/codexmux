@@ -142,7 +142,7 @@ button{padding:6px 16px;border-radius:6px;border:1px solid #27272a;font-size:13p
 .connect{background:#7c3aed;color:#fff;border-color:#7c3aed}.connect:hover{background:#6d28d9}
 </style></head><body>
 <label>${m.serverAddress}</label>
-<input id="url" value="${escaped}" placeholder="http://192.168.1.100:8022"/>
+<input id="url" value="${escaped}" placeholder="http://192.168.1.100:8122"/>
 <div class="buttons">
 <button class="cancel" id="cancelBtn">${m.cancel}</button>
 <button class="connect" id="connectBtn">${m.connect}</button>
@@ -389,7 +389,7 @@ const stopUpdateCheckTimer = () => {
 
 // --- Local Server ---
 
-const DEFAULT_PORT = 8022;
+const DEFAULT_PORT = 8122;
 
 const startLocalServer = async (): Promise<number> => {
   if (!cachedStart) {

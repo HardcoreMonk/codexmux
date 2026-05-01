@@ -6,7 +6,7 @@ permalink: /pt-BR/docs/ports-env-vars/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-codexmux는 기본적으로 `localhost:8022`에서 실행됩니다. 필요하면 환경 변수로 port, network access, logging을 조정할 수 있습니다.
+codexmux는 기본적으로 `localhost:8122`에서 실행됩니다. 필요하면 환경 변수로 port, network access, logging을 조정할 수 있습니다.
 
 ## port와 host
 
@@ -19,14 +19,14 @@ HOST=all PORT=9000 codexmux
 
 | 변수 | 기본값 | 의미 |
 |---|---|---|
-| `PORT` | `8022` | 외부 server port |
+| `PORT` | `8122` | 외부 server port |
 | `HOST` | `localhost` | 허용할 접근 범위. env로 지정하면 앱의 네트워크 접근 설정이 잠김 |
 | `NODE_ENV` | 실행 방식에 따라 다름 | development/production pipeline 선택 |
 | `NO_UPDATE_NOTIFIER` | unset | `1`이면 version check 비활성화 |
 
 `HOST`는 단순 bind 주소가 아니라 접근 필터입니다. 사용할 수 있는 키워드는 `localhost`, `tailscale`, `lan`, `all`이고, CIDR도 직접 지정할 수 있습니다. 예를 들어 `HOST=localhost,tailscale`은 로컬 브라우저와 Tailscale 대역만 허용합니다.
 
-`8022`가 사용 중이면 빈 port를 찾아 바인딩하고 `~/.codexmux/port`에 기록합니다.
+`8122`가 사용 중이면 빈 port를 찾아 바인딩하고 `~/.codexmux/port`에 기록합니다.
 
 ## shell 기본값 고정
 

@@ -345,7 +345,7 @@ const startProd = async (port: number, appDir: string, bindHost: string): Promis
   return { port: actualPort, shutdown };
 };
 
-export const DEFAULT_PORT = 8022;
+export const DEFAULT_PORT = 8122;
 
 
 

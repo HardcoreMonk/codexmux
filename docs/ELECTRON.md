@@ -13,7 +13,7 @@ corepack pnpm pack:electron
 ```
 
 - `dev:electron`: 필요하면 `corepack pnpm dev` 서버를 자동으로 띄운 뒤 Electron을 연결합니다.
-- `dev:electron:attach`: 이미 실행 중인 `http://localhost:8022` 서버에 Electron만 붙입니다.
+- `dev:electron:attach`: 이미 실행 중인 `http://localhost:8122` 서버에 Electron만 붙입니다.
 - `build:electron`: Next.js standalone, custom server, Electron main/preload를 빌드합니다.
 - `pack:electron:dev`: 로컬 macOS 패키징 검증용입니다. signing과 notarize를 끕니다.
 - `pack:electron`: 릴리스 패키징입니다. signing/notarize 환경이 필요합니다.
@@ -45,7 +45,7 @@ Electron renderer는 웹/PWA와 같은 terminal input 정책을 사용합니다.
 로컬 서버:
 
 - 앱 실행 시 내부 codexmux 서버를 시작합니다.
-- 기본 포트는 `8022`이고, 사용 중이면 임의 포트로 fallback합니다.
+- 기본 포트는 `8122`이고, 사용 중이면 임의 포트로 fallback합니다.
 - 앱 종료 시 server shutdown과 Electron storage flush를 수행합니다.
 
 원격 서버:

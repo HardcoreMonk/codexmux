@@ -22,7 +22,7 @@ interface ITailscaleStatus {
   serverPort: number;
 }
 
-const DEFAULT_PORT = 8022;
+const DEFAULT_PORT = 8122;
 
 const CopyButton = ({ text }: { text: string }) => {
   const [copied, setCopied] = useState(false);

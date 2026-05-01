@@ -47,7 +47,7 @@ describe('parsePermissionOptions', () => {
     const pane = [
       'Do you want to proceed?',
       ' ❯ 1. Yescurrent status for this tab',
-      "  2.Yes, and don't ask: curl -s http://localhost:8022/api/status",
+      "  2.Yes, and don't ask: curl -s http://localhost:8122/api/status",
       '',
       '   3. No',
       ' Esc to cancel · Tab to amend · ctrl+e to explain',
@@ -57,7 +57,7 @@ describe('parsePermissionOptions', () => {
 
     expect(result.options).toEqual([
       '1. Yes',
-      "2. Yes, and don't ask again for: curl -s http://localhost:8022/api/status",
+      "2. Yes, and don't ask again for: curl -s http://localhost:8122/api/status",
       '3. No',
     ]);
     expect(result.focusedIndex).toBe(0);

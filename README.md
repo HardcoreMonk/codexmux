@@ -36,14 +36,14 @@ npx codexmux
 브라우저에서 접속합니다.
 
 ```text
-http://localhost:8022
+http://localhost:8122
 ```
 
 > Node.js 20 이상과 tmux가 필요합니다. 서버 실행은 macOS와 Linux를 지원합니다. Windows 11은 서버 실행 대상이 아니라, `pwsh` Codex CLI JSONL을 codexmux 타임라인으로 동기화하는 companion client를 지원합니다.
 
 ## 서버 실행 옵션
 
-기본 포트는 `8022`입니다.
+기본 포트는 `8122`입니다.
 
 ```bash
 codexmux
@@ -179,10 +179,10 @@ https://<machine>.<tailnet>.ts.net
 tailscale serve off --https=443
 ```
 
-기본 포트 `8022`로 실행 중이면 마지막 인자만 바꿉니다.
+기본 포트 `8122`로 실행 중이면 마지막 인자만 바꿉니다.
 
 ```bash
-tailscale serve --bg --https=443 http://localhost:8022
+tailscale serve --bg --https=443 http://localhost:8122
 ```
 
 iPad에서는 현재 Safari로 접속한 뒤 홈 화면에 추가하는 방식이 권장됩니다. iPadOS 네이티브 앱은 아직 포함되어 있지 않으며, 필요하면 Capacitor iOS project를 별도로 추가해야 합니다.
@@ -498,14 +498,14 @@ npx codexmux
 Open:
 
 ```text
-http://localhost:8022
+http://localhost:8122
 ```
 
 Requirements: Node.js 20 or newer and tmux. Server execution is supported on macOS and Linux. Windows 11 is supported as a companion client that syncs `pwsh` Codex CLI JSONL timelines to a running codexmux server.
 
 ### Server Options
 
-The default port is `8022`.
+The default port is `8122`.
 
 ```bash
 codexmux

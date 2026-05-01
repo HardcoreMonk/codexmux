@@ -44,7 +44,7 @@
     "build:electron:main": "tsup --config electron/tsup.config.ts",
     "build:electron": "next build && node scripts/post-build.js --electron && tsup && tsup --config electron/tsup.config.ts",
     "dev:electron": "node scripts/dev-electron.mjs",
-    "dev:electron:attach": "ELECTRON_DEV_URL=http://localhost:8022 electron .",
+    "dev:electron:attach": "ELECTRON_DEV_URL=http://localhost:8122 electron .",
     "pack:electron": "next build && node scripts/post-build.js --electron && tsup && tsup --config electron/tsup.config.ts && electron-builder --mac",
     "pack:electron:dev": "next build && node scripts/post-build.js --electron && tsup && tsup --config electron/tsup.config.ts && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac -c.mac.identity=null -c.mac.notarize=false",
     "android:sync": "cap sync android",
