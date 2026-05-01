@@ -54,6 +54,7 @@ node .\scripts\windows-codex-sync.mjs
 | `--shell` | `pwsh` | source shell label |
 | `--codex-dir` | `%USERPROFILE%\.codex\sessions` | 감시할 Codex JSONL root |
 | `--interval-ms` | `1500` | polling interval |
+| `--full-scan-interval-ms` | `60000` | 전체 session tree를 다시 훑는 주기. 평상시에는 오늘/어제 date dir와 최근 활성 파일만 확인 |
 | `--since-hours` | `all` | 스캔할 파일 범위. 숫자는 최근 N시간, `0` 또는 `all`은 전체 |
 | `--state-file` | `%USERPROFILE%\.codexmux\windows-codex-sync-state.json` | local offset state 저장 위치 |
 | `--once` | false | 한 번 동기화하고 종료 |
@@ -92,4 +93,4 @@ node .\scripts\windows-codex-sync.mjs `
 
 409 응답은 Windows companion의 local offset과 서버에 저장된 offset이 다르다는 뜻이다. companion은 해당 파일의 local sync state를 버리고 full resend를 시도한다.
 
-session list에 보이지 않으면 `--once`로 한 번 실행해 오류를 확인하고, 서버가 Windows에서 접근 가능한지 먼저 확인한다. 과거 기록까지 모두 가져오려면 기본값 그대로 실행하거나 `--since-hours all`을 명시한다. 최근 파일만 동기화하고 싶을 때만 `--since-hours 72`처럼 범위를 줄인다.
+session list에 보이지 않으면 `--once`로 한 번 실행해 오류를 확인하고, 서버가 Windows에서 접근 가능한지 먼저 확인한다. 과거 기록까지 모두 가져오려면 기본값 그대로 실행하거나 `--since-hours all`을 명시한다. companion은 시작 시 전체 scan을 수행한 뒤 평상시에는 오늘/어제 date dir와 최근 활성 파일만 빠르게 확인하고, 기본 60초마다 전체 scan을 다시 수행한다. 오래된 날짜의 session을 다시 이어서 쓰는데 표시가 늦으면 `--full-scan-interval-ms 10000`처럼 값을 줄일 수 있다. 최근 파일만 동기화하고 싶을 때만 `--since-hours 72`처럼 범위를 줄인다.

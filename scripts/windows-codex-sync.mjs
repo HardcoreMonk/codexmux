@@ -5,7 +5,10 @@ import path from 'path';
 import os from 'os';
 
 const DEFAULT_INTERVAL_MS = 1500;
+const DEFAULT_FULL_SCAN_INTERVAL_MS = 60_000;
 const MAX_CHUNK_BYTES = 512 * 1024;
+const HOT_DAY_COUNT = 2;
+const HOT_KNOWN_FILE_WINDOW_MS = 10 * 60 * 1000;
 const CODEX_THREAD_ID_RE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
 
 const args = process.argv.slice(2);
@@ -48,6 +51,11 @@ const codexDir = path.resolve(
   || path.join(os.homedir(), '.codex', 'sessions'),
 );
 const intervalMs = Number(readArg('interval-ms') || DEFAULT_INTERVAL_MS);
+const fullScanIntervalMs = Number(
+  readArg('full-scan-interval-ms')
+  || process.env.CMUX_FULL_SCAN_INTERVAL_MS
+  || DEFAULT_FULL_SCAN_INTERVAL_MS,
+);
 const sinceHours = parseSinceHours(readArg('since-hours') || process.env.CMUX_SINCE_HOURS);
 const stateFile = path.resolve(
   readArg('state-file')
@@ -59,9 +67,13 @@ const once = hasFlag('once');
 if (!serverUrl) die('Missing --server or CMUX_URL');
 if (!token) die('Missing --token or CMUX_TOKEN');
 if (!Number.isFinite(intervalMs) || intervalMs < 500) die('--interval-ms must be >= 500');
+if (!Number.isFinite(fullScanIntervalMs) || fullScanIntervalMs < intervalMs) {
+  die('--full-scan-interval-ms must be >= --interval-ms');
+}
 if (Number.isNaN(sinceHours)) die('--since-hours must be a positive number, 0, or all');
 
 const state = new Map();
+let lastFullScanAt = 0;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -83,6 +95,8 @@ const loadState = async () => {
       state.set(filePath, {
         offset: entry.offset,
         sessionId: typeof entry.sessionId === 'string' ? entry.sessionId : null,
+        size: Number.isFinite(entry.size) && entry.size >= 0 ? entry.size : entry.offset,
+        mtimeMs: Number.isFinite(entry.mtimeMs) && entry.mtimeMs >= 0 ? entry.mtimeMs : 0,
         meta: entry.meta && typeof entry.meta === 'object' ? entry.meta : { cwd: null, startedAt: null },
       });
     }
@@ -129,6 +143,34 @@ const collectJsonlFiles = async (dir, depth = 0) => {
     }
   }
   return files;
+};
+
+const formatDateDir = (timeMs) => {
+  const d = new Date(timeMs);
+  const year = String(d.getFullYear());
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return path.join(codexDir, year, month, day);
+};
+
+const collectHotJsonlFiles = async () => {
+  const files = new Set();
+  const now = Date.now();
+
+  for (const [filePath, entry] of state.entries()) {
+    if (entry.mtimeMs && now - entry.mtimeMs <= HOT_KNOWN_FILE_WINDOW_MS) {
+      files.add(filePath);
+    }
+  }
+
+  for (let i = 0; i < HOT_DAY_COUNT; i++) {
+    const dir = formatDateDir(now - i * 24 * 60 * 60 * 1000);
+    for (const file of await collectJsonlFiles(dir)) {
+      files.add(file);
+    }
+  }
+
+  return [...files];
 };
 
 const extractSessionId = async (filePath, buffer) => {
@@ -257,7 +299,7 @@ const syncFile = async (filePath, stat) => {
       offset += size;
     }
 
-    state.set(filePath, { offset: stat.size, sessionId, meta });
+    state.set(filePath, { offset: stat.size, size: stat.size, mtimeMs: stat.mtimeMs, sessionId, meta });
     await saveState();
     process.stdout.write(`[synced] ${sessionId} ${stat.size} bytes ${filePath}\n`);
   } finally {
@@ -267,7 +309,10 @@ const syncFile = async (filePath, stat) => {
 
 const scanOnce = async () => {
   const cutoff = sinceHours === null ? 0 : Date.now() - sinceHours * 60 * 60 * 1000;
-  const files = await collectJsonlFiles(codexDir);
+  const now = Date.now();
+  const shouldFullScan = lastFullScanAt === 0 || now - lastFullScanAt >= fullScanIntervalMs;
+  const files = shouldFullScan ? await collectJsonlFiles(codexDir) : await collectHotJsonlFiles();
+  if (shouldFullScan) lastFullScanAt = now;
   const candidates = [];
   for (const file of files) {
     const stat = await fs.stat(file).catch(() => null);
@@ -285,7 +330,7 @@ const scanOnce = async () => {
 
 await loadState();
 process.stdout.write(
-  `[codexmux] syncing ${codexDir} -> ${serverUrl} (${sinceHours === null ? 'all sessions' : `last ${sinceHours}h`})\n`,
+  `[codexmux] syncing ${codexDir} -> ${serverUrl} (${sinceHours === null ? 'all sessions' : `last ${sinceHours}h`}, full scan ${fullScanIntervalMs}ms)\n`,
 );
 
 do {

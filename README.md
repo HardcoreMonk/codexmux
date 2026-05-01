@@ -395,6 +395,7 @@ node .\scripts\windows-codex-sync.mjs `
 - 인증: `x-cmux-token`
 - 서버 저장 위치: `~/.codexmux/remote/codex/{sourceId}/{sessionId}.jsonl`
 - UI 동작: session list에 `HOST / pwsh` badge로 표시되고, 선택하면 `codex resume`이 아니라 해당 JSONL timeline을 구독
+- scan 방식: 시작 시 전체 scan 후 평상시에는 오늘/어제 date dir와 최근 활성 파일을 확인하고, 기본 60초마다 전체 scan
 - 미지원 범위: Windows `pwsh` 입력/resize/process lifecycle 원격 제어
 
 세부 실행 옵션과 문제 해결은 [docs/WINDOWS.md](docs/WINDOWS.md)를 참고합니다.
@@ -692,6 +693,7 @@ node .\scripts\windows-codex-sync.mjs `
 - Auth: `x-cmux-token`
 - Server storage: `~/.codexmux/remote/codex/{sourceId}/{sessionId}.jsonl`
 - UI behavior: remote sessions appear with a `HOST / pwsh` badge and open by subscribing to the stored JSONL timeline, not by running `codex resume`
+- Scan behavior: after the startup full scan, hot scans check today's/yesterday's date dirs and recently active files, with a full scan every 60 seconds by default
 - Not included: remote control of Windows `pwsh` input, resize, or process lifecycle
 
 See [docs/WINDOWS.md](docs/WINDOWS.md) for all options and troubleshooting.

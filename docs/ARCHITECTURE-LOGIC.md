@@ -190,7 +190,7 @@ Windows Codex CLI
 
 운영 규칙:
 
-- companion은 원본 Windows JSONL을 수정하지 않고 byte offset 기반으로 append chunk만 전송한다. 기본 스캔 범위는 전체 session history이며, local state file로 전송 offset을 보존해 재시작 때 전체 파일을 반복 전송하지 않는다.
+- companion은 원본 Windows JSONL을 수정하지 않고 byte offset 기반으로 append chunk만 전송한다. 시작 시 전체 session history를 한 번 훑고, 이후 hot scan은 오늘/어제 date dir와 최근 활성 파일로 좁힌다. 전체 tree scan은 기본 60초마다 반복하고, local state file로 전송 offset과 파일 metadata를 보존해 재시작 때 전체 파일을 반복 전송하지 않는다.
 - 서버는 source id와 session id를 파일명으로 sanitize하고, offset mismatch가 나면 기대 offset을 반환한다.
 - session list는 Linux `~/.codex/sessions`와 Windows remote copy를 같은 최근 활동 목록으로 합친다. Linux session은 session id로 resume하고, Windows remote session은 저장된 JSONL path를 구독한다.
 - session list는 remote JSONL 본문 전체를 매번 파싱하지 않고 sidecar metadata로 목록을 만든다. JSONL 본문은 timeline subscribe 때만 읽는다.
