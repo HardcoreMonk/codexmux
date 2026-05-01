@@ -20,8 +20,14 @@ interface ITaskCompleteMarker {
   turnId: string | null;
 }
 
+interface IInterruptMarker {
+  lineIndex: number;
+  timestamp: number | null;
+}
+
 interface ICodexRawMarkers {
   lastTaskComplete: ITaskCompleteMarker | null;
+  lastInterrupt: IInterruptMarker | null;
   lastTurnActivityLineIndex: number;
   lastUserLineIndex: number;
   lastEntryTs: number | null;
@@ -61,6 +67,29 @@ const toTimestamp = (value: unknown): number | null => {
 const payloadType = (record: ICodexRawRecord): string | null =>
   typeof record.payload?.type === 'string' ? record.payload.type : null;
 
+const textStartsWithInterrupt = (value: unknown): boolean =>
+  typeof value === 'string'
+  && (
+    value.trimStart().startsWith('<turn_aborted>')
+    || value.startsWith('[Request interrupted by user')
+  );
+
+const recordContentHasInterrupt = (record: ICodexRawRecord): boolean => {
+  const content = record.payload?.content;
+  if (!Array.isArray(content)) return false;
+  return content.some((item) => (
+    item
+    && typeof item === 'object'
+    && textStartsWithInterrupt((item as { text?: unknown }).text)
+  ));
+};
+
+const isInterruptRecord = (record: ICodexRawRecord): boolean => {
+  if (record.type === 'event_msg' && payloadType(record) === 'turn_aborted') return true;
+  if (textStartsWithInterrupt(record.payload?.message)) return true;
+  return recordContentHasInterrupt(record);
+};
+
 const extractCompletionSnippet = (payload: Record<string, unknown>): string | null => {
   const lastAgentMessage = payload.last_agent_message;
   if (typeof lastAgentMessage === 'string' && lastAgentMessage.trim()) {
@@ -94,6 +123,7 @@ const isTurnActivity = (record: ICodexRawRecord): boolean => {
 
 const scanRawMarkers = (content: string): ICodexRawMarkers => {
   let lastTaskComplete: ITaskCompleteMarker | null = null;
+  let lastInterrupt: IInterruptMarker | null = null;
   let lastTurnActivityLineIndex = -1;
   let lastUserLineIndex = -1;
   let lastEntryTs: number | null = null;
@@ -112,6 +142,10 @@ const scanRawMarkers = (content: string): ICodexRawMarkers => {
 
     const ts = toTimestamp(record.timestamp);
     if (ts !== null) lastEntryTs = ts;
+
+    if (isInterruptRecord(record)) {
+      lastInterrupt = { lineIndex, timestamp: ts };
+    }
 
     if (isUserActivity(record)) {
       lastUserLineIndex = lineIndex;
@@ -134,6 +168,7 @@ const scanRawMarkers = (content: string): ICodexRawMarkers => {
 
   return {
     lastTaskComplete,
+    lastInterrupt,
     lastTurnActivityLineIndex,
     lastUserLineIndex,
     lastEntryTs,
@@ -190,6 +225,23 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
     const hasCurrentTaskComplete = taskComplete !== null
       && taskComplete.lineIndex > markers.lastUserLineIndex
       && taskComplete.lineIndex > markers.lastTurnActivityLineIndex;
+    const hasCurrentInterrupt = markers.lastInterrupt !== null
+      && markers.lastInterrupt.lineIndex >= markers.lastUserLineIndex
+      && markers.lastInterrupt.lineIndex >= markers.lastTurnActivityLineIndex
+      && (taskComplete === null || markers.lastInterrupt.lineIndex > taskComplete.lineIndex);
+
+    if (hasCurrentInterrupt && markers.lastInterrupt) {
+      return {
+        idle: true,
+        stale: false,
+        lastAssistantSnippet: null,
+        currentAction: null,
+        reset: false,
+        lastEntryTs: markers.lastInterrupt.timestamp ?? markers.lastEntryTs,
+        interrupted: true,
+        completionTurnId: null,
+      };
+    }
 
     if (entries.length === 0) {
       if (hasCurrentTaskComplete && taskComplete) {

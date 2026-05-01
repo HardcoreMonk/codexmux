@@ -108,6 +108,72 @@ describe('checkCodexJsonlState', () => {
     expect(state.currentAction).toBeNull();
   });
 
+  it('reports Codex turn_aborted records as an idle interrupt', async () => {
+    await writeJsonl([
+      {
+        type: 'event_msg',
+        timestamp: '2026-04-28T00:58:00.000Z',
+        payload: { type: 'user_message', message: 'Run a long task' },
+      },
+      {
+        type: 'event_msg',
+        timestamp: '2026-04-28T00:58:30.000Z',
+        payload: { type: 'agent_message', message: 'Working...' },
+      },
+      {
+        type: 'response_item',
+        timestamp: '2026-04-28T00:59:00.000Z',
+        payload: {
+          type: 'message',
+          role: 'user',
+          content: [
+            {
+              type: 'input_text',
+              text: '<turn_aborted>\nThe user interrupted the previous turn on purpose.\n</turn_aborted>',
+            },
+          ],
+        },
+      },
+      {
+        type: 'event_msg',
+        timestamp: '2026-04-28T00:59:00.001Z',
+        payload: {
+          type: 'turn_aborted',
+          reason: 'interrupted',
+        },
+      },
+    ]);
+
+    const state = await checkCodexJsonlState(filePath);
+
+    expect(state.idle).toBe(true);
+    expect(state.interrupted).toBe(true);
+    expect(state.reset).toBe(false);
+    expect(state.lastAssistantSnippet).toBeNull();
+    expect(state.currentAction).toBeNull();
+  });
+
+  it('does not treat an older interrupt as idle after a newer user message', async () => {
+    await writeJsonl([
+      {
+        type: 'event_msg',
+        timestamp: '2026-04-28T00:58:00.000Z',
+        payload: { type: 'turn_aborted', reason: 'interrupted' },
+      },
+      {
+        type: 'event_msg',
+        timestamp: '2026-04-28T00:59:00.000Z',
+        payload: { type: 'user_message', message: 'New task' },
+      },
+    ]);
+
+    const state = await checkCodexJsonlState(filePath);
+
+    expect(state.idle).toBe(false);
+    expect(state.interrupted).toBe(false);
+    expect(state.reset).toBe(true);
+  });
+
   it('keeps an assistant message busy until Codex writes task_complete', async () => {
     await writeJsonl([
       {
