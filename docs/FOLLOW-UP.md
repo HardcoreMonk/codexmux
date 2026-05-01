@@ -14,9 +14,10 @@
 - Codex-only 모델: `codex` panel type과 `agent*` metadata 유지.
 - 한국어/영어 locale만 유지하고 기본 locale을 한국어로 전환.
 - Electron 개발/빌드 flow와 Android Capacitor shell 추가.
-- Android 런처: 저장 서버, 최근 서버, 기본 Tailscale 서버 자동 연결, 실패 복구, 앱 정보 표시.
+- Android 런처: 저장 서버, 최근 서버, 기본 Tailscale 서버 자동 연결, 실패 복구, 앱 정보 표시, 앱 재시작.
 - Android 연결 방어: `/api/health` probe, timeout/network/HTTP/SSL 실패 복구, CORS header.
 - 모바일 UI: Android 런처와 모바일 sheet/header/tab bar의 터치/focus 상태 정리.
+- 모바일 앱 정보: 서버 접속 후 mobile navigation에서 Android 앱 versionName/versionCode, package, device, Android version, 서버 버전 확인과 WebView/Activity 재시작 제공.
 - 알림 설정: 작업 완료 toast, system notification, 완료 사운드 on/off.
 - status 로직 1차 모듈화: state reducer, session mapping, notification policy, metadata merge 분리.
 - timeline 로직 1차 모듈화: shared server state, stable entry id, dedupe, init/append/load-more merge 분리.
@@ -37,16 +38,17 @@
 3. stats smoke test: `/api/stats/*` endpoint와 실제 `~/.codex/sessions` 집계 확인.
 4. daily report smoke test: `codex exec` 성공/실패, cache 재사용 확인.
 5. macOS packaging: `corepack pnpm build:electron`, `corepack pnpm pack:electron:dev`.
-6. Android packaging: `corepack pnpm android:build:debug`, `corepack pnpm android:install`, package install state 확인.
+6. Android packaging: `corepack pnpm android:build:debug`, `corepack pnpm android:install`, package install state 확인. 현재 `0.3.1` 기준 `versionName=0.3.1`, `versionCode=301`이어야 한다.
 7. 모바일 reconnect smoke test: Android WebView와 iPad Safari에서 foreground 복귀, 입력 draft 보존, terminal/status/timeline/sync 재연결, timeline 중복 출력 방지 확인.
 8. Android Tailscale 실패 smoke test: 서버 중지, 잘못된 HTTPS, HTTP 4xx/5xx, Tailscale 미연결 상태에서 런처 복구 확인.
-9. DIFF smoke test: tracked 변경 20개 이상, untracked 50개 초과, binary/대용량 파일이 있는 저장소에서 응답 시간, 생략 안내, 기본 접힘 렌더링 확인.
-10. systemd smoke test: `corepack pnpm build`, `systemctl --user restart codexmux.service`, `/api/health`, `journalctl --user -u codexmux.service` 확인.
-11. timeline 배포 smoke test: browser reload 후 같은 assistant 문장이 `event_msg.agent_message`와 `response_item.message` pair로 남은 JSONL에서도 한 번만 표시되는지 확인.
-12. Codex attach smoke test: Codex process 시작 후 JSONL이 늦게 생성된 session도 session id/jsonlPath가 붙고, 모바일 CODEX `check` 화면에서 terminal preview가 보이는지 확인.
-13. perf snapshot smoke test: 인증된 요청으로 `/api/debug/perf`가 process/event loop/WebSocket/watcher/status poll/diff/stats counter를 반환하고, prompt/cwd/JSONL path/terminal output 본문을 노출하지 않는지 확인.
-14. 설치/upgrade: `npx codexmux`, global install, 기존 `~/.codexmux` 유지 확인.
-15. release metadata: version bump, changelog, release workflow artifact 확인.
+9. Android app info/restart smoke test: launcher와 server 접속 후 mobile navigation에서 앱 정보가 표시되고 앱 재시작 버튼이 WebView/Activity를 다시 여는지 확인.
+10. DIFF smoke test: tracked 변경 20개 이상, untracked 50개 초과, binary/대용량 파일이 있는 저장소에서 응답 시간, 생략 안내, 기본 접힘 렌더링 확인.
+11. systemd smoke test: `corepack pnpm build`, `systemctl --user restart codexmux.service`, `/api/health`, `journalctl --user -u codexmux.service` 확인.
+12. timeline 배포 smoke test: browser reload 후 같은 assistant 문장이 `event_msg.agent_message`와 `response_item.message` pair로 남은 JSONL에서도 한 번만 표시되는지 확인.
+13. Codex attach smoke test: Codex process 시작 후 JSONL이 늦게 생성된 session도 session id/jsonlPath가 붙고, 모바일 CODEX `check` 화면에서 terminal preview가 보이는지 확인.
+14. perf snapshot smoke test: 인증된 요청으로 `/api/debug/perf`가 process/event loop/WebSocket/watcher/status poll/diff/stats counter를 반환하고, prompt/cwd/JSONL path/terminal output 본문을 노출하지 않는지 확인.
+15. 설치/upgrade: `npx codexmux`, global install, 기존 `~/.codexmux` 유지 확인.
+16. release metadata: version bump, changelog, release workflow artifact 확인.
 
 ## Post-MVP 백로그
 

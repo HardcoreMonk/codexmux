@@ -299,13 +299,13 @@ corepack pnpm pack:electron
 
 Android 앱은 Capacitor 기반 클라이언트 shell로 `android/`에 포함되어 있습니다. 모바일 기기에서 Codex/tmux를 직접 실행하는 구조가 아니라, 데스크톱 또는 서버에서 실행 중인 codexmux에 안전하게 접속합니다.
 
-서버가 내려주는 React 코드가 terminal/status/timeline/sync WebSocket의 foreground reconnect를 담당하므로, native Android 파일을 바꾸지 않는 UI/연결성 수정은 APK 재배포 없이 `corepack pnpm build`와 서비스 재시작으로 반영됩니다.
+서버가 내려주는 React 코드가 terminal/status/timeline/sync WebSocket의 foreground reconnect를 담당하므로, native Android 파일을 바꾸지 않는 UI/연결성 수정은 APK 재배포 없이 `corepack pnpm build`와 서비스 재시작으로 반영됩니다. `CodexmuxAndroid` native bridge를 바꾸는 앱 정보/재시작 기능은 APK를 다시 빌드해 설치해야 합니다.
 
 구성:
 
 - `capacitor.config.ts`: Android 앱 ID, WebView navigation, cookie 설정
-- `android-web/index.html`: 서버 URL 저장, 최근 서버, 자동 연결, 연결 실패 복구를 담당하는 Android 런처
-- `android/`: Capacitor가 생성한 Android native project
+- `android-web/index.html`: 서버 URL 저장, 최근 서버, 자동 연결, 연결 실패 복구, 앱 정보/재시작을 담당하는 Android 런처
+- `android/`: Capacitor가 생성한 Android native project와 앱 정보/재시작 native bridge
 
 Android 프로젝트 동기화:
 
@@ -360,7 +360,7 @@ corepack pnpm android:bundle:release
 - 모바일 기기에 Tailscale 설치 및 같은 tailnet 로그인
 - codexmux 서버는 `HOST=localhost,tailscale` 또는 Tailscale Serve HTTPS로 노출
 
-앱은 저장된 서버 또는 기본 Tailscale 서버로 자동 연결합니다. 연결 전 `/api/health`를 확인하고, HTTPS/HTTP/network/timeout 실패를 구분해 재시도 또는 서버 변경 흐름으로 되돌립니다. 최근 서버 목록, 서버 변경, 연결 실패 시 재시도 흐름, 앱 정보 화면을 제공합니다. 런처와 모바일 내비게이션은 한국어 우선 타이포그래피, safe-area, 터치 눌림 상태, focus-visible 상태를 기준으로 조정되어 있습니다. Android 버전은 `package.json` semver와 자동 동기화되며, patch가 `0`이면 앱 표기에서 마지막 `.0`을 생략합니다. 마이너 기능 변경은 `0.0.1`, 메이저 기능 묶음은 `0.1` 단위로 올립니다. HTTPS Tailscale Serve 주소를 우선 사용하고, 로컬 개발용 HTTP는 Android manifest와 Capacitor 설정에서 허용합니다.
+앱은 저장된 서버 또는 기본 Tailscale 서버로 자동 연결합니다. 연결 전 `/api/health`를 확인하고, HTTPS/HTTP/network/timeout 실패를 구분해 재시도 또는 서버 변경 흐름으로 되돌립니다. 최근 서버 목록, 서버 변경, 연결 실패 시 재시도 흐름, 앱 정보와 앱 재시작 기능을 제공합니다. 서버 접속 후에도 모바일 내비게이션의 앱 정보 화면에서 앱 versionName/versionCode, package, device, Android version, 서버 버전을 확인하고 WebView/Activity를 재시작할 수 있습니다. 런처와 모바일 내비게이션은 한국어 우선 타이포그래피, safe-area, 터치 눌림 상태, focus-visible 상태를 기준으로 조정되어 있습니다. Android 버전은 `package.json` semver와 자동 동기화되며, patch가 `0`이면 앱 표기에서 마지막 `.0`을 생략합니다. 마이너 기능 변경은 `0.0.1`, 메이저 기능 묶음은 `0.1` 단위로 올립니다. 현재 `package.json` version은 `0.3.1`이며 Android 설치 상태는 `versionName=0.3.1`, `versionCode=301`이어야 합니다. HTTPS Tailscale Serve 주소를 우선 사용하고, 로컬 개발용 HTTP는 Android manifest와 Capacitor 설정에서 허용합니다.
 
 세부 구조와 빌드 메모는 [docs/ANDROID.md](docs/ANDROID.md)를 참고합니다.
 
@@ -425,7 +425,7 @@ Codex JSONL
 | [docs/SYSTEMD.md](docs/SYSTEMD.md) | Linux user service 등록과 운영 |
 | [docs/STYLE.md](docs/STYLE.md) | theme와 color 사용 규칙 |
 | [docs/ELECTRON.md](docs/ELECTRON.md) | Electron desktop app 개발과 패키징 |
-| [docs/ANDROID.md](docs/ANDROID.md) | Android Capacitor app 개발과 빌드 |
+| [docs/ANDROID.md](docs/ANDROID.md) | Android Capacitor app 개발, 앱 정보/재시작, 빌드 |
 | [docs/FOLLOW-UP.md](docs/FOLLOW-UP.md) | 릴리스 전 확인과 post-MVP 백로그 |
 
 <a id="en"></a>
@@ -559,13 +559,13 @@ corepack pnpm pack:electron
 
 The Android app is included under `android/` as a Capacitor-based client shell. It connects to a running codexmux server instead of running Codex/tmux directly on the phone.
 
-Foreground reconnect for terminal/status/timeline/sync WebSockets lives in the React code served by the codexmux server. UI and connection fixes that do not touch native Android files are picked up after `corepack pnpm build` and a service restart, without rebuilding the APK.
+Foreground reconnect for terminal/status/timeline/sync WebSockets lives in the React code served by the codexmux server. UI and connection fixes that do not touch native Android files are picked up after `corepack pnpm build` and a service restart, without rebuilding the APK. Changes to the `CodexmuxAndroid` native bridge, including app info and app restart behavior, require rebuilding and reinstalling the APK.
 
 Structure:
 
 - `capacitor.config.ts`: Android app id, WebView navigation, and cookie settings
-- `android-web/index.html`: Android launcher for saved servers, recent servers, auto-connect, and connection-failure recovery
-- `android/`: generated Capacitor Android native project
+- `android-web/index.html`: Android launcher for saved servers, recent servers, auto-connect, connection-failure recovery, app info, and app restart
+- `android/`: generated Capacitor Android native project and app info/restart native bridge
 
 Sync Android project files:
 
@@ -620,7 +620,7 @@ Expected prerequisites:
 - Tailscale installed on the phone and logged into the same tailnet
 - codexmux exposed through `HOST=localhost,tailscale` or Tailscale Serve HTTPS
 
-The app automatically connects to the saved server or the default Tailscale server. Before navigation it probes `/api/health` and separates HTTPS, HTTP, network, and timeout failures so the launcher can return to retry or server-change flows. The launcher supports recent servers, server changes, retry flow after connection failures, and app info. Launcher and mobile navigation surfaces are tuned for Korean-first typography, safe-area handling, touch pressed states, and focus-visible states. Android versioning is synchronized with `package.json` semver, and milestone versions with patch `0` drop the final `.0` in the app label. Minor feature changes increment by `0.0.1`; major feature batches increment by `0.1`. Prefer HTTPS through Tailscale Serve; HTTP is enabled only for local development paths.
+The app automatically connects to the saved server or the default Tailscale server. Before navigation it probes `/api/health` and separates HTTPS, HTTP, network, and timeout failures so the launcher can return to retry or server-change flows. The launcher supports recent servers, server changes, retry flow after connection failures, app info, and app restart. After connecting to the server, the mobile navigation app info screen shows app versionName/versionCode, package, device, Android version, and server version, and can restart the WebView/Activity. Launcher and mobile navigation surfaces are tuned for Korean-first typography, safe-area handling, touch pressed states, and focus-visible states. Android versioning is synchronized with `package.json` semver, and milestone versions with patch `0` drop the final `.0` in the app label. Minor feature changes increment by `0.0.1`; major feature batches increment by `0.1`. The current `package.json` version is `0.3.1`, so Android installs should report `versionName=0.3.1` and `versionCode=301`. Prefer HTTPS through Tailscale Serve; HTTP is enabled only for local development paths.
 
 ### Tailscale
 
@@ -680,7 +680,7 @@ On iPad, use Safari and add codexmux to the Home Screen. A native iPadOS app is 
 | [docs/SYSTEMD.md](docs/SYSTEMD.md) | Linux user service operation |
 | [docs/STYLE.md](docs/STYLE.md) | Theme and color rules |
 | [docs/ELECTRON.md](docs/ELECTRON.md) | Electron desktop development and packaging |
-| [docs/ANDROID.md](docs/ANDROID.md) | Android Capacitor development and build |
+| [docs/ANDROID.md](docs/ANDROID.md) | Android Capacitor development, app info/restart, and build |
 | [docs/FOLLOW-UP.md](docs/FOLLOW-UP.md) | Release checks and post-MVP backlog |
 
 ### Security And Data

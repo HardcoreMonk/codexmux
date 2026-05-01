@@ -47,6 +47,12 @@ process start time으로 `~/.codex/sessions/YYYY/MM/DD/*.jsonl`을 연결한다.
 저장된 `agentSessionId`/`agentJsonlPath`를 우선 보존하고 rollout 파일명은 plain Codex
 UUID로 정규화한다.
 
+Timeline attach는 예외적으로 active process가 없거나 active JSONL이 interrupted 상태일 때
+같은 cwd의 더 최신 JSONL을 선택할 수 있다. 이 경로는 API/외부 Codex 세션처럼 tmux child
+process로 직접 잡히지 않는 세션을 CODEX 패널에 동기화하기 위한 보정이며, 전환 시
+`agentSessionId`와 `agentJsonlPath`를 layout에 다시 저장하고 client는 timeline WebSocket을
+새로 연다.
+
 ## work state
 
 | 상태 | 의미 |
@@ -121,6 +127,8 @@ tail 재읽기, load-more 과정에서 같은 record가 다시 파싱되어도 e
 유지되고, client merge/dedupe 로직은 id 재생성이나 중복 append에 의존하지 않는다.
 `use-timeline`은 WebSocket 상태와 React state 연결을 담당하고, init/append/load-more
 병합 정책은 `timeline-entry-merge`에서 처리한다.
+같은 tmux session에서 `agentSessionId`만 바뀐 경우도 stale JSONL에 머무르지 않도록
+timeline WebSocket을 다시 연결한다.
 
 Codex CLI는 정상 동작 중 같은 visible assistant text를 `event_msg.payload.type="agent_message"`와
 paired `response_item.payload.type="message"` record로 몇 ms 간격에 남길 수 있다.

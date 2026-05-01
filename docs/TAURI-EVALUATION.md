@@ -156,7 +156,7 @@ Capacitor Android shell을 Tauri mobile로 바꾼다.
 | 항목 | 평가 |
 | --- | --- |
 | 구현 난이도 | 중간 이상 |
-| 기능 차이 | 기존 Android launcher/실패 복구 재구현 필요 |
+| 기능 차이 | 기존 Android launcher/실패 복구/앱 정보/앱 재시작 재구현 필요 |
 | 이점 | Rust/Tauri stack 통일 가능 |
 | 리스크 | 현재 Android 문제는 server-provided React reconnect로 해결되는 구조 |
 | 판단 | 도입하지 않음 |
