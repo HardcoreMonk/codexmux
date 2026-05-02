@@ -452,6 +452,12 @@ to validate command envelopes before calling domain handlers: `source` must be
 a non-retryable `invalid-worker-command` failed reply; malformed commands without
 an id are dropped.
 
+Terminal dimension bounds are enforced at the IPC boundary too:
+`terminal.create-session`, `terminal.attach`, and `terminal.resize` payloads
+accept only `cols 1..500` and `rows 1..200`. WebSocket attach and resize paths
+clamp user-provided dimensions before sending IPC, but oversized direct/internal
+IPC callers fail validation instead of reaching Terminal Worker.
+
 Commands always receive exactly one reply:
 
 ```ts

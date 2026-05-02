@@ -985,6 +985,15 @@ describe('runtime ipc', () => {
       cols: 100,
       rows: 30,
     })).toThrow(/Invalid runtime IPC payload/);
+
+    for (const oversized of [
+      { sessionName: 'rtv2-ws-a-pane-b-tab-c', cols: 501, rows: 30 },
+      { sessionName: 'rtv2-ws-a-pane-b-tab-c', cols: 100, rows: 201 },
+    ]) {
+      expect(() => parseRuntimeCommandPayload('terminal.resize', oversized)).toThrow(/Invalid runtime IPC payload/);
+      expect(() => parseRuntimeCommandPayload('terminal.attach', oversized)).toThrow(/Invalid runtime IPC payload/);
+      expect(() => parseRuntimeCommandPayload('terminal.create-session', { ...oversized, cwd: '/tmp' })).toThrow(/Invalid runtime IPC payload/);
+    }
   });
 
   it('rejects tmux-unsafe runtime session names', () => {
@@ -1104,6 +1113,8 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { runtimeSessionNameSchema } from '@/lib/runtime/session-name';
 
+const RUNTIME_TERMINAL_MAX_COLS = 500;
+const RUNTIME_TERMINAL_MAX_ROWS = 200;
 const emptyPayloadSchema = z.object({}).strict();
 const runtimeHealthReplySchema = z.object({ ok: z.boolean() }).passthrough();
 const runtimeWorkspaceSchema = z.object({
@@ -1209,14 +1220,14 @@ const failPendingTerminalTabPayloadSchema = z.object({
 });
 const terminalCreatePayloadSchema = z.object({
   sessionName: runtimeSessionNameSchema,
-  cols: z.number().int().positive(),
-  rows: z.number().int().positive(),
+  cols: z.number().int().min(1).max(RUNTIME_TERMINAL_MAX_COLS),
+  rows: z.number().int().min(1).max(RUNTIME_TERMINAL_MAX_ROWS),
   cwd: z.string().optional(),
 });
 const terminalResizePayloadSchema = z.object({
   sessionName: runtimeSessionNameSchema,
-  cols: z.number().int().positive(),
-  rows: z.number().int().positive(),
+  cols: z.number().int().min(1).max(RUNTIME_TERMINAL_MAX_COLS),
+  rows: z.number().int().min(1).max(RUNTIME_TERMINAL_MAX_ROWS),
 });
 const terminalWritePayloadSchema = z.object({
   sessionName: runtimeSessionNameSchema,
@@ -8738,6 +8749,10 @@ The plan is complete when:
   rejected as `runtime-v2-schema-too-new`
 - Terminal Worker can create/kill tmux sessions in the isolated
   `codexmux-runtime-v2` socket and own v2 node-pty attach/stdin/stdout/resize
+- `terminal.create-session`, `terminal.attach`, and `terminal.resize` IPC
+  payload schemas enforce `cols 1..500` and `rows 1..200`; WebSocket attach and
+  resize handlers clamp before IPC, while oversized direct/internal IPC callers
+  fail validation before Terminal Worker
   through IPC with bounded, byte-accounted, Unicode-safe stdout
   coalescing/backpressure, with detach/kill/backpressure clearing buffered
   partial output instead of flushing it and late pty output ignored after
