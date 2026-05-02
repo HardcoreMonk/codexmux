@@ -6878,29 +6878,30 @@ export const handleRuntimeTerminalConnection = async (
   ws.on('close', detach);
   ws.on('error', detach);
 
-  try {
-    const attachment = await supervisor.attachTerminal({
-      sessionName,
-      cols,
-      rows,
-      send: (data) => {
-        if (ws.readyState === WebSocket.OPEN) ws.send(encodeStdout(data));
-      },
-      close: closeAttachedSocket,
-    });
+  const attachPromise = supervisor.attachTerminal({
+    sessionName,
+    cols,
+    rows,
+    send: (data) => {
+      if (ws.readyState === WebSocket.OPEN) ws.send(encodeStdout(data));
+    },
+    close: closeAttachedSocket,
+  }).then((attachment) => {
     subscriberId = attachment.subscriberId;
     if (closedBeforeAttach || ws.readyState !== WebSocket.OPEN) {
       detach();
-      return;
+      return null;
     }
-  } catch (err) {
+    return attachment.subscriberId;
+  }).catch((err) => {
     closeAttachedSocket(1011, err instanceof Error ? err.message : 'Runtime terminal attach failed');
-    return;
-  }
-  const activeSubscriberId = subscriberId;
+    return null;
+  });
 
   const handleMessage = async (raw: WebSocket.RawData): Promise<void> => {
     if (detached) return;
+    const activeSubscriberId = await attachPromise;
+    if (!activeSubscriberId || detached) return;
     try {
       const msg = decodeMessage(toArrayBuffer(raw));
       switch (msg.type) {
@@ -7017,6 +7018,11 @@ emitter and fake Supervisor. Cover:
 - close/error while `attachTerminal()` is pending registers before attach
   resolves; if attach later succeeds, the handler detaches the returned
   `subscriberId` exactly once and returns without accepting messages
+- stdin/resize frames sent while `attachTerminal()` is pending are queued by the
+  already-registered message listener, still count toward per-socket
+  backpressure, and run in receive order only after attach returns a
+  `subscriberId`; if attach fails or the socket closed before attach resolves,
+  queued frames become no-ops and do not call Supervisor
 - no cancellation is sent for an already-sent `terminal.attach`; when every
   subscriber waiting on an in-flight attach closes and attach later succeeds, the
   handlers remove all returned subscribers and Terminal Worker receives exactly

@@ -123,9 +123,13 @@ decisions are fixed:
   web-stdin, resize, and kill frames are handled in receive order. If one queued
   command fails, the handler closes the socket with `1011`, detaches the
   subscriber, and treats later queued frames as no-ops. The handler registers
-  close/error handling before awaiting `attachTerminal()`. If the socket closes
-  while attach is pending and attach later succeeds, the handler immediately
-  detaches the returned subscriber once and returns without processing messages.
+  close/error and message handling before awaiting `attachTerminal()`. Frames
+  received while attach is pending count toward input backpressure and wait for
+  the attach promise; they run only after a `subscriberId` exists. If attach
+  fails or the socket closes while attach is pending, queued frames become
+  no-ops. If the socket closes while attach is pending and attach later succeeds,
+  the handler immediately detaches the returned subscriber once and returns
+  without processing messages.
   The first slice does not cancel an already-sent `terminal.attach` IPC command;
   attach cleanup happens after attach resolves. If every subscriber waiting on an
   in-flight attach closes before attach resolves, the successful attach is
