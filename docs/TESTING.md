@@ -214,4 +214,6 @@ node .\scripts\windows-codex-sync.mjs `
 ```
 
 실제 운영 smoke는 Windows 현재 사용자 Scheduled Task의 `Install -RunNow`, `Status`,
-`RunOnce`, 장시간 log/token 권한 확인까지 포함한다.
+`RunOnce`와 live `/api/remote/codex/sources`,
+`/api/timeline/sessions?source=remote&sourceId=<sourceId>` 200 응답 확인까지 포함한다.
+장시간 task restart result, log rotation 필요성, token file 권한은 운영 관찰로 이어간다.

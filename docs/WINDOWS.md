@@ -97,7 +97,8 @@ corepack pnpm smoke:windows-sync
 
 이 smoke는 임시 codexmux server와 Windows-like JSONL fixture를 만들고 `--once --dry-run`,
 실제 sync, local offset state 재사용, remote source summary, remote session list 노출을 확인한다.
-실제 Windows Scheduled Task 운영 검증은 아래 `Install -RunNow`, `Status`, `RunOnce` 절차로 별도 수행한다.
+Windows 실기기 sync/query는 live server의 remote source summary와 remote session list로 확인하고,
+장시간 Scheduled Task restart result, log rotation 필요성, token file 권한은 운영 관찰로 이어간다.
 
 ## Scheduled Task 운영
 

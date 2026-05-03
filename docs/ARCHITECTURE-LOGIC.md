@@ -219,7 +219,7 @@ Windows Codex CLI
 
 - companion은 원본 Windows JSONL을 수정하지 않고 byte offset 기반으로 append chunk만 전송한다. 시작 시 `/api/health`로 서버 version/commit을 확인하고, 전체 session history를 한 번 훑은 뒤 hot scan은 오늘/어제 date dir와 최근 활성 파일로 좁힌다. 전체 tree scan은 기본 60초마다 반복하고, local state file로 전송 offset과 파일 metadata를 보존해 재시작 때 전체 파일을 반복 전송하지 않는다. `--dry-run`은 전송 없이 pending upload와 scan summary를 확인하는 진단 경로다.
 - `scripts/windows-codex-sync-task.ps1`은 Windows 현재 사용자 Scheduled Task를 설치해 로그인 시 companion을 자동 실행한다. task 설정, token, state, log는 기본적으로 `%USERPROFILE%\.codexmux\` 아래에 두며 서버 runtime state와 분리한다.
-- `corepack pnpm smoke:windows-sync`는 임시 HOME/server에서 Windows-like JSONL fixture를 만들고 companion의 dry-run, 실제 upload, offset resume, remote source summary, remote session list 노출을 자동 검증한다. 실제 Scheduled Task 등록과 장시간 실행은 Windows 실기기 smoke로 남긴다.
+- `corepack pnpm smoke:windows-sync`는 임시 HOME/server에서 Windows-like JSONL fixture를 만들고 companion의 dry-run, 실제 upload, offset resume, remote source summary, remote session list 노출을 자동 검증한다. Windows 실기기 sync/query는 live server remote source/session list로 확인하며, Scheduled Task 장시간 restart/log/token 권한은 운영 관찰로 남긴다.
 - 서버는 source id와 session id를 파일명으로 sanitize하고, offset mismatch가 나면 기대 offset을 반환한다.
 - session list는 Linux `~/.codex/sessions`와 Windows remote copy를 같은 최근 활동 목록으로 합친다. Linux session은 session id로 resume하고, Windows remote session은 저장된 JSONL path를 구독한다.
 - session list API는 `source=local|remote`와 `sourceId` filter를 받아 Windows session을 local session과 분리해 조회할 수 있다. `/api/remote/codex/sources`는 remote sidecar를 요약해 source별 session 수와 최신 sync/activity metadata를 반환한다.
