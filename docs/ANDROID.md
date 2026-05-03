@@ -113,26 +113,34 @@ Android runtime v2 terminal smoke는 서버 script와 WebView foreground reconne
 확인한다. 이 항목은 React/server runtime 변경 검증이므로 native bridge를 바꾸지 않았다면
 APK 재빌드는 필요 없다.
 
-1. 서버를 runtime v2로 실행한다.
+1. app-surface Phase 2 gate smoke를 먼저 실행한다. 이 명령은 temp HOME/DB 서버를
+   직접 띄워 normal session cookie로 browser reload, server restart, mode-off rollback을
+   확인한다.
 
 ```bash
-CODEXMUX_RUNTIME_V2=1 PORT=8132 corepack pnpm dev
+node scripts/smoke-runtime-v2-phase2-gate.mjs
 ```
 
-2. 서버에서 runtime v2 terminal production-parity smoke를 먼저 통과시킨다.
+2. Android 앱에서 붙을 서버를 runtime v2 new-tabs mode로 실행한다.
+
+```bash
+CODEXMUX_RUNTIME_V2=1 CODEXMUX_RUNTIME_TERMINAL_V2_MODE=new-tabs PORT=8132 corepack pnpm dev
+```
+
+3. 서버에서 runtime v2 terminal production-parity smoke도 통과시킨다.
 
 ```bash
 CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 node scripts/smoke-runtime-v2.mjs
 ```
 
-3. Android 앱 launcher에서 같은 서버 URL로 접속한다.
-4. `/experimental/runtime`에서 workspace와 terminal tab을 생성하고 terminal output을 확인한다.
-5. Android WebView의 existing session cookie로 `/api/v2/terminal` WebSocket이 열리는지
+4. Android 앱 launcher에서 같은 서버 URL로 접속한다.
+5. 기존 app workspace 화면에서 plain terminal tab을 생성하고 terminal output을 확인한다.
+6. Android WebView의 existing session cookie로 `/api/v2/terminal` WebSocket이 열리는지
    확인한다. query-string token 인증은 사용하지 않는다.
-6. Android 앱을 background로 보낸 뒤 다시 foreground로 가져온다.
-7. 같은 runtime v2 tab을 다시 attach하고 output이 이어지는지 확인한다.
-8. `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=off`로 서버를 재시작하면 기존 v2 tab이 삭제되지
-   않고 runtime v2 disabled diagnostic을 표시하는지 확인한다.
+7. Android 앱을 background로 보낸 뒤 다시 foreground로 가져온다.
+8. 같은 runtime v2 tab을 다시 attach하고 output이 이어지는지 확인한다.
+9. `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=off`로 서버를 재시작하면 새 plain terminal tab은
+   legacy로 생성되고 기존 v2 tab은 삭제되지 않으며 runtime v2 disabled diagnostic을 표시하는지 확인한다.
 
 이 smoke는 `/api/v2/terminal` fresh attach와 foreground reconnect 정책을 확인한다.
 Terminal Worker crash 후 stdout replay나 server-side resubscribe는 runtime v2 범위에

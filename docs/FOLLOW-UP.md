@@ -52,7 +52,7 @@
 15. 설치/upgrade: `npx codexmux`, global install, 기존 `~/.codexmux` 유지 확인.
 16. release metadata: `corepack pnpm release:patch|minor|major`, changelog, release workflow artifact 확인.
 17. Windows sync smoke test: Windows에서 Scheduled Task `Install -RunNow`, `Status`, `RunOnce` dry-run, source filter, remote source summary, 오래된 date dir full scan 동작 확인.
-18. Runtime v2 cutover readiness: `docs/RUNTIME-V2-CUTOVER.md`와 `docs/RUNTIME-V2-PARITY.md`의 phase gate, rollback flag, temp HOME/DB smoke, Electron/Android/systemd 검증을 release candidate commit 기준으로 확인.
+18. Runtime v2 cutover readiness: `docs/RUNTIME-V2-CUTOVER.md`와 `docs/RUNTIME-V2-PARITY.md`의 phase gate, rollback flag, temp HOME/DB smoke를 release candidate commit 기준으로 확인한다. Phase 2 terminal gate는 `node scripts/smoke-runtime-v2-phase2-gate.mjs`로 browser reload/server restart/mode-off rollback을 먼저 통과시킨 뒤 Electron reconnect, Android foreground reconnect, systemd 검증 증거를 추가한다.
 
 ## Post-MVP 백로그
 

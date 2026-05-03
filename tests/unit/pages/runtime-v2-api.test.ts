@@ -164,10 +164,11 @@ describe('runtime v2 api routes', () => {
   });
 
   it('returns health and workspace lists', async () => {
+    process.env.CODEXMUX_RUNTIME_TERMINAL_V2_MODE = 'new-tabs';
     const health = createResponse();
     await healthHandler(createRequest({ method: 'GET' }), health.res);
     expect(health.statusCode).toBe(200);
-    expect(health.body).toMatchObject({ ok: true });
+    expect(health.body).toMatchObject({ ok: true, terminalV2Mode: 'new-tabs' });
     expect(mocks.supervisor.ensureStarted).toHaveBeenCalled();
 
     const workspaces = createResponse();

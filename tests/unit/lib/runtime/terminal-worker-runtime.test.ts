@@ -37,12 +37,20 @@ const execFileFailure = (message: string): void => {
   });
 };
 
-const createFakePty = () => ({
-  onData: vi.fn((_onData: (data: string) => void) => ({ dispose: vi.fn() })),
-  kill: vi.fn(),
-  write: vi.fn(),
-  resize: vi.fn(),
-});
+  const createFakePty = () => {
+    let exitHandler: (() => void) | null = null;
+    return {
+      onData: vi.fn((_onData: (data: string) => void) => ({ dispose: vi.fn() })),
+      onExit: vi.fn((handler: () => void) => {
+        exitHandler = handler;
+        return { dispose: vi.fn() };
+      }),
+      emitExit: () => exitHandler?.(),
+      kill: vi.fn(),
+      write: vi.fn(),
+      resize: vi.fn(),
+    };
+  };
 
 describe('terminal worker runtime', () => {
   beforeEach(() => {
@@ -140,6 +148,27 @@ describe('terminal worker runtime', () => {
       expect.objectContaining({ cols: 80, rows: 24 }),
     );
     expect(execFileMock.mock.invocationCallOrder[0]).toBeLessThan(ptySpawnMock.mock.invocationCallOrder[0]);
+  });
+
+  it('removes stale pty attachments when the attach process exits', async () => {
+    const firstPty = createFakePty();
+    const secondPty = createFakePty();
+    ptySpawnMock
+      .mockReturnValueOnce(firstPty)
+      .mockReturnValueOnce(secondPty);
+    const { createTerminalWorkerRuntime } = await import('@/lib/runtime/terminal/terminal-worker-runtime');
+    const runtime = createTerminalWorkerRuntime();
+
+    await runtime.attach('rtv2-ws-a-pane-b-tab-c', 80, 24, () => undefined);
+    firstPty.emitExit();
+    await runtime.attach('rtv2-ws-a-pane-b-tab-c', 100, 30, () => undefined);
+
+    expect(ptySpawnMock).toHaveBeenCalledTimes(2);
+    expect(ptySpawnMock.mock.calls[1]).toEqual([
+      'tmux',
+      ['-u', '-L', 'codexmux-runtime-v2', 'attach-session', '-t', 'rtv2-ws-a-pane-b-tab-c'],
+      expect.objectContaining({ cols: 100, rows: 30 }),
+    ]);
   });
 
   it('rejects missing tmux sessions before spawning node-pty', async () => {

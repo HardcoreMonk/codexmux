@@ -44,6 +44,18 @@ describe('terminal runtime preflight', () => {
     });
   });
 
+  it('returns a runtime-v2-disabled reason when terminal v2 mode is off', async () => {
+    const fetcher = vi.fn(async () => response(200, { ok: true, terminalV2Mode: 'off' }));
+
+    await expect(preflightTerminalRuntime({
+      endpoint: '/api/v2/terminal',
+      fetcher,
+    })).resolves.toEqual({
+      ok: false,
+      reason: 'runtime-v2-disabled',
+    });
+  });
+
   it('allows the websocket attempt for unrelated preflight failures', async () => {
     const fetcher = vi.fn(async () => response(404, { error: 'not-found' }));
 

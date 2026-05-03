@@ -132,6 +132,13 @@ const hasRuntimeSession = async (sessionName: string): Promise<boolean> => {
 export const createTerminalWorkerRuntime = (): ITerminalWorkerRuntime => {
   const attached = new Map<string, IAttachedPty>();
 
+  const cleanupAttachedPty = (sessionName: string, ptyProcess: pty.IPty): void => {
+    const current = attached.get(sessionName);
+    if (!current || current.pty !== ptyProcess) return;
+    current.disposables.forEach((disposable) => disposable.dispose());
+    attached.delete(sessionName);
+  };
+
   const detachSession = async (sessionName: string) => {
     const current = attached.get(sessionName);
     if (!current) return { sessionName, detached: false };
@@ -162,7 +169,10 @@ export const createTerminalWorkerRuntime = (): ITerminalWorkerRuntime => {
         cwd: PRISTINE_ENV.HOME || '/',
         env: buildShellEnv(),
       });
-      const disposables = [ptyProcess.onData(onData)];
+      const disposables = [
+        ptyProcess.onData(onData),
+        ptyProcess.onExit(() => cleanupAttachedPty(sessionName, ptyProcess)),
+      ];
       attached.set(sessionName, { pty: ptyProcess, disposables });
       return { sessionName, attached: true };
     },

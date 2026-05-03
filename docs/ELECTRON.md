@@ -60,27 +60,35 @@ Electron은 웹/PWA와 같은 React runtime v2 terminal hook을 사용한다. ru
 terminal smoke는 먼저 서버 script로 검증하고, Electron에서는 같은 app surface에서
 foreground reconnect가 깨지지 않는지 확인한다.
 
-1. 서버를 runtime v2로 실행한다.
+1. app-surface Phase 2 gate smoke를 먼저 실행한다. 이 명령은 temp HOME/DB 서버를
+   직접 띄워 normal session cookie로 browser reload, server restart, mode-off rollback을
+   확인한다.
 
 ```bash
-CODEXMUX_RUNTIME_V2=1 PORT=8132 corepack pnpm dev
+node scripts/smoke-runtime-v2-phase2-gate.mjs
 ```
 
-2. server smoke를 실행한다.
+2. Electron에서 붙을 서버를 runtime v2 new-tabs mode로 실행한다.
+
+```bash
+CODEXMUX_RUNTIME_V2=1 CODEXMUX_RUNTIME_TERMINAL_V2_MODE=new-tabs PORT=8132 corepack pnpm dev
+```
+
+3. low-level runtime terminal smoke도 통과시킨다.
 
 ```bash
 CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 node scripts/smoke-runtime-v2.mjs
 ```
 
-3. Electron remote/local shell에서 `http://127.0.0.1:8132/experimental/runtime`을 연다.
-4. workspace와 terminal tab을 생성하고 terminal output에 `pwd` 결과가 보이는지 확인한다.
-5. Electron shell의 existing session cookie로 `/api/v2/terminal` WebSocket이 열리는지
+4. Electron remote/local shell에서 기존 app workspace 화면을 열고 plain terminal tab을 생성한다.
+5. 새 tab이 기존 app surface에 남아 있고 terminal output에 `pwd` 결과가 보이는지 확인한다.
+6. Electron shell의 existing session cookie로 `/api/v2/terminal` WebSocket이 열리는지
    확인한다. 별도 query-string token은 사용하지 않는다.
-6. Electron 창을 background로 보냈다가 foreground로 되돌린 뒤 같은 tab에서 다시
+7. Electron 창을 background로 보냈다가 foreground로 되돌린 뒤 같은 tab에서 다시
    attach한다.
-7. `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=off`로 서버를 재시작하면 기존 v2 tab이 삭제되지
-   않고 runtime v2 disabled diagnostic을 표시하는지 확인한다.
-8. terminal output이 fresh attach 후 계속 들어오고 rollback diagnostic이 명확하면 Electron runtime v2 smoke가 통과한
+8. `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=off`로 서버를 재시작하면 새 plain terminal tab은
+   legacy로 생성되고 기존 v2 tab은 삭제되지 않으며 runtime v2 disabled diagnostic을 표시하는지 확인한다.
+9. terminal output이 fresh attach 후 계속 들어오고 rollback diagnostic이 명확하면 Electron runtime v2 smoke가 통과한
    상태다.
 
 ## Build Output

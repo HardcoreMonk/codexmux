@@ -23,10 +23,11 @@ export const preflightTerminalRuntime = async ({
     const res = await fetcher('/api/v2/runtime/health', {
       headers: { Accept: 'application/json' },
     });
-    if (res.status !== 404) return { ok: true };
-
     const body = await res.json().catch(() => null) as { error?: unknown } | null;
-    if (body?.error === 'runtime-v2-disabled') {
+    if (res.status === 404 && body?.error === 'runtime-v2-disabled') {
+      return { ok: false, reason: 'runtime-v2-disabled' };
+    }
+    if (res.status === 200 && (body as { terminalV2Mode?: unknown } | null)?.terminalV2Mode === 'off') {
       return { ok: false, reason: 'runtime-v2-disabled' };
     }
     return { ok: true };

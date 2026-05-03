@@ -12,7 +12,7 @@
 - Status Worker: policy-only hook/Codex reducer와 notification gating.
 - Shadow diagnostics: server startup calls runtime v2 health without blocking legacy startup, and `/api/debug/perf` exposes worker health/readiness/restart/timeout counters.
 - Terminal identity: newly created legacy tabs carry `runtimeVersion: 1`, runtime v2 tabs carry `runtimeVersion: 2`, and missing `runtimeVersion` is treated as legacy for existing JSON layouts.
-- Smoke: `/api/v2/terminal` attach/input/output/resize/web stdin/heartbeat/fresh reattach/fanout/backpressure close/tab delete/workspace delete.
+- Smoke: `/api/v2/terminal` attach/input/output/resize/web stdin/heartbeat/fresh reattach/fanout/backpressure close/tab delete/workspace delete, plus Phase 2 app-surface new-tab gate for browser reload, server restart, and terminal mode rollback.
 
 Production 기본 경로로 전환하지 않은 것:
 
@@ -95,13 +95,15 @@ Work:
 - Ensure close/delete uses the matching runtime cleanup path.
 - In the first new-tabs slice, route only plain terminal tab creation through v2. Codex, diff, web-browser, resume, and command-start tabs remain legacy.
 - Mirror the legacy workspace/pane id into runtime v2 storage, then append the returned `rtv2-` tab back into legacy JSON layout with `runtimeVersion: 2`.
-- Extend smoke to include web stdin, heartbeat, backpressure close, mobile foreground reconnect, and Electron/Android cookie auth.
+- Keep `scripts/smoke-runtime-v2.mjs` for low-level runtime terminal parity and `scripts/smoke-runtime-v2-phase2-gate.mjs` for app-surface new-tab routing, browser reload, server restart, and rollback mode checks.
+- Collect Electron reconnect and Android foreground reconnect cookie-auth evidence against the same app surface before widening Phase 2.
 
 Exit gate:
 
-- New v2 tabs survive browser reload, server restart, Electron reconnect, Android foreground reconnect.
+- `node scripts/smoke-runtime-v2-phase2-gate.mjs` passes and proves new v2 tabs survive browser reload and server restart while legacy tabs stay on `/api/terminal`.
+- Electron reconnect and Android foreground reconnect smoke pass with existing session cookie auth on `/api/v2/terminal`.
 - Legacy tabs continue to attach through `/api/terminal`.
-- Rollback mode `off` blocks new v2 tab creation but keeps existing v2 tabs visible with a clear `runtime-v2-disabled` diagnostic state.
+- Rollback mode `off` blocks new v2 tab creation, `/api/v2/runtime/health` reports `terminalV2Mode: "off"`, and existing v2 tabs remain visible with a clear `runtime-v2-disabled` diagnostic state.
 
 Rollback:
 
@@ -198,6 +200,7 @@ corepack pnpm tsc --noEmit
 corepack pnpm lint
 corepack pnpm build
 CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 node scripts/smoke-runtime-v2.mjs
+node scripts/smoke-runtime-v2-phase2-gate.mjs
 corepack pnpm build:electron
 corepack pnpm android:build:debug
 ```

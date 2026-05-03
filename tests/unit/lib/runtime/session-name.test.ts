@@ -16,6 +16,17 @@ describe('runtime session names', () => {
     expect(Buffer.byteLength(sessionName)).toBeLessThanOrEqual(120);
   });
 
+  it('normalizes legacy layout ids when generating v2 session names', () => {
+    const sessionName = createRuntimeSessionName({
+      workspaceId: 'ws-WlO9mw',
+      paneId: 'pane-VTYwR4',
+      tabId: 'tab-Foo_123',
+    });
+
+    expect(sessionName).toBe('rtv2-ws-wlo9mw-pane-vtywr4-tab-foo-123');
+    expect(parseRuntimeSessionName(sessionName)).toBe(sessionName);
+  });
+
   it('rejects unsafe or too-long existing session names', () => {
     for (const sessionName of [
       'pt-ws-a-pane-b-tab-c',

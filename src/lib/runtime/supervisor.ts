@@ -155,6 +155,7 @@ export const createRuntimeSupervisorForTest = (
   let clients: IRuntimeSupervisorClients | null = null;
   const terminalSubscribers = new Map<string, Map<string, ITerminalSubscriber>>();
   const terminalAttachAttempts = new Map<string, ITerminalAttachAttempt>();
+  const terminalDetachPromises = new Map<string, Promise<void>>();
 
   const prepareRuntimeDbPath = (): string => {
     if (options.useGlobal && g.__ptRuntimeSupervisorPreparedDbPath) return g.__ptRuntimeSupervisorPreparedDbPath;
@@ -199,6 +200,7 @@ export const createRuntimeSupervisorForTest = (
     }
     terminalSubscribers.clear();
     terminalAttachAttempts.clear();
+    terminalDetachPromises.clear();
   };
 
   options.captureTerminalEventHandler?.(onTerminalWorkerEvent);
@@ -270,6 +272,25 @@ export const createRuntimeSupervisorForTest = (
 
   const waitForTerminalAttachAttempt = async (sessionName: string): Promise<void> => {
     await terminalAttachAttempts.get(sessionName)?.promise.catch(() => undefined);
+  };
+
+  const waitForTerminalDetach = async (sessionName: string): Promise<void> => {
+    await terminalDetachPromises.get(sessionName)?.catch(() => undefined);
+  };
+
+  const requestTerminalDetach = (sessionName: string): Promise<void> => {
+    const existing = terminalDetachPromises.get(sessionName);
+    if (existing) return existing;
+    const promise = getClients().terminal.request('terminal.detach', { sessionName })
+      .catch(() => undefined)
+      .then(() => undefined);
+    terminalDetachPromises.set(sessionName, promise);
+    void promise.finally(() => {
+      if (terminalDetachPromises.get(sessionName) === promise) {
+        terminalDetachPromises.delete(sessionName);
+      }
+    });
+    return promise;
   };
 
   const assertActiveTerminalSubscriber = (input: { sessionName: string; subscriberId: string }): string => {
@@ -609,6 +630,7 @@ export const createRuntimeSupervisorForTest = (
       attachAttempt?.subscriberIds.add(subscriberId);
       if (ownsAttachAttempt && attachAttempt) {
         attachAttempt.promise = (async () => {
+          await waitForTerminalDetach(sessionName);
           attachAttempt.attachRequested = true;
           await terminal.request('terminal.attach', {
             sessionName,
@@ -624,7 +646,7 @@ export const createRuntimeSupervisorForTest = (
       } catch (err) {
         removeTerminalSubscribers(sessionName, attachAttempt?.subscriberIds ?? [subscriberId]);
         if (ownsAttachAttempt && attachAttempt?.attachRequested) {
-          await terminal.request('terminal.detach', { sessionName }).catch(() => undefined);
+          await requestTerminalDetach(sessionName);
         }
         throw err;
       } finally {
@@ -642,7 +664,7 @@ export const createRuntimeSupervisorForTest = (
       const remaining = getTerminalSubscriberCount(sessionName);
       if (remaining > 0) return;
       terminalSubscribers.delete(sessionName);
-      await getClients().terminal.request('terminal.detach', { sessionName }).catch(() => undefined);
+      await requestTerminalDetach(sessionName);
     },
 
     async writeTerminal(input) {

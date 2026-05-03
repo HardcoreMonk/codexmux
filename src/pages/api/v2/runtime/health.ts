@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifyRuntimeV2ApiAuth } from '@/lib/runtime/api-auth';
 import { sendRuntimeApiError, sendRuntimeDisabled } from '@/lib/runtime/api-handler';
 import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
+import { getRuntimeTerminalV2Mode } from '@/lib/runtime/terminal-mode';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (process.env.CODEXMUX_RUNTIME_V2 !== '1') {
@@ -21,7 +22,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const supervisor = getRuntimeSupervisor();
     await supervisor.ensureStarted();
     const health = await supervisor.health();
-    return res.status(200).json(health);
+    return res.status(200).json({
+      ...health,
+      terminalV2Mode: getRuntimeTerminalV2Mode(),
+    });
   } catch (err) {
     return sendRuntimeApiError(res, err);
   }

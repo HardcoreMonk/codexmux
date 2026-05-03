@@ -595,6 +595,53 @@ describe('runtime supervisor', () => {
     expect(terminal.commands.filter((command) => command.type === 'terminal.detach')).toHaveLength(1);
   });
 
+  it('waits for an in-flight detach before reattaching the same session', async () => {
+    const { storage, terminal, timeline, status } = createWorkers();
+    let resolveDetach: (() => void) | null = null;
+    terminal.request = async <TPayload, TResult>(type: string, payload: TPayload): Promise<TResult> => {
+      terminal.commands.push({ type, payload });
+      if (type === 'terminal.detach') {
+        await new Promise<void>((resolve) => {
+          resolveDetach = resolve;
+        });
+      }
+      return terminal.replies.get(type) as TResult;
+    };
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
+    const first = await supervisor.attachTerminal({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      cols: 80,
+      rows: 24,
+      send: vi.fn(),
+      close: vi.fn(),
+    });
+
+    const detachPromise = supervisor.detachTerminal({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      subscriberId: first.subscriberId,
+    });
+    const finishDetach = resolveDetach as (() => void) | null;
+    expect(finishDetach).not.toBeNull();
+    const secondPromise = supervisor.attachTerminal({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      cols: 100,
+      rows: 30,
+      send: vi.fn(),
+      close: vi.fn(),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(terminal.commands.filter((command) => command.type === 'terminal.attach')).toHaveLength(1);
+    finishDetach?.();
+    await detachPromise;
+    const second = await secondPromise;
+
+    expect(second.subscriberId).not.toBe(first.subscriberId);
+    expect(terminal.commands
+      .filter((command) => command.type === 'terminal.attach' || command.type === 'terminal.detach')
+      .map((command) => command.type)).toEqual(['terminal.attach', 'terminal.detach', 'terminal.attach']);
+  });
+
   it('rejects writes from missing subscribers before terminal worker IPC', async () => {
     const { storage, terminal, timeline, status } = createWorkers();
     const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
