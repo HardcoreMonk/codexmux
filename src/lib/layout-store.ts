@@ -86,6 +86,7 @@ const createDefaultTab = (wsId: string, paneId: string, order = 0, cwd?: string)
     sessionName: workspaceSessionName(wsId, paneId, tabId),
     name: '',
     order,
+    runtimeVersion: 1,
   };
   if (cwd) tab.cwd = cwd;
   return tab;
@@ -282,7 +283,7 @@ export const createPane = async (wsId: string, cwd?: string): Promise<{ paneId: 
 
   await createSession(sessionName, 80, 24, cwd);
 
-  const tab: ITab = { id: tabId, sessionName, name: '', order: 0, ...(cwd ? { cwd } : {}) };
+  const tab: ITab = { id: tabId, sessionName, name: '', order: 0, runtimeVersion: 1, ...(cwd ? { cwd } : {}) };
   return { paneId, tab };
 };
 
@@ -321,7 +322,15 @@ export const addTabToPane = async (wsId: string, paneId: string, name?: string, 
     const nextOrder = pane.tabs.length > 0 ? Math.max(...pane.tabs.map((t) => t.order)) + 1 : 0;
     const defaultName = isWebBrowser ? 'Web Browser' : '';
     const tabName = name?.trim() || defaultName;
-    const tab: ITab = { id: tabId, sessionName, name: tabName, order: nextOrder, ...(cwd ? { cwd } : {}), ...(panelType ? { panelType: panelType as ITab['panelType'] } : {}) };
+    const tab: ITab = {
+      id: tabId,
+      sessionName,
+      name: tabName,
+      order: nextOrder,
+      ...(!isWebBrowser ? { runtimeVersion: 1 as const } : {}),
+      ...(cwd ? { cwd } : {}),
+      ...(panelType ? { panelType: panelType as ITab['panelType'] } : {}),
+    };
 
     pane.tabs.push(tab);
     pane.activeTabId = tabId;

@@ -54,6 +54,10 @@ Endpoint는 `/api/terminal?session={name}&clientId={id}`다.
 `/api/v2/terminal`은 `CODEXMUX_RUNTIME_V2=1`에서만 열리는 Terminal Worker-owned
 경로이며, `rtv2-` session만 받는다.
 
+새로 생성되는 legacy terminal-backed tab은 `runtimeVersion: 1`, runtime v2 tab은
+`runtimeVersion: 2`를 가진다. 기존 JSON layout에 이 field가 없으면 legacy runtime
+1로 해석한다.
+
 v2 attach/stdin/stdout/resize 흐름은 browser WebSocket에서 Supervisor IPC를 거쳐
 Terminal Worker의 `node-pty` attach로 이어진다.
 

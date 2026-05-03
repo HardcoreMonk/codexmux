@@ -99,7 +99,7 @@ describe('runtime v2 api routes', () => {
     mocks.supervisor.deleteWorkspace.mockResolvedValue({ deleted: true, killedSessions: ['rtv2-ws-a-pane-a-tab-a'], failedKills: [] });
     mocks.supervisor.deleteTerminalTab.mockResolvedValue({ deleted: true, killedSession: 'rtv2-ws-a-pane-a-tab-a', failedKill: null });
     mocks.supervisor.getLayout.mockResolvedValue({ root: { type: 'pane', id: 'pane-a', tabs: [] }, activePaneId: 'pane-a', updatedAt: 'now' });
-    mocks.supervisor.createTerminalTab.mockResolvedValue({ id: 'tab-a', sessionName: 'rtv2-ws-a-pane-a-tab-a', name: '', order: 0, cwd: '/tmp', panelType: 'terminal', lifecycleState: 'ready' });
+    mocks.supervisor.createTerminalTab.mockResolvedValue({ id: 'tab-a', sessionName: 'rtv2-ws-a-pane-a-tab-a', name: '', order: 0, cwd: '/tmp', panelType: 'terminal', lifecycleState: 'ready', runtimeVersion: 2 });
     mocks.supervisor.listTimelineSessions.mockResolvedValue({ sessions: [], total: 0, hasMore: false });
     mocks.supervisor.readTimelineEntriesBefore.mockResolvedValue({ entries: [], startByteOffset: 0, hasMore: false });
     mocks.supervisor.getTimelineMessageCounts.mockResolvedValue({ userCount: 0, assistantCount: 0, toolCount: 0, toolBreakdown: {} });
@@ -237,7 +237,7 @@ describe('runtime v2 api routes', () => {
       body: { workspaceId: 'ws-a', paneId: 'pane-a', cwd: '/tmp' },
     }), tabResponse.res);
     expect(tabResponse.statusCode).toBe(200);
-    expect(tabResponse.body).toMatchObject({ sessionName: 'rtv2-ws-a-pane-a-tab-a' });
+    expect(tabResponse.body).toMatchObject({ sessionName: 'rtv2-ws-a-pane-a-tab-a', runtimeVersion: 2 });
 
     const tabDeleteResponse = createResponse();
     await tabHandler(createRequest({

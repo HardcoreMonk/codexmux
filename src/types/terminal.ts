@@ -10,6 +10,7 @@ export type TConnectionStatus =
 export type TDisconnectReason = 'max-connections' | 'pty-error' | 'session-not-found' | null;
 
 export type TPanelType = 'terminal' | 'codex' | 'web-browser' | 'diff';
+export type TRuntimeVersion = 1 | 2;
 
 export interface ITab {
   id: string;
@@ -29,6 +30,7 @@ export interface ITab {
   webUrl?: string | null;
   terminalRatio?: number;
   terminalCollapsed?: boolean;
+  runtimeVersion?: TRuntimeVersion;
 }
 
 export interface ISplitNode {

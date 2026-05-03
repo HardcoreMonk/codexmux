@@ -46,7 +46,9 @@ describe('runtime storage repository', () => {
     const layout = repo.getWorkspaceLayout(workspace.id);
 
     expect(firstTab.order).toBe(0);
+    expect(firstTab.runtimeVersion).toBe(2);
     expect(secondTab.order).toBe(1);
+    expect(secondTab.runtimeVersion).toBe(2);
     expect(secondTab.lifecycleState).toBe('ready');
     expect(layout?.activePaneId).toBe(workspace.rootPaneId);
     expect(layout?.root.type).toBe('pane');
@@ -56,6 +58,7 @@ describe('runtime storage repository', () => {
         { id: firstTab.id, order: 0 },
         { id: secondTab.id, order: 1 },
       ]);
+      expect(layout.root.tabs.every((tab) => tab.runtimeVersion === 2)).toBe(true);
       expect(layout.root.tabs[0].sessionName).toMatch(/^rtv2-ws-/);
     }
 
@@ -299,7 +302,7 @@ describe('runtime storage repository', () => {
     expect(repo.getReadyTerminalTabBySession(pending.sessionName)).toBeNull();
     repo.finalizeTerminalTab({ id: pending.id });
     expect(repo.getReadyTerminalTabBySession(pending.sessionName)).toEqual(
-      expect.objectContaining({ id: pending.id, lifecycleState: 'ready' }),
+      expect.objectContaining({ id: pending.id, lifecycleState: 'ready', runtimeVersion: 2 }),
     );
     expect(repo.getReadyTerminalTabBySession('rtv2-ws-missing-pane-missing-tab-missing')).toBeNull();
   });
@@ -333,7 +336,7 @@ describe('runtime storage repository', () => {
     repo.failPendingTerminalTab({ id: failedPending.id, reason: 'terminal create failed' });
 
     expect(repo.listReadyTerminalTabs()).toEqual([
-      expect.objectContaining({ id: ready.id, lifecycleState: 'ready' }),
+      expect.objectContaining({ id: ready.id, lifecycleState: 'ready', runtimeVersion: 2 }),
     ]);
 
     repo.failReadyTerminalTab({

@@ -156,6 +156,7 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
       workspaceId: input.workspaceId,
       paneId: input.paneId,
       cwd: input.cwd,
+      runtimeVersion: 2,
       lifecycleState: 'pending_terminal',
       createdAt: ts,
     };
@@ -187,6 +188,7 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
       order: row.order,
       ...(row.cwd ? { cwd: row.cwd } : {}),
       panelType: 'terminal',
+      runtimeVersion: 2,
       lifecycleState: 'ready',
     };
   });
@@ -314,6 +316,7 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
         order: row.order,
         ...(row.cwd ? { cwd: row.cwd } : {}),
         panelType: 'terminal',
+        runtimeVersion: 2,
         lifecycleState: 'ready',
       }));
     },
@@ -332,6 +335,7 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
         order: row.order,
         ...(row.cwd ? { cwd: row.cwd } : {}),
         panelType: 'terminal',
+        runtimeVersion: 2,
         lifecycleState: 'ready',
       };
     },
@@ -365,6 +369,7 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
           sessionName: tab.sessionName,
           name: tab.name,
           order: tab.order,
+          runtimeVersion: 2,
           ...(tab.cwd ? { cwd: tab.cwd } : {}),
           ...(tab.panelType ? { panelType: tab.panelType } : {}),
         })),

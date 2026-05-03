@@ -11,6 +11,7 @@
 - Timeline Worker: read-only `timeline.health`, session list, older entry read, message counts.
 - Status Worker: policy-only hook/Codex reducer와 notification gating.
 - Shadow diagnostics: server startup calls runtime v2 health without blocking legacy startup, and `/api/debug/perf` exposes worker health/readiness/restart/timeout counters.
+- Terminal identity: newly created legacy tabs carry `runtimeVersion: 1`, runtime v2 tabs carry `runtimeVersion: 2`, and missing `runtimeVersion` is treated as legacy for existing JSON layouts.
 - Smoke: `/api/v2/terminal` attach/input/output/resize/fresh reattach/fanout/tab delete/workspace delete.
 
 Production 기본 경로로 전환하지 않은 것:
@@ -90,6 +91,7 @@ Work:
 - Add UI/server routing that chooses v2 only for newly created terminal tabs when `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=new-tabs`.
 - Keep existing `pt-` sessions and legacy layout untouched.
 - Make tab identity explicit in UI state: `runtimeVersion: 1 | 2`.
+- Parse `CODEXMUX_RUNTIME_TERMINAL_V2_MODE` through `src/lib/runtime/terminal-mode.ts`; unknown values fail closed to `off`.
 - Ensure close/delete uses the matching runtime cleanup path.
 - Extend smoke to include web stdin, heartbeat, backpressure close, mobile foreground reconnect, and Electron/Android cookie auth.
 

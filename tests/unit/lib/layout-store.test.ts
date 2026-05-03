@@ -1,11 +1,39 @@
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { readLayoutFile } from '@/lib/layout-store';
+const tmuxMocks = vi.hoisted(() => ({
+  createSession: vi.fn(),
+}));
+
+vi.mock('@/lib/tmux', () => ({
+  createSession: tmuxMocks.createSession,
+  hasSession: vi.fn(),
+  killSession: vi.fn(),
+  resolveExistingDir: vi.fn(async (cwd?: string) => cwd ?? os.homedir()),
+  sendKeys: vi.fn(),
+  workspaceSessionName: (wsId: string, paneId: string, tabId: string) => `pt-${wsId}-${paneId}-${tabId}`,
+}));
+
+vi.mock('@/lib/sync-server', () => ({
+  broadcastSync: vi.fn(),
+}));
+
+import { createDefaultLayout, readLayoutFile } from '@/lib/layout-store';
 
 describe('layout store normalization', () => {
+  it('marks newly created legacy terminal tabs as runtime 1', async () => {
+    const layout = await createDefaultLayout('ws-test', '/tmp');
+    const tab = layout.root.type === 'pane' ? layout.root.tabs[0] : null;
+
+    expect(tab).toMatchObject({
+      sessionName: expect.stringMatching(/^pt-ws-test-/),
+      runtimeVersion: 1,
+    });
+    expect(tmuxMocks.createSession).toHaveBeenCalledWith(tab?.sessionName, 80, 24, '/tmp');
+  });
+
   it('normalizes stored panel and agent fields on read', async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-layout-'));
     const filePath = path.join(dir, 'layout.json');

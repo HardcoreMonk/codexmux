@@ -70,6 +70,7 @@ export interface IRuntimeTerminalTab {
   order: number;
   cwd?: string;
   panelType: 'terminal';
+  runtimeVersion: 2;
   lifecycleState: 'pending_terminal' | 'ready' | 'failed';
 }
 
@@ -79,6 +80,7 @@ export interface IRuntimePendingTerminalTab {
   workspaceId: string;
   paneId: string;
   cwd: string;
+  runtimeVersion: 2;
   lifecycleState: 'pending_terminal';
   createdAt: string;
 }
