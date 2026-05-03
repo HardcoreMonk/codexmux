@@ -89,6 +89,16 @@ node .\scripts\windows-codex-sync.mjs `
 
 시작 시 client는 `/api/health`를 호출해 서버 version/commit을 출력한다. 각 full scan 또는 변경이 있는 hot scan 뒤에는 scan type, 후보 파일 수, 전송 파일 수, chunk/byte, offset retry, session id 누락, 오류 수를 요약한다.
 
+Linux 개발 환경에서도 Windows companion의 핵심 upload 경로는 자동 smoke로 먼저 검증할 수 있다.
+
+```bash
+corepack pnpm smoke:windows-sync
+```
+
+이 smoke는 임시 codexmux server와 Windows-like JSONL fixture를 만들고 `--once --dry-run`,
+실제 sync, local offset state 재사용, remote source summary, remote session list 노출을 확인한다.
+실제 Windows Scheduled Task 운영 검증은 아래 `Install -RunNow`, `Status`, `RunOnce` 절차로 별도 수행한다.
+
 ## Scheduled Task 운영
 
 Windows에서 sync client를 로그인 시 자동 실행하려면 `scripts/windows-codex-sync-task.ps1`을 사용한다. 이 스크립트는 현재 사용자 Scheduled Task를 만들고, 설정과 로그를 `%USERPROFILE%\.codexmux\` 아래에 둔다.

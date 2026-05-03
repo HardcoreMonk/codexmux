@@ -69,6 +69,7 @@
     "smoke:pwa": "node scripts/smoke-pwa-readiness.mjs",
     "smoke:runtime-v2": "node scripts/smoke-runtime-v2.mjs",
     "smoke:runtime-v2:phase2": "node scripts/smoke-runtime-v2-phase2-gate.mjs",
+    "smoke:windows-sync": "node scripts/smoke-windows-sync.mjs",
     "deploy:local": "node scripts/deploy-local.mjs",
     "release:patch": "node scripts/release.mjs patch",
     "release:minor": "node scripts/release.mjs minor",

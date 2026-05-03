@@ -191,6 +191,16 @@ deploy하지 않은 경우 live health commit이 main HEAD보다 뒤에 있을 �
 
 ## Windows Sync
 
+Temp server에서 Windows companion upload 경로를 자동 검증:
+
+```bash
+corepack pnpm smoke:windows-sync
+```
+
+이 smoke는 임시 HOME/server와 Windows-like Codex JSONL fixture를 만들고,
+`scripts/windows-codex-sync.mjs`의 `--once --dry-run`, 실제 upload, local offset state
+resume, `/api/remote/codex/sources`, `/api/timeline/sessions?source=remote` 노출을 확인한다.
+
 Linux에서 server 대상 dry-run:
 
 ```powershell
