@@ -57,7 +57,8 @@ CODEXMUX_PWA_SMOKE_URL=https://<machine>.<tailnet>.ts.net corepack pnpm smoke:pw
 Android/PWA icon, iPad startup image, `/sw.js`, Playwright iPad Pro viewport console을
 확인한다. `/sw.js`는 service worker script이므로 auth redirect 없이 public asset으로
 내려와야 하고, 로그인 화면에서는 runtime WebSocket/service worker registration을 시작하지
-않아야 한다.
+않아야 한다. iPad startup image는 `scripts/generate-splash.js`로 생성하며, 최초
+Home Screen 실행 화면에도 `codexmux` branding만 남아야 한다.
 
 ## Runtime v2
 

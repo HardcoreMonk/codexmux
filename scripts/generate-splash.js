@@ -36,12 +36,12 @@ const generateSplash = async ({ w, h, name }) => {
   <rect width="100%" height="100%" fill="${BG}"/>
   <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central"
         font-family="Inter, system-ui, sans-serif" font-size="${fontSize}" fill="${BRAND}">
-    <tspan font-weight="700">purple</tspan><tspan font-weight="400">mux</tspan>
+    <tspan font-weight="700">codex</tspan><tspan font-weight="400">mux</tspan>
   </text>
 </svg>`;
 
   await sharp(Buffer.from(svg))
-    .png()
+    .png({ palette: true, compressionLevel: 9, effort: 10 })
     .toFile(path.join(outDir, `splash-${name}.png`));
 
   console.log(`  ${name}`);

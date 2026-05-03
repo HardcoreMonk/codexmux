@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import fs from 'fs/promises';
 import path from 'path';
 import { pathToFileURL } from 'url';
 
@@ -81,6 +82,14 @@ describe('PWA readiness smoke helpers', () => {
       'head-ipad-splash-1620x2160',
       'head-ipad-splash-1488x2266',
     ]);
+  });
+
+  it('keeps generated startup images branded as codexmux', async () => {
+    const script = await fs.readFile(path.join(process.cwd(), 'scripts/generate-splash.js'), 'utf-8');
+
+    expect(script).toContain('<tspan font-weight="700">codex</tspan><tspan font-weight="400">mux</tspan>');
+    expect(script.toLowerCase()).not.toContain('purplemux');
+    expect(script).not.toContain('>purple</tspan>');
   });
 
   it('reads PNG dimensions from IHDR bytes', async () => {
