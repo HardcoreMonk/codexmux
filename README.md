@@ -243,6 +243,7 @@ corepack pnpm start
 corepack pnpm lint
 corepack pnpm tsc --noEmit
 corepack pnpm test
+corepack pnpm smoke:electron:attach
 corepack pnpm smoke:permission
 corepack pnpm smoke:runtime-v2:phase2
 corepack pnpm smoke:android:install

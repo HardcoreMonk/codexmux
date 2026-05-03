@@ -8,6 +8,7 @@ codexmux의 Electron 앱은 Next.js UI를 데스크톱 shell 안에서 실행합
 corepack pnpm dev:electron
 corepack pnpm dev:electron:attach
 corepack pnpm build:electron
+corepack pnpm smoke:electron:attach
 corepack pnpm pack:electron:dev
 corepack pnpm pack:electron
 ```
@@ -15,6 +16,7 @@ corepack pnpm pack:electron
 - `dev:electron`: 필요하면 `corepack pnpm dev` 서버를 자동으로 띄운 뒤 Electron을 연결합니다.
 - `dev:electron:attach`: 이미 실행 중인 `http://localhost:8122` 서버에 Electron만 붙입니다.
 - `build:electron`: Next.js standalone, custom server, Electron main/preload를 빌드합니다.
+- `smoke:electron:attach`: Electron shell을 remote debugging port로 실행해 live server attach, preload bridge, page reload, blocking console 오류를 확인합니다.
 - `pack:electron:dev`: 로컬 macOS 패키징 검증용입니다. signing과 notarize를 끕니다.
 - `pack:electron`: 릴리스 패키징입니다. signing/notarize 환경이 필요합니다.
 
@@ -33,6 +35,17 @@ corepack pnpm pack:electron
 앱 설정은 `~/.codexmux/config.json`에 저장합니다. Electron 전용 설정도 같은 파일을 사용하며, 서버 모드는 `server.mode`과 `server.remoteUrl`로 관리합니다.
 
 Electron renderer는 웹/PWA와 같은 terminal input 정책을 사용합니다. 터미널이나 Codex 입력창에 포커스가 있으면 `Ctrl+D`는 앱 단축키가 아니라 Codex CLI/shell EOF(`0x04`)로 전달되고, macOS pane 분할은 `⌘D`를 사용합니다.
+
+## Attach Smoke
+
+`corepack pnpm smoke:electron:attach`는 현재 build된 `dist-electron/main.js`를 사용해 Electron을 실제로 실행하고 `ELECTRON_DEV_URL` 또는 `CODEXMUX_ELECTRON_SMOKE_URL` 서버에 붙입니다. Chromium remote debugging port로 page target을 찾아 reload 후 다음을 확인합니다.
+
+- live server origin 로드
+- `window.electronAPI` preload bridge 주입
+- login 또는 app page ready state
+- blocking console event 0건
+
+Linux smoke에서는 Electron SUID sandbox 설정이 없는 개발 checkout에서도 실행되도록 Chromium `--no-sandbox`를 붙입니다. 이 smoke는 `.app/.dmg` 패키징을 대체하지 않고, desktop shell attach/preload 회귀를 빠르게 잡는 용도입니다.
 
 ## Notifications
 
@@ -103,7 +116,7 @@ CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 node scripts/smoke-runtime-v
 
 macOS에서 앱을 실제로 설치하려면 `release/*.dmg` 또는 `release/*/*.app` 산출물이 필요합니다. 현재 repository checkout에 `release/`가 없으면 아직 macOS 앱 패키징을 실행하지 않은 상태입니다.
 
-2026-05-03 P0/P1 pass 기준 `corepack pnpm build:electron`은 통과했다. Linux에서 `corepack pnpm pack:electron:dev`도 실행해 Next/Electron build 단계까지 통과했지만, macOS DMG target이 Darwin-only optional dependency인 `dmg-license`를 요구해 `Cannot find module 'dmg-license'`로 중단됐다. `.app/.dmg` 산출물 검증은 macOS runner 또는 macOS 개발기에서 다시 실행해야 한다. live checkout에서 Electron build/packaging을 실행한 뒤에는 `.next/standalone`이 다시 만들어지므로 Linux user service는 `corepack pnpm deploy:local`로 재시작해 cwd를 정상화한다.
+2026-05-03 P0/P1 pass 기준 `corepack pnpm build:electron`과 `corepack pnpm smoke:electron:attach`는 통과했다. Linux에서 `corepack pnpm pack:electron:dev`도 실행해 Next/Electron build 단계까지 통과했지만, macOS DMG target이 Darwin-only optional dependency인 `dmg-license`를 요구해 `Cannot find module 'dmg-license'`로 중단됐다. `.app/.dmg` 산출물 검증은 macOS runner 또는 macOS 개발기에서 다시 실행해야 한다. live checkout에서 Electron build/packaging을 실행한 뒤에는 `.next/standalone`이 다시 만들어지므로 Linux user service는 `corepack pnpm deploy:local`로 재시작해 cwd를 정상화한다.
 
 ## Packaging Notes
 

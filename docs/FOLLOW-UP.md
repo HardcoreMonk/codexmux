@@ -44,7 +44,7 @@
 | --- | --- | --- |
 | live deploy/systemd | 통과 | `deploy:local`, `/api/health` `version=0.3.3`, service `ActiveState=active`, `WorkingDirectory=/data/projects/codex-zone/codexmux`, journal restart 이후 오류 없음 |
 | build/type/unit | 통과 | `tsc --noEmit`, targeted unit 5 files/25 tests, `deploy:local` build |
-| Electron build | 통과 | `corepack pnpm build:electron` 후 `deploy:local`로 service cwd 정규화; Linux `pack:electron:dev`는 Next/Electron build 후 macOS DMG target의 `dmg-license` 누락으로 중단 |
+| Electron build/attach | 통과 | `corepack pnpm build:electron`, `corepack pnpm smoke:electron:attach`; Linux `pack:electron:dev`는 Next/Electron build 후 macOS DMG target의 `dmg-license` 누락으로 중단 |
 | runtime v2 phase2 gate | 통과 | `corepack pnpm smoke:runtime-v2:phase2` browser reload/server restart/mode-off rollback |
 | Android debug install | 통과 | `versionName=0.3.3`, `versionCode=303`, `MainActivity` |
 | Android Tailscale failure recovery | 통과 | `corepack pnpm smoke:android:recovery`, network/HTTP 4xx/SSL 실패 후 launcher 복귀와 `/login` 재연결, blocking console/logcat 0 |
@@ -61,9 +61,9 @@ P0/P1/P2/P3 후속 상태:
 
 - P0 완료: Android Tailscale Serve HTTPS 접속, failure recovery 반복, foreground reconnect, fresh app data clear first-run, app info bridge 확인, login route console noise 제거, permission prompt status/tmux E2E smoke 자동화.
 - P0 남음: 자동 개발로 처리 가능한 code/runtime blocking 항목은 없음. 실제 기기/OS가 필요한 장시간/외부 smoke는 P1 운영 검증으로 남긴다.
-- P1 완료: Android foreground/recovery smoke, app info/native restart smoke, permission prompt smoke, package scripts.
+- P1 완료: Android foreground/recovery smoke, app info/native restart smoke, Electron attach smoke, permission prompt smoke, package scripts.
 - P1 남음: Android logged-in session 수십 분 background/reconnect와 input draft 보존, 실제 Codex CLI permission prompt 재현 smoke, macOS `pack:electron:dev` 산출물, 실제 Windows Scheduled Task smoke, iPad Safari/Home Screen smoke. Linux `pack:electron:dev`는 build 단계 후 DMG target의 `dmg-license` 누락으로 중단되어 macOS runner가 필요하다.
-- P2 남음: Android/Electron 실제 `/api/v2/terminal` foreground reconnect, runtime v2 timeline/status/storage parity surface별 cutover evidence, release workflow/CI에서 선택 실행할 Android smoke artifact 보존.
+- P2 남음: Android/Electron 실제 `/api/v2/terminal` foreground reconnect, runtime v2 timeline/status/storage parity surface별 cutover evidence, release workflow/CI에서 선택 실행할 Android/Electron smoke artifact 보존.
 - P3 남음: Android release signing/AAB 운영, approval queue, lifecycle control UI, perf tuning.
 
 1. 장시간 Codex smoke test: 새 tab 생성, prompt 실행, tool call과 reasoning summary 표시, 상태 전이 확인.

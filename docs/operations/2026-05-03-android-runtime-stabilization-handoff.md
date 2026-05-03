@@ -29,6 +29,7 @@
 | `corepack pnpm vitest run tests/unit/lib/app-route-state.test.ts tests/unit/scripts/android-webview-smoke-lib.test.ts tests/unit/android-launcher.test.ts tests/unit/lib/foreground-reconnect.test.ts tests/unit/lib/permission-prompt.test.ts` | 5 files / 25 tests passed |
 | `corepack pnpm tsc --noEmit` | passed |
 | `corepack pnpm build:electron` | passed |
+| `corepack pnpm smoke:electron:attach` | live server attach, Electron preload bridge, page reload, blocking console 0 |
 | `corepack pnpm smoke:runtime-v2:phase2` | passed |
 | `corepack pnpm smoke:android:install` | passed, `versionName=0.3.3`, `versionCode=303` |
 | Tailscale Serve HTTPS `/api/health` | 200, `version=0.3.3`, commit/buildTime metadata present |
@@ -46,7 +47,7 @@
 - 실제 Codex CLI가 만든 permission prompt 재현 smoke는 P1에 남긴다. codexmux의 status/tmux/API/stdin 경로는 `smoke:permission`으로 검증했다.
 - Android logged-in session 장시간 background, 반복 foreground reconnect, input draft 보존은 수십 분 이상 smoke 증거가 더 필요하다. `/login` surface 60초 background smoke는 통과했고, `smoke:android:foreground`는 `CODEXMUX_ANDROID_BACKGROUND_MS`와 `CODEXMUX_ANDROID_FOREGROUND_ROUNDS`로 강도를 올려 실행할 수 있다.
 - Runtime v2는 Phase 2 gate가 통과했지만 Android WebView가 실제 `/api/v2/terminal` tab에 attach하는 foreground smoke는 아직 별도 항목이다.
-- Electron은 `build:electron`까지 통과했다. Linux `pack:electron:dev`는 Next/Electron build 후 macOS DMG target의 Darwin-only `dmg-license` 요구로 중단됐으므로 `.app/.dmg` 산출물 검증은 macOS runner에서 남긴다.
+- Electron은 `build:electron`과 live attach smoke까지 통과했다. Linux `pack:electron:dev`는 Next/Electron build 후 macOS DMG target의 Darwin-only `dmg-license` 요구로 중단됐으므로 `.app/.dmg` 산출물 검증은 macOS runner에서 남긴다.
 - Windows는 Linux dry-run만 통과했다. 실제 Windows Scheduled Task `Install -RunNow`, `Status`, `RunOnce`와 장시간 sync log/token 권한 확인이 필요하다.
 - iPad Safari/Home Screen foreground reconnect는 Android와 별도로 확인해야 한다.
 
