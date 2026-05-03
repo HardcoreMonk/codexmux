@@ -5,8 +5,11 @@ import path from 'path';
 import { WebSocket } from 'ws';
 import {
   appendRuntimeV2SmokeFrame,
+  encodeHeartbeat,
   encodeResize,
   encodeStdin,
+  encodeWebStdin,
+  isRuntimeV2SmokeHeartbeatFrame,
   runtimeV2SmokeWsUrl,
 } from './runtime-v2-smoke-lib.mjs';
 
@@ -87,6 +90,49 @@ const waitForReconnectSmoke = (sessionName) =>
     predicate: (output) => output.includes('runtime-v2-reconnect-ok'),
   });
 
+const waitForWebStdinHeartbeatSmoke = (sessionName) =>
+  new Promise((resolve, reject) => {
+    const marker = `runtime-v2-web-stdin-ok-${Date.now()}`;
+    let output = '';
+    let sawHeartbeat = false;
+    let settled = false;
+    const ws = new WebSocket(runtimeV2SmokeWsUrl(baseUrl, sessionName), { headers });
+    const timer = setTimeout(() => {
+      settled = true;
+      ws.close();
+      reject(new Error(`web stdin heartbeat timed out; heartbeat=${sawHeartbeat}; got ${JSON.stringify(output.slice(-200))}`));
+    }, DEFAULT_TIMEOUT_MS);
+    const finish = () => {
+      if (settled || !sawHeartbeat || !output.includes(marker)) return;
+      settled = true;
+      clearTimeout(timer);
+      ws.close();
+      resolve({ marker, output });
+    };
+
+    ws.on('open', () => {
+      ws.send(encodeHeartbeat());
+      ws.send(encodeWebStdin(`printf ${marker}\\n\n`));
+    });
+    ws.on('message', (data) => {
+      if (isRuntimeV2SmokeHeartbeatFrame(data)) sawHeartbeat = true;
+      output = appendRuntimeV2SmokeFrame(output, data);
+      finish();
+    });
+    ws.on('error', (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(err);
+    });
+    ws.on('close', (code, reason) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(new Error(`web stdin heartbeat closed before expected output: ${code} ${reason.toString()}; heartbeat=${sawHeartbeat}; got ${JSON.stringify(output.slice(-200))}`));
+    });
+  });
+
 const waitForFanoutSmoke = (sessionName) =>
   new Promise((resolve, reject) => {
     const marker = `runtime-v2-fanout-ok-${Date.now()}`;
@@ -132,6 +178,36 @@ const waitForFanoutSmoke = (sessionName) =>
       ws.on('close', (code, reason) => {
         if (!settled) fail(new Error(`fanout socket ${index} closed early: ${code} ${reason.toString()}`));
       });
+    });
+  });
+
+const waitForBackpressureSmoke = (sessionName) =>
+  new Promise((resolve, reject) => {
+    const ws = new WebSocket(runtimeV2SmokeWsUrl(baseUrl, sessionName), { headers });
+    const timer = setTimeout(() => {
+      ws.close();
+      reject(new Error('backpressure smoke timed out waiting for close'));
+    }, DEFAULT_TIMEOUT_MS);
+    ws.on('open', () => {
+      ws.send(encodeStdin('x'.repeat(1024 * 1024 + 1)));
+    });
+    ws.on('message', () => {
+      clearTimeout(timer);
+      ws.close();
+      reject(new Error('backpressure smoke received output before close'));
+    });
+    ws.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    ws.on('close', (code, reason) => {
+      clearTimeout(timer);
+      const text = reason.toString();
+      if (code !== 1011 || !text.includes('backpressure')) {
+        reject(new Error(`backpressure smoke closed with ${code} ${text}, expected 1011 backpressure`));
+        return;
+      }
+      resolve({ code, reason: text });
     });
   });
 
@@ -189,10 +265,14 @@ const main = async () => {
     });
     await waitForTerminalSmoke(tab.sessionName, process.cwd());
     checks.push('attach-stdin-stdout-resize');
+    await waitForWebStdinHeartbeatSmoke(tab.sessionName);
+    checks.push('web-stdin-heartbeat');
     await waitForReconnectSmoke(tab.sessionName);
     checks.push('fresh-reattach');
     await waitForFanoutSmoke(tab.sessionName);
     checks.push('fanout');
+    await waitForBackpressureSmoke(tab.sessionName);
+    checks.push('backpressure-close');
     const workspaceId = workspace.id;
     await request(`/api/v2/tabs/${encodeURIComponent(tab.id)}`, { method: 'DELETE' });
     checks.push('tab-delete');

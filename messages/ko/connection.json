@@ -3,6 +3,7 @@
   "reconnecting": "재연결 중... ({count})",
   "maxConnections": "동시 접속 초과",
   "ptyError": "터미널 시작 실패",
+  "runtimeV2Disabled": "Runtime v2 비활성화",
   "disconnected": "연결 끊김",
   "reconnect": "다시 연결",
   "terminalDisconnected": "터미널 연결이 끊어졌습니다"

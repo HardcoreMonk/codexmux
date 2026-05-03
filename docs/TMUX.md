@@ -109,10 +109,18 @@ CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 node scripts/smoke-runtime-v
 
 - v2 health, workspace create/list, terminal tab create
 - `/api/v2/terminal` attach, stdin/stdout, `100x30` resize
+- Codex web input과 같은 `MSG_WEB_STDIN` frame이 pty stdin으로 전달되는지 확인
+- client heartbeat frame이 heartbeat echo를 받는지 확인
 - client detach 후 같은 `sessionName`으로 fresh attach
 - 같은 `sessionName`에 대한 multiple WebSocket subscriber stdout fanout
+- oversized queued input이 `1011 Terminal input backpressure`로 닫히는지 확인
 - terminal tab delete 후 삭제된 session attach가 `1011`로 닫히는 cleanup rejection
 - 남은 workspace delete cleanup
+
+`CODEXMUX_RUNTIME_TERMINAL_V2_MODE=off` rollback에서는 신규 v2 tab 생성이
+막힌다. 이미 legacy JSON layout에 남아 있는 `runtimeVersion: 2` tab은 삭제하지
+않고, client가 `/api/v2/runtime/health` preflight에서 `runtime-v2-disabled`를 확인해
+desktop/mobile surface에 명시적인 rollback diagnostic을 표시한다.
 
 ## terminal input과 앱 단축키
 

@@ -561,6 +561,8 @@ const MobileSurfaceView = ({
                 ? t('disconnectedMaxConnections')
                 : disconnectReason === 'pty-error'
                   ? t('disconnectedPtyError')
+                  : disconnectReason === 'runtime-v2-disabled'
+                    ? t('runtimeV2Disabled')
                   : disconnectReason === 'session-not-found'
                     ? tt('disconnectedSessionNotFound')
                     : t('cannotConnectServer')}

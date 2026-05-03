@@ -11,6 +11,7 @@
   "stats": "통계",
   "disconnectedMaxConnections": "동시 접속 수를 초과했습니다. 다른 탭을 닫아주세요.",
   "disconnectedPtyError": "터미널을 시작할 수 없습니다",
+  "runtimeV2Disabled": "Runtime v2가 비활성화되어 이 탭에 연결할 수 없습니다.",
   "cannotConnectServer": "서버에 연결할 수 없습니다",
   "restart": "다시 시작",
   "appInfo": "앱 정보",

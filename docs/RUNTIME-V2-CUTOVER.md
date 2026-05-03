@@ -12,7 +12,7 @@
 - Status Worker: policy-only hook/Codex reducer와 notification gating.
 - Shadow diagnostics: server startup calls runtime v2 health without blocking legacy startup, and `/api/debug/perf` exposes worker health/readiness/restart/timeout counters.
 - Terminal identity: newly created legacy tabs carry `runtimeVersion: 1`, runtime v2 tabs carry `runtimeVersion: 2`, and missing `runtimeVersion` is treated as legacy for existing JSON layouts.
-- Smoke: `/api/v2/terminal` attach/input/output/resize/fresh reattach/fanout/tab delete/workspace delete.
+- Smoke: `/api/v2/terminal` attach/input/output/resize/web stdin/heartbeat/fresh reattach/fanout/backpressure close/tab delete/workspace delete.
 
 Production 기본 경로로 전환하지 않은 것:
 
@@ -101,7 +101,7 @@ Exit gate:
 
 - New v2 tabs survive browser reload, server restart, Electron reconnect, Android foreground reconnect.
 - Legacy tabs continue to attach through `/api/terminal`.
-- Rollback mode `off` blocks new v2 tab creation but keeps existing v2 tabs visible with a clear unsupported/diagnostic state.
+- Rollback mode `off` blocks new v2 tab creation but keeps existing v2 tabs visible with a clear `runtime-v2-disabled` diagnostic state.
 
 Rollback:
 

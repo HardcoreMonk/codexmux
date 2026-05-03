@@ -11,6 +11,7 @@
   "stats": "Statistics",
   "disconnectedMaxConnections": "Too many connections. Please close other tabs.",
   "disconnectedPtyError": "Unable to start terminal",
+  "runtimeV2Disabled": "Runtime v2 is disabled, so this tab cannot connect.",
   "cannotConnectServer": "Unable to connect to server",
   "restart": "Restart",
   "appInfo": "App Info",

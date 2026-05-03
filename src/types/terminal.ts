@@ -7,7 +7,7 @@ export type TConnectionStatus =
   | 'disconnected'
   | 'session-ended';
 
-export type TDisconnectReason = 'max-connections' | 'pty-error' | 'session-not-found' | null;
+export type TDisconnectReason = 'max-connections' | 'pty-error' | 'runtime-v2-disabled' | 'session-not-found' | null;
 
 export type TPanelType = 'terminal' | 'codex' | 'web-browser' | 'diff';
 export type TRuntimeVersion = 1 | 2;

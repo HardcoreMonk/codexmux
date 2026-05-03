@@ -74,9 +74,13 @@ CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 node scripts/smoke-runtime-v
 
 3. Electron remote/local shell에서 `http://127.0.0.1:8132/experimental/runtime`을 연다.
 4. workspace와 terminal tab을 생성하고 terminal output에 `pwd` 결과가 보이는지 확인한다.
-5. Electron 창을 background로 보냈다가 foreground로 되돌린 뒤 같은 tab에서 다시
+5. Electron shell의 existing session cookie로 `/api/v2/terminal` WebSocket이 열리는지
+   확인한다. 별도 query-string token은 사용하지 않는다.
+6. Electron 창을 background로 보냈다가 foreground로 되돌린 뒤 같은 tab에서 다시
    attach한다.
-6. terminal output이 fresh attach 후 계속 들어오면 Electron runtime v2 smoke가 통과한
+7. `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=off`로 서버를 재시작하면 기존 v2 tab이 삭제되지
+   않고 runtime v2 disabled diagnostic을 표시하는지 확인한다.
+8. terminal output이 fresh attach 후 계속 들어오고 rollback diagnostic이 명확하면 Electron runtime v2 smoke가 통과한
    상태다.
 
 ## Build Output

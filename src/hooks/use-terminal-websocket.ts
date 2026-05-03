@@ -21,6 +21,7 @@ import {
   getOrCreateTerminalClientId,
   type TTerminalWebSocketEndpoint,
 } from '@/lib/terminal-websocket-url';
+import { preflightTerminalRuntime } from '@/lib/terminal-runtime-preflight';
 
 const HEARTBEAT_INTERVAL = 30_000;
 
@@ -79,85 +80,97 @@ const useTerminalWebSocket = ({
       setDisconnectReason(null);
       setStatus(retryCountRef.current > 0 ? 'reconnecting' : 'connecting');
 
-      const clientId = getOrCreateTerminalClientId(sessionName);
-      const size = initialSizeRef.current;
-      const ws = new WebSocket(buildTerminalWebSocketUrl({
-        endpoint,
-        clientId,
-        sessionName,
-        ...(size ? { cols: size.cols, rows: size.rows } : {}),
-      }));
-      ws.binaryType = 'arraybuffer';
-      wsRef.current = ws;
+      const openSocket = (): void => {
+        const clientId = getOrCreateTerminalClientId(sessionName);
+        const size = initialSizeRef.current;
+        const ws = new WebSocket(buildTerminalWebSocketUrl({
+          endpoint,
+          clientId,
+          sessionName,
+          ...(size ? { cols: size.cols, rows: size.rows } : {}),
+        }));
+        ws.binaryType = 'arraybuffer';
+        wsRef.current = ws;
 
-      ws.onopen = () => {
-        if (connectIdRef.current !== connectId) return;
-        setStatus('connected');
-        retryCountRef.current = 0;
-        setRetryCount(0);
-        callbacksRef.current.onConnected?.();
+        ws.onopen = () => {
+          if (connectIdRef.current !== connectId) return;
+          setStatus('connected');
+          retryCountRef.current = 0;
+          setRetryCount(0);
+          callbacksRef.current.onConnected?.();
 
-        heartbeatRef.current = setInterval(() => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(encodeHeartbeat());
+          heartbeatRef.current = setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(encodeHeartbeat());
+            }
+          }, HEARTBEAT_INTERVAL);
+        };
+
+        ws.onmessage = (event: MessageEvent) => {
+          if (connectIdRef.current !== connectId) return;
+          const { type, payload } = decodeMessage(event.data as ArrayBuffer);
+
+          switch (type) {
+            case MSG_STDOUT:
+              callbacksRef.current.onData?.(payload);
+              break;
+            case MSG_HEARTBEAT:
+              break;
           }
-        }, HEARTBEAT_INTERVAL);
+        };
+
+        ws.onclose = (event: CloseEvent) => {
+          if (connectIdRef.current !== connectId) return;
+          clearTimers();
+          wsRef.current = null;
+
+          if (event.code === 1000) {
+            setStatus('session-ended');
+            callbacksRef.current.onSessionEnded?.();
+            return;
+          }
+
+          if (event.code === 1011) {
+            setDisconnectReason('session-not-found');
+            setStatus('disconnected');
+            return;
+          }
+
+          if (event.code === 1013) {
+            setDisconnectReason('max-connections');
+            setStatus('disconnected');
+            return;
+          }
+
+          if (!isRetriableTerminalClose(event.code)) {
+            setStatus('disconnected');
+            return;
+          }
+
+          const delay = nextReconnectDelay(retryCountRef.current);
+          retryCountRef.current++;
+          setRetryCount(retryCountRef.current);
+          setStatus('reconnecting');
+          retryTimerRef.current = setTimeout(() => {
+            if (!sessionNameRef.current) return;
+            doConnectRef.current(sessionNameRef.current, connectId);
+          }, delay);
+        };
+
+        ws.onerror = () => {
+          console.log('[terminal-ws] connection error');
+        };
       };
 
-      ws.onmessage = (event: MessageEvent) => {
+      void preflightTerminalRuntime({ endpoint }).then((result) => {
         if (connectIdRef.current !== connectId) return;
-        const { type, payload } = decodeMessage(event.data as ArrayBuffer);
-
-        switch (type) {
-          case MSG_STDOUT:
-            callbacksRef.current.onData?.(payload);
-            break;
-          case MSG_HEARTBEAT:
-            break;
-        }
-      };
-
-      ws.onclose = (event: CloseEvent) => {
-        if (connectIdRef.current !== connectId) return;
-        clearTimers();
-        wsRef.current = null;
-
-        if (event.code === 1000) {
-          setStatus('session-ended');
-          callbacksRef.current.onSessionEnded?.();
-          return;
-        }
-
-        if (event.code === 1011) {
-          setDisconnectReason('session-not-found');
+        if (!result.ok) {
+          setDisconnectReason(result.reason ?? null);
           setStatus('disconnected');
           return;
         }
-
-        if (event.code === 1013) {
-          setDisconnectReason('max-connections');
-          setStatus('disconnected');
-          return;
-        }
-
-        if (!isRetriableTerminalClose(event.code)) {
-          setStatus('disconnected');
-          return;
-        }
-
-        const delay = nextReconnectDelay(retryCountRef.current);
-        retryCountRef.current++;
-        setRetryCount(retryCountRef.current);
-        setStatus('reconnecting');
-        retryTimerRef.current = setTimeout(() => {
-          if (!sessionNameRef.current) return;
-          doConnectRef.current(sessionNameRef.current, connectId);
-        }, delay);
-      };
-
-      ws.onerror = () => {
-        console.log('[terminal-ws] connection error');
-      };
+        openSocket();
+      });
     },
     [clearTimers, endpoint],
   );

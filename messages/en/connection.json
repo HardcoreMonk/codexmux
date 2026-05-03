@@ -3,6 +3,7 @@
   "reconnecting": "Reconnecting... ({count})",
   "maxConnections": "Max connections exceeded",
   "ptyError": "Terminal start failed",
+  "runtimeV2Disabled": "Runtime v2 disabled",
   "disconnected": "Disconnected",
   "reconnect": "Reconnect",
   "terminalDisconnected": "Terminal disconnected"

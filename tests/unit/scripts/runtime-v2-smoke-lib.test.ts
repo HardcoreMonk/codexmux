@@ -13,6 +13,23 @@ describe('runtime v2 smoke script helpers', () => {
     expect(Buffer.from(frame.subarray(1)).toString('utf8')).toBe('pwd\n');
   });
 
+  it('encodes web stdin frames', async () => {
+    const { encodeWebStdin } = await loadLib();
+    const frame = encodeWebStdin('echo web\n');
+
+    expect(frame[0]).toBe(0x05);
+    expect(Buffer.from(frame.subarray(1)).toString('utf8')).toBe('echo web\n');
+  });
+
+  it('encodes and detects heartbeat frames', async () => {
+    const { encodeHeartbeat, isRuntimeV2SmokeHeartbeatFrame } = await loadLib();
+    const frame = encodeHeartbeat();
+
+    expect(Buffer.from(frame)).toEqual(Buffer.from([0x03]));
+    expect(isRuntimeV2SmokeHeartbeatFrame(frame)).toBe(true);
+    expect(isRuntimeV2SmokeHeartbeatFrame(Buffer.from([0x01, 0x41]))).toBe(false);
+  });
+
   it('encodes resize frames', async () => {
     const { encodeResize } = await loadLib();
     const frame = encodeResize(100, 30);

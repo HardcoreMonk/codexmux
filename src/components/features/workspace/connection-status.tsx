@@ -52,7 +52,9 @@ const ConnectionStatus = ({
               ? t('maxConnections')
               : disconnectReason === 'pty-error'
                 ? t('ptyError')
-                : t('disconnected')}
+                : disconnectReason === 'runtime-v2-disabled'
+                  ? t('runtimeV2Disabled')
+                  : t('disconnected')}
           </span>
           <Button
             variant="ghost"

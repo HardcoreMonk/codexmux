@@ -1,6 +1,8 @@
 export const MSG_STDIN = 0x00;
 export const MSG_STDOUT = 0x01;
 export const MSG_RESIZE = 0x02;
+export const MSG_HEARTBEAT = 0x03;
+export const MSG_WEB_STDIN = 0x05;
 
 const encoder = new TextEncoder();
 
@@ -8,6 +10,14 @@ export const encodeStdin = (data) => {
   const payload = encoder.encode(data);
   const frame = new Uint8Array(1 + payload.length);
   frame[0] = MSG_STDIN;
+  frame.set(payload, 1);
+  return frame;
+};
+
+export const encodeWebStdin = (data) => {
+  const payload = encoder.encode(data);
+  const frame = new Uint8Array(1 + payload.length);
+  frame[0] = MSG_WEB_STDIN;
   frame.set(payload, 1);
   return frame;
 };
@@ -20,6 +30,8 @@ export const encodeResize = (cols, rows) => {
   view.setUint16(3, rows);
   return frame;
 };
+
+export const encodeHeartbeat = () => new Uint8Array([MSG_HEARTBEAT]);
 
 export const runtimeV2SmokeWsUrl = (baseUrl, sessionName, { cols = 80, rows = 24 } = {}) => {
   const url = new URL(`/api/v2/terminal?session=${encodeURIComponent(sessionName)}&cols=${cols}&rows=${rows}`, baseUrl);
@@ -42,6 +54,9 @@ export const decodeRuntimeV2SmokeFrame = (data) => {
     payload: bytes.subarray(1),
   };
 };
+
+export const isRuntimeV2SmokeHeartbeatFrame = (data) =>
+  decodeRuntimeV2SmokeFrame(data).type === MSG_HEARTBEAT;
 
 export const appendRuntimeV2SmokeFrame = (output, data) => {
   const frame = decodeRuntimeV2SmokeFrame(data);

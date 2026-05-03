@@ -127,8 +127,12 @@ CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 node scripts/smoke-runtime-v
 
 3. Android 앱 launcher에서 같은 서버 URL로 접속한다.
 4. `/experimental/runtime`에서 workspace와 terminal tab을 생성하고 terminal output을 확인한다.
-5. Android 앱을 background로 보낸 뒤 다시 foreground로 가져온다.
-6. 같은 runtime v2 tab을 다시 attach하고 output이 이어지는지 확인한다.
+5. Android WebView의 existing session cookie로 `/api/v2/terminal` WebSocket이 열리는지
+   확인한다. query-string token 인증은 사용하지 않는다.
+6. Android 앱을 background로 보낸 뒤 다시 foreground로 가져온다.
+7. 같은 runtime v2 tab을 다시 attach하고 output이 이어지는지 확인한다.
+8. `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=off`로 서버를 재시작하면 기존 v2 tab이 삭제되지
+   않고 runtime v2 disabled diagnostic을 표시하는지 확인한다.
 
 이 smoke는 `/api/v2/terminal` fresh attach와 foreground reconnect 정책을 확인한다.
 Terminal Worker crash 후 stdout replay나 server-side resubscribe는 runtime v2 범위에
