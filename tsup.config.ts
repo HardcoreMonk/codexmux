@@ -5,6 +5,7 @@ export default defineConfig({
     server: 'server.ts',
     'workers/storage-worker': 'src/workers/storage-worker.ts',
     'workers/terminal-worker': 'src/workers/terminal-worker.ts',
+    'workers/timeline-worker': 'src/workers/timeline-worker.ts',
   },
   format: ['cjs'],
   target: 'node20',

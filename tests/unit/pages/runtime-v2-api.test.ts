@@ -1,3 +1,4 @@
+import os from 'os';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -11,6 +12,9 @@ const mocks = vi.hoisted(() => {
     deleteTerminalTab: vi.fn(),
     createTerminalTab: vi.fn(),
     getLayout: vi.fn(),
+    listTimelineSessions: vi.fn(),
+    readTimelineEntriesBefore: vi.fn(),
+    getTimelineMessageCounts: vi.fn(),
   };
   return {
     auth: vi.fn(),
@@ -33,6 +37,9 @@ import workspaceCleanupHandler from '@/pages/api/v2/workspaces/[workspaceId]';
 import layoutHandler from '@/pages/api/v2/workspaces/[workspaceId]/layout';
 import tabsHandler from '@/pages/api/v2/tabs';
 import tabHandler from '@/pages/api/v2/tabs/[tabId]';
+import timelineSessionsHandler from '@/pages/api/v2/timeline/sessions';
+import timelineEntriesHandler from '@/pages/api/v2/timeline/entries';
+import timelineMessageCountsHandler from '@/pages/api/v2/timeline/message-counts';
 
 const createResponse = () => {
   let statusCode = 0;
@@ -93,6 +100,9 @@ describe('runtime v2 api routes', () => {
     mocks.supervisor.deleteTerminalTab.mockResolvedValue({ deleted: true, killedSession: 'rtv2-ws-a-pane-a-tab-a', failedKill: null });
     mocks.supervisor.getLayout.mockResolvedValue({ root: { type: 'pane', id: 'pane-a', tabs: [] }, activePaneId: 'pane-a', updatedAt: 'now' });
     mocks.supervisor.createTerminalTab.mockResolvedValue({ id: 'tab-a', sessionName: 'rtv2-ws-a-pane-a-tab-a', name: '', order: 0, cwd: '/tmp', panelType: 'terminal', lifecycleState: 'ready' });
+    mocks.supervisor.listTimelineSessions.mockResolvedValue({ sessions: [], total: 0, hasMore: false });
+    mocks.supervisor.readTimelineEntriesBefore.mockResolvedValue({ entries: [], startByteOffset: 0, hasMore: false });
+    mocks.supervisor.getTimelineMessageCounts.mockResolvedValue({ userCount: 0, assistantCount: 0, toolCount: 0, toolBreakdown: {} });
   });
 
   it('rejects unauthenticated v2 API calls', async () => {
@@ -113,6 +123,9 @@ describe('runtime v2 api routes', () => {
       { handler: layoutHandler, request: createRequest({ method: 'GET', query: { workspaceId: 'ws-a' } }) },
       { handler: tabsHandler, request: createRequest({ method: 'POST', body: { workspaceId: 'ws-a', paneId: 'pane-a' } }) },
       { handler: tabHandler, request: createRequest({ method: 'DELETE', query: { tabId: 'tab-a' } }) },
+      { handler: timelineSessionsHandler, request: createRequest({ method: 'GET', query: { tmuxSession: 'pt-ws-pane-tab' } }) },
+      { handler: timelineEntriesHandler, request: createRequest({ method: 'GET', query: { jsonlPath: '/tmp/nope.jsonl', beforeByte: '1' } }) },
+      { handler: timelineMessageCountsHandler, request: createRequest({ method: 'GET', query: { jsonlPath: '/tmp/nope.jsonl' } }) },
     ];
 
     for (const { handler, request } of cases) {
@@ -134,6 +147,9 @@ describe('runtime v2 api routes', () => {
       { handler: layoutHandler, request: createRequest({ method: 'POST', query: { workspaceId: 'ws-a' } }), allow: 'GET' },
       { handler: tabsHandler, request: createRequest({ method: 'GET' }), allow: 'POST' },
       { handler: tabHandler, request: createRequest({ method: 'POST', query: { tabId: 'tab-a' } }), allow: 'DELETE' },
+      { handler: timelineSessionsHandler, request: createRequest({ method: 'POST', query: { tmuxSession: 'pt-ws-pane-tab' } }), allow: 'GET' },
+      { handler: timelineEntriesHandler, request: createRequest({ method: 'POST', query: { jsonlPath: '/tmp/nope.jsonl', beforeByte: '1' } }), allow: 'GET' },
+      { handler: timelineMessageCountsHandler, request: createRequest({ method: 'POST', query: { jsonlPath: '/tmp/nope.jsonl' } }), allow: 'GET' },
     ];
 
     for (const { handler, request, allow } of cases) {
@@ -158,6 +174,53 @@ describe('runtime v2 api routes', () => {
     await workspacesHandler(createRequest({ method: 'GET' }), workspaces.res);
     expect(workspaces.statusCode).toBe(200);
     expect(workspaces.body).toMatchObject({ workspaces: [expect.objectContaining({ id: 'ws-a' })] });
+  });
+
+  it('returns timeline v2 read surfaces', async () => {
+    const sessions = createResponse();
+    await timelineSessionsHandler(createRequest({
+      method: 'GET',
+      query: { tmuxSession: 'pt-ws-pane-tab', panelType: 'codex', limit: '10', offset: '5', source: 'remote', sourceId: 'win11' },
+    }), sessions.res);
+    expect(sessions.statusCode).toBe(200);
+    expect(sessions.body).toMatchObject({ total: 0, hasMore: false });
+    expect(mocks.supervisor.listTimelineSessions).toHaveBeenCalledWith({
+      tmuxSession: 'pt-ws-pane-tab',
+      cwd: undefined,
+      panelType: 'codex',
+      offset: 5,
+      limit: 10,
+      source: 'remote',
+      sourceId: 'win11',
+    });
+
+    const allowedPath = `${os.homedir()}/.codex/sessions/session.jsonl`;
+    const entries = createResponse();
+    await timelineEntriesHandler(createRequest({
+      method: 'GET',
+      query: {
+        jsonlPath: allowedPath,
+        beforeByte: '100',
+        limit: '25',
+        panelType: 'codex',
+      },
+    }), entries.res);
+    expect(entries.statusCode).toBe(200);
+    expect(mocks.supervisor.readTimelineEntriesBefore).toHaveBeenCalledWith({
+      jsonlPath: allowedPath,
+      beforeByte: 100,
+      limit: 25,
+      panelType: 'codex',
+    });
+
+    const counts = createResponse();
+    await timelineMessageCountsHandler(createRequest({
+      method: 'GET',
+      query: { jsonlPath: allowedPath },
+    }), counts.res);
+    expect(counts.statusCode).toBe(200);
+    expect(counts.body).toMatchObject({ userCount: 0, assistantCount: 0, toolCount: 0 });
+    expect(mocks.supervisor.getTimelineMessageCounts).toHaveBeenCalledWith(allowedPath);
   });
 
   it('validates tab creation requests', async () => {

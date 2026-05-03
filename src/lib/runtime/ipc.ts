@@ -6,6 +6,42 @@ const RUNTIME_TERMINAL_MAX_COLS = 500;
 const RUNTIME_TERMINAL_MAX_ROWS = 200;
 const emptyPayloadSchema = z.object({}).strict();
 const runtimeHealthReplySchema = z.object({ ok: z.boolean() }).passthrough();
+const timelineEntrySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  timestamp: z.number(),
+}).passthrough();
+const timelineSessionMetaSchema = z.object({
+  sessionId: z.string(),
+  startedAt: z.string(),
+  lastActivityAt: z.string(),
+  firstMessage: z.string(),
+  turnCount: z.number(),
+  jsonlPath: z.string().optional(),
+  source: z.union([z.literal('local'), z.literal('remote')]).optional(),
+  sourceId: z.string().nullable().optional(),
+  sourceLabel: z.string().optional(),
+  cwd: z.string().nullable().optional(),
+  host: z.string().nullable().optional(),
+  shell: z.string().nullable().optional(),
+  remotePath: z.string().nullable().optional(),
+});
+const timelineSessionPageSchema = z.object({
+  sessions: z.array(timelineSessionMetaSchema),
+  total: z.number().int().nonnegative(),
+  hasMore: z.boolean(),
+});
+const timelineMessageCountsSchema = z.object({
+  userCount: z.number().int().nonnegative(),
+  assistantCount: z.number().int().nonnegative(),
+  toolCount: z.number().int().nonnegative(),
+  toolBreakdown: z.record(z.string(), z.number().int().nonnegative()),
+});
+const timelineEntriesBeforeSchema = z.object({
+  entries: z.array(timelineEntrySchema),
+  startByteOffset: z.number().int().nonnegative(),
+  hasMore: z.boolean(),
+});
 const runtimeWorkspaceSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -142,6 +178,24 @@ const terminalBackpressureEventPayloadSchema = z.object({
   pendingBytes: z.number().int().nonnegative(),
   maxPendingStdoutBytes: z.number().int().positive(),
 });
+const timelineListSessionsPayloadSchema = z.object({
+  tmuxSession: z.string().min(1),
+  cwd: z.string().optional(),
+  panelType: z.string().min(1),
+  offset: z.number().int().nonnegative(),
+  limit: z.number().int().min(1).max(200),
+  source: z.union([z.literal('all'), z.literal('local'), z.literal('remote')]),
+  sourceId: z.string().nullable(),
+});
+const timelineReadEntriesBeforePayloadSchema = z.object({
+  jsonlPath: z.string().min(1),
+  beforeByte: z.number().int().nonnegative(),
+  limit: z.number().int().min(1).max(200),
+  panelType: z.string().min(1),
+});
+const timelineMessageCountsPayloadSchema = z.object({
+  jsonlPath: z.string().min(1),
+});
 
 export const runtimeCommandRegistry = {
   'storage.health': { payload: emptyPayloadSchema, reply: runtimeHealthReplySchema },
@@ -166,6 +220,10 @@ export const runtimeCommandRegistry = {
   'terminal.write-stdin': { payload: terminalWritePayloadSchema, reply: z.object({ written: z.number().int().nonnegative() }) },
   'terminal.write-web-stdin': { payload: terminalWritePayloadSchema, reply: z.object({ written: z.number().int().nonnegative() }) },
   'terminal.resize': { payload: terminalResizePayloadSchema, reply: terminalResizePayloadSchema },
+  'timeline.health': { payload: emptyPayloadSchema, reply: runtimeHealthReplySchema },
+  'timeline.list-sessions': { payload: timelineListSessionsPayloadSchema, reply: timelineSessionPageSchema },
+  'timeline.read-entries-before': { payload: timelineReadEntriesBeforePayloadSchema, reply: timelineEntriesBeforeSchema },
+  'timeline.message-counts': { payload: timelineMessageCountsPayloadSchema, reply: timelineMessageCountsSchema },
 } as const satisfies Record<string, { payload: z.ZodTypeAny; reply: z.ZodTypeAny }>;
 
 export const runtimeEventRegistry = {

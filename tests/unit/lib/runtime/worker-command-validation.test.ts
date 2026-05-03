@@ -15,8 +15,21 @@ describe('validateWorkerCommandEnvelope', () => {
       namespace: 'storage',
     });
 
+  const validateTimeline = (overrides: Partial<Parameters<typeof createRuntimeCommand>[0]> = {}) =>
+    validateWorkerCommandEnvelope(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'timeline',
+      type: 'timeline.health',
+      payload: {},
+      ...overrides,
+    }), {
+      workerName: 'timeline',
+      namespace: 'timeline',
+    });
+
   it('accepts supervisor commands for the target worker namespace', () => {
     expect(validateStorage()).toBeNull();
+    expect(validateTimeline()).toBeNull();
   });
 
   it('rejects invalid worker command envelopes with a shared error descriptor', () => {
@@ -25,6 +38,7 @@ describe('validateWorkerCommandEnvelope', () => {
       validateStorage({ target: 'terminal' }),
       validateStorage({ type: 'storage.unknown' }),
       validateStorage({ type: 'terminal.health' }),
+      validateTimeline({ type: 'storage.health' }),
     ];
 
     for (const result of cases) {

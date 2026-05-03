@@ -29,6 +29,8 @@ const runtimeErrorStatusByCode: Record<string, number> = {
   'runtime-v2-tmux-config-missing': 500,
   'runtime-v2-tmux-config-source-failed': 500,
   'runtime-v2-schema-too-new': 500,
+  'timeline-jsonl-path-forbidden': 403,
+  'timeline-provider-unknown': 400,
 };
 
 export const sendRuntimeApiError = (res: NextApiResponse, err: unknown): void => {

@@ -29,6 +29,9 @@
   기다린 뒤 필요한 Supervisor method만 호출하며 worker client를 직접 만들지 않는다.
   `ensureStarted()`는 stale pending terminal tab뿐 아니라 ready terminal tab과 실제
   runtime v2 tmux session 존재 여부도 reconciliation한 뒤에만 started 상태가 된다.
+  Timeline Worker는 read-only foundation으로 먼저 들어가며 session list, older entry,
+  message count command를 typed IPC로 처리한다. Production timeline WebSocket의 file
+  watch/live append/resume 경로는 별도 cutover 전까지 기존 server module에 남긴다.
 
 ## Proposed: SQLite App State
 
@@ -57,6 +60,7 @@
 - Consequences: envelope validation만으로는 충분하지 않다. command-specific payload와
   successful reply payload validation, registered event constructor validation, correlation
   id, timeout, structured error, retryability 보존이 worker/Supervisor contract의 일부다.
+  `timeline.*` read commands도 같은 registry와 reply schema를 통과해야 한다.
 
 ## Proposed: Terminal Streams Are Ephemeral
 

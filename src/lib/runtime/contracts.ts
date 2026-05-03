@@ -1,9 +1,12 @@
 import type { ILayoutData } from '@/types/terminal';
+import type { IChunkReadResult, ISessionMeta, TSessionSourceFilter } from '@/types/timeline';
+import type { IMessageCountResult } from '@/lib/timeline-message-counts';
 
 export interface IRuntimeHealth {
   ok: boolean;
   storage: unknown;
   terminal: unknown;
+  timeline: unknown;
 }
 
 export interface IRuntimeWorkspace {
@@ -78,3 +81,30 @@ export interface IRuntimePendingTerminalTab {
 }
 
 export type TRuntimeLayout = ILayoutData | null;
+
+export interface IRuntimeTimelineSessionPage {
+  sessions: ISessionMeta[];
+  total: number;
+  hasMore: boolean;
+}
+
+export interface IRuntimeTimelineSessionListInput {
+  tmuxSession: string;
+  cwd?: string;
+  panelType: string;
+  offset: number;
+  limit: number;
+  source: TSessionSourceFilter;
+  sourceId: string | null;
+}
+
+export interface IRuntimeTimelineEntriesBeforeInput {
+  jsonlPath: string;
+  beforeByte: number;
+  limit: number;
+  panelType: string;
+}
+
+export type TRuntimeTimelineEntriesBeforeResult = Pick<IChunkReadResult, 'entries' | 'startByteOffset' | 'hasMore'>;
+
+export type TRuntimeTimelineMessageCounts = IMessageCountResult;

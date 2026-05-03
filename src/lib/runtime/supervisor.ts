@@ -10,6 +10,11 @@ import type {
   IRuntimeHealth,
   IRuntimeTerminalSessionPresence,
   IRuntimeTerminalTab,
+  IRuntimeTimelineEntriesBeforeInput,
+  IRuntimeTimelineSessionListInput,
+  IRuntimeTimelineSessionPage,
+  TRuntimeTimelineEntriesBeforeResult,
+  TRuntimeTimelineMessageCounts,
   IRuntimeWorkspace,
   TRuntimeLayout,
 } from '@/lib/runtime/contracts';
@@ -32,6 +37,9 @@ export interface IRuntimeSupervisor {
   createWorkspace(input: { name: string; defaultCwd: string }): Promise<IRuntimeCreateWorkspaceResult>;
   deleteWorkspace(workspaceId: string): Promise<IRuntimeDeleteWorkspaceResult>;
   deleteTerminalTab(tabId: string): Promise<IRuntimeDeleteTerminalTabResult>;
+  listTimelineSessions(input: IRuntimeTimelineSessionListInput): Promise<IRuntimeTimelineSessionPage>;
+  readTimelineEntriesBefore(input: IRuntimeTimelineEntriesBeforeInput): Promise<TRuntimeTimelineEntriesBeforeResult>;
+  getTimelineMessageCounts(jsonlPath: string): Promise<TRuntimeTimelineMessageCounts>;
   createTerminalTab(input: { workspaceId: string; paneId: string; cwd: string }): Promise<IRuntimeTerminalTab>;
   getLayout(workspaceId: string): Promise<TRuntimeLayout>;
   attachTerminal(input: {
@@ -66,13 +74,16 @@ interface ITerminalAttachAttempt {
 interface IRuntimeSupervisorClients {
   storage: IRuntimeWorkerClientLike;
   terminal: IRuntimeWorkerClientLike;
+  timeline: IRuntimeWorkerClientLike;
 }
 
 export interface ICreateRuntimeSupervisorForTestOptions {
   storage?: IRuntimeWorkerClientLike;
   terminal?: IRuntimeWorkerClientLike;
+  timeline?: IRuntimeWorkerClientLike;
   createStorageClient?: () => IRuntimeWorkerClientLike;
   createTerminalClient?: (handlers: { onEvent: (event: TRuntimeMessage) => void; onExit: () => void }) => IRuntimeWorkerClientLike;
+  createTimelineClient?: () => IRuntimeWorkerClientLike;
   captureTerminalEventHandler?: (handler: (event: IRuntimeEvent) => void) => void;
   dbPath?: string;
   runtimeReset?: boolean;
@@ -186,6 +197,11 @@ export const createRuntimeSupervisorForTest = (
       onEvent: onTerminalWorkerMessage,
       onExit: onTerminalWorkerExit,
     }),
+    timeline: options.timeline ?? options.createTimelineClient?.() ?? new RuntimeWorkerClient({
+      name: 'timeline',
+      workerName: 'timeline-worker',
+      readinessCommand: 'timeline.health',
+    }),
   });
 
   const getClients = (): IRuntimeSupervisorClients => {
@@ -195,6 +211,7 @@ export const createRuntimeSupervisorForTest = (
 
   const shutdownClients = (): void => {
     clients?.terminal.shutdown();
+    clients?.timeline.shutdown();
     clients?.storage.shutdown();
     clients = null;
   };
@@ -315,12 +332,14 @@ export const createRuntimeSupervisorForTest = (
   const startInternal = async (): Promise<void> => {
     if (started) return;
     process.env.CODEXMUX_RUNTIME_DB = prepareRuntimeDbPath();
-    const { storage, terminal } = getClients();
+    const { storage, terminal, timeline } = getClients();
     try {
       storage.start();
       await storage.waitUntilReady();
       terminal.start();
       await terminal.waitUntilReady();
+      timeline.start();
+      await timeline.waitUntilReady();
       await reconcileTerminalTabs();
       started = true;
     } catch (err) {
@@ -361,12 +380,13 @@ export const createRuntimeSupervisorForTest = (
 
     async health() {
       await this.ensureStarted();
-      const { storage, terminal } = getClients();
-      const [storageHealth, terminalHealth] = await Promise.all([
+      const { storage, terminal, timeline } = getClients();
+      const [storageHealth, terminalHealth, timelineHealth] = await Promise.all([
         storage.request('storage.health', {}),
         terminal.request('terminal.health', {}),
+        timeline.request('timeline.health', {}),
       ]);
-      return { ok: true, storage: storageHealth, terminal: terminalHealth };
+      return { ok: true, storage: storageHealth, terminal: terminalHealth, timeline: timelineHealth };
     },
 
     async listWorkspaces() {
@@ -448,6 +468,30 @@ export const createRuntimeSupervisorForTest = (
           },
         };
       }
+    },
+
+    async listTimelineSessions(input) {
+      await this.ensureStarted();
+      return getClients().timeline.request<IRuntimeTimelineSessionListInput, IRuntimeTimelineSessionPage>(
+        'timeline.list-sessions',
+        input,
+      );
+    },
+
+    async readTimelineEntriesBefore(input) {
+      await this.ensureStarted();
+      return getClients().timeline.request<IRuntimeTimelineEntriesBeforeInput, TRuntimeTimelineEntriesBeforeResult>(
+        'timeline.read-entries-before',
+        input,
+      );
+    },
+
+    async getTimelineMessageCounts(jsonlPath) {
+      await this.ensureStarted();
+      return getClients().timeline.request<{ jsonlPath: string }, TRuntimeTimelineMessageCounts>(
+        'timeline.message-counts',
+        { jsonlPath },
+      );
     },
 
     async createTerminalTab(input) {
