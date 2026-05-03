@@ -41,6 +41,10 @@ import { buildCodexCommandFromStore } from '@/lib/codex-client-command';
 import { readAgentSessionId } from '@/lib/agent-tab-fields';
 import { isAgentPanelType } from '@/lib/panel-type';
 import { resolveTerminalWebSocketEndpoint } from '@/lib/terminal-websocket-url';
+import {
+  shouldShowPaneSessionRecoveryOverlay,
+  shouldShowTerminalConnectionStatus,
+} from '@/lib/terminal-recovery';
 
 
 interface ITermActions {
@@ -764,6 +768,20 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
   const showInitialLoading =
     !noTabs &&
     (!isReady || !hasEverConnected);
+  const showSessionRecoveryOverlay = shouldShowPaneSessionRecoveryOverlay({
+    noTabs,
+    isWebBrowser,
+    isDiff,
+    status,
+    disconnectReason,
+    activeTabId,
+  });
+  const showConnectionStatus = shouldShowTerminalConnectionStatus({
+    noTabs,
+    isWebBrowser,
+    isDiff,
+    blockingOverlay: showSessionRecoveryOverlay,
+  });
 
   return (
     <div
@@ -979,7 +997,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
         )}
 
 
-        {!noTabs && activePanelType === 'terminal' && status === 'disconnected' && disconnectReason === 'session-not-found' && activeTabId && (
+        {showSessionRecoveryOverlay && activeTabId && (
           <PaneDisconnectedOverlay
             cwd={activeTab?.cwd}
             lastCommand={activeTab?.lastCommand}
@@ -995,7 +1013,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
           />
         )}
 
-        {!noTabs && !isWebBrowser && !isDiff && (
+        {showConnectionStatus && (
           <ConnectionStatus
             status={status}
             retryCount={retryCount}

@@ -944,7 +944,7 @@ readiness. On crash:
 7. Notify clients to reconnect or refetch.
 
 For Terminal Worker crash in the first slice, Supervisor closes all attached v2
-terminal WebSockets with code `1011` and reason `Terminal worker exited`, clears
+terminal WebSockets with retryable code `1001` and reason `Terminal worker exited`, clears
 the subscriber map, and does not send `terminal.detach` for the lost
 worker-owned attachments. WorkerClient restarts the Terminal Worker and runs
 readiness. After readiness succeeds, recovery is a fresh `/api/v2/terminal`
@@ -1187,7 +1187,7 @@ Required before replacing the old runtime:
 - Supervisor restart recovery test
 - Terminal Worker crash/restart test
 - Terminal Worker exit WebSocket close/reconnect test: existing v2 terminal
-  sockets close with `1011 Terminal worker exited`, subscriber state is cleared,
+  sockets close with `1001 Terminal worker exited`, subscriber state is cleared,
   and a fresh `/api/v2/terminal` connection attaches again after restart/readiness
 - pending terminal-tab finalize failure test
 - pending terminal-tab rollback failure tests proving Supervisor attempts

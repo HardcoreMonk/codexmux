@@ -37,7 +37,9 @@ Status Worker의 live polling, `/api/status` WebSocket broadcast, status event p
 notification/session-history write 이전은 후속 cutover 작업이다. runtime v2는 startup 때
 terminal tab lifecycle만 reconciliation한다. stale `pending_terminal` tab과 tmux session을
 잃은 `ready` terminal tab은 `failed`로 전환되지만, agent work status 전환 의미는 기존
-production 경로를 유지한다.
+production 경로를 유지한다. legacy layout에 남은 runtime v2 tab이 `session-not-found`
+상태가 되면 restart action은 같은 tab id/session name을 Supervisor에 다시 등록해
+`pending_terminal`에서 `ready`로 복구할 수 있다.
 
 ## process state
 

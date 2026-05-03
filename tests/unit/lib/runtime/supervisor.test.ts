@@ -499,6 +499,66 @@ describe('runtime supervisor', () => {
     expect(pending?.payload).not.toHaveProperty('callerSessionName');
   });
 
+  it('restarts existing terminal tabs with the same runtime session name', async () => {
+    const { storage, terminal, timeline, status } = createWorkers();
+    const sessionName = 'rtv2-ws-a-pane-b-tab-c';
+    storage.replies.set('storage.create-pending-terminal-tab', {
+      id: 'tab-c',
+      sessionName,
+      workspaceId: 'ws-a',
+      paneId: 'pane-b',
+      cwd: '/repo',
+      runtimeVersion: 2,
+      lifecycleState: 'pending_terminal',
+      createdAt: new Date(0).toISOString(),
+    });
+    storage.replies.set('storage.finalize-terminal-tab', {
+      id: 'tab-c',
+      sessionName,
+      name: '',
+      order: 0,
+      cwd: '/repo',
+      panelType: 'terminal',
+      runtimeVersion: 2,
+      lifecycleState: 'ready',
+    });
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
+
+    const tab = await supervisor.restartTerminalTab({
+      workspaceId: 'ws-a',
+      paneId: 'pane-b',
+      tabId: 'tab-c',
+      sessionName,
+      cwd: '/repo',
+      ensureWorkspacePane: {
+        workspaceName: 'Workspace A',
+        defaultCwd: '/repo',
+      },
+    });
+
+    expect(tab).toMatchObject({ id: 'tab-c', sessionName, runtimeVersion: 2, lifecycleState: 'ready' });
+    expect(storage.commands.map((command) => command.type)).toEqual(expect.arrayContaining([
+      'storage.ensure-workspace-pane',
+      'storage.delete-terminal-tab',
+      'storage.create-pending-terminal-tab',
+      'storage.finalize-terminal-tab',
+    ]));
+    expect(storage.commands.find((command) => command.type === 'storage.create-pending-terminal-tab')?.payload)
+      .toMatchObject({
+        id: 'tab-c',
+        workspaceId: 'ws-a',
+        paneId: 'pane-b',
+        sessionName,
+        cwd: '/repo',
+      });
+    expect(terminal.commands.map((command) => command.type)).toEqual(expect.arrayContaining([
+      'terminal.kill-session',
+      'terminal.create-session',
+    ]));
+    expect(terminal.commands.find((command) => command.type === 'terminal.create-session')?.payload)
+      .toMatchObject({ sessionName, cwd: '/repo' });
+  });
+
   it('ensures legacy workspace pane mirror before creating opt-in runtime terminal tabs', async () => {
     const { storage, terminal, timeline, status } = createWorkers();
     const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
@@ -593,6 +653,32 @@ describe('runtime supervisor', () => {
     expect(terminal.commands.filter((command) => command.type === 'terminal.detach')).toHaveLength(0);
     await supervisor.detachTerminal({ sessionName: 'rtv2-ws-a-pane-b-tab-c', subscriberId: second.subscriberId });
     expect(terminal.commands.filter((command) => command.type === 'terminal.detach')).toHaveLength(1);
+  });
+
+  it('closes terminal subscribers with a retriable code when the worker exits', async () => {
+    const { storage, terminal, timeline, status } = createWorkers();
+    let onExit = (): void => {};
+    const close = vi.fn();
+    const supervisor = createRuntimeSupervisorForTest({
+      storage,
+      timeline,
+      status,
+      createTerminalClient: (handlers) => {
+        onExit = handlers.onExit;
+        return terminal;
+      },
+    });
+
+    await supervisor.attachTerminal({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      cols: 80,
+      rows: 24,
+      send: vi.fn(),
+      close,
+    });
+    onExit?.();
+
+    expect(close).toHaveBeenCalledWith(1001, 'Terminal worker exited');
   });
 
   it('waits for an in-flight detach before reattaching the same session', async () => {

@@ -12,7 +12,7 @@
 - Status Worker: policy-only hook/Codex reducer와 notification gating.
 - Shadow diagnostics: server startup calls runtime v2 health without blocking legacy startup, and `/api/debug/perf` exposes worker health/readiness/restart/timeout counters.
 - Terminal identity: newly created legacy tabs carry `runtimeVersion: 1`, runtime v2 tabs carry `runtimeVersion: 2`, and missing `runtimeVersion` is treated as legacy for existing JSON layouts.
-- Smoke: `/api/v2/terminal` attach/input/output/resize/web stdin/heartbeat/fresh reattach/fanout/backpressure close/tab delete/workspace delete, plus Phase 2 app-surface new-tab gate for browser reload, server restart, and terminal mode rollback.
+- Smoke: `/api/v2/terminal` attach/input/output/resize/web stdin/heartbeat/fresh reattach/fanout/backpressure close/tab delete/tab restart/workspace delete, plus Phase 2 app-surface new-tab gate for browser reload, server restart, and terminal mode rollback.
 - 2026-05-03 live smoke snapshot: `corepack pnpm smoke:runtime-v2:phase2`, `corepack pnpm build:electron`, `corepack pnpm smoke:electron:attach`, `corepack pnpm smoke:electron:runtime-v2`, `corepack pnpm smoke:android:runtime-v2`, Mac M1 `pnpm pack:electron:dev`, Android debug install, Android Tailscale failure recovery, Android production foreground reconnect, Android app info/native restart, Windows sync dry-run, stats/daily report, permission prompt smoke, and systemd deploy health passed. Electron page-context smoke proved existing-cookie `/api/v2/terminal` attach/output plus 2회 page reload/reconnect on a temp runtime v2 server. Android runtime v2 smoke proved existing-cookie `/api/v2/terminal` attach/output plus 2회 foreground reconnect on SM-S928N Android 16 through the Tailscale IP temp server. Android production foreground reconnect showed `triggerEvent`/TypeError 0 and terminal/timeline WebSocket console error 0 after foreground grace suppression. macOS packaging created arm64/x64 DMG and zip artifacts; GUI launch smoke still needs an interactive Mac user session.
 
 Production 기본 경로로 전환하지 않은 것:
@@ -94,6 +94,9 @@ Work:
 - Make tab identity explicit in UI state: `runtimeVersion: 1 | 2`.
 - Parse `CODEXMUX_RUNTIME_TERMINAL_V2_MODE` through `src/lib/runtime/terminal-mode.ts`; unknown values fail closed to `off`.
 - Ensure close/delete uses the matching runtime cleanup path.
+- Ensure restart uses the matching runtime path: runtime v2 tabs must be recreated
+  through Supervisor/Storage/Terminal Worker with the same tab id and `rtv2-`
+  session name, not through the legacy tmux socket.
 - In the first new-tabs slice, route only plain terminal tab creation through v2. Codex, diff, web-browser, resume, and command-start tabs remain legacy.
 - Mirror the legacy workspace/pane id into runtime v2 storage, then append the returned `rtv2-` tab back into legacy JSON layout with `runtimeVersion: 2`.
 - Keep `scripts/smoke-runtime-v2.mjs` for low-level runtime terminal parity and `scripts/smoke-runtime-v2-phase2-gate.mjs` for app-surface new-tab routing, browser reload, server restart, and rollback mode checks.
@@ -102,6 +105,9 @@ Work:
 Exit gate:
 
 - `node scripts/smoke-runtime-v2-phase2-gate.mjs` passes and proves new v2 tabs survive browser reload and server restart while legacy tabs stay on `/api/terminal`.
+- Runtime v2 tab restart after `session-not-found` recreates the same tab/session
+  through Supervisor and reconnect controls remain actionable; blocking recovery
+  overlays must not leave a visible but unclickable floating reconnect control.
 - Electron page-context reconnect and Android foreground reconnect smoke pass with existing session cookie auth on `/api/v2/terminal`.
 - Android production legacy foreground reconnect passing is necessary but not sufficient for this exit gate; `corepack pnpm smoke:android:runtime-v2` is the Android `/api/v2/terminal` evidence for the current new-tabs slice.
 - Legacy tabs continue to attach through `/api/terminal`.

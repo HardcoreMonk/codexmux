@@ -42,7 +42,7 @@ guardrails are binding:
   unbounded Worker-to-Supervisor IPC growth. Production parity features such as
   reconnect recovery and full lifecycle reconciliation remain follow-up work.
 - First-slice Terminal Worker crash recovery is close-and-reattach only:
-  attached v2 terminal WebSockets close with code `1011` and reason
+  attached v2 terminal WebSockets close with retryable code `1001` and reason
   `Terminal worker exited`; stdout replay and automatic client resubscribe are
   out of scope.
 - Isolate v2 terminal side effects from production tmux: Terminal Worker must
@@ -6027,7 +6027,7 @@ record command order. Cover these cases:
   later succeeds, the handler detaches the returned `subscriberId` once and
   returns without accepting messages.
 - `attachTerminal()` registers a close callback for Supervisor-owned terminal
-  shutdown, and Terminal Worker exit closes attached sockets with code `1011`
+  shutdown, and Terminal Worker exit closes attached sockets with retryable code `1001`
   and reason `Terminal worker exited`.
 - Terminal Worker exit clears the subscriber map and does not send
   `terminal.detach` for already-lost worker-owned attachments.
@@ -6223,7 +6223,7 @@ export const getRuntimeSupervisor = (): IRuntimeSupervisor => {
     },
     onExit: () => {
       for (const sessionSubscribers of terminalSubscribers.values()) {
-        sessionSubscribers.forEach((subscriber) => subscriber.close(1011, 'Terminal worker exited'));
+        sessionSubscribers.forEach((subscriber) => subscriber.close(1001, 'Terminal worker exited'));
       }
       terminalSubscribers.clear();
     },
@@ -7053,7 +7053,7 @@ wire the connection callback, and include it in the returned server set:
 ```
 
 When Terminal Worker exits while a socket is attached, Supervisor's `onExit`
-callback closes that socket with code `1011` and reason
+callback closes that socket with retryable code `1001` and reason
 `Terminal worker exited`, clears the subscriber map, and does not replay stdout.
 After WorkerClient restart/readiness succeeds, browser recovery is a fresh
 `/api/v2/terminal` connection that sends a new `terminal.attach` for the same
@@ -7106,7 +7106,7 @@ emitter and fake Supervisor. Cover:
 - attach failure closes the socket with code `1011`, including a Supervisor
   rejection for a fabricated or non-ready `rtv2-` session name
 - Supervisor close callback from Terminal Worker exit closes the socket with
-  code `1011` and reason `Terminal worker exited`
+  code `1001` and reason `Terminal worker exited`
 - after a Terminal Worker exit close, creating a new WebSocket connection calls
   `attachTerminal()` again and does not reuse the old subscriber id
 

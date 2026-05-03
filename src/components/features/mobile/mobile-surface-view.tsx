@@ -31,6 +31,10 @@ import { buildCodexCommandFromStore } from '@/lib/codex-client-command';
 import { readAgentSessionId } from '@/lib/agent-tab-fields';
 import { isAgentPanelType } from '@/lib/panel-type';
 import { resolveTerminalWebSocketEndpoint } from '@/lib/terminal-websocket-url';
+import {
+  shouldShowMobileDisconnectedOverlay,
+  shouldShowTerminalConnectionStatus,
+} from '@/lib/terminal-recovery';
 
 
 interface ITermActions {
@@ -451,6 +455,19 @@ const MobileSurfaceView = ({
   const ready = isWebBrowser || isDiff || (isReady && status === 'connected' && !noTabs);
   const isFirstConnectionForTab =
     activeTabId !== null && attemptedTabId !== activeTabId;
+  const showDisconnectedOverlay = shouldShowMobileDisconnectedOverlay({
+    noTabs,
+    isWebBrowser,
+    isDiff,
+    status,
+    isFirstConnectionForTab,
+  });
+  const showConnectionStatus = shouldShowTerminalConnectionStatus({
+    noTabs,
+    isWebBrowser,
+    isDiff,
+    blockingOverlay: showDisconnectedOverlay,
+  });
 
   const autoRestartedTabsRef = useRef<Set<string>>(new Set());
 
@@ -552,7 +569,7 @@ const MobileSurfaceView = ({
       )}
 
 
-      {!noTabs && !isWebBrowser && status === 'disconnected' && !isFirstConnectionForTab && (
+      {showDisconnectedOverlay && (
         <div className="absolute inset-0 z-20 flex items-center justify-center px-6 text-center">
           <div className="flex w-full max-w-xs flex-col items-center gap-3 rounded-xl border border-border/70 bg-card/90 px-5 py-5 ring-1 ring-border/30">
             <WifiOff className="h-5 w-5 text-muted-foreground" />
@@ -603,7 +620,7 @@ const MobileSurfaceView = ({
         </div>
       )}
 
-      {!noTabs && !isWebBrowser && !isDiff && !(isAgentPanel && sessionView === 'check') && (
+      {showConnectionStatus && !(isAgentPanel && sessionView === 'check') && (
         <ConnectionStatus
           status={status}
           retryCount={retryCount}

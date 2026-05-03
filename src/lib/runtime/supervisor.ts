@@ -60,6 +60,17 @@ export interface IRuntimeSupervisor {
       defaultCwd: string;
     };
   }): Promise<IRuntimeTerminalTab>;
+  restartTerminalTab(input: {
+    workspaceId: string;
+    paneId: string;
+    tabId: string;
+    sessionName: string;
+    cwd: string;
+    ensureWorkspacePane?: {
+      workspaceName: string;
+      defaultCwd: string;
+    };
+  }): Promise<IRuntimeTerminalTab>;
   getLayout(workspaceId: string): Promise<TRuntimeLayout>;
   attachTerminal(input: {
     sessionName: string;
@@ -196,7 +207,7 @@ export const createRuntimeSupervisorForTest = (
 
   const onTerminalWorkerExit = (): void => {
     for (const sessionSubscribers of terminalSubscribers.values()) {
-      sessionSubscribers.forEach((subscriber) => subscriber.close(1011, 'Terminal worker exited'));
+      sessionSubscribers.forEach((subscriber) => subscriber.close(1001, 'Terminal worker exited'));
     }
     terminalSubscribers.clear();
     terminalAttachAttempts.clear();
@@ -603,6 +614,65 @@ export const createRuntimeSupervisorForTest = (
         await terminal.request('terminal.kill-session', { sessionName }).catch(() => undefined);
         await storage.request('storage.fail-pending-terminal-tab', {
           id,
+          reason: err instanceof Error ? err.message : String(err),
+        });
+        throw err;
+      }
+    },
+
+    async restartTerminalTab(input) {
+      await this.ensureStarted();
+      const { storage, terminal } = getClients();
+      const sessionName = parseRuntimeSessionName(input.sessionName);
+      if (input.ensureWorkspacePane) {
+        await storage.request<IRuntimeEnsureWorkspacePaneInput, IRuntimeEnsureWorkspacePaneResult>(
+          'storage.ensure-workspace-pane',
+          {
+            workspaceId: input.workspaceId,
+            paneId: input.paneId,
+            name: input.ensureWorkspacePane.workspaceName,
+            defaultCwd: input.ensureWorkspacePane.defaultCwd,
+          },
+        );
+      }
+
+      closeTerminalSubscribers(sessionName, 1001, 'Terminal restarted');
+      await waitForTerminalAttachAttempt(sessionName);
+
+      const deleted = await storage.request<{ id: string }, IRuntimeDeleteTerminalTabStorageResult>(
+        'storage.delete-terminal-tab',
+        { id: input.tabId },
+      );
+      const sessionsToKill = new Set<string>([sessionName]);
+      const deletedSession = deleted.session ? parseRuntimeSessionNameOrNull(deleted.session.sessionName) : null;
+      if (deletedSession) sessionsToKill.add(deletedSession);
+      await Promise.all(Array.from(sessionsToKill).map((target) =>
+        terminal.request('terminal.kill-session', { sessionName: target }).catch(() => undefined),
+      ));
+
+      const storageInput = {
+        id: input.tabId,
+        workspaceId: input.workspaceId,
+        paneId: input.paneId,
+        sessionName,
+        cwd: input.cwd,
+      };
+      await storage.request<typeof storageInput, { id: string; sessionName: string }>(
+        'storage.create-pending-terminal-tab',
+        storageInput,
+      );
+      try {
+        await terminal.request('terminal.create-session', {
+          sessionName,
+          cols: 80,
+          rows: 24,
+          cwd: input.cwd,
+        });
+        return await storage.request<{ id: string }, IRuntimeTerminalTab>('storage.finalize-terminal-tab', { id: input.tabId });
+      } catch (err) {
+        await terminal.request('terminal.kill-session', { sessionName }).catch(() => undefined);
+        await storage.request('storage.fail-pending-terminal-tab', {
+          id: input.tabId,
           reason: err instanceof Error ? err.message : String(err),
         });
         throw err;

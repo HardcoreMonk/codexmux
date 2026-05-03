@@ -5,15 +5,32 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const tmuxMocks = vi.hoisted(() => ({
   createSession: vi.fn(),
+  hasSession: vi.fn(),
+  killSession: vi.fn(),
+  resolveExistingDir: vi.fn(async (cwd?: string) => cwd ?? '/home/test'),
+  sendKeys: vi.fn(),
+}));
+
+const runtimeMocks = vi.hoisted(() => ({
+  supervisor: {
+    ensureStarted: vi.fn(),
+    restartTerminalTab: vi.fn(),
+    deleteTerminalTab: vi.fn(),
+  },
+  getRuntimeSupervisor: vi.fn(),
 }));
 
 vi.mock('@/lib/tmux', () => ({
   createSession: tmuxMocks.createSession,
-  hasSession: vi.fn(),
-  killSession: vi.fn(),
-  resolveExistingDir: vi.fn(async (cwd?: string) => cwd ?? os.homedir()),
-  sendKeys: vi.fn(),
+  hasSession: tmuxMocks.hasSession,
+  killSession: tmuxMocks.killSession,
+  resolveExistingDir: tmuxMocks.resolveExistingDir,
+  sendKeys: tmuxMocks.sendKeys,
   workspaceSessionName: (wsId: string, paneId: string, tabId: string) => `pt-${wsId}-${paneId}-${tabId}`,
+}));
+
+vi.mock('@/lib/runtime/supervisor', () => ({
+  getRuntimeSupervisor: runtimeMocks.getRuntimeSupervisor,
 }));
 
 vi.mock('@/lib/sync-server', () => ({
@@ -24,6 +41,7 @@ import {
   addExistingTabToPane,
   createDefaultLayout,
   readLayoutFile,
+  restartTabSession,
   resolveLayoutDir,
   resolveLayoutFile,
   writeLayoutFile,
@@ -32,6 +50,26 @@ import {
 describe('layout store normalization', () => {
   beforeEach(() => {
     tmuxMocks.createSession.mockClear();
+    tmuxMocks.hasSession.mockReset();
+    tmuxMocks.hasSession.mockResolvedValue(false);
+    tmuxMocks.killSession.mockClear();
+    tmuxMocks.resolveExistingDir.mockClear();
+    tmuxMocks.sendKeys.mockClear();
+    runtimeMocks.getRuntimeSupervisor.mockReset();
+    runtimeMocks.getRuntimeSupervisor.mockReturnValue(runtimeMocks.supervisor);
+    runtimeMocks.supervisor.ensureStarted.mockClear();
+    runtimeMocks.supervisor.restartTerminalTab.mockReset();
+    runtimeMocks.supervisor.restartTerminalTab.mockResolvedValue({
+      id: 'tab-runtime',
+      sessionName: 'rtv2-ws-layout-store-pane-runtime-tab-runtime',
+      name: '',
+      order: 0,
+      cwd: '/tmp',
+      panelType: 'terminal',
+      runtimeVersion: 2,
+      lifecycleState: 'ready',
+    });
+    runtimeMocks.supervisor.deleteTerminalTab.mockClear();
   });
 
   it('marks newly created legacy terminal tabs as runtime 1', async () => {
@@ -132,6 +170,50 @@ describe('layout store normalization', () => {
       expect(layout.root.activeTabId).toBe('tab-runtime');
       expect(layout.root.tabs.map((item) => item.id)).toEqual(['tab-existing', 'tab-runtime']);
     }
+    expect(tmuxMocks.createSession).not.toHaveBeenCalled();
+
+    await fs.rm(resolveLayoutDir(wsId), { recursive: true, force: true });
+  });
+
+  it('restarts runtime v2 tabs through the runtime supervisor', async () => {
+    const wsId = `ws-layout-store-restart-${process.pid}`;
+    const paneId = 'pane-runtime';
+    await fs.rm(resolveLayoutDir(wsId), { recursive: true, force: true });
+    await fs.mkdir(resolveLayoutDir(wsId), { recursive: true });
+    await writeLayoutFile({
+      root: {
+        type: 'pane',
+        id: paneId,
+        activeTabId: 'tab-runtime',
+        tabs: [{
+          id: 'tab-runtime',
+          sessionName: 'rtv2-ws-layout-store-restart-pane-runtime-tab-runtime',
+          name: '',
+          order: 0,
+          runtimeVersion: 2,
+          cwd: '/tmp',
+        }],
+      },
+      activePaneId: paneId,
+      updatedAt: new Date(0).toISOString(),
+    }, resolveLayoutFile(wsId));
+
+    const ok = await restartTabSession(wsId, paneId, 'tab-runtime');
+
+    expect(ok).toBe(true);
+    expect(runtimeMocks.supervisor.ensureStarted).toHaveBeenCalled();
+    expect(runtimeMocks.supervisor.restartTerminalTab).toHaveBeenCalledWith({
+      workspaceId: wsId,
+      paneId,
+      tabId: 'tab-runtime',
+      sessionName: 'rtv2-ws-layout-store-restart-pane-runtime-tab-runtime',
+      cwd: '/tmp',
+      ensureWorkspacePane: {
+        workspaceName: wsId,
+        defaultCwd: '/tmp',
+      },
+    });
+    expect(tmuxMocks.hasSession).not.toHaveBeenCalled();
     expect(tmuxMocks.createSession).not.toHaveBeenCalled();
 
     await fs.rm(resolveLayoutDir(wsId), { recursive: true, force: true });

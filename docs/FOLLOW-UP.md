@@ -29,6 +29,7 @@
 - 워크스페이스 이름 변경: desktop 더블클릭/컨텍스트 메뉴, header shortcut, 모바일 header/navigation sheet 편집 경로 정리.
 - Codex session detection: JSONL 지연 생성에 대비해 process start time 허용치를 확장하고 live process 확인 후 cwd fallback 보정 적용.
 - 모바일 foreground reconnect: Android WebView/iPad Safari 복귀 시 terminal/status/timeline/sync WebSocket 강제 재연결과 workspace/layout 재동기화 적용.
+- runtime v2 terminal 복구: Terminal Worker/service restart는 retryable close로 fresh attach를 유도하고, `session-not-found` restart는 runtime v2 Supervisor가 같은 tab id/session name을 재생성한다. 모바일/desktop 복구 overlay가 우상단 reconnect 버튼을 가리는 중복 UI는 숨긴다.
 - 모바일 CODEX 확인 화면: timeline 연결 전에도 terminal preview로 실제 tmux/Codex 출력을 확인할 수 있게 처리.
 - Linux 운영: `systemd --user` 서비스 등록, linger 설정, `HOST=localhost,tailscale,192.168.0.0/16`/`PORT=8122` 운영 문서화.
 - Windows Codex sync 운영: health check, token file, dry-run scan summary, source/sourceId filter, remote source summary, 현재 사용자 Scheduled Task wrapper 문서화.

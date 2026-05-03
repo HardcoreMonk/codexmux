@@ -200,14 +200,14 @@ describe('runtime terminal websocket', () => {
       cols: 80,
       rows: 24,
     }, supervisor);
-    supervisor.closeFromSupervisor(1011, 'Terminal worker exited');
+    supervisor.closeFromSupervisor(1001, 'Terminal worker exited');
     await handleRuntimeTerminalConnection(secondWs as never, {
       sessionName: 'rtv2-ws-a-pane-b-tab-c',
       cols: 80,
       rows: 24,
     }, supervisor);
 
-    expect(firstWs.closed).toEqual([{ code: 1011, reason: 'Terminal worker exited' }]);
+    expect(firstWs.closed).toEqual([{ code: 1001, reason: 'Terminal worker exited' }]);
     expect(supervisor.attachTerminal).toHaveBeenCalledTimes(2);
   });
 });

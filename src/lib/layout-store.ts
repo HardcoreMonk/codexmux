@@ -18,6 +18,8 @@ import {
 } from '@/lib/layout-tree';
 import { isAgentPanelType, normalizePanelType } from '@/lib/panel-type';
 import { normalizeAgentFields } from '@/lib/agent-tab-fields';
+import { resolveTabRuntimeVersion } from '@/lib/runtime/terminal-mode';
+import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
 import type { ITab, TLayoutNode, IPaneNode, ILayoutData, TPanelType } from '@/types/terminal';
 import type { TCliState } from '@/types/timeline';
 import type { IAgentProvider } from '@/lib/providers/types';
@@ -451,11 +453,36 @@ export const restartTabSession = async (wsId: string, paneId: string, tabId: str
     const tab = pane.tabs.find((t) => t.id === tabId);
     if (!tab) return false;
 
-    const exists = await hasSession(tab.sessionName);
-    if (exists) return true;
-
     const effectiveCwd = await resolveExistingDir(tab.cwd);
     const cwdLost = Boolean(tab.cwd && tab.cwd !== effectiveCwd);
+
+    if (resolveTabRuntimeVersion(tab) === 2) {
+      const supervisor = getRuntimeSupervisor();
+      await supervisor.ensureStarted();
+      await supervisor.restartTerminalTab({
+        workspaceId: wsId,
+        paneId,
+        tabId,
+        sessionName: tab.sessionName,
+        cwd: effectiveCwd,
+        ensureWorkspacePane: {
+          workspaceName: wsId,
+          defaultCwd: effectiveCwd,
+        },
+      });
+
+      if (cwdLost) {
+        log.warn(`tab cwd missing, falling back to ${effectiveCwd}: ${tab.sessionName} (was ${tab.cwd})`);
+        tab.cwd = effectiveCwd;
+        delete tab.lastCommand;
+        layout.updatedAt = new Date().toISOString();
+        await writeLayoutFile(layout, filePath);
+      }
+      return true;
+    }
+
+    const exists = await hasSession(tab.sessionName);
+    if (exists) return true;
 
     await createSession(tab.sessionName, 80, 24, effectiveCwd);
     if (command && !cwdLost) {

@@ -39,6 +39,12 @@ IPC 뒤에 둔다. 아직 production `/api/status` WebSocket, Web Push, session 
 runtime v2의 workspace delete와 terminal tab delete는 Storage Worker SQLite
 transaction이 cleanup 대상 session을 반환하고, Supervisor가 subscriber close와
 Terminal Worker `kill-session` cleanup을 수행한다.
+runtime v2 terminal tab restart는 legacy layout에 남은 같은 tab id/session name을
+Supervisor가 Storage Worker에 다시 `pending_terminal`로 등록하고 Terminal Worker가 같은
+`rtv2-` tmux session을 재생성한 뒤 `ready`로 finalize한다. Terminal Worker가 crash 또는
+service restart 중 종료되면 Supervisor는 붙어 있던 terminal WebSocket을 retryable `1001
+Terminal worker exited`로 닫아 client가 `/api/v2/terminal`을 새로 열게 한다. 실제 session이
+없으면 reconnect는 `session-not-found` 복구 overlay로 넘어간다.
 
 이 runtime은 구현 첫 단계의 process-level smoke와 platform smoke를 통과하기 전까지
 기본 production terminal/timeline/status 경로를 대체하지 않는다.
