@@ -17,13 +17,22 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   bundlePagesRouterDependencies: true,
   outputFileTracingExcludes: {
-    '*': [
+    '/*': [
       './release/**',
       './AGENTS.md',
       './README*.md',
+      './next.config.ts',
+      './tsconfig.tsbuildinfo',
+      './tsup.config.ts',
+      './vitest.config.ts',
       './docs/**',
       './.specs/**',
       './tests/**',
+      './android/**',
+      './android-web/**',
+      './_site/**',
+      './dist/**',
+      './dist-electron/**',
     ],
   },
   reactStrictMode: true,
