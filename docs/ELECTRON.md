@@ -116,7 +116,7 @@ CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 node scripts/smoke-runtime-v
 
 macOS에서 앱을 실제로 설치하려면 `release/*.dmg` 또는 `release/*/*.app` 산출물이 필요합니다. 현재 repository checkout에 `release/`가 없으면 아직 macOS 앱 패키징을 실행하지 않은 상태입니다.
 
-2026-05-03 P0/P1 pass 기준 `corepack pnpm build:electron`과 `corepack pnpm smoke:electron:attach`는 통과했다. Linux에서 `corepack pnpm pack:electron:dev`도 실행해 Next/Electron build 단계까지 통과했지만, macOS DMG target이 Darwin-only optional dependency인 `dmg-license`를 요구해 `Cannot find module 'dmg-license'`로 중단됐다. `.app/.dmg` 산출물 검증은 macOS runner 또는 macOS 개발기에서 다시 실행해야 한다. live checkout에서 Electron build/packaging을 실행한 뒤에는 `.next/standalone`이 다시 만들어지므로 Linux user service는 `corepack pnpm deploy:local`로 재시작해 cwd를 정상화한다.
+2026-05-03 P0/P1 pass 기준 `corepack pnpm build:electron`과 `corepack pnpm smoke:electron:attach`는 통과했다. Linux에서 `corepack pnpm pack:electron:dev`는 macOS DMG target의 Darwin-only optional dependency 때문에 중단됐지만, Mac M1 서버(`Darwin arm64`)에서는 같은 명령이 통과해 `release/codexmux-0.3.3-arm64.dmg`, `release/codexmux-0.3.3-arm64-mac.zip`, `release/codexmux-0.3.3.dmg`, `release/codexmux-0.3.3-mac.zip`을 생성했다. `node scripts/verify-runtime-native-bindings.mjs --electron`, `lipo -archs`, `Info.plist`, `hdiutil verify`도 통과했다. SSH 세션에서는 macOS GUI launch domain 권한 때문에 Finder-style `.app` 실행 smoke가 막히므로, 실제 더블클릭 실행과 Gatekeeper UX는 Mac 화면 세션에서 확인한다. live checkout에서 Electron build/packaging을 실행한 뒤에는 `.next/standalone`이 다시 만들어지므로 Linux user service는 `corepack pnpm deploy:local`로 재시작해 cwd를 정상화한다.
 
 ## Packaging Notes
 
