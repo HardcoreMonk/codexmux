@@ -9,8 +9,10 @@ import type {
 import { nextReconnectDelay } from '@/lib/reconnect-policy';
 import {
   NATIVE_APP_STATE_EVENT,
+  nextForegroundReconnectErrorSuppressUntil,
   readNativeAppStateActive,
   shouldForceForegroundReconnect,
+  shouldSuppressForegroundReconnectError,
   wasPageRestored,
 } from '@/lib/foreground-reconnect';
 
@@ -73,6 +75,7 @@ const useTimelineWebSocket = ({
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectIdRef = useRef(0);
   const hiddenAtRef = useRef<number | null>(null);
+  const foregroundReconnectErrorSuppressUntilRef = useRef<number | null>(null);
 
   const callbacksRef = useRef({
     onInit, onAppend, onSessionChanged, onStatsUpdate, onError,
@@ -177,6 +180,7 @@ const useTimelineWebSocket = ({
 
       ws.onerror = () => {
         if (connectIdRef.current !== connectId) return;
+        if (shouldSuppressForegroundReconnectError(foregroundReconnectErrorSuppressUntilRef.current)) return;
         console.log('[timeline-ws] connection error');
       };
     },
@@ -228,6 +232,9 @@ const useTimelineWebSocket = ({
       hiddenAtRef.current = null;
       if (!forceReconnect && ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
       retryCountRef.current = 0;
+      if (forceReconnect) {
+        foregroundReconnectErrorSuppressUntilRef.current = nextForegroundReconnectErrorSuppressUntil();
+      }
       const id = ++connectIdRef.current;
       doConnectRef.current(id);
     };

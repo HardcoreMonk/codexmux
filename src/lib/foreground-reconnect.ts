@@ -1,4 +1,5 @@
 export const FOREGROUND_RECONNECT_GRACE_MS = 750;
+export const FOREGROUND_RECONNECT_ERROR_GRACE_MS = 5_000;
 export const NATIVE_APP_STATE_EVENT = 'codexmux:native-app-state';
 
 export const shouldForceForegroundReconnect = (
@@ -13,6 +14,15 @@ export const shouldForceForegroundReconnect = (
 
 export const wasPageRestored = (event: Event): boolean =>
   'persisted' in event && Boolean((event as PageTransitionEvent).persisted);
+
+export const nextForegroundReconnectErrorSuppressUntil = (
+  now = Date.now(),
+): number => now + FOREGROUND_RECONNECT_ERROR_GRACE_MS;
+
+export const shouldSuppressForegroundReconnectError = (
+  suppressUntil: number | null,
+  now = Date.now(),
+): boolean => suppressUntil !== null && now <= suppressUntil;
 
 export const readNativeAppStateActive = (event: Event): boolean | null => {
   const detail = (event as { detail?: unknown }).detail;

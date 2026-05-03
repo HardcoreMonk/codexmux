@@ -12,8 +12,10 @@ import {
 import { isRetriableTerminalClose, nextReconnectDelay } from '@/lib/reconnect-policy';
 import {
   NATIVE_APP_STATE_EVENT,
+  nextForegroundReconnectErrorSuppressUntil,
   readNativeAppStateActive,
   shouldForceForegroundReconnect,
+  shouldSuppressForegroundReconnectError,
   wasPageRestored,
 } from '@/lib/foreground-reconnect';
 import {
@@ -51,6 +53,7 @@ const useTerminalWebSocket = ({
   const connectIdRef = useRef(0);
   const initialSizeRef = useRef<{ cols: number; rows: number } | null>(null);
   const hiddenAtRef = useRef<number | null>(null);
+  const foregroundReconnectErrorSuppressUntilRef = useRef<number | null>(null);
   const callbacksRef = useRef({ onData, onConnected, onSessionEnded });
   const doConnectRef = useRef<(sessionName: string, connectId: number) => void>(() => {});
 
@@ -159,6 +162,7 @@ const useTerminalWebSocket = ({
 
         ws.onerror = () => {
           if (connectIdRef.current !== connectId) return;
+          if (shouldSuppressForegroundReconnectError(foregroundReconnectErrorSuppressUntilRef.current)) return;
           console.log('[terminal-ws] connection error');
         };
       };
@@ -257,6 +261,9 @@ const useTerminalWebSocket = ({
       if (!forceReconnect && ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
       retryCountRef.current = 0;
       setRetryCount(0);
+      if (forceReconnect) {
+        foregroundReconnectErrorSuppressUntilRef.current = nextForegroundReconnectErrorSuppressUntil();
+      }
       connectIdRef.current++;
       doConnectRef.current(sessionNameRef.current, connectIdRef.current);
     };

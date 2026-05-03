@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  FOREGROUND_RECONNECT_ERROR_GRACE_MS,
   FOREGROUND_RECONNECT_GRACE_MS,
+  nextForegroundReconnectErrorSuppressUntil,
   readNativeAppStateActive,
   shouldForceForegroundReconnect,
+  shouldSuppressForegroundReconnectError,
 } from '@/lib/foreground-reconnect';
 
 describe('foreground reconnect policy', () => {
@@ -24,6 +27,16 @@ describe('foreground reconnect policy', () => {
 
   it('forces reconnect when the page is restored from cache', () => {
     expect(shouldForceForegroundReconnect(null, 10_000, true)).toBe(true);
+  });
+
+  it('suppresses expected socket errors briefly after Android foreground reconnect', () => {
+    const now = 10_000;
+    const suppressUntil = nextForegroundReconnectErrorSuppressUntil(now);
+
+    expect(suppressUntil).toBe(now + FOREGROUND_RECONNECT_ERROR_GRACE_MS);
+    expect(shouldSuppressForegroundReconnectError(null, now)).toBe(false);
+    expect(shouldSuppressForegroundReconnectError(suppressUntil, suppressUntil)).toBe(true);
+    expect(shouldSuppressForegroundReconnectError(suppressUntil, suppressUntil + 1)).toBe(false);
   });
 
   it('reads native Android app state events', () => {
