@@ -13,6 +13,7 @@
 | `DATA-DIR.md` | `~/.codexmux/` 저장 구조와 삭제 기준 |
 | `PERFORMANCE.md` | 성능 계측, 최적화 우선순위, 검증 기준 |
 | `RUNTIME-V2-CUTOVER.md` | Supervisor/Worker runtime v2 production 전환 단계, flag, rollback 기준 |
+| `RUNTIME-V2-PARITY.md` | runtime v2 surface별 v1/v2 parity, migration, test, rollback matrix |
 
 ## 운영과 플랫폼
 

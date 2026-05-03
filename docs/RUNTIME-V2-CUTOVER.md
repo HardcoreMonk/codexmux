@@ -56,6 +56,7 @@ Before any default switch, create a checked parity matrix for every production s
 Exit gate:
 
 - Each row has owner module, v1 behavior, v2 behavior, migration strategy, test command, rollback behavior.
+- `docs/RUNTIME-V2-PARITY.md` is the canonical matrix and must be updated before changing any surface mode.
 
 ## Phase 1: Shadow Runtime
 
@@ -71,6 +72,7 @@ Work:
 Exit gate:
 
 - No worker restart loop over 24 hours.
+- `/api/debug/perf` `services.runtimeWorkers.{storage,terminal,timeline,status}` shows readiness, restart, timeout, and command failure counters without session ids, cwd, JSONL paths, prompts, assistant text, or terminal output.
 - `corepack pnpm build` includes storage, terminal, timeline, and status worker bundles.
 - `scripts/smoke-runtime-v2.mjs` passes on the production host with temp HOME/DB.
 

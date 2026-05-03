@@ -168,7 +168,7 @@
 - Status: Accepted
 - Decision: 성능 최적화는 먼저 `globalThis.__ptPerfStore` 기반 런타임 계측과 인증된 `/api/debug/perf` snapshot으로 관측한 뒤 좁게 진행한다.
 - Rationale: 현재 병목 후보는 Node server, WebSocket, tmux, JSONL parsing, React render 경로에 분산되어 있다. rewrite나 큰 구조 변경 전에 process memory, event loop, watcher, poll, WebSocket, parse 비용을 같은 기준으로 확인해야 한다.
-- Consequences: perf snapshot은 숫자와 duration/counter만 반환한다. session id, cwd, JSONL path, prompt, assistant text, terminal output 본문은 노출하지 않는다. endpoint는 middleware auth를 통과해야 하며 public health check로 쓰지 않는다. 성능 개선은 timeline append batching/row memo, JSONL tail snapshot cache, DIFF short cache, stats in-flight dedupe처럼 source of truth를 바꾸지 않는 좁은 변경을 우선한다.
+- Consequences: perf snapshot은 숫자와 duration/counter만 반환한다. session id, cwd, JSONL path, prompt, assistant text, terminal output 본문은 노출하지 않는다. endpoint는 middleware auth를 통과해야 하며 public health check로 쓰지 않는다. Runtime v2 Worker diagnostics는 worker name별 lifecycle/command counter와 sanitized last error만 `services.runtimeWorkers`에 노출한다. 성능 개선은 timeline append batching/row memo, JSONL tail snapshot cache, DIFF short cache, stats in-flight dedupe처럼 source of truth를 바꾸지 않는 좁은 변경을 우선한다.
 
 ## ADR-014: Windows Codex 연동은 JSONL 동기화 Client로 시작한다
 

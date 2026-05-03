@@ -1,7 +1,11 @@
 import { EventEmitter } from 'events';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRuntimeEvent, createRuntimeReply } from '@/lib/runtime/ipc';
 import { RuntimeWorkerClient } from '@/lib/runtime/worker-client';
+import {
+  getRuntimeWorkerDiagnosticsSnapshot,
+  resetRuntimeWorkerDiagnosticsForTest,
+} from '@/lib/runtime/worker-diagnostics';
 
 class FakeChild extends EventEmitter {
   sent: unknown[] = [];
@@ -23,6 +27,10 @@ class FakeChild extends EventEmitter {
 }
 
 describe('runtime worker client', () => {
+  beforeEach(() => {
+    resetRuntimeWorkerDiagnosticsForTest();
+  });
+
   afterEach(() => {
     vi.useRealTimers();
   });
@@ -47,6 +55,11 @@ describe('runtime worker client', () => {
     }));
 
     await expect(pending).resolves.toEqual({ ok: true });
+    expect(getRuntimeWorkerDiagnosticsSnapshot().storage).toMatchObject({
+      starts: 1,
+      requests: 1,
+      replies: 1,
+    });
   });
 
   it('rejects reply envelope correlation mismatches before payload success', async () => {
@@ -288,6 +301,15 @@ describe('runtime worker client', () => {
     vi.advanceTimersByTime(25);
 
     await expect(pending).rejects.toThrow(/timed out/);
+    expect(getRuntimeWorkerDiagnosticsSnapshot().storage).toMatchObject({
+      starts: 1,
+      requests: 1,
+      timeouts: 1,
+    });
+    expect(getRuntimeWorkerDiagnosticsSnapshot().storage.lastError).toMatchObject({
+      code: 'worker-timeout',
+      retryable: true,
+    });
     vi.useRealTimers();
   });
 
@@ -671,6 +693,14 @@ describe('runtime worker client', () => {
       code: 'storage-busy',
       retryable: true,
     });
+    expect(getRuntimeWorkerDiagnosticsSnapshot().storage).toMatchObject({
+      requests: 1,
+      commandFailures: 1,
+    });
+    expect(getRuntimeWorkerDiagnosticsSnapshot().storage.lastError).toMatchObject({
+      code: 'storage-busy',
+      retryable: true,
+    });
   });
 
   it('does not report ready until the readiness command succeeds', async () => {
@@ -718,6 +748,12 @@ describe('runtime worker client', () => {
       retryable: true,
     });
     expect(first.killed).toBe(true);
+    expect(getRuntimeWorkerDiagnosticsSnapshot().storage).toMatchObject({
+      readyChecks: 1,
+      readyFailures: 1,
+      timeouts: 1,
+      restarts: 1,
+    });
     await vi.advanceTimersByTimeAsync(10);
     expect(spawn).toHaveBeenCalledTimes(2);
     vi.useRealTimers();

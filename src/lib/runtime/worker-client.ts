@@ -10,6 +10,7 @@ import {
   runtimeEventRegistry,
   type TRuntimeMessage,
 } from '@/lib/runtime/ipc';
+import { recordRuntimeWorkerDiagnostic } from '@/lib/runtime/worker-diagnostics';
 import { resolveRuntimeWorkerScript, type TRuntimeWorkerName } from '@/lib/runtime/worker-paths';
 
 interface IPendingRequest {
@@ -67,9 +68,14 @@ export class RuntimeWorkerClient {
     if (!this.options.readinessCommand) return Promise.resolve();
     if (!this.readyPromise) {
       const child = this.child;
+      recordRuntimeWorkerDiagnostic(this.options.name, 'ready-check');
       this.readyPromise = this.request(this.options.readinessCommand, {})
-        .then(() => undefined)
+        .then(() => {
+          recordRuntimeWorkerDiagnostic(this.options.name, 'ready-success');
+          return undefined;
+        })
         .catch((err) => {
+          recordRuntimeWorkerDiagnostic(this.options.name, 'ready-failure', { error: err });
           this.readyPromise = null;
           if (child && this.shouldRestartAfterReadinessFailure(err)) {
             this.handleChildFailure(child, err);
@@ -129,10 +135,12 @@ export class RuntimeWorkerClient {
     const result = new Promise<TResult>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(msg.id);
-        reject(Object.assign(new Error(`${this.options.name} command '${type}' timed out`), {
+        const timeoutError = Object.assign(new Error(`${this.options.name} command '${type}' timed out`), {
           code: 'worker-timeout',
           retryable: true,
-        }));
+        });
+        recordRuntimeWorkerDiagnostic(this.options.name, 'timeout', { error: timeoutError });
+        reject(timeoutError);
       }, this.requestTimeoutMs);
       this.pending.set(msg.id, {
         commandType: type,
@@ -144,6 +152,7 @@ export class RuntimeWorkerClient {
         timer,
       });
     });
+    recordRuntimeWorkerDiagnostic(this.options.name, 'request');
 
     const failSend = (err?: unknown): void => {
       const pendingRequest = this.pending.get(msg.id);
@@ -155,6 +164,7 @@ export class RuntimeWorkerClient {
         code: 'worker-not-connected',
         retryable: true,
       });
+      recordRuntimeWorkerDiagnostic(this.options.name, 'send-failure', { error: sendError });
       pendingRequest.reject(sendError);
       this.handleChildFailure(child, sendError);
     };
@@ -174,6 +184,7 @@ export class RuntimeWorkerClient {
 
   shutdown(): void {
     this.stopped = true;
+    recordRuntimeWorkerDiagnostic(this.options.name, 'shutdown');
     if (this.restartTimer) {
       clearTimeout(this.restartTimer);
       this.restartTimer = null;
@@ -194,6 +205,7 @@ export class RuntimeWorkerClient {
   private spawnChild(): void {
     const child = this.options.spawn ? this.options.spawn() : this.spawnDefault();
     this.child = child;
+    recordRuntimeWorkerDiagnostic(this.options.name, 'start');
     child.on('message', this.handleMessage);
     child.on('exit', (code, signal) => {
       this.handleChildFailure(child, Object.assign(new Error(`${this.options.name} worker exited`), {
@@ -269,6 +281,7 @@ export class RuntimeWorkerClient {
       }
       try {
         const payload = parseRuntimeEventPayload(msg.type, msg.payload);
+        recordRuntimeWorkerDiagnostic(this.options.name, 'event');
         this.options.onEvent?.({ ...msg, payload });
       } catch {
         return;
@@ -286,18 +299,22 @@ export class RuntimeWorkerClient {
       || msg.target !== pending.expectedTarget
       || msg.type !== pending.expectedReplyType
     ) {
-      pending.reject(Object.assign(new Error(`${this.options.name} worker sent mismatched reply for '${pending.commandType}'`), {
+      const err = Object.assign(new Error(`${this.options.name} worker sent mismatched reply for '${pending.commandType}'`), {
         code: 'invalid-worker-reply',
         retryable: false,
-      }));
+      });
+      recordRuntimeWorkerDiagnostic(this.options.name, 'invalid-reply', { error: err });
+      pending.reject(err);
       return;
     }
 
     if (!msg.ok) {
-      pending.reject(Object.assign(new Error(msg.error?.message ?? `${this.options.name} command failed`), {
+      const err = Object.assign(new Error(msg.error?.message ?? `${this.options.name} command failed`), {
         code: msg.error?.code ?? 'worker-command-failed',
         retryable: msg.error?.retryable ?? false,
-      }));
+      });
+      recordRuntimeWorkerDiagnostic(this.options.name, 'command-failure', { error: err });
+      pending.reject(err);
       return;
     }
 
@@ -306,12 +323,15 @@ export class RuntimeWorkerClient {
         ? parseRuntimeReplyPayload(pending.commandType, msg.payload)
         : msg.payload;
       this.currentRestartBackoffMs = this.initialRestartBackoffMs;
+      recordRuntimeWorkerDiagnostic(this.options.name, 'reply');
       pending.resolve(payload);
     } catch (err) {
-      pending.reject(Object.assign(new Error(err instanceof Error ? err.message : String(err)), {
+      const replyError = Object.assign(new Error(err instanceof Error ? err.message : String(err)), {
         code: 'invalid-worker-reply',
         retryable: false,
-      }));
+      });
+      recordRuntimeWorkerDiagnostic(this.options.name, 'invalid-reply', { error: replyError });
+      pending.reject(replyError);
     }
   };
 
@@ -322,13 +342,15 @@ export class RuntimeWorkerClient {
     if (!pending) return;
     this.pending.delete(commandId);
     clearTimeout(pending.timer);
-    pending.reject(Object.assign(
+    const replyError = Object.assign(
       new Error(err instanceof Error ? err.message : `${this.options.name} worker sent malformed reply`),
       {
         code: 'invalid-worker-reply',
         retryable: false,
       },
-    ));
+    );
+    recordRuntimeWorkerDiagnostic(this.options.name, 'invalid-reply', { error: replyError });
+    pending.reject(replyError);
   }
 
   private getMalformedReplyCommandId(raw: unknown): string | null {
@@ -351,6 +373,7 @@ export class RuntimeWorkerClient {
     if (this.stopped || this.restartTimer) return;
     const delay = Math.min(this.currentRestartBackoffMs, this.maxRestartBackoffMs);
     this.currentRestartBackoffMs = Math.min(this.currentRestartBackoffMs * 2, this.maxRestartBackoffMs);
+    recordRuntimeWorkerDiagnostic(this.options.name, 'restart');
     this.restartTimer = setTimeout(() => {
       this.restartTimer = null;
       if (!this.stopped) this.spawnChild();
@@ -359,6 +382,16 @@ export class RuntimeWorkerClient {
 
   private handleChildFailure(child: ChildProcess, err: Error): void {
     if (this.child !== child) return;
+    const structured = err as Error & { code?: unknown; exitCode?: unknown; signal?: unknown };
+    if (structured.code === 'worker-exited') {
+      recordRuntimeWorkerDiagnostic(this.options.name, 'exit', {
+        error: err,
+        exitCode: typeof structured.exitCode === 'number' ? structured.exitCode : null,
+        signal: typeof structured.signal === 'string' ? structured.signal : null,
+      });
+    } else {
+      recordRuntimeWorkerDiagnostic(this.options.name, 'failure', { error: err });
+    }
     this.child = null;
     this.options.onExit?.(err);
     this.rejectPending(err);

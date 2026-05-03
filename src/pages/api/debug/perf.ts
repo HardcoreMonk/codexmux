@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getPerfRuntimeSnapshot } from '@/lib/perf-metrics';
+import { getRuntimeWorkerDiagnosticsSnapshot } from '@/lib/runtime/worker-diagnostics';
 import { getStatusManager } from '@/lib/status-manager';
 import { getSyncPerfSnapshot } from '@/lib/sync-server';
 import { getTerminalPerfSnapshot } from '@/lib/terminal-server';
@@ -22,6 +23,7 @@ const handler = (req: NextApiRequest, res: NextApiResponse): void => {
       timeline: getTimelinePerfSnapshot(),
       sync: getSyncPerfSnapshot(),
       sessionIndex: getSessionIndexPerfSnapshot(),
+      runtimeWorkers: getRuntimeWorkerDiagnosticsSnapshot(),
     },
   });
 };

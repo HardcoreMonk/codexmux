@@ -1,0 +1,82 @@
+# Runtime v2 Parity Matrix
+
+작성일: 2026-05-03
+
+이 문서는 Supervisor + Worker runtime v2를 production 기본 경로로 전환하기 전에 확인해야 하는 surface별 parity checklist다. `CODEXMUX_RUNTIME_V2=1`은 worker와 v2 diagnostic/API를 켜지만, 아래 행이 통과하기 전까지 legacy route와 JSON store가 production source of truth다.
+
+## 기준
+
+| 필드 | 의미 |
+| --- | --- |
+| Owner | 현재 구현 또는 migration 책임 module |
+| v1 behavior | production legacy 경로의 동작 |
+| v2 behavior | 현재 runtime v2의 동작 |
+| Gap | default 전환 전에 닫아야 할 차이 |
+| Migration | v2로 넘기는 방식 |
+| Test | 최소 검증 명령 또는 smoke |
+| Rollback | v2 off/default 취소 시 기대 동작 |
+
+## Workspace And Layout
+
+| Surface | Owner | v1 behavior | v2 behavior | Gap | Migration | Test | Rollback |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Workspace create/list/delete | `src/lib/workspace-store.ts`, `src/lib/runtime/storage/repository.ts` | `workspaces.json`과 workspace별 `layout.json`을 생성/조회/삭제한다. | SQLite workspace/pane/tab schema로 create/list/delete를 지원한다. | v1 workspace metadata 전체와 group/order/sidebar state가 아직 SQLite source가 아니다. | Shadow import 후 `CODEXMUX_RUNTIME_STORAGE_V2_MODE=write`에서 신규 workspace만 v2 write. | `corepack pnpm vitest run tests/unit/lib/runtime` | `CODEXMUX_RUNTIME_STORAGE_V2_MODE=off`; JSON store 유지. |
+| Workspace rename | `src/pages/api/workspace/[workspaceId].ts`, `src/lib/workspace-store.ts` | workspace name을 JSON에 갱신하고 sync broadcast한다. | v2 rename command/route 없음. | rename command, validation, sync invalidation 필요. | JSON-vs-SQLite shadow compare 후 dual-write 가능 여부 확인. | workspace rename API test + shadow compare. | v1 rename route 유지. |
+| Workspace reorder/group/collapse | `src/lib/workspace-store.ts`, `src/lib/workspace-order.ts` | workspaces/groups order와 collapsed/groupId를 JSON에 저장한다. | v2 schema/command 없음. | group/order schema와 transaction semantics 필요. | v1 write 유지, v2 shadow projection 먼저 추가. | reorder/group API test + malformed group fixture. | JSON order가 source of truth. |
+| Active workspace/sidebar state | `src/pages/api/workspace/active.ts`, `src/lib/workspace-store.ts` | activeWorkspaceId, sidebarCollapsed, sidebarWidth를 JSON에 저장한다. | v2 storage 없음. | UI hydration과 browser/Electron/Android sync parity 필요. | storage v2 default 직전 one-way import 후 write ownership 전환. | active workspace reload/mobile reconnect smoke. | legacy active state JSON 재사용. |
+| cwd validation | `src/pages/api/workspace/index.ts`, `src/lib/workspace-store.ts` | directory를 resolve하고 default layout cwd로 저장한다. | v2 create-workspace는 defaultCwd를 저장하지만 full production validation surface는 v1과 분리되어 있다. | deleted cwd, permission denied, relative path normalization parity 필요. | v1 validation helper를 v2 API boundary에서 재사용. | create workspace invalid cwd tests. | v1 workspace create route 유지. |
+| Layout split/move/order/delete | `src/lib/layout-store.ts`, `src/pages/api/layout/**` | pane split, pane delete, tab reorder/move/delete를 workspace layout JSON에 반영한다. | v2는 default layout read와 terminal tab create/delete cleanup만 지원한다. | pane tree mutation commands와 sync invalidation 없음. | mutation command를 SQLite transaction으로 추가하고 v1 projection과 shadow compare. | layout mutation unit tests + runtime v2 tab delete smoke. | legacy layout JSON과 `pt-` sessions 유지. |
+| Layout rename/tab patch | `src/lib/layout-store.ts` | tab name, active pane, ratio, agentSessionId/status metadata를 JSON에 저장한다. | v2 tab rename/patch 없음. | status/timeline metadata ownership과 충돌 가능. | storage default 전 status/timeline ownership split 확정. | tab rename/status metadata tests. | legacy layout metadata 유지. |
+| Message history | `src/lib/message-history-store.ts` | workspace layout dir 아래 message history namespace를 JSON으로 저장한다. | v2 storage 없음. | storage layout migration에 포함할지 별도 store로 남길지 결정 필요. | release 전 별도 migration row로 분리. | message history read/write smoke. | legacy message history file 유지. |
+
+## Terminal
+
+| Surface | Owner | v1 behavior | v2 behavior | Gap | Migration | Test | Rollback |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Attach/detach/stdout | `src/lib/terminal-server.ts`, `src/lib/runtime/terminal-ws.ts` | `/api/terminal` WebSocket이 `pt-` tmux session에 attach하고 stdout을 fanout한다. | `/api/v2/terminal` WebSocket이 `rtv2-` session에 attach하고 Terminal Worker stdout event를 fanout한다. | production UI route selection과 legacy/v2 tab identity 표시 필요. | `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=new-tabs`에서 신규 tab만 v2. | `CODEXMUX_RUNTIME_V2_SMOKE_URL=... node scripts/smoke-runtime-v2.mjs` | mode off blocks new v2 tabs; existing legacy tabs remain on `/api/terminal`. |
+| stdin and web stdin | `src/lib/terminal-server.ts`, `src/lib/runtime/terminal/terminal-worker-service.ts` | terminal stdin과 Codex web input을 pty에 전달한다. | `terminal.write-stdin`과 `terminal.write-web-stdin` command가 있다. | production input bar routing, `Ctrl+D`, mobile input parity 검증 필요. | tab runtimeVersion으로 write route 선택. | terminal input/web input smoke including `Ctrl+D`. | v1 input route untouched. |
+| Resize | `src/lib/terminal-server.ts`, `src/lib/runtime/terminal-ws.ts` | WebSocket resize message가 pty resize로 전달된다. | v2 terminal WebSocket resize message가 Supervisor를 거쳐 Worker로 전달된다. | desktop/mobile resize throttle parity 확인 필요. | runtimeVersion route switch. | runtime v2 smoke resize step + mobile foreground smoke. | legacy resize remains default. |
+| Heartbeat/reconnect | `src/hooks/use-terminal.ts`, `src/lib/terminal-server.ts` | existing terminal hook heartbeat/reconnect가 production path를 관리한다. | v2 diagnostic UI/websocket path exists, but production hook cutover is not default. | same hook surface, stale socket close, foreground reconnect parity 필요. | 기존 app surface와 동일한 hook 구성으로 v2 URL만 선택. | browser reload, Electron reconnect, Android foreground reconnect smoke. | legacy hook URL selection. |
+| Kill/close cleanup | `src/lib/layout-store.ts`, `src/lib/tmux.ts`, `src/lib/runtime/supervisor.ts` | close tab/workspace가 layout JSON 삭제와 `pt-` tmux kill을 수행한다. | v2 tab/workspace delete가 SQLite 상태 삭제와 `rtv2-` tmux kill을 수행한다. | mixed runtime tabs에서 matching cleanup route 선택 필요. | tab runtimeVersion으로 cleanup route 선택. | tab delete/workspace delete runtime v2 smoke. | legacy cleanup still owns `pt-`. |
+| Backpressure | `src/lib/terminal-server.ts`, `src/lib/runtime/terminal/terminal-worker-service.ts` | stdout coalescing/backpressure counters가 legacy server에 있다. | Terminal Worker emits `terminal.backpressure` and Supervisor closes subscribers. | production-level burst smoke, counter comparison, close reason UX 필요. | v2 new-tabs phase에서 diagnostic counters compare. | burst output smoke + `/api/debug/perf` check. | mode off returns to legacy backpressure. |
+| Electron/Android cookie auth | `src/lib/runtime/api-auth.ts`, `src/lib/runtime/server-ws-upgrade.ts` | shell WebViews use existing cookie/token auth for legacy routes. | v2 HTTP/WS auth accepts existing session cookie and `x-cmux-token`. | Electron/Android reconnect smoke on `/api/v2/terminal` required. | no native bridge change unless auth smoke fails. | Electron local smoke + Android foreground reconnect smoke. | legacy cookie-auth WebSocket path remains. |
+
+## Timeline
+
+| Surface | Owner | v1 behavior | v2 behavior | Gap | Migration | Test | Rollback |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Session list and filters | `src/lib/timeline-server.ts`, `src/lib/session-index.ts`, `src/lib/runtime/timeline/worker-service.ts` | `/api/timeline/sessions` uses session index, paging, filters, and source summary. | `/api/v2/timeline/sessions` read-only list command exists. | filter/source parity and production route switch missing. | shadow compare v1 response vs v2 response. | runtime v2 API tests + large session list smoke. | legacy `/api/timeline/sessions`. |
+| Load older entries | `src/lib/timeline-server.ts`, `src/lib/session-parser.ts`, `src/lib/runtime/timeline/worker-service.ts` | timeline WebSocket/API reads JSONL entries with stable id/dedupe/merge. | v2 read-only older-entry command exists. | live init/append/resume ownership missing. | move watcher state after read parity passes. | fixture tests for paired assistant dedupe and load-more. | legacy timeline server reads JSONL. |
+| Init/append subscribe/unsubscribe | `src/lib/timeline-server.ts`, `src/lib/timeline-server-state.ts` | WebSocket sends init, append, error and manages watchers/subscribers. | v2 has no live WebSocket event ownership yet. | Timeline Worker watcher/subscriber service needed. | `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=shadow` first, then default. | long JSONL append smoke. | clients reconnect to legacy `/api/timeline`. |
+| Resume/session-changed | `src/lib/timeline-server.ts`, `src/lib/auto-resume.ts` | resume flow blocks unsafe active processes and broadcasts session-changed. | v2 does not own resume/session-changed yet. | process-safety and event ordering parity needed. | keep resume in legacy until worker event contract is proven. | resume active-process smoke. | legacy resume flow. |
+| Message counts | `src/pages/api/timeline/message-counts.ts`, `src/lib/runtime/timeline/worker-service.ts` | streaming helper counts user/assistant/tool without full timeline construction. | v2 message-counts command and API exist. | cache/timing parity and production route switch missing. | shadow compare counts on long JSONL. | message-counts tests + `/api/debug/perf` timing check. | legacy message-counts endpoint. |
+| Windows remote JSONL | `src/lib/remote-codex-*`, `src/lib/timeline-server.ts` | Windows companion uploads JSONL sidecars and timeline reads remote copies. | v2 read path needs explicit remote source parity. | source/sourceId and sidecar metadata handling not proven. | keep remote sessions legacy until v2 fixture coverage exists. | Windows sync smoke and source filter tests. | legacy remote timeline route. |
+
+## Status And Notifications
+
+| Surface | Owner | v1 behavior | v2 behavior | Gap | Migration | Test | Rollback |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Initial sync/update/remove | `src/lib/status-manager.ts` | StatusManager polls process/JSONL state and broadcasts sync/update/remove. | Status Worker only evaluates pure policy commands. | live polling and broadcast ownership missing. | shadow reducer compare before moving side effects. | status manager tests + v2 reducer tests. | legacy StatusManager remains owner. |
+| Hook/statusline events | `src/lib/status-manager.ts`, `src/lib/status-state-machine.ts`, `src/lib/runtime/status/worker-service.ts` | hook/statusline events update tab state and metadata. | v2 reducer can compute decisions but does not write layout/session state. | side-effect adapter and singleton compatibility needed. | worker returns decisions; legacy applies until cutover. | hook event fixture tests. | legacy hook route/state write. |
+| Needs-input ack/dismiss | `src/lib/status-manager.ts` | ack/dismiss state suppresses repeated prompts and updates clients. | v2 has no ack/dismiss command ownership. | durable ack storage and broadcast semantics needed. | move after notification policy parity. | needs-input/dismiss smoke. | legacy ack/dismiss state. |
+| Ready-for-review notification | `src/lib/status-notification-policy.ts`, `src/lib/runtime/status/worker-service.ts` | notification policy gates toast/system/Web Push/session history. | v2 evaluates notification policy only. | Web Push/session history side effects not moved. | shadow policy compare, then worker-owned side effects. | notification policy tests + push smoke. | legacy notification policy application. |
+| Session history write | `src/lib/session-history.ts`, `src/lib/status-manager.ts` | completion history dedupes by `sessionId:turnId`. | v2 no write ownership. | source-of-truth and dedupe transaction needed. | keep legacy until Status Worker side-effect phase. | session history dedupe test. | legacy history JSON. |
+| Web Push | `src/lib/push-subscriptions.ts`, `src/lib/status-manager.ts` | push subscriptions and sends are managed by legacy status path. | v2 no push side effect. | retry/rate-limit/error counters needed. | explicit Status v2 cutover phase only. | Web Push smoke. | legacy push path. |
+
+## Sync And Configuration
+
+| Surface | Owner | v1 behavior | v2 behavior | Gap | Migration | Test | Rollback |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Browser sync invalidation | `src/lib/sync-server.ts`, `src/lib/layout-store.ts`, `src/lib/workspace-store.ts` | layout/workspace/config changes broadcast over sync WebSocket. | v2 storage commands do not emit production sync invalidation. | browser reload and stale UI parity required. | v2 write mode emits the same sync message types. | browser reload/sync smoke. | legacy sync server remains owner. |
+| Electron sync | `electron/`, `src/lib/sync-server.ts` | Electron shell connects to the same server routes. | v2 has no shell-specific sync change. | route switching and cookie auth smoke required. | share browser sync path. | Electron local reconnect smoke. | legacy sync. |
+| Android foreground sync | `android/`, `android-web/`, `src/hooks/use-mobile-foreground-reconnect.ts` | foreground reconnect refreshes terminal/status/timeline/sync. | v2 diagnostic path not production default. | v2 terminal/timeline/status reconnect smoke required. | surface-specific mode gates. | Android foreground reconnect smoke. | legacy reconnect paths. |
+| CLI clients and config | `src/pages/api/cli/**`, `src/lib/config-store.ts` | CLI uses token auth, layout/workspace JSON, and config JSON. | runtime v2 does not own CLI config or CLI tab creation. | CLI route compatibility and config invalidation required. | keep CLI legacy until storage default is stable. | CLI API smoke. | legacy CLI/config JSON. |
+
+## Phase Gate
+
+Runtime v2 can only become default for a surface when every row in that surface has:
+
+- passing parity test or smoke evidence
+- rollback behavior verified with `CODEXMUX_RUNTIME_*_V2_MODE=off`
+- no sensitive content in `/api/debug/perf`
+- no worker restart loop in `services.runtimeWorkers`

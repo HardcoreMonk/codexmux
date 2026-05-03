@@ -75,6 +75,15 @@ vi.mock('@/lib/sync-server', () => ({
   }),
 }));
 
+vi.mock('@/lib/runtime/worker-diagnostics', () => ({
+  getRuntimeWorkerDiagnosticsSnapshot: () => ({
+    storage: { starts: 1, requests: 2, replies: 2, lastError: null },
+    terminal: { starts: 1, requests: 1, replies: 1, lastError: null },
+    timeline: { starts: 1, requests: 1, replies: 1, lastError: null },
+    status: { starts: 1, requests: 1, replies: 1, lastError: null },
+  }),
+}));
+
 type TJsonBody = Record<string, unknown>;
 
 const createResponse = () => {
@@ -143,6 +152,12 @@ describe('/api/debug/perf', () => {
     expect(services.terminal).toBeTruthy();
     expect(services.timeline).toBeTruthy();
     expect(services.sync).toBeTruthy();
+    expect(services.runtimeWorkers).toMatchObject({
+      storage: { starts: 1, requests: 2, replies: 2, lastError: null },
+      terminal: { starts: 1, requests: 1, replies: 1, lastError: null },
+      timeline: { starts: 1, requests: 1, replies: 1, lastError: null },
+      status: { starts: 1, requests: 1, replies: 1, lastError: null },
+    });
 
     const keys = collectKeys(body).map((key) => key.toLowerCase());
     expect(keys).not.toContain('cwd');

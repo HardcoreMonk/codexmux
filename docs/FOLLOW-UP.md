@@ -52,7 +52,7 @@
 15. 설치/upgrade: `npx codexmux`, global install, 기존 `~/.codexmux` 유지 확인.
 16. release metadata: `corepack pnpm release:patch|minor|major`, changelog, release workflow artifact 확인.
 17. Windows sync smoke test: Windows에서 Scheduled Task `Install -RunNow`, `Status`, `RunOnce` dry-run, source filter, remote source summary, 오래된 date dir full scan 동작 확인.
-18. Runtime v2 cutover readiness: `docs/RUNTIME-V2-CUTOVER.md`의 phase gate, rollback flag, temp HOME/DB smoke, Electron/Android/systemd 검증을 release candidate commit 기준으로 확인.
+18. Runtime v2 cutover readiness: `docs/RUNTIME-V2-CUTOVER.md`와 `docs/RUNTIME-V2-PARITY.md`의 phase gate, rollback flag, temp HOME/DB smoke, Electron/Android/systemd 검증을 release candidate commit 기준으로 확인.
 
 ## Post-MVP 백로그
 
@@ -91,6 +91,7 @@
 - `status-manager.ts`는 순수 정책 helper를 분리했다. 다음 단계에서는 Web Push/history side effect adapter를 분리한다.
 - provider를 추가할 때는 `IAgentProvider` contract test와 JSONL fixture를 먼저 추가한다.
 - runtime v2 production 전환은 `docs/RUNTIME-V2-CUTOVER.md`의 surface별 flag와 rollback gate를 따른다. terminal, storage, timeline, status를 한 release에서 동시에 기본값으로 전환하지 않는다.
+- runtime v2 parity는 `docs/RUNTIME-V2-PARITY.md`의 surface row별 owner, migration, test, rollback을 먼저 채운 뒤 surface mode를 바꾼다.
 
 ### Performance
 
@@ -103,6 +104,7 @@
 - Windows companion은 전체 tree scan과 hot scan을 분리했다. 다음 단계는 Windows에서 실제 파일 수와 full scan latency를 확인한 뒤 watcher 기반 보강이 필요한지 판단한다.
 - Windows Scheduled Task wrapper는 로그인 시 자동 실행과 로그/설정 파일 경로를 표준화했다. 다음 단계는 실제 Windows 장시간 실행에서 task restart result, log rotation 필요성, token file 권한을 확인한다.
 - StatusManager adaptive scheduling은 `unknown`, `needs-input`, `ready-for-review` 지연을 측정한 뒤 active/background workspace 정책으로 분리한다.
+- Runtime v2 shadow mode는 `/api/debug/perf`의 `services.runtimeWorkers` counters로 worker readiness, restart, timeout, command failure를 먼저 확인한다. payload, session id/name, cwd, JSONL path, prompt, assistant text, terminal output은 diagnostics에 넣지 않는다.
 
 ### 문서와 운영
 
