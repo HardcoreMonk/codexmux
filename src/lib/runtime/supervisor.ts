@@ -6,6 +6,7 @@ import type {
   IRuntimeDeleteWorkspaceResult,
   IRuntimeDeleteWorkspaceStorageResult,
   IRuntimeHealth,
+  IRuntimeTerminalSessionPresence,
   IRuntimeTerminalTab,
   IRuntimeWorkspace,
   TRuntimeLayout,
@@ -114,7 +115,7 @@ export const createRuntimeSupervisorForTest = (
   let started = false;
   let startPromise: Promise<void> | undefined;
   let preparedDbPath: string | null = null;
-  let reconciledPendingTerminalTabs = false;
+  let reconciledTerminalTabs = false;
   let clients: IRuntimeSupervisorClients | null = null;
   const terminalSubscribers = new Map<string, Map<string, ITerminalSubscriber>>();
   const terminalAttachAttempts = new Map<string, ITerminalAttachAttempt>();
@@ -249,7 +250,6 @@ export const createRuntimeSupervisorForTest = (
   };
 
   const reconcilePendingTerminalTabs = async (): Promise<void> => {
-    if (reconciledPendingTerminalTabs) return;
     const { storage, terminal } = getClients();
     const pendingTabs = await storage.request<Record<string, never>, Array<{ id: string; sessionName: string }>>(
       'storage.list-pending-terminal-tabs',
@@ -265,7 +265,48 @@ export const createRuntimeSupervisorForTest = (
         reason: sessionName ? 'startup reconciliation' : 'startup reconciliation: invalid session name',
       });
     }
-    reconciledPendingTerminalTabs = true;
+  };
+
+  const reconcileReadyTerminalTabs = async (): Promise<void> => {
+    const { storage, terminal } = getClients();
+    const readyTabs = await storage.request<Record<string, never>, IRuntimeTerminalTab[]>(
+      'storage.list-ready-terminal-tabs',
+      {},
+    );
+    for (const tab of readyTabs) {
+      const sessionName = parseRuntimeSessionNameOrNull(tab.sessionName);
+      if (!sessionName) {
+        await storage.request('storage.fail-ready-terminal-tab', {
+          id: tab.id,
+          reason: 'startup reconciliation: invalid session name',
+        });
+        continue;
+      }
+      let exists = false;
+      try {
+        const presence = await terminal.request<{ sessionName: string }, IRuntimeTerminalSessionPresence>(
+          'terminal.has-session',
+          { sessionName },
+        );
+        exists = presence.exists;
+      } catch (err) {
+        const maybeStructured = err as { code?: string } | null;
+        if (maybeStructured?.code !== 'runtime-v2-terminal-session-not-found') throw err;
+      }
+      if (!exists) {
+        await storage.request('storage.fail-ready-terminal-tab', {
+          id: tab.id,
+          reason: 'startup reconciliation: tmux session missing',
+        });
+      }
+    }
+  };
+
+  const reconcileTerminalTabs = async (): Promise<void> => {
+    if (reconciledTerminalTabs) return;
+    await reconcilePendingTerminalTabs();
+    await reconcileReadyTerminalTabs();
+    reconciledTerminalTabs = true;
   };
 
   const startInternal = async (): Promise<void> => {
@@ -277,11 +318,11 @@ export const createRuntimeSupervisorForTest = (
       await storage.waitUntilReady();
       terminal.start();
       await terminal.waitUntilReady();
-      await reconcilePendingTerminalTabs();
+      await reconcileTerminalTabs();
       started = true;
     } catch (err) {
       started = false;
-      reconciledPendingTerminalTabs = false;
+      reconciledTerminalTabs = false;
       shutdownClients();
       throw err;
     }
@@ -308,7 +349,7 @@ export const createRuntimeSupervisorForTest = (
     shutdown() {
       shutdownClients();
       started = false;
-      reconciledPendingTerminalTabs = false;
+      reconciledTerminalTabs = false;
       startPromise = undefined;
       if (options.useGlobal) g.__ptRuntimeSupervisorStartPromise = undefined;
       terminalSubscribers.clear();

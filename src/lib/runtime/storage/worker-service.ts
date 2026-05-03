@@ -76,6 +76,14 @@ export const createStorageWorkerService = (options: IStorageWorkerServiceOptions
         if (command.type === 'storage.list-pending-terminal-tabs') {
           return ok(command, repo.listPendingTerminalTabs());
         }
+        if (command.type === 'storage.list-ready-terminal-tabs') {
+          return ok(command, repo.listReadyTerminalTabs());
+        }
+        if (command.type === 'storage.fail-ready-terminal-tab') {
+          const input = parseRuntimeCommandPayload('storage.fail-ready-terminal-tab', command.payload);
+          repo.failReadyTerminalTab(input);
+          return ok(command, { ok: true });
+        }
         if (command.type === 'storage.get-ready-terminal-tab-by-session') {
           const input = parseRuntimeCommandPayload('storage.get-ready-terminal-tab-by-session', command.payload);
           return ok(command, repo.getReadyTerminalTabBySession(input.sessionName));

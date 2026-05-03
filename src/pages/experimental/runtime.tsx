@@ -5,7 +5,9 @@ import { useTranslations } from 'next-intl';
 import { PlugZap, Plus, RefreshCw, Terminal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getPageShellLayout } from '@/components/layout/page-shell';
-import { decodeMessage, encodeStdin, MSG_STDOUT, textDecoder } from '@/lib/terminal-protocol';
+import useRuntimeTerminalWebSocket from '@/hooks/use-runtime-terminal-websocket';
+import { textDecoder } from '@/lib/terminal-protocol';
+import type { TConnectionStatus } from '@/types/terminal';
 
 interface IRuntimeWorkspace {
   id: string;
@@ -22,10 +24,12 @@ interface IRuntimeTab {
 type TRuntimeApiStatus = 'statusIdle' | 'creatingWorkspace' | 'workspaceCreated' | 'creatingTab' | 'tabCreated';
 type TTerminalStatus = 'terminalClosed' | 'terminalConnecting' | 'terminalConnected';
 
-const toWebSocketUrl = (path: string): string => {
-  const url = new URL(path, window.location.href);
-  url.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return url.toString();
+const terminalStatusKey: Record<TConnectionStatus, TTerminalStatus> = {
+  connecting: 'terminalConnecting',
+  connected: 'terminalConnected',
+  reconnecting: 'terminalConnecting',
+  disconnected: 'terminalClosed',
+  'session-ended': 'terminalClosed',
 };
 
 const RuntimeExperimentalPage = () => {
@@ -35,10 +39,21 @@ const RuntimeExperimentalPage = () => {
   const [tab, setTab] = useState<IRuntimeTab | null>(null);
   const [layout, setLayout] = useState<unknown>(null);
   const [status, setStatus] = useState<TRuntimeApiStatus>('statusIdle');
-  const [terminalStatus, setTerminalStatus] = useState<TTerminalStatus>('terminalClosed');
   const [terminalOutput, setTerminalOutput] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const socketRef = useRef<WebSocket | null>(null);
+  const pendingInitialStdinRef = useRef(false);
+  const {
+    status: terminalConnectionStatus,
+    retryCount,
+    disconnectReason,
+    connect: connectTerminal,
+    sendStdin,
+  } = useRuntimeTerminalWebSocket({
+    onData: useCallback((data: Uint8Array) => {
+      setTerminalOutput((prev) => `${prev}${textDecoder.decode(data)}`);
+    }, []),
+  });
+  const terminalStatus = terminalStatusKey[terminalConnectionStatus];
 
   const requestJson = useCallback(async <T,>(url: string, init?: RequestInit): Promise<T> => {
     const res = await fetch(url, init);
@@ -74,37 +89,17 @@ const RuntimeExperimentalPage = () => {
     };
   }, [refresh]);
 
-  useEffect(() => {
-    return () => {
-      socketRef.current?.close();
-      socketRef.current = null;
-    };
-  }, []);
-
   const attachTerminal = useCallback((sessionName: string) => {
-    socketRef.current?.close();
     setTerminalOutput('');
-    setTerminalStatus('terminalConnecting');
-    const ws = new WebSocket(toWebSocketUrl(`/api/v2/terminal?session=${encodeURIComponent(sessionName)}&cols=80&rows=24`));
-    ws.binaryType = 'arraybuffer';
-    socketRef.current = ws;
-    ws.onopen = () => {
-      setTerminalStatus('terminalConnected');
-      ws.send(encodeStdin('pwd\n'));
-    };
-    ws.onmessage = (event) => {
-      if (!(event.data instanceof ArrayBuffer)) return;
-      const msg = decodeMessage(event.data);
-      if (msg.type !== MSG_STDOUT) return;
-      setTerminalOutput((prev) => `${prev}${textDecoder.decode(msg.payload)}`);
-    };
-    ws.onerror = () => {
-      setTerminalStatus('terminalClosed');
-    };
-    ws.onclose = () => {
-      setTerminalStatus('terminalClosed');
-    };
-  }, []);
+    pendingInitialStdinRef.current = true;
+    connectTerminal(sessionName, 80, 24);
+  }, [connectTerminal]);
+
+  useEffect(() => {
+    if (terminalConnectionStatus !== 'connected' || !pendingInitialStdinRef.current) return;
+    pendingInitialStdinRef.current = false;
+    sendStdin('pwd\n');
+  }, [sendStdin, terminalConnectionStatus]);
 
   const createWorkspace = useCallback(async () => {
     try {
@@ -153,6 +148,9 @@ const RuntimeExperimentalPage = () => {
     tab,
     layout,
     workspaces,
+    terminalConnectionStatus,
+    retryCount,
+    disconnectReason,
   };
 
   return (

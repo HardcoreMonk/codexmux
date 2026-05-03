@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { nanoid } from 'nanoid';
 import type { TConnectionStatus, TDisconnectReason } from '@/types/terminal';
 import {
   MSG_STDOUT,
@@ -17,30 +16,23 @@ import {
   shouldForceForegroundReconnect,
   wasPageRestored,
 } from '@/lib/foreground-reconnect';
+import {
+  buildTerminalWebSocketUrl,
+  getOrCreateTerminalClientId,
+  type TTerminalWebSocketEndpoint,
+} from '@/lib/terminal-websocket-url';
 
 const HEARTBEAT_INTERVAL = 30_000;
-const CLIENT_ID_PREFIX = 'pt-ws-cid-';
-
-const getOrCreateClientId = (sessionName: string): string => {
-  const key = `${CLIENT_ID_PREFIX}${sessionName}`;
-  try {
-    const stored = sessionStorage.getItem(key);
-    if (stored) return stored;
-    const id = nanoid();
-    sessionStorage.setItem(key, id);
-    return id;
-  } catch {
-    return nanoid();
-  }
-};
 
 interface IUseTerminalWebSocketOptions {
+  endpoint?: TTerminalWebSocketEndpoint;
   onData?: (data: Uint8Array) => void;
   onConnected?: () => void;
   onSessionEnded?: () => void;
 }
 
 const useTerminalWebSocket = ({
+  endpoint = '/api/terminal',
   onData,
   onConnected,
   onSessionEnded,
@@ -87,13 +79,14 @@ const useTerminalWebSocket = ({
       setDisconnectReason(null);
       setStatus(retryCountRef.current > 0 ? 'reconnecting' : 'connecting');
 
-      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const clientId = getOrCreateClientId(sessionName);
+      const clientId = getOrCreateTerminalClientId(sessionName);
       const size = initialSizeRef.current;
-      const sizeParams = size ? `&cols=${size.cols}&rows=${size.rows}` : '';
-      const ws = new WebSocket(
-        `${protocol}//${location.host}/api/terminal?clientId=${clientId}&session=${sessionName}${sizeParams}`,
-      );
+      const ws = new WebSocket(buildTerminalWebSocketUrl({
+        endpoint,
+        clientId,
+        sessionName,
+        ...(size ? { cols: size.cols, rows: size.rows } : {}),
+      }));
       ws.binaryType = 'arraybuffer';
       wsRef.current = ws;
 
@@ -166,7 +159,7 @@ const useTerminalWebSocket = ({
         console.log('[terminal-ws] connection error');
       };
     },
-    [clearTimers],
+    [clearTimers, endpoint],
   );
 
   useEffect(() => {

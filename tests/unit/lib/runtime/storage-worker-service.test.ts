@@ -258,4 +258,78 @@ describe('storage worker service', () => {
     }));
     expect(readyLookup.payload).toEqual(expect.objectContaining({ id: 'tab-runtime', lifecycleState: 'ready' }));
   });
+
+  it('lists ready terminal tabs and marks stale ready tabs failed', async () => {
+    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const created = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.create-workspace',
+      payload: { name: 'Runtime', defaultCwd: dir },
+    }));
+    const workspace = created.payload as { id: string; rootPaneId: string };
+    const sessionName = `rtv2-${workspace.id}-${workspace.rootPaneId}-tab-runtime`;
+
+    await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.create-pending-terminal-tab',
+      payload: {
+        id: 'tab-runtime',
+        workspaceId: workspace.id,
+        paneId: workspace.rootPaneId,
+        sessionName,
+        cwd: dir,
+      },
+    }));
+    await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.finalize-terminal-tab',
+      payload: { id: 'tab-runtime' },
+    }));
+
+    const readyList = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.list-ready-terminal-tabs',
+      payload: {},
+    }));
+    expect(readyList.ok).toBe(true);
+    expect(readyList.payload).toEqual([
+      expect.objectContaining({ id: 'tab-runtime', sessionName, lifecycleState: 'ready' }),
+    ]);
+
+    const failed = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.fail-ready-terminal-tab',
+      payload: {
+        id: 'tab-runtime',
+        reason: 'startup reconciliation: tmux session missing',
+      },
+    }));
+    expect(failed.ok).toBe(true);
+    expect(failed.payload).toEqual({ ok: true });
+
+    const emptyReadyList = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.list-ready-terminal-tabs',
+      payload: {},
+    }));
+    expect(emptyReadyList.payload).toEqual([]);
+
+    const failedAgain = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.fail-ready-terminal-tab',
+      payload: { id: 'tab-runtime', reason: 'already failed' },
+    }));
+    expect(failedAgain.ok).toBe(false);
+    expect(failedAgain.error).toMatchObject({
+      code: 'runtime-v2-ready-tab-not-found',
+      retryable: false,
+    });
+  });
 });

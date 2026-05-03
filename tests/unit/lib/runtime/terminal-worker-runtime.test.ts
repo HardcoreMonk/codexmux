@@ -154,4 +154,46 @@ describe('terminal worker runtime', () => {
     });
     expect(ptySpawnMock).not.toHaveBeenCalled();
   });
+
+  it('checks tmux session presence without spawning node-pty', async () => {
+    const { createTerminalWorkerRuntime } = await import('@/lib/runtime/terminal/terminal-worker-runtime');
+    const runtime = createTerminalWorkerRuntime();
+
+    await expect(runtime.hasSession('rtv2-ws-a-pane-b-tab-c')).resolves.toEqual({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      exists: true,
+    });
+
+    expect(execFileMock).toHaveBeenCalledWith(
+      'tmux',
+      expect.arrayContaining(['-L', 'codexmux-runtime-v2', 'has-session', '-t', 'rtv2-ws-a-pane-b-tab-c']),
+      expect.objectContaining({ timeout: 5000 }),
+      expect.any(Function),
+    );
+    expect(ptySpawnMock).not.toHaveBeenCalled();
+  });
+
+  it('returns false for missing tmux session presence checks', async () => {
+    execFileFailure("can't find session");
+    const { createTerminalWorkerRuntime } = await import('@/lib/runtime/terminal/terminal-worker-runtime');
+    const runtime = createTerminalWorkerRuntime();
+
+    await expect(runtime.hasSession('rtv2-ws-a-pane-b-tab-c')).resolves.toEqual({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      exists: false,
+    });
+    expect(ptySpawnMock).not.toHaveBeenCalled();
+  });
+
+  it('preserves unexpected tmux session presence failures', async () => {
+    execFileFailure('permission denied');
+    const { createTerminalWorkerRuntime } = await import('@/lib/runtime/terminal/terminal-worker-runtime');
+    const runtime = createTerminalWorkerRuntime();
+
+    await expect(runtime.hasSession('rtv2-ws-a-pane-b-tab-c')).rejects.toMatchObject({
+      code: 'runtime-v2-terminal-presence-check-failed',
+      retryable: false,
+      message: expect.stringContaining('permission denied'),
+    });
+  });
 });

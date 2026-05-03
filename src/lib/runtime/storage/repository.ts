@@ -33,6 +33,11 @@ export interface IFailPendingTerminalTabInput {
   reason: string;
 }
 
+export interface IFailReadyTerminalTabInput {
+  id: string;
+  reason: string;
+}
+
 export interface IDeleteWorkspaceInput {
   workspaceId: string;
 }
@@ -62,6 +67,12 @@ const eventId = (): string => createRuntimeId('evt');
 const pendingTabNotFoundError = (id: string): Error =>
   Object.assign(new Error(`pending terminal tab not found: ${id}`), {
     code: 'runtime-v2-pending-tab-not-found',
+    retryable: false,
+  });
+
+const readyTabNotFoundError = (id: string): Error =>
+  Object.assign(new Error(`ready terminal tab not found: ${id}`), {
+    code: 'runtime-v2-ready-tab-not-found',
     retryable: false,
   });
 
@@ -186,6 +197,17 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
     recordEvent('tab', input.id, 'tab.create-failed', input);
   });
 
+  const failReadyTerminalTabTx = db.transaction((input: IFailReadyTerminalTabInput): void => {
+    const ts = nowIso();
+    const result = db.prepare(`
+      update tabs
+      set lifecycle_state = 'failed', failure_reason = ?, updated_at = ?
+      where id = ? and lifecycle_state = 'ready'
+    `).run(input.reason, ts, input.id);
+    if (result.changes !== 1) throw readyTabNotFoundError(input.id);
+    recordEvent('tab', input.id, 'tab.ready-reconciliation-failed', input);
+  });
+
   const deleteWorkspaceTx = db.transaction((input: IDeleteWorkspaceInput): IRuntimeDeleteWorkspaceStorageResult => {
     const workspace = db.prepare(`select 1 as present from workspaces where id = ?`)
       .get(input.workspaceId) as { present: number } | undefined;
@@ -209,6 +231,7 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
     createPendingTerminalTab: createPendingTerminalTabTx,
     finalizeTerminalTab: finalizeTerminalTabTx,
     failPendingTerminalTab: failPendingTerminalTabTx,
+    failReadyTerminalTab: failReadyTerminalTabTx,
     deleteWorkspace: deleteWorkspaceTx,
 
     listPendingTerminalTabs(): IRuntimePendingTerminalTab[] {
@@ -218,6 +241,24 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
         where lifecycle_state = 'pending_terminal'
         order by created_at asc, order_index asc, id asc
       `).all() as IRuntimePendingTerminalTab[];
+    },
+
+    listReadyTerminalTabs(): IRuntimeTerminalTab[] {
+      const rows = db.prepare(`
+        select id, session_name as sessionName, name, order_index as "order", cwd, panel_type as panelType, lifecycle_state as lifecycleState
+        from tabs
+        where panel_type = 'terminal' and lifecycle_state = 'ready'
+        order by created_at asc, order_index asc, id asc
+      `).all() as ITabRow[];
+      return rows.map((row) => ({
+        id: row.id,
+        sessionName: row.sessionName,
+        name: row.name,
+        order: row.order,
+        ...(row.cwd ? { cwd: row.cwd } : {}),
+        panelType: 'terminal',
+        lifecycleState: 'ready',
+      }));
     },
 
     getReadyTerminalTabBySession(sessionName: string): IRuntimeTerminalTab | null {

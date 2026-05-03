@@ -20,16 +20,22 @@ const assertRuntimeSessionName = (sessionName: string): void => {
   parseRuntimeSessionName(sessionName);
 };
 
+const errorMessage = (err: unknown): string =>
+  err instanceof Error ? err.message : String(err);
+
 const createRuntimeError = (
   code: string,
   message: string,
   err: unknown,
 ): Error & { code: string; retryable: false } => (
-  Object.assign(new Error(`${message}: ${err instanceof Error ? err.message : String(err)}`), {
+  Object.assign(new Error(`${message}: ${errorMessage(err)}`), {
     code,
     retryable: false as const,
   })
 );
+
+const isMissingTmuxSessionError = (err: unknown): boolean =>
+  /can't find session|missing session|no server running|failed to connect to server/i.test(errorMessage(err));
 
 const sourceRuntimeTmuxConfig = async (): Promise<void> => {
   const tmuxConfigPath = resolveRuntimeTmuxConfigPath();
@@ -106,6 +112,23 @@ const assertRuntimeSessionExists = async (sessionName: string): Promise<void> =>
   }
 };
 
+const hasRuntimeSession = async (sessionName: string): Promise<boolean> => {
+  assertRuntimeSessionName(sessionName);
+  try {
+    await execFile('tmux', ['-L', RUNTIME_TMUX_SOCKET, 'has-session', '-t', sessionName], {
+      timeout: CMD_TIMEOUT,
+    });
+    return true;
+  } catch (err) {
+    if (isMissingTmuxSessionError(err)) return false;
+    throw createRuntimeError(
+      'runtime-v2-terminal-presence-check-failed',
+      `Runtime v2 tmux session presence check failed: ${sessionName}`,
+      err,
+    );
+  }
+};
+
 export const createTerminalWorkerRuntime = (): ITerminalWorkerRuntime => {
   const attached = new Map<string, IAttachedPty>();
 
@@ -152,6 +175,10 @@ export const createTerminalWorkerRuntime = (): ITerminalWorkerRuntime => {
       await detachSession(sessionName);
       await killRuntimeSession(sessionName);
       return { sessionName, killed: true };
+    },
+
+    async hasSession(sessionName) {
+      return { sessionName, exists: await hasRuntimeSession(sessionName) };
     },
 
     async writeStdin(sessionName, data) {

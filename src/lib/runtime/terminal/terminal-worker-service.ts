@@ -18,6 +18,7 @@ export interface ITerminalWorkerRuntime {
   attach(sessionName: string, cols: number, rows: number, onData: (data: string) => void): Promise<unknown>;
   detach(sessionName: string): Promise<unknown>;
   killSession(sessionName: string): Promise<unknown>;
+  hasSession(sessionName: string): Promise<unknown>;
   writeStdin(sessionName: string, data: string): Promise<unknown>;
   resize(sessionName: string, cols: number, rows: number): Promise<unknown>;
 }
@@ -205,6 +206,10 @@ export const createTerminalWorkerService = (options: ITerminalWorkerServiceOptio
           attachedSessions.delete(input.sessionName);
           clearStdout(input.sessionName);
           return ok(command, await options.runtime.killSession(input.sessionName));
+        }
+        if (command.type === 'terminal.has-session') {
+          const input = parseRuntimeCommandPayload('terminal.has-session', command.payload);
+          return ok(command, await options.runtime.hasSession(input.sessionName));
         }
         return invalidCommand(command, {
           code: 'invalid-worker-command',

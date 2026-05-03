@@ -71,8 +71,19 @@ Worker-to-Supervisor IPC가 무한히 커지지 않도록 byte-accounted stdout 
 backpressure cap을 둔다. cap을 넘으면 해당 attach stream을 닫고, buffered partial
 output은 flush하지 않는다.
 
-production 수준의 reconnect/lifecycle parity는 후속 hardening 범위다. 현재 v2 경로는
-attach, stdin, stdout, resize, detach의 최소 smoke를 검증하기 위한 실험 surface다.
+runtime v2 startup은 terminal lifecycle을 한 번 reconciliation한다. stale
+`pending_terminal` tab은 기존처럼 failed로 전환하고 matching v2 tmux session을
+best-effort kill한다. `ready` terminal tab은 Terminal Worker의
+`terminal.has-session` IPC로 `tmux -L codexmux-runtime-v2 has-session`을 확인하며,
+tmux session이 없거나 session name이 invalid이면 Storage Worker가 해당 tab을
+`failed`로 전환한다. failed tab은 layout projection과 v2 terminal attach
+authorization에서 제외된다.
+
+v2 client reconnect는 production terminal hook과 같은 heartbeat, retry backoff,
+foreground/focus/online/BFCache/native app-state reconnect 정책을 사용하되
+`/api/v2/terminal`에 연결한다. Terminal Worker crash 뒤 자동 stdout replay나
+server-side resubscribe는 제공하지 않는다. client는 fresh WebSocket attach로 tmux에
+다시 붙는다.
 
 ## terminal input과 앱 단축키
 

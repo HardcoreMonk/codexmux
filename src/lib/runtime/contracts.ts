@@ -30,6 +30,11 @@ export interface IRuntimeWorkspaceTerminalSession {
   sessionName: string;
 }
 
+export interface IRuntimeTerminalSessionPresence {
+  sessionName: string;
+  exists: boolean;
+}
+
 export interface IRuntimeDeleteWorkspaceStorageResult {
   deleted: boolean;
   sessions: IRuntimeWorkspaceTerminalSession[];

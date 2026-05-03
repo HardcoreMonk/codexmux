@@ -232,6 +232,64 @@ describe('runtime storage repository', () => {
     expect(repo.getReadyTerminalTabBySession('rtv2-ws-missing-pane-missing-tab-missing')).toBeNull();
   });
 
+  it('lists ready terminal tabs and marks stale ready terminal tabs failed', () => {
+    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const repo = createStorageRepository(db);
+    const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
+    const readyPending = repo.createPendingTerminalTab({
+      id: 'tab-ready',
+      workspaceId: workspace.id,
+      paneId: workspace.rootPaneId,
+      sessionName: `rtv2-${workspace.id}-${workspace.rootPaneId}-tab-ready`,
+      cwd: dir,
+    });
+    const stillPending = repo.createPendingTerminalTab({
+      id: 'tab-pending',
+      workspaceId: workspace.id,
+      paneId: workspace.rootPaneId,
+      sessionName: `rtv2-${workspace.id}-${workspace.rootPaneId}-tab-pending`,
+      cwd: dir,
+    });
+    const failedPending = repo.createPendingTerminalTab({
+      id: 'tab-failed',
+      workspaceId: workspace.id,
+      paneId: workspace.rootPaneId,
+      sessionName: `rtv2-${workspace.id}-${workspace.rootPaneId}-tab-failed`,
+      cwd: dir,
+    });
+    const ready = repo.finalizeTerminalTab({ id: readyPending.id });
+    repo.failPendingTerminalTab({ id: failedPending.id, reason: 'terminal create failed' });
+
+    expect(repo.listReadyTerminalTabs()).toEqual([
+      expect.objectContaining({ id: ready.id, lifecycleState: 'ready' }),
+    ]);
+
+    repo.failReadyTerminalTab({
+      id: ready.id,
+      reason: 'startup reconciliation: tmux session missing',
+    });
+
+    expect(repo.listReadyTerminalTabs()).toEqual([]);
+    const layout = repo.getWorkspaceLayout(workspace.id);
+    if (layout?.root.type === 'pane') {
+      expect(layout.root.tabs).toEqual([]);
+    }
+    expect(repo.listMutationEvents()).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entityType: 'tab',
+        entityId: ready.id,
+        eventType: 'tab.ready-reconciliation-failed',
+      }),
+    ]));
+
+    for (const id of [ready.id, stillPending.id, failedPending.id, 'tab-missing']) {
+      expect(() => repo.failReadyTerminalTab({ id, reason: 'not ready' })).toThrow(expect.objectContaining({
+        code: 'runtime-v2-ready-tab-not-found',
+        retryable: false,
+      }));
+    }
+  });
+
   it('reports a clear error when optional better-sqlite3 is unavailable', () => {
     expect(() => openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'), {
       loadDatabase: () => {

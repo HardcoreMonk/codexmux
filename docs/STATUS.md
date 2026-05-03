@@ -33,8 +33,9 @@ schema foundation이다. production status source of truth는 계속 `StatusMana
 layout metadata다.
 
 Status Worker migration, status event persistence, notification/session-history policy의
-runtime v2 이전은 후속 작업이다. 첫 slice는 workspace/tab/layout과 terminal attach smoke를
-검증하고, status 전환 의미는 기존 production 경로를 유지한다.
+runtime v2 이전은 후속 작업이다. runtime v2는 startup 때 terminal tab lifecycle만
+reconciliation한다. stale `pending_terminal` tab과 tmux session을 잃은 `ready` terminal
+tab은 `failed`로 전환되지만, agent work status 전환 의미는 기존 production 경로를 유지한다.
 
 ## process state
 

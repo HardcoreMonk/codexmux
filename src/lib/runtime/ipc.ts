@@ -109,6 +109,10 @@ const failPendingTerminalTabPayloadSchema = z.object({
   id: z.string().min(1),
   reason: z.string().min(1),
 });
+const failReadyTerminalTabPayloadSchema = z.object({
+  id: z.string().min(1),
+  reason: z.string().min(1),
+});
 const terminalCreatePayloadSchema = z.object({
   sessionName: runtimeSessionNameSchema,
   cols: z.number().int().min(1).max(RUNTIME_TERMINAL_MAX_COLS),
@@ -141,6 +145,8 @@ export const runtimeCommandRegistry = {
   'storage.finalize-terminal-tab': { payload: tabIdPayloadSchema, reply: runtimeTerminalTabSchema },
   'storage.fail-pending-terminal-tab': { payload: failPendingTerminalTabPayloadSchema, reply: z.object({ ok: z.boolean() }) },
   'storage.list-pending-terminal-tabs': { payload: emptyPayloadSchema, reply: z.array(runtimePendingTerminalTabSchema) },
+  'storage.list-ready-terminal-tabs': { payload: emptyPayloadSchema, reply: z.array(runtimeTerminalTabSchema) },
+  'storage.fail-ready-terminal-tab': { payload: failReadyTerminalTabPayloadSchema, reply: z.object({ ok: z.boolean() }) },
   'storage.get-ready-terminal-tab-by-session': { payload: runtimeTerminalSessionSchema, reply: runtimeTerminalTabSchema.nullable() },
   'storage.delete-workspace': { payload: workspaceIdPayloadSchema, reply: runtimeDeleteWorkspaceStorageResultSchema },
   'storage.list-workspaces': { payload: emptyPayloadSchema, reply: z.array(runtimeWorkspaceSchema) },
@@ -150,6 +156,7 @@ export const runtimeCommandRegistry = {
   'terminal.attach': { payload: terminalResizePayloadSchema, reply: runtimeTerminalSessionSchema.extend({ attached: z.boolean() }) },
   'terminal.detach': { payload: runtimeTerminalSessionSchema, reply: runtimeTerminalSessionSchema.extend({ detached: z.boolean() }) },
   'terminal.kill-session': { payload: runtimeTerminalSessionSchema, reply: runtimeTerminalSessionSchema.extend({ killed: z.boolean() }) },
+  'terminal.has-session': { payload: runtimeTerminalSessionSchema, reply: runtimeTerminalSessionSchema.extend({ exists: z.boolean() }) },
   'terminal.write-stdin': { payload: terminalWritePayloadSchema, reply: z.object({ written: z.number().int().nonnegative() }) },
   'terminal.write-web-stdin': { payload: terminalWritePayloadSchema, reply: z.object({ written: z.number().int().nonnegative() }) },
   'terminal.resize': { payload: terminalResizePayloadSchema, reply: terminalResizePayloadSchema },

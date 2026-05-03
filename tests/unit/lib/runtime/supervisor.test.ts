@@ -39,6 +39,7 @@ const createWorkers = () => {
   const terminal = new FakeWorker();
   storage.replies.set('storage.health', { ok: true });
   storage.replies.set('storage.list-pending-terminal-tabs', []);
+  storage.replies.set('storage.list-ready-terminal-tabs', []);
   storage.replies.set('storage.list-workspaces', []);
   storage.replies.set('storage.get-ready-terminal-tab-by-session', {
     id: 'tab-a',
@@ -58,11 +59,13 @@ const createWorkers = () => {
     lifecycleState: 'ready',
   });
   storage.replies.set('storage.fail-pending-terminal-tab', { ok: true });
+  storage.replies.set('storage.fail-ready-terminal-tab', { ok: true });
   terminal.replies.set('terminal.health', { ok: true });
   terminal.replies.set('terminal.create-session', { sessionName: 'rtv2-ws-a-pane-b-tab-generated' });
   terminal.replies.set('terminal.attach', { sessionName: 'rtv2-ws-a-pane-b-tab-c', attached: true });
   terminal.replies.set('terminal.detach', { sessionName: 'rtv2-ws-a-pane-b-tab-c', detached: true });
   terminal.replies.set('terminal.kill-session', { sessionName: 'rtv2-ws-a-pane-b-tab-c', killed: true });
+  terminal.replies.set('terminal.has-session', { sessionName: 'rtv2-ws-a-pane-b-tab-c', exists: true });
   terminal.replies.set('terminal.write-stdin', { written: 4 });
   terminal.replies.set('terminal.resize', { sessionName: 'rtv2-ws-a-pane-b-tab-c', cols: 80, rows: 24 });
   return { storage, terminal };
@@ -137,6 +140,134 @@ describe('runtime supervisor', () => {
       failedKills: [],
     });
     expect(terminal.commands.map((command) => command.type)).not.toContain('terminal.kill-session');
+  });
+
+  it('reconciles stale pending and ready terminal tabs before reporting started', async () => {
+    const { storage, terminal } = createWorkers();
+    storage.replies.set('storage.list-pending-terminal-tabs', [
+      { id: 'tab-pending', sessionName: 'rtv2-ws-a-pane-b-tab-pending' },
+    ]);
+    storage.replies.set('storage.list-ready-terminal-tabs', [
+      {
+        id: 'tab-ready',
+        sessionName: 'rtv2-ws-a-pane-b-tab-ready',
+        name: '',
+        order: 0,
+        panelType: 'terminal',
+        lifecycleState: 'ready',
+      },
+    ]);
+    terminal.replies.set('terminal.has-session', {
+      sessionName: 'rtv2-ws-a-pane-b-tab-ready',
+      exists: false,
+    });
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal });
+
+    await supervisor.ensureStarted();
+
+    expect(terminal.commands).toEqual(expect.arrayContaining([
+      { type: 'terminal.kill-session', payload: { sessionName: 'rtv2-ws-a-pane-b-tab-pending' } },
+      { type: 'terminal.has-session', payload: { sessionName: 'rtv2-ws-a-pane-b-tab-ready' } },
+    ]));
+    expect(storage.commands).toEqual(expect.arrayContaining([
+      {
+        type: 'storage.fail-pending-terminal-tab',
+        payload: {
+          id: 'tab-pending',
+          reason: 'startup reconciliation',
+        },
+      },
+      {
+        type: 'storage.fail-ready-terminal-tab',
+        payload: {
+          id: 'tab-ready',
+          reason: 'startup reconciliation: tmux session missing',
+        },
+      },
+    ]));
+    expect(storage.commands.findIndex((command) => command.type === 'storage.fail-pending-terminal-tab'))
+      .toBeLessThan(storage.commands.findIndex((command) => command.type === 'storage.list-ready-terminal-tabs'));
+  });
+
+  it('leaves ready terminal tabs ready when tmux sessions still exist', async () => {
+    const { storage, terminal } = createWorkers();
+    storage.replies.set('storage.list-ready-terminal-tabs', [
+      {
+        id: 'tab-ready',
+        sessionName: 'rtv2-ws-a-pane-b-tab-ready',
+        name: '',
+        order: 0,
+        panelType: 'terminal',
+        lifecycleState: 'ready',
+      },
+    ]);
+    terminal.replies.set('terminal.has-session', {
+      sessionName: 'rtv2-ws-a-pane-b-tab-ready',
+      exists: true,
+    });
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal });
+
+    await supervisor.ensureStarted();
+
+    expect(terminal.commands).toEqual(expect.arrayContaining([
+      { type: 'terminal.has-session', payload: { sessionName: 'rtv2-ws-a-pane-b-tab-ready' } },
+    ]));
+    expect(storage.commands.map((command) => command.type)).not.toContain('storage.fail-ready-terminal-tab');
+  });
+
+  it('fails invalid ready terminal tabs without sending invalid tmux targets', async () => {
+    const { storage, terminal } = createWorkers();
+    storage.replies.set('storage.list-ready-terminal-tabs', [
+      {
+        id: 'tab-invalid-ready',
+        sessionName: 'pt-legacy-session',
+        name: '',
+        order: 0,
+        panelType: 'terminal',
+        lifecycleState: 'ready',
+      },
+    ]);
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal });
+
+    await supervisor.ensureStarted();
+
+    expect(terminal.commands.map((command) => command.type)).not.toContain('terminal.has-session');
+    expect(storage.commands).toEqual(expect.arrayContaining([
+      {
+        type: 'storage.fail-ready-terminal-tab',
+        payload: {
+          id: 'tab-invalid-ready',
+          reason: 'startup reconciliation: invalid session name',
+        },
+      },
+    ]));
+  });
+
+  it('does not report started when ready tab reconciliation fails', async () => {
+    const { storage, terminal } = createWorkers();
+    storage.replies.set('storage.list-ready-terminal-tabs', [
+      {
+        id: 'tab-ready',
+        sessionName: 'rtv2-ws-a-pane-b-tab-ready',
+        name: '',
+        order: 0,
+        panelType: 'terminal',
+        lifecycleState: 'ready',
+      },
+    ]);
+    terminal.failures.set('terminal.has-session', Object.assign(new Error('tmux unavailable'), {
+      code: 'runtime-v2-terminal-presence-check-failed',
+      retryable: false,
+    }));
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal });
+
+    await expect(supervisor.ensureStarted()).rejects.toMatchObject({
+      code: 'runtime-v2-terminal-presence-check-failed',
+    });
+
+    expect(storage.shutdowns).toBe(1);
+    expect(terminal.shutdowns).toBe(1);
+    expect(storage.commands.map((command) => command.type)).not.toContain('storage.fail-ready-terminal-tab');
   });
 
   it('creates terminal tabs with pending storage intent before terminal create and finalization', async () => {

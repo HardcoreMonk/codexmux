@@ -27,6 +27,8 @@
 - Consequences: runtime v2 API route는 direct store/tmux helper가 아니라 worker-backed
   Supervisor service를 호출한다. API route는 singleton을 가져와 `ensureStarted()`를
   기다린 뒤 필요한 Supervisor method만 호출하며 worker client를 직접 만들지 않는다.
+  `ensureStarted()`는 stale pending terminal tab뿐 아니라 ready terminal tab과 실제
+  runtime v2 tmux session 존재 여부도 reconciliation한 뒤에만 started 상태가 된다.
 
 ## Proposed: SQLite App State
 
@@ -65,7 +67,9 @@
 - Rationale: tmux가 이미 terminal runtime source다. terminal byte를 별도 저장하면 큰
   저장 비용과 replay 복잡도가 생기지만 첫 번째 안정성 문제를 해결하지 못한다.
 - Consequences: runtime v2 terminal stdout은 reconnect replay 대상이 아니다. client는
-  Terminal Worker를 통해 tmux에 다시 attach해서 복구한다.
+  Terminal Worker를 통해 tmux에 다시 attach해서 복구한다. runtime v2 ready terminal
+  tab이 startup 시점에 tmux session을 잃은 경우 Storage Worker가 durable `failed`
+  lifecycle로 전환하고 layout/attach surface에서 제외한다.
 
 ## ADR-001: Next.js Pages Router와 Custom Server 유지
 

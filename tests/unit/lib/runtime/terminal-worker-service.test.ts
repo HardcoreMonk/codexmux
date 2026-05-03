@@ -34,6 +34,9 @@ const createFakeRuntime = (): ITerminalWorkerRuntime & {
     async killSession(sessionName) {
       return { sessionName, killed: true };
     },
+    async hasSession(sessionName) {
+      return { sessionName, exists: true };
+    },
     async writeStdin(sessionName, data) {
       writes.push(`${sessionName}:${data}`);
       return { written: data.length };
@@ -72,6 +75,25 @@ describe('terminal worker service', () => {
 
     expect(written.ok).toBe(true);
     expect(runtime.writes).toEqual(['rtv2-ws-a-pane-b-tab-c:pwd\n']);
+  });
+
+  it('checks terminal session presence without attaching a pty', async () => {
+    const runtime = createFakeRuntime();
+    runtime.hasSession = async (sessionName) => ({ sessionName, exists: false });
+    const service = createTerminalWorkerService({ runtime });
+
+    const checked = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'terminal',
+      type: 'terminal.has-session',
+      payload: { sessionName: 'rtv2-ws-a-pane-b-tab-c' },
+    }));
+
+    expect(checked.ok).toBe(true);
+    expect(checked.payload).toEqual({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      exists: false,
+    });
   });
 
   it('returns structured errors for invalid worker commands', async () => {
