@@ -101,4 +101,14 @@ describe('Android WebView smoke helpers', () => {
       readyState: 'complete',
     }, 'https://gti12.tail73c4be.ts.net')).toBe(false);
   });
+
+  it('parses opt-in smoke flags from environment values', async () => {
+    const { isSmokeFlagEnabled } = await loadLib();
+
+    expect(isSmokeFlagEnabled('1')).toBe(true);
+    expect(isSmokeFlagEnabled('true')).toBe(true);
+    expect(isSmokeFlagEnabled('YES')).toBe(true);
+    expect(isSmokeFlagEnabled('0')).toBe(false);
+    expect(isSmokeFlagEnabled(undefined)).toBe(false);
+  });
 });

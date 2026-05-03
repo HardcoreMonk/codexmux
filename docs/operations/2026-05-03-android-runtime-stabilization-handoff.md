@@ -33,6 +33,7 @@
 | `corepack pnpm smoke:android:install` | passed, `versionName=0.3.3`, `versionCode=303` |
 | Tailscale Serve HTTPS `/api/health` | 200, `version=0.3.3`, commit/buildTime metadata present |
 | `corepack pnpm smoke:android:foreground` | 2회 background/foreground, app info bridge, `triggerEvent`/TypeError 0, blocking console/logcat 0 |
+| `CODEXMUX_ANDROID_FOREGROUND_ROUNDS=0 CODEXMUX_ANDROID_RESTART_APP=1 corepack pnpm smoke:android:foreground` | native restart 후 `/login` 복귀, app info bridge, console 0, blocking logcat 0 |
 | `CODEXMUX_ANDROID_BACKGROUND_MS=60000 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=1 corepack pnpm smoke:android:foreground` | `/login` surface, 60초 background 후 foreground 복귀, console 0, blocking logcat 0 |
 | `CODEXMUX_ANDROID_CLEAR_APP_DATA=1 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=1 corepack pnpm smoke:android:foreground` | app data clear 후 `/login` 첫 실행, console event 0, blocking logcat 0 |
 | `corepack pnpm smoke:android:recovery` | network, HTTP 4xx, SSL 실패 후 launcher 복귀와 `/login` 재연결, blocking console/logcat 0 |
@@ -45,7 +46,7 @@
 - 실제 Codex CLI가 만든 permission prompt 재현 smoke는 P1에 남긴다. codexmux의 status/tmux/API/stdin 경로는 `smoke:permission`으로 검증했다.
 - Android logged-in session 장시간 background, 반복 foreground reconnect, input draft 보존은 수십 분 이상 smoke 증거가 더 필요하다. `/login` surface 60초 background smoke는 통과했고, `smoke:android:foreground`는 `CODEXMUX_ANDROID_BACKGROUND_MS`와 `CODEXMUX_ANDROID_FOREGROUND_ROUNDS`로 강도를 올려 실행할 수 있다.
 - Runtime v2는 Phase 2 gate가 통과했지만 Android WebView가 실제 `/api/v2/terminal` tab에 attach하는 foreground smoke는 아직 별도 항목이다.
-- Electron은 `build:electron`까지 통과했고 `pack:electron:dev` 또는 signed/notarized package 산출물 검증은 남아 있다.
+- Electron은 `build:electron`까지 통과했다. Linux `pack:electron:dev`는 Next/Electron build 후 macOS DMG target의 Darwin-only `dmg-license` 요구로 중단됐으므로 `.app/.dmg` 산출물 검증은 macOS runner에서 남긴다.
 - Windows는 Linux dry-run만 통과했다. 실제 Windows Scheduled Task `Install -RunNow`, `Status`, `RunOnce`와 장시간 sync log/token 권한 확인이 필요하다.
 - iPad Safari/Home Screen foreground reconnect는 Android와 별도로 확인해야 한다.
 

@@ -15,6 +15,9 @@ const CDP_TIMEOUT_MS = 8_000;
 
 export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+export const isSmokeFlagEnabled = (value) =>
+  ['1', 'true', 'yes', 'on'].includes(String(value || '').trim().toLowerCase());
+
 export const normalizeSmokeUrl = (raw) => {
   const value = String(raw || '').trim();
   if (!value) throw new Error('smoke url is required');

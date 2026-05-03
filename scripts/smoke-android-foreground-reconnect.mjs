@@ -18,6 +18,7 @@ import {
   findAdb,
   forceStopAndroidApp,
   isExpectedRemoteState,
+  isSmokeFlagEnabled,
   navigateCdp,
   normalizeSmokeUrl,
   readWebViewState,
@@ -55,11 +56,20 @@ const getAndroidAppInfo = (cdp) =>
     };
   })()`);
 
+const triggerAndroidRestart = (cdp) =>
+  evaluate(cdp, `(() => {
+    const api = window.CodexmuxAndroid;
+    if (!api || typeof api.restartApp !== 'function') return false;
+    api.restartApp();
+    return true;
+  })()`);
+
 const main = async () => {
   const targetUrl = normalizeSmokeUrl(process.env.CODEXMUX_ANDROID_SMOKE_URL || DEFAULT_ANDROID_SMOKE_URL);
   const backgroundMs = envNumber('CODEXMUX_ANDROID_BACKGROUND_MS', 12_000);
   const rounds = envNumber('CODEXMUX_ANDROID_FOREGROUND_ROUNDS', 2);
   const settleMs = envNumber('CODEXMUX_ANDROID_RECONNECT_SETTLE_MS', 3_000);
+  const restartApp = isSmokeFlagEnabled(process.env.CODEXMUX_ANDROID_RESTART_APP);
   const requestedPort = process.env.CODEXMUX_ANDROID_DEVTOOLS_PORT
     ? Number(process.env.CODEXMUX_ANDROID_DEVTOOLS_PORT)
     : undefined;
@@ -140,6 +150,22 @@ const main = async () => {
       }
     }
 
+    if (restartApp) {
+      const restarted = await triggerAndroidRestart(cdp);
+      if (!restarted) {
+        fail('android-app-restart-bridge-missing', 'CodexmuxAndroid.restartApp is not available', { appInfo });
+      }
+      checks.push('app-restart-triggered');
+      await sleep(2_000);
+      await connectWebView();
+      const restartState = await ensureRemote('app-restart-remote-state');
+      if (restartState.bridgeTriggerEventType !== 'function') {
+        fail('android-trigger-event-fallback-missing-after-restart', 'triggerEvent fallback disappeared after native app restart', {
+          restartState,
+        });
+      }
+    }
+
     const finalState = await waitForExpectedRemoteState(cdp, targetUrl);
     const blockingConsole = collectBlockingConsoleEvents(consoleEvents);
     const logcat = dumpLogcat({ adb, adbArgs });
@@ -166,6 +192,7 @@ const main = async () => {
       targetUrl,
       rounds,
       backgroundMs,
+      restartApp,
       checks,
       appInfo,
       initialHref: initialState.href,
