@@ -42,6 +42,40 @@ const timelineEntriesBeforeSchema = z.object({
   startByteOffset: z.number().int().nonnegative(),
   hasMore: z.boolean(),
 });
+const cliStateSchema = z.union([
+  z.literal('idle'),
+  z.literal('busy'),
+  z.literal('inactive'),
+  z.literal('ready-for-review'),
+  z.literal('needs-input'),
+  z.literal('cancelled'),
+  z.literal('unknown'),
+]);
+const statusEventNameSchema = z.union([
+  z.literal('session-start'),
+  z.literal('prompt-submit'),
+  z.literal('notification'),
+  z.literal('stop'),
+  z.literal('interrupt'),
+]);
+const statusHookDecisionSchema = z.object({
+  nextState: cliStateSchema,
+  changed: z.boolean(),
+  silent: z.boolean().optional(),
+  skipHistory: z.boolean().optional(),
+  deferCodexStop: z.boolean(),
+});
+const statusDecisionSchema = z.object({
+  nextState: cliStateSchema,
+  changed: z.boolean(),
+  silent: z.boolean().optional(),
+  skipHistory: z.boolean().optional(),
+});
+const statusNotificationPolicySchema = z.object({
+  processHookEvent: z.boolean(),
+  sendReviewNotification: z.boolean(),
+  sendNeedsInputNotification: z.boolean(),
+});
 const runtimeWorkspaceSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -196,6 +230,24 @@ const timelineReadEntriesBeforePayloadSchema = z.object({
 const timelineMessageCountsPayloadSchema = z.object({
   jsonlPath: z.string().min(1),
 });
+const statusReduceHookStatePayloadSchema = z.object({
+  currentState: cliStateSchema,
+  eventName: statusEventNameSchema,
+  providerId: z.string().nullable().optional(),
+});
+const statusReduceCodexStatePayloadSchema = z.object({
+  currentState: cliStateSchema,
+  running: z.boolean(),
+  hasJsonlPath: z.boolean(),
+  idle: z.boolean(),
+  hasCompletionSnippet: z.boolean(),
+});
+const statusEvaluateNotificationPolicyPayloadSchema = z.object({
+  eventName: statusEventNameSchema,
+  notificationType: z.string().optional(),
+  newState: cliStateSchema,
+  silent: z.boolean().optional(),
+});
 
 export const runtimeCommandRegistry = {
   'storage.health': { payload: emptyPayloadSchema, reply: runtimeHealthReplySchema },
@@ -224,6 +276,10 @@ export const runtimeCommandRegistry = {
   'timeline.list-sessions': { payload: timelineListSessionsPayloadSchema, reply: timelineSessionPageSchema },
   'timeline.read-entries-before': { payload: timelineReadEntriesBeforePayloadSchema, reply: timelineEntriesBeforeSchema },
   'timeline.message-counts': { payload: timelineMessageCountsPayloadSchema, reply: timelineMessageCountsSchema },
+  'status.health': { payload: emptyPayloadSchema, reply: runtimeHealthReplySchema },
+  'status.reduce-hook-state': { payload: statusReduceHookStatePayloadSchema, reply: statusHookDecisionSchema },
+  'status.reduce-codex-state': { payload: statusReduceCodexStatePayloadSchema, reply: statusDecisionSchema },
+  'status.evaluate-notification-policy': { payload: statusEvaluateNotificationPolicyPayloadSchema, reply: statusNotificationPolicySchema },
 } as const satisfies Record<string, { payload: z.ZodTypeAny; reply: z.ZodTypeAny }>;
 
 export const runtimeEventRegistry = {

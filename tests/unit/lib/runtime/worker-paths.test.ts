@@ -4,12 +4,12 @@ import { resolveRuntimeTmuxConfigPath, resolveRuntimeWorkerScript } from '@/lib/
 
 describe('runtime worker path resolution', () => {
   it('uses TypeScript worker entrypoints with tsx in development', () => {
-    expect(resolveRuntimeWorkerScript('timeline-worker', {
+    expect(resolveRuntimeWorkerScript('status-worker', {
       cwd: '/repo',
       existsSync: () => true,
       env: { NODE_ENV: 'development', __CMUX_APP_DIR: '/app' },
     })).toEqual({
-      scriptPath: path.join('/app', 'src', 'workers', 'timeline-worker.ts'),
+      scriptPath: path.join('/app', 'src', 'workers', 'status-worker.ts'),
       execArgv: ['--import', 'tsx'],
     });
   });

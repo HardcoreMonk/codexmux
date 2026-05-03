@@ -23,7 +23,7 @@ interface IPendingRequest {
 }
 
 export interface IRuntimeWorkerClientOptions {
-  name: 'storage' | 'terminal' | 'timeline';
+  name: 'storage' | 'terminal' | 'timeline' | 'status';
   workerName?: TRuntimeWorkerName;
   requestTimeoutMs?: number;
   restartBackoffMs?: number;

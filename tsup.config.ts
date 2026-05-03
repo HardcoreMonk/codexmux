@@ -6,6 +6,7 @@ export default defineConfig({
     'workers/storage-worker': 'src/workers/storage-worker.ts',
     'workers/terminal-worker': 'src/workers/terminal-worker.ts',
     'workers/timeline-worker': 'src/workers/timeline-worker.ts',
+    'workers/status-worker': 'src/workers/status-worker.ts',
   },
   format: ['cjs'],
   target: 'node20',

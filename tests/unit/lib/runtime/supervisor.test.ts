@@ -38,6 +38,7 @@ const createWorkers = () => {
   const storage = new FakeWorker();
   const terminal = new FakeWorker();
   const timeline = new FakeWorker();
+  const status = new FakeWorker();
   storage.replies.set('storage.health', { ok: true });
   storage.replies.set('storage.list-pending-terminal-tabs', []);
   storage.replies.set('storage.list-ready-terminal-tabs', []);
@@ -77,7 +78,15 @@ const createWorkers = () => {
   timeline.replies.set('timeline.list-sessions', { sessions: [], total: 0, hasMore: false });
   timeline.replies.set('timeline.read-entries-before', { entries: [], startByteOffset: 0, hasMore: false });
   timeline.replies.set('timeline.message-counts', { userCount: 0, assistantCount: 0, toolCount: 0, toolBreakdown: {} });
-  return { storage, terminal, timeline };
+  status.replies.set('status.health', { ok: true });
+  status.replies.set('status.reduce-hook-state', { nextState: 'busy', changed: false, deferCodexStop: true });
+  status.replies.set('status.reduce-codex-state', { nextState: 'ready-for-review', changed: true, silent: false, skipHistory: false });
+  status.replies.set('status.evaluate-notification-policy', {
+    processHookEvent: true,
+    sendReviewNotification: false,
+    sendNeedsInputNotification: true,
+  });
+  return { storage, terminal, timeline, status };
 };
 
 describe('runtime supervisor', () => {
@@ -89,8 +98,8 @@ describe('runtime supervisor', () => {
   });
 
   it('starts runtime workers once and health waits for every worker health command', async () => {
-    const { storage, terminal, timeline } = createWorkers();
-    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline });
+    const { storage, terminal, timeline, status } = createWorkers();
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
 
     await Promise.all([supervisor.ensureStarted(), supervisor.ensureStarted()]);
     await expect(supervisor.health()).resolves.toEqual({
@@ -98,22 +107,26 @@ describe('runtime supervisor', () => {
       storage: { ok: true },
       terminal: { ok: true },
       timeline: { ok: true },
+      status: { ok: true },
     });
 
     expect(storage.started).toBe(1);
     expect(terminal.started).toBe(1);
     expect(timeline.started).toBe(1);
+    expect(status.started).toBe(1);
     expect(storage.ready).toBe(1);
     expect(terminal.ready).toBe(1);
     expect(timeline.ready).toBe(1);
+    expect(status.ready).toBe(1);
     expect(storage.commands.map((command) => command.type)).toContain('storage.health');
     expect(terminal.commands.map((command) => command.type)).toContain('terminal.health');
     expect(timeline.commands.map((command) => command.type)).toContain('timeline.health');
+    expect(status.commands.map((command) => command.type)).toContain('status.health');
   });
 
   it('proxies timeline read commands through the timeline worker', async () => {
-    const { storage, terminal, timeline } = createWorkers();
-    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline });
+    const { storage, terminal, timeline, status } = createWorkers();
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
 
     await expect(supervisor.listTimelineSessions({
       tmuxSession: 'pt-ws-pane-tab',
@@ -166,8 +179,71 @@ describe('runtime supervisor', () => {
     ]));
   });
 
+  it('proxies status policy commands through the status worker', async () => {
+    const { storage, terminal, timeline, status } = createWorkers();
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
+
+    await expect(supervisor.reduceStatusHookState({
+      currentState: 'busy',
+      eventName: 'stop',
+      providerId: 'codex',
+    })).resolves.toEqual({ nextState: 'busy', changed: false, deferCodexStop: true });
+    await expect(supervisor.reduceStatusCodexState({
+      currentState: 'busy',
+      running: true,
+      hasJsonlPath: true,
+      idle: true,
+      hasCompletionSnippet: true,
+    })).resolves.toEqual({
+      nextState: 'ready-for-review',
+      changed: true,
+      silent: false,
+      skipHistory: false,
+    });
+    await expect(supervisor.evaluateStatusNotificationPolicy({
+      eventName: 'notification',
+      notificationType: 'permission_prompt',
+      newState: 'needs-input',
+      silent: false,
+    })).resolves.toEqual({
+      processHookEvent: true,
+      sendReviewNotification: false,
+      sendNeedsInputNotification: true,
+    });
+
+    expect(status.commands).toEqual(expect.arrayContaining([
+      {
+        type: 'status.reduce-hook-state',
+        payload: {
+          currentState: 'busy',
+          eventName: 'stop',
+          providerId: 'codex',
+        },
+      },
+      {
+        type: 'status.reduce-codex-state',
+        payload: {
+          currentState: 'busy',
+          running: true,
+          hasJsonlPath: true,
+          idle: true,
+          hasCompletionSnippet: true,
+        },
+      },
+      {
+        type: 'status.evaluate-notification-policy',
+        payload: {
+          eventName: 'notification',
+          notificationType: 'permission_prompt',
+          newState: 'needs-input',
+          silent: false,
+        },
+      },
+    ]));
+  });
+
   it('deletes workspace using only sessions returned by the storage transaction', async () => {
-    const { storage, terminal, timeline } = createWorkers();
+    const { storage, terminal, timeline, status } = createWorkers();
     storage.replies.set('storage.delete-workspace', {
       deleted: true,
       sessions: [
@@ -180,7 +256,7 @@ describe('runtime supervisor', () => {
       code: 'runtime-v2-terminal-kill-failed',
       retryable: false,
     }));
-    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline });
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
 
     await expect(supervisor.deleteWorkspace('ws-a')).resolves.toEqual({
       deleted: true,
@@ -198,9 +274,9 @@ describe('runtime supervisor', () => {
   });
 
   it('does not kill sessions when storage delete reports no deletion', async () => {
-    const { storage, terminal, timeline } = createWorkers();
+    const { storage, terminal, timeline, status } = createWorkers();
     storage.replies.set('storage.delete-workspace', { deleted: false, sessions: [{ sessionName: 'rtv2-ws-a-pane-b-tab-a' }] });
-    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline });
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
 
     await expect(supervisor.deleteWorkspace('ws-a')).resolves.toEqual({
       deleted: false,
@@ -211,9 +287,9 @@ describe('runtime supervisor', () => {
   });
 
   it('deletes terminal tabs, closes subscribers, and kills the returned session', async () => {
-    const { storage, terminal, timeline } = createWorkers();
+    const { storage, terminal, timeline, status } = createWorkers();
     const close = vi.fn();
-    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline });
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
 
     const attached = await supervisor.attachTerminal({
       sessionName: 'rtv2-ws-a-pane-b-tab-c',
@@ -239,9 +315,9 @@ describe('runtime supervisor', () => {
   });
 
   it('skips terminal kill when terminal tab delete returns no cleanup session', async () => {
-    const { storage, terminal, timeline } = createWorkers();
+    const { storage, terminal, timeline, status } = createWorkers();
     storage.replies.set('storage.delete-terminal-tab', { deleted: false, session: null });
-    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline });
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
 
     await expect(supervisor.deleteTerminalTab('tab-missing')).resolves.toEqual({
       deleted: false,
@@ -252,12 +328,12 @@ describe('runtime supervisor', () => {
   });
 
   it('does not send invalid deleted tab sessions to terminal worker', async () => {
-    const { storage, terminal, timeline } = createWorkers();
+    const { storage, terminal, timeline, status } = createWorkers();
     storage.replies.set('storage.delete-terminal-tab', {
       deleted: true,
       session: { sessionName: 'pt-legacy-session' },
     });
-    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline });
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
 
     await expect(supervisor.deleteTerminalTab('tab-a')).resolves.toEqual({
       deleted: true,
@@ -271,7 +347,7 @@ describe('runtime supervisor', () => {
   });
 
   it('reconciles stale pending and ready terminal tabs before reporting started', async () => {
-    const { storage, terminal, timeline } = createWorkers();
+    const { storage, terminal, timeline, status } = createWorkers();
     storage.replies.set('storage.list-pending-terminal-tabs', [
       { id: 'tab-pending', sessionName: 'rtv2-ws-a-pane-b-tab-pending' },
     ]);
@@ -289,7 +365,7 @@ describe('runtime supervisor', () => {
       sessionName: 'rtv2-ws-a-pane-b-tab-ready',
       exists: false,
     });
-    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline });
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
 
     await supervisor.ensureStarted();
 
@@ -318,7 +394,7 @@ describe('runtime supervisor', () => {
   });
 
   it('leaves ready terminal tabs ready when tmux sessions still exist', async () => {
-    const { storage, terminal, timeline } = createWorkers();
+    const { storage, terminal, timeline, status } = createWorkers();
     storage.replies.set('storage.list-ready-terminal-tabs', [
       {
         id: 'tab-ready',
@@ -333,7 +409,7 @@ describe('runtime supervisor', () => {
       sessionName: 'rtv2-ws-a-pane-b-tab-ready',
       exists: true,
     });
-    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline });
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
 
     await supervisor.ensureStarted();
 
@@ -344,7 +420,7 @@ describe('runtime supervisor', () => {
   });
 
   it('fails invalid ready terminal tabs without sending invalid tmux targets', async () => {
-    const { storage, terminal, timeline } = createWorkers();
+    const { storage, terminal, timeline, status } = createWorkers();
     storage.replies.set('storage.list-ready-terminal-tabs', [
       {
         id: 'tab-invalid-ready',
@@ -355,7 +431,7 @@ describe('runtime supervisor', () => {
         lifecycleState: 'ready',
       },
     ]);
-    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline });
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
 
     await supervisor.ensureStarted();
 
@@ -372,7 +448,7 @@ describe('runtime supervisor', () => {
   });
 
   it('does not report started when ready tab reconciliation fails', async () => {
-    const { storage, terminal, timeline } = createWorkers();
+    const { storage, terminal, timeline, status } = createWorkers();
     storage.replies.set('storage.list-ready-terminal-tabs', [
       {
         id: 'tab-ready',
@@ -387,7 +463,7 @@ describe('runtime supervisor', () => {
       code: 'runtime-v2-terminal-presence-check-failed',
       retryable: false,
     }));
-    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline });
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
 
     await expect(supervisor.ensureStarted()).rejects.toMatchObject({
       code: 'runtime-v2-terminal-presence-check-failed',
@@ -400,8 +476,8 @@ describe('runtime supervisor', () => {
   });
 
   it('creates terminal tabs with pending storage intent before terminal create and finalization', async () => {
-    const { storage, terminal, timeline } = createWorkers();
-    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline });
+    const { storage, terminal, timeline, status } = createWorkers();
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
 
     await supervisor.createTerminalTab({ workspaceId: 'ws-a', paneId: 'pane-b', cwd: '/tmp' });
 
@@ -424,7 +500,7 @@ describe('runtime supervisor', () => {
   });
 
   it('rolls back pending tabs and preserves rollback storage failure', async () => {
-    const { storage, terminal, timeline } = createWorkers();
+    const { storage, terminal, timeline, status } = createWorkers();
     terminal.failures.set('terminal.create-session', Object.assign(new Error('tmux create failed'), {
       code: 'runtime-v2-terminal-create-failed',
       retryable: false,
@@ -433,7 +509,7 @@ describe('runtime supervisor', () => {
       code: 'runtime-v2-pending-tab-not-found',
       retryable: false,
     }));
-    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline });
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
 
     await expect(supervisor.createTerminalTab({ workspaceId: 'ws-a', paneId: 'pane-b', cwd: '/tmp' })).rejects.toMatchObject({
       code: 'runtime-v2-pending-tab-not-found',
@@ -444,12 +520,13 @@ describe('runtime supervisor', () => {
   });
 
   it('attaches once per session and fans out stdout to every subscriber', async () => {
-    const { storage, terminal, timeline } = createWorkers();
+    const { storage, terminal, timeline, status } = createWorkers();
     const eventHandlers: Array<(event: IRuntimeEvent) => void> = [];
     const supervisor = createRuntimeSupervisorForTest({
       storage,
       terminal,
       timeline,
+      status,
       captureTerminalEventHandler: (handler) => {
         eventHandlers.push(handler);
       },
@@ -492,8 +569,8 @@ describe('runtime supervisor', () => {
   });
 
   it('rejects writes from missing subscribers before terminal worker IPC', async () => {
-    const { storage, terminal, timeline } = createWorkers();
-    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline });
+    const { storage, terminal, timeline, status } = createWorkers();
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
 
     await expect(supervisor.writeTerminal({
       sessionName: 'rtv2-ws-a-pane-b-tab-c',
@@ -510,12 +587,13 @@ describe('runtime supervisor', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'codexmux-runtime-reset-'));
     const dbPath = path.join(dir, 'state.db');
     fs.writeFileSync(`${dbPath}-wal`, 'wal');
-    const { storage, terminal, timeline } = createWorkers();
+    const { storage, terminal, timeline, status } = createWorkers();
 
     const supervisor = createRuntimeSupervisorForTest({
       storage,
       terminal,
       timeline,
+      status,
       dbPath,
       runtimeReset: true,
       useGlobal: true,
@@ -526,7 +604,7 @@ describe('runtime supervisor', () => {
     expect(same).toBe(supervisor);
     expect(fs.existsSync(`${dbPath}-wal`)).toBe(false);
     expect(fs.readdirSync(dir).filter((name) => name.endsWith('.bak'))).toHaveLength(1);
-    createRuntimeSupervisorForTest({ storage, terminal, timeline, dbPath, runtimeReset: true, useGlobal: true });
+    createRuntimeSupervisorForTest({ storage, terminal, timeline, status, dbPath, runtimeReset: true, useGlobal: true });
     await supervisor.ensureStarted();
     expect(fs.readdirSync(dir).filter((name) => name.endsWith('.bak'))).toHaveLength(1);
     fs.rmSync(dir, { recursive: true, force: true });

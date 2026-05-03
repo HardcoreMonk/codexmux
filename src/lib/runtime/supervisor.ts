@@ -8,6 +8,8 @@ import type {
   IRuntimeDeleteWorkspaceResult,
   IRuntimeDeleteWorkspaceStorageResult,
   IRuntimeHealth,
+  IRuntimeStatusNotificationPolicyInput,
+  IRuntimeStatusNotificationPolicyResult,
   IRuntimeTerminalSessionPresence,
   IRuntimeTerminalTab,
   IRuntimeTimelineEntriesBeforeInput,
@@ -15,6 +17,10 @@ import type {
   IRuntimeTimelineSessionPage,
   TRuntimeTimelineEntriesBeforeResult,
   TRuntimeTimelineMessageCounts,
+  TRuntimeStatusCodexStateInput,
+  TRuntimeStatusDecision,
+  TRuntimeStatusHookDecision,
+  TRuntimeStatusHookStateInput,
   IRuntimeWorkspace,
   TRuntimeLayout,
 } from '@/lib/runtime/contracts';
@@ -40,6 +46,9 @@ export interface IRuntimeSupervisor {
   listTimelineSessions(input: IRuntimeTimelineSessionListInput): Promise<IRuntimeTimelineSessionPage>;
   readTimelineEntriesBefore(input: IRuntimeTimelineEntriesBeforeInput): Promise<TRuntimeTimelineEntriesBeforeResult>;
   getTimelineMessageCounts(jsonlPath: string): Promise<TRuntimeTimelineMessageCounts>;
+  reduceStatusHookState(input: TRuntimeStatusHookStateInput): Promise<TRuntimeStatusHookDecision>;
+  reduceStatusCodexState(input: TRuntimeStatusCodexStateInput): Promise<TRuntimeStatusDecision>;
+  evaluateStatusNotificationPolicy(input: IRuntimeStatusNotificationPolicyInput): Promise<IRuntimeStatusNotificationPolicyResult>;
   createTerminalTab(input: { workspaceId: string; paneId: string; cwd: string }): Promise<IRuntimeTerminalTab>;
   getLayout(workspaceId: string): Promise<TRuntimeLayout>;
   attachTerminal(input: {
@@ -75,15 +84,18 @@ interface IRuntimeSupervisorClients {
   storage: IRuntimeWorkerClientLike;
   terminal: IRuntimeWorkerClientLike;
   timeline: IRuntimeWorkerClientLike;
+  status: IRuntimeWorkerClientLike;
 }
 
 export interface ICreateRuntimeSupervisorForTestOptions {
   storage?: IRuntimeWorkerClientLike;
   terminal?: IRuntimeWorkerClientLike;
   timeline?: IRuntimeWorkerClientLike;
+  status?: IRuntimeWorkerClientLike;
   createStorageClient?: () => IRuntimeWorkerClientLike;
   createTerminalClient?: (handlers: { onEvent: (event: TRuntimeMessage) => void; onExit: () => void }) => IRuntimeWorkerClientLike;
   createTimelineClient?: () => IRuntimeWorkerClientLike;
+  createStatusClient?: () => IRuntimeWorkerClientLike;
   captureTerminalEventHandler?: (handler: (event: IRuntimeEvent) => void) => void;
   dbPath?: string;
   runtimeReset?: boolean;
@@ -202,6 +214,11 @@ export const createRuntimeSupervisorForTest = (
       workerName: 'timeline-worker',
       readinessCommand: 'timeline.health',
     }),
+    status: options.status ?? options.createStatusClient?.() ?? new RuntimeWorkerClient({
+      name: 'status',
+      workerName: 'status-worker',
+      readinessCommand: 'status.health',
+    }),
   });
 
   const getClients = (): IRuntimeSupervisorClients => {
@@ -212,6 +229,7 @@ export const createRuntimeSupervisorForTest = (
   const shutdownClients = (): void => {
     clients?.terminal.shutdown();
     clients?.timeline.shutdown();
+    clients?.status.shutdown();
     clients?.storage.shutdown();
     clients = null;
   };
@@ -332,7 +350,7 @@ export const createRuntimeSupervisorForTest = (
   const startInternal = async (): Promise<void> => {
     if (started) return;
     process.env.CODEXMUX_RUNTIME_DB = prepareRuntimeDbPath();
-    const { storage, terminal, timeline } = getClients();
+    const { storage, terminal, timeline, status } = getClients();
     try {
       storage.start();
       await storage.waitUntilReady();
@@ -340,6 +358,8 @@ export const createRuntimeSupervisorForTest = (
       await terminal.waitUntilReady();
       timeline.start();
       await timeline.waitUntilReady();
+      status.start();
+      await status.waitUntilReady();
       await reconcileTerminalTabs();
       started = true;
     } catch (err) {
@@ -380,13 +400,14 @@ export const createRuntimeSupervisorForTest = (
 
     async health() {
       await this.ensureStarted();
-      const { storage, terminal, timeline } = getClients();
-      const [storageHealth, terminalHealth, timelineHealth] = await Promise.all([
+      const { storage, terminal, timeline, status } = getClients();
+      const [storageHealth, terminalHealth, timelineHealth, statusHealth] = await Promise.all([
         storage.request('storage.health', {}),
         terminal.request('terminal.health', {}),
         timeline.request('timeline.health', {}),
+        status.request('status.health', {}),
       ]);
-      return { ok: true, storage: storageHealth, terminal: terminalHealth, timeline: timelineHealth };
+      return { ok: true, storage: storageHealth, terminal: terminalHealth, timeline: timelineHealth, status: statusHealth };
     },
 
     async listWorkspaces() {
@@ -491,6 +512,30 @@ export const createRuntimeSupervisorForTest = (
       return getClients().timeline.request<{ jsonlPath: string }, TRuntimeTimelineMessageCounts>(
         'timeline.message-counts',
         { jsonlPath },
+      );
+    },
+
+    async reduceStatusHookState(input) {
+      await this.ensureStarted();
+      return getClients().status.request<TRuntimeStatusHookStateInput, TRuntimeStatusHookDecision>(
+        'status.reduce-hook-state',
+        input,
+      );
+    },
+
+    async reduceStatusCodexState(input) {
+      await this.ensureStarted();
+      return getClients().status.request<TRuntimeStatusCodexStateInput, TRuntimeStatusDecision>(
+        'status.reduce-codex-state',
+        input,
+      );
+    },
+
+    async evaluateStatusNotificationPolicy(input) {
+      await this.ensureStarted();
+      return getClients().status.request<IRuntimeStatusNotificationPolicyInput, IRuntimeStatusNotificationPolicyResult>(
+        'status.evaluate-notification-policy',
+        input,
       );
     },
 

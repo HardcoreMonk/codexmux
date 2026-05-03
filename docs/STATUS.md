@@ -28,14 +28,16 @@ StatusManager
 
 ## Experimental Runtime v2 Status
 
-`CODEXMUX_RUNTIME_V2=1`의 SQLite schema에는 `tab_status`가 포함되지만 현재는 runtime v2
-schema foundation이다. production status source of truth는 계속 `StatusManager`와
-layout metadata다.
+`CODEXMUX_RUNTIME_V2=1`의 SQLite schema에는 `tab_status`가 포함된다. runtime v2에는
+Status Worker foundation도 있으며, 현재 범위는 `status-state-machine`과
+`status-notification-policy` 같은 순수 정책을 typed IPC 뒤에서 평가하는 것이다.
+production status source of truth는 계속 `StatusManager`와 layout metadata다.
 
-Status Worker migration, status event persistence, notification/session-history policy의
-runtime v2 이전은 후속 작업이다. runtime v2는 startup 때 terminal tab lifecycle만
-reconciliation한다. stale `pending_terminal` tab과 tmux session을 잃은 `ready` terminal
-tab은 `failed`로 전환되지만, agent work status 전환 의미는 기존 production 경로를 유지한다.
+Status Worker의 live polling, `/api/status` WebSocket broadcast, status event persistence,
+notification/session-history write 이전은 후속 cutover 작업이다. runtime v2는 startup 때
+terminal tab lifecycle만 reconciliation한다. stale `pending_terminal` tab과 tmux session을
+잃은 `ready` terminal tab은 `failed`로 전환되지만, agent work status 전환 의미는 기존
+production 경로를 유지한다.
 
 ## process state
 
@@ -184,6 +186,7 @@ paired `response_item.payload.type="message"` record로 몇 ms 간격에 남길 
 | `src/lib/status-session-mapping.ts` | Codex session id 정규화와 completion key 생성 |
 | `src/lib/status-notification-policy.ts` | notification hook 처리/전송 정책 |
 | `src/lib/status-metadata.ts` | JSONL metadata merge helper |
+| `src/lib/runtime/status/worker-service.ts` | runtime v2 Status Worker 정책 평가 command service |
 | `src/hooks/use-agent-status.ts` | status WebSocket hook |
 | `src/hooks/use-tab-store.ts` | client tab state |
 | `src/lib/providers/codex/index.ts` | Codex provider adapter |

@@ -1,12 +1,15 @@
 import type { ILayoutData } from '@/types/terminal';
 import type { IChunkReadResult, ISessionMeta, TSessionSourceFilter } from '@/types/timeline';
 import type { IMessageCountResult } from '@/lib/timeline-message-counts';
+import type { ICodexStateInput, IHookStateDecision, IHookStateInput, IStateDecision } from '@/lib/status-state-machine';
+import type { TEventName } from '@/types/status';
 
 export interface IRuntimeHealth {
   ok: boolean;
   storage: unknown;
   terminal: unknown;
   timeline: unknown;
+  status: unknown;
 }
 
 export interface IRuntimeWorkspace {
@@ -108,3 +111,24 @@ export interface IRuntimeTimelineEntriesBeforeInput {
 export type TRuntimeTimelineEntriesBeforeResult = Pick<IChunkReadResult, 'entries' | 'startByteOffset' | 'hasMore'>;
 
 export type TRuntimeTimelineMessageCounts = IMessageCountResult;
+
+export type TRuntimeStatusHookStateInput = IHookStateInput;
+
+export type TRuntimeStatusHookDecision = IHookStateDecision;
+
+export type TRuntimeStatusCodexStateInput = ICodexStateInput;
+
+export type TRuntimeStatusDecision = IStateDecision;
+
+export interface IRuntimeStatusNotificationPolicyInput {
+  eventName: TEventName;
+  notificationType?: string;
+  newState: string;
+  silent?: boolean;
+}
+
+export interface IRuntimeStatusNotificationPolicyResult {
+  processHookEvent: boolean;
+  sendReviewNotification: boolean;
+  sendNeedsInputNotification: boolean;
+}
