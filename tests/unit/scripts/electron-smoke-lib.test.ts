@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import { pathToFileURL } from 'url';
 
@@ -33,6 +35,62 @@ describe('Electron smoke helpers', () => {
       '--no-sandbox',
       '.',
     ]);
+  });
+
+  it('builds a default Electron CLI launch command', async () => {
+    const { buildElectronSmokeLaunchCommand } = await loadLib();
+
+    expect(buildElectronSmokeLaunchCommand({
+      remoteDebuggingPort: 9222,
+      appPath: '.',
+      platform: 'linux',
+    })).toEqual({
+      command: 'corepack',
+      args: [
+        'pnpm',
+        'exec',
+        'electron',
+        '--remote-debugging-port=9222',
+        '--disable-gpu',
+        '--no-sandbox',
+        '.',
+      ],
+      mode: 'electron-cli',
+    });
+  });
+
+  it('builds a packaged macOS app launch command from a .app bundle', async () => {
+    const { buildElectronSmokeLaunchCommand } = await loadLib();
+    const appDir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-smoke-app-'));
+    const bundlePath = path.join(appDir, 'codexmux.app');
+    const executablePath = path.join(bundlePath, 'Contents', 'MacOS', 'codexmux');
+    await fs.mkdir(path.dirname(executablePath), { recursive: true });
+    await fs.writeFile(executablePath, '#!/bin/sh\n');
+    await fs.chmod(executablePath, 0o755);
+
+    expect(buildElectronSmokeLaunchCommand({
+      remoteDebuggingPort: 9222,
+      appPath: bundlePath,
+      platform: 'darwin',
+    })).toEqual({
+      command: executablePath,
+      args: [
+        '--remote-debugging-port=9222',
+        '--disable-gpu',
+        '--no-sandbox',
+      ],
+      mode: 'mac-app',
+    });
+  });
+
+  it('rejects macOS .app bundles on non-macOS platforms', async () => {
+    const { buildElectronSmokeLaunchCommand } = await loadLib();
+
+    expect(() => buildElectronSmokeLaunchCommand({
+      remoteDebuggingPort: 9222,
+      appPath: '/tmp/codexmux.app',
+      platform: 'linux',
+    })).toThrow(/requires macOS/);
   });
 
   it('builds a runtime v2 page-context smoke script', async () => {
@@ -81,5 +139,15 @@ describe('Electron smoke helpers', () => {
     expect(normalizeElectronReconnectRounds('3')).toBe(3);
     expect(normalizeElectronReconnectRounds('999')).toBe(10);
     expect(normalizeElectronReconnectRounds('nope')).toBe(2);
+  });
+
+  it('normalizes Electron window foreground cycle counts', async () => {
+    const { normalizeElectronWindowForegroundCycles } = await loadLib();
+
+    expect(normalizeElectronWindowForegroundCycles(undefined)).toBe(0);
+    expect(normalizeElectronWindowForegroundCycles('1')).toBe(1);
+    expect(normalizeElectronWindowForegroundCycles('5')).toBe(5);
+    expect(normalizeElectronWindowForegroundCycles('999')).toBe(5);
+    expect(normalizeElectronWindowForegroundCycles('nope')).toBe(0);
   });
 });

@@ -89,6 +89,24 @@ macOS packaging smoke:
 corepack pnpm pack:electron:dev
 ```
 
+Packaged app attach/runtime v2 smoke on macOS:
+
+```bash
+CODEXMUX_ELECTRON_APP_PATH=release/mac-arm64/codexmux.app \
+  corepack pnpm smoke:electron:attach
+
+CODEXMUX_ELECTRON_APP_PATH=release/mac-arm64/codexmux.app \
+CODEXMUX_ELECTRON_WINDOW_FOREGROUND_CYCLES=1 \
+  corepack pnpm smoke:electron:runtime-v2
+```
+
+x64 build는 `CODEXMUX_ELECTRON_APP_PATH=release/mac/codexmux.app`를 사용한다.
+`CODEXMUX_ELECTRON_RUNTIME_V2_APP_PATH`는 runtime v2 smoke에만 적용되는
+override이고, `CODEXMUX_ELECTRON_WINDOW_FOREGROUND_CYCLES`는 0-5회
+foreground probe로 clamp된다. CDP `Browser.*` window bounds가 있으면
+minimize/restore를 쓰고, 없으면 `Target.activateTarget`/`Page.bringToFront`
+fallback을 쓰며 실제 method는 smoke JSON의 checks에 남는다.
+
 Linux checkout에서 Electron build/packaging smoke를 실행한 뒤에는 `.next/standalone`이
 다시 만들어질 수 있으므로 live user service는 `corepack pnpm deploy:local`로 재시작한다.
 

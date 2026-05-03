@@ -17,9 +17,10 @@ import {
 import {
   buildElectronRuntimeV2ReconnectRounds,
   buildElectronRuntimeV2EvalScript,
-  buildElectronSmokeArgs,
+  buildElectronSmokeLaunchCommand,
   normalizeElectronSmokeUrl,
   normalizeElectronReconnectRounds,
+  normalizeElectronWindowForegroundCycles,
   selectElectronPageTarget,
 } from './electron-smoke-lib.mjs';
 import {
@@ -125,9 +126,9 @@ const ensureLoggedIn = async (baseUrl) => {
   return cookie;
 };
 
-const startElectron = async ({ targetUrl, homeDir, remoteDebuggingPort, timeoutMs }) => {
-  const args = buildElectronSmokeArgs({ remoteDebuggingPort, appPath: '.' });
-  const electron = spawn('corepack', ['pnpm', 'exec', 'electron', ...args], {
+const startElectron = async ({ targetUrl, homeDir, remoteDebuggingPort, timeoutMs, appPath }) => {
+  const launch = buildElectronSmokeLaunchCommand({ remoteDebuggingPort, appPath });
+  const electron = spawn(launch.command, launch.args, {
     cwd: rootDir,
     env: {
       ...process.env,
@@ -150,8 +151,15 @@ const startElectron = async ({ targetUrl, homeDir, remoteDebuggingPort, timeoutM
     const targets = await fetchJson(`http://127.0.0.1:${remoteDebuggingPort}/json/list`).catch(() => null);
     return selectElectronPageTarget(Array.isArray(targets) ? targets : [], targetUrl);
   }, timeoutMs);
+  const version = await fetchJson(`http://127.0.0.1:${remoteDebuggingPort}/json/version`).catch(() => null);
 
-  return { electron, target, getOutput: () => output };
+  return {
+    electron,
+    target,
+    browserWebSocketDebuggerUrl: version?.webSocketDebuggerUrl,
+    launch,
+    getOutput: () => output,
+  };
 };
 
 const setElectronCookie = async (cdp, baseUrl, cookie) => {
@@ -186,6 +194,46 @@ const reloadElectronPageForReconnect = async (cdp, baseUrl, timeoutMs) => {
   return state;
 };
 
+const isMissingCdpMethod = (err) => /wasn'?t found|method not found/i.test(String(err?.message || err));
+
+const activateElectronTarget = async (browserCdp, pageCdp, target, baseUrl, timeoutMs) => {
+  if (target?.id) {
+    await browserCdp.send('Target.activateTarget', { targetId: target.id }).catch(() => null);
+  }
+  await pageCdp.send('Page.bringToFront').catch(() => null);
+  await waitForElectronPage(pageCdp, baseUrl, timeoutMs);
+  return { method: 'target-activate' };
+};
+
+const cycleElectronWindowForeground = async (browserCdp, pageCdp, target, baseUrl, timeoutMs) => {
+  const targetId = target?.id;
+  let windowInfo;
+  try {
+    windowInfo = await browserCdp.send('Browser.getWindowForTarget', targetId ? { targetId } : {});
+  } catch (err) {
+    if (isMissingCdpMethod(err)) {
+      return activateElectronTarget(browserCdp, pageCdp, target, baseUrl, timeoutMs);
+    }
+    throw err;
+  }
+  const windowId = windowInfo?.windowId;
+  if (!windowId) throw new Error(`Electron window id not found: ${JSON.stringify(windowInfo)}`);
+
+  try {
+    await browserCdp.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'minimized' } });
+    await sleep(750);
+    await browserCdp.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } });
+  } catch (err) {
+    if (isMissingCdpMethod(err)) {
+      return activateElectronTarget(browserCdp, pageCdp, target, baseUrl, timeoutMs);
+    }
+    throw err;
+  }
+  await pageCdp.send('Page.bringToFront').catch(() => null);
+  await waitForElectronPage(pageCdp, baseUrl, timeoutMs);
+  return { method: 'browser-window-bounds' };
+};
+
 const main = async () => {
   const homeDir = process.env.CODEXMUX_ELECTRON_RUNTIME_V2_HOME
     || await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-electron-runtime-v2-'));
@@ -195,10 +243,14 @@ const main = async () => {
   const remoteDebuggingPort = Number(process.env.CODEXMUX_ELECTRON_DEVTOOLS_PORT || await getFreePort());
   const timeoutMs = Number(process.env.CODEXMUX_ELECTRON_SMOKE_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
   const reconnectRounds = normalizeElectronReconnectRounds(process.env.CODEXMUX_ELECTRON_RUNTIME_V2_RECONNECT_ROUNDS);
+  const foregroundCycles = normalizeElectronWindowForegroundCycles(process.env.CODEXMUX_ELECTRON_WINDOW_FOREGROUND_CYCLES);
+  const appPath = process.env.CODEXMUX_ELECTRON_RUNTIME_V2_APP_PATH || process.env.CODEXMUX_ELECTRON_APP_PATH || '.';
   const checks = [];
   let server = null;
   let electron = null;
   let cdp = null;
+  let browserCdp = null;
+  let launch = null;
   let workspaceId = null;
 
   try {
@@ -247,9 +299,19 @@ const main = async () => {
       homeDir,
       remoteDebuggingPort,
       timeoutMs,
+      appPath,
     });
     electron = startedElectron.electron;
+    launch = startedElectron.launch;
+    checks.push(`electron-launch-${launch.mode}`);
     cdp = await connectCdp(startedElectron.target.webSocketDebuggerUrl);
+    if (foregroundCycles > 0) {
+      if (!startedElectron.browserWebSocketDebuggerUrl) {
+        throw new Error('Electron browser DevTools target is missing; cannot run window foreground cycles');
+      }
+      browserCdp = await connectCdp(startedElectron.browserWebSocketDebuggerUrl);
+      checks.push('electron-browser-cdp-connected');
+    }
     const consoleEvents = [];
     attachConsoleCollectors(cdp, consoleEvents);
     await enableCdpDomains(cdp);
@@ -268,22 +330,34 @@ const main = async () => {
       reconnectRounds,
     });
     const markers = [];
+
+    const assertRuntimeV2Marker = async (label, marker) => {
+      const result = await evaluate(cdp, buildElectronRuntimeV2EvalScript({
+        sessionName: runtimeTab.sessionName,
+        marker,
+        cols: 100,
+        rows: 30,
+      }));
+      if (!result?.output?.includes(marker) || !String(result.url).includes('/api/v2/terminal')) {
+        throw new Error(`Electron runtime v2 marker missing for ${label}: ${JSON.stringify(result)}`);
+      }
+      markers.push({ label, marker });
+      checks.push(`electron-v2-terminal-ws-${label}`);
+    };
+
     for (const round of rounds) {
       if (round.reloadBefore) {
         await reloadElectronPageForReconnect(cdp, baseUrl, timeoutMs);
         checks.push(`electron-page-reload-${round.label}`);
       }
-      const result = await evaluate(cdp, buildElectronRuntimeV2EvalScript({
-        sessionName: runtimeTab.sessionName,
-        marker: round.marker,
-        cols: 100,
-        rows: 30,
-      }));
-      if (!result?.output?.includes(round.marker) || !String(result.url).includes('/api/v2/terminal')) {
-        throw new Error(`Electron runtime v2 marker missing for ${round.label}: ${JSON.stringify(result)}`);
-      }
-      markers.push({ label: round.label, marker: round.marker });
-      checks.push(`electron-v2-terminal-ws-${round.label}`);
+      await assertRuntimeV2Marker(round.label, round.marker);
+    }
+
+    for (let i = 1; i <= foregroundCycles; i += 1) {
+      const foreground = await cycleElectronWindowForeground(browserCdp, cdp, startedElectron.target, baseUrl, timeoutMs);
+      const label = `foreground-${i}`;
+      checks.push(`electron-window-foreground-${i}-${foreground.method}`);
+      await assertRuntimeV2Marker(label, `electron-runtime-v2-foreground-${Date.now()}-${i}`);
     }
 
     await sleep(1_000);
@@ -299,11 +373,14 @@ const main = async () => {
       ok: true,
       baseUrl,
       homeDir,
+      appPath,
+      launchMode: launch?.mode,
       remoteDebuggingPort,
       tabId: runtimeTab.id,
       sessionName: runtimeTab.sessionName,
       runtimeVersion: runtimeTab.runtimeVersion,
       reconnectRounds,
+      foregroundCycles,
       checks,
       markers,
     }, null, 2));
@@ -311,12 +388,15 @@ const main = async () => {
     if (server) console.error(server.getOutput().slice(-4000));
     fail('electron-runtime-v2-smoke-failed', err instanceof Error ? err.message : String(err), {
       homeDir,
+      appPath,
+      launchMode: launch?.mode,
       serverPort,
       remoteDebuggingPort,
       workspaceId,
       checks,
     });
   } finally {
+    if (browserCdp) browserCdp.close();
     if (cdp) cdp.close();
     if (electron && electron.exitCode === null && process.env.CODEXMUX_ELECTRON_KEEP_OPEN !== '1') {
       electron.kill('SIGTERM');

@@ -15,7 +15,7 @@ import {
   waitFor,
 } from './android-webview-smoke-lib.mjs';
 import {
-  buildElectronSmokeArgs,
+  buildElectronSmokeLaunchCommand,
   normalizeElectronSmokeUrl,
   selectElectronPageTarget,
 } from './electron-smoke-lib.mjs';
@@ -57,10 +57,12 @@ const main = async () => {
   const timeoutMs = Number(process.env.CODEXMUX_ELECTRON_SMOKE_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
   const homeDir = process.env.CODEXMUX_ELECTRON_SMOKE_HOME
     || await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-electron-smoke-'));
+  const appPath = process.env.CODEXMUX_ELECTRON_APP_PATH || '.';
   const checks = [];
   const consoleEvents = [];
   let electron = null;
   let cdp = null;
+  let launch = null;
 
   try {
     if (process.platform === 'linux' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) {
@@ -70,8 +72,8 @@ const main = async () => {
     await fs.access(path.join(rootDir, 'dist-electron', 'main.js'));
     checks.push('electron-main-present');
 
-    const args = buildElectronSmokeArgs({ remoteDebuggingPort, appPath: '.' });
-    electron = spawn('corepack', ['pnpm', 'exec', 'electron', ...args], {
+    launch = buildElectronSmokeLaunchCommand({ remoteDebuggingPort, appPath });
+    electron = spawn(launch.command, launch.args, {
       cwd: rootDir,
       env: {
         ...process.env,
@@ -82,6 +84,7 @@ const main = async () => {
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
+    checks.push(`electron-launch-${launch.mode}`);
 
     let output = '';
     electron.stdout.on('data', (chunk) => { output += chunk.toString(); });
@@ -121,6 +124,8 @@ const main = async () => {
       ok: true,
       targetUrl,
       homeDir,
+      appPath,
+      launchMode: launch?.mode,
       remoteDebuggingPort,
       checks,
       state,
@@ -131,6 +136,8 @@ const main = async () => {
     fail('electron-attach-smoke-failed', err instanceof Error ? err.message : String(err), {
       targetUrl,
       homeDir,
+      appPath,
+      launchMode: launch?.mode,
       remoteDebuggingPort,
       checks,
       consoleEvents: consoleEvents.slice(-20),

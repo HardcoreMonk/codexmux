@@ -105,16 +105,34 @@ corepack pnpm smoke:runtime-v2
 corepack pnpm smoke:electron:runtime-v2
 ```
 
-5. packaged Electron 또는 OS window foreground까지 포함한 수동 smoke가 필요하면
+5. packaged Electron 또는 OS window foreground까지 포함한 smoke는 macOS에서
+   `.app` bundle을 직접 지정해 실행한다. `.app` 경로를 주면 smoke script가
+   `Contents/MacOS/*` 실행 파일을 직접 띄워 DevTools port를 붙인다.
+   `CODEXMUX_ELECTRON_WINDOW_FOREGROUND_CYCLES`는 runtime v2 smoke 안에서
+   window foreground probe 후 `/api/v2/terminal` marker output을 다시 확인한다.
+   Electron/Chromium이 `Browser.*` CDP domain을 노출하면 window minimize/restore를
+   사용하고, 그렇지 않으면 `Target.activateTarget`/`Page.bringToFront` fallback을
+   사용한다. 실제 사용된 method는 `electron-window-foreground-*-...` check로 출력된다.
+
+```bash
+CODEXMUX_ELECTRON_APP_PATH=release/mac-arm64/codexmux.app \
+  corepack pnpm smoke:electron:attach
+
+CODEXMUX_ELECTRON_APP_PATH=release/mac-arm64/codexmux.app \
+CODEXMUX_ELECTRON_WINDOW_FOREGROUND_CYCLES=1 \
+  corepack pnpm smoke:electron:runtime-v2
+```
+
+6. Finder 더블클릭, Gatekeeper prompt, Dock/Finder launch domain 환경까지 확인해야 하면
    Electron remote/local shell에서 기존 app workspace 화면을 열고 plain terminal tab을 생성한다.
-6. 새 tab이 기존 app surface에 남아 있고 terminal output에 `pwd` 결과가 보이는지 확인한다.
-7. Electron shell의 existing session cookie로 `/api/v2/terminal` WebSocket이 열리는지
+7. 새 tab이 기존 app surface에 남아 있고 terminal output에 `pwd` 결과가 보이는지 확인한다.
+8. Electron shell의 existing session cookie로 `/api/v2/terminal` WebSocket이 열리는지
    확인한다. 별도 query-string token은 사용하지 않는다.
-8. Electron 창을 background로 보냈다가 foreground로 되돌린 뒤 같은 tab에서 다시
+9. Electron 창을 background로 보냈다가 foreground로 되돌린 뒤 같은 tab에서 다시
    attach한다.
-9. `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=off`로 서버를 재시작하면 새 plain terminal tab은
+10. `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=off`로 서버를 재시작하면 새 plain terminal tab은
    legacy로 생성되고 기존 v2 tab은 삭제되지 않으며 runtime v2 disabled diagnostic을 표시하는지 확인한다.
-10. terminal output이 fresh attach 후 계속 들어오고 rollback diagnostic이 명확하면 Electron runtime v2 smoke가 통과한
+11. terminal output이 fresh attach 후 계속 들어오고 rollback diagnostic이 명확하면 Electron runtime v2 smoke가 통과한
    상태다.
 
 ## Build Output
@@ -129,7 +147,7 @@ corepack pnpm smoke:electron:runtime-v2
 
 macOS에서 앱을 실제로 설치하려면 `release/*.dmg` 또는 `release/*/*.app` 산출물이 필요합니다. 현재 repository checkout에 `release/`가 없으면 아직 macOS 앱 패키징을 실행하지 않은 상태입니다.
 
-2026-05-03 P0/P1 pass 기준 `corepack pnpm build:electron`, `corepack pnpm smoke:electron:attach`, `corepack pnpm smoke:electron:runtime-v2`는 통과했다. runtime v2 smoke는 initial attach와 2회 page reload/reconnect 뒤 `/api/v2/terminal` marker output과 console-clean을 확인했다. Linux에서 `corepack pnpm pack:electron:dev`는 macOS DMG target의 Darwin-only optional dependency 때문에 중단됐지만, Mac M1 서버(`Darwin arm64`)에서는 같은 명령이 통과해 `release/codexmux-0.3.3-arm64.dmg`, `release/codexmux-0.3.3-arm64-mac.zip`, `release/codexmux-0.3.3.dmg`, `release/codexmux-0.3.3-mac.zip`을 생성했다. `node scripts/verify-runtime-native-bindings.mjs --electron`, `lipo -archs`, `Info.plist`, `hdiutil verify`도 통과했다. SSH 세션에서는 macOS GUI launch domain 권한 때문에 Finder-style `.app` 실행 smoke가 막히므로, 실제 더블클릭 실행과 Gatekeeper UX는 Mac 화면 세션에서 확인한다. live checkout에서 Electron build/packaging을 실행한 뒤에는 `.next/standalone`이 다시 만들어지므로 Linux user service는 `corepack pnpm deploy:local`로 재시작해 cwd를 정상화한다.
+2026-05-03 P0/P1 pass 기준 `corepack pnpm build:electron`, `corepack pnpm smoke:electron:attach`, `corepack pnpm smoke:electron:runtime-v2`는 통과했다. runtime v2 smoke는 initial attach와 2회 page reload/reconnect 뒤 `/api/v2/terminal` marker output과 console-clean을 확인했다. Linux에서 `corepack pnpm pack:electron:dev`는 macOS DMG target의 Darwin-only optional dependency 때문에 중단됐지만, Mac M1 서버(`Darwin arm64`)에서는 같은 명령이 통과해 `release/codexmux-0.3.3-arm64.dmg`, `release/codexmux-0.3.3-arm64-mac.zip`, `release/codexmux-0.3.3.dmg`, `release/codexmux-0.3.3-mac.zip`을 생성했다. `node scripts/verify-runtime-native-bindings.mjs --electron`, `lipo -archs`, `Info.plist`, `hdiutil verify`도 통과했다. `CODEXMUX_ELECTRON_APP_PATH=<release/.../codexmux.app>`를 주면 attach/runtime-v2 smoke가 packaged `.app` 실행 파일을 직접 띄울 수 있고, `CODEXMUX_ELECTRON_WINDOW_FOREGROUND_CYCLES=1`로 CDP foreground probe 뒤 terminal attach를 반복 확인할 수 있다. Linux Electron 41 smoke에서는 `Browser.*` window bounds가 없어 `target-activate` fallback으로 통과했다. SSH 세션에서는 macOS GUI launch domain 권한 때문에 Finder-style `.app` 실행 smoke가 막히므로, 실제 더블클릭 실행과 Gatekeeper UX는 Mac 화면 세션에서 확인한다. live checkout에서 Electron build/packaging을 실행한 뒤에는 `.next/standalone`이 다시 만들어지므로 Linux user service는 `corepack pnpm deploy:local`로 재시작해 cwd를 정상화한다.
 
 ## Packaging Notes
 

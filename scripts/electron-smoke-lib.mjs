@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+
 const safeUrl = (raw) => {
   try {
     return new URL(raw);
@@ -15,12 +18,71 @@ export const normalizeElectronSmokeUrl = (raw) => {
   return url.toString().replace(/\/$/, '');
 };
 
-export const buildElectronSmokeArgs = ({ remoteDebuggingPort, appPath = '.' }) => [
+const buildElectronChromeArgs = ({ remoteDebuggingPort }) => [
   `--remote-debugging-port=${remoteDebuggingPort}`,
   '--disable-gpu',
   '--no-sandbox',
+];
+
+export const buildElectronSmokeArgs = ({ remoteDebuggingPort, appPath = '.' }) => [
+  ...buildElectronChromeArgs({ remoteDebuggingPort }),
   appPath,
 ];
+
+const isMacAppBundlePath = (appPath) => /\.app\/?$/i.test(String(appPath || ''));
+
+const resolveMacAppExecutable = (appPath) => {
+  const macOsDir = path.join(appPath, 'Contents', 'MacOS');
+  const baseName = path.basename(appPath).replace(/\.app$/i, '');
+  const entries = fs.readdirSync(macOsDir, { withFileTypes: true });
+  const candidates = entries
+    .filter((entry) => entry.isFile() || entry.isSymbolicLink())
+    .map((entry) => path.join(macOsDir, entry.name))
+    .filter((candidate) => {
+      try {
+        fs.accessSync(candidate, fs.constants.X_OK);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+  const preferred = candidates.find((candidate) => path.basename(candidate) === baseName);
+  if (preferred) return preferred;
+  if (candidates.length === 1) return candidates[0];
+  if (candidates.length > 1) {
+    throw new Error(`Multiple Electron .app executables found in ${macOsDir}: ${candidates.map(path.basename).join(', ')}`);
+  }
+  throw new Error(`No executable found in Electron .app bundle: ${macOsDir}`);
+};
+
+export const buildElectronSmokeLaunchCommand = ({
+  remoteDebuggingPort,
+  appPath = '.',
+  platform = process.platform,
+}) => {
+  const normalizedAppPath = String(appPath || '').trim() || '.';
+  const chromeArgs = buildElectronChromeArgs({ remoteDebuggingPort });
+
+  if (isMacAppBundlePath(normalizedAppPath)) {
+    if (platform !== 'darwin') {
+      throw new Error(`Electron .app smoke requires macOS; current platform is ${platform}`);
+    }
+    return {
+      command: resolveMacAppExecutable(normalizedAppPath),
+      args: chromeArgs,
+      mode: 'mac-app',
+    };
+  }
+
+  return {
+    command: 'corepack',
+    args: ['pnpm', 'exec', 'electron', ...buildElectronSmokeArgs({
+      remoteDebuggingPort,
+      appPath: normalizedAppPath,
+    })],
+    mode: 'electron-cli',
+  };
+};
 
 const hasDevtoolsUrl = (target) =>
   typeof target?.webSocketDebuggerUrl === 'string' && target.webSocketDebuggerUrl.length > 0;
@@ -41,6 +103,13 @@ export const normalizeElectronReconnectRounds = (raw, fallback = 2) => {
   const parsed = Number(raw);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(0, Math.min(10, Math.floor(parsed)));
+};
+
+export const normalizeElectronWindowForegroundCycles = (raw, fallback = 0) => {
+  if (raw === undefined || raw === null || raw === '') return fallback;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(0, Math.min(5, Math.floor(parsed)));
 };
 
 export const buildElectronRuntimeV2ReconnectRounds = ({

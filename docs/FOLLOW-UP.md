@@ -64,9 +64,9 @@ P0/P1/P2/P3 후속 상태:
 
 - P0 완료: Android Tailscale Serve HTTPS 접속, failure recovery 반복, foreground reconnect, fresh app data clear first-run, app info bridge 확인, login route console noise 제거, permission prompt status/tmux E2E smoke 자동화.
 - P0 남음: 자동 개발로 처리 가능한 code/runtime blocking 항목은 없음. 실제 기기/OS가 필요한 장시간/외부 smoke는 P1 운영 검증으로 남긴다.
-- P1 완료: Android foreground/recovery/runtime v2 smoke, app info/native restart smoke, Electron attach/runtime v2 smoke, permission prompt smoke, package scripts.
+- P1 완료: Android foreground/recovery/runtime v2 smoke, app info/native restart smoke, Electron attach/runtime v2 smoke, Electron packaged `.app` launch hook for smoke scripts, permission prompt smoke, package scripts.
 - P1 남음: Android logged-in session 수십 분 background/reconnect와 input draft 보존, active terminal WebSocket settle 증거, 실제 Codex CLI permission prompt 재현 smoke, macOS packaged `.app` Finder 실행/Gatekeeper UX, 실제 Windows Scheduled Task smoke, iPad Safari/Home Screen smoke.
-- P2 남음: packaged Electron OS-level foreground/reconnect UX, runtime v2 timeline/status/storage parity surface별 cutover evidence, release workflow/CI에서 선택 실행할 Android/Electron smoke artifact 보존.
+- P2 남음: packaged Electron foreground/reconnect를 Mac 화면 세션에서 evidence로 보존, runtime v2 timeline/status/storage parity surface별 cutover evidence, release workflow/CI에서 선택 실행할 Android/Electron smoke artifact 보존.
 - P3 남음: Android release signing/AAB 운영, approval queue, lifecycle control UI, perf tuning.
 
 1. 장시간 Codex smoke test: 새 tab 생성, prompt 실행, tool call과 reasoning summary 표시, 상태 전이 확인.
@@ -86,7 +86,7 @@ P0/P1/P2/P3 후속 상태:
 15. 설치/upgrade: `npx codexmux`, global install, 기존 `~/.codexmux` 유지 확인.
 16. release metadata: `corepack pnpm release:patch|minor|major`, changelog, release workflow artifact 확인.
 17. Windows sync smoke test: Windows에서 Scheduled Task `Install -RunNow`, `Status`, `RunOnce` dry-run, source filter, remote source summary, 오래된 date dir full scan 동작 확인.
-18. Runtime v2 cutover readiness: `docs/RUNTIME-V2-CUTOVER.md`와 `docs/RUNTIME-V2-PARITY.md`의 phase gate, rollback flag, temp HOME/DB smoke를 release candidate commit 기준으로 확인한다. Phase 2 terminal gate는 `corepack pnpm smoke:runtime-v2:phase2`로 browser reload/server restart/mode-off rollback을 먼저 통과시킨 뒤 `corepack pnpm smoke:electron:runtime-v2`와 `corepack pnpm smoke:android:runtime-v2`의 page-context attach/output/reconnect, systemd 검증 증거를 추가한다. packaged Electron OS-level foreground UX는 Mac 화면 세션 smoke로 별도 확인한다.
+18. Runtime v2 cutover readiness: `docs/RUNTIME-V2-CUTOVER.md`와 `docs/RUNTIME-V2-PARITY.md`의 phase gate, rollback flag, temp HOME/DB smoke를 release candidate commit 기준으로 확인한다. Phase 2 terminal gate는 `corepack pnpm smoke:runtime-v2:phase2`로 browser reload/server restart/mode-off rollback을 먼저 통과시킨 뒤 `corepack pnpm smoke:electron:runtime-v2`와 `corepack pnpm smoke:android:runtime-v2`의 page-context attach/output/reconnect, systemd 검증 증거를 추가한다. packaged Electron은 `CODEXMUX_ELECTRON_APP_PATH=<release/.../codexmux.app> CODEXMUX_ELECTRON_WINDOW_FOREGROUND_CYCLES=1 corepack pnpm smoke:electron:runtime-v2`로 CLI smoke를 먼저 통과시키고, Finder/Gatekeeper UX는 Mac 화면 세션 smoke로 별도 확인한다.
 19. Browser reconnect DOM smoke: Playwright Chromium으로 `session-not-found` 복구 overlay와 floating reconnect control 중복 렌더링이 없는지 실제 pointer 동작까지 확인하는 e2e spec을 추가한다.
 
 ## Post-MVP 백로그
