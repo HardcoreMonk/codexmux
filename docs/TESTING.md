@@ -39,9 +39,17 @@ corepack pnpm exec node -e "const { chromium } = require('@playwright/test'); (a
 
 웹 UI 회귀가 보고되면 Playwright를 우선 사용해 실제 DOM과 pointer 동작을 확인한다. 예를
 들어 `session-not-found` 복구 overlay가 떠 있을 때 floating `ConnectionStatus`의
-`다시 연결` 버튼이 화면에 남아 클릭을 가로막는지 확인하는 식이다. 현재 해당 조건은
+`다시 연결` 버튼이 화면에 남아 클릭을 가로막는지 확인하는 식이다. 이 조건은
 `src/lib/terminal-recovery.ts`의 순수 helper와 `tests/unit/lib/terminal-recovery.test.ts`
-로 먼저 고정되어 있고, 브라우저 DOM e2e spec은 추가되는 시점에 이 문서에 명령을 기록한다.
+로 먼저 고정하고, 실제 Chromium DOM/pointer smoke는 다음 명령으로 확인한다.
+
+```bash
+corepack pnpm smoke:browser-reconnect
+```
+
+이 smoke는 temp HOME/server/workspace를 만들고, default terminal tab의 tmux session을
+제거한 뒤 `session-not-found` overlay 표시, floating `다시 연결` 버튼 부재, `새 터미널로
+시작` pointer click 복구를 확인한다.
 
 ## PWA And iPad
 
