@@ -119,6 +119,12 @@ Rust + Tauri 도입은 `docs/TAURI-EVALUATION.md` 기준으로 보류한다. Tau
 - Runtime v2 shadow runtime은 이 counters를 보고 readiness 실패, restart loop, command timeout, failed reply를 확인한 뒤에만 surface별 default 전환을 검토한다.
 - `CODEXMUX_RUNTIME_V2=1` server startup은 legacy startup을 막지 않고 runtime v2 health diagnostic을 실행한다. 이 호출은 worker별 `healthChecks`, `healthFailures`, `lastHealthAt`에 남는다.
 
+### 2026-05-04 10차 구현 상태
+
+- Windows terminal bridge 상태는 `globalThis.__ptRemoteTerminalStore`에만 보관한다. source/terminal registry, command queue, recent output snapshot, subscriber fanout이 server memory 안에 있으며 서버 재시작 후 Windows sidecar가 다시 register/poll해 복구한다.
+- bridge output snapshot은 terminal당 512KiB로 제한하고 command queue는 최대 1000개만 유지한다. browser WebSocket reconnect 시 recent output snapshot을 먼저 보낸 뒤 새 output을 fanout한다.
+- 이 경로는 tmux stdout batching과 별개다. Windows sidecar가 `/api/remote/terminal/commands`를 polling하고 `/api/remote/terminal/output`으로 stdout/stderr chunk를 post하므로, 성능 조정 전에는 poll interval, output flush interval, reconnect smoke, resize/input latency를 같이 확인한다.
+
 ## 작업 상세
 
 ### 1. Perf Snapshot

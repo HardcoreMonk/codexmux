@@ -29,6 +29,8 @@ const HEARTBEAT_INTERVAL = 30_000;
 
 interface IUseTerminalWebSocketOptions {
   endpoint?: TTerminalWebSocketEndpoint;
+  sourceId?: string;
+  terminalId?: string;
   onData?: (data: Uint8Array) => void;
   onConnected?: () => void;
   onSessionEnded?: () => void;
@@ -36,6 +38,8 @@ interface IUseTerminalWebSocketOptions {
 
 const useTerminalWebSocket = ({
   endpoint = '/api/terminal',
+  sourceId,
+  terminalId,
   onData,
   onConnected,
   onSessionEnded,
@@ -90,6 +94,8 @@ const useTerminalWebSocket = ({
           endpoint,
           clientId,
           sessionName,
+          sourceId,
+          terminalId,
           ...(size ? { cols: size.cols, rows: size.rows } : {}),
         }));
         ws.binaryType = 'arraybuffer';
@@ -177,7 +183,7 @@ const useTerminalWebSocket = ({
         openSocket();
       });
     },
-    [clearTimers, endpoint],
+    [clearTimers, endpoint, sourceId, terminalId],
   );
 
   useEffect(() => {

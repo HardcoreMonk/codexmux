@@ -51,7 +51,7 @@ Introduce separate flags instead of overloading `CODEXMUX_RUNTIME_V2`.
 Before any default switch, create a checked parity matrix for every production surface:
 
 - Workspace: create, rename, reorder, group, active workspace, validate cwd, layout split/move/order/delete/rename, message history.
-- Terminal: attach, stdin, web stdin, resize, heartbeat, kill, backpressure, reconnect, mobile foreground reconnect, Electron/Android WebView cookie auth.
+- Terminal: attach, stdin, web stdin, resize, heartbeat, kill, backpressure, reconnect, mobile foreground reconnect, Electron/Android WebView cookie auth. Windows terminal bridge는 별도 `/api/remote/terminal` path로 유지되는지도 확인한다.
 - Timeline: init, append, subscribe/unsubscribe, resume, session-changed, load-more, message counts, session list filters, Windows remote JSONL.
 - Status: initial sync, update/remove, hook/statusline events, needs-input ack, dismiss, ready-for-review notification, Web Push, session history.
 - Sync: workspace/layout/config invalidation for browser, Electron, Android, and CLI clients.
@@ -151,6 +151,7 @@ Work:
 - Add typed events for `timeline:init`, `timeline:append`, `timeline:session-changed`, and `timeline:error`.
 - Keep stable id/dedupe/merge behavior unchanged.
 - Preserve Windows remote JSONL subscribe by path.
+- Keep Windows terminal bridge out of Timeline Worker and runtime v2 terminal cutover; it remains a separate `/api/remote/terminal` bridge.
 - Add worker crash behavior: close timeline sockets with retryable reason and let client reconnect.
 
 Exit gate:

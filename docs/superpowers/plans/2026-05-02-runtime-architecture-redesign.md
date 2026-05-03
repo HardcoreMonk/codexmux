@@ -9025,4 +9025,4 @@ After this plan lands, write separate implementation plans for:
 2. Storage Worker full command coverage for config/auth/keybinding/session metadata, backup/export/reset tooling, and invariants.
 3. Timeline Worker JSONL watcher/parser/session index migration.
 4. Status Worker reducer, notification, session-history, and reconnect policy migration.
-5. Full platform smoke automation for Electron, Android, and Windows companion.
+5. Full platform smoke automation for Electron, Android, Windows companion sync, and Windows terminal bridge.

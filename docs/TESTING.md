@@ -217,3 +217,23 @@ node .\scripts\windows-codex-sync.mjs `
 `RunOnce`와 live `/api/remote/codex/sources`,
 `/api/timeline/sessions?source=remote&sourceId=<sourceId>` 200 응답 확인까지 포함한다.
 장시간 task restart result, log rotation 필요성, token file 권한은 운영 관찰로 이어간다.
+
+## Windows Terminal Bridge
+
+서버 단위 검증:
+
+```bash
+corepack pnpm vitest run tests/unit/lib/remote-terminal-store.test.ts tests/unit/lib/terminal-websocket-url.test.ts
+```
+
+Windows 실기기 smoke:
+
+```powershell
+$env:CMUX_URL = "http://<codexmux-server>:8122"
+$env:CMUX_TOKEN = "<server ~/.codexmux/cli-token content>"
+corepack pnpm windows:terminal-bridge -- --source-id "win11-main"
+```
+
+Browser에서 `/windows-terminal?sourceId=win11-main`을 열고 `pwd`, `Get-Location`,
+`node --version` 같은 짧은 command의 입력/출력과 resize 반응을 확인한다.
+`/api/remote/terminal/sources`가 200과 terminal status를 반환해야 한다.

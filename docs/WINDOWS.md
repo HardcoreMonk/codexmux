@@ -1,8 +1,6 @@
 # Windows client
 
-Windows client 범위는 Windows 11 `pwsh`에서 실행한 Codex CLI의 JSONL transcript를 codexmux 서버로 동기화하는 것이다. codexmux UI에서는 remote session이 session list에 나타나고, source filter로 분리 조회할 수 있으며, 선택하면 읽기 전용 timeline으로 열린다.
-
-이 문서는 Windows terminal을 원격으로 제어하는 pty relay를 다루지 않는다. `pwsh` 입력, resize, process lifecycle 제어는 후속 설계 범위다.
+Windows client 범위는 Windows 11 `pwsh`에서 실행한 Codex CLI의 JSONL transcript 동기화와 별도 Windows `pwsh` terminal bridge 제어다. codexmux UI에서는 remote session이 session list에 나타나고, source filter로 분리 조회할 수 있으며, 선택하면 읽기 전용 timeline으로 열린다. Windows terminal bridge를 실행하면 `/windows-terminal?sourceId=<sourceId>`에서 별도 `pwsh` session을 제어할 수 있다.
 
 ## 지원 범위
 
@@ -15,7 +13,7 @@ Windows client 범위는 Windows 11 `pwsh`에서 실행한 Codex CLI의 JSONL tr
 | session list Windows/local filter | 지원 |
 | remote JSONL timeline 보기 | 지원 |
 | Windows Scheduled Task 운영 | 지원 |
-| Windows `pwsh` 입력/제어 | 미지원 |
+| Windows `pwsh` 입력/제어 | 지원, terminal bridge가 시작한 별도 session |
 | Windows Codex process 상태 감지 | 미지원 |
 
 ## 전제 조건
@@ -23,7 +21,7 @@ Windows client 범위는 Windows 11 `pwsh`에서 실행한 Codex CLI의 JSONL tr
 - Windows 11
 - PowerShell 7 또는 Windows PowerShell
 - Node.js 20 이상
-- Codex CLI가 Windows에서 실행 중이거나 실행된 기록이 있어야 함
+- JSONL 동기화는 Codex CLI가 Windows에서 실행 중이거나 실행된 기록이 있어야 함. terminal bridge만 쓸 때는 제어할 Windows shell만 필요함
 - codexmux 서버가 Windows에서 접근 가능해야 함
 - 서버의 `~/.codexmux/cli-token` 값을 Windows 환경 변수나 token file로 전달해야 함
 
@@ -146,6 +144,40 @@ Windows에서 sync client를 로그인 시 자동 실행하려면 `scripts/windo
 
 `RunOnce`는 task 설정을 읽어 `--once --dry-run`으로 실행한다. 실제 전송을 하지 않으므로 서버 접근, token, scan 범위, pending upload를 확인할 때 사용한다.
 
+## Windows terminal bridge
+
+Windows에서 별도 `pwsh` terminal을 codexmux UI로 제어하려면 terminal bridge를 실행한다. 이 bridge는 Windows에서 outbound HTTP poll/post만 사용하므로 서버가 Windows 기기로 직접 접속할 필요가 없다.
+
+```powershell
+$env:CMUX_URL = "http://<codexmux-server>:8122"
+$env:CMUX_TOKEN = "<server ~/.codexmux/cli-token content>"
+corepack pnpm windows:terminal-bridge -- --source-id "win11-main"
+```
+
+repo script를 직접 실행할 수도 있다.
+
+```powershell
+node .\scripts\windows-terminal-bridge.mjs `
+  --server "http://<codexmux-server>:8122" `
+  --token-file "$env:USERPROFILE\.codexmux\cli-token" `
+  --source-id "win11-main" `
+  --terminal-id "main" `
+  --shell "pwsh"
+```
+
+UI는 session list 상단의 Windows terminal 버튼 또는 직접 URL로 연다.
+
+```text
+http://<codexmux-server>:8122/windows-terminal?sourceId=win11-main
+```
+
+bridge는 서버 `/api/remote/terminal/register`에 source를 등록하고,
+`/api/remote/terminal/commands`에서 stdin/resize/kill command를 polling하며,
+stdout/stderr chunk를 `/api/remote/terminal/output`으로 post한다. Browser는
+`/api/remote/terminal` WebSocket에 붙어 기존 terminal protocol frame을 그대로 사용한다.
+
+이 경로는 bridge가 시작한 별도 shell을 제어한다. 이미 사용자가 Windows Terminal에서 수동으로 실행한 외부 Codex CLI process에 attach하지 않는다.
+
 ## 서버 저장 위치
 
 서버는 수신한 chunk를 다음 위치에 저장한다.
@@ -166,7 +198,7 @@ Codex rollout 파일명에 들어가는 `2026-05-01T19-31-48` 같은 값은 Wind
 - session list 상단 filter로 전체, local, Windows remote session을 전환할 수 있다. Windows source가 여러 개면 source별 filter도 표시한다.
 - Windows source summary는 최신 source label, 마지막 sync 시간, session 수를 표시한다.
 - remote session을 선택하면 `codex resume`을 실행하지 않고 저장된 JSONL을 timeline WebSocket으로 구독한다.
-- 입력창으로 Windows `pwsh`에 명령을 보내는 동작은 아직 제공하지 않는다.
+- Windows terminal 버튼은 `/windows-terminal`을 열고 terminal bridge가 등록한 `pwsh` session으로 stdin/resize를 보낸다.
 
 ## 문제 해결
 
@@ -177,3 +209,21 @@ Codex rollout 파일명에 들어가는 `2026-05-01T19-31-48` 같은 값은 Wind
 session list에 보이지 않으면 `--once --dry-run`으로 state 기준 pending upload와 scan summary를 먼저 확인하고, 서버가 Windows에서 접근 가능한지 확인한다. 과거 기록까지 모두 가져오려면 기본값 그대로 실행하거나 `--since-hours all`을 명시한다. companion은 시작 시 전체 scan을 수행한 뒤 평상시에는 오늘/어제 date dir와 최근 활성 파일만 빠르게 확인하고, 기본 60초마다 전체 scan을 다시 수행한다. 오래된 날짜의 session을 다시 이어서 쓰는데 표시가 늦으면 `--full-scan-interval-ms 10000`처럼 값을 줄일 수 있다. 최근 파일만 동기화하고 싶을 때만 `--since-hours 72`처럼 범위를 줄인다.
 
 Scheduled Task가 실행되지 않으면 `-Action Status`의 `LastTaskResult`를 확인하고, `%USERPROFILE%\.codexmux\logs\windows-codex-sync.log`의 마지막 health check 또는 sync 오류를 확인한다. 설정을 바꾸려면 같은 `TaskName`으로 `-Action Install`을 다시 실행하면 task와 config가 덮어써진다.
+
+terminal bridge가 표시되지 않으면 Windows 기기에서 `corepack pnpm windows:terminal-bridge -- --source-id <sourceId>`를 실행한 뒤 `/api/remote/terminal/sources`가 terminal 목록을 반환하는지 확인한다. Browser terminal은 연결되지만 출력이 없으면 bridge 로그의 command poll/output post 오류와 token 값을 먼저 확인한다.
+
+`Missing script: windows:terminal-bridge`가 나오면 실행한 디렉터리의 `package.json`이 terminal bridge 변경을 아직 포함하지 않은 상태다. 먼저 codexmux repo root에서 실행 중인지 확인하고, 최신 commit을 받은 뒤 다음 값이 있는지 확인한다.
+
+```powershell
+node -p "require('./package.json').scripts['windows:terminal-bridge']"
+Test-Path .\scripts\windows-terminal-bridge.mjs
+```
+
+script alias만 없는 상태에서 bridge 파일은 있으면 직접 실행할 수 있다.
+
+```powershell
+node .\scripts\windows-terminal-bridge.mjs `
+  --server "http://<codexmux-server>:8122" `
+  --token-file "$env:USERPROFILE\.codexmux\cli-token" `
+  --source-id "win11-main"
+```

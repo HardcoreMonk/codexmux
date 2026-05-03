@@ -21,17 +21,29 @@ describe('terminal websocket url helpers', () => {
       clientId: 'client-b',
       sessionName: 'rtv2-ws-a-pane-b-tab-c',
     })).toBe('/api/v2/terminal?clientId=client-b&session=rtv2-ws-a-pane-b-tab-c');
+
+    expect(buildTerminalWebSocketPath({
+      endpoint: '/api/remote/terminal',
+      clientId: 'client-c',
+      sessionName: 'remote-ignored',
+      sourceId: 'AMD_5800X',
+      terminalId: 'main',
+      cols: 120,
+      rows: 36,
+    })).toBe('/api/remote/terminal?clientId=client-c&sourceId=AMD_5800X&terminalId=main&cols=120&rows=36');
   });
 
   it('encodes query values and chooses ws or wss from page protocol', () => {
     expect(buildTerminalWebSocketUrl({
-      endpoint: '/api/v2/terminal',
+      endpoint: '/api/remote/terminal',
       clientId: 'client with space',
-      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      sessionName: 'remote-ignored',
+      sourceId: 'AMD_5800X',
+      terminalId: 'main shell',
       cols: 120,
       rows: 40,
       location: { protocol: 'https:', host: 'codexmux.test' },
-    })).toBe('wss://codexmux.test/api/v2/terminal?clientId=client+with+space&session=rtv2-ws-a-pane-b-tab-c&cols=120&rows=40');
+    })).toBe('wss://codexmux.test/api/remote/terminal?clientId=client+with+space&sourceId=AMD_5800X&terminalId=main+shell&cols=120&rows=40');
 
     expect(buildTerminalWebSocketUrl({
       endpoint: '/api/terminal',

@@ -201,9 +201,9 @@ Timeline은 terminal scrollback을 그대로 보여주는 기능이 아니라 Co
 - foreground reconnect 중 init/append 범위가 겹쳐도 client merge에서 중복을 제거한다.
 - client render는 append burst를 frame 단위로 합치고, 기존 timeline row는 entry object reference가 유지되면 memo로 재렌더를 건너뛴다.
 
-## Windows Codex 동기화 로직
+## Windows Codex 동기화와 terminal bridge 로직
 
-Windows 11에서 `pwsh`로 실행한 Codex CLI는 Linux tmux tree 아래에 없으므로 codexmux가 process를 직접 attach하지 않는다. 현재 지원 범위는 Windows companion script가 Codex CLI JSONL을 읽어 서버에 chunk로 보내고, codexmux가 이를 source filter가 가능한 읽기 전용 timeline session으로 노출하는 방식이다.
+Windows 11에서 `pwsh`로 실행한 Codex CLI는 Linux tmux tree 아래에 없으므로 codexmux가 process를 직접 attach하지 않는다. Codex transcript는 Windows companion script가 JSONL을 읽어 서버에 chunk로 보내고, codexmux가 이를 source filter가 가능한 읽기 전용 timeline session으로 노출한다. 별도 Windows terminal 제어는 outbound terminal bridge가 시작한 `pwsh` session을 command queue와 stdout relay로 연결한다.
 
 ```text
 Windows Codex CLI
@@ -213,6 +213,13 @@ Windows Codex CLI
   -> POST /api/remote/codex/sync (x-cmux-token)
   -> ~/.codexmux/remote/codex/{sourceId}/{sessionId}.jsonl
   -> session list -> timeline subscribe by jsonlPath
+
+Browser /api/remote/terminal WebSocket
+  -> globalThis.__ptRemoteTerminalStore command queue
+  -> scripts/windows-terminal-bridge.mjs polls /api/remote/terminal/commands
+  -> Windows node-pty pwsh stdin/resize/kill
+  -> POST /api/remote/terminal/output
+  -> browser terminal stdout frame fanout
 ```
 
 운영 규칙:
@@ -225,7 +232,9 @@ Windows Codex CLI
 - session list API는 `source=local|remote`와 `sourceId` filter를 받아 Windows session을 local session과 분리해 조회할 수 있다. `/api/remote/codex/sources`는 remote sidecar를 요약해 source별 session 수와 최신 sync/activity metadata를 반환한다.
 - session list는 remote JSONL 본문 전체를 매번 파싱하지 않고 sidecar metadata로 목록을 만든다. JSONL 본문은 timeline subscribe 때만 읽는다.
 - Windows cwd는 session list의 source metadata로만 표시한다.
-- remote session 선택은 Codex resume이 아니라 저장된 JSONL path에 대한 timeline subscribe다. Windows `pwsh` 입력/제어는 이 범위에 포함하지 않는다.
+- remote session 선택은 Codex resume이 아니라 저장된 JSONL path에 대한 timeline subscribe다.
+- `scripts/windows-terminal-bridge.mjs`는 `/api/health` 확인 후 Windows에서 별도 `pwsh`를 시작하고, CLI token으로 `/api/remote/terminal/register`, `/commands`, `/output`을 호출한다. Browser는 authenticated `/api/remote/terminal` WebSocket에 연결하고 기존 terminal protocol frame을 재사용한다. bridge state는 서버/API module graph 공유를 위해 `globalThis.__ptRemoteTerminalStore`에 둔다.
+- terminal bridge는 이미 Windows Terminal에서 수동으로 실행 중인 외부 process에 attach하지 않고, bridge가 시작한 별도 shell만 제어한다.
 
 ## Session Index 서비스 로직
 

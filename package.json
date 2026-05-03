@@ -75,6 +75,7 @@
     "release:minor": "node scripts/release.mjs minor",
     "release:major": "node scripts/release.mjs major",
     "windows:codex-sync": "node scripts/windows-codex-sync.mjs",
+    "windows:terminal-bridge": "node scripts/windows-terminal-bridge.mjs",
     "start": "NODE_ENV=production tsx server.ts",
     "lint": "eslint",
     "test": "vitest run",

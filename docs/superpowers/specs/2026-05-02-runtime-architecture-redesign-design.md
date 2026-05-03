@@ -305,7 +305,7 @@ decisions are fixed:
 ## Non-Goals
 
 - No automatic migration from existing `~/.codexmux/` JSON files is required.
-- No Windows `pwsh` pty relay or process lifecycle control is included.
+- Runtime v2 does not move Windows `pwsh` terminal bridge into the Supervisor/Worker tmux path. Current Windows terminal control remains the separate outbound `/api/remote/terminal` bridge that starts and controls its own shell.
 - No App Router migration.
 - No terminal transcript persistence beyond the existing tmux/Codex sources.
 - No mixed old/new durable state mode for production rollout.
@@ -926,7 +926,7 @@ Acceptance:
 - server stores remote JSONL copies and SQLite metadata
 - session list can show local and remote sessions
 - selecting a Windows session opens read-only timeline
-- Windows `pwsh` input/control remains out of scope
+- Windows `pwsh` terminal bridge remains a separate `/api/remote/terminal` path, not a runtime v2 Terminal Worker target
 
 ## Failure Handling
 

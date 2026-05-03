@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import dayjs from 'dayjs';
-import { ListFilter, Monitor, Plus, Terminal } from 'lucide-react';
+import { ListFilter, Monitor, Plus, Terminal, TerminalSquare } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
@@ -121,6 +121,23 @@ const SessionListView = ({
             >
               <Plus size={12} />
               {t('newConversation')}
+            </Button>
+          )}
+          {latestRemoteSource && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                window.open(
+                  `/windows-terminal?sourceId=${encodeURIComponent(latestRemoteSource.sourceId)}`,
+                  '_blank',
+                  'noopener,noreferrer',
+                );
+              }}
+              title={t('openWindowsTerminal')}
+            >
+              <TerminalSquare size={12} />
+              {t('windowsTerminalShort')}
             </Button>
           )}
         </div>

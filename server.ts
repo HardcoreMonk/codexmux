@@ -12,6 +12,7 @@ import { handleInstallConnection, gracefulInstallShutdown } from './src/lib/inst
 import { handleTimelineConnection, gracefulTimelineShutdown } from './src/lib/timeline-server';
 import { handleSyncConnection, gracefulSyncShutdown } from './src/lib/sync-server';
 import { handleStatusConnection, gracefulStatusShutdown } from './src/lib/status-server';
+import { handleRemoteTerminalConnection } from './src/lib/remote-terminal-server';
 import { getStatusManager } from './src/lib/status-manager';
 import { ensureHookSettings, removePortFile } from './src/lib/hook-settings';
 import { getCliToken } from './src/lib/cli-token';
@@ -46,7 +47,7 @@ const verifyWebSocketAuth = async (request: IncomingMessage): Promise<boolean> =
   return !!(await verifySessionToken(value));
 };
 
-const WS_PATHS = new Set(['/api/terminal', '/api/timeline', '/api/sync', '/api/status', '/api/install', '/api/v2/terminal']);
+const WS_PATHS = new Set(['/api/terminal', '/api/timeline', '/api/sync', '/api/status', '/api/install', '/api/v2/terminal', '/api/remote/terminal']);
 
 const createWsServers = () => {
   const wss = new WebSocketServer({ noServer: true });
@@ -64,6 +65,9 @@ const createWsServers = () => {
   const installWss = new WebSocketServer({ noServer: true });
   installWss.on('connection', handleInstallConnection);
 
+  const remoteTerminalWss = new WebSocketServer({ noServer: true });
+  remoteTerminalWss.on('connection', handleRemoteTerminalConnection);
+
   const runtimeTerminalWss = new WebSocketServer({ noServer: true });
   runtimeTerminalWss.on('connection', (ws: import('ws').WebSocket, _request: IncomingMessage, context: unknown) => {
     void handleRuntimeTerminalConnection(
@@ -73,11 +77,11 @@ const createWsServers = () => {
     );
   });
 
-  return { wss, timelineWss, syncWss, statusWss, installWss, runtimeTerminalWss };
+  return { wss, timelineWss, syncWss, statusWss, installWss, remoteTerminalWss, runtimeTerminalWss };
 };
 
 const handleWsUpgrade = (
-  { wss, timelineWss, syncWss, statusWss, installWss }: ReturnType<typeof createWsServers>,
+  { wss, timelineWss, syncWss, statusWss, installWss, remoteTerminalWss }: ReturnType<typeof createWsServers>,
   request: IncomingMessage,
   socket: import('stream').Duplex,
   head: Buffer,
@@ -103,6 +107,10 @@ const handleWsUpgrade = (
   } else if (url.pathname === '/api/install') {
     installWss.handleUpgrade(request, socket, head, (ws) => {
       installWss.emit('connection', ws, request);
+    });
+  } else if (url.pathname === '/api/remote/terminal') {
+    remoteTerminalWss.handleUpgrade(request, socket, head, (ws) => {
+      remoteTerminalWss.emit('connection', ws, request);
     });
   }
 };

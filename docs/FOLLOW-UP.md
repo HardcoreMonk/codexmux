@@ -33,6 +33,7 @@
 - 모바일 CODEX 확인 화면: timeline 연결 전에도 terminal preview로 실제 tmux/Codex 출력을 확인할 수 있게 처리.
 - Linux 운영: `systemd --user` 서비스 등록, linger 설정, `HOST=localhost,tailscale,192.168.0.0/16`/`PORT=8122` 운영 문서화.
 - Windows Codex sync 운영: health check, token file, dry-run scan summary, upload/offset resume smoke, source/sourceId filter, remote source summary, 현재 사용자 Scheduled Task wrapper 문서화.
+- Windows terminal bridge: Windows outbound poll/post bridge, `/api/remote/terminal` browser WebSocket relay, `/windows-terminal` UI, source list terminal button, store/URL unit tests.
 - permission prompt smoke 자동화: 임시 server/HOME/tmux tab에서 `needs-input` push, option parsing, stdin 선택, ack 이후 `busy` 복귀 검증.
 
 ## 릴리스 전 확인
@@ -57,6 +58,7 @@
 | Android first-run launcher | 통과 | `CODEXMUX_ANDROID_CLEAR_APP_DATA=1 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=1 corepack pnpm smoke:android:foreground`, `/login` 첫 실행 console 0/logcat 0 |
 | stats/daily report | 통과 | stats overview/list 200, `2026-05-03` daily report generate 200 |
 | Windows sync | 통과 | temp server upload/offset resume smoke 통과, Windows 실기기 sync/query 정상, live `/api/remote/codex/sources` 1 source/248 sessions 및 remote session list 200 확인 |
+| Windows terminal bridge | 개발 완료, 실기기 대기 | remote terminal store/URL tests 통과, `/windows-terminal` UI와 bridge script 추가; Windows 실기기 입력/출력/resize smoke 필요 |
 | permission prompt | 통과 | `corepack pnpm smoke:permission`, 임시 server/HOME/tmux tab에서 `needs-input` push, option parsing, stdin 선택, ack 이후 `busy` 복귀 |
 | 장시간 reconnect | 부분 통과 | foreground smoke는 통과; 수십 분 이상 background와 반복 reconnect는 남음 |
 
@@ -64,8 +66,8 @@ P0/P1/P2/P3 후속 상태:
 
 - P0 완료: Android Tailscale Serve HTTPS 접속, failure recovery 반복, foreground reconnect, fresh app data clear first-run, app info bridge 확인, login route console noise 제거, permission prompt status/tmux E2E smoke 자동화.
 - P0 남음: 자동 개발로 처리 가능한 code/runtime blocking 항목은 없음. 실제 기기/OS가 필요한 장시간/외부 smoke는 P1 운영 검증으로 남긴다.
-- P1 완료: Android foreground/recovery/runtime v2 smoke, app info/native restart smoke, Electron attach/runtime v2 smoke, Electron packaged `.app` launch hook for smoke scripts, PWA/iPad readiness smoke, permission prompt smoke, Windows companion temp upload smoke, Windows 실기기 sync/query smoke, package scripts.
-- P1 남음: Android logged-in session 수십 분 background/reconnect와 input draft 보존, active terminal WebSocket settle 증거, 실제 Codex CLI permission prompt 재현 smoke, macOS packaged `.app` Finder 실행/Gatekeeper UX, Windows Scheduled Task 장시간 restart/log/token 권한 관찰, 실제 iPad Safari/Home Screen 장시간 foreground reconnect smoke.
+- P1 완료: Android foreground/recovery/runtime v2 smoke, app info/native restart smoke, Electron attach/runtime v2 smoke, Electron packaged `.app` launch hook for smoke scripts, PWA/iPad readiness smoke, permission prompt smoke, Windows companion temp upload smoke, Windows 실기기 sync/query smoke, Windows terminal bridge 개발, package scripts.
+- P1 남음: Android logged-in session 수십 분 background/reconnect와 input draft 보존, active terminal WebSocket settle 증거, 실제 Codex CLI permission prompt 재현 smoke, macOS packaged `.app` Finder 실행/Gatekeeper UX, Windows terminal bridge 실기기 입력/출력/resize smoke, Windows Scheduled Task 장시간 restart/log/token 권한 관찰, 실제 iPad Safari/Home Screen 장시간 foreground reconnect smoke.
 - P2 남음: packaged Electron foreground/reconnect를 Mac 화면 세션에서 evidence로 보존, runtime v2 timeline/status/storage parity surface별 cutover evidence, release workflow/CI에서 선택 실행할 Android/Electron smoke artifact 보존.
 - P3 남음: Android release signing/AAB 운영, approval queue, lifecycle control UI, perf tuning.
 
@@ -86,8 +88,9 @@ P0/P1/P2/P3 후속 상태:
 15. 설치/upgrade: `npx codexmux`, global install, 기존 `~/.codexmux` 유지 확인.
 16. release metadata: `corepack pnpm release:patch|minor|major`, changelog, release workflow artifact 확인.
 17. Windows sync smoke test: `corepack pnpm smoke:windows-sync`로 temp server upload, dry-run, offset resume, source filter, remote source summary를 먼저 확인한다. Windows 실기기 sync/query는 live server에서 `AMD_5800X / pwsh` source와 remote session list로 확인했다. 남은 운영 관찰은 Scheduled Task 장시간 restart result, log rotation 필요성, token file 권한이다.
-18. Runtime v2 cutover readiness: `docs/RUNTIME-V2-CUTOVER.md`와 `docs/RUNTIME-V2-PARITY.md`의 phase gate, rollback flag, temp HOME/DB smoke를 release candidate commit 기준으로 확인한다. Phase 2 terminal gate는 `corepack pnpm smoke:runtime-v2:phase2`로 browser reload/server restart/mode-off rollback을 먼저 통과시킨 뒤 `corepack pnpm smoke:electron:runtime-v2`와 `corepack pnpm smoke:android:runtime-v2`의 page-context attach/output/reconnect, systemd 검증 증거를 추가한다. packaged Electron은 `CODEXMUX_ELECTRON_APP_PATH=<release/.../codexmux.app> CODEXMUX_ELECTRON_WINDOW_FOREGROUND_CYCLES=1 corepack pnpm smoke:electron:runtime-v2`로 CLI smoke를 먼저 통과시키고, Finder/Gatekeeper UX는 Mac 화면 세션 smoke로 별도 확인한다.
-19. Browser reconnect DOM smoke: Playwright Chromium으로 `session-not-found` 복구 overlay와 floating reconnect control 중복 렌더링이 없는지 실제 pointer 동작까지 확인하는 e2e spec을 추가한다.
+18. Windows terminal bridge smoke test: Windows 기기에서 `corepack pnpm windows:terminal-bridge -- --source-id <sourceId>`를 실행하고 Browser `/windows-terminal?sourceId=<sourceId>`에서 `pwd`, `Get-Location`, `node --version`, resize, reconnect를 확인한다. 이 bridge는 별도 `pwsh` session 제어이며 기존 Windows Terminal process attach는 범위 밖이다.
+19. Runtime v2 cutover readiness: `docs/RUNTIME-V2-CUTOVER.md`와 `docs/RUNTIME-V2-PARITY.md`의 phase gate, rollback flag, temp HOME/DB smoke를 release candidate commit 기준으로 확인한다. Phase 2 terminal gate는 `corepack pnpm smoke:runtime-v2:phase2`로 browser reload/server restart/mode-off rollback을 먼저 통과시킨 뒤 `corepack pnpm smoke:electron:runtime-v2`와 `corepack pnpm smoke:android:runtime-v2`의 page-context attach/output/reconnect, systemd 검증 증거를 추가한다. packaged Electron은 `CODEXMUX_ELECTRON_APP_PATH=<release/.../codexmux.app> CODEXMUX_ELECTRON_WINDOW_FOREGROUND_CYCLES=1 corepack pnpm smoke:electron:runtime-v2`로 CLI smoke를 먼저 통과시키고, Finder/Gatekeeper UX는 Mac 화면 세션 smoke로 별도 확인한다.
+20. Browser reconnect DOM smoke: Playwright Chromium으로 `session-not-found` 복구 overlay와 floating reconnect control 중복 렌더링이 없는지 실제 pointer 동작까지 확인하는 e2e spec을 추가한다.
 
 ## Post-MVP 백로그
 

@@ -1,12 +1,14 @@
 import { nanoid } from 'nanoid';
 import { resolveTabRuntimeVersion } from '@/lib/runtime/terminal-mode';
 
-export type TTerminalWebSocketEndpoint = '/api/terminal' | '/api/v2/terminal';
+export type TTerminalWebSocketEndpoint = '/api/terminal' | '/api/v2/terminal' | '/api/remote/terminal';
 
 export interface ITerminalWebSocketPathInput {
   endpoint: TTerminalWebSocketEndpoint;
   clientId: string;
   sessionName: string;
+  sourceId?: string;
+  terminalId?: string;
   cols?: number;
   rows?: number;
 }
@@ -63,12 +65,19 @@ export const buildTerminalWebSocketPath = ({
   endpoint,
   clientId,
   sessionName,
+  sourceId,
+  terminalId,
   cols,
   rows,
 }: ITerminalWebSocketPathInput): string => {
   const params = new URLSearchParams();
   params.set('clientId', clientId);
-  params.set('session', sessionName);
+  if (endpoint === '/api/remote/terminal') {
+    if (sourceId) params.set('sourceId', sourceId);
+    if (terminalId) params.set('terminalId', terminalId);
+  } else {
+    params.set('session', sessionName);
+  }
   if (cols && rows) {
     params.set('cols', String(cols));
     params.set('rows', String(rows));

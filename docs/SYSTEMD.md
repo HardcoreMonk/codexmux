@@ -101,7 +101,7 @@ curl -sS http://127.0.0.1:8122/api/health
 
 ## 빌드와 재시작
 
-소스 체크아웃을 기준으로 실행하지만, 프로덕션 서비스는 `src/` 파일을 직접 로드하지 않는다. `bin/codexmux.js`는 빌드 산출물인 `dist/server.js`와 Next.js standalone/static asset을 실행하므로 서버, timeline parser, dedupe, API, 배포 관련 코드를 바꾼 뒤에는 production build를 갱신한 다음 서비스를 재시작한다.
+소스 체크아웃을 기준으로 실행하지만, 프로덕션 서비스는 `src/` 파일을 직접 로드하지 않는다. `bin/codexmux.js`는 빌드 산출물인 `dist/server.js`와 Next.js standalone/static asset을 실행하므로 서버, WebSocket route, timeline parser, dedupe, API, remote terminal bridge, 배포 관련 코드를 바꾼 뒤에는 production build를 갱신한 다음 서비스를 재시작한다.
 
 ```bash
 corepack pnpm deploy:local
@@ -109,6 +109,8 @@ curl -fsS http://127.0.0.1:8122/api/health
 ```
 
 `deploy:local`은 `corepack pnpm build`, `systemctl --user restart codexmux.service`, health check를 한 번에 실행한다. 정상 응답은 `app`, `version`, `commit`, `buildTime`을 포함한다. 브라우저가 이전 hashed chunk를 들고 있으면 UI 동작이 오래된 것처럼 보일 수 있으므로, 배포 후에도 타임라인 표시가 예전과 같으면 페이지를 새로고침한다. 이미 화면에 쌓인 중복 메시지는 새 parser로 초기 snapshot을 다시 읽을 때 정규화된다.
+
+remote terminal bridge 상태는 server process memory에 있으므로 서비스 재시작 직후 `/api/remote/terminal/sources`가 비어 보일 수 있다. Windows sidecar가 다음 register/poll 주기에 다시 등록하면 `/windows-terminal` 목록과 session list의 Windows terminal 버튼이 복구된다.
 
 `corepack pnpm build:electron`처럼 `.next/standalone`을 다시 만드는 명령을 live checkout에서 실행하면 실행 중인 service process의 cwd가 삭제된 standalone directory를 가리킬 수 있다. 현재 server는 `__CMUX_APP_DIR` 기준으로 build info와 daily report child cwd를 보정하지만, 운영 상태를 깔끔하게 유지하려면 Electron build smoke 뒤에 `corepack pnpm deploy:local`로 service cwd를 정상화한다.
 
