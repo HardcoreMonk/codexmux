@@ -36,6 +36,37 @@ export const selectElectronPageTarget = (targets, expectedUrl) => {
 
 const quoteShellArg = (value) => `'${String(value).replace(/'/g, "'\\''")}'`;
 
+export const normalizeElectronReconnectRounds = (raw, fallback = 2) => {
+  if (raw === undefined || raw === null || raw === '') return fallback;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(0, Math.min(10, Math.floor(parsed)));
+};
+
+export const buildElectronRuntimeV2ReconnectRounds = ({
+  baseMarker,
+  reconnectRounds = 2,
+}) => {
+  const markerPrefix = String(baseMarker || 'electron-runtime-v2');
+  const rounds = [
+    {
+      label: 'initial',
+      marker: `${markerPrefix}-initial`,
+      reloadBefore: false,
+    },
+  ];
+
+  for (let i = 1; i <= normalizeElectronReconnectRounds(reconnectRounds); i += 1) {
+    rounds.push({
+      label: `reconnect-${i}`,
+      marker: `${markerPrefix}-reconnect-${i}`,
+      reloadBefore: true,
+    });
+  }
+
+  return rounds;
+};
+
 export const buildElectronRuntimeV2EvalScript = ({
   sessionName,
   marker,

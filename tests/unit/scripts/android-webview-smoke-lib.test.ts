@@ -73,6 +73,28 @@ describe('Android WebView smoke helpers', () => {
     expect(collectBlockingConsoleEvents(events)).toEqual([]);
   });
 
+  it('ignores the known Next dev HMR static indicator warning', async () => {
+    const { collectBlockingConsoleEvents } = await loadLib();
+    const events = [
+      {
+        source: 'console',
+        type: 'warning',
+        text: '[HMR] Invalid message: {"type":"isrManifest"}\nTypeError: Cannot read properties of undefined (reading \'components\')\n    at handleStaticIndicator',
+        url: 'http://127.0.0.1:8122/_next/static/chunks/node_modules_next_dist_client.js',
+      },
+      {
+        source: 'console',
+        type: 'error',
+        text: "Cannot read properties of undefined (reading 'triggerEvent')",
+        url: 'http://127.0.0.1:8122/_next/static/chunks/app.js',
+      },
+    ];
+
+    expect(collectBlockingConsoleEvents(events).map((event: { text: string }) => event.text)).toEqual([
+      "Cannot read properties of undefined (reading 'triggerEvent')",
+    ]);
+  });
+
   it('collects matching logcat lines without failing unrelated Chromium logs', async () => {
     const { collectBlockingLogcatLines } = await loadLib();
     const logcat = [

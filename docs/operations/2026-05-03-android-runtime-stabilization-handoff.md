@@ -30,7 +30,7 @@
 | `corepack pnpm tsc --noEmit` | passed |
 | `corepack pnpm build:electron` | passed |
 | `corepack pnpm smoke:electron:attach` | live server attach, Electron preload bridge, page reload, blocking console 0 |
-| `corepack pnpm smoke:electron:runtime-v2` | temp runtime v2 server, Electron page-context `/api/v2/terminal` cookie-auth attach, marker output |
+| `corepack pnpm smoke:electron:runtime-v2` | temp runtime v2 server, Electron page-context `/api/v2/terminal` cookie-auth attach, initial + 2회 page reload/reconnect marker output |
 | Mac M1 `pnpm pack:electron:dev` | passed, arm64/x64 DMG and zip artifacts created; native binding, app arch, Info.plist, and `hdiutil verify` passed |
 | `corepack pnpm smoke:runtime-v2:phase2` | passed |
 | `corepack pnpm smoke:android:install` | passed, `versionName=0.3.3`, `versionCode=303` |
@@ -48,8 +48,8 @@
 
 - 실제 Codex CLI가 만든 permission prompt 재현 smoke는 P1에 남긴다. codexmux의 status/tmux/API/stdin 경로는 `smoke:permission`으로 검증했다.
 - Android logged-in session 장시간 background, 반복 foreground reconnect, input draft 보존은 수십 분 이상 smoke 증거가 더 필요하다. `/login` surface 60초 background smoke는 통과했고, `smoke:android:foreground`는 `CODEXMUX_ANDROID_BACKGROUND_MS`와 `CODEXMUX_ANDROID_FOREGROUND_ROUNDS`로 강도를 올려 실행할 수 있다.
-- Runtime v2는 Phase 2 gate와 Electron page-context `/api/v2/terminal` attach/output이 통과했지만 Android WebView가 실제 `/api/v2/terminal` tab에 attach하는 foreground smoke는 아직 별도 항목이다.
-- Electron은 `build:electron`, live attach smoke, runtime v2 page-context attach/output, Mac M1 `pack:electron:dev` 산출물 검증까지 통과했다. Electron foreground/reconnect 반복과 SSH 세션의 macOS GUI launch domain 제한 때문에 막힌 Finder 더블클릭 실행/Gatekeeper UX는 별도로 확인한다.
+- Runtime v2는 Phase 2 gate와 Electron page-context `/api/v2/terminal` attach/output/reconnect가 통과했지만 Android WebView가 실제 `/api/v2/terminal` tab에 attach하는 foreground smoke는 아직 별도 항목이다.
+- Electron은 `build:electron`, live attach smoke, runtime v2 page-context attach/output/reconnect, Mac M1 `pack:electron:dev` 산출물 검증까지 통과했다. SSH 세션의 macOS GUI launch domain 제한 때문에 막힌 Finder 더블클릭 실행/Gatekeeper UX와 packaged OS-level foreground UX는 별도로 확인한다.
 - Windows는 Linux dry-run만 통과했다. 실제 Windows Scheduled Task `Install -RunNow`, `Status`, `RunOnce`와 장시간 sync log/token 권한 확인이 필요하다.
 - iPad Safari/Home Screen foreground reconnect는 Android와 별도로 확인해야 한다.
 

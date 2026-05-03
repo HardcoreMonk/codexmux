@@ -59,4 +59,27 @@ describe('Electron smoke helpers', () => {
     expect(commandMatch).not.toBeNull();
     expect(JSON.parse(commandMatch?.[1] ?? 'null')).toBe("printf '%s\\n' 'electron-v2-'\\''marker'\r");
   });
+
+  it('builds reconnect smoke rounds after the initial attach', async () => {
+    const { buildElectronRuntimeV2ReconnectRounds } = await loadLib();
+
+    expect(buildElectronRuntimeV2ReconnectRounds({
+      baseMarker: 'electron-v2',
+      reconnectRounds: 2,
+    })).toEqual([
+      { label: 'initial', marker: 'electron-v2-initial', reloadBefore: false },
+      { label: 'reconnect-1', marker: 'electron-v2-reconnect-1', reloadBefore: true },
+      { label: 'reconnect-2', marker: 'electron-v2-reconnect-2', reloadBefore: true },
+    ]);
+  });
+
+  it('normalizes reconnect round counts', async () => {
+    const { normalizeElectronReconnectRounds } = await loadLib();
+
+    expect(normalizeElectronReconnectRounds(undefined)).toBe(2);
+    expect(normalizeElectronReconnectRounds('0')).toBe(0);
+    expect(normalizeElectronReconnectRounds('3')).toBe(3);
+    expect(normalizeElectronReconnectRounds('999')).toBe(10);
+    expect(normalizeElectronReconnectRounds('nope')).toBe(2);
+  });
 });

@@ -78,9 +78,16 @@ const consoleEventText = (event) =>
     .filter(Boolean)
     .join(' ');
 
+const isNextDevHmrStaticIndicatorWarning = (event, text) =>
+  event?.type === 'warning'
+  && text.includes('[HMR] Invalid message:')
+  && text.includes('handleStaticIndicator')
+  && text.includes('/_next/static/chunks/');
+
 export const collectBlockingConsoleEvents = (events, patterns = DEFAULT_BLOCKING_CONSOLE_PATTERNS) =>
   events.filter((event) => {
     const text = consoleEventText(event);
+    if (isNextDevHmrStaticIndicatorWarning(event, text)) return false;
     if (BLOCKING_WEBSOCKET_RE.test(text) && event?.type !== 'error') return false;
     return patterns.some((pattern) => pattern.test(text));
   });

@@ -44,8 +44,8 @@
 | --- | --- | --- |
 | live deploy/systemd | 통과 | `deploy:local`, `/api/health` `version=0.3.3`, service `ActiveState=active`, `WorkingDirectory=/data/projects/codex-zone/codexmux`, journal restart 이후 오류 없음 |
 | build/type/unit | 통과 | `tsc --noEmit`, targeted unit 5 files/25 tests, `deploy:local` build |
-| Electron build/attach/runtime v2/package | 통과 | `corepack pnpm build:electron`, `corepack pnpm smoke:electron:attach`, `corepack pnpm smoke:electron:runtime-v2`, Mac M1 `pnpm pack:electron:dev`, arm64/x64 DMG/zip 생성, native binding/arch/Info.plist/`hdiutil verify` 통과 |
-| runtime v2 phase2 gate | 통과 | `corepack pnpm smoke:runtime-v2:phase2` browser reload/server restart/mode-off rollback, Electron page-context `/api/v2/terminal` cookie-auth attach/output |
+| Electron build/attach/runtime v2/package | 통과 | `corepack pnpm build:electron`, `corepack pnpm smoke:electron:attach`, `corepack pnpm smoke:electron:runtime-v2`, initial + 2회 page reload/reconnect `/api/v2/terminal` marker output, Mac M1 `pnpm pack:electron:dev`, arm64/x64 DMG/zip 생성, native binding/arch/Info.plist/`hdiutil verify` 통과 |
+| runtime v2 phase2 gate | 통과 | `corepack pnpm smoke:runtime-v2:phase2` browser reload/server restart/mode-off rollback, Electron page-context `/api/v2/terminal` cookie-auth attach/output/reconnect |
 | Android debug install | 통과 | `versionName=0.3.3`, `versionCode=303`, `MainActivity` |
 | Android Tailscale failure recovery | 통과 | `corepack pnpm smoke:android:recovery`, network/HTTP 4xx/SSL 실패 후 launcher 복귀와 `/login` 재연결, blocking console/logcat 0 |
 | Android foreground reconnect | 통과 | `corepack pnpm smoke:android:foreground`, 2회 background/foreground, `triggerEvent`/TypeError 0, blocking console/logcat 0 |
@@ -63,7 +63,7 @@ P0/P1/P2/P3 후속 상태:
 - P0 남음: 자동 개발로 처리 가능한 code/runtime blocking 항목은 없음. 실제 기기/OS가 필요한 장시간/외부 smoke는 P1 운영 검증으로 남긴다.
 - P1 완료: Android foreground/recovery smoke, app info/native restart smoke, Electron attach/runtime v2 smoke, permission prompt smoke, package scripts.
 - P1 남음: Android logged-in session 수십 분 background/reconnect와 input draft 보존, 실제 Codex CLI permission prompt 재현 smoke, macOS packaged `.app` Finder 실행/Gatekeeper UX, 실제 Windows Scheduled Task smoke, iPad Safari/Home Screen smoke.
-- P2 남음: Android 실제 `/api/v2/terminal` foreground reconnect, Electron `/api/v2/terminal` foreground/reconnect 반복, runtime v2 timeline/status/storage parity surface별 cutover evidence, release workflow/CI에서 선택 실행할 Android/Electron smoke artifact 보존.
+- P2 남음: Android 실제 `/api/v2/terminal` foreground reconnect, packaged Electron OS-level foreground/reconnect UX, runtime v2 timeline/status/storage parity surface별 cutover evidence, release workflow/CI에서 선택 실행할 Android/Electron smoke artifact 보존.
 - P3 남음: Android release signing/AAB 운영, approval queue, lifecycle control UI, perf tuning.
 
 1. 장시간 Codex smoke test: 새 tab 생성, prompt 실행, tool call과 reasoning summary 표시, 상태 전이 확인.
@@ -83,7 +83,7 @@ P0/P1/P2/P3 후속 상태:
 15. 설치/upgrade: `npx codexmux`, global install, 기존 `~/.codexmux` 유지 확인.
 16. release metadata: `corepack pnpm release:patch|minor|major`, changelog, release workflow artifact 확인.
 17. Windows sync smoke test: Windows에서 Scheduled Task `Install -RunNow`, `Status`, `RunOnce` dry-run, source filter, remote source summary, 오래된 date dir full scan 동작 확인.
-18. Runtime v2 cutover readiness: `docs/RUNTIME-V2-CUTOVER.md`와 `docs/RUNTIME-V2-PARITY.md`의 phase gate, rollback flag, temp HOME/DB smoke를 release candidate commit 기준으로 확인한다. Phase 2 terminal gate는 `corepack pnpm smoke:runtime-v2:phase2`로 browser reload/server restart/mode-off rollback을 먼저 통과시킨 뒤 `corepack pnpm smoke:electron:runtime-v2`의 Electron page-context attach/output, Electron foreground/reconnect 반복, Android foreground reconnect, systemd 검증 증거를 추가한다.
+18. Runtime v2 cutover readiness: `docs/RUNTIME-V2-CUTOVER.md`와 `docs/RUNTIME-V2-PARITY.md`의 phase gate, rollback flag, temp HOME/DB smoke를 release candidate commit 기준으로 확인한다. Phase 2 terminal gate는 `corepack pnpm smoke:runtime-v2:phase2`로 browser reload/server restart/mode-off rollback을 먼저 통과시킨 뒤 `corepack pnpm smoke:electron:runtime-v2`의 Electron page-context attach/output/reconnect, Android foreground reconnect, systemd 검증 증거를 추가한다. packaged Electron OS-level foreground UX는 Mac 화면 세션 smoke로 별도 확인한다.
 
 ## Post-MVP 백로그
 

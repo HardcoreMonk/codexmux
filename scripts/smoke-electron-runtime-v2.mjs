@@ -15,9 +15,11 @@ import {
   waitFor,
 } from './android-webview-smoke-lib.mjs';
 import {
+  buildElectronRuntimeV2ReconnectRounds,
   buildElectronRuntimeV2EvalScript,
   buildElectronSmokeArgs,
   normalizeElectronSmokeUrl,
+  normalizeElectronReconnectRounds,
   selectElectronPageTarget,
 } from './electron-smoke-lib.mjs';
 import {
@@ -53,6 +55,7 @@ const startServer = async ({ homeDir, dbPath, port }) => {
   const env = {
     ...process.env,
     HOME: homeDir,
+    NEXT_TELEMETRY_DISABLED: '1',
     SHELL: '/bin/sh',
     CODEXMUX_RUNTIME_V2: '1',
     CODEXMUX_RUNTIME_TERMINAL_V2_MODE: 'new-tabs',
@@ -175,6 +178,14 @@ const waitForElectronPage = (cdp, baseUrl, timeoutMs) =>
     return state.origin === new URL(baseUrl).origin && state.readyState === 'complete' ? state : null;
   }, timeoutMs);
 
+const reloadElectronPageForReconnect = async (cdp, baseUrl, timeoutMs) => {
+  await cdp.send('Page.bringToFront').catch(() => null);
+  await cdp.send('Page.reload', { ignoreCache: true });
+  const state = await waitForElectronPage(cdp, baseUrl, timeoutMs);
+  await cdp.send('Page.bringToFront').catch(() => null);
+  return state;
+};
+
 const main = async () => {
   const homeDir = process.env.CODEXMUX_ELECTRON_RUNTIME_V2_HOME
     || await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-electron-runtime-v2-'));
@@ -183,6 +194,7 @@ const main = async () => {
   const serverPort = Number(process.env.CODEXMUX_ELECTRON_RUNTIME_V2_PORT || await getFreePort());
   const remoteDebuggingPort = Number(process.env.CODEXMUX_ELECTRON_DEVTOOLS_PORT || await getFreePort());
   const timeoutMs = Number(process.env.CODEXMUX_ELECTRON_SMOKE_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
+  const reconnectRounds = normalizeElectronReconnectRounds(process.env.CODEXMUX_ELECTRON_RUNTIME_V2_RECONNECT_ROUNDS);
   const checks = [];
   let server = null;
   let electron = null;
@@ -238,7 +250,8 @@ const main = async () => {
     });
     electron = startedElectron.electron;
     cdp = await connectCdp(startedElectron.target.webSocketDebuggerUrl);
-    attachConsoleCollectors(cdp, []);
+    const consoleEvents = [];
+    attachConsoleCollectors(cdp, consoleEvents);
     await enableCdpDomains(cdp);
     await waitForElectronPage(cdp, baseUrl, timeoutMs);
     await setElectronCookie(cdp, baseUrl, cookie);
@@ -250,20 +263,29 @@ const main = async () => {
     if (!pageAuth.ok || !pageAuth.hasRoot) throw new Error(`Electron page cookie auth failed: ${JSON.stringify(pageAuth)}`);
     checks.push('electron-page-auth');
 
-    const marker = `electron-runtime-v2-ok-${Date.now()}`;
-    const result = await evaluate(cdp, buildElectronRuntimeV2EvalScript({
-      sessionName: runtimeTab.sessionName,
-      marker,
-      cols: 100,
-      rows: 30,
-    }));
-    if (!result?.output?.includes(marker) || !String(result.url).includes('/api/v2/terminal')) {
-      throw new Error(`Electron runtime v2 marker missing: ${JSON.stringify(result)}`);
+    const rounds = buildElectronRuntimeV2ReconnectRounds({
+      baseMarker: `electron-runtime-v2-ok-${Date.now()}`,
+      reconnectRounds,
+    });
+    const markers = [];
+    for (const round of rounds) {
+      if (round.reloadBefore) {
+        await reloadElectronPageForReconnect(cdp, baseUrl, timeoutMs);
+        checks.push(`electron-page-reload-${round.label}`);
+      }
+      const result = await evaluate(cdp, buildElectronRuntimeV2EvalScript({
+        sessionName: runtimeTab.sessionName,
+        marker: round.marker,
+        cols: 100,
+        rows: 30,
+      }));
+      if (!result?.output?.includes(round.marker) || !String(result.url).includes('/api/v2/terminal')) {
+        throw new Error(`Electron runtime v2 marker missing for ${round.label}: ${JSON.stringify(result)}`);
+      }
+      markers.push({ label: round.label, marker: round.marker });
+      checks.push(`electron-v2-terminal-ws-${round.label}`);
     }
-    checks.push('electron-v2-terminal-ws');
 
-    const consoleEvents = [];
-    attachConsoleCollectors(cdp, consoleEvents);
     await sleep(1_000);
     const blockingConsole = collectBlockingConsoleEvents(consoleEvents);
     if (blockingConsole.length > 0) throw new Error(`blocking Electron console events: ${JSON.stringify(blockingConsole.slice(0, 20))}`);
@@ -281,8 +303,9 @@ const main = async () => {
       tabId: runtimeTab.id,
       sessionName: runtimeTab.sessionName,
       runtimeVersion: runtimeTab.runtimeVersion,
+      reconnectRounds,
       checks,
-      marker,
+      markers,
     }, null, 2));
   } catch (err) {
     if (server) console.error(server.getOutput().slice(-4000));
