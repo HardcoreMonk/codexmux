@@ -2,8 +2,9 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { nanoid } from 'nanoid';
-import { listSessions, killSession } from '@/lib/tmux';
+import { listSessions } from '@/lib/tmux';
 import { createLogger } from '@/lib/logger';
+import { cleanupTabSession } from '@/lib/tab-session-cleanup';
 import { broadcastSync } from '@/lib/sync-server';
 import {
   readLayoutFile,
@@ -331,7 +332,7 @@ export const deleteWorkspace = async (workspaceId: string): Promise<boolean> =>
       const tabs = collectAllTabs(layout.root);
       for (const tab of tabs) {
         try {
-          await killSession(tab.sessionName);
+          await cleanupTabSession(tab);
         } catch {}
       }
     }

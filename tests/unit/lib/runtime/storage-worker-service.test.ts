@@ -139,6 +139,45 @@ describe('storage worker service', () => {
     });
   });
 
+  it('handles legacy workspace pane mirror commands', async () => {
+    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+
+    const ensured = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.ensure-workspace-pane',
+      payload: {
+        workspaceId: 'ws-legacy',
+        paneId: 'pane-legacy',
+        name: 'Legacy',
+        defaultCwd: dir,
+      },
+    }));
+
+    expect(ensured.ok).toBe(true);
+    expect(ensured.payload).toEqual({ workspaceId: 'ws-legacy', paneId: 'pane-legacy' });
+
+    const pending = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.create-pending-terminal-tab',
+      payload: {
+        id: 'tab-runtime',
+        workspaceId: 'ws-legacy',
+        paneId: 'pane-legacy',
+        sessionName: 'rtv2-ws-legacy-pane-legacy-tab-runtime',
+        cwd: dir,
+      },
+    }));
+
+    expect(pending.ok).toBe(true);
+    expect(pending.payload).toEqual(expect.objectContaining({
+      id: 'tab-runtime',
+      runtimeVersion: 2,
+      lifecycleState: 'pending_terminal',
+    }));
+  });
+
   it('rejects terminal tab intents for panes outside the supplied workspace', async () => {
     const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
     const created = await service.handleCommand(createRuntimeCommand({

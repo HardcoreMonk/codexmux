@@ -89,10 +89,12 @@ Goal: let selected users create new terminal tabs through v2 while legacy tabs s
 Work:
 
 - Add UI/server routing that chooses v2 only for newly created terminal tabs when `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=new-tabs`.
-- Keep existing `pt-` sessions and legacy layout untouched.
+- Keep existing `pt-` sessions and legacy JSON layout as the UI source of truth.
 - Make tab identity explicit in UI state: `runtimeVersion: 1 | 2`.
 - Parse `CODEXMUX_RUNTIME_TERMINAL_V2_MODE` through `src/lib/runtime/terminal-mode.ts`; unknown values fail closed to `off`.
 - Ensure close/delete uses the matching runtime cleanup path.
+- In the first new-tabs slice, route only plain terminal tab creation through v2. Codex, diff, web-browser, resume, and command-start tabs remain legacy.
+- Mirror the legacy workspace/pane id into runtime v2 storage, then append the returned `rtv2-` tab back into legacy JSON layout with `runtimeVersion: 2`.
 - Extend smoke to include web stdin, heartbeat, backpressure close, mobile foreground reconnect, and Electron/Android cookie auth.
 
 Exit gate:

@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import { resolveTabRuntimeVersion } from '@/lib/runtime/terminal-mode';
 
 export type TTerminalWebSocketEndpoint = '/api/terminal' | '/api/v2/terminal';
 
@@ -82,3 +83,6 @@ export const buildTerminalWebSocketUrl = (input: ITerminalWebSocketUrlInput): st
   url.protocol = locationValue.protocol === 'https:' ? 'wss:' : 'ws:';
   return url.toString();
 };
+
+export const resolveTerminalWebSocketEndpoint = (tab: { runtimeVersion?: unknown } | null | undefined): TTerminalWebSocketEndpoint =>
+  resolveTabRuntimeVersion(tab ?? {}) === 2 ? '/api/v2/terminal' : '/api/terminal';

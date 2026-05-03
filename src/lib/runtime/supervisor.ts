@@ -7,6 +7,8 @@ import type {
   IRuntimeDeleteTerminalTabStorageResult,
   IRuntimeDeleteWorkspaceResult,
   IRuntimeDeleteWorkspaceStorageResult,
+  IRuntimeEnsureWorkspacePaneInput,
+  IRuntimeEnsureWorkspacePaneResult,
   IRuntimeHealth,
   IRuntimeStatusNotificationPolicyInput,
   IRuntimeStatusNotificationPolicyResult,
@@ -49,7 +51,15 @@ export interface IRuntimeSupervisor {
   reduceStatusHookState(input: TRuntimeStatusHookStateInput): Promise<TRuntimeStatusHookDecision>;
   reduceStatusCodexState(input: TRuntimeStatusCodexStateInput): Promise<TRuntimeStatusDecision>;
   evaluateStatusNotificationPolicy(input: IRuntimeStatusNotificationPolicyInput): Promise<IRuntimeStatusNotificationPolicyResult>;
-  createTerminalTab(input: { workspaceId: string; paneId: string; cwd: string }): Promise<IRuntimeTerminalTab>;
+  createTerminalTab(input: {
+    workspaceId: string;
+    paneId: string;
+    cwd: string;
+    ensureWorkspacePane?: {
+      workspaceName: string;
+      defaultCwd: string;
+    };
+  }): Promise<IRuntimeTerminalTab>;
   getLayout(workspaceId: string): Promise<TRuntimeLayout>;
   attachTerminal(input: {
     sessionName: string;
@@ -544,6 +554,17 @@ export const createRuntimeSupervisorForTest = (
       const { storage, terminal } = getClients();
       const id = tabId();
       const sessionName = sessionNameFor(input.workspaceId, input.paneId, id);
+      if (input.ensureWorkspacePane) {
+        await storage.request<IRuntimeEnsureWorkspacePaneInput, IRuntimeEnsureWorkspacePaneResult>(
+          'storage.ensure-workspace-pane',
+          {
+            workspaceId: input.workspaceId,
+            paneId: input.paneId,
+            name: input.ensureWorkspacePane.workspaceName,
+            defaultCwd: input.ensureWorkspacePane.defaultCwd,
+          },
+        );
+      }
       const storageInput = { ...input, id, sessionName };
       await storage.request<typeof storageInput, { id: string; sessionName: string }>(
         'storage.create-pending-terminal-tab',

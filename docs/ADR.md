@@ -48,6 +48,10 @@
   유지하기 어렵다.
 - Consequences: 첫 구현 slice에서 legacy JSON migration은 요구하지 않는다. 기존 JSON
   store는 유지하고 runtime v2는 parallel experimental state로 동작한다.
+  Phase 2 terminal `new-tabs` 전환 중에는 legacy JSON layout을 UI source of truth로
+  유지하고, plain terminal v2 tab 생성 시 legacy workspace/pane id를 Storage Worker에
+  mirror한 뒤 생성된 `rtv2-` tab을 JSON layout에 `runtimeVersion: 2`로 append한다.
+  이 mirror는 SQLite workspace/layout default ownership 전환이 아니다.
   `better-sqlite3`는 optional dependency이며 lazy load된다. runtime v2가 꺼진
   install/build는 native binding load에 의존하지 않고, runtime v2가 켜졌을 때 binding
   부재는 `runtime-v2-sqlite-unavailable`로 실패한다.

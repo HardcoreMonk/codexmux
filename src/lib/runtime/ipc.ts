@@ -96,6 +96,7 @@ const runtimePendingTerminalTabSchema = z.object({
   workspaceId: z.string(),
   paneId: z.string(),
   cwd: z.string(),
+  runtimeVersion: z.literal(2),
   lifecycleState: z.literal('pending_terminal'),
   createdAt: z.string(),
 });
@@ -106,6 +107,7 @@ const runtimeTerminalTabSchema = z.object({
   order: z.number(),
   cwd: z.string().optional(),
   panelType: z.literal('terminal'),
+  runtimeVersion: z.literal(2),
   lifecycleState: z.union([z.literal('pending_terminal'), z.literal('ready'), z.literal('failed')]),
 });
 const runtimeTerminalSessionSchema = z.object({
@@ -129,6 +131,7 @@ const runtimeLayoutTabSchema = z.object({
   order: z.number(),
   title: z.string().optional(),
   cwd: z.string().optional(),
+  runtimeVersion: z.literal(2),
   panelType: z.union([
     z.literal('terminal'),
     z.literal('codex'),
@@ -169,6 +172,12 @@ const runtimeLayoutSchema = z.object({
 const workspaceIdPayloadSchema = z.object({ workspaceId: z.string().min(1) });
 const terminalTabIdPayloadSchema = z.object({ id: z.string().min(1) });
 const createWorkspacePayloadSchema = z.object({
+  name: z.string().min(1),
+  defaultCwd: z.string().min(1),
+});
+const ensureWorkspacePanePayloadSchema = z.object({
+  workspaceId: z.string().min(1),
+  paneId: z.string().min(1),
   name: z.string().min(1),
   defaultCwd: z.string().min(1),
 });
@@ -252,6 +261,10 @@ const statusEvaluateNotificationPolicyPayloadSchema = z.object({
 export const runtimeCommandRegistry = {
   'storage.health': { payload: emptyPayloadSchema, reply: runtimeHealthReplySchema },
   'storage.create-workspace': { payload: createWorkspacePayloadSchema, reply: runtimeCreateWorkspaceResultSchema },
+  'storage.ensure-workspace-pane': {
+    payload: ensureWorkspacePanePayloadSchema,
+    reply: ensureWorkspacePanePayloadSchema.pick({ workspaceId: true, paneId: true }),
+  },
   'storage.create-pending-terminal-tab': { payload: createPendingTerminalTabPayloadSchema, reply: runtimePendingTerminalTabSchema },
   'storage.finalize-terminal-tab': { payload: tabIdPayloadSchema, reply: runtimeTerminalTabSchema },
   'storage.fail-pending-terminal-tab': { payload: failPendingTerminalTabPayloadSchema, reply: z.object({ ok: z.boolean() }) },

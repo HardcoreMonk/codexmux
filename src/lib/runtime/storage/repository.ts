@@ -2,6 +2,7 @@ import type {
   IRuntimeCreateWorkspaceResult,
   IRuntimeDeleteTerminalTabStorageResult,
   IRuntimeDeleteWorkspaceStorageResult,
+  IRuntimeEnsureWorkspacePaneResult,
   IRuntimePendingTerminalTab,
   IRuntimeTerminalTab,
   IRuntimeWorkspace,
@@ -13,6 +14,13 @@ import type { TRuntimeDatabase } from '@/lib/runtime/storage/schema';
 import type { IPaneNode, ITab } from '@/types/terminal';
 
 export interface ICreateWorkspaceInput {
+  name: string;
+  defaultCwd: string;
+}
+
+export interface IEnsureWorkspacePaneInput {
+  workspaceId: string;
+  paneId: string;
   name: string;
   defaultCwd: string;
 }
@@ -117,6 +125,43 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
 
     recordEvent('workspace', workspaceId, 'workspace.created', input);
     return { id: workspaceId, rootPaneId };
+  });
+
+  const ensureWorkspacePaneTx = db.transaction((input: IEnsureWorkspacePaneInput): IRuntimeEnsureWorkspacePaneResult => {
+    const ts = nowIso();
+    const workspace = db.prepare(`select id from workspaces where id = ?`)
+      .get(input.workspaceId) as { id: string } | undefined;
+    if (!workspace) {
+      const nextOrder = (db.prepare(`
+        select coalesce(max(order_index), -1) + 1 as nextOrder
+        from workspaces
+      `).get() as { nextOrder: number }).nextOrder;
+      db.prepare(`
+        insert into workspaces (id, name, default_cwd, active, order_index, created_at, updated_at)
+        values (?, ?, ?, 0, ?, ?, ?)
+      `).run(input.workspaceId, input.name, input.defaultCwd, nextOrder, ts, ts);
+    }
+
+    const pane = db.prepare(`
+      select workspace_id as workspaceId
+      from panes
+      where id = ?
+    `).get(input.paneId) as { workspaceId: string } | undefined;
+    if (pane && pane.workspaceId !== input.workspaceId) {
+      throw Object.assign(new Error(`runtime v2 pane does not belong to workspace: ${input.paneId}`), {
+        code: 'runtime-v2-pane-workspace-mismatch',
+        retryable: false,
+      });
+    }
+    if (!pane) {
+      db.prepare(`
+        insert into panes (id, workspace_id, node_kind, position, created_at, updated_at)
+        values (?, ?, 'pane', 0, ?, ?)
+      `).run(input.paneId, input.workspaceId, ts, ts);
+    }
+
+    recordEvent('workspace', input.workspaceId, 'workspace.ensure-pane', input);
+    return { workspaceId: input.workspaceId, paneId: input.paneId };
   });
 
   const createPendingTerminalTabTx = db.transaction((input: ICreateTerminalTabInput): IRuntimePendingTerminalTab => {
@@ -286,6 +331,7 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
 
   return {
     createWorkspace: createWorkspaceTx,
+    ensureWorkspacePane: ensureWorkspacePaneTx,
     createPendingTerminalTab: createPendingTerminalTabTx,
     finalizeTerminalTab: finalizeTerminalTabTx,
     failPendingTerminalTab: failPendingTerminalTabTx,

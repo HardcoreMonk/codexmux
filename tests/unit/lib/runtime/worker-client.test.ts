@@ -64,6 +64,36 @@ describe('runtime worker client', () => {
     expect(getRuntimeWorkerDiagnosticsSnapshot().storage.lastHealthAt).toEqual(expect.any(String));
   });
 
+  it('preserves runtime tab identity in successful worker replies', async () => {
+    const child = new FakeChild();
+    const client = new RuntimeWorkerClient({
+      name: 'storage',
+      spawn: () => child as never,
+      requestTimeoutMs: 1000,
+    });
+
+    const pending = client.request('storage.finalize-terminal-tab', { id: 'tab-a' });
+    const sent = child.sent[0] as { id: string };
+    child.emit('message', createRuntimeReply({
+      commandId: sent.id,
+      source: 'storage',
+      target: 'supervisor',
+      type: 'storage.finalize-terminal-tab.reply',
+      ok: true,
+      payload: {
+        id: 'tab-a',
+        sessionName: 'rtv2-ws-a-pane-b-tab-a',
+        name: '',
+        order: 0,
+        panelType: 'terminal',
+        runtimeVersion: 2,
+        lifecycleState: 'ready',
+      },
+    }));
+
+    await expect(pending).resolves.toMatchObject({ id: 'tab-a', runtimeVersion: 2 });
+  });
+
   it('rejects reply envelope correlation mismatches before payload success', async () => {
     const child = new FakeChild();
     const client = new RuntimeWorkerClient({

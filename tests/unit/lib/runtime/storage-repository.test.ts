@@ -93,6 +93,35 @@ describe('runtime storage repository', () => {
     expect(repo.listPendingTerminalTabs()).toEqual([]);
   });
 
+  it('ensures legacy workspace and pane ids before creating v2 terminal tabs', () => {
+    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const repo = createStorageRepository(db);
+
+    expect(repo.ensureWorkspacePane({
+      workspaceId: 'ws-legacy',
+      paneId: 'pane-legacy',
+      name: 'Legacy',
+      defaultCwd: dir,
+    })).toEqual({ workspaceId: 'ws-legacy', paneId: 'pane-legacy' });
+
+    const pending = repo.createPendingTerminalTab({
+      id: 'tab-runtime',
+      workspaceId: 'ws-legacy',
+      paneId: 'pane-legacy',
+      sessionName: 'rtv2-ws-legacy-pane-legacy-tab-runtime',
+      cwd: dir,
+    });
+    const tab = repo.finalizeTerminalTab({ id: pending.id });
+    const layout = repo.getWorkspaceLayout('ws-legacy');
+
+    expect(tab).toMatchObject({ id: 'tab-runtime', runtimeVersion: 2 });
+    expect(layout?.root.type).toBe('pane');
+    if (layout?.root.type === 'pane') {
+      expect(layout.root.id).toBe('pane-legacy');
+      expect(layout.root.tabs).toEqual([expect.objectContaining({ id: 'tab-runtime', runtimeVersion: 2 })]);
+    }
+  });
+
   it('records mutation events', () => {
     const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const repo = createStorageRepository(db);

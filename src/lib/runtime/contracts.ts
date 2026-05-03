@@ -28,6 +28,18 @@ export interface IRuntimeCreateWorkspaceResult {
   rootPaneId: string;
 }
 
+export interface IRuntimeEnsureWorkspacePaneInput {
+  workspaceId: string;
+  paneId: string;
+  name: string;
+  defaultCwd: string;
+}
+
+export interface IRuntimeEnsureWorkspacePaneResult {
+  workspaceId: string;
+  paneId: string;
+}
+
 export interface IRuntimeWorkspaceList {
   workspaces: IRuntimeWorkspace[];
 }

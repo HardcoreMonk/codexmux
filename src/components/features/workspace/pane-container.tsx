@@ -40,6 +40,7 @@ import { dismissTab as dismissStatusTab } from '@/hooks/use-agent-status';
 import { buildCodexCommandFromStore } from '@/lib/codex-client-command';
 import { readAgentSessionId } from '@/lib/agent-tab-fields';
 import { isAgentPanelType } from '@/lib/panel-type';
+import { resolveTerminalWebSocketEndpoint } from '@/lib/terminal-websocket-url';
 
 
 interface ITermActions {
@@ -102,6 +103,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const activePanelType: TPanelType = activeTab?.panelType ?? 'terminal';
+  const terminalEndpoint = resolveTerminalWebSocketEndpoint(activeTab);
   const isAgentPanel = isAgentPanelType(activePanelType);
   const isWebBrowser = activePanelType === 'web-browser';
   const isDiff = activePanelType === 'diff';
@@ -419,6 +421,7 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
     sendWebStdin,
     sendResize,
   } = useTerminalWebSocket({
+    endpoint: terminalEndpoint,
     onData: (data) => termActionsRef.current.write(data),
     onConnected: () => {
       setHasEverConnected(true);
@@ -456,7 +459,8 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
       lastTitleRef.current = '';
       return;
     }
-    if (connectedSessionRef.current === tab.sessionName) return;
+    const connectionKey = `${terminalEndpoint}:${tab.sessionName}`;
+    if (connectedSessionRef.current === connectionKey) return;
 
     if (connectedSessionRef.current !== null) {
       setSessionSwitching(true);
@@ -470,10 +474,10 @@ const PaneContainer = memo(({ paneId, paneNumber }: IPaneContainerProps) => {
       panelType: tab.panelType,
     });
 
-    connectedSessionRef.current = tab.sessionName;
+    connectedSessionRef.current = connectionKey;
     const { cols, rows } = fit();
     connect(tab.sessionName, cols, rows);
-  }, [isReady, activeTabId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isReady, activeTabId, terminalEndpoint]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const tabId = activeTabIdRef.current;

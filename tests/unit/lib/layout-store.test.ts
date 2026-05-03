@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const tmuxMocks = vi.hoisted(() => ({
   createSession: vi.fn(),
@@ -20,9 +20,20 @@ vi.mock('@/lib/sync-server', () => ({
   broadcastSync: vi.fn(),
 }));
 
-import { createDefaultLayout, readLayoutFile } from '@/lib/layout-store';
+import {
+  addExistingTabToPane,
+  createDefaultLayout,
+  readLayoutFile,
+  resolveLayoutDir,
+  resolveLayoutFile,
+  writeLayoutFile,
+} from '@/lib/layout-store';
 
 describe('layout store normalization', () => {
+  beforeEach(() => {
+    tmuxMocks.createSession.mockClear();
+  });
+
   it('marks newly created legacy terminal tabs as runtime 1', async () => {
     const layout = await createDefaultLayout('ws-test', '/tmp');
     const tab = layout.root.type === 'pane' ? layout.root.tabs[0] : null;
@@ -76,5 +87,53 @@ describe('layout store normalization', () => {
       agentSummary: 'agent summary',
     });
     expect(terminalTab).not.toHaveProperty('agentSessionId');
+  });
+
+  it('appends externally-created runtime v2 tabs without creating legacy tmux sessions', async () => {
+    const wsId = `ws-layout-store-${process.pid}`;
+    const paneId = 'pane-runtime';
+    await fs.rm(resolveLayoutDir(wsId), { recursive: true, force: true });
+    await fs.mkdir(resolveLayoutDir(wsId), { recursive: true });
+    await writeLayoutFile({
+      root: {
+        type: 'pane',
+        id: paneId,
+        activeTabId: 'tab-existing',
+        tabs: [{
+          id: 'tab-existing',
+          sessionName: 'pt-ws-layout-store-pane-runtime-tab-existing',
+          name: '',
+          order: 0,
+          runtimeVersion: 1,
+        }],
+      },
+      activePaneId: paneId,
+      updatedAt: new Date(0).toISOString(),
+    }, resolveLayoutFile(wsId));
+
+    const tab = await addExistingTabToPane(wsId, paneId, {
+      id: 'tab-runtime',
+      sessionName: 'rtv2-ws-layout-store-pane-runtime-tab-runtime',
+      name: '',
+      order: 0,
+      panelType: 'terminal',
+      runtimeVersion: 2,
+      cwd: '/tmp',
+    });
+    const layout = await readLayoutFile(resolveLayoutFile(wsId));
+
+    expect(tab).toMatchObject({
+      id: 'tab-runtime',
+      order: 1,
+      runtimeVersion: 2,
+    });
+    expect(layout?.root.type).toBe('pane');
+    if (layout?.root.type === 'pane') {
+      expect(layout.root.activeTabId).toBe('tab-runtime');
+      expect(layout.root.tabs.map((item) => item.id)).toEqual(['tab-existing', 'tab-runtime']);
+    }
+    expect(tmuxMocks.createSession).not.toHaveBeenCalled();
+
+    await fs.rm(resolveLayoutDir(wsId), { recursive: true, force: true });
   });
 });

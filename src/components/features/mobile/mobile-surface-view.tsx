@@ -30,6 +30,7 @@ import { useLayoutStore } from '@/hooks/use-layout';
 import { buildCodexCommandFromStore } from '@/lib/codex-client-command';
 import { readAgentSessionId } from '@/lib/agent-tab-fields';
 import { isAgentPanelType } from '@/lib/panel-type';
+import { resolveTerminalWebSocketEndpoint } from '@/lib/terminal-websocket-url';
 
 
 interface ITermActions {
@@ -88,6 +89,7 @@ const MobileSurfaceView = ({
   const t = useTranslations('mobile');
   const tt = useTranslations('terminal');
   const activeTab = tabs.find((tab) => tab.id === activeTabId);
+  const terminalEndpoint = resolveTerminalWebSocketEndpoint(activeTab);
   const isAgentPanel = isAgentPanelType(panelType);
   const isWebBrowser = panelType === 'web-browser';
   const isDiff = panelType === 'diff';
@@ -263,6 +265,7 @@ const MobileSurfaceView = ({
     sendWebStdin,
     sendResize,
   } = useTerminalWebSocket({
+    endpoint: terminalEndpoint,
     onData: (data) => termActionsRef.current.write(data),
     onConnected: () => {
       setHasEverConnected(true);
@@ -285,11 +288,11 @@ const MobileSurfaceView = ({
       return;
     }
 
-    connectedSessionRef.current = tab.sessionName;
+    connectedSessionRef.current = `${terminalEndpoint}:${tab.sessionName}`;
     setAttemptedTabId(tab.id);
     const { cols, rows } = termActionsRef.current.fit();
     connect(tab.sessionName, cols, rows);
-  }, [connect, reconnect]);
+  }, [connect, reconnect, terminalEndpoint]);
 
   useEffect(() => {
     termActionsRef.current = { write, reset, fit, focus };
@@ -309,7 +312,8 @@ const MobileSurfaceView = ({
       lastTitleRef.current = '';
       return;
     }
-    if (connectedSessionRef.current === tab.sessionName) return;
+    const connectionKey = `${terminalEndpoint}:${tab.sessionName}`;
+    if (connectedSessionRef.current === connectionKey) return;
 
     if (connectedSessionRef.current !== null) reset();
 
@@ -318,11 +322,11 @@ const MobileSurfaceView = ({
       panelType: tab.panelType,
     });
 
-    connectedSessionRef.current = tab.sessionName;
+    connectedSessionRef.current = connectionKey;
     setAttemptedTabId(activeTabId);
     const { cols, rows } = fit();
     connect(tab.sessionName, cols, rows);
-  }, [isReady, activeTabId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isReady, activeTabId, terminalEndpoint]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const tabId = activeTabIdRef.current;

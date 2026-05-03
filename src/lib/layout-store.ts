@@ -5,6 +5,7 @@ import { nanoid } from 'nanoid';
 import { createSession, hasSession, killSession, resolveExistingDir, sendKeys, workspaceSessionName } from '@/lib/tmux';
 import { broadcastSync } from '@/lib/sync-server';
 import { createLogger } from '@/lib/logger';
+import { cleanupTabSession } from '@/lib/tab-session-cleanup';
 import {
   collectPanes,
   collectAllTabs,
@@ -341,6 +342,31 @@ export const addTabToPane = async (wsId: string, paneId: string, name?: string, 
     return tab;
   });
 
+export const addExistingTabToPane = async (wsId: string, paneId: string, tab: ITab): Promise<ITab | null> =>
+  withLock(async () => {
+    const filePath = resolveLayoutFile(wsId);
+    const layout = await readLayoutFile(filePath);
+    if (!layout) return null;
+
+    const pane = collectPanes(layout.root).find((p) => p.id === paneId);
+    if (!pane) return null;
+
+    const nextOrder = pane.tabs.length > 0 ? Math.max(...pane.tabs.map((t) => t.order)) + 1 : 0;
+    const nextTab: ITab = {
+      ...tab,
+      name: tab.name.trim(),
+      order: nextOrder,
+    };
+
+    pane.tabs.push(nextTab);
+    pane.activeTabId = nextTab.id;
+    layout.updatedAt = new Date().toISOString();
+    await writeLayoutFile(layout, filePath);
+    syncWorkspaceDirectories(wsId, layout.root);
+
+    return { ...nextTab };
+  });
+
 export const removeTabFromPane = async (wsId: string, paneId: string, tabId: string): Promise<boolean> => {
   const tabInfo = await withLock(async () => {
     const filePath = resolveLayoutFile(wsId);
@@ -352,14 +378,17 @@ export const removeTabFromPane = async (wsId: string, paneId: string, tabId: str
 
     const tab = pane.tabs.find((t) => t.id === tabId);
     if (!tab) return null;
-    return { sessionName: tab.sessionName, panelType: tab.panelType };
+    return {
+      id: tab.id,
+      sessionName: tab.sessionName,
+      panelType: tab.panelType,
+      runtimeVersion: tab.runtimeVersion,
+    };
   });
 
   if (!tabInfo) return false;
 
-  if (tabInfo.panelType !== 'web-browser') {
-    await killSession(tabInfo.sessionName);
-  }
+  await cleanupTabSession(tabInfo);
 
   return withLock(async () => {
     const filePath = resolveLayoutFile(wsId);
@@ -679,7 +708,7 @@ export const splitPaneInLayout = async (
 };
 
 export const closePaneInLayout = async (wsId: string, paneId: string): Promise<ILayoutData | null> => {
-  let sessions: string[] = [];
+  let tabs: ITab[] = [];
 
   const result = await withLock(async () => {
     const filePath = resolveLayoutFile(wsId);
@@ -690,7 +719,7 @@ export const closePaneInLayout = async (wsId: string, paneId: string): Promise<I
     if (!pane) return null;
     if (collectPanes(layout.root).length <= 1) return null;
 
-    sessions = pane.tabs.filter((t) => t.panelType !== 'web-browser').map((t) => t.sessionName);
+    tabs = pane.tabs.filter((t) => t.panelType !== 'web-browser');
     const wasEqualized = isEqualized(layout.root);
     removePaneWithFocus(layout, paneId);
     if (wasEqualized) {
@@ -702,7 +731,7 @@ export const closePaneInLayout = async (wsId: string, paneId: string): Promise<I
     return layout;
   });
 
-  await Promise.all(sessions.map((s) => killSession(s).catch(() => {})));
+  await Promise.all(tabs.map((tab) => cleanupTabSession(tab).catch(() => {})));
 
   return result;
 };

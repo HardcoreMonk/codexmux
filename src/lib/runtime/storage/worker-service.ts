@@ -60,6 +60,10 @@ export const createStorageWorkerService = (options: IStorageWorkerServiceOptions
           const input = parseRuntimeCommandPayload('storage.create-workspace', command.payload);
           return ok(command, repo.createWorkspace(input));
         }
+        if (command.type === 'storage.ensure-workspace-pane') {
+          const input = parseRuntimeCommandPayload('storage.ensure-workspace-pane', command.payload);
+          return ok(command, repo.ensureWorkspacePane(input));
+        }
         if (command.type === 'storage.create-pending-terminal-tab') {
           const input = parseRuntimeCommandPayload('storage.create-pending-terminal-tab', command.payload);
           return ok(command, repo.createPendingTerminalTab(input));

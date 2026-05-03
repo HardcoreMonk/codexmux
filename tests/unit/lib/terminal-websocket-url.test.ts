@@ -3,6 +3,7 @@ import {
   buildTerminalWebSocketPath,
   buildTerminalWebSocketUrl,
   getOrCreateTerminalClientId,
+  resolveTerminalWebSocketEndpoint,
 } from '@/lib/terminal-websocket-url';
 
 describe('terminal websocket url helpers', () => {
@@ -61,5 +62,12 @@ describe('terminal websocket url helpers', () => {
     expect(first).toBe('generated-a');
     expect(second).toBe('generated-a');
     expect(values.get('pt-ws-cid-rtv2-ws-a-pane-b-tab-c')).toBe('generated-a');
+  });
+
+  it('resolves websocket endpoints from tab runtime identity', () => {
+    expect(resolveTerminalWebSocketEndpoint({})).toBe('/api/terminal');
+    expect(resolveTerminalWebSocketEndpoint({ runtimeVersion: 1 })).toBe('/api/terminal');
+    expect(resolveTerminalWebSocketEndpoint({ runtimeVersion: 2 })).toBe('/api/v2/terminal');
+    expect(resolveTerminalWebSocketEndpoint({ runtimeVersion: 3 as never })).toBe('/api/terminal');
   });
 });

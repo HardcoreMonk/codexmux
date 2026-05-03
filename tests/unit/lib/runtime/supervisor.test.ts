@@ -499,6 +499,33 @@ describe('runtime supervisor', () => {
     expect(pending?.payload).not.toHaveProperty('callerSessionName');
   });
 
+  it('ensures legacy workspace pane mirror before creating opt-in runtime terminal tabs', async () => {
+    const { storage, terminal, timeline, status } = createWorkers();
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
+
+    await supervisor.createTerminalTab({
+      workspaceId: 'ws-a',
+      paneId: 'pane-b',
+      cwd: '/tmp',
+      ensureWorkspacePane: {
+        workspaceName: 'Workspace A',
+        defaultCwd: '/repo',
+      },
+    });
+
+    expect(storage.commands.map((command) => command.type)).toEqual(expect.arrayContaining([
+      'storage.ensure-workspace-pane',
+      'storage.create-pending-terminal-tab',
+      'storage.finalize-terminal-tab',
+    ]));
+    expect(storage.commands.find((command) => command.type === 'storage.ensure-workspace-pane')?.payload).toEqual({
+      workspaceId: 'ws-a',
+      paneId: 'pane-b',
+      name: 'Workspace A',
+      defaultCwd: '/repo',
+    });
+  });
+
   it('rolls back pending tabs and preserves rollback storage failure', async () => {
     const { storage, terminal, timeline, status } = createWorkers();
     terminal.failures.set('terminal.create-session', Object.assign(new Error('tmux create failed'), {
