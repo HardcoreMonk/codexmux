@@ -16,10 +16,13 @@ export interface IBuildInfo {
 
 let cachedFileInfo: IBuildInfoFile | undefined;
 
+const resolveBuildInfoDir = (): string =>
+  process.env.__CMUX_APP_DIR || process.cwd();
+
 const readBuildInfoFile = (): IBuildInfoFile => {
   if (cachedFileInfo) return cachedFileInfo;
 
-  const filePath = path.join(process.cwd(), 'dist', 'build-info.json');
+  const filePath = path.join(resolveBuildInfoDir(), 'dist', 'build-info.json');
   try {
     const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8')) as IBuildInfoFile;
     cachedFileInfo = {

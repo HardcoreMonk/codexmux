@@ -208,6 +208,9 @@ export const buildDailyReportCodexExecArgs = (outputPath: string): string[] => [
   '-',
 ];
 
+export const resolveDailyReportCodexCwd = (): string =>
+  process.env.__CMUX_APP_DIR || process.cwd();
+
 const callCodexCli = async (input: string, systemPrompt: string): Promise<string> => {
   const resolvedPath = await getShellPath();
   const outputPath = path.join(os.tmpdir(), `codexmux-daily-report-${process.pid}-${randomUUID()}.txt`);
@@ -216,7 +219,12 @@ const callCodexCli = async (input: string, systemPrompt: string): Promise<string
     const child = execFile(
       'codex',
       buildDailyReportCodexExecArgs(outputPath),
-      { timeout: 180_000, maxBuffer: 1024 * 1024, env: { ...process.env, PATH: resolvedPath } },
+      {
+        cwd: resolveDailyReportCodexCwd(),
+        timeout: 180_000,
+        maxBuffer: 1024 * 1024,
+        env: { ...process.env, PATH: resolvedPath },
+      },
       (error, stdout, stderr) => {
         if (error) {
           void fs.unlink(outputPath).catch(() => {});
