@@ -13,7 +13,7 @@
 - Shadow diagnostics: server startup calls runtime v2 health without blocking legacy startup, and `/api/debug/perf` exposes worker health/readiness/restart/timeout counters.
 - Terminal identity: newly created legacy tabs carry `runtimeVersion: 1`, runtime v2 tabs carry `runtimeVersion: 2`, and missing `runtimeVersion` is treated as legacy for existing JSON layouts.
 - Smoke: `/api/v2/terminal` attach/input/output/resize/web stdin/heartbeat/fresh reattach/fanout/backpressure close/tab delete/tab restart/workspace delete, plus Phase 2 app-surface new-tab gate for browser reload, server restart, and terminal mode rollback.
-- 2026-05-03 live smoke snapshot: `corepack pnpm smoke:runtime-v2:phase2`, `corepack pnpm build:electron`, `corepack pnpm smoke:electron:attach`, `corepack pnpm smoke:electron:runtime-v2`, `corepack pnpm smoke:android:runtime-v2`, Mac M1 `pnpm pack:electron:dev`, Android debug install, Android Tailscale failure recovery, Android production foreground reconnect, Android app info/native restart, Windows sync dry-run, stats/daily report, permission prompt smoke, and systemd deploy health passed. Electron page-context smoke proved existing-cookie `/api/v2/terminal` attach/output plus 2회 page reload/reconnect on a temp runtime v2 server. Android runtime v2 smoke proved existing-cookie `/api/v2/terminal` attach/output plus 2회 foreground reconnect on SM-S928N Android 16 through the Tailscale IP temp server. Android production foreground reconnect showed `triggerEvent`/TypeError 0 and terminal/timeline WebSocket console error 0 after foreground grace suppression. macOS packaging created arm64/x64 DMG and zip artifacts; GUI launch smoke still needs an interactive Mac user session.
+- 2026-05-03 live smoke snapshot: `corepack pnpm smoke:runtime-v2:phase2`, `corepack pnpm build:electron`, `corepack pnpm smoke:electron:attach`, `corepack pnpm smoke:electron:runtime-v2`, `corepack pnpm smoke:android:runtime-v2`, Mac M1 `pnpm pack:electron:dev`, Android debug install, Android Tailscale failure recovery, Android production foreground reconnect, Android app info/native restart, Windows sync dry-run, stats/daily report, permission prompt smoke, and systemd deploy health passed. Electron page-context smoke proved existing-cookie `/api/v2/terminal` attach/output plus 2회 page reload/reconnect on a temp runtime v2 server. Android runtime v2 smoke proved existing-cookie `/api/v2/terminal` attach/output plus 2회 foreground reconnect on SM-S928N Android 16 through the Tailscale IP temp server. Android production foreground reconnect showed `triggerEvent`/TypeError 0 and terminal/timeline WebSocket console error 0 after foreground grace suppression. Runtime v2 reconnect recovery now covers Terminal Worker retryable close, `session-not-found` tab/session recreation through Supervisor, and desktop/mobile blocking overlay hiding the stale floating reconnect control. macOS packaging created arm64/x64 DMG and zip artifacts; GUI launch smoke still needs an interactive Mac user session.
 
 Production 기본 경로로 전환하지 않은 것:
 
@@ -104,7 +104,7 @@ Work:
 
 Exit gate:
 
-- `node scripts/smoke-runtime-v2-phase2-gate.mjs` passes and proves new v2 tabs survive browser reload and server restart while legacy tabs stay on `/api/terminal`.
+- `corepack pnpm smoke:runtime-v2:phase2` passes and proves new v2 tabs survive browser reload and server restart while legacy tabs stay on `/api/terminal`.
 - Runtime v2 tab restart after `session-not-found` recreates the same tab/session
   through Supervisor and reconnect controls remain actionable; blocking recovery
   overlays must not leave a visible but unclickable floating reconnect control.
@@ -203,12 +203,12 @@ Exit gate:
 ## Required Test Commands
 
 ```bash
-corepack pnpm vitest run tests/unit/lib/runtime tests/unit/lib/status-state-machine.test.ts tests/unit/lib/status-notification-policy.test.ts tests/unit/pages/runtime-v2-api.test.ts tests/unit/scripts/runtime-v2-smoke-lib.test.ts
+corepack pnpm test tests/unit/lib/runtime tests/unit/lib/status-state-machine.test.ts tests/unit/lib/status-notification-policy.test.ts tests/unit/pages/runtime-v2-api.test.ts tests/unit/scripts/runtime-v2-smoke-lib.test.ts
 corepack pnpm tsc --noEmit
 corepack pnpm lint
 corepack pnpm build
-CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 node scripts/smoke-runtime-v2.mjs
-node scripts/smoke-runtime-v2-phase2-gate.mjs
+corepack pnpm smoke:runtime-v2
+corepack pnpm smoke:runtime-v2:phase2
 corepack pnpm build:electron
 corepack pnpm android:build:debug
 ```

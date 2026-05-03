@@ -123,7 +123,8 @@ runtime v2 terminal WebSocket은 Terminal Worker 종료나 service restart 중 s
 끊기면 retryable close로 다시 연결을 시도한다. 재시작 뒤 runtime v2 tmux session 자체가
 사라져 `session-not-found`가 되면 모바일 복구 overlay의 재시작 버튼이 같은 tab/session을
 runtime v2 supervisor에 다시 등록하고 터미널을 새로 만든다. 이때 전체 화면 복구 overlay가
-우상단 reconnect 상태 버튼을 가리는 중복 UI는 숨긴다.
+우상단 reconnect 상태 버튼을 가리는 중복 UI는 숨긴다. 같은 presentation rule은 desktop
+browser pane에도 적용된다.
 
 로그인 화면처럼 인증 전 public route에서는 status/native notification/Web Push/service worker runtime service를 마운트하지 않는다. fresh install 또는 app data clear 후 `/login`에 도착했을 때 `/api/status` WebSocket auth 실패나 `/sw.js` 로그인 리다이렉트 console error가 생기지 않아야 한다.
 
@@ -171,6 +172,8 @@ corepack pnpm smoke:runtime-v2
    `HOST=localhost,tailscale`과 runtime v2 new-tabs mode로 띄우고, Android 기기가 접근할
    Tailscale IP URL을 만든다. WebView에는 normal session cookie를 주입하고
    `/api/v2/terminal` marker output을 initial attach와 기본 2회 foreground reconnect에서 확인한다.
+   원격 page load 직후 native bridge fallback이 늦게 보일 수 있으므로 smoke는
+   `window.Capacitor.triggerEvent`와 `CodexmuxAndroid` bridge가 준비될 때까지 기다린다.
 
 ```bash
 corepack pnpm smoke:android:runtime-v2
@@ -189,6 +192,10 @@ CODEXMUX_ANDROID_RUNTIME_V2_FOREGROUND_ROUNDS=4 CODEXMUX_ANDROID_RUNTIME_V2_BACK
 Terminal Worker crash 후 stdout replay는 runtime v2 범위에 아직 포함하지 않는다. Worker
 exit 자체는 retryable close 뒤 fresh `/api/v2/terminal` attach로 복구해야 하며, session이
 사라진 경우에는 runtime v2 tab restart 경로로 같은 tab/session을 재생성한다.
+
+`smoke:android:runtime-v2`와 다른 temp-server smoke를 같은 checkout에서 병렬 실행하면
+Next dev lock 때문에 서버 startup이 실패할 수 있다. Android device를 쓰는 smoke는 특히
+단독 실행을 기준으로 한다.
 
 ## Failure Handling
 

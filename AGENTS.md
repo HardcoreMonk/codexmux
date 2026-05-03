@@ -40,6 +40,8 @@ corepack pnpm dev
 corepack pnpm build
 corepack pnpm lint
 corepack pnpm tsc --noEmit
+corepack pnpm test
+corepack pnpm exec playwright install chromium
 corepack pnpm build:electron
 corepack pnpm android:build:debug
 ```
@@ -119,6 +121,7 @@ Complex topics live under `docs/`:
 | `docs/STATUS.md` | Codex work-state detection and status flow |
 | `docs/TMUX.md` | tmux, terminal management, and WebSocket flow |
 | `docs/DATA-DIR.md` | `~/.codexmux/` directory structure |
+| `docs/TESTING.md` | Test tiers, Playwright/Chromium, platform smoke, and live deploy checks |
 | `docs/SYSTEMD.md` | Linux user service operation |
 | `docs/PERFORMANCE.md` | Perf snapshot, render/cache optimization, and validation |
 | `docs/STYLE.md` | Theme and color usage rules |

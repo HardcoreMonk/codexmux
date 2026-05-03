@@ -80,7 +80,7 @@ existing session cookie로 `/api/v2/terminal` attach가 되는지 확인한다.
    확인한다.
 
 ```bash
-node scripts/smoke-runtime-v2-phase2-gate.mjs
+corepack pnpm smoke:runtime-v2:phase2
 ```
 
 2. Electron에서 붙을 서버를 runtime v2 new-tabs mode로 실행한다.
@@ -92,7 +92,7 @@ CODEXMUX_RUNTIME_V2=1 CODEXMUX_RUNTIME_TERMINAL_V2_MODE=new-tabs PORT=8132 corep
 3. low-level runtime terminal smoke도 통과시킨다.
 
 ```bash
-CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 node scripts/smoke-runtime-v2.mjs
+corepack pnpm smoke:runtime-v2
 ```
 
 4. 자동 Electron page-context smoke를 실행한다. 이 명령은 temp runtime v2

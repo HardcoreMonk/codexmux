@@ -325,7 +325,7 @@ Android foreground 복귀 직후 stale socket이 닫히며 발생하는 expected
 
 Android WebView에는 `CodexmuxAndroid` JavaScript interface가 주입된다. 런처와 서버 접속 후 모바일 내비게이션은 이 bridge를 통해 앱 versionName/versionCode, package, device, Android version을 읽고, 사용자가 요청하면 현재 Activity를 새 task로 다시 열어 WebView를 재시작한다. 서버 버전은 React bundle의 `package.json` version과 `NEXT_PUBLIC_COMMIT_HASH`를 표시한다.
 
-Android WebView DevTools 기반 smoke는 `smoke:android:foreground`와 `smoke:android:recovery`로 유지한다. foreground smoke는 native bridge와 `triggerEvent` fallback, blocking console/logcat, foreground reconnect를 확인하고, recovery smoke는 network/HTTP 4xx/SSL main-frame 실패가 launcher로 복귀한 뒤 저장 서버로 재연결되는지 확인한다.
+Android WebView DevTools 기반 smoke는 `smoke:android:foreground`, `smoke:android:recovery`, `smoke:android:runtime-v2`로 유지한다. foreground smoke는 native bridge와 `triggerEvent` fallback, blocking console/logcat, foreground reconnect를 확인하고, recovery smoke는 network/HTTP 4xx/SSL main-frame 실패가 launcher로 복귀한 뒤 저장 서버로 재연결되는지 확인한다. runtime v2 smoke는 temp server를 Tailscale IP로 열고 Android WebView page context에서 `/api/v2/terminal` attach/output과 foreground reconnect를 검증한다.
 
 ## Notification 서비스 로직
 

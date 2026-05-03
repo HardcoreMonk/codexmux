@@ -39,7 +39,9 @@ terminal tab lifecycle만 reconciliation한다. stale `pending_terminal` tab과 
 잃은 `ready` terminal tab은 `failed`로 전환되지만, agent work status 전환 의미는 기존
 production 경로를 유지한다. legacy layout에 남은 runtime v2 tab이 `session-not-found`
 상태가 되면 restart action은 같은 tab id/session name을 Supervisor에 다시 등록해
-`pending_terminal`에서 `ready`로 복구할 수 있다.
+`pending_terminal`에서 `ready`로 복구할 수 있다. 이 복구 overlay가 활성화된 동안에는
+desktop/mobile 공통으로 floating `ConnectionStatus` reconnect button을 숨겨, 화면에는
+보이지만 overlay에 막혀 클릭되지 않는 중복 reconnect UI를 만들지 않는다.
 
 ## process state
 
@@ -199,4 +201,5 @@ paired `response_item.payload.type="message"` record로 몇 ms 간격에 남길 
 | `src/lib/timeline-entry-dedupe.ts` | timeline entry fingerprint와 중복 제거 |
 | `src/lib/timeline-entry-merge.ts` | timeline init/append/load-more 병합 정책 |
 | `src/lib/timeline-server-state.ts` | timeline WebSocket shared singleton state |
+| `src/lib/terminal-recovery.ts` | session 복구 overlay와 floating reconnect 표시 조건 |
 | `src/pages/api/check-agent.ts` | process check API |

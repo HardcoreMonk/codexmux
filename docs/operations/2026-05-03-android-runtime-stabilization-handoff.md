@@ -4,6 +4,9 @@
 
 - Stabilization base commit: `b038ddd` (`Suppress Android foreground reconnect noise`)
 - P0/P1 automation commit: `006100e` (`Add Android WebView smoke automation`)
+- Runtime v2 reconnect recovery commit: `4351cf8` (`Fix runtime v2 reconnect recovery`)
+- Android runtime v2 smoke stabilization commit: `6013c86` (`Stabilize Android runtime v2 smoke`)
+- Playwright browser tooling commit: `5da4097` (`Add Playwright test tooling`)
 - Permission prompt smoke automation: `corepack pnpm smoke:permission` added after the Android automation pass; current deployed commit is always `/api/health.commit`.
 - 이전 안정화 커밋:
   - `fc8ae00` `Reduce Android reconnect noise`
@@ -21,13 +24,20 @@
 - Android WebView DevTools 기반 `smoke:android:foreground`와 `smoke:android:recovery`를 추가해 foreground reconnect, fresh app data clear first-run, network/HTTP/SSL recovery를 반복 실행할 수 있게 했다.
 - `/login` 같은 인증 전 public route에서는 status/native notification/Web Push/service worker runtime service를 마운트하지 않아 fresh install 후 auth WebSocket과 service worker redirect console noise를 막는다.
 - 임시 server/HOME/tmux tab 기반 `smoke:permission`을 추가해 permission prompt 상태 경로를 실제 WebSocket/API/stdin 흐름으로 검증한다.
+- Runtime v2 Terminal Worker/service restart는 retryable close로 client fresh attach를 유도한다.
+- `session-not-found` 상태의 runtime v2 tab restart는 legacy tmux가 아니라 Supervisor/Storage/Terminal Worker 경로로 같은 tab id/session name을 재생성한다.
+- desktop browser와 mobile surface 모두 blocking recovery overlay가 활성화되면 floating `다시 연결` control을 숨겨, 보이지만 클릭되지 않는 중복 UI를 만들지 않는다.
+- Playwright/Chromium tooling을 추가해 웹 DOM/pointer 회귀를 실제 browser에서 검증할 수 있게 했다.
 
 ## 검증 결과
 
 | 항목 | 결과 |
 | --- | --- |
-| `corepack pnpm vitest run tests/unit/lib/app-route-state.test.ts tests/unit/scripts/android-webview-smoke-lib.test.ts tests/unit/android-launcher.test.ts tests/unit/lib/foreground-reconnect.test.ts tests/unit/lib/permission-prompt.test.ts` | 5 files / 25 tests passed |
+| `corepack pnpm test` | 73 files / 385 tests passed |
 | `corepack pnpm tsc --noEmit` | passed |
+| `corepack pnpm lint` | passed |
+| `corepack pnpm build` | passed |
+| `corepack pnpm exec playwright --version` + headless Chromium launch | Playwright 1.59.1, Chromium launch passed |
 | `corepack pnpm build:electron` | passed |
 | `corepack pnpm smoke:electron:attach` | live server attach, Electron preload bridge, page reload, blocking console 0 |
 | `corepack pnpm smoke:electron:runtime-v2` | temp runtime v2 server, Electron page-context `/api/v2/terminal` cookie-auth attach, initial + 2회 page reload/reconnect marker output |
@@ -50,6 +60,7 @@
 - 실제 Codex CLI가 만든 permission prompt 재현 smoke는 P1에 남긴다. codexmux의 status/tmux/API/stdin 경로는 `smoke:permission`으로 검증했다.
 - Android logged-in session 장시간 background, 반복 foreground reconnect, input draft 보존은 수십 분 이상 smoke 증거가 더 필요하다. `/login` surface 60초 background smoke는 통과했고, `smoke:android:foreground`는 `CODEXMUX_ANDROID_BACKGROUND_MS`와 `CODEXMUX_ANDROID_FOREGROUND_ROUNDS`로 강도를 올려 실행할 수 있다.
 - Runtime v2는 Phase 2 gate, Electron page-context `/api/v2/terminal` attach/output/reconnect, Android WebView `/api/v2/terminal` foreground reconnect가 통과했다. timeline/status/storage v2 surface 전환 증거는 별도 항목이다.
+- 웹페이지의 `다시 연결` 클릭 불가 회귀는 unit helper와 runtime v2 phase2 smoke로 고정했다. 실제 DOM/pointer e2e는 Playwright tooling이 준비됐으므로 다음 browser reconnect spec으로 남긴다.
 - Electron은 `build:electron`, live attach smoke, runtime v2 page-context attach/output/reconnect, Mac M1 `pack:electron:dev` 산출물 검증까지 통과했다. SSH 세션의 macOS GUI launch domain 제한 때문에 막힌 Finder 더블클릭 실행/Gatekeeper UX와 packaged OS-level foreground UX는 별도로 확인한다.
 - Windows는 Linux dry-run만 통과했다. 실제 Windows Scheduled Task `Install -RunNow`, `Status`, `RunOnce`와 장시간 sync log/token 권한 확인이 필요하다.
 - iPad Safari/Home Screen foreground reconnect는 Android와 별도로 확인해야 한다.

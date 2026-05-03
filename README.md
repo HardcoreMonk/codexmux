@@ -243,6 +243,7 @@ corepack pnpm start
 corepack pnpm lint
 corepack pnpm tsc --noEmit
 corepack pnpm test
+corepack pnpm exec playwright install chromium
 corepack pnpm smoke:electron:attach
 corepack pnpm smoke:electron:runtime-v2
 corepack pnpm smoke:permission
@@ -272,6 +273,8 @@ LOG_LEVELS=status=debug,tmux=trace corepack pnpm dev
 ```
 
 인증된 session cookie 또는 `x-cmux-token`이 있으면 `/api/debug/perf`에서 process memory, event loop delay, WebSocket 연결 수, timeline watcher, status poll, diff/stats cache 지표를 확인할 수 있습니다. prompt, terminal output, cwd, JSONL path 같은 본문/경로 데이터는 반환하지 않습니다.
+
+Playwright는 웹 UI 회귀 확인용 dev dependency로 포함되어 있습니다. 새 개발 환경에서 Chromium이 없으면 `corepack pnpm exec playwright install chromium`을 한 번 실행합니다. 테스트/smoke 계층과 병렬 실행 주의사항은 [docs/TESTING.md](docs/TESTING.md)를 참고하세요.
 
 ## Electron 개발
 
@@ -500,6 +503,7 @@ Windows Codex companion
 | [docs/STATUS.md](docs/STATUS.md) | Codex 작업 상태 감지와 status flow |
 | [docs/TMUX.md](docs/TMUX.md) | tmux, terminal WebSocket, session 관리 |
 | [docs/DATA-DIR.md](docs/DATA-DIR.md) | `~/.codexmux/` 구조와 삭제 기준 |
+| [docs/TESTING.md](docs/TESTING.md) | 테스트 계층, Playwright/Chromium, platform smoke, live deploy 검증 |
 | [docs/RUNTIME-V2-CUTOVER.md](docs/RUNTIME-V2-CUTOVER.md) | runtime v2 production 전환 단계와 rollback gate |
 | [docs/RUNTIME-V2-PARITY.md](docs/RUNTIME-V2-PARITY.md) | runtime v2 surface별 parity matrix |
 | [docs/SYSTEMD.md](docs/SYSTEMD.md) | Linux user service 등록과 운영 |
@@ -816,6 +820,8 @@ On iPad, use Safari and add codexmux to the Home Screen. A native iPadOS app is 
 - Quick prompts with the built-in `Commit` prompt plus user-defined prompts
 - CLI bridge through `codexmux tab ...`
 
+Playwright is included as developer tooling for browser UI regression checks. On a new checkout, run `corepack pnpm exec playwright install chromium` once before adding or running Playwright specs. See [docs/TESTING.md](docs/TESTING.md) for the smoke matrix and sequencing notes.
+
 ### Related Docs
 
 | Document | Contents |
@@ -826,6 +832,7 @@ On iPad, use Safari and add codexmux to the Home Screen. A native iPadOS app is 
 | [docs/STATUS.md](docs/STATUS.md) | Codex work-state detection and status flow |
 | [docs/TMUX.md](docs/TMUX.md) | tmux, terminal WebSocket, and session management |
 | [docs/DATA-DIR.md](docs/DATA-DIR.md) | `~/.codexmux/` layout and deletion guidance |
+| [docs/TESTING.md](docs/TESTING.md) | Test tiers, Playwright/Chromium, platform smoke, and live deploy checks |
 | [docs/RUNTIME-V2-CUTOVER.md](docs/RUNTIME-V2-CUTOVER.md) | Runtime v2 production cutover phases and rollback gates |
 | [docs/RUNTIME-V2-PARITY.md](docs/RUNTIME-V2-PARITY.md) | Runtime v2 surface-by-surface parity matrix |
 | [docs/SYSTEMD.md](docs/SYSTEMD.md) | Linux user service operation |

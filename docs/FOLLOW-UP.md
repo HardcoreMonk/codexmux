@@ -44,7 +44,8 @@
 | 항목 | 상태 | 근거 |
 | --- | --- | --- |
 | live deploy/systemd | 통과 | `deploy:local`, `/api/health` `version=0.3.3`, service `ActiveState=active`, `WorkingDirectory=/data/projects/codex-zone/codexmux`, journal restart 이후 오류 없음 |
-| build/type/unit | 통과 | `tsc --noEmit`, targeted unit 5 files/25 tests, `deploy:local` build |
+| build/type/unit | 통과 | `corepack pnpm test` 73 files / 385 tests, `tsc --noEmit`, `lint`, `build`, `deploy:local` build |
+| browser UI tooling | 통과 | `@playwright/test` 1.59.1 dev dependency, `corepack pnpm exec playwright install chromium`, headless Chromium launch smoke |
 | Electron build/attach/runtime v2/package | 통과 | `corepack pnpm build:electron`, `corepack pnpm smoke:electron:attach`, `corepack pnpm smoke:electron:runtime-v2`, initial + 2회 page reload/reconnect `/api/v2/terminal` marker output, Mac M1 `pnpm pack:electron:dev`, arm64/x64 DMG/zip 생성, native binding/arch/Info.plist/`hdiutil verify` 통과 |
 | runtime v2 phase2 gate | 통과 | `corepack pnpm smoke:runtime-v2:phase2` browser reload/server restart/mode-off rollback, Electron page-context `/api/v2/terminal` cookie-auth attach/output/reconnect |
 | Android debug install | 통과 | `versionName=0.3.3`, `versionCode=303`, `MainActivity` |
@@ -86,6 +87,7 @@ P0/P1/P2/P3 후속 상태:
 16. release metadata: `corepack pnpm release:patch|minor|major`, changelog, release workflow artifact 확인.
 17. Windows sync smoke test: Windows에서 Scheduled Task `Install -RunNow`, `Status`, `RunOnce` dry-run, source filter, remote source summary, 오래된 date dir full scan 동작 확인.
 18. Runtime v2 cutover readiness: `docs/RUNTIME-V2-CUTOVER.md`와 `docs/RUNTIME-V2-PARITY.md`의 phase gate, rollback flag, temp HOME/DB smoke를 release candidate commit 기준으로 확인한다. Phase 2 terminal gate는 `corepack pnpm smoke:runtime-v2:phase2`로 browser reload/server restart/mode-off rollback을 먼저 통과시킨 뒤 `corepack pnpm smoke:electron:runtime-v2`와 `corepack pnpm smoke:android:runtime-v2`의 page-context attach/output/reconnect, systemd 검증 증거를 추가한다. packaged Electron OS-level foreground UX는 Mac 화면 세션 smoke로 별도 확인한다.
+19. Browser reconnect DOM smoke: Playwright Chromium으로 `session-not-found` 복구 overlay와 floating reconnect control 중복 렌더링이 없는지 실제 pointer 동작까지 확인하는 e2e spec을 추가한다.
 
 ## Post-MVP 백로그
 

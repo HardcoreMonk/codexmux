@@ -94,7 +94,10 @@ v2 client reconnect는 production terminal hook과 같은 heartbeat, retry backo
 foreground/focus/online/BFCache/native app-state reconnect 정책을 사용하되
 `/api/v2/terminal`에 연결한다. Terminal Worker crash 뒤 자동 stdout replay나
 server-side resubscribe는 제공하지 않는다. client는 fresh WebSocket attach로 tmux에
-다시 붙는다.
+다시 붙는다. Terminal Worker가 종료되면 subscriber socket은 retryable `1001`로 닫혀
+client reconnect를 유도한다. 실제 tmux session이 사라진 `session-not-found` 상태에서는
+복구 overlay가 같은 tab/session을 재생성하는 restart action을 제공하고, overlay 뒤의
+floating reconnect control은 렌더하지 않는다.
 
 tab/pane/workspace cleanup은 `runtimeVersion`을 기준으로 나뉜다. legacy 또는 missing
 runtime tab은 `tmux -L codexmux`의 `pt-` session을 kill하고, runtime v2 tab은 Supervisor
@@ -104,7 +107,7 @@ delete command를 통해 SQLite state와 `tmux -L codexmux-runtime-v2`의 `rtv2-
 runtime v2 server smoke는 다음 terminal properties를 검증한다.
 
 ```bash
-CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 node scripts/smoke-runtime-v2.mjs
+corepack pnpm smoke:runtime-v2
 ```
 
 - v2 health, workspace create/list, terminal tab create

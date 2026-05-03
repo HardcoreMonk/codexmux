@@ -1,0 +1,172 @@
+# Testing And Smoke Guide
+
+이 문서는 codexmux의 자동 검증, platform smoke, 운영 smoke를 한곳에 묶는다. 개별
+platform 세부는 `ANDROID.md`, `ELECTRON.md`, `SYSTEMD.md`, `RUNTIME-V2-CUTOVER.md`를
+따르며, 이 문서는 어떤 검증을 언제 실행할지에 집중한다.
+
+## Baseline
+
+일반 코드 변경의 기본 검증:
+
+```bash
+corepack pnpm test
+corepack pnpm tsc --noEmit
+corepack pnpm lint
+corepack pnpm build
+```
+
+terminal, status, timeline, sync, runtime v2, platform shell을 건드린 변경은 아래
+smoke 중 관련 항목을 추가한다. 문서만 바꾼 경우에도 링크와 명령이 맞는지 확인하기 위해
+`corepack pnpm lint` 또는 `corepack pnpm build:landing`을 선택적으로 실행한다.
+
+## Browser UI And Playwright
+
+`@playwright/test`는 dev dependency로 설치되어 있으며, Playwright 관리 Chromium은
+로컬 cache에 설치된다. 브라우저 바이너리는 git에 커밋하지 않는다.
+
+새 개발 환경에서 Chromium이 없으면 한 번 설치한다.
+
+```bash
+corepack pnpm exec playwright install chromium
+corepack pnpm exec playwright --version
+```
+
+headless Chromium smoke:
+
+```bash
+corepack pnpm exec node -e "const { chromium } = require('@playwright/test'); (async () => { const browser = await chromium.launch({ headless: true }); const page = await browser.newPage(); await page.goto('data:text/html,<title>playwright-ok</title>'); console.log(await page.title()); await browser.close(); })();"
+```
+
+웹 UI 회귀가 보고되면 Playwright를 우선 사용해 실제 DOM과 pointer 동작을 확인한다. 예를
+들어 `session-not-found` 복구 overlay가 떠 있을 때 floating `ConnectionStatus`의
+`다시 연결` 버튼이 화면에 남아 클릭을 가로막는지 확인하는 식이다. 현재 해당 조건은
+`src/lib/terminal-recovery.ts`의 순수 helper와 `tests/unit/lib/terminal-recovery.test.ts`
+로 먼저 고정되어 있고, 브라우저 DOM e2e spec은 추가되는 시점에 이 문서에 명령을 기록한다.
+
+## Runtime v2
+
+Runtime v2 low-level terminal smoke:
+
+```bash
+corepack pnpm smoke:runtime-v2
+```
+
+Phase 2 app-surface gate:
+
+```bash
+corepack pnpm smoke:runtime-v2:phase2
+```
+
+이 gate는 temp HOME/DB 서버에서 cookie login, workspace 생성, runtime v2 plain terminal
+tab 생성, browser reload reattach, server restart reattach, terminal mode rollback을 확인한다.
+
+`smoke:runtime-v2:phase2`, `smoke:android:runtime-v2`, `smoke:electron:runtime-v2`는 각각
+임시 서버와 Next.js dev runtime을 띄운다. 같은 checkout에서 병렬 실행하면 Next dev lock
+때문에 `Another next dev server is already running`으로 실패할 수 있으므로 순차 실행한다.
+
+Runtime v2 reconnect/restart 변경의 최소 검증:
+
+```bash
+corepack pnpm test tests/unit/lib/terminal-recovery.test.ts tests/unit/lib/layout-store.test.ts tests/unit/lib/runtime/supervisor.test.ts
+corepack pnpm smoke:runtime-v2:phase2
+```
+
+## Electron
+
+```bash
+corepack pnpm build:electron
+corepack pnpm smoke:electron:attach
+corepack pnpm smoke:electron:runtime-v2
+```
+
+- `smoke:electron:attach`: live server attach, preload bridge, reload, blocking console 0건.
+- `smoke:electron:runtime-v2`: temp runtime v2 server, Electron page context cookie auth,
+  `/api/v2/terminal` marker output, 기본 2회 reload/reconnect.
+
+macOS packaging smoke:
+
+```bash
+corepack pnpm pack:electron:dev
+```
+
+Linux checkout에서 Electron build/packaging smoke를 실행한 뒤에는 `.next/standalone`이
+다시 만들어질 수 있으므로 live user service는 `corepack pnpm deploy:local`로 재시작한다.
+
+## Android
+
+```bash
+corepack pnpm android:build:debug
+corepack pnpm android:install
+corepack pnpm smoke:android:install
+corepack pnpm smoke:android:foreground
+corepack pnpm smoke:android:recovery
+corepack pnpm smoke:android:runtime-v2
+```
+
+- `smoke:android:foreground`: Tailscale Serve HTTPS target, background/foreground 복귀,
+  native bridge, `triggerEvent` fallback, blocking console/logcat.
+- `smoke:android:recovery`: network, HTTP 4xx, SSL 실패 뒤 launcher 복귀와 저장 서버 재연결.
+- `smoke:android:runtime-v2`: temp runtime v2 server를 Tailscale IP로 노출하고 Android
+  WebView에서 `/api/v2/terminal` attach와 foreground reconnect marker output을 확인.
+
+강도 조절:
+
+```bash
+CODEXMUX_ANDROID_BACKGROUND_MS=60000 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=1 corepack pnpm smoke:android:foreground
+CODEXMUX_ANDROID_CLEAR_APP_DATA=1 corepack pnpm smoke:android:foreground
+CODEXMUX_ANDROID_RESTART_APP=1 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=0 corepack pnpm smoke:android:foreground
+CODEXMUX_ANDROID_RUNTIME_V2_TIMEOUT_MS=60000 corepack pnpm smoke:android:runtime-v2
+```
+
+React/server reconnect 수정은 APK 재빌드 없이 `corepack pnpm deploy:local`로 반영된다.
+`CodexmuxAndroid` native bridge, Android manifest, launcher asset, version metadata를 바꾸면
+APK를 다시 빌드해 설치한다.
+
+## Permission, Stats, Timeline
+
+```bash
+corepack pnpm smoke:permission
+```
+
+이 smoke는 임시 server/HOME/tmux tab에서 permission prompt option parsing, stdin 선택 전달,
+`needs-input` 전환, `status:ack-notification` 후 `busy` 복귀를 확인한다.
+
+통계와 daily report는 live 또는 temp 서버에서 `/api/stats/*`와 daily report generate route가
+200을 반환하는지 확인한다. timeline 중복 회귀는 browser reload 후 같은 assistant text가
+`event_msg.agent_message`와 paired `response_item.message`로 남은 JSONL에서도 한 번만
+표시되는지 확인한다.
+
+## Systemd And Live Deploy
+
+```bash
+corepack pnpm deploy:local
+curl -fsS http://127.0.0.1:8122/api/health
+systemctl --user show codexmux.service --property=ActiveState,SubState,ExecMainPID,Result,NRestarts,WorkingDirectory
+journalctl --user -u codexmux.service --since '10 minutes ago' -p warning --no-pager
+```
+
+Tailscale Serve HTTPS smoke:
+
+```bash
+curl -fsS https://<machine>.<tailnet>.ts.net/api/health
+```
+
+`/api/health.commit`은 현재 배포된 build의 source commit이다. docs-only commit을 push했지만
+deploy하지 않은 경우 live health commit이 main HEAD보다 뒤에 있을 수 있다.
+
+## Windows Sync
+
+Linux에서 server 대상 dry-run:
+
+```powershell
+node .\scripts\windows-codex-sync.mjs `
+  --server http://<codexmux-server>:8122 `
+  --token-file "$env:USERPROFILE\.codexmux\cli-token" `
+  --source-id win11-main `
+  --shell pwsh `
+  --once `
+  --dry-run
+```
+
+실제 운영 smoke는 Windows 현재 사용자 Scheduled Task의 `Install -RunNow`, `Status`,
+`RunOnce`, 장시간 log/token 권한 확인까지 포함한다.

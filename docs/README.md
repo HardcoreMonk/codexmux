@@ -12,6 +12,7 @@
 | `TMUX.md` | tmux session, terminal WebSocket, key input, Codex process 감지 |
 | `DATA-DIR.md` | `~/.codexmux/` 저장 구조와 삭제 기준 |
 | `PERFORMANCE.md` | 성능 계측, 최적화 우선순위, 검증 기준 |
+| `TESTING.md` | unit/type/lint/build, Playwright/Chromium, platform smoke, live deploy 검증 기준 |
 | `RUNTIME-V2-CUTOVER.md` | Supervisor/Worker runtime v2 production 전환 단계, flag, rollback 기준 |
 | `RUNTIME-V2-PARITY.md` | runtime v2 surface별 v1/v2 parity, migration, test, rollback matrix |
 
@@ -50,6 +51,7 @@
 - tmux, process 감지, terminal protocol, `Ctrl+D` 입력 정책을 바꾸면 `TMUX.md`를 갱신한다.
 - 서버 startup, WebSocket routing, shared singleton, sync 흐름을 바꾸면 `ARCHITECTURE-LOGIC.md`를 갱신한다.
 - 성능 계측, polling, timeline render/cache, WebSocket batching을 바꾸면 `PERFORMANCE.md`를 갱신한다.
+- 테스트 도구, smoke command, platform 검증 순서, Playwright/Chromium 기준을 바꾸면 `TESTING.md`를 갱신한다.
 - 성능 변경이 사용자 동작이나 운영 점검에 영향을 주면 `README.md`와 `landing-src/docs/`의 architecture/live-session/git/stats/troubleshooting 문서도 함께 갱신한다.
 - 저장 파일 구조나 삭제 기준을 바꾸면 `DATA-DIR.md`를 갱신한다.
 - Android/Electron/Windows client, 모바일 reconnect, 앱 정보/재시작 bridge, native build 기준을 바꾸면 각 플랫폼 문서를 갱신한다.
