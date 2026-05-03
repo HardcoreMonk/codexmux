@@ -459,10 +459,15 @@
       };
 
       const probeServer = async (url) => {
+        const parsedUrl = new URL(url);
+        if (window.location.protocol === 'https:' && parsedUrl.protocol === 'http:') {
+          return { ok: true };
+        }
+
         const fetchHealth = async (options) => {
           const controller = new AbortController();
           const timer = window.setTimeout(() => controller.abort(), CONNECT_TIMEOUT_MS);
-          const healthUrl = new URL('/api/health', url);
+          const healthUrl = new URL('/api/health', parsedUrl);
           healthUrl.searchParams.set('t', String(Date.now()));
           try {
             return await fetch(healthUrl.toString(), {

@@ -1,17 +1,29 @@
 package com.hardcoremonk.codexmux;
 
 import android.os.Bundle;
+import android.os.Looper;
 import android.webkit.WebView;
 import androidx.activity.OnBackPressedCallback;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
-    private void dispatchAppState(boolean active) {
+    private void evaluateScript(String js) {
         WebView webView = getBridge() != null ? getBridge().getWebView() : null;
         if (webView == null) return;
 
-        String js = "window.dispatchEvent(new CustomEvent('codexmux:native-app-state',{detail:{active:" + active + "}}));";
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            webView.evaluateJavascript(js, null);
+            return;
+        }
         webView.post(() -> webView.evaluateJavascript(js, null));
+    }
+
+    private void ensureCapacitorLifecycleGuard() {
+        evaluateScript(CodexmuxLifecycleScript.lifecycleGuard());
+    }
+
+    private void dispatchAppState(boolean active) {
+        evaluateScript(CodexmuxLifecycleScript.nativeAppState(active));
     }
 
     @Override
@@ -37,6 +49,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onResume() {
+        ensureCapacitorLifecycleGuard();
         super.onResume();
         dispatchAppState(true);
     }
