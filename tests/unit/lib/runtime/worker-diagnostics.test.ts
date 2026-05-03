@@ -16,6 +16,8 @@ describe('runtime worker diagnostics', () => {
     expect(Object.keys(snapshot)).toEqual(['storage', 'terminal', 'timeline', 'status']);
     expect(snapshot.storage).toMatchObject({
       starts: 0,
+      healthChecks: 0,
+      healthFailures: 0,
       readyChecks: 0,
       readyFailures: 0,
       requests: 0,
@@ -31,6 +33,7 @@ describe('runtime worker diagnostics', () => {
       shutdowns: 0,
       lastError: null,
       lastExit: null,
+      lastHealthAt: null,
     });
   });
 

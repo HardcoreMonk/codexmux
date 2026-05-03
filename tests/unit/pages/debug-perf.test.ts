@@ -77,10 +77,10 @@ vi.mock('@/lib/sync-server', () => ({
 
 vi.mock('@/lib/runtime/worker-diagnostics', () => ({
   getRuntimeWorkerDiagnosticsSnapshot: () => ({
-    storage: { starts: 1, requests: 2, replies: 2, lastError: null },
-    terminal: { starts: 1, requests: 1, replies: 1, lastError: null },
-    timeline: { starts: 1, requests: 1, replies: 1, lastError: null },
-    status: { starts: 1, requests: 1, replies: 1, lastError: null },
+    storage: { starts: 1, healthChecks: 2, healthFailures: 0, requests: 2, replies: 2, lastError: null },
+    terminal: { starts: 1, healthChecks: 1, healthFailures: 0, requests: 1, replies: 1, lastError: null },
+    timeline: { starts: 1, healthChecks: 1, healthFailures: 0, requests: 1, replies: 1, lastError: null },
+    status: { starts: 1, healthChecks: 1, healthFailures: 0, requests: 1, replies: 1, lastError: null },
   }),
 }));
 
@@ -153,10 +153,10 @@ describe('/api/debug/perf', () => {
     expect(services.timeline).toBeTruthy();
     expect(services.sync).toBeTruthy();
     expect(services.runtimeWorkers).toMatchObject({
-      storage: { starts: 1, requests: 2, replies: 2, lastError: null },
-      terminal: { starts: 1, requests: 1, replies: 1, lastError: null },
-      timeline: { starts: 1, requests: 1, replies: 1, lastError: null },
-      status: { starts: 1, requests: 1, replies: 1, lastError: null },
+      storage: { starts: 1, healthChecks: 2, healthFailures: 0, requests: 2, replies: 2, lastError: null },
+      terminal: { starts: 1, healthChecks: 1, healthFailures: 0, requests: 1, replies: 1, lastError: null },
+      timeline: { starts: 1, healthChecks: 1, healthFailures: 0, requests: 1, replies: 1, lastError: null },
+      status: { starts: 1, healthChecks: 1, healthFailures: 0, requests: 1, replies: 1, lastError: null },
     });
 
     const keys = collectKeys(body).map((key) => key.toLowerCase());

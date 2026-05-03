@@ -114,9 +114,10 @@ Rust + Tauri 도입은 `docs/TAURI-EVALUATION.md` 기준으로 보류한다. Tau
 
 ### 2026-05-03 9차 구현 상태
 
-- Runtime v2 Worker diagnostics를 `globalThis.__ptRuntimeWorkerDiagnostics`에 집계한다. Storage, Terminal, Timeline, Status Worker별 `starts`, `readyChecks`, `readyFailures`, `requests`, `replies`, `events`, `commandFailures`, `invalidReplies`, `timeouts`, `sendFailures`, `exits`, `errors`, `restarts`, `shutdowns` counter를 기록한다.
+- Runtime v2 Worker diagnostics를 `globalThis.__ptRuntimeWorkerDiagnostics`에 집계한다. Storage, Terminal, Timeline, Status Worker별 `starts`, `healthChecks`, `healthFailures`, `readyChecks`, `readyFailures`, `requests`, `replies`, `events`, `commandFailures`, `invalidReplies`, `timeouts`, `sendFailures`, `exits`, `errors`, `restarts`, `shutdowns` counter를 기록한다.
 - `/api/debug/perf`의 `services.runtimeWorkers`가 worker별 snapshot을 반환한다. `lastError`는 `code`, sanitized `message`, `retryable`, `at`만 포함하고 runtime session name과 absolute path는 redaction한다.
 - Runtime v2 shadow runtime은 이 counters를 보고 readiness 실패, restart loop, command timeout, failed reply를 확인한 뒤에만 surface별 default 전환을 검토한다.
+- `CODEXMUX_RUNTIME_V2=1` server startup은 legacy startup을 막지 않고 runtime v2 health diagnostic을 실행한다. 이 호출은 worker별 `healthChecks`, `healthFailures`, `lastHealthAt`에 남는다.
 
 ## 작업 상세
 

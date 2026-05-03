@@ -131,6 +131,7 @@ export class RuntimeWorkerClient {
       type,
       payload: validatedPayload,
     });
+    const isHealthCommand = type === `${this.options.name}.health`;
 
     const result = new Promise<TResult>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -140,6 +141,7 @@ export class RuntimeWorkerClient {
           retryable: true,
         });
         recordRuntimeWorkerDiagnostic(this.options.name, 'timeout', { error: timeoutError });
+        if (isHealthCommand) recordRuntimeWorkerDiagnostic(this.options.name, 'health-failure', { error: timeoutError });
         reject(timeoutError);
       }, this.requestTimeoutMs);
       this.pending.set(msg.id, {
@@ -153,6 +155,7 @@ export class RuntimeWorkerClient {
       });
     });
     recordRuntimeWorkerDiagnostic(this.options.name, 'request');
+    if (isHealthCommand) recordRuntimeWorkerDiagnostic(this.options.name, 'health-check');
 
     const failSend = (err?: unknown): void => {
       const pendingRequest = this.pending.get(msg.id);
@@ -165,6 +168,7 @@ export class RuntimeWorkerClient {
         retryable: true,
       });
       recordRuntimeWorkerDiagnostic(this.options.name, 'send-failure', { error: sendError });
+      if (isHealthCommand) recordRuntimeWorkerDiagnostic(this.options.name, 'health-failure', { error: sendError });
       pendingRequest.reject(sendError);
       this.handleChildFailure(child, sendError);
     };
@@ -304,6 +308,9 @@ export class RuntimeWorkerClient {
         retryable: false,
       });
       recordRuntimeWorkerDiagnostic(this.options.name, 'invalid-reply', { error: err });
+      if (pending.commandType === `${this.options.name}.health`) {
+        recordRuntimeWorkerDiagnostic(this.options.name, 'health-failure', { error: err });
+      }
       pending.reject(err);
       return;
     }
@@ -314,6 +321,9 @@ export class RuntimeWorkerClient {
         retryable: msg.error?.retryable ?? false,
       });
       recordRuntimeWorkerDiagnostic(this.options.name, 'command-failure', { error: err });
+      if (pending.commandType === `${this.options.name}.health`) {
+        recordRuntimeWorkerDiagnostic(this.options.name, 'health-failure', { error: err });
+      }
       pending.reject(err);
       return;
     }
@@ -324,6 +334,9 @@ export class RuntimeWorkerClient {
         : msg.payload;
       this.currentRestartBackoffMs = this.initialRestartBackoffMs;
       recordRuntimeWorkerDiagnostic(this.options.name, 'reply');
+      if (pending.commandType === `${this.options.name}.health`) {
+        recordRuntimeWorkerDiagnostic(this.options.name, 'health-success');
+      }
       pending.resolve(payload);
     } catch (err) {
       const replyError = Object.assign(new Error(err instanceof Error ? err.message : String(err)), {
@@ -331,6 +344,9 @@ export class RuntimeWorkerClient {
         retryable: false,
       });
       recordRuntimeWorkerDiagnostic(this.options.name, 'invalid-reply', { error: replyError });
+      if (pending.commandType === `${this.options.name}.health`) {
+        recordRuntimeWorkerDiagnostic(this.options.name, 'health-failure', { error: replyError });
+      }
       pending.reject(replyError);
     }
   };
@@ -350,6 +366,9 @@ export class RuntimeWorkerClient {
       },
     );
     recordRuntimeWorkerDiagnostic(this.options.name, 'invalid-reply', { error: replyError });
+    if (pending.commandType === `${this.options.name}.health`) {
+      recordRuntimeWorkerDiagnostic(this.options.name, 'health-failure', { error: replyError });
+    }
     pending.reject(replyError);
   }
 

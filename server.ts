@@ -28,6 +28,7 @@ import { cleanupExpiredUploads } from './src/lib/uploads-store';
 import { cleanupOrphanSessionStats } from './src/lib/session-stats';
 import { initSessionIndexService, shutdownSessionIndexService } from './src/lib/session-index';
 import { getRuntimeSupervisor } from './src/lib/runtime/supervisor';
+import { runRuntimeStartupDiagnostic } from './src/lib/runtime/startup-diagnostic';
 import { handleRuntimeTerminalConnection } from './src/lib/runtime/terminal-ws';
 import {
   createWebSocketUpgradeHandler,
@@ -376,9 +377,7 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   await autoResumeOnStartup();
   await initSessionIndexService();
   if (process.env.CODEXMUX_RUNTIME_V2 === '1') {
-    void getRuntimeSupervisor().ensureStarted().catch((err) => {
-      log.error(`runtime v2 supervisor failed to start: ${err instanceof Error ? err.message : err}`);
-    });
+    runRuntimeStartupDiagnostic(getRuntimeSupervisor(), log);
   }
   await getStatusManager().init();
 

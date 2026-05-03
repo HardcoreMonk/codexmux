@@ -57,9 +57,11 @@ describe('runtime worker client', () => {
     await expect(pending).resolves.toEqual({ ok: true });
     expect(getRuntimeWorkerDiagnosticsSnapshot().storage).toMatchObject({
       starts: 1,
+      healthChecks: 1,
       requests: 1,
       replies: 1,
     });
+    expect(getRuntimeWorkerDiagnosticsSnapshot().storage.lastHealthAt).toEqual(expect.any(String));
   });
 
   it('rejects reply envelope correlation mismatches before payload success', async () => {
@@ -303,6 +305,8 @@ describe('runtime worker client', () => {
     await expect(pending).rejects.toThrow(/timed out/);
     expect(getRuntimeWorkerDiagnosticsSnapshot().storage).toMatchObject({
       starts: 1,
+      healthChecks: 1,
+      healthFailures: 1,
       requests: 1,
       timeouts: 1,
     });

@@ -104,7 +104,7 @@
 - Windows companion은 전체 tree scan과 hot scan을 분리했다. 다음 단계는 Windows에서 실제 파일 수와 full scan latency를 확인한 뒤 watcher 기반 보강이 필요한지 판단한다.
 - Windows Scheduled Task wrapper는 로그인 시 자동 실행과 로그/설정 파일 경로를 표준화했다. 다음 단계는 실제 Windows 장시간 실행에서 task restart result, log rotation 필요성, token file 권한을 확인한다.
 - StatusManager adaptive scheduling은 `unknown`, `needs-input`, `ready-for-review` 지연을 측정한 뒤 active/background workspace 정책으로 분리한다.
-- Runtime v2 shadow mode는 `/api/debug/perf`의 `services.runtimeWorkers` counters로 worker readiness, restart, timeout, command failure를 먼저 확인한다. payload, session id/name, cwd, JSONL path, prompt, assistant text, terminal output은 diagnostics에 넣지 않는다.
+- Runtime v2 shadow mode는 `/api/debug/perf`의 `services.runtimeWorkers` counters로 worker health, readiness, restart, timeout, command failure를 먼저 확인한다. payload, session id/name, cwd, JSONL path, prompt, assistant text, terminal output은 diagnostics에 넣지 않는다.
 
 ### 문서와 운영
 

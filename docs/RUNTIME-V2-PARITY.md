@@ -79,4 +79,4 @@ Runtime v2 can only become default for a surface when every row in that surface 
 - passing parity test or smoke evidence
 - rollback behavior verified with `CODEXMUX_RUNTIME_*_V2_MODE=off`
 - no sensitive content in `/api/debug/perf`
-- no worker restart loop in `services.runtimeWorkers`
+- no worker restart loop and no startup health failure spike in `services.runtimeWorkers`

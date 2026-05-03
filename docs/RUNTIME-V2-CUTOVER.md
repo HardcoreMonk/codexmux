@@ -10,6 +10,7 @@
 - Terminal Worker: v2 tmux socket `codexmux-runtime-v2`, `rtv2-` session create/attach/stdin/stdout/resize/detach/kill, subscriber fanout, backpressure, startup reconciliation.
 - Timeline Worker: read-only `timeline.health`, session list, older entry read, message counts.
 - Status Worker: policy-only hook/Codex reducer와 notification gating.
+- Shadow diagnostics: server startup calls runtime v2 health without blocking legacy startup, and `/api/debug/perf` exposes worker health/readiness/restart/timeout counters.
 - Smoke: `/api/v2/terminal` attach/input/output/resize/fresh reattach/fanout/tab delete/workspace delete.
 
 Production 기본 경로로 전환하지 않은 것:
@@ -72,7 +73,7 @@ Work:
 Exit gate:
 
 - No worker restart loop over 24 hours.
-- `/api/debug/perf` `services.runtimeWorkers.{storage,terminal,timeline,status}` shows readiness, restart, timeout, and command failure counters without session ids, cwd, JSONL paths, prompts, assistant text, or terminal output.
+- `/api/debug/perf` `services.runtimeWorkers.{storage,terminal,timeline,status}` shows health, readiness, restart, timeout, and command failure counters without session ids, cwd, JSONL paths, prompts, assistant text, or terminal output.
 - `corepack pnpm build` includes storage, terminal, timeline, and status worker bundles.
 - `scripts/smoke-runtime-v2.mjs` passes on the production host with temp HOME/DB.
 

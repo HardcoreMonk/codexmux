@@ -2,6 +2,9 @@ export type TRuntimeWorkerDiagnosticName = 'storage' | 'terminal' | 'timeline' |
 
 export type TRuntimeWorkerDiagnosticEvent =
   | 'start'
+  | 'health-check'
+  | 'health-success'
+  | 'health-failure'
   | 'ready-check'
   | 'ready-success'
   | 'ready-failure'
@@ -32,6 +35,8 @@ export interface IRuntimeWorkerDiagnosticExit {
 
 export interface IRuntimeWorkerDiagnosticSnapshot {
   starts: number;
+  healthChecks: number;
+  healthFailures: number;
   readyChecks: number;
   readyFailures: number;
   requests: number;
@@ -47,6 +52,7 @@ export interface IRuntimeWorkerDiagnosticSnapshot {
   shutdowns: number;
   lastError: IRuntimeWorkerDiagnosticError | null;
   lastExit: IRuntimeWorkerDiagnosticExit | null;
+  lastHealthAt: string | null;
   lastStartedAt: string | null;
   lastReadyAt: string | null;
   lastRequestAt: string | null;
@@ -78,6 +84,8 @@ const g = globalThis as unknown as IRuntimeWorkerDiagnosticsGlobalState;
 
 const createZeroSnapshot = (): IRuntimeWorkerDiagnosticSnapshot => ({
   starts: 0,
+  healthChecks: 0,
+  healthFailures: 0,
   readyChecks: 0,
   readyFailures: 0,
   requests: 0,
@@ -93,6 +101,7 @@ const createZeroSnapshot = (): IRuntimeWorkerDiagnosticSnapshot => ({
   shutdowns: 0,
   lastError: null,
   lastExit: null,
+  lastHealthAt: null,
   lastStartedAt: null,
   lastReadyAt: null,
   lastRequestAt: null,
@@ -162,6 +171,16 @@ export const recordRuntimeWorkerDiagnostic = (
     case 'start':
       snapshot.starts += 1;
       snapshot.lastStartedAt = at;
+      return;
+    case 'health-check':
+      snapshot.healthChecks += 1;
+      return;
+    case 'health-success':
+      snapshot.lastHealthAt = at;
+      return;
+    case 'health-failure':
+      snapshot.healthFailures += 1;
+      setLastError(snapshot, details, at);
       return;
     case 'ready-check':
       snapshot.readyChecks += 1;
