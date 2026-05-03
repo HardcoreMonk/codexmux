@@ -129,12 +129,13 @@ foreground 복귀 직후에는 Android 네트워크 stack이 stale socket을 늦
 | --- | --- |
 | Tailscale Serve HTTPS `/api/health` | 200, `version=0.3.3`, build metadata 포함 |
 | `corepack pnpm smoke:android:foreground` | HTTPS 서버 접속 후 2회 background/foreground 복귀, `triggerEvent`/TypeError 0건, blocking console/logcat 0건 |
+| `CODEXMUX_ANDROID_BACKGROUND_MS=60000 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=1 corepack pnpm smoke:android:foreground` | `/login` surface에서 60초 background 후 foreground 복귀, console 0건, blocking logcat 0건 |
 | `CODEXMUX_ANDROID_CLEAR_APP_DATA=1 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=1 corepack pnpm smoke:android:foreground` | app data clear 후 `/login` 첫 실행, console event 0건, blocking logcat 0건 |
 | `corepack pnpm smoke:android:recovery` | network, HTTP 4xx, SSL 실패 후 launcher 복귀와 `/login` 재연결, blocking console/logcat 0건 |
 | logcat 오류 검색 | `Cannot read properties`, `triggerEvent`, terminal/timeline connection error 매칭 없음 |
 | debug install | `versionName=0.3.3`, `versionCode=303`, `MainActivity` resolve |
 
-`smoke:android:foreground`는 `CODEXMUX_ANDROID_BACKGROUND_MS`와 `CODEXMUX_ANDROID_FOREGROUND_ROUNDS`로 장시간/반복 강도를 늘릴 수 있다. 수십 분 이상 background, iPad Safari/Home Screen, runtime v2 `/api/v2/terminal` Android foreground smoke는 다음 릴리스 gate에 남긴다.
+`smoke:android:foreground`는 `CODEXMUX_ANDROID_BACKGROUND_MS`와 `CODEXMUX_ANDROID_FOREGROUND_ROUNDS`로 장시간/반복 강도를 늘릴 수 있다. 60초 `/login` surface smoke는 통과했다. logged-in session의 수십 분 이상 background, iPad Safari/Home Screen, runtime v2 `/api/v2/terminal` Android foreground smoke는 다음 릴리스 gate에 남긴다.
 
 ## Runtime v2 Smoke
 

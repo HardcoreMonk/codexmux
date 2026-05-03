@@ -95,6 +95,7 @@ process로 직접 잡히지 않는 세션을 CODEX 패널에 동기화하기 위
 - background Web Push는 `StatusManager`가 전송한다.
 - `soundOnCompleteEnabled=false`이면 작업 완료 toast sound를 재생하지 않고, native/background system notification도 silent로 요청한다.
 - permission/input 요청성 notification은 `needs-input`으로 전환하고, 일반 작업 완료 notification은 review flow를 따른다.
+- `corepack pnpm smoke:permission`은 임시 서버와 tmux prompt를 사용해 `notification` hook의 `needs-input` 전환, permission option parsing, stdin 선택 전달, `status:ack-notification` 후 `busy` 복귀를 검증한다.
 
 ## event model
 

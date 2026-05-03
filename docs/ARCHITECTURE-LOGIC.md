@@ -268,6 +268,7 @@ inactive
 - foreground toast, native notification, Web Push는 같은 notification policy를 따른다.
 - poll duration, tab/pane count, broadcast count는 perf snapshot에 남겨 polling 비용을 확인한다.
 - `/login` 같은 인증 전 public route는 status/native notification/Web Push/service worker runtime service를 마운트하지 않는다. fresh install 또는 app data clear 후 auth WebSocket 실패와 service worker redirect console noise가 없어야 한다.
+- `smoke:permission`은 임시 HOME/server/tmux tab에서 permission prompt 모양의 pane output을 만들고 `/api/status` WebSocket, `/api/tmux/permission-options`, `/api/tmux/send-input`, `status:ack-notification` 전환을 함께 검증한다.
 
 ## Sync 서비스 로직
 
