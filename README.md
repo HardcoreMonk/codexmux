@@ -244,6 +244,7 @@ corepack pnpm lint
 corepack pnpm tsc --noEmit
 corepack pnpm test
 corepack pnpm smoke:electron:attach
+corepack pnpm smoke:electron:runtime-v2
 corepack pnpm smoke:permission
 corepack pnpm smoke:runtime-v2:phase2
 corepack pnpm smoke:android:install
@@ -291,6 +292,13 @@ Electron 빌드 확인:
 
 ```bash
 corepack pnpm build:electron
+```
+
+Electron shell attach와 runtime v2 terminal attach smoke:
+
+```bash
+corepack pnpm smoke:electron:attach
+corepack pnpm smoke:electron:runtime-v2
 ```
 
 로컬 macOS 패키징 확인:
@@ -618,6 +626,13 @@ Build the Electron app:
 
 ```bash
 corepack pnpm build:electron
+```
+
+Smoke Electron shell attach and runtime v2 terminal attach:
+
+```bash
+corepack pnpm smoke:electron:attach
+corepack pnpm smoke:electron:runtime-v2
 ```
 
 Local macOS packaging check:

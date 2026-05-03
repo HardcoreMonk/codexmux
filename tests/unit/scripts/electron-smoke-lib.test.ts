@@ -34,4 +34,29 @@ describe('Electron smoke helpers', () => {
       '.',
     ]);
   });
+
+  it('builds a runtime v2 page-context smoke script', async () => {
+    const { buildElectronRuntimeV2EvalScript } = await loadLib();
+
+    const script = buildElectronRuntimeV2EvalScript({
+      sessionName: 'rtv2-ws-pane-tab',
+      marker: 'electron-v2-marker',
+      cols: 100,
+      rows: 30,
+    });
+
+    expect(script).toContain('/api/v2/terminal');
+    expect(script).toContain('rtv2-ws-pane-tab');
+    expect(script).toContain('electron-v2-marker');
+    expect(script).toContain('new WebSocket');
+    expect(script).toContain('Uint8Array');
+
+    const escapedScript = buildElectronRuntimeV2EvalScript({
+      sessionName: 'rtv2-ws-pane-tab',
+      marker: "electron-v2-'marker",
+    });
+    const commandMatch = escapedScript.match(/const command = ("(?:\\.|[^"])*");/);
+    expect(commandMatch).not.toBeNull();
+    expect(JSON.parse(commandMatch?.[1] ?? 'null')).toBe("printf '%s\\n' 'electron-v2-'\\''marker'\r");
+  });
 });

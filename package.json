@@ -63,6 +63,7 @@
     "smoke:android:foreground": "node scripts/smoke-android-foreground-reconnect.mjs",
     "smoke:android:recovery": "node scripts/smoke-android-launcher-recovery.mjs",
     "smoke:electron:attach": "node scripts/smoke-electron-attach.mjs",
+    "smoke:electron:runtime-v2": "node scripts/smoke-electron-runtime-v2.mjs",
     "smoke:permission": "node scripts/smoke-permission-prompt.mjs",
     "smoke:runtime-v2": "node scripts/smoke-runtime-v2.mjs",
     "smoke:runtime-v2:phase2": "node scripts/smoke-runtime-v2-phase2-gate.mjs",

@@ -33,3 +33,96 @@ export const selectElectronPageTarget = (targets, expectedUrl) => {
   const exact = candidates.find((target) => safeUrl(target.url)?.origin === expected?.origin);
   return exact ?? candidates[0];
 };
+
+const quoteShellArg = (value) => `'${String(value).replace(/'/g, "'\\''")}'`;
+
+export const buildElectronRuntimeV2EvalScript = ({
+  sessionName,
+  marker,
+  cols = 100,
+  rows = 30,
+  timeoutMs = 20_000,
+}) => {
+  const markerCommand = `printf '%s\\n' ${quoteShellArg(marker)}\r`;
+  const safeCols = Number(cols) || 100;
+  const safeRows = Number(rows) || 30;
+  const safeTimeoutMs = Number(timeoutMs) || 20_000;
+
+  return `(() => new Promise((resolve, reject) => {
+  const sessionName = ${JSON.stringify(sessionName)};
+  const marker = ${JSON.stringify(marker)};
+  const command = ${JSON.stringify(markerCommand)};
+  const cols = ${safeCols};
+  const rows = ${safeRows};
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = new URL('/api/v2/terminal', proto + '//' + location.host);
+  url.searchParams.set('session', sessionName);
+  url.searchParams.set('clientId', 'electron-runtime-v2-smoke');
+  url.searchParams.set('cols', String(cols));
+  url.searchParams.set('rows', String(rows));
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  let output = '';
+  let settled = false;
+  let ws = null;
+  let timer = null;
+  const frame = (type, value) => {
+    const payload = encoder.encode(value);
+    const bytes = new Uint8Array(1 + payload.length);
+    bytes[0] = type;
+    bytes.set(payload, 1);
+    return bytes;
+  };
+  const resize = () => {
+    const buffer = new ArrayBuffer(5);
+    const view = new DataView(buffer);
+    view.setUint8(0, 2);
+    view.setUint16(1, cols);
+    view.setUint16(3, rows);
+    return buffer;
+  };
+  const fail = (error) => {
+    if (settled) return;
+    settled = true;
+    if (timer) clearTimeout(timer);
+    if (ws) ws.close();
+    reject(error);
+  };
+  const finish = (ws, result) => {
+    if (settled) return;
+    settled = true;
+    if (timer) clearTimeout(timer);
+    ws.close();
+    resolve(result);
+  };
+  ws = new WebSocket(url);
+  ws.binaryType = 'arraybuffer';
+  timer = setTimeout(() => {
+    fail(new Error('runtime v2 Electron WebSocket timed out: ' + JSON.stringify(output.slice(-200))));
+  }, ${safeTimeoutMs});
+  ws.onopen = () => {
+    ws.send(resize());
+    ws.send(frame(0, command));
+  };
+  ws.onerror = () => {
+    fail(new Error('runtime v2 Electron WebSocket error'));
+  };
+  ws.onclose = (event) => {
+    if (!settled && !output.includes(marker)) {
+      fail(new Error('runtime v2 Electron WebSocket closed before marker: ' + event.code + ' ' + event.reason + ' output=' + JSON.stringify(output.slice(-200))));
+    }
+  };
+  ws.onmessage = (event) => {
+    const append = (buffer) => {
+      const bytes = new Uint8Array(buffer);
+      if (bytes[0] === 1) output += decoder.decode(bytes.slice(1));
+      if (output.includes(marker)) finish(ws, { marker, output, url: url.toString() });
+    };
+    if (event.data instanceof Blob) {
+      event.data.arrayBuffer().then(append).catch(reject);
+    } else {
+      append(event.data);
+    }
+  };
+}))()`;
+};
