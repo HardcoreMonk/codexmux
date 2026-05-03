@@ -75,7 +75,7 @@ P0/P1/P2/P3 후속 상태:
 4. daily report smoke test: `codex exec` 성공/실패, cache 재사용 확인.
 5. macOS packaging: `corepack pnpm build:electron`, `corepack pnpm pack:electron:dev`.
 6. Android packaging: `corepack pnpm android:build:debug`, `corepack pnpm android:install`, `corepack pnpm smoke:android:install`로 package install state 확인. 현재 `0.3.3` 기준 `versionName=0.3.3`, `versionCode=303`이어야 한다.
-7. 모바일 reconnect smoke test: Android WebView는 `smoke:android:foreground`로 반복 확인한다. iPad/PWA install readiness는 `corepack pnpm smoke:pwa`로 manifest/head/icon/splash/service worker/iPad viewport console을 먼저 확인한다. 실제 iPad Home Screen 장시간 background와 입력 draft 보존, timeline 중복 출력 방지는 별도 수동 smoke로 남긴다.
+7. 모바일 reconnect smoke test: Android WebView는 `smoke:android:foreground`로 반복 확인한다. iPad/PWA install readiness는 `corepack pnpm smoke:pwa`로 manifest/head/icon/splash/service worker/iPad viewport console을 먼저 확인한다. iOS startup image는 `scripts/generate-splash.js`가 만든 `codexmux` branding이어야 하며, 기존 Home Screen 앱의 오래된 splash는 iOS cache 때문에 앱 재추가로 확인한다. 실제 iPad Home Screen 장시간 background와 입력 draft 보존, timeline 중복 출력 방지는 별도 수동 smoke로 남긴다.
 8. Android Tailscale 실패 smoke test: `smoke:android:recovery`가 network/HTTP 4xx/SSL을 자동 확인한다. 실제 Tailscale 미연결과 서버 장시간 중지는 별도 수동 smoke로 남긴다.
 9. Android app info/restart smoke test: launcher와 server 접속 후 mobile navigation에서 앱 정보가 표시되고 앱 재시작 버튼이 WebView/Activity를 다시 여는지 확인.
 10. DIFF smoke test: tracked 변경 20개 이상, untracked 50개 초과, binary/대용량 파일이 있는 저장소에서 응답 시간, 생략 안내, 기본 접힘 렌더링 확인.
@@ -117,7 +117,7 @@ P0/P1/P2/P3 후속 상태:
 
 - Android release signing과 AAB 배포 절차를 실제 release workflow에 연결.
 - 모바일 WebView에서 장시간 reconnect, push click, input draft 보존을 반복 검증.
-- iPad는 Safari + 홈 화면 추가를 기본 지원 경로로 유지한다.
+- iPad는 Safari + 홈 화면 추가를 기본 지원 경로로 유지한다. Startup image/icon branding 변경은 PWA 정적 자산 배포 후 기존 Home Screen 앱 재추가까지 확인한다.
 - iOS native shell이 필요하면 Capacitor iOS project와 Xcode signing/deploy flow를 별도 검토.
 
 ### Architecture modularization
