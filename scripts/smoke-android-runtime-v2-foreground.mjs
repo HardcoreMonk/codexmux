@@ -177,6 +177,22 @@ const getAndroidAppInfo = (cdp) =>
     };
   })()`);
 
+const waitForAndroidBridge = async (cdp, timeoutMs, label) => {
+  try {
+    return await waitFor(label, async () => {
+      const state = await readWebViewState(cdp);
+      const appInfo = await getAndroidAppInfo(cdp);
+      return state.bridgeTriggerEventType === 'function' && appInfo
+        ? { state, appInfo }
+        : null;
+    }, timeoutMs);
+  } catch (err) {
+    const state = await readWebViewState(cdp).catch(() => null);
+    const appInfo = await getAndroidAppInfo(cdp).catch(() => null);
+    throw new Error(`${label} missing: ${JSON.stringify({ state, appInfo, error: err instanceof Error ? err.message : String(err) })}`);
+  }
+};
+
 const main = async () => {
   const homeDir = process.env.CODEXMUX_ANDROID_RUNTIME_V2_HOME
     || await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-android-runtime-v2-'));
@@ -286,13 +302,9 @@ const main = async () => {
     await connectWebView();
     let state = await ensureAndroidTarget(cookie);
     checks.push('android-target-initial');
-    const appInfo = await getAndroidAppInfo(cdp);
-    if (state.bridgeTriggerEventType !== 'function') {
-      throw new Error(`Capacitor triggerEvent fallback is missing: ${JSON.stringify(state)}`);
-    }
-    if (!appInfo) {
-      throw new Error(`CodexmuxAndroid bridge is missing: ${JSON.stringify(state)}`);
-    }
+    const bridge = await waitForAndroidBridge(cdp, timeoutMs, 'Android native bridge');
+    state = bridge.state;
+    const appInfo = bridge.appInfo;
     checks.push('android-bridge');
 
     const pageAuthUrl = new URL(`/api/layout?workspace=${encodeURIComponent(workspaceId)}`, targetUrl).toString();
@@ -312,9 +324,7 @@ const main = async () => {
         startAndroidApp({ adb, adbArgs, activity });
         await sleep(settleMs);
         state = await ensureAndroidTarget(cookie);
-        if (state.bridgeTriggerEventType !== 'function') {
-          throw new Error(`triggerEvent fallback missing after ${round.label}: ${JSON.stringify(state)}`);
-        }
+        state = (await waitForAndroidBridge(cdp, timeoutMs, `Android native bridge after ${round.label}`)).state;
         checks.push(`android-foreground-${round.label}`);
       }
 
