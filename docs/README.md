@@ -12,6 +12,7 @@
 | `TMUX.md` | tmux session, terminal WebSocket, key input, Codex process 감지 |
 | `DATA-DIR.md` | `~/.codexmux/` 저장 구조와 삭제 기준 |
 | `PERFORMANCE.md` | 성능 계측, 최적화 우선순위, 검증 기준 |
+| `RUNTIME-V2-CUTOVER.md` | Supervisor/Worker runtime v2 production 전환 단계, flag, rollback 기준 |
 
 ## 운영과 플랫폼
 

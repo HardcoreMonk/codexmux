@@ -52,6 +52,7 @@
 15. 설치/upgrade: `npx codexmux`, global install, 기존 `~/.codexmux` 유지 확인.
 16. release metadata: `corepack pnpm release:patch|minor|major`, changelog, release workflow artifact 확인.
 17. Windows sync smoke test: Windows에서 Scheduled Task `Install -RunNow`, `Status`, `RunOnce` dry-run, source filter, remote source summary, 오래된 date dir full scan 동작 확인.
+18. Runtime v2 cutover readiness: `docs/RUNTIME-V2-CUTOVER.md`의 phase gate, rollback flag, temp HOME/DB smoke, Electron/Android/systemd 검증을 release candidate commit 기준으로 확인.
 
 ## Post-MVP 백로그
 
@@ -89,6 +90,7 @@
 - `timeline-server.ts`는 1차로 shared state를 분리했다. 다음 단계에서는 subscription service, file watcher service, resume service를 별도 파일로 더 나눈다.
 - `status-manager.ts`는 순수 정책 helper를 분리했다. 다음 단계에서는 Web Push/history side effect adapter를 분리한다.
 - provider를 추가할 때는 `IAgentProvider` contract test와 JSONL fixture를 먼저 추가한다.
+- runtime v2 production 전환은 `docs/RUNTIME-V2-CUTOVER.md`의 surface별 flag와 rollback gate를 따른다. terminal, storage, timeline, status를 한 release에서 동시에 기본값으로 전환하지 않는다.
 
 ### Performance
 
