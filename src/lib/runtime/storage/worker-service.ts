@@ -92,6 +92,10 @@ export const createStorageWorkerService = (options: IStorageWorkerServiceOptions
           const input = parseRuntimeCommandPayload('storage.delete-workspace', command.payload);
           return ok(command, repo.deleteWorkspace(input));
         }
+        if (command.type === 'storage.delete-terminal-tab') {
+          const input = parseRuntimeCommandPayload('storage.delete-terminal-tab', command.payload);
+          return ok(command, repo.deleteTerminalTab(input));
+        }
         if (command.type === 'storage.list-workspaces') {
           return ok(command, repo.listWorkspaces());
         }

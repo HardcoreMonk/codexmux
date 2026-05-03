@@ -46,6 +46,17 @@ export interface IRuntimeDeleteWorkspaceResult {
   failedKills: Array<{ sessionName: string; error: string }>;
 }
 
+export interface IRuntimeDeleteTerminalTabStorageResult {
+  deleted: boolean;
+  session: IRuntimeWorkspaceTerminalSession | null;
+}
+
+export interface IRuntimeDeleteTerminalTabResult {
+  deleted: boolean;
+  killedSession: string | null;
+  failedKill: { sessionName: string; error: string } | null;
+}
+
 export interface IRuntimeTerminalTab {
   id: string;
   sessionName: string;

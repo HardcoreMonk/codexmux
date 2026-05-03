@@ -95,7 +95,8 @@ CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 node scripts/smoke-runtime-v
 - `/api/v2/terminal` attach, stdin/stdout, `100x30` resize
 - client detach 후 같은 `sessionName`으로 fresh attach
 - 같은 `sessionName`에 대한 multiple WebSocket subscriber stdout fanout
-- workspace delete 후 삭제된 session attach가 `1011`로 닫히는 cleanup rejection
+- terminal tab delete 후 삭제된 session attach가 `1011`로 닫히는 cleanup rejection
+- 남은 workspace delete cleanup
 
 ## terminal input과 앱 단축키
 

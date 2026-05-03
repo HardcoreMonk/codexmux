@@ -1,5 +1,6 @@
 import type {
   IRuntimeCreateWorkspaceResult,
+  IRuntimeDeleteTerminalTabStorageResult,
   IRuntimeDeleteWorkspaceStorageResult,
   IRuntimePendingTerminalTab,
   IRuntimeTerminalTab,
@@ -40,6 +41,10 @@ export interface IFailReadyTerminalTabInput {
 
 export interface IDeleteWorkspaceInput {
   workspaceId: string;
+}
+
+export interface IDeleteTerminalTabInput {
+  id: string;
 }
 
 export interface IMutationEventRow {
@@ -226,6 +231,57 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
     return { deleted: true, sessions };
   });
 
+  const deleteTerminalTabTx = db.transaction((input: IDeleteTerminalTabInput): IRuntimeDeleteTerminalTabStorageResult => {
+    const ts = nowIso();
+    const row = db.prepare(`
+      select id, pane_id as paneId, session_name as sessionName, panel_type as panelType, lifecycle_state as lifecycleState
+      from tabs
+      where id = ?
+    `).get(input.id) as {
+      id: string;
+      paneId: string;
+      sessionName: string;
+      panelType: string;
+      lifecycleState: string;
+    } | undefined;
+    if (!row) return { deleted: false, session: null };
+
+    db.prepare(`delete from tabs where id = ?`).run(input.id);
+
+    const remaining = db.prepare(`
+      select id
+      from tabs
+      where pane_id = ?
+      order by order_index asc, created_at asc, id asc
+    `).all(row.paneId) as Array<{ id: string }>;
+    remaining.forEach((tab, index) => {
+      db.prepare(`update tabs set order_index = ?, updated_at = ? where id = ?`)
+        .run(index, ts, tab.id);
+    });
+
+    const active = db.prepare(`
+      select id
+      from tabs
+      where pane_id = ? and lifecycle_state = 'ready'
+      order by order_index asc, created_at asc, id asc
+      limit 1
+    `).get(row.paneId) as { id: string } | undefined;
+    db.prepare(`update panes set active_tab_id = ?, updated_at = ? where id = ?`)
+      .run(active?.id ?? null, ts, row.paneId);
+
+    recordEvent('tab', input.id, 'tab.deleted', {
+      id: input.id,
+      sessionName: row.sessionName,
+      lifecycleState: row.lifecycleState,
+    });
+
+    const shouldKill = row.panelType === 'terminal' && ['pending_terminal', 'ready'].includes(row.lifecycleState);
+    return {
+      deleted: true,
+      session: shouldKill ? { sessionName: row.sessionName } : null,
+    };
+  });
+
   return {
     createWorkspace: createWorkspaceTx,
     createPendingTerminalTab: createPendingTerminalTabTx,
@@ -233,6 +289,7 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
     failPendingTerminalTab: failPendingTerminalTabTx,
     failReadyTerminalTab: failReadyTerminalTabTx,
     deleteWorkspace: deleteWorkspaceTx,
+    deleteTerminalTab: deleteTerminalTabTx,
 
     listPendingTerminalTabs(): IRuntimePendingTerminalTab[] {
       return db.prepare(`

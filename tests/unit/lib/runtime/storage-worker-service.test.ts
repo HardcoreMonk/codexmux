@@ -211,6 +211,57 @@ describe('storage worker service', () => {
     });
   });
 
+  it('deletes terminal tabs and returns cleanup sessions from the delete command', async () => {
+    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const created = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.create-workspace',
+      payload: { name: 'Runtime', defaultCwd: dir },
+    }));
+    const workspace = created.payload as { id: string; rootPaneId: string };
+    const sessionName = `rtv2-${workspace.id}-${workspace.rootPaneId}-tab-runtime`;
+
+    await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.create-pending-terminal-tab',
+      payload: {
+        id: 'tab-runtime',
+        workspaceId: workspace.id,
+        paneId: workspace.rootPaneId,
+        sessionName,
+        cwd: dir,
+      },
+    }));
+    await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.finalize-terminal-tab',
+      payload: { id: 'tab-runtime' },
+    }));
+
+    const deleted = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.delete-terminal-tab',
+      payload: { id: 'tab-runtime' },
+    }));
+    expect(deleted.ok).toBe(true);
+    expect(deleted.payload).toEqual({
+      deleted: true,
+      session: { sessionName },
+    });
+
+    const missing = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.delete-terminal-tab',
+      payload: { id: 'tab-missing' },
+    }));
+    expect(missing.payload).toEqual({ deleted: false, session: null });
+  });
+
   it('returns only ready terminal tabs for attach authorization', async () => {
     const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
     const created = await service.handleCommand(createRuntimeCommand({

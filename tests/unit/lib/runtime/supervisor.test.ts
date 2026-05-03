@@ -60,6 +60,10 @@ const createWorkers = () => {
   });
   storage.replies.set('storage.fail-pending-terminal-tab', { ok: true });
   storage.replies.set('storage.fail-ready-terminal-tab', { ok: true });
+  storage.replies.set('storage.delete-terminal-tab', {
+    deleted: true,
+    session: { sessionName: 'rtv2-ws-a-pane-b-tab-c' },
+  });
   terminal.replies.set('terminal.health', { ok: true });
   terminal.replies.set('terminal.create-session', { sessionName: 'rtv2-ws-a-pane-b-tab-generated' });
   terminal.replies.set('terminal.attach', { sessionName: 'rtv2-ws-a-pane-b-tab-c', attached: true });
@@ -138,6 +142,66 @@ describe('runtime supervisor', () => {
       deleted: false,
       killedSessions: [],
       failedKills: [],
+    });
+    expect(terminal.commands.map((command) => command.type)).not.toContain('terminal.kill-session');
+  });
+
+  it('deletes terminal tabs, closes subscribers, and kills the returned session', async () => {
+    const { storage, terminal } = createWorkers();
+    const close = vi.fn();
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal });
+
+    const attached = await supervisor.attachTerminal({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      cols: 80,
+      rows: 24,
+      send: vi.fn(),
+      close,
+    });
+    await expect(supervisor.deleteTerminalTab('tab-a')).resolves.toEqual({
+      deleted: true,
+      killedSession: 'rtv2-ws-a-pane-b-tab-c',
+      failedKill: null,
+    });
+
+    expect(attached.subscriberId).toMatch(/^sub-/);
+    expect(close).toHaveBeenCalledWith(1000, 'Tab deleted');
+    expect(storage.commands).toEqual(expect.arrayContaining([
+      { type: 'storage.delete-terminal-tab', payload: { id: 'tab-a' } },
+    ]));
+    expect(terminal.commands).toEqual(expect.arrayContaining([
+      { type: 'terminal.kill-session', payload: { sessionName: 'rtv2-ws-a-pane-b-tab-c' } },
+    ]));
+  });
+
+  it('skips terminal kill when terminal tab delete returns no cleanup session', async () => {
+    const { storage, terminal } = createWorkers();
+    storage.replies.set('storage.delete-terminal-tab', { deleted: false, session: null });
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal });
+
+    await expect(supervisor.deleteTerminalTab('tab-missing')).resolves.toEqual({
+      deleted: false,
+      killedSession: null,
+      failedKill: null,
+    });
+    expect(terminal.commands.map((command) => command.type)).not.toContain('terminal.kill-session');
+  });
+
+  it('does not send invalid deleted tab sessions to terminal worker', async () => {
+    const { storage, terminal } = createWorkers();
+    storage.replies.set('storage.delete-terminal-tab', {
+      deleted: true,
+      session: { sessionName: 'pt-legacy-session' },
+    });
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal });
+
+    await expect(supervisor.deleteTerminalTab('tab-a')).resolves.toEqual({
+      deleted: true,
+      killedSession: null,
+      failedKill: {
+        sessionName: 'pt-legacy-session',
+        error: 'invalid runtime session name',
+      },
     });
     expect(terminal.commands.map((command) => command.type)).not.toContain('terminal.kill-session');
   });

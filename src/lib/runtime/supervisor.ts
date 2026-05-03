@@ -3,6 +3,8 @@ import os from 'os';
 import path from 'path';
 import type {
   IRuntimeCreateWorkspaceResult,
+  IRuntimeDeleteTerminalTabResult,
+  IRuntimeDeleteTerminalTabStorageResult,
   IRuntimeDeleteWorkspaceResult,
   IRuntimeDeleteWorkspaceStorageResult,
   IRuntimeHealth,
@@ -29,6 +31,7 @@ export interface IRuntimeSupervisor {
   listWorkspaces(): Promise<IRuntimeWorkspace[]>;
   createWorkspace(input: { name: string; defaultCwd: string }): Promise<IRuntimeCreateWorkspaceResult>;
   deleteWorkspace(workspaceId: string): Promise<IRuntimeDeleteWorkspaceResult>;
+  deleteTerminalTab(tabId: string): Promise<IRuntimeDeleteTerminalTabResult>;
   createTerminalTab(input: { workspaceId: string; paneId: string; cwd: string }): Promise<IRuntimeTerminalTab>;
   getLayout(workspaceId: string): Promise<TRuntimeLayout>;
   attachTerminal(input: {
@@ -405,6 +408,46 @@ export const createRuntimeSupervisorForTest = (
         }
       }
       return { deleted: true, killedSessions, failedKills };
+    },
+
+    async deleteTerminalTab(tabId) {
+      await this.ensureStarted();
+      const { storage, terminal } = getClients();
+      const result = await storage.request<{ id: string }, IRuntimeDeleteTerminalTabStorageResult>(
+        'storage.delete-terminal-tab',
+        { id: tabId },
+      );
+      if (!result.deleted || !result.session) {
+        return { deleted: result.deleted, killedSession: null, failedKill: null };
+      }
+
+      const sessionName = parseRuntimeSessionNameOrNull(result.session.sessionName);
+      if (!sessionName) {
+        return {
+          deleted: true,
+          killedSession: null,
+          failedKill: {
+            sessionName: result.session.sessionName,
+            error: 'invalid runtime session name',
+          },
+        };
+      }
+
+      closeTerminalSubscribers(sessionName, 1000, 'Tab deleted');
+      await waitForTerminalAttachAttempt(sessionName);
+      try {
+        await terminal.request('terminal.kill-session', { sessionName });
+        return { deleted: true, killedSession: sessionName, failedKill: null };
+      } catch (err) {
+        return {
+          deleted: true,
+          killedSession: null,
+          failedKill: {
+            sessionName,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        };
+      }
     },
 
     async createTerminalTab(input) {

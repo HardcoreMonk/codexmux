@@ -87,6 +87,11 @@ Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service
 timestamp가 붙은 `.bak` 파일로 이동한다. `state.db` 없이 WAL/SHM sidecar만 남은 경우도
 각 sidecar를 독립적으로 백업하고 원래 경로에 stale sidecar를 남기지 않는다.
 
+runtime v2 tab 삭제는 `state.db`의 `tabs` row 삭제 transaction이 source of truth다.
+Storage Worker는 삭제된 terminal tab의 session cleanup intent를 반환하고, Supervisor가
+해당 runtime v2 tmux session을 kill한다. 삭제된 tab의 `tab_status` row는 SQLite foreign
+key cascade로 함께 제거된다.
+
 ## `config.json` 주요 설정
 
 | 필드 | 내용 |

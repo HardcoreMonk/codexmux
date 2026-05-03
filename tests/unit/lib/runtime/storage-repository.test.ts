@@ -212,6 +212,78 @@ describe('runtime storage repository', () => {
     expect(repo.listMutationEvents()).toHaveLength(eventCount);
   });
 
+  it('deletes terminal tabs, returns cleanup sessions, reorders tabs, and updates active tab', () => {
+    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const repo = createStorageRepository(db);
+    const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
+    const firstPending = repo.createPendingTerminalTab({
+      id: 'tab-first',
+      workspaceId: workspace.id,
+      paneId: workspace.rootPaneId,
+      sessionName: `rtv2-${workspace.id}-${workspace.rootPaneId}-tab-first`,
+      cwd: dir,
+    });
+    const secondPending = repo.createPendingTerminalTab({
+      id: 'tab-second',
+      workspaceId: workspace.id,
+      paneId: workspace.rootPaneId,
+      sessionName: `rtv2-${workspace.id}-${workspace.rootPaneId}-tab-second`,
+      cwd: dir,
+    });
+    const thirdPending = repo.createPendingTerminalTab({
+      id: 'tab-third',
+      workspaceId: workspace.id,
+      paneId: workspace.rootPaneId,
+      sessionName: `rtv2-${workspace.id}-${workspace.rootPaneId}-tab-third`,
+      cwd: dir,
+    });
+    repo.finalizeTerminalTab({ id: firstPending.id });
+    repo.finalizeTerminalTab({ id: secondPending.id });
+    repo.finalizeTerminalTab({ id: thirdPending.id });
+
+    expect(repo.deleteTerminalTab({ id: secondPending.id })).toEqual({
+      deleted: true,
+      session: { sessionName: secondPending.sessionName },
+    });
+
+    const layout = repo.getWorkspaceLayout(workspace.id);
+    expect(layout?.root.type).toBe('pane');
+    if (layout?.root.type === 'pane') {
+      expect(layout.root.activeTabId).toBe(firstPending.id);
+      expect(layout.root.tabs.map((tab) => ({ id: tab.id, order: tab.order }))).toEqual([
+        { id: firstPending.id, order: 0 },
+        { id: thirdPending.id, order: 1 },
+      ]);
+    }
+    expect(repo.getReadyTerminalTabBySession(secondPending.sessionName)).toBeNull();
+    expect(repo.listMutationEvents()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ entityType: 'tab', entityId: secondPending.id, eventType: 'tab.deleted' }),
+    ]));
+  });
+
+  it('deletes failed or missing terminal tabs without cleanup sessions', () => {
+    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const repo = createStorageRepository(db);
+    const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
+    const failedPending = repo.createPendingTerminalTab({
+      id: 'tab-failed',
+      workspaceId: workspace.id,
+      paneId: workspace.rootPaneId,
+      sessionName: `rtv2-${workspace.id}-${workspace.rootPaneId}-tab-failed`,
+      cwd: dir,
+    });
+    repo.failPendingTerminalTab({ id: failedPending.id, reason: 'terminal create failed' });
+
+    expect(repo.deleteTerminalTab({ id: failedPending.id })).toEqual({
+      deleted: true,
+      session: null,
+    });
+    expect(repo.deleteTerminalTab({ id: 'tab-missing' })).toEqual({
+      deleted: false,
+      session: null,
+    });
+  });
+
   it('finds only finalized ready terminal tabs by session name', () => {
     const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const repo = createStorageRepository(db);

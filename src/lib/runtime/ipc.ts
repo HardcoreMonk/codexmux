@@ -48,6 +48,10 @@ const runtimeDeleteWorkspaceStorageResultSchema = z.object({
   deleted: z.boolean(),
   sessions: z.array(rawTerminalSessionSchema),
 });
+const runtimeDeleteTerminalTabStorageResultSchema = z.object({
+  deleted: z.boolean(),
+  session: rawTerminalSessionSchema.nullable(),
+});
 const runtimeLayoutTabSchema = z.object({
   id: z.string(),
   sessionName: runtimeSessionNameSchema,
@@ -93,6 +97,7 @@ const runtimeLayoutSchema = z.object({
   updatedAt: z.string(),
 }).nullable();
 const workspaceIdPayloadSchema = z.object({ workspaceId: z.string().min(1) });
+const terminalTabIdPayloadSchema = z.object({ id: z.string().min(1) });
 const createWorkspacePayloadSchema = z.object({
   name: z.string().min(1),
   defaultCwd: z.string().min(1),
@@ -149,6 +154,7 @@ export const runtimeCommandRegistry = {
   'storage.fail-ready-terminal-tab': { payload: failReadyTerminalTabPayloadSchema, reply: z.object({ ok: z.boolean() }) },
   'storage.get-ready-terminal-tab-by-session': { payload: runtimeTerminalSessionSchema, reply: runtimeTerminalTabSchema.nullable() },
   'storage.delete-workspace': { payload: workspaceIdPayloadSchema, reply: runtimeDeleteWorkspaceStorageResultSchema },
+  'storage.delete-terminal-tab': { payload: terminalTabIdPayloadSchema, reply: runtimeDeleteTerminalTabStorageResultSchema },
   'storage.list-workspaces': { payload: emptyPayloadSchema, reply: z.array(runtimeWorkspaceSchema) },
   'storage.get-layout': { payload: workspaceIdPayloadSchema, reply: runtimeLayoutSchema },
   'terminal.health': { payload: emptyPayloadSchema, reply: runtimeHealthReplySchema },

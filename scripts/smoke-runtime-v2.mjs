@@ -194,11 +194,13 @@ const main = async () => {
     await waitForFanoutSmoke(tab.sessionName);
     checks.push('fanout');
     const workspaceId = workspace.id;
+    await request(`/api/v2/tabs/${encodeURIComponent(tab.id)}`, { method: 'DELETE' });
+    checks.push('tab-delete');
+    await waitForAttachRejection(tab.sessionName);
+    checks.push('deleted-session-attach-rejected');
     await request(`/api/v2/workspaces/${encodeURIComponent(workspace.id)}`, { method: 'DELETE' });
     checks.push('workspace-delete');
     workspace = null;
-    await waitForAttachRejection(tab.sessionName);
-    checks.push('deleted-session-attach-rejected');
     console.log(JSON.stringify({ ok: true, workspaceId, tabId: tab.id, sessionName: tab.sessionName, checks }, null, 2));
   } catch (err) {
     failed = true;

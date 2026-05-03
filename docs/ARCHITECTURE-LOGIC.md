@@ -30,6 +30,9 @@ Runtime state
 Worker는 `~/.codexmux/runtime-v2/state.db` SQLite app state를 소유한다. Terminal
 Worker는 별도 `codexmux-runtime-v2` tmux socket의 `rtv2-` session lifecycle과
 `/api/v2/terminal` attach/stdin/stdout/resize 경로를 소유한다.
+runtime v2의 workspace delete와 terminal tab delete는 Storage Worker SQLite
+transaction이 cleanup 대상 session을 반환하고, Supervisor가 subscriber close와
+Terminal Worker `kill-session` cleanup을 수행한다.
 
 이 runtime은 구현 첫 단계의 process-level smoke와 platform smoke를 통과하기 전까지
 기본 production terminal/timeline/status 경로를 대체하지 않는다.
