@@ -158,6 +158,7 @@ const useTerminalWebSocket = ({
         };
 
         ws.onerror = () => {
+          if (connectIdRef.current !== connectId) return;
           console.log('[terminal-ws] connection error');
         };
       };

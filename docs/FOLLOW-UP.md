@@ -40,7 +40,7 @@
 3. stats smoke test: `/api/stats/*` endpoint와 실제 `~/.codex/sessions` 집계 확인.
 4. daily report smoke test: `codex exec` 성공/실패, cache 재사용 확인.
 5. macOS packaging: `corepack pnpm build:electron`, `corepack pnpm pack:electron:dev`.
-6. Android packaging: `corepack pnpm android:build:debug`, `corepack pnpm android:install`, package install state 확인. 현재 `0.3.3` 기준 `versionName=0.3.3`, `versionCode=303`이어야 한다.
+6. Android packaging: `corepack pnpm android:build:debug`, `corepack pnpm android:install`, `corepack pnpm smoke:android:install`로 package install state 확인. 현재 `0.3.3` 기준 `versionName=0.3.3`, `versionCode=303`이어야 한다.
 7. 모바일 reconnect smoke test: Android WebView와 iPad Safari에서 foreground 복귀, 입력 draft 보존, terminal/status/timeline/sync 재연결, timeline 중복 출력 방지 확인.
 8. Android Tailscale 실패 smoke test: 서버 중지, 잘못된 HTTPS, HTTP 4xx/5xx, Tailscale 미연결 상태에서 런처 복구 확인.
 9. Android app info/restart smoke test: launcher와 server 접속 후 mobile navigation에서 앱 정보가 표시되고 앱 재시작 버튼이 WebView/Activity를 다시 여는지 확인.
@@ -52,7 +52,7 @@
 15. 설치/upgrade: `npx codexmux`, global install, 기존 `~/.codexmux` 유지 확인.
 16. release metadata: `corepack pnpm release:patch|minor|major`, changelog, release workflow artifact 확인.
 17. Windows sync smoke test: Windows에서 Scheduled Task `Install -RunNow`, `Status`, `RunOnce` dry-run, source filter, remote source summary, 오래된 date dir full scan 동작 확인.
-18. Runtime v2 cutover readiness: `docs/RUNTIME-V2-CUTOVER.md`와 `docs/RUNTIME-V2-PARITY.md`의 phase gate, rollback flag, temp HOME/DB smoke를 release candidate commit 기준으로 확인한다. Phase 2 terminal gate는 `node scripts/smoke-runtime-v2-phase2-gate.mjs`로 browser reload/server restart/mode-off rollback을 먼저 통과시킨 뒤 Electron reconnect, Android foreground reconnect, systemd 검증 증거를 추가한다.
+18. Runtime v2 cutover readiness: `docs/RUNTIME-V2-CUTOVER.md`와 `docs/RUNTIME-V2-PARITY.md`의 phase gate, rollback flag, temp HOME/DB smoke를 release candidate commit 기준으로 확인한다. Phase 2 terminal gate는 `corepack pnpm smoke:runtime-v2:phase2`로 browser reload/server restart/mode-off rollback을 먼저 통과시킨 뒤 Electron reconnect, Android foreground reconnect, systemd 검증 증거를 추가한다.
 
 ## Post-MVP 백로그
 

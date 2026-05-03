@@ -176,6 +176,7 @@ const useTimelineWebSocket = ({
       };
 
       ws.onerror = () => {
+        if (connectIdRef.current !== connectId) return;
         console.log('[timeline-ws] connection error');
       };
     },

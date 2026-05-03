@@ -122,7 +122,7 @@ APK 재빌드는 필요 없다.
    확인한다.
 
 ```bash
-node scripts/smoke-runtime-v2-phase2-gate.mjs
+corepack pnpm smoke:runtime-v2:phase2
 ```
 
 2. Android 앱에서 붙을 서버를 runtime v2 new-tabs mode로 실행한다.
@@ -134,7 +134,7 @@ CODEXMUX_RUNTIME_V2=1 CODEXMUX_RUNTIME_TERMINAL_V2_MODE=new-tabs PORT=8132 corep
 3. 서버에서 runtime v2 terminal production-parity smoke도 통과시킨다.
 
 ```bash
-CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 node scripts/smoke-runtime-v2.mjs
+CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 corepack pnpm smoke:runtime-v2
 ```
 
 4. Android 앱 launcher에서 같은 서버 URL로 접속한다.
@@ -187,6 +187,12 @@ android/app/build/outputs/apk/debug/app-debug.apk
 ~/Android/Sdk/platform-tools/adb shell pm path com.hardcoremonk.codexmux
 ~/Android/Sdk/platform-tools/adb shell dumpsys package com.hardcoremonk.codexmux | rg "versionName|versionCode|lastUpdateTime|Package \\["
 ~/Android/Sdk/platform-tools/adb shell cmd package resolve-activity --brief com.hardcoremonk.codexmux
+```
+
+동일한 확인은 다음 smoke script로도 실행할 수 있습니다.
+
+```bash
+corepack pnpm smoke:android:install
 ```
 
 정상 설치 시 `pm path`는 `/data/app/.../base.apk`를 반환하고, launcher activity는 `com.hardcoremonk.codexmux/.MainActivity`로 resolve됩니다.
