@@ -246,7 +246,8 @@ DIFF 패널은 별도 git workspace를 저장하지 않고 현재 tab의 tmux se
 | `src/lib/terminal-protocol.ts` | binary protocol constant |
 | `src/lib/remote-terminal-server.ts` | Windows terminal bridge browser WebSocket fanout |
 | `src/lib/remote-terminal-store.ts` | remote terminal source, command queue, output snapshot shared singleton |
-| `scripts/windows-terminal-bridge.mjs` | Windows sidecar shell spawn, command poll, output post |
+| `scripts/windows-terminal-bridge.mjs` | Windows sidecar CLI arg parsing and shell spawn |
+| `scripts/windows-terminal-bridge-lib.mjs` | Windows terminal bridge server preflight, command poll, output post |
 | `src/pages/windows-terminal.tsx` | remote terminal page route |
 | `src/lib/timeline-server.ts` | timeline WebSocket과 JSONL watcher |
 | `src/lib/timeline-server-state.ts` | timeline shared singleton state |

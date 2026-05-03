@@ -6,6 +6,8 @@ import Spinner from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import SessionListItem from '@/components/features/workspace/session-list-item';
+import useRemoteTerminalSources from '@/hooks/use-remote-terminal-sources';
+import { getWindowsTerminalLinkTarget } from '@/lib/windows-terminal-link';
 import type { IRemoteCodexSourceStatus, ISessionMeta, TSessionSourceFilter } from '@/types/timeline';
 
 interface ISessionListViewProps {
@@ -79,6 +81,7 @@ const SessionListView = ({
 }: ISessionListViewProps) => {
   const t = useTranslations('terminal');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { terminals: remoteTerminals } = useRemoteTerminalSources({ enabled: true });
 
   const handleRefresh = useCallback(async () => {
     await onRefresh();
@@ -97,6 +100,10 @@ const SessionListView = ({
 
   const isResumeInProgress = !!resumingSessionId;
   const latestRemoteSource = remoteSources[0];
+  const windowsTerminalTarget = getWindowsTerminalLinkTarget({
+    remoteSources,
+    remoteTerminals,
+  });
   const sessionCountLabel = total > 0 ? `(${total})` : '';
   const sourceTime = latestRemoteSource?.latestSyncAt
     ? dayjs(latestRemoteSource.latestSyncAt).format('MM/DD HH:mm')
@@ -123,13 +130,13 @@ const SessionListView = ({
               {t('newConversation')}
             </Button>
           )}
-          {latestRemoteSource && (
+          {windowsTerminalTarget && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
                 window.open(
-                  `/windows-terminal?sourceId=${encodeURIComponent(latestRemoteSource.sourceId)}`,
+                  windowsTerminalTarget.href,
                   '_blank',
                   'noopener,noreferrer',
                 );

@@ -233,7 +233,7 @@ Browser /api/remote/terminal WebSocket
 - session list는 remote JSONL 본문 전체를 매번 파싱하지 않고 sidecar metadata로 목록을 만든다. JSONL 본문은 timeline subscribe 때만 읽는다.
 - Windows cwd는 session list의 source metadata로만 표시한다.
 - remote session 선택은 Codex resume이 아니라 저장된 JSONL path에 대한 timeline subscribe다.
-- `scripts/windows-terminal-bridge.mjs`는 `/api/health` 확인 후 Windows에서 별도 `pwsh`를 시작하고, CLI token으로 `/api/remote/terminal/register`, `/commands`, `/output`을 호출한다. Browser는 authenticated `/api/remote/terminal` WebSocket에 연결하고 기존 terminal protocol frame을 재사용한다. bridge state는 서버/API module graph 공유를 위해 `globalThis.__ptRemoteTerminalStore`에 둔다.
+- `scripts/windows-terminal-bridge.mjs`는 `/api/health` 확인 후 CLI token으로 `/api/remote/terminal/register`를 먼저 호출하고, register가 성공하면 Windows에서 별도 `pwsh`를 시작해 `/commands`, `/output`을 호출한다. Browser는 authenticated `/api/remote/terminal` WebSocket에 연결하고 기존 terminal protocol frame을 재사용한다. bridge state는 서버/API module graph 공유를 위해 `globalThis.__ptRemoteTerminalStore`에 둔다.
 - terminal bridge는 이미 Windows Terminal에서 수동으로 실행 중인 외부 process에 attach하지 않고, bridge가 시작한 별도 shell만 제어한다.
 
 ## Session Index 서비스 로직

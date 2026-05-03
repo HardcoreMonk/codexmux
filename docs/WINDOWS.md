@@ -212,6 +212,8 @@ Scheduled Task가 실행되지 않으면 `-Action Status`의 `LastTaskResult`를
 
 terminal bridge가 표시되지 않으면 Windows 기기에서 `corepack pnpm windows:terminal-bridge -- --source-id <sourceId>`를 실행한 뒤 `/api/remote/terminal/sources`가 terminal 목록을 반환하는지 확인한다. Browser terminal은 연결되지만 출력이 없으면 bridge 로그의 command poll/output post 오류와 token 값을 먼저 확인한다.
 
+`expected JSON response, got text/html`이 나오면 bridge가 붙은 서버가 terminal bridge API를 처리하지 못하고 HTML error page를 반환한 것이다. `/api/health`에 표시되는 commit이 Windows checkout보다 오래된 경우 서버도 최신 commit으로 갱신한 뒤 다시 실행한다.
+
 `Missing script: windows:terminal-bridge`가 나오면 실행한 디렉터리의 `package.json`이 terminal bridge 변경을 아직 포함하지 않은 상태다. 먼저 codexmux repo root에서 실행 중인지 확인하고, 최신 commit을 받은 뒤 다음 값이 있는지 확인한다.
 
 ```powershell

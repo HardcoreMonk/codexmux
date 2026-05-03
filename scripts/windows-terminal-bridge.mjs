@@ -4,10 +4,11 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { spawn } from 'child_process';
-
-const DEFAULT_POLL_INTERVAL_MS = 250;
-const DEFAULT_OUTPUT_FLUSH_MS = 40;
-const MAX_OUTPUT_CHUNK_BYTES = 256 * 1024;
+import {
+  DEFAULT_OUTPUT_FLUSH_MS,
+  DEFAULT_POLL_INTERVAL_MS,
+  runWindowsTerminalBridge,
+} from './windows-terminal-bridge-lib.mjs';
 
 const args = process.argv.slice(2);
 
@@ -87,24 +88,6 @@ const loadNodePty = async () => {
   }
 };
 
-const requestJson = async ({ serverUrl, token, pathname, method = 'GET', body }) => {
-  const res = await fetch(new URL(pathname, serverUrl), {
-    method,
-    headers: {
-      'x-cmux-token': token,
-      ...(body ? { 'content-type': 'application/json' } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(15_000),
-  });
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
-  if (!res.ok) {
-    throw new Error(`${method} ${pathname} failed ${res.status}: ${text}`);
-  }
-  return data;
-};
-
 const createTerminal = async ({ shellPath, cwd, cols, rows, env }) => {
   const pty = await loadNodePty();
   if (pty?.spawn) {
@@ -173,151 +156,33 @@ const token = readArg('token') || process.env.CMUX_TOKEN || process.env.CODEXMUX
 if (!serverUrl) die('Missing --server or CMUX_URL');
 if (!token) die('Missing --token, --token-file, CMUX_TOKEN, or CMUX_TOKEN_FILE');
 
-let stopped = false;
-let commandSeq = 0;
-let flushTimer = null;
-let pendingOutput = Buffer.alloc(0);
-let terminal = null;
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const metadata = () => ({
-  sourceId,
-  terminalId,
-  host: os.hostname(),
-  shell: shellName,
-  cwd,
-  cols,
-  rows,
-});
-
-const register = async () => {
-  await requestJson({
+const stopState = { stopped: false, terminal: null };
+const main = async () => {
+  await runWindowsTerminalBridge({
     serverUrl,
     token,
-    pathname: '/api/remote/terminal/register',
-    method: 'POST',
-    body: metadata(),
-  });
-};
-
-const postOutput = async (data) => {
-  if (data.length === 0) return;
-  await requestJson({
-    serverUrl,
-    token,
-    pathname: '/api/remote/terminal/output',
-    method: 'POST',
-    body: {
-      ...metadata(),
-      dataBase64: data.toString('base64'),
-    },
-  });
-};
-
-const flushOutput = async () => {
-  if (flushTimer) {
-    clearTimeout(flushTimer);
-    flushTimer = null;
-  }
-  if (pendingOutput.length === 0) return;
-  const next = pendingOutput;
-  pendingOutput = Buffer.alloc(0);
-  try {
-    await postOutput(next);
-  } catch (err) {
-    process.stderr.write(`[warn] output post failed: ${err instanceof Error ? err.message : err}\n`);
-    pendingOutput = Buffer.concat([next, pendingOutput]).subarray(0, MAX_OUTPUT_CHUNK_BYTES);
-  }
-};
-
-const queueOutput = (data) => {
-  const chunk = Buffer.isBuffer(data) ? data : Buffer.from(String(data), 'utf-8');
-  pendingOutput = Buffer.concat([pendingOutput, chunk]);
-  if (pendingOutput.length >= MAX_OUTPUT_CHUNK_BYTES) {
-    void flushOutput();
-    return;
-  }
-  if (!flushTimer) {
-    flushTimer = setTimeout(() => void flushOutput(), outputFlushMs);
-  }
-};
-
-const pollCommands = async () => {
-  const params = new URLSearchParams({
     sourceId,
     terminalId,
-    afterSeq: String(commandSeq),
-    max: '100',
-  });
-  const data = await requestJson({
-    serverUrl,
-    token,
-    pathname: `/api/remote/terminal/commands?${params.toString()}`,
-  });
-  for (const command of data.commands ?? []) {
-    commandSeq = Math.max(commandSeq, command.seq || 0);
-    if (command.type === 'stdin' && typeof command.data === 'string') {
-      terminal.write(command.data);
-    } else if (command.type === 'resize' && command.cols > 0 && command.rows > 0) {
-      terminal.resize(command.cols, command.rows);
-    } else if (command.type === 'kill') {
-      stopped = true;
-      terminal.kill();
-    }
-  }
-};
-
-const main = async () => {
-  const health = await fetch(new URL('/api/health', serverUrl), { signal: AbortSignal.timeout(8_000) });
-  if (!health.ok) throw new Error(`health check failed ${health.status}`);
-  const healthData = await health.json().catch(() => ({}));
-  const version = healthData.version ? ` v${healthData.version}` : '';
-  const commit = healthData.commit ? ` (${healthData.commit})` : '';
-  process.stdout.write(`[codexmux] server ready${version}${commit}\n`);
-
-  terminal = await createTerminal({
+    shellName,
     shellPath,
     cwd,
     cols,
     rows,
+    pollIntervalMs,
+    outputFlushMs,
     env: process.env,
+    createTerminal,
+    stopState,
   });
-  process.stdout.write(`[codexmux] started ${terminal.kind} ${shellPath} source=${sourceId} terminal=${terminalId}\n`);
-  terminal.onData((data) => queueOutput(data));
-  terminal.onExit(({ exitCode, signal }) => {
-    stopped = true;
-    queueOutput(`\r\n[codexmux] Windows terminal bridge exited code=${exitCode ?? ''} signal=${signal ?? ''}\r\n`);
-  });
-
-  await register();
-  queueOutput(`[codexmux] Windows terminal bridge connected: ${sourceId}/${terminalId}\r\n`);
-
-  let lastRegisterAt = Date.now();
-  while (!stopped) {
-    try {
-      await pollCommands();
-      if (Date.now() - lastRegisterAt > 30_000) {
-        await register();
-        lastRegisterAt = Date.now();
-      }
-    } catch (err) {
-      process.stderr.write(`[warn] command poll failed: ${err instanceof Error ? err.message : err}\n`);
-      await sleep(Math.min(5000, pollIntervalMs * 4));
-    }
-    await sleep(pollIntervalMs);
-  }
-
-  await flushOutput();
 };
 
 process.on('SIGINT', () => {
-  stopped = true;
-  terminal?.kill?.();
+  stopState.stopped = true;
+  stopState.terminal?.kill?.();
 });
 process.on('SIGTERM', () => {
-  stopped = true;
-  terminal?.kill?.();
+  stopState.stopped = true;
+  stopState.terminal?.kill?.();
 });
 
 main().catch((err) => {
