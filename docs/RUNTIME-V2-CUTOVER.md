@@ -13,6 +13,7 @@
 - Shadow diagnostics: server startup calls runtime v2 health without blocking legacy startup, and `/api/debug/perf` exposes worker health/readiness/restart/timeout counters.
 - Terminal identity: newly created legacy tabs carry `runtimeVersion: 1`, runtime v2 tabs carry `runtimeVersion: 2`, and missing `runtimeVersion` is treated as legacy for existing JSON layouts.
 - Smoke: `/api/v2/terminal` attach/input/output/resize/web stdin/heartbeat/fresh reattach/fanout/backpressure close/tab delete/workspace delete, plus Phase 2 app-surface new-tab gate for browser reload, server restart, and terminal mode rollback.
+- 2026-05-03 `b038ddd` live smoke: `corepack pnpm smoke:runtime-v2:phase2`, `corepack pnpm build:electron`, Android debug install, Android Tailscale failure recovery, Android production foreground reconnect, Windows sync dry-run, stats/daily report, and systemd deploy health passed. Android production foreground reconnect showed `triggerEvent`/TypeError 0 and terminal/timeline WebSocket console error 0 after foreground grace suppression.
 
 Production 기본 경로로 전환하지 않은 것:
 
@@ -102,6 +103,7 @@ Exit gate:
 
 - `node scripts/smoke-runtime-v2-phase2-gate.mjs` passes and proves new v2 tabs survive browser reload and server restart while legacy tabs stay on `/api/terminal`.
 - Electron reconnect and Android foreground reconnect smoke pass with existing session cookie auth on `/api/v2/terminal`.
+- Android production legacy foreground reconnect passing is necessary but not sufficient for this exit gate; this gate still needs an Android tab that actually attaches through `/api/v2/terminal`.
 - Legacy tabs continue to attach through `/api/terminal`.
 - Rollback mode `off` blocks new v2 tab creation, `/api/v2/runtime/health` reports `terminalV2Mode: "off"`, and existing v2 tabs remain visible with a clear `runtime-v2-disabled` diagnostic state.
 

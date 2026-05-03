@@ -14,6 +14,9 @@ corepack pnpm android:install
 corepack pnpm android:keystore
 corepack pnpm android:build:release
 corepack pnpm android:bundle:release
+corepack pnpm smoke:android:install
+corepack pnpm smoke:android:foreground
+corepack pnpm smoke:android:recovery
 ```
 
 - `android:sync`: `android-web/` asset과 Capacitor 설정을 `android/` 프로젝트에 반영합니다.
@@ -24,6 +27,9 @@ corepack pnpm android:bundle:release
 - `android:keystore`: 로컬 release keystore와 `android/keystore.properties`를 생성합니다.
 - `android:build:release`: signed release APK를 생성합니다.
 - `android:bundle:release`: signed release AAB를 생성합니다.
+- `smoke:android:install`: 연결된 debug APK의 package/version/activity 상태를 확인합니다.
+- `smoke:android:foreground`: Android WebView DevTools와 ADB로 foreground/background 복귀, native bridge, console/logcat 오류를 확인합니다.
+- `smoke:android:recovery`: network, HTTP 4xx, SSL 실패 후 native launcher 복귀와 서버 재연결을 확인합니다.
 
 ## Versioning
 
@@ -109,7 +115,26 @@ Native Android shell은 `MainActivity.onPause/onResume`에서 WebView로 `codexm
 
 Sync WebSocket은 연결이 새로 열릴 때도 workspace/layout을 즉시 재조회합니다. 서버 재시작이나 네트워크 복구 뒤 Android WebView가 열린 socket만 복구하고 초기 invalidation event를 놓치는 경우를 방지하기 위한 동작입니다.
 
-서버가 내려주는 React 코드만 바뀌는 경우에는 APK 재배포가 필요 없습니다. `corepack pnpm build` 후 실행 중인 codexmux 서비스를 재시작하면 기존 Android 앱 WebView가 새 reconnect 로직을 받습니다. native bridge를 바꾸는 앱 정보/재시작 기능 변경은 debug/release APK를 다시 빌드해 기기에 설치해야 합니다.
+foreground 복귀 직후에는 Android 네트워크 stack이 stale socket을 늦게 닫으면서 terminal/timeline WebSocket의 expected reconnect error가 짧게 발생할 수 있다. React reconnect hook은 foreground forced reconnect window 안의 expected connection error를 console error로 남기지 않고, 실제 UI 상태는 새 socket attach와 layout/status/timeline 재조회 결과로 판단한다.
+
+로그인 화면처럼 인증 전 public route에서는 status/native notification/Web Push/service worker runtime service를 마운트하지 않는다. fresh install 또는 app data clear 후 `/login`에 도착했을 때 `/api/status` WebSocket auth 실패나 `/sw.js` 로그인 리다이렉트 console error가 생기지 않아야 한다.
+
+서버가 내려주는 React 코드만 바뀌는 경우에는 APK 재배포가 필요 없습니다. Linux user service 운영에서는 `corepack pnpm deploy:local`로 build, service restart, health check를 수행하면 기존 Android 앱 WebView가 새 reconnect 로직을 받습니다. native bridge를 바꾸는 앱 정보/재시작 기능 변경은 debug/release APK를 다시 빌드해 기기에 설치해야 합니다.
+
+## 2026-05-03 Smoke Result
+
+2026-05-03 P0/P1 자동화 pass 기준 Android 안정화 smoke 결과:
+
+| 항목 | 결과 |
+| --- | --- |
+| Tailscale Serve HTTPS `/api/health` | 200, `version=0.3.3`, build metadata 포함 |
+| `corepack pnpm smoke:android:foreground` | HTTPS 서버 접속 후 2회 background/foreground 복귀, `triggerEvent`/TypeError 0건, blocking console/logcat 0건 |
+| `CODEXMUX_ANDROID_CLEAR_APP_DATA=1 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=1 corepack pnpm smoke:android:foreground` | app data clear 후 `/login` 첫 실행, console event 0건, blocking logcat 0건 |
+| `corepack pnpm smoke:android:recovery` | network, HTTP 4xx, SSL 실패 후 launcher 복귀와 `/login` 재연결, blocking console/logcat 0건 |
+| logcat 오류 검색 | `Cannot read properties`, `triggerEvent`, terminal/timeline connection error 매칭 없음 |
+| debug install | `versionName=0.3.3`, `versionCode=303`, `MainActivity` resolve |
+
+`smoke:android:foreground`는 `CODEXMUX_ANDROID_BACKGROUND_MS`와 `CODEXMUX_ANDROID_FOREGROUND_ROUNDS`로 장시간/반복 강도를 늘릴 수 있다. 수십 분 이상 background, iPad Safari/Home Screen, runtime v2 `/api/v2/terminal` Android foreground smoke는 다음 릴리스 gate에 남긴다.
 
 ## Runtime v2 Smoke
 
@@ -193,6 +218,8 @@ android/app/build/outputs/apk/debug/app-debug.apk
 
 ```bash
 corepack pnpm smoke:android:install
+corepack pnpm smoke:android:foreground
+corepack pnpm smoke:android:recovery
 ```
 
 정상 설치 시 `pm path`는 `/data/app/.../base.apk`를 반환하고, launcher activity는 `com.hardcoremonk.codexmux/.MainActivity`로 resolve됩니다.

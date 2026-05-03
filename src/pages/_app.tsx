@@ -10,6 +10,7 @@ import "dayjs/locale/ko";
 import type { NextPage } from "next";
 import type { AppProps } from "next/app";
 import Head from "next/head";
+import { useRouter } from "next/router";
 import { NextIntlClientProvider } from "next-intl";
 import { ThemeProvider, useTheme } from "next-themes";
 import { Toaster } from "sonner";
@@ -21,6 +22,7 @@ import useWebPush from "@/hooks/use-web-push";
 import useIsMobile from "@/hooks/use-is-mobile";
 import useWorkspaceStore from "@/hooks/use-workspace-store";
 import useConfigStore from "@/hooks/use-config-store";
+import { shouldEnableAgentStatus } from "@/lib/app-route-state";
 import { setMessages } from "@/lib/i18n";
 import { MESSAGE_NAMESPACES } from "@/lib/message-namespaces";
 
@@ -130,6 +132,8 @@ const ElectronTitlebar = ({ isElectron }: { isElectron: boolean }) => {
 };
 
 export default function App({ Component, pageProps }: TAppPropsWithLayout) {
+  const router = useRouter();
+  const runtimeServicesEnabled = shouldEnableAgentStatus(router.pathname);
   const workspaceHydrated = useRef(false);
   const configHydrated = useRef(false);
   if (!workspaceHydrated.current && pageProps.initialWorkspace) {
@@ -174,6 +178,7 @@ export default function App({ Component, pageProps }: TAppPropsWithLayout) {
   }, [locale]);
 
   useEffect(() => {
+    if (!runtimeServicesEnabled) return;
     if (!('serviceWorker' in navigator)) return;
 
     let cancelled = false;
@@ -198,7 +203,7 @@ export default function App({ Component, pageProps }: TAppPropsWithLayout) {
       cancelled = true;
       cleanup?.();
     };
-  }, []);
+  }, [runtimeServicesEnabled]);
 
   dayjs.extend(relativeTime);
   dayjs.locale(locale);
@@ -219,7 +224,7 @@ export default function App({ Component, pageProps }: TAppPropsWithLayout) {
           <TerminalThemeSync />
           <FontSizeSync />
           <CustomCSSSync />
-          <AgentStatusProvider />
+          {runtimeServicesEnabled && <AgentStatusProvider />}
           <ThemedToaster />
         </main>
       </ThemeProvider>

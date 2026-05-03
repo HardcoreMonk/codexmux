@@ -130,7 +130,7 @@
 - Status: Accepted
 - Decision: Electron과 Android 앱은 Codex/tmux를 직접 재구현하지 않고 실행 중인 codexmux 서버에 연결하는 shell로 유지한다.
 - Rationale: Codex와 tmux execution은 서버 환경에 두고, desktop/mobile 앱은 연결성과 UX를 담당하는 편이 안정적이다.
-- Consequences: Electron remote/local server mode는 `~/.codexmux/config.json`을 공유한다. Android 런처는 서버 URL 저장, 최근 서버, 자동 연결, 연결 실패 복구, 앱 정보/재시작을 담당한다. Android WebView 안에서는 `CodexmuxAndroid` native bridge로 versionName/versionCode, package, device, Android version을 읽고 WebView/Activity를 재시작한다.
+- Consequences: Electron remote/local server mode는 `~/.codexmux/config.json`을 공유한다. Android 런처는 서버 URL 저장, 최근 서버, 자동 연결, 연결 실패 복구, 앱 정보/재시작을 담당한다. Android WebView 안에서는 `CodexmuxAndroid` native bridge로 versionName/versionCode, package, device, Android version을 읽고 WebView/Activity를 재시작한다. Android WebView smoke는 ADB와 WebView DevTools로 foreground reconnect, failure recovery, fresh app data clear first-run을 반복 검증한다.
 
 ## ADR-008: Notification Sound는 공통 설정으로 제어
 
@@ -144,7 +144,7 @@
 - Status: Accepted
 - Decision: 모바일 UI 개선은 Android 런처, navigation sheet, header, bottom tab bar, 상태 surface를 중심으로 적용하고 terminal input/reconnect 구조는 보수적으로 유지한다. WebView foreground 복귀 시 terminal/status/timeline/sync WebSocket은 stale `OPEN` 상태를 신뢰하지 않고 필요하면 강제 재연결한다.
 - Rationale: 모바일에서 입력 draft 보존과 재접속 안정성이 시각 변화보다 중요하다.
-- Consequences: touch target, `active`, `focus-visible`, safe-area, Korean-first typography를 적용하되 xterm, input, textarea, code/path 영역은 줄바꿈 예외로 둔다. 모바일 CODEX `check` 화면은 timeline이 아직 붙지 않아도 하단 terminal preview를 보여 실제 tmux 출력을 확인할 수 있게 한다. 모바일 내비게이션의 앱 정보 화면은 Android 앱 버전/기기 정보와 서버 버전을 표시하고 앱 재시작 진입점을 제공한다.
+- Consequences: touch target, `active`, `focus-visible`, safe-area, Korean-first typography를 적용하되 xterm, input, textarea, code/path 영역은 줄바꿈 예외로 둔다. Android native shell은 원격 page에 Capacitor bridge가 없어도 `triggerEvent` fallback을 설치하고 page load 후 다시 보강한다. Foreground forced reconnect 중 expected stale WebSocket connection error는 짧은 grace window에서 console noise로 남기지 않고, 실제 복구 판단은 새 socket attach와 workspace/layout/status/timeline 재조회로 한다. `/login` 같은 인증 전 public route는 status/native notification/Web Push/service worker runtime service를 마운트하지 않아 fresh install과 app data clear 이후 auth WebSocket/service worker redirect console noise를 만들지 않는다. 모바일 CODEX `check` 화면은 timeline이 아직 붙지 않아도 하단 terminal preview를 보여 실제 tmux 출력을 확인할 수 있게 한다. 모바일 내비게이션의 앱 정보 화면은 Android 앱 버전/기기 정보와 서버 버전을 표시하고 앱 재시작 진입점을 제공한다.
 
 ## ADR-010: 상태와 타임라인 정책은 순수 모듈로 분리한다
 

@@ -103,6 +103,8 @@ CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 node scripts/smoke-runtime-v
 
 macOS에서 앱을 실제로 설치하려면 `release/*.dmg` 또는 `release/*/*.app` 산출물이 필요합니다. 현재 repository checkout에 `release/`가 없으면 아직 macOS 앱 패키징을 실행하지 않은 상태입니다.
 
+2026-05-03 P0/P1 pass 기준 `corepack pnpm build:electron`은 통과했다. `pack:electron:dev`와 signed/notarized `pack:electron` 산출물 검증은 아직 릴리스 전 수동 smoke 항목이다. live checkout에서 Electron build를 실행한 뒤에는 `.next/standalone`이 다시 만들어지므로 Linux user service는 `corepack pnpm deploy:local`로 재시작해 cwd를 정상화한다.
+
 ## Packaging Notes
 
 현재 패키징 metadata는 `com.hardcoremonk.codexmux`와 `HardcoreMonk/codexmux`를 기준으로 맞춰져 있습니다.

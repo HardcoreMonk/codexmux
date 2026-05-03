@@ -118,7 +118,7 @@ systemctl --user enable --now codexmux.service
 | npx | 자동 (매 실행 최신) |
 | 글로벌 npm | `npm update -g codexmux` |
 | macOS 앱 | 자동 (실행 시 업데이트) |
-| 소스에서 | `git pull && pnpm install && pnpm start` |
+| 소스에서 | `git pull && corepack pnpm install && corepack pnpm deploy:local` |
 
 ## 제거
 

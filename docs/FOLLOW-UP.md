@@ -35,14 +35,42 @@
 
 ## 릴리스 전 확인
 
+### 2026-05-03 live smoke snapshot
+
+2026-05-03 P0/P1 자동화 pass 기준 live 배포와 smoke 결과:
+
+| 항목 | 상태 | 근거 |
+| --- | --- | --- |
+| live deploy/systemd | 통과 | `deploy:local`, `/api/health` `version=0.3.3`, service `ActiveState=active`, `WorkingDirectory=/data/projects/codex-zone/codexmux`, journal restart 이후 오류 없음 |
+| build/type/unit | 통과 | `tsc --noEmit`, targeted unit 5 files/25 tests, `deploy:local` build |
+| Electron build | 통과 | `corepack pnpm build:electron` 후 `deploy:local`로 service cwd 정규화; `.app/.dmg` packaging은 미실행 |
+| runtime v2 phase2 gate | 통과 | `corepack pnpm smoke:runtime-v2:phase2` browser reload/server restart/mode-off rollback |
+| Android debug install | 통과 | `versionName=0.3.3`, `versionCode=303`, `MainActivity` |
+| Android Tailscale failure recovery | 통과 | `corepack pnpm smoke:android:recovery`, network/HTTP 4xx/SSL 실패 후 launcher 복귀와 `/login` 재연결, blocking console/logcat 0 |
+| Android foreground reconnect | 통과 | `corepack pnpm smoke:android:foreground`, 2회 background/foreground, `triggerEvent`/TypeError 0, blocking console/logcat 0 |
+| Android first-run launcher | 통과 | `CODEXMUX_ANDROID_CLEAR_APP_DATA=1 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=1 corepack pnpm smoke:android:foreground`, `/login` 첫 실행 console 0/logcat 0 |
+| stats/daily report | 통과 | stats overview/list 200, `2026-05-03` daily report generate 200 |
+| Windows sync | 부분 통과 | Linux에서 live server 대상 dry-run 통과; 실제 Windows Scheduled Task smoke는 남음 |
+| permission prompt | 부분 통과 | live `permission-options` API 200; 실제 prompt 선택→stdin→`needs-input` push E2E는 남음 |
+| 장시간 reconnect | 부분 통과 | foreground smoke는 통과; 수십 분 이상 background와 반복 reconnect는 남음 |
+
+P0/P1 후속 상태:
+
+- P0 완료: Android Tailscale Serve HTTPS 접속, failure recovery 반복, foreground reconnect, fresh app data clear first-run, app info bridge 확인, login route console noise 제거.
+- P0 남음: 실제 Codex permission prompt E2E, 수십 분 이상 Android background/reconnect, macOS Electron packaging 산출물, 실제 Windows Scheduled Task smoke.
+- P1 완료: Android foreground/recovery smoke 자동화와 package scripts.
+- P1 남음: Android smoke를 release workflow/CI에서 선택 실행할 수 있게 gate 문서와 artifact 보존 방식 정리.
+- P2 남음: Android/Electron 실제 `/api/v2/terminal` foreground reconnect, runtime v2 timeline/status/storage parity surface별 cutover evidence.
+- P3 남음: Android release signing/AAB 운영, approval queue, lifecycle control UI, perf tuning.
+
 1. 장시간 Codex smoke test: 새 tab 생성, prompt 실행, tool call과 reasoning summary 표시, 상태 전이 확인.
 2. permission prompt smoke test: pane capture 기반 option parsing, inline prompt 선택, stdin 전달, `needs-input` push 확인.
 3. stats smoke test: `/api/stats/*` endpoint와 실제 `~/.codex/sessions` 집계 확인.
 4. daily report smoke test: `codex exec` 성공/실패, cache 재사용 확인.
 5. macOS packaging: `corepack pnpm build:electron`, `corepack pnpm pack:electron:dev`.
 6. Android packaging: `corepack pnpm android:build:debug`, `corepack pnpm android:install`, `corepack pnpm smoke:android:install`로 package install state 확인. 현재 `0.3.3` 기준 `versionName=0.3.3`, `versionCode=303`이어야 한다.
-7. 모바일 reconnect smoke test: Android WebView와 iPad Safari에서 foreground 복귀, 입력 draft 보존, terminal/status/timeline/sync 재연결, timeline 중복 출력 방지 확인.
-8. Android Tailscale 실패 smoke test: 서버 중지, 잘못된 HTTPS, HTTP 4xx/5xx, Tailscale 미연결 상태에서 런처 복구 확인.
+7. 모바일 reconnect smoke test: Android WebView는 `smoke:android:foreground`로 반복 확인한다. iPad Safari와 입력 draft 보존, timeline 중복 출력 방지는 별도 수동 smoke로 남긴다.
+8. Android Tailscale 실패 smoke test: `smoke:android:recovery`가 network/HTTP 4xx/SSL을 자동 확인한다. 실제 Tailscale 미연결과 서버 장시간 중지는 별도 수동 smoke로 남긴다.
 9. Android app info/restart smoke test: launcher와 server 접속 후 mobile navigation에서 앱 정보가 표시되고 앱 재시작 버튼이 WebView/Activity를 다시 여는지 확인.
 10. DIFF smoke test: tracked 변경 20개 이상, untracked 50개 초과, binary/대용량 파일이 있는 저장소에서 응답 시간, 생략 안내, 기본 접힘 렌더링 확인.
 11. systemd smoke test: `corepack pnpm deploy:local`, `/api/health`의 version/commit/buildTime, `journalctl --user -u codexmux.service` 확인.
