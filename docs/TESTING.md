@@ -43,6 +43,22 @@ corepack pnpm exec node -e "const { chromium } = require('@playwright/test'); (a
 `src/lib/terminal-recovery.ts`의 순수 helper와 `tests/unit/lib/terminal-recovery.test.ts`
 로 먼저 고정되어 있고, 브라우저 DOM e2e spec은 추가되는 시점에 이 문서에 명령을 기록한다.
 
+## PWA And iPad
+
+iPad는 Safari/Home Screen PWA로 사용한다. 실제 iPad 설치/장시간 background는 수동 smoke지만,
+서버가 PWA로 설치 가능한 상태인지는 자동으로 먼저 확인한다.
+
+```bash
+corepack pnpm smoke:pwa
+CODEXMUX_PWA_SMOKE_URL=https://<machine>.<tailnet>.ts.net corepack pnpm smoke:pwa
+```
+
+이 smoke는 `/api/manifest`, `/login`의 iOS head metadata, `apple-touch-icon`,
+Android/PWA icon, iPad startup image, `/sw.js`, Playwright iPad Pro viewport console을
+확인한다. `/sw.js`는 service worker script이므로 auth redirect 없이 public asset으로
+내려와야 하고, 로그인 화면에서는 runtime WebSocket/service worker registration을 시작하지
+않아야 한다.
+
 ## Runtime v2
 
 Runtime v2 low-level terminal smoke:

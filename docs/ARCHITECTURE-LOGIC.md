@@ -273,7 +273,7 @@ inactive
 - notification dedupe key는 session id와 turn id를 우선 사용한다.
 - foreground toast, native notification, Web Push는 같은 notification policy를 따른다.
 - poll duration, tab/pane count, broadcast count는 perf snapshot에 남겨 polling 비용을 확인한다.
-- `/login` 같은 인증 전 public route는 status/native notification/Web Push/service worker runtime service를 마운트하지 않는다. fresh install 또는 app data clear 후 auth WebSocket 실패와 service worker redirect console noise가 없어야 한다.
+- `/login` 같은 인증 전 public route는 status/native notification/Web Push/service worker runtime service를 마운트하지 않는다. fresh install 또는 app data clear 후 auth WebSocket 실패와 service worker registration console noise가 없어야 한다. `/sw.js` 자체는 PWA/Web Push 설치를 위한 static service worker script이므로 auth redirect 없이 public asset으로 제공한다.
 - `smoke:permission`은 임시 HOME/server/tmux tab에서 permission prompt 모양의 pane output을 만들고 `/api/status` WebSocket, `/api/tmux/permission-options`, `/api/tmux/send-input`, `status:ack-notification` 전환을 함께 검증한다.
 
 ## Sync 서비스 로직
