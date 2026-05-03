@@ -54,6 +54,31 @@ Electron renderer는 웹/PWA와 같은 terminal input 정책을 사용합니다.
 - URL scheme이 없으면 `http://`를 붙입니다.
 - 허용 scheme은 `http://`와 `https://`입니다.
 
+## Runtime v2 Smoke
+
+Electron은 웹/PWA와 같은 React runtime v2 terminal hook을 사용한다. runtime v2
+terminal smoke는 먼저 서버 script로 검증하고, Electron에서는 같은 app surface에서
+foreground reconnect가 깨지지 않는지 확인한다.
+
+1. 서버를 runtime v2로 실행한다.
+
+```bash
+CODEXMUX_RUNTIME_V2=1 PORT=8132 corepack pnpm dev
+```
+
+2. server smoke를 실행한다.
+
+```bash
+CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 node scripts/smoke-runtime-v2.mjs
+```
+
+3. Electron remote/local shell에서 `http://127.0.0.1:8132/experimental/runtime`을 연다.
+4. workspace와 terminal tab을 생성하고 terminal output에 `pwd` 결과가 보이는지 확인한다.
+5. Electron 창을 background로 보냈다가 foreground로 되돌린 뒤 같은 tab에서 다시
+   attach한다.
+6. terminal output이 fresh attach 후 계속 들어오면 Electron runtime v2 smoke가 통과한
+   상태다.
+
 ## Build Output
 
 `corepack pnpm build:electron`은 실행 가능한 Electron main/preload bundle과 Next.js standalone server bundle을 생성하지만 `.app` 또는 `.dmg`를 만들지는 않습니다.

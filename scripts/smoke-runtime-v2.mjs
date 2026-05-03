@@ -3,33 +3,19 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { WebSocket } from 'ws';
+import {
+  appendRuntimeV2SmokeFrame,
+  encodeResize,
+  encodeStdin,
+  runtimeV2SmokeWsUrl,
+} from './runtime-v2-smoke-lib.mjs';
 
 const baseUrl = process.env.CODEXMUX_RUNTIME_V2_SMOKE_URL || 'http://127.0.0.1:8132';
 const token = process.env.CODEXMUX_TOKEN
   || process.env.CMUX_TOKEN
   || await fs.readFile(path.join(os.homedir(), '.codexmux', 'cli-token'), 'utf-8').then((s) => s.trim());
 const headers = { 'x-cmux-token': token };
-const MSG_STDIN = 0x00;
-const MSG_STDOUT = 0x01;
-const MSG_RESIZE = 0x02;
-const encoder = new TextEncoder();
-
-const encodeStdin = (data) => {
-  const payload = encoder.encode(data);
-  const frame = new Uint8Array(1 + payload.length);
-  frame[0] = MSG_STDIN;
-  frame.set(payload, 1);
-  return frame;
-};
-
-const encodeResize = (cols, rows) => {
-  const frame = new ArrayBuffer(5);
-  const view = new DataView(frame);
-  view.setUint8(0, MSG_RESIZE);
-  view.setUint16(1, cols);
-  view.setUint16(3, rows);
-  return frame;
-};
+const DEFAULT_TIMEOUT_MS = 10_000;
 
 const request = async (pathname, init = {}) => {
   const res = await fetch(new URL(pathname, baseUrl), {
@@ -43,55 +29,149 @@ const request = async (pathname, init = {}) => {
   return res.json();
 };
 
-const wsUrl = (sessionName) => {
-  const url = new URL(`/api/v2/terminal?session=${encodeURIComponent(sessionName)}&cols=80&rows=24`, baseUrl);
-  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-  return url;
-};
-
-const toBuffer = (data) => {
-  if (Buffer.isBuffer(data)) return data;
-  if (Array.isArray(data)) return Buffer.concat(data);
-  return Buffer.from(data);
-};
-
-const waitForTerminalSmoke = (sessionName, expectedCwd) =>
+const waitForSocketOutput = ({ sessionName, label, onOpen, predicate, timeoutMs = DEFAULT_TIMEOUT_MS }) =>
   new Promise((resolve, reject) => {
     let output = '';
-    const ws = new WebSocket(wsUrl(sessionName), { headers });
+    const ws = new WebSocket(runtimeV2SmokeWsUrl(baseUrl, sessionName), { headers });
+    let settled = false;
     const timer = setTimeout(() => {
+      settled = true;
       ws.close();
-      reject(new Error(`timed out waiting for terminal output; got ${JSON.stringify(output.slice(-200))}`));
-    }, 10_000);
+      reject(new Error(`${label} timed out waiting for terminal output; got ${JSON.stringify(output.slice(-200))}`));
+    }, timeoutMs);
 
     ws.on('open', () => {
-      ws.send(encodeResize(100, 30));
-      ws.send(encodeStdin('pwd\nstty size\n'));
+      onOpen(ws);
     });
     ws.on('message', (data) => {
-      const bytes = toBuffer(data);
-      if (bytes[0] === MSG_STDOUT) {
-        output += bytes.subarray(1).toString('utf-8');
-      } else {
-        output += bytes.toString('utf-8');
-      }
-      if (output.includes(expectedCwd) && /(?:^|\r?\n)30 100(?:\r?\n|$)/.test(output)) {
+      output = appendRuntimeV2SmokeFrame(output, data);
+      if (predicate(output)) {
+        settled = true;
         clearTimeout(timer);
         ws.close();
         resolve(output);
       }
     });
     ws.on('error', (err) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
       reject(err);
+    });
+    ws.on('close', (code, reason) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(new Error(`${label} closed before expected output: ${code} ${reason.toString()}; got ${JSON.stringify(output.slice(-200))}`));
+    });
+  });
+
+const waitForTerminalSmoke = (sessionName, expectedCwd) =>
+  waitForSocketOutput({
+    sessionName,
+    label: 'initial attach',
+    onOpen: (ws) => {
+      ws.send(encodeResize(100, 30));
+      ws.send(encodeStdin('pwd\nstty size\n'));
+    },
+    predicate: (output) => output.includes(expectedCwd) && /(?:^|\r?\n)30 100(?:\r?\n|$)/.test(output),
+  });
+
+const waitForReconnectSmoke = (sessionName) =>
+  waitForSocketOutput({
+    sessionName,
+    label: 'fresh reconnect attach',
+    onOpen: (ws) => {
+      ws.send(encodeStdin('printf runtime-v2-reconnect-ok\\n\n'));
+    },
+    predicate: (output) => output.includes('runtime-v2-reconnect-ok'),
+  });
+
+const waitForFanoutSmoke = (sessionName) =>
+  new Promise((resolve, reject) => {
+    const marker = `runtime-v2-fanout-ok-${Date.now()}`;
+    const sockets = [
+      new WebSocket(runtimeV2SmokeWsUrl(baseUrl, sessionName), { headers }),
+      new WebSocket(runtimeV2SmokeWsUrl(baseUrl, sessionName), { headers }),
+    ];
+    const output = ['', ''];
+    let openCount = 0;
+    let settled = false;
+    const cleanup = () => {
+      clearTimeout(timer);
+      sockets.forEach((ws) => ws.close());
+    };
+    const fail = (err) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(err);
+    };
+    const maybeResolve = () => {
+      if (settled || !output.every((value) => value.includes(marker))) return;
+      settled = true;
+      cleanup();
+      resolve({ marker, output });
+    };
+    const timer = setTimeout(() => {
+      fail(new Error(`fanout timed out; got ${JSON.stringify(output.map((value) => value.slice(-200)))}`));
+    }, DEFAULT_TIMEOUT_MS);
+
+    sockets.forEach((ws, index) => {
+      ws.on('open', () => {
+        openCount += 1;
+        if (openCount === sockets.length) {
+          sockets[0].send(encodeStdin(`printf ${marker}\\n\n`));
+        }
+      });
+      ws.on('message', (data) => {
+        output[index] = appendRuntimeV2SmokeFrame(output[index], data);
+        maybeResolve();
+      });
+      ws.on('error', fail);
+      ws.on('close', (code, reason) => {
+        if (!settled) fail(new Error(`fanout socket ${index} closed early: ${code} ${reason.toString()}`));
+      });
+    });
+  });
+
+const waitForAttachRejection = (sessionName) =>
+  new Promise((resolve, reject) => {
+    const ws = new WebSocket(runtimeV2SmokeWsUrl(baseUrl, sessionName), { headers });
+    const timer = setTimeout(() => {
+      ws.close();
+      reject(new Error('cleanup rejection timed out waiting for close'));
+    }, DEFAULT_TIMEOUT_MS);
+    ws.on('open', () => {
+      ws.send(encodeStdin('printf should-not-run\\n\n'));
+    });
+    ws.on('message', () => {
+      clearTimeout(timer);
+      ws.close();
+      reject(new Error('cleanup rejection received output for a deleted workspace session'));
+    });
+    ws.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    ws.on('close', (code, reason) => {
+      clearTimeout(timer);
+      if (code !== 1011) {
+        reject(new Error(`cleanup rejection closed with ${code} ${reason.toString()}, expected 1011`));
+        return;
+      }
+      resolve({ code, reason: reason.toString() });
     });
   });
 
 const main = async () => {
   let workspace;
+  let tab;
   let failed = false;
+  const checks = [];
   try {
     await request('/api/v2/runtime/health');
+    checks.push('health');
     workspace = await request('/api/v2/workspaces', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -101,13 +181,25 @@ const main = async () => {
     if (!listed.workspaces?.some((w) => w.id === workspace.id)) {
       throw new Error(`created workspace not returned by list: ${workspace.id}`);
     }
-    const tab = await request('/api/v2/tabs', {
+    checks.push('workspace-list');
+    tab = await request('/api/v2/tabs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ workspaceId: workspace.id, paneId: workspace.rootPaneId, cwd: process.cwd() }),
     });
     await waitForTerminalSmoke(tab.sessionName, process.cwd());
-    console.log(JSON.stringify({ ok: true, workspaceId: workspace.id, tabId: tab.id, sessionName: tab.sessionName }, null, 2));
+    checks.push('attach-stdin-stdout-resize');
+    await waitForReconnectSmoke(tab.sessionName);
+    checks.push('fresh-reattach');
+    await waitForFanoutSmoke(tab.sessionName);
+    checks.push('fanout');
+    const workspaceId = workspace.id;
+    await request(`/api/v2/workspaces/${encodeURIComponent(workspace.id)}`, { method: 'DELETE' });
+    checks.push('workspace-delete');
+    workspace = null;
+    await waitForAttachRejection(tab.sessionName);
+    checks.push('deleted-session-attach-rejected');
+    console.log(JSON.stringify({ ok: true, workspaceId, tabId: tab.id, sessionName: tab.sessionName, checks }, null, 2));
   } catch (err) {
     failed = true;
     throw err;

@@ -1,0 +1,48 @@
+import { describe, expect, it } from 'vitest';
+import path from 'path';
+import { pathToFileURL } from 'url';
+
+const loadLib = async () => import(pathToFileURL(path.join(process.cwd(), 'scripts/runtime-v2-smoke-lib.mjs')).href);
+
+describe('runtime v2 smoke script helpers', () => {
+  it('encodes stdin frames', async () => {
+    const { encodeStdin } = await loadLib();
+    const frame = encodeStdin('pwd\n');
+
+    expect(frame[0]).toBe(0x00);
+    expect(Buffer.from(frame.subarray(1)).toString('utf8')).toBe('pwd\n');
+  });
+
+  it('encodes resize frames', async () => {
+    const { encodeResize } = await loadLib();
+    const frame = encodeResize(100, 30);
+    const view = new DataView(frame);
+
+    expect(view.getUint8(0)).toBe(0x02);
+    expect(view.getUint16(1)).toBe(100);
+    expect(view.getUint16(3)).toBe(30);
+  });
+
+  it('builds runtime v2 terminal websocket urls', async () => {
+    const { runtimeV2SmokeWsUrl } = await loadLib();
+
+    expect(runtimeV2SmokeWsUrl('http://127.0.0.1:8132', 'rtv2-ws-a-pane-b-tab-c', {
+      cols: 80,
+      rows: 24,
+    }).toString()).toBe('ws://127.0.0.1:8132/api/v2/terminal?session=rtv2-ws-a-pane-b-tab-c&cols=80&rows=24');
+
+    expect(runtimeV2SmokeWsUrl('https://codexmux.test/base', 'rtv2-ws-a-pane-b-tab-c', {
+      cols: 120,
+      rows: 40,
+    }).toString()).toBe('wss://codexmux.test/api/v2/terminal?session=rtv2-ws-a-pane-b-tab-c&cols=120&rows=40');
+  });
+
+  it('appends stdout payloads from runtime v2 terminal frames', async () => {
+    const { appendRuntimeV2SmokeFrame } = await loadLib();
+    const stdout = Buffer.concat([Buffer.from([0x01]), Buffer.from('hello', 'utf8')]);
+    const heartbeat = Buffer.from([0x03]);
+
+    expect(appendRuntimeV2SmokeFrame('', stdout)).toBe('hello');
+    expect(appendRuntimeV2SmokeFrame('hello', heartbeat)).toBe('hello');
+  });
+});
