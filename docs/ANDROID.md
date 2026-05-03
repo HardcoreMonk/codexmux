@@ -17,6 +17,7 @@ corepack pnpm android:bundle:release
 corepack pnpm smoke:android:install
 corepack pnpm smoke:android:foreground
 corepack pnpm smoke:android:recovery
+corepack pnpm smoke:android:runtime-v2
 ```
 
 - `android:sync`: `android-web/` asset과 Capacitor 설정을 `android/` 프로젝트에 반영합니다.
@@ -30,6 +31,7 @@ corepack pnpm smoke:android:recovery
 - `smoke:android:install`: 연결된 debug APK의 package/version/activity 상태를 확인합니다.
 - `smoke:android:foreground`: Android WebView DevTools와 ADB로 foreground/background 복귀, native bridge, console/logcat 오류를 확인합니다.
 - `smoke:android:recovery`: network, HTTP 4xx, SSL 실패 후 native launcher 복귀와 서버 재연결을 확인합니다.
+- `smoke:android:runtime-v2`: temp runtime v2 서버를 Tailscale IP로 노출하고 Android WebView에서 `/api/v2/terminal` attach와 foreground reconnect marker output을 확인합니다.
 
 ## Versioning
 
@@ -133,14 +135,15 @@ foreground 복귀 직후에는 Android 네트워크 stack이 stale socket을 늦
 | `CODEXMUX_ANDROID_BACKGROUND_MS=60000 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=1 corepack pnpm smoke:android:foreground` | `/login` surface에서 60초 background 후 foreground 복귀, console 0건, blocking logcat 0건 |
 | `CODEXMUX_ANDROID_CLEAR_APP_DATA=1 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=1 corepack pnpm smoke:android:foreground` | app data clear 후 `/login` 첫 실행, console event 0건, blocking logcat 0건 |
 | `corepack pnpm smoke:android:recovery` | network, HTTP 4xx, SSL 실패 후 launcher 복귀와 `/login` 재연결, blocking console/logcat 0건 |
+| `corepack pnpm smoke:android:runtime-v2` | SM-S928N Android 16, temp runtime v2 server `http://100.112.40.104:<port>`, initial + 2회 foreground `/api/v2/terminal` marker output, blocking console/logcat 0건 |
 | logcat 오류 검색 | `Cannot read properties`, `triggerEvent`, terminal/timeline connection error 매칭 없음 |
 | debug install | `versionName=0.3.3`, `versionCode=303`, `MainActivity` resolve |
 
-`smoke:android:foreground`는 `CODEXMUX_ANDROID_BACKGROUND_MS`와 `CODEXMUX_ANDROID_FOREGROUND_ROUNDS`로 장시간/반복 강도를 늘릴 수 있고, `CODEXMUX_ANDROID_RESTART_APP=1`이면 `CodexmuxAndroid.restartApp()`까지 호출한다. 60초 `/login` surface와 native restart smoke는 통과했다. logged-in session의 수십 분 이상 background, iPad Safari/Home Screen, runtime v2 `/api/v2/terminal` Android foreground smoke는 다음 릴리스 gate에 남긴다.
+`smoke:android:foreground`는 `CODEXMUX_ANDROID_BACKGROUND_MS`와 `CODEXMUX_ANDROID_FOREGROUND_ROUNDS`로 장시간/반복 강도를 늘릴 수 있고, `CODEXMUX_ANDROID_RESTART_APP=1`이면 `CodexmuxAndroid.restartApp()`까지 호출한다. 60초 `/login` surface, native restart smoke, runtime v2 `/api/v2/terminal` foreground smoke는 통과했다. logged-in session의 수십 분 이상 background, iPad Safari/Home Screen은 다음 릴리스 gate에 남긴다.
 
 ## Runtime v2 Smoke
 
-Android runtime v2 terminal smoke는 서버 script와 WebView foreground reconnect를 함께
+Android runtime v2 terminal smoke는 temp runtime v2 서버와 WebView foreground reconnect를 함께
 확인한다. 이 항목은 React/server runtime 변경 검증이므로 native bridge를 바꾸지 않았다면
 APK 재빌드는 필요 없다.
 
@@ -152,28 +155,31 @@ APK 재빌드는 필요 없다.
 corepack pnpm smoke:runtime-v2:phase2
 ```
 
-2. Android 앱에서 붙을 서버를 runtime v2 new-tabs mode로 실행한다.
+2. 서버에서 runtime v2 terminal production-parity smoke도 통과시킨다.
 
 ```bash
-CODEXMUX_RUNTIME_V2=1 CODEXMUX_RUNTIME_TERMINAL_V2_MODE=new-tabs PORT=8132 corepack pnpm dev
+corepack pnpm smoke:runtime-v2
 ```
 
-3. 서버에서 runtime v2 terminal production-parity smoke도 통과시킨다.
+3. Android WebView foreground smoke를 실행한다. 이 명령은 temp HOME/DB 서버를
+   `HOST=localhost,tailscale`과 runtime v2 new-tabs mode로 띄우고, Android 기기가 접근할
+   Tailscale IP URL을 만든다. WebView에는 normal session cookie를 주입하고
+   `/api/v2/terminal` marker output을 initial attach와 기본 2회 foreground reconnect에서 확인한다.
 
 ```bash
-CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 corepack pnpm smoke:runtime-v2
+corepack pnpm smoke:android:runtime-v2
 ```
 
-4. Android 앱 launcher에서 같은 서버 URL로 접속한다.
-5. 기존 app workspace 화면에서 plain terminal tab을 생성하고 terminal output을 확인한다.
-6. Android WebView의 existing session cookie로 `/api/v2/terminal` WebSocket이 열리는지
-   확인한다. query-string token 인증은 사용하지 않는다.
-7. Android 앱을 background로 보낸 뒤 다시 foreground로 가져온다.
-8. 같은 runtime v2 tab을 다시 attach하고 output이 이어지는지 확인한다.
-9. `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=off`로 서버를 재시작하면 새 plain terminal tab은
+4. 필요하면 강도를 올린다.
+
+```bash
+CODEXMUX_ANDROID_RUNTIME_V2_FOREGROUND_ROUNDS=4 CODEXMUX_ANDROID_RUNTIME_V2_BACKGROUND_MS=30000 corepack pnpm smoke:android:runtime-v2
+```
+
+5. `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=off`로 서버를 재시작하면 새 plain terminal tab은
    legacy로 생성되고 기존 v2 tab은 삭제되지 않으며 runtime v2 disabled diagnostic을 표시하는지 확인한다.
 
-이 smoke는 `/api/v2/terminal` fresh attach와 foreground reconnect 정책을 확인한다.
+이 smoke는 `/api/v2/terminal` fresh attach, existing-cookie auth, Android foreground reconnect 정책을 확인한다.
 Terminal Worker crash 후 stdout replay나 server-side resubscribe는 runtime v2 범위에
 아직 포함하지 않는다.
 
@@ -222,6 +228,7 @@ android/app/build/outputs/apk/debug/app-debug.apk
 corepack pnpm smoke:android:install
 corepack pnpm smoke:android:foreground
 corepack pnpm smoke:android:recovery
+corepack pnpm smoke:android:runtime-v2
 CODEXMUX_ANDROID_RESTART_APP=1 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=0 corepack pnpm smoke:android:foreground
 ```
 

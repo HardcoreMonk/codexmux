@@ -250,6 +250,7 @@ corepack pnpm smoke:runtime-v2:phase2
 corepack pnpm smoke:android:install
 corepack pnpm smoke:android:foreground
 corepack pnpm smoke:android:recovery
+corepack pnpm smoke:android:runtime-v2
 corepack pnpm build:landing
 corepack pnpm android:sync
 corepack pnpm android:open
@@ -368,6 +369,7 @@ corepack pnpm android:install
 corepack pnpm smoke:android:install
 corepack pnpm smoke:android:foreground
 corepack pnpm smoke:android:recovery
+corepack pnpm smoke:android:runtime-v2
 ```
 
 릴리스 빌드는 keystore signing 설정을 준비한 뒤 실행합니다.
@@ -703,6 +705,7 @@ Verify installation:
 corepack pnpm smoke:android:install
 corepack pnpm smoke:android:foreground
 corepack pnpm smoke:android:recovery
+corepack pnpm smoke:android:runtime-v2
 ```
 
 Release builds require keystore signing settings:
