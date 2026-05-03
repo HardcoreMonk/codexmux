@@ -105,6 +105,7 @@ Android WebView가 백그라운드로 들어가면 JavaScript timer와 네트워
 Native Android shell은 `MainActivity.onPause/onResume`에서 WebView로 `codexmux:native-app-state` event를 전달합니다. Android WebView가 표준 browser lifecycle event를 늦게 보내거나 누락해도 이 native event를 받은 React hook이 foreground 복귀 시 terminal/status/timeline/sync 연결을 강제로 새로 엽니다.
 
 원격 `http://` 서버처럼 Capacitor bridge script가 주입되지 않는 페이지에서도 Android lifecycle은 Cordova compatibility `pause`/`resume` event를 보냅니다. 이때 `window.Capacitor.triggerEvent`가 없으면 console 예외가 발생하므로 native shell은 lifecycle event 전에 최소 fallback을 설치합니다. 이 fallback은 `triggerEvent`만 제공하고 전체 Capacitor plugin bridge를 흉내 내지 않습니다.
+원격 페이지가 새로 로드되면 이전 JS global이 사라질 수 있으므로 WebView page load 완료 시점에도 같은 fallback을 다시 설치합니다.
 
 Sync WebSocket은 연결이 새로 열릴 때도 workspace/layout을 즉시 재조회합니다. 서버 재시작이나 네트워크 복구 뒤 Android WebView가 열린 socket만 복구하고 초기 invalidation event를 놓치는 경우를 방지하기 위한 동작입니다.
 

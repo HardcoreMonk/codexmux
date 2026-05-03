@@ -46,6 +46,14 @@ public class CodexmuxWebViewClient extends BridgeWebViewClient {
         super.onReceivedSslError(view, handler, error);
     }
 
+    @Override
+    public void onPageFinished(WebView view, String url) {
+        super.onPageFinished(view, url);
+        if (view != null) {
+            view.evaluateJavascript(CodexmuxLifecycleScript.lifecycleGuard(), null);
+        }
+    }
+
     private boolean shouldShowLauncher(WebResourceRequest request) {
         if (request == null || !request.isForMainFrame() || request.getUrl() == null) return false;
         return shouldShowLauncher(request.getUrl().toString(), true);
