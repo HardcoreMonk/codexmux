@@ -27,6 +27,12 @@ import { initShellPath } from './src/lib/preflight';
 import { cleanupExpiredUploads } from './src/lib/uploads-store';
 import { cleanupOrphanSessionStats } from './src/lib/session-stats';
 import { initSessionIndexService, shutdownSessionIndexService } from './src/lib/session-index';
+import { getRuntimeSupervisor } from './src/lib/runtime/supervisor';
+import { handleRuntimeTerminalConnection } from './src/lib/runtime/terminal-ws';
+import {
+  createWebSocketUpgradeHandler,
+  type IRuntimeTerminalUpgradeContext,
+} from './src/lib/runtime/server-ws-upgrade';
 import { createLogger } from './src/lib/logger';
 import pkg from './package.json';
 
@@ -39,7 +45,7 @@ const verifyWebSocketAuth = async (request: IncomingMessage): Promise<boolean> =
   return !!(await verifySessionToken(value));
 };
 
-const WS_PATHS = new Set(['/api/terminal', '/api/timeline', '/api/sync', '/api/status', '/api/install']);
+const WS_PATHS = new Set(['/api/terminal', '/api/timeline', '/api/sync', '/api/status', '/api/install', '/api/v2/terminal']);
 
 const createWsServers = () => {
   const wss = new WebSocketServer({ noServer: true });
@@ -57,7 +63,16 @@ const createWsServers = () => {
   const installWss = new WebSocketServer({ noServer: true });
   installWss.on('connection', handleInstallConnection);
 
-  return { wss, timelineWss, syncWss, statusWss, installWss };
+  const runtimeTerminalWss = new WebSocketServer({ noServer: true });
+  runtimeTerminalWss.on('connection', (ws: import('ws').WebSocket, _request: IncomingMessage, context: unknown) => {
+    void handleRuntimeTerminalConnection(
+      ws,
+      context as IRuntimeTerminalUpgradeContext,
+      getRuntimeSupervisor(),
+    );
+  });
+
+  return { wss, timelineWss, syncWss, statusWss, installWss, runtimeTerminalWss };
 };
 
 const handleWsUpgrade = (
@@ -65,10 +80,8 @@ const handleWsUpgrade = (
   request: IncomingMessage,
   socket: import('stream').Duplex,
   head: Buffer,
-  port: number,
+  url: URL,
 ) => {
-  const url = new URL(request.url ?? '', `http://localhost:${port}`);
-
   if (url.pathname === '/api/terminal') {
     const sessionId = url.searchParams.get('session');
     wss.handleUpgrade(request, socket, head, (ws) => {
@@ -229,41 +242,34 @@ const startDev = async (port: number, appDir: string, bindHost: string): Promise
 
   const wsServers = createWsServers();
 
-  server.on('upgrade', async (request, socket, head) => {
-    if (!isRequestAllowed(request.socket.remoteAddress)) {
-      rejectSocket(socket);
-      return;
-    }
-    const url = new URL(request.url ?? '', `http://localhost:${port}`);
-
-    if (url.pathname.startsWith('/_next/')) {
-      upgrade(request, socket, head);
-      return;
-    }
-
-    if (NO_AUTH_WS_PATHS.has(url.pathname)) {
-      handleWsUpgrade(wsServers, request, socket, head, port);
-      return;
-    }
-
-    const authenticated = await verifyWebSocketAuth(request);
-    if (!authenticated) {
-      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-      socket.destroy();
-      return;
-    }
-
-    if (WS_PATHS.has(url.pathname)) {
-      handleWsUpgrade(wsServers, request, socket, head, port);
-    } else {
-      upgrade(request, socket, head);
-    }
-  });
+  server.on('upgrade', createWebSocketUpgradeHandler({
+    port,
+    noAuthPaths: NO_AUTH_WS_PATHS,
+    wsPaths: WS_PATHS,
+    verifyGenericAuth: verifyWebSocketAuth,
+    handleKnownUpgrade: (url, req, upgradeSocket, upgradeHead) => {
+      handleWsUpgrade(wsServers, req, upgradeSocket, upgradeHead, url);
+    },
+    handleRuntimeTerminalUpgrade: (context, req, upgradeSocket, upgradeHead) => {
+      wsServers.runtimeTerminalWss.handleUpgrade(req, upgradeSocket, upgradeHead, (ws) => {
+        wsServers.runtimeTerminalWss.emit('connection', ws, req, context);
+      });
+    },
+    fallbackUpgrade: upgrade,
+    isRequestAllowed,
+    rejectSocket,
+    onUpgradeError: (err) => {
+      log.error(`websocket upgrade failed: ${err instanceof Error ? err.message : err}`);
+    },
+  }));
 
   const shutdown = async () => {
     releaseLock();
     await removePortFile();
     server.close();
+    if (process.env.CODEXMUX_RUNTIME_V2 === '1') {
+      getRuntimeSupervisor().shutdown();
+    }
     await shutdownWs();
   };
 
@@ -303,36 +309,34 @@ const startProd = async (port: number, appDir: string, bindHost: string): Promis
 
   const wsServers = createWsServers();
 
-  server.on('upgrade', async (request, socket, head) => {
-    if (!isRequestAllowed(request.socket.remoteAddress)) {
-      rejectSocket(socket);
-      return;
-    }
-    const url = new URL(request.url ?? '', `http://localhost:${port}`);
-
-    if (NO_AUTH_WS_PATHS.has(url.pathname)) {
-      handleWsUpgrade(wsServers, request, socket, head, port);
-      return;
-    }
-
-    const authenticated = await verifyWebSocketAuth(request);
-    if (!authenticated) {
-      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-      socket.destroy();
-      return;
-    }
-
-    if (WS_PATHS.has(url.pathname)) {
-      handleWsUpgrade(wsServers, request, socket, head, port);
-    } else {
-      proxyUpgrade(request, socket, head, internalPort);
-    }
-  });
+  server.on('upgrade', createWebSocketUpgradeHandler({
+    port,
+    noAuthPaths: NO_AUTH_WS_PATHS,
+    wsPaths: WS_PATHS,
+    verifyGenericAuth: verifyWebSocketAuth,
+    handleKnownUpgrade: (url, req, upgradeSocket, upgradeHead) => {
+      handleWsUpgrade(wsServers, req, upgradeSocket, upgradeHead, url);
+    },
+    handleRuntimeTerminalUpgrade: (context, req, upgradeSocket, upgradeHead) => {
+      wsServers.runtimeTerminalWss.handleUpgrade(req, upgradeSocket, upgradeHead, (ws) => {
+        wsServers.runtimeTerminalWss.emit('connection', ws, req, context);
+      });
+    },
+    fallbackUpgrade: (req, upgradeSocket, upgradeHead) => proxyUpgrade(req, upgradeSocket, upgradeHead, internalPort),
+    isRequestAllowed,
+    rejectSocket,
+    onUpgradeError: (err) => {
+      log.error(`websocket upgrade failed: ${err instanceof Error ? err.message : err}`);
+    },
+  }));
 
   const shutdown = async () => {
     releaseLock();
     await removePortFile();
     server.close();
+    if (process.env.CODEXMUX_RUNTIME_V2 === '1') {
+      getRuntimeSupervisor().shutdown();
+    }
     await shutdownWs();
   };
 
@@ -371,6 +375,11 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   await initWorkspaceStore();
   await autoResumeOnStartup();
   await initSessionIndexService();
+  if (process.env.CODEXMUX_RUNTIME_V2 === '1') {
+    void getRuntimeSupervisor().ensureStarted().catch((err) => {
+      log.error(`runtime v2 supervisor failed to start: ${err instanceof Error ? err.message : err}`);
+    });
+  }
   await getStatusManager().init();
 
   const envHost = process.env.HOST?.trim();

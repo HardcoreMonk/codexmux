@@ -32,6 +32,7 @@ for (const f of ['AGENTS.md']) {
 const copies = [
   { src: path.join(root, 'public'), dest: path.join(standalone, 'public') },
   { src: path.join(root, '.next', 'static'), dest: path.join(standalone, '.next', 'static') },
+  { src: path.join(root, 'src', 'config', 'tmux.conf'), dest: path.join(standalone, 'src', 'config', 'tmux.conf') },
 ];
 
 for (const { src, dest } of copies) {
@@ -39,6 +40,7 @@ for (const { src, dest } of copies) {
     console.log(`[post-build] skip ${path.relative(root, src)} (not found)`);
     continue;
   }
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.cpSync(src, dest, { recursive: true });
   console.log(`[post-build] ${path.relative(root, src)} → ${path.relative(root, dest)}`);
 }
@@ -157,6 +159,7 @@ const ensureWithDeps = (pkgName, visited = new Set()) => {
   if (!fs.existsSync(src)) return;
 
   if (!fs.existsSync(dst)) {
+    fs.mkdirSync(path.dirname(dst), { recursive: true });
     fs.cpSync(src, dst, { recursive: true });
     console.log(`[post-build] added missing module: ${pkgName}`);
   }
@@ -169,7 +172,7 @@ const ensureWithDeps = (pkgName, visited = new Set()) => {
   }
 };
 
-const dynamicPackages = ['pino-roll', 'pino-pretty'];
+const dynamicPackages = ['pino-roll', 'pino-pretty', 'better-sqlite3'];
 const visited = new Set();
 for (const pkg of dynamicPackages) {
   ensureWithDeps(pkg, visited);

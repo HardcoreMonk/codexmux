@@ -23,6 +23,17 @@ Runtime state
   └─ ~/.codex/sessions/      -> Codex-owned JSONL, read-only
 ```
 
+## Experimental Runtime v2
+
+`CODEXMUX_RUNTIME_V2=1`이면 현재 runtime 옆에 실험용 Supervisor + Worker runtime이
+함께 시작된다. Supervisor는 public routing과 worker lifecycle을 소유하고, Storage
+Worker는 `~/.codexmux/runtime-v2/state.db` SQLite app state를 소유한다. Terminal
+Worker는 별도 `codexmux-runtime-v2` tmux socket의 `rtv2-` session lifecycle과
+`/api/v2/terminal` attach/stdin/stdout/resize 경로를 소유한다.
+
+이 runtime은 구현 첫 단계의 process-level smoke와 platform smoke를 통과하기 전까지
+기본 production terminal/timeline/status 경로를 대체하지 않는다.
+
 ## 모듈 경계
 
 | 영역 | 주요 파일 | 책임 |

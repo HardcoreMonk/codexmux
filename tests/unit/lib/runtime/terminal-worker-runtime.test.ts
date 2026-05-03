@@ -1,0 +1,157 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const execFileMock = vi.hoisted(() => vi.fn());
+const ptySpawnMock = vi.hoisted(() => vi.fn());
+const resolveRuntimeTmuxConfigPathMock = vi.hoisted(() => vi.fn(() => '/repo/src/config/tmux.conf'));
+
+vi.mock('child_process', () => ({
+  execFile: execFileMock,
+}));
+
+vi.mock('node-pty', () => ({
+  spawn: ptySpawnMock,
+}));
+
+vi.mock('@/lib/runtime/worker-paths', () => ({
+  resolveRuntimeTmuxConfigPath: resolveRuntimeTmuxConfigPathMock,
+}));
+
+vi.mock('@/lib/shell-env', () => ({
+  buildShellEnv: vi.fn(() => ({ HOME: '/home/test', TERM: 'xterm-256color' })),
+  buildShellLaunchCommand: vi.fn(() => 'env -i /bin/bash -l'),
+}));
+
+vi.mock('@/lib/pristine-env', () => ({
+  PRISTINE_ENV: { HOME: '/home/test' },
+}));
+
+const execFileSuccess = (): void => {
+  execFileMock.mockImplementation((_cmd, _args, _options, callback) => {
+    callback(null, '', '');
+  });
+};
+
+const execFileFailure = (message: string): void => {
+  execFileMock.mockImplementation((_cmd, _args, _options, callback) => {
+    callback(new Error(message), '', '');
+  });
+};
+
+const createFakePty = () => ({
+  onData: vi.fn((_onData: (data: string) => void) => ({ dispose: vi.fn() })),
+  kill: vi.fn(),
+  write: vi.fn(),
+  resize: vi.fn(),
+});
+
+describe('terminal worker runtime', () => {
+  beforeEach(() => {
+    execFileMock.mockReset();
+    ptySpawnMock.mockReset();
+    resolveRuntimeTmuxConfigPathMock.mockReset();
+    resolveRuntimeTmuxConfigPathMock.mockReturnValue('/repo/src/config/tmux.conf');
+    execFileSuccess();
+  });
+
+  it('cleans up partial creates and preserves source-file failure', async () => {
+    const { createTerminalWorkerRuntime } = await import('@/lib/runtime/terminal/terminal-worker-runtime');
+    execFileMock
+      .mockImplementationOnce((_cmd, _args, _options, callback) => callback(null, '', ''))
+      .mockImplementationOnce((_cmd, _args, _options, callback) => callback(new Error('source failed'), '', ''))
+      .mockImplementationOnce((_cmd, _args, _options, callback) => callback(new Error('kill failed'), '', ''));
+
+    const runtime = createTerminalWorkerRuntime();
+
+    await expect(runtime.createSession({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      cols: 80,
+      rows: 24,
+    })).rejects.toMatchObject({
+      code: 'runtime-v2-tmux-config-source-failed',
+      retryable: false,
+      message: expect.stringContaining('source failed'),
+    });
+    expect(execFileMock.mock.calls.map((call) => call[1])).toEqual([
+      expect.arrayContaining(['new-session']),
+      expect.arrayContaining(['source-file', '/repo/src/config/tmux.conf']),
+      expect.arrayContaining(['kill-session', '-t', 'rtv2-ws-a-pane-b-tab-c']),
+    ]);
+  });
+
+  it('surfaces missing runtime tmux config errors', async () => {
+    const missing = Object.assign(new Error('Runtime v2 tmux config is missing'), {
+      code: 'runtime-v2-tmux-config-missing',
+      retryable: false,
+    });
+    resolveRuntimeTmuxConfigPathMock.mockImplementation(() => {
+      throw missing;
+    });
+    const { createTerminalWorkerRuntime } = await import('@/lib/runtime/terminal/terminal-worker-runtime');
+    const runtime = createTerminalWorkerRuntime();
+
+    await expect(runtime.createSession({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      cols: 80,
+      rows: 24,
+    })).rejects.toMatchObject({
+      code: 'runtime-v2-tmux-config-missing',
+      retryable: false,
+    });
+    expect(execFileMock).not.toHaveBeenCalled();
+  });
+
+  it('treats kill-session as best-effort cleanup', async () => {
+    const { createTerminalWorkerRuntime } = await import('@/lib/runtime/terminal/terminal-worker-runtime');
+    execFileFailure('session already gone');
+    const runtime = createTerminalWorkerRuntime();
+
+    await expect(runtime.killSession('rtv2-ws-a-pane-b-tab-c')).resolves.toEqual({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      killed: true,
+    });
+    expect(execFileMock).toHaveBeenCalledWith(
+      'tmux',
+      expect.arrayContaining(['-L', 'codexmux-runtime-v2', 'kill-session', '-t', 'rtv2-ws-a-pane-b-tab-c']),
+      expect.objectContaining({ timeout: 5000 }),
+      expect.any(Function),
+    );
+  });
+
+  it('checks tmux session existence before spawning node-pty attach', async () => {
+    const fakePty = createFakePty();
+    ptySpawnMock.mockReturnValue(fakePty);
+    const { createTerminalWorkerRuntime } = await import('@/lib/runtime/terminal/terminal-worker-runtime');
+    const runtime = createTerminalWorkerRuntime();
+
+    await expect(runtime.attach('rtv2-ws-a-pane-b-tab-c', 80, 24, () => undefined)).resolves.toEqual({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      attached: true,
+    });
+
+    expect(execFileMock).toHaveBeenCalledWith(
+      'tmux',
+      expect.arrayContaining(['-L', 'codexmux-runtime-v2', 'has-session', '-t', 'rtv2-ws-a-pane-b-tab-c']),
+      expect.objectContaining({ timeout: 5000 }),
+      expect.any(Function),
+    );
+    expect(ptySpawnMock).toHaveBeenCalledWith(
+      'tmux',
+      ['-u', '-L', 'codexmux-runtime-v2', 'attach-session', '-t', 'rtv2-ws-a-pane-b-tab-c'],
+      expect.objectContaining({ cols: 80, rows: 24 }),
+    );
+    expect(execFileMock.mock.invocationCallOrder[0]).toBeLessThan(ptySpawnMock.mock.invocationCallOrder[0]);
+  });
+
+  it('rejects missing tmux sessions before spawning node-pty', async () => {
+    execFileFailure('missing session');
+    const { createTerminalWorkerRuntime } = await import('@/lib/runtime/terminal/terminal-worker-runtime');
+    const runtime = createTerminalWorkerRuntime();
+
+    await expect(runtime.attach('rtv2-ws-a-pane-b-tab-c', 80, 24, () => undefined)).rejects.toMatchObject({
+      code: 'runtime-v2-terminal-session-not-found',
+      retryable: false,
+      message: expect.stringContaining('missing session'),
+    });
+    expect(ptySpawnMock).not.toHaveBeenCalled();
+  });
+});

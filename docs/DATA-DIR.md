@@ -30,6 +30,8 @@ codexmux의 영속 상태는 `~/.codexmux/`에 저장된다. Codex CLI의 원본
 │   └── codex/{sourceId}/
 │       ├── {sessionId}.jsonl
 │       └── {sessionId}.jsonl.meta.json
+├── runtime-v2/
+│   └── state.db
 └── stats/
 ```
 
@@ -68,10 +70,22 @@ Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service
 | `logs/` | 서버 로그 |
 | `remote/codex/{sourceId}/{sessionId}.jsonl` | Windows companion이 보낸 Codex CLI JSONL 복사본. timeline에서 읽기 전용으로 사용 |
 | `remote/codex/{sourceId}/{sessionId}.jsonl.meta.json` | remote source, host/shell/cwd/path, offset, activity metadata, session list summary |
+| `runtime-v2/state.db` | Experimental runtime v2 SQLite app state for workspace, pane, tab, status projection, and durable event logs |
 | `stats/cache.json` | Codex JSONL에서 계산한 usage cache. 런타임 build는 in-flight promise로 중복 계산을 피함 |
 | `stats/daily-reports/` | `codex exec`로 생성한 일별 report |
 
 비밀값이 들어갈 수 있는 파일은 `0600` 권한으로 쓰며, 저장은 임시 파일을 쓴 뒤 rename하는 방식으로 처리한다.
+
+## Runtime v2 SQLite 초기화
+
+`CODEXMUX_RUNTIME_V2=1`은 실험용 runtime v2를 켜고, 기본 DB 경로로
+`~/.codexmux/runtime-v2/state.db`를 사용한다. `CODEXMUX_RUNTIME_DB`가 있으면 smoke나
+개발 검증용으로 다른 DB 파일을 지정할 수 있다.
+
+`CODEXMUX_RUNTIME_V2_RESET=1`을 함께 설정하면 runtime 시작 전에 기존
+`runtime-v2/state.db`, `runtime-v2/state.db-wal`, `runtime-v2/state.db-shm` 파일을 각각
+timestamp가 붙은 `.bak` 파일로 이동한다. `state.db` 없이 WAL/SHM sidecar만 남은 경우도
+각 sidecar를 독립적으로 백업하고 원래 경로에 stale sidecar를 남기지 않는다.
 
 ## `config.json` 주요 설정
 

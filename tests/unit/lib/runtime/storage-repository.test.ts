@@ -1,0 +1,335 @@
+import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { openRuntimeDatabase } from '@/lib/runtime/storage/schema';
+import { createStorageRepository } from '@/lib/runtime/storage/repository';
+
+describe('runtime storage repository', () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-runtime-db-'));
+  });
+
+  afterEach(async () => {
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  it('creates pending terminal tab intents, assigns stable order, finalizes active tab, and projects only ready tabs', () => {
+    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const repo = createStorageRepository(db);
+
+    const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
+    const firstPending = repo.createPendingTerminalTab({
+      id: 'tab-runtime-a',
+      workspaceId: workspace.id,
+      paneId: workspace.rootPaneId,
+      sessionName: `rtv2-${workspace.id}-${workspace.rootPaneId}-tab-runtime-a`,
+      cwd: dir,
+    });
+    const secondPending = repo.createPendingTerminalTab({
+      id: 'tab-runtime-b',
+      workspaceId: workspace.id,
+      paneId: workspace.rootPaneId,
+      sessionName: `rtv2-${workspace.id}-${workspace.rootPaneId}-tab-runtime-b`,
+      cwd: dir,
+    });
+
+    const pendingLayout = repo.getWorkspaceLayout(workspace.id);
+    if (pendingLayout?.root.type === 'pane') {
+      expect(pendingLayout.root.tabs).toEqual([]);
+    }
+
+    const firstTab = repo.finalizeTerminalTab({ id: firstPending.id });
+    const secondTab = repo.finalizeTerminalTab({ id: secondPending.id });
+    const layout = repo.getWorkspaceLayout(workspace.id);
+
+    expect(firstTab.order).toBe(0);
+    expect(secondTab.order).toBe(1);
+    expect(secondTab.lifecycleState).toBe('ready');
+    expect(layout?.activePaneId).toBe(workspace.rootPaneId);
+    expect(layout?.root.type).toBe('pane');
+    if (layout?.root.type === 'pane') {
+      expect(layout.root.activeTabId).toBe(secondTab.id);
+      expect(layout.root.tabs.map((tab) => ({ id: tab.id, order: tab.order }))).toEqual([
+        { id: firstTab.id, order: 0 },
+        { id: secondTab.id, order: 1 },
+      ]);
+      expect(layout.root.tabs[0].sessionName).toMatch(/^rtv2-ws-/);
+    }
+
+    expect(() => repo.finalizeTerminalTab({ id: 'tab-missing' })).toThrow(expect.objectContaining({
+      code: 'runtime-v2-pending-tab-not-found',
+      retryable: false,
+    }));
+    expect(() => repo.finalizeTerminalTab({ id: secondTab.id })).toThrow(expect.objectContaining({
+      code: 'runtime-v2-pending-tab-not-found',
+      retryable: false,
+    }));
+  });
+
+  it('rejects terminal tabs for panes outside the supplied workspace', () => {
+    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const repo = createStorageRepository(db);
+
+    const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
+    const otherWorkspace = repo.createWorkspace({ name: 'Other', defaultCwd: dir });
+
+    expect(() => repo.createPendingTerminalTab({
+      id: 'tab-runtime',
+      workspaceId: workspace.id,
+      paneId: otherWorkspace.rootPaneId,
+      sessionName: `rtv2-${workspace.id}-${otherWorkspace.rootPaneId}-tab-runtime`,
+      cwd: dir,
+    })).toThrow(expect.objectContaining({
+      code: 'runtime-v2-pane-workspace-mismatch',
+      retryable: false,
+    }));
+
+    expect(repo.listPendingTerminalTabs()).toEqual([]);
+  });
+
+  it('records mutation events', () => {
+    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const repo = createStorageRepository(db);
+
+    repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
+
+    expect(repo.listMutationEvents()).toEqual([
+      expect.objectContaining({ entityType: 'workspace', eventType: 'workspace.created' }),
+    ]);
+  });
+
+  it('lists persisted workspaces for reload smoke', () => {
+    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const repo = createStorageRepository(db);
+
+    const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
+
+    expect(repo.listWorkspaces()).toEqual([
+      expect.objectContaining({ id: workspace.id, name: 'Runtime', defaultCwd: dir }),
+    ]);
+  });
+
+  it('marks pending terminal tabs failed for reconciliation', () => {
+    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const repo = createStorageRepository(db);
+
+    const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
+    const pending = repo.createPendingTerminalTab({
+      id: 'tab-runtime',
+      workspaceId: workspace.id,
+      paneId: workspace.rootPaneId,
+      sessionName: `rtv2-${workspace.id}-${workspace.rootPaneId}-tab-runtime`,
+      cwd: dir,
+    });
+
+    expect(repo.listPendingTerminalTabs()).toEqual([
+      expect.objectContaining({ id: pending.id, lifecycleState: 'pending_terminal' }),
+    ]);
+
+    repo.failPendingTerminalTab({ id: pending.id, reason: 'terminal create failed' });
+
+    expect(repo.listPendingTerminalTabs()).toEqual([]);
+
+    expect(() => repo.failPendingTerminalTab({ id: 'tab-missing', reason: 'missing' })).toThrow(expect.objectContaining({
+      code: 'runtime-v2-pending-tab-not-found',
+      retryable: false,
+    }));
+
+    const finalized = repo.createPendingTerminalTab({
+      id: 'tab-finalized',
+      workspaceId: workspace.id,
+      paneId: workspace.rootPaneId,
+      sessionName: `rtv2-${workspace.id}-${workspace.rootPaneId}-tab-finalized`,
+      cwd: dir,
+    });
+    repo.finalizeTerminalTab({ id: finalized.id });
+    expect(() => repo.failPendingTerminalTab({ id: finalized.id, reason: 'already finalized' })).toThrow(expect.objectContaining({
+      code: 'runtime-v2-pending-tab-not-found',
+      retryable: false,
+    }));
+  });
+
+  it('deletes a workspace and returns cleanup sessions from the delete transaction', () => {
+    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const repo = createStorageRepository(db);
+
+    const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
+    const readyPending = repo.createPendingTerminalTab({
+      id: 'tab-ready',
+      workspaceId: workspace.id,
+      paneId: workspace.rootPaneId,
+      sessionName: `rtv2-${workspace.id}-${workspace.rootPaneId}-tab-ready`,
+      cwd: dir,
+    });
+    const stillPending = repo.createPendingTerminalTab({
+      id: 'tab-pending',
+      workspaceId: workspace.id,
+      paneId: workspace.rootPaneId,
+      sessionName: `rtv2-${workspace.id}-${workspace.rootPaneId}-tab-pending`,
+      cwd: dir,
+    });
+    const failedPending = repo.createPendingTerminalTab({
+      id: 'tab-failed',
+      workspaceId: workspace.id,
+      paneId: workspace.rootPaneId,
+      sessionName: `rtv2-${workspace.id}-${workspace.rootPaneId}-tab-failed`,
+      cwd: dir,
+    });
+    repo.finalizeTerminalTab({ id: readyPending.id });
+    repo.failPendingTerminalTab({ id: failedPending.id, reason: 'already reconciled' });
+
+    expect(repo.deleteWorkspace({ workspaceId: workspace.id })).toEqual({
+      deleted: true,
+      sessions: [
+        { sessionName: readyPending.sessionName },
+        { sessionName: stillPending.sessionName },
+      ],
+    });
+    expect(repo.listWorkspaces()).toEqual([]);
+    expect(repo.getWorkspaceLayout(workspace.id)).toBeNull();
+    expect(repo.listMutationEvents()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ entityType: 'workspace', entityId: workspace.id, eventType: 'workspace.deleted' }),
+    ]));
+
+    const eventCount = repo.listMutationEvents().length;
+    db.pragma('foreign_keys = OFF');
+    db.prepare(`
+      insert into tabs (id, workspace_id, pane_id, session_name, panel_type, name, lifecycle_state, order_index, created_at, updated_at)
+      values (?, ?, ?, ?, 'terminal', '', 'ready', 0, ?, ?)
+    `).run(
+      'tab-orphan',
+      'ws-missing',
+      'pane-missing',
+      'rtv2-ws-missing-pane-missing-tab-orphan',
+      new Date().toISOString(),
+      new Date().toISOString(),
+    );
+    db.pragma('foreign_keys = ON');
+    expect(repo.deleteWorkspace({ workspaceId: 'ws-missing' })).toEqual({ deleted: false, sessions: [] });
+    expect(repo.listMutationEvents()).toHaveLength(eventCount);
+  });
+
+  it('finds only finalized ready terminal tabs by session name', () => {
+    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const repo = createStorageRepository(db);
+    const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
+    const pending = repo.createPendingTerminalTab({
+      id: 'tab-runtime',
+      workspaceId: workspace.id,
+      paneId: workspace.rootPaneId,
+      sessionName: `rtv2-${workspace.id}-${workspace.rootPaneId}-tab-runtime`,
+      cwd: dir,
+    });
+
+    expect(repo.getReadyTerminalTabBySession(pending.sessionName)).toBeNull();
+    repo.finalizeTerminalTab({ id: pending.id });
+    expect(repo.getReadyTerminalTabBySession(pending.sessionName)).toEqual(
+      expect.objectContaining({ id: pending.id, lifecycleState: 'ready' }),
+    );
+    expect(repo.getReadyTerminalTabBySession('rtv2-ws-missing-pane-missing-tab-missing')).toBeNull();
+  });
+
+  it('reports a clear error when optional better-sqlite3 is unavailable', () => {
+    expect(() => openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'), {
+      loadDatabase: () => {
+        throw new Error('Cannot find module better-sqlite3');
+      },
+    })).toThrow(expect.objectContaining({
+      code: 'runtime-v2-sqlite-unavailable',
+    }));
+  });
+
+  it('records schema migration v1 and reopens idempotently', () => {
+    const dbPath = path.join(dir, 'runtime-v2', 'state.db');
+    const db = openRuntimeDatabase(dbPath);
+
+    expect(db.prepare(`select version from schema_migrations order by version`).all()).toEqual([
+      { version: 1 },
+    ]);
+    db.close();
+
+    const reopened = openRuntimeDatabase(dbPath);
+    expect(reopened.prepare(`select version, count(*) as count from schema_migrations group by version`).all()).toEqual([
+      { version: 1, count: 1 },
+    ]);
+  });
+
+  it('applies runtime sqlite pragmas', () => {
+    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+
+    expect(db.pragma('busy_timeout', { simple: true })).toBe(5000);
+    expect(String(db.pragma('journal_mode', { simple: true })).toLowerCase()).toBe('wal');
+    expect(Number(db.pragma('synchronous', { simple: true }))).toBe(1);
+    expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
+  });
+
+  it('rejects databases from a newer runtime schema version', () => {
+    const dbPath = path.join(dir, 'runtime-v2', 'state.db');
+    const db = openRuntimeDatabase(dbPath);
+    db.prepare(`insert into schema_migrations(version, applied_at) values(?, ?)`).run(99, new Date().toISOString());
+    db.close();
+
+    expect(() => openRuntimeDatabase(dbPath)).toThrow(expect.objectContaining({
+      code: 'runtime-v2-schema-too-new',
+      retryable: false,
+    }));
+  });
+
+  it('creates the full foundation schema', () => {
+    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const tables = db.prepare(`
+      select name from sqlite_master where type = 'table' order by name asc
+    `).all() as Array<{ name: string }>;
+    const indexes = db.prepare(`
+      select name from sqlite_master where type = 'index' and name not like 'sqlite_autoindex_%' order by name asc
+    `).all() as Array<{ name: string }>;
+
+    expect(tables.map((t) => t.name)).toEqual(expect.arrayContaining([
+      'schema_migrations',
+      'workspaces',
+      'workspace_groups',
+      'panes',
+      'tabs',
+      'tab_status',
+      'agent_sessions',
+      'remote_sources',
+      'mutation_events',
+      'status_events',
+    ]));
+    expect(indexes.map((i) => i.name)).toEqual(expect.arrayContaining([
+      'idx_runtime_agent_sessions_provider_source',
+      'idx_runtime_mutation_events_created_at',
+      'idx_runtime_panes_workspace_parent_position',
+      'idx_runtime_remote_sources_label_host',
+      'idx_runtime_tabs_lifecycle_state_created_at',
+      'idx_runtime_status_events_tab_created_at',
+      'idx_runtime_tabs_workspace_pane_order',
+      'idx_runtime_workspaces_group_order',
+    ]));
+
+    const workspaceFks = db.prepare(`pragma foreign_key_list(workspaces)`).all() as Array<{ table: string; from: string }>;
+    const paneFks = db.prepare(`pragma foreign_key_list(panes)`).all() as Array<{ table: string; from: string }>;
+    const tabStatusFks = db.prepare(`pragma foreign_key_list(tab_status)`).all() as Array<{ table: string; from: string }>;
+    const statusEventFks = db.prepare(`pragma foreign_key_list(status_events)`).all() as Array<{ table: string; from: string }>;
+
+    expect(workspaceFks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ table: 'workspace_groups', from: 'group_id' }),
+    ]));
+    expect(paneFks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ table: 'workspaces', from: 'workspace_id' }),
+      expect.objectContaining({ table: 'panes', from: 'parent_id' }),
+      expect.objectContaining({ table: 'tabs', from: 'active_tab_id' }),
+    ]));
+    expect(tabStatusFks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ table: 'tabs', from: 'tab_id' }),
+      expect.objectContaining({ table: 'agent_sessions', from: 'agent_session_id' }),
+    ]));
+    expect(statusEventFks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ table: 'tabs', from: 'tab_id' }),
+      expect.objectContaining({ table: 'agent_sessions', from: 'agent_session_id' }),
+    ]));
+  });
+});

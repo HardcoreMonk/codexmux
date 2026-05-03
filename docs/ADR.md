@@ -15,6 +15,58 @@
 
 작은 copy, 단일 컴포넌트 스타일, 버그 수정은 기존 ADR의 결정과 충돌하지 않으면 새 ADR이 필요 없다.
 
+## Proposed: Supervisor And Worker Runtime
+
+- Status: Proposed
+- Decision: Pages Router와 custom Node server는 유지하되, public routing과
+  worker lifecycle, typed IPC command routing을 소유하는 Supervisor 역할을 도입한다.
+  Supervisor singleton, in-flight start promise, 준비된 runtime DB path는
+  `globalThis`에 두어 custom server와 Next.js API route가 하나의 runtime을 공유한다.
+- Rationale: terminal IO, storage mutation, JSONL parsing, process polling은 명시적인
+  failure boundary와 ownership boundary를 가져야 한다.
+- Consequences: runtime v2 API route는 direct store/tmux helper가 아니라 worker-backed
+  Supervisor service를 호출한다. API route는 singleton을 가져와 `ensureStarted()`를
+  기다린 뒤 필요한 Supervisor method만 호출하며 worker client를 직접 만들지 않는다.
+
+## Proposed: SQLite App State
+
+- Status: Proposed
+- Decision: workspace/layout/tab/status metadata의 runtime v2 source of truth는
+  Storage Worker가 소유하는 `~/.codexmux/runtime-v2/state.db`다.
+  `CODEXMUX_RUNTIME_V2_RESET=1`은 `state.db`, `state.db-wal`,
+  `state.db-shm`을 독립적으로 timestamp `.bak` 파일로 이동한 뒤 새 DB를 만든다.
+- Rationale: normalized entities, transactions, invariant enforcement, indexed
+  queries, durable event logs는 JSON 파일과 직접 module caller 조합으로 안전하게
+  유지하기 어렵다.
+- Consequences: 첫 구현 slice에서 legacy JSON migration은 요구하지 않는다. 기존 JSON
+  store는 유지하고 runtime v2는 parallel experimental state로 동작한다.
+  `better-sqlite3`는 optional dependency이며 lazy load된다. runtime v2가 꺼진
+  install/build는 native binding load에 의존하지 않고, runtime v2가 켜졌을 때 binding
+  부재는 `runtime-v2-sqlite-unavailable`로 실패한다.
+
+## Proposed: Typed IPC
+
+- Status: Proposed
+- Decision: worker transport는 `child_process.fork` 기반 typed envelope IPC를 사용한다.
+  첫 slice는 command registry와 event registry를 두고 command payload, successful reply
+  payload, first-slice event payload를 모두 검증한다.
+- Rationale: Node IPC는 별도 internal port 없이 TypeScript type/schema 재사용과
+  process boundary 검증을 시작하기에 가장 단순한 경로다.
+- Consequences: envelope validation만으로는 충분하지 않다. command-specific payload와
+  successful reply payload validation, registered event constructor validation, correlation
+  id, timeout, structured error, retryability 보존이 worker/Supervisor contract의 일부다.
+
+## Proposed: Terminal Streams Are Ephemeral
+
+- Status: Proposed
+- Decision: terminal stdin/stdout/resize stream은 realtime ephemeral data다. Terminal
+  lifecycle과 status fact는 durable state가 될 수 있지만 terminal byte stream은 SQLite에
+  저장하지 않는다.
+- Rationale: tmux가 이미 terminal runtime source다. terminal byte를 별도 저장하면 큰
+  저장 비용과 replay 복잡도가 생기지만 첫 번째 안정성 문제를 해결하지 못한다.
+- Consequences: runtime v2 terminal stdout은 reconnect replay 대상이 아니다. client는
+  Terminal Worker를 통해 tmux에 다시 attach해서 복구한다.
+
 ## ADR-001: Next.js Pages Router와 Custom Server 유지
 
 - Status: Accepted

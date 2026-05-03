@@ -316,7 +316,10 @@ These decisions are binding and override any older skeleton-only wording in this
   `writeUpgradeJsonError()` path as other unauthorized upgrades: they return
   `401 Unauthorized` JSON with `socket.end(response)` and only call
   `safeDestroySocket()` if `end()` throws.
-- `scripts/smoke-runtime-v2.mjs` is required and must verify health, workspace create/list, tab create, v2 terminal WebSocket attach, stdin, stdout, resize, and cleanup.
+- `scripts/smoke-runtime-v2.mjs` is required and must verify health, workspace
+  create/list, tab create, v2 terminal WebSocket attach, stdin, stdout, resize,
+  and cleanup. The resize portion must assert terminal output from `stty size`
+  reports `30 100` after the script sends a `100x30` resize frame.
 - Docs updates include `docs/TMUX.md` and `docs/STATUS.md` in addition to `docs/ARCHITECTURE-LOGIC.md`, `docs/DATA-DIR.md`, and `docs/ADR.md`.
 
 ## File Structure
@@ -545,7 +548,7 @@ Time horizon:
 - Modify: `scripts/post-build.js`
 - Create: `scripts/verify-runtime-native-bindings.mjs`
 
-- [ ] **Step 1: Add SQLite dependencies**
+- [x] **Step 1: Add SQLite dependencies**
 
 Run:
 
@@ -559,7 +562,7 @@ Expected: `package.json` and `pnpm-lock.yaml` include `better-sqlite3` under
 Runtime v2 off installs/builds must not require the native SQLite binding to
 load.
 
-- [ ] **Step 1a: Allow native SQLite builds in pnpm**
+- [x] **Step 1a: Allow native SQLite builds in pnpm**
 
 Update `package.json#pnpm.onlyBuiltDependencies`:
 
@@ -576,7 +579,7 @@ Expected: pnpm is allowed to build both `node-pty` and optional
 unavailable, normal runtime v2 off install/build still succeeds; runtime v2 on
 reports `runtime-v2-sqlite-unavailable`.
 
-- [ ] **Step 2: Update `tsup.config.ts` to build worker entrypoints**
+- [x] **Step 2: Update `tsup.config.ts` to build worker entrypoints**
 
 Patch the existing config instead of replacing the whole file. Preserve existing
 options, plugins, aliases, and package externals. Add the two worker entrypoints
@@ -594,7 +597,7 @@ external: [...existingExternals, 'better-sqlite3', 'node-pty'],
 Expected: the diff only adds worker entries and required native externals; it
 does not discard unrelated existing `tsup` settings.
 
-- [ ] **Step 2a: Keep native modules available in Electron standalone output**
+- [x] **Step 2a: Keep native modules available in Electron standalone output**
 
 Update `scripts/post-build.js` so Electron mode copies optional
 `better-sqlite3` and its transitive runtime dependencies into
@@ -631,7 +634,7 @@ dependency, and both web/npm and Electron standalone outputs include
 `src/config/tmux.conf`. A runtime v2 off build must not fail if the optional
 package is absent.
 
-- [ ] **Step 2b: Add standalone native binding verification**
+- [x] **Step 2b: Add standalone native binding verification**
 
 Add `scripts/verify-runtime-native-bindings.mjs` and a package script:
 
@@ -665,7 +668,7 @@ standalone/Electron layout the Supervisor uses. If Electron ABI rebuild, unpack
 handling, or tmux config copying is broken, the script fails before any manual
 Electron smoke is considered valid.
 
-- [ ] **Step 3: Run the build config check**
+- [x] **Step 3: Run the build config check**
 
 Run:
 
@@ -675,10 +678,15 @@ corepack pnpm tsc --noEmit
 
 Expected: it may fail because worker files do not exist yet. The expected failure mentions missing `src/workers/storage-worker.ts` or `src/workers/terminal-worker.ts`, not syntax errors in `tsup.config.ts` or package JSON errors.
 
-- [ ] **Step 4: Record checkpoint**
+- [x] **Step 4: Record checkpoint**
 
 Record changed files and the build config check result. Do not commit unless the
 user explicitly asks.
+
+Checkpoint: changed `package.json`, `pnpm-lock.yaml`, `tsup.config.ts`,
+`scripts/post-build.js`, and `scripts/verify-runtime-native-bindings.mjs`.
+`corepack pnpm install` ran `better-sqlite3`'s install script after
+`onlyBuiltDependencies` was updated. `corepack pnpm tsc --noEmit` passed.
 
 ## Task 2: Typed IPC Contract
 
@@ -689,7 +697,7 @@ user explicitly asks.
 - Create: `tests/unit/lib/runtime/ipc.test.ts`
 - Create: `tests/unit/lib/runtime/worker-command-validation.test.ts`
 
-- [ ] **Step 1: Add shared runtime v2 contracts**
+- [x] **Step 1: Add shared runtime v2 contracts**
 
 Create `src/lib/runtime/contracts.ts`:
 
@@ -760,7 +768,7 @@ export interface IRuntimePendingTerminalTab {
 export type TRuntimeLayout = ILayoutData | null;
 ```
 
-- [ ] **Step 2: Write the failing IPC tests**
+- [x] **Step 2: Write the failing IPC tests**
 
 Create `tests/unit/lib/runtime/ipc.test.ts`:
 
@@ -1061,7 +1069,7 @@ describe('runtime session names', () => {
 });
 ```
 
-- [ ] **Step 3: Run the failing tests**
+- [x] **Step 3: Run the failing tests**
 
 Run:
 
@@ -1071,7 +1079,7 @@ corepack pnpm vitest run tests/unit/lib/runtime/ipc.test.ts tests/unit/lib/runti
 
 Expected: FAIL with missing runtime IPC/session-name modules.
 
-- [ ] **Step 4: Implement `src/lib/runtime/ipc.ts`**
+- [x] **Step 4: Implement `src/lib/runtime/ipc.ts`**
 
 Create `src/lib/runtime/session-name.ts`:
 
@@ -1511,7 +1519,7 @@ export const parseRuntimeMessage = (value: unknown): TRuntimeMessage => {
 };
 ```
 
-- [ ] **Step 5: Add shared worker command validation helper**
+- [x] **Step 5: Add shared worker command validation helper**
 
 Create `src/lib/runtime/worker-command-validation.ts`:
 
@@ -1611,7 +1619,7 @@ describe('validateWorkerCommandEnvelope', () => {
 });
 ```
 
-- [ ] **Step 6: Run IPC and worker command validation tests**
+- [x] **Step 6: Run IPC and worker command validation tests**
 
 Run:
 
@@ -1622,10 +1630,21 @@ corepack pnpm vitest run tests/unit/lib/runtime/worker-command-validation.test.t
 
 Expected: PASS.
 
-- [ ] **Step 7: Record checkpoint**
+- [x] **Step 7: Record checkpoint**
 
 Record changed files and the IPC plus worker command validation test results. Do
 not commit unless the user explicitly asks.
+
+Checkpoint: added `src/lib/runtime/contracts.ts`,
+`src/lib/runtime/session-name.ts`, `src/lib/runtime/ipc.ts`,
+`src/lib/runtime/worker-command-validation.ts`,
+`tests/unit/lib/runtime/ipc.test.ts`,
+`tests/unit/lib/runtime/session-name.test.ts`, and
+`tests/unit/lib/runtime/worker-command-validation.test.ts`. RED verified with
+missing IPC/session-name modules. GREEN: `corepack pnpm vitest run
+tests/unit/lib/runtime/ipc.test.ts tests/unit/lib/runtime/session-name.test.ts
+tests/unit/lib/runtime/worker-command-validation.test.ts` passed with 15 tests.
+`corepack pnpm tsc --noEmit` passed.
 
 ## Task 3: Worker Script Resolution And Client
 
@@ -1635,7 +1654,7 @@ not commit unless the user explicitly asks.
 - Create: `src/lib/runtime/worker-client.ts`
 - Create: `tests/unit/lib/runtime/worker-client.test.ts`
 
-- [ ] **Step 1: Write worker path resolution tests**
+- [x] **Step 1: Write worker path resolution tests**
 
 Create `tests/unit/lib/runtime/worker-paths.test.ts`:
 
@@ -1718,7 +1737,7 @@ describe('runtime worker path resolution', () => {
 });
 ```
 
-- [ ] **Step 2: Write worker client tests**
+- [x] **Step 2: Write worker client tests**
 
 Create `tests/unit/lib/runtime/worker-client.test.ts`:
 
@@ -2881,7 +2900,7 @@ it('ignores stale child events after shutdown listener cleanup', () => {
 });
 ```
 
-- [ ] **Step 3: Run worker path/client tests and confirm failure**
+- [x] **Step 3: Run worker path/client tests and confirm failure**
 
 Run:
 
@@ -2891,7 +2910,7 @@ corepack pnpm vitest run tests/unit/lib/runtime/worker-paths.test.ts tests/unit/
 
 Expected: FAIL with missing `worker-paths` and `worker-client`.
 
-- [ ] **Step 4: Implement worker path resolution**
+- [x] **Step 4: Implement worker path resolution**
 
 Create `src/lib/runtime/worker-paths.ts`:
 
@@ -2985,7 +3004,7 @@ Electron `app.asar.unpacked`; otherwise Terminal Worker startup fails with
 `runtime-v2-tmux-config-source-failed` if tmux rejects the resolved config during
 `source-file`.
 
-- [ ] **Step 5: Implement worker client**
+- [x] **Step 5: Implement worker client**
 
 Create `src/lib/runtime/worker-client.ts`:
 
@@ -3396,7 +3415,7 @@ increasing bounded restart backoff with successful-reply reset, pending request
 overload protection, event delivery, exit callbacks, and listener cleanup are
 part of the required behavior.
 
-- [ ] **Step 6: Run worker path/client tests**
+- [x] **Step 6: Run worker path/client tests**
 
 Run:
 
@@ -3406,10 +3425,19 @@ corepack pnpm vitest run tests/unit/lib/runtime/worker-paths.test.ts tests/unit/
 
 Expected: PASS.
 
-- [ ] **Step 7: Record checkpoint**
+- [x] **Step 7: Record checkpoint**
 
 Record changed files and the Worker Path/Worker Client test result. Do not
 commit unless the user explicitly asks.
+
+Checkpoint: added `src/lib/runtime/worker-paths.ts`,
+`src/lib/runtime/worker-client.ts`,
+`tests/unit/lib/runtime/worker-paths.test.ts`, and
+`tests/unit/lib/runtime/worker-client.test.ts`.
+RED verified with missing `worker-paths`/`worker-client`. GREEN verified with
+`corepack pnpm vitest run tests/unit/lib/runtime/worker-paths.test.ts
+tests/unit/lib/runtime/worker-client.test.ts` (44 tests passing) and
+`corepack pnpm tsc --noEmit`.
 
 ## Task 4: SQLite Schema And Repository
 
@@ -3418,7 +3446,7 @@ commit unless the user explicitly asks.
 - Create: `src/lib/runtime/storage/repository.ts`
 - Create: `tests/unit/lib/runtime/storage-repository.test.ts`
 
-- [ ] **Step 1: Write repository tests**
+- [x] **Step 1: Write repository tests**
 
 Create `tests/unit/lib/runtime/storage-repository.test.ts`:
 
@@ -3760,7 +3788,7 @@ describe('runtime storage repository', () => {
 });
 ```
 
-- [ ] **Step 2: Run repository tests and confirm failure**
+- [x] **Step 2: Run repository tests and confirm failure**
 
 Run:
 
@@ -3770,7 +3798,7 @@ corepack pnpm vitest run tests/unit/lib/runtime/storage-repository.test.ts
 
 Expected: FAIL with missing storage modules.
 
-- [ ] **Step 3: Implement SQLite schema**
+- [x] **Step 3: Implement SQLite schema**
 
 Create `src/lib/runtime/storage/schema.ts`:
 
@@ -4026,7 +4054,7 @@ export const openRuntimeDatabase = (
 };
 ```
 
-- [ ] **Step 4: Implement repository**
+- [x] **Step 4: Implement repository**
 
 Create `src/lib/runtime/storage/repository.ts`:
 
@@ -4292,7 +4320,7 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
 };
 ```
 
-- [ ] **Step 5: Run repository tests**
+- [x] **Step 5: Run repository tests**
 
 Run:
 
@@ -4302,10 +4330,17 @@ corepack pnpm vitest run tests/unit/lib/runtime/storage-repository.test.ts
 
 Expected: PASS.
 
-- [ ] **Step 6: Record checkpoint**
+- [x] **Step 6: Record checkpoint**
 
 Record changed files and the storage repository test result. Do not commit
 unless the user explicitly asks.
+
+Checkpoint: added `src/lib/runtime/storage/schema.ts`,
+`src/lib/runtime/storage/repository.ts`, and
+`tests/unit/lib/runtime/storage-repository.test.ts`.
+RED verified with missing storage modules. GREEN verified with
+`corepack pnpm vitest run tests/unit/lib/runtime/storage-repository.test.ts`
+(12 tests passing) and `corepack pnpm tsc --noEmit`.
 
 ## Task 5: Storage Worker Service And Entrypoint
 
@@ -4314,7 +4349,7 @@ unless the user explicitly asks.
 - Create: `src/workers/storage-worker.ts`
 - Create: `tests/unit/lib/runtime/storage-worker-service.test.ts`
 
-- [ ] **Step 1: Write Storage Worker service tests**
+- [x] **Step 1: Write Storage Worker service tests**
 
 Create `tests/unit/lib/runtime/storage-worker-service.test.ts`:
 
@@ -4582,7 +4617,7 @@ describe('storage worker service', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests and confirm failure**
+- [x] **Step 2: Run tests and confirm failure**
 
 Run:
 
@@ -4592,7 +4627,7 @@ corepack pnpm vitest run tests/unit/lib/runtime/storage-worker-service.test.ts
 
 Expected: FAIL with missing `worker-service`.
 
-- [ ] **Step 3: Implement Storage Worker service**
+- [x] **Step 3: Implement Storage Worker service**
 
 Create `src/lib/runtime/storage/worker-service.ts`:
 
@@ -4713,7 +4748,7 @@ export const createStorageWorkerService = (options: IStorageWorkerServiceOptions
 };
 ```
 
-- [ ] **Step 4: Implement Storage Worker entrypoint**
+- [x] **Step 4: Implement Storage Worker entrypoint**
 
 Create `src/workers/storage-worker.ts`:
 
@@ -4764,7 +4799,7 @@ process.on('SIGINT', () => {
 });
 ```
 
-- [ ] **Step 5: Run Storage Worker tests**
+- [x] **Step 5: Run Storage Worker tests**
 
 Run:
 
@@ -4774,10 +4809,17 @@ corepack pnpm vitest run tests/unit/lib/runtime/storage-worker-service.test.ts
 
 Expected: PASS.
 
-- [ ] **Step 6: Record checkpoint**
+- [x] **Step 6: Record checkpoint**
 
 Record changed files and the Storage Worker service test result. Do not commit
 unless the user explicitly asks.
+
+Checkpoint: added `src/lib/runtime/storage/worker-service.ts`,
+`src/workers/storage-worker.ts`, and
+`tests/unit/lib/runtime/storage-worker-service.test.ts`.
+RED verified with missing `worker-service`. GREEN verified with
+`corepack pnpm vitest run tests/unit/lib/runtime/storage-worker-service.test.ts`
+(6 tests passing) and `corepack pnpm tsc --noEmit`.
 
 ## Task 6: Terminal Worker Service With Fake Runtime And Attach Events
 
@@ -4788,7 +4830,7 @@ unless the user explicitly asks.
 - Create: `tests/unit/lib/runtime/terminal-worker-runtime.test.ts`
 - Create: `tests/integration/runtime-v2-terminal-process.test.ts`
 
-- [ ] **Step 1: Write Terminal Worker service tests**
+- [x] **Step 1: Write Terminal Worker service tests**
 
 Create `tests/unit/lib/runtime/terminal-worker-service.test.ts`:
 
@@ -5232,7 +5274,7 @@ describe('terminal worker service', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests and confirm failure**
+- [x] **Step 2: Run tests and confirm failure**
 
 Run:
 
@@ -5242,7 +5284,7 @@ corepack pnpm vitest run tests/unit/lib/runtime/terminal-worker-service.test.ts 
 
 Expected: FAIL with missing terminal worker modules.
 
-- [ ] **Step 3: Implement Terminal Worker service**
+- [x] **Step 3: Implement Terminal Worker service**
 
 Create `src/lib/runtime/terminal/terminal-worker-service.ts`:
 
@@ -5474,7 +5516,7 @@ export const createTerminalWorkerService = (options: ITerminalWorkerServiceOptio
 };
 ```
 
-- [ ] **Step 4: Implement minimal real runtime wrapper**
+- [x] **Step 4: Implement minimal real runtime wrapper**
 
 Create `src/lib/runtime/terminal/terminal-worker-runtime.ts`:
 
@@ -5655,7 +5697,7 @@ partial creates: after `tmux new-session` succeeds, a later create-step failure
 attempts `killRuntimeSession()` before rethrowing the original error. Supervisor
 still keeps its create-tab rollback kill as a second cleanup attempt.
 
-- [ ] **Step 4a: Add Terminal Worker runtime wrapper unit tests**
+- [x] **Step 4a: Add Terminal Worker runtime wrapper unit tests**
 
 Create `tests/unit/lib/runtime/terminal-worker-runtime.test.ts` with mocked
 `child_process.execFile`, `node-pty`, `resolveRuntimeTmuxConfigPath()`, and
@@ -5672,7 +5714,7 @@ shell helpers. Cover:
 - `attach()` calls `tmux has-session` before `node-pty` spawn and rejects missing
   sessions with non-retryable `runtime-v2-terminal-session-not-found`
 
-- [ ] **Step 4b: Add real tmux/node-pty process integration test**
+- [x] **Step 4b: Add real tmux/node-pty process integration test**
 
 Create `tests/integration/runtime-v2-terminal-process.test.ts`:
 
@@ -5748,7 +5790,7 @@ test must use `describe.skip` only for `process.platform !== 'linux'`, not for a
 missing Linux prerequisite. Non-Linux CI may skip this specific process-level
 test, but platform smoke remains required separately.
 
-- [ ] **Step 5: Run Terminal Worker service, runtime, and process tests**
+- [x] **Step 5: Run Terminal Worker service, runtime, and process tests**
 
 Run:
 
@@ -5760,17 +5802,29 @@ corepack pnpm vitest run tests/integration/runtime-v2-terminal-process.test.ts
 
 Expected: PASS.
 
-- [ ] **Step 6: Record checkpoint**
+- [x] **Step 6: Record checkpoint**
 
 Record changed files and the Terminal Worker service plus process integration
 test results. Do not commit unless the user explicitly asks.
+
+Checkpoint: added `src/lib/runtime/terminal/terminal-worker-service.ts`,
+`src/lib/runtime/terminal/terminal-worker-runtime.ts`,
+`tests/unit/lib/runtime/terminal-worker-service.test.ts`,
+`tests/unit/lib/runtime/terminal-worker-runtime.test.ts`, and
+`tests/integration/runtime-v2-terminal-process.test.ts`. Updated
+`src/config/tmux.conf` to make `unbind-key -a` quiet/idempotent during repeated
+`source-file`. RED verified with missing terminal worker modules. GREEN verified
+with `corepack pnpm vitest run tests/unit/lib/runtime/terminal-worker-service.test.ts`,
+`corepack pnpm vitest run tests/unit/lib/runtime/terminal-worker-runtime.test.ts`,
+`corepack pnpm vitest run tests/integration/runtime-v2-terminal-process.test.ts`,
+and `corepack pnpm tsc --noEmit`.
 
 ## Task 7: Terminal Worker Entrypoint
 
 **Files:**
 - Create: `src/workers/terminal-worker.ts`
 
-- [ ] **Step 1: Implement Terminal Worker entrypoint**
+- [x] **Step 1: Implement Terminal Worker entrypoint**
 
 Create `src/workers/terminal-worker.ts`:
 
@@ -5813,7 +5867,7 @@ process.on('disconnect', () => process.exit(0));
 process.on('SIGINT', () => process.exit(0));
 ```
 
-- [ ] **Step 2: Run TypeScript**
+- [x] **Step 2: Run TypeScript**
 
 Run:
 
@@ -5823,7 +5877,7 @@ corepack pnpm tsc --noEmit
 
 Expected: PASS. If TypeScript reports missing `better-sqlite3` types, stop and rerun Task 1 before continuing.
 
-- [ ] **Step 3: Run worker-related unit tests**
+- [x] **Step 3: Run worker-related unit tests**
 
 Run:
 
@@ -5833,10 +5887,21 @@ corepack pnpm vitest run tests/unit/lib/runtime/ipc.test.ts tests/unit/lib/runti
 
 Expected: PASS.
 
-- [ ] **Step 4: Record checkpoint**
+- [x] **Step 4: Record checkpoint**
 
 Record changed files and the worker entrypoint regression test result. Do not
 commit unless the user explicitly asks.
+
+Checkpoint: added `src/workers/terminal-worker.ts`. Verified with
+`corepack pnpm tsc --noEmit` and
+`corepack pnpm vitest run tests/unit/lib/runtime/ipc.test.ts
+tests/unit/lib/runtime/worker-command-validation.test.ts
+tests/unit/lib/runtime/worker-paths.test.ts
+tests/unit/lib/runtime/worker-client.test.ts
+tests/unit/lib/runtime/storage-repository.test.ts
+tests/unit/lib/runtime/storage-worker-service.test.ts
+tests/unit/lib/runtime/terminal-worker-service.test.ts
+tests/unit/lib/runtime/terminal-worker-runtime.test.ts` (93 tests passing).
 
 ## Task 8: Supervisor Runtime Service
 
@@ -5849,7 +5914,7 @@ commit unless the user explicitly asks.
 - Create: `tests/unit/lib/runtime/server-ws-upgrade.test.ts`
 - Modify: `server.ts`
 
-- [ ] **Step 1: Write Supervisor orchestration tests**
+- [x] **Step 1: Write Supervisor orchestration tests**
 
 Create `tests/unit/lib/runtime/supervisor.test.ts` with fake worker clients that
 record command order. Cover these cases:
@@ -5990,7 +6055,7 @@ record command order. Cover these cases:
 Expected: these tests fail until the Supervisor is implemented with injectable
 worker-client factories or an exported test factory.
 
-- [ ] **Step 2: Implement Supervisor singleton**
+- [x] **Step 2: Implement Supervisor singleton**
 
 Create `src/lib/runtime/supervisor.ts`:
 
@@ -6421,7 +6486,7 @@ start promise and prepared DB path also live on `globalThis` so the custom serve
 and Next API route module graphs cannot start duplicate workers or run reset
 backup twice.
 
-- [ ] **Step 3: Initialize runtime v2 from `server.ts` when enabled**
+- [x] **Step 3: Initialize runtime v2 from `server.ts` when enabled**
 
 In `server.ts`, add imports:
 
@@ -6966,6 +7031,8 @@ export const handleRuntimeTerminalConnection = async (
       })
       .catch(() => undefined);
   });
+
+  await attachPromise;
 };
 ```
 
@@ -7150,7 +7217,7 @@ Inside both `shutdown` functions in `startDev` and `startProd`, before `await sh
     }
 ```
 
-- [ ] **Step 4: Run TypeScript**
+- [x] **Step 4: Run TypeScript**
 
 Run:
 
@@ -7160,7 +7227,7 @@ corepack pnpm tsc --noEmit
 
 Expected: PASS.
 
-- [ ] **Step 5: Run Supervisor and terminal WebSocket tests**
+- [x] **Step 5: Run Supervisor and terminal WebSocket tests**
 
 Run:
 
@@ -7170,10 +7237,21 @@ corepack pnpm vitest run tests/unit/lib/runtime/supervisor.test.ts tests/unit/li
 
 Expected: PASS.
 
-- [ ] **Step 6: Record checkpoint**
+- [x] **Step 6: Record checkpoint**
 
 Record changed files and the Supervisor/terminal WebSocket/server upgrade test
 results. Do not commit unless the user explicitly asks.
+
+Checkpoint: added `src/lib/runtime/supervisor.ts`,
+`src/lib/runtime/terminal-ws.ts`, `src/lib/runtime/server-ws-upgrade.ts`,
+`src/lib/runtime/api-auth.ts`, `tests/unit/lib/runtime/supervisor.test.ts`,
+`tests/unit/lib/runtime/terminal-ws.test.ts`, and
+`tests/unit/lib/runtime/server-ws-upgrade.test.ts`; modified `server.ts`.
+RED verified with missing Supervisor/WebSocket modules. GREEN verified with
+`corepack pnpm vitest run tests/unit/lib/runtime/supervisor.test.ts
+tests/unit/lib/runtime/terminal-ws.test.ts
+tests/unit/lib/runtime/server-ws-upgrade.test.ts` (22 tests passing) and
+`corepack pnpm tsc --noEmit`.
 
 ## Task 9: API v2 Skeleton And Terminal WebSocket
 
@@ -7189,7 +7267,7 @@ results. Do not commit unless the user explicitly asks.
 - Create: `src/pages/api/v2/workspaces/[workspaceId]/layout.ts`
 - Create: `src/pages/api/v2/tabs/index.ts`
 
-- [ ] **Step 1: Add runtime v2 API auth helper**
+- [x] **Step 1: Add runtime v2 API auth helper**
 
 Create `src/lib/runtime/api-auth.ts`:
 
@@ -7341,7 +7419,7 @@ describe('runtime v2 websocket auth', () => {
 });
 ```
 
-- [ ] **Step 2: Add runtime v2 API handler helpers**
+- [x] **Step 2: Add runtime v2 API handler helpers**
 
 Create `src/lib/runtime/api-handler.ts`:
 
@@ -7517,7 +7595,7 @@ describe('runtime v2 api handler helpers', () => {
 });
 ```
 
-- [ ] **Step 3: Add health endpoint**
+- [x] **Step 3: Add health endpoint**
 
 Create `src/pages/api/v2/runtime/health.ts`:
 
@@ -7554,7 +7632,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 export default handler;
 ```
 
-- [ ] **Step 4: Add workspace endpoint**
+- [x] **Step 4: Add workspace endpoint**
 
 Create `src/pages/api/v2/workspaces/index.ts`:
 
@@ -7609,7 +7687,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 export default handler;
 ```
 
-- [ ] **Step 5: Add workspace cleanup endpoint**
+- [x] **Step 5: Add workspace cleanup endpoint**
 
 Create `src/pages/api/v2/workspaces/[workspaceId]/index.ts`:
 
@@ -7652,7 +7730,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 export default handler;
 ```
 
-- [ ] **Step 6: Add layout endpoint**
+- [x] **Step 6: Add layout endpoint**
 
 Create `src/pages/api/v2/workspaces/[workspaceId]/layout.ts`:
 
@@ -7696,7 +7774,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 export default handler;
 ```
 
-- [ ] **Step 7: Add tab create endpoint**
+- [x] **Step 7: Add tab create endpoint**
 
 Create `src/pages/api/v2/tabs/index.ts`:
 
@@ -7746,7 +7824,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 export default handler;
 ```
 
-- [ ] **Step 8: Add runtime v2 API route tests**
+- [x] **Step 8: Add runtime v2 API route tests**
 
 Create `tests/unit/pages/runtime-v2-api.test.ts` using the existing
 `tests/unit/pages/*.test.ts` request/response mock style:
@@ -7851,6 +7929,7 @@ describe('runtime v2 api routes', () => {
     const response = createResponse();
     await healthHandler(createRequest({ method: 'GET' }), response.res);
     expect(response.statusCode).toBe(401);
+    expect(mocks.getRuntimeSupervisor).not.toHaveBeenCalled();
   });
 
   it('rejects credential query parameters through the shared auth helper', async () => {
@@ -7889,6 +7968,26 @@ describe('runtime v2 api routes', () => {
     }
 
     expect(mocks.auth).not.toHaveBeenCalled();
+    expect(mocks.getRuntimeSupervisor).not.toHaveBeenCalled();
+  });
+
+  it('returns method errors before supervisor access', async () => {
+    const cases = [
+      { handler: healthHandler, request: createRequest({ method: 'POST' }), allow: 'GET' },
+      { handler: workspacesHandler, request: createRequest({ method: 'PATCH' }), allow: 'GET, POST' },
+      { handler: workspaceCleanupHandler, request: createRequest({ method: 'GET', query: { workspaceId: 'ws-a' } }), allow: 'DELETE' },
+      { handler: layoutHandler, request: createRequest({ method: 'POST', query: { workspaceId: 'ws-a' } }), allow: 'GET' },
+      { handler: tabsHandler, request: createRequest({ method: 'GET' }), allow: 'POST' },
+    ];
+
+    for (const { handler, request, allow } of cases) {
+      const response = createResponse();
+      await handler(request, response.res);
+      expect(response.statusCode).toBe(405);
+      expect(response.body).toMatchObject({ error: 'Method not allowed' });
+      expect(response.headers.Allow).toBe(allow);
+    }
+
     expect(mocks.getRuntimeSupervisor).not.toHaveBeenCalled();
   });
 
@@ -7990,7 +8089,7 @@ describe('runtime v2 api routes', () => {
 });
 ```
 
-- [ ] **Step 9: Run runtime v2 API route tests**
+- [x] **Step 9: Run runtime v2 API route tests**
 
 Run:
 
@@ -8000,7 +8099,7 @@ corepack pnpm vitest run tests/unit/pages/runtime-v2-api.test.ts
 
 Expected: PASS.
 
-- [ ] **Step 10: Run TypeScript**
+- [x] **Step 10: Run TypeScript**
 
 Run:
 
@@ -8010,7 +8109,7 @@ corepack pnpm tsc --noEmit
 
 Expected: PASS.
 
-- [ ] **Step 11: Run runtime v2 API helper tests**
+- [x] **Step 11: Run runtime v2 API helper tests**
 
 Run:
 
@@ -8020,10 +8119,26 @@ corepack pnpm vitest run tests/unit/lib/runtime/api-auth.test.ts tests/unit/lib/
 
 Expected: PASS.
 
-- [ ] **Step 12: Record checkpoint**
+- [x] **Step 12: Record checkpoint**
 
 Record changed files and the runtime API test result. Do not commit unless the
 user explicitly asks.
+
+Checkpoint: added `src/lib/runtime/api-handler.ts`,
+`tests/unit/lib/runtime/api-auth.test.ts`,
+`tests/unit/lib/runtime/api-handler.test.ts`,
+`tests/unit/pages/runtime-v2-api.test.ts`,
+`src/pages/api/v2/runtime/health.ts`,
+`src/pages/api/v2/workspaces/index.ts`,
+`src/pages/api/v2/workspaces/[workspaceId]/index.ts`,
+`src/pages/api/v2/workspaces/[workspaceId]/layout.ts`, and
+`src/pages/api/v2/tabs/index.ts`. `src/lib/runtime/api-auth.ts` was created in
+Task 8 because WebSocket upgrade routing needed it. RED verified with missing
+API handler/routes. GREEN verified with
+`corepack pnpm vitest run tests/unit/pages/runtime-v2-api.test.ts`,
+`corepack pnpm vitest run tests/unit/lib/runtime/api-auth.test.ts
+tests/unit/lib/runtime/api-handler.test.ts`, and
+`corepack pnpm tsc --noEmit`.
 
 ## Task 10: Experimental Runtime UI
 
@@ -8033,7 +8148,7 @@ user explicitly asks.
 - Create: `messages/ko/runtime.json`
 - Create: `messages/en/runtime.json`
 
-- [ ] **Step 1: Add runtime message namespace and copy**
+- [x] **Step 1: Add runtime message namespace and copy**
 
 Modify `src/lib/message-namespaces.ts` by appending `runtime`:
 
@@ -8105,7 +8220,7 @@ Create `messages/en/runtime.json`:
 }
 ```
 
-- [ ] **Step 2: Add authenticated experimental page**
+- [x] **Step 2: Add authenticated experimental page**
 
 Create `src/pages/experimental/runtime.tsx`:
 
@@ -8222,7 +8337,7 @@ Complete the page implementation with reload and terminal byte behavior:
   pattern, the same way other authenticated pages do.
 - Keep copy dense and operational; do not add a marketing-style hero.
 
-- [ ] **Step 3: Run TypeScript**
+- [x] **Step 3: Run TypeScript**
 
 Run:
 
@@ -8232,10 +8347,18 @@ corepack pnpm tsc --noEmit
 
 Expected: PASS.
 
-- [ ] **Step 4: Record checkpoint**
+- [x] **Step 4: Record checkpoint**
 
 Record changed files and the UI typecheck result. Do not commit unless the user
 explicitly asks.
+
+Checkpoint: added `src/pages/experimental/runtime.tsx`,
+`messages/ko/runtime.json`, and `messages/en/runtime.json`; updated
+`src/lib/message-namespaces.ts` with the `runtime` namespace. The page uses the
+existing authenticated Page Shell surface, loads SSR messages, lists existing
+v2 workspaces, creates workspaces/tabs, opens `/api/v2/terminal` with cookie
+auth, sends `pwd\n` through the binary stdin frame, and appends v2 stdout.
+GREEN verified with `corepack pnpm tsc --noEmit`.
 
 ## Task 11: Runtime Smoke Script And Documentation
 
@@ -8247,7 +8370,7 @@ explicitly asks.
 - Modify: `docs/TMUX.md`
 - Modify: `docs/STATUS.md`
 
-- [ ] **Step 1: Add automated runtime v2 smoke script**
+- [x] **Step 1: Add automated runtime v2 smoke script**
 
 Create `scripts/smoke-runtime-v2.mjs`:
 
@@ -8301,7 +8424,7 @@ const wsUrl = (sessionName) => {
   return url;
 };
 
-const waitForOutput = (sessionName, expectedCwd) =>
+const waitForTerminalSmoke = (sessionName, expectedCwd) =>
   new Promise((resolve, reject) => {
     let output = '';
     const ws = new WebSocket(wsUrl(sessionName), { headers });
@@ -8312,7 +8435,7 @@ const waitForOutput = (sessionName, expectedCwd) =>
 
     ws.on('open', () => {
       ws.send(encodeResize(100, 30));
-      ws.send(encodeStdin('pwd\n'));
+      ws.send(encodeStdin('pwd\nstty size\n'));
     });
     ws.on('message', (data) => {
       const bytes = Buffer.isBuffer(data) ? data : Buffer.from(data);
@@ -8321,7 +8444,7 @@ const waitForOutput = (sessionName, expectedCwd) =>
       } else {
         output += bytes.toString('utf-8');
       }
-      if (output.includes(expectedCwd)) {
+      if (output.includes(expectedCwd) && /(?:^|\r?\n)30 100(?:\r?\n|$)/.test(output)) {
         clearTimeout(timer);
         ws.close();
         resolve(output);
@@ -8352,7 +8475,7 @@ const main = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ workspaceId: workspace.id, paneId: workspace.rootPaneId, cwd: process.cwd() }),
     });
-    await waitForOutput(tab.sessionName, process.cwd());
+    await waitForTerminalSmoke(tab.sessionName, process.cwd());
     console.log(JSON.stringify({ ok: true, workspaceId: workspace.id, tabId: tab.id, sessionName: tab.sessionName }, null, 2));
   } catch (err) {
     failed = true;
@@ -8385,7 +8508,7 @@ the authenticated workspace delete API. It must call authenticated
 `DELETE /api/v2/workspaces/:workspaceId` in `finally` so durable smoke rows do
 not accumulate.
 
-- [ ] **Step 2: Update `docs/ARCHITECTURE-LOGIC.md`**
+- [x] **Step 2: Update `docs/ARCHITECTURE-LOGIC.md`**
 
 Add a section near "핵심 구조":
 
@@ -8403,7 +8526,7 @@ The current production terminal/timeline/status paths remain the default until
 the runtime v2 branch passes process-level and platform smoke tests.
 ```
 
-- [ ] **Step 3: Update `docs/DATA-DIR.md`**
+- [x] **Step 3: Update `docs/DATA-DIR.md`**
 
 Add `runtime-v2/state.db` to the structure and major file table:
 
@@ -8420,7 +8543,7 @@ Also document `CODEXMUX_RUNTIME_V2_RESET=1` and the timestamped backup naming
 for existing `runtime-v2/state.db`, `runtime-v2/state.db-wal`, and
 `runtime-v2/state.db-shm` files.
 
-- [ ] **Step 4: Update `docs/ADR.md` with proposed ADRs**
+- [x] **Step 4: Update `docs/ADR.md` with proposed ADRs**
 
 Add a proposed section:
 
@@ -8447,7 +8570,7 @@ not only envelope validation. The SQLite app state ADR must mention that
 `better-sqlite3` is optional and lazily loaded so runtime v2 off installs/builds
 do not depend on the native binding.
 
-- [ ] **Step 5: Update `docs/TMUX.md`**
+- [x] **Step 5: Update `docs/TMUX.md`**
 
 Add an experimental runtime v2 section that explains:
 
@@ -8459,7 +8582,7 @@ Add an experimental runtime v2 section that explains:
   IPC from unbounded output
 - production reconnect/lifecycle parity remains a follow-up hardening plan
 
-- [ ] **Step 6: Update `docs/STATUS.md`**
+- [x] **Step 6: Update `docs/STATUS.md`**
 
 Add an experimental runtime v2 note that explains:
 
@@ -8467,7 +8590,7 @@ Add an experimental runtime v2 note that explains:
 - production status source of truth remains `StatusManager` plus layout metadata
 - Status Worker migration, status event persistence, and notification/session-history policy are follow-up work
 
-- [ ] **Step 7: Run docs sanity checks**
+- [x] **Step 7: Run docs sanity checks**
 
 Run:
 
@@ -8477,17 +8600,27 @@ rg -n "CODEXMUX_RUNTIME_V2|CODEXMUX_RUNTIME_V2_RESET|runtime-v2/state.db|Supervi
 
 Expected: all five files contain the relevant runtime references.
 
-- [ ] **Step 8: Record checkpoint**
+- [x] **Step 8: Record checkpoint**
 
 Record changed files and the documentation grep result. Do not commit unless the
 user explicitly asks.
+
+Checkpoint: added `scripts/smoke-runtime-v2.mjs` and updated
+`docs/ARCHITECTURE-LOGIC.md`, `docs/DATA-DIR.md`, `docs/ADR.md`,
+`docs/TMUX.md`, and `docs/STATUS.md` with experimental runtime v2 architecture,
+SQLite data-dir/reset behavior, proposed ADRs, v2 terminal stream ownership, and
+status migration boundaries. `node --check scripts/smoke-runtime-v2.mjs` passed.
+Docs sanity grep passed with matches in all five required docs:
+`CODEXMUX_RUNTIME_V2`, `CODEXMUX_RUNTIME_V2_RESET`, `runtime-v2/state.db`,
+`Supervisor And Worker Runtime`, `/api/v2/terminal`, and `tab_status` appear in
+the expected runtime v2 references.
 
 ## Task 12: Full Verification Gate
 
 **Files:**
 - No source edits unless verification finds issues.
 
-- [ ] **Step 1: Run runtime unit tests**
+- [x] **Step 1: Run runtime unit tests**
 
 Run:
 
@@ -8497,7 +8630,7 @@ corepack pnpm vitest run tests/unit/lib/runtime/ipc.test.ts tests/unit/lib/runti
 
 Expected: PASS.
 
-- [ ] **Step 1a: Run real Terminal Worker process integration test**
+- [x] **Step 1a: Run real Terminal Worker process integration test**
 
 Run on Linux:
 
@@ -8513,7 +8646,7 @@ CI must install `tmux` instead of skipping this test. Non-Linux CI may skip this
 one integration test, but Electron/Android platform smoke still must run through
 their separate gates.
 
-- [ ] **Step 2: Run TypeScript**
+- [x] **Step 2: Run TypeScript**
 
 Run:
 
@@ -8523,7 +8656,7 @@ corepack pnpm tsc --noEmit
 
 Expected: PASS.
 
-- [ ] **Step 3: Run lint**
+- [x] **Step 3: Run lint**
 
 Run:
 
@@ -8533,7 +8666,7 @@ corepack pnpm lint
 
 Expected: PASS.
 
-- [ ] **Step 4: Run production build**
+- [x] **Step 4: Run production build**
 
 Run:
 
@@ -8547,7 +8680,7 @@ Expected: PASS, `dist/workers/storage-worker.js` and
 binary into the worker file. `.next/standalone/src/config/tmux.conf` exists.
 Runtime v2 off build must not require loading the SQLite binding.
 
-- [ ] **Step 4a: Run Electron native packaging verification**
+- [x] **Step 4a: Run Electron native packaging verification**
 
 Run:
 
@@ -8577,7 +8710,7 @@ skip the SQLite check. With `CODEXMUX_RUNTIME_V2=1`, missing or unresolved
 Failures that indicate Electron ABI rebuild or unpack problems must be fixed
 before runtime v2 is marked verified for Electron local mode.
 
-- [ ] **Step 5: Start experimental runtime with an isolated DB**
+- [x] **Step 5: Start experimental runtime with an isolated DB**
 
 Run:
 
@@ -8585,7 +8718,7 @@ Run:
 CODEXMUX_RUNTIME_V2=1 CODEXMUX_RUNTIME_DB=/tmp/codexmux-runtime-v2-smoke/state.db PORT=8132 corepack pnpm dev
 ```
 
-- [ ] **Step 6: Run automated runtime v2 smoke**
+- [x] **Step 6: Run automated runtime v2 smoke**
 
 In another terminal, after the server starts, run:
 
@@ -8593,9 +8726,12 @@ In another terminal, after the server starts, run:
 CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132 node scripts/smoke-runtime-v2.mjs
 ```
 
-Expected: PASS with JSON including `"ok": true`, a workspace id, a tab id, and a `rtv2-ws-...` session name. The script must prove `/api/v2/terminal` attach and stdout by sending `pwd\n` and observing the expected cwd.
+Expected: PASS with JSON including `"ok": true`, a workspace id, a tab id, and
+a `rtv2-ws-...` session name. The script must prove `/api/v2/terminal` attach,
+stdin/stdout, and resize by sending `pwd\nstty size\n`, observing the expected
+cwd, and observing `stty size` output `30 100` after its `100x30` resize frame.
 
-- [ ] **Step 7: Manual browser smoke for experimental runtime**
+- [x] **Step 7: Manual browser smoke for experimental runtime**
 
 Open `/experimental/runtime` in an authenticated browser session and run the
 same smoke path on desktop and a mobile viewport. Confirm:
@@ -8617,7 +8753,7 @@ Any failure in this browser smoke is a verification failure. Fix it before
 marking Task 12 complete and use the Step 9 verification-fix commit only if the
 fix changes files.
 
-- [ ] **Step 8: Verify reset behavior**
+- [x] **Step 8: Verify reset behavior**
 
 Run once with an existing smoke DB:
 
@@ -8635,11 +8771,61 @@ Repeat the reset check with sidecar-only setup where `state.db-wal` and/or
 timestamped `.bak` files and no stale sidecar may remain at the original path.
 `CODEXMUX_RUNTIME_V2=1` without `CODEXMUX_RUNTIME_V2_RESET=1` must reuse the DB.
 
-- [ ] **Step 9: Record final verification checkpoint**
+- [x] **Step 9: Record final verification checkpoint**
 
 When verification required fixes, record the changed files and rerun commands
 that now pass. When no files changed after verification, record that no
 verification fixes were needed. Do not commit unless the user explicitly asks.
+
+Checkpoint: verification required fixes in
+`src/pages/experimental/runtime.tsx`,
+`src/lib/runtime/server-ws-upgrade.ts`,
+`src/lib/runtime/worker-client.ts`,
+`src/lib/runtime/storage/schema.ts`, and
+`src/lib/runtime/worker-paths.ts`. The UI mount refresh was moved out of the
+effect body to satisfy `react-hooks/set-state-in-effect`; best-effort cleanup
+catch blocks no longer emit lint warnings; Storage Worker lazy SQLite loading
+now uses an explicit runtime require base instead of `import.meta.url` in the
+CJS worker bundle.
+
+Final reruns passed:
+
+- `corepack pnpm vitest run tests/unit/lib/runtime/ipc.test.ts tests/unit/lib/runtime/worker-command-validation.test.ts tests/unit/lib/runtime/worker-paths.test.ts tests/unit/lib/runtime/worker-client.test.ts tests/unit/lib/runtime/storage-repository.test.ts tests/unit/lib/runtime/storage-worker-service.test.ts tests/unit/lib/runtime/terminal-worker-service.test.ts tests/unit/lib/runtime/terminal-worker-runtime.test.ts tests/unit/lib/runtime/supervisor.test.ts tests/unit/lib/runtime/terminal-ws.test.ts tests/unit/lib/runtime/server-ws-upgrade.test.ts tests/unit/lib/runtime/api-auth.test.ts tests/unit/lib/runtime/api-handler.test.ts tests/unit/pages/runtime-v2-api.test.ts`
+  -> 14 files, 138 tests passed.
+- `corepack pnpm vitest run tests/integration/runtime-v2-terminal-process.test.ts`
+  -> 1 process-level test passed.
+- `corepack pnpm tsc --noEmit` -> PASS.
+- `corepack pnpm lint` -> PASS.
+- `corepack pnpm build` -> PASS; `dist/workers/storage-worker.js`,
+  `dist/workers/terminal-worker.js`, and
+  `.next/standalone/src/config/tmux.conf` exist. `better-sqlite3` remains a
+  lazy runtime require in the worker output and no native `.node` binary is
+  bundled into the worker file. Next/Turbopack still reports a non-fatal NFT
+  trace warning for the runtime Supervisor import path.
+- `corepack pnpm build:electron` -> PASS.
+- `CODEXMUX_RUNTIME_V2=1 corepack pnpm run verify:runtime-native -- --electron`
+  -> PASS; standalone `node-pty` and `better-sqlite3` native bindings resolved,
+  worker output exists, and tmux config exists.
+- `HOME=/tmp/codexmux-runtime-v2-home CODEXMUX_RUNTIME_V2=1
+  CODEXMUX_RUNTIME_DB=/tmp/codexmux-runtime-v2-smoke/state.db PORT=8132
+  corepack pnpm dev` started the isolated runtime after the normal HOME attempt
+  correctly hit the existing codexmux lock.
+- `HOME=/tmp/codexmux-runtime-v2-home
+  CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8132
+  node scripts/smoke-runtime-v2.mjs` -> PASS with `"ok": true`,
+  workspace id, tab id, and `rtv2-ws-...` session name; it verified
+  `/api/v2/terminal` attach, stdin/stdout, and `100x30` resize via `stty size`.
+- Firefox WebDriver BiDi browser smoke -> PASS for authenticated
+  `/experimental/runtime`, create workspace, create terminal tab,
+  cookie-only `/api/v2/terminal` URL, UI stdout, reload/list path, enabled-path
+  console error check, and mobile viewport button/terminal scrollability. A
+  separate runtime-off browser check verified the localized disabled copy.
+- Reset verification -> PASS. Existing `state.db`, `state.db-wal`, and
+  `state.db-shm` moved to matching timestamp `.bak` files and a fresh DB was
+  created. Sidecar-only `state.db-wal`/`state.db-shm` moved to timestamp `.bak`
+  files preserving contents, with no stale original sidecars. Starting without
+  `CODEXMUX_RUNTIME_V2_RESET=1` reused the DB and did not create additional
+  backups.
 
 ## Completion Criteria
 
@@ -8755,14 +8941,14 @@ The plan is complete when:
   rejected as `runtime-v2-schema-too-new`
 - Terminal Worker can create/kill tmux sessions in the isolated
   `codexmux-runtime-v2` socket and own v2 node-pty attach/stdin/stdout/resize
-- `terminal.create-session`, `terminal.attach`, and `terminal.resize` IPC
-  payload schemas enforce `cols 1..500` and `rows 1..200`; WebSocket attach and
-  resize handlers clamp before IPC, while oversized direct/internal IPC callers
-  fail validation before Terminal Worker
   through IPC with bounded, byte-accounted, Unicode-safe stdout
   coalescing/backpressure, with detach/kill/backpressure clearing buffered
   partial output instead of flushing it and late pty output ignored after
   detach/backpressure
+- `terminal.create-session`, `terminal.attach`, and `terminal.resize` IPC
+  payload schemas enforce `cols 1..500` and `rows 1..200`; WebSocket attach and
+  resize handlers clamp before IPC, while oversized direct/internal IPC callers
+  fail validation before Terminal Worker
 - Terminal Worker service preserves structured runtime error `code`/`retryable`
   fields in failed IPC replies instead of collapsing them to `command-failed`
 - Terminal Worker resolves tmux config through `resolveRuntimeTmuxConfigPath()`,
@@ -8810,6 +8996,13 @@ The plan is complete when:
   `/api/v2/terminal` protocol handling, and smoke script frame constants all use
   the same `sessionName`, `cols`, `rows`, `MSG_*`, `encodeStdout`,
   `decodeMessage`, `textDecoder`, and `x-cmux-token` names.
+- Plan-eng-review hardening: runtime v2 WebSocket namespace paths fail closed
+  before fallback, malformed request targets and encoded path delimiters are
+  rejected before auth, pending-attach input frames are queued without being
+  dropped, terminal dimension bounds are enforced at WebSocket and IPC
+  boundaries, first-slice HTTP routes are separated from future v2 route family
+  scope, 405s are tested before Supervisor access, and the automated smoke
+  asserts resize with `stty size`.
 - Open decisions for this first slice: none.
 
 ## Execution Handoff

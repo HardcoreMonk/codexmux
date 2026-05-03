@@ -26,6 +26,16 @@ StatusManager
   └─ review/input 상태에서 toast/native/Web Push 알림 전송
 ```
 
+## Experimental Runtime v2 Status
+
+`CODEXMUX_RUNTIME_V2=1`의 SQLite schema에는 `tab_status`가 포함되지만 현재는 runtime v2
+schema foundation이다. production status source of truth는 계속 `StatusManager`와
+layout metadata다.
+
+Status Worker migration, status event persistence, notification/session-history policy의
+runtime v2 이전은 후속 작업이다. 첫 slice는 workspace/tab/layout과 terminal attach smoke를
+검증하고, status 전환 의미는 기존 production 경로를 유지한다.
+
 ## process state
 
 `agentProcess`는 tmux pane 아래에 agent process가 있는지를 나타낸다.

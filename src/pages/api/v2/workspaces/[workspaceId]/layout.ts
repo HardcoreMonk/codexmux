@@ -1,0 +1,37 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { z } from 'zod';
+import { verifyRuntimeV2ApiAuth } from '@/lib/runtime/api-auth';
+import { parseRuntimeApiBody, sendRuntimeApiError, sendRuntimeDisabled } from '@/lib/runtime/api-handler';
+import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
+
+const querySchema = z.object({
+  workspaceId: z.string().min(1),
+});
+
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
+  if (process.env.CODEXMUX_RUNTIME_V2 !== '1') {
+    return sendRuntimeDisabled(res);
+  }
+
+  if (!(await verifyRuntimeV2ApiAuth(req))) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET');
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const { workspaceId } = parseRuntimeApiBody(querySchema, req.query);
+    const supervisor = getRuntimeSupervisor();
+    await supervisor.ensureStarted();
+    const layout = await supervisor.getLayout(workspaceId);
+    if (!layout) return res.status(404).json({ error: 'runtime-v2-layout-not-found' });
+    return res.status(200).json(layout);
+  } catch (err) {
+    return sendRuntimeApiError(res, err);
+  }
+};
+
+export default handler;

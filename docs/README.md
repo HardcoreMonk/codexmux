@@ -33,6 +33,13 @@
 | `agents/issue-tracker.md` | issue tracker 조작 규칙 |
 | `agents/triage-labels.md` | triage label/status 매핑 |
 
+## 설계 산출물
+
+| 경로 | 기준 |
+| --- | --- |
+| `superpowers/specs/` | 구현 전 확정한 feature/design spec |
+| `superpowers/plans/` | spec, grill-me, design/eng review 결과를 반영한 실행 계획 |
+
 ## 갱신 규칙
 
 - 상태 모델, provider metadata, notification policy를 바꾸면 `STATUS.md`와 `ADR.md`를 함께 갱신한다.
@@ -42,3 +49,5 @@
 - 성능 변경이 사용자 동작이나 운영 점검에 영향을 주면 `README.md`와 `landing-src/docs/`의 architecture/live-session/git/stats/troubleshooting 문서도 함께 갱신한다.
 - 저장 파일 구조나 삭제 기준을 바꾸면 `DATA-DIR.md`를 갱신한다.
 - Android/Electron/Windows client, 모바일 reconnect, 앱 정보/재시작 bridge, native build 기준을 바꾸면 각 플랫폼 문서를 갱신한다.
+- 구현 전 설계 결정을 바꾸면 관련 `superpowers/specs/`와
+  `superpowers/plans/` 산출물을 함께 갱신한다.

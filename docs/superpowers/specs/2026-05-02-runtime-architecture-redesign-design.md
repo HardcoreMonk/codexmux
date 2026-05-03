@@ -299,7 +299,8 @@ decisions are fixed:
   concern.
 - The first slice includes an automated smoke script that proves health,
   workspace create/list, tab create, v2 terminal attach, stdin, stdout, resize,
-  and cleanup.
+  and cleanup. Resize is proven by sending a `100x30` resize frame and requiring
+  `stty size` output to include `30 100`.
 
 ## Non-Goals
 
@@ -795,7 +796,7 @@ idx_runtime_remote_sources_label_host on remote_sources(source_label, host)
 ## API And UI Contract
 
 API routes move to a v2 contract that maps to worker commands and queries.
-Initial endpoints:
+The eventual v2 route family includes:
 
 ```text
 GET  /api/v2/runtime/health
@@ -813,6 +814,20 @@ GET  /api/v2/timeline/entries
 POST /api/v2/remote/codex/sync
 ```
 
+The first implementation slice implements only:
+
+```text
+GET    /api/v2/runtime/health
+GET    /api/v2/workspaces
+POST   /api/v2/workspaces
+DELETE /api/v2/workspaces/:id
+GET    /api/v2/workspaces/:id/layout
+POST   /api/v2/tabs
+WS     /api/v2/terminal?session=:sessionName
+```
+
+Other v2 routes remain follow-up work. First-slice HTTP routes return `405`
+with an exact `Allow` header for unsupported methods before Supervisor access.
 The first implementation fixes the terminal WebSocket route shape as
 `/api/v2/terminal?session=:sessionName`. Other follow-up route shapes can be
 refined in later plans, but the rule is fixed: API routes are adapters. They do
@@ -1166,7 +1181,8 @@ Required before replacing the old runtime:
   `runtime-v2-tmux-config-missing`, and
   `runtime-v2-tmux-config-source-failed`
 - automated runtime v2 smoke for health, workspace create/list, tab create,
-  `/api/v2/terminal` attach, stdin, stdout, resize, and cleanup
+  `/api/v2/terminal` attach, stdin, stdout, resize, and cleanup. The resize
+  assertion sends `100x30` and requires `stty size` output `30 100`
 - minimal UI terminal smoke through the v2 WebSocket
 - Supervisor restart recovery test
 - Terminal Worker crash/restart test

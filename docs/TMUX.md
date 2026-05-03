@@ -48,6 +48,32 @@ Endpoint는 `/api/terminal?session={name}&clientId={id}`다.
 
 일반 stdout burst는 8ms 또는 64KiB 중 먼저 도달한 조건으로 짧게 coalescing한 뒤 `MSG_STDOUT`으로 보낸다. stdin, web stdin, resize, heartbeat, kill session message는 지연하지 않는다. WebSocket backpressure가 커지면 pty output을 잠시 멈추고 client가 따라잡으면 재개한다.
 
+## Experimental Runtime v2 Terminal
+
+기존 `/api/terminal`은 production terminal WebSocket으로 유지된다. 실험용
+`/api/v2/terminal`은 `CODEXMUX_RUNTIME_V2=1`에서만 열리는 Terminal Worker-owned
+경로이며, `rtv2-` session만 받는다.
+
+v2 attach/stdin/stdout/resize 흐름은 browser WebSocket에서 Supervisor IPC를 거쳐
+Terminal Worker의 `node-pty` attach로 이어진다.
+
+```text
+Browser /api/v2/terminal
+  -> custom server upgrade router
+  -> Supervisor attach/write/resize
+  -> Terminal Worker IPC
+  -> node-pty
+  -> tmux -u -L codexmux-runtime-v2 attach-session -t rtv2-...
+```
+
+v2 terminal stdout은 realtime-only stream이며 SQLite에 저장하지 않는다. 첫 slice는
+Worker-to-Supervisor IPC가 무한히 커지지 않도록 byte-accounted stdout coalescing과
+backpressure cap을 둔다. cap을 넘으면 해당 attach stream을 닫고, buffered partial
+output은 flush하지 않는다.
+
+production 수준의 reconnect/lifecycle parity는 후속 hardening 범위다. 현재 v2 경로는
+attach, stdin, stdout, resize, detach의 최소 smoke를 검증하기 위한 실험 surface다.
+
 ## terminal input과 앱 단축키
 
 터미널 제어 입력은 앱 단축키보다 우선한다. 특히 `Ctrl+D`는 Codex CLI와 shell에서 EOF/EOT로 쓰이므로 포커스된 xterm 또는 Codex web input bar에서 `0x04`를 stdin으로 전달한다.
