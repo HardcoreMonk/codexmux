@@ -2,12 +2,13 @@
 
 ## 배포 상태
 
-- Live commit: `b038ddd` (`Suppress Android foreground reconnect noise`)
+- Stabilization base commit: `b038ddd` (`Suppress Android foreground reconnect noise`)
+- P0/P1 automation commit: `006100e` (`Add Android WebView smoke automation`)
 - 이전 안정화 커밋:
   - `fc8ae00` `Reduce Android reconnect noise`
   - `de251ed` `Fix production child cwd after rebuild`
 - Version: `0.3.3`
-- Live health after final deploy: `{"app":"codexmux","version":"0.3.3","commit":"b038ddd","buildTime":"2026-05-03T11:00:21.051Z"}`
+- Live health after deploy must return `app`, `version`, `commit`, and `buildTime`; use `/api/health` as the source of truth for the currently deployed commit.
 - Linux service: `codexmux.service`, `ActiveState=active`, `SubState=running`
 - Service working directory after final deploy: `/data/projects/codex-zone/codexmux`
 
@@ -28,7 +29,7 @@
 | `corepack pnpm build:electron` | passed |
 | `corepack pnpm smoke:runtime-v2:phase2` | passed |
 | `corepack pnpm smoke:android:install` | passed, `versionName=0.3.3`, `versionCode=303` |
-| Tailscale Serve HTTPS `/api/health` | 200, `commit=b038ddd` |
+| Tailscale Serve HTTPS `/api/health` | 200, `version=0.3.3`, commit/buildTime metadata present |
 | `corepack pnpm smoke:android:foreground` | 2회 background/foreground, app info bridge, `triggerEvent`/TypeError 0, blocking console/logcat 0 |
 | `CODEXMUX_ANDROID_CLEAR_APP_DATA=1 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=1 corepack pnpm smoke:android:foreground` | app data clear 후 `/login` 첫 실행, console event 0, blocking logcat 0 |
 | `corepack pnpm smoke:android:recovery` | network, HTTP 4xx, SSL 실패 후 launcher 복귀와 `/login` 재연결, blocking console/logcat 0 |

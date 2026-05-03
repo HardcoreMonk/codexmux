@@ -93,10 +93,10 @@ health check:
 curl -sS http://127.0.0.1:8122/api/health
 ```
 
-정상 응답:
+정상 응답 형식:
 
 ```json
-{"app":"codexmux","version":"0.3.3","commit":"b038ddd","buildTime":"2026-05-03T11:00:21.051Z"}
+{"app":"codexmux","version":"0.3.3","commit":"<deployed-git-short-hash>","buildTime":"<iso-build-time>"}
 ```
 
 ## 빌드와 재시작
@@ -123,13 +123,13 @@ HOST=localhost,tailscale,192.168.0.0/16 PORT=8122 codexmux
 
 ## 2026-05-03 운영 기준
 
-2026-05-03 20:00 KST 기준 live service는 `b038ddd` 기반 0.3.3 build를 실행한다.
+2026-05-03 P0/P1 pass 기준 live service는 0.3.3 build를 실행한다. 정확한 배포 commit은 `curl -sS http://127.0.0.1:8122/api/health`의 `commit` 값을 기준으로 판단한다.
 
 ```text
 ActiveState=active
 SubState=running
 WorkingDirectory=/data/projects/codex-zone/codexmux
-Health commit=b038ddd
+Health commit=<deployed-git-short-hash>
 ```
 
 릴리스 smoke 결과와 남은 운영 항목은 `docs/operations/2026-05-03-android-runtime-stabilization-handoff.md`를 기준으로 본다.
