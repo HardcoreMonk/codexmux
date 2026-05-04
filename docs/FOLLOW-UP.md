@@ -67,6 +67,18 @@
 | permission prompt | 통과 | `corepack pnpm smoke:permission`, 임시 server/HOME/tmux tab에서 `needs-input` push, option parsing, stdin 선택, ack 이후 `busy` 복귀 |
 | release-blocking 잔여 | 없음 | Android/Electron/macOS packaging과 runtime v2 foreground smoke는 `v0.4.1` 기준 통과. 원격 기기 연동 경로는 2026-05-05 제거 대상이므로 더 이상 release gate가 아니다. |
 
+### 2026-05-05 RC platform smoke snapshot
+
+`ef09b42` 기준 다음 RC 전 platform smoke를 재실행했다.
+
+| 항목 | 상태 | 근거 |
+| --- | --- | --- |
+| systemd deploy/health | 통과 | `corepack pnpm deploy:local`, `/api/health` `commit=ef09b42`, `systemctl --user show codexmux.service` `ActiveState=active`, `SubState=running`, `NRestarts=0`, 최근 warning journal 없음 |
+| Electron attach | 통과 | `corepack pnpm smoke:electron:attach`, live `http://127.0.0.1:8122`, preload bridge 확인, blocking console 0 |
+| Electron runtime v2 | 통과 | `corepack pnpm smoke:electron:runtime-v2`, temp server `http://127.0.0.1:24013`, initial + 2 reconnect marker output, console clean |
+| Android foreground reconnect | 통과 | `corepack pnpm smoke:android:foreground`, SM-S928N Android 16, Tailscale HTTPS target, 2 foreground rounds, blocking console/logcat 0 |
+| Android runtime v2 foreground | 통과 | `corepack pnpm smoke:android:runtime-v2`, temp server `http://100.112.40.104:30653`, initial + 2 foreground marker output, blocking console/logcat 0 |
+
 P0/P1/P2/P3 후속 상태:
 
 - P0 완료: Android Tailscale Serve HTTPS 접속, failure recovery 반복, foreground reconnect, fresh app data clear first-run, app info bridge 확인, login route console noise 제거, permission prompt status/tmux E2E smoke 자동화.
