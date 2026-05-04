@@ -1,10 +1,12 @@
 import fs from 'fs/promises';
 import path from 'path';
+import type { IHistoryEntry, IMessageHistoryFile } from '@/types/message-history';
 import type { ILayoutData, IWorkspacesData } from '@/types/terminal';
 
 export interface ILegacyStorageSnapshot {
   workspacesData: IWorkspacesData;
   layoutsByWorkspaceId: Record<string, ILayoutData | null | undefined>;
+  messageHistoryByWorkspaceId: Record<string, IHistoryEntry[] | null | undefined>;
 }
 
 const createEmptyWorkspacesData = (): IWorkspacesData => ({
@@ -52,8 +54,33 @@ export const readLegacyLayouts = async (
   return Object.fromEntries(entries);
 };
 
+const isHistoryEntry = (entry: unknown): entry is IHistoryEntry => {
+  if (typeof entry !== 'object' || !entry) return false;
+  const candidate = entry as IHistoryEntry;
+  return typeof candidate.id === 'string'
+    && typeof candidate.message === 'string'
+    && typeof candidate.sentAt === 'string';
+};
+
+export const readLegacyMessageHistory = async (
+  dataDir: string,
+  workspacesData: IWorkspacesData,
+): Promise<Record<string, IHistoryEntry[] | null | undefined>> => {
+  const entries = await Promise.all(workspacesData.workspaces.map(async (workspace) => {
+    const historyPath = path.join(dataDir, 'workspaces', workspace.id, 'message-history.json');
+    const raw = await readJsonIfPresent(historyPath);
+    const history = raw as IMessageHistoryFile | null;
+    const validEntries = Array.isArray(history?.entries)
+      ? history.entries.filter(isHistoryEntry)
+      : [];
+    return [workspace.id, validEntries] as const;
+  }));
+  return Object.fromEntries(entries);
+};
+
 export const readLegacyStorageSnapshot = async (dataDir: string): Promise<ILegacyStorageSnapshot> => {
   const workspacesData = await readLegacyWorkspacesData(dataDir);
   const layoutsByWorkspaceId = await readLegacyLayouts(dataDir, workspacesData);
-  return { workspacesData, layoutsByWorkspaceId };
+  const messageHistoryByWorkspaceId = await readLegacyMessageHistory(dataDir, workspacesData);
+  return { workspacesData, layoutsByWorkspaceId, messageHistoryByWorkspaceId };
 };

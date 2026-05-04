@@ -36,5 +36,5 @@ Smoke output:
 
 ## Remaining Gate
 
-- Full legacy `runtimeVersion: 1` tab import is still missing.
-- Workspace group/order/sidebar state, split pane tree ownership, tab rename/patch, and message history remain legacy-owned.
+- Full legacy `runtimeVersion: 1` tab import, workspace group/sidebar state, split pane import, and message history import/default-read are now covered by later storage slices.
+- Workspace group/order mutation, full layout mutation ownership, tab rename/patch, and production live default rollout remain separate gates.

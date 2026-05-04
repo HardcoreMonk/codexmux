@@ -7,10 +7,11 @@ Date: 2026-05-04 KST
 - Added SQLite schema v2:
   - `workspaces.active_pane_id`
   - `tabs.runtime_version`
+- Added SQLite schema v3 follow-up coverage for `workspace_directories`, `app_state`, and `message_history`.
 - Added `src/lib/runtime/storage-import.ts`.
 - Added `corepack pnpm smoke:runtime-v2:storage-import`.
 - Added `corepack pnpm runtime-v2:storage-import`.
-- Import preserves grouped workspaces, split pane trees, active pane, legacy terminal tabs, runtime v2 terminal tabs, non-terminal tabs, and tab status metadata.
+- Import preserves grouped workspaces, split pane trees, active pane, active/sidebar state, workspace directories, message history, legacy terminal tabs, runtime v2 terminal tabs, non-terminal tabs, and tab status metadata.
 - Runtime v2 terminal attach authorization and cleanup session collection remain limited to `runtime_version=2` terminal tabs, so imported legacy `pt-` sessions are not exposed to the v2 terminal worker.
 
 ## Live Snapshot
@@ -50,6 +51,8 @@ Before import, `CODEXMUX_RUNTIME_V2_STORAGE_BACKUP_TIMESTAMP=20260504T060000Z co
   "invalidLayoutCount": 0
 }
 ```
+
+The historical live snapshot above predates `message_history`; production default rollout should rerun `corepack pnpm runtime-v2:storage-import` so message-history rows are populated before enabling `CODEXMUX_RUNTIME_STORAGE_V2_MODE=default`.
 
 ## Verification
 

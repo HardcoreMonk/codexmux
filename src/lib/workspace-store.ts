@@ -19,6 +19,7 @@ import {
 import type { ICreateLayoutOptions } from '@/lib/layout-store';
 import { getVisuallyOrderedWorkspaces } from '@/lib/workspace-order';
 import { mirrorLegacyStorageToRuntimeV2BestEffort } from '@/lib/runtime/storage-mirror';
+import { readRuntimeStorageWorkspaces } from '@/lib/runtime/storage-read-owner';
 import type { IWorkspace, IWorkspaceGroup, IWorkspacesData, ILayoutData } from '@/types/terminal';
 
 const log = createLogger('workspace');
@@ -201,6 +202,12 @@ const migrateFromTabs = async (): Promise<IWorkspacesData | null> => {
 export const initWorkspaceStore = async (): Promise<void> => {
   await fs.mkdir(path.join(BASE_DIR, 'workspaces'), { recursive: true });
 
+  const runtimeData = readRuntimeStorageWorkspaces();
+  if (runtimeData) {
+    log.info('Runtime v2 storage default read active; skipping legacy JSON workspace initialization');
+    return;
+  }
+
   let data = await readWorkspacesFile();
 
   if (!data) {
@@ -266,6 +273,17 @@ export const getWorkspaces = async (): Promise<{
   sidebarCollapsed: boolean;
   sidebarWidth: number;
 }> => {
+  const runtimeData = readRuntimeStorageWorkspaces();
+  if (runtimeData) {
+    return {
+      workspaces: runtimeData.workspaces,
+      groups: runtimeData.groups ?? [],
+      activeWorkspaceId: runtimeData.activeWorkspaceId,
+      sidebarCollapsed: runtimeData.sidebarCollapsed,
+      sidebarWidth: runtimeData.sidebarWidth,
+    };
+  }
+
   const data = await readWorkspacesFile();
   if (!data) return { workspaces: [], groups: [], sidebarCollapsed: false, sidebarWidth: 220 };
 
@@ -279,6 +297,14 @@ export const getWorkspaces = async (): Promise<{
 };
 
 export const getActiveWorkspaceId = async (): Promise<string | null> => {
+  const runtimeData = readRuntimeStorageWorkspaces();
+  if (runtimeData) {
+    if (runtimeData.activeWorkspaceId && runtimeData.workspaces.some((w) => w.id === runtimeData.activeWorkspaceId)) {
+      return runtimeData.activeWorkspaceId;
+    }
+    return runtimeData.workspaces[0]?.id ?? null;
+  }
+
   const data = await readWorkspacesFile();
   if (data?.activeWorkspaceId && data.workspaces.some((w) => w.id === data.activeWorkspaceId)) {
     return data.activeWorkspaceId;
@@ -287,6 +313,9 @@ export const getActiveWorkspaceId = async (): Promise<string | null> => {
 };
 
 export const getWorkspaceById = async (wsId: string): Promise<IWorkspace | undefined> => {
+  const runtimeData = readRuntimeStorageWorkspaces();
+  if (runtimeData) return runtimeData.workspaces.find((w) => w.id === wsId);
+
   const data = await readWorkspacesFile();
   return data?.workspaces.find((w) => w.id === wsId);
 };

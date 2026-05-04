@@ -58,7 +58,7 @@ Terminal worker exited`로 닫아 client가 `/api/v2/terminal`을 새로 열게 
 | Timeline | `src/lib/timeline-server.ts`, `src/lib/timeline-server-state.ts` | Codex JSONL subscribe, file watch, resume, timeline init/append |
 | Session Index | `src/lib/session-index.ts`, `src/lib/session-list.ts`, `src/pages/api/timeline/sessions.ts` | Linux/remote Codex session 목록 인덱스, session list snapshot |
 | Status | `src/lib/status-manager.ts`, `src/lib/status-server.ts` | tab status polling, hook event merge, notification dispatch |
-| Workspace | `src/lib/workspace-store.ts`, `src/lib/layout-store.ts` | workspace list, layout tree, pane/tab mutation, persisted metadata |
+| Workspace | `src/lib/workspace-store.ts`, `src/lib/layout-store.ts`, `src/lib/runtime/storage-read-owner.ts` | workspace list, layout tree, pane/tab mutation, persisted metadata, runtime v2 default read projection |
 | Provider | `src/lib/providers/*`, `src/lib/codex-session-detection.ts` | Codex command/session/jsonl adapter |
 | Remote Codex | `src/lib/remote-codex-store.ts`, `src/pages/api/remote/codex/sync.ts`, `scripts/windows-codex-sync.mjs`, `scripts/windows-codex-sync-task.ps1` | Windows Codex JSONL chunk 수신, 복사본 저장, session list 노출, Windows 자동 실행 wrapper |
 | Sync | `src/lib/sync-server.ts` | workspace/layout/config change broadcast |
@@ -113,12 +113,19 @@ codexmux가 쓰는 영속 상태는 `~/.codexmux/` 아래에 둔다.
 | config/auth/theme/network | `config.json` | sync/config |
 | workspace 목록과 그룹 | `workspaces.json` | sync/workspace |
 | pane/tab layout | `workspaces/{wsId}/layout.json` | sync/layout |
-| message history | `workspaces/{wsId}/message-history.json` | 없음 또는 API 응답 |
+| message history | `workspaces/{wsId}/message-history.json`; runtime storage default mode에서는 `runtime-v2/state.db` | 없음 또는 API 응답 |
 | keybindings/sidebar/quick prompts | 각 JSON 파일 | 필요 시 sync/config 또는 client refresh |
 | status/session history/stats | `session-history.json`, `stats/` | status/timeline |
 | session list index | `session-index.json` | timeline/session-list |
 | live terminal process | tmux | terminal/status/timeline |
 | Codex transcript | `~/.codex/sessions/**/*.jsonl`, `~/.codexmux/remote/codex/**/*.jsonl` | timeline/status |
+
+`CODEXMUX_RUNTIME_STORAGE_V2_MODE=default`에서는 workspace/layout/message-history read가
+`~/.codexmux/runtime-v2/state.db`의 SQLite projection을 우선 사용한다. 기존 JSON write
+path와 sync broadcast는 유지하며, write 직후 runtime v2 import mirror가 SQLite projection을
+갱신한다. Message history는 default mode에서 SQLite read/write를 우선 사용하고 rollback용
+JSON 파일을 함께 갱신한다. SQLite read가 실패하거나 projection이 비어 있으면 legacy JSON
+read로 fail closed한다. Config, keybindings, sidebar items는 아직 기존 JSON store가 owner다.
 
 custom server와 Next.js API route는 같은 Node process 안에서도 module graph가 분리될 수 있다. 공유 singleton은 `globalThis`에 저장하고 재초기화를 guard한다.
 

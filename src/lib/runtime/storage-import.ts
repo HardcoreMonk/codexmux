@@ -1,9 +1,11 @@
 import type { TRuntimeDatabase } from '@/lib/runtime/storage/schema';
+import type { IHistoryEntry } from '@/types/message-history';
 import type { ILayoutData, IPaneNode, ISplitNode, ITab, IWorkspacesData, TLayoutNode, TPanelType, TRuntimeVersion } from '@/types/terminal';
 
 export interface IImportLegacyStorageSnapshotInput {
   workspacesData: IWorkspacesData;
   layoutsByWorkspaceId: Record<string, ILayoutData | null | undefined>;
+  messageHistoryByWorkspaceId?: Record<string, IHistoryEntry[] | null | undefined>;
   importedAt?: string;
   pruneMissing?: boolean;
 }
@@ -18,6 +20,7 @@ export interface IImportLegacyStorageSnapshotResult {
   importedRuntimeV2TabCount: number;
   importedNonTerminalTabCount: number;
   importedStatusMetadataCount: number;
+  importedMessageHistoryCount: number;
   missingLayoutCount: number;
   invalidLayoutCount: number;
   prunedWorkspaceCount: number;
@@ -59,6 +62,7 @@ const createEmptyResult = (): IImportLegacyStorageSnapshotResult => ({
   importedRuntimeV2TabCount: 0,
   importedNonTerminalTabCount: 0,
   importedStatusMetadataCount: 0,
+  importedMessageHistoryCount: 0,
   missingLayoutCount: 0,
   invalidLayoutCount: 0,
   prunedWorkspaceCount: 0,
@@ -98,6 +102,59 @@ const importAgentSession = (
     ts,
     ts,
   );
+};
+
+const setAppState = (
+  db: TRuntimeDatabase,
+  key: string,
+  value: unknown,
+  updatedAt: string,
+): void => {
+  db.prepare(`
+    insert into app_state (key, value_json, updated_at)
+    values (?, ?, ?)
+    on conflict(key) do update set
+      value_json = excluded.value_json,
+      updated_at = excluded.updated_at
+  `).run(key, JSON.stringify(value), updatedAt);
+};
+
+const replaceWorkspaceDirectories = (
+  db: TRuntimeDatabase,
+  workspaceId: string,
+  directories: readonly string[],
+  ts: string,
+): void => {
+  db.prepare(`delete from workspace_directories where workspace_id = ?`).run(workspaceId);
+  [...new Set(directories.filter(Boolean))].forEach((directory, index) => {
+    db.prepare(`
+      insert into workspace_directories (workspace_id, path, order_index, created_at, updated_at)
+      values (?, ?, ?, ?, ?)
+    `).run(workspaceId, directory, index, ts, ts);
+  });
+};
+
+const replaceMessageHistory = (
+  db: TRuntimeDatabase,
+  workspaceId: string,
+  entries: readonly IHistoryEntry[],
+  ts: string,
+  result: IImportLegacyStorageSnapshotResult,
+): void => {
+  db.prepare(`delete from message_history where workspace_id = ?`).run(workspaceId);
+  entries.forEach((entry, index) => {
+    if (!entry.id || !entry.message || !entry.sentAt) return;
+    db.prepare(`
+      insert into message_history (workspace_id, id, message, sent_at, order_index, created_at, updated_at)
+      values (?, ?, ?, ?, ?, ?, ?)
+      on conflict(workspace_id, id) do update set
+        message = excluded.message,
+        sent_at = excluded.sent_at,
+        order_index = excluded.order_index,
+        updated_at = excluded.updated_at
+    `).run(workspaceId, entry.id, entry.message, entry.sentAt, index, ts, ts);
+    result.importedMessageHistoryCount += 1;
+  });
 };
 
 const placeholders = (count: number): string =>
@@ -338,6 +395,7 @@ export const importLegacyStorageSnapshot = (
   {
     workspacesData,
     layoutsByWorkspaceId,
+    messageHistoryByWorkspaceId = {},
     importedAt = new Date().toISOString(),
     pruneMissing = false,
   }: IImportLegacyStorageSnapshotInput,
@@ -345,6 +403,13 @@ export const importLegacyStorageSnapshot = (
   const result = createEmptyResult();
   const groups = workspacesData.groups ?? [];
   const importTx = db.transaction(() => {
+    setAppState(db, 'workspace-ui', {
+      activeWorkspaceId: workspacesData.activeWorkspaceId ?? null,
+      sidebarCollapsed: workspacesData.sidebarCollapsed,
+      sidebarWidth: workspacesData.sidebarWidth,
+      updatedAt: workspacesData.updatedAt,
+    }, importedAt);
+
     groups.forEach((group, index) => {
       db.prepare(`
         insert into workspace_groups (id, name, collapsed, order_index, created_at, updated_at)
@@ -390,6 +455,8 @@ export const importLegacyStorageSnapshot = (
         importedAt,
       );
       result.importedWorkspaceCount += 1;
+      replaceWorkspaceDirectories(db, workspace.id, workspace.directories, importedAt);
+      replaceMessageHistory(db, workspace.id, messageHistoryByWorkspaceId[workspace.id] ?? [], importedAt, result);
       importNode(db, workspace.id, layout.root, null, 0, [], importedAt, result);
     });
     if (pruneMissing) {

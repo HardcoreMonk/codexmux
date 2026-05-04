@@ -185,6 +185,68 @@ describe('runtime v2 storage import', () => {
     });
   });
 
+  it('imports workspace sidebar state and all workspace directories for default read hydration', () => {
+    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const workspacesData: IWorkspacesData = {
+      groups: [{ id: 'group-a', name: 'Group A', collapsed: false }],
+      activeWorkspaceId: 'ws-a',
+      sidebarCollapsed: true,
+      sidebarWidth: 312,
+      updatedAt: '2026-05-04T00:00:00.000Z',
+      workspaces: [
+        {
+          id: 'ws-a',
+          name: 'Workspace A',
+          directories: ['/project/a', '/project/a/sub'],
+          groupId: 'group-a',
+        },
+      ],
+    };
+    const layout: ILayoutData = {
+      root: {
+        type: 'pane',
+        id: 'pane-a',
+        activeTabId: 'tab-a',
+        tabs: [{ id: 'tab-a', sessionName: 'pt-ws-a-pane-a-tab-a', name: '', order: 0, runtimeVersion: 1 }],
+      },
+      activePaneId: 'pane-a',
+      updatedAt: '2026-05-04T00:00:00.000Z',
+    };
+
+    importLegacyStorageSnapshot(db, {
+      workspacesData,
+      layoutsByWorkspaceId: { 'ws-a': layout },
+      messageHistoryByWorkspaceId: {
+        'ws-a': [
+          { id: 'hist-a', message: 'secret history', sentAt: '2026-05-04T00:00:00.000Z' },
+        ],
+      },
+      importedAt: '2026-05-04T00:00:00.000Z',
+    });
+
+    const snapshot = createStorageRepository(db).getWorkspaceSnapshot();
+    const messageHistory = createStorageRepository(db).listMessageHistory('ws-a');
+
+    expect(snapshot).toEqual({
+      workspaces: [
+        {
+          id: 'ws-a',
+          name: 'Workspace A',
+          directories: ['/project/a', '/project/a/sub'],
+          groupId: 'group-a',
+        },
+      ],
+      groups: [{ id: 'group-a', name: 'Group A', collapsed: false }],
+      activeWorkspaceId: 'ws-a',
+      sidebarCollapsed: true,
+      sidebarWidth: 312,
+      updatedAt: '2026-05-04T00:00:00.000Z',
+    });
+    expect(messageHistory).toEqual([
+      { id: 'hist-a', message: 'secret history', sentAt: '2026-05-04T00:00:00.000Z' },
+    ]);
+  });
+
   it('prunes sqlite rows that are absent from the legacy snapshot when requested', () => {
     const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const workspacesData: IWorkspacesData = {

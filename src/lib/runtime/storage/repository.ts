@@ -11,7 +11,18 @@ import type {
 } from '@/lib/runtime/contracts';
 import { createRuntimeId } from '@/lib/runtime/session-name';
 import type { TRuntimeDatabase } from '@/lib/runtime/storage/schema';
-import type { ILayoutData, IPaneNode, ISplitNode, ITab, TLayoutNode, TRuntimeVersion } from '@/types/terminal';
+import type { IHistoryEntry } from '@/types/message-history';
+import type {
+  ILayoutData,
+  IPaneNode,
+  ISplitNode,
+  ITab,
+  IWorkspace,
+  IWorkspaceGroup,
+  IWorkspacesData,
+  TLayoutNode,
+  TRuntimeVersion,
+} from '@/types/terminal';
 
 export interface ICreateWorkspaceInput {
   name: string;
@@ -94,6 +105,13 @@ interface IPaneRow {
   activeTabId: string | null;
 }
 
+interface IWorkspaceUiState {
+  activeWorkspaceId?: string | null;
+  sidebarCollapsed?: boolean;
+  sidebarWidth?: number;
+  updatedAt?: string;
+}
+
 const nowIso = (): string => new Date().toISOString();
 const wsId = (): string => createRuntimeId('ws');
 const paneId = (): string => createRuntimeId('pane');
@@ -130,6 +148,66 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
     });
   };
 
+  const setAppState = (key: string, value: unknown, updatedAt = nowIso()): void => {
+    db.prepare(`
+      insert into app_state (key, value_json, updated_at)
+      values (?, ?, ?)
+      on conflict(key) do update set
+        value_json = excluded.value_json,
+        updated_at = excluded.updated_at
+    `).run(key, JSON.stringify(value), updatedAt);
+  };
+
+  const readAppState = <T>(key: string): T | null => {
+    const row = db.prepare(`select value_json as valueJson from app_state where key = ?`)
+      .get(key) as { valueJson: string } | undefined;
+    if (!row) return null;
+    try {
+      return JSON.parse(row.valueJson) as T;
+    } catch {
+      return null;
+    }
+  };
+
+  const replaceWorkspaceDirectories = (workspaceId: string, directories: readonly string[], ts = nowIso()): void => {
+    db.prepare(`delete from workspace_directories where workspace_id = ?`).run(workspaceId);
+    const uniqueDirectories = [...new Set(directories.filter(Boolean))];
+    uniqueDirectories.forEach((directory, index) => {
+      db.prepare(`
+        insert into workspace_directories (workspace_id, path, order_index, created_at, updated_at)
+        values (?, ?, ?, ?, ?)
+      `).run(workspaceId, directory, index, ts, ts);
+    });
+  };
+
+  const listMessageHistory = (workspaceId: string): IHistoryEntry[] =>
+    db.prepare(`
+      select id, message, sent_at as sentAt
+      from message_history
+      where workspace_id = ?
+      order by order_index asc, created_at asc, id asc
+    `).all(workspaceId) as IHistoryEntry[];
+
+  const replaceMessageHistoryTx = db.transaction((
+    workspaceId: string,
+    entries: readonly IHistoryEntry[],
+    ts = nowIso(),
+  ): void => {
+    db.prepare(`delete from message_history where workspace_id = ?`).run(workspaceId);
+    entries.forEach((entry, index) => {
+      if (!entry.id || !entry.message || !entry.sentAt) return;
+      db.prepare(`
+        insert into message_history (workspace_id, id, message, sent_at, order_index, created_at, updated_at)
+        values (?, ?, ?, ?, ?, ?, ?)
+        on conflict(workspace_id, id) do update set
+          message = excluded.message,
+          sent_at = excluded.sent_at,
+          order_index = excluded.order_index,
+          updated_at = excluded.updated_at
+      `).run(workspaceId, entry.id, entry.message, entry.sentAt, index, ts, ts);
+    });
+  });
+
   const createWorkspaceTx = db.transaction((input: ICreateWorkspaceInput): IRuntimeCreateWorkspaceResult => {
     const workspaceId = wsId();
     const rootPaneId = paneId();
@@ -139,6 +217,7 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
       insert into workspaces (id, name, default_cwd, active, order_index, active_pane_id, created_at, updated_at)
       values (?, ?, ?, 1, 0, ?, ?, ?)
     `).run(workspaceId, input.name, input.defaultCwd, rootPaneId, ts, ts);
+    replaceWorkspaceDirectories(workspaceId, [input.defaultCwd], ts);
 
     db.prepare(`
       insert into panes (id, workspace_id, node_kind, position, created_at, updated_at)
@@ -162,6 +241,7 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
         insert into workspaces (id, name, default_cwd, active, order_index, active_pane_id, created_at, updated_at)
         values (?, ?, ?, 0, ?, ?, ?, ?)
       `).run(input.workspaceId, input.name, input.defaultCwd, nextOrder, input.paneId, ts, ts);
+      replaceWorkspaceDirectories(input.workspaceId, [input.defaultCwd], ts);
     }
 
     const pane = db.prepare(`
@@ -425,10 +505,10 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
 
     getWorkspaceLayout(workspaceId: string): TRuntimeLayout {
       const workspace = db.prepare(`
-        select active_pane_id as activePaneId
+        select active_pane_id as activePaneId, updated_at as updatedAt
         from workspaces
         where id = ?
-      `).get(workspaceId) as { activePaneId: string | null } | undefined;
+      `).get(workspaceId) as { activePaneId: string | null; updatedAt: string } | undefined;
       if (!workspace) return null;
 
       const panes = db.prepare(`
@@ -526,9 +606,79 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
       const layout: ILayoutData = {
         root,
         activePaneId: workspace.activePaneId,
-        updatedAt: nowIso(),
+        updatedAt: workspace.updatedAt,
       };
       return layout;
+    },
+
+    setWorkspaceUiState(input: IWorkspaceUiState): void {
+      const previous = readAppState<IWorkspaceUiState>('workspace-ui') ?? {};
+      setAppState('workspace-ui', { ...previous, ...input, updatedAt: input.updatedAt ?? nowIso() }, input.updatedAt ?? nowIso());
+    },
+
+    replaceWorkspaceDirectories,
+    listMessageHistory,
+    replaceMessageHistory: replaceMessageHistoryTx,
+
+    getWorkspaceSnapshot(): IWorkspacesData {
+      const groupRows = db.prepare(`
+        select id, name, collapsed
+        from workspace_groups
+        order by order_index asc, created_at asc, id asc
+      `).all() as Array<{ id: string; name: string; collapsed: number }>;
+      const groups: IWorkspaceGroup[] = groupRows.map((group) => ({
+        id: group.id,
+        name: group.name,
+        collapsed: Boolean(group.collapsed),
+      }));
+
+      const workspaceRows = db.prepare(`
+        select id, name, default_cwd as defaultCwd, active, group_id as groupId, updated_at as updatedAt
+        from workspaces
+        order by order_index asc, created_at asc, id asc
+      `).all() as Array<{
+        id: string;
+        name: string;
+        defaultCwd: string;
+        active: number;
+        groupId: string | null;
+        updatedAt: string;
+      }>;
+      const directoriesByWorkspaceId = new Map<string, string[]>();
+      const directoryRows = db.prepare(`
+        select workspace_id as workspaceId, path
+        from workspace_directories
+        order by workspace_id asc, order_index asc
+      `).all() as Array<{ workspaceId: string; path: string }>;
+      for (const row of directoryRows) {
+        directoriesByWorkspaceId.set(row.workspaceId, [...(directoriesByWorkspaceId.get(row.workspaceId) ?? []), row.path]);
+      }
+
+      const workspaces: IWorkspace[] = workspaceRows.map((workspace) => ({
+        id: workspace.id,
+        name: workspace.name,
+        directories: directoriesByWorkspaceId.get(workspace.id) ?? [workspace.defaultCwd],
+        ...(workspace.groupId ? { groupId: workspace.groupId } : {}),
+      }));
+      const validWorkspaceIds = new Set(workspaces.map((workspace) => workspace.id));
+      const uiState = readAppState<IWorkspaceUiState>('workspace-ui') ?? {};
+      const activeWorkspaceId = uiState.activeWorkspaceId && validWorkspaceIds.has(uiState.activeWorkspaceId)
+        ? uiState.activeWorkspaceId
+        : workspaceRows.find((workspace) => workspace.active)?.id ?? workspaces[0]?.id;
+      const updatedAt = uiState.updatedAt
+        ?? workspaceRows.reduce<string | null>((latest, workspace) => (
+          !latest || workspace.updatedAt > latest ? workspace.updatedAt : latest
+        ), null)
+        ?? nowIso();
+
+      return {
+        workspaces,
+        groups,
+        ...(activeWorkspaceId ? { activeWorkspaceId } : {}),
+        sidebarCollapsed: Boolean(uiState.sidebarCollapsed),
+        sidebarWidth: typeof uiState.sidebarWidth === 'number' ? uiState.sidebarWidth : 240,
+        updatedAt,
+      };
     },
 
     listMutationEvents(): IMutationEventRow[] {
@@ -545,6 +695,12 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
         from workspaces
         order by order_index asc, created_at asc, id asc
       `).all() as IRuntimeWorkspace[];
+    },
+
+    hasWorkspace(workspaceId: string): boolean {
+      const row = db.prepare(`select 1 as present from workspaces where id = ?`)
+        .get(workspaceId) as { present: number } | undefined;
+      return Boolean(row);
     },
   };
 };

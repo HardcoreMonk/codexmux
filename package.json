@@ -78,6 +78,7 @@
     "runtime-v2:storage-import": "tsx scripts/runtime-v2-storage-import.ts",
     "smoke:runtime-v2:storage-import": "tsx scripts/smoke-runtime-v2-storage-import.ts",
     "smoke:runtime-v2:storage-write": "tsx scripts/smoke-runtime-v2-storage-write.ts",
+    "smoke:runtime-v2:storage-default-read": "tsx scripts/smoke-runtime-v2-storage-default-read.ts",
     "smoke:runtime-v2:storage-shadow": "tsx scripts/smoke-runtime-v2-storage-shadow.ts",
     "smoke:runtime-v2:timeline-shadow": "tsx scripts/smoke-runtime-v2-timeline-shadow.ts",
     "smoke:runtime-v2:status-shadow": "tsx scripts/smoke-runtime-v2-status-shadow.ts",

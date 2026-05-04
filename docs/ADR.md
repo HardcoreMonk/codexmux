@@ -58,10 +58,15 @@
   있게 한다. Runtime v2 terminal attach authorization과 cleanup intent는 계속
   `runtime_version=2` terminal tab만 대상으로 삼아 imported legacy `pt-` sessions를
   v2 worker가 kill하지 않는다.
+  Storage schema v3는 `workspace_directories`, `app_state`, `message_history`를 추가해
+  workspace directory list, active workspace, sidebar collapsed/width, message history를
+  SQLite projection에 보존한다.
   `CODEXMUX_RUNTIME_STORAGE_V2_MODE=write|default`는 production read source를 즉시
-  바꾸지 않고 legacy JSON write 직후 같은 import path로 SQLite를 mirror한다. 이 단계는
-  rollback 가능한 dual-write evidence이며, full default read ownership은 별도 gate로
-  남긴다.
+  바꾸지 않고 legacy JSON write 직후 같은 import path로 SQLite를 mirror한다. `default`
+  mode에서는 workspace/layout/message-history read가 SQLite projection을 우선 사용하고
+  실패 시 legacy JSON으로 fail closed한다. Message history write는 default mode에서
+  SQLite를 우선 갱신하고 rollback용 JSON 파일을 함께 쓴다. Production live mode는 별도
+  rollout 전까지 `write`로 유지한다.
   `better-sqlite3`는 optional dependency이며 lazy load된다. runtime v2가 꺼진
   install/build는 native binding load에 의존하지 않고, runtime v2가 켜졌을 때 binding
   부재는 `runtime-v2-sqlite-unavailable`로 실패한다.

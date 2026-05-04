@@ -1,0 +1,176 @@
+import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { importLegacyStorageSnapshot } from '@/lib/runtime/storage-import';
+import { openRuntimeDatabase } from '@/lib/runtime/storage/schema';
+import type { ILayoutData, IWorkspacesData } from '@/types/terminal';
+
+describe('runtime storage v2 default read ownership', () => {
+  const originalHome = process.env.HOME;
+  const originalRuntimeV2 = process.env.CODEXMUX_RUNTIME_V2;
+  const originalStorageMode = process.env.CODEXMUX_RUNTIME_STORAGE_V2_MODE;
+  const originalRuntimeDb = process.env.CODEXMUX_RUNTIME_DB;
+  let homeDir: string | null = null;
+
+  afterEach(async () => {
+    process.env.HOME = originalHome;
+    process.env.CODEXMUX_RUNTIME_V2 = originalRuntimeV2;
+    process.env.CODEXMUX_RUNTIME_STORAGE_V2_MODE = originalStorageMode;
+    process.env.CODEXMUX_RUNTIME_DB = originalRuntimeDb;
+    vi.resetModules();
+    if (homeDir) {
+      await fs.rm(homeDir, { recursive: true, force: true });
+      homeDir = null;
+    }
+  });
+
+  it('reads workspace and layout projection from SQLite when storage mode is default', async () => {
+    homeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-storage-read-'));
+    const dataDir = path.join(homeDir, '.codexmux');
+    const wsDir = path.join(dataDir, 'workspaces', 'ws-sqlite');
+    const dbPath = path.join(dataDir, 'runtime-v2', 'state.db');
+    const staleWorkspaces: IWorkspacesData = {
+      workspaces: [{ id: 'ws-json', name: 'JSON', directories: [homeDir] }],
+      groups: [],
+      activeWorkspaceId: 'ws-json',
+      sidebarCollapsed: false,
+      sidebarWidth: 240,
+      updatedAt: '2026-05-04T00:00:00.000Z',
+    };
+    const sqliteWorkspaces: IWorkspacesData = {
+      workspaces: [{
+        id: 'ws-sqlite',
+        name: 'SQLite',
+        directories: ['/sqlite/project', '/sqlite/project/sub'],
+        groupId: 'grp-sqlite',
+      }],
+      groups: [{ id: 'grp-sqlite', name: 'SQLite Group', collapsed: true }],
+      activeWorkspaceId: 'ws-sqlite',
+      sidebarCollapsed: true,
+      sidebarWidth: 300,
+      updatedAt: '2026-05-04T00:01:00.000Z',
+    };
+    const sqliteLayout: ILayoutData = {
+      root: {
+        type: 'pane',
+        id: 'pane-sqlite',
+        activeTabId: 'tab-sqlite',
+        tabs: [{
+          id: 'tab-sqlite',
+          sessionName: 'pt-ws-sqlite-pane-sqlite-tab-sqlite',
+          name: 'SQLite tab',
+          order: 0,
+          runtimeVersion: 1,
+          cwd: '/sqlite/project',
+        }],
+      },
+      activePaneId: 'pane-sqlite',
+      updatedAt: '2026-05-04T00:01:00.000Z',
+    };
+
+    await fs.mkdir(wsDir, { recursive: true });
+    await fs.writeFile(path.join(dataDir, 'workspaces.json'), JSON.stringify(staleWorkspaces), { mode: 0o600 });
+    await fs.writeFile(path.join(wsDir, 'layout.json'), JSON.stringify({
+      root: { type: 'pane', id: 'pane-json', activeTabId: null, tabs: [] },
+      activePaneId: 'pane-json',
+      updatedAt: '2026-05-04T00:00:00.000Z',
+    }), { mode: 0o600 });
+
+    const db = openRuntimeDatabase(dbPath);
+    importLegacyStorageSnapshot(db, {
+      workspacesData: sqliteWorkspaces,
+      layoutsByWorkspaceId: { 'ws-sqlite': sqliteLayout },
+      importedAt: '2026-05-04T00:01:00.000Z',
+    });
+    db.close();
+
+    process.env.HOME = homeDir;
+    process.env.CODEXMUX_RUNTIME_V2 = '1';
+    process.env.CODEXMUX_RUNTIME_STORAGE_V2_MODE = 'default';
+    process.env.CODEXMUX_RUNTIME_DB = dbPath;
+    vi.resetModules();
+
+    const { getWorkspaces, getActiveWorkspaceId, getWorkspaceById } = await import('@/lib/workspace-store');
+    const { readLayoutFile, resolveLayoutFile } = await import('@/lib/layout-store');
+
+    expect(await getWorkspaces()).toEqual({
+      workspaces: sqliteWorkspaces.workspaces,
+      groups: sqliteWorkspaces.groups,
+      activeWorkspaceId: 'ws-sqlite',
+      sidebarCollapsed: true,
+      sidebarWidth: 300,
+    });
+    expect(await getActiveWorkspaceId()).toBe('ws-sqlite');
+    expect(await getWorkspaceById('ws-sqlite')).toEqual(sqliteWorkspaces.workspaces[0]);
+    const layout = await readLayoutFile(resolveLayoutFile('ws-sqlite'));
+    expect(layout?.activePaneId).toBe(sqliteLayout.activePaneId);
+    expect(layout?.updatedAt).toBe(sqliteLayout.updatedAt);
+    expect(layout?.root.type).toBe('pane');
+    if (layout?.root.type === 'pane') {
+      expect(layout.root.tabs).toEqual([
+        expect.objectContaining({
+          id: 'tab-sqlite',
+          sessionName: 'pt-ws-sqlite-pane-sqlite-tab-sqlite',
+          runtimeVersion: 1,
+          cwd: '/sqlite/project',
+        }),
+      ]);
+    }
+  });
+
+  it('does not replace an existing SQLite snapshot with empty JSON during default-mode initialization', async () => {
+    homeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-storage-init-'));
+    const dataDir = path.join(homeDir, '.codexmux');
+    const dbPath = path.join(dataDir, 'runtime-v2', 'state.db');
+    const workspacesData: IWorkspacesData = {
+      workspaces: [{ id: 'ws-sqlite', name: 'SQLite Only', directories: [homeDir] }],
+      groups: [],
+      activeWorkspaceId: 'ws-sqlite',
+      sidebarCollapsed: false,
+      sidebarWidth: 240,
+      updatedAt: '2026-05-04T00:00:00.000Z',
+    };
+    const layout: ILayoutData = {
+      root: {
+        type: 'pane',
+        id: 'pane-sqlite',
+        activeTabId: 'tab-sqlite',
+        tabs: [{
+          id: 'tab-sqlite',
+          sessionName: 'pt-ws-sqlite-pane-sqlite-tab-sqlite',
+          name: '',
+          order: 0,
+          runtimeVersion: 1,
+        }],
+      },
+      activePaneId: 'pane-sqlite',
+      updatedAt: '2026-05-04T00:00:00.000Z',
+    };
+
+    const db = openRuntimeDatabase(dbPath);
+    importLegacyStorageSnapshot(db, {
+      workspacesData,
+      layoutsByWorkspaceId: { 'ws-sqlite': layout },
+      importedAt: '2026-05-04T00:00:00.000Z',
+    });
+    db.close();
+
+    process.env.HOME = homeDir;
+    process.env.CODEXMUX_RUNTIME_V2 = '1';
+    process.env.CODEXMUX_RUNTIME_STORAGE_V2_MODE = 'default';
+    process.env.CODEXMUX_RUNTIME_DB = dbPath;
+    vi.resetModules();
+
+    const { initWorkspaceStore, getWorkspaces } = await import('@/lib/workspace-store');
+    await initWorkspaceStore();
+
+    expect(await getWorkspaces()).toEqual({
+      workspaces: workspacesData.workspaces,
+      groups: [],
+      activeWorkspaceId: 'ws-sqlite',
+      sidebarCollapsed: false,
+      sidebarWidth: 240,
+    });
+  });
+});

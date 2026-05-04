@@ -20,6 +20,7 @@ import { isAgentPanelType, normalizePanelType } from '@/lib/panel-type';
 import { normalizeAgentFields } from '@/lib/agent-tab-fields';
 import { resolveTabRuntimeVersion } from '@/lib/runtime/terminal-mode';
 import { mirrorLegacyStorageToRuntimeV2BestEffort } from '@/lib/runtime/storage-mirror';
+import { readRuntimeStorageLayout } from '@/lib/runtime/storage-read-owner';
 import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
 import type { ITab, TLayoutNode, IPaneNode, ILayoutData, TPanelType } from '@/types/terminal';
 import type { TCliState } from '@/types/timeline';
@@ -105,7 +106,16 @@ const createDefaultPaneNode = (wsId: string, cwd?: string): { pane: IPaneNode; t
   };
 };
 
+const extractWsIdFromPath = (filePath: string): string | null => {
+  const match = filePath.match(/workspaces\/(ws-[^/]+)\//);
+  return match?.[1] ?? null;
+};
+
 export const readLayoutFile = async (filePath: string): Promise<ILayoutData | null> => {
+  const wsId = extractWsIdFromPath(filePath);
+  const runtimeLayout = wsId ? readRuntimeStorageLayout(wsId) : null;
+  if (runtimeLayout) return runtimeLayout;
+
   let raw: string;
   try {
     raw = await fs.readFile(filePath, 'utf-8');
@@ -124,11 +134,6 @@ export const readLayoutFile = async (filePath: string): Promise<ILayoutData | nu
     } catch {}
     return null;
   }
-};
-
-const extractWsIdFromPath = (filePath: string): string | null => {
-  const match = filePath.match(/workspaces\/(ws-[^/]+)\//);
-  return match?.[1] ?? null;
 };
 
 export const writeLayoutFile = async (data: ILayoutData, filePath: string): Promise<void> => {

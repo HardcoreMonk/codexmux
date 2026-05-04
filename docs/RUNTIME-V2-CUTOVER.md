@@ -15,15 +15,15 @@
 - Smoke: `/api/v2/terminal` attach/input/output/resize/web stdin/heartbeat/fresh reattach/fanout/backpressure close/tab delete/tab restart/workspace delete, plus Phase 2 app-surface new-tab gate for browser reload, server restart, and terminal mode rollback.
 - 2026-05-04 Phase 1 shadow: live `codexmux.service`에 `CODEXMUX_RUNTIME_V2=1`과 storage/terminal/timeline/status surface mode `off`를 적용했다. `/api/v2/runtime/health`는 모든 worker ok와 `terminalV2Mode: "off"`를 반환한다. `/api/debug/perf`는 각 worker `starts=1`, `readyFailures=0`, `healthFailures=0`, `timeouts=0`, `restarts=0`을 보여준다. 24시간 restart loop 부재 관찰 gate는 아직 남아 있다.
 - 2026-05-03 live smoke snapshot: `corepack pnpm smoke:runtime-v2:phase2`, `corepack pnpm build:electron`, `corepack pnpm smoke:electron:attach`, `corepack pnpm smoke:electron:runtime-v2`, `corepack pnpm smoke:android:runtime-v2`, Mac M1 `pnpm pack:electron:dev`, Android debug install, Android Tailscale failure recovery, Android production foreground reconnect, Android app info/native restart, Windows sync dry-run, stats/daily report, permission prompt smoke, and systemd deploy health passed. Electron page-context smoke proved existing-cookie `/api/v2/terminal` attach/output plus 2회 page reload/reconnect on a temp runtime v2 server. Android runtime v2 smoke proved existing-cookie `/api/v2/terminal` attach/output plus 2회 foreground reconnect on SM-S928N Android 16 through the Tailscale IP temp server. Android production foreground reconnect showed `triggerEvent`/TypeError 0 and terminal/timeline WebSocket console error 0 after foreground grace suppression. Runtime v2 reconnect recovery now covers Terminal Worker retryable close, `session-not-found` tab/session recreation through Supervisor, and desktop/mobile blocking overlay hiding the stale floating reconnect control. macOS packaging created arm64/x64 DMG and zip artifacts; GUI launch smoke still needs an interactive Mac user session.
-- 2026-05-04 storage dry-run: `corepack pnpm runtime-v2:storage-dry-run`가 실제 `~/.codexmux` JSON stores를 쓰기 없이 읽고, `workspaces.json`과 workspace별 `layout.json` backup manifest, import readiness, count-only summary를 출력한다. 현재 live dry-run은 `cutoverReady: true`, blocker 0, sidebar state warning 1개다. `corepack pnpm smoke:runtime-v2:storage-dry-run`는 fixture에서 import 가능 상태와 cwd/workspace name/session name/prompt 비노출을 검증한다.
+- 2026-05-04 storage dry-run: `corepack pnpm runtime-v2:storage-dry-run`가 실제 `~/.codexmux` JSON stores를 쓰기 없이 읽고, `workspaces.json`과 workspace별 `layout.json` backup manifest, import readiness, count-only summary를 출력한다. live dry-run은 `cutoverReady: true`, blocker 0이다. `corepack pnpm smoke:runtime-v2:storage-dry-run`는 fixture에서 import 가능 상태와 cwd/workspace name/session name/prompt 비노출을 검증한다.
 - 2026-05-04 storage backup export: `corepack pnpm runtime-v2:storage-backup`가 `workspaces.json`, `workspaces/**.json`, `runtime-v2/state.db*`를 `~/.codexmux/backups/runtime-v2-storage-{timestamp}/`로 복사한다. live export snapshot은 29개 파일을 복사했고 원본 삭제나 migration은 수행하지 않았다.
-- 2026-05-04 storage import: schema v2가 `tabs.runtime_version`과 `workspaces.active_pane_id`를 추가했다. `corepack pnpm runtime-v2:storage-import`는 legacy JSON workspace/layout snapshot을 SQLite로 idempotent import하며 grouped workspace, split layout, legacy `runtimeVersion: 1` terminal tab, non-terminal tab, tab status metadata를 보존한다. Runtime v2 terminal attach/cleanup은 imported legacy `pt-` session을 대상으로 삼지 않도록 `runtime_version=2` terminal tab으로 제한된다. live import snapshot은 workspace 5개, group 1개, pane 5개, tab 5개를 import했고 dry-run blocker는 0이다.
-- 2026-05-04 storage write mirror: `CODEXMUX_RUNTIME_STORAGE_V2_MODE=write|default`에서 legacy JSON workspace/layout write 직후 SQLite import mirror를 best-effort로 수행한다. `corepack pnpm smoke:runtime-v2:storage-write`는 layout write, SQLite projection, status metadata 보존을 temp HOME/DB에서 검증한다. Production read source of truth와 sidebar/message-history/default hydration은 아직 JSON owner다.
+- 2026-05-04 storage import: schema v2가 `tabs.runtime_version`과 `workspaces.active_pane_id`를 추가했고, schema v3가 `workspace_directories`, `app_state`, `message_history`를 추가했다. `corepack pnpm runtime-v2:storage-import`는 legacy JSON workspace/layout/message-history snapshot을 SQLite로 idempotent import하며 grouped workspace, split layout, active/sidebar state, workspace directory list, message history, legacy `runtimeVersion: 1` terminal tab, non-terminal tab, tab status metadata를 보존한다. Runtime v2 terminal attach/cleanup은 imported legacy `pt-` session을 대상으로 삼지 않도록 `runtime_version=2` terminal tab으로 제한된다. live import snapshot은 workspace 5개, group 1개, pane 5개, tab 5개를 import했고 dry-run blocker는 0이다. message-history import는 temp smoke로 검증됐으며 production default rollout 전 live import를 다시 실행한다.
+- 2026-05-04 storage write mirror/default read: `CODEXMUX_RUNTIME_STORAGE_V2_MODE=write|default`에서 legacy JSON workspace/layout/message-history write 직후 SQLite import mirror를 best-effort로 수행한다. `corepack pnpm smoke:runtime-v2:storage-write`는 layout write, SQLite projection, status metadata 보존을 temp HOME/DB에서 검증한다. `CODEXMUX_RUNTIME_STORAGE_V2_MODE=default`에서는 workspace/layout/message-history read가 SQLite projection을 우선 사용하고 실패 시 JSON으로 fallback한다. `corepack pnpm smoke:runtime-v2:storage-default-read`는 SQLite cold read, workspace directory/sidebar/status/message-history hydration, legacy layout/updateActive write mirror 후 default read, message-history JSON fallback mirror를 temp HOME/DB에서 검증한다. Production live mode는 아직 `write`이며 live default rollout은 남아 있다.
 
 Production 기본 경로로 전환하지 않은 것:
 
 - 기존 `/api/terminal`, `/api/timeline`, `/api/status`, `/api/sync` WebSocket.
-- 기존 JSON workspace/layout/config/keybinding/message-history stores.
+- 기존 JSON workspace/layout/message-history fallback, config/keybinding stores.
 - Timeline live file watch, resume flow, session-changed broadcast.
 - Status polling, JSONL watch, Web Push, session history write, dismiss/ack handling.
 - 기존 `pt-` tmux session의 `rtv2-` session migration.
@@ -137,8 +137,9 @@ Work:
 - Current dry-run slice: `corepack pnpm runtime-v2:storage-dry-run`는 production JSON stores를 read-only로 검사하고, `workspaces.json`/`workspaces/<workspaceId>/layout.json` backup manifest와 blocker code를 출력한다. `corepack pnpm smoke:runtime-v2:storage-dry-run`는 민감 값 비노출을 자동 확인한다.
 - Add dual-write only where operations can preserve ordering and transaction semantics; otherwise keep v1 write and v2 shadow import.
 - Current backup slice: `corepack pnpm runtime-v2:storage-backup` copies legacy JSON stores and `runtime-v2/state.db*` into `~/.codexmux/backups/runtime-v2-storage-{timestamp}/`.
-- Current import slice: `corepack pnpm runtime-v2:storage-import` imports JSON stores into SQLite schema v2 without switching production source of truth.
+- Current import slice: `corepack pnpm runtime-v2:storage-import` imports workspace/layout/message-history JSON stores into SQLite schema v3 without switching production source of truth.
 - Current write slice: `CODEXMUX_RUNTIME_STORAGE_V2_MODE=write` keeps legacy JSON as the user-facing read owner, but mirrors every workspace/layout JSON write into SQLite through the same idempotent import path. The mode is exposed as `storageV2Mode` on `/api/v2/runtime/health`.
+- Current default-read slice: `CODEXMUX_RUNTIME_STORAGE_V2_MODE=default` routes workspace/layout/message-history reads through SQLite projection first, keeps rollback JSON mirrors, and falls back to JSON if SQLite projection fails. This slice is verified by `corepack pnpm smoke:runtime-v2:storage-default-read` on temp HOME/DB.
 - Add migration tests with malformed layout, missing cwd, deleted workspace, stale session names, grouped workspaces, and split panes.
 
 Exit gate:
@@ -146,9 +147,9 @@ Exit gate:
 - `corepack pnpm runtime-v2:storage-dry-run` returns `cutoverReady: true` on real `~/.codexmux` data or every blocker has an explicit migration path tested before default.
 - Dry-run output includes only IDs/counts/relative backup entries and does not print cwd, workspace/tab names, session names, JSONL paths, prompts, assistant text, or terminal output.
 - Shadow compare passes on real `~/.codexmux` data.
-- Default mode can cold-start entirely from SQLite.
+- Default mode can cold-start workspace/layout/sidebar/message-history state from SQLite in temp HOME/DB and has explicit JSON fallback evidence.
 - Legacy JSON fallback can still render the previous layout after disabling storage v2.
-- `write` mode smoke passes and disabling the mode leaves JSON reads/writes unchanged.
+- `write` and `default` mode smokes pass and disabling the mode leaves JSON reads/writes unchanged.
 
 Rollback:
 
@@ -233,6 +234,7 @@ corepack pnpm runtime-v2:storage-backup
 corepack pnpm smoke:runtime-v2:storage-import
 corepack pnpm runtime-v2:storage-import
 corepack pnpm smoke:runtime-v2:storage-write
+corepack pnpm smoke:runtime-v2:storage-default-read
 corepack pnpm build:electron
 corepack pnpm android:build:debug
 ```

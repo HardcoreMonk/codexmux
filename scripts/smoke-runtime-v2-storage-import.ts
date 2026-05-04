@@ -87,11 +87,21 @@ const main = async (): Promise<void> => {
     const result = importLegacyStorageSnapshot(db, {
       workspacesData,
       layoutsByWorkspaceId: { 'ws-smoke': layout },
+      messageHistoryByWorkspaceId: {
+        'ws-smoke': [
+          { id: 'hist-import', message: 'Import Secret History', sentAt: '2026-05-04T00:00:00.000Z' },
+        ],
+      },
       importedAt: '2026-05-04T00:00:00.000Z',
     });
     importLegacyStorageSnapshot(db, {
       workspacesData,
       layoutsByWorkspaceId: { 'ws-smoke': layout },
+      messageHistoryByWorkspaceId: {
+        'ws-smoke': [
+          { id: 'hist-import', message: 'Import Secret History', sentAt: '2026-05-04T00:00:00.000Z' },
+        ],
+      },
       importedAt: '2026-05-04T00:01:00.000Z',
     });
 
@@ -102,7 +112,9 @@ const main = async (): Promise<void> => {
     assert(result.importedRuntimeV1TabCount === 1, 'runtime v1 terminal import count mismatch');
     assert(result.importedRuntimeV2TabCount === 1, 'runtime v2 terminal import count mismatch');
     assert(result.importedNonTerminalTabCount === 1, 'non-terminal import count mismatch');
+    assert(result.importedMessageHistoryCount === 1, 'message history import count mismatch');
     assert(importedLayout?.root.type === 'split', 'imported layout did not preserve split root');
+    assert(repo.listMessageHistory('ws-smoke').length === 1, 'message history was not imported');
     assert(repo.listReadyTerminalTabs().length === 1, 'legacy terminal tab was exposed as runtime v2 ready');
     assert(repo.getReadyTerminalTabBySession('pt-secret-import-session') === null, 'legacy terminal session was exposed to runtime v2 attach');
 
@@ -115,6 +127,7 @@ const main = async (): Promise<void> => {
     const serialized = JSON.stringify(output);
     assert(!serialized.includes('/secret/import'), 'import smoke output leaked a cwd');
     assert(!serialized.includes('Import Secret'), 'import smoke output leaked a label');
+    assert(!serialized.includes('Import Secret History'), 'import smoke output leaked message history');
     assert(!serialized.includes('pt-secret-import-session'), 'import smoke output leaked a legacy session');
     assert(!serialized.includes('import secret prompt'), 'import smoke output leaked prompt text');
     console.log(JSON.stringify(output, null, 2));

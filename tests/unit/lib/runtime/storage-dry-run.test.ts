@@ -103,9 +103,7 @@ describe('runtime v2 storage dry run', () => {
       webTabCount: 1,
       statusMetadataTabCount: 1,
     });
-    expect(report.issues).toEqual([
-      expect.objectContaining({ code: 'sidebar-state-json-retained', severity: 'warning' }),
-    ]);
+    expect(report.issues).toEqual([]);
     expect(report.backupPlan.files).toEqual([
       { kind: 'workspaces', relativePath: 'workspaces.json' },
       { kind: 'layout', workspaceId: 'ws-a', relativePath: 'workspaces/ws-a/layout.json' },

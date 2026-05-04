@@ -12,7 +12,7 @@ export interface IOpenRuntimeDatabaseOptions {
   loadDatabase?: () => IBetterSqlite3Constructor;
 }
 
-export const CURRENT_RUNTIME_SCHEMA_VERSION = 2;
+export const CURRENT_RUNTIME_SCHEMA_VERSION = 3;
 
 const runtimeRequireBase = path.join(
   process.env.__CMUX_APP_DIR_UNPACKED || process.env.__CMUX_APP_DIR || path.join(/*turbopackIgnore: true*/ process.cwd()),
@@ -186,6 +186,44 @@ const RUNTIME_MIGRATIONS: IRuntimeMigration[] = [
       db.exec(`
         alter table workspaces add column active_pane_id text null;
         alter table tabs add column runtime_version integer not null default 2;
+      `);
+    },
+  },
+  {
+    version: 3,
+    up: (db) => {
+      db.exec(`
+        create table if not exists workspace_directories (
+          workspace_id text not null references workspaces(id) on delete cascade,
+          path text not null,
+          order_index integer not null,
+          created_at text not null,
+          updated_at text not null,
+          primary key (workspace_id, order_index)
+        );
+
+        create table if not exists app_state (
+          key text primary key,
+          value_json text not null,
+          updated_at text not null
+        );
+
+        create table if not exists message_history (
+          workspace_id text not null references workspaces(id) on delete cascade,
+          id text not null,
+          message text not null,
+          sent_at text not null,
+          order_index integer not null,
+          created_at text not null,
+          updated_at text not null,
+          primary key (workspace_id, id)
+        );
+
+        create index if not exists idx_runtime_workspace_directories_workspace_order
+          on workspace_directories(workspace_id, order_index);
+
+        create index if not exists idx_runtime_message_history_workspace_order
+          on message_history(workspace_id, order_index);
       `);
     },
   },

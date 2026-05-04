@@ -74,7 +74,7 @@ Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service
 | `logs/` | 서버 로그 |
 | `remote/codex/{sourceId}/{sessionId}.jsonl` | Windows companion이 보낸 Codex CLI JSONL 복사본. timeline에서 읽기 전용으로 사용 |
 | `remote/codex/{sourceId}/{sessionId}.jsonl.meta.json` | remote source, host/shell/cwd/path, offset, activity metadata, session list summary |
-| `runtime-v2/state.db` | Experimental runtime v2 SQLite app state for workspace, pane, tab, status projection, and durable event logs |
+| `runtime-v2/state.db` | Experimental runtime v2 SQLite app state for workspace, pane, tab, message history, status projection, and durable event logs |
 | `backups/runtime-v2-storage-{timestamp}/` | `runtime-v2:storage-backup`이 만든 storage cutover용 JSON/SQLite snapshot |
 | `stats/cache.json` | Codex JSONL에서 계산한 usage cache. 런타임 build는 in-flight promise로 중복 계산을 피함 |
 | `stats/daily-reports/` | `codex exec`로 생성한 일별 report |
@@ -88,10 +88,18 @@ Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service
 개발 검증용으로 다른 DB 파일을 지정할 수 있다.
 
 Runtime schema v2는 `tabs.runtime_version`과 `workspaces.active_pane_id`를 포함한다.
-이 필드는 `runtime-v2:storage-import`가 legacy JSON layout을 SQLite로 복사할 때
-legacy `pt-` terminal tab과 runtime v2 `rtv2-` terminal tab을 구분하고 active pane을
-복원하기 위해 필요하다. Runtime v2 terminal attach/cleanup은 `runtime_version=2`인
-terminal tab만 대상으로 삼는다.
+schema v3는 `workspace_directories`, `app_state`, `message_history`를 포함한다. 이 필드는
+`runtime-v2:storage-import`가 legacy JSON layout을 SQLite로 복사할 때 legacy `pt-`
+terminal tab과 runtime v2 `rtv2-` terminal tab을 구분하고, active pane, active
+workspace, sidebar 상태, workspace directory list, message history를 복원하기 위해 필요하다. Runtime v2
+terminal attach/cleanup은 `runtime_version=2`인 terminal tab만 대상으로 삼는다.
+
+`CODEXMUX_RUNTIME_STORAGE_V2_MODE=default`에서는 workspace/layout/message-history read가 SQLite
+projection을 먼저 사용한다. projection이 없거나 DB open/read가 실패하면 legacy
+`workspaces.json`, `workspaces/{wsId}/layout.json`,
+`workspaces/{wsId}/message-history.json` read로 fallback한다. Message history write는 SQLite를
+우선 갱신하고 rollback용 JSON 파일도 함께 쓴다. Config, keybindings, sidebar items는 기존
+JSON 파일이 owner다.
 
 `CODEXMUX_RUNTIME_V2_RESET=1`을 함께 설정하면 runtime 시작 전에 기존
 `runtime-v2/state.db`, `runtime-v2/state.db-wal`, `runtime-v2/state.db-shm` 파일을 각각

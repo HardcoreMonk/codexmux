@@ -10,10 +10,10 @@ const main = async (): Promise<void> => {
     || path.join(os.homedir(), '.codexmux');
   const dbPath = process.env.CODEXMUX_RUNTIME_V2_STORAGE_IMPORT_DB
     || path.join(dataDir, 'runtime-v2', 'state.db');
-  const { workspacesData, layoutsByWorkspaceId } = await readLegacyStorageSnapshot(dataDir);
+  const snapshot = await readLegacyStorageSnapshot(dataDir);
   const db = openRuntimeDatabase(dbPath);
   try {
-    const result = importLegacyStorageSnapshot(db, { workspacesData, layoutsByWorkspaceId });
+    const result = importLegacyStorageSnapshot(db, snapshot);
     console.log(JSON.stringify({ ok: true, dbPath, result }, null, 2));
   } finally {
     db.close();

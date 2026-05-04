@@ -3,7 +3,6 @@ import type { ILayoutData, ITab, IWorkspacesData, TLayoutNode, TPanelType } from
 export type TRuntimeStorageDryRunIssueSeverity = 'blocker' | 'warning';
 
 export type TRuntimeStorageDryRunIssueCode =
-  | 'sidebar-state-json-retained'
   | 'layout-missing'
   | 'layout-invalid';
 
@@ -227,13 +226,6 @@ export const analyzeRuntimeStorageDryRun = ({
   const groupedWorkspaceCount = workspaces.filter((workspace) => Boolean(workspace.groupId)).length;
   const totals = createEmptyTotals(workspaces.length, groups.length, groupedWorkspaceCount);
   const issues: IRuntimeStorageDryRunIssue[] = [];
-
-  if (workspacesData.sidebarCollapsed !== false || workspacesData.sidebarWidth !== DEFAULT_SIDEBAR_WIDTH) {
-    addIssue(issues, {
-      code: 'sidebar-state-json-retained',
-      severity: 'warning',
-    });
-  }
 
   for (const workspace of workspaces) {
     const layout = layoutsByWorkspaceId[workspace.id];
