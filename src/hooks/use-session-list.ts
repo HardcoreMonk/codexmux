@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { ISessionMeta, TSessionSourceFilter } from '@/types/timeline';
+import type { ISessionMeta } from '@/types/timeline';
 import type { TPanelType } from '@/types/terminal';
 
 const DEFAULT_LIMIT = 50;
@@ -9,8 +9,6 @@ interface IUseSessionListOptions {
   enabled: boolean;
   cwd?: string;
   panelType?: TPanelType;
-  source?: TSessionSourceFilter;
-  sourceId?: string | null;
 }
 
 interface IUseSessionListReturn {
@@ -29,8 +27,6 @@ const useSessionList = ({
   enabled,
   cwd,
   panelType = 'codex',
-  source = 'all',
-  sourceId = null,
 }: IUseSessionListOptions): IUseSessionListReturn => {
   const [sessions, setSessions] = useState<ISessionMeta[]>([]);
   const [total, setTotal] = useState(0);
@@ -41,7 +37,7 @@ const useSessionList = ({
 
   const isLoadingMoreRef = useRef(false);
 
-  const sessionKey = `${panelType}:${tmuxSession}:${cwd ?? ''}:${source}:${sourceId ?? ''}`;
+  const sessionKey = `${panelType}:${tmuxSession}:${cwd ?? ''}`;
   const [prevSessionKey, setPrevSessionKey] = useState(sessionKey);
   if (sessionKey !== prevSessionKey) {
     setPrevSessionKey(sessionKey);
@@ -56,10 +52,6 @@ const useSessionList = ({
   cwdRef.current = cwd;
   const panelTypeRef = useRef(panelType);
   panelTypeRef.current = panelType;
-  const sourceRef = useRef(source);
-  sourceRef.current = source;
-  const sourceIdRef = useRef(sourceId);
-  sourceIdRef.current = sourceId;
 
   const buildUrl = useCallback((offset: number) => {
     const params = new URLSearchParams({
@@ -67,10 +59,8 @@ const useSessionList = ({
       limit: String(DEFAULT_LIMIT),
       offset: String(offset),
       panelType: panelTypeRef.current,
-      source: sourceRef.current,
     });
     if (cwdRef.current) params.set('cwd', cwdRef.current);
-    if (sourceIdRef.current) params.set('sourceId', sourceIdRef.current);
     return `/api/timeline/sessions?${params.toString()}`;
   }, [tmuxSession]);
 

@@ -2,8 +2,6 @@
 
 codexmux는 오래 살아야 하는 터미널 backend로 tmux를 사용한다. 브라우저는 xterm.js를 렌더링하고, 서버는 node-pty로 tmux session에 붙는다.
 
-Windows terminal bridge는 같은 browser frame protocol을 쓰지만 tmux에 붙지 않는다. Windows sidecar가 별도 `pwsh`를 시작하고 서버의 in-memory command/output store와 outbound HTTP poll/post로 연결한다.
-
 ## 구조
 
 ```text
@@ -16,17 +14,6 @@ terminal-server.ts
 tmux -L codexmux
   ├─ pt-{workspaceId}-{paneId}-{tabId}
   └─ ...
-
-Browser (xterm.js)
-  │ WebSocket /api/remote/terminal
-  ▼
-remote-terminal-server.ts
-  │ globalThis.__ptRemoteTerminalStore
-  ▼
-scripts/windows-terminal-bridge.mjs
-  │ node-pty or child_process
-  ▼
-Windows pwsh
 ```
 
 - socket name: `codexmux`
@@ -48,7 +35,7 @@ Windows pwsh
 
 ## terminal WebSocket
 
-Legacy local endpoint는 `/api/terminal?session={name}&clientId={id}`다. Windows terminal bridge endpoint는 `/api/remote/terminal?sourceId={sourceId}&terminalId={terminalId}&clientId={id}`이며 같은 frame code를 재사용한다.
+Legacy local endpoint는 `/api/terminal?session={name}&clientId={id}`다.
 
 | code | 이름 | 방향 | payload |
 |---|---|---|---|
@@ -60,8 +47,6 @@ Legacy local endpoint는 `/api/terminal?session={name}&clientId={id}`다. Window
 | `0x05` | `MSG_WEB_STDIN` | client -> server | web input bar text |
 
 일반 stdout burst는 8ms 또는 64KiB 중 먼저 도달한 조건으로 짧게 coalescing한 뒤 `MSG_STDOUT`으로 보낸다. stdin, web stdin, resize, heartbeat, kill session message는 지연하지 않는다. WebSocket backpressure가 커지면 pty output을 잠시 멈추고 client가 따라잡으면 재개한다.
-
-Remote terminal bridge에서는 browser WebSocket frame이 `globalThis.__ptRemoteTerminalStore` command queue에 들어가고, Windows sidecar가 `/api/remote/terminal/commands`를 polling해 stdin/resize/kill을 적용한다. sidecar stdout/stderr는 `/api/remote/terminal/output`으로 post되고, 서버가 recent output snapshot과 subscriber fanout을 `MSG_STDOUT`으로 전달한다. bridge는 Windows 기기로 inbound 접속하지 않으며, bridge가 시작한 별도 shell만 제어한다.
 
 ## Experimental Runtime v2 Terminal
 
@@ -149,7 +134,6 @@ desktop/mobile surface에 명시적인 rollback diagnostic을 표시한다.
 | xterm viewport | `MSG_STDIN` | `0x04`를 pty에 직접 write |
 | Codex web input bar | `MSG_WEB_STDIN` | tmux copy mode를 빠져나온 뒤 `0x04`를 pty에 write |
 | mobile surface | `MSG_STDIN` 또는 `MSG_WEB_STDIN` | desktop과 같은 EOF 처리 |
-| Windows terminal bridge | `MSG_STDIN` 또는 `MSG_WEB_STDIN` | command queue를 거쳐 bridge가 시작한 Windows shell stdin으로 전달 |
 
 이 정책 때문에 Linux/Windows의 오른쪽 pane 분할 기본 단축키는 `Ctrl+Alt+D`다. macOS는 terminal EOF가 `Ctrl+D`이고 앱 분할은 `⌘D`라 충돌하지 않는다. 사용자가 `keybindings.json`에서 앱 단축키를 바꾸더라도 터미널/Codex 입력에 포커스가 있으면 `Ctrl+D`는 EOF로 남긴다.
 
@@ -244,11 +228,6 @@ DIFF 패널은 별도 git workspace를 저장하지 않고 현재 tab의 tmux se
 | `src/lib/terminal-server.ts` | terminal WebSocket과 node-pty bridge |
 | `src/lib/terminal-output-buffer.ts` | stdout burst coalescing helper |
 | `src/lib/terminal-protocol.ts` | binary protocol constant |
-| `src/lib/remote-terminal-server.ts` | Windows terminal bridge browser WebSocket fanout |
-| `src/lib/remote-terminal-store.ts` | remote terminal source, command queue, output snapshot shared singleton |
-| `scripts/windows-terminal-bridge.mjs` | Windows sidecar CLI arg parsing and shell spawn |
-| `scripts/windows-terminal-bridge-lib.mjs` | Windows terminal bridge server preflight, command poll, output post |
-| `src/pages/windows-terminal.tsx` | remote terminal page route |
 | `src/lib/timeline-server.ts` | timeline WebSocket과 JSONL watcher |
 | `src/lib/timeline-server-state.ts` | timeline shared singleton state |
 | `src/lib/codex-session-detection.ts` | Codex process/session detection |

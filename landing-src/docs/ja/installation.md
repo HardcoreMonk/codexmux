@@ -10,7 +10,7 @@ permalink: /ja/docs/installation/index.html
 
 ## 요구사항
 
-- **macOS 13 이상 또는 Linux** — 서버 실행 대상입니다. Windows 11은 서버 대신 `pwsh` Codex CLI JSONL 동기화와 별도 `pwsh` terminal bridge를 실행하는 companion client 대상입니다.
+- **macOS 13 이상 또는 Linux** — 서버 실행 대상입니다.
 - **[Node.js](https://nodejs.org) 20 이상** — `node -v`로 확인하세요.
 - **[tmux](https://github.com/tmux/tmux)** — 3.0 이상이면 OK.
 

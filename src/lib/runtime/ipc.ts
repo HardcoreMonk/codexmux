@@ -18,13 +18,7 @@ const timelineSessionMetaSchema = z.object({
   firstMessage: z.string(),
   turnCount: z.number(),
   jsonlPath: z.string().optional(),
-  source: z.union([z.literal('local'), z.literal('remote')]).optional(),
-  sourceId: z.string().nullable().optional(),
-  sourceLabel: z.string().optional(),
   cwd: z.string().nullable().optional(),
-  host: z.string().nullable().optional(),
-  shell: z.string().nullable().optional(),
-  remotePath: z.string().nullable().optional(),
 });
 const timelineSessionPageSchema = z.object({
   sessions: z.array(timelineSessionMetaSchema),
@@ -237,9 +231,7 @@ const timelineListSessionsPayloadSchema = z.object({
   panelType: z.string().min(1),
   offset: z.number().int().nonnegative(),
   limit: z.number().int().min(1).max(200),
-  source: z.union([z.literal('all'), z.literal('local'), z.literal('remote')]),
-  sourceId: z.string().nullable(),
-});
+}).strict();
 const timelineReadEntriesBeforePayloadSchema = z.object({
   jsonlPath: z.string().min(1),
   beforeByte: z.number().int().nonnegative(),

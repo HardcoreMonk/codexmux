@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { useTranslations } from 'next-intl';
 import dayjs from 'dayjs';
-import { Loader2, Monitor } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import type { ISessionMeta } from '@/types/timeline';
@@ -91,12 +91,6 @@ const SessionListItem = ({
           {relativeTime}
         </span>
       </div>
-      {session.source === 'remote' && (
-        <div className="mt-1 flex items-center gap-1.5 pl-[12px] text-[11px] text-muted-foreground">
-          <Monitor size={11} />
-          <span className="min-w-0 truncate">{session.sourceLabel ?? 'Windows / pwsh'}</span>
-        </div>
-      )}
       <div className="mt-1 flex items-center justify-between gap-2 pl-[12px]">
         <span className="min-w-0 truncate text-sm font-medium text-left">
           {displayMessage}

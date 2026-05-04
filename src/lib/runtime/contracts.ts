@@ -1,5 +1,5 @@
 import type { ILayoutData } from '@/types/terminal';
-import type { IChunkReadResult, ISessionMeta, TSessionSourceFilter } from '@/types/timeline';
+import type { IChunkReadResult, ISessionMeta } from '@/types/timeline';
 import type { IMessageCountResult } from '@/lib/timeline-message-counts';
 import type { ICodexStateInput, IHookStateDecision, IHookStateInput, IStateDecision } from '@/lib/status-state-machine';
 import type { TEventName } from '@/types/status';
@@ -111,8 +111,6 @@ export interface IRuntimeTimelineSessionListInput {
   panelType: string;
   offset: number;
   limit: number;
-  source: TSessionSourceFilter;
-  sourceId: string | null;
 }
 
 export interface IRuntimeTimelineEntriesBeforeInput {

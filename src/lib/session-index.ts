@@ -4,8 +4,7 @@ import path from 'path';
 import readline from 'readline';
 import os from 'os';
 import { createLogger } from '@/lib/logger';
-import { collectRemoteCodexJsonlFiles, readRemoteCodexSidecar } from '@/lib/remote-codex-store';
-import type { ISessionMeta, TSessionSourceFilter } from '@/types/timeline';
+import type { ISessionMeta } from '@/types/timeline';
 
 const log = createLogger('session-index');
 
@@ -19,7 +18,6 @@ interface IIndexedSessionMeta extends ISessionMeta {
   indexJsonlPath: string;
   indexMtimeMs: number;
   indexSize: number;
-  indexSidecarMtimeMs?: number;
 }
 
 interface ISessionIndexFile {
@@ -73,8 +71,6 @@ export interface ISessionIndexPageOptions {
   waitForInitial?: boolean;
   offset?: number;
   limit?: number;
-  source?: TSessionSourceFilter;
-  sourceId?: string | null;
 }
 
 const getHomeDir = (): string =>
@@ -86,8 +82,7 @@ const getCodexSessionsDir = (): string =>
 const getIndexFilePath = (): string =>
   path.join(getHomeDir(), '.codexmux', 'session-index.json');
 
-const getRootKey = (): string =>
-  `${getCodexSessionsDir()}::${path.join(getHomeDir(), '.codexmux', 'remote', 'codex')}`;
+const getRootKey = (): string => getCodexSessionsDir();
 
 const g = globalThis as unknown as { __ptSessionIndex?: ISessionIndexState };
 const state = g.__ptSessionIndex ??= {
@@ -271,7 +266,7 @@ const readStoredIndex = async (): Promise<IIndexedSessionMeta[]> => {
     const raw = await fs.readFile(getIndexFilePath(), 'utf-8');
     const parsed = JSON.parse(raw) as ISessionIndexFile;
     if (parsed.version !== 1 || !Array.isArray(parsed.sessions)) return [];
-    return parsed.sessions;
+    return parsed.sessions.filter((session) => (session as { source?: string }).source !== 'remote');
   } catch {
     return [];
   }
@@ -297,7 +292,6 @@ const buildPersistContentKey = (sessions: IIndexedSessionMeta[]): string =>
       session.indexJsonlPath,
       session.indexMtimeMs,
       session.indexSize,
-      session.indexSidecarMtimeMs ?? '',
       session.sessionId,
       session.lastActivityAt,
       session.turnCount,
@@ -317,12 +311,6 @@ const persistStoredIndexIfChanged = async (sessions: IIndexedSessionMeta[]): Pro
   state.lastPersistedAt = Date.now();
 };
 
-const buildRemoteSourceLabel = (host: string | null, shell: string | null): string => {
-  const left = host?.trim() || 'Windows';
-  const right = shell?.trim() || 'pwsh';
-  return `${left} / ${right}`;
-};
-
 const extractThreadId = (value: string | null | undefined): string | null =>
   value?.match(CODEX_THREAD_ID_RE)?.[1] ?? null;
 
@@ -332,17 +320,11 @@ const toStartedAtMs = (value: string): number | null => {
 };
 
 const toPublicSession = (session: IIndexedSessionMeta): ISessionMeta => {
-  const { indexKey, indexJsonlPath, indexMtimeMs, indexSize, indexSidecarMtimeMs, ...meta } = session;
+  const { indexKey, indexJsonlPath, indexMtimeMs, indexSize, ...meta } = session;
   void indexKey;
   void indexJsonlPath;
   void indexMtimeMs;
   void indexSize;
-  void indexSidecarMtimeMs;
-  if (meta.source === 'remote' && !meta.sourceId) {
-    meta.sourceId = session.indexKey.startsWith('remote:')
-      ? session.indexKey.split(':')[1] ?? null
-      : null;
-  }
   return meta;
 };
 
@@ -370,55 +352,7 @@ const buildLocalSession = async (
     lastActivityAt: stat.mtime.toISOString(),
     firstMessage: scan.firstMessage,
     turnCount: scan.turnCount,
-    source: 'local',
     cwd: scan.cwd,
-  };
-};
-
-const buildRemoteSession = async (
-  file: string,
-  previousByPath: Map<string, IIndexedSessionMeta>,
-): Promise<IIndexedSessionMeta | null> => {
-  const [stat, sidecar] = await Promise.all([
-    fs.stat(file),
-    readRemoteCodexSidecar(file),
-  ]);
-  const sidecarPath = `${file}.meta.json`;
-  const sidecarStat = await fs.stat(sidecarPath).catch(() => null);
-  const previous = previousByPath.get(file);
-  const sourceId = sidecar?.sourceId ?? 'windows';
-  if (
-    previous
-    && previous.indexMtimeMs === stat.mtimeMs
-    && previous.indexSize === stat.size
-    && previous.indexSidecarMtimeMs === sidecarStat?.mtimeMs
-    && previous.sourceId === sourceId
-  ) {
-    return previous;
-  }
-
-  const sessionId = sidecar?.sessionId ?? path.basename(file, '.jsonl').match(CODEX_THREAD_ID_RE)?.[1];
-  if (!sessionId) return null;
-
-  return {
-    indexKey: `remote:${sourceId}:${sessionId}:${file}`,
-    indexJsonlPath: file,
-    indexMtimeMs: stat.mtimeMs,
-    indexSize: stat.size,
-    indexSidecarMtimeMs: sidecarStat?.mtimeMs,
-    sessionId,
-    startedAt: sidecar?.startedAt || stat.birthtime.toISOString(),
-    lastActivityAt: sidecar?.lastActivityAt || stat.mtime.toISOString(),
-    firstMessage: sidecar?.firstMessage ?? '',
-    turnCount: sidecar?.turnCount ?? 0,
-    jsonlPath: file,
-    source: 'remote',
-    sourceId,
-    sourceLabel: buildRemoteSourceLabel(sidecar?.host ?? null, sidecar?.shell ?? null),
-    cwd: sidecar?.cwd ?? null,
-    host: sidecar?.host ?? null,
-    shell: sidecar?.shell ?? null,
-    remotePath: sidecar?.windowsPath ?? null,
   };
 };
 
@@ -442,15 +376,8 @@ export const refreshSessionIndex = async (): Promise<void> => {
   state.refreshPromise = (async () => {
     const startedAt = Date.now();
     const previousByPath = new Map(state.sessions.map((session) => [session.indexJsonlPath, session]));
-    const [localFiles, remoteFiles] = await Promise.all([
-      collectJsonlFiles(getCodexSessionsDir()),
-      collectRemoteCodexJsonlFiles(),
-    ]);
-
-    const tasks = [
-      ...localFiles.map((file) => () => buildLocalSession(file, previousByPath)),
-      ...remoteFiles.map((file) => () => buildRemoteSession(file, previousByPath)),
-    ];
+    const localFiles = await collectJsonlFiles(getCodexSessionsDir());
+    const tasks = localFiles.map((file) => () => buildLocalSession(file, previousByPath));
     const results = await runWithConcurrency(tasks, MAX_CONCURRENCY);
     const next: IIndexedSessionMeta[] = [];
     let cacheHits = 0;
@@ -471,7 +398,7 @@ export const refreshSessionIndex = async (): Promise<void> => {
     state.sessions = replaceDuplicateSessions(next);
     state.refreshedAt = Date.now();
     state.lastBuildMs = state.refreshedAt - startedAt;
-    state.indexedFiles = localFiles.length + remoteFiles.length;
+    state.indexedFiles = localFiles.length;
     state.cacheHits = cacheHits;
     state.cacheMisses = cacheMisses;
     state.lastError = null;
@@ -533,20 +460,6 @@ export const getSessionIndexSnapshot = async (options?: { waitForInitial?: boole
   return state.sessions.map(toPublicSession);
 };
 
-const filterSessions = (
-  sessions: IIndexedSessionMeta[],
-  options?: Pick<ISessionIndexPageOptions, 'source' | 'sourceId'>,
-): IIndexedSessionMeta[] => {
-  const source = options?.source ?? 'all';
-  const sourceId = options?.sourceId?.trim();
-
-  return sessions.filter((session) => {
-    if (source !== 'all' && session.source !== source) return false;
-    if (sourceId && session.sourceId !== sourceId && !session.indexKey.startsWith(`remote:${sourceId}:`)) return false;
-    return true;
-  });
-};
-
 export const getSessionIndexPage = async (options?: ISessionIndexPageOptions): Promise<ISessionIndexPage> => {
   ensureCurrentRoot();
   if (!state.initialized) {
@@ -556,8 +469,7 @@ export const getSessionIndexPage = async (options?: ISessionIndexPageOptions): P
     await refreshSessionIndex();
   }
 
-  const filteredSessions = filterSessions(state.sessions, options);
-  const total = filteredSessions.length;
+  const total = state.sessions.length;
   const offset = Math.max(0, Math.floor(options?.offset ?? 0));
   const limit = options?.limit;
   const end = typeof limit === 'number'
@@ -565,7 +477,7 @@ export const getSessionIndexPage = async (options?: ISessionIndexPageOptions): P
     : total;
 
   return {
-    sessions: filteredSessions.slice(offset, end).map(toPublicSession),
+    sessions: state.sessions.slice(offset, end).map(toPublicSession),
     total,
     hasMore: end < total,
   };
@@ -585,7 +497,6 @@ export const findIndexedCodexSessionJsonl = async (
   }
 
   const metas = state.sessions
-    .filter((session) => session.source === 'local')
     .map((session): IIndexedCodexSessionJsonl => ({
       sessionId: session.sessionId,
       jsonlPath: session.indexJsonlPath,
@@ -633,7 +544,6 @@ export const parseCodexSessionMeta = async (jsonlPath: string): Promise<ISession
       lastActivityAt: stat.mtime.toISOString(),
       firstMessage: scan.firstMessage,
       turnCount: scan.turnCount,
-      source: 'local',
       cwd: scan.cwd,
     };
   } catch (err) {

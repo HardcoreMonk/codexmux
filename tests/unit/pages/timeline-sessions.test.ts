@@ -62,9 +62,8 @@ describe('/api/timeline/sessions', () => {
           sessionId: '019de318-38fe-7012-ab51-683d2ffd53cf',
           startedAt: '2026-05-01T10:31:48.759Z',
           lastActivityAt: '2026-05-01T17:00:34.751Z',
-          firstMessage: 'Windows work',
+          firstMessage: 'Local work',
           turnCount: 1,
-          source: 'remote',
         },
       ],
       total: 1,
@@ -83,12 +82,12 @@ describe('/api/timeline/sessions', () => {
       'dead-tmux-session',
       undefined,
       'codex',
-      { offset: 0, limit: 50, source: 'all', sourceId: null },
+      { offset: 0, limit: 50 },
     );
     expect(response.body).toMatchObject({ total: 1, hasMore: false });
   });
 
-  it('passes source filters to the session index page', async () => {
+  it('ignores stale source filter query parameters', async () => {
     const response = createResponse();
 
     await handler(createRequest({
@@ -105,7 +104,7 @@ describe('/api/timeline/sessions', () => {
       'dead-tmux-session',
       undefined,
       'codex',
-      { offset: 20, limit: 10, source: 'remote', sourceId: 'win11' },
+      { offset: 20, limit: 10 },
     );
   });
 

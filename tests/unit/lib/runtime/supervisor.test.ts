@@ -134,8 +134,6 @@ describe('runtime supervisor', () => {
       panelType: 'codex',
       offset: 10,
       limit: 20,
-      source: 'remote',
-      sourceId: 'win11',
     })).resolves.toEqual({ sessions: [], total: 0, hasMore: false });
     await expect(supervisor.readTimelineEntriesBefore({
       jsonlPath: `${os.homedir()}/.codex/sessions/session.jsonl`,
@@ -159,8 +157,6 @@ describe('runtime supervisor', () => {
           panelType: 'codex',
           offset: 10,
           limit: 20,
-          source: 'remote',
-          sourceId: 'win11',
         },
       },
       {

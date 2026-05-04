@@ -219,6 +219,27 @@ describe('runtime ipc', () => {
       rows: 30,
     })).toThrow(/Invalid runtime IPC payload/);
 
+    expect(parseRuntimeCommandPayload('timeline.list-sessions', {
+      tmuxSession: 'pt-ws-a-pane-b-tab-c',
+      panelType: 'codex',
+      offset: 0,
+      limit: 50,
+    })).toEqual({
+      tmuxSession: 'pt-ws-a-pane-b-tab-c',
+      panelType: 'codex',
+      offset: 0,
+      limit: 50,
+    });
+
+    expect(() => parseRuntimeCommandPayload('timeline.list-sessions', {
+      tmuxSession: 'pt-ws-a-pane-b-tab-c',
+      panelType: 'codex',
+      offset: 0,
+      limit: 50,
+      source: 'remote',
+      sourceId: 'win11',
+    })).toThrow(/Invalid runtime IPC payload/);
+
     for (const oversized of [
       { sessionName: 'rtv2-ws-a-pane-b-tab-c', cols: 501, rows: 30 },
       { sessionName: 'rtv2-ws-a-pane-b-tab-c', cols: 100, rows: 201 },

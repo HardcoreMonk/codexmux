@@ -14,9 +14,6 @@ Browser / Electron / Android WebView
   ├─ /api/status WebSocket   -> status-server -> StatusManager
   └─ /api/sync WebSocket     -> sync-server -> workspace/layout/config broadcast
 
-Windows companion
-  └─ /api/remote/codex/sync  -> remote Codex JSONL chunk ingest
-
 Runtime state
   ├─ ~/.codexmux/            -> codexmux-owned app state
   ├─ tmux -L codexmux        -> live shell/Codex processes
@@ -56,11 +53,10 @@ Terminal worker exited`로 닫아 client가 `/api/v2/terminal`을 새로 열게 
 | Server entry | `server.ts` | process lifecycle, Next.js, WebSocket upgrade, auth gate, startup/shutdown |
 | Terminal | `src/lib/terminal-server.ts`, `src/lib/tmux.ts` | tmux attach, stdin/stdout/resize, terminal session lifecycle |
 | Timeline | `src/lib/timeline-server.ts`, `src/lib/timeline-server-state.ts` | Codex JSONL subscribe, file watch, resume, timeline init/append |
-| Session Index | `src/lib/session-index.ts`, `src/lib/session-list.ts`, `src/pages/api/timeline/sessions.ts` | Linux/remote Codex session 목록 인덱스, session list snapshot |
+| Session Index | `src/lib/session-index.ts`, `src/lib/session-list.ts`, `src/pages/api/timeline/sessions.ts` | 로컬 Codex session 목록 인덱스, session list snapshot |
 | Status | `src/lib/status-manager.ts`, `src/lib/status-server.ts` | tab status polling, hook event merge, notification dispatch |
 | Workspace | `src/lib/workspace-store.ts`, `src/lib/layout-store.ts`, `src/lib/runtime/storage-read-owner.ts` | workspace list, layout tree, pane/tab mutation, persisted metadata, runtime v2 default read projection |
 | Provider | `src/lib/providers/*`, `src/lib/codex-session-detection.ts` | Codex command/session/jsonl adapter |
-| Remote Codex | `src/lib/remote-codex-store.ts`, `src/pages/api/remote/codex/sync.ts`, `scripts/windows-codex-sync.mjs`, `scripts/windows-codex-sync-task.ps1` | Windows Codex JSONL chunk 수신, 복사본 저장, session list 노출, Windows 자동 실행 wrapper |
 | Sync | `src/lib/sync-server.ts` | workspace/layout/config change broadcast |
 | Config/Auth | `src/lib/config-store.ts`, `src/lib/auth*.ts` | config persistence, password/session token, onboarding |
 | Perf | `src/lib/perf-metrics.ts`, `src/pages/api/debug/perf.ts` | runtime snapshot, duration/counter aggregation |
@@ -102,8 +98,6 @@ WebSocket은 path별 전용 server로 분기한다.
 
 `/api/debug/perf`는 HTTP debug endpoint지만 middleware 예외가 아니다. session cookie 또는 `x-cmux-token` CLI token 인증을 통과한 요청에만 process memory, event loop, WebSocket count, watcher count, poll duration 같은 숫자 지표를 반환한다.
 
-`/api/remote/codex/sync`는 Windows companion 전용 HTTP endpoint다. session cookie가 아니라 `x-cmux-token` CLI token을 요구하고, base64 encoded JSONL chunk와 source metadata를 받아 서버의 remote Codex store에 append한다.
-
 ## 상태 저장 로직
 
 codexmux가 쓰는 영속 상태는 `~/.codexmux/` 아래에 둔다.
@@ -118,7 +112,7 @@ codexmux가 쓰는 영속 상태는 `~/.codexmux/` 아래에 둔다.
 | status/session history/stats | `session-history.json`, `stats/` | status/timeline |
 | session list index | `session-index.json` | timeline/session-list |
 | live terminal process | tmux | terminal/status/timeline |
-| Codex transcript | `~/.codex/sessions/**/*.jsonl`, `~/.codexmux/remote/codex/**/*.jsonl` | timeline/status |
+| Codex transcript | `~/.codex/sessions/**/*.jsonl` | timeline/status |
 
 `CODEXMUX_RUNTIME_STORAGE_V2_MODE=default`에서는 workspace/layout/message-history read가
 `~/.codexmux/runtime-v2/state.db`의 SQLite projection을 우선 사용한다. 기존 JSON write
@@ -208,56 +202,19 @@ Timeline은 terminal scrollback을 그대로 보여주는 기능이 아니라 Co
 - foreground reconnect 중 init/append 범위가 겹쳐도 client merge에서 중복을 제거한다.
 - client render는 append burst를 frame 단위로 합치고, 기존 timeline row는 entry object reference가 유지되면 memo로 재렌더를 건너뛴다.
 
-## Windows Codex 동기화와 terminal bridge 로직
-
-Windows 11에서 `pwsh`로 실행한 Codex CLI는 Linux tmux tree 아래에 없으므로 codexmux가 process를 직접 attach하지 않는다. Codex transcript는 Windows companion script가 JSONL을 읽어 서버에 chunk로 보내고, codexmux가 이를 source filter가 가능한 읽기 전용 timeline session으로 노출한다. 별도 Windows terminal 제어는 outbound terminal bridge가 시작한 `pwsh` session을 command queue와 stdout relay로 연결한다.
-
-```text
-Windows Codex CLI
-  -> %USERPROFILE%\.codex\sessions\**\*.jsonl
-  -> scripts/windows-codex-sync-task.ps1 (optional Scheduled Task wrapper)
-  -> scripts/windows-codex-sync.mjs
-  -> POST /api/remote/codex/sync (x-cmux-token)
-  -> ~/.codexmux/remote/codex/{sourceId}/{sessionId}.jsonl
-  -> session list -> timeline subscribe by jsonlPath
-
-Browser /api/remote/terminal WebSocket
-  -> globalThis.__ptRemoteTerminalStore command queue
-  -> scripts/windows-terminal-bridge.mjs polls /api/remote/terminal/commands
-  -> Windows node-pty pwsh stdin/resize/kill
-  -> POST /api/remote/terminal/output
-  -> browser terminal stdout frame fanout
-```
-
-운영 규칙:
-
-- companion은 원본 Windows JSONL을 수정하지 않고 byte offset 기반으로 append chunk만 전송한다. 시작 시 `/api/health`로 서버 version/commit을 확인하고, 전체 session history를 한 번 훑은 뒤 hot scan은 오늘/어제 date dir와 최근 활성 파일로 좁힌다. 전체 tree scan은 기본 60초마다 반복하고, local state file로 전송 offset과 파일 metadata를 보존해 재시작 때 전체 파일을 반복 전송하지 않는다. `--dry-run`은 전송 없이 pending upload와 scan summary를 확인하는 진단 경로다.
-- `scripts/windows-codex-sync-task.ps1`은 Windows 현재 사용자 Scheduled Task를 설치해 로그인 시 companion을 자동 실행한다. task 설정, token, state, log는 기본적으로 `%USERPROFILE%\.codexmux\` 아래에 두며 서버 runtime state와 분리한다.
-- `corepack pnpm smoke:windows-sync`는 임시 HOME/server에서 Windows-like JSONL fixture를 만들고 companion의 dry-run, 실제 upload, offset resume, remote source summary, remote session list 노출을 자동 검증한다. Windows 실기기 sync/query는 live server remote source/session list로 확인하며, Scheduled Task 장시간 restart/log/token 권한은 운영 관찰로 남긴다.
-- 서버는 source id와 session id를 파일명으로 sanitize하고, offset mismatch가 나면 기대 offset을 반환한다.
-- session list는 Linux `~/.codex/sessions`와 Windows remote copy를 같은 최근 활동 목록으로 합친다. Linux session은 session id로 resume하고, Windows remote session은 저장된 JSONL path를 구독한다.
-- session list API는 `source=local|remote`와 `sourceId` filter를 받아 Windows session을 local session과 분리해 조회할 수 있다. `/api/remote/codex/sources`는 remote sidecar를 요약해 source별 session 수와 최신 sync/activity metadata를 반환한다.
-- session list는 remote JSONL 본문 전체를 매번 파싱하지 않고 sidecar metadata로 목록을 만든다. JSONL 본문은 timeline subscribe 때만 읽는다.
-- Windows cwd는 session list의 source metadata로만 표시한다.
-- remote session 선택은 Codex resume이 아니라 저장된 JSONL path에 대한 timeline subscribe다.
-- `scripts/windows-terminal-bridge.mjs`는 `/api/health` 확인 후 CLI token으로 `/api/remote/terminal/register`를 먼저 호출하고, register가 성공하면 Windows에서 별도 `pwsh`를 시작해 `/commands`, `/output`을 호출한다. Browser는 authenticated `/api/remote/terminal` WebSocket에 연결하고 기존 terminal protocol frame을 재사용한다. bridge state는 서버/API module graph 공유를 위해 `globalThis.__ptRemoteTerminalStore`에 둔다.
-- terminal bridge는 이미 Windows Terminal에서 수동으로 실행 중인 외부 process에 attach하지 않고, bridge가 시작한 별도 shell만 제어한다.
-
 ## Session Index 서비스 로직
 
-`SessionIndexService`는 session list API에서 JSONL 전체를 직접 스캔하지 않도록 Linux Codex JSONL과 Windows remote sidecar를 하나의 snapshot으로 정규화한다.
+`SessionIndexService`는 session list API에서 JSONL 전체를 직접 스캔하지 않도록 로컬 Codex JSONL을 snapshot으로 정규화한다.
 
 1. startup에서 `~/.codexmux/session-index.json`을 읽어 즉시 사용 가능한 snapshot을 만든다.
-2. 백그라운드 refresh가 `~/.codex/sessions/**/*.jsonl`과 `~/.codexmux/remote/codex/**/*.jsonl`의 `mtime`/size를 비교한다.
-3. 변경된 Linux JSONL만 본문을 파싱해 첫 user message, turn count, cwd, activity time을 갱신한다.
-4. Windows remote session은 `.meta.json` sidecar만 읽어 목록 metadata를 만든다.
-5. `/api/timeline/sessions`는 `codex` panel 요청에서 live tmux session 존재 여부와 무관하게 index snapshot의 요청 page만 public session shape로 변환해 반환한다.
-6. Codex provider의 `findCodexSessionJsonl()`은 먼저 index에서 session id, cwd, process start time 후보를 찾고, index miss 때만 기존 filesystem scan으로 fallback한다.
-7. Windows sync chunk 수신 후에는 index refresh를 debounce로 요청한다.
-8. refresh 결과가 이전 persisted snapshot과 같으면 `session-index.json` write를 건너뛴다.
-9. `/api/debug/perf`는 session index의 indexed file 수, cache hit/miss, build duration, persist write/skip count를 숫자로 노출한다.
+2. 백그라운드 refresh가 `~/.codex/sessions/**/*.jsonl`의 `mtime`/size를 비교한다.
+3. 변경된 JSONL만 본문을 파싱해 첫 user message, turn count, cwd, activity time을 갱신한다.
+4. `/api/timeline/sessions`는 `codex` panel 요청에서 live tmux session 존재 여부와 무관하게 index snapshot의 요청 page만 public session shape로 변환해 반환한다.
+5. Codex provider의 `findCodexSessionJsonl()`은 먼저 index에서 session id, cwd, process start time 후보를 찾고, index miss 때만 기존 filesystem scan으로 fallback한다.
+6. refresh 결과가 이전 persisted snapshot과 같으면 `session-index.json` write를 건너뛴다.
+7. `/api/debug/perf`는 session index의 indexed file 수, cache hit/miss, build duration, persist write/skip count를 숫자로 노출한다.
 
-Linux session 선택은 `codex resume <sessionId>` 경로를 유지한다. Windows remote session 선택은 저장된 JSONL path를 timeline WebSocket에 구독한다.
+Session 선택은 `codex resume <sessionId>` 경로를 유지한다.
 
 ## Status 서비스 로직
 

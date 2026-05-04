@@ -80,7 +80,7 @@ describe('session-index', () => {
     });
   });
 
-  it('filters legacy persisted remote rows by source id from the index key', async () => {
+  it('drops legacy persisted remote rows from the session index', async () => {
     const indexDir = path.join(tempHome, '.codexmux');
     await fs.mkdir(indexDir, { recursive: true });
     await fs.writeFile(
@@ -107,13 +107,9 @@ describe('session-index', () => {
     );
 
     const { getSessionIndexPage } = await import('@/lib/session-index');
-    const page = await getSessionIndexPage({ waitForInitial: true, source: 'remote', sourceId: 'win11' });
+    const page = await getSessionIndexPage({ waitForInitial: false });
 
-    expect(page.total).toBe(1);
-    expect(page.sessions[0]).toMatchObject({
-      source: 'remote',
-      sourceId: 'win11',
-      firstMessage: 'Legacy Windows row',
-    });
+    expect(page.total).toBe(0);
+    expect(page.sessions).toEqual([]);
   });
 });

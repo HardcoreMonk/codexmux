@@ -9,7 +9,7 @@
 | `ADR.md` | 오래가는 아키텍처 결정과 변경 트리거 |
 | `ARCHITECTURE-LOGIC.md` | 서버, WebSocket, workspace, terminal, timeline, status, sync 서비스 흐름 |
 | `STATUS.md` | Codex 작업 상태 감지, 상태 전이, 알림, timeline metadata |
-| `TMUX.md` | tmux session, terminal WebSocket, remote terminal bridge, key input, Codex process 감지 |
+| `TMUX.md` | tmux session, terminal WebSocket, key input, Codex process 감지 |
 | `DATA-DIR.md` | `~/.codexmux/` 저장 구조와 삭제 기준 |
 | `PERFORMANCE.md` | 성능 계측, 최적화 우선순위, 검증 기준 |
 | `TESTING.md` | unit/type/lint/build, Playwright/Chromium, platform smoke, live deploy 검증 기준 |
@@ -23,7 +23,6 @@
 | `SYSTEMD.md` | Linux `systemd --user` 서비스 등록, build/restart, 운영 점검 |
 | `ANDROID.md` | Android Capacitor shell, Tailscale 연결, foreground reconnect, 앱 정보/재시작, native build |
 | `ELECTRON.md` | Electron shell 개발, 패키징, native notification |
-| `WINDOWS.md` | Windows Codex CLI JSONL 동기화 client, terminal bridge, source filter, Scheduled Task 운영, 보안 기준 |
 | `TAURI-EVALUATION.md` | Rust + Tauri 도입 타당성 조사와 PoC 기준 |
 | `STYLE.md` | theme, color, terminal/mobile UI 규칙 |
 
@@ -48,14 +47,14 @@
 ## 갱신 규칙
 
 - 상태 모델, provider metadata, notification policy를 바꾸면 `STATUS.md`와 `ADR.md`를 함께 갱신한다.
-- tmux, process 감지, terminal protocol, remote terminal bridge, `Ctrl+D` 입력 정책을 바꾸면 `TMUX.md`를 갱신한다.
+- tmux, process 감지, terminal protocol, `Ctrl+D` 입력 정책을 바꾸면 `TMUX.md`를 갱신한다.
 - 서버 startup, WebSocket routing, shared singleton, sync 흐름을 바꾸면 `ARCHITECTURE-LOGIC.md`를 갱신한다.
 - 성능 계측, polling, timeline render/cache, WebSocket batching을 바꾸면 `PERFORMANCE.md`를 갱신한다.
 - 테스트 도구, smoke command, platform 검증 순서, Playwright/Chromium 기준을 바꾸면 `TESTING.md`를 갱신한다.
 - PWA manifest, icon, startup image, service worker public asset 기준을 바꾸면 `TESTING.md`, `ARCHITECTURE-LOGIC.md`, `ADR.md`, `STYLE.md`, `README.md`, `landing-src/docs/pwa-setup.md` locale copy를 함께 갱신한다.
 - 성능 변경이 사용자 동작이나 운영 점검에 영향을 주면 `README.md`와 `landing-src/docs/`의 architecture/live-session/git/stats/troubleshooting 문서도 함께 갱신한다.
 - 저장 파일 구조나 삭제 기준을 바꾸면 `DATA-DIR.md`를 갱신한다.
-- Android/Electron/Windows client, Windows terminal bridge, 모바일 reconnect, 앱 정보/재시작 bridge, native build 기준을 바꾸면 각 플랫폼 문서를 갱신한다.
+- Android/Electron client, 모바일 reconnect, 앱 정보/재시작 bridge, native build 기준을 바꾸면 각 플랫폼 문서를 갱신한다.
 - release, deploy, smoke 결과가 운영 판단에 영향을 주면 `operations/` handoff를 추가하고 `FOLLOW-UP.md`의 확인 상태를 갱신한다.
 - 구현 전 설계 결정을 바꾸면 관련 `superpowers/specs/`와
   `superpowers/plans/` 산출물을 함께 갱신한다.

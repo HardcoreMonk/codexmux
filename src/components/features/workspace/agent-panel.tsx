@@ -5,7 +5,6 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import useTimeline from '@/hooks/use-timeline';
 import useSessionList from '@/hooks/use-session-list';
-import useRemoteCodexSources from '@/hooks/use-remote-codex-sources';
 import useStartingPrompt from '@/hooks/use-starting-prompt';
 import useTabStore, { selectAgentInstalled, selectAgentProcess, selectSessionView } from '@/hooks/use-tab-store';
 import { useSessionMetaCompute } from '@/hooks/use-session-meta';
@@ -16,7 +15,7 @@ import TimelineView from '@/components/features/timeline/timeline-view';
 import SessionMetaBar, { SessionMetaBarSkeleton } from '@/components/features/workspace/session-meta-bar';
 import { isAgentPanelType } from '@/lib/panel-type';
 import { selectAgentSessionListRenderMode } from '@/lib/session-list-rendering';
-import type { ISessionMeta, TSessionSourceFilter } from '@/types/timeline';
+import type { ISessionMeta } from '@/types/timeline';
 import type { TPanelType } from '@/types/terminal';
 
 interface IAgentPanelProps {
@@ -48,8 +47,6 @@ const AgentPanel = ({
 }: IAgentPanelProps) => {
   const t = useTranslations('terminal');
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(null);
-  const [sessionSourceFilter, setSessionSourceFilter] = useState<TSessionSourceFilter>('all');
-  const [sessionSourceIdFilter, setSessionSourceIdFilter] = useState<string | null>(null);
 
   const agentProcess = useTabStore((s) => selectAgentProcess(s.tabs, tabId));
   const agentInstalled = useTabStore((s) => selectAgentInstalled(s.tabs, tabId));
@@ -141,15 +138,6 @@ const AgentPanel = ({
     enabled: isAgentPanel && !!sessionName && view === 'session-list',
     cwd,
     panelType,
-    source: sessionSourceFilter,
-    sourceId: sessionSourceIdFilter,
-  });
-
-  const {
-    sources: remoteSources,
-    refetch: refetchRemoteSources,
-  } = useRemoteCodexSources({
-    enabled: isAgentPanel && view === 'session-list',
   });
 
   useEffect(() => {
@@ -211,14 +199,9 @@ const AgentPanel = ({
     [openJsonlSession, resumingSessionId, retrySession, sendResume, sessionName, tabId],
   );
 
-  const handleFilterChange = useCallback((source: TSessionSourceFilter, sourceId: string | null = null) => {
-    setSessionSourceFilter(source);
-    setSessionSourceIdFilter(source === 'remote' ? sourceId : null);
-  }, []);
-
   const handleRefreshSessions = useCallback(async () => {
-    await Promise.all([refetchSessions(), refetchRemoteSources()]);
-  }, [refetchRemoteSources, refetchSessions]);
+    await refetchSessions();
+  }, [refetchSessions]);
 
   if (!agentInstalled) {
     return (
@@ -291,12 +274,8 @@ const AgentPanel = ({
           isLoadingMore={isSessionListLoadingMore}
           hasMore={sessionListHasMore}
           error={sessionListError}
-          sourceFilter={sessionSourceFilter}
-          sourceIdFilter={sessionSourceIdFilter}
-          remoteSources={remoteSources}
           resumingSessionId={resumingSessionId}
           onSelectSession={handleSelectSession}
-          onFilterChange={handleFilterChange}
           onRefresh={handleRefreshSessions}
           onLoadMore={loadMoreSessions}
           onNewSession={onNewSession}

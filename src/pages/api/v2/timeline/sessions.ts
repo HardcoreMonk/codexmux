@@ -3,7 +3,6 @@ import { verifyRuntimeV2ApiAuth } from '@/lib/runtime/api-auth';
 import { sendRuntimeApiError, sendRuntimeDisabled } from '@/lib/runtime/api-handler';
 import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
 import { normalizePanelType } from '@/lib/panel-type';
-import type { TSessionSourceFilter } from '@/types/timeline';
 import type { TPanelType } from '@/types/terminal';
 
 const DEFAULT_LIMIT = 50;
@@ -20,11 +19,6 @@ const parseBoundedInteger = (value: string | undefined, fallback: number, min: n
 
 const parsePanelType = (value: string | string[] | undefined): TPanelType =>
   normalizePanelType(firstQueryValue(value)) ?? 'codex';
-
-const parseSourceFilter = (value: string | string[] | undefined): TSessionSourceFilter => {
-  const candidate = firstQueryValue(value);
-  return candidate === 'local' || candidate === 'remote' ? candidate : 'all';
-};
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (process.env.CODEXMUX_RUNTIME_V2 !== '1') {
@@ -53,8 +47,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       panelType: parsePanelType(req.query.panelType),
       offset: parseBoundedInteger(firstQueryValue(req.query.offset), 0, 0, Number.MAX_SAFE_INTEGER),
       limit: parseBoundedInteger(firstQueryValue(req.query.limit), DEFAULT_LIMIT, 1, MAX_LIMIT),
-      source: parseSourceFilter(req.query.source),
-      sourceId: firstQueryValue(req.query.sourceId) || null,
     });
     return res.status(200).json(page);
   } catch (err) {

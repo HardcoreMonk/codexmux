@@ -16,7 +16,7 @@ Date: 2026-05-04 KST
 ## Remaining Gate
 
 - Timeline Worker does not yet own live file watchers, subscribers, `timeline:init`, `timeline:append`, `timeline:session-changed`, resume flow, or worker crash reconnect behavior.
-- Windows remote JSONL source/sourceId parity still needs fixture and live Windows sync coverage before timeline default cutover.
+- Session list parity is local-only; default cutover still needs live watcher, resume, and reconnect evidence.
 
 ## Verification
 

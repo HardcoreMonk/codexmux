@@ -200,8 +200,6 @@ describe('runtime v2 api routes', () => {
       panelType: 'codex',
       offset: 5,
       limit: 10,
-      source: 'remote',
-      sourceId: 'win11',
     });
 
     const allowedPath = `${os.homedir()}/.codex/sessions/session.jsonl`;

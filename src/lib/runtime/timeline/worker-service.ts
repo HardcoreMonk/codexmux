@@ -92,8 +92,6 @@ export const createTimelineWorkerService = () => {
     return listSessionPage(input.tmuxSession, input.cwd, panelType, {
       offset: input.offset,
       limit: input.limit,
-      source: input.source,
-      sourceId: input.sourceId,
     });
   };
 

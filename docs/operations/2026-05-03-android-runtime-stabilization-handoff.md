@@ -52,7 +52,6 @@
 | `CODEXMUX_ANDROID_CLEAR_APP_DATA=1 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=1 corepack pnpm smoke:android:foreground` | app data clear 후 `/login` 첫 실행, console event 0, blocking logcat 0 |
 | `corepack pnpm smoke:android:recovery` | network, HTTP 4xx, SSL 실패 후 launcher 복귀와 `/login` 재연결, blocking console/logcat 0 |
 | Stats/daily report | overview/list 200, `2026-05-03` report generate 200 |
-| Windows sync dry-run | candidates 5, 14.8 MiB, errors 0 |
 | `corepack pnpm smoke:permission` | temp server/HOME/tmux tab, `needs-input`, option parsing, stdin `2`, `status:ack-notification` 후 `busy` 복귀 |
 
 ## 남은 릴리스 리스크
@@ -62,7 +61,6 @@
 - Runtime v2는 Phase 2 gate, Electron page-context `/api/v2/terminal` attach/output/reconnect, Android WebView `/api/v2/terminal` foreground reconnect가 통과했다. timeline/status/storage v2 surface 전환 증거는 별도 항목이다.
 - 웹페이지의 `다시 연결` 클릭 불가 회귀는 unit helper와 runtime v2 phase2 smoke로 고정했다. 실제 DOM/pointer e2e는 Playwright tooling이 준비됐으므로 다음 browser reconnect spec으로 남긴다.
 - Electron은 `build:electron`, live attach smoke, runtime v2 page-context attach/output/reconnect, Mac M1 `pack:electron:dev` 산출물 검증까지 통과했다. SSH 세션의 macOS GUI launch domain 제한 때문에 막힌 Finder 더블클릭 실행/Gatekeeper UX와 packaged OS-level foreground UX는 별도로 확인한다.
-- Windows는 Linux dry-run만 통과했다. 실제 Windows Scheduled Task `Install -RunNow`, `Status`, `RunOnce`와 장시간 sync log/token 권한 확인이 필요하다.
 - iPad Safari/Home Screen foreground reconnect는 Android와 별도로 확인해야 한다.
 
 ## 운영 기준

@@ -35,4 +35,3 @@
 
 - 24-hour live monitoring is still the release confidence gate for long-running restart loops.
 - iPad Safari/Home Screen long-background reconnect remains separate from Android WebView.
-- Windows terminal bridge real-device input/output/resize smoke remains separate from Android work.

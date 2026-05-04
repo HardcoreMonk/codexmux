@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-이 문서는 codexmux에서 이미 선택한 오래가는 설계 결정을 한 곳에 모은다. 세부 구현 흐름은 `ARCHITECTURE-LOGIC.md`에 두고, 영역별 구현 문서는 `STATUS.md`, `TMUX.md`, `DATA-DIR.md`, `SYSTEMD.md`, `STYLE.md`, `ELECTRON.md`, `ANDROID.md`, `WINDOWS.md`에 둔다.
+이 문서는 codexmux에서 이미 선택한 오래가는 설계 결정을 한 곳에 모은다. 세부 구현 흐름은 `ARCHITECTURE-LOGIC.md`에 두고, 영역별 구현 문서는 `STATUS.md`, `TMUX.md`, `DATA-DIR.md`, `SYSTEMD.md`, `STYLE.md`, `ELECTRON.md`, `ANDROID.md`에 둔다.
 
 ## ADR 작성 기준
 
@@ -10,7 +10,7 @@
 - tmux/session/process 감지 방식 변경
 - provider model 또는 `agent*` metadata 의미 변경
 - `~/.codexmux/` 저장 구조나 auth/security 동작 변경
-- Electron/Android/Windows 같은 platform client 동작 변경
+- Electron/Android 같은 platform client 동작 변경
 - notification, locale, mobile UX, terminal input, reconnect/dedupe 같은 cross-platform 정책 변경
 
 작은 copy, 단일 컴포넌트 스타일, 버그 수정은 기존 ADR의 결정과 충돌하지 않으면 새 ADR이 필요 없다.
@@ -189,16 +189,16 @@
 - Rationale: 현재 병목 후보는 Node server, WebSocket, tmux, JSONL parsing, React render 경로에 분산되어 있다. rewrite나 큰 구조 변경 전에 process memory, event loop, watcher, poll, WebSocket, parse 비용을 같은 기준으로 확인해야 한다.
 - Consequences: perf snapshot은 숫자와 duration/counter만 반환한다. session id, cwd, JSONL path, prompt, assistant text, terminal output 본문은 노출하지 않는다. endpoint는 middleware auth를 통과해야 하며 public health check로 쓰지 않는다. Runtime v2 Worker diagnostics는 worker name별 lifecycle/command counter와 sanitized last error만 `services.runtimeWorkers`에 노출한다. 성능 개선은 timeline append batching/row memo, JSONL tail snapshot cache, DIFF short cache, stats in-flight dedupe처럼 source of truth를 바꾸지 않는 좁은 변경을 우선한다.
 
-## ADR-014: Windows Codex 연동은 JSONL 동기화 Client로 시작한다
+## ADR-014: Windows 기기 연동 기능은 제거한다
 
 - Status: Accepted
-- Decision: Windows 11 `pwsh`에서 실행하는 Codex CLI 연동은 companion script가 `%USERPROFILE%\.codex\sessions` JSONL을 읽어 `/api/remote/codex/sync`로 보내는 timeline sync와, 별도 terminal bridge가 서버의 `/api/remote/terminal/*` HTTP queue 및 `/api/remote/terminal` browser WebSocket을 통해 Windows `pwsh`를 제어하는 방식으로 제공한다.
-- Rationale: Windows shell process는 Linux 서버의 tmux/node-pty process tree 아래에 없어서 기존 terminal attach, process detection, resume path를 그대로 공유할 수 없다. JSONL 동기화는 Codex transcript source of truth를 보존하면서 모바일/웹 timeline 확인 문제를 먼저 해결한다.
-- Consequences: remote Codex 복사본은 `~/.codexmux/remote/codex/`에 저장하고 원본 Windows Codex 상태는 수정하지 않는다. Windows companion은 시작 시 `/api/health`로 서버 version/commit을 확인하고 전체 session history를 스캔하되 이후 polling은 hot scan으로 좁히며, 주기적 full scan과 local offset state로 누락과 반복 전송을 함께 피한다. `--dry-run`은 전송 없이 pending upload와 scan summary를 확인하는 운영 진단 경로다. Windows 자동 실행은 현재 사용자 Scheduled Task wrapper로 제공하고, task 설정/token/state/log는 기본적으로 `%USERPROFILE%\.codexmux\` 아래에 둔다. session list는 sidecar metadata로 구성하고 source/sourceId filter와 remote source summary를 제공하며, JSONL 본문은 timeline subscribe 때 읽는다. remote session 선택은 저장된 JSONL path timeline subscribe를 유지한다. Windows terminal bridge는 Windows에서 outbound polling으로 stdin/resize/kill command를 가져가고 stdout을 서버에 post한다. 서버는 이 bridge state를 `globalThis.__ptRemoteTerminalStore`에 두고 browser client에는 기존 terminal protocol frame으로 relay한다. 이 경로는 별도 Windows `pwsh` session 제어이며, 기존 Windows Terminal 창이나 이미 실행 중인 외부 Codex process에 attach하지 않는다.
+- Decision: 이전 원격 기기 동기화, 원격 terminal sidecar, 원격 session filter, 전용 page/API route, helper script를 제품 surface에서 제거한다. Session list와 timeline은 로컬 `~/.codex/sessions/**/*.jsonl`만 인덱싱하고, terminal WebSocket은 tmux-backed `/api/terminal`과 runtime v2 `/api/v2/terminal`만 유지한다.
+- Rationale: codexmux의 핵심 안정성은 tmux-backed session, 로컬 Codex JSONL, 모바일/desktop reconnect에 있다. 별도 Windows sidecar 경로는 다른 lifecycle, 별도 auth/token 배포, 읽기 전용 timeline, 별도 terminal queue를 요구해 운영면과 테스트면을 넓혔지만 핵심 session 안정성에 직접 기여하지 않았다.
+- Consequences: 이전 빌드가 만든 `~/.codexmux/remote/codex/` 파일은 삭제하지 않지만 현재 앱은 읽지 않는다. 필요하면 운영자가 수동으로 지울 수 있다. 새 Windows 연동을 다시 도입하려면 별도 ADR, lifecycle spec, platform smoke 기준을 먼저 갱신해야 한다.
 
 ## ADR-015: Session list는 백그라운드 인덱스를 사용한다
 
 - Status: Accepted
 - Decision: `/api/timeline/sessions`는 요청마다 Codex JSONL을 재귀 스캔하지 않고 `SessionIndexService`의 `globalThis.__ptSessionIndex` snapshot을 읽는다. 인덱스는 `~/.codexmux/session-index.json`에 persist하고 백그라운드 refresh로 갱신한다.
-- Rationale: Linux local 세션과 Windows remote 세션이 늘어나면 session list 요청 경로에서 전체 JSONL 파싱, 정렬, slice가 반복되어 메모리와 CPU가 급증한다. session 목록은 실시간 terminal byte stream보다 지연 허용치가 크므로 request path에서 source scan을 제거하는 편이 안정적이다.
-- Consequences: Linux Codex JSONL은 mtime/size가 바뀐 파일만 다시 파싱하고, Windows remote session은 sidecar metadata를 사용한다. session list API는 index snapshot을 페이지네이션만 해서 반환한다. Codex provider의 JSONL lookup은 index를 먼저 사용하고 miss 때만 filesystem scan으로 fallback한다. Windows sync 수신은 index refresh를 debounce로 요청한다. `/api/debug/perf`는 session index의 파일 수, cache hit/miss, build duration을 노출한다.
+- Rationale: 로컬 Codex 세션이 늘어나면 session list 요청 경로에서 전체 JSONL 파싱, 정렬, slice가 반복되어 메모리와 CPU가 급증한다. session 목록은 실시간 terminal byte stream보다 지연 허용치가 크므로 request path에서 source scan을 제거하는 편이 안정적이다.
+- Consequences: 로컬 Codex JSONL은 mtime/size가 바뀐 파일만 다시 파싱한다. session list API는 index snapshot을 페이지네이션만 해서 반환한다. Codex provider의 JSONL lookup은 index를 먼저 사용하고 miss 때만 filesystem scan으로 fallback한다. `/api/debug/perf`는 session index의 파일 수, cache hit/miss, build duration을 노출한다.

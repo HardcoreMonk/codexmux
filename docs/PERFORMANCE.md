@@ -92,11 +92,6 @@ Rust + Tauri 도입은 `docs/TAURI-EVALUATION.md` 기준으로 보류한다. Tau
 - `/api/debug/perf` runtime counters는 `terminal.stdout.raw_chunks/raw_bytes`, `terminal.stdout.messages/bytes`, `terminal.stdout.coalesced_*`, `terminal.stdout.max_buffer_flushes`를 노출한다. terminal service snapshot은 `stdoutBufferBytes`와 `stdoutPendingFlushes`를 노출한다.
 - `src/lib/terminal-output-buffer.ts`에 순수 buffering helper와 unit test를 추가했다.
 
-### 2026-05-02 5차 구현 상태
-
-- Windows companion sync는 시작 시 전체 scan을 수행한 뒤, 평상시에는 오늘/어제 date dir와 최근 활성 파일만 확인한다. 전체 session tree 재귀 scan은 기본 60초 주기로 유지해 오래된 날짜 session을 다시 이어 쓰는 경우도 늦어도 다음 full scan에서 잡는다.
-- `--full-scan-interval-ms`와 `CMUX_FULL_SCAN_INTERVAL_MS`를 추가했다. 파일 수가 많은 Windows 환경에서는 1.5초 polling마다 전체 tree를 훑는 비용을 줄이고, 지연 허용 범위에 맞게 full scan 주기를 조정할 수 있다.
-
 ### 2026-05-02 6차 구현 상태
 
 - `/api/timeline/message-counts`의 JSONL counting을 전용 streaming helper로 분리했다. meta panel 확장 시 전체 timeline entry를 만들지 않고 user/assistant/tool 숫자만 한 줄씩 계산한다.
@@ -118,12 +113,6 @@ Rust + Tauri 도입은 `docs/TAURI-EVALUATION.md` 기준으로 보류한다. Tau
 - `/api/debug/perf`의 `services.runtimeWorkers`가 worker별 snapshot을 반환한다. `lastError`는 `code`, sanitized `message`, `retryable`, `at`만 포함하고 runtime session name과 absolute path는 redaction한다.
 - Runtime v2 shadow runtime은 이 counters를 보고 readiness 실패, restart loop, command timeout, failed reply를 확인한 뒤에만 surface별 default 전환을 검토한다.
 - `CODEXMUX_RUNTIME_V2=1` server startup은 legacy startup을 막지 않고 runtime v2 health diagnostic을 실행한다. 이 호출은 worker별 `healthChecks`, `healthFailures`, `lastHealthAt`에 남는다.
-
-### 2026-05-04 10차 구현 상태
-
-- Windows terminal bridge 상태는 `globalThis.__ptRemoteTerminalStore`에만 보관한다. source/terminal registry, command queue, recent output snapshot, subscriber fanout이 server memory 안에 있으며 서버 재시작 후 Windows sidecar가 다시 register/poll해 복구한다.
-- bridge output snapshot은 terminal당 512KiB로 제한하고 command queue는 최대 1000개만 유지한다. browser WebSocket reconnect 시 recent output snapshot을 먼저 보낸 뒤 새 output을 fanout한다.
-- 이 경로는 tmux stdout batching과 별개다. Windows sidecar가 `/api/remote/terminal/commands`를 polling하고 `/api/remote/terminal/output`으로 stdout/stderr chunk를 post하므로, 성능 조정 전에는 poll interval, output flush interval, reconnect smoke, resize/input latency를 같이 확인한다.
 
 ## 작업 상세
 

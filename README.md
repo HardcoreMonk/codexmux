@@ -39,7 +39,7 @@ npx codexmux
 http://localhost:8122
 ```
 
-> Node.js 20 이상과 tmux가 필요합니다. 서버 실행은 macOS와 Linux를 지원합니다. Windows 11은 서버 실행 대상이 아니라, `pwsh` Codex CLI JSONL 동기화와 별도 `pwsh` terminal bridge를 지원하는 companion client 대상입니다.
+> Node.js 20 이상과 tmux가 필요합니다. 서버 실행은 macOS와 Linux를 지원합니다.
 
 ## 서버 실행 옵션
 
@@ -139,7 +139,6 @@ corepack pnpm start
 - 라이브 타임라인: Codex JSONL을 읽어 메시지, tool call, permission prompt, reasoning summary 표시
 - 안정적인 재연결: 타임라인 entry id와 중복 제거를 JSONL record identity 기준으로 처리
 - 모바일 UI: PWA, iPad Safari, Android 앱, Web Push, foreground 재접속, 입력 draft 보존, CODEX 확인 중 터미널 preview
-- Windows client sync/terminal bridge: Windows 11 `pwsh` Codex CLI JSONL을 서버에 chunk 동기화해 읽기 전용 timeline으로 표시하고, 별도 `pwsh` terminal bridge를 `/windows-terminal`에서 제어
 - 알림 제어: 작업 완료 toast, 시스템 알림, 완료 사운드 on/off
 - Git 워크플로: status, diff, history, fetch, pull, push, 충돌/dirty 상태 전달
 - DIFF 안정성: 대량 diff와 untracked 파일은 제한, 생략 안내, 짧은 서버 캐시, 기본 접힘, timeout으로 UI hang 방지
@@ -219,16 +218,14 @@ codexmux 상태는 `~/.codexmux/`에 저장됩니다. Codex CLI 원본 세션은
 | `keybindings.json` | 앱 단축키 override. 터미널 제어 입력인 `Ctrl+D`는 포커스된 터미널/Codex 입력창에서 EOF로 전달 |
 | `vapid-keys.json` | Web Push VAPID key |
 | `push-subscriptions.json` | Web Push 구독 정보 |
-| `cli-token` | CLI, hook bridge, Windows sync/terminal bridge의 `x-cmux-token` |
+| `cli-token` | CLI와 hook bridge의 `x-cmux-token` |
 | `port` | 현재 실행 중인 server port |
-| `session-index.json` | Linux/Windows Codex session list metadata cache |
-| `remote/codex/{sourceId}/{sessionId}.jsonl` | Windows companion이 보낸 Codex CLI JSONL 복사본 |
-| `remote/codex/{sourceId}/{sessionId}.jsonl.meta.json` | Windows host, shell, cwd, 원본 path, offset metadata |
+| `session-index.json` | 로컬 Codex session list metadata cache |
 | `stats/` | Codex usage cache와 daily report. 런타임 stats build는 in-flight promise로 중복 계산을 피함 |
 | `logs/` | 서버 로그 |
 | `uploads/` | 임시 첨부 파일 |
 
-Windows terminal bridge의 source, command queue, recent output snapshot은 `~/.codexmux/`에 저장하지 않고 server process memory에만 둡니다. 서비스 재시작 후 Windows bridge가 다시 register/poll하면 terminal source 목록이 복구됩니다.
+이전 버전에서 생성된 `~/.codexmux/remote/codex/` 데이터는 현재 앱에서 읽지 않습니다. 필요 없으면 수동으로 삭제해도 codexmux 로컬 상태와 `~/.codex/sessions/` 원본에는 영향을 주지 않습니다.
 
 자세한 삭제 기준은 [docs/DATA-DIR.md](docs/DATA-DIR.md)를 참고하세요.
 
@@ -264,8 +261,6 @@ corepack pnpm android:build:release
 corepack pnpm android:bundle:release
 corepack pnpm android:install
 corepack pnpm android:keystore
-corepack pnpm windows:codex-sync
-corepack pnpm windows:terminal-bridge
 ```
 
 로그 레벨:
@@ -400,67 +395,6 @@ corepack pnpm android:bundle:release
 
 세부 구조와 빌드 메모는 [docs/ANDROID.md](docs/ANDROID.md)를 참고합니다.
 
-## Windows client 동기화와 터미널 브리지
-
-Windows 11에서 `pwsh`로 실행한 Codex CLI 세션은 Linux 서버의 tmux process tree 아래에 없으므로 codexmux가 이미 열린 Windows Terminal process에 직접 attach하지 않습니다. 지원 범위는 Windows companion sync가 `%USERPROFILE%\.codex\sessions\**\*.jsonl`을 읽어 codexmux 서버에 chunk로 보내고, 서버가 이를 session list와 읽기 전용 timeline으로 보여주는 방식과, terminal bridge가 시작한 별도 `pwsh` session을 `/windows-terminal`에서 제어하는 방식입니다.
-
-Windows PowerShell에서 실행:
-
-```powershell
-$env:CMUX_URL = "http://<codexmux-server>:<port>"
-$env:CMUX_TOKEN = "<server ~/.codexmux/cli-token content>"
-corepack pnpm windows:codex-sync
-```
-
-상시 운영은 현재 사용자 Scheduled Task로 감싸는 방식을 권장합니다.
-
-```powershell
-.\scripts\windows-codex-sync-task.ps1 `
-  -Action Install `
-  -Server "http://<codexmux-server>:8122" `
-  -Token "<server ~/.codexmux/cli-token content>" `
-  -SourceId "win11-main" `
-  -RunNow
-```
-
-주요 option:
-
-```powershell
-node .\scripts\windows-codex-sync.mjs `
-  --server http://100.x.y.z:8122 `
-  --token-file "$env:USERPROFILE\.codexmux\cli-token" `
-  --source-id win11-main `
-  --shell pwsh
-```
-
-Windows `pwsh`를 codexmux UI에서 제어하려면 terminal bridge를 별도로 실행합니다.
-
-```powershell
-corepack pnpm windows:terminal-bridge -- `
-  --server http://100.x.y.z:8122 `
-  --token-file "$env:USERPROFILE\.codexmux\cli-token" `
-  --source-id win11-main `
-  --shell pwsh
-```
-
-브라우저에서는 다음 주소를 엽니다.
-
-```text
-http://<codexmux-server>:8122/windows-terminal?sourceId=win11-main
-```
-
-- 동기화 endpoint: `POST /api/remote/codex/sync`
-- 터미널 bridge endpoint: `POST /api/remote/terminal/register`, `GET /api/remote/terminal/commands`, `POST /api/remote/terminal/output`, browser WebSocket `/api/remote/terminal`
-- 인증: `x-cmux-token`
-- 서버 저장 위치: `~/.codexmux/remote/codex/{sourceId}/{sessionId}.jsonl`
-- UI 동작: session list에 `HOST / pwsh` badge와 Windows source summary가 표시되고, 전체/local/Windows/source별 filter로 분리 조회 가능. bridge가 등록된 source는 Windows terminal 버튼으로 별도 terminal 화면을 열 수 있음
-- scan 방식: 시작 시 전체 scan 후 평상시에는 오늘/어제 date dir와 최근 활성 파일을 확인하고, 기본 60초마다 전체 scan
-- 진단: `--once --dry-run`으로 서버 전송 없이 pending upload와 scan summary 확인
-- 제한: terminal bridge는 bridge가 시작한 별도 shell을 제어하며, 이미 사용자가 Windows Terminal에서 수동 실행한 외부 Codex CLI process에는 attach하지 않음
-- `Missing script: windows:terminal-bridge`가 나오면 Windows 쪽 repo가 아직 최신 `package.json`을 받지 못했거나 repo root가 아닌 곳에서 실행한 것이다. 최신 commit을 받은 뒤 `node -p "require('./package.json').scripts['windows:terminal-bridge']"`와 `Test-Path .\scripts\windows-terminal-bridge.mjs`로 확인한다.
-
-세부 실행 옵션과 문제 해결은 [docs/WINDOWS.md](docs/WINDOWS.md)를 참고합니다.
-
 ## CLI
 
 서버가 실행되면 `~/.codexmux/port`와 `~/.codexmux/cli-token`이 생성됩니다. CLI는 이 값을 자동으로 읽습니다.
@@ -498,17 +432,6 @@ shell / codex
 Codex JSONL
   ~/.codex/sessions/YYYY/MM/DD/*.jsonl
   -> timeline, status, stats
-
-Windows Codex companion
-  %USERPROFILE%\.codex\sessions\**\*.jsonl
-  -> /api/remote/codex/sync
-  -> ~/.codexmux/remote/codex/**/*.jsonl
-  -> timeline
-
-Windows terminal bridge
-  scripts/windows-terminal-bridge.mjs
-  -> /api/remote/terminal/*
-  -> /windows-terminal
 ```
 
 - 터미널 I/O는 xterm.js, WebSocket, node-pty, tmux로 연결됩니다.
@@ -519,8 +442,6 @@ Windows terminal bridge
 - DIFF 패널은 tmux session cwd를 기준으로 Git 상태를 읽고, 대량 untracked 파일과 렌더링 비용을 제한합니다.
 - 서버와 Next.js API route의 공유 상태는 `globalThis` singleton으로 유지합니다.
 - 전용 tmux socket인 `codexmux`를 사용하므로 사용자의 기존 tmux 세션과 분리됩니다.
-- Windows companion sync는 원본 Windows Codex JSONL을 수정하지 않고 서버에 복사본을 저장합니다.
-- Windows terminal bridge는 서버가 Windows 기기로 inbound 접속하지 않고, Windows sidecar의 outbound poll/post와 browser WebSocket fanout으로 별도 `pwsh` session을 제어합니다.
 
 관련 문서:
 
@@ -539,7 +460,6 @@ Windows terminal bridge
 | [docs/STYLE.md](docs/STYLE.md) | theme와 color 사용 규칙 |
 | [docs/ELECTRON.md](docs/ELECTRON.md) | Electron desktop app 개발과 패키징 |
 | [docs/ANDROID.md](docs/ANDROID.md) | Android Capacitor app 개발, 앱 정보/재시작, 빌드 |
-| [docs/WINDOWS.md](docs/WINDOWS.md) | Windows Codex CLI JSONL 동기화, terminal bridge, source filter, Scheduled Task 운영 |
 | [docs/FOLLOW-UP.md](docs/FOLLOW-UP.md) | 릴리스 전 확인과 post-MVP 백로그 |
 | [docs/operations/](docs/operations/) | 배포와 smoke test 후 운영 handoff |
 
@@ -573,7 +493,7 @@ Open:
 http://localhost:8122
 ```
 
-Requirements: Node.js 20 or newer and tmux. Server execution is supported on macOS and Linux. Windows 11 is supported as a companion client that syncs `pwsh` Codex CLI JSONL timelines to a running codexmux server and can run a separate `pwsh` terminal bridge.
+Requirements: Node.js 20 or newer and tmux. Server execution is supported on macOS and Linux.
 
 ### Server Options
 
@@ -761,68 +681,6 @@ Expected prerequisites:
 
 The app automatically connects to the saved server or the default Tailscale server. Before navigation it probes `/api/health` and separates HTTPS, HTTP, network, and timeout failures so the launcher can return to retry or server-change flows. The launcher supports recent servers, server changes, retry flow after connection failures, app info, and app restart. After connecting to the server, the mobile navigation app info screen shows app versionName/versionCode, package, device, Android version, and server version, and can restart the WebView/Activity. Public pre-auth routes such as `/login` do not mount status/native notification/Web Push/service worker runtime services, which keeps fresh install and app data clear flows free of auth WebSocket or service worker redirect console noise. Launcher and mobile navigation surfaces are tuned for Korean-first typography, safe-area handling, touch pressed states, and focus-visible states. Android versioning is synchronized with `package.json` semver, and milestone versions with patch `0` drop the final `.0` in the app label. Minor feature changes increment by `0.0.1`; major feature batches increment by `0.1`. The current `package.json` version is `0.4.1`, so the next Android build/install should report `versionName=0.4.1` and `versionCode=401`. Prefer HTTPS through Tailscale Serve; HTTP is enabled only for local development paths.
 
-### Windows Client Sync And Terminal Bridge
-
-Codex CLI sessions launched from Windows 11 `pwsh` are outside the Linux server's tmux process tree, so codexmux does not attach to already-open Windows Terminal processes directly. The supported Windows paths are companion sync, which reads `%USERPROFILE%\.codex\sessions\**\*.jsonl`, sends chunks to the codexmux server, and shows those remote sessions as read-only timelines, and terminal bridge, which starts a separate `pwsh` session that `/windows-terminal` can control.
-
-PowerShell:
-
-```powershell
-$env:CMUX_URL = "http://<codexmux-server>:<port>"
-$env:CMUX_TOKEN = "<server ~/.codexmux/cli-token content>"
-corepack pnpm windows:codex-sync
-```
-
-For long-running operation, install the current-user Scheduled Task wrapper:
-
-```powershell
-.\scripts\windows-codex-sync-task.ps1 `
-  -Action Install `
-  -Server "http://<codexmux-server>:8122" `
-  -Token "<server ~/.codexmux/cli-token content>" `
-  -SourceId "win11-main" `
-  -RunNow
-```
-
-Example with explicit options:
-
-```powershell
-node .\scripts\windows-codex-sync.mjs `
-  --server http://100.x.y.z:8122 `
-  --token-file "$env:USERPROFILE\.codexmux\cli-token" `
-  --source-id win11-main `
-  --shell pwsh
-```
-
-Run the terminal bridge when you want to control a Windows `pwsh` from the codexmux UI:
-
-```powershell
-corepack pnpm windows:terminal-bridge -- `
-  --server http://100.x.y.z:8122 `
-  --token-file "$env:USERPROFILE\.codexmux\cli-token" `
-  --source-id win11-main `
-  --shell pwsh
-```
-
-Open:
-
-```text
-http://<codexmux-server>:8122/windows-terminal?sourceId=win11-main
-```
-
-- Sync endpoint: `POST /api/remote/codex/sync`
-- Terminal bridge endpoints: `POST /api/remote/terminal/register`, `GET /api/remote/terminal/commands`, `POST /api/remote/terminal/output`, browser WebSocket `/api/remote/terminal`
-- Auth: `x-cmux-token`
-- Server storage: `~/.codexmux/remote/codex/{sourceId}/{sessionId}.jsonl`
-- UI behavior: remote sessions appear with a `HOST / pwsh` badge, Windows source summary, and all/local/Windows/source filters. Sources with a registered bridge can open a separate Windows terminal page.
-- Scan behavior: after the startup full scan, hot scans check today's/yesterday's date dirs and recently active files, with a full scan every 60 seconds by default
-- Diagnostics: use `--once --dry-run` to inspect pending uploads and scan summary without sending chunks
-- Operations: use `scripts/windows-codex-sync-task.ps1` to install a current-user Scheduled Task for login-time sync
-- Limitation: terminal bridge controls the separate shell it starts; it does not attach to an external Codex CLI process the user already started manually in Windows Terminal
-- If `Missing script: windows:terminal-bridge` appears, the Windows checkout has not received the updated `package.json` yet or the command was not run from the repo root. Pull the latest commit, then check `node -p "require('./package.json').scripts['windows:terminal-bridge']"` and `Test-Path .\scripts\windows-terminal-bridge.mjs`.
-
-See [docs/WINDOWS.md](docs/WINDOWS.md) for all options and troubleshooting.
-
 ### Tailscale
 
 Run codexmux on a Tailscale-accessible interface:
@@ -859,7 +717,6 @@ On iPad, use Safari and add codexmux to the Home Screen. A native iPadOS app is 
 - Codex CLI-compatible input, including `Ctrl+D` EOF delivery from terminal and Codex input focus
 - Live timeline from Codex JSONL logs
 - PWA, iPad Safari, Android app, Web Push, foreground reconnect, input draft preservation, and terminal preview while CODEX is checking
-- Windows client sync and terminal bridge for Codex CLI JSONL timelines and separately bridged `pwsh` control
 - Stable timeline entry ids and duplicate suppression across reconnects and paired Codex records
 - Notification controls for task-complete toast, system notifications, and completion sound
 - Git status, diff, history, fetch, pull, and push flows
@@ -888,7 +745,6 @@ Playwright is included as developer tooling for browser UI regression checks. On
 | [docs/STYLE.md](docs/STYLE.md) | Theme and color rules |
 | [docs/ELECTRON.md](docs/ELECTRON.md) | Electron desktop development and packaging |
 | [docs/ANDROID.md](docs/ANDROID.md) | Android Capacitor development, app info/restart, and build |
-| [docs/WINDOWS.md](docs/WINDOWS.md) | Windows Codex CLI JSONL sync, terminal bridge, source filters, and Scheduled Task operation |
 | [docs/FOLLOW-UP.md](docs/FOLLOW-UP.md) | Release checks and post-MVP backlog |
 | [docs/operations/](docs/operations/) | Deployment and smoke-test handoffs |
 
@@ -907,7 +763,7 @@ To reset only the password, remove these fields from `config.json` and restart:
 
 Deleting the whole `config.json` also resets app settings such as locale, theme, network access, and Codex options.
 
-The app stores its own state in `~/.codexmux/` and reads Codex CLI JSONL sessions from `~/.codex/sessions/`. Windows companion sync stores copied remote JSONL files under `~/.codexmux/remote/codex/` and does not modify the original Windows Codex session files. Windows terminal bridge source, command queue, and recent output state live only in server process memory and are restored when the Windows bridge registers again after a server restart.
+The app stores its own state in `~/.codexmux/` and reads Codex CLI JSONL sessions from `~/.codex/sessions/`. Data left by older builds under `~/.codexmux/remote/codex/` is ignored by current codexmux versions and can be deleted manually without affecting local app state or original `~/.codex/sessions/` files.
 
 ## 라이선스
 
