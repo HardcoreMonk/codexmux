@@ -21,6 +21,7 @@ StatusManager
   ├─ status-state-machine reducer로 상태 전이 판정
   ├─ status-session-mapping으로 session id/completion key 정규화
   ├─ status-notification-policy로 hook notification 처리 여부 판정
+  ├─ live Codex pane capture로 permission/interrupted 입력 프롬프트 보정
   ├─ layout.json에 cliState/session metadata 저장
   ├─ /api/status WebSocket broadcast
   └─ review/input 상태에서 toast/native/Web Push 알림 전송
@@ -104,6 +105,7 @@ process로 직접 잡히지 않는 세션을 CODEX 패널에 동기화하기 위
 - background Web Push는 `StatusManager`가 전송한다.
 - `soundOnCompleteEnabled=false`이면 작업 완료 toast sound를 재생하지 않고, native/background system notification도 silent로 요청한다.
 - 현재 Codex CLI permission prompt는 hook event로 직접 전달되지 않으므로, codexmux는 live Codex pane capture에서 prompt 선택지를 감지해 내부 `notification(permission_prompt)` 이벤트처럼 `needs-input`으로 전환한다. 일반 작업 완료 notification은 review flow를 따른다.
+- Codex CLI가 `Conversation interrupted - tell the model what to do differently` 입력 프롬프트에 멈췄지만 JSONL에 `turn_aborted` 또는 `[Request interrupted by user` marker를 남기지 않는 경우, `StatusManager`는 live pane capture를 보정 신호로 사용해 stale `busy`를 `idle`로 되돌리고 `currentAction`을 비운다.
 - `corepack pnpm smoke:permission`은 임시 서버와 tmux prompt를 사용해 `notification` hook의 `needs-input` 전환, permission option parsing, stdin 선택 전달, `status:ack-notification` 후 `busy` 복귀를 검증한다.
 
 ## event model

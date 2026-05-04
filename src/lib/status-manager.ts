@@ -14,6 +14,7 @@ import { createRateLimitsWatcher } from '@/lib/rate-limits-watcher';
 import { createLogger } from '@/lib/logger';
 import { capturePaneAtWidth } from '@/lib/capture-at-width';
 import { parsePermissionOptions } from '@/lib/permission-prompt';
+import { hasCodexInterruptedPrompt } from '@/lib/codex-pane-state';
 import type { IPaneInfo } from '@/lib/tmux';
 import type { TCliState, TToolName } from '@/types/timeline';
 import type { ICurrentAction, TTerminalStatus, ITabStatusEntry, IClientTabStatusEntry, IStatusUpdateMessage, IRateLimitsData, TEventName, ILastEvent } from '@/types/status';
@@ -508,6 +509,12 @@ class StatusManager {
         if (provider?.id === 'codex' && detected.jsonlPath) {
           this.startJsonlWatch(tab.id, detected.jsonlPath);
         }
+        if (provider?.id === 'codex' && detected.running) {
+          const pendingRecovery = await this.recoverPendingInputFromPane(tab.id, { silent: true });
+          if (!pendingRecovery.recovered) {
+            await this.recoverInterruptedPromptFromPane(tab.id, { silent: true });
+          }
+        }
         if (cliState === 'unknown') {
           this.resolveUnknown(tab.id).catch((err) => log.warn('resolveUnknown failed: %s', err));
         }
@@ -840,8 +847,11 @@ class StatusManager {
         const pendingInputRecovery = provider?.id === 'codex' && refreshed.running
           ? await this.recoverPendingInputFromPane(tab.id)
           : { recovered: false };
+        const interruptedPromptRecovery = provider?.id === 'codex' && refreshed.running && !pendingInputRecovery.recovered
+          ? await this.recoverInterruptedPromptFromPane(tab.id)
+          : { recovered: false };
 
-        if (pendingInputRecovery.recovered) {
+        if (pendingInputRecovery.recovered || interruptedPromptRecovery.recovered) {
           broadcastUpdateCount++;
         } else if (terminalChanged || processChanged || processRetryNeeded || messageChanged || panelTypeChanged || summaryChanged || metadataChanged || codexStateChanged) {
           this.broadcastUpdate(tab.id, existing);
@@ -1104,6 +1114,43 @@ class StatusManager {
 
     hookLog.debug({ tabId, seq, options: options.length }, 'recover pending→needs-input from pane capture');
     this.applyCliState(tabId, entry, 'needs-input', { silent: opts.silent });
+    this.persistToLayout(entry);
+    this.broadcastUpdate(tabId, entry);
+    return { recovered: true };
+  }
+
+  private async recoverInterruptedPromptFromPane(
+    tabId: string,
+    opts: { silent?: boolean } = {},
+  ): Promise<{ recovered: boolean; reason?: string }> {
+    const entry = this.tabs.get(tabId);
+    if (!entry) return { recovered: false, reason: 'no-entry' };
+    if (entry.cliState !== 'unknown' && entry.cliState !== 'busy') {
+      return { recovered: false, reason: 'not-pending-state' };
+    }
+    if (getProviderByPanelType(entry.panelType)?.id !== 'codex') {
+      return { recovered: false, reason: 'not-codex' };
+    }
+
+    const content = await capturePaneAtWidth(entry.tmuxSession, 120, 50).catch((err) => {
+      log.warn('recoverInterruptedPromptFromPane capture failed: %s', err);
+      return null;
+    });
+    if (!content) return { recovered: false, reason: 'capture-failed' };
+    if (!hasCodexInterruptedPrompt(content)) return { recovered: false, reason: 'not-interrupted-prompt' };
+
+    const now = Date.now();
+    const seq = (entry.eventSeq ?? 0) + 1;
+    entry.eventSeq = seq;
+    entry.lastEvent = { name: 'interrupt', at: now, seq };
+    entry.lastInterruptTs = now;
+    entry.currentAction = null;
+
+    hookLog.debug({ tabId, seq }, 'recover busy→idle from Codex interrupted prompt');
+    this.applyCliState(tabId, entry, 'idle', {
+      silent: opts.silent ?? true,
+      skipHistory: true,
+    });
     this.persistToLayout(entry);
     this.broadcastUpdate(tabId, entry);
     return { recovered: true };
@@ -1507,12 +1554,17 @@ class StatusManager {
       const recovery = await this.recoverPendingInputFromPane(tabId);
       if (recovery.recovered) {
         changed = false;
-      } else if (entry.cliState === 'busy' && check.currentAction?.toolName) {
-        setTimeout(() => {
-          this.recoverPendingInputFromPane(tabId).catch((err) => {
-            hookLog.debug({ tabId, err }, 'delayed permission prompt recovery failed');
-          });
-        }, 750);
+      } else {
+        const interruptedRecovery = await this.recoverInterruptedPromptFromPane(tabId);
+        if (interruptedRecovery.recovered) {
+          changed = false;
+        } else if (entry.cliState === 'busy' && check.currentAction?.toolName) {
+          setTimeout(() => {
+            this.recoverPendingInputFromPane(tabId).catch((err) => {
+              hookLog.debug({ tabId, err }, 'delayed permission prompt recovery failed');
+            });
+          }, 750);
+        }
       }
     }
 
