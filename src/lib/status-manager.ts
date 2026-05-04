@@ -1091,7 +1091,7 @@ class StatusManager {
   ): Promise<{ recovered: boolean; reason?: string }> {
     const entry = this.tabs.get(tabId);
     if (!entry) return { recovered: false, reason: 'no-entry' };
-    if (entry.cliState !== 'unknown' && entry.cliState !== 'busy') {
+    if (entry.cliState !== 'unknown' && entry.cliState !== 'busy' && entry.cliState !== 'idle') {
       return { recovered: false, reason: 'not-pending-state' };
     }
     if (getProviderByPanelType(entry.panelType)?.id !== 'codex') {
