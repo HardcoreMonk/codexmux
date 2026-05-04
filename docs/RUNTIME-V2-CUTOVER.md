@@ -129,6 +129,7 @@ Work:
 
 - Implement idempotent JSON-to-SQLite migration with dry-run output.
 - Add shadow read comparison: legacy JSON projection vs SQLite projection.
+- Current first slice: `corepack pnpm smoke:runtime-v2:storage-shadow`가 legacy JSON에 mirror된 `runtimeVersion: 2` tab과 SQLite runtime layout projection을 비교한다. 이 비교는 v2 tab subset의 상대 순서를 사용하며 cwd 값을 출력하지 않는다.
 - Add dual-write only where operations can preserve ordering and transaction semantics; otherwise keep v1 write and v2 shadow import.
 - Add backup/export command for `state.db` and JSON stores.
 - Add migration tests with malformed layout, missing cwd, deleted workspace, stale session names, grouped workspaces, and split panes.

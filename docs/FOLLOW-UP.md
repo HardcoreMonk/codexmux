@@ -50,6 +50,7 @@
 | Electron build/attach/runtime v2/package | 통과 | `corepack pnpm build:electron`, `corepack pnpm smoke:electron:attach`, `corepack pnpm smoke:electron:runtime-v2`, initial + 2회 page reload/reconnect `/api/v2/terminal` marker output, Mac M1 `pnpm pack:electron:dev`, arm64/x64 DMG/zip 생성, native binding/arch/Info.plist/`hdiutil verify` 통과 |
 | runtime v2 phase2 gate | 통과 | `corepack pnpm smoke:runtime-v2:phase2` browser reload/server restart/mode-off rollback, Electron page-context `/api/v2/terminal` cookie-auth attach/output/reconnect |
 | runtime v2 phase1 shadow | 관찰 중 | live `codexmux.service`에 `CODEXMUX_RUNTIME_V2=1`, surface modes `off` drop-in 적용. `corepack pnpm smoke:runtime-v2`, live target smoke, `/api/v2/runtime/health`, `/api/debug/perf` worker counters 통과. 24시간 restart-loop 부재 관찰은 남음 |
+| runtime v2 storage shadow | 부분 통과 | `corepack pnpm smoke:runtime-v2:storage-shadow`, legacy JSON에 mirror된 `runtimeVersion: 2` tab과 SQLite runtime layout projection read-only compare 통과. full migration과 v1 tab import는 남음 |
 | Android debug install | 통과 | `versionName=0.3.3`, `versionCode=303`, `MainActivity` |
 | Android Tailscale failure recovery | 통과 | `corepack pnpm smoke:android:recovery`, network/HTTP 4xx/SSL 실패 후 launcher 복귀와 `/login` 재연결, blocking console/logcat 0 |
 | Android foreground reconnect | 통과 | `corepack pnpm smoke:android:foreground`, 2회 background/foreground, `triggerEvent`/TypeError 0, blocking console/logcat 0 |
@@ -69,7 +70,7 @@ P0/P1/P2/P3 후속 상태:
 - P0 남음: 자동 개발로 처리 가능한 code/runtime blocking 항목은 없음. 실제 기기/OS가 필요한 장시간/외부 smoke는 P1 운영 검증으로 남긴다.
 - P1 완료: Android foreground/recovery/runtime v2 smoke, app info/native restart smoke, Electron attach/runtime v2 smoke, Electron packaged `.app` launch hook for smoke scripts, PWA/iPad readiness smoke, permission prompt smoke, Windows companion temp upload smoke, Windows 실기기 sync/query smoke, Windows terminal bridge 개발/배포, package scripts.
 - P1 남음: Android logged-in session 수십 분 background/reconnect와 input draft 보존, active terminal WebSocket settle 증거, 실제 Codex CLI permission prompt 재현 smoke, macOS packaged `.app` Finder 실행/Gatekeeper UX, Windows terminal bridge 실기기 입력/출력/resize smoke, Windows Scheduled Task 장시간 restart/log/token 권한 관찰, 실제 iPad Safari/Home Screen 장시간 foreground reconnect smoke.
-- P2 남음: packaged Electron foreground/reconnect를 Mac 화면 세션에서 evidence로 보존, runtime v2 shadow 24시간 worker restart-loop 부재 관찰, runtime v2 timeline/status/storage parity surface별 cutover evidence, release workflow/CI에서 선택 실행할 Android/Electron/browser reconnect smoke artifact 보존.
+- P2 남음: packaged Electron foreground/reconnect를 Mac 화면 세션에서 evidence로 보존, runtime v2 shadow 24시간 worker restart-loop 부재 관찰, runtime v2 storage full JSON-to-SQLite migration/import/backup, timeline/status parity surface별 cutover evidence, release workflow/CI에서 선택 실행할 Android/Electron/browser reconnect smoke artifact 보존.
 - P3 남음: Android release signing/AAB 운영, approval queue, lifecycle control UI, perf tuning.
 
 1. 장시간 Codex smoke test: 새 tab 생성, prompt 실행, tool call과 reasoning summary 표시, 상태 전이 확인.

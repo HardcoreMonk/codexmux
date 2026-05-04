@@ -94,6 +94,17 @@ corepack pnpm smoke:runtime-v2:phase2
 이 gate는 temp HOME/DB 서버에서 cookie login, workspace 생성, runtime v2 plain terminal
 tab 생성, browser reload reattach, server restart reattach, terminal mode rollback을 확인한다.
 
+Storage shadow compare smoke:
+
+```bash
+corepack pnpm smoke:runtime-v2:storage-shadow
+```
+
+이 smoke는 temp HOME/DB 서버에서 legacy workspace/layout route로 workspace를 만들고 runtime
+v2 plain terminal tab을 생성한 뒤, legacy JSON layout에 mirror된 `runtimeVersion: 2` tab과
+SQLite runtime layout projection을 read-only로 비교한다. 이 first slice는 v2 tab subset의
+상대 순서를 비교하며, cwd 값은 mismatch output에 직접 출력하지 않는다.
+
 `smoke:runtime-v2:phase2`, `smoke:android:runtime-v2`, `smoke:electron:runtime-v2`는 각각
 임시 서버와 Next.js dev runtime을 띄운다. 같은 checkout에서 병렬 실행하면 Next dev lock
 때문에 `Another next dev server is already running`으로 실패할 수 있으므로 순차 실행한다.

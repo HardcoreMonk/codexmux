@@ -82,3 +82,10 @@ Runtime v2 can only become default for a surface when every row in that surface 
 - rollback behavior verified with `CODEXMUX_RUNTIME_*_V2_MODE=off`
 - no sensitive content in `/api/debug/perf`
 - no worker restart loop and no startup health failure spike in `services.runtimeWorkers`
+
+## 2026-05-04 Storage Shadow Evidence
+
+- `corepack pnpm smoke:runtime-v2:storage-shadow`를 추가했다.
+- 범위는 Phase 2 `new-tabs` flow가 legacy JSON layout에 mirror한 `runtimeVersion: 2` tab과 SQLite runtime layout projection의 read-only compare다.
+- 이 first slice는 full JSON-to-SQLite migration, workspace group/order/sidebar migration, split pane ownership, legacy `runtimeVersion: 1` tab import를 완료한 것이 아니다.
+- mismatch output은 tab id, field, boolean/order 등만 포함하고 cwd 값은 직접 출력하지 않는다.
