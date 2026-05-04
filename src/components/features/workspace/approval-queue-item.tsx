@@ -9,6 +9,7 @@ import {
   cleanApprovalOptionLabel,
   getApprovalQueueFallbackText,
   hasUsableApprovalOptions,
+  shouldRetryApprovalOptions,
 } from '@/lib/approval-queue';
 import { cn } from '@/lib/utils';
 
@@ -27,14 +28,26 @@ interface IApprovalQueueItemProps {
 }
 
 const fetchPermissionOptions = async (sessionName: string): Promise<string[]> => {
-  try {
-    const res = await fetch(`/api/tmux/permission-options?session=${encodeURIComponent(sessionName)}`);
-    if (!res.ok) return [];
-    const data = await res.json() as { options?: unknown };
-    return Array.isArray(data.options) ? data.options.filter((option): option is string => typeof option === 'string') : [];
-  } catch {
-    return [];
+  const maxAttempts = 12;
+  const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    let options: string[] = [];
+    try {
+      const res = await fetch(`/api/tmux/permission-options?session=${encodeURIComponent(sessionName)}`);
+      if (res.ok) {
+        const data = await res.json() as { options?: unknown };
+        options = Array.isArray(data.options) ? data.options.filter((option): option is string => typeof option === 'string') : [];
+      }
+    } catch {
+      options = [];
+    }
+
+    if (!shouldRetryApprovalOptions({ options, attempt, maxAttempts })) return options;
+    await delay(300);
   }
+
+  return [];
 };
 
 const sendSelection = async (sessionName: string, optionIndex: number): Promise<boolean> => {

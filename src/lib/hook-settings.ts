@@ -14,7 +14,8 @@ const HOOK_SCRIPT = path.join(BASE_DIR, 'status-hook.sh');
 export const HOOK_SETTINGS_PATH = HOOKS_FILE;
 
 const HOOK_SCRIPT_CONTENT = `#!/bin/sh
-EVENT="\${1:-poll}"
+RAW_EVENT="\${1:-poll}"
+EVENT="$RAW_EVENT"
 PORT_FILE="$HOME/.codexmux/port"
 TOKEN_FILE="$HOME/.codexmux/cli-token"
 [ -f "$PORT_FILE" ] || exit 0
@@ -24,7 +25,35 @@ TOKEN=$(cat "$TOKEN_FILE")
 SESSION=$(tmux display-message -p '#{session_name}' 2>/dev/null) || SESSION=""
 
 NOTIFICATION_TYPE=""
-if [ "$EVENT" = "notification" ]; then
+case "$RAW_EVENT" in
+  SessionStart|session-start)
+    EVENT="session-start"
+    ;;
+  UserPromptSubmit|prompt-submit)
+    EVENT="prompt-submit"
+    ;;
+  PermissionRequest|permission-request)
+    EVENT="notification"
+    NOTIFICATION_TYPE="permission_prompt"
+    ;;
+  Notification|notification)
+    EVENT="notification"
+    ;;
+  Stop|stop)
+    EVENT="stop"
+    ;;
+  StopFailure|stop-failure)
+    EVENT="stop-failure"
+    ;;
+  PreCompact|pre-compact)
+    EVENT="pre-compact"
+    ;;
+  PostCompact|post-compact)
+    EVENT="post-compact"
+    ;;
+esac
+
+if [ "$EVENT" = "notification" ] && [ -z "$NOTIFICATION_TYPE" ]; then
   NOTIFICATION_TYPE=$(sed -n 's/.*"notification_type"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p')
 fi
 
@@ -51,15 +80,11 @@ const hookEntry = (event: string, timeout = 3) => [
   },
 ];
 
-const buildHookSettings = () => ({
+export const buildHookSettings = () => ({
   hooks: {
     SessionStart: hookEntry('session-start'),
     UserPromptSubmit: hookEntry('prompt-submit'),
-    Notification: hookEntry('notification'),
     Stop: hookEntry('stop'),
-    StopFailure: hookEntry('stop-failure'),
-    PreCompact: hookEntry('pre-compact'),
-    PostCompact: hookEntry('post-compact'),
   },
   statusLine: {
     type: 'command' as const,

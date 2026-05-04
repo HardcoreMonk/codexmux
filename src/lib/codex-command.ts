@@ -3,6 +3,8 @@ const THREAD_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const shellQuote = (value: string): string =>
   `'${value.replace(/'/g, `'\\''`)}'`;
 
+export const CODEXMUX_CODEX_HOOKS_CONFIG = 'hooks={path="~/.codexmux/hooks.json"}';
+
 export const isValidCodexThreadId = (id: unknown): id is string =>
   typeof id === 'string' && THREAD_ID_RE.test(id);
 
@@ -30,8 +32,10 @@ const buildCodexOptions = (options: ICodexCommandOptions = {}): string[] => {
   return parts;
 };
 
+const buildCodexGlobalOptions = (): string[] => ['-c', shellQuote(CODEXMUX_CODEX_HOOKS_CONFIG)];
+
 export const buildCodexLaunchCommand = (options: ICodexCommandOptions = {}): string => {
-  const parts = ['codex', ...buildCodexOptions(options)];
+  const parts = ['codex', ...buildCodexGlobalOptions(), ...buildCodexOptions(options)];
   return parts.join(' ');
 };
 
@@ -42,6 +46,6 @@ export const buildCodexResumeCommand = (
   if (!isValidCodexThreadId(threadId)) {
     throw new Error(`Invalid Codex thread ID format: ${threadId}`);
   }
-  const parts = ['codex', 'resume', threadId, ...buildCodexOptions(options)];
+  const parts = ['codex', ...buildCodexGlobalOptions(), 'resume', threadId, ...buildCodexOptions(options)];
   return parts.join(' ');
 };

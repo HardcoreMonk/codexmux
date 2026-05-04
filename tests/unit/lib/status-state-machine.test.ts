@@ -112,4 +112,19 @@ describe('reduceCodexState', () => {
       silent: true,
     });
   });
+
+  it('keeps pending input tabs in needs-input while Codex is waiting', () => {
+    const decision = reduceCodexState({
+      currentState: 'needs-input',
+      running: true,
+      hasJsonlPath: true,
+      idle: false,
+      hasCompletionSnippet: false,
+    });
+
+    expect(decision).toEqual({
+      nextState: 'needs-input',
+      changed: false,
+    });
+  });
 });

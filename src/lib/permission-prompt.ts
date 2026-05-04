@@ -24,11 +24,15 @@ const leadingSpaces = (line: string): number => line.match(/^\s*/)?.[0].length ?
 // - "Yes, and don't ask: <cmd>"처럼 "again for" 구간이 유실된 경우 canonical 형태로 복원
 //   (이미 canonical한 텍스트는 건드리지 않아 원본 따옴표 문자를 보존)
 const DAMAGED_DONT_ASK_RE = /^(Yes,\s*and\s+don[\u2019']?t\s+ask)\s*:\s*(.+)$/;
+const DAMAGED_CODEX_NO_TELL_RE = /^.{0,2}No,?.*(?:tell|Codex|differently)/i;
+const DAMAGED_NO_RE = /^.{0,2}No(?:[,\s]|$)/i;
 
 const normalizeOption = (text: string): string => {
   const damaged = text.match(DAMAGED_DONT_ASK_RE);
   if (damaged) return `${damaged[1]} again for: ${damaged[2].trim()}`;
   if (/^Yes(?![,\s]|$)/.test(text)) return 'Yes';
+  if (DAMAGED_CODEX_NO_TELL_RE.test(text)) return 'No, and tell Codex what to do differently';
+  if (DAMAGED_NO_RE.test(text)) return 'No';
   if (/^No(?![,\s]|$)/.test(text)) return 'No';
   return text;
 };

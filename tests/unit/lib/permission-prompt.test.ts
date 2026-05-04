@@ -63,6 +63,24 @@ describe('parsePermissionOptions', () => {
     expect(result.focusedIndex).toBe(0);
   });
 
+  it('Codex warning 출력이 끼어든 No 옵션을 복원한다', () => {
+    const pane = [
+      'Would you like to run the following command?',
+      '  1. Yes, proceed (y)',
+      "  2. Yes, and don't ask again for commands that start with `touch /tmp/codexmux-live-approval-smoke-1` (p)",
+      '  3.tNo,mandetellpCodex whatstordordifferentlyn(esc)',
+      'Press enter to confirm or esc to cancel',
+    ].join('\n');
+
+    const result = parsePermissionOptions(pane);
+
+    expect(result.options).toEqual([
+      '1. Yes, proceed (y)',
+      "2. Yes, and don't ask again for commands that start with `touch /tmp/codexmux-live-approval-smoke-1` (p)",
+      '3. No, and tell Codex what to do differently',
+    ]);
+  });
+
   it('terminal soft-wrap으로 다음 줄로 이어진 긴 옵션을 합친다', () => {
     const pane = [
       ' Do you want to proceed?',

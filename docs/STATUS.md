@@ -103,7 +103,7 @@ process로 직접 잡히지 않는 세션을 CODEX 패널에 동기화하기 위
 - Electron/native notification은 `use-native-notification`이 처리한다.
 - background Web Push는 `StatusManager`가 전송한다.
 - `soundOnCompleteEnabled=false`이면 작업 완료 toast sound를 재생하지 않고, native/background system notification도 silent로 요청한다.
-- permission/input 요청성 notification은 `needs-input`으로 전환하고, 일반 작업 완료 notification은 review flow를 따른다.
+- 현재 Codex CLI permission prompt는 hook event로 직접 전달되지 않으므로, codexmux는 live Codex pane capture에서 prompt 선택지를 감지해 내부 `notification(permission_prompt)` 이벤트처럼 `needs-input`으로 전환한다. 일반 작업 완료 notification은 review flow를 따른다.
 - `corepack pnpm smoke:permission`은 임시 서버와 tmux prompt를 사용해 `notification` hook의 `needs-input` 전환, permission option parsing, stdin 선택 전달, `status:ack-notification` 후 `busy` 복귀를 검증한다.
 
 ## event model
@@ -134,7 +134,15 @@ completion dedupe key, input 요청성 notification 판정, JSONL metadata merge
 helper가 담당한다. `StatusManager`는 tmux/process/JSONL 신호 수집, 상태 적용,
 history 저장, notification 같은 부수효과를 처리한다.
 
-Codex tab에서는 `stop` hook을 바로 `ready-for-review`로 전환하지 않는다. `stop`은
+현재 Codex hook bridge는 `SessionStart`, `UserPromptSubmit`, `Stop`을
+생성된 `~/.codexmux/hooks.json`에 등록한다. Codex tab 실행 명령은
+`-c 'hooks={path="~/.codexmux/hooks.json"}'`를 포함해 앱 소유 hook 설정을 명시적으로
+로드한다. Codex CLI `0.128.0` 기준 permission request 전용 hook은 제공되지 않으므로,
+permission prompt는 pane capture 기반 `recoverPendingInputFromPane` 경로에서 합성
+`notification(permission_prompt)`로 복구한다. CLI 자체 permission prompt와 사용자의 선택
+경로는 Codex가 계속 소유한다.
+
+Codex tab에서는 legacy `stop` hook을 바로 `ready-for-review`로 전환하지 않는다. `stop`은
 JSONL 재확인을 예약하는 신호이며, 실제 완료 판정은 같은 turn의
 `event_msg.payload.type="task_complete"` 기록이 확인될 때만 한다. `StopFailure`는
 `stop-failure`로 전달되며 상태 전이를 만들지 않는다.
@@ -144,7 +152,7 @@ history 저장은 `sessionId:turnId` 기준으로 dedupe되어, 같은 Codex tur
 poll, stop-hook 재확인 경로에서 여러 번 관측되어도 완료 알림과 history가 중복 생성되지
 않는다. turn id를 확인할 수 없는 legacy 경로는 기존 상태 전이 동작을 유지한다.
 
-생성된 hook/statusline bridge file도 event를 POST할 수 있지만 Codex 상태의 주 경로는 process detection, JSONL metadata, terminal state, polling이다.
+생성된 hook/statusline bridge file도 event를 POST할 수 있지만 Codex 상태의 주 경로는 process detection, JSONL metadata, terminal state, polling이다. Permission prompt처럼 JSONL completion 전에 즉시 사용자 입력이 필요한 경로는 pane capture recovery가 hook 공백을 보완하는 신호다.
 
 ## JSONL metadata
 

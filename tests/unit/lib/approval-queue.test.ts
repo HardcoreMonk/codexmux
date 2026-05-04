@@ -4,6 +4,7 @@ import {
   cleanApprovalOptionLabel,
   getApprovalQueueFallbackText,
   hasUsableApprovalOptions,
+  shouldRetryApprovalOptions,
 } from '@/lib/approval-queue';
 
 describe('approval queue helpers', () => {
@@ -16,6 +17,12 @@ describe('approval queue helpers', () => {
     expect(hasUsableApprovalOptions(['1. Yes'])).toBe(true);
     expect(hasUsableApprovalOptions(['', '   '])).toBe(false);
     expect(hasUsableApprovalOptions([])).toBe(false);
+  });
+
+  it('retries empty option fetches before the final attempt', () => {
+    expect(shouldRetryApprovalOptions({ options: [], attempt: 0, maxAttempts: 3 })).toBe(true);
+    expect(shouldRetryApprovalOptions({ options: ['1. Yes'], attempt: 0, maxAttempts: 3 })).toBe(false);
+    expect(shouldRetryApprovalOptions({ options: [], attempt: 2, maxAttempts: 3 })).toBe(false);
   });
 
   it('uses last prompt text before falling back to tab name', () => {

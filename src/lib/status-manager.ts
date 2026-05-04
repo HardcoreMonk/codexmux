@@ -837,7 +837,13 @@ class StatusManager {
           }
         }
 
-        if (terminalChanged || processChanged || processRetryNeeded || messageChanged || panelTypeChanged || summaryChanged || metadataChanged || codexStateChanged) {
+        const pendingInputRecovery = provider?.id === 'codex' && refreshed.running
+          ? await this.recoverPendingInputFromPane(tab.id)
+          : { recovered: false };
+
+        if (pendingInputRecovery.recovered) {
+          broadcastUpdateCount++;
+        } else if (terminalChanged || processChanged || processRetryNeeded || messageChanged || panelTypeChanged || summaryChanged || metadataChanged || codexStateChanged) {
           this.broadcastUpdate(tab.id, existing);
           broadcastUpdateCount++;
         }
@@ -1069,10 +1075,18 @@ class StatusManager {
     this.broadcastUpdate(tabId, entry);
   }
 
-  async recoverUnknownIfPending(tabId: string): Promise<{ recovered: boolean; reason?: string }> {
+  private async recoverPendingInputFromPane(
+    tabId: string,
+    opts: { silent?: boolean } = {},
+  ): Promise<{ recovered: boolean; reason?: string }> {
     const entry = this.tabs.get(tabId);
     if (!entry) return { recovered: false, reason: 'no-entry' };
-    if (entry.cliState !== 'unknown') return { recovered: false, reason: 'not-unknown' };
+    if (entry.cliState !== 'unknown' && entry.cliState !== 'busy') {
+      return { recovered: false, reason: 'not-pending-state' };
+    }
+    if (getProviderByPanelType(entry.panelType)?.id !== 'codex') {
+      return { recovered: false, reason: 'not-codex' };
+    }
 
     const content = await capturePaneAtWidth(entry.tmuxSession, 120, 50).catch((err) => {
       log.warn('recoverUnknownIfPending capture failed: %s', err);
@@ -1088,11 +1102,18 @@ class StatusManager {
     entry.eventSeq = seq;
     entry.lastEvent = { name: 'notification', at: now, seq };
 
-    hookLog.debug({ tabId, seq, options: options.length }, 'recover unknown→needs-input from pane capture');
-    this.applyCliState(tabId, entry, 'needs-input', { silent: true });
+    hookLog.debug({ tabId, seq, options: options.length }, 'recover pending→needs-input from pane capture');
+    this.applyCliState(tabId, entry, 'needs-input', { silent: opts.silent });
     this.persistToLayout(entry);
     this.broadcastUpdate(tabId, entry);
     return { recovered: true };
+  }
+
+  async recoverUnknownIfPending(tabId: string): Promise<{ recovered: boolean; reason?: string }> {
+    const entry = this.tabs.get(tabId);
+    if (!entry) return { recovered: false, reason: 'no-entry' };
+    if (entry.cliState !== 'unknown') return { recovered: false, reason: 'not-unknown' };
+    return this.recoverPendingInputFromPane(tabId, { silent: true });
   }
 
   private findTabIdBySession(tmuxSession: string): string | undefined {
@@ -1483,6 +1504,16 @@ class StatusManager {
     if (isCodex) {
       entry.jsonlPath = jsonlPath;
       changed = this.reconcileCodexState(tabId, entry, { ...check, jsonlPath, running: true }) || changed;
+      const recovery = await this.recoverPendingInputFromPane(tabId);
+      if (recovery.recovered) {
+        changed = false;
+      } else if (entry.cliState === 'busy' && check.currentAction?.toolName) {
+        setTimeout(() => {
+          this.recoverPendingInputFromPane(tabId).catch((err) => {
+            hookLog.debug({ tabId, err }, 'delayed permission prompt recovery failed');
+          });
+        }, 750);
+      }
     }
 
     if (changed) {

@@ -39,6 +39,7 @@
 - Linux 운영: `systemd --user` 서비스 등록, linger 설정, `HOST=localhost,tailscale,192.168.0.0/16`/`PORT=8122` 운영 문서화.
 - permission prompt smoke 자동화: 임시 server/HOME/tmux tab에서 `needs-input` push, option parsing, stdin 선택, ack 이후 `busy` 복귀 검증.
 - 전역 approval queue 1차: notification panel의 `needs-input` 항목에서 Codex permission prompt 선택지를 조회하고 바로 선택/ack 처리한다. 선택지 조회/전송 실패 시 기존 tab 이동 fallback을 유지한다.
+- 실제 Codex CLI permission prompt live smoke: live tab에서 `read-only` sandbox 실패로 실제 Codex CLI approval prompt를 띄우고, pane capture recovery로 `needs-input` 전환, notification panel `No` 선택, ack 후 `busy` 복귀, denied command 미실행을 확인했다.
 
 ## 릴리스 전 확인
 
@@ -123,11 +124,11 @@ P0/P1/P2/P3 후속 상태:
 - P1 남음: 자동 개발로 처리 가능한 platform smoke 항목은 없음.
 - P2 완료: runtime v2 phase2 gate, Electron/Android runtime v2 reconnect smoke, browser reconnect DOM smoke, live terminal `new-tabs` enable을 현재 코드 기준으로 확인했다.
 - P2 남음: runtime v2 shadow/new-tabs/default 24시간 worker restart-loop 부재 관찰, release workflow/CI에서 선택 실행할 Android/Electron/browser reconnect smoke artifact 보존. 24시간 종료 판단은 2026-05-06 01:42 KST 이후에 가능하다.
-- P3 진행: storage `default` live mode로 전환했고 dry-run, backup, import, write, default-read, shadow preflight와 initial rollback window canary를 통과했다. Android release signing/AAB는 로컬 keystore 권한 보정, fresh AAB build, `smoke:android:release-aab` 검증 자동화까지 완료했다. Perf snapshot baseline은 runtime v2 default 전환 뒤 2026-05-05 02:21 KST에 재수집했다. Approval queue 1차는 notification panel에서 pending permission prompt를 직접 처리하는 경로까지 구현했고 `vitest`, `smoke:permission`, `tsc`, `lint`를 통과했다.
+- P3 진행: storage `default` live mode로 전환했고 dry-run, backup, import, write, default-read, shadow preflight와 initial rollback window canary를 통과했다. Android release signing/AAB는 로컬 keystore 권한 보정, fresh AAB build, `smoke:android:release-aab` 검증 자동화까지 완료했다. Perf snapshot baseline은 runtime v2 default 전환 뒤 2026-05-05 02:21 KST에 재수집했다. Approval queue 1차는 notification panel에서 pending permission prompt를 직접 처리하는 경로까지 구현했고 `vitest`, `smoke:permission`, `tsc`, `lint`와 실제 Codex CLI permission prompt live smoke를 통과했다.
 - P3 남음: storage default 장시간 observation과 필요 시 rollback drill, lifecycle control UI, 측정 기반 perf tuning. Timeline/status는 `docs/RUNTIME-V2-CUTOVER.md`의 Phase 4/5 gate로 별도 진행한다.
 
 1. 장시간 Codex smoke test: 새 tab 생성, prompt 실행, tool call과 reasoning summary 표시, 상태 전이 확인.
-2. permission prompt smoke test: `corepack pnpm smoke:permission`으로 pane capture 기반 option parsing, inline prompt 선택, stdin 전달, `needs-input` push와 ack 후 `busy` 복귀 확인. 실제 Codex CLI permission prompt 재현은 P1 수동/기기 smoke로 남긴다.
+2. permission prompt smoke test: `corepack pnpm smoke:permission`으로 pane capture 기반 option parsing, inline prompt 선택, stdin 전달, `needs-input` push와 ack 후 `busy` 복귀 확인. 실제 Codex CLI permission prompt는 live tab에서 `read-only` sandbox 실패 prompt를 띄워 notification panel `No` 선택, ack 후 `busy` 복귀, denied command 미실행까지 확인한다.
 3. stats smoke test: `/api/stats/*` endpoint와 실제 `~/.codex/sessions` 집계 확인.
 4. daily report smoke test: `codex exec` 성공/실패, cache 재사용 확인.
 5. macOS packaging: Linux release host에서는 `corepack pnpm build:electron`까지 확인하고, `.app`/`.dmg` 산출물은 macOS host에서 `corepack pnpm pack:electron:dev`로 생성한다.
@@ -157,7 +158,7 @@ P0/P1/P2/P3 후속 상태:
 
 ### Approval workflow
 
-- approval queue 1차는 notification panel의 `needs-input` section에서 Codex permission prompt 선택지를 직접 처리한다. 다음 단계는 실제 Codex CLI permission prompt 수동 smoke와 richer approval type 분류다.
+- approval queue 1차는 notification panel의 `needs-input` section에서 Codex permission prompt 선택지를 직접 처리한다. 실제 Codex CLI permission prompt live smoke는 통과했으며, 다음 단계는 richer approval type 분류다.
 - command/file/permission approval 종류별 UI 구분.
 - 모바일 push에서 approval target으로 deep link.
 - pane capture 실패 시 terminal fallback 안내 개선.

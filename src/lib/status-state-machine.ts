@@ -85,6 +85,7 @@ export const reduceCodexState = ({
   }
 
   if (!hasJsonlPath) {
+    if (currentState === 'needs-input') return unchanged(currentState);
     if (currentState !== 'busy') {
       return {
         nextState: 'busy',
@@ -105,6 +106,10 @@ export const reduceCodexState = ({
         skipHistory: !fromActiveTurn,
       };
     }
+    return unchanged(currentState);
+  }
+
+  if (currentState === 'needs-input' && !idle) {
     return unchanged(currentState);
   }
 
