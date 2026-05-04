@@ -1,0 +1,24 @@
+#!/usr/bin/env tsx
+import os from 'os';
+import path from 'path';
+import { createRuntimeStorageBackup } from '@/lib/runtime/storage-backup';
+
+const main = async (): Promise<void> => {
+  const dataDir = process.env.CODEXMUX_RUNTIME_V2_STORAGE_BACKUP_DATA_DIR
+    || path.join(os.homedir(), '.codexmux');
+  const outputRoot = process.env.CODEXMUX_RUNTIME_V2_STORAGE_BACKUP_OUTPUT_DIR
+    || path.join(dataDir, 'backups');
+  const timestamp = process.env.CODEXMUX_RUNTIME_V2_STORAGE_BACKUP_TIMESTAMP;
+  const result = await createRuntimeStorageBackup({ dataDir, outputRoot, timestamp });
+  console.log(JSON.stringify({
+    ok: true,
+    backupDir: result.backupDir,
+    copiedCount: result.copied.length,
+    copied: result.copied,
+  }, null, 2));
+};
+
+main().catch((err) => {
+  console.error(err instanceof Error ? err.message : String(err));
+  process.exit(1);
+});

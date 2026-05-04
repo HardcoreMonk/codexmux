@@ -38,4 +38,3 @@ Smoke output:
 
 - Full legacy `runtimeVersion: 1` tab import is still missing.
 - Workspace group/order/sidebar state, split pane tree ownership, tab rename/patch, and message history remain legacy-owned.
-- Backup/export command that writes an actual archive for `state.db` and JSON stores is still missing.

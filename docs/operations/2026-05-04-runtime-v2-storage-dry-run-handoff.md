@@ -47,5 +47,4 @@ Current blockers are workspace group state, legacy terminal tab import, non-term
 ## Remaining Gate
 
 - Implement idempotent JSON-to-SQLite import that closes the dry-run blockers.
-- Add real backup/export archive creation for legacy JSON stores and `runtime-v2/state.db`.
 - Keep `CODEXMUX_RUNTIME_STORAGE_V2_MODE=off` until dry-run blockers are closed and storage shadow compare passes on real data.

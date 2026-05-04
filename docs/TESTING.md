@@ -99,6 +99,8 @@ Storage dry-run and backup manifest:
 ```bash
 corepack pnpm smoke:runtime-v2:storage-dry-run
 corepack pnpm runtime-v2:storage-dry-run
+corepack pnpm smoke:runtime-v2:storage-backup
+corepack pnpm runtime-v2:storage-backup
 ```
 
 `smoke:runtime-v2:storage-dry-run`은 fixture에서 workspace group, split layout, legacy tab,
@@ -106,6 +108,10 @@ status metadata blocker를 만들고, report가 cwd/workspace name/session name/
 않는지 확인한다. `runtime-v2:storage-dry-run`은 실제 `~/.codexmux`의 `workspaces.json`과
 workspace별 `layout.json`을 read-only로 검사하고, `runtime-v2/state.db` 전환 전에 필요한
 상대 backup manifest와 blocker code를 출력한다. 이 명령은 migration/import를 수행하지 않는다.
+`smoke:runtime-v2:storage-backup`은 temp data dir에서 JSON store와 SQLite 파일을 실제로
+복사하고, command result가 원문 cwd/session/content를 노출하지 않는지 확인한다.
+`runtime-v2:storage-backup`은 live data dir에서 `~/.codexmux/backups/runtime-v2-storage-{timestamp}/`
+로 `workspaces.json`, `workspaces/**.json`, `runtime-v2/state.db*`를 복사한다.
 
 Storage shadow compare smoke:
 

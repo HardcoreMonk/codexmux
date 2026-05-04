@@ -32,6 +32,8 @@ codexmux의 영속 상태는 `~/.codexmux/`에 저장된다. Codex CLI의 원본
 │       └── {sessionId}.jsonl.meta.json
 ├── runtime-v2/
 │   └── state.db
+├── backups/
+│   └── runtime-v2-storage-{timestamp}/
 └── stats/
 ```
 
@@ -73,6 +75,7 @@ Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service
 | `remote/codex/{sourceId}/{sessionId}.jsonl` | Windows companion이 보낸 Codex CLI JSONL 복사본. timeline에서 읽기 전용으로 사용 |
 | `remote/codex/{sourceId}/{sessionId}.jsonl.meta.json` | remote source, host/shell/cwd/path, offset, activity metadata, session list summary |
 | `runtime-v2/state.db` | Experimental runtime v2 SQLite app state for workspace, pane, tab, status projection, and durable event logs |
+| `backups/runtime-v2-storage-{timestamp}/` | `runtime-v2:storage-backup`이 만든 storage cutover용 JSON/SQLite snapshot |
 | `stats/cache.json` | Codex JSONL에서 계산한 usage cache. 런타임 build는 in-flight promise로 중복 계산을 피함 |
 | `stats/daily-reports/` | `codex exec`로 생성한 일별 report |
 
@@ -93,6 +96,14 @@ runtime v2 tab 삭제는 `state.db`의 `tabs` row 삭제 transaction이 source o
 Storage Worker는 삭제된 terminal tab의 session cleanup intent를 반환하고, Supervisor가
 해당 runtime v2 tmux session을 kill한다. 삭제된 tab의 `tab_status` row는 SQLite foreign
 key cascade로 함께 제거된다.
+
+Storage cutover 전 백업은 `corepack pnpm runtime-v2:storage-backup`으로 만든다. 기본 출력은
+`~/.codexmux/backups/runtime-v2-storage-{timestamp}/`이며 `workspaces.json`,
+`workspaces/**.json`, `runtime-v2/state.db`, `runtime-v2/state.db-wal`,
+`runtime-v2/state.db-shm`를 복사한다. `CODEXMUX_RUNTIME_V2_STORAGE_BACKUP_DATA_DIR`,
+`CODEXMUX_RUNTIME_V2_STORAGE_BACKUP_OUTPUT_DIR`,
+`CODEXMUX_RUNTIME_V2_STORAGE_BACKUP_TIMESTAMP`로 data/output/timestamp를 override할 수 있다.
+이 명령은 원본 파일을 삭제하거나 migration을 수행하지 않는다.
 
 Runtime v2 Timeline Worker foundation은 새 영속 파일을 만들지 않는다. v2 timeline read
 API는 기존 `session-index.json`, `~/.codex/sessions/**/*.jsonl`,
