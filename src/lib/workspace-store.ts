@@ -18,6 +18,7 @@ import {
 } from '@/lib/layout-store';
 import type { ICreateLayoutOptions } from '@/lib/layout-store';
 import { getVisuallyOrderedWorkspaces } from '@/lib/workspace-order';
+import { mirrorLegacyStorageToRuntimeV2BestEffort } from '@/lib/runtime/storage-mirror';
 import type { IWorkspace, IWorkspaceGroup, IWorkspacesData, ILayoutData } from '@/types/terminal';
 
 const log = createLogger('workspace');
@@ -136,6 +137,7 @@ const writeWorkspacesFile = async (data: IWorkspacesData): Promise<void> => {
 
   g.__codexmuxWorkspacesContentCache = contentKey;
   broadcastSync({ type: 'workspace' });
+  await mirrorLegacyStorageToRuntimeV2BestEffort({ reason: 'workspace-write' });
 };
 
 const migrateFromPhase4 = async (): Promise<IWorkspacesData | null> => {

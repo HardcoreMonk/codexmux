@@ -19,6 +19,7 @@ import {
 import { isAgentPanelType, normalizePanelType } from '@/lib/panel-type';
 import { normalizeAgentFields } from '@/lib/agent-tab-fields';
 import { resolveTabRuntimeVersion } from '@/lib/runtime/terminal-mode';
+import { mirrorLegacyStorageToRuntimeV2BestEffort } from '@/lib/runtime/storage-mirror';
 import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
 import type { ITab, TLayoutNode, IPaneNode, ILayoutData, TPanelType } from '@/types/terminal';
 import type { TCliState } from '@/types/timeline';
@@ -156,6 +157,7 @@ export const writeLayoutFile = async (data: ILayoutData, filePath: string): Prom
       reconciler.reconcileWorkspaceTabs(wsId, validTabIds);
     }
     broadcastSync({ type: 'layout', workspaceId: wsId });
+    await mirrorLegacyStorageToRuntimeV2BestEffort({ reason: 'layout-write' });
   }
 };
 

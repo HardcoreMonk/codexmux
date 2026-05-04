@@ -5,6 +5,7 @@ export interface IImportLegacyStorageSnapshotInput {
   workspacesData: IWorkspacesData;
   layoutsByWorkspaceId: Record<string, ILayoutData | null | undefined>;
   importedAt?: string;
+  pruneMissing?: boolean;
 }
 
 export interface IImportLegacyStorageSnapshotResult {
@@ -19,6 +20,10 @@ export interface IImportLegacyStorageSnapshotResult {
   importedStatusMetadataCount: number;
   missingLayoutCount: number;
   invalidLayoutCount: number;
+  prunedWorkspaceCount: number;
+  prunedPaneCount: number;
+  prunedTabCount: number;
+  prunedGroupCount: number;
 }
 
 const panelTypeForImport = (panelType: TPanelType | undefined): TPanelType =>
@@ -56,6 +61,10 @@ const createEmptyResult = (): IImportLegacyStorageSnapshotResult => ({
   importedStatusMetadataCount: 0,
   missingLayoutCount: 0,
   invalidLayoutCount: 0,
+  prunedWorkspaceCount: 0,
+  prunedPaneCount: 0,
+  prunedTabCount: 0,
+  prunedGroupCount: 0,
 });
 
 const isPaneNode = (node: TLayoutNode): node is IPaneNode =>
@@ -89,6 +98,90 @@ const importAgentSession = (
     ts,
     ts,
   );
+};
+
+const placeholders = (count: number): string =>
+  Array.from({ length: count }, () => '?').join(', ');
+
+const collectSnapshotIdsWithPath = (
+  workspaceId: string,
+  node: TLayoutNode,
+  path: number[],
+  ids: { paneIds: Set<string>; tabIds: Set<string> },
+): void => {
+  if (isPaneNode(node)) {
+    ids.paneIds.add(node.id);
+    node.tabs.forEach((tab) => ids.tabIds.add(tab.id));
+    return;
+  }
+  if (isSplitNode(node)) {
+    ids.paneIds.add(splitIdForPath(workspaceId, path));
+    collectSnapshotIdsWithPath(workspaceId, node.children[0], [...path, 0], ids);
+    collectSnapshotIdsWithPath(workspaceId, node.children[1], [...path, 1], ids);
+  }
+};
+
+const deleteNotIn = (
+  db: TRuntimeDatabase,
+  table: string,
+  column: string,
+  parentColumn: string,
+  parentId: string,
+  ids: Set<string>,
+): number => {
+  if (ids.size === 0) {
+    return db.prepare(`delete from ${table} where ${parentColumn} = ?`).run(parentId).changes;
+  }
+  const values = Array.from(ids);
+  return db.prepare(`
+    delete from ${table}
+    where ${parentColumn} = ? and ${column} not in (${placeholders(values.length)})
+  `).run(parentId, ...values).changes;
+};
+
+const pruneWorkspaceRows = (
+  db: TRuntimeDatabase,
+  workspaceId: string,
+  layout: ILayoutData,
+  result: IImportLegacyStorageSnapshotResult,
+): void => {
+  const ids = { paneIds: new Set<string>(), tabIds: new Set<string>() };
+  collectSnapshotIdsWithPath(workspaceId, layout.root, [], ids);
+  result.prunedTabCount += deleteNotIn(db, 'tabs', 'id', 'workspace_id', workspaceId, ids.tabIds);
+  result.prunedPaneCount += deleteNotIn(db, 'panes', 'id', 'workspace_id', workspaceId, ids.paneIds);
+};
+
+const pruneSnapshotRows = (
+  db: TRuntimeDatabase,
+  workspacesData: IWorkspacesData,
+  layoutsByWorkspaceId: Record<string, ILayoutData | null | undefined>,
+  result: IImportLegacyStorageSnapshotResult,
+): void => {
+  const workspaceIds = new Set(workspacesData.workspaces.map((workspace) => workspace.id));
+  const groupIds = new Set((workspacesData.groups ?? []).map((group) => group.id));
+  if (workspaceIds.size === 0) {
+    result.prunedWorkspaceCount += db.prepare(`delete from workspaces`).run().changes;
+  } else {
+    const ids = Array.from(workspaceIds);
+    result.prunedWorkspaceCount += db.prepare(`
+      delete from workspaces where id not in (${placeholders(ids.length)})
+    `).run(...ids).changes;
+  }
+
+  if (groupIds.size === 0) {
+    result.prunedGroupCount += db.prepare(`delete from workspace_groups`).run().changes;
+  } else {
+    const ids = Array.from(groupIds);
+    result.prunedGroupCount += db.prepare(`
+      delete from workspace_groups where id not in (${placeholders(ids.length)})
+    `).run(...ids).changes;
+  }
+
+  for (const workspaceId of workspaceIds) {
+    const layout = layoutsByWorkspaceId[workspaceId];
+    if (!layout || (!isPaneNode(layout.root) && !isSplitNode(layout.root))) continue;
+    pruneWorkspaceRows(db, workspaceId, layout, result);
+  }
 };
 
 const importTab = (
@@ -246,6 +339,7 @@ export const importLegacyStorageSnapshot = (
     workspacesData,
     layoutsByWorkspaceId,
     importedAt = new Date().toISOString(),
+    pruneMissing = false,
   }: IImportLegacyStorageSnapshotInput,
 ): IImportLegacyStorageSnapshotResult => {
   const result = createEmptyResult();
@@ -298,6 +392,9 @@ export const importLegacyStorageSnapshot = (
       result.importedWorkspaceCount += 1;
       importNode(db, workspace.id, layout.root, null, 0, [], importedAt, result);
     });
+    if (pruneMissing) {
+      pruneSnapshotRows(db, workspacesData, layoutsByWorkspaceId, result);
+    }
   });
 
   importTx();

@@ -184,4 +184,80 @@ describe('runtime v2 storage import', () => {
       sessions: [{ sessionName: 'rtv2-ws-a-pane-a-tab-v2' }],
     });
   });
+
+  it('prunes sqlite rows that are absent from the legacy snapshot when requested', () => {
+    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const workspacesData: IWorkspacesData = {
+      groups: [],
+      activeWorkspaceId: 'ws-keep',
+      sidebarCollapsed: false,
+      sidebarWidth: 240,
+      updatedAt: '2026-05-04T00:00:00.000Z',
+      workspaces: [
+        { id: 'ws-keep', name: 'Keep', directories: [dir] },
+        { id: 'ws-drop', name: 'Drop', directories: [dir] },
+      ],
+    };
+    const keepLayout: ILayoutData = {
+      root: {
+        type: 'pane',
+        id: 'pane-keep',
+        activeTabId: 'tab-keep',
+        tabs: [
+          { id: 'tab-keep', sessionName: 'pt-ws-keep-pane-keep-tab-keep', name: '', order: 0, runtimeVersion: 1 },
+          { id: 'tab-drop', sessionName: 'pt-ws-keep-pane-keep-tab-drop', name: '', order: 1, runtimeVersion: 1 },
+        ],
+      },
+      activePaneId: 'pane-keep',
+      updatedAt: '2026-05-04T00:00:00.000Z',
+    };
+    const dropLayout: ILayoutData = {
+      root: {
+        type: 'pane',
+        id: 'pane-drop',
+        activeTabId: 'tab-other',
+        tabs: [{ id: 'tab-other', sessionName: 'pt-ws-drop-pane-drop-tab-other', name: '', order: 0, runtimeVersion: 1 }],
+      },
+      activePaneId: 'pane-drop',
+      updatedAt: '2026-05-04T00:00:00.000Z',
+    };
+
+    importLegacyStorageSnapshot(db, {
+      workspacesData,
+      layoutsByWorkspaceId: { 'ws-keep': keepLayout, 'ws-drop': dropLayout },
+      importedAt: '2026-05-04T00:00:00.000Z',
+    });
+
+    const pruned = importLegacyStorageSnapshot(db, {
+      workspacesData: {
+        ...workspacesData,
+        workspaces: [{ id: 'ws-keep', name: 'Keep', directories: [dir] }],
+      },
+      layoutsByWorkspaceId: {
+        'ws-keep': {
+          ...keepLayout,
+          root: {
+            type: 'pane',
+            id: 'pane-keep',
+            activeTabId: 'tab-keep',
+            tabs: [{ id: 'tab-keep', sessionName: 'pt-ws-keep-pane-keep-tab-keep', name: '', order: 0, runtimeVersion: 1 }],
+          },
+        },
+      },
+      importedAt: '2026-05-04T00:01:00.000Z',
+      pruneMissing: true,
+    });
+    const repo = createStorageRepository(db);
+    const layout = repo.getWorkspaceLayout('ws-keep');
+
+    expect(pruned).toMatchObject({
+      prunedWorkspaceCount: 1,
+      prunedTabCount: 1,
+    });
+    expect(repo.getWorkspaceLayout('ws-drop')).toBeNull();
+    expect(layout?.root.type).toBe('pane');
+    if (layout?.root.type === 'pane') {
+      expect(layout.root.tabs.map((tab) => tab.id)).toEqual(['tab-keep']);
+    }
+  });
 });
