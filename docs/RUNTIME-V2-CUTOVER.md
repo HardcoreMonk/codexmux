@@ -152,6 +152,7 @@ Goal: move live timeline subscribe/append/resume into Timeline Worker.
 Work:
 
 - Move file watcher/session watcher state into Timeline Worker, not just read commands.
+- Current read-only first slice: `corepack pnpm smoke:runtime-v2:timeline-shadow` compares legacy timeline read endpoints with runtime v2 timeline read endpoints for message counts and entries-before metadata without printing entry text.
 - Add typed events for `timeline:init`, `timeline:append`, `timeline:session-changed`, and `timeline:error`.
 - Keep stable id/dedupe/merge behavior unchanged.
 - Preserve Windows remote JSONL subscribe by path.

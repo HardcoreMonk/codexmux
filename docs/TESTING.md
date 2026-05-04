@@ -105,6 +105,16 @@ v2 plain terminal tab을 생성한 뒤, legacy JSON layout에 mirror된 `runtime
 SQLite runtime layout projection을 read-only로 비교한다. 이 first slice는 v2 tab subset의
 상대 순서를 비교하며, cwd 값은 mismatch output에 직접 출력하지 않는다.
 
+Timeline shadow compare smoke:
+
+```bash
+corepack pnpm smoke:runtime-v2:timeline-shadow
+```
+
+이 smoke는 temp HOME의 allowed Codex JSONL fixture를 만들고 legacy `/api/timeline/*` read
+endpoint와 runtime v2 `/api/v2/timeline/*` read endpoint의 message counts와 entries-before
+metadata를 비교한다. entry 본문은 mismatch output에 포함하지 않는다.
+
 `smoke:runtime-v2:phase2`, `smoke:android:runtime-v2`, `smoke:electron:runtime-v2`는 각각
 임시 서버와 Next.js dev runtime을 띄운다. 같은 checkout에서 병렬 실행하면 Next dev lock
 때문에 `Another next dev server is already running`으로 실패할 수 있으므로 순차 실행한다.
