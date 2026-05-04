@@ -79,14 +79,51 @@
 | Android foreground reconnect | 통과 | `corepack pnpm smoke:android:foreground`, SM-S928N Android 16, Tailscale HTTPS target, 2 foreground rounds, blocking console/logcat 0 |
 | Android runtime v2 foreground | 통과 | `corepack pnpm smoke:android:runtime-v2`, temp server `http://100.112.40.104:30653`, initial + 2 foreground marker output, blocking console/logcat 0 |
 
+### 2026-05-05 P2 -> P3 runtime v2 storage preflight
+
+P2 terminal gate evidence를 보강하고 P3 storage default rollout 전 preflight를 실제
+`~/.codexmux` 데이터 기준으로 다시 실행했다. Production live mode는 아직
+`CODEXMUX_RUNTIME_TERMINAL_V2_MODE=off`,
+`CODEXMUX_RUNTIME_STORAGE_V2_MODE=write`이다.
+
+| 항목 | 상태 | 근거 |
+| --- | --- | --- |
+| P2 terminal gate | 통과 | `corepack pnpm smoke:runtime-v2:phase2`, browser reload/server restart/mode-off rollback 통과 |
+| Browser reconnect DOM | 통과 | `corepack pnpm smoke:browser-reconnect`, `session-not-found` overlay, floating reconnect hidden, 새 터미널 복구 click path 통과 |
+| live runtime health | 통과 | `/api/v2/runtime/health`가 storage/terminal/timeline/status worker `ok`, `storageV2Mode="write"`, `terminalV2Mode="off"` 반환 |
+| live worker counters | 통과 | `/api/debug/perf` `services.runtimeWorkers.*`에서 `healthFailures=0`, `readyFailures=0`, `commandFailures=0`, `timeouts=0`, `restarts=0`, `errors=0` |
+| P3 temp storage smokes | 통과 | `smoke:runtime-v2:storage-dry-run`, `storage-backup`, `storage-import`, `storage-write`, `storage-default-read`, `storage-shadow` 통과 |
+| live storage dry-run | 통과 | `corepack pnpm runtime-v2:storage-dry-run`, `cutoverReady=true`, blocker 0, workspace 4개/tab 4개 |
+| live storage backup | 통과 | `corepack pnpm runtime-v2:storage-backup`, `runtime-v2-storage-20260504T163816Z`, JSON/SQLite file 37개 복사 |
+| live storage import | 통과 | `corepack pnpm runtime-v2:storage-import`, workspace 4개/pane 4개/tab 4개/message-history 5개 import, missing/invalid/prune 0 |
+
+### 2026-05-05 runtime v2 live new-tabs/default cutover
+
+`~/.config/systemd/user/codexmux.service.d/runtime-v2-shadow.conf`를
+`CODEXMUX_RUNTIME_TERMINAL_V2_MODE=new-tabs`,
+`CODEXMUX_RUNTIME_STORAGE_V2_MODE=default`로 전환하고
+`systemctl --user daemon-reload`, `systemctl --user restart codexmux.service`를
+실행했다.
+
+| 항목 | 상태 | 근거 |
+| --- | --- | --- |
+| live mode | 적용 | `/api/v2/runtime/health`가 `terminalV2Mode="new-tabs"`, `storageV2Mode="default"` 반환 |
+| systemd | 통과 | `ActiveState=active`, `SubState=running`, `NRestarts=0`, `ExecMainPID=1644017` |
+| live app-surface new tab | 통과 | 임시 workspace에서 plain terminal tab 생성 시 legacy layout `runtimeVersion=2`, `rtv2-` session name, runtime storage projection 확인 후 workspace 삭제 |
+| live runtime target smoke | 통과 | `CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8122 corepack pnpm smoke:runtime-v2:target`, attach/stdin/stdout/resize/web-stdin/heartbeat/fresh reattach/fanout/backpressure/tab delete/workspace delete 통과 |
+| rollback window canary | 통과 | 30초 간격 6회 poll 동안 mode 유지, worker restart/timeout/failure 0, service `NRestarts=0` |
+| journal | 통과 | 최종 `journalctl --user -u codexmux.service --since '5 minutes ago' -p warning..alert` entries 없음 |
+
 P0/P1/P2/P3 후속 상태:
 
 - P0 완료: Android Tailscale Serve HTTPS 접속, failure recovery 반복, foreground reconnect, fresh app data clear first-run, app info bridge 확인, login route console noise 제거, permission prompt status/tmux E2E smoke 자동화.
 - P0 남음: 자동 개발로 처리 가능한 code/runtime blocking 항목은 없음. 실제 기기/OS가 필요한 장시간/외부 smoke는 P1 운영 검증으로 남긴다.
 - P1 완료: Android foreground/recovery/runtime v2 smoke, app info/native restart smoke, Electron attach/runtime v2 smoke, M1 macOS `0.4.1` DMG/zip packaging, PWA/iPad readiness smoke, permission prompt smoke.
 - P1 남음: 자동 개발로 처리 가능한 platform smoke 항목은 없음.
-- P2 남음: runtime v2 shadow 24시간 worker restart-loop 부재 관찰, runtime v2 storage live default rollout, timeline/status parity surface별 cutover evidence, release workflow/CI에서 선택 실행할 Android/Electron/browser reconnect smoke artifact 보존.
-- P3 남음: Android release signing/AAB 운영, approval queue, lifecycle control UI, perf tuning.
+- P2 완료: runtime v2 phase2 gate, Electron/Android runtime v2 reconnect smoke, browser reconnect DOM smoke, live terminal `new-tabs` enable을 현재 코드 기준으로 확인했다.
+- P2 남음: runtime v2 shadow/new-tabs/default 24시간 worker restart-loop 부재 관찰, release workflow/CI에서 선택 실행할 Android/Electron/browser reconnect smoke artifact 보존.
+- P3 진행: storage `default` live mode로 전환했고 dry-run, backup, import, write, default-read, shadow preflight와 initial rollback window canary를 통과했다.
+- P3 남음: storage default 장시간 observation과 필요 시 rollback drill, Android release signing/AAB 운영, approval queue, lifecycle control UI, perf tuning. Timeline/status는 `docs/RUNTIME-V2-CUTOVER.md`의 Phase 4/5 gate로 별도 진행한다.
 
 1. 장시간 Codex smoke test: 새 tab 생성, prompt 실행, tool call과 reasoning summary 표시, 상태 전이 확인.
 2. permission prompt smoke test: `corepack pnpm smoke:permission`으로 pane capture 기반 option parsing, inline prompt 선택, stdin 전달, `needs-input` push와 ack 후 `busy` 복귀 확인. 실제 Codex CLI permission prompt 재현은 P1 수동/기기 smoke로 남긴다.

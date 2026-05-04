@@ -52,7 +52,7 @@ TimeoutStopSec=20
 WantedBy=default.target
 ```
 
-Runtime v2 shadow mode는 base unit을 직접 수정하지 않고 drop-in으로 적용한다. rollback은 drop-in 삭제와 daemon reload/restart로 처리한다.
+Runtime v2 mode는 base unit을 직접 수정하지 않고 drop-in으로 적용한다. 전체 runtime v2 rollback은 drop-in 삭제와 daemon reload/restart로 처리한다.
 
 ```text
 ~/.config/systemd/user/codexmux.service.d/runtime-v2-shadow.conf
@@ -61,13 +61,13 @@ Runtime v2 shadow mode는 base unit을 직접 수정하지 않고 drop-in으로 
 ```ini
 [Service]
 Environment=CODEXMUX_RUNTIME_V2=1
-Environment=CODEXMUX_RUNTIME_STORAGE_V2_MODE=off
-Environment=CODEXMUX_RUNTIME_TERMINAL_V2_MODE=off
+Environment=CODEXMUX_RUNTIME_STORAGE_V2_MODE=default
+Environment=CODEXMUX_RUNTIME_TERMINAL_V2_MODE=new-tabs
 Environment=CODEXMUX_RUNTIME_TIMELINE_V2_MODE=off
 Environment=CODEXMUX_RUNTIME_STATUS_V2_MODE=off
 ```
 
-Shadow runtime rollback:
+Surface rollback만 필요하면 drop-in에서 storage를 `write`, terminal을 `off`로 되돌린 뒤 daemon reload/restart를 수행한다. 전체 runtime v2 rollback:
 
 ```bash
 rm ~/.config/systemd/user/codexmux.service.d/runtime-v2-shadow.conf
