@@ -26,12 +26,13 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import ApprovalQueueItem from '@/components/features/workspace/approval-queue-item';
 import useTabStore from '@/hooks/use-tab-store';
 import useWorkspaceStore from '@/hooks/use-workspace-store';
 import useSessionHistoryStore from '@/hooks/use-session-history-store';
 import { dismissTab } from '@/hooks/use-agent-status';
 import { navigateToTab, navigateToTabOrCreate, useLayoutStore } from '@/hooks/use-layout';
-import { findPane } from '@/lib/layout-tree';
+import { collectAllTabs, findPane } from '@/lib/layout-tree';
 import type { ITabState } from '@/hooks/use-tab-store';
 import type { ICurrentAction } from '@/types/status';
 import type { ISessionHistoryEntry } from '@/types/session-history';
@@ -85,6 +86,7 @@ export const useNotificationCount = (): { busyCount: number; attentionCount: num
 
 interface INotificationItem {
   tabId: string;
+  tabName: string;
   workspaceName: string;
   workspaceId: string;
   lastUserMessage?: string | null;
@@ -94,6 +96,7 @@ interface INotificationItem {
   busySince?: number | null;
   dismissedAt?: number | null;
   agentSessionId?: string | null;
+  lastEventSeq?: number;
 }
 
 interface INotificationSheetProps {
@@ -113,6 +116,7 @@ const collectItems = (
     if (tab.cliState !== targetState) continue;
     items.push({
       tabId,
+      tabName: tab.tabName?.trim() || tabId,
       workspaceName: wsMap.get(tab.workspaceId) || tab.workspaceId,
       workspaceId: tab.workspaceId,
       lastUserMessage: tab.lastUserMessage,
@@ -122,6 +126,7 @@ const collectItems = (
       busySince: tab.busySince,
       dismissedAt: tab.dismissedAt,
       agentSessionId: readAgentSessionId(tab),
+      lastEventSeq: tab.lastEvent?.seq,
     });
   }
 
@@ -409,8 +414,17 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
   const t = useTranslations('notification');
   const tabs = useTabStore((s) => s.tabs);
   const workspaces = useWorkspaceStore((s) => s.workspaces);
+  const layout = useLayoutStore((s) => s.layout);
   const { id: activeTabId, agentSessionId: activeAgentSessionId } = useActiveTab();
   const historyEntries = useSessionHistoryStore((s) => s.entries);
+  const tabLayoutMap = useMemo(() => {
+    const map = new Map<string, { name: string; sessionName: string }>();
+    if (!layout) return map;
+    for (const tab of collectAllTabs(layout.root)) {
+      map.set(tab.id, { name: tab.name, sessionName: tab.sessionName });
+    }
+    return map;
+  }, [layout]);
   const sessionTabMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const [tabId, tab] of Object.entries(tabs)) {
@@ -522,11 +536,24 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
               </h3>
               <div className="flex flex-col gap-2">
                 <AnimatePresence mode="popLayout" initial={false}>
-                  {needsInputItems.map((item) => (
-                    <motion.div key={item.tabId} {...ITEM_MOTION}>
-                      <NotificationItem item={item} showActions={false} variant="needs-input" isActiveTab={item.tabId === activeTabId} onNavigate={handleNavigate} />
-                    </motion.div>
-                  ))}
+                  {needsInputItems.map((item) => {
+                    const layoutTab = tabLayoutMap.get(item.tabId);
+                    return (
+                      <motion.div key={item.tabId} {...ITEM_MOTION}>
+                        <ApprovalQueueItem
+                          tabId={item.tabId}
+                          sessionName={layoutTab?.sessionName ?? null}
+                          workspaceId={item.workspaceId}
+                          workspaceName={item.workspaceName}
+                          tabName={layoutTab?.name || item.tabName}
+                          lastUserMessage={item.lastUserMessage}
+                          lastEventSeq={item.lastEventSeq}
+                          isActiveTab={item.tabId === activeTabId}
+                          onNavigate={handleNavigate}
+                        />
+                      </motion.div>
+                    );
+                  })}
                 </AnimatePresence>
               </div>
             </section>
