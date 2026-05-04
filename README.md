@@ -317,6 +317,8 @@ corepack pnpm smoke:electron:runtime-v2
 corepack pnpm pack:electron:dev
 ```
 
+이 명령은 macOS 호스트에서 실행해야 합니다. Linux에서는 `corepack pnpm build:electron`로 Electron bundle까지만 확인하고, `.app`/`.dmg` 최종 산출물은 Mac에서 생성합니다.
+
 릴리스용 패키징은 서명/노터라이즈 환경을 준비한 뒤 실행합니다.
 
 ```bash
@@ -679,6 +681,8 @@ Local macOS packaging check:
 ```bash
 corepack pnpm pack:electron:dev
 ```
+
+Run this command on a macOS host. On Linux, use `corepack pnpm build:electron` to verify the Electron bundle and produce the final `.app`/`.dmg` artifacts on a Mac.
 
 Release packaging requires the signing and notarization environment:
 
