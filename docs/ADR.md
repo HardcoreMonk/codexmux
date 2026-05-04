@@ -152,7 +152,7 @@
 - Status: Accepted
 - Decision: 작업 완료 사운드는 `soundOnCompleteEnabled` 하나로 toast, native notification, background Web Push를 함께 제어한다.
 - Rationale: 사용자는 foreground/background나 shell 종류와 관계없이 동일한 알림 정책을 기대한다.
-- Consequences: `soundOnCompleteEnabled=false`이면 completion sound를 재생하지 않고 system notification도 silent로 요청한다. permission/input 요청 상태는 `needs-input` flow를 유지한다.
+- Consequences: `soundOnCompleteEnabled=false`이면 completion sound를 재생하지 않고 system notification도 silent로 요청한다. Permission/input 요청 상태는 `needs-input` flow를 유지한다. Hook/JSONL에 직접 기록되지 않는 Codex CLI prompt는 live pane capture로 보정해 notification panel queue에 연결한다.
 
 ## ADR-009: 모바일 UX는 터미널 안정성을 우선한다
 
@@ -166,7 +166,7 @@
 - Status: Accepted
 - Decision: 완료 판정, 알림 판정, session id mapping, 타임라인 entry merge/dedupe, stable id 생성은 `StatusManager`나 React hook 내부가 아니라 순수 helper 모듈에서 처리한다.
 - Rationale: 모바일 재연결, JSONL watcher, polling, stop-hook 재확인이 같은 Codex turn을 여러 경로로 관측하고, Codex CLI가 같은 assistant text를 paired `event_msg`/`response_item` record로 남길 수 있다. 부수효과가 있는 서버 클래스 안에서 정책을 직접 유지하면 중복 알림과 중복 timeline 출력이 쉽게 생긴다.
-- Consequences: `status-state-machine`, `status-session-mapping`, `status-notification-policy`, `status-metadata`, `timeline-entry-id`, `timeline-entry-dedupe`, `timeline-entry-merge`는 단위 테스트를 동반한다. timeline dedupe는 stable id뿐 아니라 normalized role/text 기반 near-duplicate도 다룬다. `StatusManager`, `timeline-server`, `use-timeline`은 신호 수집, 상태 적용, WebSocket 송신 같은 부수효과를 담당한다.
+- Consequences: `status-state-machine`, `status-session-mapping`, `status-notification-policy`, `status-metadata`, `permission-prompt`, `codex-pane-state`, `timeline-entry-id`, `timeline-entry-dedupe`, `timeline-entry-merge`는 단위 테스트를 동반한다. Timeline dedupe는 stable id뿐 아니라 normalized role/text 기반 near-duplicate도 다룬다. `StatusManager`, `timeline-server`, `use-timeline`은 신호 수집, 상태 적용, WebSocket 송신 같은 부수효과를 담당한다. Live pane capture 보정은 permission/input prompt를 `needs-input`으로, JSONL marker 없는 interrupted prompt를 `idle`로 복구하는 서버 부수효과로 유지한다.
 
 ## ADR-011: DIFF 패널은 제한된 Git snapshot으로 렌더링한다
 

@@ -226,6 +226,7 @@ StatusManager는 tab마다 다음 신호를 합쳐 `cliState`를 정한다.
 | agent process | process tree poll | Codex 실행 여부 |
 | JSONL event | timeline/parser | task start/complete, current action |
 | hook/statusline event | `/api/status/*` | Codex hook 보조 신호 |
+| live pane capture | tmux pane snapshot | permission/input prompt, interrupted prompt 보정 |
 | layout metadata | `layout.json` | tab/workspace/session id 보존 |
 
 상태 전이는 `status-state-machine`의 순수 reducer가 담당한다.
@@ -246,10 +247,12 @@ inactive
 - 서버 재시작 전 `busy`였던 tab은 `unknown`으로 복구를 시작한다.
 - notification dedupe key는 session id와 turn id를 우선 사용한다.
 - foreground toast, native notification, Web Push는 같은 notification policy를 따른다.
+- Codex permission/input prompt가 JSONL/hook event 없이 live pane에만 보이면 pane capture recovery가 `needs-input`을 합성한다. Resume directory prompt처럼 persisted state가 `idle`이어도 실제 CLI가 선택을 기다리면 `needs-input`으로 복구한다.
+- Codex가 `Conversation interrupted` 입력 프롬프트에 멈췄지만 JSONL interrupt marker를 남기지 않으면 pane capture recovery가 stale `busy`를 `idle`로 되돌린다.
 - poll duration, tab/pane count, broadcast count는 perf snapshot에 남겨 polling 비용을 확인한다.
 - `/login` 같은 인증 전 public route는 status/native notification/Web Push/service worker runtime service를 마운트하지 않는다. fresh install 또는 app data clear 후 auth WebSocket 실패와 service worker registration console noise가 없어야 한다. `/sw.js` 자체는 PWA/Web Push 설치를 위한 static service worker script이므로 auth redirect 없이 public asset으로 제공한다.
 - PWA manifest는 `/api/manifest`에서 제공하고 iOS startup image는 `public/splash/*.png` 정적 파일로 제공한다. Startup image는 `scripts/generate-splash.js`에서 `codexmux` branding으로 생성하며, 기존 Home Screen 앱이 이전 이미지를 계속 보이면 iOS cache 문제로 보고 재설치를 안내한다.
-- `smoke:permission`은 임시 HOME/server/tmux tab에서 permission prompt 모양의 pane output을 만들고 `/api/status` WebSocket, `/api/tmux/permission-options`, `/api/tmux/send-input`, `status:ack-notification` 전환을 함께 검증한다.
+- `smoke:permission`은 임시 HOME/server/tmux tab에서 permission prompt 모양의 pane output을 만들고 `/api/status` WebSocket, `/api/tmux/permission-options`, `/api/tmux/send-input`, `status:ack-notification` 전환을 함께 검증한다. Resume directory prompt와 interrupted prompt는 `permission-prompt`/`codex-pane-state` unit test가 parser 회귀를 잡는다.
 
 ## Sync 서비스 로직
 

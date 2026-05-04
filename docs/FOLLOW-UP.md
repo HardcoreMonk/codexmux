@@ -37,9 +37,10 @@
 - runtime v2 storage default read: schema v3가 workspace directory list, active/sidebar UI state, message history를 SQLite에 보존하고, `CODEXMUX_RUNTIME_STORAGE_V2_MODE=default`에서 workspace/layout/message-history read가 SQLite projection을 우선 사용한다. `corepack pnpm smoke:runtime-v2:storage-default-read`는 temp HOME/DB에서 SQLite cold read, JSON write mirror 후 default read, `updateActive()` mirror 후 default read, message-history JSON fallback mirror를 검증한다.
 - 모바일 CODEX 확인 화면: timeline 연결 전에도 terminal preview로 실제 tmux/Codex 출력을 확인할 수 있게 처리.
 - Linux 운영: `systemd --user` 서비스 등록, linger 설정, `HOST=localhost,tailscale,192.168.0.0/16`/`PORT=8122` 운영 문서화.
-- permission prompt smoke 자동화: 임시 server/HOME/tmux tab에서 `needs-input` push, option parsing, stdin 선택, ack 이후 `busy` 복귀 검증.
-- 전역 approval queue 1차: notification panel의 `needs-input` 항목에서 Codex permission prompt 선택지를 조회하고 바로 선택/ack 처리한다. 선택지 조회/전송 실패 시 기존 tab 이동 fallback을 유지한다.
+- permission/input prompt smoke 자동화: 임시 server/HOME/tmux tab에서 `needs-input` push, option parsing, stdin 선택, ack 이후 `busy` 복귀 검증.
+- 전역 approval queue 1차: notification panel의 `needs-input` 항목에서 Codex permission/input prompt 선택지를 조회하고 바로 선택/ack 처리한다. 선택지 조회/전송 실패 시 기존 tab 이동 fallback을 유지한다.
 - 실제 Codex CLI permission prompt live smoke: live tab에서 `read-only` sandbox 실패로 실제 Codex CLI approval prompt를 띄우고, pane capture recovery로 `needs-input` 전환, notification panel `No` 선택, ack 후 `busy` 복귀, denied command 미실행을 확인했다.
+- Codex live input prompt 복구: JSONL interrupt marker 없이 남은 `Conversation interrupted` prompt는 stale `busy`에서 `idle`로 복구하고, service restart 후 남는 resume working directory prompt는 persisted `idle`에서도 `needs-input`으로 노출한다. `7e83313` live deploy 기준 Android에서 보이던 purecvisor-single hang 표시는 `needs-input` prompt로 정정됐다.
 
 ## 릴리스 전 확인
 
@@ -128,7 +129,7 @@ P0/P1/P2/P3 후속 상태:
 - P3 남음: storage default 장시간 observation과 필요 시 rollback drill, lifecycle control UI, 측정 기반 perf tuning. Timeline/status는 `docs/RUNTIME-V2-CUTOVER.md`의 Phase 4/5 gate로 별도 진행한다.
 
 1. 장시간 Codex smoke test: 새 tab 생성, prompt 실행, tool call과 reasoning summary 표시, 상태 전이 확인.
-2. permission prompt smoke test: `corepack pnpm smoke:permission`으로 pane capture 기반 option parsing, inline prompt 선택, stdin 전달, `needs-input` push와 ack 후 `busy` 복귀 확인. 실제 Codex CLI permission prompt는 live tab에서 `read-only` sandbox 실패 prompt를 띄워 notification panel `No` 선택, ack 후 `busy` 복귀, denied command 미실행까지 확인한다.
+2. permission/input prompt smoke test: `corepack pnpm smoke:permission`으로 pane capture 기반 option parsing, inline prompt 선택, stdin 전달, `needs-input` push와 ack 후 `busy` 복귀 확인. 실제 Codex CLI permission prompt는 live tab에서 `read-only` sandbox 실패 prompt를 띄워 notification panel `No` 선택, ack 후 `busy` 복귀, denied command 미실행까지 확인한다. Resume working directory prompt는 `/api/tmux/permission-options`가 `Use session directory`/`Use current directory` 선택지를 반환하고 notification panel이 `needs-input`으로 보여주는지 확인한다. JSONL marker 없는 `Conversation interrupted` prompt는 stale `busy`가 `idle`로 풀리는지 확인한다.
 3. stats smoke test: `/api/stats/*` endpoint와 실제 `~/.codex/sessions` 집계 확인.
 4. daily report smoke test: `codex exec` 성공/실패, cache 재사용 확인.
 5. macOS packaging: Linux release host에서는 `corepack pnpm build:electron`까지 확인하고, `.app`/`.dmg` 산출물은 macOS host에서 `corepack pnpm pack:electron:dev`로 생성한다.
@@ -158,7 +159,7 @@ P0/P1/P2/P3 후속 상태:
 
 ### Approval workflow
 
-- approval queue 1차는 notification panel의 `needs-input` section에서 Codex permission prompt 선택지를 직접 처리한다. 실제 Codex CLI permission prompt live smoke는 통과했으며, 다음 단계는 richer approval type 분류다.
+- approval queue 1차는 notification panel의 `needs-input` section에서 Codex permission/input prompt 선택지를 직접 처리한다. 실제 Codex CLI permission prompt live smoke와 resume directory prompt option parsing은 통과했으며, 다음 단계는 richer approval type 분류다.
 - command/file/permission approval 종류별 UI 구분.
 - 모바일 push에서 approval target으로 deep link.
 - pane capture 실패 시 terminal fallback 안내 개선.

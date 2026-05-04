@@ -33,7 +33,7 @@ codexmux의 영속 상태는 `~/.codexmux/`에 저장된다. Codex CLI의 원본
 └── stats/
 ```
 
-`hooks.json`, `status-hook.sh`, `statusline.sh`는 local hook/statusline bridge가 서버로 상태를 POST할 때 쓰는 생성 파일이다. Codex tab 실행 명령은 `-c 'hooks={path="~/.codexmux/hooks.json"}'`를 포함해 이 앱 소유 hook 설정을 명시적으로 로드한다. Codex CLI `0.128.0` 기준 permission request 전용 hook은 없으므로, live permission prompt는 StatusManager의 pane capture recovery가 `notification(permission_prompt)`처럼 복구해 notification panel의 `needs-input` queue와 연결한다.
+`hooks.json`, `status-hook.sh`, `statusline.sh`는 local hook/statusline bridge가 서버로 상태를 POST할 때 쓰는 생성 파일이다. Codex tab 실행 명령은 `-c 'hooks={path="~/.codexmux/hooks.json"}'`를 포함해 이 앱 소유 hook 설정을 명시적으로 로드한다. Codex CLI `0.128.0` 기준 permission request 전용 hook은 없으므로, live permission/input prompt는 StatusManager의 pane capture recovery가 `notification(permission_prompt)`처럼 복구해 notification panel의 `needs-input` queue와 연결한다. Resume directory 선택과 interrupted prompt 보정은 pane snapshot에서 계산하는 런타임 상태이며 `~/.codexmux/`에 별도 durable 파일을 만들지 않는다.
 
 Electron remote/local server mode는 같은 `~/.codexmux/config.json`을 사용한다. Android 런처의 최근 서버와 마지막 서버 URL은 Android WebView `localStorage`에 저장되며 `~/.codexmux/`에는 기록되지 않는다. Android 앱 정보와 앱 재시작은 native package metadata와 현재 Activity를 사용하므로 codexmux 데이터 디렉터리에 별도 파일을 만들지 않는다.
 

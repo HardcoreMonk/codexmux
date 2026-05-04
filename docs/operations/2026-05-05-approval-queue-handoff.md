@@ -3,7 +3,7 @@
 ## 상태
 
 - 2026-05-05 KST 기준 구현 완료.
-- 전역 notification panel의 `needs-input` section에서 Codex permission prompt 선택지를 직접 표시하고 선택할 수 있다.
+- 전역 notification panel의 `needs-input` section에서 Codex permission/input prompt 선택지를 직접 표시하고 선택할 수 있다.
 - 선택지 조회/전송은 기존 `/api/tmux/permission-options`, `/api/tmux/send-input`를 재사용한다.
 - 선택 성공 후 기존 status WebSocket `status:ack-notification` 경로로 `needs-input -> busy` 전이를 유지한다.
 - status payload에 tmux session name을 새로 노출하지 않고, client layout의 `tabId -> sessionName` lookup만 사용한다.
@@ -39,6 +39,7 @@
 
 ## 남은 작업
 
-- 실제 Codex CLI permission prompt를 live tab에서 띄우고 notification panel 선택 경로를 수동 smoke한다.
+- 실제 Codex CLI permission prompt live smoke는 완료됐다. `read-only` sandbox 실패 prompt에서 notification panel `No` 선택, ack 후 `busy` 복귀, denied command 미실행을 확인했다.
+- Resume working directory prompt는 `Use session directory`/`Use current directory` option parsing과 `needs-input` 복구를 별도 prompt recovery 배포에서 확인했다.
 - command/file/permission approval type을 구분하는 richer UI는 다음 approval workflow 단계에서 다룬다.
 - Web Push deep link와 approval target routing은 이번 1차 범위 밖이다.

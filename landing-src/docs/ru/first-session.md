@@ -33,12 +33,12 @@ Codex 템플릿은 terminal을 열고 `codex`를 실행하는 shortcut입니다.
 |---|---|
 | **Idle** | Codex가 다음 입력을 기다림 |
 | **Busy** | Codex가 작업 중 |
-| **Needs input** | permission prompt 또는 질문 대기 |
+| **Needs input** | permission/input prompt, resume directory 선택, 기타 질문 대기 |
 | **Review** | 작업 완료, 확인 필요 |
 
-## permission prompt
+## permission/input prompt
 
-Codex가 tool 실행이나 파일 변경 허가를 요청하면 codexmux는 timeline 안에 prompt를 표시합니다. option을 클릭하거나 숫자 key를 누르거나 모바일 push에서 답할 수 있습니다.
+Codex가 tool 실행, 파일 변경 허가, resume directory 선택을 요청하면 codexmux는 notification panel과 timeline에 prompt를 표시합니다. option을 클릭하거나 숫자 key를 누르거나 모바일 push에서 답할 수 있습니다.
 
 ## 복구
 
@@ -47,5 +47,5 @@ Codex가 tool 실행이나 파일 변경 허가를 요청하면 codexmux는 time
 ## 다음 단계
 
 - **[세션 상태](/codexmux/ru/docs/session-status/)**
-- **[권한 프롬프트](/codexmux/ru/docs/permission-prompts/)**
+- **[권한/입력 프롬프트](/codexmux/ru/docs/permission-prompts/)**
 - **[브라우저 지원](/codexmux/ru/docs/browser-support/)**

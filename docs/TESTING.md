@@ -250,6 +250,11 @@ corepack pnpm smoke:permission
 
 이 smoke는 임시 server/HOME/tmux tab에서 permission prompt option parsing, stdin 선택 전달,
 `needs-input` 전환, `status:ack-notification` 후 `busy` 복귀를 확인한다.
+`tests/unit/lib/permission-prompt.test.ts`는 Codex resume working directory prompt를
+입력 선택지로 파싱하는지 검증하고, `tests/unit/lib/codex-pane-state.test.ts`는 JSONL
+interrupt marker 없이 남은 `Conversation interrupted` 입력 프롬프트를 감지하는지 검증한다.
+실제 live Codex prompt 회귀는 notification panel에서 선택지가 보이고 `/api/tmux/permission-options`
+가 동일한 option list를 반환하는지 확인한다.
 
 통계와 daily report는 live 또는 temp 서버에서 `/api/stats/*`와 daily report generate route가
 200을 반환하는지 확인한다. timeline 중복 회귀는 browser reload 후 같은 assistant text가

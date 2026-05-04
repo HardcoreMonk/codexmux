@@ -75,4 +75,4 @@ permalink: /pt-BR/docs/quick-prompts-attachments/index.html
 
 - **[라이브 세션 뷰](/codexmux/pt-BR/docs/live-session-view/)** — 프롬프트와 Codex의 답변이 표시되는 곳
 - **[키보드 단축키](/codexmux/pt-BR/docs/keyboard-shortcuts/)** — 전체 바인딩 표
-- **[권한 프롬프트](/codexmux/pt-BR/docs/permission-prompts/)** — 승인이 필요한 요청을 보낸 뒤 일어나는 일
+- **[권한/입력 프롬프트](/codexmux/pt-BR/docs/permission-prompts/)** — 승인이 필요한 요청을 보낸 뒤 일어나는 일

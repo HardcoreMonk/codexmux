@@ -177,7 +177,7 @@ session id, cwd, JSONL path, prompt, assistant text, terminal output 본문은 �
 검증:
 
 - 긴 JSONL fixture에서 scroll 상단/중간/하단 이동
-- assistant message, tool call, permission prompt, reasoning summary 표시
+- assistant message, tool call, permission/input prompt, reasoning summary 표시
 - foreground 복귀 후 중복 message 없음
 
 ### 3. JSONL Incremental Parser/Cache

@@ -6,13 +6,13 @@ permalink: /zh-TW/docs/web-push/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Web Push는 Codex 세션이 사람을 필요로 하는 순간 — 권한 프롬프트, 작업 완료 — 탭을 닫아둔 상태에서도 알림을 띄워줍니다. 알림을 누르면 해당 세션으로 바로 이동합니다.
+Web Push는 Codex 세션이 사람을 필요로 하는 순간 — 권한/입력 프롬프트, 작업 완료 — 탭을 닫아둔 상태에서도 알림을 띄워줍니다. 알림을 누르면 해당 세션으로 바로 이동합니다.
 
 ## 무엇이 알림을 트리거하나
 
 사이드바의 컬러 배지에서 볼 수 있는 전환과 동일한 시점에 푸시가 발송됩니다.
 
-- **Needs input** — Codex가 권한 프롬프트나 질문 대기
+- **Needs input** — Codex가 권한/입력 프롬프트나 질문 대기
 - **작업 완료** — Codex가 한 턴을 마침 (**review** 상태)
 
 idle, busy 전환은 의도적으로 푸시하지 않습니다. 노이즈입니다.

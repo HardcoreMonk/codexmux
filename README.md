@@ -134,9 +134,9 @@ corepack pnpm start
 
 - tmux 기반 영속 세션: 브라우저를 닫아도 터미널과 Codex 작업 상태 유지
 - 멀티 워크스페이스: 패널 분할, 탭, 작업 디렉터리, 이름/그룹 편집, 사이드바 상태 저장
-- Codex 상태 감지: 작업중, 입력 대기, 리뷰 대기, 세션 resume, 지연 생성 JSONL 연결 상태 표시
+- Codex 상태 감지: 작업중, 입력 대기, 리뷰 대기, 세션 resume, 지연 생성 JSONL, live prompt 복구 상태 표시
 - Codex CLI 호환 입력: 터미널과 Codex 입력창에서 `Ctrl+D`를 EOF로 전달해 프로세스 종료 처리
-- 라이브 타임라인: Codex JSONL을 읽어 메시지, tool call, permission prompt, reasoning summary 표시
+- 라이브 타임라인: Codex JSONL과 live pane prompt를 읽어 메시지, tool call, permission/input prompt, reasoning summary 표시
 - 안정적인 재연결: 타임라인 entry id와 중복 제거를 JSONL record identity 기준으로 처리
 - 모바일 UI: PWA, iPad Safari, Android 앱, Web Push, foreground 재접속, 입력 draft 보존, CODEX 확인 중 터미널 preview
 - 알림 제어: 작업 완료 toast, 시스템 알림, 완료 사운드 on/off
@@ -436,7 +436,7 @@ Codex JSONL
 
 - 터미널 I/O는 xterm.js, WebSocket, node-pty, tmux로 연결됩니다.
 - 터미널과 Codex 입력창에서 `Ctrl+D`는 앱 단축키보다 우선해 EOF(`0x04`)로 전달됩니다. Linux/Windows의 오른쪽 분할 기본 단축키는 `Ctrl+Alt+D`이고, macOS는 `⌘D`입니다.
-- 상태 감지는 tmux pane PID 아래 Codex process와 Codex JSONL 변경을 함께 봅니다. Codex CLI가 프로세스 시작 후 JSONL을 늦게 남기는 경우를 고려해 session id, process start time, live process 확인 후 cwd fallback 순서로 연결합니다.
+- 상태 감지는 tmux pane PID 아래 Codex process, Codex JSONL 변경, live pane prompt를 함께 봅니다. Codex CLI가 프로세스 시작 후 JSONL을 늦게 남기는 경우를 고려해 session id, process start time, live process 확인 후 cwd fallback 순서로 연결합니다. Permission/input prompt, resume directory 선택, JSONL marker 없는 interrupted prompt는 pane capture로 보정해 tab이 stale `busy`나 잘못된 `idle`에 남지 않게 합니다.
 - 상태 전이, 알림 정책, session id mapping, 타임라인 병합/dedupe는 순수 모듈로 분리되어 있습니다.
 - 타임라인 entry id는 JSONL byte offset과 record identity 기반으로 생성되며, Codex가 같은 assistant text를 `event_msg.agent_message`와 `response_item.message`로 나눠 기록하는 경우도 near-duplicate 규칙으로 한 번만 표시합니다.
 - DIFF 패널은 tmux session cwd를 기준으로 Git 상태를 읽고, 대량 untracked 파일과 렌더링 비용을 제한합니다.
@@ -713,7 +713,7 @@ On iPad, use Safari and add codexmux to the Home Screen. A native iPadOS app is 
 
 - Persistent tmux sessions for browser and mobile reconnects
 - Multi-workspace layout with panes, tabs, working directories, workspace rename/group editing, and sidebar state
-- Codex status detection for busy, idle, input-needed, review-needed, resume, and delayed JSONL attach states
+- Codex status detection for busy, idle, input-needed, review-needed, resume, delayed JSONL attach, and live prompt recovery states
 - Codex CLI-compatible input, including `Ctrl+D` EOF delivery from terminal and Codex input focus
 - Live timeline from Codex JSONL logs
 - PWA, iPad Safari, Android app, Web Push, foreground reconnect, input draft preservation, and terminal preview while CODEX is checking
