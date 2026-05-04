@@ -60,6 +60,7 @@
     "android:clean": "cd android && ./gradlew clean",
     "android:keystore": "node scripts/android-keystore.mjs",
     "smoke:android:install": "node scripts/smoke-android-debug-install.mjs",
+    "smoke:android:release-aab": "node scripts/verify-android-release-aab.mjs",
     "smoke:android:foreground": "node scripts/smoke-android-foreground-reconnect.mjs",
     "smoke:android:recovery": "node scripts/smoke-android-launcher-recovery.mjs",
     "smoke:android:runtime-v2": "node scripts/smoke-android-runtime-v2-foreground.mjs",

@@ -14,6 +14,7 @@ corepack pnpm android:install
 corepack pnpm android:keystore
 corepack pnpm android:build:release
 corepack pnpm android:bundle:release
+corepack pnpm smoke:android:release-aab
 corepack pnpm smoke:android:install
 corepack pnpm smoke:android:foreground
 corepack pnpm smoke:android:recovery
@@ -28,6 +29,7 @@ corepack pnpm smoke:android:runtime-v2
 - `android:keystore`: 로컬 release keystore와 `android/keystore.properties`를 생성합니다.
 - `android:build:release`: signed release APK를 생성합니다.
 - `android:bundle:release`: signed release AAB를 생성합니다.
+- `smoke:android:release-aab`: 로컬 keystore 권한, git ignore, fresh AAB, 필수 bundle entry, signature를 확인합니다.
 - `smoke:android:install`: 연결된 debug APK의 package/version/activity 상태를 확인합니다.
 - `smoke:android:foreground`: Android WebView DevTools와 ADB로 foreground/background 복귀, native bridge, console/logcat 오류를 확인합니다.
 - `smoke:android:recovery`: network, HTTP 4xx, SSL 실패 후 native launcher 복귀와 서버 재연결을 확인합니다.
@@ -280,4 +282,21 @@ Signed release AAB:
 android/app/build/outputs/bundle/release/app-release.aab
 ```
 
-`android/release.keystore`와 `android/keystore.properties`는 로컬 비밀 파일이며 git에 커밋하지 않습니다. 새 환경에서는 `corepack pnpm android:keystore`로 생성하거나 기존 keystore를 복원합니다.
+Release AAB 운영 순서:
+
+```bash
+corepack pnpm android:keystore
+corepack pnpm android:bundle:release
+corepack pnpm smoke:android:release-aab
+```
+
+`android/release.keystore`와 `android/keystore.properties`는 로컬 비밀 파일이며 git에 커밋하지 않습니다. 새 환경에서는 `corepack pnpm android:keystore`로 생성하거나 기존 keystore를 복원합니다. 두 파일은 git ignore 상태여야 하고 권한은 `600`이어야 합니다. `android:keystore`는 기존 파일을 덮어쓰지 않으며, 기존/신규 secret file 권한을 `600`으로 보정합니다.
+
+`smoke:android:release-aab`는 secret 값을 출력하지 않고 다음만 검증합니다.
+
+- `android/release.keystore`와 `android/keystore.properties` 존재, git ignore, `600` 권한.
+- `android/app/build/outputs/bundle/release/app-release.aab`가 Android release input보다 새로움.
+- AAB에 `BundleConfig.pb`, base manifest, dex, launcher asset, native bridge, JAR manifest가 포함됨.
+- `jarsigner -verify`가 release AAB signature를 검증함.
+
+2026-05-05 로컬 release signing/AAB smoke 기준 `corepack pnpm android:bundle:release`는 `BUILD SUCCESSFUL`, `corepack pnpm smoke:android:release-aab`는 `expectedVersionName=0.4.1`, `expectedVersionCode=401`, AAB size `3030142` bytes로 통과했습니다.

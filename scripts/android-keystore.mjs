@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,7 +10,14 @@ const androidDir = join(rootDir, 'android');
 const keystorePath = join(androidDir, 'release.keystore');
 const propertiesPath = join(androidDir, 'keystore.properties');
 
+const hardenSecretFile = (filePath) => {
+  if (!existsSync(filePath)) return;
+  chmodSync(filePath, 0o600);
+};
+
 if (existsSync(keystorePath) || existsSync(propertiesPath)) {
+  hardenSecretFile(keystorePath);
+  hardenSecretFile(propertiesPath);
   console.log('[android:keystore] Existing release.keystore or keystore.properties found. Nothing changed.');
   process.exit(0);
 }
@@ -52,5 +59,7 @@ writeFileSync(propertiesPath, [
   `keyPassword=${password}`,
   '',
 ].join('\n'), { mode: 0o600 });
+hardenSecretFile(keystorePath);
+hardenSecretFile(propertiesPath);
 
 console.log('[android:keystore] Created android/release.keystore and android/keystore.properties.');

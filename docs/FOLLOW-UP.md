@@ -121,16 +121,16 @@ P0/P1/P2/P3 후속 상태:
 - P1 완료: Android foreground/recovery/runtime v2 smoke, app info/native restart smoke, Electron attach/runtime v2 smoke, M1 macOS `0.4.1` DMG/zip packaging, PWA/iPad readiness smoke, permission prompt smoke.
 - P1 남음: 자동 개발로 처리 가능한 platform smoke 항목은 없음.
 - P2 완료: runtime v2 phase2 gate, Electron/Android runtime v2 reconnect smoke, browser reconnect DOM smoke, live terminal `new-tabs` enable을 현재 코드 기준으로 확인했다.
-- P2 남음: runtime v2 shadow/new-tabs/default 24시간 worker restart-loop 부재 관찰, release workflow/CI에서 선택 실행할 Android/Electron/browser reconnect smoke artifact 보존.
-- P3 진행: storage `default` live mode로 전환했고 dry-run, backup, import, write, default-read, shadow preflight와 initial rollback window canary를 통과했다.
-- P3 남음: storage default 장시간 observation과 필요 시 rollback drill, Android release signing/AAB 운영, approval queue, lifecycle control UI, perf tuning. Timeline/status는 `docs/RUNTIME-V2-CUTOVER.md`의 Phase 4/5 gate로 별도 진행한다.
+- P2 남음: runtime v2 shadow/new-tabs/default 24시간 worker restart-loop 부재 관찰, release workflow/CI에서 선택 실행할 Android/Electron/browser reconnect smoke artifact 보존. 24시간 종료 판단은 2026-05-06 01:42 KST 이후에 가능하다.
+- P3 진행: storage `default` live mode로 전환했고 dry-run, backup, import, write, default-read, shadow preflight와 initial rollback window canary를 통과했다. Android release signing/AAB는 로컬 keystore 권한 보정, fresh AAB build, `smoke:android:release-aab` 검증 자동화까지 완료했다. Perf snapshot baseline은 runtime v2 default 전환 뒤 2026-05-05 02:21 KST에 재수집했다.
+- P3 남음: storage default 장시간 observation과 필요 시 rollback drill, approval queue, lifecycle control UI, 측정 기반 perf tuning. Timeline/status는 `docs/RUNTIME-V2-CUTOVER.md`의 Phase 4/5 gate로 별도 진행한다.
 
 1. 장시간 Codex smoke test: 새 tab 생성, prompt 실행, tool call과 reasoning summary 표시, 상태 전이 확인.
 2. permission prompt smoke test: `corepack pnpm smoke:permission`으로 pane capture 기반 option parsing, inline prompt 선택, stdin 전달, `needs-input` push와 ack 후 `busy` 복귀 확인. 실제 Codex CLI permission prompt 재현은 P1 수동/기기 smoke로 남긴다.
 3. stats smoke test: `/api/stats/*` endpoint와 실제 `~/.codex/sessions` 집계 확인.
 4. daily report smoke test: `codex exec` 성공/실패, cache 재사용 확인.
 5. macOS packaging: Linux release host에서는 `corepack pnpm build:electron`까지 확인하고, `.app`/`.dmg` 산출물은 macOS host에서 `corepack pnpm pack:electron:dev`로 생성한다.
-6. Android packaging: `corepack pnpm android:build:debug`, `corepack pnpm android:install`, `corepack pnpm smoke:android:install`로 package install state 확인. 현재 `0.4.1` 기준 `versionName=0.4.1`, `versionCode=401`이어야 한다.
+6. Android packaging: `corepack pnpm android:build:debug`, `corepack pnpm android:install`, `corepack pnpm smoke:android:install`로 package install state 확인. release AAB는 `corepack pnpm android:keystore`, `corepack pnpm android:bundle:release`, `corepack pnpm smoke:android:release-aab` 순서로 확인한다. 현재 `0.4.1` 기준 `versionName=0.4.1`, `versionCode=401`이어야 한다.
 7. 모바일 reconnect smoke test: Android WebView는 `smoke:android:foreground`로 반복 확인한다. iPad/PWA install readiness는 `corepack pnpm smoke:pwa`로 manifest/head/icon/splash/service worker/iPad viewport console을 먼저 확인한다. iOS startup image는 `scripts/generate-splash.js`가 만든 `codexmux` branding이어야 하며, 기존 Home Screen 앱의 오래된 splash는 iOS cache 때문에 앱 재추가로 확인한다. 실제 iPad Home Screen 장시간 background와 입력 draft 보존, timeline 중복 출력 방지는 별도 수동 smoke로 남긴다.
 8. Android Tailscale 실패 smoke test: `smoke:android:recovery`가 network/HTTP 4xx/SSL을 자동 확인한다. 실제 Tailscale 미연결과 서버 장시간 중지는 별도 수동 smoke로 남긴다.
 9. Android app info/restart smoke test: launcher와 server 접속 후 mobile navigation에서 앱 정보가 표시되고 앱 재시작 버튼이 WebView/Activity를 다시 여는지 확인.
@@ -170,7 +170,7 @@ P0/P1/P2/P3 후속 상태:
 
 ### Mobile app
 
-- Android release signing과 AAB 배포 절차를 실제 release workflow에 연결.
+- Android release signing은 로컬 keystore 보관형으로 운영한다. `android/release.keystore`와 `android/keystore.properties`는 git ignore와 `600` 권한을 유지하고, AAB는 `corepack pnpm android:bundle:release` 후 `corepack pnpm smoke:android:release-aab`로 fresh artifact/signature를 확인한다. Play Console upload와 internal testing 증거 보존은 배포 운영 단계에서 추가한다.
 - 모바일 WebView에서 장시간 reconnect, push click, input draft 보존을 반복 검증.
 - iPad는 Safari + 홈 화면 추가를 기본 지원 경로로 유지한다. Startup image/icon branding 변경은 PWA 정적 자산 배포 후 기존 Home Screen 앱 재추가까지 확인한다.
 - iOS native shell이 필요하면 Capacitor iOS project와 Xcode signing/deploy flow를 별도 검토.

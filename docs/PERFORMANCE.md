@@ -114,6 +114,33 @@ Rust + Tauri 도입은 `docs/TAURI-EVALUATION.md` 기준으로 보류한다. Tau
 - Runtime v2 shadow runtime은 이 counters를 보고 readiness 실패, restart loop, command timeout, failed reply를 확인한 뒤에만 surface별 default 전환을 검토한다.
 - `CODEXMUX_RUNTIME_V2=1` server startup은 legacy startup을 막지 않고 runtime v2 health diagnostic을 실행한다. 이 호출은 worker별 `healthChecks`, `healthFailures`, `lastHealthAt`에 남는다.
 
+### 2026-05-05 runtime v2 new-tabs/default baseline
+
+`CODEXMUX_RUNTIME_TERMINAL_V2_MODE=new-tabs`와
+`CODEXMUX_RUNTIME_STORAGE_V2_MODE=default` 전환 뒤 2026-05-05 02:21 KST에
+`/api/debug/perf` snapshot을 재수집했다. Snapshot은 인증된 CLI token으로 조회했고
+session id, cwd, JSONL path, prompt, assistant text, terminal output 본문은 기록하지 않았다.
+
+| 항목 | 값 |
+| --- | --- |
+| process uptime | 2375.4s |
+| RSS / heap used | 300548096 / 64103032 bytes |
+| event loop utilization | 0.0133 |
+| event loop delay p95 / p99 / max | 20.74ms / 21.48ms / 308.02ms |
+| status poll average / last / max | 38.89ms / 29.18ms / 105.93ms |
+| terminal connections / sessions | 2 / 2 |
+| timeline open sockets / file watchers / cached tail snapshots | 3 / 2 / 2 |
+| session index sessions / lastBuildMs | 245 / 52ms |
+| session index cache hits / misses | 242 / 3 |
+| runtime worker failures | storage/terminal/timeline/status 모두 health/ready/command/timeout/restart/error 0 |
+
+판단:
+
+- runtime v2 default 전환 직후 worker restart-loop 징후는 없다.
+- status polling 평균은 40ms 안쪽이고 current interval은 30000ms다.
+- event loop p95/p99는 안정적이지만 max 308ms spike가 있어 장시간 관찰에서 반복 여부를 본다.
+- perf tuning 다음 단계는 수치가 누적된 뒤 status adaptive scheduling 또는 timeline 긴 대화 render를 좁게 선택한다.
+
 ## 작업 상세
 
 ### 1. Perf Snapshot
