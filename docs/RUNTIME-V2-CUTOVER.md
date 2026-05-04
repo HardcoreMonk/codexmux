@@ -176,6 +176,7 @@ Goal: move live status polling/broadcast side effects into Status Worker.
 Work:
 
 - Move process polling, JSONL watch, hook event application, dismiss/ack handling, Web Push/session history side effects behind Status Worker.
+- Current policy-only first slice: `corepack pnpm smoke:runtime-v2:status-shadow` compares Status Worker IPC reducer/policy output with legacy pure helpers.
 - Keep pure reducer and notification policy output byte-for-byte compatible with current tests.
 - Add typed status events for sync/update/remove/hook/session-history/rate-limits.
 - Preserve `globalThis` singleton compatibility until custom server and API routes no longer share status state directly.

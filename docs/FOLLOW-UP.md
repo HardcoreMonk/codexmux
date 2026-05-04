@@ -52,6 +52,7 @@
 | runtime v2 phase1 shadow | 관찰 중 | live `codexmux.service`에 `CODEXMUX_RUNTIME_V2=1`, surface modes `off` drop-in 적용. `corepack pnpm smoke:runtime-v2`, live target smoke, `/api/v2/runtime/health`, `/api/debug/perf` worker counters 통과. 24시간 restart-loop 부재 관찰은 남음 |
 | runtime v2 storage shadow | 부분 통과 | `corepack pnpm smoke:runtime-v2:storage-shadow`, legacy JSON에 mirror된 `runtimeVersion: 2` tab과 SQLite runtime layout projection read-only compare 통과. full migration과 v1 tab import는 남음 |
 | runtime v2 timeline shadow | 부분 통과 | `corepack pnpm smoke:runtime-v2:timeline-shadow`, legacy timeline read endpoint와 runtime v2 timeline read endpoint의 message counts/entries-before metadata compare 통과. live watcher/session-changed/resume ownership은 남음 |
+| runtime v2 status shadow | 부분 통과 | `corepack pnpm smoke:runtime-v2:status-shadow`, Status Worker IPC reducer/policy output과 legacy pure helper output compare 통과. polling/ack/Web Push/session history ownership은 남음 |
 | Android debug install | 통과 | `versionName=0.3.3`, `versionCode=303`, `MainActivity` |
 | Android Tailscale failure recovery | 통과 | `corepack pnpm smoke:android:recovery`, network/HTTP 4xx/SSL 실패 후 launcher 복귀와 `/login` 재연결, blocking console/logcat 0 |
 | Android foreground reconnect | 통과 | `corepack pnpm smoke:android:foreground`, 2회 background/foreground, `triggerEvent`/TypeError 0, blocking console/logcat 0 |

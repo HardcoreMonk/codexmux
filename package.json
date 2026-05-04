@@ -73,6 +73,7 @@
     "smoke:runtime-v2:phase2": "node scripts/smoke-runtime-v2-phase2-gate.mjs",
     "smoke:runtime-v2:storage-shadow": "tsx scripts/smoke-runtime-v2-storage-shadow.ts",
     "smoke:runtime-v2:timeline-shadow": "tsx scripts/smoke-runtime-v2-timeline-shadow.ts",
+    "smoke:runtime-v2:status-shadow": "tsx scripts/smoke-runtime-v2-status-shadow.ts",
     "smoke:windows-sync": "node scripts/smoke-windows-sync.mjs",
     "deploy:local": "node scripts/deploy-local.mjs",
     "release:patch": "node scripts/release.mjs patch",

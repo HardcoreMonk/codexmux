@@ -96,3 +96,9 @@ Runtime v2 can only become default for a surface when every row in that surface 
 - 범위는 allowed Codex JSONL fixture에 대한 legacy `/api/timeline/message-counts`, `/api/timeline/entries`와 runtime v2 `/api/v2/timeline/message-counts`, `/api/v2/timeline/entries`의 read-only compare다.
 - 이 first slice는 Timeline Worker live watcher/subscriber/session-changed/resume ownership을 완료한 것이 아니다.
 - mismatch output은 count, byte offset, entry type sequence만 포함하고 prompt/assistant/tool argument 본문은 출력하지 않는다.
+
+## 2026-05-04 Status Shadow Evidence
+
+- `corepack pnpm smoke:runtime-v2:status-shadow`를 추가했다.
+- 범위는 Status Worker IPC의 hook reducer, Codex state reducer, notification policy output과 legacy pure helper output 비교다.
+- 이 first slice는 process polling, JSONL watch, hook event side-effect application, dismiss/ack, Web Push, session history write ownership을 완료한 것이 아니다.
