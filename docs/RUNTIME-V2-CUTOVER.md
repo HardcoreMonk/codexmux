@@ -13,6 +13,7 @@
 - Shadow diagnostics: server startup calls runtime v2 health without blocking legacy startup, and `/api/debug/perf` exposes worker health/readiness/restart/timeout counters.
 - Terminal identity: newly created legacy tabs carry `runtimeVersion: 1`, runtime v2 tabs carry `runtimeVersion: 2`, and missing `runtimeVersion` is treated as legacy for existing JSON layouts.
 - Smoke: `/api/v2/terminal` attach/input/output/resize/web stdin/heartbeat/fresh reattach/fanout/backpressure close/tab delete/tab restart/workspace delete, plus Phase 2 app-surface new-tab gate for browser reload, server restart, and terminal mode rollback.
+- 2026-05-04 Phase 1 shadow: live `codexmux.service`에 `CODEXMUX_RUNTIME_V2=1`과 storage/terminal/timeline/status surface mode `off`를 적용했다. `/api/v2/runtime/health`는 모든 worker ok와 `terminalV2Mode: "off"`를 반환한다. `/api/debug/perf`는 각 worker `starts=1`, `readyFailures=0`, `healthFailures=0`, `timeouts=0`, `restarts=0`을 보여준다. 24시간 restart loop 부재 관찰 gate는 아직 남아 있다.
 - 2026-05-03 live smoke snapshot: `corepack pnpm smoke:runtime-v2:phase2`, `corepack pnpm build:electron`, `corepack pnpm smoke:electron:attach`, `corepack pnpm smoke:electron:runtime-v2`, `corepack pnpm smoke:android:runtime-v2`, Mac M1 `pnpm pack:electron:dev`, Android debug install, Android Tailscale failure recovery, Android production foreground reconnect, Android app info/native restart, Windows sync dry-run, stats/daily report, permission prompt smoke, and systemd deploy health passed. Electron page-context smoke proved existing-cookie `/api/v2/terminal` attach/output plus 2회 page reload/reconnect on a temp runtime v2 server. Android runtime v2 smoke proved existing-cookie `/api/v2/terminal` attach/output plus 2회 foreground reconnect on SM-S928N Android 16 through the Tailscale IP temp server. Android production foreground reconnect showed `triggerEvent`/TypeError 0 and terminal/timeline WebSocket console error 0 after foreground grace suppression. Runtime v2 reconnect recovery now covers Terminal Worker retryable close, `session-not-found` tab/session recreation through Supervisor, and desktop/mobile blocking overlay hiding the stale floating reconnect control. macOS packaging created arm64/x64 DMG and zip artifacts; GUI launch smoke still needs an interactive Mac user session.
 
 Production 기본 경로로 전환하지 않은 것:
@@ -70,7 +71,9 @@ Work:
 - Start `CODEXMUX_RUNTIME_V2=1` in production service.
 - Add `/api/debug/perf` counters for each worker readiness, restart, timeout, and command error.
 - Add a startup diagnostic that calls `runtime.health` and records worker health without blocking legacy startup.
-- Run runtime v2 smoke against an isolated DB in CI and against the production host before release.
+- Run `corepack pnpm smoke:runtime-v2` against a managed temp HOME/DB server in CI and
+  `CODEXMUX_RUNTIME_V2_SMOKE_URL=<live-url> corepack pnpm smoke:runtime-v2` against the
+  production host after shadow runtime is enabled.
 
 Exit gate:
 

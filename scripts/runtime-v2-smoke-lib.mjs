@@ -63,3 +63,14 @@ export const appendRuntimeV2SmokeFrame = (output, data) => {
   if (frame.type !== MSG_STDOUT) return output;
   return `${output}${frame.payload.toString('utf-8')}`;
 };
+
+export const normalizeRuntimeV2SmokeTerminalOutput = (output) =>
+  String(output || '')
+    .replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '')
+    .replace(/\r/g, '\n');
+
+export const hasRuntimeV2SmokeInitialTerminalOutput = (output, expectedCwd, cols, rows) => {
+  const normalized = normalizeRuntimeV2SmokeTerminalOutput(output);
+  const sizePattern = new RegExp(`(?:^|\\s)${rows}\\s+${cols}(?:\\s|$)`);
+  return normalized.includes(expectedCwd) && sizePattern.test(normalized);
+};

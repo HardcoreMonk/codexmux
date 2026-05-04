@@ -62,4 +62,11 @@ describe('runtime v2 smoke script helpers', () => {
     expect(appendRuntimeV2SmokeFrame('', stdout)).toBe('hello');
     expect(appendRuntimeV2SmokeFrame('hello', heartbeat)).toBe('hello');
   });
+
+  it('detects initial terminal output when stty size follows a shell prompt', async () => {
+    const { hasRuntimeV2SmokeInitialTerminalOutput } = await loadLib();
+    const output = '/data/projects/codex-zone/codexmux\u001b[K\r\n$ 30 100\u001b[K\r\n$ ';
+
+    expect(hasRuntimeV2SmokeInitialTerminalOutput(output, '/data/projects/codex-zone/codexmux', 100, 30)).toBe(true);
+  });
 });

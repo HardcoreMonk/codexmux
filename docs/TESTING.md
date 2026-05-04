@@ -76,6 +76,15 @@ Runtime v2 low-level terminal smoke:
 corepack pnpm smoke:runtime-v2
 ```
 
+기본 명령은 temp HOME/DB 서버를 `CODEXMUX_RUNTIME_V2=1`과 surface mode `off`로 띄운 뒤
+기존 low-level target smoke를 실행한다. 이미 떠 있는 runtime v2 서버를 직접 검증하려면
+target URL을 지정한다.
+
+```bash
+CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8122 corepack pnpm smoke:runtime-v2
+corepack pnpm smoke:runtime-v2:target
+```
+
 Phase 2 app-surface gate:
 
 ```bash

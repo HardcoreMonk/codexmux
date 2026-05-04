@@ -5,6 +5,7 @@ import path from 'path';
 import { WebSocket } from 'ws';
 import {
   appendRuntimeV2SmokeFrame,
+  hasRuntimeV2SmokeInitialTerminalOutput,
   encodeHeartbeat,
   encodeResize,
   encodeStdin,
@@ -77,7 +78,7 @@ const waitForTerminalSmoke = (sessionName, expectedCwd) =>
       ws.send(encodeResize(100, 30));
       ws.send(encodeStdin('pwd\nstty size\n'));
     },
-    predicate: (output) => output.includes(expectedCwd) && /(?:^|\r?\n)30 100(?:\r?\n|$)/.test(output),
+    predicate: (output) => hasRuntimeV2SmokeInitialTerminalOutput(output, expectedCwd, 100, 30),
   });
 
 const waitForReconnectSmoke = (sessionName) =>
