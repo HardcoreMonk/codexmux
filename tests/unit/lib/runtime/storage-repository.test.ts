@@ -410,12 +410,14 @@ describe('runtime storage repository', () => {
 
     expect(db.prepare(`select version from schema_migrations order by version`).all()).toEqual([
       { version: 1 },
+      { version: 2 },
     ]);
     db.close();
 
     const reopened = openRuntimeDatabase(dbPath);
     expect(reopened.prepare(`select version, count(*) as count from schema_migrations group by version`).all()).toEqual([
       { version: 1, count: 1 },
+      { version: 2, count: 1 },
     ]);
   });
 

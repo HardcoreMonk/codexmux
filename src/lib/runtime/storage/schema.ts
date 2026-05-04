@@ -12,7 +12,7 @@ export interface IOpenRuntimeDatabaseOptions {
   loadDatabase?: () => IBetterSqlite3Constructor;
 }
 
-export const CURRENT_RUNTIME_SCHEMA_VERSION = 1;
+export const CURRENT_RUNTIME_SCHEMA_VERSION = 2;
 
 const runtimeRequireBase = path.join(
   process.env.__CMUX_APP_DIR_UNPACKED || process.env.__CMUX_APP_DIR || path.join(/*turbopackIgnore: true*/ process.cwd()),
@@ -178,6 +178,15 @@ const RUNTIME_MIGRATIONS: IRuntimeMigration[] = [
     version: 1,
     up: (db) => {
       db.exec(RUNTIME_SCHEMA_V1);
+    },
+  },
+  {
+    version: 2,
+    up: (db) => {
+      db.exec(`
+        alter table workspaces add column active_pane_id text null;
+        alter table tabs add column runtime_version integer not null default 2;
+      `);
     },
   },
 ];

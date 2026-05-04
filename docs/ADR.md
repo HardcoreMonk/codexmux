@@ -52,6 +52,12 @@
   유지하고, plain terminal v2 tab 생성 시 legacy workspace/pane id를 Storage Worker에
   mirror한 뒤 생성된 `rtv2-` tab을 JSON layout에 `runtimeVersion: 2`로 append한다.
   이 mirror는 SQLite workspace/layout default ownership 전환이 아니다.
+  Storage schema v2는 `tabs.runtime_version`과 `workspaces.active_pane_id`를 추가해
+  JSON-to-SQLite import가 legacy `pt-` terminal tab, runtime v2 `rtv2-` terminal tab,
+  non-terminal tab, split layout, active pane, status metadata를 같은 DB에 보존할 수
+  있게 한다. Runtime v2 terminal attach authorization과 cleanup intent는 계속
+  `runtime_version=2` terminal tab만 대상으로 삼아 imported legacy `pt-` sessions를
+  v2 worker가 kill하지 않는다.
   `better-sqlite3`는 optional dependency이며 lazy load된다. runtime v2가 꺼진
   install/build는 native binding load에 의존하지 않고, runtime v2가 켜졌을 때 binding
   부재는 `runtime-v2-sqlite-unavailable`로 실패한다.

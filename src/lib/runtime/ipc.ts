@@ -126,18 +126,28 @@ const runtimeDeleteTerminalTabStorageResultSchema = z.object({
 });
 const runtimeLayoutTabSchema = z.object({
   id: z.string(),
-  sessionName: runtimeSessionNameSchema,
+  sessionName: z.string().min(1),
   name: z.string(),
   order: z.number(),
   title: z.string().optional(),
   cwd: z.string().optional(),
-  runtimeVersion: z.literal(2),
+  runtimeVersion: z.union([z.literal(1), z.literal(2)]),
   panelType: z.union([
     z.literal('terminal'),
     z.literal('codex'),
     z.literal('web-browser'),
     z.literal('diff'),
   ]).optional(),
+  agentSessionId: z.string().nullable().optional(),
+  agentJsonlPath: z.string().nullable().optional(),
+  agentSummary: z.string().nullable().optional(),
+  lastUserMessage: z.string().nullable().optional(),
+  lastCommand: z.string().nullable().optional(),
+  cliState: cliStateSchema.optional(),
+  dismissedAt: z.number().nullable().optional(),
+  webUrl: z.string().nullable().optional(),
+  terminalRatio: z.number().optional(),
+  terminalCollapsed: z.boolean().optional(),
 });
 
 type TRuntimeLayoutNode = {

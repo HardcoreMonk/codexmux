@@ -73,12 +73,11 @@ const report = analyzeRuntimeStorageDryRun({
 
 const serialized = JSON.stringify(report);
 assert(report.readOnly, 'dry-run report must be read-only');
-assert(!report.cutoverReady, 'unsupported fixture must block cutover');
+assert(report.cutoverReady, 'importable fixture must be cutover-ready for storage import');
 assert(report.backupPlan.files.length === 2, 'backup manifest must include workspaces and layout files');
 assert(report.totals.runtimeV1TabCount === 1, 'legacy terminal tab count mismatch');
 assert(report.totals.runtimeV2TabCount === 1, 'runtime v2 terminal tab count mismatch');
-assert(report.issues.some((issue) => issue.code === 'runtime-v1-tab-not-imported'), 'missing runtime v1 blocker');
-assert(report.issues.some((issue) => issue.code === 'split-layout-not-imported'), 'missing split layout blocker');
+assert(report.issues.every((issue) => issue.severity !== 'blocker'), 'importable fixture must not have blockers');
 assert(!serialized.includes('/secret'), 'report leaked a filesystem path');
 assert(!serialized.includes('Dry Run Secret'), 'report leaked workspace or tab labels');
 assert(!serialized.includes('dry run secret prompt'), 'report leaked prompt text');

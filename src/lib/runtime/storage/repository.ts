@@ -11,7 +11,7 @@ import type {
 } from '@/lib/runtime/contracts';
 import { createRuntimeId } from '@/lib/runtime/session-name';
 import type { TRuntimeDatabase } from '@/lib/runtime/storage/schema';
-import type { IPaneNode, ITab } from '@/types/terminal';
+import type { ILayoutData, IPaneNode, ISplitNode, ITab, TLayoutNode, TRuntimeVersion } from '@/types/terminal';
 
 export interface ICreateWorkspaceInput {
   name: string;
@@ -67,9 +67,31 @@ interface ITabRow {
   sessionName: string;
   name: string;
   order: number;
+  title: string | null;
   cwd: string | null;
   panelType: string;
+  runtimeVersion: TRuntimeVersion;
   lifecycleState: string;
+  webUrl: string | null;
+  lastCommand: string | null;
+  terminalRatio: number | null;
+  terminalCollapsed: number;
+  cliState: ITab['cliState'] | null;
+  agentSessionId: string | null;
+  agentJsonlPath: string | null;
+  agentSummary: string | null;
+  lastUserMessage: string | null;
+  dismissedAt: number | null;
+}
+
+interface IPaneRow {
+  id: string;
+  parentId: string | null;
+  nodeKind: 'pane' | 'split';
+  splitAxis: 'horizontal' | 'vertical' | null;
+  ratio: number | null;
+  position: number;
+  activeTabId: string | null;
 }
 
 const nowIso = (): string => new Date().toISOString();
@@ -114,9 +136,9 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
     const ts = nowIso();
 
     db.prepare(`
-      insert into workspaces (id, name, default_cwd, active, order_index, created_at, updated_at)
-      values (?, ?, ?, 1, 0, ?, ?)
-    `).run(workspaceId, input.name, input.defaultCwd, ts, ts);
+      insert into workspaces (id, name, default_cwd, active, order_index, active_pane_id, created_at, updated_at)
+      values (?, ?, ?, 1, 0, ?, ?, ?)
+    `).run(workspaceId, input.name, input.defaultCwd, rootPaneId, ts, ts);
 
     db.prepare(`
       insert into panes (id, workspace_id, node_kind, position, created_at, updated_at)
@@ -137,9 +159,9 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
         from workspaces
       `).get() as { nextOrder: number }).nextOrder;
       db.prepare(`
-        insert into workspaces (id, name, default_cwd, active, order_index, created_at, updated_at)
-        values (?, ?, ?, 0, ?, ?, ?)
-      `).run(input.workspaceId, input.name, input.defaultCwd, nextOrder, ts, ts);
+        insert into workspaces (id, name, default_cwd, active, order_index, active_pane_id, created_at, updated_at)
+        values (?, ?, ?, 0, ?, ?, ?, ?)
+      `).run(input.workspaceId, input.name, input.defaultCwd, nextOrder, input.paneId, ts, ts);
     }
 
     const pane = db.prepare(`
@@ -269,6 +291,7 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
       select session_name as sessionName
       from tabs
       where workspace_id = ? and session_name is not null
+        and runtime_version = 2
         and lifecycle_state in ('pending_terminal', 'ready')
       order by created_at asc, order_index asc, id asc
     `).all(input.workspaceId) as IRuntimeWorkspaceTerminalSession[];
@@ -281,7 +304,8 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
   const deleteTerminalTabTx = db.transaction((input: IDeleteTerminalTabInput): IRuntimeDeleteTerminalTabStorageResult => {
     const ts = nowIso();
     const row = db.prepare(`
-      select id, pane_id as paneId, session_name as sessionName, panel_type as panelType, lifecycle_state as lifecycleState
+      select id, pane_id as paneId, session_name as sessionName, panel_type as panelType,
+        runtime_version as runtimeVersion, lifecycle_state as lifecycleState
       from tabs
       where id = ?
     `).get(input.id) as {
@@ -289,6 +313,7 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
       paneId: string;
       sessionName: string;
       panelType: string;
+      runtimeVersion: TRuntimeVersion;
       lifecycleState: string;
     } | undefined;
     if (!row) return { deleted: false, session: null };
@@ -322,7 +347,9 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
       lifecycleState: row.lifecycleState,
     });
 
-    const shouldKill = row.panelType === 'terminal' && ['pending_terminal', 'ready'].includes(row.lifecycleState);
+    const shouldKill = row.panelType === 'terminal'
+      && row.runtimeVersion === 2
+      && ['pending_terminal', 'ready'].includes(row.lifecycleState);
     return {
       deleted: true,
       session: shouldKill ? { sessionName: row.sessionName } : null,
@@ -350,9 +377,14 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
 
     listReadyTerminalTabs(): IRuntimeTerminalTab[] {
       const rows = db.prepare(`
-        select id, session_name as sessionName, name, order_index as "order", cwd, panel_type as panelType, lifecycle_state as lifecycleState
+        select id, session_name as sessionName, name, title, order_index as "order", cwd,
+          panel_type as panelType, runtime_version as runtimeVersion, lifecycle_state as lifecycleState,
+          web_url as webUrl, last_command as lastCommand, terminal_ratio as terminalRatio,
+          terminal_collapsed as terminalCollapsed,
+          null as cliState, null as agentSessionId, null as agentJsonlPath, null as agentSummary,
+          null as lastUserMessage, null as dismissedAt
         from tabs
-        where panel_type = 'terminal' and lifecycle_state = 'ready'
+        where panel_type = 'terminal' and lifecycle_state = 'ready' and runtime_version = 2
         order by created_at asc, order_index asc, id asc
       `).all() as ITabRow[];
       return rows.map((row) => ({
@@ -369,9 +401,14 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
 
     getReadyTerminalTabBySession(sessionName: string): IRuntimeTerminalTab | null {
       const row = db.prepare(`
-        select id, session_name as sessionName, name, order_index as "order", cwd, panel_type as panelType, lifecycle_state as lifecycleState
+        select id, session_name as sessionName, name, title, order_index as "order", cwd,
+          panel_type as panelType, runtime_version as runtimeVersion, lifecycle_state as lifecycleState,
+          web_url as webUrl, last_command as lastCommand, terminal_ratio as terminalRatio,
+          terminal_collapsed as terminalCollapsed,
+          null as cliState, null as agentSessionId, null as agentJsonlPath, null as agentSummary,
+          null as lastUserMessage, null as dismissedAt
         from tabs
-        where session_name = ? and panel_type = 'terminal' and lifecycle_state = 'ready'
+        where session_name = ? and panel_type = 'terminal' and lifecycle_state = 'ready' and runtime_version = 2
       `).get(sessionName) as ITabRow | undefined;
       if (!row) return null;
       return {
@@ -387,40 +424,111 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
     },
 
     getWorkspaceLayout(workspaceId: string): TRuntimeLayout {
-      const pane = db.prepare(`
-        select id, active_tab_id as activeTabId
+      const workspace = db.prepare(`
+        select active_pane_id as activePaneId
+        from workspaces
+        where id = ?
+      `).get(workspaceId) as { activePaneId: string | null } | undefined;
+      if (!workspace) return null;
+
+      const panes = db.prepare(`
+        select id, parent_id as parentId, node_kind as nodeKind, split_axis as splitAxis,
+          ratio, position, active_tab_id as activeTabId
         from panes
-        where workspace_id = ? and parent_id is null
-      `).get(workspaceId) as { id: string; activeTabId: string | null } | undefined;
-      if (!pane) return null;
-      const tabs = db.prepare(`
-        select id, session_name as sessionName, name, order_index as "order", cwd, panel_type as panelType
-        from tabs
-        where pane_id = ? and lifecycle_state = 'ready'
-        order by order_index asc, created_at asc, id asc
-      `).all(pane.id) as Array<{
-        id: string;
-        sessionName: string;
-        name: string;
-        order: number;
-        cwd: string | null;
-        panelType: ITab['panelType'];
-      }>;
-      const root: IPaneNode = {
-        type: 'pane',
-        id: pane.id,
-        activeTabId: pane.activeTabId,
-        tabs: tabs.map((tab) => ({
-          id: tab.id,
-          sessionName: tab.sessionName,
-          name: tab.name,
-          order: tab.order,
-          runtimeVersion: 2,
-          ...(tab.cwd ? { cwd: tab.cwd } : {}),
-          ...(tab.panelType ? { panelType: tab.panelType } : {}),
-        })),
+        where workspace_id = ?
+        order by parent_id asc, position asc, created_at asc, id asc
+      `).all(workspaceId) as IPaneRow[];
+      const rootPane = panes.find((pane) => pane.parentId === null);
+      if (!rootPane) return null;
+
+      const tabsByPaneId = new Map<string, ITab[]>();
+      const tabRows = db.prepare(`
+        select
+          t.id,
+          t.session_name as sessionName,
+          t.name,
+          t.title,
+          t.order_index as "order",
+          t.cwd,
+          t.panel_type as panelType,
+          t.runtime_version as runtimeVersion,
+          t.lifecycle_state as lifecycleState,
+          t.web_url as webUrl,
+          t.last_command as lastCommand,
+          t.terminal_ratio as terminalRatio,
+          t.terminal_collapsed as terminalCollapsed,
+          s.cli_state as cliState,
+          s.agent_session_id as agentSessionId,
+          s.agent_jsonl_ref as agentJsonlPath,
+          s.agent_summary as agentSummary,
+          s.last_user_message as lastUserMessage,
+          s.dismissed_at as dismissedAt,
+          t.pane_id as paneId
+        from tabs t
+        left join tab_status s on s.tab_id = t.id
+        where t.workspace_id = ? and t.lifecycle_state = 'ready'
+        order by t.pane_id asc, t.order_index asc, t.created_at asc, t.id asc
+      `).all(workspaceId) as Array<ITabRow & { paneId: string }>;
+      for (const row of tabRows) {
+        const tab: ITab = {
+          id: row.id,
+          sessionName: row.sessionName,
+          name: row.name,
+          order: row.order,
+          runtimeVersion: row.runtimeVersion,
+          ...(row.title ? { title: row.title } : {}),
+          ...(row.cwd ? { cwd: row.cwd } : {}),
+          ...(row.panelType ? { panelType: row.panelType as ITab['panelType'] } : {}),
+          ...(row.webUrl ? { webUrl: row.webUrl } : {}),
+          ...(row.lastCommand ? { lastCommand: row.lastCommand } : {}),
+          ...(row.terminalRatio !== null ? { terminalRatio: row.terminalRatio } : {}),
+          ...(row.terminalCollapsed ? { terminalCollapsed: Boolean(row.terminalCollapsed) } : {}),
+          ...(row.cliState ? { cliState: row.cliState } : {}),
+          ...(row.agentSessionId ? { agentSessionId: row.agentSessionId } : {}),
+          ...(row.agentJsonlPath ? { agentJsonlPath: row.agentJsonlPath } : {}),
+          ...(row.agentSummary ? { agentSummary: row.agentSummary } : {}),
+          ...(row.lastUserMessage ? { lastUserMessage: row.lastUserMessage } : {}),
+          ...(row.dismissedAt !== null ? { dismissedAt: row.dismissedAt } : {}),
+        };
+        tabsByPaneId.set(row.paneId, [...(tabsByPaneId.get(row.paneId) ?? []), tab]);
+      }
+
+      const childrenByParentId = new Map<string, IPaneRow[]>();
+      for (const pane of panes) {
+        if (!pane.parentId) continue;
+        childrenByParentId.set(pane.parentId, [...(childrenByParentId.get(pane.parentId) ?? []), pane]);
+      }
+
+      const buildNode = (row: IPaneRow): TLayoutNode => {
+        if (row.nodeKind === 'pane') {
+          return {
+            type: 'pane',
+            id: row.id,
+            activeTabId: row.activeTabId,
+            tabs: tabsByPaneId.get(row.id) ?? [],
+          };
+        }
+
+        const children = (childrenByParentId.get(row.id) ?? []).sort((a, b) => a.position - b.position);
+        const fallbackPane = (): IPaneNode => ({ type: 'pane', id: `${row.id}-missing`, activeTabId: null, tabs: [] });
+        const left = children[0] ? buildNode(children[0]) : fallbackPane();
+        const right = children[1] ? buildNode(children[1]) : fallbackPane();
+        const split: ISplitNode = {
+          type: 'split',
+          orientation: row.splitAxis ?? 'horizontal',
+          ratio: row.ratio ?? 50,
+          children: [left, right],
+        };
+        return split;
       };
-      return { root, activePaneId: pane.id, updatedAt: nowIso() };
+
+      const root = buildNode(rootPane);
+      const layout: ILayoutData = {
+        root,
+        activePaneId: workspace.activePaneId,
+        updatedAt: nowIso(),
+      };
+      return layout;
     },
 
     listMutationEvents(): IMutationEventRow[] {

@@ -16,23 +16,23 @@ Date: 2026-05-04 KST
 
 ## Live Snapshot
 
-`corepack pnpm runtime-v2:storage-dry-run` on the current host returned:
+After the storage import slice, `corepack pnpm runtime-v2:storage-dry-run` on the current host returned:
 
 ```json
 {
-  "cutoverReady": false,
-  "workspaceCount": 6,
+  "cutoverReady": true,
+  "workspaceCount": 5,
   "groupCount": 1,
-  "paneCount": 6,
-  "tabCount": 6,
+  "paneCount": 5,
+  "tabCount": 5,
   "runtimeV1TabCount": 2,
   "runtimeV2TabCount": 0,
-  "nonTerminalTabCount": 4,
-  "statusMetadataTabCount": 6
+  "nonTerminalTabCount": 3,
+  "statusMetadataTabCount": 5
 }
 ```
 
-Current blockers are workspace group state, legacy terminal tab import, non-terminal tab import, and tab status metadata import. Sidebar and active workspace state are warnings.
+Current blocker count is 0. Sidebar state remains a warning.
 
 ## Verification
 
@@ -46,5 +46,4 @@ Current blockers are workspace group state, legacy terminal tab import, non-term
 
 ## Remaining Gate
 
-- Implement idempotent JSON-to-SQLite import that closes the dry-run blockers.
-- Keep `CODEXMUX_RUNTIME_STORAGE_V2_MODE=off` until dry-run blockers are closed and storage shadow compare passes on real data.
+- Keep `CODEXMUX_RUNTIME_STORAGE_V2_MODE=off` until storage write ownership and sync invalidation are proven.

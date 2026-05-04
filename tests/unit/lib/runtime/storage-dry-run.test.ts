@@ -24,7 +24,7 @@ const simpleRuntimeV2Layout: ILayoutData = {
 };
 
 describe('runtime v2 storage dry run', () => {
-  it('reports blockers for unsupported legacy state without exposing sensitive values', () => {
+  it('reports importable legacy state without exposing sensitive values', () => {
     const workspacesData: IWorkspacesData = {
       groups: [{ id: 'group-a', name: 'Secret Group', collapsed: true }],
       activeWorkspaceId: 'ws-a',
@@ -92,7 +92,7 @@ describe('runtime v2 storage dry run', () => {
       layoutsByWorkspaceId: { 'ws-a': layout },
     });
 
-    expect(report.cutoverReady).toBe(false);
+    expect(report.cutoverReady).toBe(true);
     expect(report.totals).toMatchObject({
       workspaceCount: 1,
       groupCount: 1,
@@ -103,14 +103,9 @@ describe('runtime v2 storage dry run', () => {
       webTabCount: 1,
       statusMetadataTabCount: 1,
     });
-    expect(report.issues).toEqual(expect.arrayContaining([
-      expect.objectContaining({ code: 'workspace-groups-not-imported', severity: 'blocker' }),
-      expect.objectContaining({ code: 'split-layout-not-imported', severity: 'blocker', workspaceId: 'ws-a' }),
-      expect.objectContaining({ code: 'runtime-v1-tab-not-imported', severity: 'blocker', workspaceId: 'ws-a', paneId: 'pane-a', tabId: 'tab-legacy' }),
-      expect.objectContaining({ code: 'web-tab-not-imported', severity: 'blocker', workspaceId: 'ws-a', paneId: 'pane-b', tabId: 'tab-web' }),
-      expect.objectContaining({ code: 'tab-status-metadata-not-imported', severity: 'blocker', workspaceId: 'ws-a', paneId: 'pane-a', tabId: 'tab-legacy' }),
+    expect(report.issues).toEqual([
       expect.objectContaining({ code: 'sidebar-state-json-retained', severity: 'warning' }),
-    ]));
+    ]);
     expect(report.backupPlan.files).toEqual([
       { kind: 'workspaces', relativePath: 'workspaces.json' },
       { kind: 'layout', workspaceId: 'ws-a', relativePath: 'workspaces/ws-a/layout.json' },

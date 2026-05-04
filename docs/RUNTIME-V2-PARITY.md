@@ -20,7 +20,7 @@
 
 | Surface | Owner | v1 behavior | v2 behavior | Gap | Migration | Test | Rollback |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Workspace create/list/delete | `src/lib/workspace-store.ts`, `src/lib/runtime/storage/repository.ts`, `src/lib/runtime/storage-dry-run.ts`, `src/lib/runtime/storage-backup.ts` | `workspaces.json`과 workspace별 `layout.json`을 생성/조회/삭제한다. | SQLite workspace/pane/tab schema로 create/list/delete를 지원한다. Storage dry-run은 legacy JSON stores를 read-only로 검사하고 backup manifest/cutover blockers를 count-only로 출력한다. Storage backup은 legacy JSON stores와 `runtime-v2/state.db*`를 backup dir로 복사한다. | v1 workspace metadata 전체와 group/order/sidebar state가 아직 SQLite source가 아니다. 현재 dry-run은 blocker를 검출하지만 import/write ownership은 완료하지 않았다. | Shadow import 후 `CODEXMUX_RUNTIME_STORAGE_V2_MODE=write`에서 신규 workspace만 v2 write. Full default 전 `runtime-v2:storage-dry-run` blocker를 모두 닫는다. | `corepack pnpm test tests/unit/lib/runtime`, `corepack pnpm smoke:runtime-v2:storage-dry-run`, `corepack pnpm runtime-v2:storage-dry-run`, `corepack pnpm smoke:runtime-v2:storage-backup`, `corepack pnpm runtime-v2:storage-backup` | `CODEXMUX_RUNTIME_STORAGE_V2_MODE=off`; JSON store 유지. |
+| Workspace create/list/delete | `src/lib/workspace-store.ts`, `src/lib/runtime/storage/repository.ts`, `src/lib/runtime/storage-dry-run.ts`, `src/lib/runtime/storage-backup.ts`, `src/lib/runtime/storage-import.ts` | `workspaces.json`과 workspace별 `layout.json`을 생성/조회/삭제한다. | SQLite workspace/pane/tab schema로 create/list/delete를 지원한다. Storage dry-run은 legacy JSON stores를 read-only로 검사하고 backup manifest/import readiness를 count-only로 출력한다. Storage backup은 legacy JSON stores와 `runtime-v2/state.db*`를 backup dir로 복사한다. Storage import는 JSON snapshot을 schema v2 SQLite로 idempotent import한다. | write ownership, rename/reorder/group/sidebar/message-history mutation ownership은 아직 v1 source of truth다. Sidebar state는 import readiness warning으로 남는다. | Shadow import 후 `CODEXMUX_RUNTIME_STORAGE_V2_MODE=write`에서 신규 workspace만 v2 write. Full default 전 write ownership과 sync invalidation을 닫는다. | `corepack pnpm test tests/unit/lib/runtime`, `corepack pnpm smoke:runtime-v2:storage-dry-run`, `corepack pnpm runtime-v2:storage-dry-run`, `corepack pnpm smoke:runtime-v2:storage-backup`, `corepack pnpm runtime-v2:storage-backup`, `corepack pnpm smoke:runtime-v2:storage-import`, `corepack pnpm runtime-v2:storage-import` | `CODEXMUX_RUNTIME_STORAGE_V2_MODE=off`; JSON store 유지. |
 | Workspace rename | `src/pages/api/workspace/[workspaceId].ts`, `src/lib/workspace-store.ts` | workspace name을 JSON에 갱신하고 sync broadcast한다. | v2 rename command/route 없음. | rename command, validation, sync invalidation 필요. | JSON-vs-SQLite shadow compare 후 dual-write 가능 여부 확인. | workspace rename API test + shadow compare. | v1 rename route 유지. |
 | Workspace reorder/group/collapse | `src/lib/workspace-store.ts`, `src/lib/workspace-order.ts` | workspaces/groups order와 collapsed/groupId를 JSON에 저장한다. | v2 schema/command 없음. | group/order schema와 transaction semantics 필요. | v1 write 유지, v2 shadow projection 먼저 추가. | reorder/group API test + malformed group fixture. | JSON order가 source of truth. |
 | Active workspace/sidebar state | `src/pages/api/workspace/active.ts`, `src/lib/workspace-store.ts` | activeWorkspaceId, sidebarCollapsed, sidebarWidth를 JSON에 저장한다. | v2 storage 없음. | UI hydration과 browser/Electron/Android sync parity 필요. | storage v2 default 직전 one-way import 후 write ownership 전환. | active workspace reload/mobile reconnect smoke. | legacy active state JSON 재사용. |
@@ -93,9 +93,9 @@ Runtime v2 can only become default for a surface when every row in that surface 
 ## 2026-05-04 Storage Dry-run Evidence
 
 - `corepack pnpm smoke:runtime-v2:storage-dry-run`를 추가했다.
-- `corepack pnpm runtime-v2:storage-dry-run`는 실제 `~/.codexmux`의 `workspaces.json`과 workspace별 `layout.json`을 쓰기 없이 읽고, `runtime-v2/state.db` 전환 전 backup manifest와 blocker code를 출력한다.
-- live dry-run snapshot은 `workspaceCount=6`, `groupCount=1`, `paneCount=6`, `tabCount=6`, `runtimeV1TabCount=2`, `nonTerminalTabCount=4`, `statusMetadataTabCount=6`, `cutoverReady=false`다.
-- blocker는 workspace group state, legacy terminal tab import, non-terminal tab import, tab status metadata import다. sidebar/active workspace state는 warning으로 남는다.
+- `corepack pnpm runtime-v2:storage-dry-run`는 실제 `~/.codexmux`의 `workspaces.json`과 workspace별 `layout.json`을 쓰기 없이 읽고, `runtime-v2/state.db` 전환 전 backup manifest와 import readiness를 출력한다.
+- live dry-run snapshot은 `workspaceCount=5`, `groupCount=1`, `paneCount=5`, `tabCount=5`, `runtimeV1TabCount=2`, `nonTerminalTabCount=3`, `statusMetadataTabCount=5`, `cutoverReady=true`, blocker 0이다.
+- sidebar state는 warning으로 남는다. workspace group, legacy terminal tab, non-terminal tab, tab status metadata는 storage import 지원 범위다.
 - report는 workspace id, pane id, tab id, relative backup path, count만 포함한다. cwd, workspace/tab name, session name, JSONL path, prompt, assistant text, terminal output은 출력하지 않는다.
 
 ## 2026-05-04 Storage Backup Evidence
@@ -105,6 +105,15 @@ Runtime v2 can only become default for a surface when every row in that surface 
 - live backup snapshot은 `runtime-v2-storage-20260504T052000Z`에 29개 파일을 복사했다.
 - command result는 destination path, relative path, byte count만 출력하고 file content, cwd, workspace/tab name, session name, prompt text는 출력하지 않는다.
 - 이 backup은 rollback material을 보존하는 단계이며 JSON-to-SQLite import나 source-of-truth switch를 수행하지 않는다.
+
+## 2026-05-04 Storage Import Evidence
+
+- `corepack pnpm smoke:runtime-v2:storage-import`와 `corepack pnpm runtime-v2:storage-import`를 추가했다.
+- schema v2는 `tabs.runtime_version`과 `workspaces.active_pane_id`를 추가한다.
+- import는 grouped workspace, split pane tree, active pane, legacy `runtimeVersion: 1` terminal tab, runtime v2 `runtimeVersion: 2` terminal tab, non-terminal tab, tab status metadata를 SQLite로 복사한다.
+- live import snapshot은 group 1개, workspace 5개, pane 5개, tab 5개, legacy terminal tab 2개, non-terminal tab 3개, status metadata 5개를 import했다.
+- runtime v2 terminal attach authorization과 cleanup session list는 `runtime_version=2` terminal tab만 대상으로 하므로 imported legacy `pt-` session은 v2 worker cleanup 대상으로 노출되지 않는다.
+- 이 import는 production source-of-truth switch가 아니다. `CODEXMUX_RUNTIME_STORAGE_V2_MODE=off`에서는 legacy JSON이 계속 owner다.
 
 ## 2026-05-04 Timeline Shadow Evidence
 

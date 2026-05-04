@@ -42,5 +42,4 @@ The command result included only destination path, relative path, and byte count
 
 ## Remaining Gate
 
-- Implement idempotent JSON-to-SQLite import that closes `runtime-v2:storage-dry-run` blockers.
-- Keep `CODEXMUX_RUNTIME_STORAGE_V2_MODE=off` until storage import/write ownership and rollback are proven.
+- Keep `CODEXMUX_RUNTIME_STORAGE_V2_MODE=off` until storage write ownership and rollback are proven.

@@ -101,6 +101,8 @@ corepack pnpm smoke:runtime-v2:storage-dry-run
 corepack pnpm runtime-v2:storage-dry-run
 corepack pnpm smoke:runtime-v2:storage-backup
 corepack pnpm runtime-v2:storage-backup
+corepack pnpm smoke:runtime-v2:storage-import
+corepack pnpm runtime-v2:storage-import
 ```
 
 `smoke:runtime-v2:storage-dry-run`은 fixture에서 workspace group, split layout, legacy tab,
@@ -112,6 +114,11 @@ workspace별 `layout.json`을 read-only로 검사하고, `runtime-v2/state.db` �
 복사하고, command result가 원문 cwd/session/content를 노출하지 않는지 확인한다.
 `runtime-v2:storage-backup`은 live data dir에서 `~/.codexmux/backups/runtime-v2-storage-{timestamp}/`
 로 `workspaces.json`, `workspaces/**.json`, `runtime-v2/state.db*`를 복사한다.
+`smoke:runtime-v2:storage-import`는 grouped workspace, split layout, legacy terminal tab,
+runtime v2 terminal tab, web tab, status metadata를 temp SQLite DB로 import하고, legacy
+`pt-` session이 runtime v2 attach/cleanup 대상에 노출되지 않는지 확인한다.
+`runtime-v2:storage-import`는 live `~/.codexmux` JSON snapshot을 `runtime-v2/state.db`로
+import하지만 production source-of-truth를 바꾸지는 않는다.
 
 Storage shadow compare smoke:
 

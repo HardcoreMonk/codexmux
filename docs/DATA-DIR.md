@@ -87,6 +87,12 @@ Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service
 `~/.codexmux/runtime-v2/state.db`를 사용한다. `CODEXMUX_RUNTIME_DB`가 있으면 smoke나
 개발 검증용으로 다른 DB 파일을 지정할 수 있다.
 
+Runtime schema v2는 `tabs.runtime_version`과 `workspaces.active_pane_id`를 포함한다.
+이 필드는 `runtime-v2:storage-import`가 legacy JSON layout을 SQLite로 복사할 때
+legacy `pt-` terminal tab과 runtime v2 `rtv2-` terminal tab을 구분하고 active pane을
+복원하기 위해 필요하다. Runtime v2 terminal attach/cleanup은 `runtime_version=2`인
+terminal tab만 대상으로 삼는다.
+
 `CODEXMUX_RUNTIME_V2_RESET=1`을 함께 설정하면 runtime 시작 전에 기존
 `runtime-v2/state.db`, `runtime-v2/state.db-wal`, `runtime-v2/state.db-shm` 파일을 각각
 timestamp가 붙은 `.bak` 파일로 이동한다. `state.db` 없이 WAL/SHM sidecar만 남은 경우도

@@ -3,16 +3,9 @@ import type { ILayoutData, ITab, IWorkspacesData, TLayoutNode, TPanelType } from
 export type TRuntimeStorageDryRunIssueSeverity = 'blocker' | 'warning';
 
 export type TRuntimeStorageDryRunIssueCode =
-  | 'workspace-groups-not-imported'
   | 'sidebar-state-json-retained'
-  | 'active-workspace-json-retained'
   | 'layout-missing'
-  | 'layout-invalid'
-  | 'split-layout-not-imported'
-  | 'runtime-v1-tab-not-imported'
-  | 'web-tab-not-imported'
-  | 'non-terminal-tab-not-imported'
-  | 'tab-status-metadata-not-imported';
+  | 'layout-invalid';
 
 export interface IRuntimeStorageDryRunIssue {
   code: TRuntimeStorageDryRunIssueCode;
@@ -141,61 +134,27 @@ const addIssue = (
 };
 
 const analyzeTab = ({
-  workspaceId,
-  paneId,
   tab,
   totals,
-  issues,
 }: {
-  workspaceId: string;
-  paneId: string;
   tab: ITab;
   totals: IRuntimeStorageDryRunTotals;
-  issues: IRuntimeStorageDryRunIssue[];
 }): void => {
   totals.tabCount += 1;
   const panelType = panelTypeForDryRun(tab.panelType);
 
   if (panelType === 'web-browser') {
     totals.webTabCount += 1;
-    addIssue(issues, {
-      code: 'web-tab-not-imported',
-      severity: 'blocker',
-      workspaceId,
-      paneId,
-      tabId: tab.id,
-    });
   } else if (panelType !== 'terminal') {
     totals.nonTerminalTabCount += 1;
-    addIssue(issues, {
-      code: 'non-terminal-tab-not-imported',
-      severity: 'blocker',
-      workspaceId,
-      paneId,
-      tabId: tab.id,
-    });
   } else if (tab.runtimeVersion === 2) {
     totals.runtimeV2TabCount += 1;
   } else {
     totals.runtimeV1TabCount += 1;
-    addIssue(issues, {
-      code: 'runtime-v1-tab-not-imported',
-      severity: 'blocker',
-      workspaceId,
-      paneId,
-      tabId: tab.id,
-    });
   }
 
   if (tabHasStatusMetadata(tab)) {
     totals.statusMetadataTabCount += 1;
-    addIssue(issues, {
-      code: 'tab-status-metadata-not-imported',
-      severity: 'blocker',
-      workspaceId,
-      paneId,
-      tabId: tab.id,
-    });
   }
 };
 
@@ -213,23 +172,14 @@ const analyzeNode = ({
   if (isPaneNode(node)) {
     totals.paneCount += 1;
     node.tabs.forEach((tab) => analyzeTab({
-      workspaceId,
-      paneId: node.id,
       tab,
       totals,
-      issues,
     }));
     return true;
   }
 
   if (isSplitNode(node)) {
     totals.splitPaneCount += 1;
-    addIssue(issues, {
-      code: 'split-layout-not-imported',
-      severity: 'blocker',
-      workspaceId,
-      count: 1,
-    });
     const leftValid = analyzeNode({ workspaceId, node: node.children[0], totals, issues });
     const rightValid = analyzeNode({ workspaceId, node: node.children[1], totals, issues });
     return leftValid && rightValid;
@@ -278,24 +228,9 @@ export const analyzeRuntimeStorageDryRun = ({
   const totals = createEmptyTotals(workspaces.length, groups.length, groupedWorkspaceCount);
   const issues: IRuntimeStorageDryRunIssue[] = [];
 
-  if (groups.length > 0 || groupedWorkspaceCount > 0) {
-    addIssue(issues, {
-      code: 'workspace-groups-not-imported',
-      severity: 'blocker',
-      count: groups.length + groupedWorkspaceCount,
-    });
-  }
-
   if (workspacesData.sidebarCollapsed !== false || workspacesData.sidebarWidth !== DEFAULT_SIDEBAR_WIDTH) {
     addIssue(issues, {
       code: 'sidebar-state-json-retained',
-      severity: 'warning',
-    });
-  }
-
-  if (workspacesData.activeWorkspaceId) {
-    addIssue(issues, {
-      code: 'active-workspace-json-retained',
       severity: 'warning',
     });
   }
