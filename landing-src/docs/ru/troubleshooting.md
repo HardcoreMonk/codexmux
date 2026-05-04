@@ -82,7 +82,7 @@ PORT=9000 codexmux
 
 ### Windows에서 동작하나요?
 
-서버 실행은 macOS와 Linux를 기준으로 지원합니다. Windows 네이티브 서버는 아직 지원하지 않지만, Windows 11 `pwsh`에서 실행한 Codex CLI transcript는 companion client로 동기화할 수 있습니다. companion은 `%USERPROFILE%\.codex\sessions` JSONL을 서버의 `/api/remote/codex/sync`로 보내고, UI에서는 Windows source badge와 read-only timeline으로 표시합니다. 입력/resize/process lifecycle 원격 제어는 아직 범위 밖입니다.
+서버 실행은 macOS와 Linux를 기준으로 지원합니다. Windows 네이티브 서버는 아직 지원하지 않지만, Windows 11 `pwsh`에서 실행한 Codex CLI transcript는 companion client로 동기화할 수 있습니다. companion은 `%USERPROFILE%\.codex\sessions` JSONL을 서버의 `/api/remote/codex/sync`로 보내고, UI에서는 Windows source badge와 read-only timeline으로 표시합니다. 별도 `windows:terminal-bridge`를 실행하면 bridge가 시작한 Windows `pwsh` session을 `/windows-terminal`에서 입력, 출력, resize, reconnect까지 제어할 수 있습니다. 이미 사용자가 Windows Terminal에서 수동 실행한 외부 process에는 attach하지 않습니다.
 
 ## 세션과 복원
 

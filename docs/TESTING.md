@@ -320,5 +320,6 @@ corepack pnpm windows:terminal-bridge -- --source-id "win11-main"
 ```
 
 Browser에서 `/windows-terminal?sourceId=win11-main`을 열고 `pwd`, `Get-Location`,
-`node --version` 같은 짧은 command의 입력/출력과 resize 반응을 확인한다.
+`node --version` 같은 짧은 command의 입력/출력, resize 반응, browser reload 후
+recent output snapshot과 reconnect 상태를 확인한다.
 `/api/remote/terminal/sources`가 200과 terminal status를 반환해야 한다.

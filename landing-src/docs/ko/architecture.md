@@ -6,7 +6,7 @@ permalink: /ko/docs/architecture/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-codexmux는 브라우저, Node.js 서버, 호스트의 tmux와 Codex CLI로 구성됩니다. 터미널 입출력은 tmux에 남기고 Codex 상태는 process tree와 `~/.codex/sessions/**/*.jsonl`에서 읽습니다. Windows에서 실행한 Codex CLI는 tmux에 attach하지 않고 companion client가 JSONL chunk를 서버로 동기화해 읽기 전용 timeline으로 보여줍니다.
+codexmux는 브라우저, Node.js 서버, 호스트의 tmux와 Codex CLI로 구성됩니다. 터미널 입출력은 tmux에 남기고 Codex 상태는 process tree와 `~/.codex/sessions/**/*.jsonl`에서 읽습니다. Windows에서 실행한 Codex CLI는 tmux에 attach하지 않고 companion client가 JSONL chunk를 서버로 동기화해 읽기 전용 timeline으로 보여줍니다. 별도 terminal bridge는 bridge가 시작한 Windows `pwsh`를 `/windows-terminal`에서 입력, 출력, resize, reconnect까지 제어합니다.
 
 ## 전체 구조
 

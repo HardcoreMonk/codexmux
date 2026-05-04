@@ -173,10 +173,14 @@ UI는 session list 상단의 Windows terminal 버튼 또는 직접 URL로 연다
 http://<codexmux-server>:8122/windows-terminal?sourceId=win11-main
 ```
 
-bridge는 서버 `/api/remote/terminal/register`에 source를 등록하고,
-`/api/remote/terminal/commands`에서 stdin/resize/kill command를 polling하며,
-stdout/stderr chunk를 `/api/remote/terminal/output`으로 post한다. Browser는
+bridge는 서버 `/api/remote/terminal/register`에 source를 등록하고, Browser는
 `/api/remote/terminal` WebSocket에 붙어 기존 terminal protocol frame을 그대로 사용한다.
+제어 흐름은 다음과 같다.
+
+- 입력: Browser xterm의 `MSG_STDIN`/`MSG_WEB_STDIN` frame이 server memory command queue에 쌓이고, Windows bridge가 `/api/remote/terminal/commands`를 polling해 `node-pty.write()`로 전달한다.
+- 출력: Windows `pwsh` stdout/stderr를 bridge가 짧게 batch한 뒤 base64 chunk로 `/api/remote/terminal/output`에 post하고, 서버가 WebSocket subscriber에 `MSG_STDOUT`으로 fanout한다.
+- resize: Browser `FitAddon`이 계산한 `cols`/`rows`가 `MSG_RESIZE`로 들어오면 command queue를 거쳐 `node-pty.resize()`로 적용된다. `node-pty`가 없는 fallback process에서는 resize가 no-op이다.
+- reconnect: Browser WebSocket은 heartbeat와 backoff reconnect를 사용하고, 재연결 시 서버가 recent output snapshot을 먼저 보낸다. Windows bridge는 HTTP poll/post 실패를 재시도하고 30초마다 register를 갱신한다. 서버 restart로 command sequence가 초기화되면 bridge cursor를 0으로 되돌려 새 command를 다시 받을 수 있게 한다.
 
 이 경로는 bridge가 시작한 별도 shell을 제어한다. 이미 사용자가 Windows Terminal에서 수동으로 실행한 외부 Codex CLI process에 attach하지 않는다.
 
@@ -200,7 +204,7 @@ Codex rollout 파일명에 들어가는 `2026-05-01T19-31-48` 같은 값은 Wind
 - session list 상단 filter로 전체, local, Windows remote session을 전환할 수 있다. Windows source가 여러 개면 source별 filter도 표시한다.
 - Windows source summary는 최신 source label, 마지막 sync 시간, session 수를 표시한다.
 - remote session을 선택하면 `codex resume`을 실행하지 않고 저장된 JSONL을 timeline WebSocket으로 구독한다.
-- Windows terminal 버튼은 `/windows-terminal`을 열고 terminal bridge가 등록한 `pwsh` session으로 stdin/resize를 보낸다.
+- Windows terminal 버튼은 `/windows-terminal`을 열고 terminal bridge가 등록한 `pwsh` session의 입력, 출력, resize, reconnect를 처리한다.
 
 ## 문제 해결
 
