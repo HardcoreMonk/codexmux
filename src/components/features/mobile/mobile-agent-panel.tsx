@@ -23,6 +23,7 @@ import { MetaCompact } from '@/components/features/workspace/session-meta-conten
 import MobileMetaSheet from './mobile-meta-sheet';
 import useQuickPrompts from '@/hooks/use-quick-prompts';
 import { isAgentPanelType } from '@/lib/panel-type';
+import { selectAgentSessionListRenderMode } from '@/lib/session-list-rendering';
 import type { ISessionMeta, TCliState, TSessionSourceFilter } from '@/types/timeline';
 import type { TPanelType } from '@/types/terminal';
 
@@ -277,24 +278,23 @@ const MobileAgentPanel = ({
   }
 
   if (view === 'session-list') {
-    if (!isAgentPanel) {
+    const renderMode = selectAgentSessionListRenderMode({
+      isAgentPanel,
+      isLoading: isSessionListLoading,
+      sessionCount: sessions.length,
+    });
+
+    if (renderMode === 'empty') {
       return (
         <div className="flex min-h-0 flex-1 flex-col bg-muted">
           <SessionEmptyView onNewSession={onNewSession} />
         </div>
       );
     }
-    if (isSessionListLoading && sessions.length === 0) {
+    if (renderMode === 'spinner') {
       return (
         <div className="animate-delayed-fade-in flex min-h-0 flex-1 flex-col items-center justify-center bg-muted">
           <Spinner className="h-4 w-4 text-muted-foreground" />
-        </div>
-      );
-    }
-    if (sessions.length === 0 && !sessionListError) {
-      return (
-        <div className="flex min-h-0 flex-1 flex-col bg-muted">
-          <SessionEmptyView onNewSession={onNewSession} />
         </div>
       );
     }
@@ -316,6 +316,7 @@ const MobileAgentPanel = ({
           onRefresh={handleRefreshSessions}
           onLoadMore={loadMoreSessions}
           onNewSession={onNewSession}
+          emptyView={<SessionEmptyView onNewSession={onNewSession} />}
         />
       </div>
     );

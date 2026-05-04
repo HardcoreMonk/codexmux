@@ -15,6 +15,7 @@ import BypassPromptCard from '@/components/features/workspace/bypass-prompt-card
 import TimelineView from '@/components/features/timeline/timeline-view';
 import SessionMetaBar, { SessionMetaBarSkeleton } from '@/components/features/workspace/session-meta-bar';
 import { isAgentPanelType } from '@/lib/panel-type';
+import { selectAgentSessionListRenderMode } from '@/lib/session-list-rendering';
 import type { ISessionMeta, TSessionSourceFilter } from '@/types/timeline';
 import type { TPanelType } from '@/types/terminal';
 
@@ -261,24 +262,23 @@ const AgentPanel = ({
   }
 
   if (view === 'session-list') {
-    if (!isAgentPanel) {
+    const renderMode = selectAgentSessionListRenderMode({
+      isAgentPanel,
+      isLoading: isSessionListLoading,
+      sessionCount: sessions.length,
+    });
+
+    if (renderMode === 'empty') {
       return (
         <div className={cn('h-full w-full', className)}>
           <SessionEmptyView onClose={onClose} onNewSession={onNewSession} />
         </div>
       );
     }
-    if (isSessionListLoading && sessions.length === 0) {
+    if (renderMode === 'spinner') {
       return (
         <div className={cn('flex h-full w-full flex-col items-center justify-center animate-delayed-fade-in', className)}>
           <Spinner className="h-4 w-4 text-muted-foreground" />
-        </div>
-      );
-    }
-    if (sessions.length === 0 && !sessionListError) {
-      return (
-        <div className={cn('h-full w-full', className)}>
-          <SessionEmptyView onClose={onClose} onNewSession={onNewSession} />
         </div>
       );
     }
@@ -300,6 +300,7 @@ const AgentPanel = ({
           onRefresh={handleRefreshSessions}
           onLoadMore={loadMoreSessions}
           onNewSession={onNewSession}
+          emptyView={<SessionEmptyView onClose={onClose} onNewSession={onNewSession} />}
         />
       </div>
     );

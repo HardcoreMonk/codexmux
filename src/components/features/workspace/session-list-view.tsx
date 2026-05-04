@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { type ReactNode, useCallback, useRef } from 'react';
 import dayjs from 'dayjs';
 import { ListFilter, Monitor, Plus, Terminal, TerminalSquare } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -26,6 +26,7 @@ interface ISessionListViewProps {
   onRefresh: () => Promise<void>;
   onLoadMore: () => Promise<void>;
   onNewSession?: () => void;
+  emptyView?: ReactNode;
 }
 
 const SessionListSkeleton = () => (
@@ -78,6 +79,7 @@ const SessionListView = ({
   onRefresh,
   onLoadMore,
   onNewSession,
+  emptyView,
 }: ISessionListViewProps) => {
   const t = useTranslations('terminal');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -215,17 +217,21 @@ const SessionListView = ({
           className="flex-1 overflow-y-auto"
           onScroll={handleScroll}
         >
-          <TooltipProvider delay={300}>
-            {sessions.map((session) => (
-              <SessionListItem
-                key={`${session.source ?? 'local'}:${session.sessionId}:${session.jsonlPath ?? ''}`}
-                session={session}
-                isResuming={session.sessionId === resumingSessionId}
-                isDisabled={isResumeInProgress}
-                onSelect={onSelectSession}
-              />
-            ))}
-          </TooltipProvider>
+          {sessions.length === 0 && emptyView ? (
+            <div className="h-full">{emptyView}</div>
+          ) : (
+            <TooltipProvider delay={300}>
+              {sessions.map((session) => (
+                <SessionListItem
+                  key={`${session.source ?? 'local'}:${session.sessionId}:${session.jsonlPath ?? ''}`}
+                  session={session}
+                  isResuming={session.sessionId === resumingSessionId}
+                  isDisabled={isResumeInProgress}
+                  onSelect={onSelectSession}
+                />
+              ))}
+            </TooltipProvider>
+          )}
           {isLoadingMore && (
             <div className="flex items-center justify-center py-3">
               <Spinner size={14} className="text-muted-foreground" />
