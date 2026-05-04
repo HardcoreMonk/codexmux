@@ -371,8 +371,13 @@ export const reconnectLauncherToServer = async (cdp, targetUrl) => {
   await evaluate(cdp, `(() => {
     localStorage.setItem('codexmux:server-url', ${JSON.stringify(normalized)});
     localStorage.setItem('codexmux:recent-server-urls', JSON.stringify([${JSON.stringify(normalized)}]));
-    window.location.href = location.origin + '/';
-    return true;
+    const button = document.getElementById('connect-current');
+    if (button && !button.disabled) {
+      button.click();
+      return true;
+    }
+    window.location.href = ${JSON.stringify(normalized)};
+    return false;
   })()`);
 };
 

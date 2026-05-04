@@ -16,6 +16,7 @@ import {
   readNativeAppStateActive,
   shouldForceForegroundReconnect,
   shouldSuppressForegroundReconnectError,
+  waitForForegroundReconnectReady,
   wasPageRestored,
 } from '@/lib/foreground-reconnect';
 import {
@@ -57,6 +58,8 @@ const useTerminalWebSocket = ({
   const connectIdRef = useRef(0);
   const initialSizeRef = useRef<{ cols: number; rows: number } | null>(null);
   const hiddenAtRef = useRef<number | null>(null);
+  const nativeBackgroundPausedRef = useRef(false);
+  const foregroundReconnectPendingIdRef = useRef<number | null>(null);
   const foregroundReconnectErrorSuppressUntilRef = useRef<number | null>(null);
   const callbacksRef = useRef({ onData, onConnected, onSessionEnded });
   const doConnectRef = useRef<(sessionName: string, connectId: number) => void>(() => {});
@@ -78,6 +81,7 @@ const useTerminalWebSocket = ({
 
   const doConnect = useCallback(
     (sessionName: string, connectId: number) => {
+      if (nativeBackgroundPausedRef.current) return;
       clearTimers();
       if (wsRef.current) {
         wsRef.current.close();
@@ -132,6 +136,7 @@ const useTerminalWebSocket = ({
           if (connectIdRef.current !== connectId) return;
           clearTimers();
           wsRef.current = null;
+          if (nativeBackgroundPausedRef.current) return;
 
           if (event.code === 1000) {
             setStatus('session-ended');
@@ -175,6 +180,7 @@ const useTerminalWebSocket = ({
 
       void preflightTerminalRuntime({ endpoint }).then((result) => {
         if (connectIdRef.current !== connectId) return;
+        if (nativeBackgroundPausedRef.current) return;
         if (!result.ok) {
           setDisconnectReason(result.reason ?? null);
           setStatus('disconnected');
@@ -192,6 +198,7 @@ const useTerminalWebSocket = ({
 
   const connect = useCallback(
     (sessionName: string, cols?: number, rows?: number) => {
+      foregroundReconnectPendingIdRef.current = null;
       sessionNameRef.current = sessionName;
       initialSizeRef.current = cols && rows ? { cols, rows } : null;
       retryCountRef.current = 0;
@@ -203,6 +210,7 @@ const useTerminalWebSocket = ({
   );
 
   const disconnect = useCallback(() => {
+    foregroundReconnectPendingIdRef.current = null;
     connectIdRef.current++;
     clearTimers();
     if (wsRef.current) {
@@ -215,6 +223,7 @@ const useTerminalWebSocket = ({
 
   const reconnect = useCallback(() => {
     if (!sessionNameRef.current) return;
+    foregroundReconnectPendingIdRef.current = null;
     retryCountRef.current = 0;
     setRetryCount(0);
     connectIdRef.current++;
@@ -258,9 +267,34 @@ const useTerminalWebSocket = ({
       hiddenAtRef.current = Date.now();
     };
 
+    const pauseForNativeBackground = () => {
+      nativeBackgroundPausedRef.current = true;
+      foregroundReconnectPendingIdRef.current = null;
+      connectIdRef.current++;
+      clearTimers();
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close(1000);
+        wsRef.current = null;
+      }
+    };
+
+    const connectWhenForegroundReady = (connectId: number) => {
+      foregroundReconnectPendingIdRef.current = connectId;
+      void waitForForegroundReconnectReady().finally(() => {
+        if (foregroundReconnectPendingIdRef.current !== connectId) return;
+        foregroundReconnectPendingIdRef.current = null;
+        if (connectIdRef.current !== connectId) return;
+        if (nativeBackgroundPausedRef.current) return;
+        if (!sessionNameRef.current) return;
+        doConnectRef.current(sessionNameRef.current, connectId);
+      });
+    };
+
     const handleForegroundReconnect = (allowHidden = false) => {
       if (!allowHidden && document.visibilityState === 'hidden') return;
       if (!sessionNameRef.current) return;
+      if (foregroundReconnectPendingIdRef.current !== null) return;
       const ws = wsRef.current;
       const forceReconnect = shouldForceForegroundReconnect(hiddenAtRef.current);
       hiddenAtRef.current = null;
@@ -269,8 +303,13 @@ const useTerminalWebSocket = ({
       setRetryCount(0);
       if (forceReconnect) {
         foregroundReconnectErrorSuppressUntilRef.current = nextForegroundReconnectErrorSuppressUntil();
+        connectIdRef.current++;
+        setStatus('reconnecting');
+        connectWhenForegroundReady(connectIdRef.current);
+        return;
       }
       connectIdRef.current++;
+      foregroundReconnectPendingIdRef.current = null;
       doConnectRef.current(sessionNameRef.current, connectIdRef.current);
     };
 
@@ -295,10 +334,12 @@ const useTerminalWebSocket = ({
       const active = readNativeAppStateActive(event);
       if (active === false) {
         markHidden();
+        pauseForNativeBackground();
         return;
       }
       if (active === true) {
-        hiddenAtRef.current = hiddenAtRef.current ?? 0;
+        nativeBackgroundPausedRef.current = false;
+        hiddenAtRef.current = 0;
         handleForegroundReconnect(true);
       }
     };
@@ -317,7 +358,7 @@ const useTerminalWebSocket = ({
       window.removeEventListener('pageshow', handlePageShow);
       window.removeEventListener(NATIVE_APP_STATE_EVENT, handleNativeAppState);
     };
-  }, []);
+  }, [clearTimers]);
 
   return {
     status,

@@ -6,6 +6,7 @@ import {
   readNativeAppStateActive,
   shouldForceForegroundReconnect,
   shouldSuppressForegroundReconnectError,
+  waitForForegroundReconnectReady,
 } from '@/lib/foreground-reconnect';
 
 describe('foreground reconnect policy', () => {
@@ -43,5 +44,42 @@ describe('foreground reconnect policy', () => {
     expect(readNativeAppStateActive(new Event('x'))).toBeNull();
     expect(readNativeAppStateActive({ detail: { active: false } } as unknown as Event)).toBe(false);
     expect(readNativeAppStateActive({ detail: { active: true } } as unknown as Event)).toBe(true);
+  });
+
+  it('waits until the foreground health probe succeeds before reconnecting sockets', async () => {
+    const requests: string[] = [];
+
+    const ready = await waitForForegroundReconnectReady({
+      origin: 'https://codexmux.example',
+      maxAttempts: 3,
+      retryDelayMs: 0,
+      delay: async () => {},
+      fetcher: async (url) => {
+        requests.push(String(url));
+        return { ok: requests.length === 2 };
+      },
+    });
+
+    expect(ready).toBe(true);
+    expect(requests).toHaveLength(2);
+    expect(requests[0]).toContain('https://codexmux.example/api/health');
+  });
+
+  it('returns false after foreground health probes fail so callers can reconnect as a fallback', async () => {
+    let attempts = 0;
+
+    const ready = await waitForForegroundReconnectReady({
+      origin: 'https://codexmux.example',
+      maxAttempts: 2,
+      retryDelayMs: 0,
+      delay: async () => {},
+      fetcher: async () => {
+        attempts += 1;
+        throw new Error('network unavailable');
+      },
+    });
+
+    expect(ready).toBe(false);
+    expect(attempts).toBe(2);
   });
 });

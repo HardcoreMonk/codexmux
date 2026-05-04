@@ -8,6 +8,7 @@ import {
   NATIVE_APP_STATE_EVENT,
   readNativeAppStateActive,
   shouldForceForegroundReconnect,
+  waitForForegroundReconnectReady,
   wasPageRestored,
 } from '@/lib/foreground-reconnect';
 import type { TStatusServerMessage } from '@/types/status';
@@ -42,12 +43,16 @@ const useAgentStatus = () => {
   const mountedRef = useRef(true);
   const connectIdRef = useRef(0);
   const hiddenAtRef = useRef<number | null>(null);
+  const nativeBackgroundPausedRef = useRef(false);
+  const foregroundReconnectPendingIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
 
     const connect = () => {
       if (!mountedRef.current) return;
+      if (nativeBackgroundPausedRef.current) return;
+      foregroundReconnectPendingIdRef.current = null;
       const connectId = ++connectIdRef.current;
       if (sharedWs && sharedWs.readyState !== WebSocket.CLOSED) {
         sharedWs.onclose = null;
@@ -132,6 +137,7 @@ const useAgentStatus = () => {
         if (!mountedRef.current || connectIdRef.current !== connectId) return;
         useTabStore.getState().setStatusWsConnected(false);
         sharedWs = null;
+        if (nativeBackgroundPausedRef.current) return;
 
         const delay = Math.min(
           RECONNECT_BASE * Math.pow(2, retryCountRef.current),
@@ -152,8 +158,37 @@ const useAgentStatus = () => {
       hiddenAtRef.current = Date.now();
     };
 
+    const pauseForNativeBackground = () => {
+      nativeBackgroundPausedRef.current = true;
+      foregroundReconnectPendingIdRef.current = null;
+      connectIdRef.current++;
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+      useTabStore.getState().setStatusWsConnected(false);
+      if (sharedWs) {
+        sharedWs.onclose = null;
+        sharedWs.close(1000);
+        sharedWs = null;
+      }
+    };
+
+    const connectWhenForegroundReady = (connectId: number) => {
+      foregroundReconnectPendingIdRef.current = connectId;
+      void waitForForegroundReconnectReady().finally(() => {
+        if (foregroundReconnectPendingIdRef.current !== connectId) return;
+        foregroundReconnectPendingIdRef.current = null;
+        if (!mountedRef.current) return;
+        if (connectIdRef.current !== connectId) return;
+        if (nativeBackgroundPausedRef.current) return;
+        connect();
+      });
+    };
+
     const handleForegroundReconnect = (allowHidden = false) => {
       if (!allowHidden && document.visibilityState === 'hidden') return;
+      if (foregroundReconnectPendingIdRef.current !== null) return;
       const state = sharedWs?.readyState;
       const forceReconnect = shouldForceForegroundReconnect(hiddenAtRef.current);
       hiddenAtRef.current = null;
@@ -163,6 +198,11 @@ const useAgentStatus = () => {
         retryTimerRef.current = null;
       }
       retryCountRef.current = 0;
+      if (forceReconnect) {
+        const connectId = ++connectIdRef.current;
+        connectWhenForegroundReady(connectId);
+        return;
+      }
       connect();
     };
 
@@ -187,10 +227,12 @@ const useAgentStatus = () => {
       const active = readNativeAppStateActive(event);
       if (active === false) {
         markHidden();
+        pauseForNativeBackground();
         return;
       }
       if (active === true) {
-        hiddenAtRef.current = hiddenAtRef.current ?? 0;
+        nativeBackgroundPausedRef.current = false;
+        hiddenAtRef.current = 0;
         handleForegroundReconnect(true);
       }
     };
@@ -204,6 +246,7 @@ const useAgentStatus = () => {
 
     return () => {
       mountedRef.current = false;
+      foregroundReconnectPendingIdRef.current = null;
       // eslint-disable-next-line react-hooks/exhaustive-deps -- invalidate stale socket callbacks on unmount
       connectIdRef.current++;
       if (retryTimerRef.current) {

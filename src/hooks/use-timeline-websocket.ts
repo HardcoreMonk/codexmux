@@ -13,6 +13,7 @@ import {
   readNativeAppStateActive,
   shouldForceForegroundReconnect,
   shouldSuppressForegroundReconnectError,
+  waitForForegroundReconnectReady,
   wasPageRestored,
 } from '@/lib/foreground-reconnect';
 
@@ -75,6 +76,8 @@ const useTimelineWebSocket = ({
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectIdRef = useRef(0);
   const hiddenAtRef = useRef<number | null>(null);
+  const nativeBackgroundPausedRef = useRef(false);
+  const foregroundReconnectPendingIdRef = useRef<number | null>(null);
   const foregroundReconnectErrorSuppressUntilRef = useRef<number | null>(null);
 
   const callbacksRef = useRef({
@@ -99,6 +102,7 @@ const useTimelineWebSocket = ({
 
   const doConnect = useCallback(
     (connectId: number) => {
+      if (nativeBackgroundPausedRef.current) return;
       clearTimers();
       if (wsRef.current) {
         wsRef.current.close();
@@ -169,6 +173,7 @@ const useTimelineWebSocket = ({
         if (connectIdRef.current !== connectId) return;
         clearTimers();
         wsRef.current = null;
+        if (nativeBackgroundPausedRef.current) return;
 
         const delay = nextReconnectDelay(retryCountRef.current);
         retryCountRef.current++;
@@ -193,6 +198,7 @@ const useTimelineWebSocket = ({
 
   useEffect(() => {
     if (!enabled) {
+      foregroundReconnectPendingIdRef.current = null;
       ++connectIdRef.current;
       clearTimers();
       if (wsRef.current) {
@@ -203,6 +209,7 @@ const useTimelineWebSocket = ({
     }
 
     retryCountRef.current = 0;
+    foregroundReconnectPendingIdRef.current = null;
     const id = ++connectIdRef.current;
     doConnect(id);
 
@@ -224,9 +231,33 @@ const useTimelineWebSocket = ({
       hiddenAtRef.current = Date.now();
     };
 
+    const pauseForNativeBackground = () => {
+      nativeBackgroundPausedRef.current = true;
+      foregroundReconnectPendingIdRef.current = null;
+      connectIdRef.current++;
+      clearTimers();
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close(1000);
+        wsRef.current = null;
+      }
+    };
+
+    const connectWhenForegroundReady = (connectId: number) => {
+      foregroundReconnectPendingIdRef.current = connectId;
+      void waitForForegroundReconnectReady().finally(() => {
+        if (foregroundReconnectPendingIdRef.current !== connectId) return;
+        foregroundReconnectPendingIdRef.current = null;
+        if (connectIdRef.current !== connectId) return;
+        if (nativeBackgroundPausedRef.current) return;
+        doConnectRef.current(connectId);
+      });
+    };
+
     const handleForegroundReconnect = (allowHidden = false) => {
       if (!allowHidden && document.visibilityState === 'hidden') return;
       if (!enabled) return;
+      if (foregroundReconnectPendingIdRef.current !== null) return;
       const ws = wsRef.current;
       const forceReconnect = shouldForceForegroundReconnect(hiddenAtRef.current);
       hiddenAtRef.current = null;
@@ -234,8 +265,13 @@ const useTimelineWebSocket = ({
       retryCountRef.current = 0;
       if (forceReconnect) {
         foregroundReconnectErrorSuppressUntilRef.current = nextForegroundReconnectErrorSuppressUntil();
+        const id = ++connectIdRef.current;
+        setStatus('reconnecting');
+        connectWhenForegroundReady(id);
+        return;
       }
       const id = ++connectIdRef.current;
+      foregroundReconnectPendingIdRef.current = null;
       doConnectRef.current(id);
     };
 
@@ -260,10 +296,12 @@ const useTimelineWebSocket = ({
       const active = readNativeAppStateActive(event);
       if (active === false) {
         markHidden();
+        pauseForNativeBackground();
         return;
       }
       if (active === true) {
-        hiddenAtRef.current = hiddenAtRef.current ?? 0;
+        nativeBackgroundPausedRef.current = false;
+        hiddenAtRef.current = 0;
         handleForegroundReconnect(true);
       }
     };
@@ -282,7 +320,7 @@ const useTimelineWebSocket = ({
       window.removeEventListener('pageshow', handlePageShow);
       window.removeEventListener(NATIVE_APP_STATE_EVENT, handleNativeAppState);
     };
-  }, [enabled]);
+  }, [enabled, clearTimers]);
 
   const subscribe = useCallback((jsonlPath: string): boolean => {
     const ws = wsRef.current;
@@ -301,6 +339,7 @@ const useTimelineWebSocket = ({
   }, []);
 
   const reconnect = useCallback(() => {
+    foregroundReconnectPendingIdRef.current = null;
     setConnectTrigger((prev) => prev + 1);
   }, []);
 

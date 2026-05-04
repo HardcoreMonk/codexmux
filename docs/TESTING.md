@@ -223,7 +223,7 @@ corepack pnpm smoke:android:runtime-v2
 
 - `smoke:android:foreground`: Tailscale Serve HTTPS target, background/foreground 복귀,
   native bridge, `triggerEvent` fallback, blocking console/logcat.
-- `smoke:android:recovery`: network, HTTP 4xx, SSL 실패 뒤 launcher 복귀와 저장 서버 재연결.
+- `smoke:android:recovery`: network, HTTP 4xx, SSL 실패 뒤 launcher 복귀와 저장 서버 재연결. DevTools target lifetime flake를 피하기 위해 failure class별 독립 app start로 검증하며, 기본 HTTP 4xx는 live target의 missing path를 사용한다.
 - `smoke:android:runtime-v2`: temp runtime v2 server를 Tailscale IP로 노출하고 Android
   WebView에서 `/api/v2/terminal` attach와 foreground reconnect marker output을 확인.
 

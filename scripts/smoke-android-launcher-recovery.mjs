@@ -14,13 +14,16 @@ import {
   enableCdpDomains,
   findAdb,
   forceStopAndroidApp,
+  isExpectedRemoteState,
   navigateCdp,
   normalizeSmokeUrl,
+  readWebViewState,
   reconnectLauncherToServer,
   removeForward,
   selectAndroidSerial,
   sleep,
   startAndroidApp,
+  waitFor,
   waitForExpectedRemoteState,
   waitForLauncherState,
 } from './android-webview-smoke-lib.mjs';
@@ -32,7 +35,7 @@ const fail = (code, message, details = {}) => {
 
 const scenarioUrl = (scenario, targetUrl) => {
   if (scenario === 'network') return process.env.CODEXMUX_ANDROID_NETWORK_BAD_URL || 'http://127.0.0.1:1';
-  if (scenario === 'http') return process.env.CODEXMUX_ANDROID_HTTP_BAD_URL || 'https://example.com/__codexmux-smoke-http-404';
+  if (scenario === 'http') return process.env.CODEXMUX_ANDROID_HTTP_BAD_URL || new URL('/__codexmux-smoke-http-404', targetUrl).toString();
   if (scenario === 'ssl') return process.env.CODEXMUX_ANDROID_SSL_BAD_URL || 'https://expired.badssl.com/';
   throw new Error(`unsupported recovery scenario: ${scenario}`);
 };
@@ -43,6 +46,14 @@ const parseScenarios = () =>
     .map((value) => value.trim())
     .filter(Boolean);
 
+const envNumber = (name, fallback) => {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) throw new Error(`${name} must be a non-negative number`);
+  return parsed;
+};
+
 const main = async () => {
   const targetUrl = normalizeSmokeUrl(process.env.CODEXMUX_ANDROID_SMOKE_URL || DEFAULT_ANDROID_SMOKE_URL);
   const requestedPort = process.env.CODEXMUX_ANDROID_DEVTOOLS_PORT
@@ -51,6 +62,7 @@ const main = async () => {
   const appId = process.env.CODEXMUX_ANDROID_APP_ID || DEFAULT_ANDROID_APP_ID;
   const activity = process.env.CODEXMUX_ANDROID_ACTIVITY || DEFAULT_ANDROID_ACTIVITY;
   const scenarios = parseScenarios();
+  const settleMs = envNumber('CODEXMUX_ANDROID_RECOVERY_SETTLE_MS', 4_000);
 
   const adb = findAdb();
   const serial = selectAndroidSerial(adb);
@@ -70,6 +82,24 @@ const main = async () => {
     await enableCdpDomains(cdp);
   };
 
+  const navigateWithReconnect = async (url) => {
+    try {
+      await navigateCdp(cdp, url);
+    } catch (err) {
+      if (!String(err instanceof Error ? err.message : err).includes('CDP')) throw err;
+      await connectWebView();
+      await navigateCdp(cdp, url);
+    }
+  };
+
+  const waitForRecoveredRemoteState = () =>
+    waitFor('remote codexmux recovered page', async () => {
+      const state = await readWebViewState(cdp);
+      return isExpectedRemoteState(state, targetUrl) && state.bridgeTriggerEventType === 'function'
+        ? state
+        : null;
+    }, 35_000);
+
   try {
     clearLogcat({ adb, adbArgs });
     forceStopAndroidApp({ adb, adbArgs, appId });
@@ -77,17 +107,36 @@ const main = async () => {
     await sleep(1_000);
     await connectWebView();
 
-    for (const scenario of scenarios) {
+    for (let i = 0; i < scenarios.length; i += 1) {
+      const scenario = scenarios[i];
+      if (i > 0) {
+        forceStopAndroidApp({ adb, adbArgs, appId });
+        startAndroidApp({ adb, adbArgs, activity });
+        await sleep(1_000);
+        await connectWebView();
+        checks.push(`${scenario}-app-restart`);
+      }
+
       const badUrl = scenarioUrl(scenario, targetUrl);
-      await navigateCdp(cdp, badUrl);
+      await navigateWithReconnect(badUrl);
       const launcherState = await waitForLauncherState(cdp, 30_000);
       checks.push(`${scenario}-launcher`);
 
       await reconnectLauncherToServer(cdp, targetUrl);
-      const recoveredState = await waitForExpectedRemoteState(cdp, targetUrl, 35_000);
+      let recoveredState;
+      try {
+        await waitForExpectedRemoteState(cdp, targetUrl, 35_000);
+        recoveredState = await waitForRecoveredRemoteState();
+      } catch (err) {
+        if (!String(err instanceof Error ? err.message : err).includes('CDP')) throw err;
+        await sleep(1_000);
+        await connectWebView();
+        await waitForExpectedRemoteState(cdp, targetUrl, 35_000);
+        recoveredState = await waitForRecoveredRemoteState();
+      }
       finalState = recoveredState;
       checks.push(`${scenario}-recovered`);
-      await sleep(1_500);
+      await sleep(settleMs);
 
       if (recoveredState.bridgeTriggerEventType !== 'function') {
         fail('android-trigger-event-fallback-missing-after-recovery', 'triggerEvent fallback was not installed after launcher recovery', {
@@ -121,6 +170,7 @@ const main = async () => {
       activity,
       targetUrl,
       scenarios,
+      settleMs,
       checks,
       finalHref: finalState?.href ?? null,
       consoleEventCount: consoleEvents.length,

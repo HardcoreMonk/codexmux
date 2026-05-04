@@ -145,7 +145,7 @@
 - Status: Accepted
 - Decision: Electron과 Android 앱은 Codex/tmux를 직접 재구현하지 않고 실행 중인 codexmux 서버에 연결하는 shell로 유지한다.
 - Rationale: Codex와 tmux execution은 서버 환경에 두고, desktop/mobile 앱은 연결성과 UX를 담당하는 편이 안정적이다.
-- Consequences: Electron remote/local server mode는 `~/.codexmux/config.json`을 공유한다. Android 런처는 서버 URL 저장, 최근 서버, 자동 연결, 연결 실패 복구, 앱 정보/재시작을 담당한다. Android WebView 안에서는 `CodexmuxAndroid` native bridge로 versionName/versionCode, package, device, Android version을 읽고 WebView/Activity를 재시작한다. Android WebView smoke는 ADB와 WebView DevTools로 foreground reconnect, failure recovery, fresh app data clear first-run을 반복 검증한다.
+- Consequences: Electron remote/local server mode는 `~/.codexmux/config.json`을 공유한다. Android 런처는 서버 URL 저장, 최근 서버, 자동 연결, 연결 실패 복구, 앱 정보/재시작을 담당한다. Android WebView 안에서는 `CodexmuxAndroid` native bridge로 versionName/versionCode, package, device, Android version을 읽고 WebView/Activity를 재시작한다. Android main-frame network/HTTP/SSL 실패는 현재 WebView load를 중단한 뒤 launcher로 전환한다. Android WebView smoke는 ADB와 WebView DevTools로 foreground reconnect, failure recovery, fresh app data clear first-run을 반복 검증한다.
 
 ## ADR-008: Notification Sound는 공통 설정으로 제어
 

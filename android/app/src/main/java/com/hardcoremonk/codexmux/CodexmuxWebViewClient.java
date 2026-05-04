@@ -66,9 +66,12 @@ public class CodexmuxWebViewClient extends BridgeWebViewClient {
     }
 
     private void loadLauncher(WebView view, String reason) {
+        if (view == null) return;
         String localUrl = bridge.getLocalUrl();
         if (localUrl == null) return;
         String separator = localUrl.endsWith("/") ? "" : "/";
-        view.loadUrl(localUrl + separator + "?connection=failed&reason=" + Uri.encode(reason));
+        String launcherUrl = localUrl + separator + "?connection=failed&reason=" + Uri.encode(reason);
+        view.stopLoading();
+        view.post(() -> view.loadUrl(launcherUrl));
     }
 }

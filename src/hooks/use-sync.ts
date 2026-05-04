@@ -6,6 +6,7 @@ import {
   NATIVE_APP_STATE_EVENT,
   readNativeAppStateActive,
   shouldForceForegroundReconnect,
+  waitForForegroundReconnectReady,
   wasPageRestored,
 } from '@/lib/foreground-reconnect';
 import type { ILayoutData } from '@/types/terminal';
@@ -18,6 +19,8 @@ const useSync = () => {
   const mountedRef = useRef(false);
   const connectIdRef = useRef(0);
   const hiddenAtRef = useRef<number | null>(null);
+  const nativeBackgroundPausedRef = useRef(false);
+  const foregroundReconnectPendingIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -32,6 +35,8 @@ const useSync = () => {
 
     const connect = () => {
       if (!mountedRef.current) return;
+      if (nativeBackgroundPausedRef.current) return;
+      foregroundReconnectPendingIdRef.current = null;
       const connectId = ++connectIdRef.current;
       if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
         wsRef.current.onclose = null;
@@ -79,6 +84,7 @@ const useSync = () => {
       ws.onclose = () => {
         if (connectIdRef.current !== connectId) return;
         wsRef.current = null;
+        if (nativeBackgroundPausedRef.current) return;
         if (mountedRef.current) {
           timerRef.current = setTimeout(connect, RECONNECT_DELAY);
         }
@@ -95,19 +101,54 @@ const useSync = () => {
       hiddenAtRef.current = Date.now();
     };
 
+    const pauseForNativeBackground = () => {
+      nativeBackgroundPausedRef.current = true;
+      foregroundReconnectPendingIdRef.current = null;
+      connectIdRef.current++;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close(1000);
+        wsRef.current = null;
+      }
+    };
+
+    const connectWhenForegroundReady = (connectId: number) => {
+      foregroundReconnectPendingIdRef.current = connectId;
+      void waitForForegroundReconnectReady().finally(() => {
+        if (foregroundReconnectPendingIdRef.current !== connectId) return;
+        foregroundReconnectPendingIdRef.current = null;
+        if (!mountedRef.current) return;
+        if (connectIdRef.current !== connectId) return;
+        if (nativeBackgroundPausedRef.current) return;
+        refreshVisibleState();
+        connect();
+      });
+    };
+
     const handleForegroundReconnect = (allowHidden = false) => {
       if (!allowHidden && document.visibilityState !== 'visible') return;
+      if (foregroundReconnectPendingIdRef.current !== null) return;
       const ws = wsRef.current;
       const forceReconnect = shouldForceForegroundReconnect(hiddenAtRef.current);
       hiddenAtRef.current = null;
-      refreshVisibleState();
       if (!forceReconnect && ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+        refreshVisibleState();
         return;
       }
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
       }
+      if (forceReconnect) {
+        const connectId = ++connectIdRef.current;
+        connectWhenForegroundReady(connectId);
+        return;
+      }
+      refreshVisibleState();
       connect();
     };
 
@@ -132,10 +173,12 @@ const useSync = () => {
       const active = readNativeAppStateActive(event);
       if (active === false) {
         markHidden();
+        pauseForNativeBackground();
         return;
       }
       if (active === true) {
-        hiddenAtRef.current = hiddenAtRef.current ?? 0;
+        nativeBackgroundPausedRef.current = false;
+        hiddenAtRef.current = 0;
         handleForegroundReconnect(true);
       }
     };
@@ -149,6 +192,7 @@ const useSync = () => {
 
     return () => {
       mountedRef.current = false;
+      foregroundReconnectPendingIdRef.current = null;
       // eslint-disable-next-line react-hooks/exhaustive-deps -- invalidate stale socket callbacks on unmount
       connectIdRef.current++;
       if (timerRef.current) clearTimeout(timerRef.current);
