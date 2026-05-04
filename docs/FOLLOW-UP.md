@@ -43,41 +43,41 @@
 
 ## 릴리스 전 확인
 
-### 2026-05-03 live smoke snapshot
+### 2026-05-04 v0.4.1 release smoke snapshot
 
-2026-05-03 P0/P1 자동화 pass 기준 live 배포와 smoke 결과:
+2026-05-04 `v0.4.1` release 기준 live 배포와 smoke 결과:
 
 | 항목 | 상태 | 근거 |
 | --- | --- | --- |
-| live deploy/systemd | 통과 | `deploy:local`, `/api/health` `version=0.3.3`, service `ActiveState=active`, `WorkingDirectory=/data/projects/codex-zone/codexmux`, journal restart 이후 오류 없음 |
-| build/type/unit | 통과 | `corepack pnpm test` 73 files / 385 tests, `tsc --noEmit`, `lint`, `build`, `deploy:local` build |
+| live deploy/systemd | 통과 | `deploy:local`, `/api/health` `version=0.4.1`, `commit=23fee4b`, service `ActiveState=active`, `SubState=running`, `NRestarts=0` |
+| release/build/type/unit | 통과 | `corepack pnpm release:minor`로 `v0.4.0` 생성 후 Electron DMG 의존성 보정, `corepack pnpm release:patch`로 `v0.4.1` 생성. 최종 release는 `lint`, `test` 92 files / 441 tests, `tsc --noEmit`, `build`, commit/tag/push 통과 |
 | browser UI tooling | 통과 | `@playwright/test` 1.59.1 dev dependency, `corepack pnpm exec playwright install chromium`, headless Chromium launch smoke |
-| Electron build/attach/runtime v2/package | 통과 | `corepack pnpm build:electron`, `corepack pnpm smoke:electron:attach`, `corepack pnpm smoke:electron:runtime-v2`, initial + 2회 page reload/reconnect `/api/v2/terminal` marker output, Mac M1 `pnpm pack:electron:dev`, arm64/x64 DMG/zip 생성, native binding/arch/Info.plist/`hdiutil verify` 통과. Linux release host에서는 `build:electron`까지만 authoritative smoke로 보고 macOS DMG/zip packaging은 macOS host에서 실행한다. |
+| Electron build/attach/runtime v2/package | 통과 | Linux `corepack pnpm build:electron` 통과. M1 macOS `pnpm pack:electron:dev`로 `codexmux-0.4.1-arm64.dmg`, `codexmux-0.4.1-arm64-mac.zip`, `codexmux-0.4.1.dmg`, `codexmux-0.4.1-mac.zip` 생성, native binding/arch/Info.plist `0.4.1`/`hdiutil verify` 통과. Linux release host에서는 `build:electron`까지만 authoritative smoke로 보고 macOS DMG/zip packaging은 macOS host에서 실행한다. |
 | runtime v2 phase2 gate | 통과 | `corepack pnpm smoke:runtime-v2:phase2` browser reload/server restart/mode-off rollback, Electron page-context `/api/v2/terminal` cookie-auth attach/output/reconnect |
 | runtime v2 phase1 shadow | 관찰 중 | live `codexmux.service`에 `CODEXMUX_RUNTIME_V2=1`, surface modes `off` drop-in 적용. `corepack pnpm smoke:runtime-v2`, live target smoke, `/api/v2/runtime/health`, `/api/debug/perf` worker counters 통과. 24시간 restart-loop 부재 관찰은 남음 |
 | runtime v2 storage shadow/dry-run/backup/import/write/default-read | 부분 통과 | `corepack pnpm smoke:runtime-v2:storage-shadow`, legacy JSON에 mirror된 `runtimeVersion: 2` tab과 SQLite runtime layout projection read-only compare 통과. `corepack pnpm smoke:runtime-v2:storage-dry-run`, live `corepack pnpm runtime-v2:storage-dry-run`, `corepack pnpm smoke:runtime-v2:storage-backup`, live `corepack pnpm runtime-v2:storage-backup`, `corepack pnpm smoke:runtime-v2:storage-import`, live `corepack pnpm runtime-v2:storage-import`, `corepack pnpm smoke:runtime-v2:storage-write`, `corepack pnpm smoke:runtime-v2:storage-default-read` 통과. live dry-run은 `cutoverReady=true`, blocker 0. live backup은 28개 JSON/SQLite 파일을 `runtime-v2-storage-20260504T060000Z`에 복사. live import는 workspace 5개/tab 5개를 SQLite로 복사. write mode는 JSON write 후 SQLite mirror를 지원하고 default-read temp smoke는 workspace/layout/sidebar/message-history read ownership과 JSON fallback mirror를 검증한다. live default 전환은 남음 |
 | runtime v2 timeline shadow | 부분 통과 | `corepack pnpm smoke:runtime-v2:timeline-shadow`, legacy timeline read endpoint와 runtime v2 timeline read endpoint의 message counts/entries-before metadata compare 통과. live watcher/session-changed/resume ownership은 남음 |
 | runtime v2 status shadow | 부분 통과 | `corepack pnpm smoke:runtime-v2:status-shadow`, Status Worker IPC reducer/policy output과 legacy pure helper output compare 통과. polling/ack/Web Push/session history ownership은 남음 |
-| Android debug install | 통과 | `versionName=0.3.3`, `versionCode=303`, `lastUpdateTime=2026-05-04 20:59:46`, `MainActivity` |
+| Android debug install | 통과 | `versionName=0.4.1`, `versionCode=401`, `lastUpdateTime=2026-05-04 21:35:16`, `MainActivity` |
 | Android Tailscale failure recovery | 통과 | `corepack pnpm smoke:android:recovery`, network/HTTP 4xx/SSL failure class별 app start, launcher 복귀와 저장 서버 재연결, blocking console/logcat 0 |
 | Android foreground reconnect | 통과 | `corepack pnpm smoke:android:foreground`, 2회 background/foreground, `triggerEvent`/TypeError 0, blocking console/logcat 0 |
-| Android runtime v2 foreground | 통과 | `corepack pnpm smoke:android:runtime-v2`, SM-S928N Android 16, temp runtime v2 server `http://100.112.40.104:28393`, initial + 2회 foreground `/api/v2/terminal` marker output, blocking console/logcat 0 |
+| Android runtime v2 foreground | 통과 | `corepack pnpm smoke:android:runtime-v2`, SM-S928N Android 16, temp runtime v2 server `http://100.112.40.104:15771`, initial + 2회 foreground `/api/v2/terminal` marker output, blocking console/logcat 0 |
 | Android app info/restart | 통과 | `CODEXMUX_ANDROID_FOREGROUND_ROUNDS=0 CODEXMUX_ANDROID_RESTART_APP=1 corepack pnpm smoke:android:foreground`, native restart 후 `/login`, console 0/logcat 0 |
-| Android 60초 background | 통과 | `CODEXMUX_ANDROID_BACKGROUND_MS=60000 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=1 corepack pnpm smoke:android:foreground`, 로그인된 `/` app surface, console 0/logcat 0 |
+| Android 60초 background | 통과 | `CODEXMUX_ANDROID_BACKGROUND_MS=60000 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=1 corepack pnpm smoke:android:foreground`, Tailscale HTTPS app surface, `versionName=0.4.1`, blocking console/logcat 0 |
 | Android first-run launcher | 통과 | `CODEXMUX_ANDROID_CLEAR_APP_DATA=1 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=1 corepack pnpm smoke:android:foreground`, `/login` 첫 실행 console 0/logcat 0 |
 | stats/daily report | 통과 | stats overview/list 200, `2026-05-03` daily report generate 200 |
 | Windows sync | 통과 | temp server upload/offset resume smoke 통과, Windows 실기기 sync/query 정상, live `/api/remote/codex/sources` 1 source/248 sessions 및 remote session list 200 확인 |
-| Windows terminal bridge | 개발/배포 완료, 실기기 대기 | `9705289` 배포, remote terminal store/URL/preflight tests 통과, `/windows-terminal` UI와 bridge script 추가; Windows 실기기 입력/출력/resize smoke 필요 |
+| Windows terminal bridge | 진행 대기 | remote terminal store/URL/preflight tests 통과, `/windows-terminal` UI와 bridge script 추가; Windows 실기기 입력/출력/resize/reconnect smoke 필요 |
 | permission prompt | 통과 | `corepack pnpm smoke:permission`, 임시 server/HOME/tmux tab에서 `needs-input` push, option parsing, stdin 선택, ack 이후 `busy` 복귀 |
-| 장시간 reconnect | 부분 통과 | foreground smoke는 통과; 수십 분 이상 background와 반복 reconnect는 남음 |
+| release-blocking 잔여 | Windows only | Android/Electron/macOS packaging은 `v0.4.1` 기준 통과. 남은 실기기 확인은 Windows terminal bridge와 Scheduled Task 장시간 관찰 |
 
 P0/P1/P2/P3 후속 상태:
 
 - P0 완료: Android Tailscale Serve HTTPS 접속, failure recovery 반복, foreground reconnect, fresh app data clear first-run, app info bridge 확인, login route console noise 제거, permission prompt status/tmux E2E smoke 자동화.
 - P0 남음: 자동 개발로 처리 가능한 code/runtime blocking 항목은 없음. 실제 기기/OS가 필요한 장시간/외부 smoke는 P1 운영 검증으로 남긴다.
-- P1 완료: Android foreground/recovery/runtime v2 smoke, app info/native restart smoke, Electron attach/runtime v2 smoke, Electron packaged `.app` launch hook for smoke scripts, PWA/iPad readiness smoke, permission prompt smoke, Windows companion temp upload smoke, Windows 실기기 sync/query smoke, Windows terminal bridge 개발/배포, package scripts.
-- P1 남음: Android logged-in session 수십 분 background/reconnect와 input draft 보존, active terminal WebSocket settle 증거, 실제 Codex CLI permission prompt 재현 smoke, macOS packaged `.app` Finder 실행/Gatekeeper UX, Windows terminal bridge 실기기 입력/출력/resize smoke, Windows Scheduled Task 장시간 restart/log/token 권한 관찰, 실제 iPad Safari/Home Screen 장시간 foreground reconnect smoke.
-- P2 남음: packaged Electron foreground/reconnect를 Mac 화면 세션에서 evidence로 보존, runtime v2 shadow 24시간 worker restart-loop 부재 관찰, runtime v2 storage live default rollout, timeline/status parity surface별 cutover evidence, release workflow/CI에서 선택 실행할 Android/Electron/browser reconnect smoke artifact 보존.
+- P1 완료: Android foreground/recovery/runtime v2 smoke, app info/native restart smoke, Electron attach/runtime v2 smoke, M1 macOS `0.4.1` DMG/zip packaging, PWA/iPad readiness smoke, permission prompt smoke, Windows companion temp upload smoke, Windows 실기기 sync/query smoke, Windows terminal bridge 개발/배포, package scripts.
+- P1 남음: Windows terminal bridge 실기기 입력/출력/resize/reconnect smoke, Windows Scheduled Task 장시간 restart/log/token 권한 관찰.
+- P2 남음: runtime v2 shadow 24시간 worker restart-loop 부재 관찰, runtime v2 storage live default rollout, timeline/status parity surface별 cutover evidence, release workflow/CI에서 선택 실행할 Android/Electron/browser reconnect smoke artifact 보존.
 - P3 남음: Android release signing/AAB 운영, approval queue, lifecycle control UI, perf tuning.
 
 1. 장시간 Codex smoke test: 새 tab 생성, prompt 실행, tool call과 reasoning summary 표시, 상태 전이 확인.
@@ -97,7 +97,7 @@ P0/P1/P2/P3 후속 상태:
 15. 설치/upgrade: `npx codexmux`, global install, 기존 `~/.codexmux` 유지 확인.
 16. release metadata: `corepack pnpm release:patch|minor|major`, changelog, release workflow artifact 확인.
 17. Windows sync smoke test: `corepack pnpm smoke:windows-sync`로 temp server upload, dry-run, offset resume, source filter, remote source summary를 먼저 확인한다. Windows 실기기 sync/query는 live server에서 `AMD_5800X / pwsh` source와 remote session list로 확인했다. 남은 운영 관찰은 Scheduled Task 장시간 restart result, log rotation 필요성, token file 권한이다.
-18. Windows terminal bridge smoke test: Windows 기기에서 `corepack pnpm windows:terminal-bridge -- --source-id <sourceId>`를 실행하고 Browser `/windows-terminal?sourceId=<sourceId>`에서 `pwd`, `Get-Location`, `node --version`, resize, reconnect를 확인한다. bridge는 `9705289`부터 `/api/remote/terminal/register`를 local `pwsh` 시작 전에 확인하고, 구버전 서버가 HTML error page를 반환하면 endpoint/status/content-type을 포함해 진단한다. 이 bridge는 별도 `pwsh` session 제어이며 기존 Windows Terminal process attach는 범위 밖이다.
+18. Windows terminal bridge smoke test: Windows 기기에서 최신 `v0.4.1` checkout으로 `corepack pnpm windows:terminal-bridge -- --source-id <sourceId>`를 실행하고 Browser `/windows-terminal?sourceId=<sourceId>`에서 `pwd`, `Get-Location`, `node --version`, resize, reconnect를 확인한다. bridge는 `/api/remote/terminal/register`를 local `pwsh` 시작 전에 확인하고, 구버전 서버가 HTML error page를 반환하면 endpoint/status/content-type을 포함해 진단한다. 이 bridge는 별도 `pwsh` session 제어이며 기존 Windows Terminal process attach는 범위 밖이다.
 19. Runtime v2 cutover readiness: `docs/RUNTIME-V2-CUTOVER.md`와 `docs/RUNTIME-V2-PARITY.md`의 phase gate, rollback flag, temp HOME/DB smoke를 release candidate commit 기준으로 확인한다. Phase 1 shadow는 live `codexmux.service` drop-in으로 `CODEXMUX_RUNTIME_V2=1`과 surface modes `off`를 켠 뒤 `/api/v2/runtime/health`, `/api/debug/perf`, live target `corepack pnpm smoke:runtime-v2`를 확인하고 24시간 restart-loop 부재를 관찰한다. Phase 2 terminal gate는 `corepack pnpm smoke:runtime-v2:phase2`로 browser reload/server restart/mode-off rollback을 먼저 통과시킨 뒤 `corepack pnpm smoke:electron:runtime-v2`와 `corepack pnpm smoke:android:runtime-v2`의 page-context attach/output/reconnect, systemd 검증 증거를 추가한다. Phase 3 storage gate는 `corepack pnpm smoke:runtime-v2:storage-dry-run`, `corepack pnpm runtime-v2:storage-dry-run`, `corepack pnpm smoke:runtime-v2:storage-backup`, `corepack pnpm runtime-v2:storage-backup`, `corepack pnpm smoke:runtime-v2:storage-import`, `corepack pnpm runtime-v2:storage-import`, `corepack pnpm smoke:runtime-v2:storage-write`, `corepack pnpm smoke:runtime-v2:storage-default-read`, `corepack pnpm smoke:runtime-v2:storage-shadow`를 함께 확인한다. `cutoverReady=false` blocker가 있거나 live default rollout evidence가 닫히지 않았으면 production default 전환을 금지한다. packaged Electron은 `CODEXMUX_ELECTRON_APP_PATH=<release/.../codexmux.app> CODEXMUX_ELECTRON_WINDOW_FOREGROUND_CYCLES=1 corepack pnpm smoke:electron:runtime-v2`로 CLI smoke를 먼저 통과시키고, Finder/Gatekeeper UX는 Mac 화면 세션 smoke로 별도 확인한다.
 20. Browser reconnect DOM smoke: `corepack pnpm smoke:browser-reconnect`로 temp server/workspace에서 `session-not-found` 복구 overlay와 floating reconnect control 중복 렌더링이 없는지 Playwright Chromium pointer 동작까지 확인한다. 다음 단계는 이 결과를 release workflow artifact로 보존하는 것이다.
 

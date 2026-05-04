@@ -2,6 +2,8 @@
 
 Windows client 범위는 Windows 11 `pwsh`에서 실행한 Codex CLI의 JSONL transcript 동기화와 별도 Windows `pwsh` terminal bridge 제어다. codexmux UI에서는 remote session이 session list에 나타나고, source filter로 분리 조회할 수 있으며, 선택하면 읽기 전용 timeline으로 열린다. Windows terminal bridge를 실행하면 `/windows-terminal?sourceId=<sourceId>`에서 별도 `pwsh` session을 제어할 수 있다.
 
+2026-05-04 `v0.4.1` release 기준 Windows Codex JSONL sync/query는 live server에서 정상 확인됐다. 남은 release-blocking Windows 작업은 terminal bridge 실기기 입력/출력/resize/reconnect smoke와 Scheduled Task 장시간 restart/log/token 권한 관찰이다.
+
 ## 지원 범위
 
 | 항목 | 상태 |

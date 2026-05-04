@@ -207,8 +207,10 @@ foreground probe로 clamp된다. CDP `Browser.*` window bounds가 있으면
 minimize/restore를 쓰고, 없으면 `Target.activateTarget`/`Page.bringToFront`
 fallback을 쓰며 실제 method는 smoke JSON의 checks에 남는다.
 
-Linux checkout에서 Electron build/packaging smoke를 실행한 뒤에는 `.next/standalone`이
-다시 만들어질 수 있으므로 live user service는 `corepack pnpm deploy:local`로 재시작한다.
+Linux checkout에서는 `corepack pnpm build:electron`까지를 Electron bundle smoke로 본다.
+macOS DMG/zip packaging은 Darwin native dependency 때문에 macOS host에서 실행한다.
+Electron build나 packaging smoke 뒤에는 `.next/standalone`이 다시 만들어질 수 있으므로
+live user service는 `corepack pnpm deploy:local`로 재시작한다.
 
 ## Android
 
