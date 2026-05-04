@@ -202,12 +202,18 @@ export const pollRemoteTerminalCommands = (input: IRemoteTerminalRegistration & 
   max?: number | null;
 }): { terminal: IRemoteTerminalStatus; commands: IRemoteTerminalCommand[]; latestSeq: number } => {
   const state = getOrCreateState(input);
-  const afterSeq = Number.isFinite(input.afterSeq) && input.afterSeq! >= 0 ? Math.floor(input.afterSeq!) : 0;
+  const requestedAfterSeq = Number.isFinite(input.afterSeq) && input.afterSeq! >= 0 ? Math.floor(input.afterSeq!) : 0;
+  const cursorReset = requestedAfterSeq > state.commandSeq;
+  const afterSeq = cursorReset ? 0 : requestedAfterSeq;
   const max = Number.isFinite(input.max) && input.max! > 0 ? Math.min(Math.floor(input.max!), 100) : 100;
   if (afterSeq > 0 && state.commands.some((command) => command.seq <= afterSeq)) {
     state.commands = state.commands.filter((command) => command.seq > afterSeq);
   }
   const commands = state.commands.filter((command) => command.seq > afterSeq).slice(0, max);
+  if (cursorReset && commands.length > 0) {
+    const lastDeliveredSeq = commands[commands.length - 1].seq;
+    state.commands = state.commands.filter((command) => command.seq > lastDeliveredSeq);
+  }
   state.lastSeenAt = new Date().toISOString();
   return {
     terminal: toStatus(state),

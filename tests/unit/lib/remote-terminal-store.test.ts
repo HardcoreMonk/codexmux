@@ -73,6 +73,47 @@ describe('remote terminal store', () => {
     ]);
   });
 
+  it('delivers commands when a bridge cursor is ahead after a server restart', async () => {
+    const {
+      ensureRemoteTerminal,
+      enqueueRemoteTerminalInput,
+      pollRemoteTerminalCommands,
+      listRemoteTerminals,
+    } = await import('@/lib/remote-terminal-store');
+
+    ensureRemoteTerminal({
+      sourceId: 'win11-main',
+      terminalId: 'main',
+      host: 'AMD_5800X',
+      shell: 'pwsh',
+    });
+
+    enqueueRemoteTerminalInput({
+      sourceId: 'win11-main',
+      terminalId: 'main',
+      data: 'Get-Location\r',
+    });
+
+    const result = pollRemoteTerminalCommands({
+      sourceId: 'win11-main',
+      terminalId: 'main',
+      afterSeq: 128,
+    });
+
+    expect(result.commands).toMatchObject([
+      { seq: 1, type: 'stdin', data: 'Get-Location\r' },
+    ]);
+    expect(listRemoteTerminals()[0]).toMatchObject({
+      commandSeq: 1,
+      pendingCommandCount: 0,
+    });
+    expect(pollRemoteTerminalCommands({
+      sourceId: 'win11-main',
+      terminalId: 'main',
+      afterSeq: 128,
+    }).commands).toEqual([]);
+  });
+
   it('stores recent output and notifies subscribers', async () => {
     const {
       appendRemoteTerminalOutput,

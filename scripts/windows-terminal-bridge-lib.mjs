@@ -167,6 +167,9 @@ export const runWindowsTerminalBridge = async ({
       pathname: `/api/remote/terminal/commands?${params.toString()}`,
       fetchImpl,
     });
+    if (typeof data?.latestSeq === 'number' && data.latestSeq < commandSeq) {
+      commandSeq = 0;
+    }
     for (const command of data?.commands ?? []) {
       commandSeq = Math.max(commandSeq, command.seq || 0);
       if (command.type === 'stdin' && typeof command.data === 'string') {
