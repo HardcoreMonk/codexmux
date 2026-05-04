@@ -3,6 +3,7 @@ const OPTION_KEYWORDS = [
   'Accept', 'Decline',
   'Open System Settings', 'Try again',
   'Use this', 'Continue without',
+  'Use session directory', 'Use current directory',
   // ink Select dialog keywords (Resume Return, Idle Return)
   'Resume from summary', 'Resume full session',
   'Continue this conversation', 'Send message as',
@@ -43,6 +44,7 @@ const isKnownPromptPattern = (options: string[]): boolean => {
     || (hasOption(options, 'Accept') && hasOption(options, 'Decline'))
     || hasOption(options, 'Open System Settings')
     || (hasOption(options, 'Use this') && hasOption(options, 'Continue without'))
+    || (hasOption(options, 'Use session directory') && hasOption(options, 'Use current directory'))
     || (hasOption(options, 'Resume from summary') && hasOption(options, 'Resume full session'))
     || (hasOption(options, 'Continue this conversation') && hasOption(options, 'Send message as'));
 };

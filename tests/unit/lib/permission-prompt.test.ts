@@ -136,6 +136,28 @@ describe('parsePermissionOptions', () => {
     expect(result.options).toEqual(['Accept', 'Decline']);
     expect(result.focusedIndex).toBe(0);
   });
+
+  it('Codex resume working directory 선택 프롬프트를 인식한다', () => {
+    const pane = [
+      'Choose working directory to resume this session',
+      '',
+      '  Session = latest cwd recorded in the resumed session',
+      '  Current = your current working directory',
+      '',
+      '› 1. Use session directory (/data/projects/codex-zone/purecvisor-single)',
+      '  2. Use current directory (/home/hardcoremonk)',
+      '',
+      '  Press enter to continue',
+    ].join('\n');
+
+    const result = parsePermissionOptions(pane);
+
+    expect(result.options).toEqual([
+      '1. Use session directory (/data/projects/codex-zone/purecvisor-single)',
+      '2. Use current directory (/home/hardcoremonk)',
+    ]);
+    expect(result.focusedIndex).toBe(0);
+  });
 });
 
 describe('hasPermissionPrompt', () => {
