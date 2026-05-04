@@ -20,7 +20,7 @@
 
 | Surface | Owner | v1 behavior | v2 behavior | Gap | Migration | Test | Rollback |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Workspace create/list/delete | `src/lib/workspace-store.ts`, `src/lib/runtime/storage/repository.ts` | `workspaces.json`과 workspace별 `layout.json`을 생성/조회/삭제한다. | SQLite workspace/pane/tab schema로 create/list/delete를 지원한다. | v1 workspace metadata 전체와 group/order/sidebar state가 아직 SQLite source가 아니다. | Shadow import 후 `CODEXMUX_RUNTIME_STORAGE_V2_MODE=write`에서 신규 workspace만 v2 write. | `corepack pnpm test tests/unit/lib/runtime` | `CODEXMUX_RUNTIME_STORAGE_V2_MODE=off`; JSON store 유지. |
+| Workspace create/list/delete | `src/lib/workspace-store.ts`, `src/lib/runtime/storage/repository.ts`, `src/lib/runtime/storage-dry-run.ts` | `workspaces.json`과 workspace별 `layout.json`을 생성/조회/삭제한다. | SQLite workspace/pane/tab schema로 create/list/delete를 지원한다. Storage dry-run은 legacy JSON stores를 read-only로 검사하고 backup manifest/cutover blockers를 count-only로 출력한다. | v1 workspace metadata 전체와 group/order/sidebar state가 아직 SQLite source가 아니다. 현재 dry-run은 blocker를 검출하지만 import/write ownership은 완료하지 않았다. | Shadow import 후 `CODEXMUX_RUNTIME_STORAGE_V2_MODE=write`에서 신규 workspace만 v2 write. Full default 전 `runtime-v2:storage-dry-run` blocker를 모두 닫는다. | `corepack pnpm test tests/unit/lib/runtime`, `corepack pnpm smoke:runtime-v2:storage-dry-run`, `corepack pnpm runtime-v2:storage-dry-run` | `CODEXMUX_RUNTIME_STORAGE_V2_MODE=off`; JSON store 유지. |
 | Workspace rename | `src/pages/api/workspace/[workspaceId].ts`, `src/lib/workspace-store.ts` | workspace name을 JSON에 갱신하고 sync broadcast한다. | v2 rename command/route 없음. | rename command, validation, sync invalidation 필요. | JSON-vs-SQLite shadow compare 후 dual-write 가능 여부 확인. | workspace rename API test + shadow compare. | v1 rename route 유지. |
 | Workspace reorder/group/collapse | `src/lib/workspace-store.ts`, `src/lib/workspace-order.ts` | workspaces/groups order와 collapsed/groupId를 JSON에 저장한다. | v2 schema/command 없음. | group/order schema와 transaction semantics 필요. | v1 write 유지, v2 shadow projection 먼저 추가. | reorder/group API test + malformed group fixture. | JSON order가 source of truth. |
 | Active workspace/sidebar state | `src/pages/api/workspace/active.ts`, `src/lib/workspace-store.ts` | activeWorkspaceId, sidebarCollapsed, sidebarWidth를 JSON에 저장한다. | v2 storage 없음. | UI hydration과 browser/Electron/Android sync parity 필요. | storage v2 default 직전 one-way import 후 write ownership 전환. | active workspace reload/mobile reconnect smoke. | legacy active state JSON 재사용. |
@@ -89,6 +89,14 @@ Runtime v2 can only become default for a surface when every row in that surface 
 - 범위는 Phase 2 `new-tabs` flow가 legacy JSON layout에 mirror한 `runtimeVersion: 2` tab과 SQLite runtime layout projection의 read-only compare다.
 - 이 first slice는 full JSON-to-SQLite migration, workspace group/order/sidebar migration, split pane ownership, legacy `runtimeVersion: 1` tab import를 완료한 것이 아니다.
 - mismatch output은 tab id, field, boolean/order 등만 포함하고 cwd 값은 직접 출력하지 않는다.
+
+## 2026-05-04 Storage Dry-run Evidence
+
+- `corepack pnpm smoke:runtime-v2:storage-dry-run`를 추가했다.
+- `corepack pnpm runtime-v2:storage-dry-run`는 실제 `~/.codexmux`의 `workspaces.json`과 workspace별 `layout.json`을 쓰기 없이 읽고, `runtime-v2/state.db` 전환 전 backup manifest와 blocker code를 출력한다.
+- live dry-run snapshot은 `workspaceCount=6`, `groupCount=1`, `paneCount=6`, `tabCount=6`, `runtimeV1TabCount=2`, `nonTerminalTabCount=4`, `statusMetadataTabCount=6`, `cutoverReady=false`다.
+- blocker는 workspace group state, legacy terminal tab import, non-terminal tab import, tab status metadata import다. sidebar/active workspace state는 warning으로 남는다.
+- report는 workspace id, pane id, tab id, relative backup path, count만 포함한다. cwd, workspace/tab name, session name, JSONL path, prompt, assistant text, terminal output은 출력하지 않는다.
 
 ## 2026-05-04 Timeline Shadow Evidence
 

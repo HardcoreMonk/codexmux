@@ -94,6 +94,19 @@ corepack pnpm smoke:runtime-v2:phase2
 이 gate는 temp HOME/DB 서버에서 cookie login, workspace 생성, runtime v2 plain terminal
 tab 생성, browser reload reattach, server restart reattach, terminal mode rollback을 확인한다.
 
+Storage dry-run and backup manifest:
+
+```bash
+corepack pnpm smoke:runtime-v2:storage-dry-run
+corepack pnpm runtime-v2:storage-dry-run
+```
+
+`smoke:runtime-v2:storage-dry-run`은 fixture에서 workspace group, split layout, legacy tab,
+status metadata blocker를 만들고, report가 cwd/workspace name/session name/prompt를 노출하지
+않는지 확인한다. `runtime-v2:storage-dry-run`은 실제 `~/.codexmux`의 `workspaces.json`과
+workspace별 `layout.json`을 read-only로 검사하고, `runtime-v2/state.db` 전환 전에 필요한
+상대 backup manifest와 blocker code를 출력한다. 이 명령은 migration/import를 수행하지 않는다.
+
 Storage shadow compare smoke:
 
 ```bash

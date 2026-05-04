@@ -71,6 +71,8 @@
     "smoke:runtime-v2": "node scripts/smoke-runtime-v2-isolated.mjs",
     "smoke:runtime-v2:target": "node scripts/smoke-runtime-v2.mjs",
     "smoke:runtime-v2:phase2": "node scripts/smoke-runtime-v2-phase2-gate.mjs",
+    "runtime-v2:storage-dry-run": "tsx scripts/runtime-v2-storage-dry-run.ts",
+    "smoke:runtime-v2:storage-dry-run": "tsx scripts/smoke-runtime-v2-storage-dry-run.ts",
     "smoke:runtime-v2:storage-shadow": "tsx scripts/smoke-runtime-v2-storage-shadow.ts",
     "smoke:runtime-v2:timeline-shadow": "tsx scripts/smoke-runtime-v2-timeline-shadow.ts",
     "smoke:runtime-v2:status-shadow": "tsx scripts/smoke-runtime-v2-status-shadow.ts",
