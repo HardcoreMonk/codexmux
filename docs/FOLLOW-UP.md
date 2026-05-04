@@ -85,7 +85,7 @@ P0/P1/P2/P3 후속 상태:
 3. stats smoke test: `/api/stats/*` endpoint와 실제 `~/.codex/sessions` 집계 확인.
 4. daily report smoke test: `codex exec` 성공/실패, cache 재사용 확인.
 5. macOS packaging: Linux release host에서는 `corepack pnpm build:electron`까지 확인하고, `.app`/`.dmg` 산출물은 macOS host에서 `corepack pnpm pack:electron:dev`로 생성한다.
-6. Android packaging: `corepack pnpm android:build:debug`, `corepack pnpm android:install`, `corepack pnpm smoke:android:install`로 package install state 확인. 현재 `0.4.0` 기준 `versionName=0.4`, `versionCode=400`이어야 한다.
+6. Android packaging: `corepack pnpm android:build:debug`, `corepack pnpm android:install`, `corepack pnpm smoke:android:install`로 package install state 확인. 현재 `0.4.1` 기준 `versionName=0.4.1`, `versionCode=401`이어야 한다.
 7. 모바일 reconnect smoke test: Android WebView는 `smoke:android:foreground`로 반복 확인한다. iPad/PWA install readiness는 `corepack pnpm smoke:pwa`로 manifest/head/icon/splash/service worker/iPad viewport console을 먼저 확인한다. iOS startup image는 `scripts/generate-splash.js`가 만든 `codexmux` branding이어야 하며, 기존 Home Screen 앱의 오래된 splash는 iOS cache 때문에 앱 재추가로 확인한다. 실제 iPad Home Screen 장시간 background와 입력 draft 보존, timeline 중복 출력 방지는 별도 수동 smoke로 남긴다.
 8. Android Tailscale 실패 smoke test: `smoke:android:recovery`가 network/HTTP 4xx/SSL을 자동 확인한다. 실제 Tailscale 미연결과 서버 장시간 중지는 별도 수동 smoke로 남긴다.
 9. Android app info/restart smoke test: launcher와 server 접속 후 mobile navigation에서 앱 정보가 표시되고 앱 재시작 버튼이 WebView/Activity를 다시 여는지 확인.
