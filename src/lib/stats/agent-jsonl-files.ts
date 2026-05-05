@@ -21,6 +21,29 @@ export const extractSessionIdFromAgentJsonlPath = (jsonlPath: string): string | 
   return match?.[0] ?? null;
 };
 
+export const extractDateFromAgentJsonlPath = (jsonlPath: string): string | null => {
+  const parts = path.normalize(jsonlPath).split(path.sep);
+  const sessionsIndex = parts.lastIndexOf('sessions');
+  if (sessionsIndex === -1 || parts.length <= sessionsIndex + 3) return null;
+
+  const [year, month, day] = parts.slice(sessionsIndex + 1, sessionsIndex + 4);
+  if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month) || !/^\d{2}$/.test(day)) return null;
+
+  return `${year}-${month}-${day}`;
+};
+
+export const filterAgentJsonlFilesByDates = (
+  files: IAgentJsonlFile[],
+  targetDates: Set<string>,
+): IAgentJsonlFile[] => {
+  if (targetDates.size === 0) return [];
+
+  return files.filter((file) => {
+    const date = extractDateFromAgentJsonlPath(file.filePath);
+    return !date || targetDates.has(date);
+  });
+};
+
 const collectJsonlPaths = async (
   dir: string,
   maxDepth: number,

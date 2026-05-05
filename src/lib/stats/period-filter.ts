@@ -32,6 +32,22 @@ export const isDateStringWithinPeriod = (dateStr: string, period: TPeriod): bool
   return date >= start && date <= end;
 };
 
+export const dateStringsForPeriod = (period: TPeriod): Set<string> | null => {
+  if (period === 'all') return null;
+
+  const { start, end } = getPeriodRange(period);
+  const dates = new Set<string>();
+  let cursor = dayjs(start).startOf('day');
+  const finalDay = dayjs(end).startOf('day');
+
+  while (cursor.isBefore(finalDay) || cursor.isSame(finalDay)) {
+    dates.add(cursor.format('YYYY-MM-DD'));
+    cursor = cursor.add(1, 'day');
+  }
+
+  return dates;
+};
+
 export const parsePeriod = (value: string | undefined): TPeriod => {
   if (value === 'today' || value === '7d' || value === '30d' || value === 'all') return value;
   return 'all';

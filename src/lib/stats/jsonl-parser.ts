@@ -6,8 +6,10 @@ import { shortenCwd } from './daily-report-builder';
 import {
   collectAgentJsonlFiles,
   extractSessionIdFromAgentJsonlPath,
+  filterAgentJsonlFilesByDates,
   type IAgentJsonlFile,
 } from './agent-jsonl-files';
+import { dateStringsForPeriod } from './period-filter';
 
 const CONCURRENCY_LIMIT = 10;
 
@@ -320,7 +322,7 @@ const parseJsonlTimestampsByDay = async (
 export const parseTimestampsByDay = async (
   targetDates: Set<string>,
 ): Promise<Map<string, Map<string, number[]>>> => {
-  const files = await collectAgentJsonlFiles();
+  const files = filterAgentJsonlFilesByDates(await collectAgentJsonlFiles(), targetDates);
   if (files.length === 0) return new Map();
 
   const tasks = files.map((f) => () => parseJsonlTimestampsByDay(f, targetDates));
@@ -349,7 +351,9 @@ export const parseTimestampsByDay = async (
 };
 
 export const parseAllProjects = async (period: TPeriod): Promise<IProjectStats[]> => {
-  const files = await collectAgentJsonlFiles();
+  const targetDates = dateStringsForPeriod(period);
+  const collectedFiles = await collectAgentJsonlFiles();
+  const files = targetDates ? filterAgentJsonlFilesByDates(collectedFiles, targetDates) : collectedFiles;
   if (files.length === 0) return [];
 
   const tasks = files.map((f) => () => parseJsonlStream(f, period));
@@ -379,7 +383,9 @@ export const parseAllProjects = async (period: TPeriod): Promise<IProjectStats[]
 };
 
 export const parseAllSessions = async (period: TPeriod): Promise<ISessionStats[]> => {
-  const files = await collectAgentJsonlFiles();
+  const targetDates = dateStringsForPeriod(period);
+  const collectedFiles = await collectAgentJsonlFiles();
+  const files = targetDates ? filterAgentJsonlFilesByDates(collectedFiles, targetDates) : collectedFiles;
   if (files.length === 0) return [];
 
   const tasks = files.map((f) => () => parseJsonlStream(f, period));

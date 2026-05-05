@@ -2,8 +2,12 @@ import { createReadStream } from 'fs';
 import readline from 'readline';
 import dayjs from 'dayjs';
 import type { IHistoryResponse, TPeriod } from '@/types/stats';
-import { isWithinPeriod } from './period-filter';
-import { collectAgentJsonlFiles, type IAgentJsonlFile } from './agent-jsonl-files';
+import { dateStringsForPeriod, isWithinPeriod } from './period-filter';
+import {
+  collectAgentJsonlFiles,
+  filterAgentJsonlFilesByDates,
+  type IAgentJsonlFile,
+} from './agent-jsonl-files';
 
 interface IRawHistoryEntry {
   display: string;
@@ -105,7 +109,9 @@ export const parseHistory = async (period: TPeriod, limit: number = 10): Promise
     lengthCounts.set(bucket.label, 0);
   }
 
-  const files = await collectAgentJsonlFiles();
+  const targetDates = dateStringsForPeriod(period);
+  const collectedFiles = await collectAgentJsonlFiles();
+  const files = targetDates ? filterAgentJsonlFilesByDates(collectedFiles, targetDates) : collectedFiles;
   const entriesByFile = await runWithConcurrency(
     files.map((file) => () => parseHistoryFile(file, period)),
     10,

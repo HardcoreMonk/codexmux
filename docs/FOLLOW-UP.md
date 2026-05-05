@@ -197,7 +197,7 @@ P0/P1/P2/P3 후속 상태:
 
 ### Performance
 
-- `/api/debug/perf` snapshot을 배포 환경에서 수집해 timeline render, status poll, diff, stats 중 실제 병목을 먼저 확인한다.
+- `/api/debug/perf` snapshot을 배포 환경에서 수집해 timeline render, status poll, diff, stats 중 실제 병목을 먼저 확인한다. 2026-05-06 측정에서는 stats cold cache build가 약 3.17초로 가장 컸고, stats JSONL parser/cache에 경로 날짜 기반 file filtering을 적용했다.
 - timeline virtualization은 scroll anchor/load-more 회귀를 막기 위해 `content-visibility`를 먼저 적용했다. 다음 단계는 긴 대화 smoke와 snapshot 결과에 따라 작은 windowed render를 별도 검증한다.
 - session meta message count는 전용 streaming helper로 분리했다. 다음 단계는 실제 긴 JSONL에서 `timeline.message_counts.read` duration과 cache hit 비율을 보고 추가 index화가 필요한지 판단한다.
 - session index는 refresh 결과가 unchanged이면 persisted file write를 건너뛴다. Phase 6 default 이후 main server는 runtime v2 timeline default에서 legacy session index startup prewarm을 건너뛰어 15초 주기 JSONL scan 중복 비용을 줄인다. Legacy/shadow/off mode와 fallback lazy initialization은 유지한다.

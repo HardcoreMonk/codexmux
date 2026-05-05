@@ -166,6 +166,31 @@ Phase 6 code fallback default 전환 뒤 2026-05-05 21:32 KST에
 - 측정상 남은 반복 비용은 main server의 legacy session index prewarm이었다. runtime v2 timeline default에서는 client-facing session list가 Timeline Worker를 통하므로 main process가 startup부터 15초마다 legacy index를 refresh할 필요가 낮다.
 - runtime v2 timeline default에서는 main server startup의 legacy session index prewarm을 건너뛴다. Legacy, shadow, off mode에서는 기존 prewarm을 유지하고, default mode에서도 fallback/detection 경로가 session index를 요청하면 기존 lazy initialization이 동작한다.
 
+### 2026-05-06 stats cold path date filtering
+
+Release smoke artifact 배포 직후 live `/api/debug/perf`와 stats endpoint를 다시 측정했다.
+재배포 직후 memory cache가 비어 있는 상태에서 stats cache build가 가장 명확한 병목이었다.
+
+| 항목 | 값 |
+| --- | --- |
+| `/api/stats/overview` cold | 3174ms |
+| `/api/stats/projects` cold | 3099ms |
+| `/api/stats/sessions` cold | 3067ms |
+| `/api/stats/history` cold | 3060ms |
+| `/api/debug/perf` timing | `stats.cache.build=3166.83ms` |
+| warm repeat | 대부분 2-6ms, overview 1회 32ms |
+
+판단:
+
+- timeline/status/diff는 당시 active connection과 timing sample이 없어 최적화 근거가 부족했다.
+- stats cold path는 disk cache가 있어도 오늘 데이터를 계산하기 위해 전체 Codex JSONL file list를
+  다시 파싱하는 비용이 컸다.
+- `~/.codex/sessions/YYYY/MM/DD/*.jsonl` 경로 날짜를 추출해 `today`, `7d`, `30d`처럼 좁은
+  기간의 stats cache/parser는 대상 날짜 파일만 읽는다. 날짜를 알 수 없는 custom path는 안전하게
+  포함하고, `period=all`은 기존처럼 전체 파일을 포함한다.
+- `getStatsCache()`의 missing day 계산, `parseAllSessions`, `parseAllProjects`,
+  `parseTimestampsByDay`, `parseHistory`가 같은 날짜 필터 helper를 사용한다.
+
 ## 작업 상세
 
 ### 1. Perf Snapshot
