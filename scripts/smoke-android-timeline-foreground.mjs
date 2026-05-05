@@ -23,6 +23,7 @@ import {
   getFreePort,
   isExpectedRemoteState,
   navigateCdp,
+  normalizeSmokeUrl,
   readWebViewState,
   removeForward,
   selectAndroidSerial,
@@ -46,8 +47,16 @@ const SESSION_ID = '44444444-4444-4444-8444-444444444444';
 const INITIAL_ENTRY_COUNT = 3;
 const rootDir = process.cwd();
 
-const fail = (code, message, details = {}) => {
-  console.error(JSON.stringify({ ok: false, code, message, ...details }, null, 2));
+const buildFailurePayload = (code, message, details = {}) => ({ ok: false, code, message, ...details });
+
+const throwSmokeFailure = (code, message, details = {}) => {
+  const error = new Error(message);
+  error.smokeFailure = buildFailurePayload(code, message, details);
+  throw error;
+};
+
+const exitWithFailure = (payload) => {
+  console.error(JSON.stringify(payload, null, 2));
   process.exit(1);
 };
 
@@ -332,7 +341,7 @@ const main = async () => {
     : undefined;
   const appId = process.env.CODEXMUX_ANDROID_APP_ID || DEFAULT_ANDROID_APP_ID;
   const activity = process.env.CODEXMUX_ANDROID_ACTIVITY || DEFAULT_ANDROID_ACTIVITY;
-  const restoreUrl = process.env.CODEXMUX_ANDROID_RESTORE_URL || DEFAULT_ANDROID_SMOKE_URL;
+  const restoreUrl = normalizeSmokeUrl(process.env.CODEXMUX_ANDROID_RESTORE_URL || DEFAULT_ANDROID_SMOKE_URL);
 
   const adb = findAdb();
   const serial = selectAndroidSerial(adb);
@@ -345,6 +354,9 @@ const main = async () => {
   let forward = null;
   let targetUrl = null;
   let jsonlPath = null;
+  let successPayload = null;
+  let failurePayload = null;
+  let restoreState = null;
 
   const connectWebView = async () => {
     if (cdp) cdp.close();
@@ -438,18 +450,19 @@ const main = async () => {
     const logcat = dumpLogcat({ adb, adbArgs });
     const blockingLogcat = collectBlockingLogcatLines(logcat);
     if (blockingConsole.length > 0 || blockingLogcat.length > 0) {
-      fail('android-timeline-foreground-failed', 'Android timeline foreground smoke produced blocking console or logcat errors', {
+      throwSmokeFailure('android-timeline-foreground-failed', 'Android timeline foreground smoke produced blocking console or logcat errors', {
         targetUrl,
         serial,
         foregroundRounds,
         backgroundMs,
+        checks,
         blockingConsole,
         blockingLogcat: blockingLogcat.slice(0, 40),
       });
     }
     checks.push('console-logcat-clean');
 
-    console.log(JSON.stringify({
+    successPayload = {
       ok: true,
       adb,
       serial,
@@ -471,27 +484,61 @@ const main = async () => {
       blockingConsoleCount: blockingConsole.length,
       blockingLogcatCount: blockingLogcat.length,
       devtools: forward,
-    }, null, 2));
+    };
   } catch (err) {
-    if (server) console.error(sanitizeOutput(String(server.getOutput()).slice(-4000), { homeDir, jsonlPath }));
-    fail('android-timeline-foreground-smoke-error', sanitizeOutput(err instanceof Error ? err.message : String(err), { homeDir, jsonlPath }), {
-      targetUrl,
-      serial,
-      checks,
-      consoleEvents: consoleEvents.slice(-20),
-    });
+    const smokeFailure = err && typeof err === 'object' ? err.smokeFailure : null;
+    if (smokeFailure) {
+      failurePayload = smokeFailure;
+    } else {
+      if (server) console.error(sanitizeOutput(String(server.getOutput()).slice(-4000), { homeDir, jsonlPath }));
+      failurePayload = buildFailurePayload('android-timeline-foreground-smoke-error', sanitizeOutput(err instanceof Error ? err.message : String(err), { homeDir, jsonlPath }), {
+        targetUrl,
+        serial,
+        checks,
+        consoleEvents: consoleEvents.slice(-20),
+      });
+    }
   } finally {
     runTmux(['kill-session', '-t', sessionName], { allowFailure: true });
     if (cdp && process.env.CODEXMUX_ANDROID_TIMELINE_FOREGROUND_RESTORE !== '0') {
       try {
         await navigateCdp(cdp, restoreUrl);
+        restoreState = await waitForExpectedRemoteState(cdp, restoreUrl, timeoutMs);
+        checks.push('android-restore');
       } catch {
-        // best-effort device restore
+        const restoreFailure = buildFailurePayload('android-timeline-foreground-restore-error', 'Android WebView did not settle on the restore URL after timeline foreground smoke', {
+          restoreUrl,
+          targetUrl,
+          serial,
+          checks,
+        });
+        if (failurePayload) {
+          failurePayload.restoreError = {
+            code: restoreFailure.code,
+            message: restoreFailure.message,
+            restoreUrl,
+          };
+        } else {
+          failurePayload = restoreFailure;
+        }
       }
     }
     if (cdp) cdp.close();
     if (forward) removeForward({ adb, adbArgs, port: forward.port });
     if (server) await server.stop();
+  }
+
+  if (failurePayload) exitWithFailure(failurePayload);
+
+  if (successPayload) {
+    if (restoreState) {
+      successPayload.restoreState = {
+        href: restoreState.href,
+        readyState: restoreState.readyState,
+        title: restoreState.title,
+      };
+    }
+    console.log(JSON.stringify(successPayload, null, 2));
   }
 };
 

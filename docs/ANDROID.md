@@ -35,7 +35,7 @@ corepack pnpm smoke:android:timeline-foreground
 - `smoke:android:foreground`: Android WebView DevTools와 ADB로 foreground/background 복귀, native bridge, console/logcat 오류를 확인합니다.
 - `smoke:android:recovery`: network, HTTP 4xx, SSL 실패 후 native launcher 복귀와 서버 재연결을 확인합니다.
 - `smoke:android:runtime-v2`: temp runtime v2 서버를 Tailscale IP로 노출하고 Android WebView에서 `/api/v2/terminal` attach와 foreground reconnect marker output을 확인합니다.
-- `smoke:android:timeline-foreground`: temp runtime v2 서버를 Tailscale IP로 노출하고 Android WebView page context에서 `/api/timeline` init freshness와 foreground reconnect를 확인합니다.
+- `smoke:android:timeline-foreground`: temp runtime v2 서버를 Tailscale IP로 노출하고 Android WebView page context에서 `/api/timeline` init freshness와 foreground reconnect를 확인한 뒤, 종료 전에 운영 restore URL 로드 완료를 검증합니다.
 
 ## Versioning
 
@@ -278,6 +278,10 @@ corepack pnpm smoke:android:runtime-v2
 corepack pnpm smoke:android:timeline-foreground
 CODEXMUX_ANDROID_RESTART_APP=1 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=0 corepack pnpm smoke:android:foreground
 ```
+
+`smoke:android:timeline-foreground`는 임시 Tailscale IP/port target을 사용하므로 종료 cleanup에서
+`CODEXMUX_ANDROID_RESTORE_URL` 또는 기본 Tailscale Serve URL로 WebView를 되돌리고,
+해당 origin의 `readyState=complete`를 확인하지 못하면 실패합니다.
 
 정상 설치 시 `pm path`는 `/data/app/.../base.apk`를 반환하고, launcher activity는 `com.hardcoremonk.codexmux/.MainActivity`로 resolve됩니다.
 

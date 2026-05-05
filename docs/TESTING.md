@@ -329,7 +329,9 @@ corepack pnpm smoke:android:timeline-foreground
 - `smoke:android:timeline-foreground`: temp runtime v2 server를 Tailscale IP로 노출하고
   Android WebView page context에서 `/api/timeline` WebSocket init을 확인한다. 각 foreground
   round는 background 중 fixture JSONL에 entry를 추가한 뒤 foreground 복귀 후 새 WebSocket
-  init의 `totalEntries`가 증가했는지 확인해 stale JSONL reconnect를 잡는다.
+  init의 `totalEntries`가 증가했는지 확인해 stale JSONL reconnect를 잡는다. 종료 cleanup은
+  `CODEXMUX_ANDROID_RESTORE_URL` 또는 기본 Tailscale Serve URL로 WebView를 되돌리고
+  restore origin의 `readyState=complete`를 확인하지 못하면 실패한다.
 
 강도 조절:
 
