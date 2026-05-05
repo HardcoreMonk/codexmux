@@ -36,7 +36,7 @@ Success:
 
 - Long JSONL append smoke에서 duplicate assistant message가 없다.
 - Worker crash closes timeline sockets with retryable behavior or legacy fallback.
-- Android foreground reconnect opens a fresh timeline without stale JSONL.
+- Android foreground reconnect opens a fresh timeline without stale JSONL. 2026-05-05 `corepack pnpm smoke:android:timeline-foreground` passed on SM-S928N Android 16 with `timeline:init totalEntries` 3/5/7 and blocking console/logcat 0.
 
 ### 2. Phase 5 Status v2 Side Effects
 
@@ -106,7 +106,7 @@ Scope:
 ## Test Strategy
 
 - Baseline: `corepack pnpm test`, `corepack pnpm tsc --noEmit`, `corepack pnpm lint`, `corepack pnpm build`.
-- Timeline Phase 4: existing `smoke:runtime-v2:timeline-shadow`, new long append smoke, Android foreground timeline reconnect smoke.
+- Timeline Phase 4: `smoke:runtime-v2:timeline-shadow`, `smoke:runtime-v2:timeline-live-shadow`, `smoke:runtime-v2:timeline-resume-safety`, `smoke:runtime-v2:timeline-session-changed`, `smoke:android:timeline-foreground`.
 - Status Phase 5: status shadow smoke, permission prompt smoke, Web Push smoke, session history dedupe tests.
 - Approval: parser/API/unit tests, permission smoke, push navigation smoke, audit redaction tests.
 - Ops: `deploy:local`, `/api/health`, `/api/v2/runtime/health`, `/api/debug/perf`, systemd status and warning journal.

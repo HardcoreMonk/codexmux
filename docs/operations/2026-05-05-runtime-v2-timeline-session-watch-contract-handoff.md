@@ -29,5 +29,5 @@ restart if the deployed service mode needs to be reverted.
 ## Remaining Work
 
 - Default-owned `/api/timeline` WebSocket bridge.
-- Android foreground timeline reconnect smoke for the default WebSocket path.
+- Keep `corepack pnpm smoke:android:timeline-foreground` in the default WebSocket promotion gate.
 - Resume command execution ownership after the WebSocket bridge has rollback evidence.

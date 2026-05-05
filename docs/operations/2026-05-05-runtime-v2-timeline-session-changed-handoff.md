@@ -26,6 +26,5 @@ service restart.
 
 ## Remaining Work
 
-- Timeline Worker session watcher contract and event schema.
 - Default-owned `/api/timeline` WebSocket delivery.
-- Android foreground timeline reconnect smoke for the default WebSocket path.
+- Keep `corepack pnpm smoke:android:timeline-foreground` in the default WebSocket promotion gate.

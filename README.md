@@ -251,6 +251,7 @@ corepack pnpm smoke:android:install
 corepack pnpm smoke:android:foreground
 corepack pnpm smoke:android:recovery
 corepack pnpm smoke:android:runtime-v2
+corepack pnpm smoke:android:timeline-foreground
 corepack pnpm build:landing
 corepack pnpm android:sync
 corepack pnpm android:open
@@ -373,6 +374,7 @@ corepack pnpm smoke:android:install
 corepack pnpm smoke:android:foreground
 corepack pnpm smoke:android:recovery
 corepack pnpm smoke:android:runtime-v2
+corepack pnpm smoke:android:timeline-foreground
 ```
 
 릴리스 빌드는 keystore signing 설정을 준비한 뒤 실행합니다.
@@ -661,6 +663,7 @@ corepack pnpm smoke:android:install
 corepack pnpm smoke:android:foreground
 corepack pnpm smoke:android:recovery
 corepack pnpm smoke:android:runtime-v2
+corepack pnpm smoke:android:timeline-foreground
 ```
 
 Release builds require keystore signing settings:

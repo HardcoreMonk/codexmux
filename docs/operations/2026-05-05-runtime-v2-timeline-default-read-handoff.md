@@ -44,5 +44,5 @@ The legacy `/api/timeline` WebSocket is unchanged by this slice.
 
 - Timeline Worker ownership for `timeline:session-changed`.
 - Resume command execution/process-safety parity before WebSocket default.
-- Android foreground timeline reconnect smoke for the default WebSocket path.
+- Android foreground timeline reconnect evidence is now recorded in `2026-05-05-android-timeline-foreground-handoff.md`; keep that smoke in the default WebSocket promotion gate.
 - Live default-read perf snapshot on `/api/debug/perf` after deployment.

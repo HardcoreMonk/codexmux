@@ -19,6 +19,7 @@ corepack pnpm smoke:android:install
 corepack pnpm smoke:android:foreground
 corepack pnpm smoke:android:recovery
 corepack pnpm smoke:android:runtime-v2
+corepack pnpm smoke:android:timeline-foreground
 ```
 
 - `android:sync`: `android-web/` asset과 Capacitor 설정을 `android/` 프로젝트에 반영합니다.
@@ -34,6 +35,7 @@ corepack pnpm smoke:android:runtime-v2
 - `smoke:android:foreground`: Android WebView DevTools와 ADB로 foreground/background 복귀, native bridge, console/logcat 오류를 확인합니다.
 - `smoke:android:recovery`: network, HTTP 4xx, SSL 실패 후 native launcher 복귀와 서버 재연결을 확인합니다.
 - `smoke:android:runtime-v2`: temp runtime v2 서버를 Tailscale IP로 노출하고 Android WebView에서 `/api/v2/terminal` attach와 foreground reconnect marker output을 확인합니다.
+- `smoke:android:timeline-foreground`: temp runtime v2 서버를 Tailscale IP로 노출하고 Android WebView page context에서 `/api/timeline` init freshness와 foreground reconnect를 확인합니다.
 
 ## Versioning
 
@@ -133,6 +135,16 @@ browser pane에도 적용된다.
 로그인 화면처럼 인증 전 public route에서는 status/native notification/Web Push/service worker runtime service를 마운트하지 않는다. fresh install 또는 app data clear 후 `/login`에 도착했을 때 `/api/status` WebSocket auth 실패나 service worker registration console error가 생기지 않아야 한다. `/sw.js` 자체는 PWA/Web Push 설치용 static script라 인증 redirect 없이 내려온다.
 
 서버가 내려주는 React 코드만 바뀌는 경우에는 APK 재배포가 필요 없습니다. Linux user service 운영에서는 `corepack pnpm deploy:local`로 build, service restart, health check를 수행하면 기존 Android 앱 WebView가 새 reconnect 로직을 받습니다. native bridge를 바꾸는 앱 정보/재시작 기능 변경은 debug/release APK를 다시 빌드해 기기에 설치해야 합니다.
+
+## 2026-05-05 Timeline Foreground Smoke Result
+
+2026-05-05 SM-S928N(Android 16) 실기기 기준:
+
+| 항목 | 결과 |
+| --- | --- |
+| deploy `/api/health` | 200, `version=0.4.1`, `commit=d3248c4`, `buildTime=2026-05-05T07:46:55.160Z` |
+| systemd 상태 | `ActiveState=active`, `SubState=running`, `NRestarts=0`, `ExecMainPID=678084` |
+| Android timeline foreground | `corepack pnpm smoke:android:timeline-foreground`, `timelineV2Mode=default`, foreground 2회, `timeline:init totalEntries` 3/5/7, blocking console/logcat 0 |
 
 ## 2026-05-04 Smoke Result
 
@@ -263,6 +275,7 @@ corepack pnpm smoke:android:install
 corepack pnpm smoke:android:foreground
 corepack pnpm smoke:android:recovery
 corepack pnpm smoke:android:runtime-v2
+corepack pnpm smoke:android:timeline-foreground
 CODEXMUX_ANDROID_RESTART_APP=1 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=0 corepack pnpm smoke:android:foreground
 ```
 

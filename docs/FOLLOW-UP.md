@@ -54,7 +54,7 @@
 
 | 항목 | 상태 | 근거 |
 | --- | --- | --- |
-| live deploy/systemd | 통과 | `deploy:local`, `/api/health` `version=0.4.1`, `commit=23fee4b`, service `ActiveState=active`, `SubState=running`, `NRestarts=0` |
+| live deploy/systemd | 통과 | `deploy:local`, `/api/health` `version=0.4.1`, `commit=d3248c4`, service `ActiveState=active`, `SubState=running`, `NRestarts=0` |
 | release/build/type/unit | 통과 | `corepack pnpm release:minor`로 `v0.4.0` 생성 후 Electron DMG 의존성 보정, `corepack pnpm release:patch`로 `v0.4.1` 생성. 최종 release는 `lint`, `test` 92 files / 441 tests, `tsc --noEmit`, `build`, commit/tag/push 통과 |
 | browser UI tooling | 통과 | `@playwright/test` 1.59.1 dev dependency, `corepack pnpm exec playwright install chromium`, headless Chromium launch smoke |
 | Electron build/attach/runtime v2/package | 통과 | Linux `corepack pnpm build:electron` 통과. M1 macOS `pnpm pack:electron:dev`로 `codexmux-0.4.1-arm64.dmg`, `codexmux-0.4.1-arm64-mac.zip`, `codexmux-0.4.1.dmg`, `codexmux-0.4.1-mac.zip` 생성, native binding/arch/Info.plist `0.4.1`/`hdiutil verify` 통과. Linux release host에서는 `build:electron`까지만 authoritative smoke로 보고 macOS DMG/zip packaging은 macOS host에서 실행한다. |
