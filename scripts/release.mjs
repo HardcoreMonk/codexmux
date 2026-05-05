@@ -82,8 +82,8 @@ const updateVersionFiles = async (version) => {
   await updateTextFile('docs/ANDROID.md', (content, filePath) => {
     let next = replaceOrFail(
       content,
-      /현재 repo version은 `[^`]+`이며 다음 Android 빌드\/설치 후 상태는 `versionName=[^`]+`, `versionCode=\d+`가 됩니다\./,
-      `현재 repo version은 \`${version}\`이며 다음 Android 빌드/설치 후 상태는 \`versionName=${appVersionName}\`, \`versionCode=${appVersionCode}\`가 됩니다.`,
+      /현재 repo\/release version은 `[^`]+`이며 2026-05-04 debug install smoke 기준 설치 상태는 `versionName=[^`]+`, `versionCode=\d+`입니다\./,
+      `현재 repo/release version은 \`${version}\`이며 2026-05-04 debug install smoke 기준 설치 상태는 \`versionName=${appVersionName}\`, \`versionCode=${appVersionCode}\`입니다.`,
       filePath,
     );
     next = replaceOrFail(
