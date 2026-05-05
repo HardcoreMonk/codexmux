@@ -12,6 +12,7 @@ const TMUX_SOCKET = 'codexmux';
 const SESSION_ID = '44444444-4444-4444-8444-444444444444';
 const INITIAL_ENTRY_COUNT = 2;
 const APPEND_ENTRY_COUNT = 1;
+const SERVER_CLEANUP_GRACE_MS = 3_000;
 const rootDir = process.cwd();
 
 interface ITimelineMessage {
@@ -53,6 +54,43 @@ type TTimelineClient = {
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 const line = (value: unknown): string => JSON.stringify(value);
+
+const waitForProcessExit = async (
+  child: ReturnType<typeof spawn>,
+  timeoutMs: number,
+): Promise<boolean> => {
+  if (child.exitCode !== null || child.signalCode !== null) return true;
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      child.off('exit', onExit);
+      resolve(false);
+    }, timeoutMs);
+    const onExit = () => {
+      clearTimeout(timer);
+      resolve(true);
+    };
+    child.once('exit', onExit);
+  });
+};
+
+const stopServerChild = async (
+  child: ReturnType<typeof spawn>,
+  label: string,
+  graceMs = SERVER_CLEANUP_GRACE_MS,
+): Promise<void> => {
+  if (await waitForProcessExit(child, 0)) return;
+
+  child.kill('SIGINT');
+  if (await waitForProcessExit(child, graceMs)) return;
+
+  child.kill('SIGTERM');
+  if (await waitForProcessExit(child, graceMs)) return;
+
+  child.kill('SIGKILL');
+  if (await waitForProcessExit(child, graceMs)) return;
+
+  throw new Error(`${label} cleanup timed out after SIGKILL`);
+};
 
 const getFreePort = (): Promise<number> =>
   new Promise((resolve, reject) => {
@@ -169,27 +207,36 @@ const startServer = async ({ homeDir, dbPath, port, jsonlPath }: {
   });
 
   const baseUrl = `http://127.0.0.1:${port}`;
-  await waitFor('runtime v2 timeline websocket default server startup', async () => {
-    if (child.exitCode !== null) {
-      throw new Error(`server exited early with ${child.exitCode}: ${sanitize(output.slice(-1600))}`);
+  try {
+    await waitFor('runtime v2 timeline websocket default server startup', async () => {
+      if (child.exitCode !== null) {
+        throw new Error(`server exited early with ${child.exitCode}: ${sanitize(output.slice(-1600))}`);
+      }
+      const res = await fetch(new URL('/api/health', baseUrl)).catch(() => null);
+      return res?.ok ? true : null;
+    });
+  } catch (err) {
+    let cleanupError: unknown;
+    try {
+      await stopServerChild(child, 'startup server');
+    } catch (cleanupErr) {
+      cleanupError = cleanupErr;
     }
-    const res = await fetch(new URL('/api/health', baseUrl)).catch(() => null);
-    return res?.ok ? true : null;
-  });
+
+    const detail = err instanceof Error ? err.message : String(err);
+    const cleanupDetail = cleanupError instanceof Error
+      ? `; cleanup failed: ${cleanupError.message}`
+      : cleanupError
+        ? `; cleanup failed: ${String(cleanupError)}`
+        : '';
+    throw new Error(sanitize(`${detail}${cleanupDetail}`));
+  }
 
   return {
     baseUrl,
     sanitize,
     stop: async () => {
-      if (child.exitCode !== null) return;
-      child.kill('SIGINT');
-      await Promise.race([
-        new Promise((resolve) => child.once('exit', resolve)),
-        sleep(10_000).then(() => {
-          if (child.exitCode === null) child.kill('SIGTERM');
-          return new Promise((resolve) => child.once('exit', resolve));
-        }),
-      ]);
+      await stopServerChild(child, 'server');
     },
   };
 };
