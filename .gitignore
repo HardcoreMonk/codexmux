@@ -48,9 +48,9 @@ next-env.d.ts
 
 # local settings
 .claude/settings.local.json
+.worktrees/
 
 # playwright-mcp
 .playwright-mcp
 
 .claude/scheduled_tasks.lock
-
