@@ -18,7 +18,9 @@ export interface IRuntimeTimelineConnectionInput {
   supervisor?: IRuntimeSupervisor;
   detectActiveSession?: () => Promise<ISessionInfo>;
   resolveInitialJsonl: (info: ISessionInfo) => Promise<IResolvedTimelineJsonl | null>;
-  handleResume: (payload: { sessionId: string; tmuxSession: string }) => Promise<void> | void;
+  handleResume: (
+    payload: { sessionId: string; tmuxSession: string },
+  ) => Promise<IResolvedTimelineJsonl | null | void> | IResolvedTimelineJsonl | null | void;
   updateTabAgentSessionId: (sessionId: string) => Promise<void> | void;
 }
 
@@ -178,7 +180,10 @@ export const handleRuntimeTimelineConnection = async (
           return;
         }
         if (msg.type === 'timeline:resume' && msg.sessionId && msg.tmuxSession) {
-          await input.handleResume({ sessionId: msg.sessionId, tmuxSession: msg.tmuxSession });
+          const resolved = await input.handleResume({ sessionId: msg.sessionId, tmuxSession: msg.tmuxSession });
+          if (resolved) {
+            await subscribeLive(resolved);
+          }
         }
       } catch {
         recordPerfCounter('runtime_v2.timeline_ws.default.message_error');

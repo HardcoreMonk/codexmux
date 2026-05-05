@@ -52,6 +52,7 @@ const MAX_WATCHERS = 32;
 const MAX_CONNECTIONS = 32;
 const MAX_WATCHER_RETRIES = 3;
 const MAX_INIT_ENTRIES = 64;
+const runtimeConnections = new Set<WebSocket>();
 
 const resolveAgentSummary = async (
   _provider: IAgentProvider,
@@ -586,11 +587,11 @@ const resolveStoredOrLatestJsonl = async (
   };
 };
 
-const handleResumeMessage = async (
+const resolveResumeMessage = async (
   ws: WebSocket,
-  conn: Pick<ITimelineConnection, 'sessionName' | 'provider' | 'currentJsonlPath'>,
+  conn: Pick<ITimelineConnection, 'sessionName' | 'provider'>,
   payload: { sessionId: string; tmuxSession: string },
-) => {
+): Promise<{ jsonlPath: string; sessionId: string } | null | undefined> => {
   const { sessionId, tmuxSession } = payload;
 
   try {
@@ -602,7 +603,7 @@ const handleResumeMessage = async (
         reason: 'process-running',
         processName,
       });
-      return;
+      return undefined;
     }
 
     const parsed = parseSessionName(tmuxSession);
@@ -619,25 +620,36 @@ const handleResumeMessage = async (
       jsonlPath,
     });
 
-    if (jsonlPath) {
-      if (conn.currentJsonlPath) {
-        unsubscribeFromFile(ws, conn.currentJsonlPath);
-      }
-      conn.currentJsonlPath = jsonlPath;
-      await subscribeAndUpdateSummary(ws, jsonlPath, sessionId, conn.sessionName, conn.provider);
-    } else {
-      sendEmptyInit(ws, sessionId);
-    }
+    return jsonlPath ? { jsonlPath, sessionId } : null;
   } catch (err) {
     sendJson(ws, {
       type: 'timeline:resume-error',
       message: err instanceof Error ? err.message : 'Error during resume',
     });
+    return undefined;
+  }
+};
+
+const handleResumeMessage = async (
+  ws: WebSocket,
+  conn: ITimelineConnection,
+  payload: { sessionId: string; tmuxSession: string },
+) => {
+  const resolved = await resolveResumeMessage(ws, conn, payload);
+
+  if (resolved) {
+    if (conn.currentJsonlPath) {
+      unsubscribeFromFile(ws, conn.currentJsonlPath);
+    }
+    conn.currentJsonlPath = resolved.jsonlPath;
+    await subscribeAndUpdateSummary(ws, resolved.jsonlPath, resolved.sessionId, conn.sessionName, conn.provider);
+  } else if (resolved === null) {
+    sendEmptyInit(ws, payload.sessionId);
   }
 };
 
 export const handleTimelineConnection = async (ws: WebSocket, request: IncomingMessage) => {
-  if (connections.size >= MAX_CONNECTIONS) {
+  if (connections.size + runtimeConnections.size >= MAX_CONNECTIONS) {
     ws.close(1013, 'Too many connections');
     return;
   }
@@ -667,11 +679,17 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
   const hintSessionId = url.searchParams.get('agentSessionId');
 
   if (shouldUseRuntimeTimelineV2Live()) {
-    const resumeConn: Pick<ITimelineConnection, 'sessionName' | 'provider' | 'currentJsonlPath'> = {
+    const resumeConn: Pick<ITimelineConnection, 'sessionName' | 'provider'> = {
       sessionName,
       provider,
-      currentJsonlPath: null,
     };
+    runtimeConnections.add(ws);
+
+    const cleanupRuntimeConnection = () => {
+      runtimeConnections.delete(ws);
+    };
+    ws.on('close', cleanupRuntimeConnection);
+    ws.on('error', cleanupRuntimeConnection);
 
     await handleRuntimeTimelineConnection(ws, {
       sessionName,
@@ -703,7 +721,7 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
           sendJson(ws, { type: 'timeline:resume-error', message: 'Invalid session ID format' });
           return;
         }
-        await handleResumeMessage(ws, resumeConn, payload);
+        return resolveResumeMessage(ws, resumeConn, payload);
       },
       updateTabAgentSessionId: async (sessionId) => {
         await updateTabAgentSessionId(sessionName, provider, sessionId).catch(() => {});
@@ -958,6 +976,12 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
 };
 
 export const gracefulTimelineShutdown = () => {
+  for (const ws of runtimeConnections) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.close(1001, 'Server shutting down');
+    }
+  }
+  runtimeConnections.clear();
   for (const [, conn] of connections) {
     if (conn.ws.readyState === WebSocket.OPEN) {
       conn.ws.close(1001, 'Server shutting down');

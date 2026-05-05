@@ -280,32 +280,35 @@ describe('runtime timeline websocket bridge', () => {
     expect(updateTabAgentSessionId).toHaveBeenCalledWith('session-b');
   });
 
-  it('keeps timeline resume delegated to the legacy handler', async () => {
+  it('switches runtime live subscription when resume resolves a jsonl path', async () => {
     const fake = createSupervisor();
     const ws = new FakeSocket();
-    const handleResume = vi.fn();
+    const handleResume = vi.fn(async () => ({
+      jsonlPath: selectedJsonlPath,
+      sessionId: 'session-b',
+    }));
 
     await handleRuntimeTimelineConnection(ws as never, createConnectionInput({
       supervisor: fake.supervisor,
-      detectActiveSession: async () => ({
-        status: 'not-running',
-        sessionId: null,
-        jsonlPath: null,
-        pid: null,
-        startedAt: null,
-        cwd: null,
-      }),
-      resolveInitialJsonl: async () => null,
       handleResume,
     }));
 
-    ws.receive({ type: 'timeline:resume', sessionId: 'session-a', tmuxSession: 'pt-ws-a-pane-b-tab-c' });
+    ws.receive({ type: 'timeline:resume', sessionId: 'session-b', tmuxSession: 'pt-ws-a-pane-b-tab-c' });
 
     await vi.waitFor(() => {
       expect(handleResume).toHaveBeenCalledWith({
-        sessionId: 'session-a',
+        sessionId: 'session-b',
         tmuxSession: 'pt-ws-a-pane-b-tab-c',
       });
+      expect(fake.supervisor.subscribeTimelineLive).toHaveBeenCalledTimes(2);
     });
+
+    expect(fake.supervisor.unsubscribeTimelineLive).toHaveBeenCalledWith('sub-live');
+    expect(fake.supervisor.subscribeTimelineLive).toHaveBeenLastCalledWith(expect.objectContaining({
+      jsonlPath: selectedJsonlPath,
+      sessionId: 'session-b',
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      panelType: 'codex',
+    }));
   });
 });
