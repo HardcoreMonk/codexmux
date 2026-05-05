@@ -1,0 +1,330 @@
+#!/usr/bin/env tsx
+import fs from 'fs/promises';
+import net from 'net';
+import os from 'os';
+import path from 'path';
+import { execFileSync, spawn } from 'child_process';
+import { WebSocket } from 'ws';
+
+const PASSWORD = 'runtime-v2-timeline-resume-safety-smoke';
+const DEFAULT_TIMEOUT_MS = Number(process.env.CODEXMUX_RUNTIME_V2_TIMELINE_RESUME_SAFETY_TIMEOUT_MS || 30_000);
+const TMUX_SOCKET = 'codexmux';
+const SESSION_ID = '22222222-2222-4222-8222-222222222222';
+const rootDir = process.cwd();
+
+interface ITimelineMessage {
+  type: string;
+  reason?: string;
+  processName?: string;
+}
+
+type TServer = {
+  baseUrl: string;
+  stop: () => Promise<void>;
+  sanitize: (value: string) => string;
+};
+
+type TTimelineClient = {
+  ws: WebSocket;
+  messages: ITimelineMessage[];
+  waitFor: (label: string, predicate: (message: ITimelineMessage) => boolean) => Promise<ITimelineMessage>;
+  close: () => Promise<void>;
+};
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+const getFreePort = (): Promise<number> =>
+  new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      const port = typeof address === 'object' && address ? address.port : 0;
+      server.close(() => resolve(port));
+    });
+    server.on('error', reject);
+  });
+
+const waitFor = async <T>(
+  label: string,
+  fn: () => Promise<T | false | null | undefined> | T | false | null | undefined,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<T> => {
+  const deadline = Date.now() + timeoutMs;
+  let lastError: unknown;
+  while (Date.now() < deadline) {
+    try {
+      const result = await fn();
+      if (result) return result;
+    } catch (err) {
+      lastError = err;
+    }
+    await sleep(100);
+  }
+  throw new Error(`${label} timed out${lastError instanceof Error ? `: ${lastError.message}` : ''}`);
+};
+
+const runTmux = (args: string[], options: { cwd?: string; allowFailure?: boolean } = {}): string => {
+  try {
+    return execFileSync('tmux', ['-L', TMUX_SOCKET, ...args], {
+      cwd: options.cwd ?? rootDir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 5_000,
+      maxBuffer: 1024 * 1024,
+    }).trim();
+  } catch (err) {
+    if (options.allowFailure) return '';
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(`tmux command failed: ${detail}`);
+  }
+};
+
+const extractCookieHeader = (response: Response): string => {
+  const headers = response.headers as Headers & { getSetCookie?: () => string[] };
+  const cookies = typeof headers.getSetCookie === 'function' ? headers.getSetCookie() : [];
+  const raw = cookies[0] ?? headers.get('set-cookie');
+  return raw?.split(';')[0] ?? '';
+};
+
+const jsonRequest = async <T>(
+  baseUrl: string,
+  pathname: string,
+  cookie: string,
+  init: RequestInit = {},
+): Promise<T> => {
+  const headers = {
+    ...(cookie ? { Cookie: cookie } : {}),
+    ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+    ...(init.headers ?? {}),
+  };
+  const res = await fetch(new URL(pathname, baseUrl), { ...init, headers });
+  const text = await res.text();
+  const data = text ? JSON.parse(text) as T : null as T;
+  if (!res.ok) throw new Error(`${init.method ?? 'GET'} ${pathname} failed: ${res.status}`);
+  return data;
+};
+
+const startServer = async ({ homeDir, dbPath, port }: {
+  homeDir: string;
+  dbPath: string;
+  port: number;
+}): Promise<TServer> => {
+  const sanitize = (value: string): string =>
+    value
+      .split(homeDir).join('[home]')
+      .replace(/runtime-v2-timeline-resume-safety-[a-z0-9-]+/g, '[session]');
+
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    HOME: homeDir,
+    NEXT_TELEMETRY_DISABLED: '1',
+    SHELL: '/bin/sh',
+    CODEXMUX_RUNTIME_V2: '1',
+    CODEXMUX_RUNTIME_STORAGE_V2_MODE: 'off',
+    CODEXMUX_RUNTIME_TERMINAL_V2_MODE: 'off',
+    CODEXMUX_RUNTIME_TIMELINE_V2_MODE: 'default',
+    CODEXMUX_RUNTIME_STATUS_V2_MODE: 'off',
+    CODEXMUX_RUNTIME_DB: dbPath,
+    PORT: String(port),
+  };
+  delete env.__CMUX_PRISTINE_ENV;
+  env.__CMUX_PRISTINE_ENV = JSON.stringify(env);
+
+  const child = spawn('corepack', ['pnpm', 'exec', 'tsx', 'server.ts'], {
+    cwd: rootDir,
+    env,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  let output = '';
+  child.stdout?.on('data', (chunk) => {
+    output += chunk.toString();
+  });
+  child.stderr?.on('data', (chunk) => {
+    output += chunk.toString();
+  });
+
+  const baseUrl = `http://127.0.0.1:${port}`;
+  await waitFor('runtime v2 timeline resume safety server startup', async () => {
+    if (child.exitCode !== null) {
+      throw new Error(`server exited early with ${child.exitCode}: ${sanitize(output.slice(-1600))}`);
+    }
+    const res = await fetch(new URL('/api/health', baseUrl)).catch(() => null);
+    return res?.ok ? true : null;
+  });
+
+  return {
+    baseUrl,
+    sanitize,
+    stop: async () => {
+      if (child.exitCode !== null) return;
+      child.kill('SIGINT');
+      await Promise.race([
+        new Promise((resolve) => child.once('exit', resolve)),
+        sleep(10_000).then(() => {
+          if (child.exitCode === null) child.kill('SIGTERM');
+          return new Promise((resolve) => child.once('exit', resolve));
+        }),
+      ]);
+    },
+  };
+};
+
+const ensureLoggedIn = async (baseUrl: string): Promise<string> => {
+  const setup = await jsonRequest<{ needsSetup?: boolean }>(baseUrl, '/api/auth/setup', '').catch(() => null);
+  if (setup?.needsSetup) {
+    await jsonRequest(baseUrl, '/api/auth/setup', '', {
+      method: 'POST',
+      body: JSON.stringify({
+        authPassword: PASSWORD,
+        locale: 'ko',
+        appTheme: 'dark',
+        dangerouslySkipPermissions: true,
+        networkAccess: 'localhost',
+      }),
+    });
+  }
+
+  const res = await fetch(new URL('/api/auth/login', baseUrl), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: PASSWORD }),
+  });
+  if (!res.ok) throw new Error(`login failed: ${res.status}`);
+  const cookie = extractCookieHeader(res);
+  if (!cookie) throw new Error('login did not return a session cookie');
+  return cookie;
+};
+
+const createTmuxSession = (sessionName: string, cwd: string): void => {
+  runTmux(['kill-session', '-t', sessionName], { allowFailure: true });
+  runTmux(['new-session', '-d', '-s', sessionName, '-c', cwd, 'bash -lc "sleep 300"'], { cwd });
+};
+
+const timelineWsUrl = (baseUrl: string, sessionName: string): string => {
+  const url = new URL('/api/timeline', baseUrl);
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  url.searchParams.set('session', sessionName);
+  url.searchParams.set('panelType', 'codex');
+  return url.toString();
+};
+
+const connectTimeline = (baseUrl: string, cookie: string, sessionName: string): Promise<TTimelineClient> =>
+  new Promise((resolve, reject) => {
+    const ws = new WebSocket(timelineWsUrl(baseUrl, sessionName), { headers: { Cookie: cookie } });
+    const messages: ITimelineMessage[] = [];
+    const timer = setTimeout(() => {
+      ws.close();
+      reject(new Error('timeline websocket open timed out'));
+    }, 8_000);
+
+    const waitForMessage = (
+      label: string,
+      predicate: (message: ITimelineMessage) => boolean,
+    ): Promise<ITimelineMessage> =>
+      waitFor(label, () => messages.find(predicate) ?? null);
+
+    ws.on('open', () => {
+      clearTimeout(timer);
+      resolve({
+        ws,
+        messages,
+        waitFor: waitForMessage,
+        close: () => new Promise<void>((finish) => {
+          if (ws.readyState === WebSocket.CLOSED) {
+            finish();
+            return;
+          }
+          ws.once('close', () => finish());
+          ws.close();
+          setTimeout(finish, 1000);
+        }),
+      });
+    });
+    ws.on('message', (raw) => {
+      try {
+        messages.push(JSON.parse(raw.toString()) as ITimelineMessage);
+      } catch {
+        // ignore malformed frames in smoke collection
+      }
+    });
+    ws.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    ws.on('close', (code, reason) => {
+      clearTimeout(timer);
+      if (messages.length === 0) {
+        reject(new Error(`timeline websocket closed before messages: ${code} ${reason.toString()}`));
+      }
+    });
+  });
+
+const main = async (): Promise<void> => {
+  const homeDir = process.env.CODEXMUX_RUNTIME_V2_TIMELINE_RESUME_SAFETY_HOME
+    || await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-runtime-v2-timeline-resume-safety-'));
+  const dbPath = path.join(homeDir, 'runtime-v2', 'state.db');
+  await fs.mkdir(path.dirname(dbPath), { recursive: true });
+  const port = Number(process.env.CODEXMUX_RUNTIME_V2_TIMELINE_RESUME_SAFETY_PORT || await getFreePort());
+  const sessionName = `pt-rv2-timeline-resume-${process.pid}`;
+  const checks: string[] = [];
+  let server: TServer | null = null;
+  let timeline: TTimelineClient | null = null;
+
+  try {
+    server = await startServer({ homeDir, dbPath, port });
+    const cookie = await ensureLoggedIn(server.baseUrl);
+    checks.push('cookie-login');
+
+    createTmuxSession(sessionName, homeDir);
+    checks.push('tmux-busy-session');
+
+    timeline = await connectTimeline(server.baseUrl, cookie, sessionName);
+    checks.push('timeline-ws-open');
+
+    await timeline.waitFor('empty timeline init', (message) => message.type === 'timeline:init');
+    checks.push('timeline-init');
+
+    timeline.ws.send(JSON.stringify({
+      type: 'timeline:resume',
+      sessionId: SESSION_ID,
+      tmuxSession: sessionName,
+    }));
+
+    const blocked = await timeline.waitFor('resume blocked by active process', (message) =>
+      message.type === 'timeline:resume-blocked'
+      && message.reason === 'process-running'
+      && message.processName === 'sleep');
+    checks.push('resume-blocked');
+
+    const runtimeHealth = await jsonRequest<{
+      timelineV2Mode?: string;
+      timeline?: { ok?: boolean };
+    }>(server.baseUrl, '/api/v2/runtime/health', cookie);
+    if (runtimeHealth.timelineV2Mode !== 'default' || runtimeHealth.timeline?.ok !== true) {
+      throw new Error('runtime health did not report timeline default mode');
+    }
+    checks.push('runtime-health-default');
+
+    console.log(JSON.stringify({
+      ok: true,
+      checks,
+      resumeBlocked: {
+        reason: blocked.reason,
+        processName: blocked.processName,
+      },
+    }, null, 2));
+  } catch (err) {
+    const message = err instanceof Error ? err.stack || err.message : String(err);
+    throw new Error(server ? server.sanitize(message) : message);
+  } finally {
+    if (timeline) await timeline.close().catch(() => undefined);
+    runTmux(['kill-session', '-t', sessionName], { allowFailure: true });
+    if (server) await server.stop();
+  }
+};
+
+main().catch((err) => {
+  console.error(err instanceof Error ? err.stack || err.message : err);
+  process.exit(1);
+});

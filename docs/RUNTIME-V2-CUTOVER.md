@@ -180,7 +180,8 @@ Exit gate:
 - Implemented live shadow unit evidence: `tests/unit/lib/runtime/ipc.test.ts`, `timeline-worker-service.test.ts`, `timeline-live-shadow.test.ts`, `supervisor.test.ts`, and `corepack pnpm tsc --noEmit`.
 - Long JSONL append smoke passes: `corepack pnpm smoke:runtime-v2:timeline-live-shadow` receives 24 append entries, has no duplicate assistant append ids, and records init/append match counters with mismatch/error counters 0.
 - Default-read route unit evidence passes: `tests/unit/pages/timeline-sessions.test.ts`, `tests/unit/pages/timeline-read-default.test.ts`, and `tests/unit/lib/runtime/timeline-mode.test.ts`.
-- Resume flow still blocks unsafe active processes.
+- Resume flow still blocks unsafe active processes: `corepack pnpm smoke:runtime-v2:timeline-resume-safety`.
+- Session watcher ordering evidence passes: `corepack pnpm smoke:runtime-v2:timeline-session-changed` sees `timeline:session-changed` before the new JSONL `timeline:init`.
 - Android foreground reconnect opens a fresh timeline without stale JSONL.
 
 Rollback:

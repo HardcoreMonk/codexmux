@@ -193,6 +193,30 @@ WebSocket이 `timeline:init`과 24개 append entry를 받는지, assistant appen
 mismatch/error가 0인지 확인한다. 출력에는 prompt, assistant text, cwd, JSONL path, terminal
 output을 포함하지 않는다.
 
+Timeline resume safety smoke:
+
+```bash
+corepack pnpm smoke:runtime-v2:timeline-resume-safety
+```
+
+이 smoke는 temp HOME/server에서 `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`를 켠 뒤
+foreground process가 shell이 아닌 tmux pane에 `/api/timeline` WebSocket으로 resume을 보내
+`timeline:resume-blocked`와 `reason="process-running"`을 확인한다. WebSocket default 전환 전
+resume process-safety rollback evidence로 사용하며, 출력에는 prompt, assistant text, cwd,
+JSONL path, terminal output, token을 포함하지 않는다.
+
+Timeline session-changed smoke:
+
+```bash
+corepack pnpm smoke:runtime-v2:timeline-session-changed
+```
+
+이 smoke는 temp HOME/server에서 `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`를 켠 뒤
+Codex process가 먼저 감지되고 JSONL이 나중에 생성되는 상황을 만든다. Legacy `/api/timeline`
+WebSocket이 빈 init 이후 `timeline:session-changed` with `reason="new-session-started"`를
+먼저 보내고, 그 다음 새 JSONL의 `timeline:init`을 보내는지 확인한다. 출력에는 prompt,
+assistant text, cwd, JSONL path, terminal output, token을 포함하지 않는다.
+
 Status shadow compare smoke:
 
 ```bash

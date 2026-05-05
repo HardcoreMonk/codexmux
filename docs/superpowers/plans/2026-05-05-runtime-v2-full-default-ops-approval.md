@@ -89,6 +89,23 @@
 - [x] Keep `/api/timeline` WebSocket, `timeline:session-changed`, and resume command execution legacy-owned.
 - [x] Verify focused route/mode tests.
 
+## Task 3c: Phase 4 Timeline Resume Safety Evidence
+
+- [x] Add `corepack pnpm smoke:runtime-v2:timeline-resume-safety`.
+- [x] Run a temp server with `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`.
+- [x] Open legacy `/api/timeline` WebSocket against a tmux pane whose foreground process is not a shell.
+- [x] Send `timeline:resume` and verify `timeline:resume-blocked` with `reason="process-running"` before any resume command execution.
+- [x] Keep smoke output sanitized: no prompt text, assistant text, cwd, JSONL path, terminal output, or token.
+
+## Task 3d: Phase 4 Timeline Session-changed Evidence
+
+- [x] Add `corepack pnpm smoke:runtime-v2:timeline-session-changed`.
+- [x] Run a temp server with `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`.
+- [x] Open legacy `/api/timeline` WebSocket while a Codex process is running before its JSONL exists.
+- [x] Create the Codex JSONL after the WebSocket is open.
+- [x] Verify `timeline:session-changed` with `reason="new-session-started"` arrives before the new JSONL `timeline:init`.
+- [x] Keep smoke output sanitized: no prompt text, assistant text, cwd, JSONL path, terminal output, or token.
+
 ## Task 4: Phase 5 Status v2 Side-effect Spec
 
 - [ ] Create a separate spec after Timeline Phase 4 shadow evidence is merged.
@@ -116,4 +133,4 @@
 
 ## Current Next Step
 
-Next runtime v2 work is Timeline WebSocket default promotion planning/evidence. Do not move `timeline:session-changed`, resume command execution, Status default, approval audit, or executable lifecycle controls in the same commit.
+Next runtime v2 work is Android foreground timeline reconnect evidence or Timeline Worker session watcher contract design. Do not move full WebSocket default, Status default, approval audit, or executable lifecycle controls in the same commit.
