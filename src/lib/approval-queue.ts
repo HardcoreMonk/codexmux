@@ -1,3 +1,40 @@
+import type {
+  IApprovalPromptMetadata,
+  TApprovalPromptType,
+  TApprovalRiskLevel,
+} from '@/lib/permission-prompt';
+
+export type TApprovalFallbackReason =
+  | 'no-session'
+  | 'capture-empty'
+  | 'parse-empty'
+  | 'send-failed'
+  | 'request-failed';
+
+const APPROVAL_PROMPT_TYPE_KEYS: Record<TApprovalPromptType, string> = {
+  command: 'approvalType_command',
+  file: 'approvalType_file',
+  permission: 'approvalType_permission',
+  'resume-directory': 'approvalType_resumeDirectory',
+  conversation: 'approvalType_conversation',
+  unknown: 'approvalType_unknown',
+};
+
+const APPROVAL_RISK_KEYS: Record<TApprovalRiskLevel, string> = {
+  high: 'approvalRisk_high',
+  medium: 'approvalRisk_medium',
+  low: 'approvalRisk_low',
+  unknown: 'approvalRisk_unknown',
+};
+
+const APPROVAL_FALLBACK_KEYS: Record<TApprovalFallbackReason, string> = {
+  'no-session': 'approvalFallback_noSession',
+  'capture-empty': 'approvalFallback_captureEmpty',
+  'parse-empty': 'approvalFallback_parseEmpty',
+  'send-failed': 'approvalFallback_sendFailed',
+  'request-failed': 'approvalFallback_requestFailed',
+};
+
 export const cleanApprovalOptionLabel = (label: string): string =>
   label.replace(/^\d+\.\s+/, '').trim();
 
@@ -20,4 +57,25 @@ export const getApprovalQueueFallbackText = (input: {
 }): string => {
   const prompt = input.lastUserMessage?.trim();
   return prompt || input.tabName;
+};
+
+export const getApprovalPromptTypeKey = (type: TApprovalPromptType | string): string =>
+  APPROVAL_PROMPT_TYPE_KEYS[type as TApprovalPromptType] ?? APPROVAL_PROMPT_TYPE_KEYS.unknown;
+
+export const getApprovalRiskKey = (risk: TApprovalRiskLevel | string): string =>
+  APPROVAL_RISK_KEYS[risk as TApprovalRiskLevel] ?? APPROVAL_RISK_KEYS.unknown;
+
+export const getApprovalFallbackKey = (reason: TApprovalFallbackReason | string): string =>
+  APPROVAL_FALLBACK_KEYS[reason as TApprovalFallbackReason] ?? APPROVAL_FALLBACK_KEYS['request-failed'];
+
+export const getApprovalMetadataDetail = (metadata: IApprovalPromptMetadata | null): string | null => {
+  const commandPreview = metadata?.commandPreview?.trim();
+  if (commandPreview) return commandPreview;
+
+  const fileHints = metadata?.fileHints ?? [];
+  if (fileHints.length === 0) return null;
+
+  const visibleHints = fileHints.slice(0, 3).join(', ');
+  const remainingCount = fileHints.length - 3;
+  return remainingCount > 0 ? `${visibleHints} +${remainingCount}` : visibleHints;
 };

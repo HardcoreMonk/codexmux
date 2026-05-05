@@ -161,7 +161,9 @@ P0/P1/P2/P3 후속 상태:
 ### Approval workflow
 
 - approval queue 1차는 notification panel의 `needs-input` section에서 Codex permission/input prompt 선택지를 직접 처리한다. 실제 Codex CLI permission prompt live smoke와 resume directory prompt option parsing은 통과했으며, 다음 단계는 richer approval type 분류다.
-- command/file/permission approval 종류별 UI 구분.
+- approval queue metadata slice는 command/file/permission/resume/conversation type과 risk
+  badge를 전역 notification panel에 표시한다. 다음 단계는 mobile push copy와 durable audit
+  history를 별도 spec으로 검토한다.
 - 모바일 push에서 approval target으로 deep link.
 - pane capture 실패 시 terminal fallback 안내 개선.
 

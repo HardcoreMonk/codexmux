@@ -1607,6 +1607,13 @@ class StatusManager {
     const body = entry.lastUserMessage?.slice(0, 100) || entry.tabName || tabId;
     const ws = (await getWorkspaces()).workspaces.find((w) => w.id === entry.workspaceId);
     const config = await getConfig();
+    const approvalMetadata = pushType === 'needs-input'
+      ? {
+        approvalKind: 'unknown',
+        promptType: 'unknown',
+        riskLevel: 'unknown',
+      }
+      : {};
     const payload = JSON.stringify({
       title,
       body,
@@ -1616,6 +1623,7 @@ class StatusManager {
       agentSessionId: entry.agentSessionId ?? null,
       workspaceName: ws?.name ?? '',
       workspaceDir: ws?.directories[0] ?? null,
+      ...approvalMetadata,
     });
 
     if (isAnyDeviceVisible()) return;

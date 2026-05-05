@@ -105,6 +105,11 @@ process로 직접 잡히지 않는 세션을 CODEX 패널에 동기화하기 위
 - background Web Push는 `StatusManager`가 전송한다.
 - `soundOnCompleteEnabled=false`이면 작업 완료 toast sound를 재생하지 않고, native/background system notification도 silent로 요청한다.
 - 현재 Codex CLI permission/input prompt는 hook event로 직접 전달되지 않는 경우가 있으므로, codexmux는 live Codex pane capture에서 prompt 선택지를 감지해 내부 `notification(permission_prompt)` 이벤트처럼 `needs-input`으로 전환한다. 여기에는 permission approval, resume working directory 선택, 기타 option list prompt가 포함된다. 일반 작업 완료 notification은 review flow를 따른다.
+- 전역 approval queue는 pane capture에서 파싱한 option list와 sanitized metadata를 표시한다.
+  metadata는 `command`, `file`, `permission`, `resume-directory`, `conversation`, `unknown`
+  prompt type과 `low|medium|high|unknown` risk enum, basename-only file hint, sanitized
+  command preview만 포함한다. full command, cwd, session name, JSONL path, prompt body,
+  assistant text, terminal output은 status payload나 Web Push payload에 넣지 않는다.
 - Codex CLI가 `Conversation interrupted - tell the model what to do differently` 입력 프롬프트에 멈췄지만 JSONL에 `turn_aborted` 또는 `[Request interrupted by user` marker를 남기지 않는 경우, `StatusManager`는 live pane capture를 보정 신호로 사용해 stale `busy`를 `idle`로 되돌리고 `currentAction`을 비운다.
 - persisted `cliState`가 `idle`이어도 live pane에 Codex 입력 선택지가 보이면 `StatusManager`는 `needs-input`으로 복구한다. 이 경로는 server restart 후 Codex resume directory prompt가 남아 있는 tab을 Android/Electron/mobile notification surface에 다시 노출하기 위한 보정이다.
 - `corepack pnpm smoke:permission`은 임시 서버와 tmux prompt를 사용해 `notification` hook의 `needs-input` 전환, permission option parsing, stdin 선택 전달, `status:ack-notification` 후 `busy` 복귀를 검증한다.

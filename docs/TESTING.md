@@ -275,6 +275,16 @@ interrupt marker 없이 남은 `Conversation interrupted` 입력 프롬프트를
 실제 live Codex prompt 회귀는 notification panel에서 선택지가 보이고 `/api/tmux/permission-options`
 가 동일한 option list를 반환하는지 확인한다.
 
+Approval queue metadata 변경의 최소 검증:
+
+```bash
+corepack pnpm vitest run tests/unit/lib/permission-prompt.test.ts tests/unit/lib/approval-queue.test.ts tests/unit/pages/permission-options-api.test.ts
+corepack pnpm smoke:permission
+```
+
+이 검증은 command/file/permission/resume/conversation prompt metadata, 민감정보 비노출,
+기존 option index 선택, `needs-input -> busy` ack 전이를 확인한다.
+
 통계와 daily report는 live 또는 temp 서버에서 `/api/stats/*`와 daily report generate route가
 200을 반환하는지 확인한다. timeline 중복 회귀는 browser reload 후 같은 assistant text가
 `event_msg.agent_message`와 paired `response_item.message`로 남은 JSONL에서도 한 번만

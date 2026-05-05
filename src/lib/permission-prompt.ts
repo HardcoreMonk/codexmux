@@ -14,11 +14,46 @@ const FOCUSED_RE = /^\s*[❯›>]\s+/;
 const NUMBER_PREFIX_RE = /^\d+\.\s+/;
 // 좁은 터미널에서 "2. Yes..."가 "2Yes..."로 렌더되는 wrap 아티팩트까지 허용하기 위해 period/space를 optional로 둠
 const NUMBERED_LINE_RE = /^\s*([❯›>])?\s*(\d+)\.?\s*(\S.*)$/;
+const MAX_COMMAND_PREVIEW_LENGTH = 80;
+
+export type TApprovalPromptType = 'command' | 'file' | 'permission' | 'resume-directory' | 'conversation' | 'unknown';
+export type TApprovalKind = 'allow' | 'deny' | 'trust' | 'directory' | 'input' | 'unknown';
+export type TApprovalRiskLevel = 'low' | 'medium' | 'high' | 'unknown';
+
+export interface IApprovalPromptMetadata {
+  promptType: TApprovalPromptType;
+  approvalKind: TApprovalKind;
+  riskLevel: TApprovalRiskLevel;
+  commandPreview: string | null;
+  fileHints: string[];
+  fallbackReason: null;
+}
+
+export interface IPermissionPromptParseResult {
+  options: string[];
+  focusedIndex: number;
+  metadata: IApprovalPromptMetadata;
+}
+
+interface IParsedPermissionOptions {
+  options: string[];
+  focusedIndex: number;
+  promptContext: string;
+}
 
 const stripPrefix = (o: string) => o.replace(NUMBER_PREFIX_RE, '');
 const hasOption = (options: string[], prefix: string) =>
   options.some((o) => stripPrefix(o).startsWith(prefix));
 const leadingSpaces = (line: string): number => line.match(/^\s*/)?.[0].length ?? 0;
+
+export const createEmptyApprovalPromptMetadata = (): IApprovalPromptMetadata => ({
+  promptType: 'unknown',
+  approvalKind: 'unknown',
+  riskLevel: 'unknown',
+  commandPreview: null,
+  fileHints: [],
+  fallbackReason: null,
+});
 
 // tmux pane capture가 손상된 경우 원본 옵션 텍스트를 복원한다.
 // - "Yescurrent status for this tab"처럼 다른 UI 영역이 뒤에 붙은 경우 "Yes"만 남김
@@ -49,25 +84,178 @@ const isKnownPromptPattern = (options: string[]): boolean => {
     || (hasOption(options, 'Continue this conversation') && hasOption(options, 'Send message as'));
 };
 
-const parseNumberedOptions = (lines: string[]): { options: string[]; focusedIndex: number } => {
+const truncatePreview = (value: string): string =>
+  value.length > MAX_COMMAND_PREVIEW_LENGTH
+    ? value.slice(0, MAX_COMMAND_PREVIEW_LENGTH).trimEnd()
+    : value;
+
+const sanitizeSensitiveText = (value: string): string => value
+  .replace(/Authorization:\s*Bearer\s+(?:\\?["'][^"']*\\?["']|[^"'\s)]+)/gi, 'Authorization: Bearer [redacted]')
+  .replace(/x-cmux-token(?:\s*[:=]\s*|\s+)(?:\\?["'][^"']*\\?["']|[^"'\s)]+)/gi, 'x-cmux-token [redacted]')
+  .replace(/\b([A-Z0-9_]*(?:TOKEN|API_KEY|PASSWORD|SECRET|ACCESS_KEY|PRIVATE_KEY)[A-Z0-9_]*|password|secret)=("[^"]*"|'[^']*'|[^"'\s)]+)/gi, '$1=[redacted]')
+  .replace(/--token(?:\s*[:=]\s*|\s+)(?:\\?["'][^"']*\\?["']|[^"'\s)]+)/gi, '--token [redacted]')
+  .replace(/\btoken(?:\s*:\s*|\s+)(?:\\?["'][^"']*\\?["']|[^"'\s)]+)/gi, 'token [redacted]')
+  .replace(/\btoken=([^&\s"')]+)/gi, 'token=[redacted]')
+  .replace(/(["']?token["']?\s*:\s*["'])[^"']+(["'])/gi, '$1[redacted]$2')
+  .replace(/~\/\.codexmux\/cli-token\b/g, '[redacted-token-file]')
+  .replace(/\b(cwd|sessionName|prompt|assistantText|terminalOutput)\s*[:=]\s*("[^"]*"|'[^']*'|[^\s,)]+)/g, '$1=[redacted]')
+  .replace(/\b[A-Za-z]:\\[^\s"'`),]+/g, '[path]')
+  .replace(/(^|[\s('"=])\/(?!\/)[^\s"'`),]+/g, '$1[path]')
+  .replace(/\S+\.jsonl\b/g, '[jsonl]');
+
+const extractCommandPreview = (options: string[]): string | null => {
+  for (const option of options) {
+    const text = stripPrefix(option);
+    const command = text.match(/for commands that start with\s+`([^`]+)`/i)?.[1]
+      ?? text.match(/\bfor:\s*(.+?)(?:\s+\([a-z]\))?$/i)?.[1]
+      ?? text.match(/`([^`]+)`/)?.[1];
+
+    if (command) return truncatePreview(sanitizeSensitiveText(command.trim()));
+  }
+
+  return null;
+};
+
+const extractRawCommandText = (options: string[]): string => options
+  .map((option) => {
+    const text = stripPrefix(option);
+    return text.match(/for commands that start with\s+`([^`]+)`/i)?.[1]
+      ?? text.match(/\bfor:\s*(.+?)(?:\s+\([a-z]\))?$/i)?.[1]
+      ?? text.match(/`([^`]+)`/)?.[1]
+      ?? text;
+  })
+  .join('\n');
+
+const extractAbsolutePaths = (value: string): string[] => {
+  const unixPaths = value.match(/\/(?!\/)[^\s"'`),]+/g) ?? [];
+  const windowsPaths = value.match(/\b[A-Za-z]:\\[^\s"'`),]+/g) ?? [];
+  return [...unixPaths, ...windowsPaths];
+};
+
+const basenameFromPath = (value: string): string => {
+  const normalized = value.replace(/\\/g, '/');
+  return normalized.split('/').filter(Boolean).at(-1) ?? normalized;
+};
+
+const extractFileHints = (paneContent: string): string[] => {
+  const hints: string[] = [];
+  for (const absolutePath of extractAbsolutePaths(paneContent)) {
+    const basename = basenameFromPath(absolutePath);
+    if (!basename || basename.endsWith('.jsonl') || hints.includes(basename)) continue;
+    hints.push(basename);
+    if (hints.length >= 3) break;
+  }
+  return hints;
+};
+
+const hasDestructiveCommandKeyword = (value: string): boolean =>
+  /\b(rm\s+-rf|mkfs|dd\s+if=|shutdown|reboot|chmod\s+-R|chown\s+-R|killall|pkill)(?=\b|[^\w])/i.test(value);
+
+const optionTextIncludes = (options: string[], pattern: RegExp): boolean =>
+  options.some((option) => pattern.test(option));
+
+const classifyApprovalKind = (promptType: TApprovalPromptType, options: string[]): TApprovalKind => {
+  if (promptType === 'resume-directory') return 'directory';
+  if (promptType === 'conversation') return 'input';
+  if (promptType === 'permission') return 'trust';
+  if (promptType === 'command' || promptType === 'file') {
+    if (optionTextIncludes(options, /\bNo\b/i) && !optionTextIncludes(options, /\bYes\b/i)) return 'deny';
+    return 'allow';
+  }
+  return 'unknown';
+};
+
+const classifyRiskLevel = (
+  promptType: TApprovalPromptType,
+  promptContext: string,
+  options: string[],
+  commandPreview: string | null,
+): TApprovalRiskLevel => {
+  const optionText = `${promptContext}\n${options.join('\n')}`;
+  const rawCommandText = extractRawCommandText(options);
+  if ((promptType === 'permission' && /bypass permissions/i.test(optionText))
+    || /Yes,\s*and\s+don[\u2019']?t\s+ask\s+again/i.test(optionText)
+    || hasDestructiveCommandKeyword(rawCommandText)
+    || hasDestructiveCommandKeyword(commandPreview ?? optionText)) {
+    return 'high';
+  }
+  if (promptType === 'resume-directory' || promptType === 'conversation') return 'low';
+  if (promptType === 'command' || promptType === 'file' || promptType === 'permission') return 'medium';
+  return 'unknown';
+};
+
+const classifyPromptType = (
+  paneContent: string,
+  options: string[],
+  commandPreview: string | null,
+  fileHints: string[],
+): TApprovalPromptType => {
+  const optionText = options.map(stripPrefix).join('\n');
+  const combined = `${paneContent}\n${optionText}`;
+
+  if (hasOption(options, 'Use session directory') && hasOption(options, 'Use current directory')) return 'resume-directory';
+  if ((hasOption(options, 'Continue this conversation') && hasOption(options, 'Send message as'))
+    || (hasOption(options, 'Resume from summary') && hasOption(options, 'Resume full session'))) return 'conversation';
+  if ((hasOption(options, 'Accept') && hasOption(options, 'Decline'))
+    || hasOption(options, 'Open System Settings')
+    || /bypass permissions|open system settings|sandbox|trust this workspace/i.test(combined)) return 'permission';
+  if (commandPreview || /run the following command|for commands that start with/i.test(combined)) return 'command';
+  if (fileHints.length > 0 || /\b(edit|write|read|modify|open)\b.+\/[^\s"'`),]+/i.test(combined)) return 'file';
+  return 'unknown';
+};
+
+const createApprovalPromptMetadata = (promptContext: string, options: string[]): IApprovalPromptMetadata => {
+  const commandPreview = extractCommandPreview(options);
+  const fileHints = extractFileHints(promptContext);
+  const promptType = classifyPromptType(promptContext, options, commandPreview, fileHints);
+  const metadata: IApprovalPromptMetadata = {
+    promptType,
+    approvalKind: classifyApprovalKind(promptType, options),
+    riskLevel: classifyRiskLevel(promptType, promptContext, options, commandPreview),
+    commandPreview,
+    fileHints: promptType === 'file' ? fileHints : [],
+    fallbackReason: null,
+  };
+
+  return metadata;
+};
+
+const collectPromptContext = (lines: string[], startIndex: number): string => {
+  const context: string[] = [];
+  for (let i = startIndex - 1; i >= 0; i -= 1) {
+    const line = lines[i];
+    if (NUMBERED_LINE_RE.test(line) || FOCUSED_RE.test(line)) break;
+    if (line.trim()) context.unshift(line.trim());
+    if (context.length >= 6) break;
+  }
+  return context.join('\n');
+};
+
+const parseNumberedOptions = (lines: string[]): IParsedPermissionOptions => {
   // 스크롤백에 이전 프롬프트 블록이 남아있는 경우 마지막 블록을 선택한다
-  const blocks: { rawOptions: string[]; focusedIndex: number }[] = [];
+  const blocks: { rawOptions: string[]; focusedIndex: number; promptContext: string }[] = [];
   let rawOptions: string[] = [];
   let focusedIndex = 0;
   let expected = 1;
   let lastOptionIndent = 0;
+  let blockStartIndex = 0;
 
   const flush = () => {
     if (rawOptions.length >= 2) {
-      blocks.push({ rawOptions: rawOptions.slice(), focusedIndex });
+      blocks.push({
+        rawOptions: rawOptions.slice(),
+        focusedIndex,
+        promptContext: collectPromptContext(lines, blockStartIndex),
+      });
     }
     rawOptions = [];
     focusedIndex = 0;
     expected = 1;
     lastOptionIndent = 0;
+    blockStartIndex = 0;
   };
 
-  for (const line of lines) {
+  for (const [lineIndex, line] of lines.entries()) {
     // 손상된 pane capture에서 옵션 사이에 빈 줄이 끼어 있을 수 있으므로 break하지 않고 계속 탐색
     if (!line.trim()) continue;
 
@@ -79,6 +267,7 @@ const parseNumberedOptions = (lines: string[]): { options: string[]; focusedInde
       if (rest.length > 0) {
         if (num === 1) {
           flush();
+          blockStartIndex = lineIndex;
           rawOptions.push(rest);
           if (marker) focusedIndex = 0;
           lastOptionIndent = leadingSpaces(line);
@@ -108,20 +297,22 @@ const parseNumberedOptions = (lines: string[]): { options: string[]; focusedInde
   flush();
 
   const best = blocks[blocks.length - 1];
-  if (!best) return { options: [], focusedIndex: 0 };
+  if (!best) return { options: [], focusedIndex: 0, promptContext: '' };
 
   return {
     options: best.rawOptions.map((raw, i) => `${i + 1}. ${normalizeOption(raw)}`),
     focusedIndex: best.focusedIndex,
+    promptContext: best.promptContext,
   };
 };
 
-const parseKeywordOptions = (lines: string[]): { options: string[]; focusedIndex: number } => {
+const parseKeywordOptions = (lines: string[]): IParsedPermissionOptions => {
   const options: string[] = [];
   let focusedIndex = 0;
   let foundFirst = false;
+  let firstOptionIndex = 0;
 
-  for (const line of lines) {
+  for (const [lineIndex, line] of lines.entries()) {
     if (!line.trim()) {
       if (foundFirst) break;
       continue;
@@ -142,28 +333,41 @@ const parseKeywordOptions = (lines: string[]): { options: string[]; focusedIndex
     const isKeyword = OPTION_KEYWORDS.some((kw) => stripped.startsWith(kw));
 
     if (isKeyword) {
+      if (!foundFirst) firstOptionIndex = lineIndex;
       if (isFocused) focusedIndex = options.length;
       options.push(label);
       foundFirst = true;
     }
   }
 
-  return { options, focusedIndex };
+  return { options, focusedIndex, promptContext: collectPromptContext(lines, firstOptionIndex) };
 };
 
-export const parsePermissionOptions = (paneContent: string): { options: string[]; focusedIndex: number } => {
+export const parsePermissionOptions = (paneContent: string): IPermissionPromptParseResult => {
   const lines = paneContent.split('\n');
 
   const numbered = parseNumberedOptions(lines);
   if (numbered.options.length >= 2 && isKnownPromptPattern(numbered.options)) {
-    return numbered;
+    return {
+      options: numbered.options,
+      focusedIndex: numbered.focusedIndex,
+      metadata: createApprovalPromptMetadata(numbered.promptContext, numbered.options),
+    };
   }
 
   const keyword = parseKeywordOptions(lines);
   if (!isKnownPromptPattern(keyword.options)) {
-    return { options: [], focusedIndex: 0 };
+    return {
+      options: [],
+      focusedIndex: 0,
+      metadata: createEmptyApprovalPromptMetadata(),
+    };
   }
-  return keyword;
+  return {
+    options: keyword.options,
+    focusedIndex: keyword.focusedIndex,
+    metadata: createApprovalPromptMetadata(keyword.promptContext, keyword.options),
+  };
 };
 
 export const hasPermissionPrompt = (paneContent: string): boolean =>

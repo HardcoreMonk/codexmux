@@ -2,9 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { hasSession } from '@/lib/tmux';
 import { capturePaneAtWidth } from '@/lib/capture-at-width';
 import { createLogger } from '@/lib/logger';
+import { createEmptyApprovalPromptMetadata, parsePermissionOptions } from '@/lib/permission-prompt';
 
 const log = createLogger('tmux');
-import { parsePermissionOptions } from '@/lib/permission-prompt';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'GET') {
@@ -25,14 +25,24 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
     const content = await capturePaneAtWidth(session, 120, 50);
     if (!content) {
-      return res.status(200).json({ options: [] });
+      return res.status(200).json({
+        options: [],
+        focusedIndex: 0,
+        captureEmpty: true,
+        metadata: createEmptyApprovalPromptMetadata(),
+      });
     }
 
-    const { options } = parsePermissionOptions(content);
+    const { options, focusedIndex, metadata } = parsePermissionOptions(content);
     const isBypassPrompt = content.includes('Bypass Permissions');
-    return res.status(200).json({ options, ...(isBypassPrompt && { isBypassPrompt: true }) });
+    return res.status(200).json({
+      options,
+      focusedIndex,
+      metadata,
+      ...(isBypassPrompt && { isBypassPrompt: true }),
+    });
   } catch (err) {
-    log.error(`permission-options query failed: ${err instanceof Error ? err.message : err}`);
+    log.error(`permission-options query failed: ${err instanceof Error ? err.name : 'unknown error'}`);
     return res.status(500).json({ error: 'Terminal capture failed' });
   }
 };
