@@ -1,6 +1,10 @@
 {
   "title": "Runtime V2",
   "description": "Experimental Supervisor + Worker diagnostic surface",
+  "lifecycleTitle": "Lifecycle Control",
+  "lifecycleDescription": "Read-only runtime v2 operations state and rollback runbook",
+  "lifecycleRefresh": "Refresh operations state",
+  "lifecycleLoadFailed": "Failed to load lifecycle state",
   "refresh": "Refresh",
   "createWorkspace": "Create workspace",
   "createTerminalTab": "Create terminal tab",

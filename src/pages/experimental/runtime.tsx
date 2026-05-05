@@ -4,8 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { PlugZap, Plus, RefreshCw, Terminal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LifecycleControlPanel } from '@/components/features/runtime/lifecycle-control-panel';
 import { getPageShellLayout } from '@/components/layout/page-shell';
 import useRuntimeTerminalWebSocket from '@/hooks/use-runtime-terminal-websocket';
+import { buildLifecycleViewModel, sanitizeLifecycleDiagnosticText } from '@/lib/runtime/lifecycle-control';
+import type { ILifecycleViewModel, ILifecycleViewModelInput } from '@/lib/runtime/lifecycle-control';
 import { textDecoder } from '@/lib/terminal-protocol';
 import type { TConnectionStatus } from '@/types/terminal';
 
@@ -32,16 +35,32 @@ const terminalStatusKey: Record<TConnectionStatus, TTerminalStatus> = {
   'session-ended': 'terminalClosed',
 };
 
+const readLifecycleResult = <T,>(result: PromiseSettledResult<T>): T | null =>
+  result.status === 'fulfilled' ? result.value : null;
+
+const getLifecycleFailureLabels = (
+  health: PromiseSettledResult<unknown>,
+  runtimeHealth: PromiseSettledResult<unknown>,
+  perf: PromiseSettledResult<unknown>,
+): string[] => [
+  health.status === 'rejected' ? 'release' : null,
+  runtimeHealth.status === 'rejected' ? 'runtime health' : null,
+  perf.status === 'rejected' ? 'perf diagnostics' : null,
+].filter((label): label is string => Boolean(label));
+
 const RuntimeExperimentalPage = () => {
   const t = useTranslations('runtime');
   const [workspaces, setWorkspaces] = useState<IRuntimeWorkspace[]>([]);
   const [workspace, setWorkspace] = useState<IRuntimeWorkspace | null>(null);
   const [tab, setTab] = useState<IRuntimeTab | null>(null);
   const [layout, setLayout] = useState<unknown>(null);
+  const [lifecycle, setLifecycle] = useState<ILifecycleViewModel | null>(null);
+  const [lifecycleError, setLifecycleError] = useState<string | null>(null);
   const [status, setStatus] = useState<TRuntimeApiStatus>('statusIdle');
   const [terminalOutput, setTerminalOutput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const pendingInitialStdinRef = useRef(false);
+  const lifecycleRequestSeqRef = useRef(0);
   const {
     status: terminalConnectionStatus,
     retryCount,
@@ -69,7 +88,35 @@ const RuntimeExperimentalPage = () => {
     return data as T;
   }, [t]);
 
+  const refreshLifecycle = useCallback(async () => {
+    const requestSeq = lifecycleRequestSeqRef.current + 1;
+    lifecycleRequestSeqRef.current = requestSeq;
+    try {
+      setLifecycleError(null);
+      const [healthResult, runtimeHealthResult, perfResult] = await Promise.allSettled([
+        requestJson<ILifecycleViewModelInput['health']>('/api/health'),
+        requestJson<ILifecycleViewModelInput['runtimeHealth']>('/api/v2/runtime/health'),
+        requestJson<ILifecycleViewModelInput['perf']>('/api/debug/perf'),
+      ] as const);
+
+      if (lifecycleRequestSeqRef.current !== requestSeq) return;
+
+      setLifecycle(buildLifecycleViewModel({
+        health: readLifecycleResult(healthResult),
+        runtimeHealth: readLifecycleResult(runtimeHealthResult),
+        perf: readLifecycleResult(perfResult),
+      }));
+
+      const failures = getLifecycleFailureLabels(healthResult, runtimeHealthResult, perfResult);
+      setLifecycleError(failures.length > 0 ? failures.join(', ') : null);
+    } catch (err) {
+      if (lifecycleRequestSeqRef.current !== requestSeq) return;
+      setLifecycleError(err instanceof Error ? sanitizeLifecycleDiagnosticText(err.message) : t('lifecycleLoadFailed'));
+    }
+  }, [requestJson, t]);
+
   const refresh = useCallback(async () => {
+    void refreshLifecycle();
     try {
       setError(null);
       const data = await requestJson<{ workspaces: IRuntimeWorkspace[] }>('/api/v2/workspaces');
@@ -78,7 +125,7 @@ const RuntimeExperimentalPage = () => {
     } catch (err) {
       setError(err instanceof Error && err.message === 'runtime-v2-disabled' ? t('runtimeUnavailable') : err instanceof Error ? err.message : t('error'));
     }
-  }, [requestJson, t]);
+  }, [refreshLifecycle, requestJson, t]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -163,6 +210,27 @@ const RuntimeExperimentalPage = () => {
           <h1 className="text-xl font-semibold">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">{t('description')}</p>
         </header>
+
+        <section className="space-y-2">
+          <div className="flex justify-end">
+            <Button className="min-h-11 sm:min-h-9" variant="outline" type="button" onClick={refreshLifecycle}>
+              <RefreshCw className="mr-1.5 h-4 w-4" />
+              {t('lifecycleRefresh')}
+            </Button>
+          </div>
+          {lifecycleError && (
+            <div className="rounded-md border border-ui-amber/30 bg-ui-amber/5 px-3 py-2 text-sm text-ui-amber">
+              {t('lifecycleLoadFailed')}: {lifecycleError}
+            </div>
+          )}
+          {lifecycle && (
+            <LifecycleControlPanel
+              value={lifecycle}
+              title={t('lifecycleTitle')}
+              description={t('lifecycleDescription')}
+            />
+          )}
+        </section>
 
         <div className="grid grid-cols-2 gap-2 sm:flex">
           <Button className="min-h-11 sm:min-h-9" variant="outline" type="button" onClick={refresh}>

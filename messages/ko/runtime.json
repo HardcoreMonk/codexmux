@@ -1,6 +1,10 @@
 {
   "title": "Runtime V2",
   "description": "실험용 Supervisor + Worker 진단 화면",
+  "lifecycleTitle": "Lifecycle Control",
+  "lifecycleDescription": "Runtime v2 운영 상태와 rollback 절차를 읽기 전용으로 확인합니다",
+  "lifecycleRefresh": "운영 상태 새로고침",
+  "lifecycleLoadFailed": "운영 상태를 불러오지 못했습니다",
   "refresh": "새로고침",
   "createWorkspace": "워크스페이스 생성",
   "createTerminalTab": "터미널 탭 생성",

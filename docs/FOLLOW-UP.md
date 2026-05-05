@@ -41,6 +41,7 @@
 - 전역 approval queue 1차: notification panel의 `needs-input` 항목에서 Codex permission/input prompt 선택지를 조회하고 바로 선택/ack 처리한다. 선택지 조회/전송 실패 시 기존 tab 이동 fallback을 유지한다.
 - 실제 Codex CLI permission prompt live smoke: live tab에서 `read-only` sandbox 실패로 실제 Codex CLI approval prompt를 띄우고, pane capture recovery로 `needs-input` 전환, notification panel `No` 선택, ack 후 `busy` 복귀, denied command 미실행을 확인했다.
 - Codex live input prompt 복구: JSONL interrupt marker 없이 남은 `Conversation interrupted` prompt는 stale `busy`에서 `idle`로 복구하고, service restart 후 남는 resume working directory prompt는 persisted `idle`에서도 `needs-input`으로 노출한다. `7e83313` live deploy 기준 Android에서 보이던 purecvisor-single hang 표시는 `needs-input` prompt로 정정됐다.
+- runtime v2 lifecycle control UI 1차: `/experimental/runtime` 상단에서 `/api/health`, `/api/v2/runtime/health`, `/api/debug/perf`를 read-only로 모아 release, surface mode, 24시간 observation gate, worker diagnostics, perf timing, copy-only rollback runbook을 표시한다. Endpoint 부분 실패는 section label만 노출하고 가능한 section은 계속 렌더링하며, token/cwd/session/prompt/terminal output 원문은 UI에 표시하지 않는다.
 
 ## 릴리스 전 확인
 
@@ -126,7 +127,7 @@ P0/P1/P2/P3 후속 상태:
 - P2 완료: runtime v2 phase2 gate, Electron/Android runtime v2 reconnect smoke, browser reconnect DOM smoke, live terminal `new-tabs` enable을 현재 코드 기준으로 확인했다.
 - P2 남음: runtime v2 shadow/new-tabs/default 24시간 worker restart-loop 부재 관찰, release workflow/CI에서 선택 실행할 Android/Electron/browser reconnect smoke artifact 보존. 24시간 종료 판단은 2026-05-06 01:42 KST 이후에 가능하다.
 - P3 진행: storage `default` live mode로 전환했고 dry-run, backup, import, write, default-read, shadow preflight와 initial rollback window canary를 통과했다. Android release signing/AAB는 로컬 keystore 권한 보정, fresh AAB build, `smoke:android:release-aab` 검증 자동화까지 완료했다. Perf snapshot baseline은 runtime v2 default 전환 뒤 2026-05-05 02:21 KST에 재수집했다. Approval queue 1차는 notification panel에서 pending permission prompt를 직접 처리하는 경로까지 구현했고 `vitest`, `smoke:permission`, `tsc`, `lint`와 실제 Codex CLI permission prompt live smoke를 통과했다.
-- P3 남음: storage default 장시간 observation과 필요 시 rollback drill, lifecycle control UI, 측정 기반 perf tuning. Timeline/status는 `docs/RUNTIME-V2-CUTOVER.md`의 Phase 4/5 gate로 별도 진행한다.
+- P3 남음: storage default 장시간 observation과 필요 시 rollback drill, 측정 기반 perf tuning. Lifecycle control UI는 read-only 1차 범위를 완료했고, 실행형 control은 별도 spec으로 분리한다. Timeline/status는 `docs/RUNTIME-V2-CUTOVER.md`의 Phase 4/5 gate로 별도 진행한다.
 
 1. 장시간 Codex smoke test: 새 tab 생성, prompt 실행, tool call과 reasoning summary 표시, 상태 전이 확인.
 2. permission/input prompt smoke test: `corepack pnpm smoke:permission`으로 pane capture 기반 option parsing, inline prompt 선택, stdin 전달, `needs-input` push와 ack 후 `busy` 복귀 확인. 실제 Codex CLI permission prompt는 live tab에서 `read-only` sandbox 실패 prompt를 띄워 notification panel `No` 선택, ack 후 `busy` 복귀, denied command 미실행까지 확인한다. Resume working directory prompt는 `/api/tmux/permission-options`가 `Use session directory`/`Use current directory` 선택지를 반환하고 notification panel이 `needs-input`으로 보여주는지 확인한다. JSONL marker 없는 `Conversation interrupted` prompt는 stale `busy`가 `idle`로 풀리는지 확인한다.
@@ -185,6 +186,7 @@ P0/P1/P2/P3 후속 상태:
 - provider를 추가할 때는 `IAgentProvider` contract test와 JSONL fixture를 먼저 추가한다.
 - runtime v2 production 전환은 `docs/RUNTIME-V2-CUTOVER.md`의 surface별 flag와 rollback gate를 따른다. terminal, storage, timeline, status를 한 release에서 동시에 기본값으로 전환하지 않는다.
 - runtime v2 parity는 `docs/RUNTIME-V2-PARITY.md`의 surface row별 owner, migration, test, rollback을 먼저 채운 뒤 surface mode를 바꾼다.
+- Lifecycle Control은 현재 read-only evidence surface다. systemd drop-in 수정, service restart, deploy, rollback drill을 UI에서 실행하려면 auth, audit log, confirmation UX, failure recovery를 포함한 별도 spec을 먼저 작성한다.
 
 ### Performance
 

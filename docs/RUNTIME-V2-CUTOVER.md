@@ -21,6 +21,7 @@
 - 2026-05-04 storage write mirror/default read: `CODEXMUX_RUNTIME_STORAGE_V2_MODE=write|default`에서 legacy JSON workspace/layout/message-history write 직후 SQLite import mirror를 best-effort로 수행한다. `corepack pnpm smoke:runtime-v2:storage-write`는 layout write, SQLite projection, status metadata 보존을 temp HOME/DB에서 검증한다. `CODEXMUX_RUNTIME_STORAGE_V2_MODE=default`에서는 workspace/layout/message-history read가 SQLite projection을 우선 사용하고 실패 시 JSON으로 fallback한다. `corepack pnpm smoke:runtime-v2:storage-default-read`는 SQLite cold read, workspace directory/sidebar/status/message-history hydration, legacy layout/updateActive write mirror 후 default read, message-history JSON fallback mirror를 temp HOME/DB에서 검증한다. Production live mode는 아직 `write`이며 live default rollout은 남아 있다.
 - 2026-05-05 P2 -> P3 preflight: 현재 production `codexmux.service`는 `CODEXMUX_RUNTIME_V2=1`, `CODEXMUX_RUNTIME_STORAGE_V2_MODE=write`, `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=off`, timeline/status mode `off`이다. `corepack pnpm smoke:runtime-v2:phase2`와 `corepack pnpm smoke:browser-reconnect`가 현재 코드 기준 통과했고, live `/api/v2/runtime/health`는 모든 worker ok와 `storageV2Mode: "write"`, `terminalV2Mode: "off"`를 반환한다. `/api/debug/perf` worker counters는 storage/terminal/timeline/status 모두 `healthFailures=0`, `readyFailures=0`, `commandFailures=0`, `timeouts=0`, `restarts=0`, `errors=0`이다. P3 storage preflight는 temp `storage-dry-run`, `storage-backup`, `storage-import`, `storage-write`, `storage-default-read`, `storage-shadow` smoke를 통과했고, live `runtime-v2:storage-dry-run`은 `cutoverReady: true`, blocker 0, workspace 4개/tab 4개를 반환했다. live `runtime-v2:storage-backup`은 `runtime-v2-storage-20260504T163816Z`에 JSON/SQLite file 37개를 복사했고, live `runtime-v2:storage-import`는 workspace 4개/pane 4개/tab 4개/message-history 5개를 SQLite로 idempotent import했다. Production default rollout과 24시간 restart-loop 부재 관찰은 아직 닫지 않는다.
 - 2026-05-05 live new-tabs/default cutover: `codexmux.service` drop-in을 `CODEXMUX_RUNTIME_STORAGE_V2_MODE=default`, `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=new-tabs`로 전환하고 service restart를 완료했다. `/api/v2/runtime/health`는 `terminalV2Mode: "new-tabs"`, `storageV2Mode: "default"`와 모든 worker ok를 반환한다. 임시 live workspace에서 plain terminal tab 생성이 legacy layout `runtimeVersion: 2`, `rtv2-` session name, runtime storage projection으로 확인됐고 workspace는 삭제됐다. `CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8122 corepack pnpm smoke:runtime-v2:target`는 live target에서 attach/stdin/stdout/resize/web-stdin/heartbeat/fresh reattach/fanout/backpressure/tab delete/workspace delete를 통과했다. 30초 간격 6회 rollback window canary 동안 worker restart/timeout/failure 0, service `NRestarts=0`, 최종 warning journal 없음이다. 24시간 observation은 계속 남긴다.
+- 2026-05-05 lifecycle control UI slice: `/experimental/runtime` 상단에 read-only Lifecycle Control panel을 추가했다. 이 panel은 `/api/health`, `/api/v2/runtime/health`, `/api/debug/perf`를 normalize해 release metadata, terminal/storage/timeline/status mode, 24시간 observation gate, worker diagnostics, perf timing, copy-only rollback runbook을 같은 화면에 표시한다. Endpoint 부분 실패는 가능한 section을 계속 렌더링하고 실패 section label만 노출하며, token/cwd/session/prompt/terminal output 원문은 표시하지 않는다. 실행형 rollback/systemd control은 이번 범위 밖이다.
 
 Production 기본 경로로 전환하지 않은 것:
 
@@ -85,6 +86,7 @@ Exit gate:
 
 - No worker restart loop over 24 hours.
 - `/api/debug/perf` `services.runtimeWorkers.{storage,terminal,timeline,status}` shows health, readiness, restart, timeout, and command failure counters without session ids, cwd, JSONL paths, prompts, assistant text, or terminal output.
+- `/experimental/runtime` Lifecycle Control panel can be used as the read-only evidence surface for release metadata, surface mode, worker counter, perf timing, and 24h observation gate snapshots.
 - `corepack pnpm build` includes storage, terminal, timeline, and status worker bundles.
 - `scripts/smoke-runtime-v2.mjs` passes on the production host with temp HOME/DB.
 
@@ -152,6 +154,7 @@ Exit gate:
 - Default mode can cold-start workspace/layout/sidebar/message-history state from SQLite in temp HOME/DB and has explicit JSON fallback evidence.
 - Legacy JSON fallback can still render the previous layout after disabling storage v2.
 - `write` and `default` mode smokes pass and disabling the mode leaves JSON reads/writes unchanged.
+- Lifecycle Control panel shows storage `default`, terminal `new-tabs`, worker restart/timeout/failure 0, and the current 24h observation state before closing the default rollout gate.
 
 Rollback:
 
