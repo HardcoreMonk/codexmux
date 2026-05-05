@@ -36,6 +36,26 @@ class FakeSocket extends EventEmitter {
 
 const sessionJsonlPath = `${process.env.HOME}/.codex/sessions/session-a.jsonl`;
 
+const createDeferred = <T>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (err: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+  return { promise, resolve, reject };
+};
+
+const initMessage = {
+  type: 'timeline:init' as const,
+  entries: [],
+  sessionId: 'session-a',
+  totalEntries: 0,
+  startByteOffset: 0,
+  hasMore: false,
+  jsonlPath: sessionJsonlPath,
+};
+
 const createSupervisor = () => {
   let onAppend: ((event: IRuntimeTimelineLiveAppendEvent) => void) | undefined;
   let onError: ((event: { code: string; message: string }) => void) | undefined;
@@ -49,15 +69,7 @@ const createSupervisor = () => {
       return {
         subscriberId: 'sub-live',
         subscribed: true,
-        init: {
-          type: 'timeline:init',
-          entries: [],
-          sessionId: 'session-a',
-          totalEntries: 0,
-          startByteOffset: 0,
-          hasMore: false,
-          jsonlPath: sessionJsonlPath,
-        },
+        init: initMessage,
       };
     }),
     unsubscribeTimelineLive: vi.fn(async () => ({ subscriberId: 'sub-live', unsubscribed: true })),
@@ -151,6 +163,58 @@ describe('runtime timeline websocket bridge', () => {
     expect(fake.supervisor.unsubscribeTimelineLive).toHaveBeenCalledWith('sub-live');
     expect(fake.supervisor.unsubscribeTimelineSessionWatch).toHaveBeenCalledTimes(1);
     expect(fake.supervisor.unsubscribeTimelineSessionWatch).toHaveBeenCalledWith('sub-watch');
+  });
+
+  it('unsubscribes a live subscription that resolves after close', async () => {
+    const fake = createSupervisor();
+    const ws = new FakeSocket();
+    const liveSubscribe = createDeferred<{
+      subscriberId: string;
+      subscribed: boolean;
+      init: typeof initMessage;
+    }>();
+    vi.mocked(fake.supervisor.subscribeTimelineLive).mockImplementationOnce(async () => liveSubscribe.promise);
+
+    const connection = handleRuntimeTimelineConnection(ws as never, createConnectionInput({
+      supervisor: fake.supervisor,
+    }));
+
+    await vi.waitFor(() => {
+      expect(fake.supervisor.subscribeTimelineLive).toHaveBeenCalledTimes(1);
+    });
+    ws.close(1000, 'test close');
+    ws.emit('close');
+    liveSubscribe.resolve({ subscriberId: 'sub-live-late', subscribed: true, init: initMessage });
+    await connection;
+
+    expect(fake.supervisor.unsubscribeTimelineLive).toHaveBeenCalledTimes(1);
+    expect(fake.supervisor.unsubscribeTimelineLive).toHaveBeenCalledWith('sub-live-late');
+    expect(fake.supervisor.subscribeTimelineSessionWatch).not.toHaveBeenCalled();
+  });
+
+  it('unsubscribes a session watcher subscription that resolves after close', async () => {
+    const fake = createSupervisor();
+    const ws = new FakeSocket();
+    const sessionWatchSubscribe = createDeferred<{ subscriberId: string; subscribed: boolean }>();
+    vi.mocked(fake.supervisor.subscribeTimelineSessionWatch)
+      .mockImplementationOnce(async () => sessionWatchSubscribe.promise);
+
+    const connection = handleRuntimeTimelineConnection(ws as never, createConnectionInput({
+      supervisor: fake.supervisor,
+    }));
+
+    await vi.waitFor(() => {
+      expect(fake.supervisor.subscribeTimelineSessionWatch).toHaveBeenCalledTimes(1);
+    });
+    ws.close(1000, 'test close');
+    ws.emit('close');
+    sessionWatchSubscribe.resolve({ subscriberId: 'sub-watch-late', subscribed: true });
+    await connection;
+
+    expect(fake.supervisor.unsubscribeTimelineLive).toHaveBeenCalledTimes(1);
+    expect(fake.supervisor.unsubscribeTimelineLive).toHaveBeenCalledWith('sub-live');
+    expect(fake.supervisor.unsubscribeTimelineSessionWatch).toHaveBeenCalledTimes(1);
+    expect(fake.supervisor.unsubscribeTimelineSessionWatch).toHaveBeenCalledWith('sub-watch-late');
   });
 
   it('keeps timeline resume delegated to the legacy handler', async () => {

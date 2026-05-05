@@ -90,6 +90,8 @@ export const handleRuntimeTimelineConnection = async (
   };
 
   const subscribeLive = async (resolved: IResolvedTimelineJsonl): Promise<void> => {
+    if (state.cleaned) return;
+
     const previousSubscriberId = state.liveSubscriberId;
     if (previousSubscriberId) {
       state.liveSubscriberId = null;
@@ -97,8 +99,8 @@ export const handleRuntimeTimelineConnection = async (
         recordPerfCounter('runtime_v2.timeline_ws.default.live_unsubscribe_error');
       });
     }
+    if (state.cleaned) return;
 
-    state.currentJsonlPath = resolved.jsonlPath;
     const result = await supervisor.subscribeTimelineLive({
       jsonlPath: resolved.jsonlPath,
       sessionName: input.sessionName,
@@ -113,13 +115,22 @@ export const handleRuntimeTimelineConnection = async (
         sendJson(ws, { type: 'timeline:error', code: event.code, message: event.message });
       },
     });
+    if (state.cleaned) {
+      await supervisor.unsubscribeTimelineLive(result.subscriberId).catch(() => {
+        recordPerfCounter('runtime_v2.timeline_ws.default.live_unsubscribe_error');
+      });
+      return;
+    }
     state.liveSubscriberId = result.subscriberId;
+    state.currentJsonlPath = resolved.jsonlPath;
     recordPerfCounter('runtime_v2.timeline_ws.default.init');
     sendJson(ws, result.init);
     await input.updateTabAgentSessionId(result.init.sessionId);
   };
 
   const handleSessionChanged = async (event: IRuntimeTimelineSessionChangedEvent): Promise<void> => {
+    if (state.cleaned) return;
+
     const { info } = event;
     if (info.status === 'running' && info.sessionId) {
       sendJson(ws, {
@@ -131,6 +142,8 @@ export const handleRuntimeTimelineConnection = async (
     }
 
     const resolved = await input.resolveInitialJsonl(info);
+    if (state.cleaned) return;
+
     if (resolved && resolved.jsonlPath !== state.currentJsonlPath) {
       await subscribeLive(resolved);
     }
@@ -207,6 +220,8 @@ export const handleRuntimeTimelineConnection = async (
     }
 
     const resolved = await input.resolveInitialJsonl(info);
+    if (state.cleaned) return;
+
     if (resolved) {
       await subscribeLive(resolved);
     } else {
@@ -220,6 +235,7 @@ export const handleRuntimeTimelineConnection = async (
         isAgentStarting: info.status === 'starting',
       });
     }
+    if (state.cleaned) return;
 
     const watch = await supervisor.subscribeTimelineSessionWatch({
       sessionName: input.sessionName,
@@ -230,6 +246,12 @@ export const handleRuntimeTimelineConnection = async (
         void handleSessionChanged(event);
       },
     });
+    if (state.cleaned) {
+      await supervisor.unsubscribeTimelineSessionWatch(watch.subscriberId).catch(() => {
+        recordPerfCounter('runtime_v2.timeline_ws.default.session_watch_unsubscribe_error');
+      });
+      return;
+    }
     state.sessionWatchSubscriberId = watch.subscriberId;
   } catch (err) {
     recordPerfCounter('runtime_v2.timeline_ws.default.start_error');
