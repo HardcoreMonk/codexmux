@@ -188,8 +188,8 @@ P0/P1/P2/P3 후속 상태:
 
 ### Architecture modularization
 
-- `timeline-server.ts`는 1차로 shared state를 분리했다. 다음 단계에서는 subscription service, file watcher service, resume service를 별도 파일로 더 나눈다.
-- `status-manager.ts`는 순수 정책 helper를 분리했다. 다음 단계에서는 Web Push/history side effect adapter를 분리한다.
+- `timeline-server.ts`는 shared state와 init metadata helper를 분리했다. 다음 단계에서는 subscription service, file watcher service, resume service를 별도 파일로 더 나눈다.
+- `status-manager.ts`는 순수 정책 helper와 JSONL idle scan helper를 분리했다. 다음 단계에서는 poll service, pane recovery service, Web Push/history side effect adapter를 분리한다.
 - provider 확장 안전망은 `tests/fixtures/providers/codex/` JSONL fixtures와 `tests/unit/lib/providers.test.ts` contract coverage로 시작한다. 새 provider나 app-server adapter는 같은 fixture contract를 통과한 뒤 experimental registry에 들어간다.
 - runtime v2 production 전환은 `docs/RUNTIME-V2-CUTOVER.md`의 surface별 flag와 rollback gate를 따른다. terminal, storage, timeline, status를 한 release에서 동시에 기본값으로 전환하지 않는다.
 - runtime v2 parity는 `docs/RUNTIME-V2-PARITY.md`의 surface row별 owner, migration, test, rollback을 먼저 채운 뒤 surface mode를 바꾼다.

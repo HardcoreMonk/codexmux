@@ -57,9 +57,9 @@ Terminal worker exited`로 닫아 client가 `/api/v2/terminal`을 새로 열게 
 | --- | --- | --- |
 | Server entry | `server.ts` | process lifecycle, Next.js, WebSocket upgrade, auth gate, startup/shutdown |
 | Terminal | `src/lib/terminal-server.ts`, `src/lib/tmux.ts` | tmux attach, stdin/stdout/resize, terminal session lifecycle |
-| Timeline | `src/lib/timeline-server.ts`, `src/lib/timeline-server-state.ts` | Codex JSONL subscribe, file watch, resume, timeline init/append |
+| Timeline | `src/lib/timeline-server.ts`, `src/lib/timeline-server-state.ts`, `src/lib/timeline/init-metadata.ts` | Codex JSONL subscribe, file watch, resume, timeline init/append, init metadata helpers |
 | Session Index | `src/lib/session-index.ts`, `src/lib/session-list.ts`, `src/pages/api/timeline/sessions.ts`, `src/lib/runtime/timeline/worker-service.ts` | 로컬 Codex session 목록 인덱스, session list snapshot, runtime v2 default read projection |
-| Status | `src/lib/status-manager.ts`, `src/lib/status-server.ts` | tab status polling, hook event merge, notification dispatch |
+| Status | `src/lib/status-manager.ts`, `src/lib/status-server.ts`, `src/lib/status/jsonl-idle-scan.ts` | tab status polling, hook event merge, notification dispatch, JSONL idle scan helpers |
 | Workspace | `src/lib/workspace-store.ts`, `src/lib/layout-store.ts`, `src/lib/runtime/storage-read-owner.ts` | workspace list, layout tree, pane/tab mutation, persisted metadata, runtime v2 default read projection |
 | Provider | `src/lib/providers/*`, `src/lib/codex-session-detection.ts` | Codex command/session/jsonl adapter |
 | Sync | `src/lib/sync-server.ts` | workspace/layout/config change broadcast |

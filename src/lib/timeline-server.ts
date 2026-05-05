@@ -19,7 +19,7 @@ import { getProviderByPanelType } from '@/lib/providers';
 import type { IAgentJsonlResolution, IAgentProvider } from '@/lib/providers';
 import { extractSessionIdFromJsonlPath, readSessionStats } from './session-stats';
 import { checkCodexJsonlState } from '@/lib/codex-jsonl-state';
-import type { TTimelineServerMessage, IInitMeta, ITimelineEntry, ISessionStats } from '@/types/timeline';
+import type { TTimelineServerMessage, ISessionStats } from '@/types/timeline';
 import path from 'path';
 import { isAllowedJsonlPath } from './path-validation';
 import { createLogger } from '@/lib/logger';
@@ -44,6 +44,10 @@ import { shouldUseRuntimeTimelineV2Live } from '@/lib/runtime/timeline-mode';
 import { handleRuntimeTimelineConnection } from '@/lib/runtime/timeline-ws';
 import { getRuntimeStatusV2Mode } from '@/lib/runtime/status-mode';
 import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
+import {
+  computeTimelineInitMeta,
+  findLastTimelineUserMessage,
+} from '@/lib/timeline/init-metadata';
 
 const log = createLogger('timeline');
 
@@ -96,21 +100,6 @@ const sendEmptyInit = (ws: WebSocket, sessionId = '', isAgentStarting = false) =
     hasMore: false,
     ...(isAgentStarting && { isAgentStarting: true }),
   });
-};
-
-const MAX_USER_MESSAGE_LENGTH = 200;
-
-const findLastUserMessage = (entries: ITimelineEntry[]): string | null => {
-  for (let i = entries.length - 1; i >= 0; i--) {
-    const entry = entries[i];
-    if (entry.type === 'user-message' && entry.text.trim()) {
-      const text = entry.text.trim();
-      return text.length > MAX_USER_MESSAGE_LENGTH
-        ? text.slice(0, MAX_USER_MESSAGE_LENGTH) + '…'
-        : text;
-    }
-  }
-  return null;
 };
 
 const subscribeAndUpdateSummary = async (
@@ -228,7 +217,7 @@ const processFileChange = async (fw: IFileWatcher) => {
       }
       recordRuntimeTimelineLiveShadowAppend(fw.jsonlPath, newEntries);
 
-      const lastMsg = findLastUserMessage(newEntries);
+      const lastMsg = findLastTimelineUserMessage(newEntries);
       if (lastMsg) {
         await updateTabLastUserMessage(fw.sessionName, lastMsg).catch(() => {});
         notifyStatusLastUserMessage(fw.sessionName, lastMsg);
@@ -309,37 +298,6 @@ const readFirstTimestamp = async (filePath: string): Promise<string | null> => {
   return null;
 };
 
-const computeInitMeta = (entries: ITimelineEntry[], fileSize: number, createdAtOverride?: string | null, customTitle?: string): IInitMeta => {
-  let createdAt: string | null = null;
-  let updatedAt: string | null = null;
-  let lastTimestamp = 0;
-  let userCount = 0;
-  let assistantCount = 0;
-
-  for (const entry of entries) {
-    if (!createdAt && entry.timestamp) {
-      createdAt = new Date(entry.timestamp).toISOString();
-    }
-    if (entry.timestamp) {
-      lastTimestamp = Math.max(lastTimestamp, entry.timestamp);
-    }
-    updatedAt = new Date(entry.timestamp).toISOString();
-
-    if (entry.type === 'user-message') userCount++;
-    else if (entry.type === 'assistant-message') assistantCount++;
-  }
-
-  return {
-    createdAt: createdAtOverride ?? createdAt,
-    updatedAt,
-    lastTimestamp,
-    fileSize,
-    userCount,
-    assistantCount,
-    customTitle,
-  };
-};
-
 const subscribeToFile = async (
   ws: WebSocket,
   jsonlPath: string,
@@ -412,7 +370,12 @@ const subscribeToFile = async (
     startFileWatch(fw);
   }
 
-  const meta = computeInitMeta(result.entries, result.fileSize, snapshot.firstTimestamp, result.customTitle);
+  const meta = computeTimelineInitMeta({
+    entries: result.entries,
+    fileSize: result.fileSize,
+    firstTimestamp: snapshot.firstTimestamp,
+    customTitle: result.customTitle,
+  });
 
   const resolvedSessionId = sessionId ?? extractSessionIdFromJsonlPath(jsonlPath) ?? '';
   const sessionStats = resolvedSessionId ? await readSessionStats(resolvedSessionId) : null;
@@ -443,7 +406,7 @@ const subscribeToFile = async (
   }
 
   if (sessionName) {
-    const lastMsg = findLastUserMessage(result.entries);
+    const lastMsg = findLastTimelineUserMessage(result.entries);
     if (lastMsg) {
       await updateTabLastUserMessage(sessionName, lastMsg).catch(() => {});
       notifyStatusLastUserMessage(sessionName, lastMsg);

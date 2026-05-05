@@ -259,6 +259,7 @@ paired `response_item.payload.type="message"` record로 몇 ms 간격에 남길 
 | 파일 | 역할 |
 |---|---|
 | `src/lib/status-manager.ts` | 서버 상태, polling, JSONL watch, Web Push |
+| `src/lib/status/jsonl-idle-scan.ts` | JSONL idle/stale scan과 assistant action extraction helper |
 | `src/lib/status-state-machine.ts` | hook/process/JSONL 상태 전이 reducer |
 | `src/lib/status-session-mapping.ts` | Codex session id 정규화와 completion key 생성 |
 | `src/lib/status-notification-policy.ts` | notification hook 처리/전송 정책 |
