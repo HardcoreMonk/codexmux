@@ -81,6 +81,23 @@ Runtime v2 can only become default for a surface when every row in that surface 
 - no sensitive content in `/api/debug/perf`
 - no worker restart loop and no startup health failure spike in `services.runtimeWorkers`
 
+Full-runtime defaulting must additionally pass `corepack pnpm smoke:runtime-v2:phase6-default-gate`.
+That gate is read-only and checks the target server reports terminal `new-tabs`,
+storage/timeline/status `default`, healthy runtime workers, and zero worker failure/restart/timeout
+counters. Passing this gate does not by itself change the code fallback defaults; that remains a
+separate release decision.
+
+## 2026-05-05 Phase 6 Default Gate Evidence
+
+- `scripts/runtime-v2-phase6-gate-lib.mjs` validates `/api/v2/runtime/health` and `/api/debug/perf`
+  snapshots without copying raw worker diagnostic payloads into failures.
+- `corepack pnpm smoke:runtime-v2:phase6-default-gate` authenticates with the existing CLI token,
+  checks the live or configured target, and prints only expected/actual mode names, check names,
+  and sanitized failure codes.
+- The gate requires `terminalV2Mode="new-tabs"`, `storageV2Mode="default"`,
+  `timelineV2Mode="default"`, `statusV2Mode="default"`, all worker health sections `ok`, and
+  storage/terminal/timeline/status failure counters at 0.
+
 ## 2026-05-04 Storage Shadow Evidence
 
 - `corepack pnpm smoke:runtime-v2:storage-shadow`를 추가했다.

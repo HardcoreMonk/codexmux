@@ -226,20 +226,31 @@ Goal: make v2 the default for new installs and upgraded installs that pass migra
 
 Work:
 
-- Default all surface modes to `default` only after phases 2-5 have shipped independently.
+- Run `corepack pnpm smoke:runtime-v2:phase6-default-gate` against the release candidate or live target before changing any code/env defaults.
+- Treat Phase 6 first as an operations gate: runtime v2 must be enabled, terminal must be `new-tabs`, storage/timeline/status must be `default`, and every runtime worker failure/restart/timeout counter must be 0.
+- Default all surface modes in code only after phases 2-5 have shipped independently and the Phase 6 gate passes on the intended target.
 - Keep a documented legacy fallback for at least one release.
 - Add release note section for backup, rollback flags, and diagnostic commands.
-- Add `corepack pnpm deploy:local` cutover smoke that checks legacy fallback and v2 default.
+- Keep the code-default flip as a separate approval and release decision. The gate script is read-only and does not edit systemd drop-ins, restart services, mutate workspaces, or create tabs.
 
 Exit gate:
 
+- `corepack pnpm smoke:runtime-v2:phase6-default-gate` passes with `terminalV2Mode="new-tabs"`, `storageV2Mode="default"`, `timelineV2Mode="default"`, `statusV2Mode="default"`.
+- `/api/debug/perf` exposes runtime worker diagnostics and storage/terminal/timeline/status `healthFailures`, `readyFailures`, `commandFailures`, `invalidReplies`, `timeouts`, `sendFailures`, `exits`, `errors`, and `restarts` are all 0.
 - Release branch passes build, lint, typecheck, unit tests, runtime v2 smoke, Electron build, Android debug build, and systemd deploy smoke.
 - Production canary shows no worker restart loop, no WebSocket error spike, and no status/timeline duplicate event spike.
+
+Rollback:
+
+- Set the narrow surface flag back first: status, then timeline, then storage, then terminal.
+- If worker startup itself is unstable, set `CODEXMUX_RUNTIME_V2=0`.
+- Do not delete `~/.codexmux/runtime-v2/state.db` during first rollback; keep it for recovery and diagnostics.
 
 ## Required Test Commands
 
 ```bash
 corepack pnpm test tests/unit/lib/runtime tests/unit/lib/status-state-machine.test.ts tests/unit/lib/status-notification-policy.test.ts tests/unit/pages/runtime-v2-api.test.ts tests/unit/scripts/runtime-v2-smoke-lib.test.ts
+corepack pnpm test tests/unit/scripts/runtime-v2-phase6-gate-lib.test.ts
 corepack pnpm tsc --noEmit
 corepack pnpm lint
 corepack pnpm build
@@ -257,6 +268,8 @@ corepack pnpm smoke:runtime-v2:timeline-websocket-default
 corepack pnpm smoke:runtime-v2:timeline-live-shadow
 corepack pnpm smoke:runtime-v2:timeline-resume-safety
 corepack pnpm smoke:runtime-v2:timeline-session-changed
+corepack pnpm smoke:runtime-v2:status-default
+corepack pnpm smoke:runtime-v2:phase6-default-gate
 corepack pnpm smoke:android:timeline-foreground
 corepack pnpm build:electron
 corepack pnpm android:build:debug

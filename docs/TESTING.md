@@ -263,6 +263,21 @@ hook-driven `needs-input`, `status:ack-notification` 후 `busy` 복귀를 유지
 default mode에서는 worker process 안의 StatusManager가 polling, JSONL watcher, ack/dismiss,
 session history update, Web Push send, rate-limit update를 소유한다.
 
+Runtime v2 Phase 6 default gate:
+
+```bash
+corepack pnpm test tests/unit/scripts/runtime-v2-phase6-gate-lib.test.ts
+corepack pnpm smoke:runtime-v2:phase6-default-gate
+```
+
+`smoke:runtime-v2:phase6-default-gate`는 기본적으로 live `http://127.0.0.1:8122`를
+조회하고, 필요하면 `CODEXMUX_RUNTIME_V2_PHASE6_GATE_URL` 또는
+`CODEXMUX_RUNTIME_V2_SMOKE_URL`로 target을 바꾼다. 이 smoke는 `/api/v2/runtime/health`의
+terminal `new-tabs`, storage/timeline/status `default`, worker health `ok`와
+`/api/debug/perf`의 runtime worker failure/restart/timeout counter 0을 확인한다.
+workspace나 terminal을 만들지 않는 read-only gate이며 token, cwd, session name,
+JSONL path, prompt, assistant text, terminal output 원문을 출력하지 않는다.
+
 `smoke:runtime-v2:phase2`, `smoke:android:runtime-v2`, `smoke:electron:runtime-v2`는 각각
 임시 서버와 Next.js dev runtime을 띄운다. 같은 checkout에서 병렬 실행하면 Next dev lock
 때문에 `Another next dev server is already running`으로 실패할 수 있으므로 순차 실행한다.
