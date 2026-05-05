@@ -78,7 +78,7 @@
 - [x] Add Supervisor live subscription API and event fan-out.
 - [x] Hook legacy `/api/timeline` shadow mode to start/stop v2 live subscriptions and compare sanitized init/append metadata.
 - [x] Verify focused runtime unit tests, `corepack pnpm tsc --noEmit`, `corepack pnpm lint`, `corepack pnpm smoke:runtime-v2:timeline-shadow`, `corepack pnpm build`, and `git diff --check`.
-- [ ] Add long JSONL append smoke before Timeline default promotion.
+- [x] Add long JSONL append smoke before Timeline default promotion.
 
 ## Task 4: Phase 5 Status v2 Side-effect Spec
 
@@ -107,4 +107,4 @@
 
 ## Current Next Step
 
-Finish Task 3a verification/docs, then add the long JSONL append smoke. Do not implement Timeline default, Status default, approval audit, or executable lifecycle controls in the same commit.
+Next runtime v2 work is Timeline default promotion planning/evidence. Do not implement Timeline default, Status default, approval audit, or executable lifecycle controls in the same commit.

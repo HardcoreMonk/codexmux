@@ -24,12 +24,13 @@ Implemented the first Phase 4 live-shadow code slice. Legacy `/api/timeline` rem
 | `corepack pnpm tsc --noEmit` | Passed |
 | `corepack pnpm lint` | Passed |
 | `corepack pnpm smoke:runtime-v2:timeline-shadow` | Passed: cookie login, message counts shadow, entries shadow |
+| `corepack pnpm smoke:runtime-v2:timeline-live-shadow` | Passed: 24 append entries, init match 1, append match 1, mismatch/error counters 0 |
 | `corepack pnpm build` | Passed |
 | `git diff --check` | Passed |
 
 ## Remaining Gates
 
-- Add and run a long JSONL append smoke before enabling `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`.
+- Timeline default promotion still needs a dedicated cutover plan and rollback drill.
 - Keep resume/session-changed ownership in legacy until explicit Phase 4 follow-up evidence exists.
 - Android foreground reconnect timeline smoke remains required before timeline default promotion.
 - Runtime v2 Phase 5 status polling/Web Push/session history cutover remains separate.

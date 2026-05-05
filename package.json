@@ -82,6 +82,7 @@
     "smoke:runtime-v2:storage-default-read": "tsx scripts/smoke-runtime-v2-storage-default-read.ts",
     "smoke:runtime-v2:storage-shadow": "tsx scripts/smoke-runtime-v2-storage-shadow.ts",
     "smoke:runtime-v2:timeline-shadow": "tsx scripts/smoke-runtime-v2-timeline-shadow.ts",
+    "smoke:runtime-v2:timeline-live-shadow": "tsx scripts/smoke-runtime-v2-timeline-live-shadow.ts",
     "smoke:runtime-v2:status-shadow": "tsx scripts/smoke-runtime-v2-status-shadow.ts",
     "deploy:local": "node scripts/deploy-local.mjs",
     "release:patch": "node scripts/release.mjs patch",

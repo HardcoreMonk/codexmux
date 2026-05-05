@@ -32,8 +32,8 @@
 - Test `tests/unit/lib/runtime/timeline-live-shadow.test.ts`
 - Test `tests/unit/lib/runtime/ipc.test.ts`
 - Test `tests/unit/lib/runtime/supervisor.test.ts`
-- Add smoke `scripts/smoke-runtime-v2-timeline-live-shadow.ts` in the next slice.
-- Modify `package.json` in the next slice to add `smoke:runtime-v2:timeline-live-shadow`.
+- Add smoke `scripts/smoke-runtime-v2-timeline-live-shadow.ts`.
+- Modify `package.json` to add `smoke:runtime-v2:timeline-live-shadow`.
 - Update docs after implementation:
   - `docs/RUNTIME-V2-CUTOVER.md`
   - `docs/RUNTIME-V2-PARITY.md`
@@ -161,9 +161,9 @@ Expected: passes.
 
 ## Task 7: Smoke Script
 
-- [ ] Add `scripts/smoke-runtime-v2-timeline-live-shadow.ts`.
-- [ ] Add `smoke:runtime-v2:timeline-live-shadow` to `package.json`.
-- [ ] Smoke flow:
+- [x] Add `scripts/smoke-runtime-v2-timeline-live-shadow.ts`.
+- [x] Add `smoke:runtime-v2:timeline-live-shadow` to `package.json`.
+- [x] Smoke flow:
   - start temp HOME/server with `CODEXMUX_RUNTIME_V2=1` and `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=shadow`
   - login
   - create a JSONL fixture under allowed Codex sessions path
@@ -171,7 +171,7 @@ Expected: passes.
   - append user/assistant records
   - verify client receives `timeline:init` and `timeline:append`
   - query perf/debug or smoke-only endpoint for v2 shadow mismatch count 0
-- [ ] Smoke output must not print prompt text, assistant text, cwd, JSONL path, or terminal output.
+- [x] Smoke output must not print prompt text, assistant text, cwd, JSONL path, or terminal output.
 
 Run:
 
@@ -179,7 +179,7 @@ Run:
 corepack pnpm smoke:runtime-v2:timeline-live-shadow
 ```
 
-Expected: passes.
+Expected: passed with 24 appended entries, `initMatches=1`, `appendMatches=1`, mismatch/error counters 0.
 
 ## Task 8: Documentation And Verification
 
@@ -192,13 +192,14 @@ Expected: passes.
 ```bash
 corepack pnpm vitest run tests/unit/lib/runtime/timeline-worker-service.test.ts tests/unit/lib/runtime/timeline-live-shadow.test.ts tests/unit/lib/runtime/ipc.test.ts tests/unit/lib/runtime/supervisor.test.ts
 corepack pnpm smoke:runtime-v2:timeline-shadow
+corepack pnpm smoke:runtime-v2:timeline-live-shadow
 corepack pnpm tsc --noEmit
 corepack pnpm lint
 corepack pnpm build
 git diff --check
 ```
 
-Expected: all implemented-scope commands pass. `smoke:runtime-v2:timeline-live-shadow` remains Task 7.
+Expected: all implemented-scope commands pass.
 
 ## Out Of Scope For This Plan
 

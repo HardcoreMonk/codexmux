@@ -177,7 +177,7 @@ Work:
 Exit gate:
 
 - Implemented live shadow unit evidence: `tests/unit/lib/runtime/ipc.test.ts`, `timeline-worker-service.test.ts`, `timeline-live-shadow.test.ts`, `supervisor.test.ts`, and `corepack pnpm tsc --noEmit`.
-- Long JSONL append smoke shows no duplicate paired assistant messages.
+- Long JSONL append smoke passes: `corepack pnpm smoke:runtime-v2:timeline-live-shadow` receives 24 append entries, has no duplicate assistant append ids, and records init/append match counters with mismatch/error counters 0.
 - Resume flow still blocks unsafe active processes.
 - Android foreground reconnect opens a fresh timeline without stale JSONL.
 
