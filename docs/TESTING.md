@@ -217,6 +217,17 @@ WebSocket이 빈 init 이후 `timeline:session-changed` with `reason="new-sessio
 먼저 보내고, 그 다음 새 JSONL의 `timeline:init`을 보내는지 확인한다. 출력에는 prompt,
 assistant text, cwd, JSONL path, terminal output, token을 포함하지 않는다.
 
+Timeline session watcher contract unit coverage:
+
+```bash
+corepack pnpm test tests/unit/lib/runtime/ipc.test.ts tests/unit/lib/runtime/timeline-worker-service.test.ts tests/unit/lib/runtime/supervisor.test.ts
+```
+
+이 검증은 Timeline Worker의 `timeline.session-watch-subscribe`/`timeline.session-watch-unsubscribe`
+IPC payload, subscriber-scoped `timeline.session-changed` event schema, Worker watcher stop
+cleanup, Supervisor event fan-out을 확인한다. 이 unit coverage는 내부 contract 검증이며
+client-facing `/api/timeline` WebSocket ownership은 전환하지 않는다.
+
 Status shadow compare smoke:
 
 ```bash
@@ -307,6 +318,7 @@ corepack pnpm smoke:android:install
 corepack pnpm smoke:android:foreground
 corepack pnpm smoke:android:recovery
 corepack pnpm smoke:android:runtime-v2
+corepack pnpm smoke:android:timeline-foreground
 ```
 
 - `smoke:android:foreground`: Tailscale Serve HTTPS target, background/foreground 복귀,
@@ -314,6 +326,10 @@ corepack pnpm smoke:android:runtime-v2
 - `smoke:android:recovery`: network, HTTP 4xx, SSL 실패 뒤 launcher 복귀와 저장 서버 재연결. DevTools target lifetime flake를 피하기 위해 failure class별 독립 app start로 검증하며, 기본 HTTP 4xx는 live target의 missing path를 사용한다.
 - `smoke:android:runtime-v2`: temp runtime v2 server를 Tailscale IP로 노출하고 Android
   WebView에서 `/api/v2/terminal` attach와 foreground reconnect marker output을 확인.
+- `smoke:android:timeline-foreground`: temp runtime v2 server를 Tailscale IP로 노출하고
+  Android WebView page context에서 `/api/timeline` WebSocket init을 확인한다. 각 foreground
+  round는 background 중 fixture JSONL에 entry를 추가한 뒤 foreground 복귀 후 새 WebSocket
+  init의 `totalEntries`가 증가했는지 확인해 stale JSONL reconnect를 잡는다.
 
 강도 조절:
 
@@ -322,6 +338,7 @@ CODEXMUX_ANDROID_BACKGROUND_MS=60000 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=1 corepa
 CODEXMUX_ANDROID_CLEAR_APP_DATA=1 corepack pnpm smoke:android:foreground
 CODEXMUX_ANDROID_RESTART_APP=1 CODEXMUX_ANDROID_FOREGROUND_ROUNDS=0 corepack pnpm smoke:android:foreground
 CODEXMUX_ANDROID_RUNTIME_V2_TIMEOUT_MS=60000 corepack pnpm smoke:android:runtime-v2
+CODEXMUX_ANDROID_TIMELINE_FOREGROUND_TIMEOUT_MS=60000 corepack pnpm smoke:android:timeline-foreground
 ```
 
 React/server reconnect 수정은 APK 재빌드 없이 `corepack pnpm deploy:local`로 반영된다.

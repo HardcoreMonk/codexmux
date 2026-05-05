@@ -171,7 +171,8 @@ Work:
 - Current read-only first slice: `corepack pnpm smoke:runtime-v2:timeline-shadow` compares legacy timeline read endpoints with runtime v2 timeline read endpoints for message counts and entries-before metadata without printing entry text.
 - 2026-05-05 live shadow slice: `timeline.live-subscribe` returns the worker initial `timeline:init` payload, `timeline.live-append`/`timeline.live-error` events flow through Supervisor, and legacy `/api/timeline` records sanitized init/append parity counters while remaining client-facing.
 - 2026-05-05 default-read slice: `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default` keeps the existing `/api/timeline/*` HTTP URLs but routes `sessions`, `entries`, and `message-counts` through the Timeline Worker read commands. The `/api/timeline` WebSocket still stays legacy-owned.
-- Add typed events for `timeline:session-changed` and default-owned WebSocket delivery after live shadow evidence is collected.
+- 2026-05-05 session watcher contract slice: Timeline Worker accepts `timeline.session-watch-subscribe`/`timeline.session-watch-unsubscribe`, emits subscriber-scoped `timeline.session-changed` events to Supervisor, and Supervisor fans out matching changes. This is an internal typed IPC foundation; `/api/timeline` WebSocket delivery still stays legacy-owned.
+- Add default-owned WebSocket delivery after session watcher contract evidence is collected.
 - Keep stable id/dedupe/merge behavior unchanged.
 - Add worker crash behavior: close timeline sockets with retryable reason and let client reconnect.
 
@@ -182,7 +183,8 @@ Exit gate:
 - Default-read route unit evidence passes: `tests/unit/pages/timeline-sessions.test.ts`, `tests/unit/pages/timeline-read-default.test.ts`, and `tests/unit/lib/runtime/timeline-mode.test.ts`.
 - Resume flow still blocks unsafe active processes: `corepack pnpm smoke:runtime-v2:timeline-resume-safety`.
 - Session watcher ordering evidence passes: `corepack pnpm smoke:runtime-v2:timeline-session-changed` sees `timeline:session-changed` before the new JSONL `timeline:init`.
-- Android foreground reconnect opens a fresh timeline without stale JSONL.
+- Session watcher IPC contract evidence passes: `corepack pnpm test tests/unit/lib/runtime/ipc.test.ts tests/unit/lib/runtime/timeline-worker-service.test.ts tests/unit/lib/runtime/supervisor.test.ts`.
+- Android foreground reconnect evidence passes: `corepack pnpm smoke:android:timeline-foreground` opens `/api/timeline` from Android WebView page context, backgrounds the app while appending JSONL entries, and verifies foreground reconnect receives a fresh init without stale JSONL.
 
 Rollback:
 

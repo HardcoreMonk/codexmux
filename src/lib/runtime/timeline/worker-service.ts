@@ -14,15 +14,19 @@ import { getProviderByPanelType, type IAgentProvider } from '@/lib/providers';
 import { normalizePanelType } from '@/lib/panel-type';
 import { listSessionPage } from '@/lib/session-list';
 import { countTimelineMessages, emptyMessageCounts, type IMessageCountResult } from '@/lib/timeline-message-counts';
+import type { ISessionWatcher } from '@/lib/session-detection';
 import type {
   IRuntimeTimelineEntriesBeforeInput,
   IRuntimeTimelineLiveSubscribePayload,
   IRuntimeTimelineLiveSubscribeResult,
   IRuntimeTimelineLiveUnsubscribeResult,
+  IRuntimeTimelineSessionWatchSubscribePayload,
+  IRuntimeTimelineSessionWatchSubscribeResult,
+  IRuntimeTimelineSessionWatchUnsubscribeResult,
   IRuntimeTimelineSessionListInput,
   TRuntimeTimelineEntriesBeforeResult,
 } from '@/lib/runtime/contracts';
-import type { IInitMeta, ITimelineEntry, ITimelineInitMessage } from '@/types/timeline';
+import type { IInitMeta, ISessionInfo, ITimelineEntry, ITimelineInitMessage } from '@/types/timeline';
 
 interface IMessageCountCacheEntry {
   counts: IMessageCountResult;
@@ -32,6 +36,7 @@ interface IMessageCountCacheEntry {
 
 interface ICreateTimelineWorkerServiceOptions {
   sendEvent?: (event: IRuntimeEvent) => void;
+  getProvider?: (panelType: string) => IAgentProvider | null | undefined;
 }
 
 interface ILiveSubscriber {
@@ -52,6 +57,19 @@ interface ILiveWatcher {
   pendingChange: boolean;
 }
 
+interface ISessionWatchSubscriber {
+  subscriberId: string;
+  watchKey: string;
+}
+
+interface ISessionWatch {
+  watcher: ISessionWatcher;
+  sessionName: string;
+  panePid: number;
+  panelType: string;
+  subscribers: Set<string>;
+}
+
 const CACHE_LIMIT = 100;
 const MAX_INIT_ENTRIES = 64;
 const DEBOUNCE_MS = 50;
@@ -61,6 +79,9 @@ export const createTimelineWorkerService = (options: ICreateTimelineWorkerServic
   const messageCountsCache = new Map<string, IMessageCountCacheEntry>();
   const liveSubscribers = new Map<string, ILiveSubscriber>();
   const liveWatchers = new Map<string, ILiveWatcher>();
+  const sessionWatchSubscribers = new Map<string, ISessionWatchSubscriber>();
+  const sessionWatchers = new Map<string, ISessionWatch>();
+  const getProvider = options.getProvider ?? getProviderByPanelType;
 
   const ok = <TPayload>(command: IRuntimeCommand, payload: TPayload): IRuntimeReply<TPayload> =>
     createRuntimeReply({
@@ -100,7 +121,7 @@ export const createTimelineWorkerService = (options: ICreateTimelineWorkerServic
       : fail(command, 'timeline-jsonl-path-forbidden', 'Path not allowed');
 
   const emitEvent = <TPayload>(
-    type: 'timeline.live-append' | 'timeline.live-error',
+    type: 'timeline.live-append' | 'timeline.live-error' | 'timeline.session-changed',
     payload: TPayload,
   ): void => {
     options.sendEvent?.(createRuntimeEvent({
@@ -149,7 +170,7 @@ export const createTimelineWorkerService = (options: ICreateTimelineWorkerServic
     const forbidden = assertAllowedJsonlPath(command, input.jsonlPath);
     if (forbidden) return forbidden;
 
-    const provider = getProviderByPanelType(input.panelType);
+    const provider = getProvider(input.panelType);
     if (!provider) {
       return fail(command, 'timeline-provider-unknown', `Unknown panel type: ${input.panelType}`);
     }
@@ -294,7 +315,7 @@ export const createTimelineWorkerService = (options: ICreateTimelineWorkerServic
     const forbidden = assertAllowedJsonlPath(command, input.jsonlPath);
     if (forbidden) return forbidden;
 
-    const provider = getProviderByPanelType(input.panelType);
+    const provider = getProvider(input.panelType);
     if (!provider) {
       return fail(command, 'timeline-provider-unknown', `Unknown panel type: ${input.panelType}`);
     }
@@ -402,6 +423,88 @@ export const createTimelineWorkerService = (options: ICreateTimelineWorkerServic
     }
   };
 
+  const sessionWatchKey = (input: Pick<IRuntimeTimelineSessionWatchSubscribePayload, 'panelType' | 'panePid' | 'sessionName'>): string =>
+    `${input.panelType}:${input.panePid}:${input.sessionName}`;
+
+  const emitSessionChanged = (watch: ISessionWatch, info: ISessionInfo): void => {
+    for (const subscriberId of watch.subscribers) {
+      emitEvent('timeline.session-changed', {
+        subscriberId,
+        sessionName: watch.sessionName,
+        info,
+      });
+    }
+  };
+
+  const removeSessionWatch = (watchKey: string): void => {
+    const watch = sessionWatchers.get(watchKey);
+    if (!watch) return;
+    watch.watcher.stop();
+    for (const subscriberId of watch.subscribers) {
+      sessionWatchSubscribers.delete(subscriberId);
+    }
+    sessionWatchers.delete(watchKey);
+  };
+
+  const removeSessionWatchSubscriber = (subscriberId: string): boolean => {
+    const subscriber = sessionWatchSubscribers.get(subscriberId);
+    if (!subscriber) return false;
+    sessionWatchSubscribers.delete(subscriberId);
+    const watch = sessionWatchers.get(subscriber.watchKey);
+    watch?.subscribers.delete(subscriberId);
+    if (watch && watch.subscribers.size === 0) {
+      removeSessionWatch(subscriber.watchKey);
+    }
+    return true;
+  };
+
+  const subscribeSessionWatch = (
+    command: IRuntimeCommand,
+    input: IRuntimeTimelineSessionWatchSubscribePayload,
+  ): IRuntimeReply<IRuntimeTimelineSessionWatchSubscribeResult> | IRuntimeReply<null> => {
+    const provider = getProvider(input.panelType);
+    if (!provider) {
+      return fail(command, 'timeline-provider-unknown', `Unknown panel type: ${input.panelType}`);
+    }
+
+    const watchKey = sessionWatchKey(input);
+    let watch = sessionWatchers.get(watchKey);
+    if (!watch) {
+      const subscribers = new Set<string>();
+      watch = {
+        watcher: provider.watchSessions(
+          input.panePid,
+          (info) => {
+            const current = sessionWatchers.get(watchKey);
+            if (current) emitSessionChanged(current, info);
+          },
+          { skipInitial: input.skipInitial ?? true },
+        ),
+        sessionName: input.sessionName,
+        panePid: input.panePid,
+        panelType: input.panelType,
+        subscribers,
+      };
+      sessionWatchers.set(watchKey, watch);
+    }
+
+    watch.subscribers.add(input.subscriberId);
+    sessionWatchSubscribers.set(input.subscriberId, {
+      subscriberId: input.subscriberId,
+      watchKey,
+    });
+
+    return ok(command, { subscriberId: input.subscriberId, subscribed: true });
+  };
+
+  const unsubscribeSessionWatch = (
+    command: IRuntimeCommand,
+    subscriberId: string,
+  ): IRuntimeReply<IRuntimeTimelineSessionWatchUnsubscribeResult> => {
+    const unsubscribed = removeSessionWatchSubscriber(subscriberId);
+    return ok(command, { subscriberId, unsubscribed });
+  };
+
   return {
     async handleCommand(command: IRuntimeCommand): Promise<IRuntimeReply> {
       const invalid = validateWorkerCommandEnvelope(command, { workerName: 'timeline', namespace: 'timeline' });
@@ -430,6 +533,14 @@ export const createTimelineWorkerService = (options: ICreateTimelineWorkerServic
           const input = parseRuntimeCommandPayload('timeline.live-unsubscribe', command.payload);
           return unsubscribeLive(command, input.subscriberId);
         }
+        if (command.type === 'timeline.session-watch-subscribe') {
+          const input = parseRuntimeCommandPayload('timeline.session-watch-subscribe', command.payload);
+          return subscribeSessionWatch(command, input);
+        }
+        if (command.type === 'timeline.session-watch-unsubscribe') {
+          const input = parseRuntimeCommandPayload('timeline.session-watch-unsubscribe', command.payload);
+          return unsubscribeSessionWatch(command, input.subscriberId);
+        }
         return invalidCommand(command, {
           code: 'invalid-worker-command',
           message: `Unsupported timeline command: ${command.type}`,
@@ -452,6 +563,10 @@ export const createTimelineWorkerService = (options: ICreateTimelineWorkerServic
         removeLiveWatcher(jsonlPath);
       }
       liveSubscribers.clear();
+      for (const watchKey of Array.from(sessionWatchers.keys())) {
+        removeSessionWatch(watchKey);
+      }
+      sessionWatchSubscribers.clear();
     },
   };
 };

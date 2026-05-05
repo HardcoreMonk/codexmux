@@ -264,6 +264,95 @@ describe('runtime supervisor', () => {
     ]));
   });
 
+  it('subscribes timeline session watch events and fans out matching changes', async () => {
+    const { storage, terminal, timeline, status } = createWorkers();
+    const eventHandlers: Array<(event: IRuntimeEvent) => void> = [];
+    timeline.request = async <TPayload, TResult>(type: string, payload: TPayload): Promise<TResult> => {
+      timeline.commands.push({ type, payload });
+      if (type === 'timeline.session-watch-subscribe') {
+        return {
+          subscriberId: (payload as { subscriberId: string }).subscriberId,
+          subscribed: true,
+        } as TResult;
+      }
+      if (type === 'timeline.session-watch-unsubscribe') {
+        return {
+          subscriberId: (payload as { subscriberId: string }).subscriberId,
+          unsubscribed: true,
+        } as TResult;
+      }
+      return timeline.replies.get(type) as TResult;
+    };
+    const supervisor = createRuntimeSupervisorForTest({
+      storage,
+      terminal,
+      timeline,
+      status,
+      captureTimelineEventHandler: (handler) => {
+        eventHandlers.push(handler);
+      },
+    });
+    const onChanged = vi.fn();
+
+    const subscription = await supervisor.subscribeTimelineSessionWatch({
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      panePid: 123,
+      panelType: 'codex',
+      skipInitial: true,
+      onChanged,
+    });
+
+    expect(subscription.subscriberId).toMatch(/^sub-/);
+    expect(eventHandlers).toHaveLength(1);
+    expect(timeline.commands).toEqual(expect.arrayContaining([
+      {
+        type: 'timeline.session-watch-subscribe',
+        payload: {
+          subscriberId: subscription.subscriberId,
+          sessionName: 'pt-ws-a-pane-b-tab-c',
+          panePid: 123,
+          panelType: 'codex',
+          skipInitial: true,
+        },
+      },
+    ]));
+
+    eventHandlers[0](createRuntimeEvent({
+      source: 'timeline',
+      target: 'supervisor',
+      type: 'timeline.session-changed',
+      delivery: 'realtime',
+      payload: {
+        subscriberId: subscription.subscriberId,
+        sessionName: 'pt-ws-a-pane-b-tab-c',
+        info: {
+          status: 'running',
+          sessionId: '33333333-3333-3333-3333-333333333333',
+          jsonlPath: `${os.homedir()}/.codex/sessions/session.jsonl`,
+          pid: 456,
+          startedAt: 1,
+          cwd: '/repo',
+        },
+      },
+    }));
+    expect(onChanged).toHaveBeenCalledWith(expect.objectContaining({
+      subscriberId: subscription.subscriberId,
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      info: expect.objectContaining({
+        status: 'running',
+        sessionId: '33333333-3333-3333-3333-333333333333',
+      }),
+    }));
+
+    await supervisor.unsubscribeTimelineSessionWatch(subscription.subscriberId);
+    expect(timeline.commands).toEqual(expect.arrayContaining([
+      {
+        type: 'timeline.session-watch-unsubscribe',
+        payload: { subscriberId: subscription.subscriberId },
+      },
+    ]));
+  });
+
   it('proxies status policy commands through the status worker', async () => {
     const { storage, terminal, timeline, status } = createWorkers();
     const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });

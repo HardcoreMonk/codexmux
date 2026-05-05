@@ -297,6 +297,31 @@ describe('runtime ipc', () => {
       subscriberId: 'tlsub-a',
     })).toEqual({ subscriberId: 'tlsub-a' });
 
+    expect(parseRuntimeCommandPayload('timeline.session-watch-subscribe', {
+      subscriberId: 'tlsw-a',
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      panePid: 123,
+      panelType: 'codex',
+      skipInitial: true,
+    })).toEqual({
+      subscriberId: 'tlsw-a',
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      panePid: 123,
+      panelType: 'codex',
+      skipInitial: true,
+    });
+
+    expect(() => parseRuntimeCommandPayload('timeline.session-watch-subscribe', {
+      subscriberId: 'tlsw-a',
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      panePid: 0,
+      panelType: 'codex',
+    })).toThrow(/Invalid runtime IPC payload/);
+
+    expect(parseRuntimeCommandPayload('timeline.session-watch-unsubscribe', {
+      subscriberId: 'tlsw-a',
+    })).toEqual({ subscriberId: 'tlsw-a' });
+
     for (const oversized of [
       { sessionName: 'rtv2-ws-a-pane-b-tab-c', cols: 501, rows: 30 },
       { sessionName: 'rtv2-ws-a-pane-b-tab-c', cols: 100, rows: 201 },
@@ -332,5 +357,50 @@ describe('runtime ipc', () => {
     expect(() => parseRuntimeReplyPayload('storage.create-workspace', {
       id: 'ws-a',
     })).toThrow(/Invalid runtime IPC reply/);
+  });
+
+  it('validates timeline session watcher events', () => {
+    expect(runtimeEventRegistry['timeline.session-changed']).toMatchObject({
+      source: 'timeline',
+      target: 'supervisor',
+      delivery: 'realtime',
+    });
+
+    expect(parseRuntimeEventPayload('timeline.session-changed', {
+      subscriberId: 'tlsw-a',
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      info: {
+        status: 'running',
+        sessionId: '33333333-3333-3333-3333-333333333333',
+        jsonlPath: `${process.env.HOME}/.codex/sessions/session.jsonl`,
+        pid: 456,
+        startedAt: 1,
+        cwd: '/repo',
+      },
+    })).toEqual({
+      subscriberId: 'tlsw-a',
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      info: {
+        status: 'running',
+        sessionId: '33333333-3333-3333-3333-333333333333',
+        jsonlPath: `${process.env.HOME}/.codex/sessions/session.jsonl`,
+        pid: 456,
+        startedAt: 1,
+        cwd: '/repo',
+      },
+    });
+
+    expect(() => parseRuntimeEventPayload('timeline.session-changed', {
+      subscriberId: 'tlsw-a',
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      info: {
+        status: 'busy',
+        sessionId: null,
+        jsonlPath: null,
+        pid: null,
+        startedAt: null,
+        cwd: null,
+      },
+    })).toThrow(/Invalid runtime IPC event/);
   });
 });

@@ -106,6 +106,22 @@
 - [x] Verify `timeline:session-changed` with `reason="new-session-started"` arrives before the new JSONL `timeline:init`.
 - [x] Keep smoke output sanitized: no prompt text, assistant text, cwd, JSONL path, terminal output, or token.
 
+## Task 3e: Phase 4 Timeline Session Watcher Contract Foundation
+
+- [x] Add runtime IPC contracts for `timeline.session-watch-subscribe`, `timeline.session-watch-unsubscribe`, and `timeline.session-changed`.
+- [x] Add Timeline Worker session watcher subscription ownership with provider `watchSessions()` reuse and watcher cleanup.
+- [x] Add Supervisor subscription API and subscriber-scoped event fan-out.
+- [x] Keep client-facing `/api/timeline` WebSocket, `timeline:session-changed` delivery, and resume command execution legacy-owned.
+- [x] Verify focused runtime unit tests: `corepack pnpm test tests/unit/lib/runtime/ipc.test.ts tests/unit/lib/runtime/timeline-worker-service.test.ts tests/unit/lib/runtime/supervisor.test.ts`.
+
+## Task 3f: Android Foreground Timeline Reconnect Evidence
+
+- [x] Add `corepack pnpm smoke:android:timeline-foreground`.
+- [x] Run a temp runtime v2 server with `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`.
+- [x] Open `/api/timeline` from Android WebView page context with existing cookie auth.
+- [x] During each Android background round, append JSONL entries and verify foreground reconnect receives a fresh `timeline:init` with increased `totalEntries`.
+- [x] Run on a connected Android device and record pass evidence: SM-S928N Android 16, initial/foreground-1/foreground-2 `totalEntries` 3/5/7, blocking console/logcat 0.
+
 ## Task 4: Phase 5 Status v2 Side-effect Spec
 
 - [ ] Create a separate spec after Timeline Phase 4 shadow evidence is merged.
@@ -133,4 +149,4 @@
 
 ## Current Next Step
 
-Next runtime v2 work is Android foreground timeline reconnect evidence or Timeline Worker session watcher contract design. Do not move full WebSocket default, Status default, approval audit, or executable lifecycle controls in the same commit.
+Next runtime v2 work is a dedicated default-owned `/api/timeline` WebSocket bridge slice. Do not move Status default, approval audit, or executable lifecycle controls in the same commit.

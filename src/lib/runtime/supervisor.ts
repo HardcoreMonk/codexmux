@@ -21,8 +21,13 @@ import type {
   IRuntimeTimelineLiveSubscribePayload,
   IRuntimeTimelineLiveSubscribeResult,
   IRuntimeTimelineLiveUnsubscribeResult,
+  IRuntimeTimelineSessionChangedEvent,
   IRuntimeTimelineSessionListInput,
   IRuntimeTimelineSessionPage,
+  IRuntimeTimelineSessionWatchSubscribeInput,
+  IRuntimeTimelineSessionWatchSubscribePayload,
+  IRuntimeTimelineSessionWatchSubscribeResult,
+  IRuntimeTimelineSessionWatchUnsubscribeResult,
   TRuntimeTimelineEntriesBeforeResult,
   TRuntimeTimelineMessageCounts,
   TRuntimeStatusCodexStateInput,
@@ -56,6 +61,8 @@ export interface IRuntimeSupervisor {
   getTimelineMessageCounts(jsonlPath: string): Promise<TRuntimeTimelineMessageCounts>;
   subscribeTimelineLive(input: IRuntimeTimelineLiveSubscribeInput): Promise<IRuntimeTimelineLiveSubscribeResult>;
   unsubscribeTimelineLive(subscriberId: string): Promise<IRuntimeTimelineLiveUnsubscribeResult>;
+  subscribeTimelineSessionWatch(input: IRuntimeTimelineSessionWatchSubscribeInput): Promise<IRuntimeTimelineSessionWatchSubscribeResult>;
+  unsubscribeTimelineSessionWatch(subscriberId: string): Promise<IRuntimeTimelineSessionWatchUnsubscribeResult>;
   reduceStatusHookState(input: TRuntimeStatusHookStateInput): Promise<TRuntimeStatusHookDecision>;
   reduceStatusCodexState(input: TRuntimeStatusCodexStateInput): Promise<TRuntimeStatusDecision>;
   evaluateStatusNotificationPolicy(input: IRuntimeStatusNotificationPolicyInput): Promise<IRuntimeStatusNotificationPolicyResult>;
@@ -112,6 +119,10 @@ interface ITerminalAttachAttempt {
 interface ITimelineLiveSubscriber {
   onAppend?: (event: IRuntimeTimelineLiveAppendEvent) => void;
   onError?: (event: IRuntimeTimelineLiveErrorEvent) => void;
+}
+
+interface ITimelineSessionWatchSubscriber {
+  onChanged?: (event: IRuntimeTimelineSessionChangedEvent) => void;
 }
 
 interface IRuntimeSupervisorClients {
@@ -182,6 +193,7 @@ export const createRuntimeSupervisorForTest = (
   const terminalAttachAttempts = new Map<string, ITerminalAttachAttempt>();
   const terminalDetachPromises = new Map<string, Promise<void>>();
   const timelineLiveSubscribers = new Map<string, ITimelineLiveSubscriber>();
+  const timelineSessionWatchSubscribers = new Map<string, ITimelineSessionWatchSubscriber>();
 
   const prepareRuntimeDbPath = (): string => {
     if (options.useGlobal && g.__ptRuntimeSupervisorPreparedDbPath) return g.__ptRuntimeSupervisorPreparedDbPath;
@@ -248,6 +260,12 @@ export const createRuntimeSupervisorForTest = (
       timelineLiveSubscribers.forEach((subscriber) => {
         subscriber.onError?.(event.payload as IRuntimeTimelineLiveErrorEvent);
       });
+      return;
+    }
+    if (event.type === 'timeline.session-changed') {
+      const subscriberId = payload.subscriberId;
+      if (!subscriberId) return;
+      timelineSessionWatchSubscribers.get(subscriberId)?.onChanged?.(event.payload as IRuntimeTimelineSessionChangedEvent);
     }
   };
 
@@ -265,6 +283,7 @@ export const createRuntimeSupervisorForTest = (
       subscriber.onError?.(event);
     });
     timelineLiveSubscribers.clear();
+    timelineSessionWatchSubscribers.clear();
   };
 
   options.captureTimelineEventHandler?.(onTimelineWorkerEvent);
@@ -648,6 +667,40 @@ export const createRuntimeSupervisorForTest = (
       await this.ensureStarted();
       return getClients().timeline.request<{ subscriberId: string }, IRuntimeTimelineLiveUnsubscribeResult>(
         'timeline.live-unsubscribe',
+        { subscriberId },
+      );
+    },
+
+    async subscribeTimelineSessionWatch(input) {
+      await this.ensureStarted();
+      const subscriberId = createRuntimeId('sub');
+      timelineSessionWatchSubscribers.set(subscriberId, {
+        onChanged: input.onChanged,
+      });
+      const payload: IRuntimeTimelineSessionWatchSubscribePayload = {
+        subscriberId,
+        sessionName: input.sessionName,
+        panePid: input.panePid,
+        panelType: input.panelType,
+        ...(input.skipInitial !== undefined ? { skipInitial: input.skipInitial } : {}),
+      };
+
+      try {
+        return await getClients().timeline.request<
+          IRuntimeTimelineSessionWatchSubscribePayload,
+          IRuntimeTimelineSessionWatchSubscribeResult
+        >('timeline.session-watch-subscribe', payload);
+      } catch (err) {
+        timelineSessionWatchSubscribers.delete(subscriberId);
+        throw err;
+      }
+    },
+
+    async unsubscribeTimelineSessionWatch(subscriberId) {
+      timelineSessionWatchSubscribers.delete(subscriberId);
+      await this.ensureStarted();
+      return getClients().timeline.request<{ subscriberId: string }, IRuntimeTimelineSessionWatchUnsubscribeResult>(
+        'timeline.session-watch-unsubscribe',
         { subscriberId },
       );
     },

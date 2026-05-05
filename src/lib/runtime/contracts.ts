@@ -1,5 +1,5 @@
 import type { ILayoutData } from '@/types/terminal';
-import type { IChunkReadResult, ISessionMeta, ITimelineAppendMessage, ITimelineErrorMessage, ITimelineInitMessage } from '@/types/timeline';
+import type { IChunkReadResult, ISessionInfo, ISessionMeta, ITimelineAppendMessage, ITimelineErrorMessage, ITimelineInitMessage } from '@/types/timeline';
 import type { IMessageCountResult } from '@/lib/timeline-message-counts';
 import type { ICodexStateInput, IHookStateDecision, IHookStateInput, IStateDecision } from '@/lib/status-state-machine';
 import type { TEventName } from '@/types/status';
@@ -160,6 +160,38 @@ export interface IRuntimeTimelineLiveAppendEvent extends Omit<ITimelineAppendMes
 export interface IRuntimeTimelineLiveErrorEvent extends Omit<ITimelineErrorMessage, 'type'> {
   subscriberId?: string;
   jsonlPath?: string;
+}
+
+export interface IRuntimeTimelineSessionWatchSubscribeInput {
+  sessionName: string;
+  panePid: number;
+  panelType: string;
+  skipInitial?: boolean;
+  onChanged?: (event: IRuntimeTimelineSessionChangedEvent) => void;
+}
+
+export interface IRuntimeTimelineSessionWatchSubscribePayload {
+  subscriberId: string;
+  sessionName: string;
+  panePid: number;
+  panelType: string;
+  skipInitial?: boolean;
+}
+
+export interface IRuntimeTimelineSessionWatchSubscribeResult {
+  subscriberId: string;
+  subscribed: boolean;
+}
+
+export interface IRuntimeTimelineSessionWatchUnsubscribeResult {
+  subscriberId: string;
+  unsubscribed: boolean;
+}
+
+export interface IRuntimeTimelineSessionChangedEvent {
+  subscriberId: string;
+  sessionName: string;
+  info: ISessionInfo;
 }
 
 export type TRuntimeStatusHookStateInput = IHookStateInput;

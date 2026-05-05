@@ -1,10 +1,13 @@
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { codexProvider } from '@/lib/providers/codex';
+import type { IAgentProvider } from '@/lib/providers';
 import { createRuntimeCommand } from '@/lib/runtime/ipc';
 import type { IRuntimeEvent } from '@/lib/runtime/ipc';
 import { createTimelineWorkerService } from '@/lib/runtime/timeline/worker-service';
+import type { ISessionInfo } from '@/types/timeline';
 
 let tempDir: string;
 let jsonlPath: string;
@@ -168,6 +171,78 @@ describe('timeline worker service', () => {
     }));
     expect(unsubscribe.ok).toBe(true);
     expect(unsubscribe.payload).toEqual({ subscriberId: 'tlsub-a', unsubscribed: true });
+    service.close();
+  });
+
+  it('subscribes to session watchers and emits subscriber-scoped change events', async () => {
+    const events: IRuntimeEvent[] = [];
+    const stop = vi.fn();
+    const watcherCallbacks: Array<(info: ISessionInfo) => void> = [];
+    const watchSessions = vi.fn<IAgentProvider['watchSessions']>((panePid, cb, options) => {
+      expect(panePid).toBe(123);
+      expect(options).toEqual({ skipInitial: true });
+      watcherCallbacks.push(cb);
+      return { stop };
+    });
+    const provider: IAgentProvider = {
+      ...codexProvider,
+      watchSessions,
+    };
+    const service = createTimelineWorkerService({
+      sendEvent: (event) => events.push(event),
+      getProvider: () => provider,
+    });
+
+    const subscribe = await service.handleCommand(command('timeline.session-watch-subscribe', {
+      subscriberId: 'tlsw-a',
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      panePid: 123,
+      panelType: 'codex',
+      skipInitial: true,
+    }));
+
+    expect(subscribe.ok).toBe(true);
+    expect(subscribe.payload).toEqual({ subscriberId: 'tlsw-a', subscribed: true });
+    expect(watchSessions).toHaveBeenCalledTimes(1);
+
+    const emitChange = watcherCallbacks[0];
+    if (!emitChange) throw new Error('session watcher callback was not registered');
+
+    emitChange({
+      status: 'running',
+      sessionId: '33333333-3333-3333-3333-333333333333',
+      jsonlPath,
+      pid: 456,
+      startedAt: 1,
+      cwd: tempDir,
+    });
+
+    const changed = await waitFor(() => events.find((event) => event.type === 'timeline.session-changed'));
+    expect(changed).toMatchObject({
+      source: 'timeline',
+      target: 'supervisor',
+      delivery: 'realtime',
+      payload: {
+        subscriberId: 'tlsw-a',
+        sessionName: 'pt-ws-a-pane-b-tab-c',
+        info: {
+          status: 'running',
+          sessionId: '33333333-3333-3333-3333-333333333333',
+          jsonlPath,
+          pid: 456,
+          startedAt: 1,
+          cwd: tempDir,
+        },
+      },
+    });
+
+    const unsubscribe = await service.handleCommand(command('timeline.session-watch-unsubscribe', {
+      subscriberId: 'tlsw-a',
+    }));
+
+    expect(unsubscribe.ok).toBe(true);
+    expect(unsubscribe.payload).toEqual({ subscriberId: 'tlsw-a', unsubscribed: true });
+    expect(stop).toHaveBeenCalledTimes(1);
     service.close();
   });
 });

@@ -74,6 +74,22 @@ const cliStateSchema = z.union([
   z.literal('cancelled'),
   z.literal('unknown'),
 ]);
+const timelineSessionDetectionStatusSchema = z.union([
+  z.literal('unknown'),
+  z.literal('starting'),
+  z.literal('running'),
+  z.literal('not-running'),
+  z.literal('not-initialized'),
+  z.literal('not-installed'),
+]);
+const timelineSessionInfoSchema = z.object({
+  status: timelineSessionDetectionStatusSchema,
+  sessionId: z.string().nullable(),
+  jsonlPath: z.string().nullable(),
+  pid: z.number().int().nullable(),
+  startedAt: z.number().nullable(),
+  cwd: z.string().nullable(),
+}).strict();
 const statusEventNameSchema = z.union([
   z.literal('session-start'),
   z.literal('prompt-submit'),
@@ -280,6 +296,24 @@ const timelineLiveSubscribePayloadSchema = z.object({
 const timelineLiveUnsubscribePayloadSchema = z.object({
   subscriberId: z.string().min(1),
 }).strict();
+const timelineSessionWatchSubscribePayloadSchema = z.object({
+  subscriberId: z.string().min(1),
+  sessionName: z.string().min(1),
+  panePid: z.number().int().positive(),
+  panelType: z.string().min(1),
+  skipInitial: z.boolean().optional(),
+}).strict();
+const timelineSessionWatchUnsubscribePayloadSchema = z.object({
+  subscriberId: z.string().min(1),
+}).strict();
+const timelineSessionWatchSubscribeResultSchema = z.object({
+  subscriberId: z.string().min(1),
+  subscribed: z.boolean(),
+});
+const timelineSessionWatchUnsubscribeResultSchema = z.object({
+  subscriberId: z.string().min(1),
+  unsubscribed: z.boolean(),
+});
 const timelineLiveAppendEventPayloadSchema = z.object({
   subscriberId: z.string().min(1),
   jsonlPath: z.string().min(1),
@@ -290,6 +324,11 @@ const timelineLiveErrorEventPayloadSchema = z.object({
   jsonlPath: z.string().min(1).optional(),
   code: z.string().min(1),
   message: z.string().min(1),
+});
+const timelineSessionChangedEventPayloadSchema = z.object({
+  subscriberId: z.string().min(1),
+  sessionName: z.string().min(1),
+  info: timelineSessionInfoSchema,
 });
 const statusReduceHookStatePayloadSchema = z.object({
   currentState: cliStateSchema,
@@ -343,6 +382,8 @@ export const runtimeCommandRegistry = {
   'timeline.message-counts': { payload: timelineMessageCountsPayloadSchema, reply: timelineMessageCountsSchema },
   'timeline.live-subscribe': { payload: timelineLiveSubscribePayloadSchema, reply: timelineLiveSubscribeResultSchema },
   'timeline.live-unsubscribe': { payload: timelineLiveUnsubscribePayloadSchema, reply: timelineLiveUnsubscribeResultSchema },
+  'timeline.session-watch-subscribe': { payload: timelineSessionWatchSubscribePayloadSchema, reply: timelineSessionWatchSubscribeResultSchema },
+  'timeline.session-watch-unsubscribe': { payload: timelineSessionWatchUnsubscribePayloadSchema, reply: timelineSessionWatchUnsubscribeResultSchema },
   'status.health': { payload: emptyPayloadSchema, reply: runtimeHealthReplySchema },
   'status.reduce-hook-state': { payload: statusReduceHookStatePayloadSchema, reply: statusHookDecisionSchema },
   'status.reduce-codex-state': { payload: statusReduceCodexStatePayloadSchema, reply: statusDecisionSchema },
@@ -373,6 +414,12 @@ export const runtimeEventRegistry = {
     target: 'supervisor',
     delivery: 'realtime',
     payload: timelineLiveErrorEventPayloadSchema,
+  },
+  'timeline.session-changed': {
+    source: 'timeline',
+    target: 'supervisor',
+    delivery: 'realtime',
+    payload: timelineSessionChangedEventPayloadSchema,
   },
 } as const satisfies Record<string, {
   source: string;
