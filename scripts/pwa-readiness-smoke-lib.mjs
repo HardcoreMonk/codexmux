@@ -100,7 +100,12 @@ export const validateServiceWorkerScript = (script) => {
   addCheck(result, /addEventListener\(["']activate["']/.test(script), 'sw-activate', 'service worker must handle activate');
   addCheck(result, /addEventListener\(["']push["']/.test(script), 'sw-push', 'service worker must handle push');
   addCheck(result, /addEventListener\(["']notificationclick["']/.test(script), 'sw-notification-click', 'service worker must handle notificationclick');
-  addCheck(result, /openWindow\(["']\/["']\)/.test(script), 'sw-open-window', 'service worker must open app window from notification');
+  addCheck(
+    result,
+    /openWindow\(["']\/["']\)/.test(script) || /openWindow\(buildPushDeepLinkPath\(/.test(script),
+    'sw-open-window',
+    'service worker must open app window from notification',
+  );
   return result;
 };
 
