@@ -398,6 +398,28 @@ React/server reconnect 수정은 APK 재빌드 없이 `corepack pnpm deploy:loca
 `CodexmuxAndroid` native bridge, Android manifest, launcher asset, version metadata를 바꾸면
 APK를 다시 빌드해 설치한다.
 
+## Smoke Artifact Evidence
+
+Smoke scripts that support release evidence write sanitized JSON when
+`CODEXMUX_SMOKE_ARTIFACT_DIR` is set:
+
+```bash
+CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:browser-reconnect
+CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:electron:runtime-v2
+CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:android:foreground
+CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:android:runtime-v2
+CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:android:timeline-foreground
+```
+
+Artifacts preserve pass/fail state, check names, runtime/app/device metadata, reconnect round
+counts, and blocking console/logcat counts. They do not preserve token values, temp HOME paths,
+session identifiers, target URLs, server stdout/stderr, prompt body, terminal output, or Codex
+JSONL paths.
+
+The release workflow runs `smoke:browser-reconnect` on GitHub-hosted Ubuntu and uploads
+`smoke-browser-reconnect`. Android and packaged Electron smoke remain manual or self-hosted
+because they require a real device or macOS app bundle context.
+
 ## Permission, Stats, Timeline
 
 ```bash

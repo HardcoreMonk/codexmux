@@ -28,6 +28,24 @@ import {
   startAndroidApp,
   waitForExpectedRemoteState,
 } from './android-webview-smoke-lib.mjs';
+import { writeSmokeArtifact } from './smoke-artifact-lib.mjs';
+
+const SMOKE_NAME = 'android-foreground';
+const startedAt = new Date().toISOString();
+
+const writeArtifact = async (status, payload) =>
+  writeSmokeArtifact({
+    smokeName: SMOKE_NAME,
+    status,
+    startedAt,
+    payload,
+  }).catch((err) => {
+    console.error(JSON.stringify({
+      ok: false,
+      code: 'smoke-artifact-write-failed',
+      message: err instanceof Error ? err.message : String(err),
+    }, null, 2));
+  });
 
 const envNumber = (name, fallback) => {
   const raw = process.env[name];
@@ -37,8 +55,10 @@ const envNumber = (name, fallback) => {
   return parsed;
 };
 
-const fail = (code, message, details = {}) => {
-  console.error(JSON.stringify({ ok: false, code, message, ...details }, null, 2));
+const fail = async (code, message, details = {}) => {
+  const payload = { ok: false, code, message, ...details };
+  await writeArtifact('failed', payload);
+  console.error(JSON.stringify(payload, null, 2));
   process.exit(1);
 };
 
@@ -128,10 +148,10 @@ const main = async () => {
     const appInfo = await getAndroidAppInfo(cdp);
 
     if (initialState.bridgeTriggerEventType !== 'function') {
-      fail('android-trigger-event-fallback-missing', 'Capacitor triggerEvent fallback was not installed', { initialState });
+      await fail('android-trigger-event-fallback-missing', 'Capacitor triggerEvent fallback was not installed', { initialState });
     }
     if (!appInfo) {
-      fail('android-app-info-bridge-missing', 'CodexmuxAndroid app info bridge is not available', { initialState });
+      await fail('android-app-info-bridge-missing', 'CodexmuxAndroid app info bridge is not available', { initialState });
     }
 
     for (let i = 0; i < rounds; i += 1) {
@@ -142,7 +162,7 @@ const main = async () => {
       await sleep(settleMs);
       const settledState = await waitForExpectedRemoteState(cdp, targetUrl);
       if (settledState.bridgeTriggerEventType !== 'function') {
-        fail('android-trigger-event-fallback-missing-after-foreground', 'triggerEvent fallback disappeared after foreground reconnect', {
+        await fail('android-trigger-event-fallback-missing-after-foreground', 'triggerEvent fallback disappeared after foreground reconnect', {
           round: i + 1,
           state,
           settledState,
@@ -153,14 +173,14 @@ const main = async () => {
     if (restartApp) {
       const restarted = await triggerAndroidRestart(cdp);
       if (!restarted) {
-        fail('android-app-restart-bridge-missing', 'CodexmuxAndroid.restartApp is not available', { appInfo });
+        await fail('android-app-restart-bridge-missing', 'CodexmuxAndroid.restartApp is not available', { appInfo });
       }
       checks.push('app-restart-triggered');
       await sleep(2_000);
       await connectWebView();
       const restartState = await ensureRemote('app-restart-remote-state');
       if (restartState.bridgeTriggerEventType !== 'function') {
-        fail('android-trigger-event-fallback-missing-after-restart', 'triggerEvent fallback disappeared after native app restart', {
+        await fail('android-trigger-event-fallback-missing-after-restart', 'triggerEvent fallback disappeared after native app restart', {
           restartState,
         });
       }
@@ -172,7 +192,7 @@ const main = async () => {
     const blockingLogcat = collectBlockingLogcatLines(logcat);
 
     if (blockingConsole.length > 0 || blockingLogcat.length > 0) {
-      fail('android-foreground-reconnect-failed', 'Android foreground reconnect produced blocking console or logcat errors', {
+      await fail('android-foreground-reconnect-failed', 'Android foreground reconnect produced blocking console or logcat errors', {
         targetUrl,
         serial,
         rounds,
@@ -183,7 +203,7 @@ const main = async () => {
       });
     }
 
-    console.log(JSON.stringify({
+    const payload = {
       ok: true,
       adb,
       serial,
@@ -201,9 +221,11 @@ const main = async () => {
       blockingConsoleCount: blockingConsole.length,
       blockingLogcatCount: blockingLogcat.length,
       devtools: forward,
-    }, null, 2));
+    };
+    await writeArtifact('passed', payload);
+    console.log(JSON.stringify(payload, null, 2));
   } catch (err) {
-    fail('android-foreground-smoke-error', err instanceof Error ? err.message : String(err), {
+    await fail('android-foreground-smoke-error', err instanceof Error ? err.message : String(err), {
       targetUrl,
       serial,
       checks,

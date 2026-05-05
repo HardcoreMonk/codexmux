@@ -14,13 +14,32 @@ import {
   collectPaneNodes,
   extractCookieHeader,
 } from './runtime-v2-phase2-smoke-lib.mjs';
+import { writeSmokeArtifact } from './smoke-artifact-lib.mjs';
 
 const PASSWORD = 'browser-reconnect-dom-smoke';
 const DEFAULT_TIMEOUT_MS = 30_000;
+const SMOKE_NAME = 'browser-reconnect';
 const rootDir = process.cwd();
+const startedAt = new Date().toISOString();
 
-const fail = (code, message, details = {}) => {
-  console.error(JSON.stringify({ ok: false, code, message, ...details }, null, 2));
+const writeArtifact = async (status, payload) =>
+  writeSmokeArtifact({
+    smokeName: SMOKE_NAME,
+    status,
+    startedAt,
+    payload,
+  }).catch((err) => {
+    console.error(JSON.stringify({
+      ok: false,
+      code: 'smoke-artifact-write-failed',
+      message: err instanceof Error ? err.message : String(err),
+    }, null, 2));
+  });
+
+const fail = async (code, message, details = {}) => {
+  const payload = { ok: false, code, message, ...details };
+  await writeArtifact('failed', payload);
+  console.error(JSON.stringify(payload, null, 2));
   process.exit(1);
 };
 
@@ -213,7 +232,7 @@ const main = async () => {
 
     const browser = await runBrowserAssertion({ baseUrl, cookie });
 
-    console.log(JSON.stringify({
+    const payload = {
       ok: true,
       baseUrl,
       workspaceId: workspace.id,
@@ -225,9 +244,11 @@ const main = async () => {
         'restart-new-terminal-clickable',
       ],
       browser,
-    }, null, 2));
+    };
+    await writeArtifact('passed', payload);
+    console.log(JSON.stringify(payload, null, 2));
   } catch (err) {
-    fail('browser-reconnect-dom-smoke-failed', err instanceof Error ? err.message : String(err), {
+    await fail('browser-reconnect-dom-smoke-failed', err instanceof Error ? err.message : String(err), {
       serverOutput: server?.getOutput?.().slice(-2000),
     });
   } finally {

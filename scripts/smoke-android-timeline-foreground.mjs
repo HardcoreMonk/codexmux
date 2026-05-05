@@ -39,13 +39,16 @@ import {
   normalizeAndroidForegroundRounds,
 } from './android-runtime-v2-smoke-lib.mjs';
 import { extractCookieHeader } from './runtime-v2-phase2-smoke-lib.mjs';
+import { writeSmokeArtifact } from './smoke-artifact-lib.mjs';
 
 const PASSWORD = 'android-timeline-foreground-smoke';
 const DEFAULT_TIMEOUT_MS = 35_000;
 const TMUX_SOCKET = 'codexmux';
 const SESSION_ID = '44444444-4444-4444-8444-444444444444';
 const INITIAL_ENTRY_COUNT = 3;
+const SMOKE_NAME = 'android-timeline-foreground';
 const rootDir = process.cwd();
+const startedAt = new Date().toISOString();
 
 const buildFailurePayload = (code, message, details = {}) => ({ ok: false, code, message, ...details });
 
@@ -59,6 +62,20 @@ const exitWithFailure = (payload) => {
   console.error(JSON.stringify(payload, null, 2));
   process.exit(1);
 };
+
+const writeArtifact = async (status, payload) =>
+  writeSmokeArtifact({
+    smokeName: SMOKE_NAME,
+    status,
+    startedAt,
+    payload,
+  }).catch((err) => {
+    console.error(JSON.stringify({
+      ok: false,
+      code: 'smoke-artifact-write-failed',
+      message: err instanceof Error ? err.message : String(err),
+    }, null, 2));
+  });
 
 const envNumber = (name, fallback) => {
   const raw = process.env[name];
@@ -536,7 +553,10 @@ const main = async () => {
     if (server) await server.stop();
   }
 
-  if (failurePayload) exitWithFailure(failurePayload);
+  if (failurePayload) {
+    await writeArtifact('failed', failurePayload);
+    exitWithFailure(failurePayload);
+  }
 
   if (successPayload) {
     if (restoreState) {
@@ -546,6 +566,7 @@ const main = async () => {
         title: restoreState.title,
       };
     }
+    await writeArtifact('passed', successPayload);
     console.log(JSON.stringify(successPayload, null, 2));
   }
 };

@@ -45,13 +45,32 @@ import {
   extractCookieHeader,
   resolveSmokeTerminalEndpoint,
 } from './runtime-v2-phase2-smoke-lib.mjs';
+import { writeSmokeArtifact } from './smoke-artifact-lib.mjs';
 
 const PASSWORD = 'android-runtime-v2-smoke';
 const DEFAULT_TIMEOUT_MS = 35_000;
+const SMOKE_NAME = 'android-runtime-v2';
 const rootDir = process.cwd();
+const startedAt = new Date().toISOString();
 
-const fail = (code, message, details = {}) => {
-  console.error(JSON.stringify({ ok: false, code, message, ...details }, null, 2));
+const writeArtifact = async (status, payload) =>
+  writeSmokeArtifact({
+    smokeName: SMOKE_NAME,
+    status,
+    startedAt,
+    payload,
+  }).catch((err) => {
+    console.error(JSON.stringify({
+      ok: false,
+      code: 'smoke-artifact-write-failed',
+      message: err instanceof Error ? err.message : String(err),
+    }, null, 2));
+  });
+
+const fail = async (code, message, details = {}) => {
+  const payload = { ok: false, code, message, ...details };
+  await writeArtifact('failed', payload);
+  console.error(JSON.stringify(payload, null, 2));
   process.exit(1);
 };
 
@@ -345,7 +364,7 @@ const main = async () => {
     const logcat = dumpLogcat({ adb, adbArgs });
     const blockingLogcat = collectBlockingLogcatLines(logcat);
     if (blockingConsole.length > 0 || blockingLogcat.length > 0) {
-      fail('android-runtime-v2-foreground-failed', 'Android runtime v2 foreground smoke produced blocking console or logcat errors', {
+      await fail('android-runtime-v2-foreground-failed', 'Android runtime v2 foreground smoke produced blocking console or logcat errors', {
         targetUrl,
         serial,
         foregroundRounds,
@@ -360,7 +379,7 @@ const main = async () => {
     workspaceId = null;
     checks.push('workspace-delete');
 
-    console.log(JSON.stringify({
+    const payload = {
       ok: true,
       adb,
       serial,
@@ -382,10 +401,12 @@ const main = async () => {
       blockingConsoleCount: blockingConsole.length,
       blockingLogcatCount: blockingLogcat.length,
       devtools: forward,
-    }, null, 2));
+    };
+    await writeArtifact('passed', payload);
+    console.log(JSON.stringify(payload, null, 2));
   } catch (err) {
     if (server) console.error(server.getOutput().slice(-4000));
-    fail('android-runtime-v2-smoke-error', err instanceof Error ? err.message : String(err), {
+    await fail('android-runtime-v2-smoke-error', err instanceof Error ? err.message : String(err), {
       targetUrl,
       serial,
       checks,
