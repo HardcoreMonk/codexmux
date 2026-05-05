@@ -217,6 +217,20 @@ WebSocket이 빈 init 이후 `timeline:session-changed` with `reason="new-sessio
 먼저 보내고, 그 다음 새 JSONL의 `timeline:init`을 보내는지 확인한다. 출력에는 prompt,
 assistant text, cwd, JSONL path, terminal output, token을 포함하지 않는다.
 
+Timeline WebSocket default smoke:
+
+```bash
+corepack pnpm smoke:runtime-v2:timeline-websocket-default
+```
+
+이 smoke는 temp HOME/server에서 `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`를 켠 뒤
+Codex process와 allowed Codex JSONL fixture가 있는 상태로 legacy `/api/timeline`
+WebSocket을 연다. `timeline:init` 이후 JSONL에 entry 하나를 append하고
+`timeline:append`를 받은 다음 `/api/debug/perf`에서
+`runtime_v2.timeline_ws.default.init`과 `runtime_v2.timeline_ws.default.append` counter가
+기록됐는지 확인한다. 출력에는 prompt, assistant text, cwd, JSONL path, tmux output,
+auth cookie, token을 포함하지 않는다.
+
 Timeline session watcher contract unit coverage:
 
 ```bash
