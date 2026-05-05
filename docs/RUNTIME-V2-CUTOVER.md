@@ -170,6 +170,7 @@ Work:
 - Move file watcher/session watcher state into Timeline Worker, not just read commands.
 - Current read-only first slice: `corepack pnpm smoke:runtime-v2:timeline-shadow` compares legacy timeline read endpoints with runtime v2 timeline read endpoints for message counts and entries-before metadata without printing entry text.
 - 2026-05-05 live shadow slice: `timeline.live-subscribe` returns the worker initial `timeline:init` payload, `timeline.live-append`/`timeline.live-error` events flow through Supervisor, and legacy `/api/timeline` records sanitized init/append parity counters while remaining client-facing.
+- 2026-05-05 default-read slice: `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default` keeps the existing `/api/timeline/*` HTTP URLs but routes `sessions`, `entries`, and `message-counts` through the Timeline Worker read commands. The `/api/timeline` WebSocket still stays legacy-owned.
 - Add typed events for `timeline:session-changed` and default-owned WebSocket delivery after live shadow evidence is collected.
 - Keep stable id/dedupe/merge behavior unchanged.
 - Add worker crash behavior: close timeline sockets with retryable reason and let client reconnect.
@@ -178,6 +179,7 @@ Exit gate:
 
 - Implemented live shadow unit evidence: `tests/unit/lib/runtime/ipc.test.ts`, `timeline-worker-service.test.ts`, `timeline-live-shadow.test.ts`, `supervisor.test.ts`, and `corepack pnpm tsc --noEmit`.
 - Long JSONL append smoke passes: `corepack pnpm smoke:runtime-v2:timeline-live-shadow` receives 24 append entries, has no duplicate assistant append ids, and records init/append match counters with mismatch/error counters 0.
+- Default-read route unit evidence passes: `tests/unit/pages/timeline-sessions.test.ts`, `tests/unit/pages/timeline-read-default.test.ts`, and `tests/unit/lib/runtime/timeline-mode.test.ts`.
 - Resume flow still blocks unsafe active processes.
 - Android foreground reconnect opens a fresh timeline without stale JSONL.
 

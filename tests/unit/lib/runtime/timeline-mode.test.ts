@@ -4,6 +4,7 @@ import {
   parseRuntimeTimelineV2Mode,
   shouldRunRuntimeTimelineV2Shadow,
   shouldUseRuntimeTimelineV2Live,
+  shouldUseRuntimeTimelineV2Reads,
 } from '@/lib/runtime/timeline-mode';
 
 describe('runtime timeline v2 mode', () => {
@@ -24,6 +25,21 @@ describe('runtime timeline v2 mode', () => {
       timelineMode: 'shadow',
     })).toBe(false);
     expect(shouldUseRuntimeTimelineV2Live({
+      runtimeV2Enabled: false,
+      timelineMode: 'default',
+    })).toBe(false);
+  });
+
+  it('allows timeline read ownership only for runtime default mode', () => {
+    expect(shouldUseRuntimeTimelineV2Reads({
+      runtimeV2Enabled: true,
+      timelineMode: 'default',
+    })).toBe(true);
+    expect(shouldUseRuntimeTimelineV2Reads({
+      runtimeV2Enabled: true,
+      timelineMode: 'shadow',
+    })).toBe(false);
+    expect(shouldUseRuntimeTimelineV2Reads({
       runtimeV2Enabled: false,
       timelineMode: 'default',
     })).toBe(false);

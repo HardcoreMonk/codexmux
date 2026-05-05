@@ -2,6 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { hasSession } from '@/lib/tmux';
 import { listSessionPage } from '@/lib/session-list';
 import { isAgentPanelType, normalizePanelType } from '@/lib/panel-type';
+import { sendRuntimeApiError } from '@/lib/runtime/api-handler';
+import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
+import { shouldUseRuntimeTimelineV2Reads } from '@/lib/runtime/timeline-mode';
 import type { TPanelType } from '@/types/terminal';
 
 const DEFAULT_LIMIT = 50;
@@ -31,6 +34,21 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const exists = await hasSession(tmuxSession);
     if (!exists) {
       return res.status(404).json({ error: 'tmux-session-not-found', message: `tmux session '${tmuxSession}' not found` });
+    }
+  }
+
+  if (shouldUseRuntimeTimelineV2Reads()) {
+    try {
+      const page = await getRuntimeSupervisor().listTimelineSessions({
+        tmuxSession,
+        cwd: cwdHint,
+        panelType,
+        offset,
+        limit,
+      });
+      return res.status(200).json(page);
+    } catch (err) {
+      return sendRuntimeApiError(res, err);
     }
   }
 

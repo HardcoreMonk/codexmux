@@ -2,6 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { stat } from 'fs/promises';
 import { isAllowedJsonlPath } from '@/lib/path-validation';
 import { getPerfNow, recordPerfCounter, recordPerfDuration } from '@/lib/perf-metrics';
+import { sendRuntimeApiError } from '@/lib/runtime/api-handler';
+import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
+import { shouldUseRuntimeTimelineV2Reads } from '@/lib/runtime/timeline-mode';
 import { countTimelineMessages, emptyMessageCounts, type IMessageCountResult } from '@/lib/timeline-message-counts';
 
 interface ICacheEntry {
@@ -51,6 +54,15 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   if (!isAllowedJsonlPath(jsonlPath)) {
     return res.status(403).json({ error: 'Path not allowed' });
+  }
+
+  if (shouldUseRuntimeTimelineV2Reads()) {
+    try {
+      const counts = await getRuntimeSupervisor().getTimelineMessageCounts(jsonlPath);
+      return res.status(200).json(counts);
+    } catch (err) {
+      return sendRuntimeApiError(res, err);
+    }
   }
 
   try {

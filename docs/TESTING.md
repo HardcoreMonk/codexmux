@@ -167,7 +167,18 @@ corepack pnpm test tests/unit/lib/runtime/ipc.test.ts tests/unit/lib/runtime/tim
 이 검증은 `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=shadow`에서 legacy `/api/timeline`이 계속
 client-facing인 상태로 Timeline Worker live subscription을 시작하고, 초기 init reply와
 append event를 sanitized metadata로 비교하는 경로를 확인한다. 별도 long JSONL append smoke와
-timeline default 전환 검증은 다음 slice의 gate로 유지한다.
+timeline WebSocket default 전환 검증은 다음 slice의 gate로 유지한다.
+
+Timeline default-read route unit coverage:
+
+```bash
+corepack pnpm test tests/unit/lib/runtime/timeline-mode.test.ts tests/unit/pages/timeline-sessions.test.ts tests/unit/pages/timeline-read-default.test.ts
+```
+
+이 검증은 `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`에서 기존 `/api/timeline/sessions`,
+`/api/timeline/entries`, `/api/timeline/message-counts` HTTP URL이 Timeline Worker read
+command로 route되는지 확인한다. `/api/timeline` WebSocket, `timeline:session-changed`,
+resume command execution은 이 slice에서 전환하지 않는다.
 
 Timeline live shadow long append smoke:
 

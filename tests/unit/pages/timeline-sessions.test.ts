@@ -1,9 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   hasSession: vi.fn(),
   listSessionPage: vi.fn(),
+  supervisor: {
+    listTimelineSessions: vi.fn(),
+  },
 }));
 
 vi.mock('@/lib/tmux', () => ({
@@ -14,7 +17,27 @@ vi.mock('@/lib/session-list', () => ({
   listSessionPage: mocks.listSessionPage,
 }));
 
+vi.mock('@/lib/runtime/supervisor', () => ({
+  getRuntimeSupervisor: vi.fn(() => mocks.supervisor),
+}));
+
 import handler from '@/pages/api/timeline/sessions';
+
+const originalRuntimeV2 = process.env.CODEXMUX_RUNTIME_V2;
+const originalTimelineMode = process.env.CODEXMUX_RUNTIME_TIMELINE_V2_MODE;
+
+const restoreEnv = () => {
+  if (originalRuntimeV2 === undefined) {
+    delete process.env.CODEXMUX_RUNTIME_V2;
+  } else {
+    process.env.CODEXMUX_RUNTIME_V2 = originalRuntimeV2;
+  }
+  if (originalTimelineMode === undefined) {
+    delete process.env.CODEXMUX_RUNTIME_TIMELINE_V2_MODE;
+  } else {
+    process.env.CODEXMUX_RUNTIME_TIMELINE_V2_MODE = originalTimelineMode;
+  }
+};
 
 const createResponse = () => {
   let statusCode = 0;
@@ -53,8 +76,10 @@ const createRequest = (query: Record<string, string>, method = 'GET'): NextApiRe
 
 describe('/api/timeline/sessions', () => {
   beforeEach(() => {
+    restoreEnv();
     mocks.hasSession.mockReset();
     mocks.listSessionPage.mockReset();
+    mocks.supervisor.listTimelineSessions.mockReset();
     mocks.hasSession.mockResolvedValue(false);
     mocks.listSessionPage.mockResolvedValue({
       sessions: [
@@ -69,6 +94,11 @@ describe('/api/timeline/sessions', () => {
       total: 1,
       hasMore: false,
     });
+    mocks.supervisor.listTimelineSessions.mockResolvedValue({ sessions: [], total: 0, hasMore: false });
+  });
+
+  afterEach(() => {
+    restoreEnv();
   });
 
   it('returns Codex session index pages even when the tmux session is gone', async () => {
@@ -106,6 +136,31 @@ describe('/api/timeline/sessions', () => {
       'codex',
       { offset: 20, limit: 10 },
     );
+  });
+
+  it('uses runtime v2 read ownership in default mode', async () => {
+    process.env.CODEXMUX_RUNTIME_V2 = '1';
+    process.env.CODEXMUX_RUNTIME_TIMELINE_V2_MODE = 'default';
+    const response = createResponse();
+
+    await handler(createRequest({
+      tmuxSession: 'dead-tmux-session',
+      panelType: 'codex',
+      cwd: '/workspace',
+      limit: '10',
+      offset: '20',
+    }), response.res);
+
+    expect(response.statusCode).toBe(200);
+    expect(mocks.hasSession).not.toHaveBeenCalled();
+    expect(mocks.listSessionPage).not.toHaveBeenCalled();
+    expect(mocks.supervisor.listTimelineSessions).toHaveBeenCalledWith({
+      tmuxSession: 'dead-tmux-session',
+      cwd: '/workspace',
+      panelType: 'codex',
+      offset: 20,
+      limit: 10,
+    });
   });
 
   it('still rejects missing tmux sessions for non-agent panel types', async () => {

@@ -80,6 +80,15 @@
 - [x] Verify focused runtime unit tests, `corepack pnpm tsc --noEmit`, `corepack pnpm lint`, `corepack pnpm smoke:runtime-v2:timeline-shadow`, `corepack pnpm build`, and `git diff --check`.
 - [x] Add long JSONL append smoke before Timeline default promotion.
 
+## Task 3b: Phase 4 Timeline v2 HTTP Default-read Slice
+
+- [x] Keep client-facing `/api/timeline/*` HTTP URLs stable.
+- [x] Add a read ownership gate for `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`.
+- [x] Route `/api/timeline/sessions`, `/api/timeline/entries`, and `/api/timeline/message-counts` through Supervisor/Timeline Worker read commands in default mode.
+- [x] Preserve non-agent tmux session existence validation before v2 session list routing.
+- [x] Keep `/api/timeline` WebSocket, `timeline:session-changed`, and resume command execution legacy-owned.
+- [x] Verify focused route/mode tests.
+
 ## Task 4: Phase 5 Status v2 Side-effect Spec
 
 - [ ] Create a separate spec after Timeline Phase 4 shadow evidence is merged.
@@ -107,4 +116,4 @@
 
 ## Current Next Step
 
-Next runtime v2 work is Timeline default promotion planning/evidence. Do not implement Timeline default, Status default, approval audit, or executable lifecycle controls in the same commit.
+Next runtime v2 work is Timeline WebSocket default promotion planning/evidence. Do not move `timeline:session-changed`, resume command execution, Status default, approval audit, or executable lifecycle controls in the same commit.

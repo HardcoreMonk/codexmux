@@ -63,7 +63,9 @@ This allows Phase 4 to verify worker watcher behavior under live load before any
 
 ### Default Promotion
 
-Do not enable default in this slice. `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default` remains a follow-up. Default promotion requires:
+Do not enable default in this slice. A later HTTP default-read slice may route legacy `/api/timeline/*`
+read URLs through Timeline Worker commands while keeping `/api/timeline` WebSocket legacy-owned.
+Full WebSocket default promotion requires:
 
 - Shadow live append smoke passing.
 - Android foreground reconnect timeline smoke passing.

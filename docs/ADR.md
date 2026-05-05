@@ -47,6 +47,10 @@
   Timeline Worker는 read-only foundation으로 먼저 들어가며 session list, older entry,
   message count command를 typed IPC로 처리한다. Production timeline WebSocket의 file
   watch/live append/resume 경로는 별도 cutover 전까지 기존 server module에 남긴다.
+  `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`에서는 legacy HTTP read routes
+  (`/api/timeline/sessions`, `/api/timeline/entries`, `/api/timeline/message-counts`)가
+  내부적으로 Supervisor의 Timeline Worker read command를 호출하지만, `/api/timeline`
+  WebSocket은 session-changed/resume ownership cutover 전까지 legacy server module에 남긴다.
   Status Worker는 policy foundation으로 먼저 들어가며 hook/Codex 상태 전이와 notification
   gating을 typed IPC로 처리한다. Production status polling/WebSocket/notification write는
   별도 cutover 전까지 기존 `StatusManager`에 남긴다.

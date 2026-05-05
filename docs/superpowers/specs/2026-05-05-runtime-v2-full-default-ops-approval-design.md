@@ -8,7 +8,7 @@ runtime v2를 production 기본 경로로 완성하되 terminal/storage, timelin
 
 - Terminal v2는 `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=new-tabs`로 live enabled다.
 - Storage v2는 `CODEXMUX_RUNTIME_STORAGE_V2_MODE=default`로 live enabled다.
-- Timeline v2는 read-only worker/API foundation과 shadow compare smoke까지 완료했고 live WebSocket watcher ownership은 legacy다.
+- Timeline v2는 read-only worker/API foundation, shadow compare smoke, live shadow smoke까지 완료했다. `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`는 legacy HTTP read URL을 유지한 채 session list, older entries, message counts를 Timeline Worker read command로 route한다. live WebSocket watcher/session-changed/resume ownership은 legacy다.
 - Status v2는 reducer/policy shadow compare까지 완료했고 polling, ack/dismiss, Web Push, session history side effect ownership은 legacy다.
 - 2026-05-05 14:20 KST runtime v2 observation은 운영자 승인 closeout으로 완료 처리했다. 원래 clock gate인 2026-05-06 01:42 KST 이전 closeout이므로 elapsed-time pass가 아니라 operator-approved closeout이다.
 
@@ -23,7 +23,8 @@ Scope:
 - Worker service에 live file watcher lifecycle을 추가한다.
 - Supervisor에는 timeline subscription command/event boundary를 추가한다.
 - Server WebSocket은 `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=shadow`에서 legacy response를 계속 client에 보내고 v2 worker output을 shadow compare/counter로만 기록한다.
-- `default` mode는 shadow smoke와 Android foreground reconnect evidence가 닫힌 뒤 별도 commit에서 켠다.
+- HTTP default-read는 shadow/live-shadow evidence 뒤 별도 slice에서 켠다.
+- WebSocket default는 session-changed/resume ownership과 Android foreground reconnect evidence가 닫힌 뒤 별도 commit에서 켠다.
 
 Non-goals:
 
@@ -114,8 +115,9 @@ Scope:
 
 1. Close observation docs and snapshot evidence.
 2. Implement Phase 4 Timeline v2 live shadow.
-3. Promote Timeline v2 to default only after shadow evidence and rollback smoke.
-4. Implement Phase 5 Status v2 side-effect shadow.
-5. Promote Status v2 to default only after notification/Web Push/session history evidence.
-6. Run measured perf tuning and approval workflow high-grade slices independently.
-7. Spec executable lifecycle control UI before any systemd/deploy action button.
+3. Promote Timeline v2 HTTP reads to default after shadow evidence, while keeping WebSocket ownership legacy.
+4. Promote Timeline v2 WebSocket only after session-changed/resume evidence and rollback smoke.
+5. Implement Phase 5 Status v2 side-effect shadow.
+6. Promote Status v2 to default only after notification/Web Push/session history evidence.
+7. Run measured perf tuning and approval workflow high-grade slices independently.
+8. Spec executable lifecycle control UI before any systemd/deploy action button.
