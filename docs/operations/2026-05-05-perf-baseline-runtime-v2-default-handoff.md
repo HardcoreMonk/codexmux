@@ -11,9 +11,10 @@ Runtime v2 `new-tabs/default` 전환 뒤 `/api/debug/perf` baseline을 재수집
 | new-tabs/default start | 2026-05-05 01:42 KST (`2026-05-04T16:42:02Z`) |
 | baseline sample | 2026-05-05 02:21 KST |
 | 24-hour close eligibility | 2026-05-06 01:42 KST 이후 |
+| operator closeout | 2026-05-05 14:20 KST 운영자 승인 완료 처리 |
 | current health | `/api/v2/runtime/health` all workers ok, `terminalV2Mode="new-tabs"`, `storageV2Mode="default"` |
 
-The 24-hour restart-loop observation is still open.
+The original 24-hour restart-loop observation clock was still open at this baseline time. It was later closed by operator approval on 2026-05-05 14:20 KST before the original 2026-05-06 01:42 KST eligibility time, so the closeout is not an elapsed-time pass.
 
 ## Perf Snapshot
 

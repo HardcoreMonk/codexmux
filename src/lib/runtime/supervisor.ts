@@ -15,6 +15,12 @@ import type {
   IRuntimeTerminalSessionPresence,
   IRuntimeTerminalTab,
   IRuntimeTimelineEntriesBeforeInput,
+  IRuntimeTimelineLiveAppendEvent,
+  IRuntimeTimelineLiveErrorEvent,
+  IRuntimeTimelineLiveSubscribeInput,
+  IRuntimeTimelineLiveSubscribePayload,
+  IRuntimeTimelineLiveSubscribeResult,
+  IRuntimeTimelineLiveUnsubscribeResult,
   IRuntimeTimelineSessionListInput,
   IRuntimeTimelineSessionPage,
   TRuntimeTimelineEntriesBeforeResult,
@@ -48,6 +54,8 @@ export interface IRuntimeSupervisor {
   listTimelineSessions(input: IRuntimeTimelineSessionListInput): Promise<IRuntimeTimelineSessionPage>;
   readTimelineEntriesBefore(input: IRuntimeTimelineEntriesBeforeInput): Promise<TRuntimeTimelineEntriesBeforeResult>;
   getTimelineMessageCounts(jsonlPath: string): Promise<TRuntimeTimelineMessageCounts>;
+  subscribeTimelineLive(input: IRuntimeTimelineLiveSubscribeInput): Promise<IRuntimeTimelineLiveSubscribeResult>;
+  unsubscribeTimelineLive(subscriberId: string): Promise<IRuntimeTimelineLiveUnsubscribeResult>;
   reduceStatusHookState(input: TRuntimeStatusHookStateInput): Promise<TRuntimeStatusHookDecision>;
   reduceStatusCodexState(input: TRuntimeStatusCodexStateInput): Promise<TRuntimeStatusDecision>;
   evaluateStatusNotificationPolicy(input: IRuntimeStatusNotificationPolicyInput): Promise<IRuntimeStatusNotificationPolicyResult>;
@@ -101,6 +109,11 @@ interface ITerminalAttachAttempt {
   promise: Promise<void>;
 }
 
+interface ITimelineLiveSubscriber {
+  onAppend?: (event: IRuntimeTimelineLiveAppendEvent) => void;
+  onError?: (event: IRuntimeTimelineLiveErrorEvent) => void;
+}
+
 interface IRuntimeSupervisorClients {
   storage: IRuntimeWorkerClientLike;
   terminal: IRuntimeWorkerClientLike;
@@ -115,9 +128,10 @@ export interface ICreateRuntimeSupervisorForTestOptions {
   status?: IRuntimeWorkerClientLike;
   createStorageClient?: () => IRuntimeWorkerClientLike;
   createTerminalClient?: (handlers: { onEvent: (event: TRuntimeMessage) => void; onExit: () => void }) => IRuntimeWorkerClientLike;
-  createTimelineClient?: () => IRuntimeWorkerClientLike;
+  createTimelineClient?: (handlers: { onEvent: (event: TRuntimeMessage) => void; onExit: (err?: Error) => void }) => IRuntimeWorkerClientLike;
   createStatusClient?: () => IRuntimeWorkerClientLike;
   captureTerminalEventHandler?: (handler: (event: IRuntimeEvent) => void) => void;
+  captureTimelineEventHandler?: (handler: (event: IRuntimeEvent) => void) => void;
   dbPath?: string;
   runtimeReset?: boolean;
   useGlobal?: boolean;
@@ -167,6 +181,7 @@ export const createRuntimeSupervisorForTest = (
   const terminalSubscribers = new Map<string, Map<string, ITerminalSubscriber>>();
   const terminalAttachAttempts = new Map<string, ITerminalAttachAttempt>();
   const terminalDetachPromises = new Map<string, Promise<void>>();
+  const timelineLiveSubscribers = new Map<string, ITimelineLiveSubscriber>();
 
   const prepareRuntimeDbPath = (): string => {
     if (options.useGlobal && g.__ptRuntimeSupervisorPreparedDbPath) return g.__ptRuntimeSupervisorPreparedDbPath;
@@ -216,6 +231,44 @@ export const createRuntimeSupervisorForTest = (
 
   options.captureTerminalEventHandler?.(onTerminalWorkerEvent);
 
+  const onTimelineWorkerEvent = (event: IRuntimeEvent): void => {
+    const payload = event.payload as { subscriberId?: string };
+    if (event.type === 'timeline.live-append') {
+      const subscriberId = payload.subscriberId;
+      if (!subscriberId) return;
+      timelineLiveSubscribers.get(subscriberId)?.onAppend?.(event.payload as IRuntimeTimelineLiveAppendEvent);
+      return;
+    }
+    if (event.type === 'timeline.live-error') {
+      const subscriberId = payload.subscriberId;
+      if (subscriberId) {
+        timelineLiveSubscribers.get(subscriberId)?.onError?.(event.payload as IRuntimeTimelineLiveErrorEvent);
+        return;
+      }
+      timelineLiveSubscribers.forEach((subscriber) => {
+        subscriber.onError?.(event.payload as IRuntimeTimelineLiveErrorEvent);
+      });
+    }
+  };
+
+  const onTimelineWorkerMessage = (message: TRuntimeMessage): void => {
+    if (message.kind !== 'event') return;
+    onTimelineWorkerEvent(message);
+  };
+
+  const onTimelineWorkerExit = (err?: Error): void => {
+    const event: IRuntimeTimelineLiveErrorEvent = {
+      code: 'timeline-worker-exited',
+      message: err?.message ?? 'Timeline worker exited',
+    };
+    timelineLiveSubscribers.forEach((subscriber) => {
+      subscriber.onError?.(event);
+    });
+    timelineLiveSubscribers.clear();
+  };
+
+  options.captureTimelineEventHandler?.(onTimelineWorkerEvent);
+
   const createClients = (): IRuntimeSupervisorClients => ({
     storage: options.storage ?? options.createStorageClient?.() ?? new RuntimeWorkerClient({
       name: 'storage',
@@ -232,10 +285,15 @@ export const createRuntimeSupervisorForTest = (
       onEvent: onTerminalWorkerMessage,
       onExit: onTerminalWorkerExit,
     }),
-    timeline: options.timeline ?? options.createTimelineClient?.() ?? new RuntimeWorkerClient({
+    timeline: options.timeline ?? options.createTimelineClient?.({
+      onEvent: onTimelineWorkerMessage,
+      onExit: onTimelineWorkerExit,
+    }) ?? new RuntimeWorkerClient({
       name: 'timeline',
       workerName: 'timeline-worker',
       readinessCommand: 'timeline.health',
+      onEvent: onTimelineWorkerMessage,
+      onExit: onTimelineWorkerExit,
     }),
     status: options.status ?? options.createStatusClient?.() ?? new RuntimeWorkerClient({
       name: 'status',
@@ -438,6 +496,8 @@ export const createRuntimeSupervisorForTest = (
       if (options.useGlobal) g.__ptRuntimeSupervisorStartPromise = undefined;
       terminalSubscribers.clear();
       terminalAttachAttempts.clear();
+      terminalDetachPromises.clear();
+      timelineLiveSubscribers.clear();
     },
 
     async health() {
@@ -554,6 +614,41 @@ export const createRuntimeSupervisorForTest = (
       return getClients().timeline.request<{ jsonlPath: string }, TRuntimeTimelineMessageCounts>(
         'timeline.message-counts',
         { jsonlPath },
+      );
+    },
+
+    async subscribeTimelineLive(input) {
+      await this.ensureStarted();
+      const subscriberId = createRuntimeId('sub');
+      timelineLiveSubscribers.set(subscriberId, {
+        onAppend: input.onAppend,
+        onError: input.onError,
+      });
+      const payload: IRuntimeTimelineLiveSubscribePayload = {
+        subscriberId,
+        jsonlPath: input.jsonlPath,
+        sessionName: input.sessionName,
+        ...(input.sessionId ? { sessionId: input.sessionId } : {}),
+        panelType: input.panelType,
+      };
+
+      try {
+        return await getClients().timeline.request<
+          IRuntimeTimelineLiveSubscribePayload,
+          IRuntimeTimelineLiveSubscribeResult
+        >('timeline.live-subscribe', payload);
+      } catch (err) {
+        timelineLiveSubscribers.delete(subscriberId);
+        throw err;
+      }
+    },
+
+    async unsubscribeTimelineLive(subscriberId) {
+      timelineLiveSubscribers.delete(subscriberId);
+      await this.ensureStarted();
+      return getClients().timeline.request<{ subscriberId: string }, IRuntimeTimelineLiveUnsubscribeResult>(
+        'timeline.live-unsubscribe',
+        { subscriberId },
       );
     },
 

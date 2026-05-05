@@ -1,21 +1,28 @@
+import { existsSync, watch, type FSWatcher } from 'fs';
 import { stat } from 'fs/promises';
 import {
+  createRuntimeEvent,
   createRuntimeReply,
   parseRuntimeCommandPayload,
   type IRuntimeCommand,
+  type IRuntimeEvent,
   type IRuntimeReply,
 } from '@/lib/runtime/ipc';
 import { validateWorkerCommandEnvelope, type IInvalidWorkerCommand } from '@/lib/runtime/worker-command-validation';
 import { isAllowedJsonlPath } from '@/lib/path-validation';
-import { getProviderByPanelType } from '@/lib/providers';
+import { getProviderByPanelType, type IAgentProvider } from '@/lib/providers';
 import { normalizePanelType } from '@/lib/panel-type';
 import { listSessionPage } from '@/lib/session-list';
 import { countTimelineMessages, emptyMessageCounts, type IMessageCountResult } from '@/lib/timeline-message-counts';
 import type {
   IRuntimeTimelineEntriesBeforeInput,
+  IRuntimeTimelineLiveSubscribePayload,
+  IRuntimeTimelineLiveSubscribeResult,
+  IRuntimeTimelineLiveUnsubscribeResult,
   IRuntimeTimelineSessionListInput,
   TRuntimeTimelineEntriesBeforeResult,
 } from '@/lib/runtime/contracts';
+import type { IInitMeta, ITimelineEntry, ITimelineInitMessage } from '@/types/timeline';
 
 interface IMessageCountCacheEntry {
   counts: IMessageCountResult;
@@ -23,10 +30,37 @@ interface IMessageCountCacheEntry {
   size: number;
 }
 
-const CACHE_LIMIT = 100;
+interface ICreateTimelineWorkerServiceOptions {
+  sendEvent?: (event: IRuntimeEvent) => void;
+}
 
-export const createTimelineWorkerService = () => {
+interface ILiveSubscriber {
+  subscriberId: string;
+  jsonlPath: string;
+}
+
+interface ILiveWatcher {
+  watcher: FSWatcher | null;
+  jsonlPath: string;
+  offset: number;
+  pendingBuffer: string;
+  subscribers: Set<string>;
+  provider: IAgentProvider;
+  debounceTimer: ReturnType<typeof setTimeout> | null;
+  retryCount: number;
+  processing: boolean;
+  pendingChange: boolean;
+}
+
+const CACHE_LIMIT = 100;
+const MAX_INIT_ENTRIES = 64;
+const DEBOUNCE_MS = 50;
+const MAX_WATCHER_RETRIES = 3;
+
+export const createTimelineWorkerService = (options: ICreateTimelineWorkerServiceOptions = {}) => {
   const messageCountsCache = new Map<string, IMessageCountCacheEntry>();
+  const liveSubscribers = new Map<string, ILiveSubscriber>();
+  const liveWatchers = new Map<string, ILiveWatcher>();
 
   const ok = <TPayload>(command: IRuntimeCommand, payload: TPayload): IRuntimeReply<TPayload> =>
     createRuntimeReply({
@@ -64,6 +98,19 @@ export const createTimelineWorkerService = () => {
     isAllowedJsonlPath(jsonlPath)
       ? null
       : fail(command, 'timeline-jsonl-path-forbidden', 'Path not allowed');
+
+  const emitEvent = <TPayload>(
+    type: 'timeline.live-append' | 'timeline.live-error',
+    payload: TPayload,
+  ): void => {
+    options.sendEvent?.(createRuntimeEvent({
+      source: 'timeline',
+      target: 'supervisor',
+      type,
+      delivery: 'realtime',
+      payload,
+    }));
+  };
 
   const getCachedCounts = (key: string, mtime: number, size: number): IMessageCountResult | null => {
     const cached = messageCountsCache.get(key);
@@ -115,6 +162,225 @@ export const createTimelineWorkerService = () => {
     });
   };
 
+  const computeInitMeta = (
+    entries: ITimelineEntry[],
+    fileSize: number,
+    customTitle?: string,
+  ): IInitMeta => {
+    let createdAt: string | null = null;
+    let updatedAt: string | null = null;
+    let lastTimestamp = 0;
+    let userCount = 0;
+    let assistantCount = 0;
+
+    for (const entry of entries) {
+      if (!createdAt && entry.timestamp) createdAt = new Date(entry.timestamp).toISOString();
+      if (entry.timestamp) {
+        lastTimestamp = Math.max(lastTimestamp, entry.timestamp);
+        updatedAt = new Date(entry.timestamp).toISOString();
+      }
+      if (entry.type === 'user-message') userCount++;
+      else if (entry.type === 'assistant-message') assistantCount++;
+    }
+
+    return {
+      createdAt,
+      updatedAt,
+      lastTimestamp,
+      fileSize,
+      userCount,
+      assistantCount,
+      customTitle,
+    };
+  };
+
+  const removeLiveWatcher = (jsonlPath: string): void => {
+    const watcher = liveWatchers.get(jsonlPath);
+    if (!watcher) return;
+    if (watcher.watcher) watcher.watcher.close();
+    if (watcher.debounceTimer) clearTimeout(watcher.debounceTimer);
+    for (const subscriberId of watcher.subscribers) {
+      liveSubscribers.delete(subscriberId);
+    }
+    liveWatchers.delete(jsonlPath);
+  };
+
+  const removeLiveSubscriber = (subscriberId: string): boolean => {
+    const subscriber = liveSubscribers.get(subscriberId);
+    if (!subscriber) return false;
+    liveSubscribers.delete(subscriberId);
+    const watcher = liveWatchers.get(subscriber.jsonlPath);
+    watcher?.subscribers.delete(subscriberId);
+    if (watcher && watcher.subscribers.size === 0) {
+      removeLiveWatcher(subscriber.jsonlPath);
+    }
+    return true;
+  };
+
+  const emitLiveError = (watcher: ILiveWatcher, code: string, message: string): void => {
+    for (const subscriberId of watcher.subscribers) {
+      emitEvent('timeline.live-error', {
+        subscriberId,
+        jsonlPath: watcher.jsonlPath,
+        code,
+        message,
+      });
+    }
+  };
+
+  const processLiveFileChange = async (watcher: ILiveWatcher): Promise<void> => {
+    if (watcher.processing) {
+      watcher.pendingChange = true;
+      return;
+    }
+
+    watcher.processing = true;
+    try {
+      const { newEntries, newOffset, pendingBuffer } = await watcher.provider.parseIncremental(
+        watcher.jsonlPath,
+        watcher.offset,
+        watcher.pendingBuffer,
+      );
+      watcher.pendingBuffer = pendingBuffer;
+      if (newEntries.length > 0) {
+        watcher.offset = newOffset;
+        for (const subscriberId of watcher.subscribers) {
+          emitEvent('timeline.live-append', {
+            subscriberId,
+            jsonlPath: watcher.jsonlPath,
+            entries: newEntries,
+          });
+        }
+      }
+    } catch (err) {
+      emitLiveError(watcher, 'timeline-live-parse-failed', err instanceof Error ? err.message : String(err));
+    } finally {
+      watcher.processing = false;
+      if (watcher.pendingChange) {
+        watcher.pendingChange = false;
+        void processLiveFileChange(watcher);
+      }
+    }
+  };
+
+  const startLiveWatch = (watcher: ILiveWatcher): void => {
+    try {
+      watcher.watcher = watch(watcher.jsonlPath, () => {
+        if (watcher.debounceTimer) clearTimeout(watcher.debounceTimer);
+        watcher.debounceTimer = setTimeout(() => {
+          void processLiveFileChange(watcher);
+        }, DEBOUNCE_MS);
+      });
+
+      watcher.watcher.on('error', () => {
+        if (watcher.retryCount < MAX_WATCHER_RETRIES) {
+          watcher.retryCount++;
+          if (watcher.watcher) watcher.watcher.close();
+          watcher.watcher = null;
+          setTimeout(() => startLiveWatch(watcher), 1000);
+          return;
+        }
+        emitLiveError(watcher, 'watcher-failed', 'File watch failed (retries exceeded)');
+      });
+    } catch {
+      emitLiveError(watcher, 'watcher-start-failed', 'File watch failed to start');
+    }
+  };
+
+  const subscribeLive = async (
+    command: IRuntimeCommand,
+    input: IRuntimeTimelineLiveSubscribePayload,
+  ): Promise<IRuntimeReply<IRuntimeTimelineLiveSubscribeResult> | IRuntimeReply<null>> => {
+    const forbidden = assertAllowedJsonlPath(command, input.jsonlPath);
+    if (forbidden) return forbidden;
+
+    const provider = getProviderByPanelType(input.panelType);
+    if (!provider) {
+      return fail(command, 'timeline-provider-unknown', `Unknown panel type: ${input.panelType}`);
+    }
+
+    let watcher = liveWatchers.get(input.jsonlPath);
+    const isNewWatcher = !watcher;
+    if (!watcher) {
+      watcher = {
+        watcher: null,
+        jsonlPath: input.jsonlPath,
+        offset: 0,
+        pendingBuffer: '',
+        subscribers: new Set(),
+        provider,
+        debounceTimer: null,
+        retryCount: 0,
+        processing: false,
+        pendingChange: false,
+      };
+      liveWatchers.set(input.jsonlPath, watcher);
+    }
+
+    watcher.subscribers.add(input.subscriberId);
+    liveSubscribers.set(input.subscriberId, {
+      subscriberId: input.subscriberId,
+      jsonlPath: input.jsonlPath,
+    });
+
+    if (!existsSync(input.jsonlPath)) {
+      return ok(command, {
+        subscriberId: input.subscriberId,
+        subscribed: true,
+        init: {
+          type: 'timeline:init',
+          entries: [],
+          sessionId: input.sessionId ?? '',
+          totalEntries: 0,
+          startByteOffset: 0,
+          hasMore: false,
+          jsonlPath: input.jsonlPath,
+        },
+      });
+    }
+
+    let result: Awaited<ReturnType<IAgentProvider['readTailEntries']>>;
+    try {
+      result = await provider.readTailEntries(input.jsonlPath, MAX_INIT_ENTRIES);
+    } catch (err) {
+      removeLiveSubscriber(input.subscriberId);
+      throw err;
+    }
+    if (isNewWatcher) {
+      watcher.offset = result.fileSize;
+      startLiveWatch(watcher);
+    }
+
+    const init: ITimelineInitMessage = {
+      type: 'timeline:init',
+      entries: result.entries,
+      sessionId: input.sessionId ?? '',
+      totalEntries: result.entries.length,
+      startByteOffset: result.startByteOffset,
+      hasMore: result.hasMore,
+      jsonlPath: input.jsonlPath,
+      summary: result.summary,
+      meta: computeInitMeta(result.entries, result.fileSize, result.customTitle),
+    };
+
+    return ok(command, {
+      subscriberId: input.subscriberId,
+      subscribed: true,
+      init,
+    });
+  };
+
+  const unsubscribeLive = (
+    command: IRuntimeCommand,
+    subscriberId: string,
+  ): IRuntimeReply<IRuntimeTimelineLiveUnsubscribeResult> => {
+    const subscriber = liveSubscribers.get(subscriberId);
+    if (!subscriber) return ok(command, { subscriberId, unsubscribed: false });
+
+    removeLiveSubscriber(subscriberId);
+    return ok(command, { subscriberId, unsubscribed: true });
+  };
+
   const getMessageCounts = async (
     command: IRuntimeCommand,
     jsonlPath: string,
@@ -156,6 +422,14 @@ export const createTimelineWorkerService = () => {
           const input = parseRuntimeCommandPayload('timeline.message-counts', command.payload);
           return getMessageCounts(command, input.jsonlPath);
         }
+        if (command.type === 'timeline.live-subscribe') {
+          const input = parseRuntimeCommandPayload('timeline.live-subscribe', command.payload);
+          return subscribeLive(command, input);
+        }
+        if (command.type === 'timeline.live-unsubscribe') {
+          const input = parseRuntimeCommandPayload('timeline.live-unsubscribe', command.payload);
+          return unsubscribeLive(command, input.subscriberId);
+        }
         return invalidCommand(command, {
           code: 'invalid-worker-command',
           message: `Unsupported timeline command: ${command.type}`,
@@ -174,6 +448,10 @@ export const createTimelineWorkerService = () => {
 
     close(): void {
       messageCountsCache.clear();
+      for (const jsonlPath of Array.from(liveWatchers.keys())) {
+        removeLiveWatcher(jsonlPath);
+      }
+      liveSubscribers.clear();
     },
   };
 };

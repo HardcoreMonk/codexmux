@@ -1,7 +1,11 @@
 import { createRuntimeReply, parseRuntimeMessage } from '@/lib/runtime/ipc';
 import { createTimelineWorkerService } from '@/lib/runtime/timeline/worker-service';
 
-const service = createTimelineWorkerService();
+const service = createTimelineWorkerService({
+  sendEvent: (event) => {
+    process.send?.(event);
+  },
+});
 
 process.on('message', async (raw) => {
   try {

@@ -35,6 +35,11 @@ import {
   timelineConnections as connections,
 } from '@/lib/timeline-server-state';
 import { getPerfNow, recordPerfCounter, recordPerfDuration } from '@/lib/perf-metrics';
+import {
+  recordRuntimeTimelineLiveShadowAppend,
+  startRuntimeTimelineLiveShadow,
+  stopRuntimeTimelineLiveShadow,
+} from '@/lib/runtime/timeline-live-shadow';
 
 const log = createLogger('timeline');
 
@@ -203,6 +208,7 @@ const processFileChange = async (fw: IFileWatcher) => {
       if (partialReads.length > 0) {
         await Promise.all(partialReads);
       }
+      recordRuntimeTimelineLiveShadowAppend(fw.jsonlPath, newEntries);
 
       const lastMsg = findLastUserMessage(newEntries);
       if (lastMsg) {
@@ -260,6 +266,7 @@ const removeFileWatcher = (jsonlPath: string) => {
   if (fw.watcher) fw.watcher.close();
   if (fw.debounceTimer) clearTimeout(fw.debounceTimer);
   fileWatchers.delete(jsonlPath);
+  void stopRuntimeTimelineLiveShadow({ jsonlPath });
 };
 
 const readFirstTimestamp = async (filePath: string): Promise<string | null> => {
@@ -323,7 +330,23 @@ const subscribeToFile = async (
   provider: IAgentProvider,
 ): Promise<string | undefined> => {
   if (!existsSync(jsonlPath)) {
-    sendJson(ws, { type: 'timeline:init', entries: [], sessionId: sessionId ?? '', totalEntries: 0, startByteOffset: 0, hasMore: false, jsonlPath });
+    const initMessage = {
+      type: 'timeline:init' as const,
+      entries: [],
+      sessionId: sessionId ?? '',
+      totalEntries: 0,
+      startByteOffset: 0,
+      hasMore: false,
+      jsonlPath,
+    };
+    sendJson(ws, initMessage);
+    void startRuntimeTimelineLiveShadow({
+      jsonlPath,
+      sessionName,
+      sessionId,
+      panelType: provider.panelType,
+      expectedInit: initMessage,
+    });
     return undefined;
   }
 
@@ -376,7 +399,7 @@ const subscribeToFile = async (
   const resolvedSessionId = sessionId ?? extractSessionIdFromJsonlPath(jsonlPath) ?? '';
   const sessionStats = resolvedSessionId ? await readSessionStats(resolvedSessionId) : null;
 
-  sendJson(ws, {
+  const initMessage = {
     type: 'timeline:init',
     entries: result.entries,
     sessionId: resolvedSessionId,
@@ -387,6 +410,14 @@ const subscribeToFile = async (
     summary: result.summary,
     meta,
     sessionStats,
+  } as const;
+  sendJson(ws, initMessage);
+  void startRuntimeTimelineLiveShadow({
+    jsonlPath,
+    sessionName,
+    sessionId: resolvedSessionId,
+    panelType: provider.panelType,
+    expectedInit: initMessage,
   });
 
   if (!isNewWatcher) {

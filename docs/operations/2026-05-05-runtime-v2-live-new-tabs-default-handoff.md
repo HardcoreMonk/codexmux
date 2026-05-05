@@ -35,6 +35,9 @@ systemctl --user restart codexmux.service
 | `CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8122 corepack pnpm smoke:runtime-v2:target` | passed; health, workspace list, attach/stdin/stdout/resize, web stdin heartbeat, fresh reattach, fanout, backpressure close, tab delete, deleted-session rejection, workspace delete |
 | rollback window canary | 30-second interval x 6; mode stayed `new-tabs/default`, worker restart/timeout/failure counters stayed 0, service `NRestarts=0` |
 | final warning journal | no warning-or-higher entries in the final 5-minute window |
+| operator closeout | 2026-05-05 14:20 KST, all workers ok, `terminalV2Mode="new-tabs"`, `storageV2Mode="default"`, worker restart/timeout/failure counters 0, service active/running, `NRestarts=0`, warning-or-higher journal empty since the latest deploy restart |
+
+The original 24-hour close eligibility was 2026-05-06 01:42 KST. The 2026-05-05 14:20 KST closeout is therefore an operator-approved closeout, not an elapsed-time pass.
 
 ## Rollback
 
@@ -57,5 +60,5 @@ Expected rollback health: `storageV2Mode="write"`, `terminalV2Mode="off"`. Legac
 
 ## Remaining Gates
 
-- Keep observing worker counters and warning journal for the 24-hour restart-loop window.
+- Optional extended canary can keep watching worker counters and warning journal, but the required observation work is closed by operator approval.
 - Timeline/status remain off and must follow Phase 4/5 gates separately.

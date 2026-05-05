@@ -3,6 +3,7 @@ import os from 'os';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createRuntimeCommand } from '@/lib/runtime/ipc';
+import type { IRuntimeEvent } from '@/lib/runtime/ipc';
 import { createTimelineWorkerService } from '@/lib/runtime/timeline/worker-service';
 
 let tempDir: string;
@@ -17,6 +18,16 @@ const command = (type: string, payload: unknown = {}) => createRuntimeCommand({
 });
 
 const line = (value: unknown): string => JSON.stringify(value);
+
+const waitFor = async <T>(fn: () => T | null | undefined | false, timeoutMs = 1500): Promise<T> => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const result = fn();
+    if (result) return result;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error('condition timed out');
+};
 
 describe('timeline worker service', () => {
   beforeEach(async () => {
@@ -108,5 +119,55 @@ describe('timeline worker service', () => {
       code: 'timeline-jsonl-path-forbidden',
       retryable: false,
     });
+  });
+
+  it('subscribes to live JSONL appends and emits sanitized append events', async () => {
+    const events: IRuntimeEvent[] = [];
+    const service = createTimelineWorkerService({ sendEvent: (event) => events.push(event) });
+
+    const reply = await service.handleCommand(command('timeline.live-subscribe', {
+      subscriberId: 'tlsub-a',
+      jsonlPath,
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      sessionId: 'session-a',
+      panelType: 'codex',
+    }));
+
+    expect(reply.ok).toBe(true);
+    expect(reply.payload).toMatchObject({
+      subscriberId: 'tlsub-a',
+      subscribed: true,
+      init: {
+        type: 'timeline:init',
+        sessionId: 'session-a',
+        totalEntries: 3,
+        hasMore: false,
+      },
+    });
+
+    await fs.appendFile(jsonlPath, `\n${line({
+      type: 'event_msg',
+      timestamp: '2026-05-03T01:00:03.000Z',
+      payload: { type: 'user_message', message: 'Second prompt' },
+    })}\n`, 'utf-8');
+
+    const append = await waitFor(() => events.find((event) => event.type === 'timeline.live-append'));
+    expect(append).toMatchObject({
+      source: 'timeline',
+      target: 'supervisor',
+      delivery: 'realtime',
+      payload: {
+        subscriberId: 'tlsub-a',
+        jsonlPath,
+        entries: [{ type: 'user-message' }],
+      },
+    });
+
+    const unsubscribe = await service.handleCommand(command('timeline.live-unsubscribe', {
+      subscriberId: 'tlsub-a',
+    }));
+    expect(unsubscribe.ok).toBe(true);
+    expect(unsubscribe.payload).toEqual({ subscriberId: 'tlsub-a', unsubscribed: true });
+    service.close();
   });
 });

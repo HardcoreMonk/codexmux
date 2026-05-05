@@ -20,3 +20,11 @@ export const shouldUseRuntimeTimelineV2Live = ({
   if (!runtimeV2Enabled) return false;
   return parseRuntimeTimelineV2Mode(timelineMode) === 'default';
 };
+
+export const shouldRunRuntimeTimelineV2Shadow = ({
+  runtimeV2Enabled = process.env.CODEXMUX_RUNTIME_V2 === '1',
+  timelineMode = process.env.CODEXMUX_RUNTIME_TIMELINE_V2_MODE,
+}: IRuntimeTimelineV2ModeOptions = {}): boolean => {
+  if (!runtimeV2Enabled) return false;
+  return parseRuntimeTimelineV2Mode(timelineMode) === 'shadow';
+};

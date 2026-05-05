@@ -38,5 +38,5 @@ P2 terminal gate evidence를 현재 코드 기준으로 재확인하고, P3 stor
 ## Remaining Gates
 
 - Production storage mode must stay `write` until a default rollout and rollback window are explicitly scheduled. This was completed later on 2026-05-05 in `2026-05-05-runtime-v2-live-new-tabs-default-handoff.md`.
-- Do not mark P2 fully closed until the 24-hour runtime worker restart-loop observation is recorded.
+- The 24-hour runtime worker restart-loop observation was recorded later as a 2026-05-05 14:20 KST operator-approved closeout in `2026-05-05-runtime-v2-observation-closeout.md`.
 - Timeline/status cutovers remain separate Phase 4/5 work, not part of this P3 storage handoff.

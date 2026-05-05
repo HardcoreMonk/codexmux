@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  compareRuntimeTimelineAppend,
   compareRuntimeTimelineEntries,
+  compareRuntimeTimelineInit,
   compareRuntimeTimelineMessageCounts,
 } from '@/lib/runtime/timeline-shadow-compare';
 
@@ -53,5 +55,55 @@ describe('runtime v2 timeline shadow compare', () => {
       ],
     });
     expect(JSON.stringify(result)).not.toContain('secret');
+  });
+
+  it('compares append event metadata without exposing content', () => {
+    const result = compareRuntimeTimelineAppend(
+      [
+        { id: 'a', type: 'user-message', timestamp: 1, text: 'secret prompt' },
+        { id: 'b', type: 'assistant-message', timestamp: 2, markdown: 'secret answer' },
+      ],
+      [
+        { id: 'c', type: 'user-message', timestamp: 1, text: 'different secret' },
+        { id: 'd', type: 'tool-call', timestamp: 2, toolUseId: 'tool-a', toolName: 'Bash', summary: 'secret', status: 'success' },
+      ],
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      mismatches: [
+        { type: 'entry-type-mismatch', index: 1, expected: 'assistant-message', actual: 'tool-call' },
+      ],
+    });
+    expect(JSON.stringify(result)).not.toContain('secret');
+  });
+
+  it('compares init session id presence without exposing ids', () => {
+    const result = compareRuntimeTimelineInit(
+      {
+        type: 'timeline:init',
+        entries: [],
+        sessionId: 'secret-session-a',
+        totalEntries: 0,
+        startByteOffset: 0,
+        hasMore: false,
+      },
+      {
+        type: 'timeline:init',
+        entries: [],
+        sessionId: '',
+        totalEntries: 0,
+        startByteOffset: 0,
+        hasMore: false,
+      },
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      mismatches: [
+        { type: 'session-id-mismatch', expectedPresent: true, actualPresent: false },
+      ],
+    });
+    expect(JSON.stringify(result)).not.toContain('secret-session-a');
   });
 });

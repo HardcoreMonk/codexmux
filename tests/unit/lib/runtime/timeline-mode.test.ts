@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getRuntimeTimelineV2Mode,
   parseRuntimeTimelineV2Mode,
+  shouldRunRuntimeTimelineV2Shadow,
   shouldUseRuntimeTimelineV2Live,
 } from '@/lib/runtime/timeline-mode';
 
@@ -25,6 +26,21 @@ describe('runtime timeline v2 mode', () => {
     expect(shouldUseRuntimeTimelineV2Live({
       runtimeV2Enabled: false,
       timelineMode: 'default',
+    })).toBe(false);
+  });
+
+  it('runs shadow comparison only for runtime shadow mode', () => {
+    expect(shouldRunRuntimeTimelineV2Shadow({
+      runtimeV2Enabled: true,
+      timelineMode: 'shadow',
+    })).toBe(true);
+    expect(shouldRunRuntimeTimelineV2Shadow({
+      runtimeV2Enabled: true,
+      timelineMode: 'default',
+    })).toBe(false);
+    expect(shouldRunRuntimeTimelineV2Shadow({
+      runtimeV2Enabled: false,
+      timelineMode: 'shadow',
     })).toBe(false);
   });
 

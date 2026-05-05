@@ -36,6 +36,35 @@ const timelineEntriesBeforeSchema = z.object({
   startByteOffset: z.number().int().nonnegative(),
   hasMore: z.boolean(),
 });
+const timelineInitMetaSchema = z.object({
+  createdAt: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+  lastTimestamp: z.number(),
+  fileSize: z.number().int().nonnegative(),
+  userCount: z.number().int().nonnegative(),
+  assistantCount: z.number().int().nonnegative(),
+  customTitle: z.string().optional(),
+});
+const timelineLiveInitSchema = z.object({
+  type: z.literal('timeline:init'),
+  entries: z.array(timelineEntrySchema),
+  sessionId: z.string(),
+  totalEntries: z.number().int().nonnegative(),
+  startByteOffset: z.number().int().nonnegative(),
+  hasMore: z.boolean(),
+  jsonlPath: z.string().nullable().optional(),
+  summary: z.string().optional(),
+  meta: timelineInitMetaSchema.optional(),
+}).passthrough();
+const timelineLiveSubscribeResultSchema = z.object({
+  subscriberId: z.string().min(1),
+  subscribed: z.boolean(),
+  init: timelineLiveInitSchema,
+});
+const timelineLiveUnsubscribeResultSchema = z.object({
+  subscriberId: z.string().min(1),
+  unsubscribed: z.boolean(),
+});
 const cliStateSchema = z.union([
   z.literal('idle'),
   z.literal('busy'),
@@ -241,6 +270,27 @@ const timelineReadEntriesBeforePayloadSchema = z.object({
 const timelineMessageCountsPayloadSchema = z.object({
   jsonlPath: z.string().min(1),
 });
+const timelineLiveSubscribePayloadSchema = z.object({
+  subscriberId: z.string().min(1),
+  jsonlPath: z.string().min(1),
+  sessionName: z.string().min(1),
+  sessionId: z.string().optional(),
+  panelType: z.string().min(1),
+}).strict();
+const timelineLiveUnsubscribePayloadSchema = z.object({
+  subscriberId: z.string().min(1),
+}).strict();
+const timelineLiveAppendEventPayloadSchema = z.object({
+  subscriberId: z.string().min(1),
+  jsonlPath: z.string().min(1),
+  entries: z.array(timelineEntrySchema),
+});
+const timelineLiveErrorEventPayloadSchema = z.object({
+  subscriberId: z.string().min(1).optional(),
+  jsonlPath: z.string().min(1).optional(),
+  code: z.string().min(1),
+  message: z.string().min(1),
+});
 const statusReduceHookStatePayloadSchema = z.object({
   currentState: cliStateSchema,
   eventName: statusEventNameSchema,
@@ -291,6 +341,8 @@ export const runtimeCommandRegistry = {
   'timeline.list-sessions': { payload: timelineListSessionsPayloadSchema, reply: timelineSessionPageSchema },
   'timeline.read-entries-before': { payload: timelineReadEntriesBeforePayloadSchema, reply: timelineEntriesBeforeSchema },
   'timeline.message-counts': { payload: timelineMessageCountsPayloadSchema, reply: timelineMessageCountsSchema },
+  'timeline.live-subscribe': { payload: timelineLiveSubscribePayloadSchema, reply: timelineLiveSubscribeResultSchema },
+  'timeline.live-unsubscribe': { payload: timelineLiveUnsubscribePayloadSchema, reply: timelineLiveUnsubscribeResultSchema },
   'status.health': { payload: emptyPayloadSchema, reply: runtimeHealthReplySchema },
   'status.reduce-hook-state': { payload: statusReduceHookStatePayloadSchema, reply: statusHookDecisionSchema },
   'status.reduce-codex-state': { payload: statusReduceCodexStatePayloadSchema, reply: statusDecisionSchema },
@@ -309,6 +361,18 @@ export const runtimeEventRegistry = {
     target: 'supervisor',
     delivery: 'realtime',
     payload: terminalBackpressureEventPayloadSchema,
+  },
+  'timeline.live-append': {
+    source: 'timeline',
+    target: 'supervisor',
+    delivery: 'realtime',
+    payload: timelineLiveAppendEventPayloadSchema,
+  },
+  'timeline.live-error': {
+    source: 'timeline',
+    target: 'supervisor',
+    delivery: 'realtime',
+    payload: timelineLiveErrorEventPayloadSchema,
   },
 } as const satisfies Record<string, {
   source: string;

@@ -1,7 +1,8 @@
 import type { IMessageCountResult } from '@/lib/timeline-message-counts';
+import type { ITimelineEntry, ITimelineInitMessage } from '@/types/timeline';
 
 interface ITimelineEntriesResult {
-  entries: Array<{ type?: unknown } & Record<string, unknown>>;
+  entries: unknown[];
   startByteOffset: number;
   hasMore: boolean;
 }
@@ -30,6 +31,11 @@ export type TRuntimeTimelineShadowMismatch =
       index: number;
       expected: string;
       actual: string;
+    }
+  | {
+      type: 'session-id-mismatch';
+      expectedPresent: boolean;
+      actualPresent: boolean;
     };
 
 export interface IRuntimeTimelineShadowCompareResult {
@@ -80,8 +86,11 @@ export const compareRuntimeTimelineMessageCounts = (
   return { ok: mismatches.length === 0, mismatches };
 };
 
-const entryType = (entry: { type?: unknown }): string =>
-  typeof entry.type === 'string' ? entry.type : 'unknown';
+const entryType = (entry: unknown): string => {
+  if (!entry || typeof entry !== 'object' || !('type' in entry)) return 'unknown';
+  const type = (entry as { type?: unknown }).type;
+  return typeof type === 'string' ? type : 'unknown';
+};
 
 export const compareRuntimeTimelineEntries = (
   expected: ITimelineEntriesResult,
@@ -127,4 +136,39 @@ export const compareRuntimeTimelineEntries = (
   }
 
   return { ok: mismatches.length === 0, mismatches };
+};
+
+export const compareRuntimeTimelineAppend = (
+  expected: ITimelineEntry[],
+  actual: ITimelineEntry[],
+): IRuntimeTimelineShadowCompareResult =>
+  compareRuntimeTimelineEntries(
+    { entries: expected, startByteOffset: 0, hasMore: false },
+    { entries: actual, startByteOffset: 0, hasMore: false },
+  );
+
+export const compareRuntimeTimelineInit = (
+  expected: ITimelineInitMessage,
+  actual: ITimelineInitMessage,
+): IRuntimeTimelineShadowCompareResult => {
+  const result = compareRuntimeTimelineEntries(
+    {
+      entries: expected.entries,
+      startByteOffset: expected.startByteOffset,
+      hasMore: expected.hasMore,
+    },
+    {
+      entries: actual.entries,
+      startByteOffset: actual.startByteOffset,
+      hasMore: actual.hasMore,
+    },
+  );
+  if (expected.sessionId !== actual.sessionId) {
+    result.mismatches.push({
+      type: 'session-id-mismatch',
+      expectedPresent: expected.sessionId.length > 0,
+      actualPresent: actual.sessionId.length > 0,
+    });
+  }
+  return { ok: result.mismatches.length === 0, mismatches: result.mismatches };
 };

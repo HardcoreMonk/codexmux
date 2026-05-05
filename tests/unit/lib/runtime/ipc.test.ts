@@ -177,6 +177,32 @@ describe('runtime ipc', () => {
       pendingBytes: -1,
       maxPendingStdoutBytes: 2048,
     })).toThrow(/Invalid runtime IPC event/);
+
+    expect(runtimeEventRegistry['timeline.live-append']).toMatchObject({
+      source: 'timeline',
+      target: 'supervisor',
+      delivery: 'realtime',
+    });
+
+    expect(parseRuntimeEventPayload('timeline.live-append', {
+      subscriberId: 'tlsub-a',
+      jsonlPath: `${process.env.HOME}/.codex/sessions/session.jsonl`,
+      entries: [{ id: 'entry-a', type: 'user-message', timestamp: 1 }],
+    })).toEqual({
+      subscriberId: 'tlsub-a',
+      jsonlPath: `${process.env.HOME}/.codex/sessions/session.jsonl`,
+      entries: [{ id: 'entry-a', type: 'user-message', timestamp: 1 }],
+    });
+
+    expect(parseRuntimeEventPayload('timeline.live-error', {
+      subscriberId: 'tlsub-a',
+      jsonlPath: `${process.env.HOME}/.codex/sessions/session.jsonl`,
+      code: 'watcher-failed',
+      message: 'File watch failed',
+    })).toMatchObject({
+      subscriberId: 'tlsub-a',
+      code: 'watcher-failed',
+    });
   });
 
   it('validates registered event constructors before returning', () => {
@@ -196,6 +222,19 @@ describe('runtime ipc', () => {
       type: 'terminal.stdout',
       delivery: 'realtime',
       payload: { sessionName: 'rtv2-ws-a-pane-b-tab-c', data: 'hello' },
+    })).toThrow(/Invalid runtime IPC event/);
+
+    expect(() => createRuntimeEvent({
+      id: 'evt-3',
+      source: 'terminal',
+      target: 'supervisor',
+      type: 'timeline.live-append',
+      delivery: 'realtime',
+      payload: {
+        subscriberId: 'tlsub-a',
+        jsonlPath: `${process.env.HOME}/.codex/sessions/session.jsonl`,
+        entries: [],
+      },
     })).toThrow(/Invalid runtime IPC event/);
   });
 
@@ -239,6 +278,24 @@ describe('runtime ipc', () => {
       source: 'remote',
       sourceId: 'win11',
     })).toThrow(/Invalid runtime IPC payload/);
+
+    expect(parseRuntimeCommandPayload('timeline.live-subscribe', {
+      subscriberId: 'tlsub-a',
+      jsonlPath: `${process.env.HOME}/.codex/sessions/session.jsonl`,
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      sessionId: 'session-a',
+      panelType: 'codex',
+    })).toEqual({
+      subscriberId: 'tlsub-a',
+      jsonlPath: `${process.env.HOME}/.codex/sessions/session.jsonl`,
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      sessionId: 'session-a',
+      panelType: 'codex',
+    });
+
+    expect(parseRuntimeCommandPayload('timeline.live-unsubscribe', {
+      subscriberId: 'tlsub-a',
+    })).toEqual({ subscriberId: 'tlsub-a' });
 
     for (const oversized of [
       { sessionName: 'rtv2-ws-a-pane-b-tab-c', cols: 501, rows: 30 },
