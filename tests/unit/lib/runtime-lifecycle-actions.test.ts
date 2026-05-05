@@ -18,11 +18,13 @@ describe('runtime lifecycle actions', () => {
   });
 
   it('runs only allowlisted actions with fixed argv and writes sanitized audit', async () => {
-    const executed: Array<{ command: string; args: string[] }> = [];
+    const appDir = path.join(tempHome, 'checkout');
+    vi.stubEnv('__CMUX_APP_DIR', appDir);
+    const executed: Array<{ command: string; args: string[]; cwd: string }> = [];
     const { createLifecycleActionService } = await import('@/lib/runtime/lifecycle-actions');
     const service = createLifecycleActionService({
-      execute: async (command, args) => {
-        executed.push({ command, args });
+      execute: async (command, args, options) => {
+        executed.push({ command, args, cwd: options.cwd });
         return { exitCode: 0 };
       },
     });
@@ -31,7 +33,11 @@ describe('runtime lifecycle actions', () => {
 
     expect(result.ok).toBe(true);
     expect(executed).toEqual([
-      { command: 'corepack', args: ['pnpm', 'smoke:runtime-v2:phase6-default-gate'] },
+      {
+        command: 'corepack',
+        args: ['pnpm', 'smoke:runtime-v2:phase6-default-gate'],
+        cwd: appDir,
+      },
     ]);
     const events = await service.readAuditEvents({ limit: 10 });
     expect(events[0]).toMatchObject({
@@ -85,7 +91,7 @@ describe('runtime lifecycle actions', () => {
     });
   });
 
-  it('sanitizes failed action errors before persisting them', async () => {
+  it('stores only a sanitized failure label when action execution throws', async () => {
     const { createLifecycleActionService } = await import('@/lib/runtime/lifecycle-actions');
     const service = createLifecycleActionService({
       execute: async () => {
@@ -97,11 +103,35 @@ describe('runtime lifecycle actions', () => {
     const raw = await fs.readFile(path.join(tempHome, '.codexmux', 'lifecycle-actions.jsonl'), 'utf-8');
 
     expect(result.ok).toBe(false);
+    expect(result.event.error).toBe('action-execution-failed');
     expect(raw).not.toContain('/data/projects/secret');
     expect(raw).not.toContain('secret-token');
     expect(raw).not.toContain('rtv2-secret');
-    expect(raw).toContain('[path]');
-    expect(raw).toContain('[secret]');
-    expect(raw).toContain('[runtime-session]');
+  });
+
+  it('does not persist command output from exec failures', async () => {
+    const { createLifecycleActionService } = await import('@/lib/runtime/lifecycle-actions');
+    const service = createLifecycleActionService({
+      execute: async () => {
+        const err = new Error([
+          'Command failed: corepack pnpm deploy:local',
+          'sh: 1: next: not found',
+          'cwd /data/projects/secret',
+          'x-cmux-token leaked-token',
+        ].join('\n')) as Error & { code: number };
+        err.code = 1;
+        throw err;
+      },
+    });
+
+    const result = await service.runAction({ actionId: 'deploy-local', confirmation: 'deploy local' });
+    const raw = await fs.readFile(path.join(tempHome, '.codexmux', 'lifecycle-actions.jsonl'), 'utf-8');
+
+    expect(result.ok).toBe(false);
+    expect(result.event.error).toBe('exit-code-1');
+    expect(raw).not.toContain('Command failed');
+    expect(raw).not.toContain('next: not found');
+    expect(raw).not.toContain('/data/projects/secret');
+    expect(raw).not.toContain('leaked-token');
   });
 });

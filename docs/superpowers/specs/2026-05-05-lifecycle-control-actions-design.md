@@ -29,15 +29,15 @@ rollback runbook remains copy-only.
 - `restart-service` and `deploy-local` require an exact confirmation phrase.
 - Actions use `execFile`/argument arrays, not shell strings.
 - Output is not returned to the UI or persisted.
-- Failures are represented by status, exit code, duration, and a sanitized error
-  class/message.
+- Failures are represented by status, exit code, duration, and a sanitized
+  failure label.
 
 ## Audit
 
 Durable audit file: `~/.codexmux/lifecycle-actions.jsonl`.
 
 Each record stores action id, lifecycle status, timestamps, duration, exit code,
-and sanitized failure text. It does not store stdout/stderr, environment, cwd,
+and sanitized failure label. It does not store stdout/stderr, environment, cwd,
 token, prompt, terminal output, JSONL path, or session name.
 
 ## UI

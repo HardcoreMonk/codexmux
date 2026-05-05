@@ -91,8 +91,26 @@ const getHomeDir = (): string =>
 const getAuditFilePath = (): string =>
   path.join(getHomeDir(), '.codexmux', 'lifecycle-actions.jsonl');
 
+const getActionCwd = (): string =>
+  process.env.__CMUX_APP_DIR || process.env.INIT_CWD || process.cwd();
+
 const sanitizeError = (value: unknown): string =>
   sanitizeLifecycleDiagnosticText(value instanceof Error ? value.message : String(value));
+
+const getExitCode = (value: unknown): number | null => {
+  const code = (value as { code?: unknown }).code;
+  return typeof code === 'number' ? code : null;
+};
+
+const getExecutionFailureLabel = (value: unknown): string => {
+  const exitCode = getExitCode(value);
+  if (exitCode !== null) return `exit-code-${exitCode}`;
+  const signal = (value as { signal?: unknown }).signal;
+  if (typeof signal === 'string') return `signal-${signal}`;
+  const code = (value as { code?: unknown }).code;
+  if (typeof code === 'string') return code;
+  return 'action-execution-failed';
+};
 
 const createEvent = ({
   actionId,
@@ -208,7 +226,7 @@ export const createLifecycleActionService = (
       await appendEvent(runningEvent);
 
       try {
-        const result = await execute(definition.command, definition.args, { cwd: process.cwd() });
+        const result = await execute(definition.command, definition.args, { cwd: getActionCwd() });
         const finishedAt = new Date().toISOString();
         const event = createEvent({
           actionId: definition.id,
@@ -222,16 +240,15 @@ export const createLifecycleActionService = (
         await appendEvent(event);
         return { ok: event.status === 'succeeded', event };
       } catch (err) {
+        const exitCode = getExitCode(err);
         const event = createEvent({
           actionId: definition.id,
           status: 'failed',
           startedAt,
           finishedAt: new Date().toISOString(),
           durationMs: Date.now() - startedMs,
-          exitCode: typeof (err as { code?: unknown }).code === 'number'
-            ? (err as { code: number }).code
-            : null,
-          error: sanitizeError(err),
+          exitCode,
+          error: getExecutionFailureLabel(err),
         });
         await appendEvent(event);
         return { ok: false, event };

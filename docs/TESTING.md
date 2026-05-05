@@ -315,7 +315,7 @@ terminal output 원문을 노출하지 않는지 함께 확인한다.
 Lifecycle action API는 command text를 받지 않고 `phase6-gate`, `restart-service`,
 `deploy-local` action id만 허용한다. `restart-service`와 `deploy-local`은 각각
 `restart codexmux.service`, `deploy local` exact confirmation이 필요하다. Audit은
-`~/.codexmux/lifecycle-actions.jsonl`에 sanitized status event만 남기며 stdout/stderr,
+`~/.codexmux/lifecycle-actions.jsonl`에 sanitized status event와 failure label만 남기며 stdout/stderr,
 env, cwd, prompt, terminal output은 저장하지 않는다. Rollback flag mutation과 systemd
 drop-in 편집은 아직 UI action이 아니며 copy-only runbook으로 유지한다.
 
