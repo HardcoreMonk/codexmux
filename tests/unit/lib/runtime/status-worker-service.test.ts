@@ -355,6 +355,10 @@ describe('status worker service', () => {
       agentSessionId: 'agent-a',
       workspaceName: 'Workspace',
       workspaceDir: null,
+      approvalKind: 'allow',
+      promptType: 'command',
+      riskLevel: 'medium',
+      approvalDetail: 'corepack pnpm test',
     };
 
     const reply = await service.handleCommand(command('status.send-web-push', {

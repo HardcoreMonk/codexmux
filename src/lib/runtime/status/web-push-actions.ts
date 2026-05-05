@@ -15,6 +15,7 @@ export interface IStatusWebPushPayload {
   approvalKind?: string;
   promptType?: string;
   riskLevel?: string;
+  approvalDetail?: string | null;
 }
 
 export interface IStatusSendWebPushInput {

@@ -1,6 +1,7 @@
 import { createReadStream } from 'fs';
 import readline from 'readline';
 import type { IProjectStats, ISessionStats, TPeriod } from '@/types/stats';
+import { getPerfNow, recordPerfCounter, recordPerfDuration } from '@/lib/perf-metrics';
 import { isWithinPeriod } from './period-filter';
 import { shortenCwd } from './daily-report-builder';
 import {
@@ -12,6 +13,10 @@ import {
 import { dateStringsForPeriod } from './period-filter';
 
 const CONCURRENCY_LIMIT = 10;
+const SESSION_STATS_TTL_MS = 60_000;
+
+const sessionStatsCache = new Map<TPeriod, { expiresAt: number; data: ISessionStats[] }>();
+const sessionStatsInflight = new Map<TPeriod, Promise<ISessionStats[]>>();
 
 interface IRawSessionAgg {
   sessionId: string;
@@ -350,7 +355,7 @@ export const parseTimestampsByDay = async (
   return merged;
 };
 
-export const parseAllProjects = async (period: TPeriod): Promise<IProjectStats[]> => {
+const parseSessionStatsForPeriod = async (period: TPeriod): Promise<ISessionStats[]> => {
   const targetDates = dateStringsForPeriod(period);
   const collectedFiles = await collectAgentJsonlFiles();
   const files = targetDates ? filterAgentJsonlFilesByDates(collectedFiles, targetDates) : collectedFiles;
@@ -358,39 +363,6 @@ export const parseAllProjects = async (period: TPeriod): Promise<IProjectStats[]
 
   const tasks = files.map((f) => () => parseJsonlStream(f, period));
   const allResults = await runWithConcurrency(tasks, CONCURRENCY_LIMIT);
-
-  const projectMap = new Map<string, IProjectStats>();
-
-  for (const sessions of allResults) {
-    for (const s of sessions) {
-      const existing = projectMap.get(s.project);
-      if (existing) {
-        existing.sessionCount++;
-        existing.messageCount += s.messageCount;
-        existing.totalTokens += s.totalInputTokens + s.totalOutputTokens;
-      } else {
-        projectMap.set(s.project, {
-          project: s.project,
-          sessionCount: 1,
-          messageCount: s.messageCount,
-          totalTokens: s.totalInputTokens + s.totalOutputTokens,
-        });
-      }
-    }
-  }
-
-  return Array.from(projectMap.values()).sort((a, b) => b.totalTokens - a.totalTokens);
-};
-
-export const parseAllSessions = async (period: TPeriod): Promise<ISessionStats[]> => {
-  const targetDates = dateStringsForPeriod(period);
-  const collectedFiles = await collectAgentJsonlFiles();
-  const files = targetDates ? filterAgentJsonlFilesByDates(collectedFiles, targetDates) : collectedFiles;
-  if (files.length === 0) return [];
-
-  const tasks = files.map((f) => () => parseJsonlStream(f, period));
-  const allResults = await runWithConcurrency(tasks, CONCURRENCY_LIMIT);
-
   const sessions: ISessionStats[] = [];
 
   for (const fileResults of allResults) {
@@ -408,4 +380,58 @@ export const parseAllSessions = async (period: TPeriod): Promise<ISessionStats[]
   }
 
   return sessions.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+};
+
+export const parseAllSessions = async (period: TPeriod): Promise<ISessionStats[]> => {
+  const cached = sessionStatsCache.get(period);
+  if (cached && Date.now() < cached.expiresAt) {
+    recordPerfCounter('stats.session_parse.memory_hit');
+    return cached.data;
+  }
+
+  const inflight = sessionStatsInflight.get(period);
+  if (inflight) {
+    recordPerfCounter('stats.session_parse.inflight_join');
+    return inflight;
+  }
+
+  recordPerfCounter('stats.session_parse.miss');
+  const startedAt = getPerfNow();
+  const task = parseSessionStatsForPeriod(period)
+    .then((data) => {
+      sessionStatsCache.set(period, { data, expiresAt: Date.now() + SESSION_STATS_TTL_MS });
+      return data;
+    })
+    .finally(() => {
+      recordPerfDuration(`stats.session_parse.${period}`, getPerfNow() - startedAt);
+      sessionStatsInflight.delete(period);
+    });
+
+  sessionStatsInflight.set(period, task);
+  return task;
+};
+
+export const parseAllProjects = async (period: TPeriod): Promise<IProjectStats[]> => {
+  const sessions = await parseAllSessions(period);
+  if (sessions.length === 0) return [];
+
+  const projectMap = new Map<string, IProjectStats>();
+
+  for (const s of sessions) {
+    const existing = projectMap.get(s.project);
+    if (existing) {
+      existing.sessionCount++;
+      existing.messageCount += s.messageCount;
+      existing.totalTokens += s.totalTokens;
+    } else {
+      projectMap.set(s.project, {
+        project: s.project,
+        sessionCount: 1,
+        messageCount: s.messageCount,
+        totalTokens: s.totalTokens,
+      });
+    }
+  }
+
+  return Array.from(projectMap.values()).sort((a, b) => b.totalTokens - a.totalTokens);
 };

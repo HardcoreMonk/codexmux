@@ -131,9 +131,9 @@ P0/P1/P2/P3 후속 상태:
 - P1 완료: Android foreground/recovery/runtime v2 smoke, app info/native restart smoke, Electron attach/runtime v2 smoke, M1 macOS `0.4.1` DMG/zip packaging, PWA/iPad readiness smoke, permission prompt smoke.
 - P1 남음: 자동 개발로 처리 가능한 platform smoke 항목은 없음.
 - P2 완료: runtime v2 phase2 gate, Electron/Android runtime v2 reconnect smoke, browser reconnect DOM smoke, live terminal `new-tabs` enable을 현재 코드 기준으로 확인했다.
-- P2 남음: self-hosted Android device scheduling과 macOS packaged UX artifact 자동화. Release smoke artifact foundation은 browser reconnect smoke를 release workflow artifact로 보존하고, Android/Electron smoke scripts가 같은 sanitized JSON을 local 또는 self-hosted run에서 쓸 수 있게 완료했다. runtime v2 shadow/new-tabs/default 24시간 worker restart-loop 관찰은 2026-05-05 14:20 KST에 운영자 승인 closeout으로 완료 처리했다. 원래 24시간 clock gate 종료 시각은 2026-05-06 01:42 KST였으므로 이는 elapsed-time pass가 아니라 operator-approved closeout이다.
+- P2 남음: self-hosted Android device scheduling과 macOS packaged UX artifact 자동화. Release smoke artifact foundation은 browser reconnect smoke를 release workflow artifact로 보존하고, Android/Electron smoke scripts가 같은 sanitized JSON을 local 또는 self-hosted run에서 쓸 수 있게 완료했다. 추가로 `Platform Smoke Artifacts` 수동 workflow가 browser reconnect, GitHub-hosted macOS Electron runtime v2, self-hosted Android device artifact 수집 경로를 분리했다. `smoke:ops:batch`는 browser reconnect와 선택적 PWA/runtime target check를 local evidence artifact로 묶고, iPad/Mac 실기기 항목은 `manual-required`로 표시한다. 실제 Android runner provision과 packaged Mac UX evidence는 외부 운영 검증으로 남긴다. runtime v2 shadow/new-tabs/default 24시간 worker restart-loop 관찰은 2026-05-05 14:20 KST에 운영자 승인 closeout으로 완료 처리했다. 원래 24시간 clock gate 종료 시각은 2026-05-06 01:42 KST였으므로 이는 elapsed-time pass가 아니라 operator-approved closeout이다.
 - P3 진행: storage `default` live mode로 전환했고 dry-run, backup, import, write, default-read, shadow preflight와 initial rollback window canary를 통과했다. Android release signing/AAB는 로컬 keystore 권한 보정, fresh AAB build, `smoke:android:release-aab` 검증 자동화까지 완료했다. Perf snapshot baseline은 runtime v2 default 전환 뒤 2026-05-05 02:21 KST에 재수집했다. Approval queue 1차와 metadata slice는 notification panel에서 pending permission prompt를 직접 처리하고 command/file/permission/resume/conversation type, approval kind, risk badge를 표시하는 경로까지 구현했다. `vitest`, `smoke:permission`, `tsc`, `lint`, `build`와 실제 Codex CLI permission prompt live smoke를 통과했다.
-- P3 남음: 필요 시 rollback drill, 측정 기반 perf tuning. Lifecycle control은 allowlisted action 1차까지 완료했고, rollback flag mutation/systemd drop-in 편집은 별도 spec으로 남긴다. Timeline Phase 4 WebSocket default ownership과 Status Phase 5 live bridge는 temp smoke 기준 완료됐고, Phase 6 gate와 code fallback default 전환은 진행 중이다.
+- P3 남음: 필요 시 rollback drill, 측정 기반 perf tuning. Lifecycle control은 allowlisted action 1차까지 완료했고, `corepack pnpm lifecycle:rollback-dry-run`은 현재 drop-in과 rollback 명령을 mutation 없이 JSON으로 출력한다. rollback flag mutation/systemd drop-in 편집은 별도 spec으로 남긴다. Timeline Phase 4 WebSocket default ownership과 Status Phase 5 live bridge는 temp smoke 기준 완료됐고, Phase 6 gate와 code fallback default 전환은 진행 중이다.
 
 1. 장시간 Codex smoke test: 새 tab 생성, prompt 실행, tool call과 reasoning summary 표시, 상태 전이 확인.
 2. permission/input prompt smoke test: `corepack pnpm smoke:permission`으로 pane capture 기반 option parsing, inline prompt 선택, stdin 전달, `needs-input` push와 ack 후 `busy` 복귀 확인. 실제 Codex CLI permission prompt는 live tab에서 `read-only` sandbox 실패 prompt를 띄워 notification panel `No` 선택, ack 후 `busy` 복귀, denied command 미실행까지 확인한다. Resume working directory prompt는 `/api/tmux/permission-options`가 `Use session directory`/`Use current directory` 선택지를 반환하고 notification panel이 `needs-input`으로 보여주는지 확인한다. JSONL marker 없는 `Conversation interrupted` prompt는 stale `busy`가 `idle`로 풀리는지 확인한다.
@@ -169,7 +169,7 @@ P0/P1/P2/P3 후속 상태:
 - approval queue 1차는 notification panel의 `needs-input` section에서 Codex permission/input prompt 선택지를 직접 처리한다. 실제 Codex CLI permission prompt live smoke와 resume directory prompt option parsing은 통과했다.
 - approval queue metadata slice는 command/file/permission/resume/conversation type, approval kind, risk badge, sanitized command/file detail을 전역 notification panel에 표시한다. API option label은 기존 option index 선택 호환을 위해 CLI 선택지 텍스트를 유지한다.
 - approval queue push/audit slice는 Web Push 새 창 fallback을 root deep link query로 복구하고, 선택지 표시/fallback/선택 전송 성공/실패를 `~/.codexmux/approval-audit.jsonl`에 원문 없이 append한다.
-- 다음 approval workflow 단계는 mobile lock-screen copy를 status-owned parsed metadata와 연결할지 별도 spec으로 검토하는 것이다.
+- mobile lock-screen copy는 pane recovery가 status entry에 저장한 sanitized `approvalPromptMetadata`를 사용해 command/file/permission type, risk, concise detail을 표시한다. metadata가 없으면 기존 last user message/tab name fallback을 유지한다.
 - pane capture 실패 시 terminal fallback 안내 개선.
 
 ### App-server adapter
@@ -193,11 +193,11 @@ P0/P1/P2/P3 후속 상태:
 - provider를 추가할 때는 `IAgentProvider` contract test와 JSONL fixture를 먼저 추가한다.
 - runtime v2 production 전환은 `docs/RUNTIME-V2-CUTOVER.md`의 surface별 flag와 rollback gate를 따른다. terminal, storage, timeline, status를 한 release에서 동시에 기본값으로 전환하지 않는다.
 - runtime v2 parity는 `docs/RUNTIME-V2-PARITY.md`의 surface row별 owner, migration, test, rollback을 먼저 채운 뒤 surface mode를 바꾼다.
-- Lifecycle Control은 evidence surface와 allowlisted action launcher 1차를 제공한다. 현재 UI 실행 범위는 Phase 6 gate, `codexmux.service` restart, local deploy로 제한되며 audit은 sanitized JSONL status event만 남긴다. systemd drop-in 수정, runtime flag mutation, rollback drill 자동화는 별도 spec으로 남긴다.
+- Lifecycle Control은 evidence surface와 allowlisted action launcher 1차를 제공한다. 현재 UI 실행 범위는 Phase 6 gate, `codexmux.service` restart, local deploy로 제한되며 audit은 sanitized JSONL status event만 남긴다. `lifecycle:rollback-dry-run`은 현재 drop-in과 rollback 명령을 read-only로 보여준다. systemd drop-in 수정, runtime flag mutation, rollback drill 자동화는 별도 spec으로 남긴다.
 
 ### Performance
 
-- `/api/debug/perf` snapshot을 배포 환경에서 수집해 timeline render, status poll, diff, stats 중 실제 병목을 먼저 확인한다. 2026-05-06 측정에서는 stats cold cache build가 약 3.17초로 가장 컸고, stats JSONL parser/cache에 경로 날짜 기반 file filtering을 적용했다.
+- `/api/debug/perf` snapshot을 배포 환경에서 수집해 timeline render, status poll, diff, stats 중 실제 병목을 먼저 확인한다. 2026-05-06 측정에서는 stats cold cache build가 약 3.17초로 가장 컸고, stats JSONL parser/cache에 경로 날짜 기반 file filtering을 적용했다. 후속으로 projects/sessions 동시 요청이 같은 parsed session summary를 공유하도록 `stats.session_parse.<period>` in-flight/cache reuse를 추가했다.
 - timeline virtualization은 scroll anchor/load-more 회귀를 막기 위해 `content-visibility`를 먼저 적용했다. 다음 단계는 긴 대화 smoke와 snapshot 결과에 따라 작은 windowed render를 별도 검증한다.
 - session meta message count는 전용 streaming helper로 분리했다. 다음 단계는 실제 긴 JSONL에서 `timeline.message_counts.read` duration과 cache hit 비율을 보고 추가 index화가 필요한지 판단한다.
 - session index는 refresh 결과가 unchanged이면 persisted file write를 건너뛴다. Phase 6 default 이후 main server는 runtime v2 timeline default에서 legacy session index startup prewarm을 건너뛰어 15초 주기 JSONL scan 중복 비용을 줄인다. Legacy/shadow/off mode와 fallback lazy initialization은 유지한다.

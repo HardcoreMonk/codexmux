@@ -326,3 +326,14 @@ Git diff와 usage stats는 큰 repo에서 비용이 크다.
 2차 작업은 full virtualization 대신 저위험 render memo/cache를 먼저 적용했다. 3차 작업은 같은 원칙으로 `content-visibility`를 먼저 검증했다. 다음 단계 후보는 snapshot과 수동 smoke에서 긴 timeline 문제가 계속 확인될 때 작은 windowed render를 별도 feature로 검증하는 것이다.
 
 4차 작업은 terminal protocol 자체를 바꾸지 않고 server stdout flush만 짧게 coalescing했다. 다음 단계에서 terminal 관련 병목을 판단할 때는 raw chunk 대비 sent message 감소율, max-buffer flush 빈도, browser 입력 지연 smoke를 같이 본다.
+
+5차 stats 작업은 `today` cold cache build에서 경로 날짜 기반 JSONL file filtering을 적용했다.
+2026-05-06 live 측정에서 `period=today` endpoints는 수십 ms대로 줄었지만, `period=7d`와
+`period=all` projects/sessions/history는 여전히 초 단위였다.
+
+6차 stats 작업은 `parseAllProjects(period)`가 `parseAllSessions(period)` 결과를 재사용하도록
+period별 60초 in-process TTL과 in-flight promise를 추가했다. Dashboard처럼 projects와
+sessions endpoint가 함께 요청되는 경우 같은 JSONL session summary parse를 한 번만 수행한다.
+`/api/debug/perf`는 `stats.session_parse.<period>`, `stats.session_parse.miss`,
+`stats.session_parse.memory_hit`, `stats.session_parse.inflight_join` counter/timing으로
+재사용 여부를 노출한다. History endpoint와 `period=all` 전체 스캔 자체는 별도 병목으로 남는다.

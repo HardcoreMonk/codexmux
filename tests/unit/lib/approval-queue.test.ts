@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import enNotification from '@/../messages/en/notification.json';
 import koNotification from '@/../messages/ko/notification.json';
 import {
+  buildApprovalPushBody,
   cleanApprovalOptionLabel,
   getApprovalFallbackKey,
   getApprovalMetadataDetail,
@@ -107,5 +108,25 @@ describe('approval queue helpers', () => {
     );
     expect(getApprovalMetadataDetail(null)).toBeNull();
     expect(getApprovalMetadataDetail({ ...baseMetadata, commandPreview: null, fileHints: [] })).toBeNull();
+  });
+
+  it('builds concise lock-screen copy from approval metadata', () => {
+    const baseMetadata: IApprovalPromptMetadata = {
+      promptType: 'command',
+      approvalKind: 'allow',
+      riskLevel: 'medium',
+      commandPreview: 'corepack pnpm test',
+      fileHints: [],
+      fallbackReason: null,
+    };
+
+    expect(buildApprovalPushBody({ metadata: baseMetadata, fallbackText: 'Run tests?' })).toBe(
+      'Command approval · medium · corepack pnpm test',
+    );
+    expect(buildApprovalPushBody({
+      metadata: { ...baseMetadata, promptType: 'file', commandPreview: null, fileHints: ['server.ts', 'status.ts'] },
+      fallbackText: 'Edit files?',
+    })).toBe('File approval · medium · server.ts, status.ts');
+    expect(buildApprovalPushBody({ metadata: null, fallbackText: 'Run tests?' })).toBe('Run tests?');
   });
 });

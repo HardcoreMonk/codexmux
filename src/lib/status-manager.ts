@@ -34,6 +34,7 @@ import { createDedupeKeyStore } from '@/lib/dedupe-key-store';
 import { completionKeyFor, normalizeSessionId, resolveAgentSessionId, sessionIdFromJsonlPath } from '@/lib/status-session-mapping';
 import { shouldProcessHookEvent } from '@/lib/status-notification-policy';
 import { mergeStatusMetadata } from '@/lib/status-metadata';
+import { buildApprovalPushBody, getApprovalMetadataDetail } from '@/lib/approval-queue';
 import { forwardBridgeTraceStatusUpdate } from '@/lib/bridge-trace-forwarder';
 import { getPerfNow, recordPerfCounter, recordPerfDuration } from '@/lib/perf-metrics';
 import { getRuntimeStatusV2Mode } from '@/lib/runtime/status-mode';
@@ -936,6 +937,7 @@ export class StatusManager {
         agentSessionId: entry.agentSessionId,
         lastEvent: entry.lastEvent,
         eventSeq: entry.eventSeq,
+        approvalPromptMetadata: entry.approvalPromptMetadata,
       };
     }
     return result;
@@ -1027,6 +1029,7 @@ export class StatusManager {
     entry.cliState = newState;
     entry.readyForReviewAt = sideEffects.setReadyForReviewAt ? now : null;
     entry.busySince = sideEffects.setBusySince ? now : null;
+    if (newState !== 'needs-input') entry.approvalPromptMetadata = null;
     if (sideEffects.clearDismissedAt) entry.dismissedAt = null;
 
     if (sideEffects.saveSessionHistory) {
@@ -1238,8 +1241,9 @@ export class StatusManager {
     });
     if (!content) return { recovered: false, reason: 'capture-failed' };
 
-    const { options } = parsePermissionOptions(content);
+    const { options, metadata } = parsePermissionOptions(content);
     if (options.length === 0) return { recovered: false, reason: 'no-options' };
+    entry.approvalPromptMetadata = metadata;
 
     const now = Date.now();
     const seq = (entry.eventSeq ?? 0) + 1;
@@ -1523,6 +1527,7 @@ export class StatusManager {
       compactingSince: entry.compactingSince,
       lastEvent: entry.lastEvent,
       eventSeq: entry.eventSeq,
+      approvalPromptMetadata: entry.approvalPromptMetadata,
     };
     this.broadcast(msg, exclude);
     forwardBridgeTraceStatusUpdate(msg).catch((err) => {
@@ -1742,14 +1747,19 @@ export class StatusManager {
 
   private async sendWebPush(tabId: string, entry: ITabStatusEntry, pushType: 'review' | 'needs-input'): Promise<void> {
     const title = pushType === 'needs-input' ? 'Input Required' : 'Task Complete';
-    const body = entry.lastUserMessage?.slice(0, 100) || entry.tabName || tabId;
+    const fallbackBody = entry.lastUserMessage?.slice(0, 100) || entry.tabName || tabId;
+    const approvalPromptMetadata = pushType === 'needs-input' ? entry.approvalPromptMetadata ?? null : null;
+    const body = pushType === 'needs-input'
+      ? buildApprovalPushBody({ metadata: approvalPromptMetadata, fallbackText: fallbackBody })
+      : fallbackBody;
     const ws = (await getWorkspaces()).workspaces.find((w) => w.id === entry.workspaceId);
     const config = await getConfig();
     const approvalMetadata = pushType === 'needs-input'
       ? {
-        approvalKind: 'unknown',
-        promptType: 'unknown',
-        riskLevel: 'unknown',
+        approvalKind: approvalPromptMetadata?.approvalKind ?? 'unknown',
+        promptType: approvalPromptMetadata?.promptType ?? 'unknown',
+        riskLevel: approvalPromptMetadata?.riskLevel ?? 'unknown',
+        approvalDetail: getApprovalMetadataDetail(approvalPromptMetadata),
       }
       : {};
     const payload = {

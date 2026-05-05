@@ -150,6 +150,11 @@ curl -fsS http://127.0.0.1:8122/api/health
 
 한 번에 하나의 action만 실행된다. `restart-service`와 `deploy-local`은 요청 중인 서버 process를 재시작할 수 있으므로 브라우저 요청이 중간에 끊길 수 있다. 이 경우 `/api/health` 새로고침 또는 페이지 reload로 배포 commit과 service 상태를 다시 확인한다. 실행 기록은 `~/.codexmux/lifecycle-actions.jsonl`에 action id, status, timestamp, duration, exit code, sanitized failure label만 남기며 stdout/stderr, env, cwd, token, session name, prompt, terminal output은 저장하지 않는다.
 
+`corepack pnpm lifecycle:rollback-dry-run`은 현재 runtime v2 drop-in의 `CODEXMUX_RUNTIME_*`
+환경값과 rollback 시 필요한 명령을 JSON으로 출력한다. 이 명령은 파일 삭제, daemon reload,
+service restart를 실행하지 않으며 `"mutates": false`를 포함한다. 실행형 UI 범위는 여전히
+`phase6-gate`, `restart-service`, `deploy-local`로 제한된다.
+
 성능 변경 배포 후에는 인증된 session cookie 또는 `x-cmux-token`으로 `/api/debug/perf`를 확인한다. 이 endpoint는 public health check가 아니며 process memory, event loop, WebSocket, watcher, status poll, diff/stats cache 숫자만 반환한다.
 
 Runtime v2 shadow mode를 켠 뒤에는 `/api/v2/runtime/health`와 `/api/debug/perf`의 `services.runtimeWorkers`를 같이 확인한다. surface mode가 모두 `off`이면 legacy `/api/terminal`, `/api/timeline`, `/api/status`, `/api/sync`와 JSON store가 production source of truth이며, worker `restarts`, `timeouts`, `healthFailures`, `readyFailures`, `commandFailures`가 증가하지 않는지 관찰한다.

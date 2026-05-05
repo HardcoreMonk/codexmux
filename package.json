@@ -90,6 +90,8 @@
     "smoke:runtime-v2:status-shadow": "tsx scripts/smoke-runtime-v2-status-shadow.ts",
     "smoke:runtime-v2:status-default": "node scripts/smoke-runtime-v2-status-default.mjs",
     "smoke:runtime-v2:phase6-default-gate": "node scripts/smoke-runtime-v2-phase6-default-gate.mjs",
+    "smoke:ops:batch": "node scripts/ops-smoke-batch.mjs",
+    "lifecycle:rollback-dry-run": "node scripts/lifecycle-rollback-dry-run.mjs",
     "deploy:local": "node scripts/deploy-local.mjs",
     "release:patch": "node scripts/release.mjs patch",
     "release:minor": "node scripts/release.mjs minor",

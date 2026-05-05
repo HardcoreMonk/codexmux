@@ -117,6 +117,33 @@ const statusCurrentActionSchema = z.object({
   toolName: z.string().nullable(),
   summary: z.string(),
 }).strict();
+const approvalPromptMetadataSchema = z.object({
+  promptType: z.union([
+    z.literal('command'),
+    z.literal('file'),
+    z.literal('permission'),
+    z.literal('resume-directory'),
+    z.literal('conversation'),
+    z.literal('unknown'),
+  ]),
+  approvalKind: z.union([
+    z.literal('allow'),
+    z.literal('deny'),
+    z.literal('trust'),
+    z.literal('directory'),
+    z.literal('input'),
+    z.literal('unknown'),
+  ]),
+  riskLevel: z.union([
+    z.literal('low'),
+    z.literal('medium'),
+    z.literal('high'),
+    z.literal('unknown'),
+  ]),
+  commandPreview: z.string().nullable(),
+  fileHints: z.array(z.string()),
+  fallbackReason: z.null(),
+}).strict();
 const statusHookDecisionSchema = z.object({
   nextState: cliStateSchema,
   changed: z.boolean(),
@@ -452,6 +479,7 @@ const statusWebPushPayloadSchema = z.object({
   approvalKind: z.string().optional(),
   promptType: z.string().optional(),
   riskLevel: z.string().optional(),
+  approvalDetail: z.string().nullable().optional(),
 }).strict();
 const statusSendWebPushPayloadSchema = z.object({
   anyDeviceVisible: z.boolean(),
@@ -484,6 +512,7 @@ const statusClientTabStatusEntrySchema = z.object({
   compactingSince: z.number().nullable().optional(),
   lastEvent: statusLastEventSchema.nullable().optional(),
   eventSeq: z.number().int().nonnegative().optional(),
+  approvalPromptMetadata: approvalPromptMetadataSchema.nullable().optional(),
 }).strict();
 const statusLiveTabStatusEntrySchema = statusClientTabStatusEntrySchema.extend({
   tmuxSession: z.string().min(1),

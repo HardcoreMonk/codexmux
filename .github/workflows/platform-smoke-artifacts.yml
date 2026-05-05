@@ -1,0 +1,88 @@
+name: Platform Smoke Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_browser:
+        description: Run browser reconnect smoke on GitHub-hosted Ubuntu.
+        required: true
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
+      run_electron_runtime_v2:
+        description: Run Electron runtime v2 smoke on GitHub-hosted macOS.
+        required: true
+        default: 'false'
+        type: choice
+        options: ['true', 'false']
+      run_android_device:
+        description: Run Android device smokes on a self-hosted codexmux Android runner.
+        required: true
+        default: 'false'
+        type: choice
+        options: ['true', 'false']
+
+concurrency:
+  group: platform-smoke-artifacts-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  browser-reconnect:
+    if: inputs.run_browser == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install chromium
+      - run: CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke pnpm smoke:browser-reconnect
+      - uses: actions/upload-artifact@v7
+        with:
+          name: smoke-browser-reconnect
+          path: artifacts/smoke/*.json
+          if-no-files-found: error
+          retention-days: 14
+
+  electron-runtime-v2:
+    if: inputs.run_electron_runtime_v2 == 'true'
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke pnpm smoke:electron:runtime-v2
+      - uses: actions/upload-artifact@v7
+        with:
+          name: smoke-electron-runtime-v2
+          path: artifacts/smoke/*.json
+          if-no-files-found: error
+          retention-days: 14
+
+  android-device:
+    if: inputs.run_android_device == 'true'
+    runs-on: [self-hosted, codexmux-android]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke pnpm smoke:android:foreground
+      - run: CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke pnpm smoke:android:runtime-v2
+      - run: CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke pnpm smoke:android:timeline-foreground
+      - uses: actions/upload-artifact@v7
+        with:
+          name: smoke-android-device
+          path: artifacts/smoke/*.json
+          if-no-files-found: error
+          retention-days: 14

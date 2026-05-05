@@ -420,6 +420,26 @@ The release workflow runs `smoke:browser-reconnect` on GitHub-hosted Ubuntu and 
 `smoke-browser-reconnect`. Android and packaged Electron smoke remain manual or self-hosted
 because they require a real device or macOS app bundle context.
 
+### Platform smoke artifacts
+
+`Platform Smoke Artifacts` is a manual `workflow_dispatch` workflow for collecting smoke JSON
+outside the tag release path. Browser reconnect can run on GitHub-hosted Ubuntu. Electron runtime
+v2 can run on GitHub-hosted macOS when the runner supports Electron DevTools. Android
+foreground/runtime/timeline smokes require a self-hosted runner labeled `codexmux-android`;
+GitHub-hosted runners do not provide the required real device, ADB session, WebView DevTools
+target, or Tailscale route.
+
+Local operations batch evidence:
+
+```bash
+CODEXMUX_SMOKE_ARTIFACT_DIR=/tmp/codexmux-ops-smoke corepack pnpm smoke:ops:batch
+```
+
+The batch runs browser reconnect automatically and writes an `ops-smoke-batch` artifact. Set
+`CODEXMUX_OPS_SMOKE_PWA_URL` or `CODEXMUX_OPS_SMOKE_RUNTIME_URL` to include PWA and runtime Phase 6
+target checks. iPad long-background and Mac packaged UX rows stay `manual-required` unless real
+device/package evidence is collected outside the runner.
+
 ## Permission, Stats, Timeline
 
 ```bash

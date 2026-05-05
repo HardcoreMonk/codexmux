@@ -35,6 +35,15 @@ const APPROVAL_FALLBACK_KEYS: Record<TApprovalFallbackReason, string> = {
   'request-failed': 'approvalFallback_requestFailed',
 };
 
+const APPROVAL_PUSH_TYPE_LABELS: Record<TApprovalPromptType, string> = {
+  command: 'Command approval',
+  file: 'File approval',
+  permission: 'Permission approval',
+  'resume-directory': 'Directory approval',
+  conversation: 'Conversation choice',
+  unknown: 'Input required',
+};
+
 export const cleanApprovalOptionLabel = (label: string): string =>
   label.replace(/^\d+\.\s+/, '').trim();
 
@@ -78,4 +87,27 @@ export const getApprovalMetadataDetail = (metadata: IApprovalPromptMetadata | nu
   const visibleHints = fileHints.slice(0, 3).join(', ');
   const remainingCount = fileHints.length - 3;
   return remainingCount > 0 ? `${visibleHints} +${remainingCount}` : visibleHints;
+};
+
+export const buildApprovalPushBody = ({
+  metadata,
+  fallbackText,
+  maxLength = 120,
+}: {
+  metadata: IApprovalPromptMetadata | null;
+  fallbackText: string;
+  maxLength?: number;
+}): string => {
+  const fallback = fallbackText.trim();
+  if (!metadata || metadata.promptType === 'unknown') return fallback.slice(0, maxLength);
+
+  const detail = getApprovalMetadataDetail(metadata);
+  const parts = [
+    APPROVAL_PUSH_TYPE_LABELS[metadata.promptType],
+    metadata.riskLevel !== 'unknown' ? metadata.riskLevel : null,
+    detail,
+  ].filter((part): part is string => !!part && part.trim().length > 0);
+
+  const body = parts.join(' · ');
+  return (body || fallback).slice(0, maxLength);
 };

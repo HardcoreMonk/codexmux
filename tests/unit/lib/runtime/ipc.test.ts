@@ -584,6 +584,10 @@ describe('runtime ipc', () => {
       agentSessionId: 'agent-a',
       workspaceName: 'Workspace',
       workspaceDir: null,
+      approvalKind: 'allow',
+      promptType: 'command',
+      riskLevel: 'medium',
+      approvalDetail: 'corepack pnpm test',
     };
     expect(parseRuntimeCommandPayload('status.send-web-push', {
       anyDeviceVisible: false,

@@ -218,6 +218,25 @@ describe('Codex stats parsing', () => {
     });
   });
 
+  it('reuses parsed session stats between project and session summaries', async () => {
+    const { parseAllProjects, parseAllSessions } = await import('@/lib/stats/jsonl-parser');
+    const { getPerfRuntimeSnapshot } = await import('@/lib/perf-metrics');
+    const before = getPerfRuntimeSnapshot().counters;
+
+    const [projects, sessions] = await Promise.all([
+      parseAllProjects('7d'),
+      parseAllSessions('7d'),
+    ]);
+
+    expect(projects).toHaveLength(1);
+    expect(sessions).toHaveLength(1);
+    const after = getPerfRuntimeSnapshot().counters;
+    expect((after['stats.session_parse.miss'] ?? 0) - (before['stats.session_parse.miss'] ?? 0)).toBe(1);
+    expect(
+      (after['stats.session_parse.inflight_join'] ?? 0) - (before['stats.session_parse.inflight_join'] ?? 0),
+    ).toBeGreaterThanOrEqual(1);
+  });
+
   it('uses the path date to exclude old files from a today-only stats cache refresh', async () => {
     await fs.rm(tempHome, { recursive: true, force: true });
     await fs.mkdir(tempHome, { recursive: true });

@@ -144,6 +144,10 @@ process로 직접 잡히지 않는 세션을 CODEX 패널에 동기화하기 위
   full command, cwd, session name, JSONL path, prompt body, assistant text, terminal output은
   status payload나 Web Push payload에 넣지 않는다. Pane capture 실패 log도 terminal 내용이
   아니라 error class만 남긴다.
+- pane recovery가 permission/input prompt를 파싱하면 `StatusManager`는 sanitized
+  `approvalPromptMetadata`를 `needs-input` status entry에 저장한다. Web Push lock-screen
+  copy는 이 metadata의 command/file/permission type, risk, concise detail을 사용하며,
+  metadata가 없으면 기존 last user message 또는 tab name fallback을 유지한다.
 - approval queue는 선택지가 표시된 시점, fallback, 선택 전송 성공/실패를
   `~/.codexmux/approval-audit.jsonl`에 append한다. 이 audit record는 workspace id, tab id,
   prompt/risk/approval enum, option count, selected option index, fallback reason만 저장하고
