@@ -11,6 +11,7 @@ import {
   shouldSendNeedsInputNotification,
   shouldSendReviewNotification,
 } from '@/lib/status-notification-policy';
+import { evaluateStatusSideEffects } from '@/lib/status-side-effect-policy';
 
 export const createStatusWorkerService = () => {
   const ok = <TPayload>(command: IRuntimeCommand, payload: TPayload): IRuntimeReply<TPayload> =>
@@ -68,6 +69,10 @@ export const createStatusWorkerService = () => {
             sendReviewNotification: shouldSendReviewNotification(input.newState, input.silent),
             sendNeedsInputNotification: shouldSendNeedsInputNotification(input.newState, input.silent),
           });
+        }
+        if (command.type === 'status.evaluate-side-effects') {
+          const input = parseRuntimeCommandPayload('status.evaluate-side-effects', command.payload);
+          return ok(command, evaluateStatusSideEffects(input));
         }
         return invalidCommand(command, {
           code: 'invalid-worker-command',

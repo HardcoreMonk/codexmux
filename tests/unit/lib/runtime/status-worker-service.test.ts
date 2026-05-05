@@ -72,4 +72,29 @@ describe('status worker service', () => {
       sendNeedsInputNotification: true,
     });
   });
+
+  it('evaluates side-effect intent without executing side effects', async () => {
+    const service = createStatusWorkerService();
+    const reply = await service.handleCommand(command('status.evaluate-side-effects', {
+      previousState: 'busy',
+      newState: 'ready-for-review',
+      hasJsonlPath: true,
+      providerId: 'codex',
+      hasJsonlWatcher: true,
+      sessionHistoryDedupeAccepted: true,
+      reviewNotificationDedupeAccepted: true,
+    }));
+
+    expect(reply.ok).toBe(true);
+    expect(reply.payload).toEqual({
+      clearDismissedAt: false,
+      setReadyForReviewAt: true,
+      setBusySince: false,
+      saveSessionHistory: true,
+      sendReviewNotification: true,
+      sendNeedsInputNotification: false,
+      startJsonlWatch: false,
+      stopJsonlWatch: false,
+    });
+  });
 });

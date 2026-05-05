@@ -348,6 +348,27 @@ const statusEvaluateNotificationPolicyPayloadSchema = z.object({
   newState: cliStateSchema,
   silent: z.boolean().optional(),
 });
+const statusSideEffectPolicyPayloadSchema = z.object({
+  previousState: cliStateSchema,
+  newState: cliStateSchema,
+  silent: z.boolean().optional(),
+  skipHistory: z.boolean().optional(),
+  hasJsonlPath: z.boolean(),
+  providerId: z.string().nullable().optional(),
+  hasJsonlWatcher: z.boolean(),
+  sessionHistoryDedupeAccepted: z.boolean(),
+  reviewNotificationDedupeAccepted: z.boolean(),
+}).strict();
+const statusSideEffectIntentSchema = z.object({
+  clearDismissedAt: z.boolean(),
+  setReadyForReviewAt: z.boolean(),
+  setBusySince: z.boolean(),
+  saveSessionHistory: z.boolean(),
+  sendReviewNotification: z.boolean(),
+  sendNeedsInputNotification: z.boolean(),
+  startJsonlWatch: z.boolean(),
+  stopJsonlWatch: z.boolean(),
+});
 
 export const runtimeCommandRegistry = {
   'storage.health': { payload: emptyPayloadSchema, reply: runtimeHealthReplySchema },
@@ -388,6 +409,7 @@ export const runtimeCommandRegistry = {
   'status.reduce-hook-state': { payload: statusReduceHookStatePayloadSchema, reply: statusHookDecisionSchema },
   'status.reduce-codex-state': { payload: statusReduceCodexStatePayloadSchema, reply: statusDecisionSchema },
   'status.evaluate-notification-policy': { payload: statusEvaluateNotificationPolicyPayloadSchema, reply: statusNotificationPolicySchema },
+  'status.evaluate-side-effects': { payload: statusSideEffectPolicyPayloadSchema, reply: statusSideEffectIntentSchema },
 } as const satisfies Record<string, { payload: z.ZodTypeAny; reply: z.ZodTypeAny }>;
 
 export const runtimeEventRegistry = {

@@ -31,14 +31,20 @@ StatusManager
 
 `CODEXMUX_RUNTIME_V2=1`의 SQLite schema에는 `tab_status`가 포함된다. runtime v2에는
 Status Worker foundation도 있으며, 현재 범위는 `status-state-machine`과
-`status-notification-policy` 같은 순수 정책을 typed IPC 뒤에서 평가하는 것이다.
+`status-notification-policy`, `status-side-effect-policy` 같은 순수 정책을 typed IPC 뒤에서
+평가하는 것이다. `CODEXMUX_RUNTIME_STATUS_V2_MODE=shadow`에서는
+`StatusManager.applyCliState()`가 legacy side-effect intent와 Status Worker
+`status.evaluate-side-effects` intent를 비교하고 `/api/debug/perf` counter에 match,
+mismatch, error만 기록한다. 이 shadow 비교는 Web Push payload, prompt, cwd, JSONL path,
+terminal output을 기록하지 않는다.
 production status source of truth는 계속 `StatusManager`와 layout metadata다.
 
 Storage import는 legacy `layout.json`의 `cliState`, `agentSessionId`,
 `agentJsonlPath`, `agentSummary`, `lastUserMessage`, `lastCommand`, `dismissedAt` 같은
 tab status metadata를 SQLite `tabs`/`tab_status`/`agent_sessions` projection으로 복사한다.
-이 import는 status live ownership 전환이 아니며, polling, JSONL watch, ack/dismiss,
-Web Push, session history write는 여전히 legacy `StatusManager`가 production owner다.
+이 import와 side-effect shadow는 status live ownership 전환이 아니며, polling, JSONL
+watch, ack/dismiss, Web Push, session history write는 여전히 legacy `StatusManager`가
+production owner다.
 
 Status Worker의 live polling, `/api/status` WebSocket broadcast, status event persistence,
 notification/session-history write 이전은 후속 cutover 작업이다. runtime v2는 startup 때
@@ -223,6 +229,7 @@ paired `response_item.payload.type="message"` record로 몇 ms 간격에 남길 
 | `src/lib/status-state-machine.ts` | hook/process/JSONL 상태 전이 reducer |
 | `src/lib/status-session-mapping.ts` | Codex session id 정규화와 completion key 생성 |
 | `src/lib/status-notification-policy.ts` | notification hook 처리/전송 정책 |
+| `src/lib/status-side-effect-policy.ts` | status transition side-effect intent 산출 |
 | `src/lib/status-metadata.ts` | JSONL metadata merge helper |
 | `src/lib/runtime/status/worker-service.ts` | runtime v2 Status Worker 정책 평가 command service |
 | `src/hooks/use-agent-status.ts` | status WebSocket hook |

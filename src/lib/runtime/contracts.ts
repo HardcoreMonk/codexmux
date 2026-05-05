@@ -2,6 +2,7 @@ import type { ILayoutData } from '@/types/terminal';
 import type { IChunkReadResult, ISessionInfo, ISessionMeta, ITimelineAppendMessage, ITimelineErrorMessage, ITimelineInitMessage } from '@/types/timeline';
 import type { IMessageCountResult } from '@/lib/timeline-message-counts';
 import type { ICodexStateInput, IHookStateDecision, IHookStateInput, IStateDecision } from '@/lib/status-state-machine';
+import type { IStatusSideEffectIntent, IStatusSideEffectPolicyInput } from '@/lib/status-side-effect-policy';
 import type { TEventName } from '@/types/status';
 
 export interface IRuntimeHealth {
@@ -214,3 +215,7 @@ export interface IRuntimeStatusNotificationPolicyResult {
   sendReviewNotification: boolean;
   sendNeedsInputNotification: boolean;
 }
+
+export type TRuntimeStatusSideEffectInput = IStatusSideEffectPolicyInput;
+
+export type TRuntimeStatusSideEffectIntent = IStatusSideEffectIntent;

@@ -249,9 +249,11 @@ Status shadow compare smoke:
 corepack pnpm smoke:runtime-v2:status-shadow
 ```
 
-이 smoke는 Status Worker IPC 경로의 hook reducer, Codex state reducer, notification policy
-결과를 legacy pure helper 결과와 비교한다. Status Worker가 polling, ack/dismiss, Web Push,
-session history side effect를 소유한다는 의미는 아니다.
+이 smoke는 Status Worker IPC 경로의 hook reducer, Codex state reducer, notification policy,
+side-effect intent 결과를 legacy pure helper 결과와 비교한다. Side-effect intent는 session
+history write, Web Push send, JSONL watcher start/stop 같은 boolean decision만 비교하며
+payload 본문은 출력하지 않는다. Status Worker가 polling, ack/dismiss, Web Push, session
+history side effect를 production owner로 소유한다는 의미는 아니다.
 
 `smoke:runtime-v2:phase2`, `smoke:android:runtime-v2`, `smoke:electron:runtime-v2`는 각각
 임시 서버와 Next.js dev runtime을 띄운다. 같은 checkout에서 병렬 실행하면 Next dev lock

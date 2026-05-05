@@ -86,6 +86,16 @@ const createWorkers = () => {
     sendReviewNotification: false,
     sendNeedsInputNotification: true,
   });
+  status.replies.set('status.evaluate-side-effects', {
+    clearDismissedAt: false,
+    setReadyForReviewAt: true,
+    setBusySince: false,
+    saveSessionHistory: true,
+    sendReviewNotification: true,
+    sendNeedsInputNotification: false,
+    startJsonlWatch: false,
+    stopJsonlWatch: false,
+  });
   return { storage, terminal, timeline, status };
 };
 
@@ -486,6 +496,24 @@ describe('runtime supervisor', () => {
       sendReviewNotification: false,
       sendNeedsInputNotification: true,
     });
+    await expect(supervisor.evaluateStatusSideEffects({
+      previousState: 'busy',
+      newState: 'ready-for-review',
+      hasJsonlPath: true,
+      providerId: 'codex',
+      hasJsonlWatcher: true,
+      sessionHistoryDedupeAccepted: true,
+      reviewNotificationDedupeAccepted: true,
+    })).resolves.toEqual({
+      clearDismissedAt: false,
+      setReadyForReviewAt: true,
+      setBusySince: false,
+      saveSessionHistory: true,
+      sendReviewNotification: true,
+      sendNeedsInputNotification: false,
+      startJsonlWatch: false,
+      stopJsonlWatch: false,
+    });
 
     expect(status.commands).toEqual(expect.arrayContaining([
       {
@@ -513,6 +541,18 @@ describe('runtime supervisor', () => {
           notificationType: 'permission_prompt',
           newState: 'needs-input',
           silent: false,
+        },
+      },
+      {
+        type: 'status.evaluate-side-effects',
+        payload: {
+          previousState: 'busy',
+          newState: 'ready-for-review',
+          hasJsonlPath: true,
+          providerId: 'codex',
+          hasJsonlWatcher: true,
+          sessionHistoryDedupeAccepted: true,
+          reviewNotificationDedupeAccepted: true,
         },
       },
     ]));

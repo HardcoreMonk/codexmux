@@ -10,6 +10,7 @@ import {
 import { reduceCodexState, reduceHookState } from '@/lib/status-state-machine';
 import { compareRuntimeStatusShadowDecision } from '@/lib/runtime/status-shadow-compare';
 import { createRuntimeSupervisorForTest } from '@/lib/runtime/supervisor';
+import { evaluateStatusSideEffects } from '@/lib/status-side-effect-policy';
 
 const main = async (): Promise<void> => {
   const homeDir = process.env.CODEXMUX_RUNTIME_V2_STATUS_SHADOW_HOME
@@ -69,6 +70,23 @@ const main = async (): Promise<void> => {
       throw new Error(`runtime v2 status policy mismatch: ${JSON.stringify(policyCompare.mismatches)}`);
     }
     checks.push('notification-policy-shadow');
+
+    const sideEffectInput = {
+      previousState: 'busy' as const,
+      newState: 'ready-for-review' as const,
+      hasJsonlPath: true,
+      providerId: 'codex',
+      hasJsonlWatcher: true,
+      sessionHistoryDedupeAccepted: true,
+      reviewNotificationDedupeAccepted: true,
+    };
+    const expectedSideEffects = evaluateStatusSideEffects(sideEffectInput);
+    const actualSideEffects = await supervisor.evaluateStatusSideEffects(sideEffectInput);
+    const sideEffectCompare = compareRuntimeStatusShadowDecision('side-effect', expectedSideEffects, actualSideEffects);
+    if (!sideEffectCompare.ok) {
+      throw new Error(`runtime v2 status side-effect mismatch: ${JSON.stringify(sideEffectCompare.mismatches)}`);
+    }
+    checks.push('side-effect-shadow');
 
     console.log(JSON.stringify({
       ok: true,

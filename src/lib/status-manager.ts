@@ -32,10 +32,18 @@ import { getConfig } from '@/lib/config-store';
 import { reduceCodexState, reduceHookState } from '@/lib/status-state-machine';
 import { createDedupeKeyStore } from '@/lib/dedupe-key-store';
 import { completionKeyFor, normalizeSessionId, resolveAgentSessionId, sessionIdFromJsonlPath } from '@/lib/status-session-mapping';
-import { shouldProcessHookEvent, shouldSendNeedsInputNotification, shouldSendReviewNotification } from '@/lib/status-notification-policy';
+import { shouldProcessHookEvent } from '@/lib/status-notification-policy';
 import { mergeStatusMetadata } from '@/lib/status-metadata';
 import { forwardBridgeTraceStatusUpdate } from '@/lib/bridge-trace-forwarder';
 import { getPerfNow, recordPerfCounter, recordPerfDuration } from '@/lib/perf-metrics';
+import { getRuntimeStatusV2Mode } from '@/lib/runtime/status-mode';
+import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
+import { compareRuntimeStatusShadowDecision } from '@/lib/runtime/status-shadow-compare';
+import {
+  evaluateStatusSideEffects,
+  type IStatusSideEffectIntent,
+  type IStatusSideEffectPolicyInput,
+} from '@/lib/status-side-effect-policy';
 
 const log = createLogger('status');
 const hookLog = createLogger('hooks');
@@ -980,46 +988,76 @@ class StatusManager {
     const prevState = entry.cliState;
     if (prevState === newState) return;
     const prevBusySince = entry.busySince;
+    const provider = getProviderByPanelType(entry.panelType);
+    const wantsSessionHistory = newState === 'ready-for-review' && !!entry.jsonlPath && !opts.skipHistory;
+    const wantsReviewNotification = newState === 'ready-for-review' && !opts.silent;
+    const sideEffectInput: IStatusSideEffectPolicyInput = {
+      previousState: prevState,
+      newState,
+      ...(opts.silent !== undefined ? { silent: opts.silent } : {}),
+      ...(opts.skipHistory !== undefined ? { skipHistory: opts.skipHistory } : {}),
+      hasJsonlPath: !!entry.jsonlPath,
+      providerId: provider?.id ?? null,
+      hasJsonlWatcher: this.jsonlWatchers.has(tabId),
+      sessionHistoryDedupeAccepted: wantsSessionHistory
+        ? this.sessionHistoryDedupe.remember(opts.completionKey)
+        : false,
+      reviewNotificationDedupeAccepted: wantsReviewNotification
+        ? this.reviewNotificationDedupe.remember(opts.completionKey)
+        : false,
+    };
+    const sideEffects = evaluateStatusSideEffects(sideEffectInput);
+    this.shadowStatusSideEffects(sideEffectInput, sideEffects);
+    const now = Date.now();
     entry.cliState = newState;
-    entry.readyForReviewAt = newState === 'ready-for-review' ? Date.now() : null;
-    entry.busySince = newState === 'busy' ? Date.now() : null;
-    if (newState === 'busy') entry.dismissedAt = null;
+    entry.readyForReviewAt = sideEffects.setReadyForReviewAt ? now : null;
+    entry.busySince = sideEffects.setBusySince ? now : null;
+    if (sideEffects.clearDismissedAt) entry.dismissedAt = null;
 
-    if (
-      newState === 'ready-for-review'
-      && entry.jsonlPath
-      && !opts.skipHistory
-      && this.sessionHistoryDedupe.remember(opts.completionKey)
-    ) {
+    if (sideEffects.saveSessionHistory) {
       const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
       delay(500).then(() => this.saveSessionHistory(tabId, entry, prevBusySince, false)).catch((err) => {
         log.warn('Failed to save session history: %s', err);
       });
     }
 
-    if (
-      shouldSendReviewNotification(newState, opts.silent)
-      && this.reviewNotificationDedupe.remember(opts.completionKey)
-    ) {
+    if (sideEffects.sendReviewNotification) {
       this.sendWebPush(tabId, entry, 'review').catch((err) => {
         log.warn('Web push failed: %s', err);
       });
     }
 
-    if (shouldSendNeedsInputNotification(newState, opts.silent)) {
+    if (sideEffects.sendNeedsInputNotification) {
       this.sendWebPush(tabId, entry, 'needs-input').catch((err) => {
         log.warn('Web push failed: %s', err);
       });
     }
 
-    const provider = getProviderByPanelType(entry.panelType);
-    const shouldWatch = ((newState === 'busy' || newState === 'needs-input') || provider?.id === 'codex') && entry.jsonlPath;
-    const keepForFinalRead = newState === 'ready-for-review' && this.jsonlWatchers.has(tabId);
-    if (shouldWatch && !this.jsonlWatchers.has(tabId)) {
+    if (sideEffects.startJsonlWatch) {
       this.startJsonlWatch(tabId, entry.jsonlPath!);
-    } else if (!shouldWatch && !keepForFinalRead && this.jsonlWatchers.has(tabId)) {
+    } else if (sideEffects.stopJsonlWatch) {
       this.stopJsonlWatch(tabId);
     }
+  }
+
+  private shadowStatusSideEffects(
+    input: IStatusSideEffectPolicyInput,
+    expected: IStatusSideEffectIntent,
+  ): void {
+    if (process.env.CODEXMUX_RUNTIME_V2 !== '1' || getRuntimeStatusV2Mode() !== 'shadow') return;
+
+    getRuntimeSupervisor().evaluateStatusSideEffects(input).then((actual) => {
+      const comparison = compareRuntimeStatusShadowDecision('side-effect', expected, actual);
+      if (comparison.ok) {
+        recordPerfCounter('runtime_v2.status_shadow.side_effect.match');
+        return;
+      }
+      recordPerfCounter('runtime_v2.status_shadow.side_effect.mismatch');
+      log.warn({ mismatches: comparison.mismatches }, 'runtime v2 status side-effect shadow mismatch');
+    }).catch((err) => {
+      recordPerfCounter('runtime_v2.status_shadow.side_effect.error');
+      log.warn('runtime v2 status side-effect shadow failed: %s', err instanceof Error ? err.message : String(err));
+    });
   }
 
   private async saveSessionHistory(tabId: string, entry: ITabStatusEntry, prevBusySince: number | null | undefined, cancelled: boolean): Promise<void> {

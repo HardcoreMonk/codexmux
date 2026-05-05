@@ -12,6 +12,8 @@ import type {
   IRuntimeHealth,
   IRuntimeStatusNotificationPolicyInput,
   IRuntimeStatusNotificationPolicyResult,
+  TRuntimeStatusSideEffectInput,
+  TRuntimeStatusSideEffectIntent,
   IRuntimeTerminalSessionPresence,
   IRuntimeTerminalTab,
   IRuntimeTimelineEntriesBeforeInput,
@@ -66,6 +68,7 @@ export interface IRuntimeSupervisor {
   reduceStatusHookState(input: TRuntimeStatusHookStateInput): Promise<TRuntimeStatusHookDecision>;
   reduceStatusCodexState(input: TRuntimeStatusCodexStateInput): Promise<TRuntimeStatusDecision>;
   evaluateStatusNotificationPolicy(input: IRuntimeStatusNotificationPolicyInput): Promise<IRuntimeStatusNotificationPolicyResult>;
+  evaluateStatusSideEffects(input: TRuntimeStatusSideEffectInput): Promise<TRuntimeStatusSideEffectIntent>;
   createTerminalTab(input: {
     workspaceId: string;
     paneId: string;
@@ -725,6 +728,14 @@ export const createRuntimeSupervisorForTest = (
       await this.ensureStarted();
       return getClients().status.request<IRuntimeStatusNotificationPolicyInput, IRuntimeStatusNotificationPolicyResult>(
         'status.evaluate-notification-policy',
+        input,
+      );
+    },
+
+    async evaluateStatusSideEffects(input) {
+      await this.ensureStarted();
+      return getClients().status.request<TRuntimeStatusSideEffectInput, TRuntimeStatusSideEffectIntent>(
+        'status.evaluate-side-effects',
         input,
       );
     },

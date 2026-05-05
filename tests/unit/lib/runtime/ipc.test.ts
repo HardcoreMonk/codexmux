@@ -322,6 +322,35 @@ describe('runtime ipc', () => {
       subscriberId: 'tlsw-a',
     })).toEqual({ subscriberId: 'tlsw-a' });
 
+    expect(parseRuntimeCommandPayload('status.evaluate-side-effects', {
+      previousState: 'busy',
+      newState: 'ready-for-review',
+      hasJsonlPath: true,
+      providerId: 'codex',
+      hasJsonlWatcher: true,
+      sessionHistoryDedupeAccepted: true,
+      reviewNotificationDedupeAccepted: true,
+    })).toEqual({
+      previousState: 'busy',
+      newState: 'ready-for-review',
+      hasJsonlPath: true,
+      providerId: 'codex',
+      hasJsonlWatcher: true,
+      sessionHistoryDedupeAccepted: true,
+      reviewNotificationDedupeAccepted: true,
+    });
+
+    expect(() => parseRuntimeCommandPayload('status.evaluate-side-effects', {
+      previousState: 'busy',
+      newState: 'ready-for-review',
+      hasJsonlPath: true,
+      providerId: 'codex',
+      hasJsonlWatcher: true,
+      sessionHistoryDedupeAccepted: true,
+      reviewNotificationDedupeAccepted: true,
+      rawPrompt: 'must not cross IPC',
+    })).toThrow(/Invalid runtime IPC payload/);
+
     for (const oversized of [
       { sessionName: 'rtv2-ws-a-pane-b-tab-c', cols: 501, rows: 30 },
       { sessionName: 'rtv2-ws-a-pane-b-tab-c', cols: 100, rows: 201 },
