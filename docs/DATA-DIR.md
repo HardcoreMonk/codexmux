@@ -17,6 +17,7 @@ codexmux의 영속 상태는 `~/.codexmux/`에 저장된다. Codex CLI의 원본
 ├── session-history.json
 ├── session-index.json
 ├── approval-audit.jsonl
+├── lifecycle-actions.jsonl
 ├── quick-prompts.json
 ├── sidebar-items.json
 ├── keybindings.json
@@ -35,6 +36,8 @@ codexmux의 영속 상태는 `~/.codexmux/`에 저장된다. Codex CLI의 원본
 ```
 
 `hooks.json`, `status-hook.sh`, `statusline.sh`는 local hook/statusline bridge가 서버로 상태를 POST할 때 쓰는 생성 파일이다. Codex tab 실행 명령은 `-c 'hooks={path="~/.codexmux/hooks.json"}'`를 포함해 이 앱 소유 hook 설정을 명시적으로 로드한다. Codex CLI `0.128.0` 기준 permission request 전용 hook은 없으므로, live permission/input prompt는 StatusManager의 pane capture recovery가 `notification(permission_prompt)`처럼 복구해 notification panel의 `needs-input` queue와 연결한다. Resume directory 선택과 interrupted prompt 보정, approval queue prompt type/risk metadata는 pane snapshot에서 계산한다. 사용자가 approval queue에서 선택하거나 선택지 조회/전송 fallback이 발생하면 `approval-audit.jsonl`에 enum, 선택 index, option count, fallback reason만 durable append하고 command, cwd, session name, JSONL path, prompt body, terminal output은 저장하지 않는다.
+
+`/experimental/runtime`의 Lifecycle Control actions는 `lifecycle-actions.jsonl`에 append-only audit event를 남긴다. 저장 필드는 action id, status, timestamp, duration, exit code, sanitized error뿐이며 stdout/stderr, env, cwd, token, session name, JSONL path, prompt body, terminal output은 저장하지 않는다.
 
 Electron remote/local server mode는 같은 `~/.codexmux/config.json`을 사용한다. Android 런처의 최근 서버와 마지막 서버 URL은 Android WebView `localStorage`에 저장되며 `~/.codexmux/`에는 기록되지 않는다. Android 앱 정보와 앱 재시작은 native package metadata와 현재 Activity를 사용하므로 codexmux 데이터 디렉터리에 별도 파일을 만들지 않는다.
 
@@ -61,6 +64,7 @@ Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service
 | `session-history.json` | 완료된 Codex session summary |
 | `session-index.json` | 로컬 Codex session list metadata cache |
 | `approval-audit.jsonl` | approval queue 선택/fallback audit event. 원문 command/path/session/prompt는 저장하지 않음 |
+| `lifecycle-actions.jsonl` | Lifecycle Control action 실행 audit event. stdout/stderr/env/cwd/session/prompt는 저장하지 않음 |
 | `sidebar-items.json` | sidebar 고정 항목과 표시 상태 |
 | `quick-prompts.json` | 사용자 quick prompt와 built-in prompt 표시 상태 |
 | `keybindings.json` | 앱 keyboard shortcut override |

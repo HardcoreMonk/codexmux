@@ -34,6 +34,32 @@ const healthyValue: ILifecycleViewModel = {
   perfTimings: [
     { name: 'stats.cache.build', count: 2, lastMs: 42, maxMs: 1200, averageMs: 300, totalMs: 600 },
   ],
+  actions: [
+    {
+      id: 'phase6-gate',
+      label: 'Run Phase 6 Gate',
+      description: 'Run the read-only runtime v2 Phase 6 default gate smoke.',
+      confirmationPhrase: null,
+    },
+    {
+      id: 'restart-service',
+      label: 'Restart Service',
+      description: 'Restart the Linux user service with systemd.',
+      confirmationPhrase: 'restart codexmux.service',
+    },
+  ],
+  actionEvents: [
+    {
+      id: 'event-a',
+      actionId: 'phase6-gate',
+      status: 'succeeded',
+      startedAt: '2026-05-02T02:00:00.000Z',
+      finishedAt: '2026-05-02T02:00:01.000Z',
+      durationMs: 1000,
+      exitCode: 0,
+      error: null,
+    },
+  ],
   rollbackRunbook: [
     'Runtime v2 rollback runbook (copy-only):',
     '1. Set CODEXMUX_RUNTIME_STORAGE_V2_MODE=write.',
@@ -97,5 +123,16 @@ describe('LifecycleControlPanel', () => {
 
     expect(markup).toContain('unknown');
     expect(markup).toContain('pending');
+  });
+
+  it('renders lifecycle actions without exposing server command argv', () => {
+    const markup = renderPanel(healthyValue);
+
+    expect(markup).toContain('Lifecycle Actions');
+    expect(markup).toContain('Run Phase 6 Gate');
+    expect(markup).toContain('Restart Service');
+    expect(markup).toContain('restart codexmux.service');
+    expect(markup).toContain('succeeded');
+    expect(markup).not.toContain('corepack pnpm');
   });
 });

@@ -157,6 +157,38 @@ describe('runtime lifecycle control helpers', () => {
           },
         },
       },
+      lifecycleActions: {
+        actions: [
+          {
+            id: 'phase6-gate',
+            label: 'Run Phase 6 Gate',
+            description: 'Run read-only smoke',
+            command: 'corepack',
+            args: ['pnpm', 'smoke:runtime-v2:phase6-default-gate'],
+            confirmationPhrase: null,
+          },
+          {
+            id: 'restart-service',
+            label: 'Restart Service',
+            description: 'Restart service',
+            command: 'systemctl',
+            args: ['--user', 'restart', 'codexmux.service'],
+            confirmationPhrase: 'restart codexmux.service',
+          },
+        ],
+        events: [
+          {
+            id: 'event-a',
+            actionId: 'phase6-gate',
+            status: 'failed',
+            startedAt: '2026-05-02T02:00:00.000Z',
+            finishedAt: '2026-05-02T02:00:01.000Z',
+            durationMs: 1000,
+            exitCode: 1,
+            error: 'failed cwd /data/projects/secret x-cmux-token lifecycle-secret sessionName rtv2-action-secret',
+          },
+        ],
+      },
     });
 
     expect(viewModel).toMatchObject({
@@ -197,14 +229,44 @@ describe('runtime lifecycle control helpers', () => {
         { name: 'slow', count: 1, lastMs: 400, maxMs: 400, averageMs: 400, totalMs: 400 },
         { name: 'partial', count: 0, lastMs: 0, maxMs: 100, averageMs: 0, totalMs: 0 },
       ],
+      actions: [
+        {
+          id: 'phase6-gate',
+          label: 'Run Phase 6 Gate',
+          description: 'Run read-only smoke',
+          confirmationPhrase: null,
+        },
+        {
+          id: 'restart-service',
+          label: 'Restart Service',
+          description: 'Restart service',
+          confirmationPhrase: 'restart codexmux.service',
+        },
+      ],
+      actionEvents: [
+        {
+          id: 'event-a',
+          actionId: 'phase6-gate',
+          status: 'failed',
+          startedAt: '2026-05-02T02:00:00.000Z',
+          finishedAt: '2026-05-02T02:00:01.000Z',
+          durationMs: 1000,
+          exitCode: 1,
+          error: 'failed [path] [secret] [runtime-session]',
+        },
+      ],
     });
     expect(viewModel.rollbackRunbook).toBe(buildRollbackRunbook());
     expect(viewModel.workers[0]?.lastError).toContain('session timed out');
     expect(viewModel.workers[0]?.lastError).toContain('cwd lookup failed');
     expect(viewModel.workers[0]?.lastError).toContain('prompt template failed');
+    const actionsJson = JSON.stringify(viewModel.actions);
 
     const json = JSON.stringify(viewModel);
     expect(json).not.toContain('/data/projects');
+    expect(actionsJson).not.toContain('corepack');
+    expect(actionsJson).not.toContain('systemctl');
+    expect(json).not.toContain('lifecycle-secret');
     expect(json).not.toContain('secret-token');
     expect(json).not.toContain('colon-token');
     expect(json).not.toContain('query-colon-token');

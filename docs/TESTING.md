@@ -296,21 +296,28 @@ corepack pnpm smoke:runtime-v2:phase2
 Lifecycle Control panel 변경의 최소 검증:
 
 ```bash
-corepack pnpm vitest run tests/unit/lib/runtime-lifecycle-control.test.ts tests/unit/components/lifecycle-control-panel.test.ts
+corepack pnpm test tests/unit/lib/runtime-lifecycle-control.test.ts tests/unit/lib/runtime-lifecycle-actions.test.ts tests/unit/pages/runtime-lifecycle-action-api.test.ts tests/unit/components/lifecycle-control-panel.test.ts
 corepack pnpm tsc --noEmit
 corepack pnpm lint
 corepack pnpm build
 ```
 
-이 panel은 `/experimental/runtime`의 read-only 운영 evidence surface다. 인증된 session에서
-page를 열고 release metadata, terminal/storage/timeline/status mode, 24시간 observation
-gate, worker restart/timeout/failure, perf timing, rollback runbook이 표시되는지 확인한다.
+이 panel은 `/experimental/runtime`의 운영 evidence surface이자 제한된 action launcher다.
+인증된 session에서 page를 열고 release metadata, terminal/storage/timeline/status mode,
+24시간 observation gate, worker restart/timeout/failure, perf timing, rollback runbook,
+Lifecycle Actions section이 표시되는지 확인한다.
 `tests/unit/components/lifecycle-control-panel.test.ts`는 `react-dom/server` 기반 SSR render
 test로 import boundary와 hydration-sensitive timestamp formatting을 함께 고정한다.
 `/api/debug/perf` 또는 runtime health가 일시 실패해도 가능한 section은 계속 렌더링되어야 하며,
 오류 상세나 worker diagnostic이 token, cwd, session name, JSONL path, prompt, assistant text,
-terminal output 원문을 노출하지 않는지 함께 확인한다. UI에서 systemd, deploy, restart,
-rollback command를 실행하는 control은 제공하지 않는다.
+terminal output 원문을 노출하지 않는지 함께 확인한다.
+
+Lifecycle action API는 command text를 받지 않고 `phase6-gate`, `restart-service`,
+`deploy-local` action id만 허용한다. `restart-service`와 `deploy-local`은 각각
+`restart codexmux.service`, `deploy local` exact confirmation이 필요하다. Audit은
+`~/.codexmux/lifecycle-actions.jsonl`에 sanitized status event만 남기며 stdout/stderr,
+env, cwd, prompt, terminal output은 저장하지 않는다. Rollback flag mutation과 systemd
+drop-in 편집은 아직 UI action이 아니며 copy-only runbook으로 유지한다.
 
 ## Electron
 

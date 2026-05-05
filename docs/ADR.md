@@ -254,3 +254,10 @@
 - Decision: approval queue의 durable history는 `~/.codexmux/approval-audit.jsonl` append-only action log로 제한한다. 저장 필드는 event type, workspace id, tab id, prompt/risk/approval enum, option count, selected option index, fallback reason이다.
 - Rationale: 운영자는 approval queue가 실제로 표시됐는지, fallback이 있었는지, 선택 전송이 성공했는지 확인할 수 있어야 한다. 그러나 Codex permission prompt의 원문 command, file path, cwd, session name, JSONL path, prompt body, terminal output은 lock screen, status payload, local audit file 어디에도 장기 저장하지 않는 편이 안전하다.
 - Consequences: `/api/approval/audit`는 POST body에서 whitelist field만 받아 store에 append하고, GET은 최신 event를 제한된 개수로 반환한다. Client는 option label이나 command preview를 audit에 보내지 않고 selected option index와 enum metadata만 보낸다. Web Push 새 창 fallback은 root deep link query에 workspace/tab/session id만 넣고 workspace name, workspace dir, command/file detail은 cache/message path에만 남긴다.
+
+## ADR-019: Lifecycle Actions는 Allowlist와 Sanitized Audit으로 제한한다
+
+- Status: Accepted
+- Decision: `/experimental/runtime`에서 실행 가능한 lifecycle control은 서버 allowlist action id로 제한한다. 현재 action은 `phase6-gate`, `restart-service`, `deploy-local`이며 API는 임의 command text를 받지 않는다. Restart/deploy 계열 action은 exact confirmation phrase를 요구한다.
+- Rationale: 운영 UI에서 Phase 6 gate, service restart, local deploy를 빠르게 실행할 필요는 있지만, codexmux server를 일반 원격 shell로 만들면 auth, audit, prompt/cwd/token 유출 위험이 커진다. Named action allowlist와 confirmation을 분리하면 좁은 운영 편의만 제공하면서 command injection과 accidental restart를 줄일 수 있다.
+- Consequences: 실행 기록은 `~/.codexmux/lifecycle-actions.jsonl` append-only event로 남긴다. 저장 필드는 action id, status, timestamps, duration, exit code, sanitized error뿐이며 stdout/stderr, env, cwd, token, session name, JSONL path, prompt body, terminal output은 저장하지 않는다. 한 서버 process에서는 lifecycle action 하나만 실행된다. Rollback flag mutation, systemd drop-in 편집, arbitrary command execution은 별도 spec 없이는 UI action으로 추가하지 않는다.

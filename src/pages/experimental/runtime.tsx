@@ -42,10 +42,12 @@ const getLifecycleFailureLabels = (
   health: PromiseSettledResult<unknown>,
   runtimeHealth: PromiseSettledResult<unknown>,
   perf: PromiseSettledResult<unknown>,
+  lifecycleActions: PromiseSettledResult<unknown>,
 ): string[] => [
   health.status === 'rejected' ? 'release' : null,
   runtimeHealth.status === 'rejected' ? 'runtime health' : null,
   perf.status === 'rejected' ? 'perf diagnostics' : null,
+  lifecycleActions.status === 'rejected' ? 'lifecycle actions' : null,
 ].filter((label): label is string => Boolean(label));
 
 const RuntimeExperimentalPage = () => {
@@ -56,6 +58,7 @@ const RuntimeExperimentalPage = () => {
   const [layout, setLayout] = useState<unknown>(null);
   const [lifecycle, setLifecycle] = useState<ILifecycleViewModel | null>(null);
   const [lifecycleError, setLifecycleError] = useState<string | null>(null);
+  const [lifecycleActionPendingId, setLifecycleActionPendingId] = useState<string | null>(null);
   const [status, setStatus] = useState<TRuntimeApiStatus>('statusIdle');
   const [terminalOutput, setTerminalOutput] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -93,10 +96,11 @@ const RuntimeExperimentalPage = () => {
     lifecycleRequestSeqRef.current = requestSeq;
     try {
       setLifecycleError(null);
-      const [healthResult, runtimeHealthResult, perfResult] = await Promise.allSettled([
+      const [healthResult, runtimeHealthResult, perfResult, lifecycleActionsResult] = await Promise.allSettled([
         requestJson<ILifecycleViewModelInput['health']>('/api/health'),
         requestJson<ILifecycleViewModelInput['runtimeHealth']>('/api/v2/runtime/health'),
         requestJson<ILifecycleViewModelInput['perf']>('/api/debug/perf'),
+        requestJson<ILifecycleViewModelInput['lifecycleActions']>('/api/runtime/lifecycle/action?limit=20'),
       ] as const);
 
       if (lifecycleRequestSeqRef.current !== requestSeq) return;
@@ -105,15 +109,34 @@ const RuntimeExperimentalPage = () => {
         health: readLifecycleResult(healthResult),
         runtimeHealth: readLifecycleResult(runtimeHealthResult),
         perf: readLifecycleResult(perfResult),
+        lifecycleActions: readLifecycleResult(lifecycleActionsResult),
       }));
 
-      const failures = getLifecycleFailureLabels(healthResult, runtimeHealthResult, perfResult);
+      const failures = getLifecycleFailureLabels(healthResult, runtimeHealthResult, perfResult, lifecycleActionsResult);
       setLifecycleError(failures.length > 0 ? failures.join(', ') : null);
     } catch (err) {
       if (lifecycleRequestSeqRef.current !== requestSeq) return;
       setLifecycleError(err instanceof Error ? sanitizeLifecycleDiagnosticText(err.message) : t('lifecycleLoadFailed'));
     }
   }, [requestJson, t]);
+
+  const runLifecycleAction = useCallback(async (actionId: string, confirmation?: string) => {
+    try {
+      setLifecycleError(null);
+      setLifecycleActionPendingId(actionId);
+      await requestJson('/api/runtime/lifecycle/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actionId, confirmation: confirmation ?? '' }),
+      });
+      await refreshLifecycle();
+    } catch (err) {
+      setLifecycleError(err instanceof Error ? sanitizeLifecycleDiagnosticText(err.message) : t('lifecycleActionFailed'));
+      await refreshLifecycle();
+    } finally {
+      setLifecycleActionPendingId(null);
+    }
+  }, [refreshLifecycle, requestJson, t]);
 
   const refresh = useCallback(async () => {
     void refreshLifecycle();
@@ -228,6 +251,8 @@ const RuntimeExperimentalPage = () => {
               value={lifecycle}
               title={t('lifecycleTitle')}
               description={t('lifecycleDescription')}
+              actionPendingId={lifecycleActionPendingId}
+              onRunAction={runLifecycleAction}
             />
           )}
         </section>

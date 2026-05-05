@@ -1,6 +1,7 @@
 export type TModeState = 'active' | 'off' | 'unknown';
 export type TWorkerState = 'healthy' | 'degraded';
 export type TObservationState = 'pending' | 'complete' | 'unknown';
+export type TLifecycleActionStatus = 'running' | 'succeeded' | 'failed' | 'rejected' | 'unknown';
 
 type TLifecycleModeName = 'terminal' | 'storage' | 'timeline' | 'status';
 type TLifecycleWorkerName = 'storage' | 'terminal' | 'timeline' | 'status';
@@ -37,6 +38,24 @@ export interface IPerfTimingRow {
   totalMs: number;
 }
 
+export interface ILifecycleActionView {
+  id: string;
+  label: string;
+  description: string;
+  confirmationPhrase: string | null;
+}
+
+export interface ILifecycleActionEventView {
+  id: string;
+  actionId: string;
+  status: TLifecycleActionStatus;
+  startedAt: string;
+  finishedAt: string | null;
+  durationMs: number | null;
+  exitCode: number | null;
+  error: string | null;
+}
+
 export interface ILifecycleRelease {
   app: string | null;
   version: string | null;
@@ -51,6 +70,8 @@ export interface ILifecycleViewModel {
   observation: IObservationGate;
   workers: ILifecycleWorkerRow[];
   perfTimings: IPerfTimingRow[];
+  actions: ILifecycleActionView[];
+  actionEvents: ILifecycleActionEventView[];
   rollbackRunbook: string;
 }
 
@@ -105,10 +126,34 @@ interface ILifecyclePerfInput {
   };
 }
 
+interface ILifecycleActionInput {
+  id?: unknown;
+  label?: unknown;
+  description?: unknown;
+  confirmationPhrase?: unknown;
+}
+
+interface ILifecycleActionEventInput {
+  id?: unknown;
+  actionId?: unknown;
+  status?: unknown;
+  startedAt?: unknown;
+  finishedAt?: unknown;
+  durationMs?: unknown;
+  exitCode?: unknown;
+  error?: unknown;
+}
+
+interface ILifecycleActionsInput {
+  actions?: unknown;
+  events?: unknown;
+}
+
 export interface ILifecycleViewModelInput {
   health?: ILifecycleHealthInput | null;
   runtimeHealth?: ILifecycleRuntimeHealthInput | null;
   perf?: ILifecyclePerfInput | null;
+  lifecycleActions?: ILifecycleActionsInput | null;
 }
 
 const observationWindowMs = 24 * 60 * 60 * 1000;
@@ -127,6 +172,9 @@ const stringOrEmpty = (value: unknown): string =>
 
 const numberOrZero = (value: unknown): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : 0;
+
+const numberOrNull = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null;
 
 const toModeState = (value: string): TModeState => {
   if (!value) return 'unknown';
@@ -172,6 +220,13 @@ const readLastError = (value: unknown): string | null => {
   if (!isRecord(value)) return null;
   const message = value.message;
   return typeof message === 'string' ? sanitizeLifecycleDiagnosticText(message) : null;
+};
+
+const toActionStatus = (value: unknown): TLifecycleActionStatus => {
+  if (value === 'running' || value === 'succeeded' || value === 'failed' || value === 'rejected') {
+    return value;
+  }
+  return 'unknown';
 };
 
 const modeValueKey = (name: TLifecycleModeName): keyof ILifecycleRuntimeHealthInput => {
@@ -254,6 +309,36 @@ export const buildRollbackRunbook = (): string => [
   '4. Recheck lifecycle health and worker diagnostics.',
 ].join('\n');
 
+const readLifecycleActions = (value: unknown): ILifecycleActionView[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item): ILifecycleActionInput => isRecord(item) ? item : {})
+    .filter((action) => typeof action.id === 'string' && typeof action.label === 'string')
+    .map((action) => ({
+      id: stringOrEmpty(action.id),
+      label: stringOrEmpty(action.label),
+      description: stringOrEmpty(action.description),
+      confirmationPhrase: stringOrNull(action.confirmationPhrase),
+    }));
+};
+
+const readLifecycleActionEvents = (value: unknown): ILifecycleActionEventView[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item): ILifecycleActionEventInput => isRecord(item) ? item : {})
+    .filter((event) => typeof event.id === 'string' && typeof event.actionId === 'string')
+    .map((event) => ({
+      id: stringOrEmpty(event.id),
+      actionId: stringOrEmpty(event.actionId),
+      status: toActionStatus(event.status),
+      startedAt: stringOrEmpty(event.startedAt),
+      finishedAt: stringOrNull(event.finishedAt),
+      durationMs: numberOrNull(event.durationMs),
+      exitCode: numberOrNull(event.exitCode),
+      error: typeof event.error === 'string' ? sanitizeLifecycleDiagnosticText(event.error) : null,
+    }));
+};
+
 export const buildLifecycleViewModel = (input: ILifecycleViewModelInput): ILifecycleViewModel => {
   const health = input.health ?? {};
   const runtimeHealth = input.runtimeHealth ?? {};
@@ -302,6 +387,8 @@ export const buildLifecycleViewModel = (input: ILifecycleViewModelInput): ILifec
       };
     }),
     perfTimings: selectTopPerfTimings(perfTimings),
+    actions: readLifecycleActions(input.lifecycleActions?.actions),
+    actionEvents: readLifecycleActionEvents(input.lifecycleActions?.events),
     rollbackRunbook: buildRollbackRunbook(),
   };
 };

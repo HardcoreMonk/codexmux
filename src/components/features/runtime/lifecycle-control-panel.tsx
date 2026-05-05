@@ -1,5 +1,9 @@
-import { AlertTriangle, CheckCircle2, Clock3, RotateCcw } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, CheckCircle2, Clock3, Play, RotateCcw, ShieldCheck } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import type {
+  ILifecycleActionEventView,
   ILifecycleModeRow,
   ILifecycleViewModel,
   ILifecycleWorkerRow,
@@ -12,6 +16,8 @@ interface ILifecycleControlPanelProps {
   value: ILifecycleViewModel;
   title?: string;
   description?: string;
+  actionPendingId?: string | null;
+  onRunAction?: (actionId: string, confirmation?: string) => Promise<void>;
 }
 
 interface IInfoRowProps {
@@ -59,6 +65,20 @@ const workerClass = (worker: ILifecycleWorkerRow): string =>
     ? 'border-border'
     : 'border-ui-amber/40 bg-ui-amber/10 text-ui-amber';
 
+const actionStatusClass = (status: string): string => {
+  switch (status) {
+    case 'succeeded':
+      return 'border-positive/30 bg-positive/10 text-positive';
+    case 'running':
+      return 'border-ui-amber/40 bg-ui-amber/10 text-ui-amber';
+    case 'failed':
+    case 'rejected':
+      return 'border-destructive/30 bg-destructive/10 text-destructive';
+    default:
+      return 'border-muted-foreground/30 bg-muted text-muted-foreground';
+  }
+};
+
 const IconForState = ({ state }: { state: TWorkerState | TObservationState | 'ok' | 'degraded' }) => {
   if (state === 'healthy' || state === 'complete' || state === 'ok') {
     return <CheckCircle2 aria-hidden className="h-3.5 w-3.5" />;
@@ -82,12 +102,35 @@ const InfoRow = ({ label, value, className = '' }: IInfoRowProps) => (
   </div>
 );
 
+const latestEventForAction = (
+  events: ILifecycleActionEventView[],
+  actionId: string,
+): ILifecycleActionEventView | null =>
+  events.find((event) => event.actionId === actionId) ?? null;
+
+const formatActionEventSummary = (event: ILifecycleActionEventView | null): string => {
+  if (!event) return 'No audit event';
+  const finishedAt = formatDate(event.finishedAt ?? event.startedAt);
+  const duration = event.durationMs === null ? 'unknown duration' : formatMs(event.durationMs);
+  const exit = event.exitCode === null ? 'exit unknown' : `exit ${event.exitCode}`;
+  return `${event.status} / ${finishedAt} / ${duration} / ${exit}`;
+};
+
 export const LifecycleControlPanel = ({
   value,
   title = 'Lifecycle Control',
-  description = 'Read-only runtime lifecycle status',
-}: ILifecycleControlPanelProps) => (
-  <section className="space-y-3 rounded-lg border border-border bg-background p-3 text-sm">
+  description = 'Runtime lifecycle status and allowlisted actions',
+  actionPendingId = null,
+  onRunAction,
+}: ILifecycleControlPanelProps) => {
+  const [confirmations, setConfirmations] = useState<Record<string, string>>({});
+
+  const setConfirmation = (actionId: string, nextValue: string) => {
+    setConfirmations((current) => ({ ...current, [actionId]: nextValue }));
+  };
+
+  return (
+    <section className="space-y-3 rounded-lg border border-border bg-background p-3 text-sm">
     <div className="flex min-w-0 items-start justify-between gap-3">
       <div className="min-w-0">
         <h2 className="truncate text-base font-semibold">{title}</h2>
@@ -199,6 +242,74 @@ export const LifecycleControlPanel = ({
       </div>
     </section>
 
+    {value.actions.length > 0 && (
+      <section className="min-w-0 border-t border-border pt-2">
+        <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+          <ShieldCheck aria-hidden className="h-3.5 w-3.5" />
+          Lifecycle Actions
+        </h3>
+        <div className="grid gap-2 lg:grid-cols-3">
+          {value.actions.map((action) => {
+            const latest = latestEventForAction(value.actionEvents, action.id);
+            const confirmation = confirmations[action.id] ?? '';
+            const confirmationRequired = action.confirmationPhrase !== null;
+            const confirmationReady = !confirmationRequired || confirmation === action.confirmationPhrase;
+            const pending = actionPendingId === action.id;
+
+            return (
+              <div key={action.id} className="min-w-0 rounded-md border border-border px-2 py-2">
+                <div className="flex min-w-0 items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{action.label}</div>
+                    <div className="mt-0.5 line-clamp-2 text-xs leading-4 text-muted-foreground">
+                      {action.description}
+                    </div>
+                  </div>
+                  {latest && (
+                    <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[11px] font-medium leading-4 ${actionStatusClass(latest.status)}`}>
+                      {latest.status}
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-2 text-[11px] leading-4 text-muted-foreground">
+                  {formatActionEventSummary(latest)}
+                </div>
+                {latest?.error && (
+                  <div className="mt-1 max-h-16 overflow-auto rounded border border-destructive/30 bg-destructive/5 px-2 py-1 font-mono text-[11px] leading-4 text-destructive">
+                    {latest.error}
+                  </div>
+                )}
+
+                {confirmationRequired && (
+                  <Input
+                    aria-label={`${action.label} confirmation`}
+                    className="mt-2 h-9 font-mono text-xs"
+                    value={confirmation}
+                    placeholder={action.confirmationPhrase ?? ''}
+                    onChange={(event) => setConfirmation(action.id, event.target.value)}
+                  />
+                )}
+
+                <Button
+                  className="mt-2 w-full min-h-11 sm:min-h-9"
+                  type="button"
+                  variant={confirmationRequired ? 'destructive' : 'outline'}
+                  disabled={!onRunAction || Boolean(actionPendingId) || !confirmationReady}
+                  onClick={() => {
+                    void onRunAction?.(action.id, confirmationRequired ? confirmation : undefined);
+                  }}
+                >
+                  <Play className="h-4 w-4" />
+                  {pending ? 'Running' : 'Run'}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    )}
+
     <section className="min-w-0 border-t border-border pt-2">
       <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
         <RotateCcw aria-hidden className="h-3.5 w-3.5" />
@@ -209,4 +320,5 @@ export const LifecycleControlPanel = ({
       </pre>
     </section>
   </section>
-);
+  );
+};

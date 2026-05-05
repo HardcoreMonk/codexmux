@@ -138,6 +138,18 @@ curl -fsS http://127.0.0.1:8122/api/health
 
 `corepack pnpm build:electron`처럼 `.next/standalone`을 다시 만드는 명령을 live checkout에서 실행하면 실행 중인 service process의 cwd가 삭제된 standalone directory를 가리킬 수 있다. 현재 server는 `__CMUX_APP_DIR` 기준으로 build info와 daily report child cwd를 보정하지만, 운영 상태를 깔끔하게 유지하려면 Electron build smoke 뒤에 `corepack pnpm deploy:local`로 service cwd를 정상화한다.
 
+## Lifecycle Control actions
+
+`/experimental/runtime`의 Lifecycle Control panel은 임의 shell 입력을 받지 않고 서버 allowlist action만 실행한다. 현재 action은 `phase6-gate`, `restart-service`, `deploy-local`이다.
+
+| Action | 실행 | 확인 |
+| --- | --- | --- |
+| `phase6-gate` | `corepack pnpm smoke:runtime-v2:phase6-default-gate` | 없음 |
+| `restart-service` | `systemctl --user restart codexmux.service` | `restart codexmux.service` |
+| `deploy-local` | `corepack pnpm deploy:local` | `deploy local` |
+
+한 번에 하나의 action만 실행된다. `restart-service`와 `deploy-local`은 요청 중인 서버 process를 재시작할 수 있으므로 브라우저 요청이 중간에 끊길 수 있다. 이 경우 `/api/health` 새로고침 또는 페이지 reload로 배포 commit과 service 상태를 다시 확인한다. 실행 기록은 `~/.codexmux/lifecycle-actions.jsonl`에 action id, status, timestamp, duration, exit code, sanitized error만 남기며 stdout/stderr, env, cwd, token, session name, prompt, terminal output은 저장하지 않는다.
+
 성능 변경 배포 후에는 인증된 session cookie 또는 `x-cmux-token`으로 `/api/debug/perf`를 확인한다. 이 endpoint는 public health check가 아니며 process memory, event loop, WebSocket, watcher, status poll, diff/stats cache 숫자만 반환한다.
 
 Runtime v2 shadow mode를 켠 뒤에는 `/api/v2/runtime/health`와 `/api/debug/perf`의 `services.runtimeWorkers`를 같이 확인한다. surface mode가 모두 `off`이면 legacy `/api/terminal`, `/api/timeline`, `/api/status`, `/api/sync`와 JSON store가 production source of truth이며, worker `restarts`, `timeouts`, `healthFailures`, `readyFailures`, `commandFailures`가 증가하지 않는지 관찰한다.
