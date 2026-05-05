@@ -20,11 +20,18 @@ describe('runtime lifecycle actions', () => {
   it('runs only allowlisted actions with fixed argv and writes sanitized audit', async () => {
     const appDir = path.join(tempHome, 'checkout');
     vi.stubEnv('__CMUX_APP_DIR', appDir);
-    const executed: Array<{ command: string; args: string[]; cwd: string }> = [];
+    vi.stubEnv('__CMUX_PRISTINE_ENV', JSON.stringify({
+      HOME: tempHome,
+      PATH: '/usr/bin',
+      NODE_ENV: 'production',
+      PORT: '8122',
+    }));
+    vi.stubEnv('__NEXT_PRIVATE_STANDALONE_CONFIG', 'polluted');
+    const executed: Array<{ command: string; args: string[]; cwd: string; env: NodeJS.ProcessEnv }> = [];
     const { createLifecycleActionService } = await import('@/lib/runtime/lifecycle-actions');
     const service = createLifecycleActionService({
       execute: async (command, args, options) => {
-        executed.push({ command, args, cwd: options.cwd });
+        executed.push({ command, args, cwd: options.cwd, env: options.env });
         return { exitCode: 0 };
       },
     });
@@ -37,8 +44,16 @@ describe('runtime lifecycle actions', () => {
         command: 'corepack',
         args: ['pnpm', 'smoke:runtime-v2:phase6-default-gate'],
         cwd: appDir,
+        env: expect.objectContaining({
+          HOME: tempHome,
+          PATH: '/usr/bin',
+          NODE_ENV: 'production',
+          PORT: '8122',
+          __CMUX_APP_DIR: appDir,
+        }) as NodeJS.ProcessEnv,
       },
     ]);
+    expect(executed[0]?.env.__NEXT_PRIVATE_STANDALONE_CONFIG).toBeUndefined();
     const events = await service.readAuditEvents({ limit: 10 });
     expect(events[0]).toMatchObject({
       actionId: 'phase6-gate',

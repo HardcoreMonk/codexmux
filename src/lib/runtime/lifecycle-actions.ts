@@ -50,8 +50,13 @@ export interface ILifecycleActionExecuteResult {
   exitCode: number;
 }
 
+export interface ILifecycleActionExecuteOptions {
+  cwd: string;
+  env: NodeJS.ProcessEnv;
+}
+
 export interface ICreateLifecycleActionServiceOptions {
-  execute?: (command: string, args: string[], options: { cwd: string }) => Promise<ILifecycleActionExecuteResult>;
+  execute?: (command: string, args: string[], options: ILifecycleActionExecuteOptions) => Promise<ILifecycleActionExecuteResult>;
 }
 
 const definitions: ILifecycleActionDefinition[] = [
@@ -93,6 +98,39 @@ const getAuditFilePath = (): string =>
 
 const getActionCwd = (): string =>
   process.env.__CMUX_APP_DIR || process.env.INIT_CWD || process.cwd();
+
+const readPristineEnv = (): NodeJS.ProcessEnv => {
+  if (!process.env.__CMUX_PRISTINE_ENV) return {} as NodeJS.ProcessEnv;
+  try {
+    const parsed = JSON.parse(process.env.__CMUX_PRISTINE_ENV) as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+    ) as NodeJS.ProcessEnv;
+  } catch {
+    return {} as NodeJS.ProcessEnv;
+  }
+};
+
+const getActionEnv = (): NodeJS.ProcessEnv => {
+  const pristineEnv = readPristineEnv();
+  const preferPristine = (key: string): string | undefined => pristineEnv[key] ?? process.env[key];
+  const preferCurrent = (key: string): string | undefined => process.env[key] ?? pristineEnv[key];
+
+  return {
+    ...pristineEnv,
+    ...Object.fromEntries(Object.entries({
+      HOME: preferCurrent('HOME'),
+      PATH: preferPristine('PATH'),
+      USER: preferCurrent('USER'),
+      SHELL: preferCurrent('SHELL'),
+      NODE_ENV: preferPristine('NODE_ENV'),
+      HOST: preferPristine('HOST'),
+      PORT: preferPristine('PORT'),
+      __CMUX_APP_DIR: getActionCwd(),
+      __CMUX_PRISTINE_ENV: process.env.__CMUX_PRISTINE_ENV,
+    }).filter((entry): entry is [string, string] => typeof entry[1] === 'string')),
+  } as NodeJS.ProcessEnv;
+};
 
 const sanitizeError = (value: unknown): string =>
   sanitizeLifecycleDiagnosticText(value instanceof Error ? value.message : String(value));
@@ -158,13 +196,13 @@ const parseLine = (line: string): ILifecycleActionEvent | null => {
 const defaultExecute = async (
   command: string,
   args: string[],
-  options: { cwd: string },
+  options: ILifecycleActionExecuteOptions,
 ): Promise<ILifecycleActionExecuteResult> => {
   await execFile(command, args, {
     cwd: options.cwd,
     timeout: 10 * 60 * 1000,
     maxBuffer: 1024 * 1024,
-    env: process.env,
+    env: options.env,
   });
   return { exitCode: 0 };
 };
@@ -226,7 +264,10 @@ export const createLifecycleActionService = (
       await appendEvent(runningEvent);
 
       try {
-        const result = await execute(definition.command, definition.args, { cwd: getActionCwd() });
+        const result = await execute(definition.command, definition.args, {
+          cwd: getActionCwd(),
+          env: getActionEnv(),
+        });
         const finishedAt = new Date().toISOString();
         const event = createEvent({
           actionId: definition.id,
