@@ -84,8 +84,9 @@ Runtime v2 can only become default for a surface when every row in that surface 
 Full-runtime defaulting must additionally pass `corepack pnpm smoke:runtime-v2:phase6-default-gate`.
 That gate is read-only and checks the target server reports terminal `new-tabs`,
 storage/timeline/status `default`, healthy runtime workers, and zero worker failure/restart/timeout
-counters. Passing this gate does not by itself change the code fallback defaults; that remains a
-separate release decision.
+counters. After the 2026-05-05 code fallback approval, unset per-surface mode env resolves to the
+same values when `CODEXMUX_RUNTIME_V2=1`; explicit `off` remains the rollback and invalid explicit
+values fail closed to `off`.
 
 ## 2026-05-05 Phase 6 Default Gate Evidence
 
@@ -97,6 +98,9 @@ separate release decision.
 - The gate requires `terminalV2Mode="new-tabs"`, `storageV2Mode="default"`,
   `timelineV2Mode="default"`, `statusV2Mode="default"`, all worker health sections `ok`, and
   storage/terminal/timeline/status failure counters at 0.
+- `src/lib/runtime/*-mode.ts` now separates raw parsing from resolved code fallback. Raw parsers
+  still return `off` for unset or invalid values; `getRuntime*V2Mode()` and ownership predicates
+  apply Phase 6 defaults only when `CODEXMUX_RUNTIME_V2=1` and the surface mode env is unset.
 
 ## 2026-05-04 Storage Shadow Evidence
 
@@ -132,7 +136,7 @@ separate release decision.
 
 ## 2026-05-04 Storage Write Evidence
 
-- `src/lib/runtime/storage-mode.ts`는 `CODEXMUX_RUNTIME_STORAGE_V2_MODE=off|shadow|write|default`를 fail-closed로 해석한다.
+- `src/lib/runtime/storage-mode.ts`는 `CODEXMUX_RUNTIME_STORAGE_V2_MODE=off|shadow|write|default`를 지원하고 잘못된 명시 값을 fail-closed로 해석한다. Phase 6 이후 unset mode는 `CODEXMUX_RUNTIME_V2=1`에서 `default`로 resolve된다.
 - `src/lib/runtime/storage-mirror.ts`는 `write|default` 모드에서 legacy JSON workspace/layout/message-history write 직후 `importLegacyStorageSnapshot`을 실행해 SQLite projection을 갱신하고, JSON snapshot에서 사라진 workspace/tab/pane/group row를 prune한다.
 - `corepack pnpm smoke:runtime-v2:storage-write`는 temp HOME/DB에서 legacy `layout.json` write, SQLite layout projection, status metadata 보존을 확인한다.
 - `/api/v2/runtime/health`는 `storageV2Mode`, `timelineV2Mode`, `statusV2Mode`를 노출해 운영 중 rollback 상태를 확인할 수 있다.

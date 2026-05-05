@@ -88,6 +88,10 @@ const createRequest = (input: {
 describe('runtime v2 api routes', () => {
   beforeEach(() => {
     process.env.CODEXMUX_RUNTIME_V2 = '1';
+    delete process.env.CODEXMUX_RUNTIME_TERMINAL_V2_MODE;
+    delete process.env.CODEXMUX_RUNTIME_STORAGE_V2_MODE;
+    delete process.env.CODEXMUX_RUNTIME_TIMELINE_V2_MODE;
+    delete process.env.CODEXMUX_RUNTIME_STATUS_V2_MODE;
     mocks.auth.mockReset();
     mocks.getRuntimeSupervisor.mockClear();
     Object.values(mocks.supervisor).forEach((mock) => mock.mockReset());
@@ -184,6 +188,20 @@ describe('runtime v2 api routes', () => {
     await workspacesHandler(createRequest({ method: 'GET' }), workspaces.res);
     expect(workspaces.statusCode).toBe(200);
     expect(workspaces.body).toMatchObject({ workspaces: [expect.objectContaining({ id: 'ws-a' })] });
+  });
+
+  it('returns phase 6 code fallback modes when surface env modes are unset', async () => {
+    const health = createResponse();
+    await healthHandler(createRequest({ method: 'GET' }), health.res);
+
+    expect(health.statusCode).toBe(200);
+    expect(health.body).toMatchObject({
+      ok: true,
+      terminalV2Mode: 'new-tabs',
+      storageV2Mode: 'default',
+      timelineV2Mode: 'default',
+      statusV2Mode: 'default',
+    });
   });
 
   it('returns timeline v2 read surfaces', async () => {

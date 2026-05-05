@@ -62,6 +62,10 @@ timeline의 last-user-message notify, tab register/remove, Web Push foreground v
 `status.live-*` command로 worker에 전달한다. 이 모드에서는 worker가 polling, JSONL watcher,
 ack/dismiss mutation, session history write, Web Push send, rate-limit watcher를 소유한다.
 `off`와 `shadow`에서는 기존 main-process `StatusManager`가 그대로 production owner다.
+Phase 6 code fallback 이후 `CODEXMUX_RUNTIME_V2=1`이고
+`CODEXMUX_RUNTIME_STATUS_V2_MODE`가 unset이면 status mode는 `default`로 해석된다.
+명시적으로 `CODEXMUX_RUNTIME_STATUS_V2_MODE=off`를 설정하면 기존 main-process
+`StatusManager`로 rollback된다. 잘못된 명시 값도 `off`로 fail closed한다.
 
 Storage import는 legacy `layout.json`의 `cliState`, `agentSessionId`,
 `agentJsonlPath`, `agentSummary`, `lastUserMessage`, `lastCommand`, `dismissedAt` 같은

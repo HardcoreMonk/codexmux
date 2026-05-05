@@ -62,6 +62,9 @@
   polling/JSONL watcher/hook application/ack/dismiss/session-history/Web Push/rate-limit update를
   소유한다. 기존 `/api/status` WebSocket URL은 유지하고 server는 worker realtime event를
   기존 client protocol로 변환한다. Rollback은 `CODEXMUX_RUNTIME_STATUS_V2_MODE=off`다.
+  Phase 6 이후 `CODEXMUX_RUNTIME_V2=1`에서 per-surface mode env가 unset이면 code fallback은
+  terminal `new-tabs`, storage/timeline/status `default`로 해석한다. 명시적 `off`는 계속
+  rollback이고, 잘못된 명시 값은 `off`로 fail closed한다.
 
 ## Proposed: SQLite App State
 
@@ -93,7 +96,8 @@
   mode에서는 workspace/layout/message-history read가 SQLite projection을 우선 사용하고
   실패 시 legacy JSON으로 fail closed한다. Message history write는 default mode에서
   SQLite를 우선 갱신하고 rollback용 JSON 파일을 함께 쓴다. Production live mode는 별도
-  rollout 전까지 `write`로 유지한다.
+  rollout 전까지 `write`로 유지했고, Phase 6 이후 unset storage mode는
+  `CODEXMUX_RUNTIME_V2=1`에서 `default`로 해석한다. 명시적 `off`는 legacy JSON rollback이다.
   `better-sqlite3`는 optional dependency이며 lazy load된다. runtime v2가 꺼진
   install/build는 native binding load에 의존하지 않고, runtime v2가 켜졌을 때 binding
   부재는 `runtime-v2-sqlite-unavailable`로 실패한다.

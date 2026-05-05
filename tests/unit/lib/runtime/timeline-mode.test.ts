@@ -15,6 +15,21 @@ describe('runtime timeline v2 mode', () => {
     expect(parseRuntimeTimelineV2Mode(undefined)).toBe('off');
   });
 
+  it('defaults to timeline default when runtime v2 is enabled and timeline mode is unset', () => {
+    expect(getRuntimeTimelineV2Mode({
+      CODEXMUX_RUNTIME_V2: '1',
+    } as unknown as NodeJS.ProcessEnv)).toBe('default');
+    expect(getRuntimeTimelineV2Mode({
+      CODEXMUX_RUNTIME_V2: '1',
+      CODEXMUX_RUNTIME_TIMELINE_V2_MODE: 'off',
+    } as unknown as NodeJS.ProcessEnv)).toBe('off');
+    expect(getRuntimeTimelineV2Mode({
+      CODEXMUX_RUNTIME_V2: '1',
+      CODEXMUX_RUNTIME_TIMELINE_V2_MODE: 'invalid',
+    } as unknown as NodeJS.ProcessEnv)).toBe('off');
+    expect(getRuntimeTimelineV2Mode({} as unknown as NodeJS.ProcessEnv)).toBe('off');
+  });
+
   it('allows live timeline ownership only for runtime default mode', () => {
     expect(shouldUseRuntimeTimelineV2Live({
       runtimeV2Enabled: true,
@@ -28,6 +43,24 @@ describe('runtime timeline v2 mode', () => {
       runtimeV2Enabled: false,
       timelineMode: 'default',
     })).toBe(false);
+  });
+
+  it('uses the process env phase 6 fallback for live timeline ownership', () => {
+    const originalRuntime = process.env.CODEXMUX_RUNTIME_V2;
+    const originalMode = process.env.CODEXMUX_RUNTIME_TIMELINE_V2_MODE;
+    try {
+      process.env.CODEXMUX_RUNTIME_V2 = '1';
+      delete process.env.CODEXMUX_RUNTIME_TIMELINE_V2_MODE;
+      expect(shouldUseRuntimeTimelineV2Live()).toBe(true);
+
+      process.env.CODEXMUX_RUNTIME_TIMELINE_V2_MODE = 'off';
+      expect(shouldUseRuntimeTimelineV2Live()).toBe(false);
+    } finally {
+      if (originalRuntime === undefined) delete process.env.CODEXMUX_RUNTIME_V2;
+      else process.env.CODEXMUX_RUNTIME_V2 = originalRuntime;
+      if (originalMode === undefined) delete process.env.CODEXMUX_RUNTIME_TIMELINE_V2_MODE;
+      else process.env.CODEXMUX_RUNTIME_TIMELINE_V2_MODE = originalMode;
+    }
   });
 
   it('allows timeline read ownership only for runtime default mode', () => {

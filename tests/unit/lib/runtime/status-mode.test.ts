@@ -13,6 +13,21 @@ describe('runtime status v2 mode', () => {
     expect(parseRuntimeStatusV2Mode(undefined)).toBe('off');
   });
 
+  it('defaults to status default when runtime v2 is enabled and status mode is unset', () => {
+    expect(getRuntimeStatusV2Mode({
+      CODEXMUX_RUNTIME_V2: '1',
+    } as unknown as NodeJS.ProcessEnv)).toBe('default');
+    expect(getRuntimeStatusV2Mode({
+      CODEXMUX_RUNTIME_V2: '1',
+      CODEXMUX_RUNTIME_STATUS_V2_MODE: 'off',
+    } as unknown as NodeJS.ProcessEnv)).toBe('off');
+    expect(getRuntimeStatusV2Mode({
+      CODEXMUX_RUNTIME_V2: '1',
+      CODEXMUX_RUNTIME_STATUS_V2_MODE: 'invalid',
+    } as unknown as NodeJS.ProcessEnv)).toBe('off');
+    expect(getRuntimeStatusV2Mode({} as unknown as NodeJS.ProcessEnv)).toBe('off');
+  });
+
   it('allows live status ownership only for runtime default mode', () => {
     expect(shouldUseRuntimeStatusV2Live({
       runtimeV2Enabled: true,
@@ -26,6 +41,24 @@ describe('runtime status v2 mode', () => {
       runtimeV2Enabled: false,
       statusMode: 'default',
     })).toBe(false);
+  });
+
+  it('uses the process env phase 6 fallback for live status ownership', () => {
+    const originalRuntime = process.env.CODEXMUX_RUNTIME_V2;
+    const originalMode = process.env.CODEXMUX_RUNTIME_STATUS_V2_MODE;
+    try {
+      process.env.CODEXMUX_RUNTIME_V2 = '1';
+      delete process.env.CODEXMUX_RUNTIME_STATUS_V2_MODE;
+      expect(shouldUseRuntimeStatusV2Live()).toBe(true);
+
+      process.env.CODEXMUX_RUNTIME_STATUS_V2_MODE = 'off';
+      expect(shouldUseRuntimeStatusV2Live()).toBe(false);
+    } finally {
+      if (originalRuntime === undefined) delete process.env.CODEXMUX_RUNTIME_V2;
+      else process.env.CODEXMUX_RUNTIME_V2 = originalRuntime;
+      if (originalMode === undefined) delete process.env.CODEXMUX_RUNTIME_STATUS_V2_MODE;
+      else process.env.CODEXMUX_RUNTIME_STATUS_V2_MODE = originalMode;
+    }
   });
 
   it('reads status mode from an explicit env object', () => {

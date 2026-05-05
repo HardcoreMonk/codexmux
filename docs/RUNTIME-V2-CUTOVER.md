@@ -24,6 +24,7 @@
 - 2026-05-05 lifecycle control UI slice: `/experimental/runtime` 상단에 read-only Lifecycle Control panel을 추가했다. 이 panel은 `/api/health`, `/api/v2/runtime/health`, `/api/debug/perf`를 normalize해 release metadata, terminal/storage/timeline/status mode, 24시간 observation gate, worker diagnostics, perf timing, copy-only rollback runbook을 같은 화면에 표시한다. Endpoint 부분 실패는 가능한 section을 계속 렌더링하고 실패 section label만 노출하며, token/cwd/session/prompt/terminal output 원문은 표시하지 않는다. 실행형 rollback/systemd control은 이번 범위 밖이다.
 - 2026-05-05 timeline watcher/Android evidence deploy: `d3248c4`가 live deploy 되었고 `/api/health`는 `version=0.4.1`, `commit=d3248c4`를 반환한다. Timeline Worker는 `timeline.session-watch-subscribe`/`timeline.session-watch-unsubscribe`와 subscriber-scoped `timeline.session-changed` IPC foundation을 갖췄다. `corepack pnpm smoke:android:timeline-foreground`는 SM-S928N Android 16에서 `timelineV2Mode=default`, foreground 2회, `timeline:init totalEntries` 3/5/7, blocking console/logcat 0으로 통과했다.
 - 2026-05-05 timeline WebSocket default ownership slice: `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`에서 client-facing `/api/timeline` WebSocket이 `handleRuntimeTimelineConnection()`을 통해 Timeline Worker live subscribe/session watch를 사용한다. 기존 URL과 auth/cookie contract는 유지하고, resume safety는 server helper의 process guard/sendKeys만 재사용하며 legacy file watcher에는 붙지 않는다. `corepack pnpm smoke:runtime-v2:timeline-websocket-default`, `timeline-live-shadow`, `timeline-resume-safety`, `timeline-session-changed`, `smoke:android:timeline-foreground`가 temp HOME/DB 기준 통과했다.
+- 2026-05-05 Phase 6 code fallback default: `CODEXMUX_RUNTIME_V2=1`에서 per-surface mode env가 unset이면 terminal은 `new-tabs`, storage/timeline/status는 `default`로 해석한다. 명시적 `off`는 rollback으로 유지하고, 잘못된 명시 값은 `off`로 fail closed한다.
 
 Production 기본 경로로 전환하지 않은 것:
 
@@ -105,6 +106,7 @@ Work:
 - Keep existing `pt-` sessions and legacy JSON layout as the UI source of truth.
 - Make tab identity explicit in UI state: `runtimeVersion: 1 | 2`.
 - Parse `CODEXMUX_RUNTIME_TERMINAL_V2_MODE` through `src/lib/runtime/terminal-mode.ts`; unknown values fail closed to `off`.
+- After Phase 6, unset terminal mode falls back to `new-tabs` only when `CODEXMUX_RUNTIME_V2=1`; explicit `off` and invalid values still fail closed.
 - Ensure close/delete uses the matching runtime cleanup path.
 - Ensure restart uses the matching runtime path: runtime v2 tabs must be recreated
   through Supervisor/Storage/Terminal Worker with the same tab id and `rtv2-`
@@ -228,10 +230,10 @@ Work:
 
 - Run `corepack pnpm smoke:runtime-v2:phase6-default-gate` against the release candidate or live target before changing any code/env defaults.
 - Treat Phase 6 first as an operations gate: runtime v2 must be enabled, terminal must be `new-tabs`, storage/timeline/status must be `default`, and every runtime worker failure/restart/timeout counter must be 0.
-- Default all surface modes in code only after phases 2-5 have shipped independently and the Phase 6 gate passes on the intended target.
+- Default all surface modes in code only after phases 2-5 have shipped independently and the Phase 6 gate passes on the intended target. Completed on 2026-05-05: unset per-surface mode env now resolves to terminal `new-tabs`, storage/timeline/status `default` while `CODEXMUX_RUNTIME_V2=1`.
 - Keep a documented legacy fallback for at least one release.
 - Add release note section for backup, rollback flags, and diagnostic commands.
-- Keep the code-default flip as a separate approval and release decision. The gate script is read-only and does not edit systemd drop-ins, restart services, mutate workspaces, or create tabs.
+- The gate script remains read-only and does not edit systemd drop-ins, restart services, mutate workspaces, or create tabs.
 
 Exit gate:
 
@@ -250,6 +252,7 @@ Rollback:
 
 ```bash
 corepack pnpm test tests/unit/lib/runtime tests/unit/lib/status-state-machine.test.ts tests/unit/lib/status-notification-policy.test.ts tests/unit/pages/runtime-v2-api.test.ts tests/unit/scripts/runtime-v2-smoke-lib.test.ts
+corepack pnpm test tests/unit/lib/runtime/terminal-mode.test.ts tests/unit/lib/runtime/storage-mode.test.ts tests/unit/lib/runtime/timeline-mode.test.ts tests/unit/lib/runtime/status-mode.test.ts tests/unit/pages/runtime-v2-api.test.ts
 corepack pnpm test tests/unit/scripts/runtime-v2-phase6-gate-lib.test.ts
 corepack pnpm tsc --noEmit
 corepack pnpm lint

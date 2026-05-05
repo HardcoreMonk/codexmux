@@ -266,6 +266,7 @@ session history update, Web Push send, rate-limit update를 소유한다.
 Runtime v2 Phase 6 default gate:
 
 ```bash
+corepack pnpm test tests/unit/lib/runtime/terminal-mode.test.ts tests/unit/lib/runtime/storage-mode.test.ts tests/unit/lib/runtime/timeline-mode.test.ts tests/unit/lib/runtime/status-mode.test.ts tests/unit/pages/runtime-v2-api.test.ts
 corepack pnpm test tests/unit/scripts/runtime-v2-phase6-gate-lib.test.ts
 corepack pnpm smoke:runtime-v2:phase6-default-gate
 ```
@@ -277,6 +278,9 @@ terminal `new-tabs`, storage/timeline/status `default`, worker health `ok`와
 `/api/debug/perf`의 runtime worker failure/restart/timeout counter 0을 확인한다.
 workspace나 terminal을 만들지 않는 read-only gate이며 token, cwd, session name,
 JSONL path, prompt, assistant text, terminal output 원문을 출력하지 않는다.
+Mode helper unit tests는 raw parser가 unset/invalid를 계속 `off`로 fail-closed하는 것과,
+`CODEXMUX_RUNTIME_V2=1`에서 per-surface mode env가 unset일 때 resolved code fallback이
+terminal `new-tabs`, storage/timeline/status `default`가 되는 것을 함께 검증한다.
 
 `smoke:runtime-v2:phase2`, `smoke:android:runtime-v2`, `smoke:electron:runtime-v2`는 각각
 임시 서버와 Next.js dev runtime을 띄운다. 같은 checkout에서 병렬 실행하면 Next dev lock

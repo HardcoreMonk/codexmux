@@ -1,4 +1,5 @@
 export type TRuntimeStatusV2Mode = 'off' | 'shadow' | 'default';
+const defaultRuntimeStatusV2Mode: TRuntimeStatusV2Mode = 'default';
 
 export interface IRuntimeStatusV2ModeOptions {
   runtimeV2Enabled?: boolean;
@@ -6,17 +7,29 @@ export interface IRuntimeStatusV2ModeOptions {
 }
 
 export const parseRuntimeStatusV2Mode = (value: unknown): TRuntimeStatusV2Mode => {
+  if (value === 'off') return 'off';
   if (value === 'shadow' || value === 'default') return value;
   return 'off';
 };
 
+export const resolveRuntimeStatusV2Mode = ({
+  runtimeV2Enabled = process.env.CODEXMUX_RUNTIME_V2 === '1',
+  statusMode = process.env.CODEXMUX_RUNTIME_STATUS_V2_MODE,
+}: IRuntimeStatusV2ModeOptions = {}): TRuntimeStatusV2Mode => {
+  if (statusMode === undefined && runtimeV2Enabled) return defaultRuntimeStatusV2Mode;
+  return parseRuntimeStatusV2Mode(statusMode);
+};
+
 export const getRuntimeStatusV2Mode = (env: NodeJS.ProcessEnv = process.env): TRuntimeStatusV2Mode =>
-  parseRuntimeStatusV2Mode(env.CODEXMUX_RUNTIME_STATUS_V2_MODE);
+  resolveRuntimeStatusV2Mode({
+    runtimeV2Enabled: env.CODEXMUX_RUNTIME_V2 === '1',
+    statusMode: env.CODEXMUX_RUNTIME_STATUS_V2_MODE,
+  });
 
 export const shouldUseRuntimeStatusV2Live = ({
   runtimeV2Enabled = process.env.CODEXMUX_RUNTIME_V2 === '1',
   statusMode = process.env.CODEXMUX_RUNTIME_STATUS_V2_MODE,
 }: IRuntimeStatusV2ModeOptions = {}): boolean => {
   if (!runtimeV2Enabled) return false;
-  return parseRuntimeStatusV2Mode(statusMode) === 'default';
+  return resolveRuntimeStatusV2Mode({ runtimeV2Enabled, statusMode }) === 'default';
 };
