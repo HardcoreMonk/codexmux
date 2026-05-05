@@ -40,6 +40,8 @@ import {
   startRuntimeTimelineLiveShadow,
   stopRuntimeTimelineLiveShadow,
 } from '@/lib/runtime/timeline-live-shadow';
+import { shouldUseRuntimeTimelineV2Live } from '@/lib/runtime/timeline-mode';
+import { handleRuntimeTimelineConnection } from '@/lib/runtime/timeline-ws';
 
 const log = createLogger('timeline');
 
@@ -586,7 +588,7 @@ const resolveStoredOrLatestJsonl = async (
 
 const handleResumeMessage = async (
   ws: WebSocket,
-  conn: ITimelineConnection,
+  conn: Pick<ITimelineConnection, 'sessionName' | 'provider' | 'currentJsonlPath'>,
   payload: { sessionId: string; tmuxSession: string },
 ) => {
   const { sessionId, tmuxSession } = payload;
@@ -662,6 +664,54 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
     return;
   }
 
+  const hintSessionId = url.searchParams.get('agentSessionId');
+
+  if (shouldUseRuntimeTimelineV2Live()) {
+    const resumeConn: Pick<ITimelineConnection, 'sessionName' | 'provider' | 'currentJsonlPath'> = {
+      sessionName,
+      provider,
+      currentJsonlPath: null,
+    };
+
+    await handleRuntimeTimelineConnection(ws, {
+      sessionName,
+      panePid,
+      panelType,
+      provider,
+      resolveInitialJsonl: async (info) => {
+        if (info.jsonlPath) {
+          const resolved = await resolveActiveOrLatestJsonl(provider, sessionName, info.jsonlPath, info.sessionId);
+          return {
+            jsonlPath: resolved.jsonlPath,
+            sessionId: resolved.sessionId,
+          };
+        }
+
+        const effectiveSessionId = hintSessionId ?? info.sessionId;
+        if (!effectiveSessionId) return null;
+
+        const resolved = await resolveStoredOrLatestJsonl(provider, sessionName, effectiveSessionId);
+        if (!resolved) return null;
+
+        return {
+          jsonlPath: resolved.jsonlPath,
+          sessionId: resolved.sessionId,
+        };
+      },
+      handleResume: async (payload) => {
+        if (!provider.isValidSessionId(payload.sessionId)) {
+          sendJson(ws, { type: 'timeline:resume-error', message: 'Invalid session ID format' });
+          return;
+        }
+        await handleResumeMessage(ws, resumeConn, payload);
+      },
+      updateTabAgentSessionId: async (sessionId) => {
+        await updateTabAgentSessionId(sessionName, provider, sessionId).catch(() => {});
+      },
+    });
+    return;
+  }
+
   let lastHeartbeat = Date.now();
 
   const heartbeatTimer = setInterval(() => {
@@ -731,7 +781,6 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
     cleanup(conn);
   });
 
-  const hintSessionId = url.searchParams.get('agentSessionId');
   const sessionInfo = await provider.detectActiveSession(panePid);
 
   if (conn.cleaned) return;
