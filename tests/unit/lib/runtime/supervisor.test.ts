@@ -353,6 +353,94 @@ describe('runtime supervisor', () => {
     ]));
   });
 
+  it('clears timeline live and session watchers after timeline worker exit', async () => {
+    const { storage, terminal, timeline, status } = createWorkers();
+    const eventHandlers: Array<(event: IRuntimeEvent) => void> = [];
+    let onTimelineExit: ((err?: Error) => void) | undefined;
+    const jsonlPath = `${os.homedir()}/.codex/sessions/session.jsonl`;
+    timeline.request = async <TPayload, TResult>(type: string, payload: TPayload): Promise<TResult> => {
+      timeline.commands.push({ type, payload });
+      if (type === 'timeline.live-subscribe') {
+        return {
+          subscriberId: (payload as { subscriberId: string }).subscriberId,
+          subscribed: true,
+          init: {
+            type: 'timeline:init',
+            entries: [],
+            sessionId: 'session-a',
+            totalEntries: 0,
+            startByteOffset: 0,
+            hasMore: false,
+            jsonlPath,
+          },
+        } as TResult;
+      }
+      if (type === 'timeline.session-watch-subscribe') {
+        return {
+          subscriberId: (payload as { subscriberId: string }).subscriberId,
+          subscribed: true,
+        } as TResult;
+      }
+      return timeline.replies.get(type) as TResult;
+    };
+    const supervisor = createRuntimeSupervisorForTest({
+      storage,
+      terminal,
+      status,
+      createTimelineClient: (handlers) => {
+        onTimelineExit = handlers.onExit;
+        return timeline;
+      },
+      captureTimelineEventHandler: (handler) => {
+        eventHandlers.push(handler);
+      },
+    });
+    const onError = vi.fn();
+    const onChanged = vi.fn();
+
+    const liveSubscription = await supervisor.subscribeTimelineLive({
+      jsonlPath,
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      sessionId: 'session-a',
+      panelType: 'codex',
+      onError,
+    });
+    const watchSubscription = await supervisor.subscribeTimelineSessionWatch({
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      panePid: 123,
+      panelType: 'codex',
+      onChanged,
+    });
+
+    expect(onTimelineExit).toBeDefined();
+    onTimelineExit?.(new Error('timeline worker stopped'));
+    eventHandlers[0](createRuntimeEvent({
+      source: 'timeline',
+      target: 'supervisor',
+      type: 'timeline.session-changed',
+      delivery: 'realtime',
+      payload: {
+        subscriberId: watchSubscription.subscriberId,
+        sessionName: 'pt-ws-a-pane-b-tab-c',
+        info: {
+          status: 'running',
+          sessionId: '33333333-3333-3333-3333-333333333333',
+          jsonlPath,
+          pid: 456,
+          startedAt: 1,
+          cwd: '/repo',
+        },
+      },
+    }));
+
+    expect(liveSubscription.subscriberId).toMatch(/^sub-/);
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({
+      code: 'timeline-worker-exited',
+      message: 'timeline worker stopped',
+    }));
+    expect(onChanged).not.toHaveBeenCalled();
+  });
+
   it('proxies status policy commands through the status worker', async () => {
     const { storage, terminal, timeline, status } = createWorkers();
     const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });

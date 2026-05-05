@@ -137,15 +137,36 @@ describe('timeline worker service', () => {
     }));
 
     expect(reply.ok).toBe(true);
-    expect(reply.payload).toMatchObject({
-      subscriberId: 'tlsub-a',
-      subscribed: true,
+    const payload = reply.payload as {
+      subscriberId: string;
+      subscribed: boolean;
       init: {
-        type: 'timeline:init',
-        sessionId: 'session-a',
-        totalEntries: 3,
-        hasMore: false,
-      },
+        type: string;
+        sessionId: string;
+        totalEntries: number;
+        startByteOffset: number;
+        hasMore: boolean;
+        jsonlPath: string;
+        meta?: {
+          fileSize: number;
+          userCount: number;
+          assistantCount: number;
+        };
+      };
+    };
+    expect(payload.subscriberId).toBe('tlsub-a');
+    expect(payload.subscribed).toBe(true);
+    expect(payload.init.type).toBe('timeline:init');
+    expect(payload.init.sessionId).toBe('session-a');
+    expect(payload.init.totalEntries).toBe(3);
+    expect(typeof payload.init.startByteOffset).toBe('number');
+    expect(payload.init.hasMore).toBe(false);
+    expect(payload.init.jsonlPath).toBe(jsonlPath);
+    expect(payload.init).toHaveProperty('summary');
+    expect(payload.init.meta).toMatchObject({
+      fileSize: expect.any(Number),
+      userCount: 1,
+      assistantCount: 1,
     });
 
     await fs.appendFile(jsonlPath, `\n${line({
