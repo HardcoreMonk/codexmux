@@ -687,7 +687,7 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
           };
         }
 
-        const effectiveSessionId = hintSessionId ?? info.sessionId;
+        const effectiveSessionId = info.sessionId ?? hintSessionId;
         if (!effectiveSessionId) return null;
 
         const resolved = await resolveStoredOrLatestJsonl(provider, sessionName, effectiveSessionId);
