@@ -34,6 +34,7 @@ import { createDedupeKeyStore } from '@/lib/dedupe-key-store';
 import { completionKeyFor, normalizeSessionId, resolveAgentSessionId, sessionIdFromJsonlPath } from '@/lib/status-session-mapping';
 import { shouldProcessHookEvent, shouldSendNeedsInputNotification, shouldSendReviewNotification } from '@/lib/status-notification-policy';
 import { mergeStatusMetadata } from '@/lib/status-metadata';
+import { forwardBridgeTraceStatusUpdate } from '@/lib/bridge-trace-forwarder';
 import { getPerfNow, recordPerfCounter, recordPerfDuration } from '@/lib/perf-metrics';
 
 const log = createLogger('status');
@@ -1389,6 +1390,9 @@ class StatusManager {
       eventSeq: entry.eventSeq,
     };
     this.broadcast(msg, exclude);
+    forwardBridgeTraceStatusUpdate(msg).catch((err) => {
+      log.debug('bridge trace forward failed: %s', err instanceof Error ? err.message : String(err));
+    });
   }
 
   private broadcastRemove(tabId: string): void {

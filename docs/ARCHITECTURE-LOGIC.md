@@ -98,6 +98,12 @@ WebSocket은 path별 전용 server로 분기한다.
 
 `/api/debug/perf`는 HTTP debug endpoint지만 middleware 예외가 아니다. session cookie 또는 `x-cmux-token` CLI token 인증을 통과한 요청에만 process memory, event loop, WebSocket count, watcher count, poll duration 같은 숫자 지표를 반환한다.
 
+`CODEXMUX_BRIDGE_TRACE_URL`이 설정된 서버에서는 status update broadcast 뒤
+`bridge-trace-forwarder`가 같은 update를 codex-ai-bridge의 loopback external trace
+ingress로 best-effort POST한다. 이 경로는 Discord 직접 전송이 아니라 bridge-owned
+trace 정책 적용을 위한 로컬 event feed이며, payload는 workspace directory와 status
+summary로 제한한다.
+
 ## 상태 저장 로직
 
 codexmux가 쓰는 영속 상태는 `~/.codexmux/` 아래에 둔다.
@@ -248,6 +254,7 @@ inactive
 - notification dedupe key는 session id와 turn id를 우선 사용한다.
 - foreground toast, native notification, Web Push는 같은 notification policy를 따른다.
 - Codex permission/input prompt가 JSONL/hook event 없이 live pane에만 보이면 pane capture recovery가 `needs-input`을 합성한다. Resume directory prompt처럼 persisted state가 `idle`이어도 실제 CLI가 선택을 기다리면 `needs-input`으로 복구한다.
+- `/api/tmux/permission-options`는 live pane capture에서 latest prompt block만 파싱해 option list, focused index, `captureEmpty`, sanitized approval metadata를 반환한다. Metadata는 `command`, `file`, `permission`, `resume-directory`, `conversation`, `unknown` prompt type과 `allow`, `deny`, `trust`, `directory`, `input`, `unknown` kind, `low|medium|high|unknown` risk, sanitized command preview, basename-only file hint만 포함한다. API option label은 기존 index 선택 호환을 위해 CLI 선택지 텍스트를 유지하지만, status/Web Push/log payload에는 full command, cwd, session name, JSONL path, prompt body, assistant text, terminal output을 넣지 않는다.
 - Codex가 `Conversation interrupted` 입력 프롬프트에 멈췄지만 JSONL interrupt marker를 남기지 않으면 pane capture recovery가 stale `busy`를 `idle`로 되돌린다.
 - poll duration, tab/pane count, broadcast count는 perf snapshot에 남겨 polling 비용을 확인한다.
 - `/login` 같은 인증 전 public route는 status/native notification/Web Push/service worker runtime service를 마운트하지 않는다. fresh install 또는 app data clear 후 auth WebSocket 실패와 service worker registration console noise가 없어야 한다. `/sw.js` 자체는 PWA/Web Push 설치를 위한 static service worker script이므로 auth redirect 없이 public asset으로 제공한다.
@@ -317,6 +324,8 @@ Android WebView DevTools 기반 smoke는 `smoke:android:foreground`, `smoke:andr
 | 사용자가 tab focus/dismiss | `idle`로 정리 | 추가 알림 없음 |
 
 `soundOnCompleteEnabled=false`이면 toast sound뿐 아니라 native/background notification도 silent로 요청한다.
+
+전역 approval queue는 `needs-input` tab을 notification panel에 모아 `/api/tmux/permission-options`의 option list와 sanitized metadata를 표시한다. 사용자가 선택하면 기존 `/api/tmux/send-input`에 option index를 보내고 `status:ack-notification`으로 `needs-input -> busy` 전이를 요청한다. 선택지 조회나 전송이 실패하면 terminal tab 이동 fallback을 유지한다. Needs-input Web Push는 기존 tab navigation payload를 유지하며, push payload에 prompt 본문이나 raw command/file path를 싣지 않는다.
 
 ## 운영 서비스 로직
 

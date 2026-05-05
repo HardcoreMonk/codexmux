@@ -4,8 +4,8 @@
 
 전역 notification panel의 `needs-input` 항목을 metadata 기반 approval queue로 고도화한다.
 사용자는 tab으로 이동하기 전에 approval prompt가 command, file, permission, resume
-directory, conversation 중 어떤 종류인지 구분할 수 있어야 하며, Web Push click과 fallback도
-같은 target metadata를 사용해야 한다.
+directory, conversation 중 어떤 종류인지 구분할 수 있어야 한다. Web Push click은 기존
+tab navigation을 유지하고, prompt detail은 notification panel에서 다시 조회한다.
 
 ## Context
 
@@ -17,8 +17,9 @@ directory, conversation 중 어떤 종류인지 구분할 수 있어야 하며, 
 `needs-input -> busy` 전이를 요청한다.
 
 이 구조는 실제 Codex CLI permission prompt live smoke까지 통과했지만, 전역 queue에서는 모든
-prompt가 같은 모양으로 보인다. 다음 단계에서는 prompt 종류와 risk를 구조화해 UI, push, fallback
-copy가 같은 판단 근거를 쓰게 한다.
+prompt가 같은 모양으로 보인다. 다음 단계에서는 prompt 종류와 risk를 구조화해 UI와 fallback
+copy가 같은 판단 근거를 쓰게 한다. Mobile push deep link와 durable audit history는 이 slice의
+후속 spec으로 분리한다.
 
 ## Scope
 
@@ -28,7 +29,7 @@ copy가 같은 판단 근거를 쓰게 한다.
 - `src/pages/api/tmux/permission-options.ts`는 기존 `options` 호환을 유지하면서 metadata를 추가한다.
 - `src/lib/approval-queue.ts`는 metadata를 UI badge, risk label, fallback copy로 변환한다.
 - `src/components/features/workspace/approval-queue-item.tsx`는 prompt type/risk badge와 fallback reason을 표시한다.
-- `src/lib/status-manager.ts` Web Push payload에는 approval target metadata만 추가한다.
+- `src/lib/status-manager.ts` Web Push payload에는 raw prompt detail 없이 unknown enum placeholder만 추가한다.
 - `src/hooks/use-web-push.ts`는 기존 `navigateToTab`/`navigateToTabOrCreate` 경로를 유지한다.
 - Korean/English notification locale copy를 함께 갱신한다.
 

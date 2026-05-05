@@ -64,7 +64,7 @@ Codex가 `busy`인 동안에는 이런 것도 함께 보입니다:
 
 ## 인라인 권한/입력 프롬프트
 
-Codex가 툴 실행, 파일 편집 권한, resume directory 선택을 요청하면 모달이 아니라 notification panel과 타임라인에 프롬프트가 나타납니다. 옵션을 클릭하거나, 매칭되는 숫자 키를 누르거나, 무시하고 휴대폰의 Web Push로 응답할 수 있습니다. 전체 흐름은 [권한/입력 프롬프트](/codexmux/fr/docs/permission-prompts/) 참고.
+Codex가 툴 실행, 파일 편집 권한, resume directory 선택을 요청하면 모달이 아니라 notification panel과 타임라인에 프롬프트가 나타납니다. notification panel은 prompt type과 risk badge를 함께 보여주며, 옵션을 클릭하거나, 매칭되는 숫자 키를 누르거나, Web Push를 눌러 해당 tab으로 이동한 뒤 선택할 수 있습니다. 전체 흐름은 [권한/입력 프롬프트](/codexmux/fr/docs/permission-prompts/) 참고.
 
 ## 한 탭의 여러 모드
 

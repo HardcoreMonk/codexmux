@@ -19,6 +19,14 @@ terminal, status, timeline, sync, runtime v2, platform shell을 건드린 변경
 smoke 중 관련 항목을 추가한다. 문서만 바꾼 경우에도 링크와 명령이 맞는지 확인하기 위해
 `corepack pnpm lint` 또는 `corepack pnpm build:landing`을 선택적으로 실행한다.
 
+status update를 codex-ai-bridge external trace로 전달하는 경로를 바꾸면 다음 focused test를
+기본 검증에 추가한다.
+
+```bash
+corepack pnpm test tests/unit/lib/bridge-trace-forwarder.test.ts
+corepack pnpm tsc --noEmit
+```
+
 ## Browser UI And Playwright
 
 `@playwright/test`는 dev dependency로 설치되어 있으며, Playwright 관리 Chromium은
@@ -289,6 +297,19 @@ corepack pnpm smoke:permission
 200을 반환하는지 확인한다. timeline 중복 회귀는 browser reload 후 같은 assistant text가
 `event_msg.agent_message`와 paired `response_item.message`로 남은 JSONL에서도 한 번만
 표시되는지 확인한다.
+
+Bridge trace forwarding은 env-gated optional path이므로 unit test로 payload boundary를 먼저
+고정한다.
+
+```bash
+corepack pnpm vitest run tests/unit/lib/bridge-trace-forwarder.test.ts
+```
+
+이 검증은 `CODEXMUX_BRIDGE_TRACE_URL`/`CODEXMUX_BRIDGE_TRACE_TOKEN`이 없으면 fetch를
+호출하지 않고, 설정된 경우 bearer auth로 summary-only status payload를 보내며 같은 tab의
+동일 state/action 조합을 dedupe하는지 확인한다. Discord token, raw transcript, terminal
+stdout, auth cookie를 payload에 추가하는 변경은 이 테스트와 `docs/ADR.md`를 함께 갱신해야
+한다.
 
 ## Systemd And Live Deploy
 

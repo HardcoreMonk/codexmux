@@ -139,7 +139,7 @@ corepack pnpm start
 - 라이브 타임라인: Codex JSONL과 live pane prompt를 읽어 메시지, tool call, permission/input prompt, reasoning summary 표시
 - 안정적인 재연결: 타임라인 entry id와 중복 제거를 JSONL record identity 기준으로 처리
 - 모바일 UI: PWA, iPad Safari, Android 앱, Web Push, foreground 재접속, 입력 draft 보존, CODEX 확인 중 터미널 preview
-- 알림 제어: 작업 완료 toast, 시스템 알림, 완료 사운드 on/off
+- 알림 제어: 작업 완료 toast, 시스템 알림, 완료 사운드 on/off, 전역 approval queue의 prompt type/risk 표시
 - Git 워크플로: status, diff, history, fetch, pull, push, 충돌/dirty 상태 전달
 - DIFF 안정성: 대량 diff와 untracked 파일은 제한, 생략 안내, 짧은 서버 캐시, 기본 접힘, timeout으로 UI hang 방지
 - 사용량 통계: token, cache read/write, 비용 추정, 프로젝트별 분석, 일별 리포트, cold-start 중복 계산 방지
@@ -718,7 +718,7 @@ On iPad, use Safari and add codexmux to the Home Screen. A native iPadOS app is 
 - Live timeline from Codex JSONL logs
 - PWA, iPad Safari, Android app, Web Push, foreground reconnect, input draft preservation, and terminal preview while CODEX is checking
 - Stable timeline entry ids and duplicate suppression across reconnects and paired Codex records
-- Notification controls for task-complete toast, system notifications, and completion sound
+- Notification controls for task-complete toast, system notifications, completion sound, and global approval queue prompt type/risk badges
 - Git status, diff, history, fetch, pull, and push flows
 - Diff safety for large changes through bounded untracked handling, skipped-file notices, short server cache, default collapse, and request timeouts
 - Usage stats, token cache analysis, cost estimates, daily reports, and in-flight cache build dedupe

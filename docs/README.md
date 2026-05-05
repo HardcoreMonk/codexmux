@@ -47,6 +47,7 @@
 ## 갱신 규칙
 
 - 상태 모델, provider metadata, notification policy를 바꾸면 `STATUS.md`와 `ADR.md`를 함께 갱신한다.
+- status update를 외부 bridge/trace/notification ingress로 전달하는 정책을 바꾸면 `STATUS.md`, `ARCHITECTURE-LOGIC.md`, `ADR.md`, `TESTING.md`를 함께 갱신한다.
 - tmux, process 감지, terminal protocol, `Ctrl+D` 입력 정책을 바꾸면 `TMUX.md`를 갱신한다.
 - 서버 startup, WebSocket routing, shared singleton, sync 흐름을 바꾸면 `ARCHITECTURE-LOGIC.md`를 갱신한다.
 - 성능 계측, polling, timeline render/cache, WebSocket batching을 바꾸면 `PERFORMANCE.md`를 갱신한다.

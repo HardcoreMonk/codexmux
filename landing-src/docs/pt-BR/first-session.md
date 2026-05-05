@@ -38,7 +38,7 @@ Codex 템플릿은 terminal을 열고 `codex`를 실행하는 shortcut입니다.
 
 ## permission/input prompt
 
-Codex가 tool 실행, 파일 변경 허가, resume directory 선택을 요청하면 codexmux는 notification panel과 timeline에 prompt를 표시합니다. option을 클릭하거나 숫자 key를 누르거나 모바일 push에서 답할 수 있습니다.
+Codex가 tool 실행, 파일 변경 허가, resume directory 선택을 요청하면 codexmux는 notification panel과 timeline에 prompt를 표시합니다. notification panel은 prompt type과 risk badge를 함께 보여주며, option을 클릭하거나 숫자 key를 누르거나 모바일 push를 눌러 해당 tab으로 이동한 뒤 선택할 수 있습니다.
 
 ## 복구
 

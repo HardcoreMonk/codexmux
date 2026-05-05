@@ -15,6 +15,21 @@
 
 작은 copy, 단일 컴포넌트 스타일, 버그 수정은 기존 ADR의 결정과 충돌하지 않으면 새 ADR이 필요 없다.
 
+## Accepted: Bridge-Owned External Trace
+
+- Status: Accepted
+- Decision: codexmux는 Discord로 직접 전송하지 않고, `CODEXMUX_BRIDGE_TRACE_URL`과
+  `CODEXMUX_BRIDGE_TRACE_TOKEN`이 설정된 경우에만 status update summary를
+  codex-ai-bridge의 loopback external trace ingress로 best-effort POST한다.
+- Rationale: Discord token, channel routing, `/추적` preference, turn history ownership은
+  codex-ai-bridge가 이미 소유한다. codexmux가 Discord client를 중복 구현하면 보안 경계와
+  trace 정책이 분산된다.
+- Consequences: payload는 workspace directory, tab id/name, Codex session id,
+  `cliState`, `currentAction`, `lastAssistantMessage`, `lastUserMessage`로 제한한다. raw
+  transcript, 전체 stdout, Discord token은 codexmux에서 전송하지 않는다. 같은 tab의 동일
+  state/action 조합은 forwarder가 dedupe하며, 전송 실패는 status update broadcast를 막지
+  않는다.
+
 ## Proposed: Supervisor And Worker Runtime
 
 - Status: Proposed
@@ -202,3 +217,17 @@
 - Decision: `/api/timeline/sessions`는 요청마다 Codex JSONL을 재귀 스캔하지 않고 `SessionIndexService`의 `globalThis.__ptSessionIndex` snapshot을 읽는다. 인덱스는 `~/.codexmux/session-index.json`에 persist하고 백그라운드 refresh로 갱신한다.
 - Rationale: 로컬 Codex 세션이 늘어나면 session list 요청 경로에서 전체 JSONL 파싱, 정렬, slice가 반복되어 메모리와 CPU가 급증한다. session 목록은 실시간 terminal byte stream보다 지연 허용치가 크므로 request path에서 source scan을 제거하는 편이 안정적이다.
 - Consequences: 로컬 Codex JSONL은 mtime/size가 바뀐 파일만 다시 파싱한다. session list API는 index snapshot을 페이지네이션만 해서 반환한다. Codex provider의 JSONL lookup은 index를 먼저 사용하고 miss 때만 filesystem scan으로 fallback한다. `/api/debug/perf`는 session index의 파일 수, cache hit/miss, build duration을 노출한다.
+
+## ADR-016: Approval Queue Metadata는 Sanitized Projection으로 유지
+
+- Status: Accepted
+- Decision: Codex permission/input prompt의 approval queue metadata는 live pane capture에서 계산한 non-durable projection으로 유지한다. `/api/tmux/permission-options`는 기존 option index 선택 호환을 위해 CLI 선택지와 focused index를 반환하고, 별도로 `promptType`, `approvalKind`, `riskLevel`, sanitized command preview, basename-only file hint를 포함한 metadata를 반환한다.
+- Rationale: 실제 prompt source는 tmux pane과 Codex CLI이며, codexmux가 별도 approval database나 정책 engine을 만들면 CLI 상태와 drift가 생긴다. 동시에 notification panel, fallback copy, Web Push target은 command/file/permission/resume/conversation 같은 최소 분류와 위험도 표시가 필요하다.
+- Consequences: Metadata는 latest prompt block 범위에서만 계산해 scrollback contamination을 피한다. Full command, cwd, session name, JSONL path, prompt body, assistant text, terminal output, token-like 값은 metadata, status payload, Web Push payload, capture failure log에 넣지 않는다. API option label은 선택 index 호환을 위해 CLI 선택지 텍스트를 유지하므로 sanitized metadata와 같은 보안 경계로 취급하지 않는다. 현재 Web Push click routing은 기존 workspace/tab navigation을 유지하며, status state가 parsed prompt metadata를 소유하기 전까지 push payload에는 raw prompt detail을 추가하지 않는다. Durable approval audit history나 mobile push deep link 고도화는 별도 spec과 storage/privacy 결정을 거친다.
+
+## ADR-017: Bridge Trace Forwarding은 Env-gated Local Feed로 제한
+
+- Status: Accepted
+- Decision: `CODEXMUX_BRIDGE_TRACE_URL`과 `CODEXMUX_BRIDGE_TRACE_TOKEN`이 설정된 경우에만 `StatusManager.broadcastUpdate` 뒤 status summary를 codex-ai-bridge external trace ingress로 best-effort POST한다. codexmux는 Discord API나 bot token을 직접 다루지 않는다.
+- Rationale: Discord/bridge 추적은 codexmux status source와 분리된 운영 소비자다. status update를 bridge-owned ingress로만 전달하면 codexmux는 기존 status lifecycle을 유지하면서 외부 알림/추적 정책을 codex-ai-bridge에 맡길 수 있다.
+- Consequences: Forwarding 실패는 status broadcast, notification, session history를 막지 않는다. Payload는 workspace directory, tab id/name, Codex session id, `cliState`, `currentAction`, `lastAssistantMessage`, `lastUserMessage`의 summary-only shape로 제한하고 field length를 cap한다. Discord token, raw transcript, terminal stdout, full JSONL path, auth cookie는 전송하지 않는다. 같은 tab의 동일 state/action/session 조합은 forwarder가 dedupe한다.

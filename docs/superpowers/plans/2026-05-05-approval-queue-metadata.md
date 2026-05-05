@@ -4,7 +4,9 @@
 
 **Goal:** Add sanitized approval prompt metadata so the global approval queue can distinguish command, file, permission, resume-directory, and conversation prompts.
 
-**Architecture:** Extend the existing pane-capture parser first, preserving the current `options` and `focusedIndex` behavior. Add metadata to `/api/tmux/permission-options`, map it through pure approval queue helpers for UI labels, show dense badges in `ApprovalQueueItem`, and add compact Web Push metadata without changing push navigation.
+**Implementation Status:** Completed in `c9b3d8f`. Remaining follow-up is tracked in `docs/FOLLOW-UP.md`.
+
+**Architecture:** Extend the existing pane-capture parser first, preserving the current `options` and `focusedIndex` behavior. Add metadata to `/api/tmux/permission-options`, map it through pure approval queue helpers for UI labels, show dense badges in `ApprovalQueueItem`, and keep Web Push navigation unchanged with raw prompt detail excluded from the push payload.
 
 **Tech Stack:** TypeScript, Next.js Pages Router API routes, React 19, next-intl messages, lucide-react icons, Vitest node tests, existing `smoke:permission`.
 
@@ -30,7 +32,7 @@
 - Modify `messages/en/notification.json`
   - Add prompt type, risk, and fallback copy.
 - Modify `src/lib/status-manager.ts`
-  - Add compact approval metadata to needs-input Web Push payload.
+  - Add needs-input Web Push enum placeholders without prompt detail.
 - Modify `docs/STATUS.md`
 - Modify `docs/TESTING.md`
 - Modify `docs/FOLLOW-UP.md`
@@ -1020,9 +1022,9 @@ corepack pnpm smoke:permission
 In `docs/FOLLOW-UP.md`, update the approval workflow backlog so it says:
 
 ```markdown
-- approval queue metadata slice는 command/file/permission/resume/conversation type과 risk
-  badge를 전역 notification panel에 표시한다. 다음 단계는 mobile push copy와 durable audit
-  history를 별도 spec으로 검토한다.
+- approval queue metadata slice는 command/file/permission/resume/conversation type, approval
+  kind, risk badge, sanitized command/file detail을 전역 notification panel에 표시한다. 다음
+  단계는 mobile push copy/deep link와 durable audit history를 별도 spec으로 검토한다.
 ```
 
 - [ ] **Step 4: Run full verification**

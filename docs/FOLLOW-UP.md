@@ -39,9 +39,12 @@
 - Linux 운영: `systemd --user` 서비스 등록, linger 설정, `HOST=localhost,tailscale,192.168.0.0/16`/`PORT=8122` 운영 문서화.
 - permission/input prompt smoke 자동화: 임시 server/HOME/tmux tab에서 `needs-input` push, option parsing, stdin 선택, ack 이후 `busy` 복귀 검증.
 - 전역 approval queue 1차: notification panel의 `needs-input` 항목에서 Codex permission/input prompt 선택지를 조회하고 바로 선택/ack 처리한다. 선택지 조회/전송 실패 시 기존 tab 이동 fallback을 유지한다.
+- approval queue metadata slice: command/file/permission/resume/conversation type, approval kind, risk badge, sanitized command/file detail을 전역 notification panel에 표시한다. Metadata는 status/Web Push durable payload가 아니라 pane capture에서 계산하는 sanitized projection으로 유지한다.
 - 실제 Codex CLI permission prompt live smoke: live tab에서 `read-only` sandbox 실패로 실제 Codex CLI approval prompt를 띄우고, pane capture recovery로 `needs-input` 전환, notification panel `No` 선택, ack 후 `busy` 복귀, denied command 미실행을 확인했다.
+- bridge trace forwarding: env-gated `CODEXMUX_BRIDGE_TRACE_URL`/`CODEXMUX_BRIDGE_TRACE_TOKEN`이 있을 때 status summary를 codex-ai-bridge external trace ingress로 best-effort POST한다. Discord 직접 전송이나 raw transcript 전달은 하지 않는다.
 - Codex live input prompt 복구: JSONL interrupt marker 없이 남은 `Conversation interrupted` prompt는 stale `busy`에서 `idle`로 복구하고, service restart 후 남는 resume working directory prompt는 persisted `idle`에서도 `needs-input`으로 노출한다. `7e83313` live deploy 기준 Android에서 보이던 purecvisor-single hang 표시는 `needs-input` prompt로 정정됐다.
 - runtime v2 lifecycle control UI 1차: `/experimental/runtime` 상단에서 `/api/health`, `/api/v2/runtime/health`, `/api/debug/perf`를 read-only로 모아 release, surface mode, 24시간 observation gate, worker diagnostics, perf timing, copy-only rollback runbook을 표시한다. Endpoint 부분 실패는 section label만 노출하고 가능한 section은 계속 렌더링하며, token/cwd/session/prompt/terminal output 원문은 UI에 표시하지 않는다.
+- codex-ai-bridge external trace forwarding: `CODEXMUX_BRIDGE_TRACE_URL`/`CODEXMUX_BRIDGE_TRACE_TOKEN`이 설정된 경우 status update summary를 bridge-owned ingress로 best-effort POST한다. Discord token과 raw transcript는 codexmux가 소유하지 않고, 동일 tab/state/action 조합은 dedupe한다.
 
 ## 릴리스 전 확인
 
@@ -126,7 +129,7 @@ P0/P1/P2/P3 후속 상태:
 - P1 남음: 자동 개발로 처리 가능한 platform smoke 항목은 없음.
 - P2 완료: runtime v2 phase2 gate, Electron/Android runtime v2 reconnect smoke, browser reconnect DOM smoke, live terminal `new-tabs` enable을 현재 코드 기준으로 확인했다.
 - P2 남음: runtime v2 shadow/new-tabs/default 24시간 worker restart-loop 부재 관찰, release workflow/CI에서 선택 실행할 Android/Electron/browser reconnect smoke artifact 보존. 24시간 종료 판단은 2026-05-06 01:42 KST 이후에 가능하다.
-- P3 진행: storage `default` live mode로 전환했고 dry-run, backup, import, write, default-read, shadow preflight와 initial rollback window canary를 통과했다. Android release signing/AAB는 로컬 keystore 권한 보정, fresh AAB build, `smoke:android:release-aab` 검증 자동화까지 완료했다. Perf snapshot baseline은 runtime v2 default 전환 뒤 2026-05-05 02:21 KST에 재수집했다. Approval queue 1차는 notification panel에서 pending permission prompt를 직접 처리하는 경로까지 구현했고 `vitest`, `smoke:permission`, `tsc`, `lint`와 실제 Codex CLI permission prompt live smoke를 통과했다.
+- P3 진행: storage `default` live mode로 전환했고 dry-run, backup, import, write, default-read, shadow preflight와 initial rollback window canary를 통과했다. Android release signing/AAB는 로컬 keystore 권한 보정, fresh AAB build, `smoke:android:release-aab` 검증 자동화까지 완료했다. Perf snapshot baseline은 runtime v2 default 전환 뒤 2026-05-05 02:21 KST에 재수집했다. Approval queue 1차와 metadata slice는 notification panel에서 pending permission prompt를 직접 처리하고 command/file/permission/resume/conversation type, approval kind, risk badge를 표시하는 경로까지 구현했다. `vitest`, `smoke:permission`, `tsc`, `lint`, `build`와 실제 Codex CLI permission prompt live smoke를 통과했다.
 - P3 남음: storage default 장시간 observation과 필요 시 rollback drill, 측정 기반 perf tuning. Lifecycle control UI는 read-only 1차 범위를 완료했고, 실행형 control은 별도 spec으로 분리한다. Timeline/status는 `docs/RUNTIME-V2-CUTOVER.md`의 Phase 4/5 gate로 별도 진행한다.
 
 1. 장시간 Codex smoke test: 새 tab 생성, prompt 실행, tool call과 reasoning summary 표시, 상태 전이 확인.
@@ -160,11 +163,9 @@ P0/P1/P2/P3 후속 상태:
 
 ### Approval workflow
 
-- approval queue 1차는 notification panel의 `needs-input` section에서 Codex permission/input prompt 선택지를 직접 처리한다. 실제 Codex CLI permission prompt live smoke와 resume directory prompt option parsing은 통과했으며, 다음 단계는 richer approval type 분류다.
-- approval queue metadata slice는 command/file/permission/resume/conversation type과 risk
-  badge를 전역 notification panel에 표시한다. 다음 단계는 mobile push copy와 durable audit
-  history를 별도 spec으로 검토한다.
-- 모바일 push에서 approval target으로 deep link.
+- approval queue 1차는 notification panel의 `needs-input` section에서 Codex permission/input prompt 선택지를 직접 처리한다. 실제 Codex CLI permission prompt live smoke와 resume directory prompt option parsing은 통과했다.
+- approval queue metadata slice는 command/file/permission/resume/conversation type, approval kind, risk badge, sanitized command/file detail을 전역 notification panel에 표시한다. API option label은 기존 option index 선택 호환을 위해 CLI 선택지 텍스트를 유지한다.
+- 다음 approval workflow 단계는 mobile push copy/deep link와 durable audit history를 별도 spec으로 검토하는 것이다.
 - pane capture 실패 시 terminal fallback 안내 개선.
 
 ### App-server adapter
