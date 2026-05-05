@@ -396,6 +396,7 @@ describe('runtime supervisor', () => {
       },
     });
     const onError = vi.fn();
+    const onAppend = vi.fn();
     const onChanged = vi.fn();
 
     const liveSubscription = await supervisor.subscribeTimelineLive({
@@ -403,6 +404,7 @@ describe('runtime supervisor', () => {
       sessionName: 'pt-ws-a-pane-b-tab-c',
       sessionId: 'session-a',
       panelType: 'codex',
+      onAppend,
       onError,
     });
     const watchSubscription = await supervisor.subscribeTimelineSessionWatch({
@@ -414,6 +416,17 @@ describe('runtime supervisor', () => {
 
     expect(onTimelineExit).toBeDefined();
     onTimelineExit?.(new Error('timeline worker stopped'));
+    eventHandlers[0](createRuntimeEvent({
+      source: 'timeline',
+      target: 'supervisor',
+      type: 'timeline.live-append',
+      delivery: 'realtime',
+      payload: {
+        subscriberId: liveSubscription.subscriberId,
+        jsonlPath,
+        entries: [{ id: 'entry-a', type: 'user-message', timestamp: 1 }],
+      },
+    }));
     eventHandlers[0](createRuntimeEvent({
       source: 'timeline',
       target: 'supervisor',
@@ -438,6 +451,7 @@ describe('runtime supervisor', () => {
       code: 'timeline-worker-exited',
       message: 'timeline worker stopped',
     }));
+    expect(onAppend).not.toHaveBeenCalled();
     expect(onChanged).not.toHaveBeenCalled();
   });
 

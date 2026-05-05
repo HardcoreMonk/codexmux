@@ -147,6 +147,7 @@ describe('timeline worker service', () => {
         startByteOffset: number;
         hasMore: boolean;
         jsonlPath: string;
+        summary?: string;
         meta?: {
           fileSize: number;
           userCount: number;
@@ -162,7 +163,7 @@ describe('timeline worker service', () => {
     expect(typeof payload.init.startByteOffset).toBe('number');
     expect(payload.init.hasMore).toBe(false);
     expect(payload.init.jsonlPath).toBe(jsonlPath);
-    expect(payload.init).toHaveProperty('summary');
+    expect(payload.init.summary).toBe('First prompt');
     expect(payload.init.meta).toMatchObject({
       fileSize: expect.any(Number),
       userCount: 1,
