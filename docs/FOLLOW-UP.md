@@ -190,7 +190,7 @@ P0/P1/P2/P3 후속 상태:
 
 - `timeline-server.ts`는 1차로 shared state를 분리했다. 다음 단계에서는 subscription service, file watcher service, resume service를 별도 파일로 더 나눈다.
 - `status-manager.ts`는 순수 정책 helper를 분리했다. 다음 단계에서는 Web Push/history side effect adapter를 분리한다.
-- provider를 추가할 때는 `IAgentProvider` contract test와 JSONL fixture를 먼저 추가한다.
+- provider 확장 안전망은 `tests/fixtures/providers/codex/` JSONL fixtures와 `tests/unit/lib/providers.test.ts` contract coverage로 시작한다. 새 provider나 app-server adapter는 같은 fixture contract를 통과한 뒤 experimental registry에 들어간다.
 - runtime v2 production 전환은 `docs/RUNTIME-V2-CUTOVER.md`의 surface별 flag와 rollback gate를 따른다. terminal, storage, timeline, status를 한 release에서 동시에 기본값으로 전환하지 않는다.
 - runtime v2 parity는 `docs/RUNTIME-V2-PARITY.md`의 surface row별 owner, migration, test, rollback을 먼저 채운 뒤 surface mode를 바꾼다.
 - Lifecycle Control은 evidence surface와 allowlisted action launcher 1차를 제공한다. 현재 UI 실행 범위는 Phase 6 gate, `codexmux.service` restart, local deploy로 제한되며 audit은 sanitized JSONL status event만 남긴다. `lifecycle:rollback-dry-run`은 현재 drop-in과 rollback 명령을 read-only로 보여준다. systemd drop-in 수정, runtime flag mutation, rollback drill 자동화는 별도 spec으로 남긴다.
@@ -198,6 +198,7 @@ P0/P1/P2/P3 후속 상태:
 ### Performance
 
 - `/api/debug/perf` snapshot을 배포 환경에서 수집해 timeline render, status poll, diff, stats 중 실제 병목을 먼저 확인한다. 2026-05-06 측정에서는 stats cold cache build가 약 3.17초로 가장 컸고, stats JSONL parser/cache에 경로 날짜 기반 file filtering을 적용했다. 후속으로 projects/sessions 동시 요청이 같은 parsed session summary를 공유하도록 `stats.session_parse.<period>` in-flight/cache reuse를 추가했다.
+- 1~6 운영 항목은 `corepack pnpm ops:automation:batch`로 release artifact workflow, perf/stats reuse evidence, approval queue focused tests, lifecycle rollback dry-run, local smoke evidence, Post-MVP deferral docs를 한 번에 점검한다. 실제 iPad 장시간 background와 Mac packaged UX는 이 batch에서도 수동 증거로 남긴다.
 - timeline virtualization은 scroll anchor/load-more 회귀를 막기 위해 `content-visibility`를 먼저 적용했다. 다음 단계는 긴 대화 smoke와 snapshot 결과에 따라 작은 windowed render를 별도 검증한다.
 - session meta message count는 전용 streaming helper로 분리했다. 다음 단계는 실제 긴 JSONL에서 `timeline.message_counts.read` duration과 cache hit 비율을 보고 추가 index화가 필요한지 판단한다.
 - session index는 refresh 결과가 unchanged이면 persisted file write를 건너뛴다. Phase 6 default 이후 main server는 runtime v2 timeline default에서 legacy session index startup prewarm을 건너뛰어 15초 주기 JSONL scan 중복 비용을 줄인다. Legacy/shadow/off mode와 fallback lazy initialization은 유지한다.

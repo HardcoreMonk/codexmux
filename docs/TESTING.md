@@ -440,6 +440,19 @@ The batch runs browser reconnect automatically and writes an `ops-smoke-batch` a
 target checks. iPad long-background and Mac packaged UX rows stay `manual-required` unless real
 device/package evidence is collected outside the runner.
 
+Six-item operations automation batch:
+
+```bash
+CODEXMUX_SMOKE_ARTIFACT_DIR=/tmp/codexmux-ops-automation corepack pnpm ops:automation:batch
+```
+
+This higher-level batch records rows for the approved 1~6 operations items: release/CI artifact
+workflow contract, live perf snapshot and stats reuse counters, approval queue focused tests,
+lifecycle rollback dry-run evidence, local long/external smoke evidence, and Post-MVP backlog
+deferral docs. It uses the local `~/.codexmux/cli-token` or `CODEXMUX_TOKEN` for authenticated
+perf/stats calls and writes an `ops-automation-batch` artifact. Hardware-only iPad and packaged
+Mac checks remain `manual-required` through the nested `smoke:ops:batch` row.
+
 ## Permission, Stats, Timeline
 
 ```bash
