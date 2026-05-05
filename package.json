@@ -88,6 +88,7 @@
     "smoke:runtime-v2:timeline-session-changed": "tsx scripts/smoke-runtime-v2-timeline-session-changed.ts",
     "smoke:runtime-v2:timeline-websocket-default": "tsx scripts/smoke-runtime-v2-timeline-websocket-default.ts",
     "smoke:runtime-v2:status-shadow": "tsx scripts/smoke-runtime-v2-status-shadow.ts",
+    "smoke:runtime-v2:status-default": "node scripts/smoke-runtime-v2-status-default.mjs",
     "deploy:local": "node scripts/deploy-local.mjs",
     "release:patch": "node scripts/release.mjs patch",
     "release:minor": "node scripts/release.mjs minor",

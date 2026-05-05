@@ -201,13 +201,18 @@ Work:
 - Move process polling, JSONL watch, hook event application, dismiss/ack handling, Web Push/session history side effects behind Status Worker.
 - Current policy-only first slice: `corepack pnpm smoke:runtime-v2:status-shadow` compares Status Worker IPC reducer/policy output with legacy pure helpers.
 - 2026-05-05 side-effect shadow slice: `status.evaluate-side-effects` returns sanitized boolean intent for layout timestamp updates, session history write, Web Push send, and JSONL watcher start/stop. `StatusManager` remains production owner and records only `runtime_v2.status_shadow.side_effect.{match,mismatch,error}` counters in shadow mode.
+- 2026-05-05 ack/dismiss shadow slice: `status.evaluate-client-event` returns sanitized acceptance and intent for `status:ack-notification` and `status:tab-dismissed`. Legacy `/api/status` remains production executor and records only `runtime_v2.status_shadow.client_event.{match,mismatch,error}` counters in shadow mode.
+- 2026-05-05 session history worker slice: `status.add-session-history-entry` and `status.update-session-history-dismissed-at` can execute session history writes through Status Worker. `StatusManager` still builds entries and broadcasts updates; it calls the worker only in `CODEXMUX_RUNTIME_STATUS_V2_MODE=default` and falls back to legacy writes on worker failure.
+- 2026-05-05 Web Push worker slice: `status.send-web-push` can send existing safe Web Push payloads through Status Worker. `StatusManager` still computes foreground visibility in the main process and calls the worker only in `CODEXMUX_RUNTIME_STATUS_V2_MODE=default`, with legacy send fallback on worker failure.
+- 2026-05-05 live bridge/default slice: `status.live-start` runs the StatusManager state machine inside Status Worker, and `/api/status` maps worker `status.*` realtime events back to existing client message types. Hook/statusline events, ack/dismiss, request-sync, last-user-message notify, tab register/remove, device visibility, session history update, Web Push send, JSONL watcher, polling, and rate-limit update are worker-owned in `CODEXMUX_RUNTIME_STATUS_V2_MODE=default`.
 - Keep pure reducer and notification policy output byte-for-byte compatible with current tests.
-- Add typed status events for sync/update/remove/hook/session-history/rate-limits.
+- Keep typed status events for sync/update/remove/hook/session-history/rate-limits.
 - Preserve `globalThis` singleton compatibility until custom server and API routes no longer share status state directly.
 
 Exit gate:
 
 - `needs-input`, `ready-for-review`, dismiss, ack, and Web Push smoke pass.
+- `corepack pnpm smoke:runtime-v2:status-default` passes in temp HOME/server and proves the existing permission prompt flow survives `CODEXMUX_RUNTIME_STATUS_V2_MODE=default`.
 - Session history dedupe still uses `sessionId:turnId`.
 - Legacy `/api/status` fallback can be re-enabled without losing current layout metadata.
 

@@ -40,6 +40,11 @@ import { getRuntimeStatusV2Mode } from '@/lib/runtime/status-mode';
 import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
 import { compareRuntimeStatusShadowDecision } from '@/lib/runtime/status-shadow-compare';
 import {
+  evaluateStatusClientEvent,
+  type IStatusClientEventIntent,
+  type IStatusClientEventPolicyInput,
+} from '@/lib/status-client-event-policy';
+import {
   evaluateStatusSideEffects,
   type IStatusSideEffectIntent,
   type IStatusSideEffectPolicyInput,
@@ -410,7 +415,13 @@ const parseJsonlStats = async (jsonlPath: string): Promise<IJsonlStats> => {
 
 const g = globalThis as unknown as { __ptStatusManager?: StatusManager };
 
-class StatusManager {
+export interface IStatusManagerOptions {
+  broadcast?: (event: object, exclude?: WebSocket) => void;
+  enableRateLimits?: boolean;
+  useRuntimeAdapters?: boolean;
+}
+
+export class StatusManager {
   private tabs = new Map<string, ITabStatusEntry>();
   private pollingTimer: ReturnType<typeof setInterval> | null = null;
   private currentInterval = 0;
@@ -424,6 +435,8 @@ class StatusManager {
   private sessionHistoryDedupe = createDedupeKeyStore();
   private lastPoll: IStatusPollSnapshot | null = null;
 
+  constructor(private readonly options: IStatusManagerOptions = {}) {}
+
   async init(): Promise<void> {
     if (this.initialized) return;
     this.initialized = true;
@@ -431,11 +444,13 @@ class StatusManager {
     await this.scanAll();
     this.startPolling();
 
-    this.rateLimitsWatcher = createRateLimitsWatcher((data) => {
-      this.lastRateLimits = data;
-      this.broadcast({ type: 'rate-limits:update', data });
-    });
-    this.rateLimitsWatcher.start();
+    if (this.options.enableRateLimits !== false) {
+      this.rateLimitsWatcher = createRateLimitsWatcher((data) => {
+        this.lastRateLimits = data;
+        this.broadcast({ type: 'rate-limits:update', data });
+      });
+      this.rateLimitsWatcher.start();
+    }
   }
 
   private async scanAll(): Promise<void> {
@@ -1091,37 +1106,117 @@ class StatusManager {
       ...(cancelled ? { cancelled: true } : {}),
     };
 
-    await addSessionHistoryEntry(historyEntry);
+    await this.addSessionHistoryEntry(historyEntry);
     this.broadcast({ type: 'session-history:update', entry: historyEntry });
   }
 
-  dismissTab(tabId: string, exclude?: WebSocket): void {
+  private shouldUseRuntimeStatusDefault(): boolean {
+    return this.options.useRuntimeAdapters !== false
+      && process.env.CODEXMUX_RUNTIME_V2 === '1'
+      && getRuntimeStatusV2Mode() === 'default';
+  }
+
+  private async addSessionHistoryEntry(entry: ISessionHistoryEntry): Promise<void> {
+    if (this.shouldUseRuntimeStatusDefault()) {
+      try {
+        await getRuntimeSupervisor().addStatusSessionHistoryEntry(entry);
+        recordPerfCounter('runtime_v2.status_session_history.add');
+        return;
+      } catch (err) {
+        recordPerfCounter('runtime_v2.status_session_history.add_fallback');
+        log.warn('runtime v2 session history add failed, falling back: %s', err instanceof Error ? err.message : String(err));
+      }
+    }
+    await addSessionHistoryEntry(entry);
+  }
+
+  private async updateSessionHistoryDismissedAt(
+    tabId: string,
+    dismissedAt: number,
+  ): Promise<ISessionHistoryEntry | null> {
+    if (this.shouldUseRuntimeStatusDefault()) {
+      try {
+        const result = await getRuntimeSupervisor().updateStatusSessionHistoryDismissedAt({ tabId, dismissedAt });
+        recordPerfCounter('runtime_v2.status_session_history.dismiss_update');
+        return result.entry;
+      } catch (err) {
+        recordPerfCounter('runtime_v2.status_session_history.dismiss_update_fallback');
+        log.warn('runtime v2 session history dismiss update failed, falling back: %s', err instanceof Error ? err.message : String(err));
+      }
+    }
+    return updateSessionHistoryDismissedAt(tabId, dismissedAt);
+  }
+
+  dismissTab(tabId: string, exclude?: WebSocket): boolean {
     const entry = this.tabs.get(tabId);
-    if (!entry || entry.cliState !== 'ready-for-review') return;
+    if (!entry) return false;
+
+    const clientEventInput: IStatusClientEventPolicyInput = {
+      eventType: 'dismiss-tab',
+      currentState: entry.cliState,
+      lastEventName: entry.lastEvent?.name ?? null,
+      lastEventSeq: entry.lastEvent?.seq ?? null,
+      clientSeq: null,
+    };
+    const clientEvent = evaluateStatusClientEvent(clientEventInput);
+    this.shadowStatusClientEvent(clientEventInput, clientEvent);
+    if (!clientEvent.accepted || clientEvent.nextState !== 'idle') return false;
 
     const dismissedAt = Date.now();
     this.applyCliState(tabId, entry, 'idle', { silent: true });
-    entry.dismissedAt = dismissedAt;
-    this.persistToLayout(entry);
-    this.broadcastUpdate(tabId, entry, exclude);
+    if (clientEvent.setDismissedAt) entry.dismissedAt = dismissedAt;
+    if (clientEvent.persistLayout) this.persistToLayout(entry);
+    if (clientEvent.broadcastUpdate) this.broadcastUpdate(tabId, entry, exclude);
 
-    updateSessionHistoryDismissedAt(tabId, dismissedAt).then((updated) => {
-      if (updated) this.broadcast({ type: 'session-history:update', entry: updated });
-    }).catch((err) => {
-      log.warn('Failed to update session history dismissedAt: %s', err);
-    });
+    if (clientEvent.updateSessionHistoryDismissedAt) {
+      this.updateSessionHistoryDismissedAt(tabId, dismissedAt).then((updated) => {
+        if (updated) this.broadcast({ type: 'session-history:update', entry: updated });
+      }).catch((err) => {
+        log.warn('Failed to update session history dismissedAt: %s', err);
+      });
+    }
+    return true;
   }
 
-  ackNotificationInput(tabId: string, seq: number): void {
+  ackNotificationInput(tabId: string, seq: number): boolean {
     const entry = this.tabs.get(tabId);
-    if (!entry) return;
-    if (entry.cliState !== 'needs-input') return;
-    if (entry.lastEvent?.name !== 'notification' || entry.lastEvent.seq !== seq) return;
+    if (!entry) return false;
+    const clientEventInput: IStatusClientEventPolicyInput = {
+      eventType: 'ack-notification',
+      currentState: entry.cliState,
+      lastEventName: entry.lastEvent?.name ?? null,
+      lastEventSeq: entry.lastEvent?.seq ?? null,
+      clientSeq: seq,
+    };
+    const clientEvent = evaluateStatusClientEvent(clientEventInput);
+    this.shadowStatusClientEvent(clientEventInput, clientEvent);
+    if (!clientEvent.accepted || clientEvent.nextState !== 'busy') return false;
 
     hookLog.debug({ tabId, seq }, 'ack: needs-input→busy');
     this.applyCliState(tabId, entry, 'busy');
-    this.persistToLayout(entry);
-    this.broadcastUpdate(tabId, entry);
+    if (clientEvent.persistLayout) this.persistToLayout(entry);
+    if (clientEvent.broadcastUpdate) this.broadcastUpdate(tabId, entry);
+    return true;
+  }
+
+  private shadowStatusClientEvent(
+    input: IStatusClientEventPolicyInput,
+    expected: IStatusClientEventIntent,
+  ): void {
+    if (process.env.CODEXMUX_RUNTIME_V2 !== '1' || getRuntimeStatusV2Mode() !== 'shadow') return;
+
+    getRuntimeSupervisor().evaluateStatusClientEvent(input).then((actual) => {
+      const comparison = compareRuntimeStatusShadowDecision('client-event', expected, actual);
+      if (comparison.ok) {
+        recordPerfCounter('runtime_v2.status_shadow.client_event.match');
+        return;
+      }
+      recordPerfCounter('runtime_v2.status_shadow.client_event.mismatch');
+      log.warn({ mismatches: comparison.mismatches }, 'runtime v2 status client-event shadow mismatch');
+    }).catch((err) => {
+      recordPerfCounter('runtime_v2.status_shadow.client_event.error');
+      log.warn('runtime v2 status client-event shadow failed: %s', err instanceof Error ? err.message : String(err));
+    });
   }
 
   private async recoverPendingInputFromPane(
@@ -1349,8 +1444,9 @@ class StatusManager {
     }
   }
 
-  removeTab(tabId: string): void {
+  removeTab(tabId: string): boolean {
     const entry = this.tabs.get(tabId);
+    if (!entry) return false;
     if (entry && (entry.cliState === 'busy' || entry.cliState === 'needs-input') && entry.lastUserMessage) {
       this.saveSessionHistory(tabId, entry, entry.busySince, true).catch((err) => {
         log.warn('Failed to save cancelled session history: %s', err);
@@ -1364,6 +1460,7 @@ class StatusManager {
     }
     this.tabs.delete(tabId);
     this.broadcastRemove(tabId);
+    return true;
   }
 
   reconcileWorkspaceTabs(wsId: string, validTabIds: readonly string[]): void {
@@ -1447,6 +1544,10 @@ class StatusManager {
   private static readonly BACKPRESSURE_LIMIT = 1024 * 1024;
 
   broadcast(event: object, exclude?: WebSocket): void {
+    if (this.options.broadcast) {
+      this.options.broadcast(event, exclude);
+      return;
+    }
     const msg = JSON.stringify(event);
     let sent = 0;
     let skippedBackpressure = 0;
@@ -1629,22 +1730,17 @@ class StatusManager {
     this.clients.clear();
   }
 
-  notifyLastUserMessage(sessionName: string, message: string): void {
+  notifyLastUserMessage(sessionName: string, message: string): boolean {
     const parsed = parseSessionName(sessionName);
-    if (!parsed) return;
+    if (!parsed) return false;
     const entry = this.tabs.get(parsed.tabId);
-    if (!entry || entry.lastUserMessage === message) return;
+    if (!entry || entry.lastUserMessage === message) return false;
     entry.lastUserMessage = message;
     this.broadcastUpdate(parsed.tabId, entry);
+    return true;
   }
 
   private async sendWebPush(tabId: string, entry: ITabStatusEntry, pushType: 'review' | 'needs-input'): Promise<void> {
-    const subs = await getSubscriptions();
-    if (subs.length === 0) return;
-
-    const keys = await getVAPIDKeys();
-    webpush.setVapidDetails('mailto:noreply@codexmux.app', keys.publicKey, keys.privateKey);
-
     const title = pushType === 'needs-input' ? 'Input Required' : 'Task Complete';
     const body = entry.lastUserMessage?.slice(0, 100) || entry.tabName || tabId;
     const ws = (await getWorkspaces()).workspaces.find((w) => w.id === entry.workspaceId);
@@ -1656,7 +1752,7 @@ class StatusManager {
         riskLevel: 'unknown',
       }
       : {};
-    const payload = JSON.stringify({
+    const payload = {
       title,
       body,
       silent: pushType === 'review' && config.soundOnCompleteEnabled === false,
@@ -1666,12 +1762,33 @@ class StatusManager {
       workspaceName: ws?.name ?? '',
       workspaceDir: ws?.directories[0] ?? null,
       ...approvalMetadata,
-    });
+    };
 
-    if (isAnyDeviceVisible()) return;
+    const anyDeviceVisible = isAnyDeviceVisible();
+    if (this.shouldUseRuntimeStatusDefault()) {
+      try {
+        const result = await getRuntimeSupervisor().sendStatusWebPush({ anyDeviceVisible, payload });
+        recordPerfCounter('runtime_v2.status_web_push.sent', result.sent);
+        recordPerfCounter('runtime_v2.status_web_push.failed', result.failed);
+        recordPerfCounter('runtime_v2.status_web_push.removed', result.removed);
+        if (result.skippedVisible) recordPerfCounter('runtime_v2.status_web_push.skipped_visible');
+        return;
+      } catch (err) {
+        recordPerfCounter('runtime_v2.status_web_push.fallback');
+        log.warn('runtime v2 Web Push send failed, falling back: %s', err instanceof Error ? err.message : String(err));
+      }
+    }
+
+    if (anyDeviceVisible) return;
+    const subs = await getSubscriptions();
+    if (subs.length === 0) return;
+
+    const keys = await getVAPIDKeys();
+    webpush.setVapidDetails('mailto:noreply@codexmux.app', keys.publicKey, keys.privateKey);
+    const payloadText = JSON.stringify(payload);
     for (const sub of subs) {
       try {
-        await webpush.sendNotification(sub, payload);
+        await webpush.sendNotification(sub, payloadText);
       } catch (err: unknown) {
         const status = (err as { statusCode?: number }).statusCode;
         if (status === 410 || status === 404) {

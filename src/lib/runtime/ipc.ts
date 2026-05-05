@@ -97,6 +97,26 @@ const statusEventNameSchema = z.union([
   z.literal('stop'),
   z.literal('interrupt'),
 ]);
+const statusPanelTypeSchema = z.union([
+  z.literal('terminal'),
+  z.literal('codex'),
+  z.literal('web-browser'),
+  z.literal('diff'),
+]);
+const statusTerminalStatusSchema = z.union([
+  z.literal('idle'),
+  z.literal('running'),
+  z.literal('server'),
+]);
+const statusLastEventSchema = z.object({
+  name: statusEventNameSchema,
+  at: z.number(),
+  seq: z.number().int().nonnegative(),
+}).strict();
+const statusCurrentActionSchema = z.object({
+  toolName: z.string().nullable(),
+  summary: z.string(),
+}).strict();
 const statusHookDecisionSchema = z.object({
   nextState: cliStateSchema,
   changed: z.boolean(),
@@ -369,6 +389,179 @@ const statusSideEffectIntentSchema = z.object({
   startJsonlWatch: z.boolean(),
   stopJsonlWatch: z.boolean(),
 });
+const statusClientEventTypeSchema = z.union([
+  z.literal('dismiss-tab'),
+  z.literal('ack-notification'),
+]);
+const statusClientEventPayloadSchema = z.object({
+  eventType: statusClientEventTypeSchema,
+  currentState: cliStateSchema,
+  lastEventName: statusEventNameSchema.nullable().optional(),
+  lastEventSeq: z.number().int().nonnegative().nullable().optional(),
+  clientSeq: z.number().int().nonnegative().nullable().optional(),
+}).strict();
+const statusClientEventIntentSchema = z.object({
+  accepted: z.boolean(),
+  nextState: cliStateSchema.nullable(),
+  setDismissedAt: z.boolean(),
+  persistLayout: z.boolean(),
+  broadcastUpdate: z.boolean(),
+  updateSessionHistoryDismissedAt: z.boolean(),
+});
+const sessionHistoryEntrySchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  workspaceName: z.string(),
+  workspaceDir: z.string().nullable(),
+  tabId: z.string().min(1),
+  agentSessionId: z.string().nullable(),
+  prompt: z.string().nullable(),
+  result: z.string().nullable(),
+  startedAt: z.number(),
+  completedAt: z.number(),
+  duration: z.number(),
+  dismissedAt: z.number().nullable(),
+  toolUsage: z.record(z.string(), z.number().int().nonnegative()),
+  touchedFiles: z.array(z.string()),
+  cancelled: z.boolean().optional(),
+}).strict();
+const statusAddSessionHistoryEntryPayloadSchema = z.object({
+  entry: sessionHistoryEntrySchema,
+}).strict();
+const statusAddSessionHistoryEntryResultSchema = z.object({
+  added: z.boolean(),
+  entry: sessionHistoryEntrySchema,
+});
+const statusUpdateSessionHistoryDismissedAtPayloadSchema = z.object({
+  tabId: z.string().min(1),
+  dismissedAt: z.number(),
+}).strict();
+const statusUpdateSessionHistoryDismissedAtResultSchema = z.object({
+  updated: z.boolean(),
+  entry: sessionHistoryEntrySchema.nullable(),
+});
+const statusWebPushPayloadSchema = z.object({
+  title: z.string(),
+  body: z.string(),
+  silent: z.boolean(),
+  tabId: z.string().min(1),
+  workspaceId: z.string().min(1),
+  agentSessionId: z.string().nullable(),
+  workspaceName: z.string(),
+  workspaceDir: z.string().nullable(),
+  approvalKind: z.string().optional(),
+  promptType: z.string().optional(),
+  riskLevel: z.string().optional(),
+}).strict();
+const statusSendWebPushPayloadSchema = z.object({
+  anyDeviceVisible: z.boolean(),
+  payload: statusWebPushPayloadSchema,
+}).strict();
+const statusSendWebPushResultSchema = z.object({
+  skippedVisible: z.boolean(),
+  attempted: z.number().int().nonnegative(),
+  sent: z.number().int().nonnegative(),
+  removed: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+});
+const statusClientTabStatusEntrySchema = z.object({
+  cliState: cliStateSchema,
+  workspaceId: z.string().min(1),
+  tabName: z.string(),
+  currentProcess: z.string().optional(),
+  paneTitle: z.string().optional(),
+  panelType: statusPanelTypeSchema.optional(),
+  terminalStatus: statusTerminalStatusSchema.optional(),
+  listeningPorts: z.array(z.number().int().nonnegative()).optional(),
+  agentSummary: z.string().nullable().optional(),
+  lastUserMessage: z.string().nullable().optional(),
+  lastAssistantMessage: z.string().nullable().optional(),
+  currentAction: statusCurrentActionSchema.nullable().optional(),
+  readyForReviewAt: z.number().nullable().optional(),
+  busySince: z.number().nullable().optional(),
+  dismissedAt: z.number().nullable().optional(),
+  agentSessionId: z.string().nullable().optional(),
+  compactingSince: z.number().nullable().optional(),
+  lastEvent: statusLastEventSchema.nullable().optional(),
+  eventSeq: z.number().int().nonnegative().optional(),
+}).strict();
+const statusLiveTabStatusEntrySchema = statusClientTabStatusEntrySchema.extend({
+  tmuxSession: z.string().min(1),
+  jsonlPath: z.string().nullable().optional(),
+  processRetries: z.number().int().nonnegative().optional(),
+}).strict();
+const statusLiveSyncPayloadSchema = z.object({
+  tabs: z.record(z.string(), statusClientTabStatusEntrySchema),
+}).strict();
+const statusLiveUpdatePayloadSchema = statusClientTabStatusEntrySchema
+  .omit({ cliState: true, workspaceId: true, tabName: true })
+  .extend({
+    tabId: z.string().min(1),
+    cliState: cliStateSchema.nullable(),
+    workspaceId: z.string(),
+    tabName: z.string(),
+  })
+  .strict();
+const statusSessionHistoryUpdateEventPayloadSchema = z.object({
+  entry: sessionHistoryEntrySchema,
+}).strict();
+const statusHookEventPayloadSchema = z.object({
+  tabId: z.string().min(1),
+  event: statusLastEventSchema,
+}).strict();
+const statusErrorEventPayloadSchema = z.object({
+  code: z.string().min(1),
+  message: z.string().min(1),
+}).strict();
+const statusRateLimitWindowSchema = z.object({
+  used_percentage: z.number(),
+  resets_at: z.number(),
+}).strict();
+const statusRateLimitsDataSchema = z.object({
+  ts: z.number(),
+  five_hour: statusRateLimitWindowSchema.nullable(),
+  seven_day: statusRateLimitWindowSchema.nullable(),
+}).strict();
+const statusRateLimitsEventPayloadSchema = z.object({
+  data: statusRateLimitsDataSchema,
+}).strict();
+const statusLiveStartResultSchema = z.object({
+  started: z.boolean(),
+}).strict();
+const statusLiveStopResultSchema = z.object({
+  stopped: z.boolean(),
+}).strict();
+const statusLiveHookEventPayloadSchema = z.object({
+  tmuxSession: z.string().min(1),
+  event: z.string().min(1),
+  notificationType: z.string().optional(),
+}).strict();
+const statusLiveClientEventPayloadSchema = z.object({
+  eventType: statusClientEventTypeSchema,
+  tabId: z.string().min(1),
+  seq: z.number().int().nonnegative().optional(),
+}).strict();
+const statusLiveNotifyLastUserMessagePayloadSchema = z.object({
+  sessionName: z.string().min(1),
+  message: z.string(),
+}).strict();
+const statusLiveRemoveTabPayloadSchema = z.object({
+  tabId: z.string().min(1),
+}).strict();
+const statusLiveRegisterTabPayloadSchema = z.object({
+  tabId: z.string().min(1),
+  entry: statusLiveTabStatusEntrySchema,
+}).strict();
+const statusLiveDeviceVisibilityPayloadSchema = z.object({
+  deviceId: z.string().min(1),
+  visible: z.boolean(),
+}).strict();
+const statusLiveAcceptedResultSchema = z.object({
+  accepted: z.boolean(),
+}).strict();
+const statusLivePollResultSchema = z.object({
+  polled: z.boolean(),
+}).strict();
 
 export const runtimeCommandRegistry = {
   'storage.health': { payload: emptyPayloadSchema, reply: runtimeHealthReplySchema },
@@ -406,10 +599,24 @@ export const runtimeCommandRegistry = {
   'timeline.session-watch-subscribe': { payload: timelineSessionWatchSubscribePayloadSchema, reply: timelineSessionWatchSubscribeResultSchema },
   'timeline.session-watch-unsubscribe': { payload: timelineSessionWatchUnsubscribePayloadSchema, reply: timelineSessionWatchUnsubscribeResultSchema },
   'status.health': { payload: emptyPayloadSchema, reply: runtimeHealthReplySchema },
+  'status.live-start': { payload: emptyPayloadSchema, reply: statusLiveStartResultSchema },
+  'status.live-stop': { payload: emptyPayloadSchema, reply: statusLiveStopResultSchema },
+  'status.live-request-sync': { payload: emptyPayloadSchema, reply: statusLiveSyncPayloadSchema },
+  'status.live-hook-event': { payload: statusLiveHookEventPayloadSchema, reply: statusLiveAcceptedResultSchema },
+  'status.live-client-event': { payload: statusLiveClientEventPayloadSchema, reply: statusLiveAcceptedResultSchema },
+  'status.live-notify-last-user-message': { payload: statusLiveNotifyLastUserMessagePayloadSchema, reply: statusLiveAcceptedResultSchema },
+  'status.live-register-tab': { payload: statusLiveRegisterTabPayloadSchema, reply: statusLiveAcceptedResultSchema },
+  'status.live-device-visibility': { payload: statusLiveDeviceVisibilityPayloadSchema, reply: statusLiveAcceptedResultSchema },
+  'status.live-remove-tab': { payload: statusLiveRemoveTabPayloadSchema, reply: statusLiveAcceptedResultSchema },
+  'status.live-poll': { payload: emptyPayloadSchema, reply: statusLivePollResultSchema },
   'status.reduce-hook-state': { payload: statusReduceHookStatePayloadSchema, reply: statusHookDecisionSchema },
   'status.reduce-codex-state': { payload: statusReduceCodexStatePayloadSchema, reply: statusDecisionSchema },
   'status.evaluate-notification-policy': { payload: statusEvaluateNotificationPolicyPayloadSchema, reply: statusNotificationPolicySchema },
   'status.evaluate-side-effects': { payload: statusSideEffectPolicyPayloadSchema, reply: statusSideEffectIntentSchema },
+  'status.evaluate-client-event': { payload: statusClientEventPayloadSchema, reply: statusClientEventIntentSchema },
+  'status.add-session-history-entry': { payload: statusAddSessionHistoryEntryPayloadSchema, reply: statusAddSessionHistoryEntryResultSchema },
+  'status.update-session-history-dismissed-at': { payload: statusUpdateSessionHistoryDismissedAtPayloadSchema, reply: statusUpdateSessionHistoryDismissedAtResultSchema },
+  'status.send-web-push': { payload: statusSendWebPushPayloadSchema, reply: statusSendWebPushResultSchema },
 } as const satisfies Record<string, { payload: z.ZodTypeAny; reply: z.ZodTypeAny }>;
 
 export const runtimeEventRegistry = {
@@ -442,6 +649,42 @@ export const runtimeEventRegistry = {
     target: 'supervisor',
     delivery: 'realtime',
     payload: timelineSessionChangedEventPayloadSchema,
+  },
+  'status.sync': {
+    source: 'status',
+    target: 'supervisor',
+    delivery: 'realtime',
+    payload: statusLiveSyncPayloadSchema,
+  },
+  'status.update': {
+    source: 'status',
+    target: 'supervisor',
+    delivery: 'realtime',
+    payload: statusLiveUpdatePayloadSchema,
+  },
+  'status.session-history-update': {
+    source: 'status',
+    target: 'supervisor',
+    delivery: 'realtime',
+    payload: statusSessionHistoryUpdateEventPayloadSchema,
+  },
+  'status.hook-event': {
+    source: 'status',
+    target: 'supervisor',
+    delivery: 'realtime',
+    payload: statusHookEventPayloadSchema,
+  },
+  'status.error': {
+    source: 'status',
+    target: 'supervisor',
+    delivery: 'realtime',
+    payload: statusErrorEventPayloadSchema,
+  },
+  'status.rate-limits-update': {
+    source: 'status',
+    target: 'supervisor',
+    delivery: 'realtime',
+    payload: statusRateLimitsEventPayloadSchema,
   },
 } as const satisfies Record<string, {
   source: string;

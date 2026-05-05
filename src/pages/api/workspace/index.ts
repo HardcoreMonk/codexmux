@@ -6,10 +6,15 @@ import { getProviderByPanelType } from '@/lib/providers';
 import { sendKeys } from '@/lib/tmux';
 import { getStatusManager } from '@/lib/status-manager';
 import { createLogger } from '@/lib/logger';
+import { getRuntimeStatusV2Mode } from '@/lib/runtime/status-mode';
+import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
 
 const log = createLogger('workspace-api');
 
 const SHELL_READY_DELAY_MS = 500;
+
+const shouldUseRuntimeStatusLive = (): boolean =>
+  process.env.CODEXMUX_RUNTIME_V2 === '1' && getRuntimeStatusV2Mode() === 'default';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
@@ -39,14 +44,21 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const defaultTab = layout ? collectAllTabs(layout.root)[0] : null;
 
       if (defaultTab && defaultTab.panelType !== 'web-browser') {
-        getStatusManager().registerTab(defaultTab.id, {
+        const statusEntry = {
           cliState: 'inactive',
           workspaceId: workspace.id,
           tabName: defaultTab.name,
           tmuxSession: defaultTab.sessionName,
           lastEvent: null,
           eventSeq: 0,
-        });
+        } as const;
+        if (shouldUseRuntimeStatusLive()) {
+          getRuntimeSupervisor().registerStatusLiveTab({ tabId: defaultTab.id, entry: statusEntry }).catch((err) => {
+            log.warn(`runtime status register tab failed: ${err instanceof Error ? err.message : err}`);
+          });
+        } else {
+          getStatusManager().registerTab(defaultTab.id, statusEntry);
+        }
       }
 
       if (resumeSessionId && provider && defaultTab) {

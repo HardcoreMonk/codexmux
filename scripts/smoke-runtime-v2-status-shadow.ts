@@ -10,6 +10,7 @@ import {
 import { reduceCodexState, reduceHookState } from '@/lib/status-state-machine';
 import { compareRuntimeStatusShadowDecision } from '@/lib/runtime/status-shadow-compare';
 import { createRuntimeSupervisorForTest } from '@/lib/runtime/supervisor';
+import { evaluateStatusClientEvent } from '@/lib/status-client-event-policy';
 import { evaluateStatusSideEffects } from '@/lib/status-side-effect-policy';
 
 const main = async (): Promise<void> => {
@@ -87,6 +88,35 @@ const main = async (): Promise<void> => {
       throw new Error(`runtime v2 status side-effect mismatch: ${JSON.stringify(sideEffectCompare.mismatches)}`);
     }
     checks.push('side-effect-shadow');
+
+    const ackInput = {
+      eventType: 'ack-notification' as const,
+      currentState: 'needs-input' as const,
+      lastEventName: 'notification' as const,
+      lastEventSeq: 9,
+      clientSeq: 9,
+    };
+    const expectedAck = evaluateStatusClientEvent(ackInput);
+    const actualAck = await supervisor.evaluateStatusClientEvent(ackInput);
+    const ackCompare = compareRuntimeStatusShadowDecision('client-event-ack', expectedAck, actualAck);
+    if (!ackCompare.ok) {
+      throw new Error(`runtime v2 status ack mismatch: ${JSON.stringify(ackCompare.mismatches)}`);
+    }
+
+    const dismissInput = {
+      eventType: 'dismiss-tab' as const,
+      currentState: 'ready-for-review' as const,
+      lastEventName: null,
+      lastEventSeq: null,
+      clientSeq: null,
+    };
+    const expectedDismiss = evaluateStatusClientEvent(dismissInput);
+    const actualDismiss = await supervisor.evaluateStatusClientEvent(dismissInput);
+    const dismissCompare = compareRuntimeStatusShadowDecision('client-event-dismiss', expectedDismiss, actualDismiss);
+    if (!dismissCompare.ok) {
+      throw new Error(`runtime v2 status dismiss mismatch: ${JSON.stringify(dismissCompare.mismatches)}`);
+    }
+    checks.push('client-event-shadow');
 
     console.log(JSON.stringify({
       ok: true,

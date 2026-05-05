@@ -2,11 +2,134 @@ import { WebSocket } from 'ws';
 import { getStatusManager } from '@/lib/status-manager';
 import { getSessionHistory } from '@/lib/session-history';
 import { createLogger } from '@/lib/logger';
-import type { TStatusClientMessage, IStatusSyncMessage, ISessionHistorySyncMessage } from '@/types/status';
+import { getRuntimeStatusV2Mode } from '@/lib/runtime/status-mode';
+import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
+import type { IRuntimeStatusLiveEvent } from '@/lib/runtime/contracts';
+import type {
+  TStatusClientMessage,
+  TStatusServerMessage,
+  IStatusSyncMessage,
+  ISessionHistorySyncMessage,
+} from '@/types/status';
 
 const log = createLogger('status');
 
-export const handleStatusConnection = (ws: WebSocket) => {
+const shouldUseRuntimeStatusLive = (): boolean =>
+  process.env.CODEXMUX_RUNTIME_V2 === '1' && getRuntimeStatusV2Mode() === 'default';
+
+const sendJson = (ws: WebSocket, event: object): void => {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(event));
+  }
+};
+
+const toStatusServerMessage = (event: IRuntimeStatusLiveEvent): TStatusServerMessage | null => {
+  if (event.type === 'status.sync') {
+    return { type: 'status:sync', tabs: event.payload.tabs };
+  }
+  if (event.type === 'status.update') {
+    return { type: 'status:update', ...event.payload };
+  }
+  if (event.type === 'status.session-history-update') {
+    return { type: 'session-history:update', entry: event.payload.entry };
+  }
+  if (event.type === 'status.hook-event') {
+    return { type: 'status:hook-event', tabId: event.payload.tabId, event: event.payload.event };
+  }
+  if (event.type === 'status.error') {
+    log.warn('runtime status live error: %s', event.payload.message);
+  }
+  if (event.type === 'status.rate-limits-update') {
+    return { type: 'rate-limits:update', data: event.payload.data };
+  }
+  return null;
+};
+
+const sendSessionHistorySync = (ws: WebSocket): void => {
+  getSessionHistory().then((entries) => {
+    const historySync: ISessionHistorySyncMessage = { type: 'session-history:sync', entries };
+    sendJson(ws, historySync);
+  }).catch(() => {});
+};
+
+const handleRuntimeStatusConnection = (ws: WebSocket): void => {
+  const supervisor = getRuntimeSupervisor();
+  let subscriberId: string | null = null;
+  let closed = false;
+
+  supervisor.subscribeStatusLive({
+    onEvent: (event) => {
+      const msg = toStatusServerMessage(event);
+      if (msg) sendJson(ws, msg);
+    },
+  }).then((subscription) => {
+    if (closed) {
+      supervisor.unsubscribeStatusLive(subscription.subscriberId).catch((err) => {
+        log.warn('runtime status unsubscribe failed: %s', err instanceof Error ? err.message : String(err));
+      });
+      return;
+    }
+    subscriberId = subscription.subscriberId;
+    sendJson(ws, { type: 'status:sync', tabs: subscription.sync.tabs } satisfies IStatusSyncMessage);
+  }).catch((err) => {
+    log.error('runtime status subscribe failed: %s', err instanceof Error ? err.message : String(err));
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.close(1011, 'Runtime status unavailable');
+    }
+  });
+
+  sendSessionHistorySync(ws);
+
+  ws.on('message', (raw) => {
+    try {
+      const msg = JSON.parse(String(raw)) as TStatusClientMessage;
+      switch (msg.type) {
+        case 'status:tab-dismissed':
+          supervisor.sendStatusLiveClientEvent({ eventType: 'dismiss-tab', tabId: msg.tabId }).catch((err) => {
+            log.warn('runtime status dismiss failed: %s', err instanceof Error ? err.message : String(err));
+          });
+          break;
+
+        case 'status:ack-notification':
+          supervisor.sendStatusLiveClientEvent({ eventType: 'ack-notification', tabId: msg.tabId, seq: msg.seq }).catch((err) => {
+            log.warn('runtime status ack failed: %s', err instanceof Error ? err.message : String(err));
+          });
+          break;
+
+        case 'status:request-sync':
+          supervisor.requestStatusLiveSync().then((sync) => {
+            sendJson(ws, { type: 'status:sync', tabs: sync.tabs } satisfies IStatusSyncMessage);
+          }).catch((err) => {
+            log.warn('runtime status sync failed: %s', err instanceof Error ? err.message : String(err));
+          });
+          break;
+
+        default:
+          log.warn(`Unknown event: ${(msg as { type: string }).type}`);
+      }
+    } catch {
+      // invalid message
+    }
+  });
+
+  const cleanup = () => {
+    closed = true;
+    if (subscriberId) {
+      supervisor.unsubscribeStatusLive(subscriberId).catch((err) => {
+        log.warn('runtime status unsubscribe failed: %s', err instanceof Error ? err.message : String(err));
+      });
+      subscriberId = null;
+    }
+  };
+
+  ws.on('close', cleanup);
+  ws.on('error', (err) => {
+    log.error(`websocket error: ${err.message}`);
+    cleanup();
+  });
+};
+
+const handleLegacyStatusConnection = (ws: WebSocket): void => {
   const manager = getStatusManager();
   manager.addClient(ws);
 
@@ -14,16 +137,9 @@ export const handleStatusConnection = (ws: WebSocket) => {
     type: 'status:sync',
     tabs: manager.getAllForClient(),
   };
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(syncMsg));
-  }
+  sendJson(ws, syncMsg);
 
-  getSessionHistory().then((entries) => {
-    const historySync: ISessionHistorySyncMessage = { type: 'session-history:sync', entries };
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(historySync));
-    }
-  }).catch(() => {});
+  sendSessionHistorySync(ws);
 
   ws.on('message', (raw) => {
     try {
@@ -43,9 +159,7 @@ export const handleStatusConnection = (ws: WebSocket) => {
             type: 'status:sync',
             tabs: manager.getAllForClient(),
           };
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify(sync));
-          }
+          sendJson(ws, sync);
           break;
         }
 
@@ -65,6 +179,14 @@ export const handleStatusConnection = (ws: WebSocket) => {
     log.error(`websocket error: ${err.message}`);
     manager.removeClient(ws);
   });
+};
+
+export const handleStatusConnection = (ws: WebSocket) => {
+  if (shouldUseRuntimeStatusLive()) {
+    handleRuntimeStatusConnection(ws);
+    return;
+  }
+  handleLegacyStatusConnection(ws);
 };
 
 export const gracefulStatusShutdown = () => {

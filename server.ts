@@ -28,6 +28,7 @@ import { cleanupExpiredUploads } from './src/lib/uploads-store';
 import { cleanupOrphanSessionStats } from './src/lib/session-stats';
 import { initSessionIndexService, shutdownSessionIndexService } from './src/lib/session-index';
 import { getRuntimeSupervisor } from './src/lib/runtime/supervisor';
+import { getRuntimeStatusV2Mode } from './src/lib/runtime/status-mode';
 import { runRuntimeStartupDiagnostic } from './src/lib/runtime/startup-diagnostic';
 import { handleRuntimeTerminalConnection } from './src/lib/runtime/terminal-ws';
 import {
@@ -379,7 +380,16 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   if (process.env.CODEXMUX_RUNTIME_V2 === '1') {
     runRuntimeStartupDiagnostic(getRuntimeSupervisor(), log);
   }
-  await getStatusManager().init();
+  if (process.env.CODEXMUX_RUNTIME_V2 === '1' && getRuntimeStatusV2Mode() === 'default') {
+    try {
+      await getRuntimeSupervisor().startStatusLive();
+    } catch (err) {
+      log.warn(`Runtime status live startup failed, falling back: ${err instanceof Error ? err.message : err}`);
+      await getStatusManager().init();
+    }
+  } else {
+    await getStatusManager().init();
+  }
 
   const envHost = process.env.HOST?.trim();
   const configData = await getConfig();

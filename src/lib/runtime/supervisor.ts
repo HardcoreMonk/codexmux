@@ -12,8 +12,29 @@ import type {
   IRuntimeHealth,
   IRuntimeStatusNotificationPolicyInput,
   IRuntimeStatusNotificationPolicyResult,
+  IRuntimeStatusLiveSubscribeInput,
+  IRuntimeStatusLiveSubscribeResult,
+  IRuntimeStatusLiveUnsubscribeResult,
+  IRuntimeStatusLiveAcceptedResult,
+  IRuntimeStatusLiveClientEventInput,
+  IRuntimeStatusLiveDeviceVisibilityInput,
+  IRuntimeStatusLiveHookEventInput,
+  IRuntimeStatusLiveNotifyLastUserMessageInput,
+  IRuntimeStatusLivePollResult,
+  IRuntimeStatusLiveRegisterTabInput,
+  IRuntimeStatusLiveRemoveTabInput,
+  IRuntimeStatusLiveSyncPayload,
+  IRuntimeStatusUpdateSessionHistoryDismissedAtInput,
+  TRuntimeStatusClientEventInput,
+  TRuntimeStatusClientEventIntent,
+  IRuntimeStatusLiveEvent,
+  TRuntimeStatusAddSessionHistoryResult,
+  TRuntimeStatusSessionHistoryEntry,
+  TRuntimeStatusSendWebPushInput,
+  TRuntimeStatusSendWebPushResult,
   TRuntimeStatusSideEffectInput,
   TRuntimeStatusSideEffectIntent,
+  TRuntimeStatusUpdateSessionHistoryDismissedAtResult,
   IRuntimeTerminalSessionPresence,
   IRuntimeTerminalTab,
   IRuntimeTimelineEntriesBeforeInput,
@@ -41,7 +62,7 @@ import type {
 } from '@/lib/runtime/contracts';
 import { createRuntimeId, createRuntimeSessionName, parseRuntimeSessionName } from '@/lib/runtime/session-name';
 import { RuntimeWorkerClient } from '@/lib/runtime/worker-client';
-import type { IRuntimeEvent, TRuntimeMessage } from '@/lib/runtime/ipc';
+import { createRuntimeEvent, type IRuntimeEvent, type TRuntimeMessage } from '@/lib/runtime/ipc';
 
 interface IRuntimeWorkerClientLike {
   start(): void;
@@ -69,6 +90,21 @@ export interface IRuntimeSupervisor {
   reduceStatusCodexState(input: TRuntimeStatusCodexStateInput): Promise<TRuntimeStatusDecision>;
   evaluateStatusNotificationPolicy(input: IRuntimeStatusNotificationPolicyInput): Promise<IRuntimeStatusNotificationPolicyResult>;
   evaluateStatusSideEffects(input: TRuntimeStatusSideEffectInput): Promise<TRuntimeStatusSideEffectIntent>;
+  evaluateStatusClientEvent(input: TRuntimeStatusClientEventInput): Promise<TRuntimeStatusClientEventIntent>;
+  addStatusSessionHistoryEntry(entry: TRuntimeStatusSessionHistoryEntry): Promise<TRuntimeStatusAddSessionHistoryResult>;
+  updateStatusSessionHistoryDismissedAt(input: IRuntimeStatusUpdateSessionHistoryDismissedAtInput): Promise<TRuntimeStatusUpdateSessionHistoryDismissedAtResult>;
+  sendStatusWebPush(input: TRuntimeStatusSendWebPushInput): Promise<TRuntimeStatusSendWebPushResult>;
+  startStatusLive(): Promise<{ started: boolean }>;
+  requestStatusLiveSync(): Promise<IRuntimeStatusLiveSyncPayload>;
+  sendStatusLiveHookEvent(input: IRuntimeStatusLiveHookEventInput): Promise<IRuntimeStatusLiveAcceptedResult>;
+  sendStatusLiveClientEvent(input: IRuntimeStatusLiveClientEventInput): Promise<IRuntimeStatusLiveAcceptedResult>;
+  notifyStatusLiveLastUserMessage(input: IRuntimeStatusLiveNotifyLastUserMessageInput): Promise<IRuntimeStatusLiveAcceptedResult>;
+  registerStatusLiveTab(input: IRuntimeStatusLiveRegisterTabInput): Promise<IRuntimeStatusLiveAcceptedResult>;
+  updateStatusLiveDeviceVisibility(input: IRuntimeStatusLiveDeviceVisibilityInput): Promise<IRuntimeStatusLiveAcceptedResult>;
+  removeStatusLiveTab(input: IRuntimeStatusLiveRemoveTabInput): Promise<IRuntimeStatusLiveAcceptedResult>;
+  pollStatusLive(): Promise<IRuntimeStatusLivePollResult>;
+  subscribeStatusLive(input: IRuntimeStatusLiveSubscribeInput): Promise<IRuntimeStatusLiveSubscribeResult>;
+  unsubscribeStatusLive(subscriberId: string): Promise<IRuntimeStatusLiveUnsubscribeResult>;
   createTerminalTab(input: {
     workspaceId: string;
     paneId: string;
@@ -128,6 +164,10 @@ interface ITimelineSessionWatchSubscriber {
   onChanged?: (event: IRuntimeTimelineSessionChangedEvent) => void;
 }
 
+interface IStatusLiveSubscriber {
+  onEvent?: (event: IRuntimeStatusLiveEvent) => void;
+}
+
 interface IRuntimeSupervisorClients {
   storage: IRuntimeWorkerClientLike;
   terminal: IRuntimeWorkerClientLike;
@@ -143,9 +183,10 @@ export interface ICreateRuntimeSupervisorForTestOptions {
   createStorageClient?: () => IRuntimeWorkerClientLike;
   createTerminalClient?: (handlers: { onEvent: (event: TRuntimeMessage) => void; onExit: () => void }) => IRuntimeWorkerClientLike;
   createTimelineClient?: (handlers: { onEvent: (event: TRuntimeMessage) => void; onExit: (err?: Error) => void }) => IRuntimeWorkerClientLike;
-  createStatusClient?: () => IRuntimeWorkerClientLike;
+  createStatusClient?: (handlers: { onEvent: (event: TRuntimeMessage) => void; onExit: (err?: Error) => void }) => IRuntimeWorkerClientLike;
   captureTerminalEventHandler?: (handler: (event: IRuntimeEvent) => void) => void;
   captureTimelineEventHandler?: (handler: (event: IRuntimeEvent) => void) => void;
+  captureStatusEventHandler?: (handler: (event: IRuntimeEvent) => void) => void;
   dbPath?: string;
   runtimeReset?: boolean;
   useGlobal?: boolean;
@@ -191,12 +232,14 @@ export const createRuntimeSupervisorForTest = (
   let startPromise: Promise<void> | undefined;
   let preparedDbPath: string | null = null;
   let reconciledTerminalTabs = false;
+  let statusLiveRetained = false;
   let clients: IRuntimeSupervisorClients | null = null;
   const terminalSubscribers = new Map<string, Map<string, ITerminalSubscriber>>();
   const terminalAttachAttempts = new Map<string, ITerminalAttachAttempt>();
   const terminalDetachPromises = new Map<string, Promise<void>>();
   const timelineLiveSubscribers = new Map<string, ITimelineLiveSubscriber>();
   const timelineSessionWatchSubscribers = new Map<string, ITimelineSessionWatchSubscriber>();
+  const statusLiveSubscribers = new Map<string, IStatusLiveSubscriber>();
 
   const prepareRuntimeDbPath = (): string => {
     if (options.useGlobal && g.__ptRuntimeSupervisorPreparedDbPath) return g.__ptRuntimeSupervisorPreparedDbPath;
@@ -291,6 +334,45 @@ export const createRuntimeSupervisorForTest = (
 
   options.captureTimelineEventHandler?.(onTimelineWorkerEvent);
 
+  const isStatusLiveEvent = (type: string): boolean =>
+    type === 'status.sync'
+    || type === 'status.update'
+    || type === 'status.session-history-update'
+    || type === 'status.hook-event'
+    || type === 'status.error'
+    || type === 'status.rate-limits-update';
+
+  const onStatusWorkerEvent = (event: IRuntimeEvent): void => {
+    if (!isStatusLiveEvent(event.type)) return;
+    statusLiveSubscribers.forEach((subscriber) => {
+      subscriber.onEvent?.(event as IRuntimeStatusLiveEvent);
+    });
+  };
+
+  const onStatusWorkerMessage = (message: TRuntimeMessage): void => {
+    if (message.kind !== 'event') return;
+    onStatusWorkerEvent(message);
+  };
+
+  const onStatusWorkerExit = (err?: Error): void => {
+    const event = createRuntimeEvent({
+      source: 'status',
+      target: 'supervisor',
+      type: 'status.error',
+      delivery: 'realtime',
+      payload: {
+        code: 'status-worker-exited',
+        message: err?.message ?? 'Status worker exited',
+      },
+    });
+    statusLiveSubscribers.forEach((subscriber) => {
+      subscriber.onEvent?.(event as IRuntimeStatusLiveEvent);
+    });
+    statusLiveSubscribers.clear();
+  };
+
+  options.captureStatusEventHandler?.(onStatusWorkerEvent);
+
   const createClients = (): IRuntimeSupervisorClients => ({
     storage: options.storage ?? options.createStorageClient?.() ?? new RuntimeWorkerClient({
       name: 'storage',
@@ -317,10 +399,15 @@ export const createRuntimeSupervisorForTest = (
       onEvent: onTimelineWorkerMessage,
       onExit: onTimelineWorkerExit,
     }),
-    status: options.status ?? options.createStatusClient?.() ?? new RuntimeWorkerClient({
+    status: options.status ?? options.createStatusClient?.({
+      onEvent: onStatusWorkerMessage,
+      onExit: onStatusWorkerExit,
+    }) ?? new RuntimeWorkerClient({
       name: 'status',
       workerName: 'status-worker',
       readinessCommand: 'status.health',
+      onEvent: onStatusWorkerMessage,
+      onExit: onStatusWorkerExit,
     }),
   });
 
@@ -520,6 +607,9 @@ export const createRuntimeSupervisorForTest = (
       terminalAttachAttempts.clear();
       terminalDetachPromises.clear();
       timelineLiveSubscribers.clear();
+      timelineSessionWatchSubscribers.clear();
+      statusLiveSubscribers.clear();
+      statusLiveRetained = false;
     },
 
     async health() {
@@ -738,6 +828,136 @@ export const createRuntimeSupervisorForTest = (
         'status.evaluate-side-effects',
         input,
       );
+    },
+
+    async evaluateStatusClientEvent(input) {
+      await this.ensureStarted();
+      return getClients().status.request<TRuntimeStatusClientEventInput, TRuntimeStatusClientEventIntent>(
+        'status.evaluate-client-event',
+        input,
+      );
+    },
+
+    async addStatusSessionHistoryEntry(entry) {
+      await this.ensureStarted();
+      return getClients().status.request<
+        { entry: TRuntimeStatusSessionHistoryEntry },
+        TRuntimeStatusAddSessionHistoryResult
+      >('status.add-session-history-entry', { entry });
+    },
+
+    async updateStatusSessionHistoryDismissedAt(input) {
+      await this.ensureStarted();
+      return getClients().status.request<
+        IRuntimeStatusUpdateSessionHistoryDismissedAtInput,
+        TRuntimeStatusUpdateSessionHistoryDismissedAtResult
+      >('status.update-session-history-dismissed-at', input);
+    },
+
+    async sendStatusWebPush(input) {
+      await this.ensureStarted();
+      return getClients().status.request<TRuntimeStatusSendWebPushInput, TRuntimeStatusSendWebPushResult>(
+        'status.send-web-push',
+        input,
+      );
+    },
+
+    async startStatusLive() {
+      await this.ensureStarted();
+      const result = await getClients().status.request<Record<string, never>, { started: boolean }>('status.live-start', {});
+      statusLiveRetained = true;
+      return result;
+    },
+
+    async requestStatusLiveSync() {
+      await this.ensureStarted();
+      return getClients().status.request<Record<string, never>, IRuntimeStatusLiveSyncPayload>(
+        'status.live-request-sync',
+        {},
+      );
+    },
+
+    async sendStatusLiveHookEvent(input) {
+      await this.ensureStarted();
+      return getClients().status.request<IRuntimeStatusLiveHookEventInput, IRuntimeStatusLiveAcceptedResult>(
+        'status.live-hook-event',
+        input,
+      );
+    },
+
+    async sendStatusLiveClientEvent(input) {
+      await this.ensureStarted();
+      return getClients().status.request<IRuntimeStatusLiveClientEventInput, IRuntimeStatusLiveAcceptedResult>(
+        'status.live-client-event',
+        input,
+      );
+    },
+
+    async notifyStatusLiveLastUserMessage(input) {
+      await this.ensureStarted();
+      return getClients().status.request<IRuntimeStatusLiveNotifyLastUserMessageInput, IRuntimeStatusLiveAcceptedResult>(
+        'status.live-notify-last-user-message',
+        input,
+      );
+    },
+
+    async registerStatusLiveTab(input) {
+      await this.ensureStarted();
+      return getClients().status.request<IRuntimeStatusLiveRegisterTabInput, IRuntimeStatusLiveAcceptedResult>(
+        'status.live-register-tab',
+        input,
+      );
+    },
+
+    async updateStatusLiveDeviceVisibility(input) {
+      await this.ensureStarted();
+      return getClients().status.request<IRuntimeStatusLiveDeviceVisibilityInput, IRuntimeStatusLiveAcceptedResult>(
+        'status.live-device-visibility',
+        input,
+      );
+    },
+
+    async removeStatusLiveTab(input) {
+      await this.ensureStarted();
+      return getClients().status.request<IRuntimeStatusLiveRemoveTabInput, IRuntimeStatusLiveAcceptedResult>(
+        'status.live-remove-tab',
+        input,
+      );
+    },
+
+    async pollStatusLive() {
+      await this.ensureStarted();
+      return getClients().status.request<Record<string, never>, IRuntimeStatusLivePollResult>('status.live-poll', {});
+    },
+
+    async subscribeStatusLive(input) {
+      await this.ensureStarted();
+      const subscriberId = createRuntimeId('sub');
+      const shouldStart = statusLiveSubscribers.size === 0;
+      statusLiveSubscribers.set(subscriberId, { onEvent: input.onEvent });
+      try {
+        if (shouldStart) {
+          await getClients().status.request<Record<string, never>, { started: boolean }>('status.live-start', {});
+        }
+        const sync = await this.requestStatusLiveSync();
+        return { subscriberId, subscribed: true, sync };
+      } catch (err) {
+        statusLiveSubscribers.delete(subscriberId);
+        if (shouldStart || statusLiveSubscribers.size === 0) {
+          await getClients().status.request<Record<string, never>, { stopped: boolean }>('status.live-stop', {})
+            .catch(() => undefined);
+        }
+        throw err;
+      }
+    },
+
+    async unsubscribeStatusLive(subscriberId) {
+      statusLiveSubscribers.delete(subscriberId);
+      await this.ensureStarted();
+      if (statusLiveSubscribers.size === 0 && !statusLiveRetained) {
+        await getClients().status.request<Record<string, never>, { stopped: boolean }>('status.live-stop', {});
+      }
+      return { subscriberId, unsubscribed: true };
     },
 
     async createTerminalTab(input) {

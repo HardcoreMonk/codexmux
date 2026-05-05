@@ -31,24 +31,44 @@ StatusManager
 
 `CODEXMUX_RUNTIME_V2=1`의 SQLite schema에는 `tab_status`가 포함된다. runtime v2에는
 Status Worker foundation도 있으며, 현재 범위는 `status-state-machine`과
-`status-notification-policy`, `status-side-effect-policy` 같은 순수 정책을 typed IPC 뒤에서
-평가하는 것이다. `CODEXMUX_RUNTIME_STATUS_V2_MODE=shadow`에서는
+`status-notification-policy`, `status-side-effect-policy`, `status-client-event-policy` 같은
+순수 정책을 typed IPC 뒤에서 평가하는 것이다. `CODEXMUX_RUNTIME_STATUS_V2_MODE=shadow`에서는
 `StatusManager.applyCliState()`가 legacy side-effect intent와 Status Worker
 `status.evaluate-side-effects` intent를 비교하고 `/api/debug/perf` counter에 match,
-mismatch, error만 기록한다. 이 shadow 비교는 Web Push payload, prompt, cwd, JSONL path,
-terminal output을 기록하지 않는다.
+mismatch, error만 기록한다. `dismissTab()`과 `ackNotificationInput()`도
+`status.evaluate-client-event`로 ready-for-review dismiss와 needs-input ack acceptance를
+shadow 비교한다. 이 shadow 비교는 Web Push payload, prompt, cwd, JSONL path, terminal
+output을 기록하지 않는다.
 production status source of truth는 계속 `StatusManager`와 layout metadata다.
+
+Status Worker에는 session history write command foundation도 있다.
+`status.add-session-history-entry`와 `status.update-session-history-dismissed-at`는
+`CODEXMUX_RUNTIME_STATUS_V2_MODE=default`에서만 `StatusManager`의 write adapter가 사용한다.
+`off`와 `shadow`에서는 기존 `session-history.json` write path를 유지한다. Broadcast는 아직
+`StatusManager`가 담당하므로 이 foundation은 `/api/status` WebSocket ownership 전환이 아니다.
+
+Web Push send command foundation도 있다. `status.send-web-push`는 `StatusManager`가 만든
+기존 safe payload와 main process에서 계산한 foreground visibility boolean을 받아 worker에서
+background Web Push 전송과 expired subscription 제거를 수행한다. 이 path 역시
+`CODEXMUX_RUNTIME_STATUS_V2_MODE=default`에서만 사용하며, 실패 시 legacy send path로 fallback한다.
+
+2026-05-05 live bridge 이후 `CODEXMUX_RUNTIME_STATUS_V2_MODE=default`에서는 Status Worker가
+별도 process 안에서 `StatusManager` state machine을 실행한다. custom server는 startup 때
+`status.live-start`를 호출하고, `/api/status` WebSocket은 `subscribeStatusLive()`로 worker의
+`status.sync`, `status.update`, `status.session-history-update`, `status.hook-event`,
+`status.rate-limits-update` event를 기존 client message shape로 변환해 fan-out한다.
+`/api/status/hook`, `status:ack-notification`, `status:tab-dismissed`,
+timeline의 last-user-message notify, tab register/remove, Web Push foreground visibility도
+`status.live-*` command로 worker에 전달한다. 이 모드에서는 worker가 polling, JSONL watcher,
+ack/dismiss mutation, session history write, Web Push send, rate-limit watcher를 소유한다.
+`off`와 `shadow`에서는 기존 main-process `StatusManager`가 그대로 production owner다.
 
 Storage import는 legacy `layout.json`의 `cliState`, `agentSessionId`,
 `agentJsonlPath`, `agentSummary`, `lastUserMessage`, `lastCommand`, `dismissedAt` 같은
 tab status metadata를 SQLite `tabs`/`tab_status`/`agent_sessions` projection으로 복사한다.
-이 import와 side-effect shadow는 status live ownership 전환이 아니며, polling, JSONL
-watch, ack/dismiss, Web Push, session history write는 여전히 legacy `StatusManager`가
-production owner다.
-
-Status Worker의 live polling, `/api/status` WebSocket broadcast, status event persistence,
-notification/session-history write 이전은 후속 cutover 작업이다. runtime v2는 startup 때
-terminal tab lifecycle만 reconciliation한다. stale `pending_terminal` tab과 tmux session을
+이 import와 side-effect/client-event shadow는 status live ownership 전환과 별개다.
+Status event persistence와 SQLite `tab_status` write-through는 아직 후속 작업이다.
+runtime v2는 startup 때 terminal tab lifecycle도 reconciliation한다. stale `pending_terminal` tab과 tmux session을
 잃은 `ready` terminal tab은 `failed`로 전환되지만, agent work status 전환 의미는 기존
 production 경로를 유지한다. legacy layout에 남은 runtime v2 tab이 `session-not-found`
 상태가 되면 restart action은 같은 tab id/session name을 Supervisor에 다시 등록해
@@ -230,6 +250,7 @@ paired `response_item.payload.type="message"` record로 몇 ms 간격에 남길 
 | `src/lib/status-session-mapping.ts` | Codex session id 정규화와 completion key 생성 |
 | `src/lib/status-notification-policy.ts` | notification hook 처리/전송 정책 |
 | `src/lib/status-side-effect-policy.ts` | status transition side-effect intent 산출 |
+| `src/lib/status-client-event-policy.ts` | ack/dismiss client event intent 산출 |
 | `src/lib/status-metadata.ts` | JSONL metadata merge helper |
 | `src/lib/runtime/status/worker-service.ts` | runtime v2 Status Worker 정책 평가 command service |
 | `src/hooks/use-agent-status.ts` | status WebSocket hook |

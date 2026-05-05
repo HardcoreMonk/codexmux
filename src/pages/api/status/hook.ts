@@ -2,8 +2,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifyCliToken } from '@/lib/cli-token';
 import { getStatusManager } from '@/lib/status-manager';
 import { createLogger } from '@/lib/logger';
+import { getRuntimeStatusV2Mode } from '@/lib/runtime/status-mode';
+import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
 
 const log = createLogger('hooks');
+
+const shouldUseRuntimeStatusLive = (): boolean =>
+  process.env.CODEXMUX_RUNTIME_V2 === '1' && getRuntimeStatusV2Mode() === 'default';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -19,9 +24,25 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (typeof event === 'string' && event !== 'poll' && typeof session === 'string' && session) {
     const type = typeof notificationType === 'string' && notificationType ? notificationType : undefined;
     log.debug({ event, session, notificationType: type }, `received ${event}${type ? `(${type})` : ''}`);
+    if (shouldUseRuntimeStatusLive()) {
+      try {
+        await getRuntimeSupervisor().sendStatusLiveHookEvent({ tmuxSession: session, event, ...(type ? { notificationType: type } : {}) });
+        return res.status(204).end();
+      } catch (err) {
+        log.warn('runtime status hook failed, falling back: %s', err instanceof Error ? err.message : String(err));
+      }
+    }
     getStatusManager().updateTabFromHook(session, event, type);
   } else {
     log.debug({ body: req.body }, 'poll trigger');
+    if (shouldUseRuntimeStatusLive()) {
+      try {
+        await getRuntimeSupervisor().pollStatusLive();
+        return res.status(204).end();
+      } catch (err) {
+        log.warn('runtime status poll failed, falling back: %s', err instanceof Error ? err.message : String(err));
+      }
+    }
     getStatusManager().poll().catch((err) => {
       log.error({ err }, 'Poll trigger failed');
     });

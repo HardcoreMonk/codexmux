@@ -3,9 +3,14 @@ import { removeTabFromPane, restartTabSession, patchTab } from '@/lib/layout-sto
 import { getActiveWorkspaceId } from '@/lib/workspace-store';
 import { getStatusManager } from '@/lib/status-manager';
 import { createLogger } from '@/lib/logger';
+import { getRuntimeStatusV2Mode } from '@/lib/runtime/status-mode';
+import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
 import type { ITab } from '@/types/terminal';
 
 const log = createLogger('layout');
+
+const shouldUseRuntimeStatusLive = (): boolean =>
+  process.env.CODEXMUX_RUNTIME_V2 === '1' && getRuntimeStatusV2Mode() === 'default';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const wsId = (req.query.workspace as string) || await getActiveWorkspaceId();
@@ -21,7 +26,13 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     if (!found) {
       return res.status(404).json({ error: 'Tab not found' });
     }
-    getStatusManager().removeTab(tabId);
+    if (shouldUseRuntimeStatusLive()) {
+      getRuntimeSupervisor().removeStatusLiveTab({ tabId }).catch((err) => {
+        log.warn(`runtime status remove tab failed: ${err instanceof Error ? err.message : err}`);
+      });
+    } else {
+      getStatusManager().removeTab(tabId);
+    }
     return res.status(204).end();
   }
 

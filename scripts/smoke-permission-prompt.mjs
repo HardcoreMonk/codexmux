@@ -222,6 +222,15 @@ const main = async () => {
     const token = (await fs.readFile(tokenPath, 'utf8')).trim();
     checks.push('server-login');
 
+    const expectedStatusMode = process.env.CODEXMUX_PERMISSION_SMOKE_EXPECT_STATUS_MODE;
+    if (expectedStatusMode) {
+      const runtimeHealth = await jsonRequest(server.baseUrl, '/api/v2/runtime/health', cookie);
+      if (runtimeHealth.statusV2Mode !== expectedStatusMode) {
+        throw new Error(`expected statusV2Mode=${expectedStatusMode}, got ${runtimeHealth.statusV2Mode}`);
+      }
+      checks.push(`status-mode-${expectedStatusMode}`);
+    }
+
     const workspace = await jsonRequest(server.baseUrl, '/api/workspace', cookie, {
       method: 'POST',
       body: JSON.stringify({ name: 'Permission Prompt Smoke', directory: rootDir }),

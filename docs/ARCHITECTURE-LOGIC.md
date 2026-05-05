@@ -34,8 +34,10 @@ WebSocket의 file watch/live append/resume 경로를 대체하지 않는다.
 `/api/timeline/entries`, `/api/timeline/message-counts` HTTP route가 URL을 유지한 채
 Supervisor의 Timeline Worker read command로 처리된다.
 Status Worker는 상태 전이와 notification gating 같은 순수 정책 평가 command를 typed
-IPC 뒤에 둔다. 아직 production `/api/status` WebSocket, Web Push, session history write는
-기존 `StatusManager`가 소유한다.
+IPC 뒤에 둔다. `CODEXMUX_RUNTIME_STATUS_V2_MODE=default`에서는 Status Worker가
+별도 process 안에서 `StatusManager` live state machine을 실행하고 기존 `/api/status`
+WebSocket은 worker realtime event를 client message로 bridge한다. `off`/`shadow`에서는
+기존 main-process `StatusManager`가 production owner다.
 runtime v2의 workspace delete와 terminal tab delete는 Storage Worker SQLite
 transaction이 cleanup 대상 session을 반환하고, Supervisor가 subscriber close와
 Terminal Worker `kill-session` cleanup을 수행한다.

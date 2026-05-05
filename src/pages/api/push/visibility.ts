@@ -1,5 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { markDeviceVisible, markDeviceHidden } from '@/lib/push-subscriptions';
+import { getRuntimeStatusV2Mode } from '@/lib/runtime/status-mode';
+import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
+
+const shouldUseRuntimeStatusLive = (): boolean =>
+  process.env.CODEXMUX_RUNTIME_V2 === '1' && getRuntimeStatusV2Mode() === 'default';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -16,6 +21,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     markDeviceVisible(deviceId);
   } else {
     markDeviceHidden(deviceId);
+  }
+  if (shouldUseRuntimeStatusLive()) {
+    getRuntimeSupervisor().updateStatusLiveDeviceVisibility({ deviceId, visible }).catch(() => {});
   }
 
   return res.status(200).json({ ok: true });

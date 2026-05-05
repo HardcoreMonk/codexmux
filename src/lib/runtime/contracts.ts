@@ -2,8 +2,15 @@ import type { ILayoutData } from '@/types/terminal';
 import type { IChunkReadResult, ISessionInfo, ISessionMeta, ITimelineAppendMessage, ITimelineErrorMessage, ITimelineInitMessage } from '@/types/timeline';
 import type { IMessageCountResult } from '@/lib/timeline-message-counts';
 import type { ICodexStateInput, IHookStateDecision, IHookStateInput, IStateDecision } from '@/lib/status-state-machine';
+import type { IStatusClientEventIntent, IStatusClientEventPolicyInput } from '@/lib/status-client-event-policy';
 import type { IStatusSideEffectIntent, IStatusSideEffectPolicyInput } from '@/lib/status-side-effect-policy';
-import type { TEventName } from '@/types/status';
+import type {
+  IStatusAddSessionHistoryResult,
+  IStatusUpdateSessionHistoryDismissedAtResult,
+} from '@/lib/runtime/status/session-history-actions';
+import type { IStatusSendWebPushInput, IStatusSendWebPushResult } from '@/lib/runtime/status/web-push-actions';
+import type { IClientTabStatusEntry, ILastEvent, IRateLimitsData, IStatusUpdateMessage, ITabStatusEntry, TEventName } from '@/types/status';
+import type { ISessionHistoryEntry } from '@/types/session-history';
 
 export interface IRuntimeHealth {
   ok: boolean;
@@ -219,3 +226,133 @@ export interface IRuntimeStatusNotificationPolicyResult {
 export type TRuntimeStatusSideEffectInput = IStatusSideEffectPolicyInput;
 
 export type TRuntimeStatusSideEffectIntent = IStatusSideEffectIntent;
+
+export type TRuntimeStatusClientEventInput = IStatusClientEventPolicyInput;
+
+export type TRuntimeStatusClientEventIntent = IStatusClientEventIntent;
+
+export type TRuntimeStatusAddSessionHistoryResult = IStatusAddSessionHistoryResult;
+
+export type TRuntimeStatusUpdateSessionHistoryDismissedAtResult = IStatusUpdateSessionHistoryDismissedAtResult;
+
+export interface IRuntimeStatusUpdateSessionHistoryDismissedAtInput {
+  tabId: string;
+  dismissedAt: number;
+}
+
+export type TRuntimeStatusSessionHistoryEntry = ISessionHistoryEntry;
+
+export type TRuntimeStatusSendWebPushInput = IStatusSendWebPushInput;
+
+export type TRuntimeStatusSendWebPushResult = IStatusSendWebPushResult;
+
+export interface IRuntimeStatusLiveSyncPayload {
+  tabs: Record<string, IClientTabStatusEntry>;
+}
+
+export type TRuntimeStatusLiveUpdatePayload = Omit<IStatusUpdateMessage, 'type'>;
+
+export interface IRuntimeStatusSessionHistoryUpdatePayload {
+  entry: ISessionHistoryEntry;
+}
+
+export interface IRuntimeStatusHookEventPayload {
+  tabId: string;
+  event: ILastEvent;
+}
+
+export interface IRuntimeStatusErrorPayload {
+  code: string;
+  message: string;
+}
+
+export interface IRuntimeStatusRateLimitsUpdatePayload {
+  data: IRateLimitsData;
+}
+
+export type TRuntimeStatusLiveEventPayload =
+  | IRuntimeStatusLiveSyncPayload
+  | TRuntimeStatusLiveUpdatePayload
+  | IRuntimeStatusSessionHistoryUpdatePayload
+  | IRuntimeStatusHookEventPayload
+  | IRuntimeStatusErrorPayload
+  | IRuntimeStatusRateLimitsUpdatePayload;
+
+export type TRuntimeStatusLiveEventType =
+  | 'status.sync'
+  | 'status.update'
+  | 'status.session-history-update'
+  | 'status.hook-event'
+  | 'status.error'
+  | 'status.rate-limits-update';
+
+interface IRuntimeStatusLiveEventBase {
+  kind: 'event';
+  id: string;
+  source: 'status';
+  target: 'supervisor';
+  sentAt: string;
+  delivery: 'realtime';
+}
+
+export type IRuntimeStatusLiveEvent =
+  | (IRuntimeStatusLiveEventBase & { type: 'status.sync'; payload: IRuntimeStatusLiveSyncPayload })
+  | (IRuntimeStatusLiveEventBase & { type: 'status.update'; payload: TRuntimeStatusLiveUpdatePayload })
+  | (IRuntimeStatusLiveEventBase & { type: 'status.session-history-update'; payload: IRuntimeStatusSessionHistoryUpdatePayload })
+  | (IRuntimeStatusLiveEventBase & { type: 'status.hook-event'; payload: IRuntimeStatusHookEventPayload })
+  | (IRuntimeStatusLiveEventBase & { type: 'status.error'; payload: IRuntimeStatusErrorPayload })
+  | (IRuntimeStatusLiveEventBase & { type: 'status.rate-limits-update'; payload: IRuntimeStatusRateLimitsUpdatePayload });
+
+export interface IRuntimeStatusLiveSubscribeInput {
+  onEvent?: (event: IRuntimeStatusLiveEvent) => void;
+}
+
+export interface IRuntimeStatusLiveSubscribeResult {
+  subscriberId: string;
+  subscribed: boolean;
+  sync: IRuntimeStatusLiveSyncPayload;
+}
+
+export interface IRuntimeStatusLiveUnsubscribeResult {
+  subscriberId: string;
+  unsubscribed: boolean;
+}
+
+export interface IRuntimeStatusLiveHookEventInput {
+  tmuxSession: string;
+  event: string;
+  notificationType?: string;
+}
+
+export interface IRuntimeStatusLiveClientEventInput {
+  eventType: 'dismiss-tab' | 'ack-notification';
+  tabId: string;
+  seq?: number;
+}
+
+export interface IRuntimeStatusLiveNotifyLastUserMessageInput {
+  sessionName: string;
+  message: string;
+}
+
+export interface IRuntimeStatusLiveRemoveTabInput {
+  tabId: string;
+}
+
+export interface IRuntimeStatusLiveRegisterTabInput {
+  tabId: string;
+  entry: ITabStatusEntry;
+}
+
+export interface IRuntimeStatusLiveDeviceVisibilityInput {
+  deviceId: string;
+  visible: boolean;
+}
+
+export interface IRuntimeStatusLiveAcceptedResult {
+  accepted: boolean;
+}
+
+export interface IRuntimeStatusLivePollResult {
+  polled: boolean;
+}

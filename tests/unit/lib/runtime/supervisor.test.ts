@@ -79,6 +79,16 @@ const createWorkers = () => {
   timeline.replies.set('timeline.read-entries-before', { entries: [], startByteOffset: 0, hasMore: false });
   timeline.replies.set('timeline.message-counts', { userCount: 0, assistantCount: 0, toolCount: 0, toolBreakdown: {} });
   status.replies.set('status.health', { ok: true });
+  status.replies.set('status.live-start', { started: true });
+  status.replies.set('status.live-stop', { stopped: true });
+  status.replies.set('status.live-request-sync', { tabs: {} });
+  status.replies.set('status.live-hook-event', { accepted: true });
+  status.replies.set('status.live-client-event', { accepted: true });
+  status.replies.set('status.live-notify-last-user-message', { accepted: true });
+  status.replies.set('status.live-register-tab', { accepted: true });
+  status.replies.set('status.live-device-visibility', { accepted: true });
+  status.replies.set('status.live-remove-tab', { accepted: true });
+  status.replies.set('status.live-poll', { polled: true });
   status.replies.set('status.reduce-hook-state', { nextState: 'busy', changed: false, deferCodexStop: true });
   status.replies.set('status.reduce-codex-state', { nextState: 'ready-for-review', changed: true, silent: false, skipHistory: false });
   status.replies.set('status.evaluate-notification-policy', {
@@ -95,6 +105,59 @@ const createWorkers = () => {
     sendNeedsInputNotification: false,
     startJsonlWatch: false,
     stopJsonlWatch: false,
+  });
+  status.replies.set('status.evaluate-client-event', {
+    accepted: true,
+    nextState: 'busy',
+    setDismissedAt: false,
+    persistLayout: true,
+    broadcastUpdate: true,
+    updateSessionHistoryDismissedAt: false,
+  });
+  status.replies.set('status.add-session-history-entry', {
+    added: true,
+    entry: {
+      id: 'history-a',
+      workspaceId: 'ws-a',
+      workspaceName: 'Workspace',
+      workspaceDir: null,
+      tabId: 'tab-a',
+      agentSessionId: 'agent-a',
+      prompt: 'prompt',
+      result: 'result',
+      startedAt: 1,
+      completedAt: 2,
+      duration: 1,
+      dismissedAt: null,
+      toolUsage: {},
+      touchedFiles: [],
+    },
+  });
+  status.replies.set('status.update-session-history-dismissed-at', {
+    updated: true,
+    entry: {
+      id: 'history-a',
+      workspaceId: 'ws-a',
+      workspaceName: 'Workspace',
+      workspaceDir: null,
+      tabId: 'tab-a',
+      agentSessionId: 'agent-a',
+      prompt: 'prompt',
+      result: 'result',
+      startedAt: 1,
+      completedAt: 2,
+      duration: 1,
+      dismissedAt: 3,
+      toolUsage: {},
+      touchedFiles: [],
+    },
+  });
+  status.replies.set('status.send-web-push', {
+    skippedVisible: false,
+    attempted: 1,
+    sent: 1,
+    removed: 0,
+    failed: 0,
   });
   return { storage, terminal, timeline, status };
 };
@@ -514,6 +577,67 @@ describe('runtime supervisor', () => {
       startJsonlWatch: false,
       stopJsonlWatch: false,
     });
+    await expect(supervisor.evaluateStatusClientEvent({
+      eventType: 'ack-notification',
+      currentState: 'needs-input',
+      lastEventName: 'notification',
+      lastEventSeq: 5,
+      clientSeq: 5,
+    })).resolves.toEqual({
+      accepted: true,
+      nextState: 'busy',
+      setDismissedAt: false,
+      persistLayout: true,
+      broadcastUpdate: true,
+      updateSessionHistoryDismissedAt: false,
+    });
+    const historyEntry = {
+      id: 'history-a',
+      workspaceId: 'ws-a',
+      workspaceName: 'Workspace',
+      workspaceDir: null,
+      tabId: 'tab-a',
+      agentSessionId: 'agent-a',
+      prompt: 'prompt',
+      result: 'result',
+      startedAt: 1,
+      completedAt: 2,
+      duration: 1,
+      dismissedAt: null,
+      toolUsage: {},
+      touchedFiles: [],
+    };
+    await expect(supervisor.addStatusSessionHistoryEntry(historyEntry)).resolves.toEqual({
+      added: true,
+      entry: historyEntry,
+    });
+    await expect(supervisor.updateStatusSessionHistoryDismissedAt({
+      tabId: 'tab-a',
+      dismissedAt: 3,
+    })).resolves.toEqual({
+      updated: true,
+      entry: { ...historyEntry, dismissedAt: 3 },
+    });
+    const pushPayload = {
+      title: 'Task Complete',
+      body: 'prompt',
+      silent: false,
+      tabId: 'tab-a',
+      workspaceId: 'ws-a',
+      agentSessionId: 'agent-a',
+      workspaceName: 'Workspace',
+      workspaceDir: null,
+    };
+    await expect(supervisor.sendStatusWebPush({
+      anyDeviceVisible: false,
+      payload: pushPayload,
+    })).resolves.toEqual({
+      skippedVisible: false,
+      attempted: 1,
+      sent: 1,
+      removed: 0,
+      failed: 0,
+    });
 
     expect(status.commands).toEqual(expect.arrayContaining([
       {
@@ -555,6 +679,188 @@ describe('runtime supervisor', () => {
           reviewNotificationDedupeAccepted: true,
         },
       },
+      {
+        type: 'status.evaluate-client-event',
+        payload: {
+          eventType: 'ack-notification',
+          currentState: 'needs-input',
+          lastEventName: 'notification',
+          lastEventSeq: 5,
+          clientSeq: 5,
+        },
+      },
+      {
+        type: 'status.add-session-history-entry',
+        payload: { entry: historyEntry },
+      },
+      {
+        type: 'status.update-session-history-dismissed-at',
+        payload: {
+          tabId: 'tab-a',
+          dismissedAt: 3,
+        },
+      },
+      {
+        type: 'status.send-web-push',
+        payload: {
+          anyDeviceVisible: false,
+          payload: pushPayload,
+        },
+      },
+    ]));
+  });
+
+  it('subscribes status live events and fans out realtime updates', async () => {
+    const { storage, terminal, timeline, status } = createWorkers();
+    const eventHandlers: Array<(event: IRuntimeEvent) => void> = [];
+    const supervisor = createRuntimeSupervisorForTest({
+      storage,
+      terminal,
+      timeline,
+      createStatusClient: (handlers) => {
+        eventHandlers.push((event) => handlers.onEvent(event));
+        return status;
+      },
+      captureStatusEventHandler: (handler) => {
+        eventHandlers.push(handler);
+      },
+    });
+    const onEvent = vi.fn();
+
+    const subscription = await supervisor.subscribeStatusLive({ onEvent });
+
+    expect(subscription.subscriberId).toMatch(/^sub-/);
+    expect(subscription).toMatchObject({
+      subscribed: true,
+      sync: { tabs: {} },
+    });
+    expect(status.commands).toEqual(expect.arrayContaining([
+      { type: 'status.live-start', payload: {} },
+      { type: 'status.live-request-sync', payload: {} },
+    ]));
+    expect(eventHandlers.length).toBeGreaterThan(0);
+
+    eventHandlers[0](createRuntimeEvent({
+      source: 'status',
+      target: 'supervisor',
+      type: 'status.update',
+      delivery: 'realtime',
+      payload: {
+        tabId: 'tab-a',
+        cliState: 'needs-input',
+        workspaceId: 'ws-a',
+        tabName: 'Codex',
+        panelType: 'codex',
+        terminalStatus: 'running',
+        lastEvent: { name: 'notification', at: 10, seq: 4 },
+        eventSeq: 4,
+      },
+    }));
+
+    expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'status.update',
+      payload: expect.objectContaining({
+        tabId: 'tab-a',
+        cliState: 'needs-input',
+      }),
+    }));
+
+    await expect(supervisor.unsubscribeStatusLive(subscription.subscriberId)).resolves.toEqual({
+      subscriberId: subscription.subscriberId,
+      unsubscribed: true,
+    });
+    expect(status.commands).toEqual(expect.arrayContaining([
+      { type: 'status.live-stop', payload: {} },
+    ]));
+  });
+
+  it('proxies status live bridge commands through the status worker', async () => {
+    const { storage, terminal, timeline, status } = createWorkers();
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
+
+    await expect(supervisor.startStatusLive()).resolves.toEqual({ started: true });
+    await expect(supervisor.requestStatusLiveSync()).resolves.toEqual({ tabs: {} });
+    await expect(supervisor.sendStatusLiveHookEvent({
+      tmuxSession: 'pt-ws-a-pane-b-tab-c',
+      event: 'notification',
+      notificationType: 'permission_prompt',
+    })).resolves.toEqual({ accepted: true });
+    await expect(supervisor.sendStatusLiveClientEvent({
+      eventType: 'ack-notification',
+      tabId: 'tab-a',
+      seq: 4,
+    })).resolves.toEqual({ accepted: true });
+    await expect(supervisor.notifyStatusLiveLastUserMessage({
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      message: 'hello',
+    })).resolves.toEqual({ accepted: true });
+    await expect(supervisor.registerStatusLiveTab({
+      tabId: 'tab-a',
+      entry: {
+        cliState: 'inactive',
+        workspaceId: 'ws-a',
+        tabName: 'Codex',
+        tmuxSession: 'pt-ws-a-pane-b-tab-c',
+        lastEvent: null,
+        eventSeq: 0,
+      },
+    })).resolves.toEqual({ accepted: true });
+    await expect(supervisor.updateStatusLiveDeviceVisibility({
+      deviceId: 'device-a',
+      visible: true,
+    })).resolves.toEqual({ accepted: true });
+    await expect(supervisor.removeStatusLiveTab({ tabId: 'tab-a' })).resolves.toEqual({ accepted: true });
+    await expect(supervisor.pollStatusLive()).resolves.toEqual({ polled: true });
+
+    expect(status.commands).toEqual(expect.arrayContaining([
+      { type: 'status.live-start', payload: {} },
+      { type: 'status.live-request-sync', payload: {} },
+      {
+        type: 'status.live-hook-event',
+        payload: {
+          tmuxSession: 'pt-ws-a-pane-b-tab-c',
+          event: 'notification',
+          notificationType: 'permission_prompt',
+        },
+      },
+      {
+        type: 'status.live-client-event',
+        payload: {
+          eventType: 'ack-notification',
+          tabId: 'tab-a',
+          seq: 4,
+        },
+      },
+      {
+        type: 'status.live-notify-last-user-message',
+        payload: {
+          sessionName: 'pt-ws-a-pane-b-tab-c',
+          message: 'hello',
+        },
+      },
+      {
+        type: 'status.live-register-tab',
+        payload: {
+          tabId: 'tab-a',
+          entry: {
+            cliState: 'inactive',
+            workspaceId: 'ws-a',
+            tabName: 'Codex',
+            tmuxSession: 'pt-ws-a-pane-b-tab-c',
+            lastEvent: null,
+            eventSeq: 0,
+          },
+        },
+      },
+      {
+        type: 'status.live-device-visibility',
+        payload: {
+          deviceId: 'device-a',
+          visible: true,
+        },
+      },
+      { type: 'status.live-remove-tab', payload: { tabId: 'tab-a' } },
+      { type: 'status.live-poll', payload: {} },
     ]));
   });
 

@@ -8,10 +8,14 @@ import { sendKeys } from '@/lib/tmux';
 import { createLogger } from '@/lib/logger';
 import { shouldCreateTerminalTabInRuntimeV2 } from '@/lib/runtime/terminal-mode';
 import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
+import { getRuntimeStatusV2Mode } from '@/lib/runtime/status-mode';
 
 const log = createLogger('layout');
 
 const SHELL_READY_DELAY_MS = 500;
+
+const shouldUseRuntimeStatusLive = (): boolean =>
+  process.env.CODEXMUX_RUNTIME_V2 === '1' && getRuntimeStatusV2Mode() === 'default';
 
 const isPlainTerminalTabRequest = (input: {
   panelType?: unknown;
@@ -90,14 +94,21 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(404).json({ error: 'Pane not found' });
     }
     if (tab.panelType !== 'web-browser') {
-      getStatusManager().registerTab(tab.id, {
+      const statusEntry = {
         cliState: 'inactive',
         workspaceId: wsId,
         tabName: tab.name,
         tmuxSession: tab.sessionName,
         lastEvent: null,
         eventSeq: 0,
-      });
+      } as const;
+      if (shouldUseRuntimeStatusLive()) {
+        getRuntimeSupervisor().registerStatusLiveTab({ tabId: tab.id, entry: statusEntry }).catch((err) => {
+          log.warn(`runtime status register tab failed: ${err instanceof Error ? err.message : err}`);
+        });
+      } else {
+        getStatusManager().registerTab(tab.id, statusEntry);
+      }
     }
 
     if (resumeSessionId && provider && !command) {

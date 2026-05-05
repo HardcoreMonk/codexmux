@@ -42,6 +42,8 @@ import {
 } from '@/lib/runtime/timeline-live-shadow';
 import { shouldUseRuntimeTimelineV2Live } from '@/lib/runtime/timeline-mode';
 import { handleRuntimeTimelineConnection } from '@/lib/runtime/timeline-ws';
+import { getRuntimeStatusV2Mode } from '@/lib/runtime/status-mode';
+import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
 
 const log = createLogger('timeline');
 
@@ -53,6 +55,19 @@ const MAX_CONNECTIONS = 32;
 const MAX_WATCHER_RETRIES = 3;
 const MAX_INIT_ENTRIES = 64;
 const runtimeConnections = new Set<WebSocket>();
+
+const shouldUseRuntimeStatusLive = (): boolean =>
+  process.env.CODEXMUX_RUNTIME_V2 === '1' && getRuntimeStatusV2Mode() === 'default';
+
+const notifyStatusLastUserMessage = (sessionName: string, message: string): void => {
+  if (shouldUseRuntimeStatusLive()) {
+    getRuntimeSupervisor().notifyStatusLiveLastUserMessage({ sessionName, message }).catch((err) => {
+      log.warn('runtime status last user message notify failed: %s', err instanceof Error ? err.message : String(err));
+    });
+    return;
+  }
+  getStatusManager().notifyLastUserMessage(sessionName, message);
+};
 
 const resolveAgentSummary = async (
   _provider: IAgentProvider,
@@ -216,7 +231,7 @@ const processFileChange = async (fw: IFileWatcher) => {
       const lastMsg = findLastUserMessage(newEntries);
       if (lastMsg) {
         await updateTabLastUserMessage(fw.sessionName, lastMsg).catch(() => {});
-        getStatusManager().notifyLastUserMessage(fw.sessionName, lastMsg);
+        notifyStatusLastUserMessage(fw.sessionName, lastMsg);
       }
 
       if (!fw.summaryResolved && newEntries.some((e) => e.type === 'assistant-message')) {
@@ -431,7 +446,7 @@ const subscribeToFile = async (
     const lastMsg = findLastUserMessage(result.entries);
     if (lastMsg) {
       await updateTabLastUserMessage(sessionName, lastMsg).catch(() => {});
-      getStatusManager().notifyLastUserMessage(sessionName, lastMsg);
+      notifyStatusLastUserMessage(sessionName, lastMsg);
     }
   }
 

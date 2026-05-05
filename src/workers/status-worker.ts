@@ -1,7 +1,11 @@
 import { createRuntimeReply, parseRuntimeMessage } from '@/lib/runtime/ipc';
 import { createStatusWorkerService } from '@/lib/runtime/status/worker-service';
 
-const service = createStatusWorkerService();
+const service = createStatusWorkerService({
+  emitEvent: (event) => {
+    process.send?.(event);
+  },
+});
 
 process.on('message', async (raw) => {
   try {

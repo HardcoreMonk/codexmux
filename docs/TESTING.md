@@ -247,13 +247,21 @@ Status shadow compare smoke:
 
 ```bash
 corepack pnpm smoke:runtime-v2:status-shadow
+corepack pnpm smoke:runtime-v2:status-default
 ```
 
 이 smoke는 Status Worker IPC 경로의 hook reducer, Codex state reducer, notification policy,
-side-effect intent 결과를 legacy pure helper 결과와 비교한다. Side-effect intent는 session
-history write, Web Push send, JSONL watcher start/stop 같은 boolean decision만 비교하며
-payload 본문은 출력하지 않는다. Status Worker가 polling, ack/dismiss, Web Push, session
-history side effect를 production owner로 소유한다는 의미는 아니다.
+side-effect intent, ack/dismiss client-event intent 결과를 legacy pure helper 결과와 비교한다.
+Side-effect intent는 session history write, Web Push send, JSONL watcher start/stop 같은
+boolean decision만 비교하며 payload 본문은 출력하지 않는다. Client-event intent는
+ready-for-review dismiss와 needs-input ack acceptance만 비교한다.
+
+`smoke:runtime-v2:status-default`는 temp HOME/server에서 `CODEXMUX_RUNTIME_V2=1`과
+`CODEXMUX_RUNTIME_STATUS_V2_MODE=default`를 켜고 기존 permission prompt smoke를 실행한다.
+이 gate는 `/api/status` WebSocket이 Status Worker live bridge를 사용해 initial sync,
+hook-driven `needs-input`, `status:ack-notification` 후 `busy` 복귀를 유지하는지 확인한다.
+default mode에서는 worker process 안의 StatusManager가 polling, JSONL watcher, ack/dismiss,
+session history update, Web Push send, rate-limit update를 소유한다.
 
 `smoke:runtime-v2:phase2`, `smoke:android:runtime-v2`, `smoke:electron:runtime-v2`는 각각
 임시 서버와 Next.js dev runtime을 띄운다. 같은 checkout에서 병렬 실행하면 Next dev lock

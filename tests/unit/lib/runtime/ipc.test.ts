@@ -203,6 +203,107 @@ describe('runtime ipc', () => {
       subscriberId: 'tlsub-a',
       code: 'watcher-failed',
     });
+
+    expect(runtimeEventRegistry['status.sync']).toMatchObject({
+      source: 'status',
+      target: 'supervisor',
+      delivery: 'realtime',
+    });
+
+    expect(parseRuntimeEventPayload('status.sync', {
+      tabs: {
+        'tab-a': {
+          cliState: 'busy',
+          workspaceId: 'ws-a',
+          tabName: 'Codex',
+          panelType: 'codex',
+          terminalStatus: 'running',
+          lastEvent: null,
+          eventSeq: 2,
+        },
+      },
+    })).toEqual({
+      tabs: {
+        'tab-a': {
+          cliState: 'busy',
+          workspaceId: 'ws-a',
+          tabName: 'Codex',
+          panelType: 'codex',
+          terminalStatus: 'running',
+          lastEvent: null,
+          eventSeq: 2,
+        },
+      },
+    });
+
+    expect(parseRuntimeEventPayload('status.update', {
+      tabId: 'tab-a',
+      cliState: 'needs-input',
+      workspaceId: 'ws-a',
+      tabName: 'Codex',
+      panelType: 'codex',
+      terminalStatus: 'running',
+      lastEvent: { name: 'notification', at: 10, seq: 4 },
+      eventSeq: 4,
+    })).toMatchObject({
+      tabId: 'tab-a',
+      cliState: 'needs-input',
+      lastEvent: { name: 'notification', at: 10, seq: 4 },
+    });
+
+    expect(parseRuntimeEventPayload('status.session-history-update', {
+      entry: {
+        id: 'history-a',
+        workspaceId: 'ws-a',
+        workspaceName: 'Workspace',
+        workspaceDir: null,
+        tabId: 'tab-a',
+        agentSessionId: 'agent-a',
+        prompt: 'prompt',
+        result: 'result',
+        startedAt: 1,
+        completedAt: 2,
+        duration: 1,
+        dismissedAt: null,
+        toolUsage: {},
+        touchedFiles: [],
+      },
+    })).toMatchObject({
+      entry: {
+        id: 'history-a',
+        tabId: 'tab-a',
+      },
+    });
+
+    expect(parseRuntimeEventPayload('status.hook-event', {
+      tabId: 'tab-a',
+      event: { name: 'notification', at: 10, seq: 4 },
+    })).toEqual({
+      tabId: 'tab-a',
+      event: { name: 'notification', at: 10, seq: 4 },
+    });
+
+    expect(parseRuntimeEventPayload('status.error', {
+      code: 'status-live-failed',
+      message: 'Status live bridge failed',
+    })).toEqual({
+      code: 'status-live-failed',
+      message: 'Status live bridge failed',
+    });
+
+    expect(parseRuntimeEventPayload('status.rate-limits-update', {
+      data: {
+        ts: 10,
+        five_hour: { used_percentage: 50, resets_at: 20 },
+        seven_day: null,
+      },
+    })).toEqual({
+      data: {
+        ts: 10,
+        five_hour: { used_percentage: 50, resets_at: 20 },
+        seven_day: null,
+      },
+    });
   });
 
   it('validates registered event constructors before returning', () => {
@@ -318,6 +419,70 @@ describe('runtime ipc', () => {
       panelType: 'codex',
     })).toThrow(/Invalid runtime IPC payload/);
 
+    expect(parseRuntimeCommandPayload('status.live-start', {})).toEqual({});
+    expect(parseRuntimeReplyPayload('status.live-start', { started: true })).toEqual({ started: true });
+    expect(parseRuntimeCommandPayload('status.live-stop', {})).toEqual({});
+    expect(parseRuntimeReplyPayload('status.live-stop', { stopped: true })).toEqual({ stopped: true });
+    expect(parseRuntimeCommandPayload('status.live-request-sync', {})).toEqual({});
+    expect(parseRuntimeReplyPayload('status.live-request-sync', { tabs: {} })).toEqual({ tabs: {} });
+    expect(parseRuntimeCommandPayload('status.live-hook-event', {
+      tmuxSession: 'pt-ws-a-pane-b-tab-c',
+      event: 'notification',
+      notificationType: 'permission_prompt',
+    })).toEqual({
+      tmuxSession: 'pt-ws-a-pane-b-tab-c',
+      event: 'notification',
+      notificationType: 'permission_prompt',
+    });
+    expect(parseRuntimeCommandPayload('status.live-client-event', {
+      eventType: 'ack-notification',
+      tabId: 'tab-a',
+      seq: 4,
+    })).toEqual({
+      eventType: 'ack-notification',
+      tabId: 'tab-a',
+      seq: 4,
+    });
+    expect(parseRuntimeCommandPayload('status.live-notify-last-user-message', {
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      message: 'hello',
+    })).toEqual({
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      message: 'hello',
+    });
+    expect(parseRuntimeCommandPayload('status.live-register-tab', {
+      tabId: 'tab-a',
+      entry: {
+        cliState: 'inactive',
+        workspaceId: 'ws-a',
+        tabName: 'Codex',
+        tmuxSession: 'pt-ws-a-pane-b-tab-c',
+        lastEvent: null,
+        eventSeq: 0,
+      },
+    })).toEqual({
+      tabId: 'tab-a',
+      entry: {
+        cliState: 'inactive',
+        workspaceId: 'ws-a',
+        tabName: 'Codex',
+        tmuxSession: 'pt-ws-a-pane-b-tab-c',
+        lastEvent: null,
+        eventSeq: 0,
+      },
+    });
+    expect(parseRuntimeCommandPayload('status.live-device-visibility', {
+      deviceId: 'device-a',
+      visible: true,
+    })).toEqual({
+      deviceId: 'device-a',
+      visible: true,
+    });
+    expect(parseRuntimeCommandPayload('status.live-remove-tab', { tabId: 'tab-a' })).toEqual({ tabId: 'tab-a' });
+    expect(parseRuntimeCommandPayload('status.live-poll', {})).toEqual({});
+    expect(parseRuntimeReplyPayload('status.live-client-event', { accepted: true })).toEqual({ accepted: true });
+    expect(parseRuntimeReplyPayload('status.live-poll', { polled: true })).toEqual({ polled: true });
+
     expect(parseRuntimeCommandPayload('timeline.session-watch-unsubscribe', {
       subscriberId: 'tlsw-a',
     })).toEqual({ subscriberId: 'tlsw-a' });
@@ -349,6 +514,91 @@ describe('runtime ipc', () => {
       sessionHistoryDedupeAccepted: true,
       reviewNotificationDedupeAccepted: true,
       rawPrompt: 'must not cross IPC',
+    })).toThrow(/Invalid runtime IPC payload/);
+
+    expect(parseRuntimeCommandPayload('status.evaluate-client-event', {
+      eventType: 'ack-notification',
+      currentState: 'needs-input',
+      lastEventName: 'notification',
+      lastEventSeq: 5,
+      clientSeq: 5,
+    })).toEqual({
+      eventType: 'ack-notification',
+      currentState: 'needs-input',
+      lastEventName: 'notification',
+      lastEventSeq: 5,
+      clientSeq: 5,
+    });
+
+    expect(() => parseRuntimeCommandPayload('status.evaluate-client-event', {
+      eventType: 'ack-notification',
+      currentState: 'needs-input',
+      lastEventName: 'notification',
+      lastEventSeq: 5,
+      clientSeq: 5,
+      tabId: 'must-not-cross-ipc',
+    })).toThrow(/Invalid runtime IPC payload/);
+
+    const historyEntry = {
+      id: 'history-a',
+      workspaceId: 'ws-a',
+      workspaceName: 'Workspace',
+      workspaceDir: null,
+      tabId: 'tab-a',
+      agentSessionId: 'agent-a',
+      prompt: 'prompt',
+      result: 'result',
+      startedAt: 1,
+      completedAt: 2,
+      duration: 1,
+      dismissedAt: null,
+      toolUsage: {},
+      touchedFiles: [],
+    };
+    expect(parseRuntimeCommandPayload('status.add-session-history-entry', {
+      entry: historyEntry,
+    })).toEqual({ entry: historyEntry });
+
+    expect(parseRuntimeCommandPayload('status.update-session-history-dismissed-at', {
+      tabId: 'tab-a',
+      dismissedAt: 3,
+    })).toEqual({
+      tabId: 'tab-a',
+      dismissedAt: 3,
+    });
+
+    expect(() => parseRuntimeCommandPayload('status.add-session-history-entry', {
+      entry: {
+        ...historyEntry,
+        workspaceDir: '/repo',
+        jsonlPath: 'must-not-cross-ipc',
+      },
+    })).toThrow(/Invalid runtime IPC payload/);
+
+    const pushPayload = {
+      title: 'Task Complete',
+      body: 'prompt',
+      silent: false,
+      tabId: 'tab-a',
+      workspaceId: 'ws-a',
+      agentSessionId: 'agent-a',
+      workspaceName: 'Workspace',
+      workspaceDir: null,
+    };
+    expect(parseRuntimeCommandPayload('status.send-web-push', {
+      anyDeviceVisible: false,
+      payload: pushPayload,
+    })).toEqual({
+      anyDeviceVisible: false,
+      payload: pushPayload,
+    });
+
+    expect(() => parseRuntimeCommandPayload('status.send-web-push', {
+      anyDeviceVisible: false,
+      payload: {
+        ...pushPayload,
+        cwd: '/repo',
+      },
     })).toThrow(/Invalid runtime IPC payload/);
 
     for (const oversized of [
