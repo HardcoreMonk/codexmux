@@ -22,13 +22,13 @@
 - 2026-05-05 P2 -> P3 preflight: 현재 production `codexmux.service`는 `CODEXMUX_RUNTIME_V2=1`, `CODEXMUX_RUNTIME_STORAGE_V2_MODE=write`, `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=off`, timeline/status mode `off`이다. `corepack pnpm smoke:runtime-v2:phase2`와 `corepack pnpm smoke:browser-reconnect`가 현재 코드 기준 통과했고, live `/api/v2/runtime/health`는 모든 worker ok와 `storageV2Mode: "write"`, `terminalV2Mode: "off"`를 반환한다. `/api/debug/perf` worker counters는 storage/terminal/timeline/status 모두 `healthFailures=0`, `readyFailures=0`, `commandFailures=0`, `timeouts=0`, `restarts=0`, `errors=0`이다. P3 storage preflight는 temp `storage-dry-run`, `storage-backup`, `storage-import`, `storage-write`, `storage-default-read`, `storage-shadow` smoke를 통과했고, live `runtime-v2:storage-dry-run`은 `cutoverReady: true`, blocker 0, workspace 4개/tab 4개를 반환했다. live `runtime-v2:storage-backup`은 `runtime-v2-storage-20260504T163816Z`에 JSON/SQLite file 37개를 복사했고, live `runtime-v2:storage-import`는 workspace 4개/pane 4개/tab 4개/message-history 5개를 SQLite로 idempotent import했다. Production default rollout과 24시간 restart-loop 부재 관찰은 아직 닫지 않는다.
 - 2026-05-05 live new-tabs/default cutover: `codexmux.service` drop-in을 `CODEXMUX_RUNTIME_STORAGE_V2_MODE=default`, `CODEXMUX_RUNTIME_TERMINAL_V2_MODE=new-tabs`로 전환하고 service restart를 완료했다. `/api/v2/runtime/health`는 `terminalV2Mode: "new-tabs"`, `storageV2Mode: "default"`와 모든 worker ok를 반환한다. 임시 live workspace에서 plain terminal tab 생성이 legacy layout `runtimeVersion: 2`, `rtv2-` session name, runtime storage projection으로 확인됐고 workspace는 삭제됐다. `CODEXMUX_RUNTIME_V2_SMOKE_URL=http://127.0.0.1:8122 corepack pnpm smoke:runtime-v2:target`는 live target에서 attach/stdin/stdout/resize/web-stdin/heartbeat/fresh reattach/fanout/backpressure/tab delete/workspace delete를 통과했다. 30초 간격 6회 rollback window canary 동안 worker restart/timeout/failure 0, service `NRestarts=0`, 최종 warning journal 없음이다. 2026-05-05 14:20 KST에는 운영자 승인으로 observation을 closeout 처리했다. 원래 24시간 clock gate 종료 시각은 2026-05-06 01:42 KST였으므로 이 기록은 elapsed-time pass가 아니라 operator-approved closeout이다.
 - 2026-05-05 lifecycle control UI slice: `/experimental/runtime` 상단에 read-only Lifecycle Control panel을 추가했다. 이 panel은 `/api/health`, `/api/v2/runtime/health`, `/api/debug/perf`를 normalize해 release metadata, terminal/storage/timeline/status mode, 24시간 observation gate, worker diagnostics, perf timing, copy-only rollback runbook을 같은 화면에 표시한다. Endpoint 부분 실패는 가능한 section을 계속 렌더링하고 실패 section label만 노출하며, token/cwd/session/prompt/terminal output 원문은 표시하지 않는다. 실행형 rollback/systemd control은 이번 범위 밖이다.
-- 2026-05-05 timeline watcher/Android evidence deploy: `d3248c4`가 live deploy 되었고 `/api/health`는 `version=0.4.1`, `commit=d3248c4`를 반환한다. Timeline Worker는 `timeline.session-watch-subscribe`/`timeline.session-watch-unsubscribe`와 subscriber-scoped `timeline.session-changed` IPC foundation을 갖췄다. `corepack pnpm smoke:android:timeline-foreground`는 SM-S928N Android 16에서 `timelineV2Mode=default`, foreground 2회, `timeline:init totalEntries` 3/5/7, blocking console/logcat 0으로 통과했다. Client-facing `/api/timeline` WebSocket ownership은 아직 legacy에 둔다.
+- 2026-05-05 timeline watcher/Android evidence deploy: `d3248c4`가 live deploy 되었고 `/api/health`는 `version=0.4.1`, `commit=d3248c4`를 반환한다. Timeline Worker는 `timeline.session-watch-subscribe`/`timeline.session-watch-unsubscribe`와 subscriber-scoped `timeline.session-changed` IPC foundation을 갖췄다. `corepack pnpm smoke:android:timeline-foreground`는 SM-S928N Android 16에서 `timelineV2Mode=default`, foreground 2회, `timeline:init totalEntries` 3/5/7, blocking console/logcat 0으로 통과했다.
+- 2026-05-05 timeline WebSocket default ownership slice: `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`에서 client-facing `/api/timeline` WebSocket이 `handleRuntimeTimelineConnection()`을 통해 Timeline Worker live subscribe/session watch를 사용한다. 기존 URL과 auth/cookie contract는 유지하고, resume safety는 server helper의 process guard/sendKeys만 재사용하며 legacy file watcher에는 붙지 않는다. `corepack pnpm smoke:runtime-v2:timeline-websocket-default`, `timeline-live-shadow`, `timeline-resume-safety`, `timeline-session-changed`, `smoke:android:timeline-foreground`가 temp HOME/DB 기준 통과했다.
 
 Production 기본 경로로 전환하지 않은 것:
 
-- 기존 `/api/terminal`, `/api/timeline`, `/api/status`, `/api/sync` WebSocket.
+- 기존 `/api/terminal`, `/api/status`, `/api/sync` WebSocket. `/api/timeline`은 URL은 그대로지만 timeline default mode에서 runtime bridge가 delivery를 소유한다.
 - 기존 JSON workspace/layout/message-history fallback, config/keybinding stores.
-- Client-facing Timeline WebSocket ownership, resume flow, session-changed delivery.
 - Status polling, JSONL watch, Web Push, session history write, dismiss/ack handling.
 - 기존 `pt-` tmux session의 `rtv2-` session migration.
 
@@ -171,9 +171,9 @@ Work:
 - Move file watcher/session watcher state into Timeline Worker, not just read commands.
 - Current read-only first slice: `corepack pnpm smoke:runtime-v2:timeline-shadow` compares legacy timeline read endpoints with runtime v2 timeline read endpoints for message counts and entries-before metadata without printing entry text.
 - 2026-05-05 live shadow slice: `timeline.live-subscribe` returns the worker initial `timeline:init` payload, `timeline.live-append`/`timeline.live-error` events flow through Supervisor, and legacy `/api/timeline` records sanitized init/append parity counters while remaining client-facing.
-- 2026-05-05 default-read slice: `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default` keeps the existing `/api/timeline/*` HTTP URLs but routes `sessions`, `entries`, and `message-counts` through the Timeline Worker read commands. The `/api/timeline` WebSocket still stays legacy-owned.
-- 2026-05-05 session watcher contract slice: Timeline Worker accepts `timeline.session-watch-subscribe`/`timeline.session-watch-unsubscribe`, emits subscriber-scoped `timeline.session-changed` events to Supervisor, and Supervisor fans out matching changes. This is an internal typed IPC foundation; `/api/timeline` WebSocket delivery still stays legacy-owned.
-- Add default-owned WebSocket delivery after session watcher contract evidence is collected.
+- 2026-05-05 default-read slice: `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default` keeps the existing `/api/timeline/*` HTTP URLs but routes `sessions`, `entries`, and `message-counts` through the Timeline Worker read commands.
+- 2026-05-05 session watcher contract slice: Timeline Worker accepts `timeline.session-watch-subscribe`/`timeline.session-watch-unsubscribe`, emits subscriber-scoped `timeline.session-changed` events to Supervisor, and Supervisor fans out matching changes.
+- 2026-05-05 WebSocket default ownership slice: the existing `/api/timeline` WebSocket URL stays stable, but default mode delegates init/append/error/session-changed delivery to Timeline Worker through `src/lib/runtime/timeline-ws.ts`. Legacy mode remains available with `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=off`.
 - Keep stable id/dedupe/merge behavior unchanged.
 - Add worker crash behavior: close timeline sockets with retryable reason and let client reconnect.
 
@@ -185,6 +185,7 @@ Exit gate:
 - Resume flow still blocks unsafe active processes: `corepack pnpm smoke:runtime-v2:timeline-resume-safety`.
 - Session watcher ordering evidence passes: `corepack pnpm smoke:runtime-v2:timeline-session-changed` sees `timeline:session-changed` before the new JSONL `timeline:init`.
 - Session watcher IPC contract evidence passes: `corepack pnpm test tests/unit/lib/runtime/ipc.test.ts tests/unit/lib/runtime/timeline-worker-service.test.ts tests/unit/lib/runtime/supervisor.test.ts`.
+- Default-owned WebSocket evidence passes: `corepack pnpm test tests/unit/lib/runtime/timeline-ws.test.ts tests/unit/lib/runtime/timeline-worker-service.test.ts tests/unit/lib/runtime/supervisor.test.ts` and `corepack pnpm smoke:runtime-v2:timeline-websocket-default`.
 - Android foreground reconnect evidence passes: `corepack pnpm smoke:android:timeline-foreground` opens `/api/timeline` from Android WebView page context, backgrounds the app while appending JSONL entries, and verifies foreground reconnect receives a fresh init without stale JSONL.
 
 Rollback:
@@ -246,6 +247,11 @@ corepack pnpm smoke:runtime-v2:storage-import
 corepack pnpm runtime-v2:storage-import
 corepack pnpm smoke:runtime-v2:storage-write
 corepack pnpm smoke:runtime-v2:storage-default-read
+corepack pnpm smoke:runtime-v2:timeline-websocket-default
+corepack pnpm smoke:runtime-v2:timeline-live-shadow
+corepack pnpm smoke:runtime-v2:timeline-resume-safety
+corepack pnpm smoke:runtime-v2:timeline-session-changed
+corepack pnpm smoke:android:timeline-foreground
 corepack pnpm build:electron
 corepack pnpm android:build:debug
 ```

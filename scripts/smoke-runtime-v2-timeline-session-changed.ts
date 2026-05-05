@@ -236,7 +236,15 @@ const writeSessionJsonl = async (homeDir: string, jsonlPath: string): Promise<vo
 
 const createTmuxSession = (sessionName: string, cwd: string): void => {
   runTmux(['kill-session', '-t', sessionName], { allowFailure: true });
-  runTmux(['new-session', '-d', '-s', sessionName, '-c', cwd, 'bash -lc "exec -a codex sleep 300"'], { cwd });
+  runTmux([
+    'new-session',
+    '-d',
+    '-s',
+    sessionName,
+    '-c',
+    cwd,
+    'bash -lc \'bash -c "exec -a codex sleep 300" & wait\'',
+  ], { cwd });
 };
 
 const timelineWsUrl = (baseUrl: string, sessionName: string): string => {

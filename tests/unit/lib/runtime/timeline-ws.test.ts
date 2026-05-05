@@ -196,7 +196,8 @@ describe('runtime timeline websocket bridge', () => {
 
     expect(fake.supervisor.unsubscribeTimelineLive).toHaveBeenCalledTimes(1);
     expect(fake.supervisor.unsubscribeTimelineLive).toHaveBeenCalledWith('sub-live-late');
-    expect(fake.supervisor.subscribeTimelineSessionWatch).not.toHaveBeenCalled();
+    expect(fake.supervisor.unsubscribeTimelineSessionWatch).toHaveBeenCalledTimes(1);
+    expect(fake.supervisor.unsubscribeTimelineSessionWatch).toHaveBeenCalledWith('sub-watch');
   });
 
   it('unsubscribes a session watcher subscription that resolves after close', async () => {
@@ -218,8 +219,8 @@ describe('runtime timeline websocket bridge', () => {
     sessionWatchSubscribe.resolve({ subscriberId: 'sub-watch-late', subscribed: true });
     await connection;
 
-    expect(fake.supervisor.unsubscribeTimelineLive).toHaveBeenCalledTimes(1);
-    expect(fake.supervisor.unsubscribeTimelineLive).toHaveBeenCalledWith('sub-live');
+    expect(fake.supervisor.subscribeTimelineLive).not.toHaveBeenCalled();
+    expect(fake.supervisor.unsubscribeTimelineLive).not.toHaveBeenCalled();
     expect(fake.supervisor.unsubscribeTimelineSessionWatch).toHaveBeenCalledTimes(1);
     expect(fake.supervisor.unsubscribeTimelineSessionWatch).toHaveBeenCalledWith('sub-watch-late');
   });
@@ -278,6 +279,36 @@ describe('runtime timeline websocket bridge', () => {
     expect(fake.supervisor.unsubscribeTimelineLive).toHaveBeenCalledWith('sub-live-initial');
     expect(updateTabAgentSessionId).toHaveBeenCalledTimes(1);
     expect(updateTabAgentSessionId).toHaveBeenCalledWith('session-b');
+  });
+
+  it('subscribes the session watcher before sending an unresolved initial init', async () => {
+    const fake = createSupervisor();
+    const ws = new FakeSocket();
+    const sentBeforeWatch: unknown[][] = [];
+
+    vi.mocked(fake.supervisor.subscribeTimelineSessionWatch).mockImplementationOnce(async () => {
+      sentBeforeWatch.push([...ws.sent]);
+      return { subscriberId: 'sub-watch', subscribed: true };
+    });
+
+    await handleRuntimeTimelineConnection(ws as never, createConnectionInput({
+      supervisor: fake.supervisor,
+      detectActiveSession: async () => ({
+        status: 'running' as const,
+        sessionId: null,
+        jsonlPath: null,
+        pid: 456,
+        startedAt: 1,
+        cwd: process.env.HOME ?? '',
+      }),
+      resolveInitialJsonl: async () => null,
+    }));
+
+    expect(sentBeforeWatch).toEqual([[]]);
+    expect(ws.sent).toContainEqual(expect.objectContaining({
+      type: 'timeline:init',
+      totalEntries: 0,
+    }));
   });
 
   it('switches runtime live subscription when resume resolves a jsonl path', async () => {

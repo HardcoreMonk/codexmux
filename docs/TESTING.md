@@ -167,7 +167,7 @@ corepack pnpm test tests/unit/lib/runtime/ipc.test.ts tests/unit/lib/runtime/tim
 이 검증은 `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=shadow`에서 legacy `/api/timeline`이 계속
 client-facing인 상태로 Timeline Worker live subscription을 시작하고, 초기 init reply와
 append event를 sanitized metadata로 비교하는 경로를 확인한다. 별도 long JSONL append smoke와
-timeline WebSocket default 전환 검증은 다음 slice의 gate로 유지한다.
+timeline WebSocket default 전환 검증은 `smoke:runtime-v2:timeline-websocket-default`에서 확인한다.
 
 Timeline default-read route unit coverage:
 
@@ -177,8 +177,8 @@ corepack pnpm test tests/unit/lib/runtime/timeline-mode.test.ts tests/unit/pages
 
 이 검증은 `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`에서 기존 `/api/timeline/sessions`,
 `/api/timeline/entries`, `/api/timeline/message-counts` HTTP URL이 Timeline Worker read
-command로 route되는지 확인한다. `/api/timeline` WebSocket, `timeline:session-changed`,
-resume command execution은 이 slice에서 전환하지 않는다.
+command로 route되는지 확인한다. `/api/timeline` WebSocket delivery는 별도
+`timeline-ws.test.ts`와 `smoke:runtime-v2:timeline-websocket-default`에서 검증한다.
 
 Timeline live shadow long append smoke:
 
@@ -201,8 +201,8 @@ corepack pnpm smoke:runtime-v2:timeline-resume-safety
 
 이 smoke는 temp HOME/server에서 `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`를 켠 뒤
 foreground process가 shell이 아닌 tmux pane에 `/api/timeline` WebSocket으로 resume을 보내
-`timeline:resume-blocked`와 `reason="process-running"`을 확인한다. WebSocket default 전환 전
-resume process-safety rollback evidence로 사용하며, 출력에는 prompt, assistant text, cwd,
+`timeline:resume-blocked`와 `reason="process-running"`을 확인한다. WebSocket default 전환 후에도
+runtime bridge가 기존 process-safety guard를 유지하는 rollback evidence로 사용하며, 출력에는 prompt, assistant text, cwd,
 JSONL path, terminal output, token을 포함하지 않는다.
 
 Timeline session-changed smoke:
@@ -240,7 +240,8 @@ corepack pnpm test tests/unit/lib/runtime/ipc.test.ts tests/unit/lib/runtime/tim
 이 검증은 Timeline Worker의 `timeline.session-watch-subscribe`/`timeline.session-watch-unsubscribe`
 IPC payload, subscriber-scoped `timeline.session-changed` event schema, Worker watcher stop
 cleanup, Supervisor event fan-out을 확인한다. 이 unit coverage는 내부 contract 검증이며
-client-facing `/api/timeline` WebSocket ownership은 전환하지 않는다.
+client-facing `/api/timeline` WebSocket ownership은 `tests/unit/lib/runtime/timeline-ws.test.ts`와
+default WebSocket smoke에서 별도로 검증한다.
 
 Status shadow compare smoke:
 

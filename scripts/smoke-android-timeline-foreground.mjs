@@ -269,7 +269,15 @@ const appendTimelinePair = async (jsonlPath, round) => {
 
 const createTmuxSession = (sessionName, cwd) => {
   runTmux(['kill-session', '-t', sessionName], { allowFailure: true });
-  runTmux(['new-session', '-d', '-s', sessionName, '-c', cwd, 'bash -lc "exec -a codex sleep 300"'], { cwd });
+  runTmux([
+    'new-session',
+    '-d',
+    '-s',
+    sessionName,
+    '-c',
+    cwd,
+    'bash -lc \'bash -c "exec -a codex sleep 300" & wait\'',
+  ], { cwd });
 };
 
 const sanitizeOutput = (value, { homeDir, jsonlPath }) =>

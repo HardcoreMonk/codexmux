@@ -157,6 +157,26 @@ export const handleRuntimeTimelineConnection = async (
     }
   };
 
+  const ensureSessionWatch = async (): Promise<void> => {
+    if (state.cleaned || state.sessionWatchSubscriberId) return;
+    const watch = await supervisor.subscribeTimelineSessionWatch({
+      sessionName: input.sessionName,
+      panePid: input.panePid,
+      panelType: input.panelType,
+      skipInitial: true,
+      onChanged: (event) => {
+        void handleSessionChanged(event);
+      },
+    });
+    if (state.cleaned) {
+      await supervisor.unsubscribeTimelineSessionWatch(watch.subscriberId).catch(() => {
+        recordPerfCounter('runtime_v2.timeline_ws.default.session_watch_unsubscribe_error');
+      });
+      return;
+    }
+    state.sessionWatchSubscriberId = watch.subscriberId;
+  };
+
   ws.on('pong', () => {
     lastHeartbeat = Date.now();
   });
@@ -220,6 +240,9 @@ export const handleRuntimeTimelineConnection = async (
       return;
     }
 
+    await ensureSessionWatch();
+    if (state.cleaned) return;
+
     if (info.status === 'running' && info.sessionId) {
       sendJson(ws, {
         type: 'timeline:session-changed',
@@ -245,23 +268,6 @@ export const handleRuntimeTimelineConnection = async (
       });
     }
     if (state.cleaned) return;
-
-    const watch = await supervisor.subscribeTimelineSessionWatch({
-      sessionName: input.sessionName,
-      panePid: input.panePid,
-      panelType: input.panelType,
-      skipInitial: true,
-      onChanged: (event) => {
-        void handleSessionChanged(event);
-      },
-    });
-    if (state.cleaned) {
-      await supervisor.unsubscribeTimelineSessionWatch(watch.subscriberId).catch(() => {
-        recordPerfCounter('runtime_v2.timeline_ws.default.session_watch_unsubscribe_error');
-      });
-      return;
-    }
-    state.sessionWatchSubscriberId = watch.subscriberId;
   } catch (err) {
     recordPerfCounter('runtime_v2.timeline_ws.default.start_error');
     sendJson(ws, {

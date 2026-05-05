@@ -45,12 +45,17 @@
   `ensureStarted()`는 stale pending terminal tab뿐 아니라 ready terminal tab과 실제
   runtime v2 tmux session 존재 여부도 reconciliation한 뒤에만 started 상태가 된다.
   Timeline Worker는 read-only foundation으로 먼저 들어가며 session list, older entry,
-  message count command를 typed IPC로 처리한다. Production timeline WebSocket의 file
-  watch/live append/resume 경로는 별도 cutover 전까지 기존 server module에 남긴다.
+  message count command를 typed IPC로 처리한다.
   `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`에서는 legacy HTTP read routes
   (`/api/timeline/sessions`, `/api/timeline/entries`, `/api/timeline/message-counts`)가
-  내부적으로 Supervisor의 Timeline Worker read command를 호출하지만, `/api/timeline`
-  WebSocket은 session-changed/resume ownership cutover 전까지 legacy server module에 남긴다.
+  내부적으로 Supervisor의 Timeline Worker read command를 호출한다. 같은 mode에서
+  client-facing `/api/timeline` WebSocket URL은 유지하되 `handleRuntimeTimelineConnection()`이
+  Supervisor의 Timeline Worker live/session-watch command를 사용해 init/append/error와
+  `timeline:session-changed` delivery를 소유한다. Resume message execution은 기존 server
+  helper의 unsafe-process guard와 `sendKeys` path를 재사용하지만, runtime bridge가 직접
+  worker live subscription으로 전환하므로 legacy file watcher에는 붙지 않는다. Rollback은
+  `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=off`로 같은 URL의 legacy timeline server implementation을
+  다시 사용한다.
   Status Worker는 policy foundation으로 먼저 들어가며 hook/Codex 상태 전이와 notification
   gating을 typed IPC로 처리한다. Production status polling/WebSocket/notification write는
   별도 cutover 전까지 기존 `StatusManager`에 남긴다.
