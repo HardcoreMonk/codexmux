@@ -27,6 +27,7 @@ interface IRuntimeTimelineConnectionState {
   liveSubscriberId: string | null;
   sessionWatchSubscriberId: string | null;
   currentJsonlPath: string | null;
+  liveSubscribeGeneration: number;
 }
 
 const HEARTBEAT_INTERVAL = 30_000;
@@ -54,6 +55,7 @@ export const handleRuntimeTimelineConnection = async (
     liveSubscriberId: null,
     sessionWatchSubscriberId: null,
     currentJsonlPath: null,
+    liveSubscribeGeneration: 0,
   };
   let lastHeartbeat = Date.now();
 
@@ -90,6 +92,7 @@ export const handleRuntimeTimelineConnection = async (
   };
 
   const subscribeLive = async (resolved: IResolvedTimelineJsonl): Promise<void> => {
+    const generation = ++state.liveSubscribeGeneration;
     if (state.cleaned) return;
 
     const previousSubscriberId = state.liveSubscriberId;
@@ -99,7 +102,7 @@ export const handleRuntimeTimelineConnection = async (
         recordPerfCounter('runtime_v2.timeline_ws.default.live_unsubscribe_error');
       });
     }
-    if (state.cleaned) return;
+    if (state.cleaned || generation !== state.liveSubscribeGeneration) return;
 
     const result = await supervisor.subscribeTimelineLive({
       jsonlPath: resolved.jsonlPath,
@@ -115,7 +118,7 @@ export const handleRuntimeTimelineConnection = async (
         sendJson(ws, { type: 'timeline:error', code: event.code, message: event.message });
       },
     });
-    if (state.cleaned) {
+    if (state.cleaned || generation !== state.liveSubscribeGeneration) {
       await supervisor.unsubscribeTimelineLive(result.subscriberId).catch(() => {
         recordPerfCounter('runtime_v2.timeline_ws.default.live_unsubscribe_error');
       });
@@ -161,6 +164,7 @@ export const handleRuntimeTimelineConnection = async (
       try {
         const msg = JSON.parse(raw.toString()) as TTimelineClientMessage;
         if (msg.type === 'timeline:unsubscribe') {
+          state.liveSubscribeGeneration++;
           const liveSubscriberId = state.liveSubscriberId;
           if (liveSubscriberId) {
             state.liveSubscriberId = null;

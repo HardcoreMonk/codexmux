@@ -35,6 +35,7 @@ class FakeSocket extends EventEmitter {
 }
 
 const sessionJsonlPath = `${process.env.HOME}/.codex/sessions/session-a.jsonl`;
+const selectedJsonlPath = `${process.env.HOME}/.codex/sessions/session-b.jsonl`;
 
 const createDeferred = <T>() => {
   let resolve!: (value: T) => void;
@@ -54,6 +55,12 @@ const initMessage = {
   startByteOffset: 0,
   hasMore: false,
   jsonlPath: sessionJsonlPath,
+};
+
+const selectedInitMessage = {
+  ...initMessage,
+  sessionId: 'session-b',
+  jsonlPath: selectedJsonlPath,
 };
 
 const createSupervisor = () => {
@@ -215,6 +222,62 @@ describe('runtime timeline websocket bridge', () => {
     expect(fake.supervisor.unsubscribeTimelineLive).toHaveBeenCalledWith('sub-live');
     expect(fake.supervisor.unsubscribeTimelineSessionWatch).toHaveBeenCalledTimes(1);
     expect(fake.supervisor.unsubscribeTimelineSessionWatch).toHaveBeenCalledWith('sub-watch-late');
+  });
+
+  it('unsubscribes stale overlapping live subscribe results without sending stale init', async () => {
+    const fake = createSupervisor();
+    const ws = new FakeSocket();
+    const updateTabAgentSessionId = vi.fn();
+    const initialSubscribe = createDeferred<{
+      subscriberId: string;
+      subscribed: boolean;
+      init: typeof initMessage;
+    }>();
+    const selectedSubscribe = createDeferred<{
+      subscriberId: string;
+      subscribed: boolean;
+      init: typeof selectedInitMessage;
+    }>();
+    vi.mocked(fake.supervisor.subscribeTimelineLive)
+      .mockImplementationOnce(async () => initialSubscribe.promise)
+      .mockImplementationOnce(async () => selectedSubscribe.promise);
+
+    const connection = handleRuntimeTimelineConnection(ws as never, createConnectionInput({
+      supervisor: fake.supervisor,
+      updateTabAgentSessionId,
+    }));
+
+    await vi.waitFor(() => {
+      expect(fake.supervisor.subscribeTimelineLive).toHaveBeenCalledTimes(1);
+    });
+    ws.receive({ type: 'timeline:subscribe', jsonlPath: selectedJsonlPath });
+    await vi.waitFor(() => {
+      expect(fake.supervisor.subscribeTimelineLive).toHaveBeenCalledTimes(2);
+    });
+
+    selectedSubscribe.resolve({ subscriberId: 'sub-live-selected', subscribed: true, init: selectedInitMessage });
+    await vi.waitFor(() => {
+      expect(ws.sent).toContainEqual(expect.objectContaining({
+        type: 'timeline:init',
+        sessionId: 'session-b',
+        jsonlPath: selectedJsonlPath,
+      }));
+    });
+
+    initialSubscribe.resolve({ subscriberId: 'sub-live-initial', subscribed: true, init: initMessage });
+    await connection;
+
+    const initMessages = ws.sent.filter((msg) => (
+      typeof msg === 'object'
+      && msg !== null
+      && 'type' in msg
+      && msg.type === 'timeline:init'
+    ));
+    expect(initMessages).toHaveLength(1);
+    expect(fake.supervisor.unsubscribeTimelineLive).toHaveBeenCalledTimes(1);
+    expect(fake.supervisor.unsubscribeTimelineLive).toHaveBeenCalledWith('sub-live-initial');
+    expect(updateTabAgentSessionId).toHaveBeenCalledTimes(1);
+    expect(updateTabAgentSessionId).toHaveBeenCalledWith('session-b');
   });
 
   it('keeps timeline resume delegated to the legacy handler', async () => {
