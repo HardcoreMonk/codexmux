@@ -20,6 +20,9 @@ self.addEventListener('push', (event) => {
       agentSessionId: sessionId,
       workspaceName: data.workspaceName || '',
       workspaceDir: data.workspaceDir || null,
+      approvalKind: data.approvalKind || null,
+      promptType: data.promptType || null,
+      riskLevel: data.riskLevel || null,
     },
   };
 
@@ -39,10 +42,41 @@ self.addEventListener('message', (event) => {
 const PUSH_NAV_CACHE = 'push-nav';
 const PUSH_NAV_KEY = '/_push-pending';
 
+const buildPushDeepLinkPath = (data) => {
+  const workspaceId = typeof data.workspaceId === 'string' ? data.workspaceId.trim() : '';
+  if (!workspaceId) return '/';
+
+  const params = new URLSearchParams({ pushWorkspaceId: workspaceId });
+  const tabId = typeof data.tabId === 'string' ? data.tabId.trim() : '';
+  const agentSessionId = typeof data.agentSessionId === 'string' ? data.agentSessionId.trim() : '';
+  if (tabId) params.set('pushTabId', tabId);
+  if (agentSessionId) params.set('pushAgentSessionId', agentSessionId);
+  if (data.approvalKind || data.promptType || data.riskLevel) params.set('pushApproval', '1');
+  return `/?${params.toString()}`;
+};
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const { tabId, workspaceId, agentSessionId, workspaceName, workspaceDir } = event.notification.data || {};
-  const navData = { tabId, workspaceId, agentSessionId, workspaceName, workspaceDir };
+  const {
+    tabId,
+    workspaceId,
+    agentSessionId,
+    workspaceName,
+    workspaceDir,
+    approvalKind,
+    promptType,
+    riskLevel,
+  } = event.notification.data || {};
+  const navData = {
+    tabId,
+    workspaceId,
+    agentSessionId,
+    workspaceName,
+    workspaceDir,
+    approvalKind,
+    promptType,
+    riskLevel,
+  };
 
   event.waitUntil(
     caches.open(PUSH_NAV_CACHE).then((cache) =>
@@ -56,7 +90,7 @@ self.addEventListener('notificationclick', (event) => {
           return client.focus();
         }
       }
-      return self.clients.openWindow('/');
+      return self.clients.openWindow(buildPushDeepLinkPath(navData));
     })
   );
 });

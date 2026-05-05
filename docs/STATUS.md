@@ -144,6 +144,11 @@ process로 직접 잡히지 않는 세션을 CODEX 패널에 동기화하기 위
   full command, cwd, session name, JSONL path, prompt body, assistant text, terminal output은
   status payload나 Web Push payload에 넣지 않는다. Pane capture 실패 log도 terminal 내용이
   아니라 error class만 남긴다.
+- approval queue는 선택지가 표시된 시점, fallback, 선택 전송 성공/실패를
+  `~/.codexmux/approval-audit.jsonl`에 append한다. 이 audit record는 workspace id, tab id,
+  prompt/risk/approval enum, option count, selected option index, fallback reason만 저장하고
+  option label, command preview, cwd, session name, JSONL path, prompt body, terminal output은
+  저장하지 않는다.
 - Codex CLI가 `Conversation interrupted - tell the model what to do differently` 입력 프롬프트에 멈췄지만 JSONL에 `turn_aborted` 또는 `[Request interrupted by user` marker를 남기지 않는 경우, `StatusManager`는 live pane capture를 보정 신호로 사용해 stale `busy`를 `idle`로 되돌리고 `currentAction`을 비운다.
 - persisted `cliState`가 `idle`이어도 live pane에 Codex 입력 선택지가 보이면 `StatusManager`는 `needs-input`으로 복구한다. 이 경로는 server restart 후 Codex resume directory prompt가 남아 있는 tab을 Android/Electron/mobile notification surface에 다시 노출하기 위한 보정이다.
 - `corepack pnpm smoke:permission`은 임시 서버와 tmux prompt를 사용해 `notification` hook의 `needs-input` 전환, permission option parsing, stdin 선택 전달, `status:ack-notification` 후 `busy` 복귀를 검증한다.

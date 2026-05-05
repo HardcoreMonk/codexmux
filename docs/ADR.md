@@ -239,7 +239,7 @@
 - Status: Accepted
 - Decision: Codex permission/input prompt의 approval queue metadata는 live pane capture에서 계산한 non-durable projection으로 유지한다. `/api/tmux/permission-options`는 기존 option index 선택 호환을 위해 CLI 선택지와 focused index를 반환하고, 별도로 `promptType`, `approvalKind`, `riskLevel`, sanitized command preview, basename-only file hint를 포함한 metadata를 반환한다.
 - Rationale: 실제 prompt source는 tmux pane과 Codex CLI이며, codexmux가 별도 approval database나 정책 engine을 만들면 CLI 상태와 drift가 생긴다. 동시에 notification panel, fallback copy, Web Push target은 command/file/permission/resume/conversation 같은 최소 분류와 위험도 표시가 필요하다.
-- Consequences: Metadata는 latest prompt block 범위에서만 계산해 scrollback contamination을 피한다. Full command, cwd, session name, JSONL path, prompt body, assistant text, terminal output, token-like 값은 metadata, status payload, Web Push payload, capture failure log에 넣지 않는다. API option label은 선택 index 호환을 위해 CLI 선택지 텍스트를 유지하므로 sanitized metadata와 같은 보안 경계로 취급하지 않는다. 현재 Web Push click routing은 기존 workspace/tab navigation을 유지하며, status state가 parsed prompt metadata를 소유하기 전까지 push payload에는 raw prompt detail을 추가하지 않는다. Durable approval audit history나 mobile push deep link 고도화는 별도 spec과 storage/privacy 결정을 거친다.
+- Consequences: Metadata는 latest prompt block 범위에서만 계산해 scrollback contamination을 피한다. Full command, cwd, session name, JSONL path, prompt body, assistant text, terminal output, token-like 값은 metadata, status payload, Web Push payload, capture failure log에 넣지 않는다. API option label은 선택 index 호환을 위해 CLI 선택지 텍스트를 유지하므로 sanitized metadata와 같은 보안 경계로 취급하지 않는다. 현재 Web Push click routing은 기존 workspace/tab navigation을 유지하며, status state가 parsed prompt metadata를 소유하기 전까지 push payload에는 raw prompt detail을 추가하지 않는다. Durable approval action audit은 ADR-018의 sanitized event log로만 다룬다.
 
 ## ADR-017: Bridge Trace Forwarding은 Env-gated Local Feed로 제한
 
@@ -247,3 +247,10 @@
 - Decision: `CODEXMUX_BRIDGE_TRACE_URL`과 `CODEXMUX_BRIDGE_TRACE_TOKEN`이 설정된 경우에만 `StatusManager.broadcastUpdate` 뒤 status summary를 codex-ai-bridge external trace ingress로 best-effort POST한다. codexmux는 Discord API나 bot token을 직접 다루지 않는다.
 - Rationale: Discord/bridge 추적은 codexmux status source와 분리된 운영 소비자다. status update를 bridge-owned ingress로만 전달하면 codexmux는 기존 status lifecycle을 유지하면서 외부 알림/추적 정책을 codex-ai-bridge에 맡길 수 있다.
 - Consequences: Forwarding 실패는 status broadcast, notification, session history를 막지 않는다. Payload는 workspace directory, tab id/name, Codex session id, `cliState`, `currentAction`, `lastAssistantMessage`, `lastUserMessage`의 summary-only shape로 제한하고 field length를 cap한다. Discord token, raw transcript, terminal stdout, full JSONL path, auth cookie는 전송하지 않는다. 같은 tab의 동일 state/action/session 조합은 forwarder가 dedupe한다.
+
+## ADR-018: Approval Audit은 Sanitized Action Log로 제한한다
+
+- Status: Accepted
+- Decision: approval queue의 durable history는 `~/.codexmux/approval-audit.jsonl` append-only action log로 제한한다. 저장 필드는 event type, workspace id, tab id, prompt/risk/approval enum, option count, selected option index, fallback reason이다.
+- Rationale: 운영자는 approval queue가 실제로 표시됐는지, fallback이 있었는지, 선택 전송이 성공했는지 확인할 수 있어야 한다. 그러나 Codex permission prompt의 원문 command, file path, cwd, session name, JSONL path, prompt body, terminal output은 lock screen, status payload, local audit file 어디에도 장기 저장하지 않는 편이 안전하다.
+- Consequences: `/api/approval/audit`는 POST body에서 whitelist field만 받아 store에 append하고, GET은 최신 event를 제한된 개수로 반환한다. Client는 option label이나 command preview를 audit에 보내지 않고 selected option index와 enum metadata만 보낸다. Web Push 새 창 fallback은 root deep link query에 workspace/tab/session id만 넣고 workspace name, workspace dir, command/file detail은 cache/message path에만 남긴다.

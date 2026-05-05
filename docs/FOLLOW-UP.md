@@ -168,7 +168,8 @@ P0/P1/P2/P3 후속 상태:
 
 - approval queue 1차는 notification panel의 `needs-input` section에서 Codex permission/input prompt 선택지를 직접 처리한다. 실제 Codex CLI permission prompt live smoke와 resume directory prompt option parsing은 통과했다.
 - approval queue metadata slice는 command/file/permission/resume/conversation type, approval kind, risk badge, sanitized command/file detail을 전역 notification panel에 표시한다. API option label은 기존 option index 선택 호환을 위해 CLI 선택지 텍스트를 유지한다.
-- 다음 approval workflow 단계는 mobile push copy/deep link와 durable audit history를 별도 spec으로 검토하는 것이다.
+- approval queue push/audit slice는 Web Push 새 창 fallback을 root deep link query로 복구하고, 선택지 표시/fallback/선택 전송 성공/실패를 `~/.codexmux/approval-audit.jsonl`에 원문 없이 append한다.
+- 다음 approval workflow 단계는 mobile lock-screen copy를 status-owned parsed metadata와 연결할지 별도 spec으로 검토하는 것이다.
 - pane capture 실패 시 terminal fallback 안내 개선.
 
 ### App-server adapter

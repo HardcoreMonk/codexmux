@@ -40,6 +40,18 @@ interface IApprovalOptionsResponse {
   fallbackReason: TApprovalFallbackReason | null;
 }
 
+interface IApprovalAuditPayload {
+  eventType: 'options-ready' | 'fallback' | 'selection-sent' | 'selection-failed';
+  workspaceId: string;
+  tabId: string;
+  promptType?: IApprovalPromptMetadata['promptType'];
+  approvalKind?: IApprovalPromptMetadata['approvalKind'];
+  riskLevel?: IApprovalPromptMetadata['riskLevel'];
+  selectedOptionIndex?: number;
+  optionCount?: number;
+  fallbackReason?: TApprovalFallbackReason;
+}
+
 const approvalPromptTypes = new Set(['command', 'file', 'permission', 'resume-directory', 'conversation', 'unknown']);
 const approvalKinds = new Set(['allow', 'deny', 'trust', 'directory', 'input', 'unknown']);
 const approvalRiskLevels = new Set(['low', 'medium', 'high', 'unknown']);
@@ -118,6 +130,21 @@ const sendSelection = async (sessionName: string, optionIndex: number): Promise<
   }
 };
 
+const recordApprovalAuditEvent = (payload: IApprovalAuditPayload): void => {
+  fetch('/api/approval/audit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    keepalive: true,
+  }).catch(() => {});
+};
+
+const getApprovalAuditMetadata = (metadata: IApprovalPromptMetadata | null) => ({
+  promptType: metadata?.promptType ?? 'unknown',
+  approvalKind: metadata?.approvalKind ?? 'unknown',
+  riskLevel: metadata?.riskLevel ?? 'unknown',
+});
+
 const ApprovalQueueItem = ({
   tabId,
   sessionName,
@@ -150,6 +177,12 @@ const ApprovalQueueItem = ({
     if (!sessionName) {
       setFallbackReason('no-session');
       setPhase('failed');
+      recordApprovalAuditEvent({
+        eventType: 'fallback',
+        workspaceId,
+        tabId,
+        fallbackReason: 'no-session',
+      });
       return () => { cancelled = true; };
     }
 
@@ -160,21 +193,40 @@ const ApprovalQueueItem = ({
           setMetadata(null);
           setFallbackReason(result.fallbackReason);
           setPhase('failed');
+          recordApprovalAuditEvent({
+            eventType: 'fallback',
+            workspaceId,
+            tabId,
+            fallbackReason: result.fallbackReason ?? 'parse-empty',
+          });
           return;
         }
         setMetadata(result.metadata);
         setOptions(result.options);
         setPhase('ready');
+        recordApprovalAuditEvent({
+          eventType: 'options-ready',
+          workspaceId,
+          tabId,
+          ...getApprovalAuditMetadata(result.metadata),
+          optionCount: result.options.length,
+        });
       })
       .catch(() => {
         if (!cancelled) {
           setFallbackReason('request-failed');
           setPhase('failed');
+          recordApprovalAuditEvent({
+            eventType: 'fallback',
+            workspaceId,
+            tabId,
+            fallbackReason: 'request-failed',
+          });
         }
       });
 
     return () => { cancelled = true; };
-  }, [sessionName, lastEventSeq]);
+  }, [sessionName, lastEventSeq, workspaceId, tabId]);
 
   const promptText = useMemo(
     () => getApprovalQueueFallbackText({ lastUserMessage, tabName }),
@@ -195,15 +247,32 @@ const ApprovalQueueItem = ({
       if (!ok) {
         setSelectedIndex(null);
         setFallbackReason('send-failed');
+        recordApprovalAuditEvent({
+          eventType: 'selection-failed',
+          workspaceId,
+          tabId,
+          ...getApprovalAuditMetadata(metadata),
+          selectedOptionIndex: idx,
+          optionCount: options.length,
+          fallbackReason: 'send-failed',
+        });
         toast.error(t(getApprovalFallbackKey('send-failed')));
         return;
       }
+      recordApprovalAuditEvent({
+        eventType: 'selection-sent',
+        workspaceId,
+        tabId,
+        ...getApprovalAuditMetadata(metadata),
+        selectedOptionIndex: idx,
+        optionCount: options.length,
+      });
       if (lastEventSeq !== undefined) {
         ackNotificationInput(tabId, lastEventSeq);
       }
       setSent(true);
     },
-    [sessionName, selectedIndex, sent, lastEventSeq, tabId, t],
+    [sessionName, selectedIndex, sent, lastEventSeq, tabId, t, workspaceId, metadata, options.length],
   );
 
   return (

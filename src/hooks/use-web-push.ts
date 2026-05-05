@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid';
 import useConfigStore from '@/hooks/use-config-store';
 import { navigateToTab, navigateToTabOrCreate } from '@/hooks/use-layout';
 import isElectron from '@/hooks/use-is-electron';
+import { parsePushDeepLinkSearch } from '@/lib/push-deep-link';
 
 const urlBase64ToUint8Array = (base64String: string): ArrayBuffer => {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -171,6 +172,24 @@ const useWebPush = () => {
       }
     };
 
+    const clearPushDeepLinkSearch = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('pushWorkspaceId');
+      url.searchParams.delete('pushTabId');
+      url.searchParams.delete('pushAgentSessionId');
+      url.searchParams.delete('pushApproval');
+      const nextPath = `${url.pathname}${url.search}${url.hash}`;
+      window.history.replaceState(window.history.state, '', nextPath);
+    };
+
+    const consumePushDeepLinkSearch = () => {
+      const data = parsePushDeepLinkSearch(window.location.search);
+      if (!data) return;
+      handlePushNavigation(data);
+      clearPushDeepLinkSearch();
+      drainPushNavCache();
+    };
+
     const handleSwMessage = (event: MessageEvent) => {
       const data = event.data;
       if (data?.type === 'notification-click' && data.workspaceId) {
@@ -204,6 +223,7 @@ const useWebPush = () => {
       }, 300);
       retryTimers.add(timer);
     };
+    consumePushDeepLinkSearch();
     checkPushNavCache();
 
     const clearNotifications = () => {
