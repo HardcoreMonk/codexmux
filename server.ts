@@ -26,7 +26,11 @@ import { getCurrentSpec, initAccessFilter, isRequestAllowed, setBoundHost } from
 import { initShellPath } from './src/lib/preflight';
 import { cleanupExpiredUploads } from './src/lib/uploads-store';
 import { cleanupOrphanSessionStats } from './src/lib/session-stats';
-import { initSessionIndexService, shutdownSessionIndexService } from './src/lib/session-index';
+import {
+  initSessionIndexService,
+  shouldPrewarmSessionIndexOnStartup,
+  shutdownSessionIndexService,
+} from './src/lib/session-index';
 import { getRuntimeSupervisor } from './src/lib/runtime/supervisor';
 import { getRuntimeStatusV2Mode } from './src/lib/runtime/status-mode';
 import { runRuntimeStartupDiagnostic } from './src/lib/runtime/startup-diagnostic';
@@ -376,7 +380,9 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   await applyConfig();
   await initWorkspaceStore();
   await autoResumeOnStartup();
-  await initSessionIndexService();
+  if (shouldPrewarmSessionIndexOnStartup()) {
+    await initSessionIndexService();
+  }
   if (process.env.CODEXMUX_RUNTIME_V2 === '1') {
     runRuntimeStartupDiagnostic(getRuntimeSupervisor(), log);
   }

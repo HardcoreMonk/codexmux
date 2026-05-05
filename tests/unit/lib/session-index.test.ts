@@ -112,4 +112,29 @@ describe('session-index', () => {
     expect(page.total).toBe(0);
     expect(page.sessions).toEqual([]);
   });
+
+  it('prewarms the legacy session index only while legacy timeline reads own session lists', async () => {
+    const { shouldPrewarmSessionIndexOnStartup } = await import('@/lib/session-index');
+
+    expect(shouldPrewarmSessionIndexOnStartup({
+      runtimeV2Enabled: false,
+      timelineMode: 'default',
+    })).toBe(true);
+    expect(shouldPrewarmSessionIndexOnStartup({
+      runtimeV2Enabled: true,
+      timelineMode: undefined,
+    })).toBe(false);
+    expect(shouldPrewarmSessionIndexOnStartup({
+      runtimeV2Enabled: true,
+      timelineMode: 'default',
+    })).toBe(false);
+    expect(shouldPrewarmSessionIndexOnStartup({
+      runtimeV2Enabled: true,
+      timelineMode: 'shadow',
+    })).toBe(true);
+    expect(shouldPrewarmSessionIndexOnStartup({
+      runtimeV2Enabled: true,
+      timelineMode: 'off',
+    })).toBe(true);
+  });
 });

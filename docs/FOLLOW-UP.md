@@ -199,7 +199,7 @@ P0/P1/P2/P3 후속 상태:
 - `/api/debug/perf` snapshot을 배포 환경에서 수집해 timeline render, status poll, diff, stats 중 실제 병목을 먼저 확인한다.
 - timeline virtualization은 scroll anchor/load-more 회귀를 막기 위해 `content-visibility`를 먼저 적용했다. 다음 단계는 긴 대화 smoke와 snapshot 결과에 따라 작은 windowed render를 별도 검증한다.
 - session meta message count는 전용 streaming helper로 분리했다. 다음 단계는 실제 긴 JSONL에서 `timeline.message_counts.read` duration과 cache hit 비율을 보고 추가 index화가 필요한지 판단한다.
-- session index는 refresh 결과가 unchanged이면 persisted file write를 건너뛴다. 다음 단계는 `persistWrites`/`persistSkips` 비율과 `lastBuildMs`를 같이 보고 refresh interval 조정 필요성을 판단한다.
+- session index는 refresh 결과가 unchanged이면 persisted file write를 건너뛴다. Phase 6 default 이후 main server는 runtime v2 timeline default에서 legacy session index startup prewarm을 건너뛰어 15초 주기 JSONL scan 중복 비용을 줄인다. Legacy/shadow/off mode와 fallback lazy initialization은 유지한다.
 - session list request는 index에서 requested page만 변환한다. 다음 단계는 session list 체감 지연이 계속 보일 때 search/filter도 index 단계로 내리는지 판단한다.
 - terminal stdout burst는 server에서 짧게 coalescing한다. 다음 단계는 `/api/debug/perf`의 raw chunk 대비 sent message 감소율과 입력 지연 smoke를 같이 보고 flush window 조정 여부를 결정한다.
 - StatusManager adaptive scheduling은 `unknown`, `needs-input`, `ready-for-review` 지연을 측정한 뒤 active/background workspace 정책으로 분리한다.

@@ -4,6 +4,7 @@ import path from 'path';
 import readline from 'readline';
 import os from 'os';
 import { createLogger } from '@/lib/logger';
+import { shouldUseRuntimeTimelineV2Reads, type IRuntimeTimelineV2ModeOptions } from '@/lib/runtime/timeline-mode';
 import type { ISessionMeta } from '@/types/timeline';
 
 const log = createLogger('session-index');
@@ -72,6 +73,10 @@ export interface ISessionIndexPageOptions {
   offset?: number;
   limit?: number;
 }
+
+export const shouldPrewarmSessionIndexOnStartup = (
+  options?: IRuntimeTimelineV2ModeOptions,
+): boolean => !shouldUseRuntimeTimelineV2Reads(options);
 
 const getHomeDir = (): string =>
   process.env.HOME || process.env.USERPROFILE || os.homedir() || '/';
