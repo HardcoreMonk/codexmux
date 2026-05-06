@@ -3,7 +3,11 @@ import { access } from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { promisify } from 'util';
-import type { IPreflightResult, IRuntimePreflightResult } from '@/types/preflight';
+import type {
+  IPreflightResult,
+  IRuntimePreflightResult,
+  TTerminalRuntimePreflightStatus,
+} from '@/types/preflight';
 import { buildShellEnv, defaultShell as resolveDefaultShell } from '@/lib/shell-env';
 import { PRISTINE_ENV } from '@/lib/pristine-env';
 
@@ -16,6 +20,10 @@ let shellPathPromise: Promise<string> | null = null;
 const defaultShell = () => os.userInfo().shell || resolveDefaultShell();
 
 const resolveShellPathAsync = async (): Promise<string> => {
+  if (process.platform === 'win32') {
+    return process.env.PATH || process.env.Path || PRISTINE_ENV.PATH || '';
+  }
+
   const shell = defaultShell();
   try {
     const { stdout } = await execFile(shell, ['-ilc', 'echo -n "$PATH"'], {
@@ -62,15 +70,49 @@ const checkTool = async (
 ): Promise<IToolStatus> => {
   try {
     const resolvedPath = await getShellPath();
-    const { stdout } = await execFile(cmd, args, { timeout: CMD_TIMEOUT, env: { ...process.env, PATH: resolvedPath } });
+    const { stdout } = await execTool(cmd, args, resolvedPath);
     return { installed: true, version: parseVersion(stdout) };
   } catch {
     return { installed: false, version: null };
   }
 };
 
-const parseSemanticVersion = (stdout: string): string | null =>
-  stdout.trim().match(/(\d+\.\d+[\d.]*)/)?.[1] ?? null;
+const psQuote = (value: string): string =>
+  `'${value.replace(/'/g, "''")}'`;
+
+const execTool = async (
+  cmd: string,
+  args: string[],
+  resolvedPath: string,
+): Promise<{ stdout: string }> => {
+  const env = { ...process.env, PATH: resolvedPath, Path: resolvedPath };
+  try {
+    return await execFile(cmd, args, { timeout: CMD_TIMEOUT, env });
+  } catch (err) {
+    if (process.platform !== 'win32') throw err;
+
+    const command = [
+      "$ErrorActionPreference = 'Stop'",
+      `[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)`,
+      `& ${psQuote(cmd)} ${args.map(psQuote).join(' ')}`,
+    ].join('; ');
+    return execFile('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-Command',
+      command,
+    ], {
+      timeout: CMD_TIMEOUT,
+      env,
+      windowsHide: true,
+    });
+  }
+};
+
+export const parseToolSemanticVersion = (stdout: string): string | null =>
+  stdout.trim().match(/(\d+(?:\.\d+)+)/)?.[1] ?? null;
 
 const CODEX_KNOWN_DIRS = [path.join(os.homedir(), '.local', 'bin')];
 
@@ -89,6 +131,28 @@ const findCodexBinary = async (): Promise<string | null> => {
 const isTmuxCompatible = (tool: IToolStatus): boolean =>
   tool.installed && tool.version !== null && parseFloat(tool.version) >= MIN_TMUX_VERSION;
 
+export const createTerminalRuntimePreflightStatus = ({
+  platform,
+  tmux,
+}: {
+  platform: NodeJS.Platform;
+  tmux: IToolStatus & { compatible: boolean };
+}): TTerminalRuntimePreflightStatus => {
+  if (platform === 'win32') {
+    return {
+      adapter: 'windows',
+      installed: true,
+      compatible: true,
+      version: null,
+    };
+  }
+
+  return {
+    ...tmux,
+    adapter: 'tmux',
+  };
+};
+
 const checkClt = async (): Promise<{ installed: boolean }> => {
   try {
     await execFile('xcode-select', ['-p'], { timeout: CMD_TIMEOUT });
@@ -100,13 +164,18 @@ const checkClt = async (): Promise<{ installed: boolean }> => {
 
 export const getPreflightStatus = async (): Promise<IPreflightResult> => {
   shellPathCache = await resolveShellPathAsync();
+  const platform = process.platform;
   const [tmux, git, codex] = await Promise.all([
-    checkTool('tmux', ['-V'], parseSemanticVersion),
-    checkTool('git', ['--version'], parseSemanticVersion),
-    checkTool('codex', ['--version'], parseSemanticVersion),
+    platform === 'win32'
+      ? Promise.resolve({ installed: false, version: null })
+      : checkTool('tmux', ['-V'], parseToolSemanticVersion),
+    checkTool('git', ['--version'], parseToolSemanticVersion),
+    checkTool('codex', ['--version'], parseToolSemanticVersion),
   ]);
 
-  const coreReady = isTmuxCompatible(tmux) && git.installed && codex.installed;
+  const tmuxStatus = { ...tmux, compatible: isTmuxCompatible(tmux) };
+  const terminalRuntime = createTerminalRuntimePreflightStatus({ platform, tmux: tmuxStatus });
+  const coreReady = terminalRuntime.installed && terminalRuntime.compatible && git.installed && codex.installed;
 
   const codexBinaryPath = codex.installed ? null : await findCodexBinary();
   let codexLoggedIn = false;
@@ -121,7 +190,9 @@ export const getPreflightStatus = async (): Promise<IPreflightResult> => {
 
   const codexStatus = { ...codex, binaryPath: codexBinaryPath, loggedIn: codexLoggedIn };
   const result: IPreflightResult = {
-    tmux: { ...tmux, compatible: isTmuxCompatible(tmux) },
+    platform,
+    tmux: tmuxStatus,
+    terminalRuntime,
     git,
     agent: codexStatus,
   };
@@ -129,7 +200,7 @@ export const getPreflightStatus = async (): Promise<IPreflightResult> => {
   if (!coreReady) {
     if (process.platform === 'darwin') {
       const [brew, clt] = await Promise.all([
-        checkTool('brew', ['--version'], parseSemanticVersion),
+        checkTool('brew', ['--version'], parseToolSemanticVersion),
         checkClt(),
       ]);
       result.brew = brew;
@@ -170,14 +241,20 @@ export const getCachedPreflightStatus = async (): Promise<IPreflightResult> => {
 
 export const getRuntimePreflightStatus = async (): Promise<IRuntimePreflightResult> => {
   shellPathCache = await resolveShellPathAsync();
+  const platform = process.platform;
   const [tmux, git, codex] = await Promise.all([
-    checkTool('tmux', ['-V'], parseSemanticVersion),
-    checkTool('git', ['--version'], parseSemanticVersion),
-    checkTool('codex', ['--version'], parseSemanticVersion),
+    platform === 'win32'
+      ? Promise.resolve({ installed: false, version: null })
+      : checkTool('tmux', ['-V'], parseToolSemanticVersion),
+    checkTool('git', ['--version'], parseToolSemanticVersion),
+    checkTool('codex', ['--version'], parseToolSemanticVersion),
   ]);
+  const tmuxStatus = { ...tmux, compatible: isTmuxCompatible(tmux) };
 
   return {
-    tmux: { ...tmux, compatible: isTmuxCompatible(tmux) },
+    platform,
+    tmux: tmuxStatus,
+    terminalRuntime: createTerminalRuntimePreflightStatus({ platform, tmux: tmuxStatus }),
     git,
     agent: codex,
   };

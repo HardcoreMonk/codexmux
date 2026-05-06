@@ -13,7 +13,11 @@ import AppLogo from '@/components/layout/app-logo';
 import InstallDialog from '@/components/features/login/install-dialog';
 import { usePreflight } from '@/hooks/use-preflight';
 import useConfigStore from '@/hooks/use-config-store';
-import type { IPreflightResult } from '@/types/preflight';
+import {
+  readPreflightTerminalName,
+  readPreflightTerminalStatus,
+  type IPreflightResult,
+} from '@/types/preflight';
 import { LOCALE_OPTIONS } from '@/lib/locales';
 
 type TStep = 'preflight' | 'password' | 'language' | 'appearance' | 'theme' | 'network' | 'complete';
@@ -120,7 +124,8 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
   const { status: preflightStatus, checking: preflightChecking } = usePreflight({
     onReady: (data) => {
       const agent = readPreflightAgent(data);
-      if (data.tmux.installed && data.tmux.compatible && data.git.installed && agent.installed && agent.loggedIn) {
+      const terminal = readPreflightTerminalStatus(data);
+      if (terminal.installed && terminal.compatible && data.git.installed && agent.installed && agent.loggedIn) {
         setStep('password');
       }
     },
@@ -251,7 +256,9 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
               <Loader2 className="h-5 w-5 animate-spin" />
               <span className="text-sm">{t('checking')}</span>
             </div>
-          ) : preflightStatus && preflightAgent && preflightStatus.tmux.installed && preflightStatus.tmux.compatible &&
+          ) : preflightStatus && preflightAgent &&
+            readPreflightTerminalStatus(preflightStatus).installed &&
+            readPreflightTerminalStatus(preflightStatus).compatible &&
             preflightStatus.git.installed && preflightAgent.installed &&
             !preflightAgent.loggedIn ? (
             <div className="flex flex-col gap-4">
@@ -285,29 +292,31 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
               )}
             </div>
           ) : preflightStatus && !(
-            preflightStatus.tmux.installed && preflightStatus.tmux.compatible &&
+            readPreflightTerminalStatus(preflightStatus).installed &&
+            readPreflightTerminalStatus(preflightStatus).compatible &&
             preflightStatus.git.installed &&
             preflightAgent?.installed
           ) ? (() => {
             const agent = preflightStatus.agent;
+            const terminal = readPreflightTerminalStatus(preflightStatus);
             const codexNeedsPath = !agent.installed && !!agent.binaryPath;
             const brewInstalled = preflightStatus.brew?.installed ?? true;
             const cltInstalled = preflightStatus.clt?.installed ?? true;
             const missingTools: { name: string; show: boolean }[] = [
               { name: 'Command Line Tools', show: !cltInstalled && !brewInstalled },
               { name: 'Homebrew', show: !brewInstalled },
-              { name: 'tmux', show: !(preflightStatus.tmux.installed && preflightStatus.tmux.compatible) },
+              { name: readPreflightTerminalName(preflightStatus), show: !(terminal.installed && terminal.compatible) },
               { name: 'Git', show: !preflightStatus.git.installed },
               { name: codexNeedsPath ? t('codexPathMissing') : 'Codex CLI', show: !agent.installed },
             ];
 
-            const needsUpgrade = preflightStatus.tmux.installed && !preflightStatus.tmux.compatible;
+            const needsUpgrade = terminal.adapter === 'tmux' && terminal.installed && !terminal.compatible;
             const nextInstall =
               !cltInstalled && !brewInstalled
                 ? { command: 'clt', label: t('installClt') }
               : !brewInstalled
                 ? { command: 'brew', label: t('installBrew') }
-              : !(preflightStatus.tmux.installed && preflightStatus.tmux.compatible)
+              : !(terminal.installed && terminal.compatible) && terminal.adapter === 'tmux'
                 ? { command: needsUpgrade ? 'tmux-upgrade' : 'tmux-install', label: needsUpgrade ? t('upgradeTmux') : t('installTmux') }
               : !preflightStatus.git.installed
                 ? { command: 'git', label: t('installGit') }

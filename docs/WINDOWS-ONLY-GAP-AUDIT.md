@@ -396,3 +396,31 @@ Validation:
 
 - `corepack pnpm test tests/unit/scripts/windows-codex-session-smoke-lib.test.ts`: passed.
 - `corepack pnpm smoke:windows:codex-session`: passed.
+
+## Windows Runtime Preflight Follow-up
+
+The next transition slice moved runtime readiness away from a hard `tmux`
+requirement on Windows.
+
+Resolved items:
+
+- Added `terminalRuntime` and `platform` to runtime/auth preflight payloads while
+  preserving the existing `tmux` compatibility field for older UI code and
+  non-Windows fallback paths.
+- `isRuntimeOk()` now checks the selected terminal runtime instead of always
+  requiring `tmux`.
+- `win32` runtime preflight selects `terminalRuntime.adapter="windows"` and
+  marks it ready when the Windows terminal runtime is available in-process.
+- Non-Windows preflight still uses the current `tmux` compatibility check.
+- Windows preflight uses the current process `PATH` instead of POSIX login-shell
+  probing.
+- Windows tool lookup falls back to PowerShell so npm/PowerShell shims such as
+  `codex.ps1` are detected.
+- Onboarding and tools-required surfaces now display the selected terminal
+  runtime name instead of hard-coding `tmux`.
+- Added package script `smoke:windows:preflight`.
+
+Validation:
+
+- `corepack pnpm test tests/unit/lib/preflight.test.ts`: passed.
+- `corepack pnpm smoke:windows:preflight`: passed.
