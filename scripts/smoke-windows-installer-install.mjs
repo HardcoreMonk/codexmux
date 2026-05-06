@@ -66,6 +66,9 @@ const main = async () => {
   let launchResult = null;
   let uninstallResult = null;
   let failurePayload = null;
+  const runRuntimeV2Terminal = process.argv.includes('--runtime-v2-terminal')
+    || process.env.CODEXMUX_WINDOWS_INSTALLER_RUNTIME_V2 === '1'
+    || process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_V2 === '1';
   const paths = resolveInstalledAppPaths(installDir);
 
   try {
@@ -96,6 +99,7 @@ const main = async () => {
           ...process.env,
           CODEXMUX_WINDOWS_PACKAGED_APP_PATH: paths.appExe,
           CODEXMUX_WINDOWS_PACKAGED_LAUNCH_HOME: path.join(smokeRoot, 'home'),
+          ...(runRuntimeV2Terminal ? { CODEXMUX_WINDOWS_PACKAGED_RUNTIME_V2: '1' } : {}),
         },
         timeoutMs: 90_000,
       });
@@ -128,6 +132,7 @@ const main = async () => {
       installerPath,
       installDir,
       checks,
+      runtimeV2Terminal: runRuntimeV2Terminal,
       launch: launchResult?.stdout ? JSON.parse(launchResult.stdout) : null,
     }, null, 2));
   } catch (err) {

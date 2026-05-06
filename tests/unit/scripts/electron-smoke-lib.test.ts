@@ -147,6 +147,20 @@ describe('Electron smoke helpers', () => {
     expect(JSON.parse(commandMatch?.[1] ?? 'null')).toBe("printf '%s\\n' 'electron-v2-'\\''marker'\r");
   });
 
+  it('builds a Windows runtime v2 page-context marker command', async () => {
+    const { buildElectronRuntimeV2EvalScript } = await loadLib();
+
+    const script = buildElectronRuntimeV2EvalScript({
+      sessionName: 'rtv2-windows-pane-tab',
+      marker: 'windows-v2-marker',
+      commandKind: 'windows',
+    });
+    const commandMatch = script.match(/const command = ("(?:\\.|[^"])*");/);
+
+    expect(commandMatch).not.toBeNull();
+    expect(JSON.parse(commandMatch?.[1] ?? 'null')).toBe('echo windows-v2-marker\r');
+  });
+
   it('builds reconnect smoke rounds after the initial attach', async () => {
     const { buildElectronRuntimeV2ReconnectRounds } = await loadLib();
 

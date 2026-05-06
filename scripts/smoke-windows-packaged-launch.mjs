@@ -15,11 +15,18 @@ import {
   waitFor,
 } from './android-webview-smoke-lib.mjs';
 import {
+  buildElectronRuntimeV2EvalScript,
   buildElectronSmokeLaunchCommand,
   selectElectronLocalPageTarget,
 } from './electron-smoke-lib.mjs';
+import {
+  collectPaneNodes,
+  extractCookieHeader,
+  resolveSmokeTerminalEndpoint,
+} from './runtime-v2-phase2-smoke-lib.mjs';
 
 const DEFAULT_TIMEOUT_MS = 45_000;
+const PASSWORD = 'windows-packaged-runtime-v2-smoke';
 const rootDir = process.cwd();
 
 const fail = (code, message, details = {}) => {
@@ -40,6 +47,7 @@ const buildIsolatedEnv = (homeDir) => ({
   NEXT_TELEMETRY_DISABLED: '1',
   NO_AT_BRIDGE: '1',
   CODEXMUX_RUNTIME_V2: '1',
+  CODEXMUX_RUNTIME_TERMINAL_V2_MODE: 'new-tabs',
   CODEXMUX_RUNTIME_TERMINAL_ADAPTER: 'windows',
   CODEXMUX_PROCESS_INSPECTOR_ADAPTER: 'windows',
 });
@@ -60,6 +68,132 @@ const readPageState = (cdp) =>
     hasPasswordInput: !!document.querySelector('input[type="password"]'),
     userAgent: navigator.userAgent
   }))()`);
+
+const jsonRequest = async (baseUrl, pathname, cookie, init = {}) => {
+  const headers = {
+    ...(cookie ? { Cookie: cookie } : {}),
+    ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+    ...(init.headers ?? {}),
+  };
+  const res = await fetch(new URL(pathname, baseUrl), { ...init, headers });
+  if (res.status === 204) return null;
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!res.ok) throw new Error(`${init.method ?? 'GET'} ${pathname} failed: ${res.status} ${text}`);
+  return data;
+};
+
+const ensureLoggedIn = async (baseUrl) => {
+  const setup = await jsonRequest(baseUrl, '/api/auth/setup', '');
+  if (setup?.needsSetup) {
+    await jsonRequest(baseUrl, '/api/auth/setup', '', {
+      method: 'POST',
+      body: JSON.stringify({
+        authPassword: PASSWORD,
+        locale: 'ko',
+        appTheme: 'dark',
+        dangerouslySkipPermissions: true,
+        networkAccess: 'localhost',
+      }),
+    });
+  }
+
+  const res = await fetch(new URL('/api/auth/login', baseUrl), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: PASSWORD }),
+  });
+  if (!res.ok) throw new Error(`login failed: ${res.status} ${await res.text()}`);
+  const cookie = extractCookieHeader(res);
+  if (!cookie) throw new Error('login did not return a session cookie');
+  return cookie;
+};
+
+const setElectronCookie = async (cdp, baseUrl, cookie) => {
+  const [pair] = cookie.split(';');
+  const index = pair.indexOf('=');
+  const name = pair.slice(0, index);
+  const value = pair.slice(index + 1);
+  if (!name || !value) throw new Error(`invalid cookie: ${cookie}`);
+  await cdp.send('Network.enable');
+  const result = await cdp.send('Network.setCookie', {
+    url: baseUrl,
+    name,
+    value,
+    path: '/',
+  });
+  if (result && result.success === false) throw new Error(`Network.setCookie failed: ${JSON.stringify(result)}`);
+};
+
+const verifyRuntimeV2Terminal = async ({ cdp, baseUrl, cookie, checks }) => {
+  await setElectronCookie(cdp, baseUrl, cookie);
+  checks.push('electron-cookie');
+
+  const pageAuth = await evaluate(cdp, `fetch(${JSON.stringify(new URL('/api/v2/workspaces', baseUrl).toString())}, { credentials: 'include' }).then(async (res) => ({ ok: res.ok, status: res.status }))`);
+  if (!pageAuth.ok) throw new Error(`Electron page cookie auth failed: ${JSON.stringify(pageAuth)}`);
+  checks.push('electron-page-auth');
+
+  let workspaceId = null;
+  try {
+    const workspace = await jsonRequest(baseUrl, '/api/v2/workspaces', cookie, {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Windows Packaged Runtime v2 Smoke', defaultCwd: rootDir }),
+    });
+    workspaceId = workspace.id;
+    checks.push('runtime-v2-workspace-create');
+
+    const layout = await jsonRequest(baseUrl, `/api/v2/workspaces/${encodeURIComponent(workspaceId)}/layout`, cookie);
+    const pane = collectPaneNodes(layout)[0];
+    if (!pane) throw new Error('workspace layout did not include a pane');
+
+    const runtimeTab = await jsonRequest(
+      baseUrl,
+      '/api/v2/tabs',
+      cookie,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          workspaceId,
+          paneId: pane.id,
+          cwd: rootDir,
+        }),
+      },
+    );
+    if (runtimeTab.runtimeVersion !== 2 || resolveSmokeTerminalEndpoint(runtimeTab) !== '/api/v2/terminal') {
+      throw new Error(`new terminal tab did not route to runtime v2: ${JSON.stringify(runtimeTab)}`);
+    }
+    checks.push('runtime-v2-tab-create');
+
+    const marker = `windows-packaged-runtime-v2-${Date.now()}`;
+    const terminalResult = await evaluate(cdp, buildElectronRuntimeV2EvalScript({
+      sessionName: runtimeTab.sessionName,
+      marker,
+      commandKind: 'windows',
+      cols: 100,
+      rows: 30,
+      timeoutMs: 30_000,
+    }));
+    if (!terminalResult?.output?.includes(marker) || !String(terminalResult.url).includes('/api/v2/terminal')) {
+      throw new Error(`Windows packaged runtime v2 marker missing: ${JSON.stringify(terminalResult)}`);
+    }
+    checks.push('runtime-v2-terminal-ws');
+
+    await jsonRequest(baseUrl, `/api/v2/workspaces/${encodeURIComponent(workspaceId)}`, cookie, { method: 'DELETE' });
+    workspaceId = null;
+    checks.push('runtime-v2-workspace-delete');
+
+    return {
+      tabId: runtimeTab.id,
+      sessionName: runtimeTab.sessionName,
+      runtimeVersion: runtimeTab.runtimeVersion,
+      marker,
+    };
+  } finally {
+    if (workspaceId) {
+      await jsonRequest(baseUrl, `/api/v2/workspaces/${encodeURIComponent(workspaceId)}`, cookie, { method: 'DELETE' }).catch(() => null);
+    }
+  }
+};
 
 const stopProcessTree = async (child) => {
   if (!child || child.exitCode !== null) return;
@@ -135,10 +269,13 @@ const main = async () => {
     || await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-windows-packaged-launch-'));
   const checks = [];
   const consoleEvents = [];
+  const runRuntimeV2Terminal = process.argv.includes('--runtime-v2-terminal')
+    || process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_V2 === '1';
   let electron = null;
   let cdp = null;
   let launch = null;
   let output = '';
+  let runtimeV2Terminal = null;
   const existingAppPids = await listWindowsAppProcessIds(appPath);
 
   try {
@@ -191,6 +328,17 @@ const main = async () => {
     if (health?.app !== 'codexmux') throw new Error(`packaged local server health failed: ${JSON.stringify(health)}`);
     checks.push('local-server-health');
 
+    if (runRuntimeV2Terminal) {
+      const cookie = await ensureLoggedIn(state.origin);
+      checks.push('server-login');
+      runtimeV2Terminal = await verifyRuntimeV2Terminal({
+        cdp,
+        baseUrl: state.origin,
+        cookie,
+        checks,
+      });
+    }
+
     const blockingOutput = [
       /NODE_MODULE_VERSION/i,
       /Runtime v2 worker script is missing/i,
@@ -218,6 +366,7 @@ const main = async () => {
       checks,
       state,
       health,
+      runtimeV2Terminal,
       consoleEventCount: consoleEvents.length,
       blockingConsoleCount: blockingConsole.length,
     }, null, 2));

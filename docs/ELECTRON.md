@@ -13,7 +13,9 @@ corepack pnpm smoke:electron:runtime-v2
 corepack pnpm smoke:windows:electron-env
 corepack pnpm smoke:windows:electron-packaging
 corepack pnpm smoke:windows:packaged-launch
+corepack pnpm smoke:windows:packaged-runtime-v2
 corepack pnpm smoke:windows:installer-install
+corepack pnpm smoke:windows:installer-runtime-v2
 corepack pnpm pack:electron:dev
 corepack pnpm pack:electron
 corepack pnpm pack:electron:mac:dev
@@ -28,7 +30,9 @@ corepack pnpm pack:electron:mac
 - `smoke:windows:electron-env`: Windows Electron local server bootstrap이 POSIX PATH를 주입하지 않고 `NODE_PATH`를 Windows `;` 구분자로 만드는지 dry-run으로 확인합니다.
 - `smoke:windows:electron-packaging`: package script와 `electron-builder.yml`이 Windows NSIS/zip 패키징 계약을 만족하는지 dry-run으로 확인합니다.
 - `smoke:windows:packaged-launch`: `release/win-unpacked/codexmux.exe`를 실제 실행해 packaged local server, preload bridge, `/api/health`, runtime startup diagnostics, blocking console 0건을 확인합니다.
+- `smoke:windows:packaged-runtime-v2`: packaged app을 runtime v2 `new-tabs` mode로 실행해 workspace/tab 생성, `/api/v2/terminal` WebSocket attach, Windows marker command output을 확인합니다.
 - `smoke:windows:installer-install`: `release/codexmux Setup <version>.exe`를 임시 경로에 silent install하고, 설치된 app을 `smoke:windows:packaged-launch`로 확인한 뒤 silent uninstall합니다.
+- `smoke:windows:installer-runtime-v2`: silent install한 앱에 `smoke:windows:packaged-runtime-v2`와 같은 runtime v2 terminal 검증을 적용한 뒤 silent uninstall합니다.
 - `pack:electron:dev`: 로컬 Windows unpacked package 검증용입니다. Installer를 만들지 않습니다.
 - `pack:electron`: Windows 릴리스 패키징입니다.
 - `pack:electron:mac:dev`, `pack:electron:mac`: 기존 macOS 패키징 검증용 명령입니다. Windows-only 전환 중 legacy/manual path로만 유지합니다.
@@ -117,6 +121,15 @@ corepack pnpm smoke:runtime-v2
 
 ```bash
 corepack pnpm smoke:electron:runtime-v2
+```
+
+Windows packaged/installed app runtime v2 smoke는 실제 `release/` 산출물을 대상으로 실행한다.
+`smoke:windows:packaged-runtime-v2`는 unpacked exe를 직접 띄우고, `smoke:windows:installer-runtime-v2`는
+NSIS silent install 후 설치된 exe로 같은 terminal WebSocket marker를 확인한다.
+
+```bash
+corepack pnpm smoke:windows:packaged-runtime-v2
+corepack pnpm smoke:windows:installer-runtime-v2
 ```
 
 5. packaged Electron 또는 OS window foreground까지 포함한 smoke는 macOS에서

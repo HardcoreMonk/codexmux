@@ -160,11 +160,14 @@ export const buildElectronRuntimeV2ReconnectRounds = ({
 export const buildElectronRuntimeV2EvalScript = ({
   sessionName,
   marker,
+  commandKind = 'posix',
   cols = 100,
   rows = 30,
   timeoutMs = 20_000,
 }) => {
-  const markerCommand = `printf '%s\\n' ${quoteShellArg(marker)}\r`;
+  const markerCommand = commandKind === 'windows'
+    ? `echo ${String(marker).replace(/[&|<>^]/g, '')}\r`
+    : `printf '%s\\n' ${quoteShellArg(marker)}\r`;
   const safeCols = Number(cols) || 100;
   const safeRows = Number(rows) || 30;
   const safeTimeoutMs = Number(timeoutMs) || 20_000;
