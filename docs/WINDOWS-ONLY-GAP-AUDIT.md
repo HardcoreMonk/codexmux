@@ -225,3 +225,24 @@ Resolved items:
 Validation:
 
 - `corepack pnpm test tests/unit/lib/runtime/terminal-runtime-adapter-factory.test.ts tests/unit/lib/runtime/terminal-worker-service.test.ts tests/unit/lib/runtime/terminal-worker-runtime.test.ts`: passed.
+
+## Windows Terminal Runtime Skeleton Follow-up
+
+The next transition slice added the Windows terminal runtime module boundary
+without claiming functional Windows terminal support.
+
+Resolved items:
+
+- `CODEXMUX_RUNTIME_TERMINAL_ADAPTER=windows` now resolves to a dedicated
+  Windows runtime skeleton instead of being treated as an unknown adapter value.
+- The Windows runtime skeleton implements the `ITerminalRuntimeAdapter` shape but
+  every readiness and terminal operation fails with
+  `runtime-v2-windows-terminal-runtime-unimplemented`.
+- Unknown adapter values still fail closed with
+  `runtime-v2-terminal-adapter-unsupported`.
+- This keeps the runtime worker route ready for the ConPTY implementation slice
+  while preventing accidental startup of a nonfunctional Windows backend.
+
+Validation:
+
+- `corepack pnpm test tests/unit/lib/runtime/terminal-runtime-adapter-factory.test.ts tests/unit/lib/runtime/windows-terminal-runtime.test.ts tests/unit/lib/runtime/terminal-worker-service.test.ts tests/unit/lib/runtime/terminal-worker-runtime.test.ts`: passed.

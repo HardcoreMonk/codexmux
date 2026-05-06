@@ -31,9 +31,16 @@ describe('terminal runtime adapter factory', () => {
     })).toBe('tmux');
   });
 
-  it('fails closed when an unsupported terminal runtime adapter is requested', () => {
-    expect(() => resolveTerminalRuntimeAdapterKind({
+  it('resolves the Windows adapter kind without claiming it is implemented', () => {
+    expect(resolveTerminalRuntimeAdapterKind({
       env: { CODEXMUX_RUNTIME_TERMINAL_ADAPTER: 'windows' },
+      platform: 'win32',
+    })).toBe('windows');
+  });
+
+  it('fails closed when an unknown terminal runtime adapter is requested', () => {
+    expect(() => resolveTerminalRuntimeAdapterKind({
+      env: { CODEXMUX_RUNTIME_TERMINAL_ADAPTER: 'conpty' },
       platform: 'win32',
     })).toThrow(expect.objectContaining({
       code: 'runtime-v2-terminal-adapter-unsupported',
@@ -48,5 +55,17 @@ describe('terminal runtime adapter factory', () => {
     });
 
     await expect(runtime.health()).resolves.toEqual({ ok: true });
+  });
+
+  it('creates a Windows adapter skeleton that fails readiness explicitly', async () => {
+    const runtime = createTerminalRuntimeAdapter({
+      env: { CODEXMUX_RUNTIME_TERMINAL_ADAPTER: 'windows' },
+      platform: 'win32',
+    });
+
+    await expect(runtime.health()).rejects.toMatchObject({
+      code: 'runtime-v2-windows-terminal-runtime-unimplemented',
+      retryable: false,
+    });
   });
 });
