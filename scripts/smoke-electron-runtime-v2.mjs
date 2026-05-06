@@ -35,6 +35,7 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 const SMOKE_NAME = 'electron-runtime-v2';
 const rootDir = process.cwd();
 const startedAt = new Date().toISOString();
+const SERVER_MODES = new Set(['auto', 'production', 'dev']);
 
 const writeArtifact = async (status, payload) =>
   writeSmokeArtifact({
@@ -71,9 +72,39 @@ const jsonRequest = async (baseUrl, pathname, cookie, init = {}) => {
   return data;
 };
 
+const fileExists = async (filePath) =>
+  fs.access(filePath).then(() => true).catch(() => false);
+
+const resolveServerLaunch = async () => {
+  const mode = process.env.CODEXMUX_ELECTRON_RUNTIME_V2_SERVER_MODE || 'auto';
+  if (!SERVER_MODES.has(mode)) {
+    throw new Error(`invalid CODEXMUX_ELECTRON_RUNTIME_V2_SERVER_MODE: ${mode}`);
+  }
+
+  const hasStandalone = await fileExists(path.join(rootDir, '.next', 'standalone', 'server.js'));
+  const useProduction = mode === 'production' || (mode === 'auto' && hasStandalone);
+  if (useProduction) {
+    return {
+      mode: 'production-bin',
+      command: process.execPath,
+      args: [path.join(rootDir, 'bin', 'codexmux.js')],
+      env: { NODE_ENV: 'production' },
+    };
+  }
+
+  return {
+    mode: 'dev-tsx',
+    command: 'corepack',
+    args: ['pnpm', 'exec', 'tsx', 'server.ts'],
+    env: {},
+  };
+};
+
 const startServer = async ({ homeDir, dbPath, port }) => {
+  const launch = await resolveServerLaunch();
   const env = {
     ...process.env,
+    ...launch.env,
     HOME: homeDir,
     NEXT_TELEMETRY_DISABLED: '1',
     SHELL: '/bin/sh',
@@ -85,7 +116,7 @@ const startServer = async ({ homeDir, dbPath, port }) => {
   delete env.__CMUX_PRISTINE_ENV;
   env.__CMUX_PRISTINE_ENV = JSON.stringify(env);
 
-  const child = spawn('corepack', ['pnpm', 'exec', 'tsx', 'server.ts'], {
+  const child = spawn(launch.command, launch.args, {
     cwd: rootDir,
     env,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -104,6 +135,7 @@ const startServer = async ({ homeDir, dbPath, port }) => {
 
   return {
     baseUrl,
+    launchMode: launch.mode,
     getOutput: () => output,
     stop: async () => {
       if (child.exitCode !== null) return;
@@ -283,6 +315,7 @@ const main = async () => {
     server = await startServer({ homeDir, dbPath, port: serverPort });
     const baseUrl = normalizeElectronSmokeUrl(server.baseUrl);
     const cookie = await ensureLoggedIn(baseUrl);
+    checks.push(`server-launch-${server.launchMode}`);
     checks.push('server-login');
 
     const workspace = await jsonRequest(baseUrl, '/api/workspace', cookie, {
@@ -393,6 +426,7 @@ const main = async () => {
       baseUrl,
       homeDir,
       appPath,
+      serverLaunchMode: server.launchMode,
       launchMode: launch?.mode,
       remoteDebuggingPort,
       tabId: runtimeTab.id,

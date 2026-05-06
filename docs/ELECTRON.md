@@ -18,7 +18,7 @@ corepack pnpm pack:electron
 - `dev:electron:attach`: 이미 실행 중인 `http://localhost:8122` 서버에 Electron만 붙입니다.
 - `build:electron`: Next.js standalone, custom server, Electron main/preload를 빌드합니다.
 - `smoke:electron:attach`: Electron shell을 remote debugging port로 실행해 live server attach, preload bridge, page reload, blocking console 오류를 확인합니다.
-- `smoke:electron:runtime-v2`: temp HOME/DB runtime v2 서버와 Electron shell을 띄운 뒤 page context에서 existing session cookie로 `/api/v2/terminal` WebSocket attach, marker output, 기본 2회 page reload/reconnect를 확인합니다.
+- `smoke:electron:runtime-v2`: temp HOME/DB runtime v2 서버와 Electron shell을 띄운 뒤 page context에서 existing session cookie로 `/api/v2/terminal` WebSocket attach, marker output, 기본 2회 page reload/reconnect를 확인합니다. `build:electron` 이후에는 `.next/standalone/server.js`를 감지해 `bin/codexmux.js` production 서버를 자동 사용합니다.
 - `pack:electron:dev`: 로컬 macOS 패키징 검증용입니다. signing과 notarize를 끕니다.
 - `pack:electron`: 릴리스 패키징입니다. signing/notarize 환경이 필요합니다.
 
@@ -100,6 +100,9 @@ corepack pnpm smoke:runtime-v2
    `/api/v2/terminal` WebSocket으로 marker command 출력이 돌아오는지 확인한다.
    기본값은 initial attach 후 2회 page reload/reconnect이며,
    `CODEXMUX_ELECTRON_RUNTIME_V2_RECONNECT_ROUNDS`로 반복 횟수를 조정한다.
+   `.next/standalone/server.js`가 있으면 `bin/codexmux.js` production 서버를 쓰고,
+   없으면 dev `tsx server.ts`로 fallback한다. 강제 전환은
+   `CODEXMUX_ELECTRON_RUNTIME_V2_SERVER_MODE=production|dev`를 사용한다.
 
 ```bash
 corepack pnpm smoke:electron:runtime-v2

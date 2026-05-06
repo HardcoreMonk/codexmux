@@ -168,14 +168,14 @@ HOST=localhost,tailscale,192.168.0.0/16 PORT=8122 codexmux
 
 ## 2026-05-05 운영 기준
 
-2026-05-05 `d3248c4` 배포 기준 live service는 `0.4.1` build를 실행한다. 정확한 배포 commit은 `curl -sS http://127.0.0.1:8122/api/health`의 `commit` 값을 기준으로 판단한다.
+2026-05-06 `6361a61` 배포 기준 live service는 `0.4.7` build를 실행한다. 정확한 배포 commit은 `curl -sS http://127.0.0.1:8122/api/health`의 `commit` 값을 기준으로 판단한다.
 
 ```text
 ActiveState=active
 SubState=running
 WorkingDirectory=/data/projects/codex-zone/codexmux
-Health version=0.4.1
-Health commit=d3248c4
+Health version=0.4.7
+Health commit=6361a61
 ```
 
-릴리스 smoke 결과는 `docs/operations/2026-05-04-release-v0.4.1-handoff.md`, 최신 runtime v2 timeline watcher/Android foreground 배포 결과는 `docs/operations/2026-05-05-deploy-d3248c4-handoff.md`를 기준으로 본다.
+릴리스, runtime v2, Android 실기기, PWA/browser, Electron smoke 결과는 `docs/operations/2026-05-06-release-v0.4.7-conditional-batch-handoff.md`를 기준으로 본다.

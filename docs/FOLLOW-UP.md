@@ -88,6 +88,21 @@
 | Android foreground reconnect | 통과 | `corepack pnpm smoke:android:foreground`, SM-S928N Android 16, Tailscale HTTPS target, 2 foreground rounds, blocking console/logcat 0 |
 | Android runtime v2 foreground | 통과 | `corepack pnpm smoke:android:runtime-v2`, temp server `http://100.112.40.104:30653`, initial + 2 foreground marker output, blocking console/logcat 0 |
 
+### 2026-05-06 v0.4.7 conditional platform snapshot
+
+`v0.4.7` release mutation, local deploy/restart, Android 실기기, PWA/browser, Electron
+smoke를 재실행했다. 상세 증거는
+`docs/operations/2026-05-06-release-v0.4.7-conditional-batch-handoff.md`를 기준으로 본다.
+
+| 항목 | 상태 | 근거 |
+| --- | --- | --- |
+| release/deploy/systemd | 통과 | `corepack pnpm release:patch`, release commit `6361a61`, tag `v0.4.7`, `corepack pnpm deploy:local`, `/api/health` `version=0.4.7`, `commit=6361a61`, service `ActiveState=active`, `SubState=running`, `NRestarts=0` |
+| Android 실기기 | 통과 | SM-S928N Android 16, debug install `versionName=0.4.7`, foreground/runtime-v2/recovery/timeline-foreground smoke 통과, blocking console/logcat 0 |
+| Android release AAB | 통과 | `corepack pnpm android:bundle:release`, `corepack pnpm smoke:android:release-aab`, `versionCode=407`, fresh signed AAB, `jarsigner-verify` |
+| PWA/browser reconnect | 통과 | `corepack pnpm smoke:pwa`, `corepack pnpm smoke:browser-reconnect`, iPad viewport probe와 reconnect recovery DOM 확인 |
+| Electron attach/runtime v2 | 통과 | `corepack pnpm build:electron`, `corepack pnpm smoke:electron:attach`, `corepack pnpm smoke:electron:runtime-v2`; runtime smoke는 standalone build 감지 시 `serverLaunchMode=production-bin`으로 temp server를 띄우고 initial + 2 reload/reconnect marker output 확인 |
+| iPad/Mac 수동 UX | 수동 필요 | 실제 iPad Home Screen 장시간 background/input draft와 macOS packaged Finder/Gatekeeper UX는 실제 기기/화면 세션에서 별도 증거 필요 |
+
 ### 2026-05-05 P2 -> P3 runtime v2 storage preflight
 
 P2 terminal gate evidence를 보강하고 P3 storage default rollout 전 preflight를 실제

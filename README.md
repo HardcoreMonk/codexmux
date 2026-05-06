@@ -306,6 +306,8 @@ corepack pnpm smoke:electron:runtime-v2
 
 `smoke:electron:runtime-v2`는 temp runtime v2 서버와 Electron shell을 띄우고,
 기본 2회 page reload/reconnect 후 `/api/v2/terminal` marker output을 확인합니다.
+`build:electron` 이후 `.next/standalone/server.js`가 있으면 `bin/codexmux.js`
+production 서버를 자동 사용하고, 없으면 dev `tsx server.ts`로 fallback합니다.
 
 로컬 macOS 패키징 확인:
 
@@ -597,6 +599,8 @@ corepack pnpm smoke:electron:runtime-v2
 
 `smoke:electron:runtime-v2` starts a temp runtime v2 server and Electron shell,
 then verifies `/api/v2/terminal` marker output after two page reload/reconnect rounds by default.
+After `build:electron`, it auto-selects the `bin/codexmux.js` production server when
+`.next/standalone/server.js` exists, and falls back to dev `tsx server.ts` otherwise.
 
 Local macOS packaging check:
 

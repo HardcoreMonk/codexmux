@@ -329,7 +329,9 @@ corepack pnpm smoke:electron:runtime-v2
 
 - `smoke:electron:attach`: live server attach, preload bridge, reload, blocking console 0건.
 - `smoke:electron:runtime-v2`: temp runtime v2 server, Electron page context cookie auth,
-  `/api/v2/terminal` marker output, 기본 2회 reload/reconnect.
+  `/api/v2/terminal` marker output, 기본 2회 reload/reconnect. `.next/standalone/server.js`가
+  있으면 `bin/codexmux.js` production 서버를 자동 사용하고, 없으면 dev `tsx server.ts`로
+  fallback한다. 강제 전환은 `CODEXMUX_ELECTRON_RUNTIME_V2_SERVER_MODE=production|dev`를 쓴다.
 
 macOS packaging smoke:
 
