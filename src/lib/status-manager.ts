@@ -8,7 +8,6 @@ import {
   getProviderByPanelType,
 } from '@/lib/providers';
 import type { IAgentProvider } from '@/lib/providers';
-import { formatTabTitle } from '@/lib/tab-title';
 import { createRateLimitsWatcher } from '@/lib/rate-limits-watcher';
 import { createLogger } from '@/lib/logger';
 import type { IPaneInfo } from '@/lib/tmux';
@@ -61,6 +60,13 @@ import {
 import { StatusJsonlWatchService } from '@/lib/status/jsonl-watch-service';
 import { evaluateStatusHookEvent } from '@/lib/status/hook-event-service';
 import { buildStatusTabEntry } from '@/lib/status/tab-entry';
+import { evaluateResolveUnknownStatus } from '@/lib/status/resolve-unknown-service';
+import { StatusStopRecheckService } from '@/lib/status/stop-recheck-service';
+import {
+  shouldEmitSyntheticJsonlInterrupt,
+  shouldKeepStatusJsonlWatch,
+  shouldScheduleDelayedJsonlInputRecovery,
+} from '@/lib/status/jsonl-reconciliation-service';
 import {
   buildStatusRemoveMessage,
   buildStatusUpdateMessage,
@@ -71,6 +77,8 @@ import {
   reconcileStatusPollTabChanges,
   resolveStatusInitialCliState,
 } from '@/lib/status/poll-tab-reconciliation';
+import { applyStatusPollTabEntryUpdate } from '@/lib/status/poll-tab-entry-update';
+import { collectStatusPollWorkspaceTabs } from '@/lib/status/poll-workspace-traversal';
 import { deliverStatusWebPush } from '@/lib/status/web-push-delivery';
 import { buildStatusWebPushPayload } from '@/lib/status/web-push-payload';
 import { createStatusWebPushActions } from '@/lib/runtime/status/web-push-actions';
@@ -312,6 +320,7 @@ export class StatusManager {
   private readonly jsonlWatchService: StatusJsonlWatchService;
   private readonly pollService: StatusPollService;
   private readonly sessionHistoryPersistence: ReturnType<typeof createStatusSessionHistoryPersistence>;
+  private readonly stopRecheckService: StatusStopRecheckService;
 
   constructor(private readonly options: IStatusManagerOptions = {}) {
     this.jsonlWatchService = new StatusJsonlWatchService({
@@ -326,6 +335,13 @@ export class StatusManager {
       recordCounter: recordPerfCounter,
       getPerfNow,
       recordDuration: recordPerfDuration,
+    });
+    this.stopRecheckService = new StatusStopRecheckService({
+      delayMs: CODEX_STOP_RECHECK_MS,
+      recheckCodexStop: ({ tabId, tmuxSession }) => this.recheckCodexStopNow(tabId, tmuxSession),
+      refreshStopSnippet: ({ tabId, jsonlPath }) => this.refreshStopSnippet(tabId, jsonlPath),
+      clearJsonlCache: (jsonlPath) => jsonlIdleCache.delete(jsonlPath),
+      warn: (message) => hookLog.warn(message),
     });
     this.sessionHistoryPersistence = createStatusSessionHistoryPersistence({
       shouldUseRuntimeDefault: () => this.shouldUseRuntimeStatusDefault(),
@@ -363,12 +379,11 @@ export class StatusManager {
     this.jsonlWatchService.stopAll();
     this.tabs.clear();
 
-    for (const ws of workspaces) {
-      const layout = await readLayoutFile(resolveLayoutFile(ws.id));
-      if (!layout) continue;
-
-      const tabs = collectAllTabs(layout.root);
-      for (const tab of tabs) {
+    const traversal = await collectStatusPollWorkspaceTabs({
+      workspaces,
+      readLayout: async (workspaceId) => readLayoutFile(resolveLayoutFile(workspaceId)),
+    });
+    for (const { workspaceId, tab } of traversal.workspaceTabs) {
         const paneInfo = panesInfo.get(tab.sessionName);
         const provider = getProviderByPanelType(tab.panelType);
         const detected = await this.readTabMetadata(paneInfo, provider, {
@@ -395,7 +410,7 @@ export class StatusManager {
           persistedSessionId: readAgentSessionId(tab),
         });
         this.tabs.set(tab.id, buildStatusTabEntry({
-          workspaceId: ws.id,
+          workspaceId,
           tab,
           cliState,
           paneInfo,
@@ -425,7 +440,6 @@ export class StatusManager {
         if (cliState === 'unknown') {
           this.resolveUnknown(tab.id).catch((err) => log.warn('resolveUnknown failed: %s', err));
         }
-      }
     }
   }
 
@@ -434,34 +448,31 @@ export class StatusManager {
     if (!entry || entry.cliState !== 'unknown') return;
 
     const provider = getProviderByPanelType(entry.panelType);
-    if (!provider) {
-      this.applyCliState(tabId, entry, 'idle', { silent: true, skipHistory: true });
-      this.persistToLayout(entry);
-      this.broadcastUpdate(tabId, entry);
-      return;
-    }
-    const paneInfo = (await getAllPanesInfo()).get(entry.tmuxSession);
-    const childPids = paneInfo?.pid ? await getChildPids(paneInfo.pid) : [];
-    const agentRunning = paneInfo?.pid
-      ? await provider.isAgentRunning(paneInfo.pid, childPids)
-      : false;
-
-    if (!agentRunning) {
-      this.applyCliState(tabId, entry, 'idle', { silent: true });
-      this.persistToLayout(entry);
-      this.broadcastUpdate(tabId, entry);
-      return;
-    }
-
-    if (entry.jsonlPath) {
-      const { idle, stale, lastAssistantSnippet } = await checkProviderJsonlIdle(provider, entry.jsonlPath);
-      if (idle && !stale && lastAssistantSnippet) {
-        this.applyCliState(tabId, entry, 'ready-for-review', { silent: true, skipHistory: true });
-        this.persistToLayout(entry);
-        this.broadcastUpdate(tabId, entry);
-        return;
+    let agentRunning = false;
+    let jsonl: { idle: boolean; stale: boolean; lastAssistantSnippet: string | null } | null = null;
+    if (provider) {
+      const paneInfo = (await getAllPanesInfo()).get(entry.tmuxSession);
+      const childPids = paneInfo?.pid ? await getChildPids(paneInfo.pid) : [];
+      agentRunning = paneInfo?.pid
+        ? await provider.isAgentRunning(paneInfo.pid, childPids)
+        : false;
+      if (agentRunning && entry.jsonlPath) {
+        const { idle, stale, lastAssistantSnippet } = await checkProviderJsonlIdle(provider, entry.jsonlPath);
+        jsonl = { idle, stale, lastAssistantSnippet };
       }
     }
+
+    const decision = evaluateResolveUnknownStatus({
+      currentState: entry.cliState,
+      providerId: provider?.id ?? null,
+      agentRunning,
+      jsonl,
+    });
+    if (decision.action !== 'apply-state') return;
+
+    this.applyCliState(tabId, entry, decision.nextState, decision.options);
+    this.persistToLayout(entry);
+    this.broadcastUpdate(tabId, entry);
   }
 
   private getCachedChildPids(cache: TChildPidCache, paneInfo: IPaneInfo | undefined): Promise<number[]> {
@@ -575,22 +586,20 @@ export class StatusManager {
     let broadcastRemoveCount = 0;
 
     const { workspaces } = await getWorkspaces();
-    workspaceCount = workspaces.length;
+    const traversal = await collectStatusPollWorkspaceTabs({
+      workspaces,
+      readLayout: async (workspaceId) => readLayoutFile(resolveLayoutFile(workspaceId)),
+    });
+    workspaceCount = traversal.workspaceCount;
+    scannedTabCount = traversal.scannedTabCount;
     const panesInfo = await getAllPanesInfo();
     paneCount = panesInfo.size;
     const childPidCache: TChildPidCache = new Map();
-    const knownTabIds = new Set<string>();
+    const knownTabIds = traversal.knownTabIds;
     const tabsBeforePoll = new Set(this.tabs.keys());
     const now = Date.now();
 
-    for (const ws of workspaces) {
-      const layout = await readLayoutFile(resolveLayoutFile(ws.id));
-      if (!layout) continue;
-
-      const tabs = collectAllTabs(layout.root);
-      for (const tab of tabs) {
-        scannedTabCount++;
-        knownTabIds.add(tab.id);
+    for (const { workspaceId, tab } of traversal.workspaceTabs) {
         const existing = this.tabs.get(tab.id);
         const paneInfo = panesInfo.get(tab.sessionName);
         const provider = getProviderByPanelType(tab.panelType);
@@ -624,7 +633,7 @@ export class StatusManager {
             persistedSessionId: readAgentSessionId(tab),
           });
           const entry = buildStatusTabEntry({
-            workspaceId: ws.id,
+            workspaceId,
             tab,
             cliState: initialState,
             paneInfo,
@@ -670,33 +679,25 @@ export class StatusManager {
           jsonlPath: provider?.readJsonlPath(tab) ?? existing.jsonlPath ?? null,
           childPids: provider ? await this.getCachedChildPids(childPidCache, paneInfo) : undefined,
         });
-        existing.tabName = tab.name || (newPaneTitle ? formatTabTitle(newPaneTitle) : '');
-        existing.currentProcess = currentProcess;
-        existing.paneTitle = newPaneTitle;
-        existing.workspaceId = ws.id;
-        existing.panelType = tab.panelType;
-        existing.agentSessionId = resolveAgentSessionId({
-          detectedSessionId: refreshed.sessionId,
-          jsonlPath: refreshed.jsonlPath,
+        applyStatusPollTabEntryUpdate({
+          entry: existing,
+          workspaceId,
+          tab,
+          paneTitle: newPaneTitle,
+          currentProcess,
+          refreshed,
           persistedSessionId: readAgentSessionId(tab),
-          currentSessionId: existing.agentSessionId,
+          processRetries: baseTabChanges.processRetries,
+          terminalChanged: baseTabChanges.terminalChanged,
+          terminalStatus,
+          listeningPorts,
+          summaryChanged: baseTabChanges.summaryChanged,
+          agentSummary: tabSummary,
         });
-        existing.jsonlPath = refreshed.jsonlPath ?? existing.jsonlPath;
-        existing.lastUserMessage = tab.lastUserMessage;
         const metadataChanged = this.mergeJsonlMetadata(existing, refreshed);
         const codexStateChanged = this.reconcileCodexState(tab.id, existing, refreshed);
         if (provider?.id === 'codex' && existing.jsonlPath) {
           this.startJsonlWatch(tab.id, existing.jsonlPath);
-        }
-
-        existing.processRetries = baseTabChanges.processRetries;
-        if (baseTabChanges.terminalChanged) {
-          existing.terminalStatus = terminalStatus;
-          existing.listeningPorts = listeningPorts;
-        }
-
-        if (baseTabChanges.summaryChanged) {
-          existing.agentSummary = tabSummary;
         }
 
         if (existing.cliState === 'busy' && existing.lastEvent
@@ -728,7 +729,6 @@ export class StatusManager {
           this.broadcastUpdate(tab.id, existing);
           broadcastUpdateCount++;
         }
-      }
     }
 
     for (const tabId of tabsBeforePoll) {
@@ -1137,53 +1137,45 @@ export class StatusManager {
     }
 
     if (hookEvent.shouldRefreshStopSnippet && entry.jsonlPath) {
-      const refreshSnippet = () => {
-        const provider = getProviderByPanelType(entry.panelType);
-        const check = provider
-          ? checkProviderJsonlIdle(provider, entry.jsonlPath!)
-          : checkJsonlIdle(entry.jsonlPath!);
-        check.then(({ currentAction, lastAssistantSnippet, reset }) => {
-          const { next, changed } = mergeStatusMetadata(entry, {
-            currentAction,
-            lastAssistantSnippet,
-            reset,
-          });
-          if (changed) {
-            entry.currentAction = next.currentAction;
-            entry.lastAssistantMessage = next.lastAssistantMessage;
-          }
-          const updated = changed;
-          if (updated) this.broadcastUpdate(tabId, entry);
-        }).catch(() => {});
-      };
-      refreshSnippet();
-      setTimeout(() => {
-        jsonlIdleCache.delete(entry.jsonlPath!);
-        refreshSnippet();
-      }, 500);
+      this.stopRecheckService.scheduleStopSnippetRefresh({ tabId, jsonlPath: entry.jsonlPath });
     }
   }
 
   private recheckCodexStop(tabId: string, tmuxSession: string): void {
-    setTimeout(() => {
-      const refresh = async () => {
-        let entry = this.tabs.get(tabId);
-        if (!entry) return;
+    this.stopRecheckService.scheduleCodexStopRecheck({ tabId, tmuxSession });
+  }
 
-        if (!entry.jsonlPath) {
-          await this.resolveAndWatchJsonl(tabId, tmuxSession);
-          entry = this.tabs.get(tabId);
-        }
+  private async recheckCodexStopNow(tabId: string, tmuxSession: string): Promise<void> {
+    let entry = this.tabs.get(tabId);
+    if (!entry) return;
 
-        if (!entry?.jsonlPath) return;
-        jsonlIdleCache.delete(entry.jsonlPath);
-        await this.onJsonlFileChange(tabId, entry.jsonlPath);
-      };
+    if (!entry.jsonlPath) {
+      await this.resolveAndWatchJsonl(tabId, tmuxSession);
+      entry = this.tabs.get(tabId);
+    }
 
-      refresh().catch((err) => {
-        hookLog.warn('Codex stop JSONL verification failed: %s', err);
-      });
-    }, CODEX_STOP_RECHECK_MS);
+    if (!entry?.jsonlPath) return;
+    jsonlIdleCache.delete(entry.jsonlPath);
+    await this.onJsonlFileChange(tabId, entry.jsonlPath);
+  }
+
+  private async refreshStopSnippet(tabId: string, jsonlPath: string): Promise<void> {
+    const entry = this.tabs.get(tabId);
+    if (!entry) return;
+
+    const provider = getProviderByPanelType(entry.panelType);
+    const check = provider
+      ? await checkProviderJsonlIdle(provider, jsonlPath)
+      : await checkJsonlIdle(jsonlPath);
+    const { next, changed } = mergeStatusMetadata(entry, {
+      currentAction: check.currentAction,
+      lastAssistantSnippet: check.lastAssistantSnippet,
+      reset: check.reset,
+    });
+    if (!changed) return;
+    entry.currentAction = next.currentAction;
+    entry.lastAssistantMessage = next.lastAssistantMessage;
+    this.broadcastUpdate(tabId, entry);
   }
 
   private setCompacting(tabId: string, entry: ITabStatusEntry, since: number | null): void {
@@ -1376,8 +1368,7 @@ export class StatusManager {
     }
     const provider = getProviderByPanelType(entry.panelType);
     const isCodex = provider?.id === 'codex';
-    const isActive = entry.cliState === 'busy' || entry.cliState === 'needs-input' || entry.cliState === 'unknown' || isCodex;
-    if (!isActive && entry.cliState !== 'ready-for-review') {
+    if (!shouldKeepStatusJsonlWatch({ cliState: entry.cliState, providerId: provider?.id ?? null })) {
       this.stopJsonlWatch(tabId);
       return;
     }
@@ -1387,13 +1378,13 @@ export class StatusManager {
       : await checkJsonlIdle(jsonlPath);
     const { interrupted, lastEntryTs } = check;
 
-    if (
-      interrupted
-      && entry.cliState === 'busy'
-      && lastEntryTs !== null
-      && lastEntryTs > (entry.lastInterruptTs ?? 0)
-      && lastEntryTs > (entry.lastEvent?.at ?? 0)
-    ) {
+    if (lastEntryTs !== null && shouldEmitSyntheticJsonlInterrupt({
+      currentState: entry.cliState,
+      interrupted,
+      lastEntryTs,
+      lastInterruptTs: entry.lastInterruptTs,
+      lastEventAt: entry.lastEvent?.at,
+    })) {
       entry.lastInterruptTs = lastEntryTs;
       hookLog.debug({ tabId, lastEntryTs }, 'synthetic interrupt from JSONL');
       this.updateTabFromHook(entry.tmuxSession, 'interrupt');
@@ -1413,7 +1404,10 @@ export class StatusManager {
         const interruptedRecovery = await this.recoverInterruptedPromptFromPane(tabId);
         if (interruptedRecovery.recovered) {
           changed = false;
-        } else if (entry.cliState === 'busy' && check.currentAction?.toolName) {
+        } else if (shouldScheduleDelayedJsonlInputRecovery({
+          currentState: entry.cliState,
+          currentAction: check.currentAction,
+        })) {
           setTimeout(() => {
             this.recoverPendingInputFromPane(tabId).catch((err) => {
               hookLog.debug({ tabId, err }, 'delayed permission prompt recovery failed');
