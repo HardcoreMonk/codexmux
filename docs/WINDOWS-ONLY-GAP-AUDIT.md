@@ -246,3 +246,24 @@ Resolved items:
 Validation:
 
 - `corepack pnpm test tests/unit/lib/runtime/terminal-runtime-adapter-factory.test.ts tests/unit/lib/runtime/windows-terminal-runtime.test.ts tests/unit/lib/runtime/terminal-worker-service.test.ts tests/unit/lib/runtime/terminal-worker-runtime.test.ts`: passed.
+
+## Windows Process Inspector Skeleton Follow-up
+
+The next transition slice added the process inspector adapter selection boundary
+without changing the current process/session detection behavior.
+
+Resolved items:
+
+- `defaultProcessInspector` is now created through a process inspector adapter
+  factory.
+- The current POSIX/Linux implementation remains the default migration fallback.
+- `CODEXMUX_PROCESS_INSPECTOR_ADAPTER=windows` resolves to a dedicated Windows
+  process inspector skeleton.
+- The Windows skeleton implements the `IProcessInspector` shape but every
+  operation fails with `runtime-v2-windows-process-inspector-unimplemented`.
+- Unknown process inspector adapter values fail closed with
+  `runtime-v2-process-inspector-adapter-unsupported`.
+
+Validation:
+
+- `corepack pnpm test tests/unit/lib/process-inspector-adapter-factory.test.ts tests/unit/lib/process-inspector.test.ts tests/unit/lib/session-detection.test.ts`: passed.

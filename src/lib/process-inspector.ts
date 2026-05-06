@@ -2,6 +2,7 @@ import { execFile as execFileCb } from 'child_process';
 import fs from 'fs/promises';
 import { promisify } from 'util';
 import { isLinux } from '@/lib/platform';
+import { createWindowsProcessInspector } from '@/lib/windows-process-inspector';
 
 const execFile = promisify(execFileCb);
 const CMD_TIMEOUT = 5000;
@@ -26,6 +27,23 @@ export interface IProcessInspector {
     rootPid: number,
     predicate: (pid: number) => Promise<boolean>,
   ): Promise<number[]>;
+}
+
+export type TProcessInspectorAdapterKind = 'posix' | 'windows';
+
+export interface IProcessInspectorAdapterFactoryEnv {
+  [key: string]: string | undefined;
+  CODEXMUX_PROCESS_INSPECTOR_ADAPTER?: string;
+}
+
+export interface IResolveProcessInspectorAdapterKindOptions {
+  env?: IProcessInspectorAdapterFactoryEnv;
+  platform?: NodeJS.Platform;
+}
+
+export interface ICreateProcessInspectorAdapterOptions extends IResolveProcessInspectorAdapterKindOptions {
+  createPosixInspector?: () => IProcessInspector;
+  createWindowsInspector?: () => IProcessInspector;
 }
 
 const parsePidList = (raw: string): number[] =>
@@ -201,7 +219,7 @@ export const getStartTime = async (pid: number): Promise<number | null> => {
   }
 };
 
-export const defaultProcessInspector: IProcessInspector = {
+const posixProcessInspector: IProcessInspector = {
   isRunning,
   getChildren,
   getChildrenOf,
@@ -217,3 +235,38 @@ export const defaultProcessInspector: IProcessInspector = {
     return matches;
   },
 };
+
+export const createPosixProcessInspector = (): IProcessInspector => posixProcessInspector;
+
+const createUnsupportedProcessInspectorAdapterError = (value: string): Error & {
+  code: string;
+  retryable: false;
+} => Object.assign(
+  new Error(`Unsupported process inspector adapter: ${value}`),
+  {
+    code: 'runtime-v2-process-inspector-adapter-unsupported',
+    retryable: false as const,
+  },
+);
+
+export const resolveProcessInspectorAdapterKind = ({
+  env = process.env,
+}: IResolveProcessInspectorAdapterKindOptions = {}): TProcessInspectorAdapterKind => {
+  const value = env.CODEXMUX_PROCESS_INSPECTOR_ADAPTER?.trim().toLowerCase();
+  if (!value || value === 'posix') return 'posix';
+  if (value === 'windows') return 'windows';
+  throw createUnsupportedProcessInspectorAdapterError(value);
+};
+
+export const createProcessInspectorAdapter = ({
+  createPosixInspector: createPosix = createPosixProcessInspector,
+  createWindowsInspector = createWindowsProcessInspector,
+  ...options
+}: ICreateProcessInspectorAdapterOptions = {}): IProcessInspector => {
+  const kind = resolveProcessInspectorAdapterKind(options);
+  if (kind === 'posix') return createPosix();
+  if (kind === 'windows') return createWindowsInspector();
+  throw createUnsupportedProcessInspectorAdapterError(kind);
+};
+
+export const defaultProcessInspector: IProcessInspector = createProcessInspectorAdapter();
