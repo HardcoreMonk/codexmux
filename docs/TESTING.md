@@ -496,6 +496,21 @@ state: `passed`, `evidence-attached`, `spec-linked`, or `approved-deferred`. Row
 automated runner are incomplete unless the manifest supplies sanitized evidence, a project-local
 spec/plan/handoff link, or an auditable defer entry with owner, reason, and revisit trigger.
 
+Full backlog closeout wrapper:
+
+```bash
+CODEXMUX_BACKLOG_COMPLETION_ALLOW_DEFER=1 \
+CODEXMUX_SMOKE_ARTIFACT_DIR=/tmp/codexmux-backlog-complete \
+corepack pnpm ops:backlog:complete
+```
+
+`ops:backlog:completion-manifest` creates the manifest consumed by the gate, and
+`ops:backlog:complete` runs `ops:backlog:batch-run`, writes the manifest, then runs the completion
+gate. Without `CODEXMUX_BACKLOG_COMPLETION_ALLOW_DEFER=1`, manual/external rows remain open. With
+the flag, unavailable iPad/Mac/Play Console/long-observation rows are closed only as
+`approved-deferred` entries with owner, reason, and revisit trigger; this is a release closeout
+decision, not hardware evidence.
+
 ## Permission, Stats, Timeline
 
 ```bash
