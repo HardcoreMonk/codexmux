@@ -208,6 +208,9 @@ workspace/layout traversal과 known tab id collection은
 `src/lib/status/poll-workspace-traversal.ts`가 담당한다.
 scan/bootstrap initial tab entry와 watch/recovery/unknown action flag construction은
 `src/lib/status/scan-tab-bootstrap.ts`가 담당한다.
+poll-created tab entry와 신규 tab watch/unknown action flag construction은
+`src/lib/status/poll-created-tab-bootstrap.ts`가 담당한다. poll loop traversal/tab
+kind/broadcast count aggregation은 `src/lib/status/poll-counts.ts`가 담당한다.
 existing poll tab entry field mutation은 `src/lib/status/poll-tab-entry-update.ts`가 담당하고,
 busy-stuck process-gone recovery, poll-time pane recovery ordering, post-recovery broadcast
 action decision은 `src/lib/status/poll-recovery-service.ts`가 담당한다.
@@ -309,6 +312,8 @@ paired `response_item.payload.type="message"` record로 몇 ms 간격에 남길 
 | `src/lib/status/jsonl-watch-service.ts` | JSONL watch lifecycle, debounce, replacement, close/error cleanup |
 | `src/lib/status/poll-service.ts` | status poll timer, adaptive interval, poll snapshot/duration recording |
 | `src/lib/status/poll-tab-reconciliation.ts` | poll tab initial state, process retry, ports, broadcast-needed decision helper |
+| `src/lib/status/poll-created-tab-bootstrap.ts` | poll-created initial tab entry and watch/unknown action flag helper |
+| `src/lib/status/poll-counts.ts` | poll traversal/tab kind/broadcast count aggregation helper |
 | `src/lib/status/poll-tab-entry-update.ts` | existing poll tab entry layout/process/session field mutation helper |
 | `src/lib/status/poll-recovery-service.ts` | busy-stuck process-gone recovery, poll pane recovery ordering, broadcast action helper |
 | `src/lib/status/poll-workspace-traversal.ts` | scan/bootstrap and poll workspace/layout traversal plus known tab id collection helper |

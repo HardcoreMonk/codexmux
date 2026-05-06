@@ -53,13 +53,9 @@ import {
 } from '@/lib/status/session-history-entry';
 import { createStatusSessionHistoryPersistence } from '@/lib/status/session-history-persistence';
 import { createStatusPaneRecoveryService } from '@/lib/status/pane-recovery-service';
-import {
-  StatusPollService,
-  type IStatusPollCounts,
-} from '@/lib/status/poll-service';
+import { StatusPollService } from '@/lib/status/poll-service';
 import { StatusJsonlWatchService } from '@/lib/status/jsonl-watch-service';
 import { evaluateStatusHookEvent } from '@/lib/status/hook-event-service';
-import { buildStatusTabEntry } from '@/lib/status/tab-entry';
 import { evaluateResolveUnknownStatus } from '@/lib/status/resolve-unknown-service';
 import { StatusStopRecheckService } from '@/lib/status/stop-recheck-service';
 import {
@@ -72,11 +68,15 @@ import {
   buildStatusUpdateMessage,
   toStatusClientTabEntry,
 } from '@/lib/status/client-payload';
+import { reconcileStatusPollTabChanges } from '@/lib/status/poll-tab-reconciliation';
+import { buildStatusPollCreatedTabBootstrap } from '@/lib/status/poll-created-tab-bootstrap';
 import {
-  createSyntheticStatusLastEvent,
-  reconcileStatusPollTabChanges,
-  resolveStatusInitialCliState,
-} from '@/lib/status/poll-tab-reconciliation';
+  applyStatusPollTraversalCounts,
+  createStatusPollCounts,
+  recordStatusPollBroadcastRemove,
+  recordStatusPollBroadcastUpdate,
+  recordStatusPollTabKind,
+} from '@/lib/status/poll-counts';
 import { applyStatusPollTabEntryUpdate } from '@/lib/status/poll-tab-entry-update';
 import {
   recoverStatusPollPaneInput,
@@ -564,23 +564,19 @@ export class StatusManager {
 
   async poll(): Promise<void> {
     const pollContext = this.pollService.beginPoll();
-    let workspaceCount = 0;
-    let paneCount = 0;
-    let scannedTabCount = 0;
-    let providerTabCount = 0;
-    let terminalTabCount = 0;
-    let broadcastUpdateCount = 0;
-    let broadcastRemoveCount = 0;
+    const pollCounts = createStatusPollCounts();
 
     const { workspaces } = await getWorkspaces();
     const traversal = await collectStatusPollWorkspaceTabs({
       workspaces,
       readLayout: async (workspaceId) => readLayoutFile(resolveLayoutFile(workspaceId)),
     });
-    workspaceCount = traversal.workspaceCount;
-    scannedTabCount = traversal.scannedTabCount;
     const panesInfo = await getAllPanesInfo();
-    paneCount = panesInfo.size;
+    applyStatusPollTraversalCounts(pollCounts, {
+      workspaceCount: traversal.workspaceCount,
+      paneCount: panesInfo.size,
+      scannedTabCount: traversal.scannedTabCount,
+    });
     const childPidCache: TChildPidCache = new Map();
     const knownTabIds = traversal.knownTabIds;
     const tabsBeforePoll = new Set(this.tabs.keys());
@@ -590,8 +586,7 @@ export class StatusManager {
         const existing = this.tabs.get(tab.id);
         const paneInfo = panesInfo.get(tab.sessionName);
         const provider = getProviderByPanelType(tab.panelType);
-        if (provider) providerTabCount++;
-        else terminalTabCount++;
+        recordStatusPollTabKind(pollCounts, !!provider);
 
         const { terminalStatus, listeningPorts } = provider
           ? { terminalStatus: 'idle' as const, listeningPorts: [] as number[] }
@@ -605,44 +600,25 @@ export class StatusManager {
             jsonlPath: provider?.readJsonlPath(tab) ?? null,
             childPids: provider ? await this.getCachedChildPids(childPidCache, paneInfo) : undefined,
           });
-          const initialState = resolveStatusInitialCliState({
-            persistedState: tab.cliState as TCliState | undefined,
-            providerId: provider?.id ?? null,
-            detected,
-          });
-          // lastEvent는 메모리 전용이라 재시작 시 유실. persisted needs-input을 복원할 때는
-          // 클라이언트 ack가 seq=0과 매칭할 baseline이 필요하므로 합성한다.
-          const syntheticLastEvent = createSyntheticStatusLastEvent(initialState, Date.now());
-          const agentSummary = readAgentSummary(tab);
-          const agentSessionId = resolveAgentSessionId({
-            detectedSessionId: detected.sessionId,
-            jsonlPath: detected.jsonlPath,
-            persistedSessionId: readAgentSessionId(tab),
-          });
-          const entry = buildStatusTabEntry({
+          const bootstrap = buildStatusPollCreatedTabBootstrap({
             workspaceId,
             tab,
-            cliState: initialState,
+            providerId: provider?.id ?? null,
             paneInfo,
+            detected,
             terminalStatus,
             listeningPorts,
-            agentSummary,
-            agentSessionId,
-            jsonlPath: detected.jsonlPath,
-            lastAssistantSnippet: detected.lastAssistantSnippet,
-            currentAction: detected.currentAction,
-            lastEvent: syntheticLastEvent,
             now: Date.now(),
-            restoreLifecycleFields: false,
           });
+          const { entry } = bootstrap;
           this.tabs.set(tab.id, entry);
           this.persistToLayout(entry);
           this.broadcastUpdate(tab.id, entry);
-          broadcastUpdateCount++;
-          if (initialState === 'unknown') {
+          recordStatusPollBroadcastUpdate(pollCounts);
+          if (bootstrap.actions.shouldResolveUnknown) {
             this.resolveUnknown(tab.id).catch((err) => log.warn('resolveUnknown failed: %s', err));
           }
-          if (provider?.id === 'codex' && detected.jsonlPath) {
+          if (bootstrap.actions.shouldStartJsonlWatch && detected.jsonlPath) {
             this.startJsonlWatch(tab.id, detected.jsonlPath);
           }
           continue;
@@ -702,7 +678,7 @@ export class StatusManager {
           },
         });
         if (busyRecovered) {
-          broadcastUpdateCount++;
+          recordStatusPollBroadcastUpdate(pollCounts);
           continue;
         }
 
@@ -719,10 +695,10 @@ export class StatusManager {
           codexStateChanged,
         });
         if (updateAction === 'count-only') {
-          broadcastUpdateCount++;
+          recordStatusPollBroadcastUpdate(pollCounts);
         } else if (updateAction === 'broadcast') {
           this.broadcastUpdate(tab.id, existing);
-          broadcastUpdateCount++;
+          recordStatusPollBroadcastUpdate(pollCounts);
         }
     }
 
@@ -731,20 +707,11 @@ export class StatusManager {
         this.stopJsonlWatch(tabId);
         this.tabs.delete(tabId);
         this.broadcastRemove(tabId);
-        broadcastRemoveCount++;
+        recordStatusPollBroadcastRemove(pollCounts);
       }
     }
 
     this.pollService.refreshInterval();
-    const pollCounts: IStatusPollCounts = {
-      workspaceCount,
-      paneCount,
-      scannedTabCount,
-      providerTabCount,
-      terminalTabCount,
-      broadcastUpdateCount,
-      broadcastRemoveCount,
-    };
     this.pollService.finishPoll(pollContext, pollCounts);
   }
 
