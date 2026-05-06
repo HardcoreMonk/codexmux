@@ -461,6 +461,8 @@ CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:android:foregrou
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:android:runtime-v2
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:android:timeline-foreground
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:release-gate
+CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:packaged-runtime-v2
+CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:installer-runtime-v2
 ```
 
 Artifacts preserve pass/fail state, check names, runtime/app/device metadata, reconnect round
@@ -469,6 +471,10 @@ session identifiers, target URLs, server stdout/stderr, prompt body, terminal ou
 JSONL paths. `smoke:windows:release-gate` writes a summary-only artifact with step id, script,
 duration, exit code, and signal. It does not store child smoke stdout, stderr, terminal tails,
 Codex session ids, JSONL paths, or temp smoke directories.
+Windows packaged/installer package artifacts also stay summary-only: they keep check names,
+launch mode, Electron preload state, version/build metadata, runtime v2 terminal verification
+status, and console counts without app install temp paths, target URLs, terminal marker text, or
+child process stdout/stderr.
 
 The release workflow runs `smoke:browser-reconnect` on GitHub-hosted Ubuntu and uploads
 `smoke-browser-reconnect`. Android and packaged Electron smoke remain manual or self-hosted

@@ -8,12 +8,37 @@ import {
   findWindowsInstaller,
   resolveInstalledAppPaths,
 } from './windows-installer-smoke-lib.mjs';
+import { writeSmokeArtifact } from './smoke-artifact-lib.mjs';
+import { buildWindowsInstallerArtifactPayload } from './windows-package-smoke-artifact-lib.mjs';
 
 const rootDir = process.cwd();
 const DEFAULT_TIMEOUT_MS = 300_000;
+const SMOKE_NAME = 'windows-installer-install';
+const startedAt = new Date().toISOString();
 
-const fail = (code, message, details = {}) => {
-  console.error(JSON.stringify({ ok: false, code, message, ...details }, null, 2));
+const resolveSmokeName = (payload) =>
+  payload?.runtimeV2Terminal || payload?.runtimeV2TerminalRequested
+    ? 'windows-installer-runtime-v2'
+    : SMOKE_NAME;
+
+const writeArtifact = async (status, payload) =>
+  writeSmokeArtifact({
+    smokeName: resolveSmokeName(payload),
+    status,
+    startedAt,
+    payload: buildWindowsInstallerArtifactPayload(payload),
+  }).catch((err) => {
+    console.error(JSON.stringify({
+      ok: false,
+      code: 'smoke-artifact-write-failed',
+      message: err instanceof Error ? err.message : String(err),
+    }, null, 2));
+  });
+
+const fail = async (code, message, details = {}) => {
+  const payload = { ok: false, code, message, ...details };
+  await writeArtifact('failed', payload);
+  console.error(JSON.stringify(payload, null, 2));
   process.exit(1);
 };
 
@@ -47,7 +72,7 @@ const assertExists = async (filePath, checkName, checks) => {
 
 const main = async () => {
   if (process.platform !== 'win32') {
-    fail('windows-installer-platform-mismatch', 'Windows installer smoke requires win32.', {
+    await fail('windows-installer-platform-mismatch', 'Windows installer smoke requires win32.', {
       platform: process.platform,
     });
   }
@@ -126,15 +151,18 @@ const main = async () => {
     }
     checks.push('silent-uninstall');
 
-    console.log(JSON.stringify({
+    const successPayload = {
       ok: true,
       mutatesSystem: true,
       installerPath,
       installDir,
       checks,
       runtimeV2Terminal: runRuntimeV2Terminal,
+      runtimeV2TerminalRequested: runRuntimeV2Terminal,
       launch: launchResult?.stdout ? JSON.parse(launchResult.stdout) : null,
-    }, null, 2));
+    };
+    await writeArtifact('passed', successPayload);
+    console.log(JSON.stringify(successPayload, null, 2));
   } catch (err) {
     failurePayload = {
       ok: false,
@@ -143,6 +171,7 @@ const main = async () => {
       installerPath,
       installDir,
       checks,
+      runtimeV2TerminalRequested: runRuntimeV2Terminal,
       installResult,
       launchResult,
       uninstallResult,
@@ -159,6 +188,7 @@ const main = async () => {
 
   if (failurePayload) {
     failurePayload.uninstallResult = uninstallResult;
+    await writeArtifact('failed', failurePayload);
     console.error(JSON.stringify(failurePayload, null, 2));
     process.exit(1);
   }

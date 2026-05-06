@@ -24,13 +24,38 @@ import {
   extractCookieHeader,
   resolveSmokeTerminalEndpoint,
 } from './runtime-v2-phase2-smoke-lib.mjs';
+import { writeSmokeArtifact } from './smoke-artifact-lib.mjs';
+import { buildWindowsPackagedLaunchArtifactPayload } from './windows-package-smoke-artifact-lib.mjs';
 
 const DEFAULT_TIMEOUT_MS = 45_000;
 const PASSWORD = 'windows-packaged-runtime-v2-smoke';
+const SMOKE_NAME = 'windows-packaged-launch';
 const rootDir = process.cwd();
+const startedAt = new Date().toISOString();
 
-const fail = (code, message, details = {}) => {
-  console.error(JSON.stringify({ ok: false, code, message, ...details }, null, 2));
+const resolveSmokeName = (payload) =>
+  payload?.runtimeV2Terminal || payload?.runtimeV2TerminalRequested
+    ? 'windows-packaged-runtime-v2'
+    : SMOKE_NAME;
+
+const writeArtifact = async (status, payload) =>
+  writeSmokeArtifact({
+    smokeName: resolveSmokeName(payload),
+    status,
+    startedAt,
+    payload: buildWindowsPackagedLaunchArtifactPayload(payload),
+  }).catch((err) => {
+    console.error(JSON.stringify({
+      ok: false,
+      code: 'smoke-artifact-write-failed',
+      message: err instanceof Error ? err.message : String(err),
+    }, null, 2));
+  });
+
+const fail = async (code, message, details = {}) => {
+  const payload = { ok: false, code, message, ...details };
+  await writeArtifact('failed', payload);
+  console.error(JSON.stringify(payload, null, 2));
   process.exit(1);
 };
 
@@ -255,7 +280,7 @@ const stopWindowsAppProcesses = async (appPath, excludePids = []) => {
 
 const main = async () => {
   if (process.platform !== 'win32') {
-    fail('windows-packaged-launch-platform-mismatch', 'Windows packaged launch smoke requires win32.', {
+    await fail('windows-packaged-launch-platform-mismatch', 'Windows packaged launch smoke requires win32.', {
       platform: process.platform,
     });
   }
@@ -356,7 +381,7 @@ const main = async () => {
     }
     checks.push('console-clean');
 
-    console.log(JSON.stringify({
+    const successPayload = {
       ok: true,
       mutatesSystem: false,
       appPath,
@@ -369,14 +394,17 @@ const main = async () => {
       runtimeV2Terminal,
       consoleEventCount: consoleEvents.length,
       blockingConsoleCount: blockingConsole.length,
-    }, null, 2));
+    };
+    await writeArtifact('passed', successPayload);
+    console.log(JSON.stringify(successPayload, null, 2));
   } catch (err) {
-    fail('windows-packaged-launch-smoke-failed', err instanceof Error ? err.message : String(err), {
+    await fail('windows-packaged-launch-smoke-failed', err instanceof Error ? err.message : String(err), {
       appPath,
       homeDir,
       launchMode: launch?.mode,
       remoteDebuggingPort,
       checks,
+      runtimeV2TerminalRequested: runRuntimeV2Terminal,
       outputTail: output.slice(-2000),
       consoleEvents: consoleEvents.slice(-20),
     });
