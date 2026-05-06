@@ -1,3 +1,5 @@
+import { pathToFileURL } from 'url';
+
 export type TElectronEnv = NodeJS.ProcessEnv | Record<string, string | undefined>;
 
 export interface IElectronBootstrapEnvInput {
@@ -72,3 +74,6 @@ export const buildPackagedNodePath = ({
   [standaloneModules, existingNodePath]
     .filter((value): value is string => !!value)
     .join(pathDelimiterForPlatform(platform));
+
+export const buildFileImportSpecifier = (filePath: string): string =>
+  pathToFileURL(filePath).href;

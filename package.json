@@ -80,6 +80,8 @@
     "smoke:windows:host-diagnostics": "tsx scripts/smoke-windows-host-diagnostics.ts",
     "smoke:windows:electron-env": "tsx scripts/smoke-windows-electron-env.ts",
     "smoke:windows:electron-packaging": "node scripts/smoke-windows-electron-packaging.mjs",
+    "smoke:windows:packaged-launch": "node scripts/smoke-windows-packaged-launch.mjs",
+    "smoke:windows:installer-install": "node scripts/smoke-windows-installer-install.mjs",
     "smoke:windows:codex-session": "tsx scripts/smoke-windows-codex-session.ts",
     "smoke:windows:release-gate": "node scripts/smoke-windows-release-gate.mjs",
     "smoke:runtime-v2:target": "node scripts/smoke-runtime-v2.mjs",

@@ -1,6 +1,6 @@
 import { capturePristineEnv } from './pristine-env';
 import { applyResolvedShellEnv } from './shell-env';
-import { applyElectronBootstrapEnv, buildPackagedNodePath } from './runtime-env';
+import { applyElectronBootstrapEnv, buildFileImportSpecifier, buildPackagedNodePath } from './runtime-env';
 import { app, BrowserWindow, shell, Menu, ipcMain, session, screen, Notification, nativeTheme, dialog } from 'electron';
 import { autoUpdater, type UpdateInfo, type ProgressInfo } from 'electron-updater';
 import * as path from 'path';
@@ -392,7 +392,7 @@ const startLocalServer = async (): Promise<number> => {
       existingNodePath: process.env.NODE_PATH,
     });
     require('module').Module._initPaths(); // eslint-disable-line @typescript-eslint/no-require-imports
-    const mod = await import(path.join(appDir, 'dist', 'server.js'));
+    const mod = await import(buildFileImportSpecifier(path.join(appDir, 'dist', 'server.js')));
     cachedStart = mod.start;
   }
   let result;

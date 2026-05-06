@@ -360,12 +360,20 @@ Windows packaging smoke:
 
 ```bash
 corepack pnpm pack:electron:dev
+corepack pnpm smoke:windows:packaged-launch
 corepack pnpm pack:electron
+corepack pnpm smoke:windows:installer-install
 ```
 
 `pack:electron:dev` must create `release/win-unpacked/codexmux.exe`,
 `resources/app.asar`, and unpacked native runtime modules. `pack:electron` must
 also create the Windows NSIS installer and zip package under `release/`.
+`smoke:windows:packaged-launch` starts the generated app with an isolated
+Windows user profile and verifies the packaged local server, Electron preload
+bridge, health endpoint, runtime diagnostics, and blocking console count.
+`smoke:windows:installer-install` mutates the current Windows user install state
+temporarily: it silent-installs to a temp directory, launches the installed app
+through the packaged launch smoke, then runs the generated uninstaller.
 
 macOS packaging smoke:
 

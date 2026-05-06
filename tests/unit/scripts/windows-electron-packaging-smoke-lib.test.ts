@@ -29,6 +29,7 @@ describe('Windows Electron packaging smoke helpers', () => {
       'pack-electron-dev-not-windows-dir',
       'windows-builder-target-missing',
       'windows-nsis-config-missing',
+      'windows-nsis-run-after-finish-enabled',
       'windows-icon-missing',
     ]);
   });
@@ -55,6 +56,7 @@ describe('Windows Electron packaging smoke helpers', () => {
           oneClick: false,
           perMachine: false,
           allowToChangeInstallationDirectory: true,
+          runAfterFinish: false,
         },
       },
       resources: new Set(['build-resources/icon.ico']),
@@ -68,6 +70,7 @@ describe('Windows Electron packaging smoke helpers', () => {
         'windows-builder-nsis-target',
         'windows-builder-zip-target',
         'windows-nsis-installer-options',
+        'windows-nsis-run-after-finish-disabled',
         'windows-icon-present',
       ],
     });
@@ -95,6 +98,7 @@ describe('Windows Electron packaging smoke helpers', () => {
           oneClick: false,
           perMachine: false,
           allowToChangeInstallationDirectory: true,
+          runAfterFinish: false,
         },
       },
       resources: new Set(['build-resources/icon.ico']),

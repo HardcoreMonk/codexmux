@@ -89,6 +89,16 @@ export const validateWindowsElectronPackaging = ({
     );
   }
 
+  if (nsis?.runAfterFinish === false) {
+    checks.push('windows-nsis-run-after-finish-disabled');
+  } else {
+    addBlocker(
+      blockers,
+      'windows-nsis-run-after-finish-enabled',
+      'electron-builder nsis config must disable runAfterFinish for repeatable silent install smoke.',
+    );
+  }
+
   const winIcon = typeof builderConfig?.win?.icon === 'string'
     ? normalizePath(builderConfig.win.icon)
     : null;

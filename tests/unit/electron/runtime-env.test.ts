@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildElectronBootstrapEnv,
+  buildFileImportSpecifier,
   buildPackagedNodePath,
 } from '../../../electron/runtime-env';
 
@@ -47,5 +48,10 @@ describe('Electron runtime environment helpers', () => {
       standaloneModules: '/Applications/codexmux.app/Contents/Resources/app.asar/.next/standalone/node_modules',
       existingNodePath: '/opt/cmux/node_modules',
     })).toBe('/Applications/codexmux.app/Contents/Resources/app.asar/.next/standalone/node_modules:/opt/cmux/node_modules');
+  });
+
+  it('converts packaged server paths to file import specifiers', () => {
+    expect(buildFileImportSpecifier('D:\\codexmux\\resources\\app.asar\\dist\\server.js'))
+      .toBe('file:///D:/codexmux/resources/app.asar/dist/server.js');
   });
 });

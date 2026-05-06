@@ -36,6 +36,7 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+  runAfterFinish: false
   createDesktopShortcut: true
   createStartMenuShortcut: true
 
@@ -65,6 +66,7 @@ files:
 asar: true
 asarUnpack:
   - "**/node-pty/**"
+  - "dist/workers/**"
   - ".next/standalone/**"
   - "src/config/tmux.conf"
 
