@@ -106,6 +106,10 @@ terminal/diff tab을 CODEX panel로 전환할 때 기존 client-local `sessionVi
 loading spinner에 머무를 수 있다. `use-tab-store.setPanelType()`은 agent panel 전환 시
 active session이나 `check` flow가 없는 tab을 `session-list`로 정규화해 기존 세션 목록이나
 새 세션 시작 UI를 노출한다.
+이미 `timeline` view에 있는 Codex tab은 모바일에서도 `agentProcess=null`만으로 상위
+spinner에 막지 않는다. `TimelineView`가 skeleton, reconnect/error, permission prompt
+surface를 소유하므로 live approval smoke처럼 `needs-input` status가 먼저 도착하고 timeline
+process detection이 늦는 경우에도 메시지와 approval prompt 영역이 노출된다.
 
 Codex 감지는 pane PID 아래 child process를 따라가며 `codex`를 찾고, session id 또는
 process start time으로 `~/.codex/sessions/YYYY/MM/DD/*.jsonl`을 연결한다. Linux에서는
