@@ -34,7 +34,9 @@ afterEach(() => {
   }
 });
 
-describe('session detection process helpers', () => {
+const describeLive = process.platform === 'win32' ? describe.skip : describe;
+
+describeLive('session detection process helpers', () => {
   it('detects running processes without shelling out on Linux', async () => {
     expect(await isProcessRunning(process.pid)).toBe(true);
     expect(await getProcessCwd(process.pid)).toBe(process.cwd());

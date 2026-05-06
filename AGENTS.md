@@ -9,6 +9,9 @@ Always respond in the same language the user wrote in. Project rules like
 ## Project Overview
 
 - Product: codexmux, a Codex-focused web session manager.
+- Product target: Windows-only service/product transition. Treat the existing
+  tmux-centered macOS/Linux server and Electron/Android shell docs as
+  current-state surfaces until the transition plan replaces or retires them.
 - Framework: Next.js Pages Router with a custom Node server.
 - Package manager: pnpm. Prefer `corepack pnpm ...` when running commands.
 - Styling: Tailwind CSS v4 and shadcn/ui.
@@ -122,6 +125,7 @@ Complex topics live under `docs/`:
 | `docs/TMUX.md` | tmux, terminal management, and WebSocket flow |
 | `docs/DATA-DIR.md` | `~/.codexmux/` directory structure |
 | `docs/TESTING.md` | Test tiers, Playwright/Chromium, platform smoke, and live deploy checks |
+| `docs/WINDOWS-ONLY-GAP-AUDIT.md` | Windows-only product transition gaps and architecture candidates |
 | `docs/SYSTEMD.md` | Linux user service operation |
 | `docs/PERFORMANCE.md` | Perf snapshot, render/cache optimization, and validation |
 | `docs/STYLE.md` | Theme and color usage rules |
@@ -167,7 +171,8 @@ notices.
 
 ## Plan Grilling
 - `grill-me`는 원본 installer를 설치하지 않고 Codex zone의 `Plan Grilling` workflow로 사용한다.
-- 신규 기능/프로젝트 설계는 `superpowers:brainstorming` 뒤, `superpowers:writing-plans` 전에 `grill-me 방식으로 검토해줘`라고 호출한다.
+- 신규 기능/프로젝트 설계는 `superpowers:brainstorming`이 만든 `writing-spec` 산출물을 기준으로 `domain-architecture` pass를 먼저 수행한 뒤, `superpowers:writing-plans` 전에 `grill-me 방식으로 검토해줘`라고 호출한다.
+- `writing-spec`은 별도 lifecycle gate가 아니라 `superpowers:brainstorming`의 design spec 산출물이다.
 - 질문은 한 번에 하나만 하고, 각 질문에는 Codex의 추천 답을 함께 제시한다.
 - 코드/문서로 확인 가능한 내용은 사용자에게 묻지 않고 직접 확인한다.
 - `CONTEXT.md`, `CONTEXT-MAP.md`, `docs/adr/`가 있으면 용어 충돌과 ADR 후보를 함께 검토한다.
@@ -175,7 +180,7 @@ notices.
 
 ## Lifecycle Control Plane
 - 표준 lifecycle contract는 zone 상대 경로 `codex-project-mgmt/docs/codex-lifecycle-control-plane.md`를 따른다.
-- 기본 순서: `intake -> superpowers:brainstorming -> grill-me -> plan-design-review -> superpowers:writing-plans -> plan-eng-review -> implement -> code-review -> release -> operate`.
+- 기본 순서: `intake -> office-hours optional -> superpowers:brainstorming / writing-spec -> domain-architecture -> grill-me -> plan-design-review -> superpowers:writing-plans -> plan-eng-review -> implement -> code-review -> release -> operate`.
 - 실제 spec, grill-me 기록, plan, handoff는 해당 project root의 project-local 산출물로 둔다.
 - 새 기능, behavior change, workflow contract change, multi-file change는 lightweight path를 사용하지 않는다.
 - `release` 이후에는 `docs/operations/YYYY-MM-DD-<topic>-handoff.md` 또는 project-equivalent handoff로 운영 진입 상태를 기록한다.

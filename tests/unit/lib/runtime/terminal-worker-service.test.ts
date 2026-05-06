@@ -1,15 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRuntimeCommand } from '@/lib/runtime/ipc';
-import { createTerminalWorkerService, type ITerminalWorkerRuntime } from '@/lib/runtime/terminal/terminal-worker-service';
+import type { ITerminalRuntimeAdapter } from '@/lib/runtime/terminal/terminal-runtime-contract';
+import { createTerminalWorkerService } from '@/lib/runtime/terminal/terminal-worker-service';
 
-const createFakeRuntime = (): ITerminalWorkerRuntime & {
+const createFakeRuntime = (): ITerminalRuntimeAdapter & {
   writes: string[];
   detached: string[];
   pushData?: (data: string) => void;
 } => {
   const writes: string[] = [];
   const detached: string[] = [];
-  const runtime: ITerminalWorkerRuntime & {
+  const runtime: ITerminalRuntimeAdapter & {
     writes: string[];
     detached: string[];
     pushData?: (data: string) => void;

@@ -15,6 +15,7 @@
 | `TESTING.md` | unit/type/lint/build, Playwright/Chromium, platform smoke, live deploy 검증 기준 |
 | `RUNTIME-V2-CUTOVER.md` | Supervisor/Worker runtime v2 production 전환 단계, flag, rollback 기준 |
 | `RUNTIME-V2-PARITY.md` | runtime v2 surface별 v1/v2 parity, migration, test, rollback matrix |
+| `WINDOWS-ONLY-GAP-AUDIT.md` | Windows-only 제품 전환 gap audit와 runtime/process/host 전환 후보 |
 
 ## 운영과 플랫폼
 
@@ -55,6 +56,9 @@
 - PWA manifest, icon, startup image, service worker public asset 기준을 바꾸면 `TESTING.md`, `ARCHITECTURE-LOGIC.md`, `ADR.md`, `STYLE.md`, `README.md`, `landing-src/docs/pwa-setup.md` locale copy를 함께 갱신한다.
 - 성능 변경이 사용자 동작이나 운영 점검에 영향을 주면 `README.md`와 `landing-src/docs/`의 architecture/live-session/git/stats/troubleshooting 문서도 함께 갱신한다.
 - 저장 파일 구조나 삭제 기준을 바꾸면 `DATA-DIR.md`를 갱신한다.
+- Windows-only 제품 타깃, terminal runtime, process inspection, host operation
+  전환을 바꾸면 `WINDOWS-ONLY-GAP-AUDIT.md`, `ADR.md`, 관련
+  `superpowers/specs/`와 `superpowers/plans/`를 함께 갱신한다.
 - Android/Electron client, 모바일 reconnect, 앱 정보/재시작 bridge, native build 기준을 바꾸면 각 플랫폼 문서를 갱신한다.
 - release, deploy, smoke 결과가 운영 판단에 영향을 주면 `operations/` handoff를 추가하고 `FOLLOW-UP.md`의 확인 상태를 갱신한다.
 - 구현 전 설계 결정을 바꾸면 관련 `superpowers/specs/`와

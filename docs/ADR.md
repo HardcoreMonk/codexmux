@@ -261,3 +261,10 @@
 - Decision: `/experimental/runtime`에서 실행 가능한 lifecycle control은 서버 allowlist action id로 제한한다. 현재 action은 `phase6-gate`, `restart-service`, `deploy-local`이며 API는 임의 command text를 받지 않는다. Restart/deploy 계열 action은 exact confirmation phrase를 요구한다.
 - Rationale: 운영 UI에서 Phase 6 gate, service restart, local deploy를 빠르게 실행할 필요는 있지만, codexmux server를 일반 원격 shell로 만들면 auth, audit, prompt/cwd/token 유출 위험이 커진다. Named action allowlist와 confirmation을 분리하면 좁은 운영 편의만 제공하면서 command injection과 accidental restart를 줄일 수 있다.
 - Consequences: 실행 기록은 `~/.codexmux/lifecycle-actions.jsonl` append-only event로 남긴다. 저장 필드는 action id, status, timestamps, duration, exit code, sanitized failure label뿐이며 stdout/stderr, env, cwd, token, session name, JSONL path, prompt body, terminal output은 저장하지 않는다. 한 서버 process에서는 lifecycle action 하나만 실행된다. Rollback flag mutation, systemd drop-in 편집, arbitrary command execution은 별도 spec 없이는 UI action으로 추가하지 않는다.
+
+## ADR-020: Windows-only 제품 타깃
+
+- Status: Accepted
+- Decision: codexmux의 다음 제품 전환 타깃은 Windows-only service/product다. 현재 tmux 중심 macOS/Linux server, Linux `systemd` operation, macOS Electron packaging, Android Capacitor shell은 전환 대상 current-state surface로 본다. 이 결정은 ADR-014에서 제거한 Windows companion sync, remote terminal sidecar, remote source model을 되살리지 않는다.
+- Rationale: 사용자 목표는 기존 codexmux 기반을 Windows 전용 제품으로 전환해 구축하고 제공하는 것이다. 이를 기존 Windows companion integration의 복구로 해석하면 제거된 remote data/source/terminal model과 충돌하고, 실제 필요한 terminal runtime, process inspection, service host, installer, smoke gate 전환을 흐리게 만든다.
+- Consequences: Windows-only gap audit과 transition plan을 먼저 유지한다. Terminal runtime은 `tmux` 자체가 아니라 adapter boundary 뒤의 구현으로 다뤄야 하며, process/session detection도 Linux `/proc`, `pgrep`, `ps`, `lsof`에 직접 묶이지 않게 분리해야 한다. Public terminal/timeline protocol은 가능한 유지하되, Windows runtime parity test가 생기기 전에는 tmux path를 제거하지 않는다. README, `TMUX.md`, `SYSTEMD.md`, `ELECTRON.md`, `ANDROID.md`, smoke command, release checklist는 Windows runtime implementation slice가 승인된 뒤 staged cutover한다.
