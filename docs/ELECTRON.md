@@ -12,6 +12,7 @@ corepack pnpm smoke:electron:attach
 corepack pnpm smoke:electron:runtime-v2
 corepack pnpm smoke:windows:electron-env
 corepack pnpm smoke:windows:electron-packaging
+corepack pnpm smoke:windows:zip-artifact
 corepack pnpm smoke:windows:packaged-launch
 corepack pnpm smoke:windows:packaged-runtime-v2
 corepack pnpm smoke:windows:installer-install
@@ -30,11 +31,12 @@ corepack pnpm pack:electron:mac
 - `smoke:electron:runtime-v2`: temp HOME/DB runtime v2 서버와 Electron shell을 띄운 뒤 page context에서 existing session cookie로 `/api/v2/terminal` WebSocket attach, marker output, 기본 2회 page reload/reconnect를 확인합니다.
 - `smoke:windows:electron-env`: Windows Electron local server bootstrap이 POSIX PATH를 주입하지 않고 `NODE_PATH`를 Windows `;` 구분자로 만드는지 dry-run으로 확인합니다.
 - `smoke:windows:electron-packaging`: package script와 `electron-builder.yml`이 Windows NSIS/zip 패키징 계약을 만족하는지 dry-run으로 확인합니다.
+- `smoke:windows:zip-artifact`: `release/*-win.zip` archive 안에 exe, `app.asar`, runtime v2 workers, Windows native terminal/runtime modules가 있는지 확인합니다.
 - `smoke:windows:packaged-launch`: `release/win-unpacked/codexmux.exe`를 실제 실행해 packaged local server, preload bridge, `/api/health`, runtime startup diagnostics, blocking console 0건을 확인합니다.
 - `smoke:windows:packaged-runtime-v2`: packaged app을 runtime v2 `new-tabs` mode로 실행해 workspace/tab 생성, `/api/v2/terminal` WebSocket attach, Windows marker command output을 확인합니다.
 - `smoke:windows:installer-install`: `release/codexmux Setup <version>.exe`를 임시 경로에 silent install하고, 설치된 app을 `smoke:windows:packaged-launch`로 확인한 뒤 silent uninstall합니다.
 - `smoke:windows:installer-runtime-v2`: silent install한 앱에 `smoke:windows:packaged-runtime-v2`와 같은 runtime v2 terminal 검증을 적용한 뒤 silent uninstall합니다.
-- `smoke:windows:package-gate`: 이미 생성된 Windows `release/` 산출물에 대해 packaged launch, packaged runtime v2, installer runtime v2 smoke를 순차 실행합니다.
+- `smoke:windows:package-gate`: 이미 생성된 Windows `release/` 산출물에 대해 zip artifact, packaged launch, packaged runtime v2, installer runtime v2 smoke를 순차 실행합니다.
 - `pack:electron:dev`: 로컬 Windows unpacked package 검증용입니다. Installer를 만들지 않습니다.
 - `pack:electron`: Windows 릴리스 패키징입니다.
 - `pack:electron:mac:dev`, `pack:electron:mac`: 기존 macOS 패키징 검증용 명령입니다. Windows-only 전환 중 legacy/manual path로만 유지합니다.

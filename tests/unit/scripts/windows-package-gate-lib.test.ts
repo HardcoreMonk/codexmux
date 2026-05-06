@@ -11,6 +11,10 @@ describe('Windows package gate helpers', () => {
 
     expect(getWindowsPackageGateSteps()).toEqual([
       {
+        id: 'windows-zip-artifact',
+        script: 'smoke:windows:zip-artifact',
+      },
+      {
         id: 'windows-packaged-launch',
         script: 'smoke:windows:packaged-launch',
       },
@@ -37,6 +41,7 @@ describe('Windows package gate helpers', () => {
     expect(result).toEqual({
       ok: false,
       missingScriptIds: [
+        'smoke:windows:zip-artifact',
         'smoke:windows:packaged-runtime-v2',
         'smoke:windows:installer-runtime-v2',
       ],

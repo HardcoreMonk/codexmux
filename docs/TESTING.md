@@ -360,6 +360,7 @@ Windows packaging smoke:
 
 ```bash
 corepack pnpm pack:electron:dev
+corepack pnpm smoke:windows:zip-artifact
 corepack pnpm smoke:windows:packaged-launch
 corepack pnpm smoke:windows:packaged-runtime-v2
 corepack pnpm pack:electron
@@ -371,6 +372,9 @@ corepack pnpm smoke:windows:package-gate
 `pack:electron:dev` must create `release/win-unpacked/codexmux.exe`,
 `resources/app.asar`, and unpacked native runtime modules. `pack:electron` must
 also create the Windows NSIS installer and zip package under `release/`.
+`smoke:windows:zip-artifact` verifies that the generated Windows zip contains
+the app exe, `app.asar`, `app-update.yml`, runtime v2 workers, `node-pty`
+ConPTY files, and the Electron ABI `better-sqlite3` native binding.
 `smoke:windows:packaged-launch` starts the generated app with an isolated
 Windows user profile and verifies the packaged local server, Electron preload
 bridge, health endpoint, runtime diagnostics, and blocking console count.
@@ -382,9 +386,9 @@ temporarily: it silent-installs to a temp directory, launches the installed app
 through the packaged launch smoke, then runs the generated uninstaller.
 `smoke:windows:installer-runtime-v2` runs the same installed-app path with the
 packaged runtime v2 terminal check enabled.
-`smoke:windows:package-gate` does not build packages; it runs packaged launch,
-packaged runtime v2, and installer runtime v2 smoke against existing `release/`
-artifacts and stops at the first failure.
+`smoke:windows:package-gate` does not build packages; it runs zip artifact,
+packaged launch, packaged runtime v2, and installer runtime v2 smoke against
+existing `release/` artifacts and stops at the first failure.
 
 macOS packaging smoke:
 
@@ -465,6 +469,7 @@ CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:android:foregrou
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:android:runtime-v2
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:android:timeline-foreground
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:release-gate
+CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:zip-artifact
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:packaged-runtime-v2
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:installer-runtime-v2
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:package-gate

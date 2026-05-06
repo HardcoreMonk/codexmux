@@ -2,6 +2,10 @@ import { runPackageScriptStep } from './windows-release-gate-lib.mjs';
 
 export const getWindowsPackageGateSteps = () => [
   {
+    id: 'windows-zip-artifact',
+    script: 'smoke:windows:zip-artifact',
+  },
+  {
     id: 'windows-packaged-launch',
     script: 'smoke:windows:packaged-launch',
   },
