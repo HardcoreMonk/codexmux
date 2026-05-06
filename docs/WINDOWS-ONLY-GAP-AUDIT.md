@@ -203,3 +203,25 @@ Validation:
 - `corepack pnpm tsc --noEmit`: passed.
 - `corepack pnpm lint`: passed.
 - `git diff --check`: passed with CRLF working-copy warnings only.
+
+## Terminal Runtime Adapter Factory Follow-up
+
+The next transition slice moved the runtime v2 terminal worker entrypoint off a
+direct tmux runtime import and onto a terminal runtime adapter factory.
+
+Resolved items:
+
+- `src/workers/terminal-worker.ts` now asks the factory for the terminal runtime
+  adapter instead of importing the current tmux runtime directly.
+- `CODEXMUX_RUNTIME_TERMINAL_ADAPTER` is parsed in one place. The only supported
+  value is `tmux`; unset also resolves to `tmux` as the migration fallback.
+- Unimplemented values such as `windows` fail closed with
+  `runtime-v2-terminal-adapter-unsupported` instead of silently claiming Windows
+  runtime support.
+- The factory is injectable in unit tests, so a future Windows adapter can be
+  added behind the same `ITerminalRuntimeAdapter` contract without changing the
+  worker service command handling.
+
+Validation:
+
+- `corepack pnpm test tests/unit/lib/runtime/terminal-runtime-adapter-factory.test.ts tests/unit/lib/runtime/terminal-worker-service.test.ts tests/unit/lib/runtime/terminal-worker-runtime.test.ts`: passed.
