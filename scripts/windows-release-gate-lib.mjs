@@ -128,3 +128,29 @@ export const runWindowsReleaseGate = async ({
     results,
   };
 };
+
+const allowedResultKeys = new Set([
+  'id',
+  'script',
+  'ok',
+  'durationMs',
+  'exitCode',
+  'signal',
+  'error',
+]);
+
+const sanitizeReleaseGateResult = (result) =>
+  Object.fromEntries(
+    Object.entries(result).filter(([key]) => allowedResultKeys.has(key)),
+  );
+
+export const buildWindowsReleaseGateArtifactPayload = ({
+  result,
+  durationMs,
+}) => ({
+  ok: result.ok,
+  mutatesSystem: false,
+  durationMs,
+  failedStepId: result.failedStepId,
+  results: result.results.map(sanitizeReleaseGateResult),
+});

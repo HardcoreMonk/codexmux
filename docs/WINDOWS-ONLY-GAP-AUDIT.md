@@ -559,3 +559,27 @@ Validation:
 
 - `corepack pnpm test tests/unit/scripts/windows-release-gate-lib.test.ts`: passed.
 - `corepack pnpm smoke:windows:release-gate`: passed.
+
+## Windows Release Gate Artifact Follow-up
+
+The next transition slice added sanitized smoke artifact support for the Windows
+release gate.
+
+Resolved items:
+
+- `smoke:windows:release-gate` now writes a `windows-release-gate` smoke
+  artifact when `CODEXMUX_SMOKE_ARTIFACT_DIR` is set.
+- Added `buildWindowsReleaseGateArtifactPayload()` so release evidence contains
+  step summary fields only.
+- The release gate artifact stores step id, package script, pass/fail state,
+  duration, exit code, signal, and sanitized error labels.
+- The artifact does not store child smoke stdout/stderr, terminal output tails,
+  temp HOME paths, Codex session ids, JSONL paths, tokens, target URLs, or prompt
+  content.
+- `smoke-artifact-lib` now drops `outputTail` fields and sanitizes Windows temp
+  smoke paths such as `%LOCALAPPDATA%\Temp\codexmux-*`.
+
+Validation:
+
+- `corepack pnpm test tests/unit/scripts/smoke-artifact-lib.test.ts tests/unit/scripts/windows-release-gate-lib.test.ts`: passed.
+- `CODEXMUX_SMOKE_ARTIFACT_DIR=<temp> corepack pnpm smoke:windows:release-gate`: passed and wrote a sanitized summary artifact.

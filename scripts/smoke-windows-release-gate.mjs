@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import fs from 'fs';
 import path from 'path';
+import { writeSmokeArtifact } from './smoke-artifact-lib.mjs';
 import {
+  buildWindowsReleaseGateArtifactPayload,
   getWindowsReleaseGateSteps,
   runWindowsReleaseGate,
   validateWindowsReleaseGatePackageScripts,
@@ -35,16 +37,27 @@ if (process.platform !== 'win32') {
   process.exit(0);
 }
 
-const startedAt = Date.now();
+const startedAt = new Date().toISOString();
+const startedMs = Date.now();
 const result = await runWindowsReleaseGate();
-const output = {
-  ok: result.ok,
-  mutatesSystem: false,
-  durationMs: Date.now() - startedAt,
-  failedStepId: result.failedStepId,
-  results: result.results,
-};
+const endedAt = new Date().toISOString();
+const output = buildWindowsReleaseGateArtifactPayload({
+  result,
+  durationMs: Date.now() - startedMs,
+});
+const artifact = await writeSmokeArtifact({
+  smokeName: 'windows-release-gate',
+  status: result.ok ? 'passed' : 'failed',
+  payload: output,
+  startedAt,
+  endedAt,
+});
 
-console.log(JSON.stringify(output, null, 2));
+console.log(JSON.stringify({
+  ...output,
+  artifact: {
+    written: !artifact.skipped,
+  },
+}, null, 2));
 
 if (!result.ok) process.exit(1);

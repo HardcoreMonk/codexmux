@@ -86,4 +86,27 @@ describe('smoke artifact helpers', () => {
       endedAt: '2026-05-05T01:02:03.456Z',
     })).toBe('browser-reconnect-20260505T010203456Z-passed.json');
   });
+
+  it('drops terminal output tails and sanitizes Windows temp smoke paths', async () => {
+    const { sanitizeSmokeArtifactPayload } = await loadLib();
+    const payload = sanitizeSmokeArtifactPayload({
+      ok: true,
+      outputTail: 'cmux marker and terminal escape output should not survive',
+      note: 'C:\\Users\\yohan\\AppData\\Local\\Temp\\codexmux-windows-terminal-smoke-abcd\\runtime-v2\\state.db',
+      nested: {
+        message: 'C:\\Users\\yohan\\AppData\\Local\\Temp\\codexmux-windows-codex-session-efgh\\.codex\\sessions\\2026\\05\\06\\secret.jsonl',
+      },
+    });
+
+    expect(payload).toEqual({
+      ok: true,
+      note: '[tmp]',
+      nested: {
+        message: '[tmp]',
+      },
+    });
+    expect(JSON.stringify(payload)).not.toContain('terminal escape output');
+    expect(JSON.stringify(payload)).not.toContain('codexmux-windows-terminal-smoke');
+    expect(JSON.stringify(payload)).not.toContain('secret.jsonl');
+  });
 });

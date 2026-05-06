@@ -61,4 +61,46 @@ describe('Windows release gate helpers', () => {
     });
     expect(result.results).toHaveLength(2);
   });
+
+  it('builds release gate artifact payload without child raw output fields', async () => {
+    const { buildWindowsReleaseGateArtifactPayload } = await loadLib();
+    const payload = buildWindowsReleaseGateArtifactPayload({
+      result: {
+        ok: false,
+        failedStepId: 'windows-runtime-v2-terminal',
+        results: [
+          {
+            id: 'windows-runtime-v2-terminal',
+            script: 'smoke:runtime-v2:terminal-windows',
+            ok: false,
+            durationMs: 42,
+            exitCode: 1,
+            signal: null,
+            outputTail: 'terminal output should not survive',
+            stdout: 'raw stdout should not survive',
+            error: 'failed without token details',
+          },
+        ],
+      },
+      durationMs: 99,
+    });
+
+    expect(payload).toEqual({
+      ok: false,
+      mutatesSystem: false,
+      durationMs: 99,
+      failedStepId: 'windows-runtime-v2-terminal',
+      results: [
+        {
+          id: 'windows-runtime-v2-terminal',
+          script: 'smoke:runtime-v2:terminal-windows',
+          ok: false,
+          durationMs: 42,
+          exitCode: 1,
+          signal: null,
+          error: 'failed without token details',
+        },
+      ],
+    });
+  });
 });
