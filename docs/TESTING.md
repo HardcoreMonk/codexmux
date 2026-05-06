@@ -361,11 +361,11 @@ Windows packaging smoke:
 
 ```bash
 corepack pnpm pack:electron:dev
-corepack pnpm smoke:windows:zip-artifact
-corepack pnpm smoke:windows:update-metadata
 corepack pnpm smoke:windows:packaged-launch
 corepack pnpm smoke:windows:packaged-runtime-v2
 corepack pnpm pack:electron
+corepack pnpm smoke:windows:zip-artifact
+corepack pnpm smoke:windows:update-metadata
 corepack pnpm smoke:windows:installer-install
 corepack pnpm smoke:windows:installer-runtime-v2
 corepack pnpm smoke:windows:package-gate
@@ -379,7 +379,8 @@ the app exe, `app.asar`, `app-update.yml`, runtime v2 workers, `node-pty`
 ConPTY files, and the Electron ABI `better-sqlite3` native binding.
 `smoke:windows:update-metadata` verifies that `latest.yml` references an
 installer artifact that exists in `release/`, has matching size and sha512
-metadata, and has a matching `.blockmap`.
+metadata, has a matching `.blockmap`, and that packaged `app-update.yml` points
+to the same GitHub publish owner/repo as `electron-builder.yml`.
 `smoke:windows:packaged-launch` starts the generated app with an isolated
 Windows user profile and verifies the packaged local server, Electron preload
 bridge, health endpoint, runtime diagnostics, and blocking console count.

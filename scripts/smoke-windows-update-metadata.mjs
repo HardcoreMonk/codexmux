@@ -12,6 +12,8 @@ import {
 const rootDir = process.cwd();
 const releaseDir = path.resolve(process.env.CODEXMUX_WINDOWS_RELEASE_DIR || path.join(rootDir, 'release'));
 const latestPath = path.join(releaseDir, 'latest.yml');
+const appUpdatePath = path.join(releaseDir, 'win-unpacked', 'resources', 'app-update.yml');
+const builderConfigPath = path.join(rootDir, 'electron-builder.yml');
 const SMOKE_NAME = 'windows-update-metadata';
 const startedAt = new Date().toISOString();
 
@@ -45,8 +47,16 @@ const main = async () => {
     }
 
     const latestMetadata = yaml.load(fs.readFileSync(latestPath, 'utf8'));
+    const appUpdateMetadata = fs.existsSync(appUpdatePath)
+      ? yaml.load(fs.readFileSync(appUpdatePath, 'utf8'))
+      : null;
+    const builderConfig = fs.existsSync(builderConfigPath)
+      ? yaml.load(fs.readFileSync(builderConfigPath, 'utf8'))
+      : null;
     const result = evaluateWindowsUpdateMetadata({
       latestMetadata,
+      appUpdateMetadata,
+      publishConfig: builderConfig?.publish,
       releaseFiles: collectWindowsReleaseFiles(releaseDir),
     });
     const payload = buildWindowsUpdateMetadataArtifactPayload(result);

@@ -39,6 +39,21 @@ const buildFileIndex = (releaseFiles) => {
 const getMetadataFileEntries = (latestMetadata) =>
   Array.isArray(latestMetadata?.files) ? latestMetadata.files : [];
 
+const normalizePublishConfig = (publishConfig) => {
+  if (Array.isArray(publishConfig)) return publishConfig[0] ?? null;
+  return publishConfig && typeof publishConfig === 'object' ? publishConfig : null;
+};
+
+const summarizeAppUpdate = (appUpdateMetadata) => {
+  if (!appUpdateMetadata || typeof appUpdateMetadata !== 'object') return null;
+  return {
+    provider: appUpdateMetadata.provider ?? null,
+    owner: appUpdateMetadata.owner ?? null,
+    repo: appUpdateMetadata.repo ?? null,
+    updaterCacheDirName: appUpdateMetadata.updaterCacheDirName ?? null,
+  };
+};
+
 const findInstallerMetadataEntry = ({ latestMetadata, pathName }) => {
   const entries = getMetadataFileEntries(latestMetadata);
   if (entries.length === 0) return null;
@@ -63,10 +78,14 @@ export const collectWindowsReleaseFiles = (releaseDir) => {
 
 export const evaluateWindowsUpdateMetadata = ({
   latestMetadata,
+  appUpdateMetadata,
+  publishConfig,
   releaseFiles,
 }) => {
   const blockers = [];
   const checks = [];
+  const expectedPublish = normalizePublishConfig(publishConfig);
+  const appUpdate = summarizeAppUpdate(appUpdateMetadata);
   const releaseFileIndex = buildFileIndex(releaseFiles);
   const pathName = normalizeArtifactName(latestMetadata?.path);
   const metadataEntry = findInstallerMetadataEntry({ latestMetadata, pathName });
@@ -152,19 +171,11 @@ export const evaluateWindowsUpdateMetadata = ({
         { fileName: referencedInstallerName },
       );
     }
-    return {
-      ok: false,
-      checks,
-      blockers,
-      latestVersion: isNonEmptyString(latestMetadata?.version) ? latestMetadata.version : null,
-      referencedInstallerName: referencedInstallerName ?? null,
-      releaseFileCount: releaseFileIndex.size,
-    };
+  } else {
+    checks.push('windows-update-installer-file-present');
   }
 
-  checks.push('windows-update-installer-file-present');
-
-  if (Number.isFinite(metadataEntry?.size)) {
+  if (installerFile && Number.isFinite(metadataEntry?.size)) {
     if (metadataEntry.size === installerFile.size) {
       checks.push('windows-update-installer-size-matches');
     } else {
@@ -178,7 +189,7 @@ export const evaluateWindowsUpdateMetadata = ({
         },
       );
     }
-  } else {
+  } else if (installerFile) {
     addBlocker(
       blockers,
       'windows-update-installer-size-missing',
@@ -186,16 +197,96 @@ export const evaluateWindowsUpdateMetadata = ({
     );
   }
 
-  const blockmapName = `${installerFile.name}${expectedBlockmapSuffix}`;
-  if (releaseFileIndex.has(blockmapName.toLowerCase())) {
-    checks.push('windows-update-blockmap-present');
+  if (installerFile) {
+    const blockmapName = `${installerFile.name}${expectedBlockmapSuffix}`;
+    if (releaseFileIndex.has(blockmapName.toLowerCase())) {
+      checks.push('windows-update-blockmap-present');
+    } else {
+      addBlocker(
+        blockers,
+        'windows-update-blockmap-missing',
+        'release/ must include the NSIS blockmap that matches the installer artifact name.',
+        { fileName: blockmapName },
+      );
+    }
+  }
+
+  if (!appUpdate) {
+    addBlocker(
+      blockers,
+      'windows-app-update-yml-missing',
+      'packaged resources must include app-update.yml for electron-updater.',
+    );
+  } else if (appUpdate.provider === 'github') {
+    checks.push('windows-app-update-provider-github');
   } else {
     addBlocker(
       blockers,
-      'windows-update-blockmap-missing',
-      'release/ must include the NSIS blockmap that matches the installer artifact name.',
-      { fileName: blockmapName },
+      'windows-app-update-provider-mismatch',
+      'packaged app-update.yml must use the GitHub updater provider.',
+      { provider: appUpdate.provider },
     );
+  }
+
+  if (appUpdate && !expectedPublish) {
+    addBlocker(
+      blockers,
+      'windows-app-update-publish-config-missing',
+      'electron-builder publish config is required to validate packaged app-update.yml.',
+    );
+  }
+
+  if (appUpdate && expectedPublish) {
+    if (expectedPublish.provider === 'github') {
+      checks.push('windows-app-update-publish-provider-github');
+    } else {
+      addBlocker(
+        blockers,
+        'windows-app-update-publish-provider-mismatch',
+        'electron-builder publish.provider must stay github for Windows updater metadata.',
+        { provider: expectedPublish.provider },
+      );
+    }
+
+    if (appUpdate.owner === expectedPublish.owner) {
+      checks.push('windows-app-update-owner-matches-publish');
+    } else {
+      addBlocker(
+        blockers,
+        'windows-app-update-owner-mismatch',
+        'packaged app-update.yml owner must match electron-builder publish.owner.',
+        {
+          owner: appUpdate.owner,
+          expectedOwner: expectedPublish.owner,
+        },
+      );
+    }
+
+    if (appUpdate.repo === expectedPublish.repo) {
+      checks.push('windows-app-update-repo-matches-publish');
+    } else {
+      addBlocker(
+        blockers,
+        'windows-app-update-repo-mismatch',
+        'packaged app-update.yml repo must match electron-builder publish.repo.',
+        {
+          repo: appUpdate.repo,
+          expectedRepo: expectedPublish.repo,
+        },
+      );
+    }
+  }
+
+  if (appUpdate) {
+    if (isNonEmptyString(appUpdate.updaterCacheDirName)) {
+      checks.push('windows-app-update-cache-dir-present');
+    } else {
+      addBlocker(
+        blockers,
+        'windows-app-update-cache-dir-missing',
+        'packaged app-update.yml must include updaterCacheDirName.',
+      );
+    }
   }
 
   return {
@@ -205,6 +296,7 @@ export const evaluateWindowsUpdateMetadata = ({
     latestVersion: isNonEmptyString(latestMetadata?.version) ? latestMetadata.version : null,
     referencedInstallerName: referencedInstallerName ?? null,
     releaseFileCount: releaseFileIndex.size,
+    appUpdate,
   };
 };
 
@@ -214,6 +306,7 @@ export const buildWindowsUpdateMetadataArtifactPayload = (result) => ({
   latestVersion: result.latestVersion,
   referencedInstallerName: result.referencedInstallerName,
   releaseFileCount: result.releaseFileCount,
+  appUpdate: result.appUpdate,
   checks: result.checks,
   blockers: result.blockers,
 });
