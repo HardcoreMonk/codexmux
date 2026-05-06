@@ -19,6 +19,23 @@ terminal, status, timeline, sync, runtime v2, platform shell을 건드린 변경
 smoke 중 관련 항목을 추가한다. 문서만 바꾼 경우에도 링크와 명령이 맞는지 확인하기 위해
 `corepack pnpm lint` 또는 `corepack pnpm build:landing`을 선택적으로 실행한다.
 
+Windows-only transition gate:
+
+```bash
+corepack pnpm smoke:windows:release-gate
+```
+
+이 gate는 Windows release 판단 전에 다음 smoke를 순차 실행하고 첫 실패에서 중단한다.
+
+- `audit:windows-platform`
+- `smoke:runtime-v2:terminal-windows`
+- `smoke:windows:preflight`
+- `smoke:windows:service-host`
+- `smoke:windows:host-diagnostics`
+- `smoke:windows:electron-env`
+- `smoke:windows:electron-packaging`
+- `smoke:windows:codex-session`
+
 status update를 codex-ai-bridge external trace로 전달하는 경로를 바꾸면 다음 focused test를
 기본 검증에 추가한다.
 

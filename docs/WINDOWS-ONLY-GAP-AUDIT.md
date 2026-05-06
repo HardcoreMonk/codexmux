@@ -531,3 +531,31 @@ Validation:
 
 - `corepack pnpm test tests/unit/scripts/windows-electron-packaging-smoke-lib.test.ts`: passed.
 - `corepack pnpm smoke:windows:electron-packaging`: passed.
+
+## Windows Release Gate Follow-up
+
+The next transition slice grouped the accepted Windows smoke commands into a
+single release gate for local Windows evidence collection.
+
+Resolved items:
+
+- Added `scripts/windows-release-gate-lib.mjs`.
+- Added package script `smoke:windows:release-gate`.
+- The release gate runs the accepted Windows transition checks in a fixed order:
+  - `audit:windows-platform`
+  - `smoke:runtime-v2:terminal-windows`
+  - `smoke:windows:preflight`
+  - `smoke:windows:service-host`
+  - `smoke:windows:host-diagnostics`
+  - `smoke:windows:electron-env`
+  - `smoke:windows:electron-packaging`
+  - `smoke:windows:codex-session`
+- The gate validates that each required package script exists before execution.
+- The gate stops on the first failed step and reports `failedStepId`.
+- On non-Windows hosts the gate reports a skipped result instead of claiming
+  Windows evidence.
+
+Validation:
+
+- `corepack pnpm test tests/unit/scripts/windows-release-gate-lib.test.ts`: passed.
+- `corepack pnpm smoke:windows:release-gate`: passed.
