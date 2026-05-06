@@ -280,12 +280,34 @@ Resolved items:
 - Added `audit:windows-platform` as a manual package script.
 - The command exits `0` when no blockers are found and exits `1` with the script
   names and rule ids when blockers are present.
-- Current expected blockers:
-  - `prepublishOnly`: `posix-rm-rf`
-  - `postinstall`: `posix-chmod`
+- Initial blockers removed:
+  - `prepublishOnly`: replaced `rm -rf` with `node scripts/clean-build-artifacts.mjs`.
+  - `postinstall`: replaced shell `chmod` with `node scripts/postinstall-node-pty.mjs`,
+    which skips chmod work on Windows.
+- Current package script blocker count: 0.
 
 Validation:
 
 - `corepack pnpm test tests/unit/scripts/windows-platform-blockers-cli.test.ts tests/unit/scripts/windows-platform-blockers-lib.test.ts`: passed.
-- `corepack pnpm audit:windows-platform`: failed as expected with the two
-  blockers above.
+- `corepack pnpm audit:windows-platform`: passed after the script replacements.
+
+## Windows Package Script Blocker Removal Follow-up
+
+The next transition slice removed the two package-script blockers reported by
+the Windows platform audit.
+
+Resolved items:
+
+- Added `scripts/clean-build-artifacts.mjs` and
+  `scripts/clean-build-artifacts-lib.mjs` as a cross-platform replacement for
+  `rm -rf .next dist dist-electron`.
+- Added `scripts/postinstall-node-pty.mjs` and
+  `scripts/postinstall-node-pty-lib.mjs` as a cross-platform replacement for the
+  shell `chmod` postinstall command. On Windows the chmod step is skipped.
+- Updated `prepublishOnly` and `postinstall` in `package.json`.
+- `audit:windows-platform` now reports no package-script blockers.
+
+Validation:
+
+- `corepack pnpm test tests/unit/scripts/clean-build-artifacts-lib.test.ts tests/unit/scripts/postinstall-node-pty-lib.test.ts tests/unit/scripts/windows-platform-blockers-cli.test.ts tests/unit/scripts/windows-platform-blockers-lib.test.ts`: passed.
+- `corepack pnpm audit:windows-platform`: passed.

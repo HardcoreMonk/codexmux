@@ -101,8 +101,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "rm -rf .next dist dist-electron && next build && node scripts/post-build.js && tsup && node scripts/write-build-info.mjs",
-    "postinstall": "chmod +x node_modules/.pnpm/node-pty@*/node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null; exit 0"
+    "prepublishOnly": "node scripts/clean-build-artifacts.mjs && next build && node scripts/post-build.js && tsup && node scripts/write-build-info.mjs",
+    "postinstall": "node scripts/postinstall-node-pty.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
