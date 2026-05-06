@@ -5,9 +5,9 @@ import { defaultProcessInspector } from '@/lib/process-inspector';
 const children: ChildProcess[] = [];
 
 const waitFor = async (predicate: () => Promise<boolean>): Promise<void> => {
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 60; i++) {
     if (await predicate()) return;
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
   throw new Error('condition was not met before timeout');
 };
@@ -29,10 +29,6 @@ afterEach(() => {
 
 describe('defaultProcessInspector', () => {
   it('reads process primitives without Codex-specific policy', async () => {
-    if (process.platform === 'win32') {
-      return;
-    }
-
     const child = spawnIdleNode();
     if (!child.pid) throw new Error('spawned child process has no pid');
 
@@ -45,5 +41,5 @@ describe('defaultProcessInspector', () => {
     expect(await defaultProcessInspector.getDescendants(process.pid)).toContain(child.pid);
     const command = await defaultProcessInspector.getCommand(child.pid);
     expect(command?.raw).toContain(process.execPath);
-  });
+  }, 20_000);
 });

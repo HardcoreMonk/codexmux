@@ -17,10 +17,17 @@ const createFakeInspector = (): IProcessInspector => ({
 });
 
 describe('process inspector adapter factory', () => {
-  it('keeps the current POSIX inspector as the default migration fallback', () => {
+  it('selects the Windows process inspector by default on win32', () => {
     expect(resolveProcessInspectorAdapterKind({
       env: {},
       platform: 'win32',
+    })).toBe('windows');
+  });
+
+  it('keeps the POSIX inspector as the non-Windows default', () => {
+    expect(resolveProcessInspectorAdapterKind({
+      env: {},
+      platform: 'linux',
     })).toBe('posix');
   });
 
@@ -50,15 +57,20 @@ describe('process inspector adapter factory', () => {
     await expect(inspector.isRunning(process.pid)).resolves.toBe(true);
   });
 
-  it('creates a Windows inspector skeleton that fails explicitly', async () => {
+  it('creates the selected Windows process inspector through the factory', async () => {
     const inspector = createProcessInspectorAdapter({
       env: { CODEXMUX_PROCESS_INSPECTOR_ADAPTER: 'windows' },
       platform: 'win32',
     });
 
-    await expect(inspector.isRunning(process.pid)).rejects.toMatchObject({
-      code: 'runtime-v2-windows-process-inspector-unimplemented',
-      retryable: false,
-    });
+    if (process.platform !== 'win32') {
+      await expect(inspector.isRunning(process.pid)).rejects.toMatchObject({
+        code: 'runtime-v2-windows-process-inspector-platform-mismatch',
+        retryable: false,
+      });
+      return;
+    }
+
+    await expect(inspector.isRunning(process.pid)).resolves.toBe(true);
   });
 });

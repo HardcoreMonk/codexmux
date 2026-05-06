@@ -251,9 +251,11 @@ const createUnsupportedProcessInspectorAdapterError = (value: string): Error & {
 
 export const resolveProcessInspectorAdapterKind = ({
   env = process.env,
+  platform = process.platform,
 }: IResolveProcessInspectorAdapterKindOptions = {}): TProcessInspectorAdapterKind => {
   const value = env.CODEXMUX_PROCESS_INSPECTOR_ADAPTER?.trim().toLowerCase();
-  if (!value || value === 'posix') return 'posix';
+  if (!value) return platform === 'win32' ? 'windows' : 'posix';
+  if (value === 'posix') return 'posix';
   if (value === 'windows') return 'windows';
   throw createUnsupportedProcessInspectorAdapterError(value);
 };

@@ -343,3 +343,29 @@ Validation:
 
 - `corepack pnpm test tests/unit/scripts/windows-runtime-v2-terminal-smoke-lib.test.ts`: passed.
 - `corepack pnpm smoke:runtime-v2:terminal-windows`: passed.
+
+## Windows Process Inspector Implementation Follow-up
+
+The next transition slice replaced the fail-closed Windows process inspector
+skeleton with a real Windows adapter and made it the default on `win32`.
+
+Resolved items:
+
+- `src/lib/windows-process-inspector.ts` now uses Windows PowerShell/CIM
+  `Win32_Process` queries to read process existence, child PIDs, descendants,
+  command line, executable path, and process creation time.
+- `defaultProcessInspector` now selects the Windows adapter automatically on
+  `win32`; non-Windows platforms still default to the POSIX/Linux inspector.
+- `CODEXMUX_PROCESS_INSPECTOR_ADAPTER=posix|windows` remains an explicit
+  override, and unknown values still fail closed.
+- `session-detection` compatibility helpers now run on Windows through the
+  default process inspector instead of skipping the live process primitive
+  contract.
+- Windows `getCwd(pid)` is currently precise for the current Node process and
+  returns `null` for other processes because standard CIM process metadata does
+  not expose arbitrary process working directories. Terminal runtime metadata
+  remains the preferred source for session cwd when available.
+
+Validation:
+
+- `corepack pnpm test tests/unit/lib/process-inspector.test.ts tests/unit/lib/process-inspector-adapter-factory.test.ts tests/unit/lib/windows-process-inspector.test.ts tests/unit/lib/session-detection.test.ts`: passed.
