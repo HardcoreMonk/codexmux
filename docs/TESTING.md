@@ -453,6 +453,20 @@ deferral docs. It uses the local `~/.codexmux/cli-token` or `CODEXMUX_TOKEN` for
 perf/stats calls and writes an `ops-automation-batch` artifact. Hardware-only iPad and packaged
 Mac checks remain `manual-required` through the nested `smoke:ops:batch` row.
 
+Full backlog batch plan:
+
+```bash
+CODEXMUX_SMOKE_ARTIFACT_DIR=/tmp/codexmux-backlog-batch-plan corepack pnpm ops:backlog:batch-plan
+```
+
+This read-only planner turns the remaining backlog into eight stable batch lanes:
+release operations, platform/external devices, runtime/lifecycle, approval workflow,
+performance, Codex provider lifecycle, app-server adapter, and architecture/docs. Each row is
+classified as `automated`, `conditional`, `manual-required`, or `spec-required`, with explicit
+`corepack pnpm ...` commands where a local command exists. The planner writes an
+`ops-backlog-batch-plan` artifact and does not run release mutations, service restarts, hardware
+smokes, or undefined Post-MVP implementation work.
+
 ## Permission, Stats, Timeline
 
 ```bash
