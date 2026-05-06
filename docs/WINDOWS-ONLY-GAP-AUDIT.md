@@ -267,3 +267,25 @@ Resolved items:
 Validation:
 
 - `corepack pnpm test tests/unit/lib/process-inspector-adapter-factory.test.ts tests/unit/lib/process-inspector.test.ts tests/unit/lib/session-detection.test.ts`: passed.
+
+## Windows Platform Blocker CLI Follow-up
+
+The next transition slice promoted the static blocker scanner into a repeatable
+package-script audit command.
+
+Resolved items:
+
+- Added `scripts/windows-platform-blockers.mjs` to scan `package.json` scripts
+  through `windows-platform-blockers-lib.mjs`.
+- Added `audit:windows-platform` as a manual package script.
+- The command exits `0` when no blockers are found and exits `1` with the script
+  names and rule ids when blockers are present.
+- Current expected blockers:
+  - `prepublishOnly`: `posix-rm-rf`
+  - `postinstall`: `posix-chmod`
+
+Validation:
+
+- `corepack pnpm test tests/unit/scripts/windows-platform-blockers-cli.test.ts tests/unit/scripts/windows-platform-blockers-lib.test.ts`: passed.
+- `corepack pnpm audit:windows-platform`: failed as expected with the two
+  blockers above.

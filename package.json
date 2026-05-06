@@ -42,6 +42,7 @@
     "dev:landing": "eleventy --serve",
     "build:server": "tsup",
     "verify:runtime-native": "node scripts/verify-runtime-native-bindings.mjs",
+    "audit:windows-platform": "node scripts/windows-platform-blockers.mjs",
     "build:electron:main": "tsup --config electron/tsup.config.ts",
     "build:electron": "next build && node scripts/post-build.js --electron && tsup && tsup --config electron/tsup.config.ts && node scripts/write-build-info.mjs",
     "dev:electron": "node scripts/dev-electron.mjs",
