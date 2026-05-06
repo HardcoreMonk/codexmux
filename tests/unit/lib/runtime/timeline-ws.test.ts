@@ -155,6 +155,32 @@ describe('runtime timeline websocket bridge', () => {
     });
   });
 
+  it('ignores redundant session changed events for the current jsonl path', async () => {
+    const fake = createSupervisor();
+    const ws = new FakeSocket();
+
+    await handleRuntimeTimelineConnection(ws as never, createConnectionInput({
+      supervisor: fake.supervisor,
+    }));
+
+    const initialSentCount = ws.sent.length;
+    fake.emitChanged({
+      subscriberId: 'sub-watch',
+      sessionName: 'pt-ws-a-pane-b-tab-c',
+      info: {
+        status: 'running',
+        sessionId: 'session-a',
+        jsonlPath: sessionJsonlPath,
+        pid: 456,
+        startedAt: 1,
+        cwd: process.env.HOME ?? '',
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(ws.sent).toHaveLength(initialSentCount);
+  });
+
   it('unsubscribes live and session watcher subscriptions once on close', async () => {
     const fake = createSupervisor();
     const ws = new FakeSocket();

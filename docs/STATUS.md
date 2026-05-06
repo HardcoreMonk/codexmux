@@ -137,6 +137,10 @@ Timeline attach는 예외적으로 active process가 없거나 active JSONL이 i
 process로 직접 잡히지 않는 세션을 CODEX 패널에 동기화하기 위한 보정이며, 전환 시
 `agentSessionId`와 `agentJsonlPath`를 layout에 다시 저장하고 client는 timeline WebSocket을
 새로 연다.
+Runtime v2 timeline WebSocket은 이미 구독 중인 JSONL path에 대해 session watcher가 같은
+session/path를 다시 보고해도 `new-session-started`를 중복 송신하지 않는다. 중복 이벤트가
+`timeline:init` 뒤에 도착하면 client가 entries를 비우고 다음 init을 기다리는 skeleton 상태에
+머무를 수 있기 때문이다.
 
 ## work state
 
