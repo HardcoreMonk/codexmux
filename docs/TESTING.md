@@ -481,6 +481,21 @@ command unless `CODEXMUX_BACKLOG_BATCH_CONTINUE_ON_FAILURE=1` is set. Use
 `CODEXMUX_BACKLOG_BATCH_INCLUDE_CONDITIONAL=1` only in an explicit release/device window; that mode
 can include release mutation or Android-device commands and is not the default.
 
+Full backlog completion gate:
+
+```bash
+CODEXMUX_SMOKE_ARTIFACT_DIR=/tmp/codexmux-backlog-batch-run \
+CODEXMUX_BACKLOG_COMPLETION_MANIFEST=docs/operations/backlog-completion-manifest.json \
+corepack pnpm ops:backlog:completion-gate
+```
+
+The completion gate is read-only. It scans `ops-backlog-batch-run` artifacts in
+`CODEXMUX_SMOKE_ARTIFACT_DIR`, reads the optional manifest, writes an
+`ops-backlog-completion-gate` artifact, and exits non-zero until every backlog row has one terminal
+state: `passed`, `evidence-attached`, `spec-linked`, or `approved-deferred`. Rows skipped by the
+automated runner are incomplete unless the manifest supplies sanitized evidence, a project-local
+spec/plan/handoff link, or an auditable defer entry with owner, reason, and revisit trigger.
+
 ## Permission, Stats, Timeline
 
 ```bash
