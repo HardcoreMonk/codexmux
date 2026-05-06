@@ -360,7 +360,12 @@ Windows packaging smoke:
 
 ```bash
 corepack pnpm pack:electron:dev
+corepack pnpm pack:electron
 ```
+
+`pack:electron:dev` must create `release/win-unpacked/codexmux.exe`,
+`resources/app.asar`, and unpacked native runtime modules. `pack:electron` must
+also create the Windows NSIS installer and zip package under `release/`.
 
 macOS packaging smoke:
 

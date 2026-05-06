@@ -16,6 +16,16 @@ const hasElectronBuilderWin = (command) =>
 const hasElectronBuilderWinDir = (command) =>
   hasElectronBuilderWin(command) && /(?:^|\s)--dir(?:\s|$)/.test(command);
 
+const hasWindowsPackager = (command) =>
+  hasElectronBuilderWin(command)
+  || (typeof command === 'string' && /\bnode\s+scripts[\\/]pack-electron-windows\.mjs\b/.test(command));
+
+const hasWindowsPackagerDir = (command) =>
+  hasElectronBuilderWinDir(command)
+  || (typeof command === 'string'
+    && /\bnode\s+scripts[\\/]pack-electron-windows\.mjs\b/.test(command)
+    && /(?:^|\s)--dir(?:\s|$)/.test(command));
+
 const normalizePath = (value) => value.replace(/\\/g, '/');
 
 const addBlocker = (blockers, ruleId, message) => {
@@ -31,7 +41,7 @@ export const validateWindowsElectronPackaging = ({
   const checks = [];
   const scripts = packageJson?.scripts ?? {};
 
-  if (hasElectronBuilderWin(scripts['pack:electron'])) {
+  if (hasWindowsPackager(scripts['pack:electron'])) {
     checks.push('pack-electron-default-windows');
   } else {
     addBlocker(
@@ -41,7 +51,7 @@ export const validateWindowsElectronPackaging = ({
     );
   }
 
-  if (hasElectronBuilderWinDir(scripts['pack:electron:dev'])) {
+  if (hasWindowsPackagerDir(scripts['pack:electron:dev'])) {
     checks.push('pack-electron-dev-windows-dir');
   } else {
     addBlocker(
