@@ -467,6 +467,20 @@ classified as `automated`, `conditional`, `manual-required`, or `spec-required`,
 `ops-backlog-batch-plan` artifact and does not run release mutations, service restarts, hardware
 smokes, or undefined Post-MVP implementation work.
 
+Full backlog automated batch runner:
+
+```bash
+CODEXMUX_SMOKE_ARTIFACT_DIR=/tmp/codexmux-backlog-batch-run corepack pnpm ops:backlog:batch-run
+```
+
+The runner consumes the backlog plan, runs only `automated` rows by default, deduplicates repeated
+`corepack pnpm ...` commands, writes an `ops-backlog-batch-run` artifact, and records
+`conditional`, `manual-required`, and `spec-required` rows as skipped. It stops on the first failed
+command unless `CODEXMUX_BACKLOG_BATCH_CONTINUE_ON_FAILURE=1` is set. Use
+`CODEXMUX_BACKLOG_BATCH_DRY_RUN=1` to print and artifact the plan without running commands. Use
+`CODEXMUX_BACKLOG_BATCH_INCLUDE_CONDITIONAL=1` only in an explicit release/device window; that mode
+can include release mutation or Android-device commands and is not the default.
+
 ## Permission, Stats, Timeline
 
 ```bash
