@@ -112,6 +112,10 @@ terminal/diff tab을 CODEX panel로 전환할 때 기존 client-local `sessionVi
 loading spinner에 머무를 수 있다. `use-tab-store.setPanelType()`은 agent panel 전환 시
 active session이나 `check` flow가 없는 tab을 `session-list`로 정규화해 기존 세션 목록이나
 새 세션 시작 UI를 노출한다.
+panel 전환은 시각적 surface 선택이므로 `agentSessionId`/`agentJsonlPath`를 지우지 않는다.
+같은 클라이언트에서 TERMINAL로 갔다가 CODEX로 돌아오는 경우, layout에 저장된
+`agentSessionId`가 있으면 `use-layout.updateTabPanelType()`이 client-local `sessionView`를
+`timeline`으로 복원한다.
 이미 `timeline` view에 있는 Codex tab은 모바일에서도 `agentProcess=null`만으로 상위
 spinner에 막지 않는다. `TimelineView`가 skeleton, reconnect/error, permission prompt
 surface를 소유하므로 live approval smoke처럼 `needs-input` status가 먼저 도착하고 timeline

@@ -30,13 +30,13 @@ const renderWithSessionMessages = (
     messages: {
       session: locale === 'en' ? enSession : koSession,
     },
+    children: node,
   } as React.ComponentProps<typeof NextIntlClientProvider>;
 
   return renderToStaticMarkup(
     React.createElement(
       NextIntlClientProvider,
       providerProps,
-      node,
     ),
   );
 };
