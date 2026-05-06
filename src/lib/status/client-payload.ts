@@ -1,0 +1,63 @@
+import type {
+  IClientTabStatusEntry,
+  IStatusUpdateMessage,
+  ITabStatusEntry,
+} from '@/types/status';
+
+export const toStatusClientTabEntry = (entry: ITabStatusEntry): IClientTabStatusEntry => ({
+  cliState: entry.cliState,
+  workspaceId: entry.workspaceId,
+  tabName: entry.tabName,
+  currentProcess: entry.currentProcess,
+  paneTitle: entry.paneTitle,
+  panelType: entry.panelType,
+  terminalStatus: entry.terminalStatus,
+  listeningPorts: entry.listeningPorts,
+  agentSummary: entry.agentSummary,
+  lastUserMessage: entry.lastUserMessage,
+  lastAssistantMessage: entry.lastAssistantMessage,
+  currentAction: entry.currentAction,
+  readyForReviewAt: entry.readyForReviewAt,
+  busySince: entry.busySince,
+  dismissedAt: entry.dismissedAt,
+  agentSessionId: entry.agentSessionId,
+  lastEvent: entry.lastEvent,
+  eventSeq: entry.eventSeq,
+  approvalPromptMetadata: entry.approvalPromptMetadata,
+});
+
+export const buildStatusUpdateMessage = (
+  tabId: string,
+  entry: ITabStatusEntry,
+): IStatusUpdateMessage => ({
+  type: 'status:update',
+  tabId,
+  cliState: entry.cliState,
+  workspaceId: entry.workspaceId,
+  tabName: entry.tabName,
+  currentProcess: entry.currentProcess,
+  paneTitle: entry.paneTitle,
+  panelType: entry.panelType,
+  terminalStatus: entry.terminalStatus,
+  listeningPorts: entry.listeningPorts,
+  agentSummary: entry.agentSummary,
+  lastUserMessage: entry.lastUserMessage,
+  lastAssistantMessage: entry.lastAssistantMessage,
+  currentAction: entry.currentAction,
+  readyForReviewAt: entry.readyForReviewAt,
+  busySince: entry.busySince,
+  dismissedAt: entry.dismissedAt,
+  agentSessionId: entry.agentSessionId,
+  compactingSince: entry.compactingSince,
+  lastEvent: entry.lastEvent,
+  eventSeq: entry.eventSeq,
+  approvalPromptMetadata: entry.approvalPromptMetadata,
+});
+
+export const buildStatusRemoveMessage = (tabId: string): IStatusUpdateMessage => ({
+  type: 'status:update',
+  tabId,
+  cliState: null,
+  workspaceId: '',
+  tabName: '',
+});
