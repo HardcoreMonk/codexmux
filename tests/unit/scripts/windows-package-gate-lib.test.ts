@@ -19,6 +19,10 @@ describe('Windows package gate helpers', () => {
         script: 'smoke:windows:update-metadata',
       },
       {
+        id: 'windows-updater-local-feed',
+        script: 'smoke:windows:updater-local-feed',
+      },
+      {
         id: 'windows-packaged-launch',
         script: 'smoke:windows:packaged-launch',
       },
@@ -47,6 +51,7 @@ describe('Windows package gate helpers', () => {
       missingScriptIds: [
         'smoke:windows:zip-artifact',
         'smoke:windows:update-metadata',
+        'smoke:windows:updater-local-feed',
         'smoke:windows:packaged-runtime-v2',
         'smoke:windows:installer-runtime-v2',
       ],

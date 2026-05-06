@@ -1,6 +1,7 @@
 import { capturePristineEnv } from './pristine-env';
 import { applyResolvedShellEnv } from './shell-env';
 import { applyElectronBootstrapEnv, buildFileImportSpecifier, buildPackagedNodePath } from './runtime-env';
+import { appendUpdaterSmokeStatus, readUpdaterSmokeConfig } from './updater-smoke';
 import { app, BrowserWindow, shell, Menu, ipcMain, session, screen, Notification, nativeTheme, dialog } from 'electron';
 import { autoUpdater, type UpdateInfo, type ProgressInfo } from 'electron-updater';
 import * as path from 'path';
@@ -238,16 +239,22 @@ const resolveCurrentUrl = (): string | null => {
 
 const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const FIRST_CHECK_DELAY_MS = 3000;
+const UPDATER_SMOKE_FIRST_CHECK_DELAY_MS = 500;
 
 let updaterInitialized = false;
 let updateCheckTimer: ReturnType<typeof setInterval> | null = null;
 let pendingUpdateVersion: string | null = null;
 let isUpdateDialogOpen = false;
+const updaterSmokeConfig = readUpdaterSmokeConfig();
 
 const formatMsg = (template: string, values: Record<string, string>): string =>
   template.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? '');
 
-const canRunUpdater = (): boolean => !isDev && !devUrl && app.isPackaged;
+const canRunUpdater = (): boolean =>
+  process.env.CODEXMUX_ELECTRON_UPDATER_DISABLED !== '1'
+  && !isDev
+  && !devUrl
+  && app.isPackaged;
 
 const showUpdateDialog = (options: Electron.MessageBoxOptions) => {
   const primary = getPrimaryWindow();
@@ -272,12 +279,46 @@ const setupAutoUpdater = () => {
   if (updaterInitialized || !canRunUpdater()) return;
   updaterInitialized = true;
 
+  if (updaterSmokeConfig.feedUrl) {
+    autoUpdater.setFeedURL({ provider: 'generic', url: updaterSmokeConfig.feedUrl });
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'configured', {
+      feedProvider: 'generic',
+      feedUrl: updaterSmokeConfig.feedUrl,
+    });
+  }
+  if (updaterSmokeConfig.disableDifferentialDownload) {
+    autoUpdater.disableDifferentialDownload = true;
+  }
+  if (updaterSmokeConfig.installDir) {
+    (autoUpdater as unknown as { installDirectory?: string }).installDirectory = updaterSmokeConfig.installDir;
+  }
+
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
+  autoUpdater.on('checking-for-update', () => {
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'checking-for-update');
+  });
+
+  autoUpdater.on('update-not-available', (info: UpdateInfo) => {
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'update-not-available', { version: info.version });
+  });
+
   autoUpdater.on('update-available', (info: UpdateInfo) => {
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'update-available', { version: info.version });
     if (pendingUpdateVersion === info.version) return;
     pendingUpdateVersion = info.version;
+
+    if (updaterSmokeConfig.autoDownload) {
+      appendUpdaterSmokeStatus(updaterSmokeConfig, 'download-started', { version: info.version });
+      getPrimaryWindow()?.setProgressBar(0.05);
+      autoUpdater.downloadUpdate().catch((err) => {
+        appendUpdaterSmokeStatus(updaterSmokeConfig, 'error', { error: err });
+        console.error('[updater] downloadUpdate failed:', err);
+      });
+      return;
+    }
+
     runExclusiveDialog(async () => {
       const m = mt();
       const result = await showUpdateDialog({
@@ -290,7 +331,9 @@ const setupAutoUpdater = () => {
       });
       if (result.response === 0) {
         getPrimaryWindow()?.setProgressBar(0.05);
+        appendUpdaterSmokeStatus(updaterSmokeConfig, 'download-started', { version: info.version });
         autoUpdater.downloadUpdate().catch((err) => {
+          appendUpdaterSmokeStatus(updaterSmokeConfig, 'error', { error: err });
           console.error('[updater] downloadUpdate failed:', err);
         });
       }
@@ -298,11 +341,28 @@ const setupAutoUpdater = () => {
   });
 
   autoUpdater.on('download-progress', (progress: ProgressInfo) => {
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'download-progress', { percent: progress.percent });
     getPrimaryWindow()?.setProgressBar(progress.percent / 100);
   });
 
   autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
     getPrimaryWindow()?.setProgressBar(-1);
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'update-downloaded', {
+      version: info.version,
+      downloadedFile: (info as UpdateInfo & { downloadedFile?: string }).downloadedFile,
+    });
+
+    if (updaterSmokeConfig.autoInstall) {
+      isQuitting = true;
+      setTimeout(() => {
+        appendUpdaterSmokeStatus(updaterSmokeConfig, 'process-exit-for-install', { version: info.version });
+        process.exit(0);
+      }, 5000);
+      appendUpdaterSmokeStatus(updaterSmokeConfig, 'quit-and-install-started', { version: info.version });
+      autoUpdater.quitAndInstall(true, false);
+      return;
+    }
+
     runExclusiveDialog(async () => {
       const m = mt();
       const result = await showUpdateDialog({
@@ -315,12 +375,14 @@ const setupAutoUpdater = () => {
       });
       if (result.response === 0) {
         isQuitting = true;
+        appendUpdaterSmokeStatus(updaterSmokeConfig, 'quit-and-install-started', { version: info.version });
         autoUpdater.quitAndInstall();
       }
     });
   });
 
   autoUpdater.on('error', (err: Error) => {
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'error', { error: err });
     console.error('[updater]', err);
     pendingUpdateVersion = null;
     getPrimaryWindow()?.setProgressBar(-1);
@@ -769,7 +831,10 @@ const bootstrap = async () => {
 
   setupAutoUpdater();
   // 메인 윈도우 로딩이 끝나기 전에 다이얼로그가 뜨지 않도록 첫 체크를 지연
-  setTimeout(checkForUpdatesAuto, FIRST_CHECK_DELAY_MS);
+  setTimeout(
+    checkForUpdatesAuto,
+    updaterSmokeConfig.enabled ? UPDATER_SMOKE_FIRST_CHECK_DELAY_MS : FIRST_CHECK_DELAY_MS,
+  );
   startUpdateCheckTimer();
 };
 
@@ -895,6 +960,8 @@ app.on('before-quit', () => {
 });
 
 app.on('will-quit', async (event) => {
+  if (updaterSmokeConfig.autoInstall) return;
+
   event.preventDefault();
   const forceExit = setTimeout(() => app.exit(1), 3000);
 

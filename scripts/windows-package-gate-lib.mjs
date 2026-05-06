@@ -10,6 +10,10 @@ export const getWindowsPackageGateSteps = () => [
     script: 'smoke:windows:update-metadata',
   },
   {
+    id: 'windows-updater-local-feed',
+    script: 'smoke:windows:updater-local-feed',
+  },
+  {
     id: 'windows-packaged-launch',
     script: 'smoke:windows:packaged-launch',
   },

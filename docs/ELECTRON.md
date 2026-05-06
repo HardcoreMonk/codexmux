@@ -14,6 +14,7 @@ corepack pnpm smoke:windows:electron-env
 corepack pnpm smoke:windows:electron-packaging
 corepack pnpm smoke:windows:zip-artifact
 corepack pnpm smoke:windows:update-metadata
+corepack pnpm smoke:windows:updater-local-feed
 corepack pnpm smoke:windows:packaged-launch
 corepack pnpm smoke:windows:packaged-runtime-v2
 corepack pnpm smoke:windows:installer-install
@@ -34,11 +35,12 @@ corepack pnpm pack:electron:mac
 - `smoke:windows:electron-packaging`: package script와 `electron-builder.yml`이 Windows NSIS/zip 패키징 계약, updater metadata와 맞는 NSIS artifact name을 만족하는지 dry-run으로 확인합니다.
 - `smoke:windows:zip-artifact`: `release/*-win.zip` archive 안에 exe, `app.asar`, runtime v2 workers, Windows native terminal/runtime modules가 있는지 확인합니다.
 - `smoke:windows:update-metadata`: `release/latest.yml`이 실제 NSIS installer, installer size, sha512, blockmap artifact와 일치하고, packaged `app-update.yml`이 GitHub publish provider와 같은 owner/repo를 가리키는지 확인합니다.
+- `smoke:windows:updater-local-feed`: NSIS installer를 temp 경로에 설치하고 synthetic local `latest.yml` feed로 update download, `quitAndInstall`, 설치 후 launch smoke, silent uninstall을 확인합니다.
 - `smoke:windows:packaged-launch`: `release/win-unpacked/codexmux.exe`를 실제 실행해 packaged local server, preload bridge, `/api/health`, runtime startup diagnostics, blocking console 0건을 확인합니다.
 - `smoke:windows:packaged-runtime-v2`: packaged app을 runtime v2 `new-tabs` mode로 실행해 workspace/tab 생성, `/api/v2/terminal` WebSocket attach, Windows marker command output을 확인합니다.
 - `smoke:windows:installer-install`: `release/codexmux-Setup-<version>.exe`를 임시 경로에 silent install하고, 설치된 app을 `smoke:windows:packaged-launch`로 확인한 뒤 silent uninstall합니다.
 - `smoke:windows:installer-runtime-v2`: silent install한 앱에 `smoke:windows:packaged-runtime-v2`와 같은 runtime v2 terminal 검증을 적용한 뒤 silent uninstall합니다.
-- `smoke:windows:package-gate`: 이미 생성된 Windows `release/` 산출물에 대해 zip artifact, update metadata, packaged launch, packaged runtime v2, installer runtime v2 smoke를 순차 실행합니다.
+- `smoke:windows:package-gate`: 이미 생성된 Windows `release/` 산출물에 대해 zip artifact, update metadata, updater local feed, packaged launch, packaged runtime v2, installer runtime v2 smoke를 순차 실행합니다.
 - `pack:electron:dev`: 로컬 Windows unpacked package 검증용입니다. Installer를 만들지 않습니다.
 - `pack:electron`: Windows 릴리스 패키징입니다.
 - `pack:electron:mac:dev`, `pack:electron:mac`: 기존 macOS 패키징 검증용 명령입니다. Windows-only 전환 중 legacy/manual path로만 유지합니다.
@@ -190,6 +192,7 @@ Windows package commands use `scripts/pack-electron-windows.mjs` instead of invo
 The Windows wrapper installs Electron ABI native prebuilds for packaged runtime dependencies before electron-builder runs. `dist/workers/**` stays unpacked because runtime v2 workers are forked from the filesystem, and NSIS `runAfterFinish` stays disabled so silent install smoke can complete without launching the app from the installer.
 NSIS `artifactName` stays `${productName}-Setup-${version}.${ext}` so `latest.yml`, the installer exe, and the matching `.blockmap` use the same updater-visible artifact name.
 Packaged `resources/app-update.yml` must stay aligned with `electron-builder.yml` `publish.provider`, `publish.owner`, and `publish.repo`; `smoke:windows:update-metadata` checks this against `release/win-unpacked`.
+`smoke:windows:updater-local-feed` uses the generated `latest.yml` as a template, bumps only the patch version in a temp local feed, serves the existing NSIS installer from localhost, and verifies Electron updater events through download, `update-downloaded`, `quitAndInstall`, app exit, post-install launch, and uninstall. The smoke-only updater env hook writes path-light JSONL status and disables differential download so the synthetic feed can reuse the current installer artifact.
 
 macOS DMG target은 `dmg-license`와 Darwin native `iconv-corefoundation`을 사용한다. `dmg-license`는 pnpm node linker에서 electron-builder의 runtime `require()`가 항상 해석되도록 direct devDependency로 고정한다. Linux에서는 `corepack pnpm build:electron`까지를 release smoke로 보고, macOS packaging은 Mac M1 같은 macOS host에서 `corepack pnpm pack:electron:mac:dev`/`pack:electron:mac`로 실행한다.
 

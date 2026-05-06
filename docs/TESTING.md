@@ -366,6 +366,7 @@ corepack pnpm smoke:windows:packaged-runtime-v2
 corepack pnpm pack:electron
 corepack pnpm smoke:windows:zip-artifact
 corepack pnpm smoke:windows:update-metadata
+corepack pnpm smoke:windows:updater-local-feed
 corepack pnpm smoke:windows:installer-install
 corepack pnpm smoke:windows:installer-runtime-v2
 corepack pnpm smoke:windows:package-gate
@@ -381,6 +382,11 @@ ConPTY files, and the Electron ABI `better-sqlite3` native binding.
 installer artifact that exists in `release/`, has matching size and sha512
 metadata, has a matching `.blockmap`, and that packaged `app-update.yml` points
 to the same GitHub publish owner/repo as `electron-builder.yml`.
+`smoke:windows:updater-local-feed` mutates the current Windows user install
+state temporarily: it silent-installs the generated NSIS artifact, creates a
+synthetic local `latest.yml` with a bumped patch version, verifies Electron
+updater download/install events through `quitAndInstall`, then launches and
+uninstalls the updated install path.
 `smoke:windows:packaged-launch` starts the generated app with an isolated
 Windows user profile and verifies the packaged local server, Electron preload
 bridge, health endpoint, runtime diagnostics, and blocking console count.
@@ -393,7 +399,7 @@ through the packaged launch smoke, then runs the generated uninstaller.
 `smoke:windows:installer-runtime-v2` runs the same installed-app path with the
 packaged runtime v2 terminal check enabled.
 `smoke:windows:package-gate` does not build packages; it runs zip artifact,
-update metadata, packaged launch, packaged runtime v2, and installer runtime v2
+update metadata, updater local feed, packaged launch, packaged runtime v2, and installer runtime v2
 smoke against existing `release/` artifacts and stops at the first failure.
 
 macOS packaging smoke:
@@ -477,6 +483,7 @@ CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:android:timeline
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:release-gate
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:zip-artifact
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:update-metadata
+CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:updater-local-feed
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:packaged-runtime-v2
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:installer-runtime-v2
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:package-gate
