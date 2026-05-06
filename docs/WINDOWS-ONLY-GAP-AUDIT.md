@@ -314,3 +314,32 @@ Validation:
 
 - `corepack pnpm test tests/unit/scripts/clean-build-artifacts-lib.test.ts tests/unit/scripts/postinstall-node-pty-lib.test.ts tests/unit/scripts/windows-platform-blockers-cli.test.ts tests/unit/scripts/windows-platform-blockers-lib.test.ts`: passed.
 - `corepack pnpm audit:windows-platform`: passed.
+
+## Windows Runtime V2 Terminal Integration Smoke Follow-up
+
+The next transition slice added a smoke command that exercises the actual
+runtime v2 supervisor and worker IPC path with the Windows terminal adapter.
+
+Resolved items:
+
+- Added `scripts/smoke-windows-runtime-v2-terminal.ts`.
+- Added `scripts/windows-runtime-v2-terminal-smoke-lib.ts` for reusable smoke
+  helpers.
+- Added package script `smoke:runtime-v2:terminal-windows`.
+- The smoke starts runtime v2 workers through `createRuntimeSupervisorForTest`,
+  forces `CODEXMUX_RUNTIME_TERMINAL_ADAPTER=windows`, uses a temporary runtime
+  DB, and verifies:
+  - terminal worker health reports the Windows adapter
+  - terminal tab creation
+  - attach
+  - resize
+  - stdin/write output marker
+  - detach
+  - reattach and second output marker
+  - terminal tab delete kills the Windows session
+  - workspace cleanup
+
+Validation:
+
+- `corepack pnpm test tests/unit/scripts/windows-runtime-v2-terminal-smoke-lib.test.ts`: passed.
+- `corepack pnpm smoke:runtime-v2:terminal-windows`: passed.
