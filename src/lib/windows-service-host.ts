@@ -1,5 +1,4 @@
-import os from 'os';
-import path from 'path';
+import { resolveHostPaths, type THostPathsEnv } from '@/lib/host-paths';
 
 export type TWindowsServiceHostOwner = 'tray' | 'service' | 'installer-background';
 export type TWindowsServiceHostModel = 'tray-first-service-capable';
@@ -11,7 +10,7 @@ export interface IWindowsServiceHostOwnerResult {
   value?: string;
 }
 
-type TWindowsServiceHostEnv = NodeJS.ProcessEnv | Record<string, string | undefined>;
+type TWindowsServiceHostEnv = THostPathsEnv;
 
 export interface IWindowsServiceHostPlanInput {
   platform?: NodeJS.Platform;
@@ -68,12 +67,6 @@ export const resolveWindowsServiceHostOwner = (
   };
 };
 
-const resolveHomeDir = (env: Record<string, string | undefined>): string =>
-  env.USERPROFILE || env.HOME || os.homedir();
-
-const resolveLocalAppData = (env: Record<string, string | undefined>, homeDir: string): string =>
-  env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local');
-
 export const resolveWindowsServiceHostPlan = ({
   platform = process.platform,
   env = process.env,
@@ -81,8 +74,7 @@ export const resolveWindowsServiceHostPlan = ({
 }: IWindowsServiceHostPlanInput = {}): IWindowsServiceHostPlan => {
   const ownerResult = resolveWindowsServiceHostOwner(env);
   const owner = ownerResult.ok ? ownerResult.owner! : 'tray';
-  const homeDir = resolveHomeDir(env);
-  const localAppData = resolveLocalAppData(env, homeDir);
+  const hostPaths = resolveHostPaths({ platform, env });
   const serviceName = env.CODEXMUX_WINDOWS_SERVICE_NAME?.trim() || defaultServiceName;
   const port = env.PORT?.trim() || defaultPort;
   const host = env.HOST?.trim() || defaultHost;
@@ -115,9 +107,9 @@ export const resolveWindowsServiceHostPlan = ({
       },
     },
     paths: {
-      dataDir: path.win32.join(homeDir, '.codexmux'),
-      codexDir: path.win32.join(homeDir, '.codex'),
-      logDir: path.win32.join(localAppData, 'codexmux', 'logs'),
+      dataDir: hostPaths.dataDir,
+      codexDir: hostPaths.codexDir,
+      logDir: hostPaths.logDir,
     },
     restartPolicy: {
       strategy: 'installer-or-service-manager',

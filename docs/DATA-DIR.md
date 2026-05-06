@@ -1,6 +1,6 @@
 # `~/.codexmux/` 데이터 디렉터리
 
-codexmux의 영속 상태는 `~/.codexmux/`에 저장된다. Codex CLI의 원본 세션 기록은 `~/.codex/sessions/`에 있으며 codexmux는 이 파일을 읽기 전용으로만 사용한다.
+codexmux의 영속 상태는 `~/.codexmux/`에 저장된다. Windows-only host 전환에서는 같은 앱 상태가 `%USERPROFILE%\.codexmux\`에 남고, 서버 로그는 Windows 운영 경로인 `%LOCALAPPDATA%\codexmux\logs\`에 기록된다. Codex CLI의 원본 세션 기록은 `~/.codex/sessions/` 또는 Windows의 `%USERPROFILE%\.codex\sessions\`에 있으며 codexmux는 이 파일을 읽기 전용으로만 사용한다.
 
 ## 구조
 
@@ -26,7 +26,7 @@ codexmux의 영속 상태는 `~/.codexmux/`에 저장된다. Codex CLI의 원본
 ├── cli-token
 ├── port
 ├── cmux.lock
-├── logs/
+├── logs/                         # non-Windows compatibility
 ├── uploads/
 ├── runtime-v2/
 │   └── state.db
@@ -71,7 +71,7 @@ Linux `systemd --user` 등록 파일은 `~/.config/systemd/user/codexmux.service
 | `vapid-keys.json` | Web Push VAPID key pair |
 | `push-subscriptions.json` | Web Push subscription |
 | `uploads/` | 임시 첨부 파일 |
-| `logs/` | 서버 로그 |
+| `logs/` | 비-Windows 호환 경로의 서버 로그. Windows host에서는 `%LOCALAPPDATA%\codexmux\logs\`를 사용 |
 | `runtime-v2/state.db` | Experimental runtime v2 SQLite app state for workspace, pane, tab, message history, status projection, and durable event logs |
 | `backups/runtime-v2-storage-{timestamp}/` | `runtime-v2:storage-backup`이 만든 storage cutover용 JSON/SQLite snapshot |
 | `stats/cache.json` | Codex JSONL에서 계산한 usage cache. 런타임 build는 in-flight promise로 중복 계산을 피함 |

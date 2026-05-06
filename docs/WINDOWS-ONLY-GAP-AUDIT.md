@@ -456,3 +456,32 @@ Validation:
 
 - `corepack pnpm test tests/unit/lib/windows-service-host.test.ts`: passed.
 - `corepack pnpm smoke:windows:service-host`: passed.
+
+## Windows Host Diagnostics Follow-up
+
+The next transition slice aligned Windows log paths with the service host plan
+and added a dry-run health-check diagnostics smoke.
+
+Resolved items:
+
+- Added `src/lib/host-paths.ts` so Windows app data, Codex data, and server log
+  paths are resolved from one helper.
+- `createLogger()` now writes Windows server logs under
+  `%LOCALAPPDATA%\codexmux\logs`, matching the Windows service host plan.
+- Added `src/lib/windows-host-diagnostics.ts` to report the Windows host paths,
+  local health probe URLs, and service host ownership without exposing token,
+  session, prompt, or command output data.
+- Added package script `smoke:windows:host-diagnostics`.
+- The health diagnostics keep probes loopback-local by default:
+  - `/api/health`
+  - `/api/v2/runtime/health`
+- The runtime v2 health probe is marked as authenticated, so the smoke records
+  the expected endpoint contract without bypassing API auth.
+- The smoke asserts `mutatesSystem=false`; no service registration, restart,
+  firewall rule, scheduled task, installer action, log collection, or network
+  probe is run.
+
+Validation:
+
+- `corepack pnpm test tests/unit/lib/windows-host-diagnostics.test.ts tests/unit/lib/windows-service-host.test.ts`: passed.
+- `corepack pnpm smoke:windows:host-diagnostics`: passed.
