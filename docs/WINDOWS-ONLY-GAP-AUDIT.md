@@ -424,3 +424,35 @@ Validation:
 
 - `corepack pnpm test tests/unit/lib/preflight.test.ts`: passed.
 - `corepack pnpm smoke:windows:preflight`: passed.
+
+## Windows Service Host Baseline Follow-up
+
+The next transition slice added a dry-run Windows host ownership contract without
+installing or mutating any Windows service.
+
+Resolved items:
+
+- Added `src/lib/windows-service-host.ts`.
+- Added package script `smoke:windows:service-host`.
+- The baseline host model is `tray-first-service-capable`:
+  - default owner is `tray`
+  - `service` owner is accepted but marked elevation-required
+  - `installer-background` remains an accepted future owner
+  - unsupported owners fail closed in the plan
+- The dry-run plan fixes the Windows runtime environment for a local server:
+  - `CODEXMUX_RUNTIME_V2=1`
+  - `CODEXMUX_RUNTIME_TERMINAL_ADAPTER=windows`
+  - `CODEXMUX_PROCESS_INSPECTOR_ADAPTER=windows`
+  - default `HOST=127.0.0.1`
+  - default `PORT=8122`
+- The plan records Windows data/log locations:
+  - `%USERPROFILE%\.codexmux`
+  - `%USERPROFILE%\.codex`
+  - `%LOCALAPPDATA%\codexmux\logs`
+- The smoke asserts `mutatesSystem=false`; no service registration, restart,
+  firewall rule, scheduled task, installer action, or external host tool is run.
+
+Validation:
+
+- `corepack pnpm test tests/unit/lib/windows-service-host.test.ts`: passed.
+- `corepack pnpm smoke:windows:service-host`: passed.
