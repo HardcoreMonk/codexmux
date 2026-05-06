@@ -11,8 +11,11 @@ corepack pnpm build:electron
 corepack pnpm smoke:electron:attach
 corepack pnpm smoke:electron:runtime-v2
 corepack pnpm smoke:windows:electron-env
+corepack pnpm smoke:windows:electron-packaging
 corepack pnpm pack:electron:dev
 corepack pnpm pack:electron
+corepack pnpm pack:electron:mac:dev
+corepack pnpm pack:electron:mac
 ```
 
 - `dev:electron`: 필요하면 `corepack pnpm dev` 서버를 자동으로 띄운 뒤 Electron을 연결합니다.
@@ -21,8 +24,10 @@ corepack pnpm pack:electron
 - `smoke:electron:attach`: Electron shell을 remote debugging port로 실행해 live server attach, preload bridge, page reload, blocking console 오류를 확인합니다.
 - `smoke:electron:runtime-v2`: temp HOME/DB runtime v2 서버와 Electron shell을 띄운 뒤 page context에서 existing session cookie로 `/api/v2/terminal` WebSocket attach, marker output, 기본 2회 page reload/reconnect를 확인합니다.
 - `smoke:windows:electron-env`: Windows Electron local server bootstrap이 POSIX PATH를 주입하지 않고 `NODE_PATH`를 Windows `;` 구분자로 만드는지 dry-run으로 확인합니다.
-- `pack:electron:dev`: 로컬 macOS 패키징 검증용입니다. signing과 notarize를 끕니다.
-- `pack:electron`: 릴리스 패키징입니다. signing/notarize 환경이 필요합니다.
+- `smoke:windows:electron-packaging`: package script와 `electron-builder.yml`이 Windows NSIS/zip 패키징 계약을 만족하는지 dry-run으로 확인합니다.
+- `pack:electron:dev`: 로컬 Windows unpacked package 검증용입니다. Installer를 만들지 않습니다.
+- `pack:electron`: Windows 릴리스 패키징입니다.
+- `pack:electron:mac:dev`, `pack:electron:mac`: 기존 macOS 패키징 검증용 명령입니다. Windows-only 전환 중 legacy/manual path로만 유지합니다.
 
 ## Runtime
 
@@ -35,7 +40,7 @@ corepack pnpm pack:electron
 | `electron/browser-bridge.ts` | Electron webview 기반 browser panel bridge |
 | `electron/runtime-env.ts` | local server bootstrap의 platform별 PATH와 `NODE_PATH` 구분자 처리 |
 | `scripts/dev-electron.mjs` | dev server 자동 실행 + Electron attach |
-| `electron-builder.yml` | macOS 패키징 설정 |
+| `electron-builder.yml` | Windows NSIS/zip 기본 패키징 설정과 legacy macOS 패키징 설정 |
 
 앱 설정은 `~/.codexmux/config.json`에 저장합니다. Electron 전용 설정도 같은 파일을 사용하며, 서버 모드는 `server.mode`과 `server.remoteUrl`로 관리합니다.
 
@@ -147,14 +152,18 @@ CODEXMUX_ELECTRON_WINDOW_FOREGROUND_CYCLES=1 \
 | 명령 | 산출물 |
 | --- | --- |
 | `corepack pnpm build:electron` | `dist/`, `dist-electron/`, `.next/standalone/` |
-| `corepack pnpm pack:electron:dev` | `release/` 아래 unsigned local macOS package |
-| `corepack pnpm pack:electron` | `release/` 아래 signed/notarized release package |
+| `corepack pnpm pack:electron:dev` | `release/` 아래 Windows unpacked package |
+| `corepack pnpm pack:electron` | `release/` 아래 Windows NSIS installer와 zip package |
+| `corepack pnpm pack:electron:mac:dev` | `release/` 아래 unsigned local macOS package |
+| `corepack pnpm pack:electron:mac` | `release/` 아래 signed/notarized macOS package |
 
-macOS에서 앱을 실제로 설치하려면 `release/*.dmg` 또는 `release/*/*.app` 산출물이 필요합니다. 현재 repository checkout에 `release/`가 없으면 아직 macOS 앱 패키징을 실행하지 않은 상태입니다.
+Windows에서 앱을 실제로 설치하려면 `release/*.exe` NSIS installer 또는 `release/*-win.zip` 산출물이 필요합니다. 현재 repository checkout에 `release/`가 없으면 아직 Windows 앱 패키징을 실행하지 않은 상태입니다. macOS 수동 검증에서는 `release/*.dmg` 또는 `release/*/*.app` 산출물을 사용합니다.
 
-macOS DMG target은 `dmg-license`와 Darwin native `iconv-corefoundation`을 사용한다. `dmg-license`는 pnpm node linker에서 electron-builder의 runtime `require()`가 항상 해석되도록 direct devDependency로 고정한다. Linux에서는 `corepack pnpm build:electron`까지를 release smoke로 보고, `corepack pnpm pack:electron:dev`/`pack:electron`은 Mac M1 같은 macOS host에서 실행한다.
+Windows package contract는 `corepack pnpm smoke:windows:electron-packaging`으로 먼저 확인한다. 이 smoke는 실제 installer를 만들지 않고 `pack:electron`, `pack:electron:dev`, `win.target`, `nsis`, `win.icon` 설정만 읽는다. Windows default package는 `nsis` installer와 `zip` target을 만들고, 개발 검증은 `pack:electron:dev`의 unpacked output을 사용한다.
 
-2026-05-04 `v0.4.1` release 기준 Linux release host에서 `corepack pnpm build:electron`은 통과했다. Linux에서 `corepack pnpm pack:electron:dev`는 macOS DMG target의 Darwin-only native dependency 때문에 authoritative packaging smoke가 아니며, M1 macOS host(`Darwin arm64`)에서 같은 commit `23fee4b`로 `release/codexmux-0.4.1-arm64.dmg`, `release/codexmux-0.4.1-arm64-mac.zip`, `release/codexmux-0.4.1.dmg`, `release/codexmux-0.4.1-mac.zip`을 생성했다. `node scripts/verify-runtime-native-bindings.mjs --electron`, `lipo -archs`, `Info.plist` version `0.4.1`, arm64/x86_64 app arch, `hdiutil verify`가 통과했다. `CODEXMUX_ELECTRON_APP_PATH=<release/.../codexmux.app>`를 주면 attach/runtime-v2 smoke가 packaged `.app` 실행 파일을 직접 띄울 수 있고, `CODEXMUX_ELECTRON_WINDOW_FOREGROUND_CYCLES=1`로 CDP foreground probe 뒤 terminal attach를 반복 확인할 수 있다. Linux Electron 41 smoke에서는 `Browser.*` window bounds가 없어 `target-activate` fallback으로 통과했다. live checkout에서 Electron build/packaging을 실행한 뒤에는 `.next/standalone`이 다시 만들어지므로 Linux user service는 `corepack pnpm deploy:local`로 재시작해 cwd를 정상화한다.
+macOS DMG target은 `dmg-license`와 Darwin native `iconv-corefoundation`을 사용한다. `dmg-license`는 pnpm node linker에서 electron-builder의 runtime `require()`가 항상 해석되도록 direct devDependency로 고정한다. Linux에서는 `corepack pnpm build:electron`까지를 release smoke로 보고, macOS packaging은 Mac M1 같은 macOS host에서 `corepack pnpm pack:electron:mac:dev`/`pack:electron:mac`로 실행한다.
+
+2026-05-04 `v0.4.1` release 기준 Linux release host에서 `corepack pnpm build:electron`은 통과했다. 당시 macOS 패키징은 M1 macOS host(`Darwin arm64`)에서 commit `23fee4b`로 `release/codexmux-0.4.1-arm64.dmg`, `release/codexmux-0.4.1-arm64-mac.zip`, `release/codexmux-0.4.1.dmg`, `release/codexmux-0.4.1-mac.zip`을 생성했다. `node scripts/verify-runtime-native-bindings.mjs --electron`, `lipo -archs`, `Info.plist` version `0.4.1`, arm64/x86_64 app arch, `hdiutil verify`가 통과했다. `CODEXMUX_ELECTRON_APP_PATH=<release/.../codexmux.app>`를 주면 attach/runtime-v2 smoke가 packaged `.app` 실행 파일을 직접 띄울 수 있고, `CODEXMUX_ELECTRON_WINDOW_FOREGROUND_CYCLES=1`로 CDP foreground probe 뒤 terminal attach를 반복 확인할 수 있다. Linux Electron 41 smoke에서는 `Browser.*` window bounds가 없어 `target-activate` fallback으로 통과했다. live checkout에서 Electron build/packaging을 실행한 뒤에는 `.next/standalone`이 다시 만들어지므로 Linux user service는 `corepack pnpm deploy:local`로 재시작해 cwd를 정상화한다.
 
 ## Packaging Notes
 

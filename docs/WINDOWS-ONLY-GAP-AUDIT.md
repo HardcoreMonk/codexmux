@@ -507,3 +507,27 @@ Validation:
 
 - `corepack pnpm test tests/unit/electron/runtime-env.test.ts`: passed.
 - `corepack pnpm smoke:windows:electron-env`: passed.
+
+## Windows Electron Packaging Contract Follow-up
+
+The next transition slice moved the default Electron packaging contract from
+macOS to Windows without running an installer or mutating the host.
+
+Resolved items:
+
+- `pack:electron` now targets `electron-builder --win`.
+- `pack:electron:dev` now targets `electron-builder --win --dir` for unpacked
+  Windows package smoke.
+- Existing macOS packaging commands remain available as explicit
+  `pack:electron:mac` and `pack:electron:mac:dev` legacy/manual commands.
+- `electron-builder.yml` now defines Windows `nsis` and `zip` targets for `x64`.
+- Added `build-resources/icon.ico` for the Windows package icon.
+- Added package script `smoke:windows:electron-packaging`.
+- The smoke validates package scripts, Windows builder targets, NSIS installer
+  options, and `.ico` asset presence without building, installing, or launching
+  the app.
+
+Validation:
+
+- `corepack pnpm test tests/unit/scripts/windows-electron-packaging-smoke-lib.test.ts`: passed.
+- `corepack pnpm smoke:windows:electron-packaging`: passed.

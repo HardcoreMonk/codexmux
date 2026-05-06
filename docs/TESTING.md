@@ -326,6 +326,7 @@ corepack pnpm build:electron
 corepack pnpm smoke:electron:attach
 corepack pnpm smoke:electron:runtime-v2
 corepack pnpm smoke:windows:electron-env
+corepack pnpm smoke:windows:electron-packaging
 ```
 
 - `smoke:electron:attach`: live server attach, preload bridge, reload, blocking console 0건.
@@ -334,11 +335,20 @@ corepack pnpm smoke:windows:electron-env
 - `smoke:windows:electron-env`: Windows Electron local server bootstrap이 Windows `PATH`를
   POSIX launch path로 오염시키지 않고 packaged server `NODE_PATH`에 `;` 구분자를 쓰는지
   dry-run으로 확인한다.
+- `smoke:windows:electron-packaging`: default Electron package scripts와
+  `electron-builder.yml`이 Windows NSIS/zip target, NSIS install wizard option, `.ico`
+  asset 계약을 만족하는지 dry-run으로 확인한다.
+
+Windows packaging smoke:
+
+```bash
+corepack pnpm pack:electron:dev
+```
 
 macOS packaging smoke:
 
 ```bash
-corepack pnpm pack:electron:dev
+corepack pnpm pack:electron:mac:dev
 ```
 
 Packaged app attach/runtime v2 smoke on macOS:
