@@ -81,6 +81,7 @@
     "smoke:windows:electron-env": "tsx scripts/smoke-windows-electron-env.ts",
     "smoke:windows:electron-packaging": "node scripts/smoke-windows-electron-packaging.mjs",
     "smoke:windows:zip-artifact": "node scripts/smoke-windows-zip-artifact.mjs",
+    "smoke:windows:update-metadata": "node scripts/smoke-windows-update-metadata.mjs",
     "smoke:windows:packaged-launch": "node scripts/smoke-windows-packaged-launch.mjs",
     "smoke:windows:packaged-runtime-v2": "node scripts/smoke-windows-packaged-launch.mjs --runtime-v2-terminal",
     "smoke:windows:installer-install": "node scripts/smoke-windows-installer-install.mjs",

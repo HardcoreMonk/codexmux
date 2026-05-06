@@ -15,6 +15,10 @@ describe('Windows package gate helpers', () => {
         script: 'smoke:windows:zip-artifact',
       },
       {
+        id: 'windows-update-metadata',
+        script: 'smoke:windows:update-metadata',
+      },
+      {
         id: 'windows-packaged-launch',
         script: 'smoke:windows:packaged-launch',
       },
@@ -42,6 +46,7 @@ describe('Windows package gate helpers', () => {
       ok: false,
       missingScriptIds: [
         'smoke:windows:zip-artifact',
+        'smoke:windows:update-metadata',
         'smoke:windows:packaged-runtime-v2',
         'smoke:windows:installer-runtime-v2',
       ],

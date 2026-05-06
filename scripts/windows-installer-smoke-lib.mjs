@@ -11,7 +11,7 @@ export const findWindowsInstaller = (releaseDir) => {
     ? fs.readdirSync(releaseDir, { withFileTypes: true })
     : [];
   const installers = entries
-    .filter((entry) => entry.isFile() && /^codexmux Setup .+\.exe$/i.test(entry.name))
+    .filter((entry) => entry.isFile() && /^codexmux(?: Setup |-Setup-).+\.exe$/i.test(entry.name))
     .map((entry) => path.join(releaseDir, entry.name))
     .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
 

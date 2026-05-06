@@ -6,6 +6,10 @@ export const getWindowsPackageGateSteps = () => [
     script: 'smoke:windows:zip-artifact',
   },
   {
+    id: 'windows-update-metadata',
+    script: 'smoke:windows:update-metadata',
+  },
+  {
     id: 'windows-packaged-launch',
     script: 'smoke:windows:packaged-launch',
   },

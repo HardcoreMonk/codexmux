@@ -21,7 +21,7 @@ describe('Windows installer smoke helpers', () => {
     const { findWindowsInstaller } = await loadLib();
     const releaseDir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-installer-test-'));
     const older = path.join(releaseDir, 'codexmux Setup 0.4.1.exe');
-    const newer = path.join(releaseDir, 'codexmux Setup 0.4.2.exe');
+    const newer = path.join(releaseDir, 'codexmux-Setup-0.4.2.exe');
     await fs.writeFile(older, '');
     await new Promise((resolve) => setTimeout(resolve, 20));
     await fs.writeFile(newer, '');

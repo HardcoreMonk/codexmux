@@ -344,6 +344,7 @@ corepack pnpm smoke:electron:attach
 corepack pnpm smoke:electron:runtime-v2
 corepack pnpm smoke:windows:electron-env
 corepack pnpm smoke:windows:electron-packaging
+corepack pnpm smoke:windows:update-metadata
 ```
 
 - `smoke:electron:attach`: live server attach, preload bridge, reload, blocking console 0건.
@@ -354,13 +355,14 @@ corepack pnpm smoke:windows:electron-packaging
   dry-run으로 확인한다.
 - `smoke:windows:electron-packaging`: default Electron package scripts와
   `electron-builder.yml`이 Windows NSIS/zip target, NSIS install wizard option, `.ico`
-  asset 계약을 만족하는지 dry-run으로 확인한다.
+  asset, updater artifact name 계약을 만족하는지 dry-run으로 확인한다.
 
 Windows packaging smoke:
 
 ```bash
 corepack pnpm pack:electron:dev
 corepack pnpm smoke:windows:zip-artifact
+corepack pnpm smoke:windows:update-metadata
 corepack pnpm smoke:windows:packaged-launch
 corepack pnpm smoke:windows:packaged-runtime-v2
 corepack pnpm pack:electron
@@ -375,6 +377,9 @@ also create the Windows NSIS installer and zip package under `release/`.
 `smoke:windows:zip-artifact` verifies that the generated Windows zip contains
 the app exe, `app.asar`, `app-update.yml`, runtime v2 workers, `node-pty`
 ConPTY files, and the Electron ABI `better-sqlite3` native binding.
+`smoke:windows:update-metadata` verifies that `latest.yml` references an
+installer artifact that exists in `release/`, has matching size and sha512
+metadata, and has a matching `.blockmap`.
 `smoke:windows:packaged-launch` starts the generated app with an isolated
 Windows user profile and verifies the packaged local server, Electron preload
 bridge, health endpoint, runtime diagnostics, and blocking console count.
@@ -387,8 +392,8 @@ through the packaged launch smoke, then runs the generated uninstaller.
 `smoke:windows:installer-runtime-v2` runs the same installed-app path with the
 packaged runtime v2 terminal check enabled.
 `smoke:windows:package-gate` does not build packages; it runs zip artifact,
-packaged launch, packaged runtime v2, and installer runtime v2 smoke against
-existing `release/` artifacts and stops at the first failure.
+update metadata, packaged launch, packaged runtime v2, and installer runtime v2
+smoke against existing `release/` artifacts and stops at the first failure.
 
 macOS packaging smoke:
 
@@ -470,6 +475,7 @@ CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:android:runtime-
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:android:timeline-foreground
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:release-gate
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:zip-artifact
+CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:update-metadata
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:packaged-runtime-v2
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:installer-runtime-v2
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:package-gate

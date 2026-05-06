@@ -30,6 +30,7 @@ describe('Windows Electron packaging smoke helpers', () => {
       'windows-builder-target-missing',
       'windows-nsis-config-missing',
       'windows-nsis-run-after-finish-enabled',
+      'windows-nsis-artifact-name-unstable',
       'windows-icon-missing',
     ]);
   });
@@ -57,6 +58,7 @@ describe('Windows Electron packaging smoke helpers', () => {
           perMachine: false,
           allowToChangeInstallationDirectory: true,
           runAfterFinish: false,
+          artifactName: '${productName}-Setup-${version}.${ext}',
         },
       },
       resources: new Set(['build-resources/icon.ico']),
@@ -71,6 +73,7 @@ describe('Windows Electron packaging smoke helpers', () => {
         'windows-builder-zip-target',
         'windows-nsis-installer-options',
         'windows-nsis-run-after-finish-disabled',
+        'windows-nsis-artifact-name-stable',
         'windows-icon-present',
       ],
     });
@@ -99,6 +102,7 @@ describe('Windows Electron packaging smoke helpers', () => {
           perMachine: false,
           allowToChangeInstallationDirectory: true,
           runAfterFinish: false,
+          artifactName: '${productName}-Setup-${version}.${ext}',
         },
       },
       resources: new Set(['build-resources/icon.ico']),
@@ -107,6 +111,7 @@ describe('Windows Electron packaging smoke helpers', () => {
     expect(result.ok).toBe(true);
     expect(result.checks).toContain('pack-electron-default-windows');
     expect(result.checks).toContain('pack-electron-dev-windows-dir');
+    expect(result.checks).toContain('windows-nsis-artifact-name-stable');
   });
 
   it('normalizes string and object target entries', async () => {

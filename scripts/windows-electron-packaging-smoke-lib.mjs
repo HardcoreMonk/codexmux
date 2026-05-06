@@ -32,6 +32,8 @@ const addBlocker = (blockers, ruleId, message) => {
   blockers.push({ ruleId, message });
 };
 
+const expectedNsisArtifactName = '${productName}-Setup-${version}.${ext}';
+
 export const validateWindowsElectronPackaging = ({
   packageJson,
   builderConfig,
@@ -96,6 +98,16 @@ export const validateWindowsElectronPackaging = ({
       blockers,
       'windows-nsis-run-after-finish-enabled',
       'electron-builder nsis config must disable runAfterFinish for repeatable silent install smoke.',
+    );
+  }
+
+  if (nsis?.artifactName === expectedNsisArtifactName) {
+    checks.push('windows-nsis-artifact-name-stable');
+  } else {
+    addBlocker(
+      blockers,
+      'windows-nsis-artifact-name-unstable',
+      'electron-builder nsis.artifactName must match latest.yml updater metadata.',
     );
   }
 
