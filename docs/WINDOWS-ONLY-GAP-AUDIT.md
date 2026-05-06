@@ -369,3 +369,30 @@ Resolved items:
 Validation:
 
 - `corepack pnpm test tests/unit/lib/process-inspector.test.ts tests/unit/lib/process-inspector-adapter-factory.test.ts tests/unit/lib/windows-process-inspector.test.ts tests/unit/lib/session-detection.test.ts`: passed.
+
+## Windows Codex Session Detection Smoke Follow-up
+
+The next transition slice added a Windows smoke command for Codex process
+detection and local JSONL mapping.
+
+Resolved items:
+
+- Added `scripts/smoke-windows-codex-session.ts`.
+- Added `scripts/windows-codex-session-smoke-lib.ts` for reusable smoke helpers.
+- Added package script `smoke:windows:codex-session`.
+- The smoke creates a temporary Windows HOME/USERPROFILE, writes a synthetic
+  `.codex/sessions/.../*.jsonl` file with `session_meta` and `turn_context`
+  records, spawns a Codex-shaped child process whose command line includes
+  `codex <session-id>`, and verifies:
+  - session id to JSONL path mapping
+  - cwd fallback JSONL mapping
+  - `detectActiveCodexSession()` returns `running` with the expected session id,
+    JSONL path, and live Windows process PID
+- The smoke passes the spawned child PID as preloaded process tree input, which
+  mirrors the terminal-pane caller path and avoids matching short-lived helper
+  processes started by process inspection itself.
+
+Validation:
+
+- `corepack pnpm test tests/unit/scripts/windows-codex-session-smoke-lib.test.ts`: passed.
+- `corepack pnpm smoke:windows:codex-session`: passed.
