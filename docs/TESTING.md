@@ -325,11 +325,15 @@ drop-in 편집은 아직 UI action이 아니며 copy-only runbook으로 유지�
 corepack pnpm build:electron
 corepack pnpm smoke:electron:attach
 corepack pnpm smoke:electron:runtime-v2
+corepack pnpm smoke:windows:electron-env
 ```
 
 - `smoke:electron:attach`: live server attach, preload bridge, reload, blocking console 0건.
 - `smoke:electron:runtime-v2`: temp runtime v2 server, Electron page context cookie auth,
   `/api/v2/terminal` marker output, 기본 2회 reload/reconnect.
+- `smoke:windows:electron-env`: Windows Electron local server bootstrap이 Windows `PATH`를
+  POSIX launch path로 오염시키지 않고 packaged server `NODE_PATH`에 `;` 구분자를 쓰는지
+  dry-run으로 확인한다.
 
 macOS packaging smoke:
 

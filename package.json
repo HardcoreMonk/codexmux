@@ -76,6 +76,7 @@
     "smoke:windows:preflight": "tsx scripts/smoke-windows-preflight.ts",
     "smoke:windows:service-host": "tsx scripts/smoke-windows-service-host.ts",
     "smoke:windows:host-diagnostics": "tsx scripts/smoke-windows-host-diagnostics.ts",
+    "smoke:windows:electron-env": "tsx scripts/smoke-windows-electron-env.ts",
     "smoke:windows:codex-session": "tsx scripts/smoke-windows-codex-session.ts",
     "smoke:runtime-v2:target": "node scripts/smoke-runtime-v2.mjs",
     "smoke:runtime-v2:phase2": "node scripts/smoke-runtime-v2-phase2-gate.mjs",

@@ -485,3 +485,25 @@ Validation:
 
 - `corepack pnpm test tests/unit/lib/windows-host-diagnostics.test.ts tests/unit/lib/windows-service-host.test.ts`: passed.
 - `corepack pnpm smoke:windows:host-diagnostics`: passed.
+
+## Windows Electron Bootstrap Env Follow-up
+
+The next transition slice removed POSIX shell assumptions from the Electron
+local server bootstrap path without changing Electron UI behavior.
+
+Resolved items:
+
+- Added `electron/runtime-env.ts` for platform-specific Electron bootstrap env
+  handling.
+- `electron/main.ts` now preserves Windows `PATH` instead of injecting
+  Finder/Dock POSIX launch paths.
+- Packaged Electron local server startup now builds `NODE_PATH` with the
+  platform delimiter, so Windows uses `;` instead of POSIX `:`.
+- Added package script `smoke:windows:electron-env`.
+- The smoke is dry-run only; it does not launch Electron, start a server, write
+  config, or mutate system environment.
+
+Validation:
+
+- `corepack pnpm test tests/unit/electron/runtime-env.test.ts`: passed.
+- `corepack pnpm smoke:windows:electron-env`: passed.

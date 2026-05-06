@@ -1,5 +1,6 @@
 import { capturePristineEnv } from './pristine-env';
 import { applyResolvedShellEnv } from './shell-env';
+import { applyElectronBootstrapEnv, buildPackagedNodePath } from './runtime-env';
 import { app, BrowserWindow, shell, Menu, ipcMain, session, screen, Notification, nativeTheme, dialog } from 'electron';
 import { autoUpdater, type UpdateInfo, type ProgressInfo } from 'electron-updater';
 import * as path from 'path';
@@ -12,18 +13,7 @@ const isDev = process.env.NODE_ENV === 'development';
 const devUrl = process.env.ELECTRON_DEV_URL;
 
 const fixEnv = () => {
-  const additions = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'];
-  const current = process.env.PATH || '';
-  const parts = current.split(':');
-  for (const dir of additions) {
-    if (!parts.includes(dir)) parts.unshift(dir);
-  }
-  process.env.PATH = parts.join(':');
-
-  // Finder/Dock에서 실행 시 locale 환경변수가 없어 Nerd Font 글리프가 깨짐
-  if (!process.env.LANG) {
-    process.env.LANG = 'en_US.UTF-8';
-  }
+  applyElectronBootstrapEnv(process.env, process.platform);
 };
 
 // --- Server Config (~/.codexmux/config.json) ---
@@ -396,7 +386,11 @@ const startLocalServer = async (): Promise<number> => {
     const appDir = process.env.__CMUX_APP_DIR!;
     const appDirUnpacked = process.env.__CMUX_APP_DIR_UNPACKED || appDir;
     const standaloneMods = path.join(appDir, '.next', 'standalone', 'node_modules');
-    process.env.NODE_PATH = [standaloneMods, process.env.NODE_PATH].filter(Boolean).join(':');
+    process.env.NODE_PATH = buildPackagedNodePath({
+      platform: process.platform,
+      standaloneModules: standaloneMods,
+      existingNodePath: process.env.NODE_PATH,
+    });
     require('module').Module._initPaths(); // eslint-disable-line @typescript-eslint/no-require-imports
     const mod = await import(path.join(appDir, 'dist', 'server.js'));
     cachedStart = mod.start;
@@ -824,7 +818,7 @@ ipcMain.handle('open-new-window', () => {
 });
 
 ipcMain.handle('set-dock-badge', (_event, count: number) => {
-  if (process.platform !== 'darwin') return;
+  if (process.platform !== 'darwin' || !app.dock) return;
   app.dock.setBadge(count > 0 ? String(count) : '');
 });
 
@@ -846,6 +840,19 @@ ipcMain.handle('get-system-resources', () => {
 });
 
 app.on('ready', bootstrap);
+
+const flushDefaultSessionStorage = async (): Promise<void> => {
+  try {
+    await Promise.resolve(session.defaultSession?.flushStorageData());
+  } catch {
+    // noop
+  }
+  try {
+    await Promise.resolve(session.defaultSession?.cookies?.flushStore());
+  } catch {
+    // noop
+  }
+};
 
 app.on('activate', () => {
   const primary = getPrimaryWindow();
@@ -872,8 +879,7 @@ app.on('window-all-closed', async () => {
   }
 
   // 2) 스토리지 flush (localStorage + 쿠키)
-  await session.defaultSession?.flushStorageData()?.catch(() => {});
-  await session.defaultSession?.cookies?.flushStore()?.catch(() => {});
+  await flushDefaultSessionStorage();
 
   // 3) 모든 cleanup 완료 후 종료.
   //    app.exit()는 FreeEnvironment를 건너뛰어
@@ -899,8 +905,7 @@ app.on('will-quit', async (event) => {
     serverShutdown = null;
   }
 
-  await session.defaultSession?.flushStorageData()?.catch(() => {});
-  await session.defaultSession?.cookies?.flushStore()?.catch(() => {});
+  await flushDefaultSessionStorage();
   clearTimeout(forceExit);
   app.exit(0);
 });
