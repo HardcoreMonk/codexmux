@@ -101,6 +101,11 @@ client는 `check` view에서 `agentProcess=true`를 받으면 timeline으로 전
 panel의 session list API는 service restart 뒤 layout에 남은 tmux session이 사라져도 전역
 session index를 반환하며, session list 화면도 process 감지 완료를 기다리지 않고 목록 fetch
 상태만 따른다.
+terminal/diff tab을 CODEX panel로 전환할 때 기존 client-local `sessionView=timeline`이
+남아 있고 `agentProcess=null`, `agentSessionId=null`이면 모바일 agent panel이 무기한
+loading spinner에 머무를 수 있다. `use-tab-store.setPanelType()`은 agent panel 전환 시
+active session이나 `check` flow가 없는 tab을 `session-list`로 정규화해 기존 세션 목록이나
+새 세션 시작 UI를 노출한다.
 
 Codex 감지는 pane PID 아래 child process를 따라가며 `codex`를 찾고, session id 또는
 process start time으로 `~/.codex/sessions/YYYY/MM/DD/*.jsonl`을 연결한다. Linux에서는
@@ -197,7 +202,11 @@ baseline event, process retry countdown, terminal port comparison, broadcast-nee
 `src/lib/status/poll-tab-reconciliation.ts`가 담당한다. scan/bootstrap 및 poll의
 workspace/layout traversal과 known tab id collection은
 `src/lib/status/poll-workspace-traversal.ts`가 담당한다.
+scan/bootstrap initial tab entry와 watch/recovery/unknown action flag construction은
+`src/lib/status/scan-tab-bootstrap.ts`가 담당한다.
 existing poll tab entry field mutation은 `src/lib/status/poll-tab-entry-update.ts`가 담당하고,
+busy-stuck process-gone recovery, poll-time pane recovery ordering, post-recovery broadcast
+action decision은 `src/lib/status/poll-recovery-service.ts`가 담당한다.
 initial `ITabStatusEntry` construction은 `src/lib/status/tab-entry.ts`가 담당한다.
 Codex permission/input prompt pane capture
 recovery decision은 `src/lib/status/pane-recovery-service.ts`가 만들고, `StatusManager`는
@@ -297,7 +306,9 @@ paired `response_item.payload.type="message"` record로 몇 ms 간격에 남길 
 | `src/lib/status/poll-service.ts` | status poll timer, adaptive interval, poll snapshot/duration recording |
 | `src/lib/status/poll-tab-reconciliation.ts` | poll tab initial state, process retry, ports, broadcast-needed decision helper |
 | `src/lib/status/poll-tab-entry-update.ts` | existing poll tab entry layout/process/session field mutation helper |
+| `src/lib/status/poll-recovery-service.ts` | busy-stuck process-gone recovery, poll pane recovery ordering, broadcast action helper |
 | `src/lib/status/poll-workspace-traversal.ts` | scan/bootstrap and poll workspace/layout traversal plus known tab id collection helper |
+| `src/lib/status/scan-tab-bootstrap.ts` | scan/bootstrap initial tab entry and watch/recovery/unknown action flag helper |
 | `src/lib/status/pane-recovery-service.ts` | Codex pane capture permission/interrupted prompt recovery decision service |
 | `src/lib/status/jsonl-reconciliation-service.ts` | JSONL watch retention, synthetic interrupt, delayed pane recovery predicate helper |
 | `src/lib/status/resolve-unknown-service.ts` | `unknown` state correction decision helper |

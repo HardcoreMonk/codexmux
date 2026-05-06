@@ -78,7 +78,13 @@ import {
   resolveStatusInitialCliState,
 } from '@/lib/status/poll-tab-reconciliation';
 import { applyStatusPollTabEntryUpdate } from '@/lib/status/poll-tab-entry-update';
+import {
+  recoverStatusPollPaneInput,
+  resolveStatusPollUpdateAction,
+  StatusPollRecoveryService,
+} from '@/lib/status/poll-recovery-service';
 import { collectStatusPollWorkspaceTabs } from '@/lib/status/poll-workspace-traversal';
+import { buildStatusScanTabBootstrap } from '@/lib/status/scan-tab-bootstrap';
 import { deliverStatusWebPush } from '@/lib/status/web-push-delivery';
 import { buildStatusWebPushPayload } from '@/lib/status/web-push-payload';
 import { createStatusWebPushActions } from '@/lib/runtime/status/web-push-actions';
@@ -319,6 +325,7 @@ export class StatusManager {
   });
   private readonly jsonlWatchService: StatusJsonlWatchService;
   private readonly pollService: StatusPollService;
+  private readonly pollRecoveryService: StatusPollRecoveryService;
   private readonly sessionHistoryPersistence: ReturnType<typeof createStatusSessionHistoryPersistence>;
   private readonly stopRecheckService: StatusStopRecheckService;
 
@@ -335,6 +342,9 @@ export class StatusManager {
       recordCounter: recordPerfCounter,
       getPerfNow,
       recordDuration: recordPerfDuration,
+    });
+    this.pollRecoveryService = new StatusPollRecoveryService({
+      busyStuckMs: BUSY_STUCK_MS,
     });
     this.stopRecheckService = new StatusStopRecheckService({
       delayMs: CODEX_STOP_RECHECK_MS,
@@ -391,53 +401,30 @@ export class StatusManager {
           jsonlPath: provider?.readJsonlPath(tab) ?? null,
           childPids: provider ? await this.getCachedChildPids(childPidCache, paneInfo) : undefined,
         });
-        const cliState = resolveStatusInitialCliState({
-          persistedState: tab.cliState as TCliState | undefined,
-          providerId: provider?.id ?? null,
-          detected,
-        });
-
         const { terminalStatus, listeningPorts } = provider
           ? { terminalStatus: 'idle' as const, listeningPorts: [] as number[] }
           : await this.detectTerminalStatus(paneInfo);
-        // lastEvent는 메모리 전용이라 재시작 시 유실. persisted needs-input 복원 시
-        // 클라 ack가 seq=0과 매칭할 baseline이 필요하므로 합성한다.
-        const syntheticLastEvent = createSyntheticStatusLastEvent(cliState, Date.now());
-        const agentSummary = readAgentSummary(tab);
-        const agentSessionId = resolveAgentSessionId({
-          detectedSessionId: detected.sessionId,
-          jsonlPath: detected.jsonlPath,
-          persistedSessionId: readAgentSessionId(tab),
-        });
-        this.tabs.set(tab.id, buildStatusTabEntry({
+        const bootstrap = buildStatusScanTabBootstrap({
           workspaceId,
           tab,
-          cliState,
+          providerId: provider?.id ?? null,
           paneInfo,
+          detected,
           terminalStatus,
           listeningPorts,
-          agentSummary,
-          agentSessionId,
-          jsonlPath: detected.jsonlPath,
-          lastAssistantSnippet: detected.lastAssistantSnippet,
-          currentAction: detected.currentAction,
-          lastEvent: syntheticLastEvent,
           now: Date.now(),
-          restoreLifecycleFields: true,
-        }));
-        if ((cliState === 'needs-input' || cliState === 'unknown') && detected.jsonlPath) {
+        });
+        this.tabs.set(tab.id, bootstrap.entry);
+        if (bootstrap.actions.shouldStartJsonlWatch && detected.jsonlPath) {
           this.startJsonlWatch(tab.id, detected.jsonlPath);
         }
-        if (provider?.id === 'codex' && detected.jsonlPath) {
-          this.startJsonlWatch(tab.id, detected.jsonlPath);
-        }
-        if (provider?.id === 'codex' && detected.running) {
+        if (bootstrap.actions.shouldRecoverPaneInput) {
           const pendingRecovery = await this.recoverPendingInputFromPane(tab.id, { silent: true });
           if (!pendingRecovery.recovered) {
             await this.recoverInterruptedPromptFromPane(tab.id, { silent: true });
           }
         }
-        if (cliState === 'unknown') {
+        if (bootstrap.actions.shouldResolveUnknown) {
           this.resolveUnknown(tab.id).catch((err) => log.warn('resolveUnknown failed: %s', err));
         }
     }
@@ -700,32 +687,40 @@ export class StatusManager {
           this.startJsonlWatch(tab.id, existing.jsonlPath);
         }
 
-        if (existing.cliState === 'busy' && existing.lastEvent
-            && now - existing.lastEvent.at > BUSY_STUCK_MS) {
-          const childPids = await this.getCachedChildPids(childPidCache, paneInfo);
-          const agentRunning = paneInfo?.pid && provider
-            ? await provider.isAgentRunning(paneInfo.pid, childPids)
-            : false;
-          if (!agentRunning) {
+        const busyRecovered = await this.pollRecoveryService.recoverBusyStuck({
+          currentState: existing.cliState,
+          lastEventAt: existing.lastEvent?.at,
+          now,
+          paneInfo,
+          provider,
+          getChildPids: (info) => this.getCachedChildPids(childPidCache, info),
+          forceIdle: () => {
             log.info({ tabId: tab.id }, 'busy stuck — agent process gone, forcing idle');
             this.applyCliState(tab.id, existing, 'idle', { silent: true });
             this.persistToLayout(existing);
             this.broadcastUpdate(tab.id, existing);
-            broadcastUpdateCount++;
-            continue;
-          }
+          },
+        });
+        if (busyRecovered) {
+          broadcastUpdateCount++;
+          continue;
         }
 
-        const pendingInputRecovery = provider?.id === 'codex' && refreshed.running
-          ? await this.recoverPendingInputFromPane(tab.id)
-          : { recovered: false };
-        const interruptedPromptRecovery = provider?.id === 'codex' && refreshed.running && !pendingInputRecovery.recovered
-          ? await this.recoverInterruptedPromptFromPane(tab.id)
-          : { recovered: false };
-
-        if (pendingInputRecovery.recovered || interruptedPromptRecovery.recovered) {
+        const paneRecovery = await recoverStatusPollPaneInput({
+          providerId: provider?.id ?? null,
+          running: refreshed.running,
+          recoverPending: () => this.recoverPendingInputFromPane(tab.id),
+          recoverInterrupted: () => this.recoverInterruptedPromptFromPane(tab.id),
+        });
+        const updateAction = resolveStatusPollUpdateAction({
+          paneRecovered: paneRecovery.recovered,
+          shouldBroadcastUpdate: baseTabChanges.shouldBroadcastUpdate,
+          metadataChanged,
+          codexStateChanged,
+        });
+        if (updateAction === 'count-only') {
           broadcastUpdateCount++;
-        } else if (baseTabChanges.shouldBroadcastUpdate || metadataChanged || codexStateChanged) {
+        } else if (updateAction === 'broadcast') {
           this.broadcastUpdate(tab.id, existing);
           broadcastUpdateCount++;
         }

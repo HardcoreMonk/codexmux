@@ -76,4 +76,42 @@ describe('useTabStore agent process view state', () => {
       agentInstalled: false,
     });
   });
+
+  it('moves a stale timeline-only tab to the session list when switching into Codex mode', () => {
+    useTabStore.getState().initTab('tab-terminal', {
+      workspaceId: 'ws-test',
+      panelType: 'terminal',
+      agentProcess: null,
+      agentSessionId: null,
+      sessionView: 'timeline',
+    });
+
+    useTabStore.getState().setPanelType('tab-terminal', 'codex');
+
+    expect(useTabStore.getState().tabs['tab-terminal']).toMatchObject({
+      panelType: 'codex',
+      sessionView: 'session-list',
+    });
+  });
+
+  it('keeps active Codex session views when switching into Codex mode', () => {
+    useTabStore.getState().initTab('tab-active', {
+      workspaceId: 'ws-test',
+      panelType: 'terminal',
+      agentProcess: true,
+      sessionView: 'timeline',
+    });
+    useTabStore.getState().initTab('tab-check', {
+      workspaceId: 'ws-test',
+      panelType: 'terminal',
+      agentProcess: null,
+      sessionView: 'check',
+    });
+
+    useTabStore.getState().setPanelType('tab-active', 'codex');
+    useTabStore.getState().setPanelType('tab-check', 'codex');
+
+    expect(useTabStore.getState().tabs['tab-active']?.sessionView).toBe('timeline');
+    expect(useTabStore.getState().tabs['tab-check']?.sessionView).toBe('check');
+  });
 });
