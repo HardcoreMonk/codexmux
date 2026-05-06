@@ -1,0 +1,82 @@
+import { runPackageScriptStep } from './windows-release-gate-lib.mjs';
+
+export const getWindowsPackageGateSteps = () => [
+  {
+    id: 'windows-packaged-launch',
+    script: 'smoke:windows:packaged-launch',
+  },
+  {
+    id: 'windows-packaged-runtime-v2',
+    script: 'smoke:windows:packaged-runtime-v2',
+  },
+  {
+    id: 'windows-installer-runtime-v2',
+    script: 'smoke:windows:installer-runtime-v2',
+  },
+];
+
+export const validateWindowsPackageGatePackageScripts = ({ scripts }) => {
+  const requiredScripts = getWindowsPackageGateSteps().map((step) => step.script);
+  const missingScriptIds = requiredScripts.filter((script) => typeof scripts?.[script] !== 'string');
+
+  return {
+    ok: missingScriptIds.length === 0,
+    missingScriptIds,
+  };
+};
+
+export const runWindowsPackageGate = async ({
+  steps = getWindowsPackageGateSteps(),
+  runStep = runPackageScriptStep,
+} = {}) => {
+  const results = [];
+
+  for (const step of steps) {
+    const result = await runStep(step);
+    results.push({
+      id: step.id,
+      script: step.script,
+      ...result,
+    });
+
+    if (!result.ok) {
+      return {
+        ok: false,
+        failedStepId: step.id,
+        results,
+      };
+    }
+  }
+
+  return {
+    ok: true,
+    failedStepId: null,
+    results,
+  };
+};
+
+const allowedResultKeys = new Set([
+  'id',
+  'script',
+  'ok',
+  'durationMs',
+  'exitCode',
+  'signal',
+  'error',
+]);
+
+const sanitizePackageGateResult = (result) =>
+  Object.fromEntries(
+    Object.entries(result).filter(([key]) => allowedResultKeys.has(key)),
+  );
+
+export const buildWindowsPackageGateArtifactPayload = ({
+  result,
+  durationMs,
+}) => ({
+  ok: result.ok,
+  mutatesSystem: true,
+  durationMs,
+  failedStepId: result.failedStepId,
+  results: result.results.map(sanitizePackageGateResult),
+});

@@ -365,6 +365,7 @@ corepack pnpm smoke:windows:packaged-runtime-v2
 corepack pnpm pack:electron
 corepack pnpm smoke:windows:installer-install
 corepack pnpm smoke:windows:installer-runtime-v2
+corepack pnpm smoke:windows:package-gate
 ```
 
 `pack:electron:dev` must create `release/win-unpacked/codexmux.exe`,
@@ -381,6 +382,9 @@ temporarily: it silent-installs to a temp directory, launches the installed app
 through the packaged launch smoke, then runs the generated uninstaller.
 `smoke:windows:installer-runtime-v2` runs the same installed-app path with the
 packaged runtime v2 terminal check enabled.
+`smoke:windows:package-gate` does not build packages; it runs packaged launch,
+packaged runtime v2, and installer runtime v2 smoke against existing `release/`
+artifacts and stops at the first failure.
 
 macOS packaging smoke:
 
@@ -463,6 +467,7 @@ CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:android:timeline
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:release-gate
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:packaged-runtime-v2
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:installer-runtime-v2
+CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:package-gate
 ```
 
 Artifacts preserve pass/fail state, check names, runtime/app/device metadata, reconnect round
@@ -475,6 +480,9 @@ Windows packaged/installer package artifacts also stay summary-only: they keep c
 launch mode, Electron preload state, version/build metadata, runtime v2 terminal verification
 status, and console counts without app install temp paths, target URLs, terminal marker text, or
 child process stdout/stderr.
+`smoke:windows:package-gate` writes a summary artifact with package step id,
+script, duration, exit code, signal, and failure label only. Child package smokes
+write their own sanitized artifacts when the same artifact directory is set.
 
 The release workflow runs `smoke:browser-reconnect` on GitHub-hosted Ubuntu and uploads
 `smoke-browser-reconnect`. Android and packaged Electron smoke remain manual or self-hosted
