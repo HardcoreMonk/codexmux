@@ -60,6 +60,7 @@ import {
 } from '@/lib/status/poll-service';
 import { StatusJsonlWatchService } from '@/lib/status/jsonl-watch-service';
 import { evaluateStatusHookEvent } from '@/lib/status/hook-event-service';
+import { buildStatusTabEntry } from '@/lib/status/tab-entry';
 import {
   buildStatusRemoveMessage,
   buildStatusUpdateMessage,
@@ -384,8 +385,6 @@ export class StatusManager {
         const { terminalStatus, listeningPorts } = provider
           ? { terminalStatus: 'idle' as const, listeningPorts: [] as number[] }
           : await this.detectTerminalStatus(paneInfo);
-        const currentProcess = paneInfo?.command;
-        const paneTitle = paneInfo ? `${paneInfo.command}|${paneInfo.path}` : undefined;
         // lastEvent는 메모리 전용이라 재시작 시 유실. persisted needs-input 복원 시
         // 클라 ack가 seq=0과 매칭할 baseline이 필요하므로 합성한다.
         const syntheticLastEvent = createSyntheticStatusLastEvent(cliState, Date.now());
@@ -395,28 +394,22 @@ export class StatusManager {
           jsonlPath: detected.jsonlPath,
           persistedSessionId: readAgentSessionId(tab),
         });
-        this.tabs.set(tab.id, {
-          cliState,
+        this.tabs.set(tab.id, buildStatusTabEntry({
           workspaceId: ws.id,
-          tabName: tab.name || (paneTitle ? formatTabTitle(paneTitle) : ''),
-          currentProcess,
-          paneTitle,
-          tmuxSession: tab.sessionName,
-          panelType: tab.panelType,
+          tab,
+          cliState,
+          paneInfo,
           terminalStatus,
           listeningPorts,
           agentSummary,
-          lastUserMessage: tab.lastUserMessage,
-          lastAssistantMessage: detected.lastAssistantSnippet,
-          currentAction: detected.currentAction,
-          readyForReviewAt: cliState === 'ready-for-review' ? Date.now() : null,
-          busySince: null,
-          dismissedAt: tab.dismissedAt ?? null,
           agentSessionId,
           jsonlPath: detected.jsonlPath,
+          lastAssistantSnippet: detected.lastAssistantSnippet,
+          currentAction: detected.currentAction,
           lastEvent: syntheticLastEvent,
-          eventSeq: 0,
-        });
+          now: Date.now(),
+          restoreLifecycleFields: true,
+        }));
         if ((cliState === 'needs-input' || cliState === 'unknown') && detected.jsonlPath) {
           this.startJsonlWatch(tab.id, detected.jsonlPath);
         }
@@ -630,25 +623,22 @@ export class StatusManager {
             jsonlPath: detected.jsonlPath,
             persistedSessionId: readAgentSessionId(tab),
           });
-          const entry: ITabStatusEntry = {
-            cliState: initialState,
+          const entry = buildStatusTabEntry({
             workspaceId: ws.id,
-            tabName: tab.name || (newPaneTitle ? formatTabTitle(newPaneTitle) : ''),
-            currentProcess,
-            paneTitle: newPaneTitle,
-            tmuxSession: tab.sessionName,
-            panelType: tab.panelType,
+            tab,
+            cliState: initialState,
+            paneInfo,
             terminalStatus,
             listeningPorts,
             agentSummary,
-            lastUserMessage: tab.lastUserMessage,
-            lastAssistantMessage: detected.lastAssistantSnippet,
-            currentAction: detected.currentAction,
             agentSessionId,
             jsonlPath: detected.jsonlPath,
+            lastAssistantSnippet: detected.lastAssistantSnippet,
+            currentAction: detected.currentAction,
             lastEvent: syntheticLastEvent,
-            eventSeq: 0,
-          };
+            now: Date.now(),
+            restoreLifecycleFields: false,
+          });
           this.tabs.set(tab.id, entry);
           this.persistToLayout(entry);
           this.broadcastUpdate(tab.id, entry);
