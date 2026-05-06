@@ -213,11 +213,9 @@ Resolved items:
 
 - `src/workers/terminal-worker.ts` now asks the factory for the terminal runtime
   adapter instead of importing the current tmux runtime directly.
-- `CODEXMUX_RUNTIME_TERMINAL_ADAPTER` is parsed in one place. The only supported
-  value is `tmux`; unset also resolves to `tmux` as the migration fallback.
-- Unimplemented values such as `windows` fail closed with
-  `runtime-v2-terminal-adapter-unsupported` instead of silently claiming Windows
-  runtime support.
+- `CODEXMUX_RUNTIME_TERMINAL_ADAPTER` is parsed in one place. Unset resolves to
+  `tmux` as the migration fallback.
+- Unknown values fail closed with `runtime-v2-terminal-adapter-unsupported`.
 - The factory is injectable in unit tests, so a future Windows adapter can be
   added behind the same `ITerminalRuntimeAdapter` contract without changing the
   worker service command handling.
@@ -226,26 +224,31 @@ Validation:
 
 - `corepack pnpm test tests/unit/lib/runtime/terminal-runtime-adapter-factory.test.ts tests/unit/lib/runtime/terminal-worker-service.test.ts tests/unit/lib/runtime/terminal-worker-runtime.test.ts`: passed.
 
-## Windows Terminal Runtime Skeleton Follow-up
+## Windows Terminal Runtime Follow-up
 
-The next transition slice added the Windows terminal runtime module boundary
-without claiming functional Windows terminal support.
+The next transition slice moved the Windows terminal runtime from skeleton to a
+minimal `node-pty`/ConPTY-backed session manager behind
+`ITerminalRuntimeAdapter`.
 
 Resolved items:
 
 - `CODEXMUX_RUNTIME_TERMINAL_ADAPTER=windows` now resolves to a dedicated
-  Windows runtime skeleton instead of being treated as an unknown adapter value.
-- The Windows runtime skeleton implements the `ITerminalRuntimeAdapter` shape but
-  every readiness and terminal operation fails with
-  `runtime-v2-windows-terminal-runtime-unimplemented`.
+  Windows runtime adapter instead of being treated as an unknown adapter value.
+- The Windows runtime adapter supports create, attach, write, resize, detach,
+  kill, presence, and basic metadata for in-memory `node-pty` sessions.
+- The adapter fails with `runtime-v2-windows-terminal-platform-mismatch` if used
+  outside `win32`.
 - Unknown adapter values still fail closed with
   `runtime-v2-terminal-adapter-unsupported`.
-- This keeps the runtime worker route ready for the ConPTY implementation slice
-  while preventing accidental startup of a nonfunctional Windows backend.
+- `tmux` remains the default migration fallback until Windows runtime smoke
+  tests and session persistence/reconnect behavior are accepted.
 
 Validation:
 
 - `corepack pnpm test tests/unit/lib/runtime/terminal-runtime-adapter-factory.test.ts tests/unit/lib/runtime/windows-terminal-runtime.test.ts tests/unit/lib/runtime/terminal-worker-service.test.ts tests/unit/lib/runtime/terminal-worker-runtime.test.ts`: passed.
+- Manual Windows runtime smoke using real `node-pty`: passed. The adapter spawned
+  `node.exe` under the Windows runtime, observed `cmux-ready` on stdout, read
+  runtime metadata, and killed the session.
 
 ## Windows Process Inspector Skeleton Follow-up
 

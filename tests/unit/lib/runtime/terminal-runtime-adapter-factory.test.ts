@@ -57,15 +57,13 @@ describe('terminal runtime adapter factory', () => {
     await expect(runtime.health()).resolves.toEqual({ ok: true });
   });
 
-  it('creates a Windows adapter skeleton that fails readiness explicitly', async () => {
+  it('creates the selected Windows runtime adapter through an injectable factory', async () => {
     const runtime = createTerminalRuntimeAdapter({
       env: { CODEXMUX_RUNTIME_TERMINAL_ADAPTER: 'windows' },
       platform: 'win32',
+      createWindowsRuntime: createFakeRuntime,
     });
 
-    await expect(runtime.health()).rejects.toMatchObject({
-      code: 'runtime-v2-windows-terminal-runtime-unimplemented',
-      retryable: false,
-    });
+    await expect(runtime.health()).resolves.toEqual({ ok: true });
   });
 });
