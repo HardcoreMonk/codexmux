@@ -57,7 +57,7 @@ Terminal worker exited`로 닫아 client가 `/api/v2/terminal`을 새로 열게 
 | --- | --- | --- |
 | Server entry | `server.ts` | process lifecycle, Next.js, WebSocket upgrade, auth gate, startup/shutdown |
 | Terminal | `src/lib/terminal-server.ts`, `src/lib/tmux.ts` | tmux attach, stdin/stdout/resize, terminal session lifecycle |
-| Timeline | `src/lib/timeline-server.ts`, `src/lib/timeline-server-state.ts`, `src/lib/timeline/init-metadata.ts` | Codex JSONL subscribe, file watch, resume, timeline init/append, init metadata helpers |
+| Timeline | `src/lib/timeline-server.ts`, `src/lib/timeline-server-state.ts`, `src/lib/timeline/subscription-delivery.ts`, `src/lib/timeline/resume-session-service.ts`, `src/lib/timeline/init-metadata.ts`, `src/lib/timeline/init-message.ts`, `src/lib/timeline/file-read-service.ts`, `src/lib/timeline/file-watcher-service.ts`, `src/lib/timeline/append-delivery.ts` | Codex JSONL subscribe, file watch, resume, timeline init/append, subscription delivery, resume/session-changed helpers, init metadata/message helpers, JSONL tail/read helpers, watcher lifecycle/incremental scheduling, append delivery planning |
 | Session Index | `src/lib/session-index.ts`, `src/lib/session-list.ts`, `src/pages/api/timeline/sessions.ts`, `src/lib/runtime/timeline/worker-service.ts` | 로컬 Codex session 목록 인덱스, session list snapshot, runtime v2 default read projection |
 | Status | `src/lib/status-manager.ts`, `src/lib/status-server.ts`, `src/lib/status/jsonl-idle-scan.ts` | tab status polling, hook event merge, notification dispatch, JSONL idle scan helpers |
 | Workspace | `src/lib/workspace-store.ts`, `src/lib/layout-store.ts`, `src/lib/runtime/storage-read-owner.ts` | workspace list, layout tree, pane/tab mutation, persisted metadata, runtime v2 default read projection |
@@ -198,15 +198,20 @@ Timeline은 terminal scrollback을 그대로 보여주는 기능이 아니라 Co
 
 1. client가 `/api/timeline?session=...&panelType=codex`에 연결한다.
 2. server가 pane PID로 active Codex session을 감지한다.
-3. JSONL path가 확인되면 file watcher를 공유 singleton에 등록한다.
-4. 초기 응답은 tail snapshot을 `timeline:init`으로 보낸다. 같은 file size/mtime/maxEntries면 watcher의 tail snapshot cache를 재사용한다.
-5. 파일 append가 생기면 추가 byte range만 읽어 `timeline:append`로 보낸다.
+3. JSONL path가 확인되면 `file-watcher-service`가 file watcher를 공유 singleton에 등록하고 debounce/retry/remove lifecycle을 처리한다. `subscription-delivery` facade는 WebSocket backpressure를 확인한 뒤 init/error/stats/watcher broadcast를 전송한다.
+4. 초기 응답은 `src/lib/timeline/file-read-service.ts`의 tail snapshot helper로 읽고 `src/lib/timeline/init-message.ts`가 `timeline:init` payload를 만든다. 같은 file size/mtime/maxEntries면 watcher의 tail snapshot cache를 재사용한다.
+5. 파일 append가 생기면 `file-watcher-service`가 incremental parse scheduling과 pending-change 재처리를 담당하고, `append-delivery` helper가 subscriber별 full append, bounded catch-up read, skip을 결정한다. read service는 필요한 byte range만 읽어 `timeline:append`를 보낸다.
 6. session id가 바뀌면 `timeline:session-changed`를 보낸다.
 7. 오래된 항목은 HTTP `/api/timeline/entries`로 페이지 단위 load-more 한다.
 
-`CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`일 때 7번의 HTTP read path와 session list,
-message counts는 legacy URL을 유지하면서 Timeline Worker command로 처리된다. WebSocket
-init/append/session-changed/resume은 아직 legacy `timeline-server`가 소유한다.
+`resume-session-service`는 active/stored/latest JSONL resolution, unsafe process resume guard,
+`codex resume` command delivery, `timeline:resume-*`, `timeline:session-changed` message
+생성을 담당한다. `timeline-server.ts`는 WebSocket lifecycle과 session watcher callback 연결만 유지한다.
+
+`CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`일 때 HTTP read path, session list,
+message counts, WebSocket init/append/session-changed delivery는 legacy URL을 유지하면서
+Timeline Worker bridge로 처리된다. 명시적 `off` rollback에서는 legacy `timeline-server`
+경로가 같은 read service와 file watcher를 사용한다.
 
 같은 tmux session에서 `agentSessionId`만 바뀐 경우에도 client는 timeline WebSocket을 새로 연다. Android WebView처럼 기존 connection이 살아 보이지만 stale JSONL을 보고 있는 상태를 피하기 위함이다.
 

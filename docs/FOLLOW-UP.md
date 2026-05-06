@@ -21,7 +21,7 @@
 - 모바일 앱 정보: 서버 접속 후 mobile navigation에서 Android 앱 versionName/versionCode, package, device, Android version, 서버 버전 확인과 WebView/Activity 재시작 제공.
 - 알림 설정: 작업 완료 toast, system notification, 완료 사운드 on/off.
 - status 로직 1차 모듈화: state reducer, session mapping, notification policy, metadata merge 분리.
-- timeline 로직 1차 모듈화: shared server state, stable entry id, dedupe, init/append/load-more merge 분리.
+- timeline 로직 모듈화: shared server state, subscription delivery facade, resume/session-changed service, stable entry id, dedupe, init/append/load-more merge, init metadata/message helper, JSONL file read/tail snapshot helper, watcher lifecycle/incremental scheduling service, append delivery planner 분리.
 - provider contract 테스트 강화: Codex provider API shape, panel/process mapping, stable parser id 검증.
 - DIFF 패널 안정화: 대량 tracked/untracked diff 제한, binary/대용량 placeholder, client timeout, 기본 접힘 렌더링 적용.
 - 성능 1차/2차/3차/4차/5차/6차/7차/8차: 인증된 `/api/debug/perf` snapshot, timeline append batching/row memo/content-visibility, terminal stdout coalescing, JSONL tail snapshot cache, DIFF full response short cache, stats in-flight cache build dedupe, timeline message count streaming, session index unchanged persist skip, session list page mapping 적용.
@@ -188,7 +188,7 @@ P0/P1/P2/P3 후속 상태:
 
 ### Architecture modularization
 
-- `timeline-server.ts`는 shared state와 init metadata helper를 분리했다. 다음 단계에서는 subscription service, file watcher service, resume service를 별도 파일로 더 나눈다.
+- `timeline-server.ts`는 shared state, subscription delivery facade, resume/session-changed service, init metadata/message helper, JSONL file read/tail snapshot helper, watcher lifecycle/incremental scheduling service, append delivery planner를 분리했다. 다음 단계에서는 legacy timeline server의 WebSocket lifecycle shell을 더 얇게 유지하면서 runtime v2 default bridge와 중복되는 orchestration만 계속 정리한다.
 - `status-manager.ts`는 순수 정책 helper와 JSONL idle scan helper를 분리했다. 다음 단계에서는 poll service, pane recovery service, Web Push/history side effect adapter를 분리한다.
 - provider 확장 안전망은 `tests/fixtures/providers/codex/` JSONL fixtures와 `tests/unit/lib/providers.test.ts` contract coverage로 시작한다. 새 provider나 app-server adapter는 같은 fixture contract를 통과한 뒤 experimental registry에 들어간다.
 - runtime v2 production 전환은 `docs/RUNTIME-V2-CUTOVER.md`의 surface별 flag와 rollback gate를 따른다. terminal, storage, timeline, status를 한 release에서 동시에 기본값으로 전환하지 않는다.
