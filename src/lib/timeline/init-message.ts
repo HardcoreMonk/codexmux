@@ -1,4 +1,5 @@
 import { computeTimelineInitMeta } from '@/lib/timeline/init-metadata';
+import type { IAgentSessionRelationship } from '@/lib/agent-session-relationship';
 import type { IChunkReadResult, ISessionStats, ITimelineInitMessage } from '@/types/timeline';
 
 interface IBuildEmptyTimelineInitMessageOptions {
@@ -13,6 +14,7 @@ interface IBuildTimelineInitMessageOptions {
   jsonlPath: string;
   firstTimestamp?: string | null;
   sessionStats?: ISessionStats | null;
+  relationship?: IAgentSessionRelationship | null;
 }
 
 export const buildEmptyTimelineInitMessage = ({
@@ -39,6 +41,7 @@ export const buildTimelineInitMessage = ({
   jsonlPath,
   firstTimestamp = null,
   sessionStats = null,
+  relationship = null,
 }: IBuildTimelineInitMessageOptions): ITimelineInitMessage => ({
   type: 'timeline:init',
   entries: result.entries,
@@ -55,4 +58,5 @@ export const buildTimelineInitMessage = ({
     customTitle: result.customTitle,
   }),
   sessionStats,
+  ...(relationship ? { relationship } : {}),
 });

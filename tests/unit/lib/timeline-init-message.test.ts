@@ -4,6 +4,7 @@ import {
   buildEmptyTimelineInitMessage,
   buildTimelineInitMessage,
 } from '@/lib/timeline/init-message';
+import type { IAgentSessionRelationship } from '@/lib/agent-session-relationship';
 import type { IChunkReadResult, ISessionStats, ITimelineEntry } from '@/types/timeline';
 
 describe('timeline init message helpers', () => {
@@ -72,6 +73,35 @@ describe('timeline init message helpers', () => {
         customTitle: 'Custom title',
       },
       sessionStats,
+    });
+  });
+
+  it('includes read-only session relationship metadata when provided', () => {
+    const relationship: IAgentSessionRelationship = {
+      providerId: 'codex',
+      sourceSessionId: 'child-session',
+      parentSessionId: 'parent-session',
+      rootSessionId: 'root-session',
+      relationshipType: 'sub-agent',
+      relationshipConfidence: 'high',
+    };
+    const result: IChunkReadResult = {
+      entries: [],
+      startByteOffset: 0,
+      fileSize: 0,
+      hasMore: false,
+      errorCount: 0,
+    };
+
+    expect(buildTimelineInitMessage({
+      result,
+      sessionId: 'child-session',
+      jsonlPath: '/tmp/session.jsonl',
+      relationship,
+    })).toMatchObject({
+      type: 'timeline:init',
+      sessionId: 'child-session',
+      relationship,
     });
   });
 });

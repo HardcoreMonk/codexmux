@@ -48,6 +48,7 @@ import {
 import { createTimelineFileWatcherService } from '@/lib/timeline/file-watcher-service';
 import { createTimelineSubscriptionDelivery } from '@/lib/timeline/subscription-delivery';
 import { createTimelineResumeSessionService } from '@/lib/timeline/resume-session-service';
+import { findSessionRelationshipByJsonlPath } from '@/lib/session-index';
 
 const log = createLogger('timeline');
 
@@ -219,6 +220,7 @@ const subscribeToFile = async (
 
   const resolvedSessionId = sessionId ?? extractSessionIdFromJsonlPath(jsonlPath) ?? '';
   const sessionStats = resolvedSessionId ? await readSessionStats(resolvedSessionId) : null;
+  const relationship = await findSessionRelationshipByJsonlPath(jsonlPath).catch(() => null);
 
   const initMessage = buildTimelineInitMessage({
     result,
@@ -226,6 +228,7 @@ const subscribeToFile = async (
     jsonlPath,
     firstTimestamp: snapshot.firstTimestamp,
     sessionStats,
+    relationship,
   });
   timelineDelivery.send(ws, initMessage);
   void startRuntimeTimelineLiveShadow({

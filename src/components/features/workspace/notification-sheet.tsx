@@ -38,6 +38,7 @@ import type { ICurrentAction } from '@/types/status';
 import type { ISessionHistoryEntry } from '@/types/session-history';
 import { stripMarkdown } from '@/lib/strip-markdown';
 import { readAgentSessionId } from '@/lib/agent-tab-fields';
+import type { IApprovalPromptMetadata } from '@/lib/permission-prompt';
 
 const ACTION_ICONS: Record<string, typeof FileText> = {
   Read: FileText,
@@ -97,6 +98,7 @@ interface INotificationItem {
   dismissedAt?: number | null;
   agentSessionId?: string | null;
   lastEventSeq?: number;
+  approvalPromptMetadata?: IApprovalPromptMetadata | null;
 }
 
 interface INotificationSheetProps {
@@ -127,6 +129,7 @@ const collectItems = (
       dismissedAt: tab.dismissedAt,
       agentSessionId: readAgentSessionId(tab),
       lastEventSeq: tab.lastEvent?.seq,
+      approvalPromptMetadata: tab.approvalPromptMetadata,
     });
   }
 
@@ -548,6 +551,7 @@ export const NotificationPanel = ({ onNavigated, className }: { onNavigated?: ()
                           tabName={layoutTab?.name || item.tabName}
                           lastUserMessage={item.lastUserMessage}
                           lastEventSeq={item.lastEventSeq}
+                          approvalPromptMetadata={item.approvalPromptMetadata}
                           isActiveTab={item.tabId === activeTabId}
                           onNavigate={handleNavigate}
                         />

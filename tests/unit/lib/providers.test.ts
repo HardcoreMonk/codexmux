@@ -3,6 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 
 import { normalizePanelType } from '@/lib/panel-type';
+import { buildAgentSessionRelationship } from '@/lib/agent-session-relationship';
 import { getProviderByPanelType, getProviderByProcessName, listProviders } from '@/lib/providers';
 
 const UUID = '12345678-1234-1234-1234-123456789abc';
@@ -57,6 +58,25 @@ describe('agent providers', () => {
       expect(typeof provider.readSummary).toBe('function');
       expect(typeof provider.writeSummary).toBe('function');
     }
+  });
+
+  it('keeps provider-neutral relationship projection available for future providers', () => {
+    const provider = getCodexProvider();
+
+    expect(buildAgentSessionRelationship({
+      providerId: provider.id,
+      sessionId: UUID,
+      parentSessionId: 'parent-session',
+      rootSessionId: 'root-session',
+      relationshipType: 'fork',
+    })).toMatchObject({
+      providerId: 'codex',
+      sourceSessionId: UUID,
+      parentSessionId: 'parent-session',
+      rootSessionId: 'root-session',
+      relationshipType: 'fork',
+      relationshipConfidence: 'high',
+    });
   });
 
   it('keeps Codex provider parsing and session id validation stable', () => {

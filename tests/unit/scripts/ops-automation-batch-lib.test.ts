@@ -71,10 +71,40 @@ describe('ops automation batch helpers', () => {
             'stats.session_parse.inflight_join': 1,
           },
         },
+        triage: {
+          summary: {
+            high: 1,
+            medium: 0,
+            low: 0,
+            total: 1,
+          },
+          items: [
+            {
+              category: 'stats',
+              metric: 'stats.cache.build',
+              severity: 'high',
+              evidence: { averageMs: 1200 },
+              reason: 'slow timing bucket',
+            },
+          ],
+        },
       },
     })).toMatchObject({
       ok: true,
       timingKeys: ['stats.session_parse.7d'],
+      triageSummary: {
+        high: 1,
+        medium: 0,
+        low: 0,
+        total: 1,
+      },
+      topTriage: [
+        {
+          category: 'stats',
+          metric: 'stats.cache.build',
+          severity: 'high',
+        },
+      ],
       counterDeltas: {
         'stats.session_parse.miss': 1,
         'stats.session_parse.inflight_join': 1,

@@ -89,6 +89,26 @@ export const getApprovalMetadataDetail = (metadata: IApprovalPromptMetadata | nu
   return remainingCount > 0 ? `${visibleHints} +${remainingCount}` : visibleHints;
 };
 
+const hasUsefulApprovalMetadata = (metadata: IApprovalPromptMetadata | null): boolean => {
+  if (!metadata) return false;
+  if (metadata.promptType !== 'unknown') return true;
+  if (metadata.approvalKind !== 'unknown') return true;
+  if (metadata.riskLevel !== 'unknown') return true;
+  return getApprovalMetadataDetail(metadata) !== null;
+};
+
+export const selectApprovalPromptMetadata = ({
+  fetchedMetadata,
+  statusMetadata,
+}: {
+  fetchedMetadata: IApprovalPromptMetadata | null;
+  statusMetadata: IApprovalPromptMetadata | null;
+}): IApprovalPromptMetadata | null => {
+  if (hasUsefulApprovalMetadata(fetchedMetadata)) return fetchedMetadata;
+  if (hasUsefulApprovalMetadata(statusMetadata)) return statusMetadata;
+  return fetchedMetadata ?? statusMetadata ?? null;
+};
+
 export const buildApprovalPushBody = ({
   metadata,
   fallbackText,

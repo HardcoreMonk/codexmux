@@ -1,3 +1,5 @@
+import type { IAgentSessionRelationship } from '@/lib/agent-session-relationship';
+
 export type TSessionDetectionStatus = 'unknown' | 'starting' | 'running' | 'not-running' | 'not-initialized' | 'not-installed';
 
 export type TCliState = 'idle' | 'busy' | 'inactive' | 'ready-for-review' | 'needs-input' | 'cancelled' | 'unknown';
@@ -253,6 +255,7 @@ export interface ITimelineInitMessage {
   summary?: string;
   meta?: IInitMeta;
   sessionStats?: ISessionStats | null;
+  relationship?: IAgentSessionRelationship | null;
   isAgentStarting?: boolean;
 }
 
@@ -359,4 +362,5 @@ export interface ISessionMeta {
   turnCount: number;
   jsonlPath?: string;
   cwd?: string | null;
+  relationship?: IAgentSessionRelationship;
 }

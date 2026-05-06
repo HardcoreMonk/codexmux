@@ -148,7 +148,7 @@
 - Status: Accepted
 - Decision: 현재 등록 provider는 Codex 하나이며 client/store field는 호환성을 위해 `agent*` 이름을 유지한다.
 - Rationale: Codex 전환 이후에도 UI와 저장 데이터의 migration 범위를 줄이고 provider-neutral 경계를 유지한다.
-- Consequences: `TCliState`, `ITabState`, `StatusManager`, provider detection, `agentSessionId`, `agentSummary` 변경 시 `docs/STATUS.md`도 함께 갱신한다. Codex JSONL 연결은 session id, 같은 cwd의 process start time, live process 확인 후 cwd fallback 순서로 제한하고, 일반 검색에서는 cwd만으로 최신 JSONL을 선택하지 않는다.
+- Consequences: `TCliState`, `ITabState`, `StatusManager`, provider detection, `agentSessionId`, `agentSummary` 변경 시 `docs/STATUS.md`도 함께 갱신한다. Codex JSONL 연결은 session id, 같은 cwd의 process start time, live process 확인 후 cwd fallback 순서로 제한하고, 일반 검색에서는 cwd만으로 최신 JSONL을 선택하지 않는다. Codex app-server adapter는 disabled fixture boundary로만 둘 수 있으며, registry 등록이나 status/approval ownership 전환은 별도 ADR/rollback gate 없이 진행하지 않는다.
 
 ## ADR-004: Shared State는 `globalThis` Singleton에 둔다
 

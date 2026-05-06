@@ -7,6 +7,12 @@ codexmux는 tab마다 세 가지 상태를 분리해 추적한다.
 3. UI badge와 notification에 표시할 agent 작업 상태.
 
 등록된 provider는 Codex 하나이며 payload와 client store field는 `agent*` 이름을 사용한다.
+`codex-app-server` adapter는 disabled fixture boundary로만 존재하며 status source-of-truth가 아니다.
+App-server status hint는 fixture normalization 테스트 입력일 뿐 `/api/status`, notification,
+approval action execution을 소유하지 않는다.
+Session list와 timeline init의 `relationship` projection은 provider-neutral read-only metadata이며
+status state machine의 입력으로 쓰지 않는다. UI는 이를 session list badge와 timeline metadata
+relation row로 표시할 수 있지만, 관계 생성/수정/전환 action은 제공하지 않는다.
 
 ## 흐름
 
@@ -149,7 +155,10 @@ process로 직접 잡히지 않는 세션을 CODEX 패널에 동기화하기 위
 - background Web Push는 `StatusManager`가 전송한다.
 - `soundOnCompleteEnabled=false`이면 작업 완료 toast sound를 재생하지 않고, native/background system notification도 silent로 요청한다.
 - 현재 Codex CLI permission/input prompt는 hook event로 직접 전달되지 않는 경우가 있으므로, codexmux는 live Codex pane capture에서 prompt 선택지를 감지해 내부 `notification(permission_prompt)` 이벤트처럼 `needs-input`으로 전환한다. 여기에는 permission approval, resume working directory 선택, 기타 option list prompt가 포함된다. 일반 작업 완료 notification은 review flow를 따른다.
-- 전역 approval queue는 pane capture에서 파싱한 option list와 sanitized metadata를 표시한다.
+- 전역 approval queue는 status entry에 이미 저장된 sanitized metadata를 먼저 표시하고,
+  pane capture에서 새로 파싱한 option list와 유용한 sanitized metadata가 도착하면 갱신한다.
+  pane metadata가 `unknown`이거나 capture/parsing이 실패하면 status-owned metadata를 fallback으로
+  유지한다.
   metadata는 `command`, `file`, `permission`, `resume-directory`, `conversation`, `unknown`
   prompt type, `allow|deny|trust|directory|input|unknown` approval kind,
   `low|medium|high|unknown` risk enum, basename-only file hint, sanitized command preview만
@@ -162,11 +171,12 @@ process로 직접 잡히지 않는 세션을 CODEX 패널에 동기화하기 위
   `approvalPromptMetadata`를 `needs-input` status entry에 저장한다. Web Push lock-screen
   copy는 이 metadata의 command/file/permission type, risk, concise detail을 사용하며,
   metadata가 없으면 기존 last user message 또는 tab name fallback을 유지한다.
-- approval queue는 선택지가 표시된 시점, fallback, 선택 전송 성공/실패를
-  `~/.codexmux/approval-audit.jsonl`에 append한다. 이 audit record는 workspace id, tab id,
-  prompt/risk/approval enum, option count, selected option index, fallback reason만 저장하고
-  option label, command preview, cwd, session name, JSONL path, prompt body, terminal output은
-  저장하지 않는다.
+- approval queue는 선택지가 표시된 시점과 fallback을 `/api/approval/audit`로 기록한다.
+  선택 전송 성공/실패는 `/api/tmux/send-input`이 tmux send 결과와 같은 server-side
+  경계에서 기록한다. 두 경로 모두 `~/.codexmux/approval-audit.jsonl`에 append하며 audit
+  record는 workspace id, tab id, prompt/risk/approval enum, option count, selected option
+  index, fallback reason만 저장하고 option label, command preview, cwd, session name, JSONL
+  path, prompt body, terminal output은 저장하지 않는다.
 - Codex CLI가 `Conversation interrupted - tell the model what to do differently` 입력 프롬프트에 멈췄지만 JSONL에 `turn_aborted` 또는 `[Request interrupted by user` marker를 남기지 않는 경우, `StatusManager`는 live pane capture를 보정 신호로 사용해 stale `busy`를 `idle`로 되돌리고 `currentAction`을 비운다.
 - persisted `cliState`가 `idle`이어도 live pane에 Codex 입력 선택지가 보이면 `StatusManager`는 `needs-input`으로 복구한다. 이 경로는 server restart 후 Codex resume directory prompt가 남아 있는 tab을 Android/Electron/mobile notification surface에 다시 노출하기 위한 보정이다.
 - `corepack pnpm smoke:permission`은 임시 서버와 tmux prompt를 사용해 `notification` hook의 `needs-input` 전환, permission option parsing, stdin 선택 전달, `status:ack-notification` 후 `busy` 복귀를 검증한다.
@@ -337,6 +347,8 @@ paired `response_item.payload.type="message"` record로 몇 ms 간격에 남길 
 | `src/hooks/use-agent-status.ts` | status WebSocket hook |
 | `src/hooks/use-tab-store.ts` | client tab state |
 | `src/lib/providers/codex/index.ts` | Codex provider adapter |
+| `src/lib/providers/codex-app-server/index.ts` | disabled fixture-only app-server adapter boundary |
+| `src/lib/agent-session-relationship.ts` | provider-neutral session relationship projection |
 | `src/lib/codex-session-detection.ts` | Codex process/session detection |
 | `src/lib/codex-session-parser.ts` | Codex JSONL parser |
 | `src/lib/timeline-entry-id.ts` | JSONL 기반 stable timeline entry id 생성 |

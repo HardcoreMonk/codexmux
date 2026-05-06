@@ -141,6 +141,8 @@ const runPerfRow = async () => {
       failures: summary.failures,
       timingKeys: summary.timingKeys,
       counterDeltas: summary.counterDeltas,
+      triageSummary: summary.triageSummary,
+      topTriage: summary.topTriage,
     });
   } catch (err) {
     return row({

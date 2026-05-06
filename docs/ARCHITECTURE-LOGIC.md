@@ -61,10 +61,10 @@ Terminal worker exited`로 닫아 client가 `/api/v2/terminal`을 새로 열게 
 | Session Index | `src/lib/session-index.ts`, `src/lib/session-list.ts`, `src/pages/api/timeline/sessions.ts`, `src/lib/runtime/timeline/worker-service.ts` | 로컬 Codex session 목록 인덱스, session list snapshot, runtime v2 default read projection |
 | Status | `src/lib/status-manager.ts`, `src/lib/status-server.ts`, `src/lib/status/jsonl-idle-scan.ts` | tab status polling, hook event merge, notification dispatch, JSONL idle scan helpers |
 | Workspace | `src/lib/workspace-store.ts`, `src/lib/layout-store.ts`, `src/lib/runtime/storage-read-owner.ts` | workspace list, layout tree, pane/tab mutation, persisted metadata, runtime v2 default read projection |
-| Provider | `src/lib/providers/*`, `src/lib/codex-session-detection.ts` | Codex command/session/jsonl adapter |
+| Provider | `src/lib/providers/*`, `src/lib/codex-session-detection.ts`, `src/lib/agent-session-relationship.ts` | Codex command/session/jsonl adapter, provider-neutral relationship projection |
 | Sync | `src/lib/sync-server.ts` | workspace/layout/config change broadcast |
 | Config/Auth | `src/lib/config-store.ts`, `src/lib/auth*.ts` | config persistence, password/session token, onboarding |
-| Perf | `src/lib/perf-metrics.ts`, `src/pages/api/debug/perf.ts` | runtime snapshot, duration/counter aggregation |
+| Perf | `src/lib/perf-metrics.ts`, `src/lib/perf-triage.ts`, `src/pages/api/debug/perf.ts` | runtime snapshot, duration/counter aggregation, sanitized bottleneck triage |
 | Platform shell | `electron/`, `android/`, `android-web/` | client shell and server URL/connectivity UX |
 
 ## Server 시작 로직
@@ -178,7 +178,19 @@ client xterm
 
 ## Codex 세션 감지 로직
 
-Codex provider는 현재 유일한 agent provider다. UI와 저장 field는 호환성을 위해 `agent*` 이름을 유지한다.
+Codex provider는 현재 유일한 등록 agent provider다. UI와 저장 field는 호환성을 위해 `agent*` 이름을 유지한다.
+`src/lib/agent-session-relationship.ts`는 provider-neutral session relationship projection을
+소유한다. 현재는 Codex `session_meta`에 parent/root/source hint가 있을 때 session index public
+metadata에 read-only `relationship`을 붙인다. Timeline init은 session index에 같은 JSONL path가
+있을 때 optional `relationship`을 내려주며, session list row와 timeline metadata detail은 이 값을
+작은 badge/관계 row로만 표시한다. 이 값은 fork/sub-agent UI와 app-server adapter의 공통 입력이며
+durable mutation이나 provider switching을 수행하지 않는다.
+
+`src/lib/providers/codex-app-server/index.ts`는 Codex app-server protocol을 production provider로
+등록하기 전의 disabled fixture boundary다. 기본값은 disabled이며
+`CODEXMUX_CODEX_APP_SERVER=experimental`일 때도 health/session/timeline/status hint normalization
+capability만 read-only로 보고한다. launch, resume, approval action execution은 지원하지 않고,
+provider registry에는 계속 기존 Codex JSONL/tmux provider만 등록된다.
 
 감지 순서:
 
@@ -299,7 +311,7 @@ store mutation
 
 성능 최적화는 source of truth를 바꾸지 않는 짧은 cache와 hidden-state guard부터 적용한다.
 
-- `/api/debug/perf`는 process와 service별 숫자 지표만 반환한다.
+- `/api/debug/perf`는 process와 service별 숫자 지표와 sanitized `triage` 후보만 반환한다.
 - stats page의 여러 endpoint가 동시에 cache build를 요청하면 `getStatsCache()`의 in-flight promise를 공유한다.
 - stats cache가 이미 있으면 `/api/stats/cache-status`는 JSONL 파일 수 scan을 생략한다.
 - diff full response는 `cwd + diff hash` 기준의 짧은 server memory cache를 사용한다.

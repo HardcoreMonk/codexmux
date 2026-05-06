@@ -7,6 +7,7 @@ import type {
   TCliState,
   TTimelineConnectionStatus,
 } from '@/types/timeline';
+import type { IAgentSessionRelationship } from '@/lib/agent-session-relationship';
 import type { TPanelType } from '@/types/terminal';
 import useTimelineWebSocket from '@/hooks/use-timeline-websocket';
 import {
@@ -49,6 +50,7 @@ interface IUseTimelineReturn {
   sessionSummary: string | undefined;
   initMeta: IInitMeta | undefined;
   sessionStats: ISessionStats | null;
+  relationship: IAgentSessionRelationship | null;
   agentProcess: boolean | null;
   agentInstalled: boolean;
   wsStatus: TTimelineConnectionStatus;
@@ -82,6 +84,7 @@ const useTimeline = ({
   const [sessionSummary, setSessionSummary] = useState<string | undefined>();
   const [initMeta, setInitMeta] = useState<IInitMeta | undefined>();
   const [sessionStats, setSessionStats] = useState<ISessionStats | null>(null);
+  const [relationship, setRelationship] = useState<IAgentSessionRelationship | null>(null);
   const [jsonlPath, setJsonlPath] = useState<string | null>(null);
 
   const entriesRef = useRef(entries);
@@ -136,6 +139,7 @@ const useTimeline = ({
     setSessionSummary(undefined);
     setInitMeta(undefined);
     setSessionStats(null);
+    setRelationship(null);
     setJsonlPath(null);
     jsonlPathRef.current = null;
     startByteOffsetRef.current = 0;
@@ -143,7 +147,7 @@ const useTimeline = ({
 
   const isLoading = !wsInitReceived;
 
-  const handleInit = useCallback((newEntries: ITimelineEntry[], _totalEntries: number, initSessionId: string, summary?: string, meta?: IInitMeta, startByteOffset?: number, hasMoreInit?: boolean, jsonlPath?: string | null, isAgentStarting?: boolean, initStats?: ISessionStats | null) => {
+  const handleInit = useCallback((newEntries: ITimelineEntry[], _totalEntries: number, initSessionId: string, summary?: string, meta?: IInitMeta, startByteOffset?: number, hasMoreInit?: boolean, jsonlPath?: string | null, isAgentStarting?: boolean, initStats?: ISessionStats | null, initRelationship?: IAgentSessionRelationship | null) => {
     setWsInitReceived(true);
     setAgentInstalledState(true);
     setEntries((prev) => mergeTimelineInitEntries(prev, newEntries));
@@ -152,6 +156,7 @@ const useTimeline = ({
     setSessionSummary(summary);
     setInitMeta(meta);
     setSessionStats(initStats ?? null);
+    setRelationship(initRelationship ?? null);
     if (jsonlPath) {
       jsonlPathRef.current = jsonlPath;
       setJsonlPath(jsonlPath);
@@ -247,6 +252,7 @@ const useTimeline = ({
       setSessionSummary(undefined);
       setInitMeta(undefined);
       setSessionStats(null);
+      setRelationship(null);
       setHasMore(false);
       return;
     }
@@ -265,6 +271,7 @@ const useTimeline = ({
     setSessionSummary(undefined);
     setInitMeta(undefined);
     setSessionStats(null);
+    setRelationship(null);
     setHasMore(false);
     setWsInitReceived(false);
   }, [panelType]);
@@ -376,6 +383,7 @@ const useTimeline = ({
     setSessionSummary(undefined);
     setInitMeta(undefined);
     setSessionStats(null);
+    setRelationship(null);
     setHasMore(false);
     setWsInitReceived(false);
     setError(null);
@@ -430,6 +438,7 @@ const useTimeline = ({
     sessionSummary,
     initMeta,
     sessionStats,
+    relationship,
     agentProcess: agentProcessState,
     agentInstalled: agentInstalledState,
     wsStatus,

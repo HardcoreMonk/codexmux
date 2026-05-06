@@ -24,7 +24,7 @@
 - timeline 로직 모듈화: shared server state, subscription delivery facade, resume/session-changed service, stable entry id, dedupe, init/append/load-more merge, init metadata/message helper, JSONL file read/tail snapshot helper, watcher lifecycle/incremental scheduling service, append delivery planner 분리.
 - provider contract 테스트 강화: Codex provider API shape, panel/process mapping, stable parser id 검증.
 - DIFF 패널 안정화: 대량 tracked/untracked diff 제한, binary/대용량 placeholder, client timeout, 기본 접힘 렌더링 적용.
-- 성능 1차/2차/3차/4차/5차/6차/7차/8차: 인증된 `/api/debug/perf` snapshot, timeline append batching/row memo/content-visibility, terminal stdout coalescing, JSONL tail snapshot cache, DIFF full response short cache, stats in-flight cache build dedupe, timeline message count streaming, session index unchanged persist skip, session list page mapping 적용.
+- 성능 1차/2차/3차/4차/5차/6차/7차/8차/9차: 인증된 `/api/debug/perf` snapshot, timeline append batching/row memo/content-visibility, terminal stdout coalescing, JSONL tail snapshot cache, DIFF full response short cache, stats in-flight cache build dedupe, timeline message count streaming, session index unchanged persist skip, session list page mapping, perf triage 자동 분류 적용.
 - 터미널 제어 입력: xterm, Codex web input, 모바일 surface에서 `Ctrl+D`를 Codex CLI/shell EOF로 전달하고 pane 분할 단축키 충돌 제거.
 - 워크스페이스 이름 변경: desktop 더블클릭/컨텍스트 메뉴, header shortcut, 모바일 header/navigation sheet 편집 경로 정리.
 - Codex session detection: JSONL 지연 생성에 대비해 process start time 허용치를 확장하고 live process 확인 후 cwd fallback 보정 적용.
@@ -40,6 +40,7 @@
 - permission/input prompt smoke 자동화: 임시 server/HOME/tmux tab에서 `needs-input` push, option parsing, stdin 선택, ack 이후 `busy` 복귀 검증.
 - 전역 approval queue 1차: notification panel의 `needs-input` 항목에서 Codex permission/input prompt 선택지를 조회하고 바로 선택/ack 처리한다. 선택지 조회/전송 실패 시 기존 tab 이동 fallback을 유지한다.
 - approval queue metadata slice: command/file/permission/resume/conversation type, approval kind, risk badge, sanitized command/file detail을 전역 notification panel에 표시한다. Metadata는 status/Web Push durable payload가 아니라 pane capture에서 계산하는 sanitized projection으로 유지한다.
+- approval workflow hardening: notification panel은 status-owned `approvalPromptMetadata`를 초기/fallback 표시로 사용하고, pane capture의 fresh useful metadata가 오면 갱신한다. 선택 전송 성공/실패 audit은 `/api/tmux/send-input` server-side 경계에서 `~/.codexmux/approval-audit.jsonl`에 sanitized enum/index/count만 기록한다.
 - 실제 Codex CLI permission prompt live smoke: live tab에서 `read-only` sandbox 실패로 실제 Codex CLI approval prompt를 띄우고, pane capture recovery로 `needs-input` 전환, notification panel `No` 선택, ack 후 `busy` 복귀, denied command 미실행을 확인했다.
 - bridge trace forwarding: env-gated `CODEXMUX_BRIDGE_TRACE_URL`/`CODEXMUX_BRIDGE_TRACE_TOKEN`이 있을 때 status summary를 codex-ai-bridge external trace ingress로 best-effort POST한다. Discord 직접 전송이나 raw transcript 전달은 하지 않는다.
 - Codex live input prompt 복구: JSONL interrupt marker 없이 남은 `Conversation interrupted` prompt는 stale `busy`에서 `idle`로 복구하고, service restart 후 남는 resume working directory prompt는 persisted `idle`에서도 `needs-input`으로 노출한다. `7e83313` live deploy 기준 Android에서 보이던 purecvisor-single hang 표시는 `needs-input` prompt로 정정됐다.
@@ -47,6 +48,7 @@
 - codex-ai-bridge external trace forwarding: `CODEXMUX_BRIDGE_TRACE_URL`/`CODEXMUX_BRIDGE_TRACE_TOKEN`이 설정된 경우 status update summary를 bridge-owned ingress로 best-effort POST한다. Discord token과 raw transcript는 codexmux가 소유하지 않고, 동일 tab/state/action 조합은 dedupe한다.
 - runtime v2 timeline WebSocket default ownership: `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`에서 기존 `/api/timeline` WebSocket URL이 Timeline Worker live subscribe/session watch를 사용하는 runtime bridge로 전환됐다. Default WebSocket smoke, live shadow, resume safety, session-changed, Android foreground timeline smoke가 temp HOME/DB 기준 통과했다.
 - runtime v2 Phase 6 default gate/code fallback: `smoke:runtime-v2:phase6-default-gate`가 `/api/v2/runtime/health`와 `/api/debug/perf`를 read-only로 조회해 terminal `new-tabs`, storage/timeline/status `default`, worker health ok, failure/restart/timeout counter 0을 확인한다. Phase 6 approval 이후 `CODEXMUX_RUNTIME_V2=1`에서 per-surface mode env가 unset이면 같은 값으로 resolve된다. 명시적 `off`는 rollback으로 유지한다.
+- Codex app-server adapter fixture boundary: `src/lib/providers/codex-app-server/index.ts`는 기본 disabled이고 `CODEXMUX_CODEX_APP_SERVER=experimental`에서도 read-only health/session/timeline/status hint capability만 노출한다. Production provider registry에는 등록하지 않으며 fixture normalization은 raw cwd/path/command/prompt/token을 출력하지 않는다.
 
 ## 릴리스 전 확인
 
@@ -147,7 +149,7 @@ P0/P1/P2/P3 후속 상태:
 - P1 남음: 자동 개발로 처리 가능한 platform smoke 항목은 없음.
 - P2 완료: runtime v2 phase2 gate, Electron/Android runtime v2 reconnect smoke, browser reconnect DOM smoke, live terminal `new-tabs` enable을 현재 코드 기준으로 확인했다.
 - P2 남음: self-hosted Android device scheduling과 macOS packaged UX artifact 자동화. Release smoke artifact foundation은 browser reconnect smoke를 release workflow artifact로 보존하고, Android/Electron smoke scripts가 같은 sanitized JSON을 local 또는 self-hosted run에서 쓸 수 있게 완료했다. 추가로 `Platform Smoke Artifacts` 수동 workflow가 browser reconnect, GitHub-hosted macOS Electron runtime v2, self-hosted Android device artifact 수집 경로를 분리했다. `smoke:ops:batch`는 browser reconnect와 선택적 PWA/runtime target check를 local evidence artifact로 묶고, iPad/Mac 실기기 항목은 `manual-required`로 표시한다. 실제 Android runner provision과 packaged Mac UX evidence는 외부 운영 검증으로 남긴다. runtime v2 shadow/new-tabs/default 24시간 worker restart-loop 관찰은 2026-05-05 14:20 KST에 운영자 승인 closeout으로 완료 처리했다. 원래 24시간 clock gate 종료 시각은 2026-05-06 01:42 KST였으므로 이는 elapsed-time pass가 아니라 operator-approved closeout이다.
-- P3 진행: storage `default` live mode로 전환했고 dry-run, backup, import, write, default-read, shadow preflight와 initial rollback window canary를 통과했다. Android release signing/AAB는 로컬 keystore 권한 보정, fresh AAB build, `smoke:android:release-aab` 검증 자동화까지 완료했다. Perf snapshot baseline은 runtime v2 default 전환 뒤 2026-05-05 02:21 KST에 재수집했다. Approval queue 1차와 metadata slice는 notification panel에서 pending permission prompt를 직접 처리하고 command/file/permission/resume/conversation type, approval kind, risk badge를 표시하는 경로까지 구현했다. `vitest`, `smoke:permission`, `tsc`, `lint`, `build`와 실제 Codex CLI permission prompt live smoke를 통과했다.
+- P3 진행: storage `default` live mode로 전환했고 dry-run, backup, import, write, default-read, shadow preflight와 initial rollback window canary를 통과했다. Android release signing/AAB는 로컬 keystore 권한 보정, fresh AAB build, `smoke:android:release-aab` 검증 자동화까지 완료했다. Perf snapshot baseline은 runtime v2 default 전환 뒤 2026-05-05 02:21 KST에 재수집했다. Approval queue 1차, metadata slice, Web Push lock-screen copy, root deep link fallback, durable audit history, status-owned metadata fallback, server-side selection audit 경로까지 구현했다. `vitest`, `smoke:permission`, `tsc`, `lint`, `build`와 실제 Codex CLI permission prompt live smoke를 통과했다.
 - P3 남음: 필요 시 rollback drill, 측정 기반 perf tuning. Lifecycle control은 allowlisted action 1차까지 완료했고, `corepack pnpm lifecycle:rollback-dry-run`은 현재 drop-in과 rollback 명령을 mutation 없이 JSON으로 출력한다. rollback flag mutation/systemd drop-in 편집은 별도 spec으로 남긴다. Timeline Phase 4 WebSocket default ownership과 Status Phase 5 live bridge는 temp smoke 기준 완료됐고, Phase 6 gate와 code fallback default 전환은 진행 중이다.
 
 1. 장시간 Codex smoke test: 새 tab 생성, prompt 실행, tool call과 reasoning summary 표시, 상태 전이 확인.
@@ -173,7 +175,7 @@ P0/P1/P2/P3 후속 상태:
 
 ### Codex lifecycle
 
-- fork/sub-agent 관계를 UI에 표시.
+- fork/sub-agent 관계 UI 1차는 provider-neutral read-only `relationship` projection을 session list badge와 timeline metadata relation row에 표시한다. 남은 작업은 parent/root session navigation shortcut과 Codex CLI 버전별 relationship fixture 확장이다.
 - `codex resume` 실패 원인 분류.
 - Codex CLI 버전별 JSONL fixture 추가.
 - `~/.codex/state_*.sqlite` read-only indexer 검토.
@@ -183,14 +185,14 @@ P0/P1/P2/P3 후속 상태:
 
 - approval queue 1차는 notification panel의 `needs-input` section에서 Codex permission/input prompt 선택지를 직접 처리한다. 실제 Codex CLI permission prompt live smoke와 resume directory prompt option parsing은 통과했다.
 - approval queue metadata slice는 command/file/permission/resume/conversation type, approval kind, risk badge, sanitized command/file detail을 전역 notification panel에 표시한다. API option label은 기존 option index 선택 호환을 위해 CLI 선택지 텍스트를 유지한다.
-- approval queue push/audit slice는 Web Push 새 창 fallback을 root deep link query로 복구하고, 선택지 표시/fallback/선택 전송 성공/실패를 `~/.codexmux/approval-audit.jsonl`에 원문 없이 append한다.
+- approval queue push/audit slice는 Web Push 새 창 fallback을 root deep link query로 복구하고, 선택지 표시/fallback/선택 전송 성공/실패를 `~/.codexmux/approval-audit.jsonl`에 원문 없이 append한다. 선택 전송 성공/실패는 `/api/tmux/send-input` server-side 경계에서 tmux send 결과와 함께 기록한다.
 - mobile lock-screen copy는 pane recovery가 status entry에 저장한 sanitized `approvalPromptMetadata`를 사용해 command/file/permission type, risk, concise detail을 표시한다. metadata가 없으면 기존 last user message/tab name fallback을 유지한다.
-- pane capture 실패 시 terminal fallback 안내 개선.
+- 남은 approval workflow 후속은 실제 push click 장시간/기기별 smoke와 pane capture 실패 시 operator-facing 안내 copy 미세 조정이다.
 
 ### App-server adapter
 
-- Codex app-server protocol 안정화 여부 확인.
-- 안정화되면 provider adapter로 추가.
+- Codex app-server adapter의 첫 slice는 disabled fixture boundary로 완료했다. 남은 작업은 실제 app-server protocol 안정화 여부 확인과 transport probe spec이다.
+- 안정화되면 read-only provider adapter로 추가하되, registry 등록은 fixture contract와 rollback gate 통과 후 진행한다.
 - 신뢰 가능한 approval/status event만 단계적으로 사용.
 - tmux path는 fallback으로 유지.
 
@@ -205,7 +207,7 @@ P0/P1/P2/P3 후속 상태:
 
 - `timeline-server.ts`는 shared state, subscription delivery facade, resume/session-changed service, init metadata/message helper, JSONL file read/tail snapshot helper, watcher lifecycle/incremental scheduling service, append delivery planner를 분리했다. 다음 단계에서는 legacy timeline server의 WebSocket lifecycle shell을 더 얇게 유지하면서 runtime v2 default bridge와 중복되는 orchestration만 계속 정리한다.
 - `status-manager.ts`는 client payload helper, 순수 정책 helper, hook event intent helper, JSONL idle scan/watch/reconciliation helper, poll service, scan/bootstrap 및 poll workspace traversal helper, scan tab bootstrap helper, poll-created tab bootstrap helper, poll count aggregation helper, poll tab reconciliation/helper, poll tab entry update helper, poll recovery service, tab entry construction helper, pane recovery service, resolve-unknown decision helper, stop recheck scheduler, session history entry/persistence helper, Web Push payload/delivery helper를 분리했다. 다음 단계에서는 remaining orchestration branches를 측정/회귀 테스트가 가능한 작은 helper로만 추가 분리한다.
-- provider 확장 안전망은 `tests/fixtures/providers/codex/` JSONL fixtures와 `tests/unit/lib/providers.test.ts` contract coverage로 시작한다. 새 provider나 app-server adapter는 같은 fixture contract를 통과한 뒤 experimental registry에 들어간다.
+- provider 확장 안전망은 `tests/fixtures/providers/codex/` JSONL fixtures와 `tests/unit/lib/providers.test.ts` contract coverage로 시작한다. `codex-app-server`는 현재 `tests/fixtures/providers/codex-app-server/` fixture normalization만 통과하는 disabled boundary이며, 새 provider나 app-server adapter는 같은 fixture contract와 rollback gate를 통과한 뒤 experimental registry에 들어간다.
 - runtime v2 production 전환은 `docs/RUNTIME-V2-CUTOVER.md`의 surface별 flag와 rollback gate를 따른다. terminal, storage, timeline, status를 한 release에서 동시에 기본값으로 전환하지 않는다.
 - runtime v2 parity는 `docs/RUNTIME-V2-PARITY.md`의 surface row별 owner, migration, test, rollback을 먼저 채운 뒤 surface mode를 바꾼다.
 - Lifecycle Control은 evidence surface와 allowlisted action launcher 1차를 제공한다. 현재 UI 실행 범위는 Phase 6 gate, `codexmux.service` restart, local deploy로 제한되며 audit은 sanitized JSONL status event만 남긴다. `lifecycle:rollback-dry-run`은 현재 drop-in과 rollback 명령을 read-only로 보여준다. systemd drop-in 수정, runtime flag mutation, rollback drill 자동화는 별도 spec으로 남긴다.
@@ -213,6 +215,7 @@ P0/P1/P2/P3 후속 상태:
 ### Performance
 
 - `/api/debug/perf` snapshot을 배포 환경에서 수집해 timeline render, status poll, diff, stats 중 실제 병목을 먼저 확인한다. 2026-05-06 측정에서는 stats cold cache build가 약 3.17초로 가장 컸고, stats JSONL parser/cache에 경로 날짜 기반 file filtering을 적용했다. 후속으로 projects/sessions 동시 요청이 같은 parsed session summary를 공유하도록 `stats.session_parse.<period>` in-flight/cache reuse를 추가했다.
+- `/api/debug/perf`는 2026-05-07부터 `triage`를 반환한다. Triage는 runtime timing/event loop/runtime worker counter만 보고 top bottleneck candidates를 `stats`, `diff`, `timeline`, `status`, `terminal`, `session-index`, `runtime-worker`, `runtime` category로 분류한다. `ops:automation:batch` perf row는 `triageSummary`와 `topTriage`를 artifact에 남긴다.
 - 1~6 운영 항목은 `corepack pnpm ops:automation:batch`로 release artifact workflow, perf/stats reuse evidence, approval queue focused tests, lifecycle rollback dry-run, local smoke evidence, Post-MVP deferral docs를 한 번에 점검한다. 실제 iPad 장시간 background와 Mac packaged UX는 이 batch에서도 수동 증거로 남긴다.
 - 전체 남은 작업은 `corepack pnpm ops:backlog:batch-plan`으로 release operations, platform/external devices, runtime/lifecycle, approval workflow, performance, Codex provider lifecycle, app-server adapter, architecture/docs의 8개 batch lane으로 분류한다. 이 planner는 read-only이며 각 row를 `automated`, `conditional`, `manual-required`, `spec-required`로 표시하고 가능한 경우 `corepack pnpm ...` 명령을 붙여 다음 agentic batch 실행 순서를 만든다.
 - `corepack pnpm ops:backlog:batch-run`은 backlog plan의 `automated` row만 기본 실행하고 중복 명령을 제거한다. `conditional`, `manual-required`, `spec-required`는 artifact에 skipped로 남기며, release mutation이나 Android device 명령은 `CODEXMUX_BACKLOG_BATCH_INCLUDE_CONDITIONAL=1`이 설정된 명시적 window에서만 포함한다.

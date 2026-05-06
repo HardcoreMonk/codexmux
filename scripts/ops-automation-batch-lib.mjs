@@ -53,6 +53,31 @@ const getStatsCounterValues = (snapshot) => {
   );
 };
 
+const readPerfTriageSummary = (snapshot) => {
+  const summary = getRecord(getRecord(snapshot).triage?.summary);
+  return {
+    high: typeof summary.high === 'number' ? summary.high : 0,
+    medium: typeof summary.medium === 'number' ? summary.medium : 0,
+    low: typeof summary.low === 'number' ? summary.low : 0,
+    total: typeof summary.total === 'number' ? summary.total : 0,
+  };
+};
+
+const readTopPerfTriageItems = (snapshot, limit = 3) => {
+  const items = Array.isArray(getRecord(snapshot).triage?.items)
+    ? getRecord(snapshot).triage.items
+    : [];
+  return items.slice(0, limit).map((item) => {
+    const row = getRecord(item);
+    return {
+      category: typeof row.category === 'string' ? row.category : 'unknown',
+      metric: typeof row.metric === 'string' ? row.metric : 'unknown',
+      severity: typeof row.severity === 'string' ? row.severity : 'low',
+      evidence: getRecord(row.evidence),
+    };
+  });
+};
+
 export const summarizeStatsPerfDelta = ({ before, after }) => {
   const beforeCounters = getStatsCounterValues(before);
   const afterCounters = getStatsCounterValues(after);
@@ -72,6 +97,8 @@ export const summarizeStatsPerfDelta = ({ before, after }) => {
     ok,
     timingKeys,
     counterDeltas,
+    triageSummary: readPerfTriageSummary(after),
+    topTriage: readTopPerfTriageItems(after),
     failures: ok ? [] : ['stats-session-parse-instrumentation-missing'],
   };
 };

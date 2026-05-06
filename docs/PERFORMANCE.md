@@ -337,3 +337,11 @@ sessions endpoint가 함께 요청되는 경우 같은 JSONL session summary par
 `/api/debug/perf`는 `stats.session_parse.<period>`, `stats.session_parse.miss`,
 `stats.session_parse.memory_hit`, `stats.session_parse.inflight_join` counter/timing으로
 재사용 여부를 노출한다. History endpoint와 `period=all` 전체 스캔 자체는 별도 병목으로 남는다.
+
+7차 perf triage 작업은 `/api/debug/perf` snapshot에 `triage`를 추가했다. Triage는 기존
+`runtime.timings`, event loop delay, `services.runtimeWorkers` 숫자만 읽고 `stats`, `diff`,
+`timeline`, `status`, `terminal`, `session-index`, `runtime-worker`, `runtime` category의 top
+병목 후보를 severity와 numeric evidence로 정렬한다. 원문 command, cwd, session id/name,
+JSONL path, prompt, assistant text, terminal output은 triage에 포함하지 않는다.
+`ops:automation:batch`의 perf row는 after snapshot의 `triageSummary`와 `topTriage`를
+artifact에 포함하므로 release/ops snapshot에서 다음 perf slice를 바로 고를 수 있다.
