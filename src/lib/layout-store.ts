@@ -107,7 +107,8 @@ const createDefaultPaneNode = (wsId: string, cwd?: string): { pane: IPaneNode; t
 };
 
 const extractWsIdFromPath = (filePath: string): string | null => {
-  const match = filePath.match(/workspaces\/(ws-[^/]+)\//);
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  const match = normalizedPath.match(/workspaces\/(ws-[^/]+)\//);
   return match?.[1] ?? null;
 };
 

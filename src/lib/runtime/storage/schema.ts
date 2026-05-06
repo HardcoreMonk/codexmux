@@ -305,10 +305,17 @@ export const openRuntimeDatabase = (
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const Database = resolveDatabaseConstructor(options);
   const db = new Database(dbPath);
-  db.pragma('busy_timeout = 5000');
-  db.pragma('journal_mode = WAL');
-  db.pragma('synchronous = NORMAL');
-  db.pragma('foreign_keys = ON');
-  runRuntimeMigrations(db);
-  return db;
+  try {
+    db.pragma('busy_timeout = 5000');
+    db.pragma('journal_mode = WAL');
+    db.pragma('synchronous = NORMAL');
+    db.pragma('foreign_keys = ON');
+    runRuntimeMigrations(db);
+    return db;
+  } catch (err) {
+    try {
+      db.close();
+    } catch {}
+    throw err;
+  }
 };

@@ -161,6 +161,7 @@ describe('Codex stats parsing', () => {
     tempHome = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-stats-'));
     vi.resetModules();
     vi.stubEnv('HOME', tempHome);
+    vi.stubEnv('USERPROFILE', tempHome);
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-28T12:00:00.000Z'));
     await writeCodexSession();

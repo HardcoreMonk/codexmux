@@ -178,3 +178,28 @@ Success criteria:
 
 Rollback: normal git revert. No feature flag is needed until runtime selection or
 Windows adapter implementation appears in a later slice.
+
+## Windows Unit Gate Follow-up
+
+The next implementation pass resolved the Windows unit test baseline that was
+blocking the first slice from becoming a clean local gate.
+
+Resolved items:
+
+- Windows tests now stub both `HOME` and `USERPROFILE` when exercising modules
+  that resolve `os.homedir()` at import time.
+- Runtime storage tests now close opened SQLite database handles and storage
+  worker services before removing temporary directories, avoiding Windows
+  `EBUSY` cleanup failures.
+- `layout-store` now normalizes Windows path separators before extracting a
+  workspace id from `workspaces/<ws-id>/layout.json`, so runtime storage read and
+  write ownership works on Windows paths.
+- `openRuntimeDatabase` now closes the SQLite handle before rethrowing migration
+  failures, including newer-schema rejection.
+
+Validation:
+
+- `corepack pnpm test`: 109 passed, 2 skipped files; 562 passed, 3 skipped tests.
+- `corepack pnpm tsc --noEmit`: passed.
+- `corepack pnpm lint`: passed.
+- `git diff --check`: passed with CRLF working-copy warnings only.
