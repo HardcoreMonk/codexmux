@@ -47,6 +47,7 @@
 - codex-ai-bridge external trace forwarding: `CODEXMUX_BRIDGE_TRACE_URL`/`CODEXMUX_BRIDGE_TRACE_TOKEN`이 설정된 경우 status update summary를 bridge-owned ingress로 best-effort POST한다. Discord token과 raw transcript는 codexmux가 소유하지 않고, 동일 tab/state/action 조합은 dedupe한다.
 - runtime v2 timeline WebSocket default ownership: `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`에서 기존 `/api/timeline` WebSocket URL이 Timeline Worker live subscribe/session watch를 사용하는 runtime bridge로 전환됐다. Default WebSocket smoke, live shadow, resume safety, session-changed, Android foreground timeline smoke가 temp HOME/DB 기준 통과했다.
 - runtime v2 Phase 6 default gate/code fallback: `smoke:runtime-v2:phase6-default-gate`가 `/api/v2/runtime/health`와 `/api/debug/perf`를 read-only로 조회해 terminal `new-tabs`, storage/timeline/status `default`, worker health ok, failure/restart/timeout counter 0을 확인한다. Phase 6 approval 이후 `CODEXMUX_RUNTIME_V2=1`에서 per-surface mode env가 unset이면 같은 값으로 resolve된다. 명시적 `off`는 rollback으로 유지한다.
+- Windows package/update smoke: `pack:electron`, `smoke:windows:updater-local-feed`, `smoke:windows:package-gate`, `smoke:windows:release-gate`가 Windows host에서 통과했다. Local feed smoke는 기존 installer `0.4.2`에서 synthetic `0.4.3` feed를 받아 download, `quitAndInstall`, post-update launch, uninstall cleanup까지 확인한다.
 
 ## 릴리스 전 확인
 
@@ -87,6 +88,23 @@
 | Electron runtime v2 | 통과 | `corepack pnpm smoke:electron:runtime-v2`, temp server `http://127.0.0.1:24013`, initial + 2 reconnect marker output, console clean |
 | Android foreground reconnect | 통과 | `corepack pnpm smoke:android:foreground`, SM-S928N Android 16, Tailscale HTTPS target, 2 foreground rounds, blocking console/logcat 0 |
 | Android runtime v2 foreground | 통과 | `corepack pnpm smoke:android:runtime-v2`, temp server `http://100.112.40.104:30653`, initial + 2 foreground marker output, blocking console/logcat 0 |
+
+### 2026-05-07 Windows package/update smoke snapshot
+
+Windows 전용 제품 전환 기준으로 Windows installer, packaged app launch, runtime v2
+terminal attach, updater local feed를 실제 Windows host에서 다시 검증했다.
+
+| 항목 | 상태 | 근거 |
+| --- | --- | --- |
+| Windows package build | 통과 | `corepack pnpm pack:electron`, `release/codexmux-Setup-0.4.2.exe`, `release/codexmux-0.4.2-win.zip`, blockmap/latest metadata 생성 확인 |
+| Windows update metadata | 통과 | `corepack pnpm smoke:windows:update-metadata`, `latest.yml`/installer blockmap/zip blockmap coherence 확인 |
+| Windows updater local feed | 통과 | `corepack pnpm smoke:windows:updater-local-feed`, local static feed에서 synthetic `0.4.3` 다운로드, install trigger, post-update launch, uninstall cleanup 확인 |
+| Windows packaged launch | 통과 | `corepack pnpm smoke:windows:packaged-launch`, installed app launch, health/load checks, CDP close, exact app path child process cleanup 확인 |
+| Windows runtime v2 packaged launch | 통과 | `corepack pnpm smoke:windows:packaged-runtime-v2`, packaged app에서 runtime v2 terminal smoke path 확인 |
+| Windows installer install/runtime v2 | 통과 | `corepack pnpm smoke:windows:installer-runtime-v2`, installer silent install, packaged runtime v2 launch, uninstall cleanup 확인 |
+| Windows package gate | 통과 | `corepack pnpm smoke:windows:package-gate`, zip artifact, update metadata, updater local feed, packaged launch, packaged runtime v2, installer runtime v2 step 모두 통과 |
+| Windows release gate | 통과 | `corepack pnpm smoke:windows:release-gate`, Windows preflight/service host/diagnostics/Electron env/package smoke suite 통과 |
+| Cleanup hardening | 통과 | packaged launch smoke가 Browser close 후 exact `ExecutablePath` 기반 child process exit를 확인하며, 실패 시 app-scoped cleanup으로 제한한다. `7ff7302f` 이후 temp codexmux process 잔류 없음 |
 
 ### 2026-05-05 P2 -> P3 runtime v2 storage preflight
 
@@ -132,7 +150,7 @@ P0/P1/P2/P3 후속 상태:
 - P1 남음: 자동 개발로 처리 가능한 platform smoke 항목은 없음.
 - P2 완료: runtime v2 phase2 gate, Electron/Android runtime v2 reconnect smoke, browser reconnect DOM smoke, live terminal `new-tabs` enable을 현재 코드 기준으로 확인했다.
 - P2 남음: self-hosted Android device scheduling과 macOS packaged UX artifact 자동화. Release smoke artifact foundation은 browser reconnect smoke를 release workflow artifact로 보존하고, Android/Electron smoke scripts가 같은 sanitized JSON을 local 또는 self-hosted run에서 쓸 수 있게 완료했다. 추가로 `Platform Smoke Artifacts` 수동 workflow가 browser reconnect, GitHub-hosted macOS Electron runtime v2, self-hosted Android device artifact 수집 경로를 분리했다. `smoke:ops:batch`는 browser reconnect와 선택적 PWA/runtime target check를 local evidence artifact로 묶고, iPad/Mac 실기기 항목은 `manual-required`로 표시한다. 실제 Android runner provision과 packaged Mac UX evidence는 외부 운영 검증으로 남긴다. runtime v2 shadow/new-tabs/default 24시간 worker restart-loop 관찰은 2026-05-05 14:20 KST에 운영자 승인 closeout으로 완료 처리했다. 원래 24시간 clock gate 종료 시각은 2026-05-06 01:42 KST였으므로 이는 elapsed-time pass가 아니라 operator-approved closeout이다.
-- P3 진행: storage `default` live mode로 전환했고 dry-run, backup, import, write, default-read, shadow preflight와 initial rollback window canary를 통과했다. Android release signing/AAB는 로컬 keystore 권한 보정, fresh AAB build, `smoke:android:release-aab` 검증 자동화까지 완료했다. Perf snapshot baseline은 runtime v2 default 전환 뒤 2026-05-05 02:21 KST에 재수집했다. Approval queue 1차와 metadata slice는 notification panel에서 pending permission prompt를 직접 처리하고 command/file/permission/resume/conversation type, approval kind, risk badge를 표시하는 경로까지 구현했다. `vitest`, `smoke:permission`, `tsc`, `lint`, `build`와 실제 Codex CLI permission prompt live smoke를 통과했다.
+- P3 진행: storage `default` live mode로 전환했고 dry-run, backup, import, write, default-read, shadow preflight와 initial rollback window canary를 통과했다. Android release signing/AAB는 로컬 keystore 권한 보정, fresh AAB build, `smoke:android:release-aab` 검증 자동화까지 완료했다. Windows package/update path는 실제 Windows host에서 `pack:electron`, `smoke:windows:updater-local-feed`, `smoke:windows:package-gate`, `smoke:windows:release-gate`까지 통과했다. Perf snapshot baseline은 runtime v2 default 전환 뒤 2026-05-05 02:21 KST에 재수집했다. Approval queue 1차와 metadata slice는 notification panel에서 pending permission prompt를 직접 처리하고 command/file/permission/resume/conversation type, approval kind, risk badge를 표시하는 경로까지 구현했다. `vitest`, `smoke:permission`, `tsc`, `lint`, `build`와 실제 Codex CLI permission prompt live smoke를 통과했다.
 - P3 남음: 필요 시 rollback drill, 측정 기반 perf tuning. Lifecycle control은 allowlisted action 1차까지 완료했고, `corepack pnpm lifecycle:rollback-dry-run`은 현재 drop-in과 rollback 명령을 mutation 없이 JSON으로 출력한다. rollback flag mutation/systemd drop-in 편집은 별도 spec으로 남긴다. Timeline Phase 4 WebSocket default ownership과 Status Phase 5 live bridge는 temp smoke 기준 완료됐고, Phase 6 gate와 code fallback default 전환은 진행 중이다.
 
 1. 장시간 Codex smoke test: 새 tab 생성, prompt 실행, tool call과 reasoning summary 표시, 상태 전이 확인.
@@ -153,6 +171,7 @@ P0/P1/P2/P3 후속 상태:
 16. release metadata: `corepack pnpm release:patch|minor|major`, changelog, release workflow artifact 확인.
 17. Runtime v2 cutover readiness: `docs/RUNTIME-V2-CUTOVER.md`와 `docs/RUNTIME-V2-PARITY.md`의 phase gate, rollback flag, temp HOME/DB smoke를 release candidate commit 기준으로 확인한다. Phase 1 shadow는 live `codexmux.service` drop-in으로 `CODEXMUX_RUNTIME_V2=1`과 surface modes `off`를 켠 뒤 `/api/v2/runtime/health`, `/api/debug/perf`, live target `corepack pnpm smoke:runtime-v2`를 확인하고 24시간 restart-loop 부재를 관찰한다. Phase 2 terminal gate는 `corepack pnpm smoke:runtime-v2:phase2`로 browser reload/server restart/mode-off rollback을 먼저 통과시킨 뒤 `corepack pnpm smoke:electron:runtime-v2`와 `corepack pnpm smoke:android:runtime-v2`의 page-context attach/output/reconnect, systemd 검증 증거를 추가한다. Phase 3 storage gate는 `corepack pnpm smoke:runtime-v2:storage-dry-run`, `corepack pnpm runtime-v2:storage-dry-run`, `corepack pnpm smoke:runtime-v2:storage-backup`, `corepack pnpm runtime-v2:storage-backup`, `corepack pnpm smoke:runtime-v2:storage-import`, `corepack pnpm runtime-v2:storage-import`, `corepack pnpm smoke:runtime-v2:storage-write`, `corepack pnpm smoke:runtime-v2:storage-default-read`, `corepack pnpm smoke:runtime-v2:storage-shadow`를 함께 확인한다. Phase 4 timeline은 `corepack pnpm smoke:runtime-v2:timeline-websocket-default`, `timeline-live-shadow`, `timeline-resume-safety`, `timeline-session-changed`, `smoke:android:timeline-foreground`를 확인한다. Phase 5 status는 `corepack pnpm smoke:runtime-v2:status-shadow`와 `corepack pnpm smoke:runtime-v2:status-default`를 확인한다. Phase 6 full default readiness는 `corepack pnpm smoke:runtime-v2:phase6-default-gate`로 target의 terminal `new-tabs`, storage/timeline/status `default`, worker failure/restart/timeout counter 0을 read-only로 확인한다. Code fallback default는 `CODEXMUX_RUNTIME_V2=1`과 unset surface mode env에서만 적용되며, explicit `off` rollback과 invalid-value fail-closed를 유지한다. packaged Electron은 `CODEXMUX_ELECTRON_APP_PATH=<release/.../codexmux.app> CODEXMUX_ELECTRON_WINDOW_FOREGROUND_CYCLES=1 corepack pnpm smoke:electron:runtime-v2`로 CLI smoke를 먼저 통과시키고, Finder/Gatekeeper UX는 Mac 화면 세션 smoke로 별도 확인한다.
 18. Browser reconnect DOM smoke: `corepack pnpm smoke:browser-reconnect`로 temp server/workspace에서 `session-not-found` 복구 overlay와 floating reconnect control 중복 렌더링이 없는지 Playwright Chromium pointer 동작까지 확인한다. Release workflow는 `CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke pnpm smoke:browser-reconnect`를 실행하고 `smoke-browser-reconnect` artifact를 14일 보존한다.
+19. Windows package/update smoke: Windows host에서 `corepack pnpm pack:electron`, `corepack pnpm smoke:windows:updater-local-feed`, `corepack pnpm smoke:windows:package-gate`, `corepack pnpm smoke:windows:release-gate`를 확인한다. Local feed smoke는 실제 remote release publication이 아니라 installer/update engine/download/install mechanics evidence로 해석한다.
 
 ## Post-MVP 백로그
 
