@@ -5,11 +5,11 @@ Date: 2026-05-07 KST
 ## 기준
 
 - 배포 버전: `0.4.7`
-- 배포 commit: `4b10403`
+- 배포 commit: `923e9d6`
 - 서비스 상태: `active/running`, `NRestarts=0`
-- Health: `/api/health` returned `version=0.4.7`, `commit=4b10403`
+- Health: `/api/health` returned `version=0.4.7`, `commit=923e9d6`
 - iPad 확인: 사용자가 iPad에서 `0.4.7` 표시 확인
-- Git 상태: 검증 직후 clean, 보고서 작성 후 현재 이 파일이 untracked 변경으로 남아 있음
+- 최신 hotfix: `9433f1b` panel timeline metadata 보존, `923e9d6` duplicate timeline session-changed suppression
 
 ## 상태 정의
 
@@ -33,9 +33,9 @@ Date: 2026-05-07 KST
 | 8 | Android Tailscale 실패 smoke | 완료 | 기존 `smoke:android:recovery` 기준 통과 이력 있음. 실제 Tailscale 미연결/서버 장시간 중지는 별도 운영 검증 |
 | 9 | Android app info/restart smoke | 대기 | 기존 app info/restart smoke 증거는 있음. 현재 배포 commit 기준 실기기 재확인은 다음 Android window에서 수행 |
 | 10 | DIFF smoke | 대기 | tracked 20+, untracked 50+, binary/large fixture repo 준비가 필요 |
-| 11 | systemd smoke | 완료 | `codexmux.service` `active/running`, `NRestarts=0`, `/api/health` `commit=4b10403` |
-| 12 | timeline 배포 smoke | 완료 | `smoke:runtime-v2:timeline-websocket-default` 통과. init/append/runtime counters 확인 |
-| 13 | Codex attach smoke | 완료 | `smoke:runtime-v2:timeline-session-changed` 통과. JSONL late create 후 session-changed/init 확인 |
+| 11 | systemd smoke | 완료 | `codexmux.service` `active/running`, `NRestarts=0`, `/api/health` `commit=923e9d6` |
+| 12 | timeline 배포 smoke | 완료 | `smoke:runtime-v2:timeline-websocket-default` 통과. init/append/runtime counters와 CODEX panel 전환 metadata 보존 회귀 확인 |
+| 13 | Codex attach smoke | 완료 | `smoke:runtime-v2:timeline-session-changed` 통과. JSONL late create 후 session-changed/init 확인. 동일 JSONL path 중복 session-changed suppression은 `timeline-ws.test.ts`로 보강 |
 | 14 | perf snapshot smoke | 완료 | `ops:automation:batch` 통과. `/api/debug/perf` triage 반환 및 민감정보 비노출 경로 확인 |
 
 ## 41-45 확인 결과
@@ -58,6 +58,7 @@ Date: 2026-05-07 KST
 | `corepack pnpm ops:automation:batch` | 통과 | release artifact workflow, perf triage, approval tests, lifecycle dry-run, browser/PWA/runtime smoke |
 | `corepack pnpm smoke:runtime-v2:timeline-websocket-default` | 통과 | timeline default WebSocket init/append, runtime counters |
 | `corepack pnpm smoke:runtime-v2:timeline-session-changed` | 통과 | delayed JSONL attach, session-changed, session init |
+| `corepack pnpm vitest run tests/unit/lib/runtime/timeline-ws.test.ts tests/unit/hooks/use-layout-panel-type.test.ts tests/unit/hooks/use-tab-store.test.ts tests/unit/lib/session-list-rendering.test.ts` | 통과 | CODEX panel 전환과 duplicate session-changed 회귀 |
 | `corepack pnpm smoke:browser-reconnect` | 통과 | session-not-found overlay, floating reconnect hidden, restart click path |
 | focused provider/relationship/timeline tests | 통과 | 7 files / 33 tests |
 
@@ -91,5 +92,5 @@ Date: 2026-05-07 KST
 
 ## 결론
 
-현재 배포본 `0.4.7` / `4b10403` 기준으로 자동 검증 가능한 핵심 경로는 통과했다. 남은 항목은
+현재 배포본 `0.4.7` / `923e9d6` 기준으로 자동 검증 가능한 핵심 경로는 통과했다. 남은 항목은
 대부분 실기기/장시간/외부 운영 검증 또는 별도 spec이 필요한 작업이다.

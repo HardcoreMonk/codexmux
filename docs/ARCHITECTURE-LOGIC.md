@@ -226,6 +226,10 @@ Timeline Worker bridge로 처리된다. 명시적 `off` rollback에서는 legacy
 경로가 같은 read service와 file watcher를 사용한다.
 
 같은 tmux session에서 `agentSessionId`만 바뀐 경우에도 client는 timeline WebSocket을 새로 연다. Android WebView처럼 기존 connection이 살아 보이지만 stale JSONL을 보고 있는 상태를 피하기 위함이다.
+반대로 runtime bridge가 이미 init을 보낸 동일 JSONL path를 session watcher가 다시 보고하면
+`timeline:session-changed`를 중복 송신하지 않는다. 동일 path 중복 이벤트는 client가 현재
+entries를 지우고 다음 init을 기다리게 만들어 CODEX panel 전환 후 skeleton 상태로 보일 수
+있다.
 
 중복 방지 정책:
 

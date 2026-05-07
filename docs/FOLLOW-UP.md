@@ -47,6 +47,7 @@
 - runtime v2 lifecycle control UI/actions 1차: `/experimental/runtime` 상단에서 `/api/health`, `/api/v2/runtime/health`, `/api/debug/perf`, `/api/runtime/lifecycle/action`을 모아 release, surface mode, 24시간 observation gate, worker diagnostics, perf timing, allowlisted lifecycle actions, copy-only rollback runbook을 표시한다. 실행 action은 `phase6-gate`, `restart-service`, `deploy-local`로 제한하고 restart/deploy는 exact confirmation phrase를 요구한다. Endpoint 부분 실패는 section label만 노출하고 가능한 section은 계속 렌더링하며, token/cwd/session/prompt/terminal output 원문은 UI와 audit에 표시하거나 저장하지 않는다.
 - codex-ai-bridge external trace forwarding: `CODEXMUX_BRIDGE_TRACE_URL`/`CODEXMUX_BRIDGE_TRACE_TOKEN`이 설정된 경우 status update summary를 bridge-owned ingress로 best-effort POST한다. Discord token과 raw transcript는 codexmux가 소유하지 않고, 동일 tab/state/action 조합은 dedupe한다.
 - runtime v2 timeline WebSocket default ownership: `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default`에서 기존 `/api/timeline` WebSocket URL이 Timeline Worker live subscribe/session watch를 사용하는 runtime bridge로 전환됐다. Default WebSocket smoke, live shadow, resume safety, session-changed, Android foreground timeline smoke가 temp HOME/DB 기준 통과했다.
+- CODEX panel timeline hotfix: TERMINAL/CODEX/DIFF panel 전환은 저장된 `agentSessionId`/`agentJsonlPath`를 보존하고, runtime v2 timeline bridge는 이미 init을 보낸 같은 JSONL path에 대한 중복 `new-session-started` 이벤트를 suppress한다. `9433f1b`와 `923e9d6`가 이 회귀를 고쳤고 `0.4.7` production deploy는 `/api/health` commit `923e9d6` 기준으로 확인됐다.
 - runtime v2 Phase 6 default gate/code fallback: `smoke:runtime-v2:phase6-default-gate`가 `/api/v2/runtime/health`와 `/api/debug/perf`를 read-only로 조회해 terminal `new-tabs`, storage/timeline/status `default`, worker health ok, failure/restart/timeout counter 0을 확인한다. Phase 6 approval 이후 `CODEXMUX_RUNTIME_V2=1`에서 per-surface mode env가 unset이면 같은 값으로 resolve된다. 명시적 `off`는 rollback으로 유지한다.
 - Codex app-server adapter fixture boundary: `src/lib/providers/codex-app-server/index.ts`는 기본 disabled이고 `CODEXMUX_CODEX_APP_SERVER=experimental`에서도 read-only health/session/timeline/status hint capability만 노출한다. Production provider registry에는 등록하지 않으며 fixture normalization은 raw cwd/path/command/prompt/token을 출력하지 않는다.
 
@@ -105,6 +106,21 @@ smoke를 재실행했다. 상세 증거는
 | Electron attach/runtime v2 | 통과 | `corepack pnpm build:electron`, `corepack pnpm smoke:electron:attach`, `corepack pnpm smoke:electron:runtime-v2`; runtime smoke는 standalone build 감지 시 `serverLaunchMode=production-bin`으로 temp server를 띄우고 initial + 2 reload/reconnect marker output 확인 |
 | iPad/Mac 수동 UX | 수동 필요 | 실제 iPad Home Screen 장시간 background/input draft와 macOS packaged Finder/Gatekeeper UX는 실제 기기/화면 세션에서 별도 증거 필요 |
 
+### 2026-05-07 CODEX panel timeline hotfix snapshot
+
+CODEX 메뉴 선택 시 timeline message가 보이지 않고 skeleton/hang처럼 남던 회귀를
+두 단계로 정리했다. 상세 운영 기록은
+`docs/operations/2026-05-07-codex-panel-timeline-hotfix-handoff.md`를 기준으로 본다.
+
+| 항목 | 상태 | 근거 |
+| --- | --- | --- |
+| panel 전환 metadata 보존 | 통과 | `9433f1b`가 TERMINAL/CODEX/DIFF 전환 시 `agentSessionId`/`agentJsonlPath`를 지우지 않고, 저장된 Codex metadata가 있으면 `sessionView=timeline`을 복원 |
+| duplicate session-changed suppression | 통과 | `923e9d6`가 runtime v2 timeline bridge에서 같은 JSONL path의 중복 `new-session-started`를 suppress. 중복 이벤트로 client entries가 비워지는 CODEX skeleton 회귀 방지 |
+| focused regression | 통과 | `corepack pnpm vitest run tests/unit/lib/runtime/timeline-ws.test.ts tests/unit/hooks/use-layout-panel-type.test.ts tests/unit/hooks/use-tab-store.test.ts tests/unit/lib/session-list-rendering.test.ts` |
+| runtime smoke | 통과 | `corepack pnpm smoke:runtime-v2:timeline-websocket-default`, `corepack pnpm smoke:runtime-v2:timeline-session-changed` |
+| type/lint/build | 통과 | `corepack pnpm tsc --noEmit`, `corepack pnpm lint`, `corepack pnpm build` |
+| deploy/systemd | 통과 | `corepack pnpm deploy:local`, `/api/health` `version=0.4.7`, `commit=923e9d6`, service `ActiveState=active`, `SubState=running`, `NRestarts=0` |
+
 ### 2026-05-05 P2 -> P3 runtime v2 storage preflight
 
 P2 terminal gate evidence를 보강하고 P3 storage default rollout 전 preflight를 실제
@@ -150,7 +166,7 @@ P0/P1/P2/P3 후속 상태:
 - P2 완료: runtime v2 phase2 gate, Electron/Android runtime v2 reconnect smoke, browser reconnect DOM smoke, live terminal `new-tabs` enable을 현재 코드 기준으로 확인했다.
 - P2 남음: self-hosted Android device scheduling과 macOS packaged UX artifact 자동화. Release smoke artifact foundation은 browser reconnect smoke를 release workflow artifact로 보존하고, Android/Electron smoke scripts가 같은 sanitized JSON을 local 또는 self-hosted run에서 쓸 수 있게 완료했다. 추가로 `Platform Smoke Artifacts` 수동 workflow가 browser reconnect, GitHub-hosted macOS Electron runtime v2, self-hosted Android device artifact 수집 경로를 분리했다. `smoke:ops:batch`는 browser reconnect와 선택적 PWA/runtime target check를 local evidence artifact로 묶고, iPad/Mac 실기기 항목은 `manual-required`로 표시한다. 실제 Android runner provision과 packaged Mac UX evidence는 외부 운영 검증으로 남긴다. runtime v2 shadow/new-tabs/default 24시간 worker restart-loop 관찰은 2026-05-05 14:20 KST에 운영자 승인 closeout으로 완료 처리했다. 원래 24시간 clock gate 종료 시각은 2026-05-06 01:42 KST였으므로 이는 elapsed-time pass가 아니라 operator-approved closeout이다.
 - P3 진행: storage `default` live mode로 전환했고 dry-run, backup, import, write, default-read, shadow preflight와 initial rollback window canary를 통과했다. Android release signing/AAB는 로컬 keystore 권한 보정, fresh AAB build, `smoke:android:release-aab` 검증 자동화까지 완료했다. Perf snapshot baseline은 runtime v2 default 전환 뒤 2026-05-05 02:21 KST에 재수집했다. Approval queue 1차, metadata slice, Web Push lock-screen copy, root deep link fallback, durable audit history, status-owned metadata fallback, server-side selection audit 경로까지 구현했다. `vitest`, `smoke:permission`, `tsc`, `lint`, `build`와 실제 Codex CLI permission prompt live smoke를 통과했다.
-- P3 남음: 필요 시 rollback drill, 측정 기반 perf tuning. Lifecycle control은 allowlisted action 1차까지 완료했고, `corepack pnpm lifecycle:rollback-dry-run`은 현재 drop-in과 rollback 명령을 mutation 없이 JSON으로 출력한다. rollback flag mutation/systemd drop-in 편집은 별도 spec으로 남긴다. Timeline Phase 4 WebSocket default ownership과 Status Phase 5 live bridge는 temp smoke 기준 완료됐고, Phase 6 gate와 code fallback default 전환은 진행 중이다.
+- P3 남음: 필요 시 rollback drill, 측정 기반 perf tuning. Lifecycle control은 allowlisted action 1차까지 완료했고, `corepack pnpm lifecycle:rollback-dry-run`은 현재 drop-in과 rollback 명령을 mutation 없이 JSON으로 출력한다. rollback flag mutation/systemd drop-in 편집은 별도 spec으로 남긴다. Timeline Phase 4 WebSocket default ownership과 Status Phase 5 live bridge는 temp smoke 기준 완료됐고, Phase 6 gate와 code fallback default 전환은 완료 상태로 운영 gate에서 계속 확인한다.
 
 1. 장시간 Codex smoke test: 새 tab 생성, prompt 실행, tool call과 reasoning summary 표시, 상태 전이 확인.
 2. permission/input prompt smoke test: `corepack pnpm smoke:permission`으로 pane capture 기반 option parsing, inline prompt 선택, stdin 전달, `needs-input` push와 ack 후 `busy` 복귀 확인. 실제 Codex CLI permission prompt는 live tab에서 `read-only` sandbox 실패 prompt를 띄워 notification panel `No` 선택, ack 후 `busy` 복귀, denied command 미실행까지 확인한다. Resume working directory prompt는 `/api/tmux/permission-options`가 `Use session directory`/`Use current directory` 선택지를 반환하고 notification panel이 `needs-input`으로 보여주는지 확인한다. JSONL marker 없는 `Conversation interrupted` prompt는 stale `busy`가 `idle`로 풀리는지 확인한다.
@@ -163,7 +179,7 @@ P0/P1/P2/P3 후속 상태:
 9. Android app info/restart smoke test: launcher와 server 접속 후 mobile navigation에서 앱 정보가 표시되고 앱 재시작 버튼이 WebView/Activity를 다시 여는지 확인.
 10. DIFF smoke test: tracked 변경 20개 이상, untracked 50개 초과, binary/대용량 파일이 있는 저장소에서 응답 시간, 생략 안내, 기본 접힘 렌더링 확인.
 11. systemd smoke test: `corepack pnpm deploy:local`, `/api/health`의 version/commit/buildTime, `journalctl --user -u codexmux.service` 확인.
-12. timeline 배포 smoke test: browser reload 후 같은 assistant 문장이 `event_msg.agent_message`와 `response_item.message` pair로 남은 JSONL에서도 한 번만 표시되는지 확인.
+12. timeline 배포 smoke test: browser reload 후 같은 assistant 문장이 `event_msg.agent_message`와 `response_item.message` pair로 남은 JSONL에서도 한 번만 표시되는지 확인한다. 같은 tab에서 `TERMINAL -> CODEX` 또는 `DIFF -> CODEX`로 돌아왔을 때 저장된 `agentSessionId`/`agentJsonlPath`가 유지되고 timeline log가 렌더링되는지 확인한다. Runtime v2 timeline bridge는 이미 init된 같은 JSONL path에 대해 중복 `new-session-started`를 보내지 않아야 한다.
 13. Codex attach smoke test: Codex process 시작 후 JSONL이 늦게 생성된 session도 session id/jsonlPath가 붙고, 모바일 CODEX `check` 화면에서 terminal preview가 보이는지 확인.
 14. perf snapshot smoke test: 인증된 요청으로 `/api/debug/perf`가 process/event loop/WebSocket/watcher/status poll/diff/stats counter를 반환하고, prompt/cwd/JSONL path/terminal output 본문을 노출하지 않는지 확인.
 15. 설치/upgrade: `npx codexmux`, global install, 기존 `~/.codexmux` 유지 확인.

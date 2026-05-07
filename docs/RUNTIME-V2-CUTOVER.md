@@ -176,6 +176,7 @@ Work:
 - 2026-05-05 default-read slice: `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=default` keeps the existing `/api/timeline/*` HTTP URLs but routes `sessions`, `entries`, and `message-counts` through the Timeline Worker read commands.
 - 2026-05-05 session watcher contract slice: Timeline Worker accepts `timeline.session-watch-subscribe`/`timeline.session-watch-unsubscribe`, emits subscriber-scoped `timeline.session-changed` events to Supervisor, and Supervisor fans out matching changes.
 - 2026-05-05 WebSocket default ownership slice: the existing `/api/timeline` WebSocket URL stays stable, but default mode delegates init/append/error/session-changed delivery to Timeline Worker through `src/lib/runtime/timeline-ws.ts`. Legacy mode remains available with `CODEXMUX_RUNTIME_TIMELINE_V2_MODE=off`.
+- 2026-05-07 CODEX panel hotfix slice: panel type switching preserves `agentSessionId`/`agentJsonlPath` and restores timeline view when a stored Codex session exists. Runtime timeline WebSocket suppresses duplicate `new-session-started` events when the session watcher reports the same JSONL path after init.
 - Keep stable id/dedupe/merge behavior unchanged.
 - Add worker crash behavior: close timeline sockets with retryable reason and let client reconnect.
 
@@ -188,6 +189,7 @@ Exit gate:
 - Session watcher ordering evidence passes: `corepack pnpm smoke:runtime-v2:timeline-session-changed` sees `timeline:session-changed` before the new JSONL `timeline:init`.
 - Session watcher IPC contract evidence passes: `corepack pnpm test tests/unit/lib/runtime/ipc.test.ts tests/unit/lib/runtime/timeline-worker-service.test.ts tests/unit/lib/runtime/supervisor.test.ts`.
 - Default-owned WebSocket evidence passes: `corepack pnpm test tests/unit/lib/runtime/timeline-ws.test.ts tests/unit/lib/runtime/timeline-worker-service.test.ts tests/unit/lib/runtime/supervisor.test.ts` and `corepack pnpm smoke:runtime-v2:timeline-websocket-default`.
+- CODEX panel switch evidence passes: `tests/unit/hooks/use-layout-panel-type.test.ts` preserves layout metadata, and `tests/unit/lib/runtime/timeline-ws.test.ts` proves same-JSONL duplicate session watcher events do not clear an already initialized timeline.
 - Android foreground reconnect evidence passes: `corepack pnpm smoke:android:timeline-foreground` opens `/api/timeline` from Android WebView page context, backgrounds the app while appending JSONL entries, and verifies foreground reconnect receives a fresh init without stale JSONL.
 
 Rollback:
