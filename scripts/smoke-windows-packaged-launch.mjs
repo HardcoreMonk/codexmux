@@ -20,6 +20,10 @@ import {
   selectElectronLocalPageTarget,
 } from './electron-smoke-lib.mjs';
 import {
+  buildWindowsAppProcessIdScript,
+  parseWindowsProcessIds,
+} from './windows-packaged-launch-smoke-lib.mjs';
+import {
   collectPaneNodes,
   extractCookieHeader,
   resolveSmokeTerminalEndpoint,
@@ -239,14 +243,26 @@ const stopProcessTree = async (child) => {
   ]);
 };
 
+const waitForChildExit = async (child, timeoutMs = 3_000) => {
+  if (!child || child.exitCode !== null) return;
+  await Promise.race([
+    new Promise((resolve) => child.once('exit', resolve)),
+    sleep(timeoutMs),
+  ]);
+};
+
+const requestElectronBrowserClose = async (cdp) => {
+  if (!cdp) return;
+  try {
+    await cdp.send('Browser.close', {}, 1_500);
+  } catch {
+    // Browser.close can tear down the CDP socket before a response is sent.
+  }
+};
+
 const listWindowsAppProcessIds = async (appPath) => {
   if (process.platform !== 'win32') return [];
-  const script = [
-    '$target = $env:CODEXMUX_SMOKE_APP_PATH',
-    'Get-Process -Name codexmux -ErrorAction SilentlyContinue |',
-    '  Where-Object { $_.Path -eq $target } |',
-    '  Select-Object -ExpandProperty Id',
-  ].join(' ');
+  const script = buildWindowsAppProcessIdScript();
 
   const output = await new Promise((resolve) => {
     const child = spawn('powershell.exe', ['-NoProfile', '-Command', script], {
@@ -262,10 +278,7 @@ const listWindowsAppProcessIds = async (appPath) => {
     child.once('error', () => resolve(''));
   });
 
-  return String(output)
-    .split(/\r?\n/)
-    .map((line) => Number(line.trim()))
-    .filter((pid) => Number.isInteger(pid) && pid > 0);
+  return parseWindowsProcessIds(output);
 };
 
 const stopWindowsAppProcesses = async (appPath, excludePids = []) => {
@@ -409,7 +422,9 @@ const main = async () => {
       consoleEvents: consoleEvents.slice(-20),
     });
   } finally {
+    await requestElectronBrowserClose(cdp);
     if (cdp) cdp.close();
+    await waitForChildExit(electron);
     await stopProcessTree(electron);
     await stopWindowsAppProcesses(appPath, existingAppPids);
   }
