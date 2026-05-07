@@ -1,21 +1,21 @@
 import { flattenBacklogBatches } from './ops-backlog-batch-plan-lib.mjs';
 
-const RELEASE_HANDOFF = 'docs/operations/2026-05-06-release-v0.4.6-conditional-batch-handoff.md';
+const RELEASE_HANDOFF = 'docs/operations/2026-05-06-release-v0.4.7-conditional-batch-handoff.md';
 const SPEC_KICKOFF = 'docs/superpowers/specs/2026-05-06-spec-required-backlog-kickoff.md';
 
 const EVIDENCE_ATTACHED = Object.freeze({
   'install-upgrade-release-metadata': {
     reference: RELEASE_HANDOFF,
-    reason: 'v0.4.6 release mutation, tag push, deploy, restart, and Android version evidence recorded',
+    reason: 'v0.4.7 release mutation, tag push, deploy, restart, and Android version evidence recorded',
   },
   'release-docs-handoff-sync': {
     reference: RELEASE_HANDOFF,
-    reason: 'v0.4.6 release, deploy, platform smoke, and open-row handoff recorded',
+    reason: 'v0.4.7 release, deploy, platform smoke, and open-row handoff recorded',
   },
 });
 
 const DEFER_REASONS = Object.freeze({
-  'android-device-smoke-bundle': 'Android timeline foreground smoke is still open; foreground/runtime/recovery evidence passed separately',
+  'android-device-smoke-bundle': 'current Android device smoke requires a connected-device operations window; foreground/runtime/recovery evidence passed separately',
   'android-self-hosted-artifacts': 'local real-device evidence exists, but self-hosted runner scheduling remains an operations follow-up',
   'android-play-console-aab-evidence': 'signed AAB verification passed locally; Play Console internal testing evidence requires external operator action',
   'long-codex-smoke': 'requires a long live Codex task observation window outside the unattended local batch',

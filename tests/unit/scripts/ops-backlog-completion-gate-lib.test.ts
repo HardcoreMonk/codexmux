@@ -67,7 +67,7 @@ describe('ops backlog completion gate helpers', () => {
     expect(gate.completionPercent).toBe(100);
     expect(gate.notClosableReasons).toEqual([]);
     expect(gate.summary.byState).toMatchObject({
-      passed: 17,
+      passed: 18,
       'approved-deferred': 23,
     });
   });

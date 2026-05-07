@@ -29,11 +29,18 @@ describe('ops backlog batch plan helpers', () => {
     expect(plan.valid).toBe(true);
     expect(plan.summary).toMatchObject({
       batchCount: 8,
-      automatedCount: 16,
+      automatedCount: 17,
       conditionalCount: 4,
       manualRequiredCount: 11,
       specRequiredCount: 9,
     });
+    expect(plan.batches.find((batch: { id: string }) => batch.id === 'release-ops').items)
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          slug: 'codex-panel-timeline-hotfix-regression',
+          execution: 'automated',
+        }),
+      ]));
     expect(plan.batches.find((batch: { id: string }) => batch.id === 'platform-external').items)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({ slug: 'ipad-pwa-long-background', execution: 'manual-required' }),

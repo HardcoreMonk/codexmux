@@ -35,7 +35,7 @@ describe('ops backlog completion manifest helpers', () => {
 
     expect(entriesBySlug.get('install-upgrade-release-metadata')).toMatchObject({
       state: 'evidence-attached',
-      reference: 'docs/operations/2026-05-06-release-v0.4.6-conditional-batch-handoff.md',
+      reference: 'docs/operations/2026-05-06-release-v0.4.7-conditional-batch-handoff.md',
     });
     expect(entriesBySlug.get('rollback-flag-systemd-mutation-spec')).toMatchObject({
       state: 'spec-linked',
@@ -65,10 +65,10 @@ describe('ops backlog completion manifest helpers', () => {
       revisitTrigger: 'before next release candidate',
     });
     expect(entriesBySlug.get('android-device-smoke-bundle')?.reason)
-      .toContain('timeline foreground smoke is still open');
+      .toContain('connected-device operations window');
     expect(entriesBySlug.get('mac-packaged-ux')).toMatchObject({
       state: 'approved-deferred',
-      reference: 'docs/operations/2026-05-06-release-v0.4.6-conditional-batch-handoff.md',
+      reference: 'docs/operations/2026-05-06-release-v0.4.7-conditional-batch-handoff.md',
     });
   });
 
@@ -103,7 +103,7 @@ describe('ops backlog completion manifest helpers', () => {
     expect(gate.closable).toBe(true);
     expect(gate.completionPercent).toBe(100);
     expect(gate.summary.byState).toMatchObject({
-      passed: 17,
+      passed: 18,
       'evidence-attached': 2,
       'spec-linked': 9,
       'approved-deferred': 12,
