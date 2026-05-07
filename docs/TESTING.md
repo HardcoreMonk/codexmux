@@ -367,6 +367,7 @@ corepack pnpm pack:electron
 corepack pnpm smoke:windows:zip-artifact
 corepack pnpm smoke:windows:update-metadata
 corepack pnpm smoke:windows:updater-local-feed
+corepack pnpm smoke:windows:updater-published-channel
 corepack pnpm smoke:windows:installer-install
 corepack pnpm smoke:windows:installer-runtime-v2
 corepack pnpm smoke:windows:package-gate
@@ -387,6 +388,12 @@ state temporarily: it silent-installs the generated NSIS artifact, creates a
 synthetic local `latest.yml` with a bumped patch version, verifies Electron
 updater download/install events through `quitAndInstall`, then launches and
 uninstalls the updated install path.
+`smoke:windows:updater-published-channel` is read-only and checks the configured
+GitHub Releases channel from `electron-builder.yml`. It requires a published
+release with `latest.yml`, the referenced NSIS installer, matching `.blockmap`,
+download URLs, and a `latest.yml` version newer than the current package version.
+If the repo only has tags and no release assets, it fails with
+`windows-published-release-missing`.
 `smoke:windows:packaged-launch` starts the generated app with an isolated
 Windows user profile and verifies the packaged local server, Electron preload
 bridge, health endpoint, runtime diagnostics, and blocking console count.
@@ -484,6 +491,7 @@ CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:release-
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:zip-artifact
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:update-metadata
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:updater-local-feed
+CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:updater-published-channel
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:packaged-runtime-v2
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:installer-runtime-v2
 CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke corepack pnpm smoke:windows:package-gate
@@ -502,6 +510,10 @@ child process stdout/stderr.
 `smoke:windows:package-gate` writes a summary artifact with package step id,
 script, duration, exit code, signal, and failure label only. Child package smokes
 write their own sanitized artifacts when the same artifact directory is set.
+`smoke:windows:updater-published-channel` artifacts are read-only channel
+summaries: current/latest version, release count, latest release tag/url,
+referenced installer name, checks, and blocker ids. They do not include tokens or
+raw GitHub API bodies.
 
 The release workflow runs `smoke:browser-reconnect` on GitHub-hosted Ubuntu and uploads
 `smoke-browser-reconnect`. Android and packaged Electron smoke remain manual or self-hosted

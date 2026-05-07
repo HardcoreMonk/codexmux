@@ -15,6 +15,7 @@ corepack pnpm smoke:windows:electron-packaging
 corepack pnpm smoke:windows:zip-artifact
 corepack pnpm smoke:windows:update-metadata
 corepack pnpm smoke:windows:updater-local-feed
+corepack pnpm smoke:windows:updater-published-channel
 corepack pnpm smoke:windows:packaged-launch
 corepack pnpm smoke:windows:packaged-runtime-v2
 corepack pnpm smoke:windows:installer-install
@@ -36,6 +37,7 @@ corepack pnpm pack:electron:mac
 - `smoke:windows:zip-artifact`: `release/*-win.zip` archive 안에 exe, `app.asar`, runtime v2 workers, Windows native terminal/runtime modules가 있는지 확인합니다.
 - `smoke:windows:update-metadata`: `release/latest.yml`이 실제 NSIS installer, installer size, sha512, blockmap artifact와 일치하고, packaged `app-update.yml`이 GitHub publish provider와 같은 owner/repo를 가리키는지 확인합니다.
 - `smoke:windows:updater-local-feed`: NSIS installer를 temp 경로에 설치하고 synthetic local `latest.yml` feed로 update download, `quitAndInstall`, 설치 후 launch smoke, silent uninstall을 확인합니다.
+- `smoke:windows:updater-published-channel`: `electron-builder.yml`의 GitHub publish owner/repo에서 published release channel을 read-only로 확인합니다. 최신 published release에 `latest.yml`, installer, matching `.blockmap`, newer semver, download URL이 없으면 blocker로 실패합니다.
 - `smoke:windows:packaged-launch`: `release/win-unpacked/codexmux.exe`를 실제 실행해 packaged local server, preload bridge, `/api/health`, runtime startup diagnostics, blocking console 0건을 확인합니다.
 - `smoke:windows:packaged-runtime-v2`: packaged app을 runtime v2 `new-tabs` mode로 실행해 workspace/tab 생성, `/api/v2/terminal` WebSocket attach, Windows marker command output을 확인합니다.
 - `smoke:windows:installer-install`: `release/codexmux-Setup-<version>.exe`를 임시 경로에 silent install하고, 설치된 app을 `smoke:windows:packaged-launch`로 확인한 뒤 silent uninstall합니다.
@@ -193,6 +195,7 @@ The Windows wrapper installs Electron ABI native prebuilds for packaged runtime 
 NSIS `artifactName` stays `${productName}-Setup-${version}.${ext}` so `latest.yml`, the installer exe, and the matching `.blockmap` use the same updater-visible artifact name.
 Packaged `resources/app-update.yml` must stay aligned with `electron-builder.yml` `publish.provider`, `publish.owner`, and `publish.repo`; `smoke:windows:update-metadata` checks this against `release/win-unpacked`.
 `smoke:windows:updater-local-feed` uses the generated `latest.yml` as a template, bumps only the patch version in a temp local feed, serves the existing NSIS installer from localhost, and verifies Electron updater events through download, `update-downloaded`, `quitAndInstall`, app exit, post-install launch, and uninstall. The smoke-only updater env hook writes path-light JSONL status and disables differential download so the synthetic feed can reuse the current installer artifact.
+`smoke:windows:updater-published-channel` does not install or update the app. It queries the configured GitHub Releases channel and fails closed until a published release exposes the updater-visible `latest.yml`, NSIS installer, and installer blockmap assets. It is the preflight for real published update evidence; successful download/install evidence still requires a published version newer than the installed app.
 
 macOS DMG target은 `dmg-license`와 Darwin native `iconv-corefoundation`을 사용한다. `dmg-license`는 pnpm node linker에서 electron-builder의 runtime `require()`가 항상 해석되도록 direct devDependency로 고정한다. Linux에서는 `corepack pnpm build:electron`까지를 release smoke로 보고, macOS packaging은 Mac M1 같은 macOS host에서 `corepack pnpm pack:electron:mac:dev`/`pack:electron:mac`로 실행한다.
 
