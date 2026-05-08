@@ -189,6 +189,19 @@ corepack pnpm vitest run tests/unit/lib/status-web-push-payload.test.ts
 - timeline entry id와 dedupe가 reconnect 후 안정적임
 - prompt, terminal output, JSONL path가 debug endpoint에 노출되지 않음
 
+Timeline JSONL perf snapshot 변경:
+
+```bash
+corepack pnpm vitest run tests/unit/lib/timeline-jsonl-perf-snapshot.test.ts
+corepack pnpm perf:timeline-jsonl -- --synthetic-turns 3
+```
+
+검증 기준:
+
+- 작은 synthetic timeline은 `not-needed`로 분류
+- entry count, parse duration, byte size 기준 초과 시 `recommended`와 reasons 반환
+- snapshot에 prompt/body text와 입력 JSONL path 미포함
+
 Codex state SQLite read-only probe 변경:
 
 ```bash

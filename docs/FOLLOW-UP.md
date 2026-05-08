@@ -21,6 +21,7 @@
 - Provider 추가 전 `IAgentProvider` registry contract test
 - Electron app-server local/remote URL protocol helper
 - Status Web Push payload 생성 순수 helper 분리
+- 대형 JSONL 기준 timeline perf snapshot helper와 virtualization 판단 기준
 
 ## 릴리스 전 확인
 
@@ -98,6 +99,7 @@ Android는 legacy/reference surface입니다. Windows-only 제품 전환 중 새
 ## 성능
 
 - Runtime v2 worker counter와 `/api/debug/perf` snapshot으로 측정합니다.
+- 긴 대화/대형 JSONL은 `corepack pnpm perf:timeline-jsonl` snapshot으로 먼저 분류합니다.
 - Package smoke와 실제 installed app 장시간 사용 evidence를 우선합니다.
 
 ## 문서와 운영

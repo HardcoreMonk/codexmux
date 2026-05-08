@@ -111,6 +111,7 @@
     "smoke:runtime-v2:status-default": "node scripts/smoke-runtime-v2-status-default.mjs",
     "smoke:runtime-v2:phase6-default-gate": "node scripts/smoke-runtime-v2-phase6-default-gate.mjs",
     "smoke:ops:batch": "node scripts/ops-smoke-batch.mjs",
+    "perf:timeline-jsonl": "tsx scripts/timeline-jsonl-perf-snapshot.ts",
     "lifecycle:rollback-dry-run": "node scripts/lifecycle-rollback-dry-run.mjs",
     "deploy:local": "node scripts/deploy-local.mjs",
     "release:patch": "node scripts/release.mjs patch",

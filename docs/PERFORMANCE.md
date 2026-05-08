@@ -61,11 +61,38 @@ Prompt, terminal output, cwd, JSONL path, token은 반환하지 않습니다.
 
 - Perf snapshot endpoint와 `globalThis.__ptPerfStore`가 도입되었습니다.
 - Timeline entry id와 dedupe가 안정화되었습니다.
+- Timeline JSONL perf snapshot helper가 추가되어 대형 대화 기준 byte/line/entry/parse duration을
+  숫자로만 측정합니다.
 - Session list는 백그라운드 인덱스를 사용합니다.
 - DIFF는 대량 untracked 파일과 큰 hunk를 제한합니다.
 - Stats build는 in-flight promise로 중복 계산을 피합니다.
 - Runtime v2 worker diagnostics는 sanitized counter로 노출됩니다.
 - Stats cold path date filtering이 추가되었습니다.
+
+## Timeline JSONL snapshot
+
+긴 대화나 대형 JSONL이 의심될 때는 먼저 snapshot을 남깁니다.
+
+```bash
+corepack pnpm perf:timeline-jsonl -- --synthetic-turns 2500
+corepack pnpm perf:timeline-jsonl -- --file <codex-jsonl-file>
+```
+
+Snapshot은 `byteLength`, `lineCount`, `entryCount`, `parseMs`, `virtualization.level`,
+`virtualization.reasons`만 판단 자료로 사용합니다. Prompt, assistant text, terminal output,
+cwd, JSONL path는 출력하지 않습니다. File 입력도 source를 `file`로만 표시하고 실제 path는
+출력하지 않습니다.
+
+Virtualization 판단은 다음 순서로 합니다.
+
+1. `recommended`: entry count, byte size, parse duration 중 하나가 상한을 넘으면 timeline
+   virtualization 구현 후보로 올립니다.
+2. `measure-live`: synthetic 기준만으로 결정하지 않고 installed app의 실제 workspace에서 다시
+   측정합니다.
+3. `not-needed`: 현재 값으로는 virtualization을 시작하지 않습니다.
+
+이 기준은 구현 개시 조건입니다. Render virtualization은 별도 plan에서 public behavior test와
+실제 app scroll/append evidence를 확보한 뒤 진행합니다.
 
 ## 피해야 할 작업
 
@@ -81,6 +108,7 @@ Prompt, terminal output, cwd, JSONL path, token은 반환하지 않습니다.
 corepack pnpm lint
 corepack pnpm tsc --noEmit
 corepack pnpm test
+corepack pnpm perf:timeline-jsonl -- --synthetic-turns 2500
 corepack pnpm smoke:runtime-v2:phase6-default-gate
 corepack pnpm smoke:windows:package-gate
 ```
