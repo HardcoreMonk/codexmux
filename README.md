@@ -1,179 +1,155 @@
 # codexmux
 
-codexmux는 여러 Codex 작업을 하나의 웹 UI에서 관리하는 세션 매니저입니다. 현재 저장소는 기존 tmux 기반 구현을 유지하면서 Windows 전용 제품으로 전환하는 중입니다.
+Codex 작업을 여러 workspace/session/tab으로 관리하는 Codex-focused session
+manager입니다. 이 저장소는 기존 `codexmux` 기반 코드와 Windows 전용 제품 전환
+기준을 함께 보관하는 원본 기반 저장소입니다.
 
-기본 표시 언어는 한국어입니다. 사용자 화면은 한국어와 영어 메시지를 유지하지만, 이 저장소의 기준 문서는 한국어를 canonical 언어로 사용합니다.
+현재 Windows 설치형 제품 작업은 별도 저장소인 `codexwinmux`에서 진행합니다.
 
-## 현재 기준
+```text
+https://github.com/HardcoreMonk/codexwinmux
+```
+
+## 현재 상태
 
 | 항목 | 값 |
 | --- | --- |
 | 저장소 | <https://github.com/HardcoreMonk/codexmux> |
-| 기준 프로젝트 | <https://github.com/subicura/purplemux> |
-| 제품 방향 | Windows 전용 codexmux 제품으로 전환 |
-| 현재 구현 | Next.js Pages Router, custom Node server, runtime v2 worker, tmux 호환 경로 |
+| Windows 제품 저장소 | <https://github.com/HardcoreMonk/codexwinmux> |
+| 현재 패키지 버전 | `0.4.2` |
+| 제품 전환 목표 | Windows 전용 설치형 서비스 |
+| 기본 UI 언어 | 한국어 |
+| 지원 UI 언어 | 한국어, English |
 | 패키지 매니저 | pnpm |
-| 현재 버전 | `0.4.2` |
-| 기본 언어 | 한국어 |
+| 런타임 | Next.js Pages Router, custom Node server, Electron, Runtime v2 adapter |
 
-Windows-only 전환은 예전 Windows companion/remote sync 기능을 되살리는 작업이 아닙니다. 제거된 remote terminal sidecar, remote JSONL sync, remote source model은 계속 제외하고, Windows terminal runtime, process inspector, host/installer/update smoke를 제품 기준으로 끌어올리는 작업입니다.
+이 저장소의 역할은 기존 Codex session manager 기반, workflow/architecture 문서,
+Windows-only 전환 기준을 유지하는 것입니다. 실제 내부 배포 installer, updater
+evidence, 제품 polish는 `codexwinmux` 저장소를 기준으로 확인합니다.
 
-## 빠른 시작
+## Windows 전환 기준
 
-소스에서 개발 서버를 실행합니다.
+제품 목표는 Windows 전용 버전의 개발, 구축, 제공입니다.
+
+표준 lifecycle은 다음 순서를 기준으로 합니다.
+
+```text
+intake
+-> office-hours optional
+-> superpowers:brainstorming / writing-spec
+-> domain-architecture
+-> grill-me
+-> plan-design-review
+-> superpowers:writing-plans
+-> plan-eng-review
+-> implement
+-> code-review
+-> release
+-> operate
+```
+
+`domain-architecture` pass는 plan grilling 전에 domain source를 읽고, 실제 코드
+아키텍처에 영향을 주는 용어, bounded context, module boundary, adapter boundary,
+ADR 후보를 명시합니다. frontend/backend skill refactoring은 이 lifecycle 변경의
+범위가 아닙니다.
+
+## 로컬 개발
 
 ```bash
+git clone https://github.com/HardcoreMonk/codexmux.git
+cd codexmux
 corepack enable
 corepack pnpm install
+```
+
+웹 서버 실행:
+
+```bash
 corepack pnpm dev
 ```
 
-브라우저 접속 주소:
-
-```text
-http://localhost:8122
-```
-
-프로덕션 빌드 확인:
-
-```bash
-corepack pnpm build
-corepack pnpm start
-```
-
-## Windows 앱 개발과 패키징
-
-Electron 앱은 Windows 제품 전환의 현재 desktop shell입니다.
+Electron shell 실행:
 
 ```bash
 corepack pnpm dev:electron
-corepack pnpm build:electron
-corepack pnpm pack:electron:dev
-corepack pnpm pack:electron
 ```
 
-주요 Windows smoke:
+이미 서버가 떠 있을 때 Electron만 붙이려면:
 
 ```bash
-corepack pnpm audit:windows-platform
-corepack pnpm smoke:runtime-v2:terminal-windows
-corepack pnpm smoke:windows:preflight
-corepack pnpm smoke:windows:service-host
-corepack pnpm smoke:windows:host-diagnostics
-corepack pnpm smoke:windows:electron-env
+corepack pnpm dev:electron:attach
+```
+
+## 검증 명령
+
+```bash
+corepack pnpm tsc --noEmit
+corepack pnpm lint
+corepack pnpm test
+corepack pnpm build:electron
+```
+
+Windows 관련 smoke는 저장소 상태에 따라 다음 계층으로 확인합니다.
+
+```bash
 corepack pnpm smoke:windows:electron-packaging
 corepack pnpm smoke:windows:packaged-launch
-corepack pnpm smoke:windows:installer-install
+corepack pnpm smoke:windows:packaged-runtime-v2
+corepack pnpm smoke:windows:installer-runtime-v2
 corepack pnpm smoke:windows:package-gate
 ```
 
-`pack:electron`은 Windows NSIS installer와 zip 패키지를 기준으로 합니다. macOS 패키징 명령은 legacy/manual 검증 경로로 남아 있습니다.
+최신 Windows installer, updater channel, published update evidence는
+`codexwinmux` 저장소의 release artifact를 기준으로 판단합니다.
 
-## 개발 명령
+## 아키텍처 기준
 
-```bash
-corepack pnpm dev
-corepack pnpm dev:electron
-corepack pnpm dev:electron:attach
-corepack pnpm build
-corepack pnpm build:electron
-corepack pnpm start
-corepack pnpm lint
-corepack pnpm tsc --noEmit
-corepack pnpm test
-corepack pnpm exec playwright install chromium
-```
-
-Runtime v2와 Windows 전환 관련 명령:
-
-```bash
-corepack pnpm smoke:runtime-v2
-corepack pnpm smoke:runtime-v2:phase2
-corepack pnpm smoke:runtime-v2:phase6-default-gate
-corepack pnpm smoke:windows:release-gate
-corepack pnpm lifecycle:rollback-dry-run
-```
-
-Android와 Linux 운영 명령은 아직 저장소에 남아 있지만 Windows-only 전환 후에는 legacy/reference 문서로만 취급합니다.
-
-## 주요 기능
-
-- 여러 workspace, pane, tab을 한 화면에서 관리합니다.
-- Codex CLI 세션을 웹 터미널과 timeline으로 관측합니다.
-- Codex JSONL을 읽어 메시지, tool call, permission/input prompt, reasoning summary를 표시합니다.
-- terminal 입력과 Codex 입력창에서 `Ctrl+D`를 EOF로 전달합니다.
-- DIFF 패널은 대량 untracked 파일과 큰 diff를 제한해 UI hang을 막습니다.
-- token/cache/cost 통계와 일별 리포트를 제공합니다.
-- WebSocket reconnect, timeline dedupe, status notification 정책을 분리된 모듈로 유지합니다.
-- Windows runtime v2 경로에서는 Windows terminal adapter, Windows process inspector, Windows host diagnostics, packaged/installer smoke를 검증합니다.
-
-## 보안과 데이터
-
-최초 접속 시 비밀번호를 설정합니다. 비밀번호는 평문이 아니라 scrypt hash로 `~/.codexmux/config.json`에 저장됩니다.
-
-비밀번호만 초기화하려면 `config.json`에서 아래 필드만 제거한 뒤 서버를 다시 시작합니다.
-
-```json
-{
-  "authPassword": "...",
-  "authSecret": "..."
-}
-```
-
-codexmux 자체 상태는 `~/.codexmux/`에 저장합니다. Codex CLI 원본 세션은 `~/.codex/sessions/` 아래 JSONL을 읽기 전용으로 참조합니다.
-
-| 경로 | 내용 |
-| --- | --- |
-| `config.json` | 인증, locale, theme, network, Codex 설정 |
-| `workspaces.json` | legacy workspace 목록과 sidebar 상태 |
-| `workspaces/{wsId}/layout.json` | legacy pane/tab layout |
-| `runtime-v2/state.db` | runtime v2 SQLite 상태 |
-| `session-index.json` | Codex JSONL session index cache |
-| `approval-audit.jsonl` | sanitized approval action log |
-| `lifecycle-actions.jsonl` | sanitized lifecycle action log |
-| `logs/` | 서버 로그 |
-
-이전 Windows companion 기능이 만든 `~/.codexmux/remote/codex/` 데이터는 현재 앱에서 읽지 않습니다.
-
-## 아키텍처 요약
+Windows 제품 전환의 목표 구조는 Shell Host, Backend/Core Engine, Frontend
+Engine을 분리하는 방향입니다.
 
 ```text
-Browser / Electron
-  | HTTP + WebSocket
-  v
-custom Node server + Next.js Pages Router
-  | runtime v2 Supervisor
-  | terminal / storage / timeline / status workers
-  v
-terminal runtime adapter
-  | 현재 tmux 호환 경로
-  | Windows ConPTY/node-pty 경로
-  v
-shell / codex
+Electron Shell Host
+  - window, tray, menu, updater
+  - UI 수명과 engine 수명 분리
 
-Codex JSONL
-  ~/.codex/sessions/YYYY/MM/DD/*.jsonl
-  -> timeline, status, stats
+Backend/Core Engine
+  - custom Node server
+  - workspace/session/tab 상태
+  - Runtime v2 terminal/session 처리
+  - Windows process inspector
+  - Codex JSONL mapping
+
+Frontend Engine
+  - Next.js Pages Router UI
+  - terminal, Codex, diff, settings 화면
 ```
 
-custom server와 Next.js API route는 같은 Node process 안에서도 module graph가 갈릴 수 있으므로 shared singleton state를 `globalThis`에 둡니다. Terminal byte stream은 durable state가 아니며, durable app state는 JSON legacy store와 runtime v2 SQLite store로 분리합니다.
+Windows 제품은 기본 포트 `8121`을 기준으로 하며, 포트가 점유된 상태에서 조용히
+다른 포트로 fallback하지 않는 방향을 따릅니다.
 
-## 문서
+## 문서 맵
 
 | 문서 | 내용 |
 | --- | --- |
-| [docs/README.md](docs/README.md) | 문서 맵과 갱신 규칙 |
-| [docs/ADR.md](docs/ADR.md) | 오래가는 아키텍처 결정 |
-| [docs/WINDOWS-ONLY-GAP-AUDIT.md](docs/WINDOWS-ONLY-GAP-AUDIT.md) | Windows-only 전환 gap audit |
-| [docs/ARCHITECTURE-LOGIC.md](docs/ARCHITECTURE-LOGIC.md) | 서버와 runtime 서비스 흐름 |
-| [docs/RUNTIME-V2-CUTOVER.md](docs/RUNTIME-V2-CUTOVER.md) | runtime v2 전환 단계 |
-| [docs/RUNTIME-V2-PARITY.md](docs/RUNTIME-V2-PARITY.md) | runtime v2 parity matrix |
-| [docs/STATUS.md](docs/STATUS.md) | Codex 작업 상태 감지 |
-| [docs/TMUX.md](docs/TMUX.md) | legacy tmux와 terminal protocol |
-| [docs/DATA-DIR.md](docs/DATA-DIR.md) | 데이터 디렉터리 구조 |
-| [docs/TESTING.md](docs/TESTING.md) | 테스트와 smoke 기준 |
-| [docs/ELECTRON.md](docs/ELECTRON.md) | Electron/Windows 패키징 |
-| [docs/FOLLOW-UP.md](docs/FOLLOW-UP.md) | 릴리스 전 확인과 백로그 |
+| [docs/README.md](docs/README.md) | 내부 문서 맵과 갱신 규칙 |
+| [docs/ADR.md](docs/ADR.md) | 아키텍처 결정 기록 |
+| [docs/ARCHITECTURE-LOGIC.md](docs/ARCHITECTURE-LOGIC.md) | 아키텍처 흐름과 서비스 로직 |
+| [docs/STATUS.md](docs/STATUS.md) | Codex 작업 상태 감지와 status flow |
+| [docs/TMUX.md](docs/TMUX.md) | terminal/session 관리 |
+| [docs/DATA-DIR.md](docs/DATA-DIR.md) | `.codexmux` 데이터 디렉터리 |
+| [docs/TESTING.md](docs/TESTING.md) | 테스트 계층과 smoke |
+| [docs/ELECTRON.md](docs/ELECTRON.md) | Electron desktop 개발과 packaging |
+| [docs/WINDOWS-ONLY-GAP-AUDIT.md](docs/WINDOWS-ONLY-GAP-AUDIT.md) | Windows-only gap audit |
+| [docs/operations/](docs/operations/) | 릴리스와 운영 handoff |
+
+## 현재 경계
+
+- 새 Windows 제품 배포는 `codexwinmux` 저장소를 기준으로 진행합니다.
+- 이 저장소에서 cross-project rollout이나 외부 guide installer 실행은 하지 않습니다.
+- FE/React/Vercel skill refactoring과 BE/FastAPI skill refactoring은 현재 lifecycle
+  변경 범위가 아닙니다.
+- `improve-codebase-architecture`는 승인된 architecture candidate에 대한 bounded
+  implementation refactor로만 사용합니다.
 
 ## 라이선스
 
