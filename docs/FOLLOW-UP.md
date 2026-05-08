@@ -22,6 +22,7 @@
 - Electron app-server local/remote URL protocol helper
 - Status Web Push payload 생성 순수 helper 분리
 - 대형 JSONL 기준 timeline perf snapshot helper와 virtualization 판단 기준
+- Codex CLI JSONL schema fixture 기반 parser 회귀 테스트
 
 ## 릴리스 전 확인
 

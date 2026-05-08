@@ -202,6 +202,18 @@ corepack pnpm perf:timeline-jsonl -- --synthetic-turns 3
 - entry count, parse duration, byte size 기준 초과 시 `recommended`와 reasons 반환
 - snapshot에 prompt/body text와 입력 JSONL path 미포함
 
+Codex CLI JSONL parser fixture 변경:
+
+```bash
+corepack pnpm vitest run tests/unit/lib/codex-session-parser.test.ts
+```
+
+검증 기준:
+
+- legacy event-message fixture가 user/assistant message로 읽힘
+- `codex-cli 0.128.0` response_item/event_msg 혼합 fixture가 message, reasoning, tool call/result로 읽힘
+- image wrapper가 event user message와 중복 출력되지 않음
+
 Codex state SQLite read-only probe 변경:
 
 ```bash
