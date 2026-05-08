@@ -125,6 +125,7 @@ UI와 저장 데이터는 역사적 호환성 때문에 `agentSessionId`, `agent
 | --- | --- |
 | `src/lib/status-manager.ts` | legacy status manager 부수효과 |
 | `src/lib/providers/registry.ts` | provider 등록과 contract 검증 |
+| `src/lib/status-web-push-payload.ts` | status Web Push payload projection |
 | `src/lib/status-state-machine.ts` | 상태 전이 helper |
 | `src/lib/status-notification-policy.ts` | notification 판단 |
 | `src/lib/status-session-mapping.ts` | Codex session mapping |

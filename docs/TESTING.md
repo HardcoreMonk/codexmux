@@ -170,6 +170,18 @@ corepack pnpm vitest run tests/unit/lib/providers.test.ts
 - invalid provider id, empty display name, invalid panel type 감지
 - duplicate provider id와 duplicate panel type 감지
 
+Status Web Push payload 변경:
+
+```bash
+corepack pnpm vitest run tests/unit/lib/status-web-push-payload.test.ts
+```
+
+검증 기준:
+
+- approval payload는 sanitized metadata projection만 포함
+- review completion payload에는 approval field 미포함
+- locale title/body와 silent flag 유지
+
 통계와 timeline 변경은 다음을 확인합니다.
 
 - JSONL incremental parser가 중복 계산하지 않음

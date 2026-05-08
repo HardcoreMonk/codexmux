@@ -20,6 +20,7 @@
 - Mobile lock-screen approval copy의 locale-aware title/body
 - Provider 추가 전 `IAgentProvider` registry contract test
 - Electron app-server local/remote URL protocol helper
+- Status Web Push payload 생성 순수 helper 분리
 
 ## 릴리스 전 확인
 

@@ -34,13 +34,12 @@ import { createDedupeKeyStore } from '@/lib/dedupe-key-store';
 import { completionKeyFor, normalizeSessionId, resolveAgentSessionId, sessionIdFromJsonlPath } from '@/lib/status-session-mapping';
 import { shouldProcessHookEvent } from '@/lib/status-notification-policy';
 import { mergeStatusMetadata } from '@/lib/status-metadata';
-import { buildApprovalPushBody, getApprovalMetadataDetail } from '@/lib/approval-queue';
 import {
   appendApprovalAuditEvent,
   resolveApprovalPushAuditEventType,
   type IApprovalPushAuditOutcome,
 } from '@/lib/approval-audit-store';
-import { buildStatusPushTitle } from '@/lib/notification-copy';
+import { buildStatusWebPushPayload } from '@/lib/status-web-push-payload';
 import { forwardBridgeTraceStatusUpdate } from '@/lib/bridge-trace-forwarder';
 import { getPerfNow, recordPerfCounter, recordPerfDuration } from '@/lib/perf-metrics';
 import { getRuntimeStatusV2Mode } from '@/lib/runtime/status-mode';
@@ -1774,32 +1773,8 @@ export class StatusManager {
 
   private async sendWebPush(tabId: string, entry: ITabStatusEntry, pushType: 'review' | 'needs-input'): Promise<void> {
     const config = await getConfig();
-    const title = buildStatusPushTitle({ pushType, locale: config.locale });
-    const fallbackBody = entry.lastUserMessage?.slice(0, 100) || entry.tabName || tabId;
-    const approvalPromptMetadata = pushType === 'needs-input' ? entry.approvalPromptMetadata ?? null : null;
-    const body = pushType === 'needs-input'
-      ? buildApprovalPushBody({ metadata: approvalPromptMetadata, fallbackText: fallbackBody, locale: config.locale })
-      : fallbackBody;
     const ws = (await getWorkspaces()).workspaces.find((w) => w.id === entry.workspaceId);
-    const approvalMetadata = pushType === 'needs-input'
-      ? {
-        approvalKind: approvalPromptMetadata?.approvalKind ?? 'unknown',
-        promptType: approvalPromptMetadata?.promptType ?? 'unknown',
-        riskLevel: approvalPromptMetadata?.riskLevel ?? 'unknown',
-        approvalDetail: getApprovalMetadataDetail(approvalPromptMetadata),
-      }
-      : {};
-    const payload = {
-      title,
-      body,
-      silent: pushType === 'review' && config.soundOnCompleteEnabled === false,
-      tabId,
-      workspaceId: entry.workspaceId,
-      agentSessionId: entry.agentSessionId ?? null,
-      workspaceName: ws?.name ?? '',
-      workspaceDir: ws?.directories[0] ?? null,
-      ...approvalMetadata,
-    };
+    const payload = buildStatusWebPushPayload({ pushType, tabId, entry, workspace: ws ?? null, config });
 
     const anyDeviceVisible = isAnyDeviceVisible();
     if (this.shouldUseRuntimeStatusDefault()) {
