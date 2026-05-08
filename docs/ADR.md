@@ -35,7 +35,7 @@
 - 상태: 승인
 - 결정: 현재 provider는 Codex이며, client/store field는 migration 범위를 줄이기 위해 `agent*` 이름을 유지합니다.
 - 이유: UI와 저장 데이터가 provider-neutral 모양을 갖고 있어야 이후 변경 비용을 줄일 수 있습니다.
-- 영향: `TCliState`, `ITabState`, `StatusManager`, provider detection, `agentSessionId`, `agentSummary`를 바꾸면 `STATUS.md`도 갱신합니다. 새 provider는 registry contract를 통과해야 하며 provider id와 panel type은 중복될 수 없습니다.
+- 영향: `TCliState`, `ITabState`, `StatusManager`, provider detection, `agentSessionId`, `agentSummary`를 바꾸면 `STATUS.md`도 갱신합니다. 새 provider는 registry contract를 통과해야 하며 provider id와 panel type은 중복될 수 없습니다. JSONL watch 유지와 stop hook 지연 같은 provider별 status 동작은 `statusBehavior` contract로 명시합니다.
 
 ## ADR-004: 공유 상태는 `globalThis` singleton에 둔다
 

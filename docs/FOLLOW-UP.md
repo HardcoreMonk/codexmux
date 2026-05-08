@@ -26,6 +26,7 @@
 - Codex resume 실패 원인 code/recoverable 분류
 - Status JSONL tail scan 순수 helper 분리
 - Timeline init meta 계산 순수 helper 분리
+- Provider adapter status behavior contract와 runtime worker IPC 반영
 
 ## 릴리스 전 확인
 

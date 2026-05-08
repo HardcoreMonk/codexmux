@@ -195,13 +195,17 @@ describe('status worker service', () => {
       currentState: 'busy',
       eventName: 'stop',
       providerId: 'codex',
+      statusBehavior: {
+        watchJsonlWhenBound: true,
+        deferStopHookUntilJsonlIdle: true,
+      },
     }));
 
     expect(reply.ok).toBe(true);
     expect(reply.payload).toEqual({
       nextState: 'busy',
       changed: false,
-      deferCodexStop: true,
+      deferStopHook: true,
     });
   });
 
@@ -248,6 +252,10 @@ describe('status worker service', () => {
       newState: 'ready-for-review',
       hasJsonlPath: true,
       providerId: 'codex',
+      statusBehavior: {
+        watchJsonlWhenBound: true,
+        deferStopHookUntilJsonlIdle: true,
+      },
       hasJsonlWatcher: true,
       sessionHistoryDedupeAccepted: true,
       reviewNotificationDedupeAccepted: true,

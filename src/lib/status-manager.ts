@@ -82,7 +82,7 @@ const JSONL_TAIL_SIZE = 8192;
 const JSONL_EXTENDED_TAIL_SIZE = 131_072;
 const PROCESS_RETRY_COUNT = 3;
 const JSONL_WATCH_DEBOUNCE_MS = 100;
-const CODEX_STOP_RECHECK_MS = 500;
+const PROVIDER_STOP_RECHECK_MS = 500;
 
 interface IJsonlIdleCache {
   mtimeMs: number;
@@ -904,6 +904,7 @@ export class StatusManager {
       ...(opts.skipHistory !== undefined ? { skipHistory: opts.skipHistory } : {}),
       hasJsonlPath: !!entry.jsonlPath,
       providerId: provider?.id ?? null,
+      statusBehavior: provider?.statusBehavior ?? null,
       hasJsonlWatcher: this.jsonlWatchers.has(tabId),
       sessionHistoryDedupeAccepted: wantsSessionHistory
         ? this.sessionHistoryDedupe.remember(opts.completionKey)
@@ -1238,11 +1239,12 @@ export class StatusManager {
       currentState: prevState,
       eventName,
       providerId: provider?.id ?? null,
+      statusBehavior: provider?.statusBehavior ?? null,
     });
 
-    if (decision.deferCodexStop) {
-      hookLog.debug({ tabId, event: eventName, notificationType, seq, prevState }, 'queued Codex stop JSONL verification');
-      this.recheckCodexStop(tabId, tmuxSession);
+    if (decision.deferStopHook) {
+      hookLog.debug({ tabId, event: eventName, notificationType, seq, prevState }, 'queued provider stop JSONL verification');
+      this.recheckProviderStop(tabId, tmuxSession);
       return;
     }
 
@@ -1291,7 +1293,7 @@ export class StatusManager {
     }
   }
 
-  private recheckCodexStop(tabId: string, tmuxSession: string): void {
+  private recheckProviderStop(tabId: string, tmuxSession: string): void {
     setTimeout(() => {
       const refresh = async () => {
         let entry = this.tabs.get(tabId);
@@ -1308,9 +1310,9 @@ export class StatusManager {
       };
 
       refresh().catch((err) => {
-        hookLog.warn('Codex stop JSONL verification failed: %s', err);
+        hookLog.warn('provider stop JSONL verification failed: %s', err);
       });
-    }, CODEX_STOP_RECHECK_MS);
+    }, PROVIDER_STOP_RECHECK_MS);
   }
 
   private setCompacting(tabId: string, entry: ITabStatusEntry, since: number | null): void {

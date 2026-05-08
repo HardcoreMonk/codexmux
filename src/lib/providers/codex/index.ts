@@ -41,6 +41,10 @@ export const codexProvider: IAgentProvider = {
   id: 'codex',
   displayName: 'Codex',
   panelType: 'codex',
+  statusBehavior: {
+    watchJsonlWhenBound: true,
+    deferStopHookUntilJsonlIdle: true,
+  },
 
   matchesProcess: (commandName) => commandName === 'codex',
   isValidSessionId: isValidCodexThreadId,

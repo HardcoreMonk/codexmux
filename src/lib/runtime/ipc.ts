@@ -149,7 +149,7 @@ const statusHookDecisionSchema = z.object({
   changed: z.boolean(),
   silent: z.boolean().optional(),
   skipHistory: z.boolean().optional(),
-  deferCodexStop: z.boolean(),
+  deferStopHook: z.boolean(),
 });
 const statusDecisionSchema = z.object({
   nextState: cliStateSchema,
@@ -377,10 +377,15 @@ const timelineSessionChangedEventPayloadSchema = z.object({
   sessionName: z.string().min(1),
   info: timelineSessionInfoSchema,
 });
+const agentProviderStatusBehaviorSchema = z.object({
+  watchJsonlWhenBound: z.boolean(),
+  deferStopHookUntilJsonlIdle: z.boolean(),
+}).strict();
 const statusReduceHookStatePayloadSchema = z.object({
   currentState: cliStateSchema,
   eventName: statusEventNameSchema,
   providerId: z.string().nullable().optional(),
+  statusBehavior: agentProviderStatusBehaviorSchema.nullable().optional(),
 });
 const statusReduceCodexStatePayloadSchema = z.object({
   currentState: cliStateSchema,
@@ -402,6 +407,7 @@ const statusSideEffectPolicyPayloadSchema = z.object({
   skipHistory: z.boolean().optional(),
   hasJsonlPath: z.boolean(),
   providerId: z.string().nullable().optional(),
+  statusBehavior: agentProviderStatusBehaviorSchema.nullable().optional(),
   hasJsonlWatcher: z.boolean(),
   sessionHistoryDedupeAccepted: z.boolean(),
   reviewNotificationDedupeAccepted: z.boolean(),

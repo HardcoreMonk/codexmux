@@ -135,6 +135,11 @@ UI와 저장 데이터는 역사적 호환성 때문에 `agentSessionId`, `agent
 - display name은 비어 있으면 안 됩니다.
 - panel type은 `normalizePanelType`에서 인정되어야 합니다.
 - provider id와 panel type은 기존 provider와 중복될 수 없습니다.
+- status behavior는 provider adapter가 명시합니다.
+  - `watchJsonlWhenBound=true`이면 JSONL path가 tab에 묶인 동안 idle/ready 상태에서도 watcher를 유지합니다.
+  - `deferStopHookUntilJsonlIdle=true`이면 stop hook을 바로 `ready-for-review`로 처리하지 않고 JSONL idle 확인 뒤 상태를 갱신합니다.
+
+Generic status policy는 provider id 문자열로 Codex 동작을 추론하지 않고 `statusBehavior`를 입력으로 받습니다. Codex 전용 JSONL parsing과 pane prompt recovery는 여전히 Codex adapter/policy에 둡니다.
 
 ## 관련 파일
 
@@ -142,6 +147,7 @@ UI와 저장 데이터는 역사적 호환성 때문에 `agentSessionId`, `agent
 | --- | --- |
 | `src/lib/status-manager.ts` | legacy status manager 부수효과 |
 | `src/lib/providers/registry.ts` | provider 등록과 contract 검증 |
+| `src/lib/providers/types.ts` | provider adapter와 status behavior contract |
 | `src/lib/status-web-push-payload.ts` | status Web Push payload projection |
 | `src/lib/status-state-machine.ts` | 상태 전이 helper |
 | `src/lib/status-jsonl-scan.ts` | legacy JSONL tail scan과 assistant/action 추출 |

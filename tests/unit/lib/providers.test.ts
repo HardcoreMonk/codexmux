@@ -29,6 +29,10 @@ describe('agent providers', () => {
       expect(provider.id).toMatch(/^[a-z0-9-]+$/);
       expect(provider.displayName.length).toBeGreaterThan(0);
       expect(provider.panelType).toBe(normalizePanelType(provider.panelType));
+      expect(provider.statusBehavior).toEqual({
+        watchJsonlWhenBound: true,
+        deferStopHookUntilJsonlIdle: true,
+      });
       expect(typeof provider.matchesProcess).toBe('function');
       expect(typeof provider.detectActiveSession).toBe('function');
       expect(typeof provider.isAgentRunning).toBe('function');
