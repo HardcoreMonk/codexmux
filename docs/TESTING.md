@@ -89,6 +89,8 @@ Playwright는 UI 회귀와 smoke 자동화에 사용합니다.
 Electron 검증은 Windows packaging과 local server bootstrap을 중심으로 합니다.
 
 ```bash
+corepack pnpm vitest run tests/unit/electron/app-server-protocol.test.ts
+corepack pnpm build:electron:main
 corepack pnpm build:electron
 corepack pnpm smoke:electron:attach
 corepack pnpm smoke:electron:runtime-v2
@@ -99,6 +101,13 @@ corepack pnpm smoke:windows:installer-install
 ```
 
 `pack:electron:mac` 계열 명령은 legacy/manual path입니다. Windows-only release blocker로 사용하지 않습니다.
+
+App-server protocol 변경 기준:
+
+- remote URL은 `http://`와 `https://`만 허용
+- scheme 없는 remote URL은 `http://`로 정규화
+- invalid persisted remote config는 local mode로 fallback
+- local server URL/label은 active port에서 생성
 
 ## Android 참고 검증
 

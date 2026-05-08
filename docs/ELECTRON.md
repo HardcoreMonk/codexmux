@@ -40,6 +40,7 @@ corepack pnpm pack:electron:mac
 | 파일 | 역할 |
 | --- | --- |
 | `electron/main.ts` | BrowserWindow, menu, local/remote server mode, updater |
+| `electron/app-server-protocol.ts` | local/remote app-server URL 정규화와 active server label contract |
 | `electron/preload.ts` | renderer IPC bridge |
 | `electron/browser-bridge.ts` | Electron browser panel bridge |
 | `electron/runtime-env.ts` | platform별 PATH와 `NODE_PATH` 처리 |
@@ -64,6 +65,7 @@ Electron 설정은 `~/.codexmux/config.json`을 공유합니다. Server mode는 
 - 설정한 URL을 `~/.codexmux/config.json`에 저장합니다.
 - URL scheme이 없으면 `http://`를 붙입니다.
 - 허용 scheme은 `http://`, `https://`입니다.
+- 잘못 저장된 remote URL이나 지원하지 않는 scheme은 local mode로 fallback합니다.
 
 ## Windows 패키징 계약
 

@@ -2,6 +2,13 @@ import { capturePristineEnv } from './pristine-env';
 import { applyResolvedShellEnv } from './shell-env';
 import { applyElectronBootstrapEnv, buildFileImportSpecifier, buildPackagedNodePath } from './runtime-env';
 import { appendUpdaterSmokeStatus, readUpdaterSmokeConfig } from './updater-smoke';
+import {
+  getAppServerLabel,
+  normalizeAppServerConfig,
+  normalizeAppServerUrl,
+  resolveAppServerUrl,
+  type IAppServerConfig,
+} from './app-server-protocol';
 import { app, BrowserWindow, shell, Menu, ipcMain, session, screen, Notification, nativeTheme, dialog } from 'electron';
 import { autoUpdater, type UpdateInfo, type ProgressInfo } from 'electron-updater';
 import * as path from 'path';
@@ -19,11 +26,6 @@ const fixEnv = () => {
 
 // --- Server Config (~/.codexmux/config.json) ---
 
-interface IServerConfig {
-  mode: 'local' | 'remote';
-  remoteUrl?: string;
-}
-
 interface IWindowState {
   x?: number;
   y?: number;
@@ -35,7 +37,7 @@ interface IWindowState {
 }
 
 interface IAppConfig {
-  server?: IServerConfig;
+  server?: IAppServerConfig;
   windowState?: IWindowState;
   appTheme?: string;
 }
@@ -62,15 +64,12 @@ const writeAppConfig = (config: IAppConfig) => {
   }
 };
 
-const readServerConfig = (): IServerConfig => {
+const readServerConfig = (): IAppServerConfig => {
   const cfg = readAppConfig();
-  if (cfg.server?.mode === 'remote' && cfg.server?.remoteUrl) {
-    return { mode: 'remote', remoteUrl: cfg.server.remoteUrl };
-  }
-  return { mode: 'local' };
+  return normalizeAppServerConfig(cfg.server);
 };
 
-const writeServerConfig = (server: IServerConfig) => {
+const writeServerConfig = (server: IAppServerConfig) => {
   const cfg = readAppConfig();
   cfg.server = server;
   writeAppConfig(cfg);
@@ -212,7 +211,7 @@ const windows = new Set<BrowserWindow>();
 let lastFocusedWindow: BrowserWindow | null = null;
 let serverShutdown: (() => Promise<void>) | null = null;
 let isQuitting = false;
-let serverConfig: IServerConfig = { mode: 'local' };
+let serverConfig: IAppServerConfig = { mode: 'local' };
 let localPort: number | null = null;
 let cachedStart: ((opts: { port: number }) => Promise<{ port: number; shutdown: () => Promise<void> }>) | null = null;
 
@@ -230,9 +229,7 @@ const resolveCurrentUrl = (): string | null => {
   const primary = getPrimaryWindow();
   const url = primary?.webContents.getURL();
   if (url && url !== 'about:blank' && !url.startsWith('data:')) return url;
-  if (serverConfig.mode === 'remote' && serverConfig.remoteUrl) return serverConfig.remoteUrl;
-  if (localPort) return `http://localhost:${localPort}`;
-  return null;
+  return resolveAppServerUrl(serverConfig, localPort);
 };
 
 // --- Auto Updater ---
@@ -480,21 +477,7 @@ const stopLocalServer = async () => {
 // --- Menu ---
 
 const getServerLabel = (): string => {
-  if (serverConfig.mode === 'remote') return serverConfig.remoteUrl || '';
-  return localPort ? `localhost:${localPort}` : 'localhost';
-};
-
-const normalizeServerUrl = (raw: string): string | null => {
-  const value = raw.trim();
-  if (!value) return null;
-  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? value : `http://${value}`;
-  try {
-    const url = new URL(withScheme);
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
-    return url.toString().replace(/\/$/, '');
-  } catch {
-    return null;
-  }
+  return getAppServerLabel(serverConfig, localPort);
 };
 
 const updateMenu = () => {
@@ -575,7 +558,7 @@ const handleSwitchToRemote = async () => {
   const parent = getPrimaryWindow();
   if (!parent) return;
 
-  const url = normalizeServerUrl(await showServerPrompt(parent, serverConfig.remoteUrl) ?? '');
+  const url = normalizeAppServerUrl(await showServerPrompt(parent, serverConfig.remoteUrl) ?? '');
   if (!url) {
     updateMenu();
     return;
@@ -823,7 +806,7 @@ const bootstrap = async () => {
     loadSplash(win);
     await shellEnvReady;
     const port = await startLocalServer();
-    win.loadURL(`http://localhost:${port}`);
+    win.loadURL(resolveAppServerUrl(serverConfig, port) ?? `http://localhost:${port}`);
     clearSplashHistory(win);
   }
 

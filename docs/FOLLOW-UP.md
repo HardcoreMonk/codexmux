@@ -19,6 +19,7 @@
 - Approval queue Web Push outcome의 sanitized JSONL audit 기록
 - Mobile lock-screen approval copy의 locale-aware title/body
 - Provider 추가 전 `IAgentProvider` registry contract test
+- Electron app-server local/remote URL protocol helper
 
 ## 릴리스 전 확인
 
@@ -78,6 +79,7 @@ Published update 검증:
 
 - Windows app close와 backend lifecycle을 분리해야 합니다.
 - 권장 방향은 tray-first engine host입니다.
+- App shell의 local/remote server URL 해석은 `electron/app-server-protocol.ts` contract를 따릅니다.
 - 창 닫기는 window hide, 명시적 종료는 engine shutdown으로 구분합니다.
 - Windows Service는 내부 배포 안정화 후 elevation/installer ownership과 함께 검토합니다.
 
