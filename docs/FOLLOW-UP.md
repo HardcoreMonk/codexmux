@@ -25,6 +25,7 @@
 - Codex CLI JSONL schema fixture 기반 parser 회귀 테스트
 - Codex resume 실패 원인 code/recoverable 분류
 - Status JSONL tail scan 순수 helper 분리
+- Timeline init meta 계산 순수 helper 분리
 
 ## 릴리스 전 확인
 

@@ -201,6 +201,17 @@ corepack pnpm vitest run tests/unit/lib/status-jsonl-scan.test.ts
 - timeline entry id와 dedupe가 reconnect 후 안정적임
 - prompt, terminal output, JSONL path가 debug endpoint에 노출되지 않음
 
+Timeline init meta helper 변경:
+
+```bash
+corepack pnpm vitest run tests/unit/lib/timeline-init-meta.test.ts
+```
+
+검증 기준:
+
+- user/assistant count와 latest timestamp 유지
+- first timestamp override와 custom title 유지
+
 Timeline JSONL perf snapshot 변경:
 
 ```bash

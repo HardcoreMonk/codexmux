@@ -19,7 +19,7 @@ import { getProviderByPanelType } from '@/lib/providers';
 import type { IAgentJsonlResolution, IAgentProvider } from '@/lib/providers';
 import { extractSessionIdFromJsonlPath, readSessionStats } from './session-stats';
 import { checkCodexJsonlState } from '@/lib/codex-jsonl-state';
-import type { TTimelineServerMessage, IInitMeta, ITimelineEntry, ISessionStats } from '@/types/timeline';
+import type { TTimelineServerMessage, ITimelineEntry, ISessionStats } from '@/types/timeline';
 import path from 'path';
 import { isAllowedJsonlPath } from './path-validation';
 import { createLogger } from '@/lib/logger';
@@ -49,6 +49,7 @@ import {
   classifyResumeException,
   invalidResumeSessionFailure,
 } from '@/lib/codex-resume-failure';
+import { buildTimelineInitMeta } from '@/lib/timeline-init-meta';
 
 const log = createLogger('timeline');
 
@@ -314,37 +315,6 @@ const readFirstTimestamp = async (filePath: string): Promise<string | null> => {
   return null;
 };
 
-const computeInitMeta = (entries: ITimelineEntry[], fileSize: number, createdAtOverride?: string | null, customTitle?: string): IInitMeta => {
-  let createdAt: string | null = null;
-  let updatedAt: string | null = null;
-  let lastTimestamp = 0;
-  let userCount = 0;
-  let assistantCount = 0;
-
-  for (const entry of entries) {
-    if (!createdAt && entry.timestamp) {
-      createdAt = new Date(entry.timestamp).toISOString();
-    }
-    if (entry.timestamp) {
-      lastTimestamp = Math.max(lastTimestamp, entry.timestamp);
-    }
-    updatedAt = new Date(entry.timestamp).toISOString();
-
-    if (entry.type === 'user-message') userCount++;
-    else if (entry.type === 'assistant-message') assistantCount++;
-  }
-
-  return {
-    createdAt: createdAtOverride ?? createdAt,
-    updatedAt,
-    lastTimestamp,
-    fileSize,
-    userCount,
-    assistantCount,
-    customTitle,
-  };
-};
-
 const subscribeToFile = async (
   ws: WebSocket,
   jsonlPath: string,
@@ -417,7 +387,7 @@ const subscribeToFile = async (
     startFileWatch(fw);
   }
 
-  const meta = computeInitMeta(result.entries, result.fileSize, snapshot.firstTimestamp, result.customTitle);
+  const meta = buildTimelineInitMeta(result.entries, result.fileSize, snapshot.firstTimestamp, result.customTitle);
 
   const resolvedSessionId = sessionId ?? extractSessionIdFromJsonlPath(jsonlPath) ?? '';
   const sessionStats = resolvedSessionId ? await readSessionStats(resolvedSessionId) : null;
