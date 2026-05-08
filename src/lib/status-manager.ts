@@ -40,6 +40,7 @@ import {
   resolveApprovalPushAuditEventType,
   type IApprovalPushAuditOutcome,
 } from '@/lib/approval-audit-store';
+import { buildStatusPushTitle } from '@/lib/notification-copy';
 import { forwardBridgeTraceStatusUpdate } from '@/lib/bridge-trace-forwarder';
 import { getPerfNow, recordPerfCounter, recordPerfDuration } from '@/lib/perf-metrics';
 import { getRuntimeStatusV2Mode } from '@/lib/runtime/status-mode';
@@ -1772,14 +1773,14 @@ export class StatusManager {
   }
 
   private async sendWebPush(tabId: string, entry: ITabStatusEntry, pushType: 'review' | 'needs-input'): Promise<void> {
-    const title = pushType === 'needs-input' ? 'Input Required' : 'Task Complete';
+    const config = await getConfig();
+    const title = buildStatusPushTitle({ pushType, locale: config.locale });
     const fallbackBody = entry.lastUserMessage?.slice(0, 100) || entry.tabName || tabId;
     const approvalPromptMetadata = pushType === 'needs-input' ? entry.approvalPromptMetadata ?? null : null;
     const body = pushType === 'needs-input'
-      ? buildApprovalPushBody({ metadata: approvalPromptMetadata, fallbackText: fallbackBody })
+      ? buildApprovalPushBody({ metadata: approvalPromptMetadata, fallbackText: fallbackBody, locale: config.locale })
       : fallbackBody;
     const ws = (await getWorkspaces()).workspaces.find((w) => w.id === entry.workspaceId);
-    const config = await getConfig();
     const approvalMetadata = pushType === 'needs-input'
       ? {
         approvalKind: approvalPromptMetadata?.approvalKind ?? 'unknown',

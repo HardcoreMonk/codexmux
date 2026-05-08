@@ -137,6 +137,18 @@ corepack pnpm vitest run tests/unit/lib/approval-audit-store.test.ts tests/unit/
 - `needs-input` Web Push 결과는 `push-sent`, `push-failed`, `push-skipped-empty`, `push-skipped-visible` enum으로만 기록
 - raw push payload, subscription endpoint, command/file detail은 durable audit에 저장하지 않음
 
+Mobile lock-screen approval copy 변경:
+
+```bash
+corepack pnpm vitest run tests/unit/lib/approval-queue.test.ts tests/unit/lib/notification-copy.test.ts
+```
+
+검증 기준:
+
+- 기본/미지원 locale은 한국어 title로 fallback
+- 영어 locale은 기존 `Input Required`, `Task Complete`, `Command approval` 문구 유지
+- approval metadata detail은 기존 sanitized helper 결과만 사용
+
 통계와 timeline 변경은 다음을 확인합니다.
 
 - JSONL incremental parser가 중복 계산하지 않음

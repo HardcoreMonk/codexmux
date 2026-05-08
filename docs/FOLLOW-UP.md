@@ -17,6 +17,7 @@
 - Windows packaged launch/installer smoke 계열
 - `~/.codex/state_*.sqlite` read-only schema/count probe 기반
 - Approval queue Web Push outcome의 sanitized JSONL audit 기록
+- Mobile lock-screen approval copy의 locale-aware title/body
 
 ## 릴리스 전 확인
 
