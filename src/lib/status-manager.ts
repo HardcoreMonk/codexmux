@@ -35,6 +35,11 @@ import { completionKeyFor, normalizeSessionId, resolveAgentSessionId, sessionIdF
 import { shouldProcessHookEvent } from '@/lib/status-notification-policy';
 import { mergeStatusMetadata } from '@/lib/status-metadata';
 import { buildApprovalPushBody, getApprovalMetadataDetail } from '@/lib/approval-queue';
+import {
+  appendApprovalAuditEvent,
+  resolveApprovalPushAuditEventType,
+  type IApprovalPushAuditOutcome,
+} from '@/lib/approval-audit-store';
 import { forwardBridgeTraceStatusUpdate } from '@/lib/bridge-trace-forwarder';
 import { getPerfNow, recordPerfCounter, recordPerfDuration } from '@/lib/perf-metrics';
 import { getRuntimeStatusV2Mode } from '@/lib/runtime/status-mode';
@@ -1745,6 +1750,27 @@ export class StatusManager {
     return true;
   }
 
+  private recordApprovalPushAuditEvent(
+    tabId: string,
+    entry: ITabStatusEntry,
+    pushType: 'review' | 'needs-input',
+    outcome: IApprovalPushAuditOutcome,
+  ): void {
+    if (pushType !== 'needs-input') return;
+
+    const approvalPromptMetadata = entry.approvalPromptMetadata ?? null;
+    appendApprovalAuditEvent({
+      eventType: resolveApprovalPushAuditEventType(outcome),
+      workspaceId: entry.workspaceId,
+      tabId,
+      approvalKind: approvalPromptMetadata?.approvalKind ?? 'unknown',
+      promptType: approvalPromptMetadata?.promptType ?? 'unknown',
+      riskLevel: approvalPromptMetadata?.riskLevel ?? 'unknown',
+    }).catch((err) => {
+      log.warn('Approval push audit failed: %s', err instanceof Error ? err.message : String(err));
+    });
+  }
+
   private async sendWebPush(tabId: string, entry: ITabStatusEntry, pushType: 'review' | 'needs-input'): Promise<void> {
     const title = pushType === 'needs-input' ? 'Input Required' : 'Task Complete';
     const fallbackBody = entry.lastUserMessage?.slice(0, 100) || entry.tabName || tabId;
@@ -1782,6 +1808,7 @@ export class StatusManager {
         recordPerfCounter('runtime_v2.status_web_push.failed', result.failed);
         recordPerfCounter('runtime_v2.status_web_push.removed', result.removed);
         if (result.skippedVisible) recordPerfCounter('runtime_v2.status_web_push.skipped_visible');
+        this.recordApprovalPushAuditEvent(tabId, entry, pushType, result);
         return;
       } catch (err) {
         recordPerfCounter('runtime_v2.status_web_push.fallback');
@@ -1789,17 +1816,37 @@ export class StatusManager {
       }
     }
 
-    if (anyDeviceVisible) return;
+    if (anyDeviceVisible) {
+      this.recordApprovalPushAuditEvent(tabId, entry, pushType, {
+        skippedVisible: true,
+        attempted: 0,
+        sent: 0,
+        failed: 0,
+      });
+      return;
+    }
     const subs = await getSubscriptions();
-    if (subs.length === 0) return;
+    if (subs.length === 0) {
+      this.recordApprovalPushAuditEvent(tabId, entry, pushType, {
+        skippedVisible: false,
+        attempted: 0,
+        sent: 0,
+        failed: 0,
+      });
+      return;
+    }
 
     const keys = await getVAPIDKeys();
     webpush.setVapidDetails('mailto:noreply@codexmux.app', keys.publicKey, keys.privateKey);
     const payloadText = JSON.stringify(payload);
+    let sent = 0;
+    let failed = 0;
     for (const sub of subs) {
       try {
         await webpush.sendNotification(sub, payloadText);
+        sent++;
       } catch (err: unknown) {
+        failed++;
         const status = (err as { statusCode?: number }).statusCode;
         if (status === 410 || status === 404) {
           await removeSubscription(sub.endpoint);
@@ -1807,6 +1854,12 @@ export class StatusManager {
         log.warn('Web push send error: %s', status);
       }
     }
+    this.recordApprovalPushAuditEvent(tabId, entry, pushType, {
+      skippedVisible: false,
+      attempted: subs.length,
+      sent,
+      failed,
+    });
   }
 }
 

@@ -16,6 +16,7 @@
 - Windows release gate artifact
 - Windows packaged launch/installer smoke 계열
 - `~/.codex/state_*.sqlite` read-only schema/count probe 기반
+- Approval queue Web Push outcome의 sanitized JSONL audit 기록
 
 ## 릴리스 전 확인
 
@@ -68,7 +69,7 @@ Published update 검증:
 ## Approval workflow 기준
 
 - Approval queue metadata는 sanitized projection입니다.
-- Durable audit은 `approval-audit.jsonl`의 enum/action 중심 log로 제한합니다.
+- Durable audit은 `approval-audit.jsonl`의 enum/action/push outcome 중심 log로 제한합니다.
 - Raw command, prompt body, full path, terminal output은 장기 저장하지 않습니다.
 
 ## App-server adapter 기준

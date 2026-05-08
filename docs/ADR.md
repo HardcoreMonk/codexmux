@@ -133,7 +133,7 @@
 - 상태: 승인
 - 결정: approval queue의 durable history는 `~/.codexmux/approval-audit.jsonl` append-only action log로 제한합니다.
 - 이유: 운영자는 표시/선택/fallback 여부를 알아야 하지만 prompt 원문이나 terminal output을 장기 저장하면 안 됩니다.
-- 영향: 저장 필드는 event type, workspace id, tab id, prompt/risk/approval enum, option count, selected option index, fallback reason으로 제한합니다.
+- 영향: 저장 필드는 event type, workspace id, tab id, prompt/risk/approval enum, option count, selected option index, fallback reason으로 제한합니다. Web Push outcome도 `push-sent`, `push-failed`, `push-skipped-empty`, `push-skipped-visible` 같은 enum event로만 기록하며 raw push payload나 subscription endpoint는 저장하지 않습니다.
 
 ## ADR-018: lifecycle action은 allowlist와 sanitized audit으로 제한한다
 

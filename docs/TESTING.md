@@ -125,6 +125,18 @@ Permission/input prompt 변경:
 corepack pnpm smoke:permission
 ```
 
+Approval audit 변경:
+
+```bash
+corepack pnpm vitest run tests/unit/lib/approval-audit-store.test.ts tests/unit/pages/approval-audit-api.test.ts
+```
+
+검증 기준:
+
+- selection/options/fallback audit은 raw prompt, session name, command preview를 저장하지 않음
+- `needs-input` Web Push 결과는 `push-sent`, `push-failed`, `push-skipped-empty`, `push-skipped-visible` enum으로만 기록
+- raw push payload, subscription endpoint, command/file detail은 durable audit에 저장하지 않음
+
 통계와 timeline 변경은 다음을 확인합니다.
 
 - JSONL incremental parser가 중복 계산하지 않음
