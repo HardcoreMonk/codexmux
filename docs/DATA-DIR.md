@@ -59,6 +59,17 @@ Runtime v2는 `runtime-v2/state.db`를 사용합니다.
 - Windows에서는 열린 SQLite handle 때문에 temp directory 삭제가 실패할 수 있으므로 test/smoke는 service와 DB handle을 닫은 뒤 cleanup합니다.
 - Runtime v2가 꺼진 install/build는 `better-sqlite3` native binding load에 의존하지 않습니다.
 
+## Codex CLI 원본 데이터
+
+`~/.codex/`는 Codex CLI 소유 영역입니다. codexmux는 이 디렉터리에 앱 상태를 쓰지 않습니다.
+
+| 경로 | codexmux 처리 |
+| --- | --- |
+| `~/.codex/sessions/` | JSONL session/timeline 원본을 읽기 전용으로 참조 |
+| `~/.codex/state_*.sqlite` | 파일 존재, schema, row count만 읽는 read-only probe 대상 |
+
+`state_*.sqlite` probe는 SQLite를 `readonly`, `fileMustExist`, `query_only`로 열고 table/column/count summary만 반환합니다. Row content, prompt, terminal output, cwd payload, JSONL path는 읽거나 저장하지 않습니다.
+
 ## `config.json` 주요 설정
 
 | 필드 | 의미 |

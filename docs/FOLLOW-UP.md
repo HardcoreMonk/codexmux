@@ -15,6 +15,7 @@
 - Windows packaging contract
 - Windows release gate artifact
 - Windows packaged launch/installer smoke 계열
+- `~/.codex/state_*.sqlite` read-only schema/count probe 기반
 
 ## 릴리스 전 확인
 

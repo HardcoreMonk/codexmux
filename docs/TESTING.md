@@ -132,6 +132,19 @@ corepack pnpm smoke:permission
 - timeline entry id와 dedupe가 reconnect 후 안정적임
 - prompt, terminal output, JSONL path가 debug endpoint에 노출되지 않음
 
+Codex state SQLite read-only probe 변경:
+
+```bash
+corepack pnpm vitest run tests/unit/lib/codex-state-sqlite-indexer.test.ts
+```
+
+검증 기준:
+
+- Codex dir이 없으면 SQLite opener를 호출하지 않음
+- `state_*.sqlite`만 열고 WAL/SHM이나 다른 SQLite 파일은 제외
+- SQLite open 옵션이 `readonly`와 `fileMustExist`로 고정됨
+- 반환 summary에 row content가 포함되지 않음
+
 ## Live deploy와 운영
 
 Legacy Linux service 운영에서는 다음 명령을 사용했습니다.
