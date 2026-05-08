@@ -110,11 +110,21 @@ UI와 저장 데이터는 역사적 호환성 때문에 `agentSessionId`, `agent
 
 이 field의 의미나 shape를 바꾸면 `ADR.md`와 이 문서를 함께 갱신합니다.
 
+## Provider Registry
+
+현재 등록 provider는 Codex 하나입니다. 새 provider를 추가하려면 registry contract를 먼저 통과해야 합니다.
+
+- provider id는 lowercase id 형식이어야 합니다.
+- display name은 비어 있으면 안 됩니다.
+- panel type은 `normalizePanelType`에서 인정되어야 합니다.
+- provider id와 panel type은 기존 provider와 중복될 수 없습니다.
+
 ## 관련 파일
 
 | 파일 | 역할 |
 | --- | --- |
 | `src/lib/status-manager.ts` | legacy status manager 부수효과 |
+| `src/lib/providers/registry.ts` | provider 등록과 contract 검증 |
 | `src/lib/status-state-machine.ts` | 상태 전이 helper |
 | `src/lib/status-notification-policy.ts` | notification 판단 |
 | `src/lib/status-session-mapping.ts` | Codex session mapping |

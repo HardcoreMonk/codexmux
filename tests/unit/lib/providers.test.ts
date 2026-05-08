@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { normalizePanelType } from '@/lib/panel-type';
 import { getProviderByPanelType, getProviderByProcessName, listProviders } from '@/lib/providers';
+import { validateAgentProviderContract } from '@/lib/providers/registry';
 
 const UUID = '12345678-1234-1234-1234-123456789abc';
 const codexLine = (value: unknown): string => JSON.stringify(value);
@@ -46,6 +47,32 @@ describe('agent providers', () => {
       expect(typeof provider.readSummary).toBe('function');
       expect(typeof provider.writeSummary).toBe('function');
     }
+  });
+
+  it('reports provider contract violations before registration', () => {
+    const [codexProvider] = listProviders();
+    expect(validateAgentProviderContract(codexProvider, [])).toEqual([]);
+
+    expect(validateAgentProviderContract({
+      ...codexProvider,
+      id: 'Codex Provider',
+      displayName: '',
+      panelType: 'future-panel' as typeof codexProvider.panelType,
+    }, [codexProvider])).toEqual([
+      'invalid-id',
+      'empty-display-name',
+      'invalid-panel-type',
+    ]);
+
+    expect(validateAgentProviderContract({
+      ...codexProvider,
+      id: codexProvider.id,
+      displayName: 'Duplicate Codex',
+      panelType: codexProvider.panelType,
+    }, [codexProvider])).toEqual([
+      'duplicate-id',
+      'duplicate-panel-type',
+    ]);
   });
 
   it('keeps Codex provider parsing and session id validation stable', () => {

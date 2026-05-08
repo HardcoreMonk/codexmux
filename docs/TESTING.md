@@ -149,6 +149,18 @@ corepack pnpm vitest run tests/unit/lib/approval-queue.test.ts tests/unit/lib/no
 - 영어 locale은 기존 `Input Required`, `Task Complete`, `Command approval` 문구 유지
 - approval metadata detail은 기존 sanitized helper 결과만 사용
 
+Provider registry contract 변경:
+
+```bash
+corepack pnpm vitest run tests/unit/lib/providers.test.ts
+```
+
+검증 기준:
+
+- Codex provider contract 위반 없음
+- invalid provider id, empty display name, invalid panel type 감지
+- duplicate provider id와 duplicate panel type 감지
+
 통계와 timeline 변경은 다음을 확인합니다.
 
 - JSONL incremental parser가 중복 계산하지 않음

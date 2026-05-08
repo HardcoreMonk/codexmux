@@ -18,6 +18,7 @@
 - `~/.codex/state_*.sqlite` read-only schema/count probe 기반
 - Approval queue Web Push outcome의 sanitized JSONL audit 기록
 - Mobile lock-screen approval copy의 locale-aware title/body
+- Provider 추가 전 `IAgentProvider` registry contract test
 
 ## 릴리스 전 확인
 
