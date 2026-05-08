@@ -1,20 +1,15 @@
-# Windows-only Gap Audit
+# Windows-only 차이 감사
 
-Date: 2026-05-06
-Status: Planning baseline
+날짜: 2026-05-06
+상태: 전환 기준 문서
 
-## Verdict
+## 결론
 
-codexmux는 아직 Windows 전용 제품이 아니다. 현재 codebase는 macOS/Linux에서
-`tmux`를 실행하는 self-hosted server를 중심으로 하고, Electron과 Android는 실행 중인
-server에 붙는 client shell로 설계되어 있다.
+codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에는 macOS/Linux tmux server, Linux `systemd` operation, Android Capacitor shell, legacy macOS packaging 기록이 남아 있습니다.
 
-이번 전환은 기존 Windows companion integration을 되살리는 작업이 아니다. ADR-014에서
-제거한 원격 Windows JSONL sync, terminal sidecar, remote source model은 계속 제거된
-상태로 둔다. 새 목표는 제품 실행 기준 자체를 Windows-only service/product로 바꾸는
-것이다.
+전환 목표는 기존 Windows companion integration을 복구하는 것이 아니라, 제품 실행 기준 자체를 Windows-only service/product로 바꾸는 것입니다. ADR에서 제거한 remote JSONL sync, remote terminal sidecar, remote source model은 계속 제외합니다.
 
-## Audit Sources
+## 감사 소스
 
 - `AGENTS.md`
 - `README.md`
@@ -22,564 +17,141 @@ server에 붙는 client shell로 설계되어 있다.
 - `docs/README.md`
 - `docs/ADR.md`
 - `docs/TMUX.md`
-- `docs/SYSTEMD.md`
 - `docs/ELECTRON.md`
 - `docs/ANDROID.md`
-- `docs/superpowers/specs/2026-05-05-windows-integration-removal-design.md`
-- `docs/operations/2026-05-05-windows-integration-removal-handoff.md`
 - `src/lib/tmux.ts`
 - `src/lib/terminal-server.ts`
-- `src/lib/runtime/terminal/terminal-worker-runtime.ts`
-- `src/lib/runtime/terminal/terminal-worker-service.ts`
+- `src/lib/runtime/terminal/*`
 - `src/lib/session-detection.ts`
 - `src/lib/preflight.ts`
-- `src/lib/shell-env.ts`
 - `src/lib/platform.ts`
+- Windows 전환 spec/plan과 operations handoff
 
-## Domain Language
+## 도메인 용어
 
-Canonical terms:
-
-| Term | Meaning |
+| 표준 용어 | 의미 |
 | --- | --- |
-| Windows-only product | codexmux의 supported execution target을 Windows로 고정하는 제품 전환 |
-| Windows terminal runtime | `tmux` 대신 Windows에서 local Codex shell을 유지, attach, resize, stdin/stdout 처리하는 runtime |
-| Windows service host | long-running codexmux server를 Windows에서 시작, 재시작, 로그 확인, 종료하는 host boundary |
-| runtime adapter | Terminal/process/service 구현을 OS별 infrastructure에서 분리하는 adapter |
-| local Codex session | local `~/.codex/sessions/` JSONL과 실행 중인 local Codex process를 연결한 session projection |
+| Windows-only product | 지원 실행 타깃을 Windows로 고정하는 제품 전환 |
+| Windows terminal runtime | tmux 대신 Windows local Codex shell을 유지, attach, resize, stdin/stdout 처리하는 runtime |
+| Windows service host | codexmux server를 Windows에서 시작, 재시작, 로그 확인, 종료하는 host boundary |
+| Runtime adapter | terminal/process/service 구현을 OS별 infrastructure에서 분리하는 adapter |
+| Local Codex session | local `~/.codex/sessions/` JSONL과 실행 중인 Codex process를 연결한 projection |
 
-Rejected synonyms:
+거부 용어:
 
-| Rejected term | Reason |
+| 용어 | 이유 |
 | --- | --- |
-| Windows companion integration | ADR-014에서 제거한 remote sync/sidecar 모델을 뜻하므로 새 제품 목표와 다르다. |
-| Windows bridge | old remote terminal command queue와 혼동된다. |
-| macOS/Linux server | 전환 후 supported product target이 아니다. |
-| Android primary client | 현재 client shell일 뿐 Windows-only 제품 목표의 primary surface가 아니다. |
-| tmux backend | 현재 구현 세부사항이며 Windows 전용 목표의 canonical runtime term이 아니다. |
+| Windows companion integration | 제거된 remote sync/sidecar 모델과 혼동됨 |
+| Windows bridge | old remote terminal command queue와 혼동됨 |
+| macOS/Linux server | 전환 후 supported product target이 아님 |
+| Android primary client | Windows-only 제품의 primary surface가 아님 |
+| tmux backend | 구현 세부사항이며 canonical runtime term이 아님 |
 
-## Bounded Context Candidates
+## 경계 컨텍스트 후보
 
-| Context | Responsibility | Current center | Windows target |
+| Context | 책임 | 현재 중심 | Windows 목표 |
 | --- | --- | --- | --- |
-| Terminal Runtime | session create, attach, detach, resize, stdin/stdout, kill | `src/lib/tmux.ts`, `src/lib/runtime/terminal/*` | `ITerminalWorkerRuntime` 뒤의 Windows-native adapter |
-| Process Inspection | process tree, cwd, command, Codex process/session detection | `/proc`, `pgrep`, `ps`, `lsof`, tmux pane PID | Windows process inspector adapter |
-| Host Operations | install, preflight, start/restart, logs, health, rollback | `systemd --user`, POSIX shell, deploy script | Windows service/tray/installer host |
-| Platform Shell | desktop/mobile shell packaging and reconnect | Electron macOS packaging, Android Capacitor shell | Windows desktop/service packaging; mobile shell demoted or removed |
-| Local Session Index | Codex JSONL discovery and timeline projection | local `~/.codex/sessions/` index | same domain with Windows path semantics verified |
-| Release Verification | CI, smoke, package, install checks | macOS/Linux/tmux and Android/Electron smoke | Windows build, service, terminal, reconnect, JSONL smoke |
+| Terminal Runtime | create, attach, write, resize, detach, kill | `tmux.ts`, runtime terminal worker | Windows adapter |
+| Process Inspection | process tree, cwd, command, Codex session detection | `/proc`, POSIX process helper | Windows process inspector |
+| Host Operations | install, preflight, start/restart, logs, rollback | systemd, shell script | tray/service/installer host |
+| Platform Shell | desktop/mobile shell packaging | Electron, Android | Windows Electron shell |
+| Local Session Index | Codex JSONL discovery | `~/.codex/sessions` | Windows path semantics verified |
+| Release Verification | CI/smoke/package/install | mixed platform smoke | Windows package/update gate |
+
+## 차이 매트릭스
+
+| 영역 | 현재 가정 | Windows 목표 | 우선순위 |
+| --- | --- | --- | --- |
+| 제품 계약 | macOS/Linux tmux server 중심 | Windows-only product | P0 |
+| Terminal runtime | tmux session과 pane PID 가정 | Windows-native persistent terminal | P0 |
+| Process inspection | `/proc`, `pgrep`, `ps`, `lsof` 가정 | Windows process tree adapter | P1 |
+| Preflight | tmux와 POSIX shell PATH 검사 | Windows Codex/Git/Node/pnpm/runtime 검사 | P1 |
+| Install script | POSIX `chmod`, `rm -rf` 흔적 | Windows-safe script | P0 |
+| Host operation | Linux `systemd --user` | tray/service/installer host | P2 |
+| Packaging | macOS/Android 기록 강함 | Windows NSIS/zip/updater | P0 |
+| Docs | 다중 platform 설명 | Windows 기준 + legacy 구분 | P0 |
+| Test gate | 혼합 smoke | Windows release gate | P0 |
+
+## 확인된 Windows 증거
+
+- Windows package script blocker scanner가 `package.json`의 POSIX-only blocker를 검사합니다.
+- `prepublishOnly`와 `postinstall`의 POSIX blocker가 cross-platform script로 교체되었습니다.
+- Windows terminal runtime smoke가 runtime v2 Supervisor/Worker IPC path를 실제로 통과했습니다.
+- Windows process inspector는 CIM 기반 구현으로 교체되었습니다.
+- Windows Codex session detection smoke가 JSONL mapping을 확인했습니다.
+- Windows preflight가 tmux requirement를 제거하고 Windows terminal runtime readiness를 사용합니다.
+- Windows service host baseline과 host diagnostics smoke는 dry-run/no-mutation 원칙을 확인했습니다.
+- Electron bootstrap env는 Windows `PATH`와 `NODE_PATH` 구분자를 사용합니다.
+- Electron packaging contract는 Windows NSIS/zip target을 기본으로 합니다.
+- Windows package gate는 zip artifact, update metadata, updater local feed, packaged launch, packaged runtime v2, installer runtime v2 smoke를 묶습니다.
+
+## 아키텍처 영향
+
+- `src/lib/tmux.ts`를 domain terminal API로 취급하지 않습니다.
+- Terminal/process/host 구현은 adapter boundary 뒤에 둡니다.
+- Browser-facing terminal/timeline URL은 가능한 유지합니다.
+- Type shape는 tmux session name, pane PID, pane current command가 항상 있다는 가정을 제거해야 합니다.
+- Rollback을 위해 tmux path는 migration fallback으로 잠시 유지합니다.
+- Windows service/tray/installer ownership은 별도 host boundary로 관리합니다.
+
+## 권장 전환 순서
+
+1. Windows-only target을 ADR과 문서에 고정합니다.
+2. Platform/runtime adapter contract와 테스트를 추가합니다.
+3. Runtime v2 terminal path를 adapter injection으로 전환합니다.
+4. Windows terminal runtime을 worker service 계약 뒤에 구현합니다.
+5. Windows process/session inspection과 Codex JSONL mapping smoke를 추가합니다.
+6. Preflight, install script, host operation을 Windows 기준으로 바꿉니다.
+7. Packaging, installer, updater, release gate를 Windows 기준으로 승격합니다.
+8. macOS/Linux/Android surface는 legacy/reference로 문서화하고 새 release 기준에서 제외합니다.
+
+## ADR 후보
+
+- 승인됨: Windows-only product target과 removed companion non-resurrection rule.
+- 후속: Windows terminal runtime adapter parity contract.
+- 후속: Windows service/tray host와 installer ownership.
+- 후속: macOS/Linux/Android support removal policy.
+
+## 제외 범위
+
+- 제거된 Windows remote sync 또는 terminal bridge를 되살리지 않습니다.
+- FE/React/Vercel 또는 BE/FastAPI skill refactoring을 하지 않습니다.
+- UI rewrite를 platform gap audit과 섞지 않습니다.
+- 외부 guide installer, hook, package manager, plugin manifest를 실행하지 않습니다.
+
+## 남은 전환 항목
+
+| 항목 | 상태 |
+| --- | --- |
+| Windows unit gate | 완료 |
+| Terminal runtime adapter factory | 완료 |
+| Windows terminal runtime | 완료 |
+| Windows process inspector | 완료 |
+| Windows Codex session detection smoke | 완료 |
+| Windows preflight | 완료 |
+| Windows service host baseline | 완료 |
+| Windows host diagnostics | 완료 |
+| Windows Electron bootstrap env | 완료 |
+| Windows Electron packaging contract | 완료 |
+| Windows release gate artifact | 완료 |
+| 실제 installed app에서 published update `quitAndInstall` | 대기 |
+| code signing certificate trust | 대기 |
+| SmartScreen reputation 확인 | 대기 |
+| 장시간 실제 workspace 사용 안정성 | 대기 |
+| 제품명/app id/data dir의 codexwinmux 전환 결정 | 대기 |
+| rollback drill | 대기 |
+| 측정 기반 perf tuning | 대기 |
+| Phase 6 closeout | 대기 |
+
+## 첫 구현 slice 기준
+
+성공 기준:
+
+- Terminal runtime contract가 create, attach, write, resize, detach, kill, presence, metadata projection을 포함합니다.
+- tmux runtime은 migration fallback으로 유지됩니다.
+- Process inspector primitive는 Codex-specific policy와 분리됩니다.
+- Windows path fixture가 local Codex JSONL allow/deny behavior를 덮습니다.
+- Package/script blocker scanner가 POSIX-only command를 잡습니다.
+- Browser-facing terminal API와 README support claim은 adapter parity 전까지 성급하게 바꾸지 않습니다.
 
-Useful candidates:
-
-- Aggregate: `TerminalSession` owns lifecycle, attachment state, dimensions, and kill semantics.
-- Entity: `CodexProcess` owns PID, command, cwd, start time, and provider/session correlation.
-- Value object: `SessionName`, `WorkspacePath`, `CodexSessionPath`, `HostBinding`.
-- Adapter: `ITerminalWorkerRuntime`, future `IProcessInspector`, future `IHostServiceController`.
-
-## Gap Matrix
-
-| Area | Current assumption | Windows target | Impact | Candidate boundary | Priority |
-| --- | --- | --- | --- | --- | --- |
-| Product contract | README and docs say macOS/Linux server with tmux; Android/Electron are shells. | Supported execution target is Windows-only. | User expectation, docs, release gates. | ADR + docs map + README later. | P0 |
-| Terminal runtime | `src/lib/tmux.ts` shells out to `tmux -L codexmux`, uses POSIX launch command, tmux pane metadata, and process-group signals. | Windows-native persistent terminal runtime. | Largest behavior risk: reconnect, input, kill, cwd, status. | Terminal runtime adapter. | P0 |
-| Runtime v2 terminal | `terminal-worker-runtime.ts` still creates and attaches tmux sessions. | Reuse worker service contract, swap infrastructure adapter. | Keeps Supervisor/typed IPC stable while replacing terminal backend. | `ITerminalWorkerRuntime`. | P0 |
-| Process inspection | `session-detection.ts` reads `/proc` on Linux and falls back to `pgrep`/`lsof` elsewhere. | Windows process tree, cwd, command, and start-time inspection. | Codex running detection and JSONL mapping can misclassify sessions. | `IProcessInspector`. | P1 |
-| Preflight | `preflight.ts` checks tmux, macOS CLT/brew, and POSIX login shell PATH. | Check Windows Codex, Git, Node, pnpm, terminal runtime, service permissions. | First-run readiness is currently wrong on Windows. | Host preflight adapter. | P1 |
-| Install scripts | `package.json` `postinstall` uses POSIX `chmod`; `prepublishOnly` uses `rm -rf`. | Windows-safe install/build scripts. | Fresh install can fail before app starts. | npm script hygiene. | P0 |
-| Service operation | `deploy:local` restarts `systemd --user`; docs center Linux user service. | Windows Service, tray app, scheduled startup, or installer-owned service. | Production operation path is absent. | Host service controller. | P2 |
-| Packaging | Electron package script targets macOS; Android scripts are first-class. | Windows desktop/service package and installer verification. | Release artifact path is undefined. | Packaging context. | P2 |
-| Network access | Tailscale/mobile remote access is heavily documented. | Windows local service first; remote access is optional policy. | Avoid letting Android/Tailscale drive core architecture. | Network/access policy docs. | P3 |
-| Tests | Prior Windows run passed type/lint but full test had `/proc`, path/HOME, and SQLite cleanup failures. | Windows unit/integration/smoke gates are green. | Test suite currently hides platform debt. | Platform test matrix. | P0 |
-| Docs | `TMUX.md`, `SYSTEMD.md`, `ANDROID.md`, `ELECTRON.md`, README all describe current platform shape. | Docs describe Windows-only target once runtime plan is accepted. | Docs drift will confuse operators. | Staged docs cutover. | P0 |
-| ADR continuity | ADR-014 removed old Windows companion integration. | New ADR clarifies Windows-only target without reviving remote sidecar. | Prevents architectural backtracking. | ADR-020. | P0 |
-
-## Known Windows Evidence
-
-- `corepack pnpm install --frozen-lockfile` previously failed on Windows because
-  `postinstall` runs POSIX `chmod`; `--ignore-scripts` allowed dependency install.
-- `corepack pnpm tsc --noEmit` and `corepack pnpm lint` passed in the current
-  Windows workspace.
-- `corepack pnpm test` previously failed on Windows in 10 files / 41 tests after
-  most tests passed. Failures clustered around Linux `/proc`, path/HOME
-  assumptions, and temporary SQLite cleanup (`EBUSY`).
-- `rg.exe` was not usable in this Codex Windows desktop session because of an
-  access-denied error; audit used `git grep`, `git ls-files`, and PowerShell
-  searches instead.
-
-## Architecture Implications
-
-- Folder impact: keep current UI and runtime v2 worker folders stable at first;
-  add Windows adapters next to runtime/process boundaries instead of scattering
-  `process.platform === 'win32'` checks through API routes.
-- Module boundary impact: stop treating `src/lib/tmux.ts` as the domain
-  terminal API. It is a current infrastructure adapter.
-- Public API impact: browser-facing terminal and timeline URLs should remain
-  stable where possible. The implementation behind `/api/terminal` and
-  `/api/v2/terminal` can change after adapter parity tests exist.
-- Type-shape impact: terminal/session types need to stop assuming tmux session
-  name, pane PID, and pane current command are always available. If kept for
-  compatibility, they should be marked as infrastructure metadata.
-- Adapter impact: process inspection and terminal lifecycle should become
-  injectable infrastructure behind tested contracts before Windows behavior is
-  switched on by default.
-- Rollback impact: keep tmux path as a temporary migration fallback until
-  Windows runtime parity is proven, but do not document it as supported product
-  target after cutover.
-
-## Recommended Transition Order
-
-1. Freeze the Windows-only target in ADR and planning docs.
-2. Add platform/runtime adapter contracts and tests while keeping behavior
-   unchanged.
-3. Replace direct tmux calls in runtime v2 terminal path with adapter injection.
-4. Build the Windows terminal runtime behind the existing worker service
-   contract.
-5. Add Windows process/session inspection and Codex JSONL mapping parity tests.
-6. Replace preflight/install/service/deploy assumptions with Windows equivalents.
-7. Cut over documentation, release gates, and packaging to Windows-only.
-8. Remove or demote macOS/Linux/Android-only surfaces after Windows runtime is
-   green and rollback is understood.
-
-## ADR Candidates
-
-- Accepted now: Windows-only product target and ADR-014 non-resurrection rule.
-- Proposed later: Windows terminal runtime adapter and parity contract.
-- Proposed later: Windows service host and installer ownership.
-- Proposed later: platform support removal policy for macOS/Linux/Android docs,
-  scripts, and smoke tests.
-
-## Non-Goals
-
-- Do not revive the removed Windows remote sync or terminal bridge.
-- Do not refactor FE/React/Vercel or BE/FastAPI skills.
-- Do not rewrite the UI while auditing platform gaps.
-- Do not dispatch sub-agents unless explicitly requested.
-- Do not execute external guide installers, hooks, package managers, or plugin
-  manifests as part of this audit.
-
-## First Implementation Slice
-
-Accepted first slice: Windows platform contract baseline.
-
-Success criteria:
-
-- Terminal runtime contract exists with create, attach, write, resize, detach,
-  kill, presence, and optional metadata projection behavior.
-- Current tmux runtime remains the default production adapter and passes the new
-  mocked contract coverage.
-- Process inspector primitives are separated from Codex-specific session
-  detection policy.
-- Live Windows process inspector behavior is not claimed or required in this
-  slice.
-- Windows path fixtures cover local Codex session JSONL allow/deny behavior.
-- Static package/script blocker scanner identifies POSIX-only and Linux service
-  command patterns without changing production scripts.
-- Browser-facing terminal APIs and README support claims do not change.
-
-Rollback: normal git revert. No feature flag is needed until runtime selection or
-Windows adapter implementation appears in a later slice.
-
-## Windows Unit Gate Follow-up
-
-The next implementation pass resolved the Windows unit test baseline that was
-blocking the first slice from becoming a clean local gate.
-
-Resolved items:
-
-- Windows tests now stub both `HOME` and `USERPROFILE` when exercising modules
-  that resolve `os.homedir()` at import time.
-- Runtime storage tests now close opened SQLite database handles and storage
-  worker services before removing temporary directories, avoiding Windows
-  `EBUSY` cleanup failures.
-- `layout-store` now normalizes Windows path separators before extracting a
-  workspace id from `workspaces/<ws-id>/layout.json`, so runtime storage read and
-  write ownership works on Windows paths.
-- `openRuntimeDatabase` now closes the SQLite handle before rethrowing migration
-  failures, including newer-schema rejection.
-
-Validation:
-
-- `corepack pnpm test`: 109 passed, 2 skipped files; 562 passed, 3 skipped tests.
-- `corepack pnpm tsc --noEmit`: passed.
-- `corepack pnpm lint`: passed.
-- `git diff --check`: passed with CRLF working-copy warnings only.
-
-## Terminal Runtime Adapter Factory Follow-up
-
-The next transition slice moved the runtime v2 terminal worker entrypoint off a
-direct tmux runtime import and onto a terminal runtime adapter factory.
-
-Resolved items:
-
-- `src/workers/terminal-worker.ts` now asks the factory for the terminal runtime
-  adapter instead of importing the current tmux runtime directly.
-- `CODEXMUX_RUNTIME_TERMINAL_ADAPTER` is parsed in one place. Unset resolves to
-  `tmux` as the migration fallback.
-- Unknown values fail closed with `runtime-v2-terminal-adapter-unsupported`.
-- The factory is injectable in unit tests, so a future Windows adapter can be
-  added behind the same `ITerminalRuntimeAdapter` contract without changing the
-  worker service command handling.
-
-Validation:
-
-- `corepack pnpm test tests/unit/lib/runtime/terminal-runtime-adapter-factory.test.ts tests/unit/lib/runtime/terminal-worker-service.test.ts tests/unit/lib/runtime/terminal-worker-runtime.test.ts`: passed.
-
-## Windows Terminal Runtime Follow-up
-
-The next transition slice moved the Windows terminal runtime from skeleton to a
-minimal `node-pty`/ConPTY-backed session manager behind
-`ITerminalRuntimeAdapter`.
-
-Resolved items:
-
-- `CODEXMUX_RUNTIME_TERMINAL_ADAPTER=windows` now resolves to a dedicated
-  Windows runtime adapter instead of being treated as an unknown adapter value.
-- The Windows runtime adapter supports create, attach, write, resize, detach,
-  kill, presence, and basic metadata for in-memory `node-pty` sessions.
-- The adapter fails with `runtime-v2-windows-terminal-platform-mismatch` if used
-  outside `win32`.
-- Unknown adapter values still fail closed with
-  `runtime-v2-terminal-adapter-unsupported`.
-- `tmux` remains the default migration fallback until Windows runtime smoke
-  tests and session persistence/reconnect behavior are accepted.
-
-Validation:
-
-- `corepack pnpm test tests/unit/lib/runtime/terminal-runtime-adapter-factory.test.ts tests/unit/lib/runtime/windows-terminal-runtime.test.ts tests/unit/lib/runtime/terminal-worker-service.test.ts tests/unit/lib/runtime/terminal-worker-runtime.test.ts`: passed.
-- Manual Windows runtime smoke using real `node-pty`: passed. The adapter spawned
-  `node.exe` under the Windows runtime, observed `cmux-ready` on stdout, read
-  runtime metadata, and killed the session.
-
-## Windows Process Inspector Skeleton Follow-up
-
-The next transition slice added the process inspector adapter selection boundary
-without changing the current process/session detection behavior.
-
-Resolved items:
-
-- `defaultProcessInspector` is now created through a process inspector adapter
-  factory.
-- The current POSIX/Linux implementation remains the default migration fallback.
-- `CODEXMUX_PROCESS_INSPECTOR_ADAPTER=windows` resolves to a dedicated Windows
-  process inspector skeleton.
-- The Windows skeleton implements the `IProcessInspector` shape but every
-  operation fails with `runtime-v2-windows-process-inspector-unimplemented`.
-- Unknown process inspector adapter values fail closed with
-  `runtime-v2-process-inspector-adapter-unsupported`.
-
-Validation:
-
-- `corepack pnpm test tests/unit/lib/process-inspector-adapter-factory.test.ts tests/unit/lib/process-inspector.test.ts tests/unit/lib/session-detection.test.ts`: passed.
-
-## Windows Platform Blocker CLI Follow-up
-
-The next transition slice promoted the static blocker scanner into a repeatable
-package-script audit command.
-
-Resolved items:
-
-- Added `scripts/windows-platform-blockers.mjs` to scan `package.json` scripts
-  through `windows-platform-blockers-lib.mjs`.
-- Added `audit:windows-platform` as a manual package script.
-- The command exits `0` when no blockers are found and exits `1` with the script
-  names and rule ids when blockers are present.
-- Initial blockers removed:
-  - `prepublishOnly`: replaced `rm -rf` with `node scripts/clean-build-artifacts.mjs`.
-  - `postinstall`: replaced shell `chmod` with `node scripts/postinstall-node-pty.mjs`,
-    which skips chmod work on Windows.
-- Current package script blocker count: 0.
-
-Validation:
-
-- `corepack pnpm test tests/unit/scripts/windows-platform-blockers-cli.test.ts tests/unit/scripts/windows-platform-blockers-lib.test.ts`: passed.
-- `corepack pnpm audit:windows-platform`: passed after the script replacements.
-
-## Windows Package Script Blocker Removal Follow-up
-
-The next transition slice removed the two package-script blockers reported by
-the Windows platform audit.
-
-Resolved items:
-
-- Added `scripts/clean-build-artifacts.mjs` and
-  `scripts/clean-build-artifacts-lib.mjs` as a cross-platform replacement for
-  `rm -rf .next dist dist-electron`.
-- Added `scripts/postinstall-node-pty.mjs` and
-  `scripts/postinstall-node-pty-lib.mjs` as a cross-platform replacement for the
-  shell `chmod` postinstall command. On Windows the chmod step is skipped.
-- Updated `prepublishOnly` and `postinstall` in `package.json`.
-- `audit:windows-platform` now reports no package-script blockers.
-
-Validation:
-
-- `corepack pnpm test tests/unit/scripts/clean-build-artifacts-lib.test.ts tests/unit/scripts/postinstall-node-pty-lib.test.ts tests/unit/scripts/windows-platform-blockers-cli.test.ts tests/unit/scripts/windows-platform-blockers-lib.test.ts`: passed.
-- `corepack pnpm audit:windows-platform`: passed.
-
-## Windows Runtime V2 Terminal Integration Smoke Follow-up
-
-The next transition slice added a smoke command that exercises the actual
-runtime v2 supervisor and worker IPC path with the Windows terminal adapter.
-
-Resolved items:
-
-- Added `scripts/smoke-windows-runtime-v2-terminal.ts`.
-- Added `scripts/windows-runtime-v2-terminal-smoke-lib.ts` for reusable smoke
-  helpers.
-- Added package script `smoke:runtime-v2:terminal-windows`.
-- The smoke starts runtime v2 workers through `createRuntimeSupervisorForTest`,
-  forces `CODEXMUX_RUNTIME_TERMINAL_ADAPTER=windows`, uses a temporary runtime
-  DB, and verifies:
-  - terminal worker health reports the Windows adapter
-  - terminal tab creation
-  - attach
-  - resize
-  - stdin/write output marker
-  - detach
-  - reattach and second output marker
-  - terminal tab delete kills the Windows session
-  - workspace cleanup
-
-Validation:
-
-- `corepack pnpm test tests/unit/scripts/windows-runtime-v2-terminal-smoke-lib.test.ts`: passed.
-- `corepack pnpm smoke:runtime-v2:terminal-windows`: passed.
-
-## Windows Process Inspector Implementation Follow-up
-
-The next transition slice replaced the fail-closed Windows process inspector
-skeleton with a real Windows adapter and made it the default on `win32`.
-
-Resolved items:
-
-- `src/lib/windows-process-inspector.ts` now uses Windows PowerShell/CIM
-  `Win32_Process` queries to read process existence, child PIDs, descendants,
-  command line, executable path, and process creation time.
-- `defaultProcessInspector` now selects the Windows adapter automatically on
-  `win32`; non-Windows platforms still default to the POSIX/Linux inspector.
-- `CODEXMUX_PROCESS_INSPECTOR_ADAPTER=posix|windows` remains an explicit
-  override, and unknown values still fail closed.
-- `session-detection` compatibility helpers now run on Windows through the
-  default process inspector instead of skipping the live process primitive
-  contract.
-- Windows `getCwd(pid)` is currently precise for the current Node process and
-  returns `null` for other processes because standard CIM process metadata does
-  not expose arbitrary process working directories. Terminal runtime metadata
-  remains the preferred source for session cwd when available.
-
-Validation:
-
-- `corepack pnpm test tests/unit/lib/process-inspector.test.ts tests/unit/lib/process-inspector-adapter-factory.test.ts tests/unit/lib/windows-process-inspector.test.ts tests/unit/lib/session-detection.test.ts`: passed.
-
-## Windows Codex Session Detection Smoke Follow-up
-
-The next transition slice added a Windows smoke command for Codex process
-detection and local JSONL mapping.
-
-Resolved items:
-
-- Added `scripts/smoke-windows-codex-session.ts`.
-- Added `scripts/windows-codex-session-smoke-lib.ts` for reusable smoke helpers.
-- Added package script `smoke:windows:codex-session`.
-- The smoke creates a temporary Windows HOME/USERPROFILE, writes a synthetic
-  `.codex/sessions/.../*.jsonl` file with `session_meta` and `turn_context`
-  records, spawns a Codex-shaped child process whose command line includes
-  `codex <session-id>`, and verifies:
-  - session id to JSONL path mapping
-  - cwd fallback JSONL mapping
-  - `detectActiveCodexSession()` returns `running` with the expected session id,
-    JSONL path, and live Windows process PID
-- The smoke passes the spawned child PID as preloaded process tree input, which
-  mirrors the terminal-pane caller path and avoids matching short-lived helper
-  processes started by process inspection itself.
-
-Validation:
-
-- `corepack pnpm test tests/unit/scripts/windows-codex-session-smoke-lib.test.ts`: passed.
-- `corepack pnpm smoke:windows:codex-session`: passed.
-
-## Windows Runtime Preflight Follow-up
-
-The next transition slice moved runtime readiness away from a hard `tmux`
-requirement on Windows.
-
-Resolved items:
-
-- Added `terminalRuntime` and `platform` to runtime/auth preflight payloads while
-  preserving the existing `tmux` compatibility field for older UI code and
-  non-Windows fallback paths.
-- `isRuntimeOk()` now checks the selected terminal runtime instead of always
-  requiring `tmux`.
-- `win32` runtime preflight selects `terminalRuntime.adapter="windows"` and
-  marks it ready when the Windows terminal runtime is available in-process.
-- Non-Windows preflight still uses the current `tmux` compatibility check.
-- Windows preflight uses the current process `PATH` instead of POSIX login-shell
-  probing.
-- Windows tool lookup falls back to PowerShell so npm/PowerShell shims such as
-  `codex.ps1` are detected.
-- Onboarding and tools-required surfaces now display the selected terminal
-  runtime name instead of hard-coding `tmux`.
-- Added package script `smoke:windows:preflight`.
-
-Validation:
-
-- `corepack pnpm test tests/unit/lib/preflight.test.ts`: passed.
-- `corepack pnpm smoke:windows:preflight`: passed.
-
-## Windows Service Host Baseline Follow-up
-
-The next transition slice added a dry-run Windows host ownership contract without
-installing or mutating any Windows service.
-
-Resolved items:
-
-- Added `src/lib/windows-service-host.ts`.
-- Added package script `smoke:windows:service-host`.
-- The baseline host model is `tray-first-service-capable`:
-  - default owner is `tray`
-  - `service` owner is accepted but marked elevation-required
-  - `installer-background` remains an accepted future owner
-  - unsupported owners fail closed in the plan
-- The dry-run plan fixes the Windows runtime environment for a local server:
-  - `CODEXMUX_RUNTIME_V2=1`
-  - `CODEXMUX_RUNTIME_TERMINAL_ADAPTER=windows`
-  - `CODEXMUX_PROCESS_INSPECTOR_ADAPTER=windows`
-  - default `HOST=127.0.0.1`
-  - default `PORT=8122`
-- The plan records Windows data/log locations:
-  - `%USERPROFILE%\.codexmux`
-  - `%USERPROFILE%\.codex`
-  - `%LOCALAPPDATA%\codexmux\logs`
-- The smoke asserts `mutatesSystem=false`; no service registration, restart,
-  firewall rule, scheduled task, installer action, or external host tool is run.
-
-Validation:
-
-- `corepack pnpm test tests/unit/lib/windows-service-host.test.ts`: passed.
-- `corepack pnpm smoke:windows:service-host`: passed.
-
-## Windows Host Diagnostics Follow-up
-
-The next transition slice aligned Windows log paths with the service host plan
-and added a dry-run health-check diagnostics smoke.
-
-Resolved items:
-
-- Added `src/lib/host-paths.ts` so Windows app data, Codex data, and server log
-  paths are resolved from one helper.
-- `createLogger()` now writes Windows server logs under
-  `%LOCALAPPDATA%\codexmux\logs`, matching the Windows service host plan.
-- Added `src/lib/windows-host-diagnostics.ts` to report the Windows host paths,
-  local health probe URLs, and service host ownership without exposing token,
-  session, prompt, or command output data.
-- Added package script `smoke:windows:host-diagnostics`.
-- The health diagnostics keep probes loopback-local by default:
-  - `/api/health`
-  - `/api/v2/runtime/health`
-- The runtime v2 health probe is marked as authenticated, so the smoke records
-  the expected endpoint contract without bypassing API auth.
-- The smoke asserts `mutatesSystem=false`; no service registration, restart,
-  firewall rule, scheduled task, installer action, log collection, or network
-  probe is run.
-
-Validation:
-
-- `corepack pnpm test tests/unit/lib/windows-host-diagnostics.test.ts tests/unit/lib/windows-service-host.test.ts`: passed.
-- `corepack pnpm smoke:windows:host-diagnostics`: passed.
-
-## Windows Electron Bootstrap Env Follow-up
-
-The next transition slice removed POSIX shell assumptions from the Electron
-local server bootstrap path without changing Electron UI behavior.
-
-Resolved items:
-
-- Added `electron/runtime-env.ts` for platform-specific Electron bootstrap env
-  handling.
-- `electron/main.ts` now preserves Windows `PATH` instead of injecting
-  Finder/Dock POSIX launch paths.
-- Packaged Electron local server startup now builds `NODE_PATH` with the
-  platform delimiter, so Windows uses `;` instead of POSIX `:`.
-- Added package script `smoke:windows:electron-env`.
-- The smoke is dry-run only; it does not launch Electron, start a server, write
-  config, or mutate system environment.
-
-Validation:
-
-- `corepack pnpm test tests/unit/electron/runtime-env.test.ts`: passed.
-- `corepack pnpm smoke:windows:electron-env`: passed.
-
-## Windows Electron Packaging Contract Follow-up
-
-The next transition slice moved the default Electron packaging contract from
-macOS to Windows without running an installer or mutating the host.
-
-Resolved items:
-
-- `pack:electron` now targets `electron-builder --win`.
-- `pack:electron:dev` now targets `electron-builder --win --dir` for unpacked
-  Windows package smoke.
-- Existing macOS packaging commands remain available as explicit
-  `pack:electron:mac` and `pack:electron:mac:dev` legacy/manual commands.
-- `electron-builder.yml` now defines Windows `nsis` and `zip` targets for `x64`.
-- Added `build-resources/icon.ico` for the Windows package icon.
-- Added package script `smoke:windows:electron-packaging`.
-- The smoke validates package scripts, Windows builder targets, NSIS installer
-  options, and `.ico` asset presence without building, installing, or launching
-  the app.
-
-Validation:
-
-- `corepack pnpm test tests/unit/scripts/windows-electron-packaging-smoke-lib.test.ts`: passed.
-- `corepack pnpm smoke:windows:electron-packaging`: passed.
-
-## Windows Release Gate Follow-up
-
-The next transition slice grouped the accepted Windows smoke commands into a
-single release gate for local Windows evidence collection.
-
-Resolved items:
-
-- Added `scripts/windows-release-gate-lib.mjs`.
-- Added package script `smoke:windows:release-gate`.
-- The release gate runs the accepted Windows transition checks in a fixed order:
-  - `audit:windows-platform`
-  - `smoke:runtime-v2:terminal-windows`
-  - `smoke:windows:preflight`
-  - `smoke:windows:service-host`
-  - `smoke:windows:host-diagnostics`
-  - `smoke:windows:electron-env`
-  - `smoke:windows:electron-packaging`
-  - `smoke:windows:codex-session`
-- The gate validates that each required package script exists before execution.
-- The gate stops on the first failed step and reports `failedStepId`.
-- On non-Windows hosts the gate reports a skipped result instead of claiming
-  Windows evidence.
-
-Validation:
-
-- `corepack pnpm test tests/unit/scripts/windows-release-gate-lib.test.ts`: passed.
-- `corepack pnpm smoke:windows:release-gate`: passed.
-
-## Windows Release Gate Artifact Follow-up
-
-The next transition slice added sanitized smoke artifact support for the Windows
-release gate.
-
-Resolved items:
-
-- `smoke:windows:release-gate` now writes a `windows-release-gate` smoke
-  artifact when `CODEXMUX_SMOKE_ARTIFACT_DIR` is set.
-- Added `buildWindowsReleaseGateArtifactPayload()` so release evidence contains
-  step summary fields only.
-- The release gate artifact stores step id, package script, pass/fail state,
-  duration, exit code, signal, and sanitized error labels.
-- The artifact does not store child smoke stdout/stderr, terminal output tails,
-  temp HOME paths, Codex session ids, JSONL paths, tokens, target URLs, or prompt
-  content.
-- `smoke-artifact-lib` now drops `outputTail` fields and sanitizes Windows temp
-  smoke paths such as `%LOCALAPPDATA%\Temp\codexmux-*`.
-
-Validation:
-
-- `corepack pnpm test tests/unit/scripts/smoke-artifact-lib.test.ts tests/unit/scripts/windows-release-gate-lib.test.ts`: passed.
-- `CODEXMUX_SMOKE_ARTIFACT_DIR=<temp> corepack pnpm smoke:windows:release-gate`: passed and wrote a sanitized summary artifact.
+Rollback은 일반 git revert 또는 surface mode `off`로 처리합니다.

@@ -1,146 +1,131 @@
-# Windows-only Platform Transition Plan
+# Windows-only platform 전환 실행 계획
 
-> **For agentic workers:** REQUIRED SUB-SKILL before implementation:
-> `superpowers:writing-plans` plus `plan-eng-review`. Use
-> `improve-codebase-architecture` only for candidates explicitly accepted in this
-> plan. Do not dispatch sub-agents unless the user explicitly asks for delegated
-> or parallel agent work.
+## 파일 구조
 
-**Goal:** Convert codexmux from a tmux-centered macOS/Linux server with client
-shells into a Windows-only service/product.
+- 수정: `docs/ADR.md`
+- 수정: `docs/WINDOWS-ONLY-GAP-AUDIT.md`
+- 수정: `docs/RUNTIME-V2-CUTOVER.md`
+- 수정: `docs/RUNTIME-V2-PARITY.md`
+- 수정: `docs/ELECTRON.md`
+- 수정: `docs/TESTING.md`
+- 수정: `package.json`
+- 수정: `electron-builder.yml`
+- 수정: `electron/main.ts`
+- 수정: `src/lib/runtime/terminal/*`
+- 수정: `src/lib/process-inspector*.ts`
+- 추가/수정: Windows smoke scripts
 
-**Architecture:** Keep the existing Next.js Pages Router, custom Node server,
-Supervisor/Worker runtime, storage/timeline/status policies, and dense
-operational UI stable while replacing platform infrastructure behind explicit
-runtime and process adapters.
+## 0단계: 제품 타깃 기준 고정
 
-**Current step:** audit and planning baseline only. Future tasks below need their
-own implementation specs/reviews before code changes.
+- [x] Windows-only product target을 ADR에 기록합니다.
+- [x] 제거된 Windows companion integration을 되살리지 않는다고 명시합니다.
+- [x] Windows-only gap audit을 작성합니다.
+- [x] Android/Linux/macOS 문서를 legacy/reference로 구분합니다.
 
----
+## 1단계: Platform contract와 테스트
 
-## File Structure For This Planning Step
+- [x] Terminal runtime contract를 고정합니다.
+- [x] Process inspector primitive와 Codex session detection policy를 분리합니다.
+- [x] Windows path fixture와 JSONL allow/deny test를 추가합니다.
+- [x] Package script blocker scanner를 추가합니다.
 
-- Create: `docs/WINDOWS-ONLY-GAP-AUDIT.md`
-- Create: `docs/superpowers/specs/2026-05-06-windows-only-platform-transition-design.md`
-- Create: `docs/superpowers/plans/2026-05-06-windows-only-platform-transition.md`
-- Modify: `docs/ADR.md`
-- Modify: `docs/README.md`
-- Modify: `AGENTS.md`
-
----
-
-## Phase 0: Product Target Baseline
-
-**Status:** In progress for this documentation step.
-
-- [x] Record Windows-only as the product target in ADR.
-- [x] Clarify that ADR-014's removed Windows companion integration stays removed.
-- [x] Add a gap audit that names current tmux/macOS/Linux/Android assumptions.
-- [x] Add a transition plan that starts with boundaries and tests before runtime
-  replacement.
-- [ ] Update public README once the first implementation slice is accepted, so
-  user-facing docs do not claim a runtime that is not built yet.
-
-## Phase 1: Platform Contracts And Tests
-
-**Goal:** Make platform assumptions visible before changing behavior.
-
-- [ ] Introduce terminal runtime contract tests around create, attach, detach,
-  resize, stdin/stdout, cwd, and kill behavior.
-- [ ] Introduce process inspection contract tests around PID running, children,
-  cwd, command, start time, and Codex session correlation.
-- [ ] Add Windows path fixtures for `~/.codex/sessions/`,
-  `~/.codexmux/`, workspace paths, and JSONL validation.
-- [ ] Tag or isolate Linux-only tests so Windows failures identify product gaps
-  rather than incidental environment debt.
-- [ ] Fix Windows install blockers such as POSIX `chmod` and `rm -rf` scripts.
-
-## Phase 2: Terminal Runtime Boundary
-
-**Goal:** Stop treating tmux as the domain terminal API.
-
-- [ ] Move direct terminal lifecycle callers behind a runtime adapter boundary.
-- [ ] Keep `/api/terminal` and `/api/v2/terminal` client protocol stable where
-  possible.
-- [ ] Reuse the existing `ITerminalWorkerRuntime` shape for runtime v2.
-- [ ] Mark tmux metadata as adapter-specific where type compatibility requires
-  keeping it temporarily.
-- [ ] Keep tmux behavior available only as a migration fallback until Windows
-  parity is proven.
-
-## Phase 3: Windows Terminal Runtime
-
-**Goal:** Build the Windows-native terminal runtime.
-
-- [ ] Choose the Windows terminal implementation path, likely `node-pty`/ConPTY
-  first unless a spike proves it cannot preserve reconnect semantics.
-- [ ] Implement persistent session lifecycle, attach/reconnect, resize,
-  paste/stdin, output buffering, cwd, and kill behavior.
-- [ ] Preserve terminal/input/reconnect stability over UI polish.
-- [ ] Add Windows smoke tests for new terminal creation, reload/reconnect, Codex
-  command execution, approval prompt input, and kill/resume safety.
-
-## Phase 4: Windows Process And Codex Session Detection
-
-**Goal:** Restore status/timeline correctness without Linux `/proc`.
-
-- [ ] Add a Windows process inspector adapter.
-- [ ] Rebuild Codex process detection on the process inspector contract.
-- [ ] Verify JSONL session mapping by session id, process start time, live
-  process, and cwd fallback using Windows paths.
-- [ ] Keep raw transcript, full terminal output, tokens, and private paths out of
-  logs and notifications.
-
-## Phase 5: Windows Host Operations
-
-**Goal:** Make install, start, restart, update, and rollback Windows-native.
-
-- [ ] Replace Linux `systemd --user` production assumptions with a Windows
-  service, tray-host, scheduled startup, or installer-owned host decision.
-- [ ] Add Windows preflight for Codex, Git, Node, pnpm, terminal runtime, auth,
-  port binding, and firewall/network policy.
-- [ ] Add Windows logs and health-check docs.
-- [ ] Add rollback steps that do not depend on shell-specific commands.
-
-## Phase 6: Packaging And Surface Cutover
-
-**Goal:** Ship a Windows-only product without stale platform affordances.
-
-- [ ] Define Windows package artifact and installer verification.
-- [ ] Demote or remove Android scripts/docs once they no longer represent the
-  supported product path.
-- [ ] Replace macOS Electron packaging notes with Windows packaging notes if
-  Electron remains the desktop shell.
-- [ ] Rewrite README, docs map, testing docs, follow-up backlog, and operation
-  handoff around Windows-only support.
-- [ ] Remove tmux/systemd docs from the primary path after Windows runtime is
-  green.
-
-## Plan Design Review Notes
-
-- Information architecture should keep current-state docs, audit docs, and future
-  target docs distinct until runtime code exists.
-- Operator error prevention depends on clear warnings that old Windows companion
-  sync/bridge is not coming back.
-- Discoverability improves by listing the gap audit in `docs/README.md` and
-  naming Windows-only in `AGENTS.md`.
-
-## Plan Eng Review Checklist
-
-- [ ] Terminal runtime adapter has public behavior tests before implementation.
-- [ ] Process inspector adapter handles Windows cwd/command/start-time without
-  leaking sensitive command details.
-- [ ] Runtime v2 Supervisor/Worker boundaries stay stable.
-- [ ] SQLite temp database cleanup is safe on Windows.
-- [ ] Install and smoke commands are PowerShell-safe.
-- [ ] Rollback path is documented for each implementation slice.
-
-## Verification For This Planning Step
+검증:
 
 ```bash
-git diff --check
+corepack pnpm test
+corepack pnpm audit:windows-platform
 ```
 
-No TypeScript, lint, or unit tests are required for this documentation-only
-baseline.
+## 2단계: 터미널 런타임 boundary
+
+- [x] Runtime v2 terminal worker가 직접 tmux runtime을 import하지 않게 합니다.
+- [x] Terminal runtime adapter factory를 추가합니다.
+- [x] Unknown adapter value는 fail closed합니다.
+- [x] tmux adapter를 migration fallback으로 유지합니다.
+
+검증:
+
+```bash
+corepack pnpm test tests/unit/lib/runtime/terminal-runtime-adapter-factory.test.ts
+```
+
+## 3단계: Windows 터미널 런타임
+
+- [x] Windows node-pty/ConPTY adapter를 구현합니다.
+- [x] create/attach/write/resize/detach/kill/presence/metadata를 지원합니다.
+- [x] non-Windows에서 사용하면 platform mismatch로 실패합니다.
+- [x] Runtime v2 terminal Windows smoke를 추가합니다.
+
+검증:
+
+```bash
+corepack pnpm smoke:runtime-v2:terminal-windows
+```
+
+## 4단계: Windows process와 Codex session detection
+
+- [x] Windows process inspector skeleton을 추가합니다.
+- [x] CIM 기반 Windows process inspector를 구현합니다.
+- [x] Windows를 default process inspector로 선택합니다.
+- [x] Windows Codex session detection/JSONL mapping smoke를 추가합니다.
+
+검증:
+
+```bash
+corepack pnpm smoke:windows:codex-session
+```
+
+## 5단계: Windows host operations
+
+- [x] Windows preflight에서 tmux hard requirement를 제거합니다.
+- [x] Windows service host baseline을 dry-run으로 추가합니다.
+- [x] Windows host diagnostics를 dry-run으로 추가합니다.
+- [x] Electron local server bootstrap env를 Windows 기준으로 정리합니다.
+
+검증:
+
+```bash
+corepack pnpm smoke:windows:preflight
+corepack pnpm smoke:windows:service-host
+corepack pnpm smoke:windows:host-diagnostics
+corepack pnpm smoke:windows:electron-env
+```
+
+## 6단계: Packaging과 surface 전환
+
+- [x] `pack:electron` 기본 target을 Windows로 전환합니다.
+- [x] Windows NSIS/zip packaging contract smoke를 추가합니다.
+- [x] Windows release gate를 추가합니다.
+- [x] Windows package gate와 installer smoke를 추가합니다.
+- [ ] GitHub-hosted published update evidence를 확보합니다.
+- [ ] Code signing trust와 SmartScreen reputation을 확인합니다.
+- [ ] 내부 사용자 장시간 workspace 사용 evidence를 확보합니다.
+
+검증:
+
+```bash
+corepack pnpm pack:electron
+corepack pnpm smoke:windows:package-gate
+```
+
+## Design review 메모 기준
+
+- Windows-only target과 legacy/reference 문서를 구분해야 합니다.
+- Operator가 installer/update 상태를 오해하지 않도록 release blocker를 명확히 표시해야 합니다.
+- 앱 종료와 engine 종료는 UI에서 분리되어야 합니다.
+
+## Engineering review 체크리스트
+
+- Terminal byte stream을 durable DB에 저장하지 않습니다.
+- Process inspector와 Codex session detection policy를 섞지 않습니다.
+- Host operation은 no-mutation dry-run smoke부터 시작합니다.
+- Published update evidence 없이 updater 완료를 주장하지 않습니다.
+- Rollback path는 surface mode 또는 git revert로 설명 가능해야 합니다.
+
+## 현재 남은 작업
+
+- 실제 설치된 낮은 버전 앱에서 GitHub-hosted 최신 버전으로 `quitAndInstall`까지 수행합니다.
+- Code signing certificate trust와 SmartScreen reputation을 확인합니다.
+- Long-running installed app session에서 실제 workspace 사용 안정성을 확인합니다.
+- 제품명/app id/data dir의 `codexwinmux` 전환 여부를 결정합니다.
+- Runtime v2 rollback drill, 측정 기반 perf tuning, Phase 6 closeout을 완료합니다.
