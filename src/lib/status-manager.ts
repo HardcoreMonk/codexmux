@@ -9,14 +9,13 @@ import {
 } from '@/lib/providers';
 import type { IAgentProvider } from '@/lib/providers';
 import { formatTabTitle } from '@/lib/tab-title';
-import { INTERRUPT_PREFIX, summarizeToolCall } from '@/lib/session-parser';
 import { createRateLimitsWatcher } from '@/lib/rate-limits-watcher';
 import { createLogger } from '@/lib/logger';
 import { capturePaneAtWidth } from '@/lib/capture-at-width';
 import { parsePermissionOptions } from '@/lib/permission-prompt';
 import { hasCodexInterruptedPrompt } from '@/lib/codex-pane-state';
 import type { IPaneInfo } from '@/lib/tmux';
-import type { TCliState, TToolName } from '@/types/timeline';
+import type { TCliState } from '@/types/timeline';
 import type { ICurrentAction, TTerminalStatus, ITabStatusEntry, IClientTabStatusEntry, IStatusUpdateMessage, IRateLimitsData, TEventName, ILastEvent } from '@/types/status';
 import type { ISessionHistoryEntry } from '@/types/session-history';
 import { addSessionHistoryEntry, updateSessionHistoryDismissedAt } from '@/lib/session-history';
@@ -55,6 +54,10 @@ import {
   type IStatusSideEffectIntent,
   type IStatusSideEffectPolicyInput,
 } from '@/lib/status-side-effect-policy';
+import {
+  extractAssistantInfoFromJsonlLines,
+  scanStatusJsonlLines,
+} from '@/lib/status-jsonl-scan';
 
 const log = createLogger('status');
 const hookLog = createLogger('hooks');
@@ -77,8 +80,6 @@ const TAB_COUNT_LARGE = 21;
 const BUSY_STUCK_MS = 10 * 60 * 1000;
 const JSONL_TAIL_SIZE = 8192;
 const JSONL_EXTENDED_TAIL_SIZE = 131_072;
-const STALE_MS_INTERRUPTED = 20_000;
-const STALE_MS_AWAITING_API = 90_000;
 const PROCESS_RETRY_COUNT = 3;
 const JSONL_WATCH_DEBOUNCE_MS = 100;
 const CODEX_STOP_RECHECK_MS = 500;
@@ -99,125 +100,6 @@ interface IJsonlIdleCache {
 
 const MAX_JSONL_CACHE = 256;
 const jsonlIdleCache = new Map<string, IJsonlIdleCache>();
-
-const MAX_SNIPPET_LENGTH = 200;
-
-const toCurrentAction = (block: { name?: string; input?: Record<string, unknown> }): ICurrentAction => {
-  const toolName = (block.name ?? 'Tool') as TToolName;
-  const input = (block.input ?? {}) as Record<string, unknown>;
-  return { toolName, summary: summarizeToolCall(toolName, input) };
-};
-
-interface IAssistantExtract {
-  lastAssistantSnippet: string | null;
-  currentAction: ICurrentAction | null;
-  reset: boolean;
-}
-
-const extractAssistantInfo = (lines: string[]): IAssistantExtract => {
-  let userMessageSeen = false;
-
-  for (let i = lines.length - 1; i >= 0; i--) {
-    try {
-      const entry = JSON.parse(lines[i]);
-      if (entry.isSidechain) continue;
-
-      if (entry.type === 'user') {
-        const c = entry.message?.content;
-        const isToolResult = Array.isArray(c) && c.some((b: unknown) => (b as { type?: string }).type === 'tool_result');
-        if (!isToolResult) userMessageSeen = true;
-        continue;
-      }
-
-      if (entry.type !== 'assistant' || !entry.message?.content) continue;
-
-      if (userMessageSeen) return { lastAssistantSnippet: null, currentAction: null, reset: true };
-
-      const content = entry.message.content;
-      if (!Array.isArray(content)) continue;
-
-      let lastAssistantSnippet: string | null = null;
-      let currentAction: ICurrentAction | null = null;
-
-      for (let j = content.length - 1; j >= 0; j--) {
-        const block = content[j];
-        if (block.type === 'tool_use') {
-          currentAction = toCurrentAction(block);
-          break;
-        }
-        if (block.type === 'text' && block.text?.trim()) {
-          const text = block.text.trim();
-          currentAction = {
-            toolName: null,
-            summary: text.length > MAX_SNIPPET_LENGTH ? text.slice(0, MAX_SNIPPET_LENGTH) + '…' : text,
-          };
-          break;
-        }
-      }
-
-      for (let j = content.length - 1; j >= 0; j--) {
-        if (content[j].type === 'text' && content[j].text?.trim()) {
-          const text = content[j].text.trim();
-          lastAssistantSnippet = text.length > MAX_SNIPPET_LENGTH
-            ? text.slice(0, MAX_SNIPPET_LENGTH) + '…'
-            : text;
-          break;
-        }
-      }
-
-      return { lastAssistantSnippet, currentAction, reset: false };
-    } catch { continue; }
-  }
-  return { lastAssistantSnippet: null, currentAction: null, reset: false };
-};
-
-interface IScanResult {
-  matched: boolean;
-  idle: boolean;
-  stale: boolean;
-  needsStaleRecheck: boolean;
-  staleMs: number;
-  lastEntryTs: number | null;
-  interrupted: boolean;
-}
-
-const scanLines = (lines: string[], elapsed: number): IScanResult => {
-  for (let i = lines.length - 1; i >= 0; i--) {
-    try {
-      const entry = JSON.parse(lines[i]);
-
-      if (entry.isSidechain) continue;
-
-      const entryTs: number | null = entry.timestamp ? new Date(entry.timestamp).getTime() : null;
-
-      if (entry.type === 'system' && (entry.subtype === 'stop_hook_summary' || entry.subtype === 'turn_duration')) {
-        return { matched: true, idle: true, stale: false, needsStaleRecheck: false, staleMs: 0, lastEntryTs: entryTs, interrupted: false };
-      }
-
-      if (entry.type === 'assistant') {
-        const stopReason = entry.message?.stop_reason;
-        if (!stopReason) {
-          const idle = elapsed > STALE_MS_INTERRUPTED;
-          return { matched: true, idle, stale: true, needsStaleRecheck: !idle, staleMs: STALE_MS_INTERRUPTED, lastEntryTs: entryTs, interrupted: false };
-        }
-        return { matched: true, idle: stopReason !== 'tool_use', stale: false, needsStaleRecheck: false, staleMs: 0, lastEntryTs: entryTs, interrupted: false };
-      }
-
-      if (entry.type === 'user') {
-        const content = entry.message?.content;
-        if (Array.isArray(content) && content.length === 1 && typeof content[0]?.text === 'string' && content[0].text.startsWith(INTERRUPT_PREFIX)) {
-          return { matched: true, idle: true, stale: false, needsStaleRecheck: false, staleMs: 0, lastEntryTs: entryTs, interrupted: true };
-        }
-        const idle = elapsed > STALE_MS_AWAITING_API;
-        return { matched: true, idle, stale: true, needsStaleRecheck: !idle, staleMs: STALE_MS_AWAITING_API, lastEntryTs: entryTs, interrupted: false };
-      }
-    } catch {
-      continue;
-    }
-  }
-
-  return { matched: false, idle: elapsed > STALE_MS_AWAITING_API, stale: true, needsStaleRecheck: elapsed <= STALE_MS_AWAITING_API, staleMs: STALE_MS_AWAITING_API, lastEntryTs: null, interrupted: false };
-};
 
 interface IJsonlCheckResult {
   idle: boolean;
@@ -275,16 +157,18 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<IJsonlCheckResult> => 
       await handle.read(buffer, 0, readSize, stat.size - readSize);
       const lines = buffer.toString('utf-8').split('\n').filter((l) => l.trim());
 
-      let scan = scanLines(lines, elapsed);
-      let extracted = extractAssistantInfo(lines);
+      let scan = scanStatusJsonlLines(lines, elapsed);
+      let extracted = extractAssistantInfoFromJsonlLines(lines);
 
       if (!scan.matched && stat.size > JSONL_TAIL_SIZE) {
         const extSize = Math.min(stat.size, JSONL_EXTENDED_TAIL_SIZE);
         const extBuffer = Buffer.alloc(extSize);
         await handle.read(extBuffer, 0, extSize, stat.size - extSize);
         const extLines = extBuffer.toString('utf-8').split('\n').filter((l) => l.trim());
-        scan = scanLines(extLines, elapsed);
-        if (!extracted.lastAssistantSnippet && !extracted.currentAction) extracted = extractAssistantInfo(extLines);
+        scan = scanStatusJsonlLines(extLines, elapsed);
+        if (!extracted.lastAssistantSnippet && !extracted.currentAction) {
+          extracted = extractAssistantInfoFromJsonlLines(extLines);
+        }
       }
 
       if (jsonlIdleCache.size >= MAX_JSONL_CACHE) {

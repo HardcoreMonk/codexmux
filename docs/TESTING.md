@@ -182,6 +182,18 @@ corepack pnpm vitest run tests/unit/lib/status-web-push-payload.test.ts
 - review completion payload에는 approval field 미포함
 - locale title/body와 silent flag 유지
 
+Status JSONL scan helper 변경:
+
+```bash
+corepack pnpm vitest run tests/unit/lib/status-jsonl-scan.test.ts
+```
+
+검증 기준:
+
+- assistant text와 tool action summary 추출 유지
+- 새 user message 뒤에는 assistant metadata reset
+- interrupt marker와 stale threshold 판단 유지
+
 통계와 timeline 변경은 다음을 확인합니다.
 
 - JSONL incremental parser가 중복 계산하지 않음

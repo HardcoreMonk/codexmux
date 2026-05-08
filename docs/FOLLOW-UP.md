@@ -24,6 +24,7 @@
 - 대형 JSONL 기준 timeline perf snapshot helper와 virtualization 판단 기준
 - Codex CLI JSONL schema fixture 기반 parser 회귀 테스트
 - Codex resume 실패 원인 code/recoverable 분류
+- Status JSONL tail scan 순수 helper 분리
 
 ## 릴리스 전 확인
 
