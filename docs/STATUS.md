@@ -59,6 +59,23 @@ Windows에서는 process inspector adapter가 PID, command line, child/descendan
 
 Permission/input prompt는 JSONL marker가 늦거나 없을 수 있으므로 live pane capture를 함께 봅니다.
 
+## Resume 실패 분류
+
+Codex resume은 timeline WebSocket에서 요청하지만 상태 판단과 사용자 복구 흐름에 영향을 줍니다.
+
+`timeline:resume-blocked`와 `timeline:resume-error`는 summary code를 포함합니다.
+
+| Code | 의미 | 복구 가능성 |
+| --- | --- | --- |
+| `invalid-session-id` | 잘못된 Codex session id | 낮음 |
+| `terminal-process-unknown` | terminal foreground process를 확인하지 못함 | 재시도 가능 |
+| `process-running` | shell이 아닌 다른 foreground process가 실행 중 | 해당 작업 종료 후 재시도 |
+| `command-build-failed` | Codex resume command 생성 실패 | 설정/입력 확인 필요 |
+| `command-send-failed` | terminal에 resume command를 보내지 못함 | terminal 재연결 후 재시도 |
+| `unknown` | 분류되지 않은 resume 실패 | 로그와 상태 재확인 |
+
+Resume 실패 event에는 raw command, cwd, JSONL path, terminal output을 넣지 않습니다.
+
 ## 알림
 
 Notification 정책은 foreground toast, native notification, Web Push를 같은 기준으로 다룹니다.

@@ -284,15 +284,27 @@ export interface ITimelineResumeStartedMessage {
   jsonlPath: string | null;
 }
 
+export type TTimelineResumeFailureCode =
+  | 'invalid-session-id'
+  | 'terminal-process-unknown'
+  | 'process-running'
+  | 'command-build-failed'
+  | 'command-send-failed'
+  | 'unknown';
+
 export interface ITimelineResumeBlockedMessage {
   type: 'timeline:resume-blocked';
-  reason: string;
+  reason: TTimelineResumeFailureCode;
+  message?: string;
+  recoverable?: boolean;
   processName?: string;
 }
 
 export interface ITimelineResumeErrorMessage {
   type: 'timeline:resume-error';
+  code?: TTimelineResumeFailureCode;
   message: string;
+  recoverable?: boolean;
 }
 
 export type TTimelineServerMessage =

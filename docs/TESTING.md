@@ -214,6 +214,18 @@ corepack pnpm vitest run tests/unit/lib/codex-session-parser.test.ts
 - `codex-cli 0.128.0` response_item/event_msg 혼합 fixture가 message, reasoning, tool call/result로 읽힘
 - image wrapper가 event user message와 중복 출력되지 않음
 
+Codex resume 실패 분류 변경:
+
+```bash
+corepack pnpm vitest run tests/unit/lib/codex-resume-failure.test.ts
+```
+
+검증 기준:
+
+- terminal process unknown과 process-running을 다른 code로 분류
+- invalid session id는 non-recoverable로 분류
+- send-key 실패 message에는 raw command, cwd, JSONL path 미포함
+
 Codex state SQLite read-only probe 변경:
 
 ```bash

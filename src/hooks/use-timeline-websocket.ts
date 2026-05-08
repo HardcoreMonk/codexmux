@@ -3,6 +3,7 @@ import type {
   ITimelineEntry,
   IInitMeta,
   ISessionStats,
+  TTimelineResumeFailureCode,
   TTimelineConnectionStatus,
   TTimelineServerMessage,
 } from '@/types/timeline';
@@ -23,12 +24,16 @@ interface IResumeStartedPayload {
 }
 
 interface IResumeBlockedPayload {
-  reason: string;
+  reason: TTimelineResumeFailureCode;
+  message?: string;
+  recoverable?: boolean;
   processName?: string;
 }
 
 interface IResumeErrorPayload {
+  code?: TTimelineResumeFailureCode;
   message: string;
+  recoverable?: boolean;
 }
 
 interface IUseTimelineWebSocketOptions {
@@ -157,11 +162,17 @@ const useTimelineWebSocket = ({
             case 'timeline:resume-blocked':
               callbacksRef.current.onResumeBlocked?.({
                 reason: msg.reason,
+                message: msg.message,
+                recoverable: msg.recoverable,
                 processName: msg.processName,
               });
               break;
             case 'timeline:resume-error':
-              callbacksRef.current.onResumeError?.({ message: msg.message });
+              callbacksRef.current.onResumeError?.({
+                code: msg.code,
+                message: msg.message,
+                recoverable: msg.recoverable,
+              });
               break;
           }
         } catch (err) {

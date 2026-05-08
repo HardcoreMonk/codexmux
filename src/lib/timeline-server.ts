@@ -44,6 +44,11 @@ import { shouldUseRuntimeTimelineV2Live } from '@/lib/runtime/timeline-mode';
 import { handleRuntimeTimelineConnection } from '@/lib/runtime/timeline-ws';
 import { getRuntimeStatusV2Mode } from '@/lib/runtime/status-mode';
 import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
+import {
+  classifyResumeBlocked,
+  classifyResumeException,
+  invalidResumeSessionFailure,
+} from '@/lib/codex-resume-failure';
 
 const log = createLogger('timeline');
 
@@ -613,17 +618,44 @@ const resolveResumeMessage = async (
     const { isSafe, processName } = await checkTerminalProcess(tmuxSession);
 
     if (!isSafe) {
+      const failure = classifyResumeBlocked(processName);
       sendJson(ws, {
         type: 'timeline:resume-blocked',
-        reason: 'process-running',
-        processName,
+        reason: failure.code,
+        message: failure.message,
+        recoverable: failure.recoverable,
+        processName: failure.processName,
       });
       return undefined;
     }
 
     const parsed = parseSessionName(tmuxSession);
-    const resumeCmd = await conn.provider.buildResumeCommand(sessionId, { workspaceId: parsed?.wsId });
-    await sendKeys(tmuxSession, resumeCmd);
+    let resumeCmd: string;
+    try {
+      resumeCmd = await conn.provider.buildResumeCommand(sessionId, { workspaceId: parsed?.wsId });
+    } catch (err) {
+      const failure = classifyResumeException(err, 'build-command');
+      sendJson(ws, {
+        type: 'timeline:resume-error',
+        code: failure.code,
+        message: failure.message,
+        recoverable: failure.recoverable,
+      });
+      return undefined;
+    }
+
+    try {
+      await sendKeys(tmuxSession, resumeCmd);
+    } catch (err) {
+      const failure = classifyResumeException(err, 'send-keys');
+      sendJson(ws, {
+        type: 'timeline:resume-error',
+        code: failure.code,
+        message: failure.message,
+        recoverable: failure.recoverable,
+      });
+      return undefined;
+    }
 
     await updateTabAgentSessionId(conn.sessionName, conn.provider, sessionId).catch(() => {});
 
@@ -637,9 +669,12 @@ const resolveResumeMessage = async (
 
     return jsonlPath ? { jsonlPath, sessionId } : null;
   } catch (err) {
+    const failure = classifyResumeException(err, 'unknown');
     sendJson(ws, {
       type: 'timeline:resume-error',
-      message: err instanceof Error ? err.message : 'Error during resume',
+      code: failure.code,
+      message: failure.message,
+      recoverable: failure.recoverable,
     });
     return undefined;
   }
@@ -733,7 +768,13 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
       },
       handleResume: async (payload) => {
         if (!provider.isValidSessionId(payload.sessionId)) {
-          sendJson(ws, { type: 'timeline:resume-error', message: 'Invalid session ID format' });
+          const failure = invalidResumeSessionFailure();
+          sendJson(ws, {
+            type: 'timeline:resume-error',
+            code: failure.code,
+            message: failure.message,
+            recoverable: failure.recoverable,
+          });
           return;
         }
         return resolveResumeMessage(ws, resumeConn, payload);
@@ -795,7 +836,13 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
         }
       } else if (msg.type === 'timeline:resume' && msg.sessionId && msg.tmuxSession) {
         if (!conn.provider.isValidSessionId(msg.sessionId)) {
-          sendJson(ws, { type: 'timeline:resume-error', message: 'Invalid session ID format' });
+          const failure = invalidResumeSessionFailure();
+          sendJson(ws, {
+            type: 'timeline:resume-error',
+            code: failure.code,
+            message: failure.message,
+            recoverable: failure.recoverable,
+          });
         } else {
           await handleResumeMessage(ws, conn, {
             sessionId: msg.sessionId,

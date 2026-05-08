@@ -6,6 +6,7 @@ import type {
   ITaskItem,
   TCliState,
   TTimelineConnectionStatus,
+  TTimelineResumeFailureCode,
 } from '@/types/timeline';
 import type { TPanelType } from '@/types/terminal';
 import useTimelineWebSocket from '@/hooks/use-timeline-websocket';
@@ -17,8 +18,10 @@ import {
 
 interface IResumeCallbacks {
   onResumeStarted?: (payload: { sessionId: string; jsonlPath: string | null }) => void;
-  onResumeBlocked?: (payload: { reason: string; processName?: string }) => void;
-  onResumeError?: (payload: { message: string }) => void;
+  onResumeBlocked?: (
+    payload: { reason: TTimelineResumeFailureCode; message?: string; recoverable?: boolean; processName?: string },
+  ) => void;
+  onResumeError?: (payload: { code?: TTimelineResumeFailureCode; message: string; recoverable?: boolean }) => void;
 }
 
 export interface ITimelineSyncState {
@@ -328,14 +331,14 @@ const useTimeline = ({
   );
 
   const handleResumeBlocked = useCallback(
-    (payload: { reason: string; processName?: string }) => {
+    (payload: { reason: TTimelineResumeFailureCode; message?: string; recoverable?: boolean; processName?: string }) => {
       resumeCallbacksRef.current?.onResumeBlocked?.(payload);
     },
     [],
   );
 
   const handleResumeError = useCallback(
-    (payload: { message: string }) => {
+    (payload: { code?: TTimelineResumeFailureCode; message: string; recoverable?: boolean }) => {
       resumeCallbacksRef.current?.onResumeError?.(payload);
     },
     [],
