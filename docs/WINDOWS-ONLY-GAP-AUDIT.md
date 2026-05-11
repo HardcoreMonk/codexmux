@@ -84,6 +84,7 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 - Electron bootstrap env는 Windows `PATH`와 `NODE_PATH` 구분자를 사용합니다.
 - Electron packaging contract는 Windows NSIS/zip target을 기본으로 합니다.
 - Windows package gate는 zip artifact, update metadata, updater local feed, packaged launch, packaged runtime v2, installer runtime v2 smoke를 묶습니다.
+- 내부 전용 배포 조건에 따라 public code signing certificate와 SmartScreen reputation은 release blocker가 아닙니다.
 
 ## 아키텍처 영향
 
@@ -135,8 +136,8 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 | Windows Electron packaging contract | 완료 |
 | Windows release gate artifact | 완료 |
 | 실제 installed app에서 published update `quitAndInstall` | 대기 |
-| code signing certificate trust | 대기 |
-| SmartScreen reputation 확인 | 대기 |
+| public code signing certificate trust | 비차단: 내부 전용 앱이라 public 인증 불필요 |
+| SmartScreen reputation 확인 | 비차단: 내부 전용 앱이라 public reputation 불필요 |
 | 장시간 실제 workspace 사용 안정성 | 대기 |
 | 제품명/app id/data dir의 codexwinmux 전환 결정 | 대기 |
 | rollback drill | 대기 |

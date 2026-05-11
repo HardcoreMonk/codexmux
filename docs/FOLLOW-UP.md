@@ -28,6 +28,7 @@
 - Timeline init meta 계산 순수 helper 분리
 - Provider adapter status behavior contract와 runtime worker IPC 반영
 - Runtime v2 rollback dry-run의 명시적 `rollbackEnv` 출력과 unit test
+- 내부 전용 배포 조건 확정: public code signing certificate와 SmartScreen reputation은 release blocker가 아님
 
 ## 릴리스 전 확인
 
@@ -48,6 +49,8 @@ Published update 검증:
 - matching `.blockmap` asset을 올립니다.
 - 설치된 낮은 버전 앱에서 published channel update를 확인합니다.
 - `quitAndInstall` 후 새 앱 launch와 `/api/health`를 확인합니다.
+- 내부 전용 배포이므로 public code signing certificate와 SmartScreen reputation은 필수 검증에서 제외합니다.
+- 설치 경고나 내부 신뢰 절차가 있으면 release note와 설치 안내에 기록합니다.
 
 ## 내부 배포 단계
 
@@ -62,13 +65,18 @@ Published update 검증:
 | 항목 | 상태 |
 | --- | --- |
 | 실제 설치된 낮은 버전 앱에서 GitHub-hosted 최신 버전으로 `quitAndInstall` | 대기 |
-| Code signing certificate trust | 대기 |
-| SmartScreen reputation | 대기 |
 | Long-running installed app session | 대기 |
 | 제품명/app id/data dir의 codexwinmux 전환 여부 결정 | 대기 |
 | Runtime v2 live rollback drill evidence | 대기 |
 | 측정 기반 perf tuning | 대기 |
 | Phase 6 closeout | 대기 |
+
+## 비차단 항목
+
+| 항목 | 결정 |
+| --- | --- |
+| Public code signing certificate trust | 내부 전용 앱이라 release blocker가 아님 |
+| SmartScreen reputation | 내부 전용 앱이라 release blocker가 아님 |
 
 ## Codex lifecycle 기준
 

@@ -168,4 +168,5 @@ corepack pnpm smoke:windows:package-gate
 - Windows package artifact 이름과 버전을 기록합니다.
 - installer install smoke와 updater smoke 결과를 기록합니다.
 - known blocker와 internal rollout 범위를 기록합니다.
+- 내부 전용 배포에서는 public code signing certificate와 SmartScreen reputation을 blocker로 기록하지 않습니다.
 - 운영 handoff는 `docs/operations/YYYY-MM-DD-*-handoff.md`에 추가합니다.

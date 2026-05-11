@@ -136,5 +136,6 @@ corepack pnpm smoke:windows:installer-runtime-v2
 - Windows package가 실제로 빌드되었는지 확인합니다.
 - `release/latest.yml`, installer exe, `.blockmap` asset이 일치하는지 확인합니다.
 - 설치된 앱에서 published update `quitAndInstall` evidence를 남깁니다.
-- code signing certificate trust와 SmartScreen reputation을 확인합니다.
+- 내부 전용 배포에서는 public code signing certificate trust와 SmartScreen reputation을 release blocker로 보지 않습니다.
+- 설치 경고나 내부 신뢰 절차는 release note와 설치 안내에 기록합니다.
 - 장시간 실제 workspace 사용을 내부 사용자 3~5명으로 검증합니다.

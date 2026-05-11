@@ -98,7 +98,7 @@ corepack pnpm smoke:windows:electron-env
 - [x] Windows release gate를 추가합니다.
 - [x] Windows package gate와 installer smoke를 추가합니다.
 - [ ] GitHub-hosted published update evidence를 확보합니다.
-- [ ] Code signing trust와 SmartScreen reputation을 확인합니다.
+- [x] 내부 전용 배포 조건에 따라 public code signing trust와 SmartScreen reputation을 release blocker에서 제외합니다.
 - [ ] 내부 사용자 장시간 workspace 사용 evidence를 확보합니다.
 
 검증:
@@ -125,7 +125,11 @@ corepack pnpm smoke:windows:package-gate
 ## 현재 남은 작업
 
 - 실제 설치된 낮은 버전 앱에서 GitHub-hosted 최신 버전으로 `quitAndInstall`까지 수행합니다.
-- Code signing certificate trust와 SmartScreen reputation을 확인합니다.
 - Long-running installed app session에서 실제 workspace 사용 안정성을 확인합니다.
 - 제품명/app id/data dir의 `codexwinmux` 전환 여부를 결정합니다.
 - Runtime v2 rollback drill, 측정 기반 perf tuning, Phase 6 closeout을 완료합니다.
+
+비차단 결정:
+
+- 내부 전용 앱이므로 public code signing certificate trust와 SmartScreen reputation은 release blocker가 아닙니다.
+- 설치 경고나 내부 신뢰 절차는 release note와 설치 안내에 기록합니다.

@@ -55,7 +55,7 @@ Tauri 도입 시 기대할 수 있는 점:
 Tauri PoC는 다음 조건이 모두 충족될 때 다시 검토합니다.
 
 - Windows Electron package/update path가 안정화됨
-- Code signing과 SmartScreen reputation 기준이 정리됨
+- public code signing과 SmartScreen reputation 기준이 정리됨. 내부 전용 배포에서는 비차단으로 처리함
 - Runtime v2 rollback drill이 완료됨
 - 실제 내부 사용자 장시간 workspace 사용에서 shell 문제가 주요 병목으로 확인됨
 
