@@ -7,6 +7,7 @@ import {
   buildWindowsUpdaterSafeInstallerPath,
   readUpdaterSmokeConfig,
 } from './updater-smoke';
+import { createWindowsUpdaterHttpExecutor } from './windows-updater-http';
 import {
   getAppServerLabel,
   normalizeAppServerConfig,
@@ -16,26 +17,15 @@ import {
 } from './app-server-protocol';
 import { app, BrowserWindow, shell, Menu, ipcMain, session, screen, Notification, nativeTheme, dialog } from 'electron';
 import { autoUpdater, type UpdateInfo, type ProgressInfo } from 'electron-updater';
-import { HttpExecutor } from 'builder-util-runtime';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import * as http from 'http';
-import * as https from 'https';
-import type { ClientRequest, IncomingMessage, RequestOptions } from 'http';
 import { spawn } from 'child_process';
 import { pickTaglines } from './splash-taglines';
 import { initBrowserBridge } from './browser-bridge';
 
 const isDev = process.env.NODE_ENV === 'development';
 const devUrl = process.env.ELECTRON_DEV_URL;
-
-class NodeUpdaterHttpExecutor extends HttpExecutor<ClientRequest> {
-  createRequest(options: RequestOptions, callback: (response: IncomingMessage) => void): ClientRequest {
-    const transport = options.protocol === 'http:' ? http : https;
-    return transport.request(options, callback);
-  }
-}
 
 const fixEnv = () => {
   applyElectronBootstrapEnv(process.env, process.platform);
@@ -333,8 +323,9 @@ const quitAndInstallUpdate = ({
 
 const configureWindowsUpdaterHttpExecutor = () => {
   if (process.platform !== 'win32') return;
-  (autoUpdater as unknown as { httpExecutor?: HttpExecutor<ClientRequest> }).httpExecutor = new NodeUpdaterHttpExecutor();
-  appendUpdaterSmokeStatus(updaterSmokeConfig, 'node-http-executor-configured');
+  (autoUpdater as unknown as { httpExecutor?: ReturnType<typeof createWindowsUpdaterHttpExecutor> }).httpExecutor =
+    createWindowsUpdaterHttpExecutor();
+  appendUpdaterSmokeStatus(updaterSmokeConfig, 'powershell-http-executor-configured');
 };
 
 const setupAutoUpdater = () => {
