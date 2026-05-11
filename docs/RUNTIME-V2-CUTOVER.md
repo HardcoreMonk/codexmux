@@ -134,6 +134,16 @@ corepack pnpm smoke:runtime-v2:phase6-default-gate
 corepack pnpm smoke:windows:release-gate
 ```
 
+Rollback dry-run:
+
+```bash
+corepack pnpm lifecycle:rollback-dry-run
+```
+
+이 명령은 파일을 변경하지 않고 `rollbackEnv`에 runtime v2 surface를 끄는 환경 값을
+구조화해서 출력합니다. 실제 service 재시작과 live rollback evidence는 별도
+운영 drill에서 남깁니다.
+
 ## Windows 전환 게이트
 
 Windows-only 제품으로 release하려면 다음 smoke가 release blocker입니다.

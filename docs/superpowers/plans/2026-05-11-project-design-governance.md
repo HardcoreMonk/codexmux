@@ -100,6 +100,32 @@ project-local check를 추가합니다.
 - `corepack pnpm tsc --noEmit`: 통과.
 - `corepack pnpm test`: 상속된 `CODEXMUX_RUNTIME_*` env를 비운 뒤 693 passed / 1 skipped.
 
+## 개발 Slice - 2026-05-12 Runtime v2 Rollback Dry-Run Plan
+
+범위: 실제 서비스를 변경하지 않고 rollback drill의 runtime-off 환경을 구조화해
+출력하도록 `lifecycle:rollback-dry-run`을 보강합니다.
+
+파일:
+
+- `scripts/lifecycle-rollback-dry-run-lib.mjs`
+- `tests/unit/scripts/lifecycle-rollback-dry-run-lib.test.ts`
+- `docs/RUNTIME-V2-CUTOVER.md`
+- `docs/FOLLOW-UP.md`
+
+불변 조건:
+
+- 파일 삭제, systemd 실행, service restart를 수행하지 않습니다.
+- live rollback drill evidence는 별도 운영 증거로 남깁니다.
+
+검증:
+
+- RED: `corepack pnpm test tests/unit/scripts/lifecycle-rollback-dry-run-lib.test.ts`가
+  `rollbackEnv` 부재로 실패하는 것을 확인했습니다.
+- GREEN: `corepack pnpm test tests/unit/scripts/lifecycle-rollback-dry-run-lib.test.ts`
+  통과.
+- 실제 dry-run: `corepack pnpm lifecycle:rollback-dry-run` 통과. 출력에
+  `mutates: false`와 `CODEXMUX_RUNTIME_*` off 환경이 포함됩니다.
+
 ## Lifecycle Gate Evidence
 
 - Stage: `superpowers:writing-plans`

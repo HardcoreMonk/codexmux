@@ -27,6 +27,7 @@
 - Status JSONL tail scan 순수 helper 분리
 - Timeline init meta 계산 순수 helper 분리
 - Provider adapter status behavior contract와 runtime worker IPC 반영
+- Runtime v2 rollback dry-run의 명시적 `rollbackEnv` 출력과 unit test
 
 ## 릴리스 전 확인
 
@@ -65,7 +66,7 @@ Published update 검증:
 | SmartScreen reputation | 대기 |
 | Long-running installed app session | 대기 |
 | 제품명/app id/data dir의 codexwinmux 전환 여부 결정 | 대기 |
-| Runtime v2 rollback drill | 대기 |
+| Runtime v2 live rollback drill evidence | 대기 |
 | 측정 기반 perf tuning | 대기 |
 | Phase 6 closeout | 대기 |
 
