@@ -87,6 +87,8 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 - 내부 전용 배포 조건에 따라 public code signing certificate와 SmartScreen reputation은 release blocker가 아닙니다.
 - `v0.4.3` GitHub prerelease는 `latest.yml`, NSIS installer, blockmap, zip asset을 포함합니다.
 - Read-only published channel smoke는 prerelease 포함 조건에서 `0.4.2 -> 0.4.3` metadata를 확인했습니다.
+- local feed updater apply는 NSIS assisted installer include와 300초 settle window 적용 뒤
+  `0.4.2 -> 0.4.8` 경로에서 통과했습니다.
 
 ## 아키텍처 영향
 
@@ -138,7 +140,7 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 | Windows Electron packaging contract | 완료 |
 | Windows release gate artifact | 완료 |
 | GitHub-hosted release asset과 published metadata | 완료: `v0.4.3` prerelease |
-| 실제 installed app에서 published update `quitAndInstall` | 차단: NSIS `--updated` installer hang |
+| 실제 installed app에서 published update `quitAndInstall` | local feed 기준 해결: `0.4.2 -> 0.4.8` apply 통과, published install evidence 대기 |
 | public code signing certificate trust | 비차단: 내부 전용 앱이라 public 인증 불필요 |
 | SmartScreen reputation 확인 | 비차단: 내부 전용 앱이라 public reputation 불필요 |
 | 장시간 실제 workspace 사용 안정성 | 대기 |

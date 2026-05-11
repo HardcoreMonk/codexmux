@@ -37,6 +37,7 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+  include: build-resources/installer.nsh
   runAfterFinish: false
   createDesktopShortcut: true
   createStartMenuShortcut: true

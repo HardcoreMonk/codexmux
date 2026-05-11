@@ -17,6 +17,14 @@ describe('Windows installer smoke helpers', () => {
     ]);
   });
 
+  it('builds silent NSIS install args without /D when using the default installer path', async () => {
+    const { buildNsisSilentInstallArgs } = await loadLib();
+
+    expect(buildNsisSilentInstallArgs('C:\\Users\\me\\AppData\\Local\\Programs\\codexmux', {
+      useDefaultInstallDir: true,
+    })).toEqual(['/S']);
+  });
+
   it('selects the newest codexmux NSIS installer', async () => {
     const { findWindowsInstaller } = await loadLib();
     const releaseDir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-installer-test-'));
@@ -66,5 +74,19 @@ describe('Windows installer smoke helpers', () => {
       appAsar: 'C:\\apps\\codexmux\\resources\\app.asar',
       uninstaller: 'C:\\apps\\codexmux\\Uninstall codexmux.exe',
     });
+  });
+
+  it('resolves the default per-user Windows install directory from LOCALAPPDATA', async () => {
+    const { getWindowsDefaultPerUserInstallDir } = await loadLib();
+
+    expect(getWindowsDefaultPerUserInstallDir({
+      LOCALAPPDATA: 'C:\\Users\\me\\AppData\\Local',
+    })).toBe('C:\\Users\\me\\AppData\\Local\\Programs\\codexmux');
+  });
+
+  it('builds silent NSIS uninstall args for the per-user installer contract', async () => {
+    const { buildNsisSilentUninstallArgs } = await loadLib();
+
+    expect(buildNsisSilentUninstallArgs()).toEqual(['/S', '/currentuser']);
   });
 });

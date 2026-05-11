@@ -40,6 +40,33 @@ export const sanitizeUpdaterDownloadedFileName = (downloadedFile?: string): stri
   return path.basename(downloadedFile);
 };
 
+export const buildWindowsUpdaterInstallArgs = ({
+  isSilent,
+  isForceRunAfter,
+  installDir,
+}: {
+  isSilent: boolean;
+  isForceRunAfter: boolean;
+  installDir: string | null;
+}): string[] => {
+  const args = ['--updated'];
+  if (isSilent) args.push('/S');
+  if (isForceRunAfter) args.push('--force-run');
+  if (installDir) args.push(`/D=${installDir}`);
+  return args;
+};
+
+export const buildWindowsUpdaterSafeInstallerPath = ({
+  downloadedFile,
+  tempDir,
+  nonce,
+}: {
+  downloadedFile: string;
+  tempDir: string;
+  nonce: string;
+}): string =>
+  path.join(tempDir, `codexmux-update-${nonce}`, path.basename(downloadedFile));
+
 export const buildUpdaterSmokeStatusEvent = (
   event: string,
   payload: TUpdaterSmokeEventPayload = {},

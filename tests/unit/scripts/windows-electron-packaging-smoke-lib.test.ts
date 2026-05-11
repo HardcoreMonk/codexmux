@@ -30,6 +30,7 @@ describe('Windows Electron packaging smoke helpers', () => {
       'windows-builder-target-missing',
       'windows-nsis-config-missing',
       'windows-nsis-run-after-finish-enabled',
+      'windows-nsis-include-missing',
       'windows-nsis-artifact-name-unstable',
       'windows-icon-missing',
     ]);
@@ -58,10 +59,11 @@ describe('Windows Electron packaging smoke helpers', () => {
           perMachine: false,
           allowToChangeInstallationDirectory: true,
           runAfterFinish: false,
+          include: 'build-resources/installer.nsh',
           artifactName: '${productName}-Setup-${version}.${ext}',
         },
       },
-      resources: new Set(['build-resources/icon.ico']),
+      resources: new Set(['build-resources/icon.ico', 'build-resources/installer.nsh']),
     });
 
     expect(result).toMatchObject({
@@ -73,6 +75,7 @@ describe('Windows Electron packaging smoke helpers', () => {
         'windows-builder-zip-target',
         'windows-nsis-installer-options',
         'windows-nsis-run-after-finish-disabled',
+        'windows-nsis-custom-include-present',
         'windows-nsis-artifact-name-stable',
         'windows-icon-present',
       ],
@@ -102,16 +105,47 @@ describe('Windows Electron packaging smoke helpers', () => {
           perMachine: false,
           allowToChangeInstallationDirectory: true,
           runAfterFinish: false,
+          include: 'build-resources/installer.nsh',
           artifactName: '${productName}-Setup-${version}.${ext}',
         },
       },
-      resources: new Set(['build-resources/icon.ico']),
+      resources: new Set(['build-resources/icon.ico', 'build-resources/installer.nsh']),
     });
 
     expect(result.ok).toBe(true);
     expect(result.checks).toContain('pack-electron-default-windows');
     expect(result.checks).toContain('pack-electron-dev-windows-dir');
     expect(result.checks).toContain('windows-nsis-artifact-name-stable');
+  });
+
+  it('requires a custom NSIS include for silent assisted updater exit', async () => {
+    const { validateWindowsElectronPackaging } = await loadLib();
+    const result = validateWindowsElectronPackaging({
+      packageJson: {
+        scripts: {
+          'pack:electron': 'corepack pnpm build:electron && node scripts/pack-electron-windows.mjs',
+          'pack:electron:dev': 'corepack pnpm build:electron && node scripts/pack-electron-windows.mjs --dir',
+        },
+      },
+      builderConfig: {
+        win: {
+          icon: 'build-resources/icon.ico',
+          target: ['nsis', 'zip'],
+        },
+        nsis: {
+          oneClick: false,
+          perMachine: false,
+          allowToChangeInstallationDirectory: true,
+          runAfterFinish: false,
+          artifactName: '${productName}-Setup-${version}.${ext}',
+        },
+      },
+      resources: new Set(['build-resources/icon.ico']),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.blockers.map((blocker: { ruleId: string }) => blocker.ruleId))
+      .toContain('windows-nsis-include-missing');
   });
 
   it('normalizes string and object target entries', async () => {

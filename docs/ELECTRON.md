@@ -86,6 +86,9 @@ Windows wrapper는 electron-builder를 직접 호출하지 않고 `scripts/pack-
 - `dist/workers/**`는 worker fork를 위해 unpacked 상태를 유지합니다.
 - NSIS `runAfterFinish`는 silent install smoke를 위해 disabled 상태를 유지합니다.
 - NSIS `artifactName`은 `${productName}-Setup-${version}.${ext}` 형태를 유지합니다.
+- NSIS assisted installer는 `build-resources/installer.nsh`를 include합니다. silent
+  `--updated` update apply에서는 install section 이후 명시적으로 `quitSuccess`를
+  호출해 updater installer process가 settle되도록 합니다.
 
 `latest.yml`, installer exe, matching `.blockmap`은 같은 updater-visible artifact name을 가져야 합니다.
 
@@ -97,7 +100,10 @@ Local feed smoke:
 corepack pnpm smoke:windows:updater-local-feed
 ```
 
-이 smoke는 생성된 `latest.yml`을 template으로 사용하고 temp local feed에서 patch version만 올립니다. 기존 installer artifact를 localhost에서 제공한 뒤 download, `update-downloaded`, `quitAndInstall`, app exit, post-install launch, uninstall을 확인합니다.
+이 smoke는 생성된 `latest.yml`과 직전 Windows installer를 사용해 isolated 짧은
+설치 경로에서 실제 updater apply를 수행합니다. localhost feed에서 download,
+`update-downloaded`, `quitAndInstall`, app exit, updater installer settle,
+post-install launch, registry/directory cleanup을 확인합니다.
 
 Published channel smoke:
 
@@ -121,7 +127,9 @@ Published install smoke:
 corepack pnpm smoke:windows:updater-published-install
 ```
 
-이 smoke는 설치된 낮은 버전 앱에서 GitHub-hosted release로 update apply를 시도합니다. `v0.4.3` prerelease evidence에서는 read-only metadata는 통과했지만 NSIS `--updated` installer hang 때문에 stable/default channel 승격을 보류합니다.
+이 smoke는 설치된 낮은 버전 앱에서 GitHub-hosted release로 update apply를
+시도합니다. published release가 prerelease이면
+`CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INCLUDE_PRERELEASE=1`을 함께 지정합니다.
 
 ## Electron 런타임 v2 smoke
 

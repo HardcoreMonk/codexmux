@@ -78,6 +78,39 @@ describe('Windows updater local feed smoke helpers', () => {
     });
   });
 
+  it('does not override the updater install directory for default-path update smoke', async () => {
+    const { buildWindowsUpdaterSmokeEnv } = await loadLib();
+
+    const env = buildWindowsUpdaterSmokeEnv({
+      env: { PATH: 'C:\\Windows' },
+      feedUrl: 'http://127.0.0.1:8123/',
+      statusPath: 'C:\\tmp\\updater-status.jsonl',
+      installDir: null,
+      homeDir: 'C:\\tmp\\codexmux-home',
+    });
+
+    expect(env).not.toHaveProperty('CODEXMUX_ELECTRON_UPDATER_SMOKE_INSTALL_DIR');
+  });
+
+  it('can preserve the real LOCALAPPDATA for default-path updater cache behavior', async () => {
+    const { buildWindowsUpdaterSmokeEnv } = await loadLib();
+
+    const env = buildWindowsUpdaterSmokeEnv({
+      env: {
+        PATH: 'C:\\Windows',
+        LOCALAPPDATA: 'C:\\Users\\me\\AppData\\Local',
+      },
+      feedUrl: 'http://127.0.0.1:8123/',
+      statusPath: 'C:\\tmp\\updater-status.jsonl',
+      installDir: null,
+      homeDir: 'C:\\tmp\\codexmux-home',
+      useRealLocalAppData: true,
+    });
+
+    expect(env.LOCALAPPDATA).toBe('C:\\Users\\me\\AppData\\Local');
+    expect(env.APPDATA).toBe('C:\\tmp\\codexmux-home\\AppData\\Roaming');
+  });
+
   it('omits the local feed override when using the packaged GitHub updater channel', async () => {
     const { buildWindowsUpdaterSmokeEnv } = await loadLib();
 
@@ -171,6 +204,35 @@ describe('Windows updater local feed smoke helpers', () => {
         },
         {
           processId: 13,
+          name: 'pwsh.exe',
+          commandLine: 'pwsh -Command Get-CimInstance',
+        },
+      ],
+    });
+
+    expect(processes.map((process: { processId: number }) => process.processId)).toEqual([10, 11]);
+  });
+
+  it('can include unscoped updater installer processes for default-path update smoke', async () => {
+    const { filterWindowsUpdaterInstallerProcesses } = await loadLib();
+
+    const processes = filterWindowsUpdaterInstallerProcesses({
+      smokeRoot: null,
+      installDir: null,
+      includeUnscopedInstallers: true,
+      processes: [
+        {
+          processId: 10,
+          name: 'codexmux-Setup-0.4.3.exe',
+          commandLine: 'codexmux-Setup-0.4.3.exe --updated /S',
+        },
+        {
+          processId: 11,
+          name: 'old-uninstaller.exe',
+          commandLine: 'old-uninstaller.exe /S /KEEP_APP_DATA /currentuser --updated _?=C:\\Users\\me\\AppData\\Local\\Programs\\codexmux',
+        },
+        {
+          processId: 12,
           name: 'pwsh.exe',
           commandLine: 'pwsh -Command Get-CimInstance',
         },

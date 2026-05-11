@@ -170,10 +170,16 @@ const getAsset = (release, assetName) =>
 
 const runCommand = (command, args, { cwd = rootDir, env = process.env, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) =>
   new Promise((resolve) => {
-    const child = spawn(command, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
     let timedOut = false;
+    let child = null;
+    try {
+      child = spawn(command, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (err) {
+      resolve({ exitCode: 1, signal: null, stdout, stderr: err instanceof Error ? err.message : String(err), timedOut });
+      return;
+    }
     const timer = setTimeout(() => {
       timedOut = true;
       child.kill('SIGKILL');
@@ -190,6 +196,26 @@ const runCommand = (command, args, { cwd = rootDir, env = process.env, timeoutMs
       resolve({ exitCode, signal, stdout, stderr, timedOut });
     });
   });
+
+const cleanupInstalledApp = async (installDir) => {
+  const results = [];
+  if (process.platform === 'win32') {
+    for (const key of [
+      'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\de60276d-bfaf-53ab-ba86-fe534382d031',
+      'HKCU\\Software\\de60276d-bfaf-53ab-ba86-fe534382d031',
+    ]) {
+      results.push(await runCommand('reg.exe', ['delete', key, '/f'], { timeoutMs: 30_000 }));
+    }
+  }
+  await fs.rm(installDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 1_000 });
+  return {
+    exitCode: results.every((result) => result.exitCode === 0 || /unable to find/i.test(result.stderr)) ? 0 : 1,
+    signal: null,
+    timedOut: results.some((result) => result.timedOut),
+    stdout: results.map((result) => result.stdout).join('\n'),
+    stderr: results.map((result) => result.stderr).join('\n'),
+  };
+};
 
 const startCommand = (command, args, { cwd = rootDir, env = process.env, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) => {
   const child = spawn(command, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -279,7 +305,7 @@ const parseProcessJson = (stdout) => {
   return Array.isArray(parsed) ? parsed : [parsed];
 };
 
-const listWindowsUpdaterInstallerProcesses = async ({ smokeRoot, installDir }) => {
+const listWindowsUpdaterInstallerProcesses = async ({ smokeRoot, installDir, includeUnscopedInstallers = false }) => {
   if (process.platform !== 'win32') return [];
   const script = `
     Get-CimInstance Win32_Process |
@@ -292,15 +318,21 @@ const listWindowsUpdaterInstallerProcesses = async ({ smokeRoot, installDir }) =
   return filterWindowsUpdaterInstallerProcesses({
     smokeRoot,
     installDir,
+    includeUnscopedInstallers,
     processes: parseProcessJson(result.stdout),
   });
 };
 
-const waitForUpdaterInstallerProcesses = async ({ smokeRoot, installDir, timeoutMs = 120_000 }) => {
+const waitForUpdaterInstallerProcesses = async ({
+  smokeRoot,
+  installDir,
+  includeUnscopedInstallers = false,
+  timeoutMs = 120_000,
+}) => {
   const deadline = Date.now() + timeoutMs;
   let running = [];
   while (Date.now() < deadline) {
-    running = await listWindowsUpdaterInstallerProcesses({ smokeRoot, installDir });
+    running = await listWindowsUpdaterInstallerProcesses({ smokeRoot, installDir, includeUnscopedInstallers });
     if (running.length === 0) return { ok: true, running: [] };
     await sleep(1_000);
   }
@@ -350,6 +382,7 @@ const runPublishedUpdateAttempt = async ({
       statusPath,
       installDir,
       homeDir: updaterHomeDir,
+      useRealLocalAppData: installDir == null,
     }),
     timeoutMs: Number(process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INSTALL_TIMEOUT_MS || DEFAULT_TIMEOUT_MS),
   });
@@ -437,9 +470,10 @@ const main = async () => {
   }
 
   const smokeRoot = process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INSTALL_SMOKE_ROOT
-    || await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-updater-published-install-smoke-'));
-  const installDir = process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INSTALL_DIR
-    || path.join(smokeRoot, 'app');
+    || await fs.mkdtemp(path.join(os.tmpdir(), 'cmux-up-'));
+  const explicitInstallDir = process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INSTALL_DIR;
+  const installDir = explicitInstallDir || path.join(smokeRoot, 'app');
+  const updaterInstallDirOverride = installDir;
   const paths = resolveInstalledAppPaths(installDir);
   const checks = [];
   let installResult = null;
@@ -488,9 +522,13 @@ const main = async () => {
 
     await assertExists(baselineInstallerPath, 'baseline-installer-present', checks);
 
-    installResult = await runCommand(baselineInstallerPath, buildNsisSilentInstallArgs(installDir), {
+    installResult = await runCommand(
+      baselineInstallerPath,
+      buildNsisSilentInstallArgs(installDir),
+      {
       timeoutMs: Number(process.env.CODEXMUX_WINDOWS_INSTALLER_TIMEOUT_MS || DEFAULT_TIMEOUT_MS),
-    });
+      },
+    );
     if (installResult.exitCode !== 0 || installResult.timedOut) {
       throw new Error(`baseline installer failed: ${JSON.stringify({
         exitCode: installResult.exitCode,
@@ -511,7 +549,7 @@ const main = async () => {
       checks.push(attempt === 1 ? 'installed-app-published-updater-launch' : `installed-app-published-updater-retry-${attempt}`);
       updaterAttempt = await runPublishedUpdateAttempt({
         appExe: paths.appExe,
-        installDir,
+        installDir: updaterInstallDirOverride,
         smokeRoot,
         attempt,
       });
@@ -529,8 +567,8 @@ const main = async () => {
 
     const installerSettle = await waitForUpdaterInstallerProcesses({
       smokeRoot,
-      installDir,
-      timeoutMs: Number(process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INSTALLER_SETTLE_TIMEOUT_MS || 120_000),
+      installDir: updaterInstallDirOverride,
+      timeoutMs: Number(process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INSTALLER_SETTLE_TIMEOUT_MS || 300_000),
     });
     if (!installerSettle.ok) {
       throw new Error(`published updater installer processes did not settle: ${JSON.stringify(installerSettle.running)}`);
@@ -549,16 +587,16 @@ const main = async () => {
     }
     checks.push('post-update-installed-app-launch-smoke');
 
-    uninstallResult = await runCommand(paths.uninstaller, ['/S'], { timeoutMs: 90_000 });
+    uninstallResult = await cleanupInstalledApp(installDir);
     if (uninstallResult.exitCode !== 0 || uninstallResult.timedOut) {
-      throw new Error(`uninstaller failed: ${JSON.stringify({
+      throw new Error(`cleanup failed: ${JSON.stringify({
         exitCode: uninstallResult.exitCode,
         signal: uninstallResult.signal,
         timedOut: uninstallResult.timedOut,
         stderr: uninstallResult.stderr.slice(-1200),
       })}`);
     }
-    checks.push('silent-uninstall');
+    checks.push('installed-app-cleanup');
 
     const successPayload = {
       ok: true,
@@ -568,6 +606,7 @@ const main = async () => {
       baselineVersion,
       referencedInstallerName: channelResult?.referencedInstallerName,
       baselineInstallerName,
+      installMode: explicitInstallDir ? 'custom-dir' : 'isolated-short-dir',
       checks,
       statusSummary,
       installResult,
@@ -588,6 +627,7 @@ const main = async () => {
       baselineVersion,
       referencedInstallerName: channelResult?.referencedInstallerName,
       baselineInstallerName,
+      installMode: explicitInstallDir ? 'custom-dir' : 'isolated-short-dir',
       checks,
       blockers: channelResult?.blockers ?? statusSummary?.blockers ?? [],
       statusSummary,
@@ -598,8 +638,7 @@ const main = async () => {
     };
   } finally {
     try {
-      await fs.access(paths.uninstaller);
-      uninstallResult = await runCommand(paths.uninstaller, ['/S'], { timeoutMs: 90_000 });
+      uninstallResult = await cleanupInstalledApp(installDir);
     } catch {
       // Nothing to uninstall.
     }

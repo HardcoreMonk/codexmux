@@ -43,10 +43,20 @@ const collectWindowsInstallers = (releaseDir) => {
     .filter(Boolean);
 };
 
-export const buildNsisSilentInstallArgs = (installDir) => {
+export const getWindowsDefaultPerUserInstallDir = (env = process.env) => {
+  const localAppData = env.LOCALAPPDATA
+    || (env.USERPROFILE ? path.join(env.USERPROFILE, 'AppData', 'Local') : null);
+  if (!localAppData) throw new Error('LOCALAPPDATA or USERPROFILE is required to resolve the default Windows install directory');
+  return path.join(localAppData, 'Programs', 'codexmux');
+};
+
+export const buildNsisSilentInstallArgs = (installDir, { useDefaultInstallDir = false } = {}) => {
+  if (useDefaultInstallDir) return ['/S'];
   if (!installDir) throw new Error('installDir is required');
   return ['/S', `/D=${installDir}`];
 };
+
+export const buildNsisSilentUninstallArgs = () => ['/S', '/currentuser'];
 
 export const findWindowsInstaller = (releaseDir) => {
   const installers = collectWindowsInstallers(releaseDir)

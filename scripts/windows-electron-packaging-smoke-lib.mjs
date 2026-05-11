@@ -33,6 +33,7 @@ const addBlocker = (blockers, ruleId, message) => {
 };
 
 const expectedNsisArtifactName = '${productName}-Setup-${version}.${ext}';
+const expectedNsisInclude = 'build-resources/installer.nsh';
 
 export const validateWindowsElectronPackaging = ({
   packageJson,
@@ -98,6 +99,19 @@ export const validateWindowsElectronPackaging = ({
       blockers,
       'windows-nsis-run-after-finish-enabled',
       'electron-builder nsis config must disable runAfterFinish for repeatable silent install smoke.',
+    );
+  }
+
+  const nsisInclude = typeof nsis?.include === 'string'
+    ? normalizePath(nsis.include)
+    : null;
+  if (nsisInclude === expectedNsisInclude && resources.has(expectedNsisInclude)) {
+    checks.push('windows-nsis-custom-include-present');
+  } else {
+    addBlocker(
+      blockers,
+      'windows-nsis-include-missing',
+      'electron-builder nsis.include must point to build-resources/installer.nsh for silent assisted updater exit.',
     );
   }
 

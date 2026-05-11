@@ -1,7 +1,12 @@
 import { capturePristineEnv } from './pristine-env';
 import { applyResolvedShellEnv } from './shell-env';
 import { applyElectronBootstrapEnv, buildFileImportSpecifier, buildPackagedNodePath } from './runtime-env';
-import { appendUpdaterSmokeStatus, readUpdaterSmokeConfig } from './updater-smoke';
+import {
+  appendUpdaterSmokeStatus,
+  buildWindowsUpdaterInstallArgs,
+  buildWindowsUpdaterSafeInstallerPath,
+  readUpdaterSmokeConfig,
+} from './updater-smoke';
 import {
   getAppServerLabel,
   normalizeAppServerConfig,
@@ -14,6 +19,7 @@ import { autoUpdater, type UpdateInfo, type ProgressInfo } from 'electron-update
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { spawn } from 'child_process';
 import { pickTaglines } from './splash-taglines';
 import { initBrowserBridge } from './browser-bridge';
 
@@ -272,6 +278,48 @@ const runExclusiveDialog = async (fn: () => Promise<void>) => {
   }
 };
 
+const quitAndInstallUpdate = ({
+  info,
+  isSilent,
+  isForceRunAfter,
+}: {
+  info: UpdateInfo;
+  isSilent: boolean;
+  isForceRunAfter: boolean;
+}): boolean => {
+  const downloadedFile = (info as UpdateInfo & { downloadedFile?: string }).downloadedFile;
+  if (process.platform !== 'win32' || !downloadedFile) {
+    autoUpdater.quitAndInstall(isSilent, isForceRunAfter);
+    return true;
+  }
+
+  try {
+    const installerPath = buildWindowsUpdaterSafeInstallerPath({
+      downloadedFile,
+      tempDir: os.tmpdir(),
+      nonce: `${process.pid}-${Date.now()}`,
+    });
+    fs.mkdirSync(path.dirname(installerPath), { recursive: true });
+    fs.copyFileSync(downloadedFile, installerPath);
+    const child = spawn(
+      installerPath,
+      buildWindowsUpdaterInstallArgs({
+        isSilent,
+        isForceRunAfter,
+        installDir: updaterSmokeConfig.installDir,
+      }),
+      { detached: true, stdio: 'ignore' },
+    );
+    child.unref();
+    app.quit();
+    return true;
+  } catch (err) {
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'error', { error: err });
+    console.error('[updater] failed to launch copied Windows installer:', err);
+    return false;
+  }
+};
+
 const setupAutoUpdater = () => {
   if (updaterInitialized || !canRunUpdater()) return;
   updaterInitialized = true;
@@ -359,7 +407,7 @@ const setupAutoUpdater = () => {
         process.exit(0);
       }, 5000);
       appendUpdaterSmokeStatus(updaterSmokeConfig, 'quit-and-install-started', { version: info.version });
-      autoUpdater.quitAndInstall(true, false);
+      quitAndInstallUpdate({ info, isSilent: true, isForceRunAfter: false });
       return;
     }
 
@@ -376,7 +424,7 @@ const setupAutoUpdater = () => {
       if (result.response === 0) {
         isQuitting = true;
         appendUpdaterSmokeStatus(updaterSmokeConfig, 'quit-and-install-started', { version: info.version });
-        autoUpdater.quitAndInstall();
+        quitAndInstallUpdate({ info, isSilent: false, isForceRunAfter: false });
       }
     });
   });

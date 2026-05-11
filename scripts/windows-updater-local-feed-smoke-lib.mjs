@@ -63,13 +63,13 @@ export const buildWindowsUpdaterSmokeEnv = ({
   statusPath,
   installDir,
   homeDir,
+  useRealLocalAppData = false,
 }) => {
   const smokeEnv = {
     ...env,
     HOME: homeDir,
     USERPROFILE: homeDir,
     APPDATA: path.join(homeDir, 'AppData', 'Roaming'),
-    LOCALAPPDATA: path.join(homeDir, 'AppData', 'Local'),
     ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
     NEXT_TELEMETRY_DISABLED: '1',
     NO_AT_BRIDGE: '1',
@@ -81,9 +81,16 @@ export const buildWindowsUpdaterSmokeEnv = ({
     CODEXMUX_ELECTRON_UPDATER_SMOKE_STATUS_PATH: statusPath,
     CODEXMUX_ELECTRON_UPDATER_SMOKE_AUTO_DOWNLOAD: '1',
     CODEXMUX_ELECTRON_UPDATER_SMOKE_AUTO_INSTALL: '1',
-    CODEXMUX_ELECTRON_UPDATER_SMOKE_INSTALL_DIR: installDir,
     CODEXMUX_ELECTRON_UPDATER_DISABLE_DIFFERENTIAL: '1',
   };
+
+  if (!useRealLocalAppData) {
+    smokeEnv.LOCALAPPDATA = path.join(homeDir, 'AppData', 'Local');
+  }
+
+  if (typeof installDir === 'string' && installDir.trim()) {
+    smokeEnv.CODEXMUX_ELECTRON_UPDATER_SMOKE_INSTALL_DIR = installDir;
+  }
 
   delete smokeEnv.CODEXMUX_ELECTRON_UPDATER_FEED_URL;
   if (typeof feedUrl === 'string' && feedUrl.trim()) {
@@ -153,6 +160,7 @@ export const filterWindowsUpdaterInstallerProcesses = ({
   processes,
   smokeRoot,
   installDir,
+  includeUnscopedInstallers = false,
 } = {}) => {
   const needles = [smokeRoot, installDir]
     .map(normalizeNeedle)
@@ -167,6 +175,7 @@ export const filterWindowsUpdaterInstallerProcesses = ({
     .filter((processInfo) => Number.isSafeInteger(processInfo.processId))
     .filter((processInfo) => isUpdaterInstallerProcessName(processInfo.name))
     .filter((processInfo) => {
+      if (includeUnscopedInstallers && needles.length === 0) return true;
       const commandLine = normalizeNeedle(processInfo.commandLine);
       return needles.some((needle) => commandLine.includes(needle));
     });

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildWindowsUpdaterInstallArgs,
+  buildWindowsUpdaterSafeInstallerPath,
   buildUpdaterSmokeStatusEvent,
   readUpdaterSmokeConfig,
   sanitizeUpdaterDownloadedFileName,
@@ -52,5 +54,27 @@ describe('Electron updater smoke helpers', () => {
       version: '0.4.3',
       downloadedFileName: 'codexmux.exe',
     });
+  });
+
+  it('builds Windows NSIS updater install args for copied installers', () => {
+    expect(buildWindowsUpdaterInstallArgs({
+      isSilent: true,
+      isForceRunAfter: false,
+      installDir: null,
+    })).toEqual(['--updated', '/S']);
+
+    expect(buildWindowsUpdaterInstallArgs({
+      isSilent: false,
+      isForceRunAfter: true,
+      installDir: 'C:\\apps\\codexmux',
+    })).toEqual(['--updated', '--force-run', '/D=C:\\apps\\codexmux']);
+  });
+
+  it('builds a safe updater installer copy path outside the updater pending cache', () => {
+    expect(buildWindowsUpdaterSafeInstallerPath({
+      downloadedFile: 'C:\\Users\\me\\AppData\\Local\\codexmux-updater\\pending\\codexmux-Setup-0.4.3.exe',
+      tempDir: 'C:\\Users\\me\\AppData\\Local\\Temp',
+      nonce: 'abc123',
+    })).toBe('C:\\Users\\me\\AppData\\Local\\Temp\\codexmux-update-abc123\\codexmux-Setup-0.4.3.exe');
   });
 });

@@ -49,7 +49,7 @@ corepack pnpm smoke:windows:updater-published-channel
 corepack pnpm smoke:windows:package-gate
 ```
 
-`smoke:windows:updater-published-channel`은 설치나 update를 수행하지 않고 GitHub Releases channel을 read-only로 확인합니다. 실제 published update evidence는 설치된 앱보다 높은 버전의 published release가 있을 때 download/install smoke로 확인합니다.
+`smoke:windows:updater-published-channel`은 설치나 update를 수행하지 않고 GitHub Releases channel을 read-only로 확인합니다. 실제 published update evidence는 설치된 앱보다 높은 버전의 published release가 있을 때 `smoke:windows:updater-published-install`로 확인합니다. Local feed updater smoke는 isolated 짧은 설치 경로에서 `quitAndInstall` 이후 updater installer process settle과 post-update packaged launch까지 확인합니다.
 
 ## 런타임 v2
 

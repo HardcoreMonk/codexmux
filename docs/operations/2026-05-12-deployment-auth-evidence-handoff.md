@@ -61,27 +61,45 @@
 - `codexmux.exe`, `codexmux-Setup-*.exe`, `old-uninstaller.exe` 잔여 프로세스 없음
 - HKCU uninstall registry에 `codexmux` 잔여 entry 없음
 
-## 자동 업데이트 blocker
+## 자동 업데이트 blocker 처리
 
-`corepack pnpm smoke:windows:package-gate`는 `windows-updater-local-feed` 단계에서 blocked.
+상태: local feed 기준 resolved.
 
-재현 증거:
+원인:
 
-- `0.4.2` baseline installer 설치는 성공했다.
-- updater는 local feed 또는 GitHub release metadata에서 `0.4.3`을 감지하고 download했다.
-- `update-downloaded`와 `quit-and-install-started` event는 발생했다.
-- NSIS installer가 `codexmux-Setup-0.4.3.exe --updated /S /D=<installDir>` 상태로 종료되지 않았다.
-- 앱 실행 없이 수동으로 `0.4.2` 설치 후 `0.4.3 --updated /S /D=<installDir>`를 실행해도 90초 이상 종료되지 않았다.
+- NSIS assisted installer의 silent `--updated` update apply가 install file 교체 뒤
+  process settle까지 오래 걸렸다.
+- smoke가 updater installer settle을 120초만 기다려 실제 완료 전에 blocked로
+  판단했다.
+- cleanup 단계에서 uninstaller를 직접 실행하면 Windows 파일 잠금/EPERM에 걸릴 수
+  있어 반복 실행성이 낮았다.
 
-판단:
+처리:
 
-- GitHub Release asset publication과 read-only update metadata는 완료.
-- 실제 installed app의 default updater channel 승격은 보류.
-- `v0.4.3`은 prerelease로 유지한다. Stable/latest channel 승격은 NSIS `--updated` 적용 경로를 고친 뒤 수행한다.
+- `build-resources/installer.nsh`를 추가하고 `electron-builder.yml`의
+  `nsis.include`로 연결했다.
+- silent `--updated` install section 뒤 `quitSuccess`를 명시해 assisted installer가
+  성공 종료를 반환하도록 했다.
+- updater install smoke는 짧은 isolated 설치 경로를 기본값으로 사용하고,
+  installer settle timeout을 300초로 늘렸다.
+- update smoke cleanup은 uninstaller 실행 대신 registry key와 isolated install
+  directory를 직접 정리한다. uninstaller 자체 검증은
+  `smoke:windows:installer-install`에서 담당한다.
+
+검증:
+
+| 명령 | 결과 |
+| --- | --- |
+| `corepack pnpm vitest run tests/unit/electron/updater-smoke.test.ts tests/unit/scripts/windows-installer-smoke-lib.test.ts tests/unit/scripts/windows-updater-local-feed-smoke-lib.test.ts tests/unit/scripts/windows-electron-packaging-smoke-lib.test.ts` | passed, `29 passed` |
+| `corepack pnpm tsc --noEmit` | passed |
+| `corepack pnpm pack:electron` | passed, 새 `codexmux-Setup-0.4.8.exe` 생성 |
+| `corepack pnpm smoke:windows:update-metadata` | passed, `latestVersion=0.4.8`, `codexmux-Setup-0.4.8.exe` metadata 확인 |
+| `CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_BASE_INSTALLER_PATH=release\\codexmux-Setup-0.4.2.exe corepack pnpm smoke:windows:updater-local-feed` | passed, `0.4.2 -> 0.4.8` updater apply, installer settle, post-update launch, cleanup 확인 |
+| `corepack pnpm smoke:windows:package-gate` | passed, zip/update metadata/local updater/packaged launch/runtime v2/installer runtime v2 전체 통과 |
 
 ## 후속 작업
 
-- Windows NSIS assisted installer와 `electron-updater` `quitAndInstall` 조합의 `--updated` hang을 별도 bugfix로 처리한다.
-- 처리 전에는 `v0.4.3` prerelease를 stable release로 승격하지 않는다.
+- 새 installer fix가 포함된 `v0.4.8` GitHub Release를 발행한 뒤
+  `smoke:windows:updater-published-install`로 published apply evidence를 확인한다.
 - 실제 장시간 workspace 사용은 내부 사용자 3~5명으로 별도 observation window를 둔다.
 - Runtime v2 live rollback drill은 Windows service/tray 운영 경계가 정해진 뒤 수행한다.
