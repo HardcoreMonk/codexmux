@@ -89,6 +89,9 @@ Windows wrapper는 electron-builder를 직접 호출하지 않고 `scripts/pack-
 - NSIS assisted installer는 `build-resources/installer.nsh`를 include합니다. silent
   `--updated` update apply에서는 install section 이후 명시적으로 `quitSuccess`를
   호출해 updater installer process가 settle되도록 합니다.
+- 내부 updater가 앱 종료를 제어하므로 NSIS process-name scan은 우회합니다. 이는
+  장시간 자동화 세션에서 stale `codexmux.exe` tasklist 항목이 silent install/update를
+  막는 문제를 피하기 위한 Windows 내부 배포 계약입니다.
 
 `latest.yml`, installer exe, matching `.blockmap`은 같은 updater-visible artifact name을 가져야 합니다.
 
@@ -130,16 +133,19 @@ corepack pnpm smoke:windows:updater-published-install
 이 smoke는 설치된 낮은 버전 앱에서 GitHub-hosted release로 update apply를
 시도합니다. published release가 prerelease이면
 `CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INCLUDE_PRERELEASE=1`을 함께 지정합니다.
-현재 Windows updater는 Electron `net`의 외부 HTTPS timeout을 피하기 위해
-Node 기반 HTTP executor를 사용합니다. 설치된 baseline installer가 현재 세션의
-stale `codexmux.exe` tasklist 항목에 막히는 경우에는 실제 GitHub release asset을
-검증하기 위해 다음 fallback을 사용할 수 있습니다.
+현재 Windows updater는 Electron 프로세스 내부 HTTPS timeout을 피하기 위해
+PowerShell `Invoke-WebRequest` 기반 HTTP executor를 사용합니다. 최종 published
+install evidence는 다음 경로로 확보했습니다.
 
 ```bash
-CODEXMUX_WINDOWS_PUBLISHED_BASE_ZIP_PATH=release\\codexmux-<old-version>-win.zip \
+CODEXMUX_WINDOWS_PUBLISHED_BASE_INSTALLER_PATH=release\\codexmux-Setup-0.4.15.exe \
 CODEXMUX_WINDOWS_UPDATER_PUBLISHED_GENERIC_FEED=1 \
 corepack pnpm smoke:windows:updater-published-install
 ```
+
+이 검증은 GitHub Release `v0.4.16`의 `latest.yml`과
+`codexmux-Setup-0.4.16.exe`를 실제로 다운로드하고, `quitAndInstall`, installer
+settle, post-update `/api/health.version=0.4.16`까지 확인합니다.
 
 ## Electron 런타임 v2 smoke
 
@@ -170,7 +176,8 @@ corepack pnpm smoke:windows:installer-runtime-v2
 
 - Windows package가 실제로 빌드되었는지 확인합니다.
 - `release/latest.yml`, installer exe, `.blockmap` asset이 일치하는지 확인합니다.
-- 설치된 앱에서 published update apply evidence를 남깁니다. `quitAndInstall`/NSIS `--updated` 경로가 멈추면 stable channel로 승격하지 않습니다.
+- 설치된 앱에서 published update apply evidence를 남깁니다. 현재 기준 증거는
+  `v0.4.15 -> v0.4.16` published installer baseline smoke입니다.
 - 내부 전용 배포에서는 public code signing certificate trust와 SmartScreen reputation을 release blocker로 보지 않습니다.
 - 설치 경고나 내부 신뢰 절차는 release note와 설치 안내에 기록합니다.
 - 장시간 실제 workspace 사용을 내부 사용자 3~5명으로 검증합니다.

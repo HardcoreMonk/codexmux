@@ -48,9 +48,9 @@ Published update 검증:
 - 같은 release에 `codexmux-Setup-<version>.exe`를 올립니다.
 - matching `.blockmap` asset을 올립니다.
 - 설치된 낮은 버전 앱 기준 published channel metadata를 확인합니다.
-- `quitAndInstall` 후 새 앱 launch와 `/api/health`를 확인합니다. local feed 기준
-  `0.4.2 -> 0.4.8` updater apply는 통과했으며, published apply는 `v0.4.8`
-  release 발행 뒤 확인합니다.
+- `quitAndInstall` 후 새 앱 launch와 `/api/health`를 확인합니다. published install
+  기준 `0.4.15 -> 0.4.16` updater apply가 통과했으며, post-update health는
+  `version=0.4.16`, `commit=13fe69ba`입니다.
 - 내부 전용 배포이므로 public code signing certificate와 SmartScreen reputation은 필수 검증에서 제외합니다.
 - 설치 경고나 내부 신뢰 절차가 있으면 release note와 설치 안내에 기록합니다.
 
@@ -66,8 +66,8 @@ Published update 검증:
 
 | 항목 | 상태 |
 | --- | --- |
-| GitHub-hosted release asset과 published metadata | 완료: `v0.4.3` prerelease, `0.4.2 -> 0.4.3` metadata smoke 통과. `v0.4.8` release 발행 대기 |
-| 실제 설치된 낮은 버전 앱에서 GitHub-hosted 최신 버전으로 `quitAndInstall` | local feed 기준 해결: `0.4.2 -> 0.4.8` apply 통과. published install evidence 대기 |
+| GitHub-hosted release asset과 published metadata | 완료: 최신 기준 `v0.4.16`, `latest.yml`, NSIS installer, `.blockmap`, zip asset 확인 |
+| 실제 설치된 낮은 버전 앱에서 GitHub-hosted 최신 버전으로 `quitAndInstall` | 완료: `v0.4.15` installer baseline에서 `v0.4.16` published release로 apply, post-update health `version=0.4.16` 확인 |
 | Long-running installed app session | 대기 |
 | 제품명/app id/data dir의 codexwinmux 전환 여부 결정 | 대기 |
 | Runtime v2 live rollback drill evidence | dry-run 완료, live drill 대기 |

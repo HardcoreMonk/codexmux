@@ -6,7 +6,7 @@
 - GitHub CLI 인증 상태와 repository 접근 권한을 확인했다.
 - Windows installer 설치, packaged launch, `/api/health` 사용 환경 증거를 확인했다.
 - 내부 전용 앱 조건에 따라 public code signing certificate와 SmartScreen reputation은 release blocker에서 제외했다.
-- 자동 업데이트 적용 경로는 NSIS `--updated` installer hang으로 stable/default channel 승격을 보류했다.
+- 자동 업데이트 적용 경로는 `v0.4.15 -> v0.4.16` published installer baseline smoke로 실제 적용까지 확인했다.
 
 ## 배포 증거
 
@@ -63,7 +63,7 @@
 
 ## 자동 업데이트 blocker 처리
 
-상태: local feed 기준 resolved.
+상태: resolved.
 
 원인:
 
@@ -99,7 +99,49 @@
 
 ## 후속 작업
 
-- 새 installer fix가 포함된 `v0.4.8` GitHub Release를 발행한 뒤
-  `smoke:windows:updater-published-install`로 published apply evidence를 확인한다.
+- `v0.4.16`을 최신 Windows 내부 배포 기준 release로 사용한다.
 - 실제 장시간 workspace 사용은 내부 사용자 3~5명으로 별도 observation window를 둔다.
 - Runtime v2 live rollback drill은 Windows service/tray 운영 경계가 정해진 뒤 수행한다.
+
+## 최종 published updater 증거
+
+중간 진단:
+
+- `v0.4.8`, `v0.4.9`, `v0.4.10`은 published updater 경로를 진단하기 위한
+  release였다.
+- Electron 프로세스 내부 HTTPS 요청이 현재 Windows 세션에서 timeout되어
+  Windows updater HTTP executor를 PowerShell `Invoke-WebRequest` 기반으로
+  교체했다.
+- zip baseline은 NSIS installed state가 아니어서 post-update version 검증에
+  부적합했다. smoke에 `/api/health.version` 검증을 추가해 false-positive를 막았다.
+- stale `codexmux.exe` tasklist 항목이 NSIS process-name scan을 막아
+  `build-resources/installer.nsh`에서 내부 updater가 관리하는 silent install path의
+  process scan을 우회했다.
+
+최종 배포 자산:
+
+| Release | URL | Commit | 역할 |
+| --- | --- | --- | --- |
+| `v0.4.15` | <https://github.com/HardcoreMonk/codexmux/releases/tag/v0.4.15> | `13dc1429` | 실제 installer baseline |
+| `v0.4.16` | <https://github.com/HardcoreMonk/codexmux/releases/tag/v0.4.16> | `13fe69ba` | 최신 published updater target |
+
+최종 검증:
+
+| 명령 | 결과 |
+| --- | --- |
+| clean env `corepack pnpm test` | passed, `145 passed / 1 skipped`, `718 passed / 1 skipped` |
+| `corepack pnpm tsc --noEmit` | passed |
+| `corepack pnpm lint --quiet` | passed |
+| `corepack pnpm pack:electron` | passed, `0.4.16`, build-info commit `13fe69ba` |
+| `corepack pnpm smoke:windows:update-metadata` | passed, `latestVersion=0.4.16`, `codexmux-Setup-0.4.16.exe` |
+| `corepack pnpm smoke:windows:packaged-runtime-v2` | passed, health `version=0.4.16`, `commit=13fe69ba`, runtime v2 terminal 확인 |
+| `corepack pnpm smoke:windows:installer-install` | passed, stale tasklist가 있는 세션에서 silent install, launch, uninstall 확인 |
+| `CODEXMUX_WINDOWS_PUBLISHED_BASE_INSTALLER_PATH=release\\codexmux-Setup-0.4.15.exe CODEXMUX_WINDOWS_UPDATER_PUBLISHED_GENERIC_FEED=1 corepack pnpm smoke:windows:updater-published-install` | passed, `0.4.15 -> 0.4.16`, GitHub Release asset download, `quitAndInstall`, installer settle, post-update health `version=0.4.16`, `commit=13fe69ba`, cleanup 확인 |
+
+인증/사용 환경 판단:
+
+- GitHub CLI `repo` scope 인증으로 release/tag/asset push가 완료됐다.
+- 내부 전용 앱이므로 public code signing certificate와 SmartScreen reputation은 계속
+  release blocker가 아니다.
+- packaged/installer launch smoke는 isolated Windows user dirs에서 local server
+  health, Electron bridge, login surface, runtime v2 terminal을 확인했다.
