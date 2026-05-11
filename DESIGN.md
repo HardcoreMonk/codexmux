@@ -1,59 +1,104 @@
-# codexmux 설계 문서
+# codexmux 시각 계약
 
-codexmux는 Codex CLI 전용 웹 세션 매니저다. 범용 터미널 대시보드가 아니라 여러 Codex 세션을 브라우저에서 실행, 재개, 모니터링, 검토하기 위한 도구다. 터미널 접근은 tmux 위에 남겨 두고, Codex 작업은 상태 badge와 timeline 중심으로 보여준다.
+codexmux UI는 Codex CLI 작업을 오래 켜 두고 반복적으로 확인하는 운영 도구입니다.
+첫인상은 조용하고 밀도 있는 운영실이어야 하며, terminal/input/reconnect
+안정성이 시각 장식보다 항상 우선합니다.
 
-## 구현 상태
+## 역할
 
-- 서비스 이름과 실행 파일은 `codexmux`, 짧은 별칭은 `cmux`다.
-- 데이터 디렉터리는 `~/.codexmux`, tmux socket은 `codexmux`, CLI header는 `x-cmux-token`이다.
-- provider registry에는 `codex` panel type만 등록한다.
-- Codex 실행은 `codex`, 재개는 `codex resume <sessionId>`를 사용한다.
-- process detection은 tmux pane 아래의 `codex` process를 찾고 session id, process start time, live process cwd fallback 순서로 JSONL path를 연결한다.
-- timeline, history, stats, daily report는 `~/.codex/sessions/**/*.jsonl`을 읽어 구성한다.
-- `~/.codex`는 Codex CLI 소유 데이터이며 codexmux는 읽기 전용으로만 접근한다.
-- terminal과 Codex 입력 포커스의 `Ctrl+D`는 앱 단축키가 아니라 EOF/EOT로 전달한다.
-- 모바일 foreground 복귀 시 terminal/status/timeline/sync WebSocket은 stale `OPEN` 상태를 신뢰하지 않고 재연결할 수 있다.
-- 성능 최적화는 `/api/debug/perf` snapshot으로 계측한 뒤 좁게 적용한다. timeline append/render, diff, stats는 source of truth를 바꾸지 않는 batch/memo/short cache를 우선한다.
+- 이 파일은 root UI 시각 계약입니다.
+- 제품/아키텍처 설계 요약은 `docs/PROJECT-DESIGN.md`를 따릅니다.
+- 세부 theme, color, terminal/mobile UI 규칙은 `docs/STYLE.md`를 따릅니다.
+- 작업 방식, 보안, 수명주기 규칙은 `AGENTS.md`를 따릅니다.
 
-## 주요 구성
+## 시각 방향
 
-| 영역 | 파일 | 역할 |
-|---|---|---|
-| provider | `src/lib/providers/codex/` | Codex adapter와 provider contract 구현 |
-| command | `src/lib/codex-command.ts` | Codex launch/resume command 생성 |
-| detection | `src/lib/codex-session-detection.ts` | process tree와 JSONL session 연결 |
-| parser | `src/lib/codex-session-parser.ts` | Codex JSONL을 timeline entry로 변환 |
-| stats | `src/lib/stats/` | token, cost, session, daily report 집계 |
-| status | `src/lib/status-manager.ts` | tab state, polling, Web Push, WebSocket broadcast |
-| performance | `src/lib/perf-metrics.ts` | runtime metric, duration/counter, authenticated perf snapshot |
-| docs | `docs/ARCHITECTURE-LOGIC.md` | 서버와 서비스 로직의 최신 구현 기준 |
+- 제품 UI는 dashboard가 아니라 Codex session 운영 surface입니다.
+- 화면은 훑어보기 쉽고 정보 밀도가 높아야 합니다.
+- Marketing hero, 장식용 illustration, floating section card, nested card를
+  제품 화면에 넣지 않습니다.
+- Terminal, timeline, status, approval, stats는 사용자가 빠르게 상태를 판단할 수
+  있게 가까운 곳에 배치합니다.
 
-## 데이터 모델
+## 토큰과 색상
 
-새 layout과 status payload는 다음 neutral field를 사용한다.
+색상은 상태 의미를 구분하는 데만 강하게 사용합니다.
 
-- `panelType: "codex"`
-- `agentSessionId`
-- `agentJsonlPath`
-- `agentSummary`
+| 용도 | 기준 |
+| --- | --- |
+| 기본 surface | neutral, muted token |
+| 진행 중 | accent 또는 primary token |
+| 주의 | warning tone |
+| 위험/파괴 | destructive token |
+| 비활성 | muted foreground |
 
-Workspace 이름과 group은 `workspaces.json`이 source of truth이며, rename/group 변경은 sync event로 모든 client에 전파한다.
+새 색상 literal을 즉흥적으로 추가하지 않습니다. Tailwind CSS v4와 shadcn/ui token을
+우선하고, 새 token이 필요하면 `docs/STYLE.md`에 의미를 먼저 기록합니다.
 
-오래된 provider alias는 runtime에서 허용하지 않는다. 새 기능도 provider-neutral boundary 또는 Codex provider 내부에 추가한다.
+## 타이포그래피와 문구
 
-## 리스크
+- 기본 locale은 `ko`이며 영어 UI message를 병행 유지합니다.
+- 한국어 화면은 project font stack과 `word-break: keep-all`을 기본으로 사용합니다.
+- Terminal, code, diff, path, input, textarea, xterm 영역은 줄바꿈 예외입니다.
+- compact panel, sidebar, table, toolbar 안에서는 hero-scale heading을 쓰지 않습니다.
+- button text와 badge text는 container 밖으로 넘치지 않아야 합니다.
 
-- Codex JSONL 형식은 CLI 버전에 따라 바뀔 수 있다. parser는 permissive하게 두고 fixture를 계속 보강한다.
-- Codex CLI가 process 시작 후 JSONL을 늦게 쓰는 경우가 있어 process start time 매칭은 여유를 두고, cwd fallback은 live Codex process가 확인된 경우에만 쓴다.
-- `~/.codex`에는 auth와 local history가 들어갈 수 있으므로 원본 config/auth 파일을 브라우저에 노출하지 않는다.
-- process detection은 플랫폼 의존성이 크다. Linux `/proc`, `pgrep`, `ps` fallback은 helper에 격리한다.
-- foreground reconnect 중 timeline init/append가 겹칠 수 있으므로 stable id와 near-duplicate 제거가 UI 중복 방지의 핵심이다.
-- timeline virtualization과 adaptive status polling은 scroll anchoring, notification, unknown 복구 지연 리스크가 있어 perf snapshot 수치가 쌓인 뒤 단계적으로 검증한다.
-- Codex app-server protocol은 안정화 전까지 post-MVP 후보로 둔다.
+## 레이아웃
 
-## post-MVP 방향
+- 제품 화면은 첫 viewport에서 실제 작업 상태를 보여줍니다.
+- section을 floating card처럼 꾸미지 않습니다.
+- card는 반복 item, modal, 명확히 framed tool에만 사용합니다.
+- board, toolbar, counter, tab, tile처럼 fixed-format 요소는 안정적인 dimension을 둡니다.
+- 긴 terminal/timeline content는 주변 control을 밀거나 덮지 않아야 합니다.
 
-- app-server adapter가 안정화되면 approval/status event만 단계적으로 도입한다.
-- 전체 세션의 pending approval을 모아 보는 approval queue를 만든다.
-- fork/sub-agent 관계를 UI에 표시한다.
-- Codex CLI 버전별 JSONL fixture와 smoke test를 확장한다.
+## 컴포넌트 상태
+
+상호작용 component는 다음 상태를 구분합니다.
+
+| 상태 | 기준 |
+| --- | --- |
+| normal | 훑어보기 쉬운 neutral surface |
+| hover | pointer target이 명확하지만 layout shift 없음 |
+| active | touch/click feedback 제공 |
+| focus-visible | keyboard focus ring 제공 |
+| disabled | muted foreground와 동작 불가 상태 명확화 |
+| loading | 기존 dimension을 유지하며 progress 표시 |
+| empty/error | 원인과 회복 action을 간단히 노출 |
+
+icon button은 가능한 lucide-react icon을 사용하고, 낯선 icon에는 tooltip을 둡니다.
+
+## 반응형과 접근성
+
+- mobile touch target은 가능한 44px 이상으로 둡니다.
+- safe area를 고려합니다.
+- Android WebView, iPad Safari, desktop browser에서 input draft와 reconnect flow를 우선합니다.
+- UI text가 다른 control, terminal preview, status recovery UI를 가리지 않아야 합니다.
+- SSR page는 저장된 locale로 message bundle과 `html lang`을 맞춥니다.
+
+## 권장과 금지
+
+권장:
+
+- Codex session state, timeline, pending approval, runtime health를 우선 노출합니다.
+- 같은 종류의 운영 상태는 같은 시각 언어로 표현합니다.
+- error와 recovery action을 가까이 둡니다.
+
+금지:
+
+- dashboard를 landing page처럼 구성하지 않습니다.
+- decorative orb, gradient blob, bokeh background, 의미 없는 SVG hero를 넣지 않습니다.
+- 단일 hue variation만으로 전체 화면을 만들지 않습니다.
+- Windows 전용 제품 화면에 macOS/Linux/Android 안내를 primary action처럼 노출하지 않습니다.
+
+## 에이전트 작업 가이드
+
+UI 작업을 시작할 때는 다음 순서로 확인합니다.
+
+1. `AGENTS.md`의 framework, locale, 수명주기 규칙.
+2. `CONTEXT.md`의 도메인 용어와 거부 용어.
+3. 이 파일의 시각 계약.
+4. `docs/STYLE.md`의 세부 style rule.
+5. 관련 component와 message file.
+
+검증은 변경 범위에 맞게 `corepack pnpm lint`, `corepack pnpm tsc --noEmit`,
+focused test, 필요한 browser/mobile smoke 순서로 수행합니다.
