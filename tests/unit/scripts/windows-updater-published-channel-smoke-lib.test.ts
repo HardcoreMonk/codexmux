@@ -6,6 +6,20 @@ const loadLib = async () =>
   import(pathToFileURL(path.join(process.cwd(), 'scripts/windows-updater-published-channel-smoke-lib.mjs')).href);
 
 describe('Windows updater published channel smoke helpers', () => {
+  it('uses an explicit installed version override when checking a published update', async () => {
+    const { resolveWindowsPublishedChannelCurrentVersion } = await loadLib();
+
+    expect(resolveWindowsPublishedChannelCurrentVersion({
+      env: { CODEXMUX_WINDOWS_UPDATER_CURRENT_VERSION: '0.4.2' },
+      packageVersion: '0.4.3',
+    })).toBe('0.4.2');
+
+    expect(resolveWindowsPublishedChannelCurrentVersion({
+      env: { CODEXMUX_WINDOWS_UPDATER_CURRENT_VERSION: '   ' },
+      packageVersion: '0.4.3',
+    })).toBe('0.4.3');
+  });
+
   it('reports a missing GitHub release as a published update blocker', async () => {
     const { evaluateWindowsPublishedUpdateChannel } = await loadLib();
 

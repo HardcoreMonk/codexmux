@@ -2,6 +2,14 @@ const latestYamlAssetName = 'latest.yml';
 
 const isNonEmptyString = (value) => typeof value === 'string' && value.trim().length > 0;
 
+export const resolveWindowsPublishedChannelCurrentVersion = ({
+  env = process.env,
+  packageVersion,
+} = {}) => {
+  const override = env.CODEXMUX_WINDOWS_UPDATER_CURRENT_VERSION;
+  return isNonEmptyString(override) ? override.trim() : packageVersion;
+};
+
 const normalizeArtifactName = (value) => {
   if (typeof value !== 'string') return null;
   const name = value.replace(/\\/g, '/').split('/').pop()?.trim();

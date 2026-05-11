@@ -29,6 +29,35 @@ describe('Windows installer smoke helpers', () => {
     expect(findWindowsInstaller(releaseDir)).toBe(newer);
   });
 
+  it('extracts the installer version from both NSIS artifact name formats', async () => {
+    const { getWindowsInstallerVersion } = await loadLib();
+
+    expect(getWindowsInstallerVersion('codexmux-Setup-0.4.3.exe')).toBe('0.4.3');
+    expect(getWindowsInstallerVersion('codexmux Setup 0.4.2.exe')).toBe('0.4.2');
+    expect(getWindowsInstallerVersion('codexmux-0.4.3-win.zip')).toBeNull();
+  });
+
+  it('selects the newest installer below a published update version', async () => {
+    const { findWindowsInstallerBelowVersion } = await loadLib();
+    const releaseDir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-installer-version-test-'));
+    const baseline = path.join(releaseDir, 'codexmux-Setup-0.4.2.exe');
+    const published = path.join(releaseDir, 'codexmux-Setup-0.4.3.exe');
+    const older = path.join(releaseDir, 'codexmux Setup 0.4.1.exe');
+    await fs.writeFile(published, '');
+    await fs.writeFile(older, '');
+    await fs.writeFile(baseline, '');
+
+    expect(findWindowsInstallerBelowVersion(releaseDir, '0.4.3')).toBe(baseline);
+  });
+
+  it('returns null when no installer is below the published update version', async () => {
+    const { findWindowsInstallerBelowVersion } = await loadLib();
+    const releaseDir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-installer-version-test-'));
+    await fs.writeFile(path.join(releaseDir, 'codexmux-Setup-0.4.3.exe'), '');
+
+    expect(findWindowsInstallerBelowVersion(releaseDir, '0.4.3')).toBeNull();
+  });
+
   it('resolves installed app paths from the install directory', async () => {
     const { resolveInstalledAppPaths } = await loadLib();
 

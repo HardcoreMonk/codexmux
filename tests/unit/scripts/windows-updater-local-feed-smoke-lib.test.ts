@@ -78,6 +78,28 @@ describe('Windows updater local feed smoke helpers', () => {
     });
   });
 
+  it('omits the local feed override when using the packaged GitHub updater channel', async () => {
+    const { buildWindowsUpdaterSmokeEnv } = await loadLib();
+
+    const env = buildWindowsUpdaterSmokeEnv({
+      env: {
+        PATH: 'C:\\Windows',
+        CODEXMUX_ELECTRON_UPDATER_FEED_URL: 'http://127.0.0.1:8123/',
+      },
+      feedUrl: null,
+      statusPath: 'C:\\tmp\\updater-status.jsonl',
+      installDir: 'C:\\tmp\\codexmux-app',
+      homeDir: 'C:\\tmp\\codexmux-home',
+    });
+
+    expect(env).not.toHaveProperty('CODEXMUX_ELECTRON_UPDATER_FEED_URL');
+    expect(env).toMatchObject({
+      CODEXMUX_ELECTRON_UPDATER_SMOKE: '1',
+      CODEXMUX_ELECTRON_UPDATER_SMOKE_AUTO_DOWNLOAD: '1',
+      CODEXMUX_ELECTRON_UPDATER_SMOKE_AUTO_INSTALL: '1',
+    });
+  });
+
   it('summarizes updater status events into checks', async () => {
     const { summarizeWindowsUpdaterStatusEvents } = await loadLib();
 

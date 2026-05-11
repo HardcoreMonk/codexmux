@@ -276,12 +276,15 @@ const setupAutoUpdater = () => {
   if (updaterInitialized || !canRunUpdater()) return;
   updaterInitialized = true;
 
+  if (updaterSmokeConfig.enabled) {
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'configured', {
+      feedProvider: updaterSmokeConfig.feedUrl ? 'generic' : 'github',
+      ...(updaterSmokeConfig.feedUrl ? { feedUrl: updaterSmokeConfig.feedUrl } : {}),
+    });
+  }
+
   if (updaterSmokeConfig.feedUrl) {
     autoUpdater.setFeedURL({ provider: 'generic', url: updaterSmokeConfig.feedUrl });
-    appendUpdaterSmokeStatus(updaterSmokeConfig, 'configured', {
-      feedProvider: 'generic',
-      feedUrl: updaterSmokeConfig.feedUrl,
-    });
   }
   if (updaterSmokeConfig.disableDifferentialDownload) {
     autoUpdater.disableDifferentialDownload = true;
