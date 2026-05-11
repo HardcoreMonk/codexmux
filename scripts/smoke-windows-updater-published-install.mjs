@@ -14,7 +14,9 @@ import { writeSmokeArtifact } from './smoke-artifact-lib.mjs';
 import {
   buildNsisSilentInstallArgs,
   findWindowsInstallerBelowVersion,
+  findWindowsZipBelowVersion,
   getWindowsInstallerVersion,
+  getWindowsZipVersion,
   resolveInstalledAppPaths,
 } from './windows-installer-smoke-lib.mjs';
 import {
@@ -42,6 +44,8 @@ const summarizeCommandResult = (result) => {
     exitCode: result.exitCode,
     signal: result.signal ?? null,
     timedOut: !!result.timedOut,
+    stdoutTail: result.stdout ? result.stdout.slice(-1600) : '',
+    stderrTail: result.stderr ? result.stderr.slice(-1600) : '',
   };
 };
 
@@ -57,6 +61,9 @@ const buildArtifactPayload = ({
   baselineVersion,
   referencedInstallerName,
   baselineInstallerName,
+  baselinePackageName,
+  baselinePackageType,
+  publishedFeedMode,
   installResult,
   updateLaunchResult,
   postInstallLaunchResult,
@@ -73,6 +80,9 @@ const buildArtifactPayload = ({
   baselineVersion: baselineVersion ?? null,
   referencedInstallerName: referencedInstallerName ?? null,
   baselineInstallerName: baselineInstallerName ?? null,
+  baselinePackageName: baselinePackageName ?? baselineInstallerName ?? null,
+  baselinePackageType: baselinePackageType ?? (baselineInstallerName ? 'installer' : null),
+  publishedFeedMode: publishedFeedMode ?? null,
   downloadedFileName: statusSummary?.downloadedFileName ?? null,
   checks: Array.isArray(checks) ? checks : [],
   blockers: Array.isArray(blockers) ? blockers : [],
@@ -167,6 +177,15 @@ const buildReleasesApiUrl = ({ owner, repo }) =>
 const getAsset = (release, assetName) =>
   (Array.isArray(release?.assets) ? release.assets : [])
     .find((asset) => String(asset?.name || '').toLowerCase() === assetName.toLowerCase()) ?? null;
+
+const buildPublishedGenericFeedUrl = (release) => {
+  const latestYamlAsset = getAsset(release, 'latest.yml');
+  if (!latestYamlAsset?.browser_download_url) return null;
+  const url = new URL(latestYamlAsset.browser_download_url);
+  url.pathname = url.pathname.replace(/\/latest\.yml$/i, '/');
+  url.search = '';
+  return url.toString();
+};
 
 const runCommand = (command, args, { cwd = rootDir, env = process.env, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) =>
   new Promise((resolve) => {
@@ -283,12 +302,16 @@ const readStatusEvents = async (statusPath) => {
   }
 };
 
-const waitForUpdaterStatus = async (statusPath, timeoutMs = STATUS_TIMEOUT_MS) => {
+const waitForUpdaterStatus = async ({
+  statusPath,
+  requireConfigured,
+  timeoutMs = STATUS_TIMEOUT_MS,
+}) => {
   const deadline = Date.now() + timeoutMs;
-  let lastSummary = summarizeWindowsUpdaterStatusEvents([]);
+  let lastSummary = summarizeWindowsUpdaterStatusEvents([], { requireConfigured });
   while (Date.now() < deadline) {
     const events = await readStatusEvents(statusPath);
-    lastSummary = summarizeWindowsUpdaterStatusEvents(events);
+    lastSummary = summarizeWindowsUpdaterStatusEvents(events, { requireConfigured });
     const errorBlocker = lastSummary.blockers.find((blocker) => blocker.ruleId === 'updater-error-event');
     if (errorBlocker) throw new Error(errorBlocker.message);
     if (lastSummary.ok) return { events, summary: lastSummary };
@@ -362,6 +385,7 @@ const runPublishedUpdateAttempt = async ({
   installDir,
   smokeRoot,
   attempt,
+  feedUrl,
 }) => {
   const updaterHomeDir = path.join(smokeRoot, `updater-home-${attempt}`);
   const statusPath = path.join(smokeRoot, `updater-status-${attempt}.jsonl`);
@@ -378,7 +402,7 @@ const runPublishedUpdateAttempt = async ({
     cwd: path.dirname(appExe),
     env: buildWindowsUpdaterSmokeEnv({
       env: process.env,
-      feedUrl: null,
+      feedUrl,
       statusPath,
       installDir,
       homeDir: updaterHomeDir,
@@ -388,10 +412,12 @@ const runPublishedUpdateAttempt = async ({
   });
 
   try {
-    const updaterStatus = await waitForUpdaterStatus(
+    const requireConfigured = typeof feedUrl === 'string' && feedUrl.trim().length > 0;
+    const updaterStatus = await waitForUpdaterStatus({
       statusPath,
-      Number(process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INSTALL_STATUS_TIMEOUT_MS || STATUS_TIMEOUT_MS),
-    );
+      requireConfigured,
+      timeoutMs: Number(process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INSTALL_STATUS_TIMEOUT_MS || STATUS_TIMEOUT_MS),
+    });
     const updateLaunchResult = await Promise.race([
       updateLaunch.result,
       sleep(Number(process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INSTALL_APP_EXIT_TIMEOUT_MS || APP_EXIT_TIMEOUT_MS)).then(() => ({
@@ -427,10 +453,19 @@ const runPublishedUpdateAttempt = async ({
     return {
       ok: false,
       error: err,
-      statusSummary: summarizeWindowsUpdaterStatusEvents(events),
+      statusSummary: summarizeWindowsUpdaterStatusEvents(events, {
+        requireConfigured: typeof feedUrl === 'string' && feedUrl.trim().length > 0,
+      }),
       updateLaunchResult,
     };
   }
+};
+
+const extractWindowsZipBaseline = async ({ zipPath, installDir }) => {
+  await fs.mkdir(installDir, { recursive: true });
+  return runCommand('tar', ['-xf', zipPath, '-C', installDir], {
+    timeoutMs: Number(process.env.CODEXMUX_WINDOWS_ZIP_EXTRACT_TIMEOUT_MS || DEFAULT_TIMEOUT_MS),
+  });
 };
 
 const loadPublishedChannel = async ({ checks }) => {
@@ -484,9 +519,13 @@ const main = async () => {
   let failurePayload = null;
   let latestRelease = null;
   let latestMetadata = null;
-  let baselineInstallerPath = null;
+  let baselinePackagePath = null;
+  let baselinePackageType = null;
   let baselineVersion = null;
   let baselineInstallerName = null;
+  let baselinePackageName = null;
+  let publishedFeedMode = null;
+  let publishedFeedUrl = null;
   let channelResult = null;
 
   try {
@@ -497,16 +536,30 @@ const main = async () => {
     if (!latestVersion) throw new Error('published latest.yml must include version before choosing a baseline installer.');
     checks.push('published-latest-version');
 
-    const baselineCandidate = process.env.CODEXMUX_WINDOWS_PUBLISHED_BASE_INSTALLER_PATH
-      || findWindowsInstallerBelowVersion(releaseDir, latestVersion);
-    if (!baselineCandidate) {
-      throw new Error(`No baseline installer below ${latestVersion} was found under ${releaseDir}.`);
+    const explicitBaselineZip = process.env.CODEXMUX_WINDOWS_PUBLISHED_BASE_ZIP_PATH;
+    const baselineInstallerCandidate = process.env.CODEXMUX_WINDOWS_PUBLISHED_BASE_INSTALLER_PATH
+      || (!explicitBaselineZip ? findWindowsInstallerBelowVersion(releaseDir, latestVersion) : null);
+    const baselineZipCandidate = explicitBaselineZip
+      || (!baselineInstallerCandidate ? findWindowsZipBelowVersion(releaseDir, latestVersion) : null);
+
+    if (baselineInstallerCandidate) {
+      baselinePackagePath = path.resolve(baselineInstallerCandidate);
+      baselinePackageType = 'installer';
+      baselineVersion = getWindowsInstallerVersion(baselinePackagePath);
+      baselineInstallerName = path.basename(baselinePackagePath);
+      baselinePackageName = baselineInstallerName;
+      if (!baselineVersion) throw new Error(`Baseline installer name must include a semver version: ${baselineInstallerName}`);
+      checks.push('baseline-installer-version');
+    } else if (baselineZipCandidate) {
+      baselinePackagePath = path.resolve(baselineZipCandidate);
+      baselinePackageType = 'zip';
+      baselineVersion = getWindowsZipVersion(baselinePackagePath);
+      baselinePackageName = path.basename(baselinePackagePath);
+      if (!baselineVersion) throw new Error(`Baseline zip name must include a semver version: ${baselinePackageName}`);
+      checks.push('baseline-zip-version');
+    } else {
+      throw new Error(`No baseline installer or Windows zip below ${latestVersion} was found under ${releaseDir}.`);
     }
-    baselineInstallerPath = path.resolve(baselineCandidate);
-    baselineVersion = getWindowsInstallerVersion(baselineInstallerPath);
-    baselineInstallerName = path.basename(baselineInstallerPath);
-    if (!baselineVersion) throw new Error(`Baseline installer name must include a semver version: ${baselineInstallerName}`);
-    checks.push('baseline-installer-version');
 
     channelResult = evaluateWindowsPublishedUpdateChannel({
       releases: channel.releases,
@@ -520,28 +573,47 @@ const main = async () => {
     }
     checks.push('published-channel-updates-baseline');
 
-    await assertExists(baselineInstallerPath, 'baseline-installer-present', checks);
+    if (process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_GENERIC_FEED === '1') {
+      publishedFeedUrl = buildPublishedGenericFeedUrl(latestRelease);
+      if (!publishedFeedUrl) throw new Error('Published generic feed mode requires a latest.yml asset download URL.');
+      publishedFeedMode = 'github-release-generic-feed';
+      checks.push('published-generic-feed-url');
+    } else {
+      publishedFeedMode = 'github-provider';
+    }
 
-    installResult = await runCommand(
-      baselineInstallerPath,
-      buildNsisSilentInstallArgs(installDir),
-      {
-      timeoutMs: Number(process.env.CODEXMUX_WINDOWS_INSTALLER_TIMEOUT_MS || DEFAULT_TIMEOUT_MS),
-      },
+    await assertExists(
+      baselinePackagePath,
+      baselinePackageType === 'installer' ? 'baseline-installer-present' : 'baseline-zip-present',
+      checks,
     );
+
+    installResult = baselinePackageType === 'installer'
+      ? await runCommand(
+        baselinePackagePath,
+        buildNsisSilentInstallArgs(installDir),
+        {
+          timeoutMs: Number(process.env.CODEXMUX_WINDOWS_INSTALLER_TIMEOUT_MS || DEFAULT_TIMEOUT_MS),
+        },
+      )
+      : await extractWindowsZipBaseline({ zipPath: baselinePackagePath, installDir });
     if (installResult.exitCode !== 0 || installResult.timedOut) {
-      throw new Error(`baseline installer failed: ${JSON.stringify({
+      throw new Error(`baseline ${baselinePackageType} failed: ${JSON.stringify({
         exitCode: installResult.exitCode,
         signal: installResult.signal,
         timedOut: installResult.timedOut,
         stderr: installResult.stderr.slice(-1200),
       })}`);
     }
-    checks.push('silent-install-baseline');
+    checks.push(baselinePackageType === 'installer' ? 'silent-install-baseline' : 'baseline-zip-extract');
 
     await assertExists(paths.appExe, 'installed-exe-present', checks);
     await assertExists(paths.appAsar, 'installed-app-asar-present', checks);
-    await assertExists(paths.uninstaller, 'uninstaller-present', checks);
+    if (baselinePackageType === 'installer') {
+      await assertExists(paths.uninstaller, 'uninstaller-present', checks);
+    } else {
+      checks.push('baseline-zip-no-uninstaller');
+    }
 
     const maxUpdaterAttempts = Number(process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INSTALL_ATTEMPTS || 2);
     let updaterAttempt = null;
@@ -552,6 +624,7 @@ const main = async () => {
         installDir: updaterInstallDirOverride,
         smokeRoot,
         attempt,
+        feedUrl: publishedFeedUrl,
       });
       if (updaterAttempt.ok) break;
     }
@@ -606,6 +679,9 @@ const main = async () => {
       baselineVersion,
       referencedInstallerName: channelResult?.referencedInstallerName,
       baselineInstallerName,
+      baselinePackageName,
+      baselinePackageType,
+      publishedFeedMode,
       installMode: explicitInstallDir ? 'custom-dir' : 'isolated-short-dir',
       checks,
       statusSummary,
@@ -627,6 +703,9 @@ const main = async () => {
       baselineVersion,
       referencedInstallerName: channelResult?.referencedInstallerName,
       baselineInstallerName,
+      baselinePackageName,
+      baselinePackageType,
+      publishedFeedMode,
       installMode: explicitInstallDir ? 'custom-dir' : 'isolated-short-dir',
       checks,
       blockers: channelResult?.blockers ?? statusSummary?.blockers ?? [],

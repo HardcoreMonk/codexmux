@@ -2,9 +2,13 @@ import fs from 'fs';
 import path from 'path';
 
 const installerNamePattern = /^codexmux(?: Setup |-Setup-)(\d+\.\d+\.\d+)\.exe$/i;
+const windowsZipNamePattern = /^codexmux-(\d+\.\d+\.\d+)-win\.zip$/i;
 
 export const getWindowsInstallerVersion = (nameOrPath) =>
   installerNamePattern.exec(path.basename(String(nameOrPath || '')))?.[1] ?? null;
+
+export const getWindowsZipVersion = (nameOrPath) =>
+  windowsZipNamePattern.exec(path.basename(String(nameOrPath || '')))?.[1] ?? null;
 
 const parseSemver = (version) => {
   const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(String(version || '').trim());
@@ -32,6 +36,26 @@ const collectWindowsInstallers = (releaseDir) => {
     .filter((entry) => entry.isFile())
     .map((entry) => {
       const version = getWindowsInstallerVersion(entry.name);
+      if (!version) return null;
+      const fullPath = path.join(releaseDir, entry.name);
+      return {
+        path: fullPath,
+        version,
+        mtimeMs: fs.statSync(fullPath).mtimeMs,
+      };
+    })
+    .filter(Boolean);
+};
+
+const collectWindowsZips = (releaseDir) => {
+  const entries = fs.existsSync(releaseDir)
+    ? fs.readdirSync(releaseDir, { withFileTypes: true })
+    : [];
+
+  return entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => {
+      const version = getWindowsZipVersion(entry.name);
       if (!version) return null;
       const fullPath = path.join(releaseDir, entry.name);
       return {
@@ -71,6 +95,18 @@ export const findWindowsInstallerBelowVersion = (releaseDir, targetVersion) => {
 
   return collectWindowsInstallers(releaseDir)
     .filter((installer) => compareSemver(installer.version, targetVersion) < 0)
+    .sort((a, b) => {
+      const versionComparison = compareSemver(b.version, a.version);
+      if (versionComparison !== 0) return versionComparison;
+      return b.mtimeMs - a.mtimeMs;
+    })[0]?.path ?? null;
+};
+
+export const findWindowsZipBelowVersion = (releaseDir, targetVersion) => {
+  if (!parseSemver(targetVersion)) throw new Error('targetVersion must be a valid x.y.z version');
+
+  return collectWindowsZips(releaseDir)
+    .filter((zip) => compareSemver(zip.version, targetVersion) < 0)
     .sort((a, b) => {
       const versionComparison = compareSemver(b.version, a.version);
       if (versionComparison !== 0) return versionComparison;

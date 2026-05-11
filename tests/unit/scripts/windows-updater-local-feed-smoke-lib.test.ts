@@ -163,6 +163,34 @@ describe('Windows updater local feed smoke helpers', () => {
     });
   });
 
+  it('does not require the local feed configured event for the published GitHub updater channel', async () => {
+    const { summarizeWindowsUpdaterStatusEvents } = await loadLib();
+
+    const summary = summarizeWindowsUpdaterStatusEvents([
+      { event: 'checking-for-update' },
+      { event: 'update-available', version: '0.4.8' },
+      { event: 'download-started', version: '0.4.8' },
+      { event: 'download-progress', percent: 100 },
+      { event: 'update-downloaded', version: '0.4.8', downloadedFileName: 'codexmux-Setup-0.4.8.exe' },
+      { event: 'quit-and-install-started', version: '0.4.8' },
+    ], { requireConfigured: false });
+
+    expect(summary).toEqual({
+      ok: true,
+      latestVersion: '0.4.8',
+      downloadedFileName: 'codexmux-Setup-0.4.8.exe',
+      checks: [
+        'updater-check-started',
+        'updater-update-available',
+        'updater-download-started',
+        'updater-download-progress',
+        'updater-update-downloaded',
+        'updater-quit-and-install-started',
+      ],
+      blockers: [],
+    });
+  });
+
   it('reports missing updater install events as blockers', async () => {
     const { summarizeWindowsUpdaterStatusEvents } = await loadLib();
 

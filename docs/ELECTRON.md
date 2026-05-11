@@ -130,6 +130,16 @@ corepack pnpm smoke:windows:updater-published-install
 이 smoke는 설치된 낮은 버전 앱에서 GitHub-hosted release로 update apply를
 시도합니다. published release가 prerelease이면
 `CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INCLUDE_PRERELEASE=1`을 함께 지정합니다.
+현재 Windows updater는 Electron `net`의 외부 HTTPS timeout을 피하기 위해
+Node 기반 HTTP executor를 사용합니다. 설치된 baseline installer가 현재 세션의
+stale `codexmux.exe` tasklist 항목에 막히는 경우에는 실제 GitHub release asset을
+검증하기 위해 다음 fallback을 사용할 수 있습니다.
+
+```bash
+CODEXMUX_WINDOWS_PUBLISHED_BASE_ZIP_PATH=release\\codexmux-<old-version>-win.zip \
+CODEXMUX_WINDOWS_UPDATER_PUBLISHED_GENERIC_FEED=1 \
+corepack pnpm smoke:windows:updater-published-install
+```
 
 ## Electron 런타임 v2 smoke
 

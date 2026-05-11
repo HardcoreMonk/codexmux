@@ -110,13 +110,14 @@ const addBlocker = (blockers, ruleId, message) => {
   blockers.push({ ruleId, message });
 };
 
-export const summarizeWindowsUpdaterStatusEvents = (events) => {
+export const summarizeWindowsUpdaterStatusEvents = (events, { requireConfigured = true } = {}) => {
   const list = Array.isArray(events) ? events : [];
   const eventNames = new Set(list.map((event) => event?.event));
   const checks = [];
   const blockers = [];
 
   for (const requirement of requiredInstallEvents) {
+    if (requirement.event === 'configured' && !requireConfigured) continue;
     if (eventNames.has(requirement.event)) {
       checks.push(requirement.check);
     } else if (requirement.blocker) {

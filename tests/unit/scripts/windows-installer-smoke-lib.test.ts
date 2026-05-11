@@ -45,6 +45,13 @@ describe('Windows installer smoke helpers', () => {
     expect(getWindowsInstallerVersion('codexmux-0.4.3-win.zip')).toBeNull();
   });
 
+  it('extracts the Windows zip version from the packaged artifact name', async () => {
+    const { getWindowsZipVersion } = await loadLib();
+
+    expect(getWindowsZipVersion('codexmux-0.4.3-win.zip')).toBe('0.4.3');
+    expect(getWindowsZipVersion('codexmux-Setup-0.4.3.exe')).toBeNull();
+  });
+
   it('selects the newest installer below a published update version', async () => {
     const { findWindowsInstallerBelowVersion } = await loadLib();
     const releaseDir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-installer-version-test-'));
@@ -64,6 +71,17 @@ describe('Windows installer smoke helpers', () => {
     await fs.writeFile(path.join(releaseDir, 'codexmux-Setup-0.4.3.exe'), '');
 
     expect(findWindowsInstallerBelowVersion(releaseDir, '0.4.3')).toBeNull();
+  });
+
+  it('selects the newest Windows zip below a published update version', async () => {
+    const { findWindowsZipBelowVersion } = await loadLib();
+    const releaseDir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-zip-version-test-'));
+    const baseline = path.join(releaseDir, 'codexmux-0.4.2-win.zip');
+    const published = path.join(releaseDir, 'codexmux-0.4.3-win.zip');
+    await fs.writeFile(published, '');
+    await fs.writeFile(baseline, '');
+
+    expect(findWindowsZipBelowVersion(releaseDir, '0.4.3')).toBe(baseline);
   });
 
   it('resolves installed app paths from the install directory', async () => {

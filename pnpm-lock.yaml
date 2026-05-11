@@ -61,6 +61,9 @@ importers:
       '@xterm/xterm':
         specifier: ^6.0.0
         version: 6.0.0
+      builder-util-runtime:
+        specifier: 9.5.1
+        version: 9.5.1
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1

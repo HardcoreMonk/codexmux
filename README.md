@@ -16,7 +16,7 @@ https://github.com/HardcoreMonk/codexwinmux
 | --- | --- |
 | 저장소 | <https://github.com/HardcoreMonk/codexmux> |
 | Windows 제품 저장소 | <https://github.com/HardcoreMonk/codexwinmux> |
-| 현재 패키지 버전 | `0.4.8` |
+| 현재 패키지 버전 | `0.4.9` |
 | 제품 전환 목표 | Windows 전용 설치형 서비스 |
 | 기본 UI 언어 | 한국어 |
 | 지원 UI 언어 | 한국어, 영어 |

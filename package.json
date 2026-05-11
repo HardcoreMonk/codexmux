@@ -1,6 +1,6 @@
 {
   "name": "codexmux",
-  "version": "0.4.8",
+  "version": "0.4.9",
   "description": "Manage multiple Codex sessions from your browser",
   "license": "MIT",
   "author": "HardcoreMonk",
@@ -127,6 +127,7 @@
     "postinstall": "node scripts/postinstall-node-pty.mjs"
   },
   "dependencies": {
+    "builder-util-runtime": "9.5.1",
     "@base-ui/react": "^1.3.0",
     "@capacitor/android": "^8.3.1",
     "@capacitor/core": "^8.3.1",
