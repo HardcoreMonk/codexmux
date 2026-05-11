@@ -146,4 +146,37 @@ describe('Windows updater local feed smoke helpers', () => {
       'updater-quit-and-install-started-missing',
     ]);
   });
+
+  it('filters updater installer processes to the current smoke install root', async () => {
+    const { filterWindowsUpdaterInstallerProcesses } = await loadLib();
+
+    const processes = filterWindowsUpdaterInstallerProcesses({
+      smokeRoot: 'C:\\Temp\\codexmux-updater-local-feed-smoke-abc',
+      installDir: 'C:\\Temp\\codexmux-updater-local-feed-smoke-abc\\app',
+      processes: [
+        {
+          processId: 10,
+          name: 'codexmux-Setup-0.4.3.exe',
+          commandLine: 'codexmux-Setup-0.4.3.exe --updated /S /D=C:\\Temp\\codexmux-updater-local-feed-smoke-abc\\app',
+        },
+        {
+          processId: 11,
+          name: 'old-uninstaller.exe',
+          commandLine: 'old-uninstaller.exe /S _?=C:\\Temp\\codexmux-updater-local-feed-smoke-abc\\app',
+        },
+        {
+          processId: 12,
+          name: 'codexmux-Setup-0.4.3.exe',
+          commandLine: 'codexmux-Setup-0.4.3.exe --updated /S /D=C:\\Temp\\other\\app',
+        },
+        {
+          processId: 13,
+          name: 'pwsh.exe',
+          commandLine: 'pwsh -Command Get-CimInstance',
+        },
+      ],
+    });
+
+    expect(processes.map((process: { processId: number }) => process.processId)).toEqual([10, 11]);
+  });
 });

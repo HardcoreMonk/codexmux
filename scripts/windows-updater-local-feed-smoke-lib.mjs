@@ -142,6 +142,36 @@ export const summarizeWindowsUpdaterStatusEvents = (events) => {
   };
 };
 
+const normalizeNeedle = (value) =>
+  String(value || '').replace(/\//g, '\\').toLowerCase();
+
+const isUpdaterInstallerProcessName = (name) =>
+  /^codexmux-Setup-.+\.exe$/i.test(String(name || ''))
+  || String(name || '').toLowerCase() === 'old-uninstaller.exe';
+
+export const filterWindowsUpdaterInstallerProcesses = ({
+  processes,
+  smokeRoot,
+  installDir,
+} = {}) => {
+  const needles = [smokeRoot, installDir]
+    .map(normalizeNeedle)
+    .filter(Boolean);
+
+  return (Array.isArray(processes) ? processes : [])
+    .map((processInfo) => ({
+      processId: Number(processInfo?.processId ?? processInfo?.ProcessId),
+      name: processInfo?.name ?? processInfo?.Name ?? null,
+      commandLine: processInfo?.commandLine ?? processInfo?.CommandLine ?? '',
+    }))
+    .filter((processInfo) => Number.isSafeInteger(processInfo.processId))
+    .filter((processInfo) => isUpdaterInstallerProcessName(processInfo.name))
+    .filter((processInfo) => {
+      const commandLine = normalizeNeedle(processInfo.commandLine);
+      return needles.some((needle) => commandLine.includes(needle));
+    });
+};
+
 const summarizeCommandResult = (result) => {
   if (!result) return null;
   return {

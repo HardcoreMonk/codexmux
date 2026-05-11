@@ -15,6 +15,8 @@ import { writeSmokeArtifact } from './smoke-artifact-lib.mjs';
 import {
   buildNsisSilentInstallArgs,
   findWindowsInstaller,
+  findWindowsInstallerBelowVersion,
+  getWindowsInstallerVersion,
   resolveInstalledAppPaths,
 } from './windows-installer-smoke-lib.mjs';
 import {
@@ -22,6 +24,7 @@ import {
   buildWindowsUpdaterLocalFeedLatestMetadata,
   buildWindowsUpdaterSmokeEnv,
   bumpPatchVersion,
+  filterWindowsUpdaterInstallerProcesses,
   parseWindowsUpdaterStatusEvents,
   summarizeWindowsUpdaterStatusEvents,
 } from './windows-updater-local-feed-smoke-lib.mjs';
@@ -159,6 +162,41 @@ const waitForUpdaterStatus = async (statusPath, timeoutMs = STATUS_TIMEOUT_MS) =
   throw new Error(`updater status timed out; blockers=${lastSummary.blockers.map((blocker) => blocker.ruleId).join(',')}`);
 };
 
+const parseProcessJson = (stdout) => {
+  const text = String(stdout || '').trim();
+  if (!text) return [];
+  const parsed = JSON.parse(text);
+  return Array.isArray(parsed) ? parsed : [parsed];
+};
+
+const listWindowsUpdaterInstallerProcesses = async ({ smokeRoot, installDir }) => {
+  if (process.platform !== 'win32') return [];
+  const script = `
+    Get-CimInstance Win32_Process |
+      Where-Object { $_.Name -like 'codexmux-Setup-*.exe' -or $_.Name -eq 'old-uninstaller.exe' } |
+      Select-Object @{Name='processId';Expression={$_.ProcessId}}, @{Name='name';Expression={$_.Name}}, @{Name='commandLine';Expression={$_.CommandLine}} |
+      ConvertTo-Json -Compress
+  `;
+  const result = await runCommand('powershell.exe', ['-NoProfile', '-Command', script], { timeoutMs: 30_000 });
+  if (result.exitCode !== 0 || result.timedOut) return [];
+  return filterWindowsUpdaterInstallerProcesses({
+    smokeRoot,
+    installDir,
+    processes: parseProcessJson(result.stdout),
+  });
+};
+
+const waitForUpdaterInstallerProcesses = async ({ smokeRoot, installDir, timeoutMs = 120_000 }) => {
+  const deadline = Date.now() + timeoutMs;
+  let running = [];
+  while (Date.now() < deadline) {
+    running = await listWindowsUpdaterInstallerProcesses({ smokeRoot, installDir });
+    if (running.length === 0) return { ok: true, running: [] };
+    await sleep(1_000);
+  }
+  return { ok: false, running };
+};
+
 const normalizeRange = (rangeHeader, size) => {
   const match = /^bytes=(\d*)-(\d*)$/.exec(String(rangeHeader || ''));
   if (!match) return null;
@@ -235,18 +273,25 @@ const serveLocalFeed = async ({ feedDir, releaseDir: artifactDir, port }) => {
   };
 };
 
-const prepareLocalFeed = async ({ feedDir, latestPath }) => {
+const prepareLocalFeed = async ({ feedDir, latestPath, useSyntheticPatch = false }) => {
   const latestMetadata = yaml.load(await fs.readFile(latestPath, 'utf8'));
-  const nextVersion = process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_VERSION
-    || bumpPatchVersion(latestMetadata?.version);
-  const syntheticLatest = buildWindowsUpdaterLocalFeedLatestMetadata({
-    latestMetadata,
-    nextVersion,
-  });
+  const nextVersion = useSyntheticPatch
+    ? process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_VERSION || bumpPatchVersion(latestMetadata?.version)
+    : latestMetadata?.version;
+  const localLatest = useSyntheticPatch
+    ? buildWindowsUpdaterLocalFeedLatestMetadata({
+        latestMetadata,
+        nextVersion,
+      })
+    : latestMetadata;
 
   await fs.mkdir(feedDir, { recursive: true });
-  await fs.writeFile(path.join(feedDir, 'latest.yml'), yaml.dump(syntheticLatest, { lineWidth: -1 }));
-  return { nextVersion, latestMetadata: syntheticLatest };
+  await fs.writeFile(path.join(feedDir, 'latest.yml'), yaml.dump(localLatest, { lineWidth: -1 }));
+  return {
+    nextVersion,
+    latestMetadata: localLatest,
+    mode: useSyntheticPatch ? 'synthetic-patch' : 'baseline-release-artifacts',
+  };
 };
 
 const runPostInstallLaunchSmoke = async ({ appExe, smokeRoot }) => {
@@ -351,11 +396,7 @@ const main = async () => {
   }
 
   const latestPath = path.join(releaseDir, 'latest.yml');
-  const installerPath = path.resolve(
-    process.env.CODEXMUX_WINDOWS_INSTALLER_PATH
-    || findWindowsInstaller(releaseDir)
-    || '',
-  );
+  let installerPath = null;
   const smokeRoot = process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_SMOKE_ROOT
     || await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-updater-local-feed-smoke-'));
   const feedDir = path.join(smokeRoot, 'feed');
@@ -372,11 +413,29 @@ const main = async () => {
   const paths = resolveInstalledAppPaths(installDir);
 
   try {
+    await assertExists(latestPath, 'latest-yml-present', checks);
+    const latestMetadata = yaml.load(await fs.readFile(latestPath, 'utf8'));
+    const latestVersion = typeof latestMetadata?.version === 'string' ? latestMetadata.version : null;
+    if (!latestVersion) throw new Error('latest.yml must include version.');
+
+    const explicitInstaller = process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_BASE_INSTALLER_PATH
+      || process.env.CODEXMUX_WINDOWS_INSTALLER_PATH;
+    const baselineInstaller = explicitInstaller || findWindowsInstallerBelowVersion(releaseDir, latestVersion);
+    const useSyntheticPatch = !baselineInstaller
+      && process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_ALLOW_SYNTHETIC === '1';
+
+    if (!baselineInstaller && !useSyntheticPatch) {
+      throw new Error(`Windows updater local feed smoke requires a baseline installer below ${latestVersion}; set CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_BASE_INSTALLER_PATH or CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_ALLOW_SYNTHETIC=1.`);
+    }
+
+    installerPath = path.resolve(baselineInstaller || findWindowsInstaller(releaseDir) || '');
     if (!installerPath) throw new Error('Windows installer not found under release/.');
     await assertExists(installerPath, 'installer-present', checks);
-    await assertExists(latestPath, 'latest-yml-present', checks);
+    const installerVersion = getWindowsInstallerVersion(installerPath);
+    if (installerVersion) checks.push(`installer-version-${installerVersion}`);
 
-    await prepareLocalFeed({ feedDir, latestPath });
+    const feed = await prepareLocalFeed({ feedDir, latestPath, useSyntheticPatch });
+    checks.push(`local-feed-mode-${feed.mode}`);
     checks.push('local-feed-latest-yml');
 
     const port = Number(process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_PORT || await getFreePort());
@@ -426,6 +485,16 @@ const main = async () => {
     updateLaunchResult = updaterAttempt.updateLaunchResult;
     checks.push(...statusSummary.checks);
     checks.push('updater-app-exit-after-quit-and-install');
+
+    const installerSettle = await waitForUpdaterInstallerProcesses({
+      smokeRoot,
+      installDir,
+      timeoutMs: Number(process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_INSTALLER_SETTLE_TIMEOUT_MS || 120_000),
+    });
+    if (!installerSettle.ok) {
+      throw new Error(`updater installer processes did not settle: ${JSON.stringify(installerSettle.running)}`);
+    }
+    checks.push('updater-installer-processes-settled');
 
     postInstallLaunchResult = await runPostInstallLaunchSmoke({ appExe: paths.appExe, smokeRoot });
     if (postInstallLaunchResult.exitCode !== 0 || postInstallLaunchResult.timedOut) {

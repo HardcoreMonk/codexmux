@@ -19,6 +19,7 @@ import {
 } from './windows-installer-smoke-lib.mjs';
 import {
   buildWindowsUpdaterSmokeEnv,
+  filterWindowsUpdaterInstallerProcesses,
   parseWindowsUpdaterStatusEvents,
   summarizeWindowsUpdaterStatusEvents,
 } from './windows-updater-local-feed-smoke-lib.mjs';
@@ -271,6 +272,41 @@ const waitForUpdaterStatus = async (statusPath, timeoutMs = STATUS_TIMEOUT_MS) =
   throw new Error(`published updater status timed out; blockers=${lastSummary.blockers.map((blocker) => blocker.ruleId).join(',')}`);
 };
 
+const parseProcessJson = (stdout) => {
+  const text = String(stdout || '').trim();
+  if (!text) return [];
+  const parsed = JSON.parse(text);
+  return Array.isArray(parsed) ? parsed : [parsed];
+};
+
+const listWindowsUpdaterInstallerProcesses = async ({ smokeRoot, installDir }) => {
+  if (process.platform !== 'win32') return [];
+  const script = `
+    Get-CimInstance Win32_Process |
+      Where-Object { $_.Name -like 'codexmux-Setup-*.exe' -or $_.Name -eq 'old-uninstaller.exe' } |
+      Select-Object @{Name='processId';Expression={$_.ProcessId}}, @{Name='name';Expression={$_.Name}}, @{Name='commandLine';Expression={$_.CommandLine}} |
+      ConvertTo-Json -Compress
+  `;
+  const result = await runCommand('powershell.exe', ['-NoProfile', '-Command', script], { timeoutMs: 30_000 });
+  if (result.exitCode !== 0 || result.timedOut) return [];
+  return filterWindowsUpdaterInstallerProcesses({
+    smokeRoot,
+    installDir,
+    processes: parseProcessJson(result.stdout),
+  });
+};
+
+const waitForUpdaterInstallerProcesses = async ({ smokeRoot, installDir, timeoutMs = 120_000 }) => {
+  const deadline = Date.now() + timeoutMs;
+  let running = [];
+  while (Date.now() < deadline) {
+    running = await listWindowsUpdaterInstallerProcesses({ smokeRoot, installDir });
+    if (running.length === 0) return { ok: true, running: [] };
+    await sleep(1_000);
+  }
+  return { ok: false, running };
+};
+
 const runPostInstallLaunchSmoke = async ({ appExe, smokeRoot }) => {
   let lastResult = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
@@ -490,6 +526,16 @@ const main = async () => {
     updateLaunchResult = updaterAttempt.updateLaunchResult;
     checks.push(...statusSummary.checks);
     checks.push('updater-app-exit-after-published-quit-and-install');
+
+    const installerSettle = await waitForUpdaterInstallerProcesses({
+      smokeRoot,
+      installDir,
+      timeoutMs: Number(process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INSTALLER_SETTLE_TIMEOUT_MS || 120_000),
+    });
+    if (!installerSettle.ok) {
+      throw new Error(`published updater installer processes did not settle: ${JSON.stringify(installerSettle.running)}`);
+    }
+    checks.push('updater-installer-processes-settled');
 
     postInstallLaunchResult = await runPostInstallLaunchSmoke({ appExe: paths.appExe, smokeRoot });
     if (postInstallLaunchResult.exitCode !== 0 || postInstallLaunchResult.timedOut) {

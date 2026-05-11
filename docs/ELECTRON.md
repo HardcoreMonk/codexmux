@@ -25,6 +25,7 @@ corepack pnpm smoke:windows:installer-install
 corepack pnpm smoke:windows:installer-runtime-v2
 corepack pnpm smoke:windows:updater-local-feed
 corepack pnpm smoke:windows:updater-published-channel
+corepack pnpm smoke:windows:updater-published-install
 corepack pnpm smoke:windows:package-gate
 ```
 
@@ -106,6 +107,22 @@ corepack pnpm smoke:windows:updater-published-channel
 
 이 smoke는 설치나 update를 수행하지 않습니다. `electron-builder.yml`의 GitHub publish owner/repo에서 published release channel을 read-only로 확인합니다. 최신 published release에 `latest.yml`, installer, matching `.blockmap`, newer semver, download URL이 없으면 blocker로 실패합니다.
 
+Prerelease asset 검증이 필요하면 다음 환경 값을 함께 사용합니다.
+
+```bash
+CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INCLUDE_PRERELEASE=1 \
+CODEXMUX_WINDOWS_UPDATER_CURRENT_VERSION=0.4.2 \
+corepack pnpm smoke:windows:updater-published-channel
+```
+
+Published install smoke:
+
+```bash
+corepack pnpm smoke:windows:updater-published-install
+```
+
+이 smoke는 설치된 낮은 버전 앱에서 GitHub-hosted release로 update apply를 시도합니다. `v0.4.3` prerelease evidence에서는 read-only metadata는 통과했지만 NSIS `--updated` installer hang 때문에 stable/default channel 승격을 보류합니다.
+
 ## Electron 런타임 v2 smoke
 
 Electron은 웹/PWA와 같은 React runtime v2 terminal hook을 사용합니다.
@@ -135,7 +152,7 @@ corepack pnpm smoke:windows:installer-runtime-v2
 
 - Windows package가 실제로 빌드되었는지 확인합니다.
 - `release/latest.yml`, installer exe, `.blockmap` asset이 일치하는지 확인합니다.
-- 설치된 앱에서 published update `quitAndInstall` evidence를 남깁니다.
+- 설치된 앱에서 published update apply evidence를 남깁니다. `quitAndInstall`/NSIS `--updated` 경로가 멈추면 stable channel로 승격하지 않습니다.
 - 내부 전용 배포에서는 public code signing certificate trust와 SmartScreen reputation을 release blocker로 보지 않습니다.
 - 설치 경고나 내부 신뢰 절차는 release note와 설치 안내에 기록합니다.
 - 장시간 실제 workspace 사용을 내부 사용자 3~5명으로 검증합니다.
