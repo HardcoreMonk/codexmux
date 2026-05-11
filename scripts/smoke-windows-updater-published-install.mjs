@@ -49,6 +49,17 @@ const summarizeCommandResult = (result) => {
   };
 };
 
+const parsePackagedLaunchPayload = (stdout) => {
+  const content = String(stdout || '').trim();
+  const jsonStart = content.indexOf('{');
+  if (jsonStart < 0) return null;
+  try {
+    return JSON.parse(content.slice(jsonStart));
+  } catch {
+    return null;
+  }
+};
+
 const buildArtifactPayload = ({
   ok,
   code,
@@ -362,7 +373,7 @@ const waitForUpdaterInstallerProcesses = async ({
   return { ok: false, running };
 };
 
-const runPostInstallLaunchSmoke = async ({ appExe, smokeRoot }) => {
+const runPostInstallLaunchSmoke = async ({ appExe, smokeRoot, expectedVersion }) => {
   let lastResult = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     lastResult = await runCommand(process.execPath, ['scripts/smoke-windows-packaged-launch.mjs'], {
@@ -374,7 +385,14 @@ const runPostInstallLaunchSmoke = async ({ appExe, smokeRoot }) => {
       },
       timeoutMs: 90_000,
     });
-    if (lastResult.exitCode === 0 && !lastResult.timedOut) return lastResult;
+    const launchPayload = parsePackagedLaunchPayload(lastResult.stdout);
+    if (
+      lastResult.exitCode === 0
+      && !lastResult.timedOut
+      && launchPayload?.health?.version === expectedVersion
+    ) {
+      return lastResult;
+    }
     await sleep(5_000);
   }
   return lastResult;
@@ -648,7 +666,11 @@ const main = async () => {
     }
     checks.push('updater-installer-processes-settled');
 
-    postInstallLaunchResult = await runPostInstallLaunchSmoke({ appExe: paths.appExe, smokeRoot });
+    postInstallLaunchResult = await runPostInstallLaunchSmoke({
+      appExe: paths.appExe,
+      smokeRoot,
+      expectedVersion: latestMetadata.version,
+    });
     if (postInstallLaunchResult.exitCode !== 0 || postInstallLaunchResult.timedOut) {
       throw new Error(`post-update installed app launch smoke failed: ${JSON.stringify({
         exitCode: postInstallLaunchResult.exitCode,
@@ -659,6 +681,13 @@ const main = async () => {
       })}`);
     }
     checks.push('post-update-installed-app-launch-smoke');
+
+    const postInstallPayload = parsePackagedLaunchPayload(postInstallLaunchResult.stdout);
+    const postInstallVersion = postInstallPayload?.health?.version ?? null;
+    if (postInstallVersion !== latestMetadata.version) {
+      throw new Error(`post-update installed app version mismatch: expected ${latestMetadata.version}, got ${postInstallVersion ?? 'null'}`);
+    }
+    checks.push('post-update-installed-app-version');
 
     uninstallResult = await cleanupInstalledApp(installDir);
     if (uninstallResult.exitCode !== 0 || uninstallResult.timedOut) {

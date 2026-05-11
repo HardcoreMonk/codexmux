@@ -302,6 +302,9 @@ const quitAndInstallUpdate = ({
     });
     fs.mkdirSync(path.dirname(installerPath), { recursive: true });
     fs.copyFileSync(downloadedFile, installerPath);
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'windows-copied-installer-launched', {
+      downloadedFile: installerPath,
+    });
     const child = spawn(
       installerPath,
       buildWindowsUpdaterInstallArgs({
@@ -351,7 +354,7 @@ const setupAutoUpdater = () => {
   }
 
   autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.autoInstallOnAppQuit = false;
 
   autoUpdater.on('checking-for-update', () => {
     appendUpdaterSmokeStatus(updaterSmokeConfig, 'checking-for-update');
