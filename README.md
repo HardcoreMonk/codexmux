@@ -83,6 +83,7 @@ corepack pnpm dev:electron:attach
 ## 검증 명령
 
 ```bash
+corepack pnpm check:project-design
 corepack pnpm tsc --noEmit
 corepack pnpm lint
 corepack pnpm test

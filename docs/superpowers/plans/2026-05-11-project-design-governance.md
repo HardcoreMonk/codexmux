@@ -69,6 +69,37 @@ redaction_applied: true
 - `corepack pnpm test`: 상속된 `CODEXMUX_RUNTIME_*` env를 비운 뒤 통과.
 - 한국어 문서 재작성 후 `git diff --check`, lifecycle lint, `corepack pnpm lint`: 통과.
 
+## 개발 Slice - 2026-05-12 Project Design Governance Check
+
+범위: 재설계 기준 문서가 계속 존재하고 문서 맵에서 상호 참조되는지 검증하는
+project-local check를 추가합니다.
+
+파일:
+
+- `scripts/project-design-governance-check-lib.mjs`
+- `scripts/project-design-governance-check.mjs`
+- `tests/unit/scripts/project-design-governance-check-lib.test.ts`
+- `package.json`
+- `README.md`
+- `docs/README.md`
+
+불변 조건:
+
+- 런타임 동작, 스키마, 공개 API, 배포, 패키지 산출물 동작은 변경하지 않습니다.
+- 검증 명령 추가 외에 release gate 의미를 바꾸지 않습니다.
+
+검증:
+
+- RED: `corepack pnpm test tests/unit/scripts/project-design-governance-check-lib.test.ts`가
+  누락된 모듈과 줄바꿈 reference 사례에서 실패하는 것을 확인했습니다.
+- GREEN: `corepack pnpm test tests/unit/scripts/project-design-governance-check-lib.test.ts`
+  통과.
+- 실제 check: `corepack pnpm check:project-design` 통과.
+- `corepack pnpm audit:windows-platform`: 통과.
+- `corepack pnpm lint`: 통과.
+- `corepack pnpm tsc --noEmit`: 통과.
+- `corepack pnpm test`: 상속된 `CODEXMUX_RUNTIME_*` env를 비운 뒤 693 passed / 1 skipped.
+
 ## Lifecycle Gate Evidence
 
 - Stage: `superpowers:writing-plans`
