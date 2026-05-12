@@ -63,6 +63,7 @@ const createService = (overrides: Partial<Parameters<typeof createTimelineResume
       parseSessionName: vi.fn(() => ({ wsId: 'ws-1' })),
       updateTabAgentSessionId: vi.fn(),
       readTabAgentJsonlPath: vi.fn(async () => null),
+      readTabUserMessageClaim: vi.fn(async () => null),
       getSessionCwd: vi.fn(async () => '/workspace'),
       isAllowedJsonlPath: vi.fn(() => true),
       existsPath: vi.fn(() => true),
@@ -131,6 +132,69 @@ describe('timeline resume session service', () => {
     )).resolves.toMatchObject({
       jsonlPath: '/tmp/active.jsonl',
       sessionId: 'active',
+    });
+  });
+
+  it('adopts a newer JSONL only when it matches the tab prompt claim', async () => {
+    const resolveJsonlPathForClaim = vi.fn(async () => ({
+      jsonlPath: '/tmp/latest.jsonl',
+      sessionId: 'latest',
+      mtimeMs: 200,
+    }));
+    const provider = makeProvider({
+      resolveLatestJsonlPath: vi.fn(async () => ({
+        jsonlPath: '/tmp/latest.jsonl',
+        sessionId: 'latest',
+        mtimeMs: 200,
+      })),
+      resolveJsonlPathForClaim,
+    } as Partial<IAgentProvider>);
+    const { service } = createService({
+      checkJsonlState: vi.fn(async () => ({ idle: true, interrupted: false })),
+      readTabUserMessageClaim: vi.fn(async () => ({
+        message: 'implement the approved fix',
+        sentAt: 1_000,
+      })),
+    } as Partial<Parameters<typeof createTimelineResumeSessionService>[0]>);
+
+    await expect(service.resolveActiveOrLatestJsonl(
+      provider,
+      'codexmux:tab',
+      '/tmp/active.jsonl',
+      'active',
+    )).resolves.toMatchObject({
+      jsonlPath: '/tmp/latest.jsonl',
+      sessionId: 'latest',
+    });
+
+    expect(resolveJsonlPathForClaim).toHaveBeenCalledWith('/workspace', {
+      message: 'implement the approved fix',
+      sentAt: 1_000,
+    });
+  });
+
+  it('does not replace stored JSONL with cwd latest without a tab prompt claim', async () => {
+    const provider = makeProvider({
+      resolveLatestJsonlPath: vi.fn(async () => ({
+        jsonlPath: '/tmp/latest.jsonl',
+        sessionId: 'latest',
+        mtimeMs: 200,
+      })),
+      resolveJsonlPath: vi.fn(async () => '/tmp/stored.jsonl'),
+    });
+    const { service } = createService({
+      statFileMtimeMs: vi.fn(async (filePath: string) => filePath.includes('latest') ? 200 : 100),
+      checkJsonlState: vi.fn(async () => ({ interrupted: false })),
+      extractSessionIdFromJsonlPath: vi.fn((filePath: string) => filePath.includes('stored') ? 'stored' : 'latest'),
+    });
+
+    await expect(service.resolveStoredOrLatestJsonl(
+      provider,
+      'codexmux:tab',
+      'stored',
+    )).resolves.toMatchObject({
+      jsonlPath: '/tmp/stored.jsonl',
+      sessionId: 'stored',
     });
   });
 

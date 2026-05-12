@@ -9,6 +9,7 @@ import {
   updateTabAgentJsonlPath,
   updateTabAgentSummary,
   updateTabLastUserMessage,
+  readTabUserMessageClaim,
   parseSessionName,
 } from './layout-store';
 import { getStatusManager } from './status-manager';
@@ -25,6 +26,7 @@ import {
   fileWatchers,
   type ITimelineConnection,
   sessionWatchers,
+  subscribeTimelineSessionClaimRefresh,
   timelineConnections as connections,
 } from '@/lib/timeline-server-state';
 import {
@@ -114,6 +116,7 @@ const timelineResumeSessionService = createTimelineResumeSessionService({
     await updateTabAgentSessionId(sessionName, provider, sessionId).catch(() => {});
   },
   readTabAgentJsonlPath,
+  readTabUserMessageClaim,
   getSessionCwd,
   isAllowedJsonlPath,
   existsPath: existsSync,
@@ -274,6 +277,48 @@ const getSessionConnections = (sessionName: string): ITimelineConnection[] => {
   return result;
 };
 
+const CLAIM_REFRESH_DELAYS_MS = [0, 250, 750, 1500, 3000, 5000];
+const claimRefreshInFlight = new WeakSet<WebSocket>();
+
+const refreshConnectionForOwnedClaim = async (conn: ITimelineConnection): Promise<boolean> => {
+  if (conn.cleaned || claimRefreshInFlight.has(conn.ws)) return false;
+  claimRefreshInFlight.add(conn.ws);
+  try {
+    const owned = await timelineResumeSessionService.resolveOwnedLatestJsonl(
+      conn.provider,
+      conn.sessionName,
+      conn.currentJsonlPath,
+    );
+    if (!owned || conn.cleaned) return false;
+
+    if (conn.currentJsonlPath) {
+      unsubscribeFromFile(conn.ws, conn.currentJsonlPath);
+    }
+    conn.currentJsonlPath = owned.jsonlPath;
+    await updateTabAgentSessionId(conn.sessionName, conn.provider, owned.sessionId).catch(() => {});
+    timelineResumeSessionService.sendSessionChanged(conn.ws, owned.sessionId, 'new-session-started');
+    await subscribeAndUpdateSummary(conn.ws, owned.jsonlPath, owned.sessionId, conn.sessionName, conn.provider);
+    return true;
+  } finally {
+    claimRefreshInFlight.delete(conn.ws);
+  }
+};
+
+const refreshSessionForOwnedClaim = async (sessionName: string): Promise<void> => {
+  await Promise.all(getSessionConnections(sessionName).map(refreshConnectionForOwnedClaim));
+};
+
+subscribeTimelineSessionClaimRefresh((sessionName) => {
+  for (const delayMs of CLAIM_REFRESH_DELAYS_MS) {
+    const timer = setTimeout(() => {
+      refreshSessionForOwnedClaim(sessionName).catch((err) => {
+        log.warn('timeline claim refresh failed: %s', err instanceof Error ? err.message : String(err));
+      });
+    }, delayMs);
+    (timer as ReturnType<typeof setTimeout> & { unref?: () => void }).unref?.();
+  }
+});
+
 const cleanup = (conn: ITimelineConnection) => {
   if (conn.cleaned) return;
   conn.cleaned = true;
@@ -372,7 +417,15 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
         }
 
         const effectiveSessionId = info.sessionId ?? hintSessionId;
-        if (!effectiveSessionId) return null;
+        if (!effectiveSessionId) {
+          const owned = await timelineResumeSessionService.resolveOwnedLatestJsonl(provider, sessionName, null);
+          return owned
+            ? {
+                jsonlPath: owned.jsonlPath,
+                sessionId: owned.sessionId,
+              }
+            : null;
+        }
 
         const resolved = await timelineResumeSessionService.resolveStoredOrLatestJsonl(provider, sessionName, effectiveSessionId);
         if (!resolved) return null;
@@ -388,6 +441,15 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
           return;
         }
         return timelineResumeSessionService.resolveResumeMessage(ws, resumeConn, payload);
+      },
+      resolveClaimedJsonl: async (currentJsonlPath) => {
+        const owned = await timelineResumeSessionService.resolveOwnedLatestJsonl(provider, sessionName, currentJsonlPath);
+        return owned
+          ? {
+              jsonlPath: owned.jsonlPath,
+              sessionId: owned.sessionId,
+            }
+          : null;
       },
       updateTabAgentSessionId: async (sessionId) => {
         await updateTabAgentSessionId(sessionName, provider, sessionId).catch(() => {});
@@ -512,7 +574,15 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
       sendEmptyInit(ws, effectiveSessionId);
     }
   } else if (!isAgentStarting) {
-    sendEmptyInit(ws);
+    const owned = await timelineResumeSessionService.resolveOwnedLatestJsonl(provider, sessionName, null);
+    if (owned) {
+      conn.currentJsonlPath = owned.jsonlPath;
+      await updateTabAgentSessionId(conn.sessionName, provider, owned.sessionId).catch(() => {});
+      timelineResumeSessionService.sendSessionChanged(ws, owned.sessionId, 'new-session-started');
+      await subscribeAndUpdateSummary(ws, owned.jsonlPath, owned.sessionId, conn.sessionName, provider);
+    } else {
+      sendEmptyInit(ws);
+    }
   }
 
   if (conn.cleaned) return;
@@ -538,16 +608,16 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
 
           await subscribeAndUpdateSummary(c.ws, resolved.jsonlPath, resolved.sessionId, sessionName, provider);
         } else if (!newInfo.jsonlPath && newInfo.status === 'not-running') {
-          const latest = await timelineResumeSessionService.resolveLatestCwdJsonl(provider, sessionName, c.currentJsonlPath);
-          if (latest) {
+          const owned = await timelineResumeSessionService.resolveOwnedLatestJsonl(provider, sessionName, c.currentJsonlPath);
+          if (owned) {
             if (c.currentJsonlPath) {
               unsubscribeFromFile(c.ws, c.currentJsonlPath);
             }
-            c.currentJsonlPath = latest.jsonlPath;
+            c.currentJsonlPath = owned.jsonlPath;
 
-            await updateTabAgentSessionId(sessionName, provider, latest.sessionId).catch(() => {});
-            timelineResumeSessionService.sendSessionChanged(c.ws, latest.sessionId, 'new-session-started');
-            await subscribeAndUpdateSummary(c.ws, latest.jsonlPath, latest.sessionId, sessionName, provider);
+            await updateTabAgentSessionId(sessionName, provider, owned.sessionId).catch(() => {});
+            timelineResumeSessionService.sendSessionChanged(c.ws, owned.sessionId, 'new-session-started');
+            await subscribeAndUpdateSummary(c.ws, owned.jsonlPath, owned.sessionId, sessionName, provider);
             continue;
           }
 
@@ -564,6 +634,18 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
           await updateTabAgentSessionId(sessionName, provider, newInfo.sessionId).catch(() => {});
         }
         for (const c of wsConns) {
+          const owned = await timelineResumeSessionService.resolveOwnedLatestJsonl(provider, sessionName, c.currentJsonlPath);
+          if (owned) {
+            if (c.currentJsonlPath) {
+              unsubscribeFromFile(c.ws, c.currentJsonlPath);
+            }
+            c.currentJsonlPath = owned.jsonlPath;
+            await updateTabAgentSessionId(sessionName, provider, owned.sessionId).catch(() => {});
+            timelineResumeSessionService.sendSessionChanged(c.ws, owned.sessionId, 'new-session-started');
+            await subscribeAndUpdateSummary(c.ws, owned.jsonlPath, owned.sessionId, sessionName, provider);
+            continue;
+          }
+
           if (c.currentJsonlPath) {
             const currentFile = path.basename(c.currentJsonlPath, '.jsonl');
             if (newInfo.sessionId && currentFile !== newInfo.sessionId) {
@@ -588,16 +670,27 @@ export const handleTimelineConnection = async (ws: WebSocket, request: IncomingM
     const recheckInfo = await provider.detectActiveSession(panePid);
     if (conn.cleaned) return;
 
-    if (recheckInfo.status === 'running' && recheckInfo.sessionId && !conn.currentJsonlPath) {
-      await updateTabAgentSessionId(sessionName, provider, recheckInfo.sessionId).catch(() => {});
+    if (recheckInfo.status === 'running' && !conn.currentJsonlPath) {
+      if (recheckInfo.sessionId) {
+        await updateTabAgentSessionId(sessionName, provider, recheckInfo.sessionId).catch(() => {});
+      }
 
       if (recheckInfo.jsonlPath) {
-        conn.currentJsonlPath = recheckInfo.jsonlPath;
-        timelineResumeSessionService.sendSessionChanged(ws, recheckInfo.sessionId, 'new-session-started');
-        await subscribeAndUpdateSummary(ws, recheckInfo.jsonlPath, recheckInfo.sessionId, sessionName, provider);
+        const resolved = await timelineResumeSessionService.resolveActiveOrLatestJsonl(provider, sessionName, recheckInfo.jsonlPath, recheckInfo.sessionId);
+        conn.currentJsonlPath = resolved.jsonlPath;
+        timelineResumeSessionService.sendSessionChanged(ws, resolved.sessionId, 'new-session-started');
+        await subscribeAndUpdateSummary(ws, resolved.jsonlPath, resolved.sessionId, sessionName, provider);
       } else if (recheckInfo.cwd) {
-        timelineResumeSessionService.sendSessionChanged(ws, recheckInfo.sessionId, 'session-waiting');
-        sendEmptyInit(ws, recheckInfo.sessionId, true);
+        const owned = await timelineResumeSessionService.resolveOwnedLatestJsonl(provider, sessionName, null);
+        if (owned) {
+          conn.currentJsonlPath = owned.jsonlPath;
+          await updateTabAgentSessionId(sessionName, provider, owned.sessionId).catch(() => {});
+          timelineResumeSessionService.sendSessionChanged(ws, owned.sessionId, 'new-session-started');
+          await subscribeAndUpdateSummary(ws, owned.jsonlPath, owned.sessionId, sessionName, provider);
+        } else {
+          timelineResumeSessionService.sendSessionChanged(ws, recheckInfo.sessionId ?? '', 'session-waiting');
+          sendEmptyInit(ws, recheckInfo.sessionId ?? '', true);
+        }
       }
     } else {
       sendEmptyInit(ws, '', true);

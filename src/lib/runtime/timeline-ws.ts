@@ -3,6 +3,7 @@ import { recordPerfCounter } from '@/lib/perf-metrics';
 import type { IAgentProvider } from '@/lib/providers';
 import type { IRuntimeTimelineSessionChangedEvent } from '@/lib/runtime/contracts';
 import { getRuntimeSupervisor, type IRuntimeSupervisor } from '@/lib/runtime/supervisor';
+import { subscribeTimelineSessionClaimRefresh } from '@/lib/timeline-server-state';
 import type { ISessionInfo, TTimelineClientMessage, TTimelineServerMessage } from '@/types/timeline';
 
 export interface IResolvedTimelineJsonl {
@@ -21,6 +22,7 @@ export interface IRuntimeTimelineConnectionInput {
   handleResume: (
     payload: { sessionId: string; tmuxSession: string },
   ) => Promise<IResolvedTimelineJsonl | null | void> | IResolvedTimelineJsonl | null | void;
+  resolveClaimedJsonl?: (currentJsonlPath: string | null) => Promise<IResolvedTimelineJsonl | null>;
   updateTabAgentSessionId: (sessionId: string) => Promise<void> | void;
 }
 
@@ -34,6 +36,7 @@ interface IRuntimeTimelineConnectionState {
 
 const HEARTBEAT_INTERVAL = 30_000;
 const HEARTBEAT_TIMEOUT = 90_000;
+const CLAIM_REFRESH_DELAYS_MS = [0, 250, 750, 1500, 3000, 5000];
 
 const sendJson = (ws: WebSocket, msg: TTimelineServerMessage): void => {
   if (ws.readyState === WebSocket.OPEN) {
@@ -60,6 +63,9 @@ export const handleRuntimeTimelineConnection = async (
     liveSubscribeGeneration: 0,
   };
   let lastHeartbeat = Date.now();
+  const claimRefreshTimers = new Set<ReturnType<typeof setTimeout>>();
+  let unsubscribeClaimRefresh: (() => void) | null = null;
+  let claimRefreshInFlight = false;
 
   const heartbeatTimer = setInterval(() => {
     if (Date.now() - lastHeartbeat > HEARTBEAT_TIMEOUT) {
@@ -73,6 +79,12 @@ export const handleRuntimeTimelineConnection = async (
     if (state.cleaned) return;
     state.cleaned = true;
     clearInterval(heartbeatTimer);
+    for (const timer of claimRefreshTimers) {
+      clearTimeout(timer);
+    }
+    claimRefreshTimers.clear();
+    unsubscribeClaimRefresh?.();
+    unsubscribeClaimRefresh = null;
     const liveSubscriberId = state.liveSubscriberId;
     const sessionWatchSubscriberId = state.sessionWatchSubscriberId;
     state.liveSubscriberId = null;
@@ -132,6 +144,43 @@ export const handleRuntimeTimelineConnection = async (
     sendJson(ws, result.init);
     await input.updateTabAgentSessionId(result.init.sessionId);
   };
+
+  const refreshClaimedJsonl = async (): Promise<void> => {
+    if (state.cleaned || !input.resolveClaimedJsonl || claimRefreshInFlight) return;
+
+    claimRefreshInFlight = true;
+    try {
+      const resolved = await input.resolveClaimedJsonl(state.currentJsonlPath);
+      if (state.cleaned || !resolved || resolved.jsonlPath === state.currentJsonlPath) return;
+
+      sendJson(ws, {
+        type: 'timeline:session-changed',
+        newSessionId: resolved.sessionId,
+        reason: 'new-session-started',
+      });
+      recordPerfCounter('runtime_v2.timeline_ws.default.session_changed');
+      await subscribeLive(resolved);
+    } finally {
+      claimRefreshInFlight = false;
+    }
+  };
+
+  const scheduleClaimRefresh = (sessionName: string): void => {
+    if (state.cleaned || sessionName !== input.sessionName || !input.resolveClaimedJsonl) return;
+
+    for (const delayMs of CLAIM_REFRESH_DELAYS_MS) {
+      const timer = setTimeout(() => {
+        claimRefreshTimers.delete(timer);
+        void refreshClaimedJsonl();
+      }, delayMs);
+      (timer as ReturnType<typeof setTimeout> & { unref?: () => void }).unref?.();
+      claimRefreshTimers.add(timer);
+    }
+  };
+
+  if (input.resolveClaimedJsonl) {
+    unsubscribeClaimRefresh = subscribeTimelineSessionClaimRefresh(scheduleClaimRefresh);
+  }
 
   const handleSessionChanged = async (event: IRuntimeTimelineSessionChangedEvent): Promise<void> => {
     if (state.cleaned) return;

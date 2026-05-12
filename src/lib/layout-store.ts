@@ -627,6 +627,36 @@ export const updateTabLastUserMessage = (
     return true;
   });
 
+export const updateTabUserMessageClaim = (
+  sessionName: string,
+  lastUserMessage: string,
+  sentAt = Date.now(),
+): Promise<void> =>
+  mutateTab(sessionName, (tab) => {
+    const nextMessage = lastUserMessage.trim();
+    if (!nextMessage) return false;
+    if (tab.lastUserMessage === nextMessage && tab.lastUserMessageAt === sentAt) return false;
+    tab.lastUserMessage = nextMessage;
+    tab.lastUserMessageAt = sentAt;
+    return true;
+  });
+
+export const readTabUserMessageClaim = async (
+  sessionName: string,
+): Promise<{ message: string; sentAt: number } | null> => {
+  const parsed = parseSessionName(sessionName);
+  if (!parsed) return null;
+
+  const layout = await readLayoutFile(resolveLayoutFile(parsed.wsId));
+  if (!layout) return null;
+
+  const tab = collectAllTabs(layout.root).find((t) => t.sessionName === sessionName);
+  const message = tab?.lastUserMessage?.trim();
+  const sentAt = tab?.lastUserMessageAt;
+  if (!message || typeof sentAt !== 'number' || !Number.isFinite(sentAt)) return null;
+  return { message, sentAt };
+};
+
 export const updateTabCliStatus = (
   sessionName: string,
   cliState: TCliState,

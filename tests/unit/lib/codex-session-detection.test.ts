@@ -14,6 +14,7 @@ const writeSession = async (
   sessionId: string,
   startedAt: string,
   cwd: string,
+  userMessages: Array<{ text: string; timestamp: string }> = [],
 ): Promise<string> => {
   const dir = path.join(tempHome, '.codex', 'sessions', '2026', '04', '29');
   await fs.mkdir(dir, { recursive: true });
@@ -32,6 +33,14 @@ const writeSession = async (
       type: 'turn_context',
       payload: { cwd },
     }),
+    ...userMessages.map((message) => line({
+      timestamp: message.timestamp,
+      type: 'event_msg',
+      payload: {
+        type: 'user_message',
+        message: message.text,
+      },
+    })),
   ].join('\n'));
   return filePath;
 };
@@ -117,5 +126,53 @@ describe('findCodexSessionJsonl', () => {
     );
 
     expect(meta?.sessionId).toBe(sessionA);
+  });
+
+  it('finds a same-cwd JSONL by a unique prompt claim time window', async () => {
+    await writeSession(sessionA, '2026-04-29T00:00:00.000Z', '/work/project', [
+      { text: 'older task', timestamp: '2026-04-29T00:00:03.000Z' },
+    ]);
+    await writeSession(sessionB, '2026-04-29T00:05:00.000Z', '/work/project', [
+      { text: 'implement the approved fix', timestamp: '2026-04-29T00:05:03.000Z' },
+    ]);
+
+    const { findCodexSessionJsonlByPromptClaim } = await import('@/lib/codex-session-detection');
+    const meta = await findCodexSessionJsonlByPromptClaim('/work/project', {
+      message: 'implement the approved fix',
+      sentAt: Date.parse('2026-04-29T00:05:01.000Z'),
+    });
+
+    expect(meta?.sessionId).toBe(sessionB);
+  });
+
+  it('rejects ambiguous same-cwd prompt claim matches', async () => {
+    await writeSession(sessionA, '2026-04-29T00:00:00.000Z', '/work/project', [
+      { text: 'same prompt', timestamp: '2026-04-29T00:00:03.000Z' },
+    ]);
+    await writeSession(sessionB, '2026-04-29T00:00:02.000Z', '/work/project', [
+      { text: 'same prompt', timestamp: '2026-04-29T00:00:04.000Z' },
+    ]);
+
+    const { findCodexSessionJsonlByPromptClaim } = await import('@/lib/codex-session-detection');
+    const meta = await findCodexSessionJsonlByPromptClaim('/work/project', {
+      message: 'same prompt',
+      sentAt: Date.parse('2026-04-29T00:00:01.000Z'),
+    });
+
+    expect(meta).toBeNull();
+  });
+
+  it('rejects prompt claim matches outside the ownership window', async () => {
+    await writeSession(sessionA, '2026-04-29T00:00:00.000Z', '/work/project', [
+      { text: 'stale prompt', timestamp: '2026-04-29T00:00:03.000Z' },
+    ]);
+
+    const { findCodexSessionJsonlByPromptClaim } = await import('@/lib/codex-session-detection');
+    const meta = await findCodexSessionJsonlByPromptClaim('/work/project', {
+      message: 'stale prompt',
+      sentAt: Date.parse('2026-04-29T00:30:00.000Z'),
+    });
+
+    expect(meta).toBeNull();
   });
 });

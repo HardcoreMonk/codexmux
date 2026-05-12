@@ -9,6 +9,8 @@ import type { ISessionWatcher } from '@/lib/session-detection';
 import { getChildPids, getDescendantPids, getProcessCommandLine, getProcessCwd, getProcessStartTime, isProcessRunning } from '@/lib/session-detection';
 import { getShellPath } from '@/lib/preflight';
 import { findIndexedCodexSessionJsonl } from '@/lib/session-index';
+import { parseCodexJsonlContent } from '@/lib/codex-session-parser';
+import type { IAgentPromptClaim } from '@/lib/providers/types';
 
 const execFile = promisify(execFileCb);
 
@@ -18,6 +20,9 @@ const SESSION_SCAN_LIMIT = 100;
 const WATCH_POLL_INTERVAL = 1500;
 const INSTALL_CHECK_INTERVAL = 60_000;
 const PROCESS_SESSION_START_TOLERANCE_MS = 120_000;
+const PROMPT_CLAIM_PAST_TOLERANCE_MS = 10_000;
+const PROMPT_CLAIM_FUTURE_WINDOW_MS = 5 * 60_000;
+const PROMPT_CLAIM_TAIL_BYTES = 256_000;
 
 interface ICodexProcess {
   pid: number;
@@ -43,6 +48,25 @@ interface IFindCodexSessionJsonlOptions {
 
 const extractThreadId = (value: string | null | undefined): string | null =>
   value?.match(THREAD_ID_RE)?.[1] ?? null;
+
+const normalizePromptClaimText = (value: string): string =>
+  value.replace(/\r\n/g, '\n').trim();
+
+const readTailContent = async (filePath: string, maxBytes: number): Promise<string> => {
+  const stat = await fs.stat(filePath);
+  const from = Math.max(0, stat.size - maxBytes);
+  const handle = await fs.open(filePath, 'r');
+  try {
+    const buffer = Buffer.alloc(stat.size - from);
+    await handle.read(buffer, 0, buffer.length, from);
+    const raw = buffer.toString('utf-8');
+    if (from === 0) return raw;
+    const firstNewline = raw.indexOf('\n');
+    return firstNewline >= 0 ? raw.slice(firstNewline + 1) : '';
+  } finally {
+    await handle.close();
+  }
+};
 
 const collectProcessTree = async (panePid: number, preloadedChildPids?: number[]): Promise<number[]> => {
   const direct = preloadedChildPids ?? await getChildPids(panePid);
@@ -206,6 +230,45 @@ export const findCodexSessionJsonl = async (
   return candidates.slice(0, SESSION_SCAN_LIMIT)[0] ?? null;
 };
 
+export const findCodexSessionJsonlByPromptClaim = async (
+  cwd: string | null | undefined,
+  claim: IAgentPromptClaim,
+): Promise<ICodexSessionMeta | null> => {
+  const message = normalizePromptClaimText(claim.message);
+  if (!cwd || !message || !Number.isFinite(claim.sentAt)) return null;
+
+  const lowerBound = claim.sentAt - PROMPT_CLAIM_PAST_TOLERANCE_MS;
+  const upperBound = claim.sentAt + PROMPT_CLAIM_FUTURE_WINDOW_MS;
+  const files = await collectJsonlFiles(CODEX_SESSIONS_DIR);
+  const metas = (await Promise.all(files.map(readSessionMeta)))
+    .filter((meta): meta is ICodexSessionMeta => !!meta && meta.cwd === cwd)
+    .sort((a, b) => b.mtimeMs - a.mtimeMs)
+    .slice(0, SESSION_SCAN_LIMIT);
+
+  const matches: Array<{ meta: ICodexSessionMeta; timestamp: number }> = [];
+  for (const meta of metas) {
+    let content = '';
+    try {
+      content = await readTailContent(meta.jsonlPath, PROMPT_CLAIM_TAIL_BYTES);
+    } catch {
+      continue;
+    }
+
+    const userMessages = parseCodexJsonlContent(content)
+      .filter((entry) => entry.type === 'user-message')
+      .filter((entry) => normalizePromptClaimText(entry.text) === message)
+      .filter((entry) => entry.timestamp >= lowerBound && entry.timestamp <= upperBound)
+      .sort((a, b) => b.timestamp - a.timestamp);
+
+    if (userMessages[0]) {
+      matches.push({ meta, timestamp: userMessages[0].timestamp });
+    }
+  }
+
+  if (matches.length !== 1) return null;
+  return matches[0].meta;
+};
+
 export const isCodexRunning = async (
   panePid: number,
   preloadedChildPids?: number[],
@@ -239,7 +302,6 @@ export const detectActiveCodexSession = async (
     codexProcess.cwd,
     {
       processStartedAt: codexProcess.startedAt,
-      allowCwdFallback: true,
     },
   );
   return {

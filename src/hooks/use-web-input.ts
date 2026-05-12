@@ -99,16 +99,17 @@ const useWebInput = (
       return;
     }
 
+    const message = value.trim();
+    if (!message.startsWith('/')) {
+      onMessageSent?.(message);
+    }
+
     if (value.includes('\n')) {
       sendStdin(`\x1b[200~${value}\x1b[201~\r`);
       setTimeout(() => sendStdin('\r'), 500);
     } else {
       sendStdin(value);
       setTimeout(() => sendStdin('\r'), 50);
-    }
-
-    if (!value.trim().startsWith('/')) {
-      onMessageSent?.(value.trim());
     }
 
     setValue('');

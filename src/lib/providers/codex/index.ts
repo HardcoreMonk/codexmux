@@ -8,6 +8,7 @@ import {
 import { getConfig } from '@/lib/config-store';
 import {
   detectActiveCodexSession,
+  findCodexSessionJsonlByPromptClaim,
   findCodexSessionJsonl,
   isCodexRunning,
   watchCodexSessions,
@@ -61,6 +62,17 @@ export const codexProvider: IAgentProvider = {
   },
   resolveLatestJsonlPath: async (cwd) => {
     const meta = await findCodexSessionJsonl(null, cwd, { allowCwdFallback: true });
+    return meta
+      ? {
+          sessionId: meta.sessionId,
+          jsonlPath: meta.jsonlPath,
+          mtimeMs: meta.mtimeMs,
+          startedAt: meta.startedAt,
+        }
+      : null;
+  },
+  resolveJsonlPathForClaim: async (cwd, claim) => {
+    const meta = await findCodexSessionJsonlByPromptClaim(cwd, claim);
     return meta
       ? {
           sessionId: meta.sessionId,

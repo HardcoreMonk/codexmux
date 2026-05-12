@@ -119,11 +119,18 @@ Codex JSONL은 다음 record를 status와 timeline에 사용합니다.
 - event message
 - permission/input 관련 record
 
-Codex CLI가 process 시작 뒤 JSONL을 늦게 만들 수 있으므로 session id, process start time, live process, cwd fallback 순서로 연결합니다. 일반 session list lookup에서는 cwd만으로 최신 JSONL을 선택하지 않습니다.
+Codex CLI가 process 시작 뒤 JSONL을 늦게 만들 수 있으므로 session id, process start time, live process를 먼저 봅니다. 실행 중인 Codex process가 session id를 노출하지 않는 경우에도 cwd 최신 JSONL만으로 active tab을 전환하지 않습니다. 최신 JSONL 채택은 다음 경우로 제한합니다.
+
+- 기존 JSONL이 `interrupted`로 판정되어 현재 session이 끊긴 경우
+- tab에 저장된 `lastUserMessage`/`lastUserMessageAt` claim과 JSONL 안의 user message, timestamp, cwd가 일치하고 같은 claim window 안에 중복 후보가 없는 경우
+
+Web input은 claim 저장 뒤 timeline refresh signal을 발행합니다. 이미 열린 legacy/runtime timeline socket은 짧은 재시도 창 안에서 claim 기반 resolver를 다시 실행하므로, long-lived Codex process가 session id를 노출하지 않아도 소유권이 확인된 새 JSONL로만 전환합니다.
+
+일반 session list lookup과 active tab mapping 모두 cwd만으로 최신 JSONL을 선택하지 않습니다.
 
 ## 클라이언트 필드
 
-UI와 저장 데이터는 역사적 호환성 때문에 `agentSessionId`, `agentSummary` 같은 field 이름을 유지합니다. 의미는 Codex provider session metadata입니다.
+UI와 저장 데이터는 역사적 호환성 때문에 `agentSessionId`, `agentSummary` 같은 field 이름을 유지합니다. 의미는 Codex provider session metadata입니다. `lastUserMessageAt`은 Web input이 보낸 prompt claim 시각이며, timeline이 같은 cwd의 최신 JSONL을 이 tab 소유로 볼 수 있는지 검증할 때만 사용합니다.
 
 이 field의 의미나 shape를 바꾸면 `ADR.md`와 이 문서를 함께 갱신합니다.
 

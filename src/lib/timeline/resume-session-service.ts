@@ -1,6 +1,6 @@
 import type { WebSocket } from 'ws';
 
-import type { IAgentJsonlResolution, IAgentProvider } from '@/lib/providers';
+import type { IAgentJsonlResolution, IAgentPromptClaim, IAgentProvider } from '@/lib/providers';
 import type { TTimelineServerMessage } from '@/types/timeline';
 
 type TSessionChangedReason = 'session-waiting' | 'new-session-started' | 'session-ended' | string;
@@ -30,6 +30,7 @@ interface ICreateTimelineResumeSessionServiceOptions {
     sessionId: string,
   ) => Promise<void>;
   readTabAgentJsonlPath: (sessionName: string, provider: IAgentProvider) => Promise<string | null>;
+  readTabUserMessageClaim: (sessionName: string) => Promise<IAgentPromptClaim | null>;
   getSessionCwd: (sessionName: string) => Promise<string | null>;
   isAllowedJsonlPath: (jsonlPath: string) => boolean;
   existsPath: (jsonlPath: string) => boolean;
@@ -101,12 +102,46 @@ export const createTimelineResumeSessionService = (options: ICreateTimelineResum
     }
   };
 
+  const resolveOwnedLatestJsonl = async (
+    provider: IAgentProvider,
+    sessionName: string,
+    currentJsonlPath: string | null,
+  ): Promise<IAgentJsonlResolution | null> => {
+    if (!provider.resolveJsonlPathForClaim) return null;
+
+    const claim = await options.readTabUserMessageClaim(sessionName);
+    if (!claim) return null;
+
+    const cwd = await options.getSessionCwd(sessionName);
+    if (!cwd) return null;
+
+    const owned = await provider.resolveJsonlPathForClaim(cwd, claim);
+    if (!owned || !options.isAllowedJsonlPath(owned.jsonlPath) || !options.existsPath(owned.jsonlPath)) {
+      return null;
+    }
+    if (owned.jsonlPath === currentJsonlPath) return null;
+
+    const currentMtimeMs = currentJsonlPath ? await options.statFileMtimeMs(currentJsonlPath) : null;
+    if (
+      currentMtimeMs !== null
+      && owned.mtimeMs !== undefined
+      && owned.mtimeMs <= currentMtimeMs
+    ) {
+      return null;
+    }
+
+    return owned;
+  };
+
   const resolveActiveOrLatestJsonl = async (
     provider: IAgentProvider,
     sessionName: string,
     activeJsonlPath: string,
     activeSessionId?: string | null,
   ): Promise<IAgentJsonlResolution> => {
+    const owned = await resolveOwnedLatestJsonl(provider, sessionName, activeJsonlPath);
+    if (owned) return owned;
+
     const latest = await resolveLatestCwdJsonl(provider, sessionName, activeJsonlPath);
     if (latest && await shouldPreferLatestCwdJsonl(provider, activeJsonlPath)) {
       return latest;
@@ -126,8 +161,11 @@ export const createTimelineResumeSessionService = (options: ICreateTimelineResum
   ): Promise<IAgentJsonlResolution | null> => {
     const cachedPath = await resolveCachedJsonlPath(sessionName, provider);
     const resolvedPath = cachedPath ?? await resolveJsonlPath(provider, sessionName, sessionId);
+    const owned = await resolveOwnedLatestJsonl(provider, sessionName, resolvedPath);
+    if (owned) return owned;
+
     const latest = await resolveLatestCwdJsonl(provider, sessionName, resolvedPath);
-    if (latest) return latest;
+    if (latest && resolvedPath && await shouldPreferLatestCwdJsonl(provider, resolvedPath)) return latest;
     if (!resolvedPath) return null;
 
     return {
@@ -193,6 +231,7 @@ export const createTimelineResumeSessionService = (options: ICreateTimelineResum
   return {
     resolveJsonlPath,
     resolveLatestCwdJsonl,
+    resolveOwnedLatestJsonl,
     resolveActiveOrLatestJsonl,
     resolveStoredOrLatestJsonl,
     resolveResumeMessage,

@@ -106,6 +106,9 @@ Codex session mapping은 다음 source를 조합합니다.
 2. terminal runtime metadata
 3. Codex JSONL `session_meta`, `turn_context`
 4. cwd와 process start time fallback
+5. tab-scoped prompt claim
+
+Process start time으로 현재 JSONL을 특정할 수 없는 long-lived Codex process는 tab의 prompt claim으로만 최신 same-cwd JSONL을 채택합니다. Prompt text, claim timestamp, JSONL user message timestamp, cwd가 맞고 같은 window 안의 중복 후보가 없을 때만 `agentSessionId`/`agentJsonlPath`를 갱신합니다. Claim 저장은 timeline refresh signal을 발행하고, 열린 legacy/runtime timeline socket은 짧은 재시도 창 안에서 같은 소유권 검증을 다시 실행합니다. 이 신호가 없으면 같은 cwd의 다른 tab session과 섞일 수 있으므로 최신 JSONL로 자동 전환하지 않습니다.
 
 Windows에서는 `/proc`, `pgrep`, `ps`, `lsof` 같은 POSIX primitive를 직접 호출하지 않고 process inspector adapter를 사용합니다.
 

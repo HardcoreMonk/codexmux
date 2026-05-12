@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import { describe, expect, it, vi } from 'vitest';
 import { handleRuntimeTimelineConnection } from '@/lib/runtime/timeline-ws';
+import { requestTimelineSessionClaimRefresh } from '@/lib/timeline-server-state';
 import type {
   IRuntimeTimelineLiveAppendEvent,
   IRuntimeTimelineLiveSubscribeInput,
@@ -367,5 +368,38 @@ describe('runtime timeline websocket bridge', () => {
       sessionName: 'pt-ws-a-pane-b-tab-c',
       panelType: 'codex',
     }));
+  });
+
+  it('switches runtime live subscription when a tab prompt claim resolves a newer jsonl path', async () => {
+    const fake = createSupervisor();
+    const ws = new FakeSocket();
+    const resolveClaimedJsonl = vi.fn(async () => ({
+      jsonlPath: selectedJsonlPath,
+      sessionId: 'session-b',
+    }));
+    vi.mocked(fake.supervisor.subscribeTimelineLive)
+      .mockImplementationOnce(async () => ({ subscriberId: 'sub-live-a', subscribed: true, init: initMessage }))
+      .mockImplementationOnce(async () => ({ subscriberId: 'sub-live-b', subscribed: true, init: selectedInitMessage }));
+
+    await handleRuntimeTimelineConnection(ws as never, createConnectionInput({
+      supervisor: fake.supervisor,
+      resolveClaimedJsonl,
+    }));
+
+    requestTimelineSessionClaimRefresh('pt-ws-a-pane-b-tab-c');
+
+    await vi.waitFor(() => {
+      expect(resolveClaimedJsonl).toHaveBeenCalledWith(sessionJsonlPath);
+      expect(fake.supervisor.subscribeTimelineLive).toHaveBeenCalledTimes(2);
+    });
+
+    expect(ws.sent).toContainEqual({
+      type: 'timeline:session-changed',
+      newSessionId: 'session-b',
+      reason: 'new-session-started',
+    });
+    expect(fake.supervisor.unsubscribeTimelineLive).toHaveBeenCalledWith('sub-live-a');
+
+    ws.close(1000, 'test close');
   });
 });

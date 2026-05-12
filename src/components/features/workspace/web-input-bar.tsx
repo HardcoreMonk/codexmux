@@ -79,12 +79,21 @@ const WebInputBar = ({
   const tc = useTranslations('common');
   const { entries, isLoading, isError, fetchHistory, addHistory, deleteHistory } =
     useMessageHistory({ wsId });
+  const persistUserMessageClaim = useCallback((message: string) => {
+    if (!sessionName) return;
+    fetch('/api/layout/session-claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionName, message }),
+    }).catch(() => {});
+  }, [sessionName]);
   const handleMessageSent = useCallback(
     (message: string) => {
       addHistory(message);
+      persistUserMessageClaim(message);
       onOptimisticSend?.(message);
     },
-    [addHistory, onOptimisticSend],
+    [addHistory, onOptimisticSend, persistUserMessageClaim],
   );
   const { value, setValue, mode, canSend, send, interrupt, textareaRef, focusInput } = useWebInput(
     cliState,
@@ -167,9 +176,7 @@ const WebInputBar = ({
     setAttachments([]);
     setValue('');
     if (tabId) clearInputDraft(tabId);
-    if (hasText && !isSlash) {
-      addHistory(trimmed);
-    }
+    if (hasText && !isSlash) handleMessageSent(trimmed);
     onSend?.();
     if (agentSessionId) registerPushTarget(agentSessionId);
 
@@ -238,7 +245,7 @@ const WebInputBar = ({
     } finally {
       setIsDispatching(false);
     }
-  }, [canSend, isDispatching, value, attachments, send, sendStdin, setValue, onSend, agentSessionId, sessionName, tabId, addHistory, onAddPendingMessage, onRemovePendingMessage, t]);
+  }, [canSend, isDispatching, value, attachments, send, sendStdin, setValue, onSend, agentSessionId, sessionName, tabId, handleMessageSent, onAddPendingMessage, onRemovePendingMessage, t]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
