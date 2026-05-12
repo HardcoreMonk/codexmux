@@ -75,7 +75,7 @@ const createService = (overrides: Partial<Parameters<typeof createTimelineResume
 };
 
 describe('timeline resume session service', () => {
-  it('prefers the latest cwd JSONL only when the active Codex JSONL is interrupted', async () => {
+  it('prefers the latest cwd JSONL when the active Codex JSONL is interrupted', async () => {
     const provider = makeProvider({
       resolveLatestJsonlPath: vi.fn(async () => ({
         jsonlPath: '/tmp/latest.jsonl',
@@ -101,6 +101,29 @@ describe('timeline resume session service', () => {
       checkJsonlState: vi.fn(async () => ({ interrupted: false })),
     }).service;
     await expect(notInterrupted.resolveActiveOrLatestJsonl(
+      provider,
+      'codexmux:tab',
+      '/tmp/active.jsonl',
+      'active',
+    )).resolves.toMatchObject({
+      jsonlPath: '/tmp/active.jsonl',
+      sessionId: 'active',
+    });
+  });
+
+  it('keeps the active Codex JSONL when it is idle', async () => {
+    const provider = makeProvider({
+      resolveLatestJsonlPath: vi.fn(async () => ({
+        jsonlPath: '/tmp/latest.jsonl',
+        sessionId: 'latest',
+        mtimeMs: 200,
+      })),
+    });
+    const { service } = createService({
+      checkJsonlState: vi.fn(async () => ({ idle: true, interrupted: false })),
+    });
+
+    await expect(service.resolveActiveOrLatestJsonl(
       provider,
       'codexmux:tab',
       '/tmp/active.jsonl',

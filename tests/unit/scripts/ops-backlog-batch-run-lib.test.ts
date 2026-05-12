@@ -12,15 +12,16 @@ describe('ops backlog batch runner helpers', () => {
     const runPlan = buildBacklogBatchRunPlan({ includeConditional: false });
 
     expect(runPlan.summary).toMatchObject({
-      executableItemCount: 16,
+      executableItemCount: 17,
       skippedItemCount: 24,
-      commandCount: 17,
+      commandCount: 18,
     });
     expect(runPlan.commands.map((item: { command: string }) => item.command)).toEqual([
       'corepack pnpm smoke:permission',
       'corepack pnpm ops:automation:batch',
       'corepack pnpm smoke:runtime-v2:timeline-websocket-default',
       'corepack pnpm smoke:runtime-v2:timeline-session-changed',
+      'corepack pnpm test tests/unit/lib/runtime/timeline-ws.test.ts tests/unit/hooks/use-layout-panel-type.test.ts tests/unit/hooks/use-tab-store.test.ts tests/unit/lib/session-list-rendering.test.ts',
       'corepack pnpm smoke:browser-reconnect',
       'corepack pnpm smoke:runtime-v2:phase6-default-gate',
       'corepack pnpm lifecycle:rollback-dry-run',
