@@ -37,7 +37,7 @@ export const readUpdaterSmokeConfig = (env: TUpdaterSmokeEnv = process.env): IUp
 
 export const sanitizeUpdaterDownloadedFileName = (downloadedFile?: string): string | null => {
   if (!downloadedFile) return null;
-  return path.basename(downloadedFile);
+  return path.win32.basename(downloadedFile);
 };
 
 export const buildWindowsUpdaterInstallArgs = ({
@@ -65,7 +65,7 @@ export const buildWindowsUpdaterSafeInstallerPath = ({
   tempDir: string;
   nonce: string;
 }): string =>
-  path.join(tempDir, `codexmux-update-${nonce}`, path.basename(downloadedFile));
+  path.win32.join(tempDir, `codexmux-update-${nonce}`, path.win32.basename(downloadedFile));
 
 export const buildUpdaterSmokeStatusEvent = (
   event: string,

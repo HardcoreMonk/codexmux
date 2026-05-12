@@ -1,5 +1,7 @@
 import path from 'path';
 
+const windowsJoin = (...parts) => path.win32.join(...parts);
+
 const requiredInstallEvents = [
   {
     event: 'configured',
@@ -69,7 +71,7 @@ export const buildWindowsUpdaterSmokeEnv = ({
     ...env,
     HOME: homeDir,
     USERPROFILE: homeDir,
-    APPDATA: path.join(homeDir, 'AppData', 'Roaming'),
+    APPDATA: windowsJoin(homeDir, 'AppData', 'Roaming'),
     ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
     NEXT_TELEMETRY_DISABLED: '1',
     NO_AT_BRIDGE: '1',
@@ -85,7 +87,7 @@ export const buildWindowsUpdaterSmokeEnv = ({
   };
 
   if (!useRealLocalAppData) {
-    smokeEnv.LOCALAPPDATA = path.join(homeDir, 'AppData', 'Local');
+    smokeEnv.LOCALAPPDATA = windowsJoin(homeDir, 'AppData', 'Local');
   }
 
   if (typeof installDir === 'string' && installDir.trim()) {

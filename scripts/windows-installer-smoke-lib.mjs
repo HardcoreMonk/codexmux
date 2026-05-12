@@ -5,10 +5,10 @@ const installerNamePattern = /^codexmux(?: Setup |-Setup-)(\d+\.\d+\.\d+)\.exe$/
 const windowsZipNamePattern = /^codexmux-(\d+\.\d+\.\d+)-win\.zip$/i;
 
 export const getWindowsInstallerVersion = (nameOrPath) =>
-  installerNamePattern.exec(path.basename(String(nameOrPath || '')))?.[1] ?? null;
+  installerNamePattern.exec(path.win32.basename(String(nameOrPath || '')))?.[1] ?? null;
 
 export const getWindowsZipVersion = (nameOrPath) =>
-  windowsZipNamePattern.exec(path.basename(String(nameOrPath || '')))?.[1] ?? null;
+  windowsZipNamePattern.exec(path.win32.basename(String(nameOrPath || '')))?.[1] ?? null;
 
 const parseSemver = (version) => {
   const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(String(version || '').trim());
@@ -69,9 +69,9 @@ const collectWindowsZips = (releaseDir) => {
 
 export const getWindowsDefaultPerUserInstallDir = (env = process.env) => {
   const localAppData = env.LOCALAPPDATA
-    || (env.USERPROFILE ? path.join(env.USERPROFILE, 'AppData', 'Local') : null);
+    || (env.USERPROFILE ? path.win32.join(env.USERPROFILE, 'AppData', 'Local') : null);
   if (!localAppData) throw new Error('LOCALAPPDATA or USERPROFILE is required to resolve the default Windows install directory');
-  return path.join(localAppData, 'Programs', 'codexmux');
+  return path.win32.join(localAppData, 'Programs', 'codexmux');
 };
 
 export const buildNsisSilentInstallArgs = (installDir, { useDefaultInstallDir = false } = {}) => {
@@ -115,7 +115,7 @@ export const findWindowsZipBelowVersion = (releaseDir, targetVersion) => {
 };
 
 export const resolveInstalledAppPaths = (installDir) => ({
-  appExe: path.join(installDir, 'codexmux.exe'),
-  appAsar: path.join(installDir, 'resources', 'app.asar'),
-  uninstaller: path.join(installDir, 'Uninstall codexmux.exe'),
+  appExe: path.win32.join(installDir, 'codexmux.exe'),
+  appAsar: path.win32.join(installDir, 'resources', 'app.asar'),
+  uninstaller: path.win32.join(installDir, 'Uninstall codexmux.exe'),
 });

@@ -75,5 +75,15 @@ export const buildPackagedNodePath = ({
     .filter((value): value is string => !!value)
     .join(pathDelimiterForPlatform(platform));
 
-export const buildFileImportSpecifier = (filePath: string): string =>
-  pathToFileURL(filePath).href;
+const isWindowsAbsolutePath = (filePath: string): boolean =>
+  /^[a-zA-Z]:[\\/]/.test(filePath);
+
+export const buildFileImportSpecifier = (filePath: string): string => {
+  if (isWindowsAbsolutePath(filePath)) {
+    const url = new URL('file:///');
+    url.pathname = `/${filePath.replace(/\\/g, '/')}`;
+    return url.href;
+  }
+
+  return pathToFileURL(filePath).href;
+};
