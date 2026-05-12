@@ -176,3 +176,11 @@
 - 결정: codexmux의 다음 제품 전환 타깃은 Windows-only service/product입니다.
 - 이유: 사용자 목표는 기존 codexmux 기반을 Windows 전용 제품으로 구축하고 제공하는 것입니다.
 - 영향: Windows terminal runtime, Windows process inspector, Windows service/tray host, Windows installer/update smoke가 release 기준이 됩니다. macOS/Linux/Android 문서는 legacy/reference로 유지하고, 새 기능 기준으로 확장하지 않습니다.
+
+## ADR-024: codexwinmux는 별도 Windows 제품 line으로 분리한다
+
+- 상태: 승인
+- 결정: `codexmux` release line은 기존 package name, updater channel, app id, data dir을 보존하고, Windows 설치형 제품 마감은 별도 저장소 `codexwinmux`의 제품 line에서 진행합니다.
+- 이유: `codexmux`에는 이미 `productName=codexmux`, `appId=com.hardcoremonk.codexmux`, `~/.codexmux`, GitHub updater release history가 연결되어 있습니다. 이 line을 in-place rename하면 update channel, uninstall registry, updater cache, 기존 내부 사용자의 data dir ownership이 동시에 바뀌어 rollback과 증거 추적이 어려워집니다.
+- 영향: 이 저장소는 원본 기반, architecture 기준, smoke 증거를 유지합니다. `codexwinmux`는 `productName`, `appId`, data dir, release repo, updater cache를 독립적으로 소유해야 하며, `codexmux -> codexwinmux` 데이터 이동은 자동 rename이 아니라 명시적 migration/import로만 처리합니다.
+- 운영 기준: 반복 release/update smoke는 `docs/operations/windows-release-update-repeat-checklist.md`를 따르고, 제품 line migration 기준은 `docs/operations/codexwinmux-product-line-migration.md`를 따릅니다.

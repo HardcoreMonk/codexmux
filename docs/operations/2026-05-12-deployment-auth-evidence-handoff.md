@@ -158,4 +158,15 @@
 
 - 현 `codexmux` release line은 published updater와 기존 data dir 증거를 보존하기 위해
   `productName=codexmux`, `appId=com.hardcoremonk.codexmux`, `~/.codexmux`를 유지한다.
-- `codexwinmux` 명칭은 별도 제품 line 또는 data migration ADR이 준비될 때 전환한다.
+- `codexwinmux`는 별도 제품 line으로 분리한다. 기준은 ADR-024와
+  `docs/operations/codexwinmux-product-line-migration.md`에 기록했다.
+
+후속 선택 작업 재확인:
+
+| 항목 | 결과 |
+| --- | --- |
+| codexwinmux ADR/migration plan | ADR-024와 `docs/operations/codexwinmux-product-line-migration.md` 추가 |
+| 다음 버전 release/update smoke 반복 기준 | `docs/operations/windows-release-update-repeat-checklist.md` 추가 |
+| `corepack pnpm smoke:windows:update-metadata` | passed, `latestVersion=0.4.16`, `codexmux-Setup-0.4.16.exe` |
+| `CODEXMUX_WINDOWS_UPDATER_CURRENT_VERSION=0.4.15 corepack pnpm smoke:windows:updater-published-channel` | passed, published channel `0.4.15 -> 0.4.16` |
+| `CODEXMUX_WINDOWS_PUBLISHED_BASE_INSTALLER_PATH=release\\codexmux-Setup-0.4.15.exe CODEXMUX_WINDOWS_UPDATER_PUBLISHED_GENERIC_FEED=1 corepack pnpm smoke:windows:updater-published-install` | passed, `0.4.15 -> 0.4.16`, `quitAndInstall`, installer settle, post-update health `version=0.4.16`, `commit=13fe69ba`, cleanup 확인 |

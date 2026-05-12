@@ -31,6 +31,8 @@
 - 내부 전용 배포 조건 확정: public code signing certificate와 SmartScreen reputation은 release blocker가 아님
 - Runtime v2 live rollback drill: 설치 앱에서 `on -> off -> restored` 전환 확인
 - 설치 앱 장시간 관찰 smoke: `0.4.16` 설치본 302.8초, 23회 반복 실행, Phase 6 gate 확인
+- `codexwinmux` 별도 제품 line ADR과 migration runbook
+- 다음 버전 release/update smoke 반복 체크리스트
 
 ## 릴리스 전 확인
 
@@ -71,7 +73,8 @@ Published update 검증:
 | GitHub-hosted release asset과 published metadata | 완료: 최신 기준 `v0.4.16`, `latest.yml`, NSIS installer, `.blockmap`, zip asset 확인 |
 | 실제 설치된 낮은 버전 앱에서 GitHub-hosted 최신 버전으로 `quitAndInstall` | 완료: `v0.4.15` installer baseline에서 `v0.4.16` published release로 apply, post-update health `version=0.4.16` 확인 |
 | Long-running installed app session | 완료: `CODEXMUX_WINDOWS_INSTALLED_OBSERVATION_DURATION_MS=300000`, 302,808ms 관찰, 23회 반복 실행, 모든 round `version=0.4.16`, `commit=13fe69ba`, Phase 6 gate 통과, silent uninstall 확인 |
-| 제품명/app id/data dir의 codexwinmux 전환 여부 결정 | 결정: 현재 `codexmux` release line은 `productName=codexmux`, `appId=com.hardcoremonk.codexmux`, `~/.codexmux`를 유지합니다. `codexwinmux`는 별도 제품 line 또는 migration ADR이 생길 때 전환합니다. |
+| 제품명/app id/data dir의 codexwinmux 전환 여부 결정 | 완료: ADR-024와 `docs/operations/codexwinmux-product-line-migration.md`에 분리 기준 기록. `codexmux` line은 기존 identity를 유지하고, `codexwinmux`는 별도 productName/appId/data dir/updater channel을 소유합니다. |
+| 다음 버전 release/update smoke 반복 | 완료: `docs/operations/windows-release-update-repeat-checklist.md` 추가, 2026-05-12 현재 `update-metadata`, `published-channel`, `published-install` 재확인 |
 | Runtime v2 live rollback drill evidence | 완료: 설치 앱에서 runtime v2 `on -> CODEXMUX_RUNTIME_V2=0 -> restored` 전환, disabled health `404 runtime-v2-disabled`, 복구 후 Phase 6 gate 통과 |
 | 측정 기반 perf tuning | 완료/비차단: `corepack pnpm perf:timeline-jsonl` synthetic 5,000 entries parse `19.67ms`, virtualization 권고 유지. package/installed runtime v2 worker counter는 Phase 6 gate에서 clean 확인 |
 | Phase 6 closeout | 완료: packaged runtime v2 smoke, 설치 관찰 smoke, rollback drill에 Phase 6 health/perf gate 반영 |
