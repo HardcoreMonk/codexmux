@@ -7,12 +7,14 @@ import type { ILayoutData, IWorkspacesData } from '@/types/terminal';
 describe('runtime storage v2 write ownership mirror', () => {
   let homeDir: string | null = null;
   const originalHome = process.env.HOME;
+  const originalUserProfile = process.env.USERPROFILE;
   const originalRuntimeV2 = process.env.CODEXMUX_RUNTIME_V2;
   const originalStorageMode = process.env.CODEXMUX_RUNTIME_STORAGE_V2_MODE;
   const originalRuntimeDb = process.env.CODEXMUX_RUNTIME_DB;
 
   afterEach(async () => {
     process.env.HOME = originalHome;
+    process.env.USERPROFILE = originalUserProfile;
     process.env.CODEXMUX_RUNTIME_V2 = originalRuntimeV2;
     process.env.CODEXMUX_RUNTIME_STORAGE_V2_MODE = originalStorageMode;
     process.env.CODEXMUX_RUNTIME_DB = originalRuntimeDb;
@@ -66,6 +68,7 @@ describe('runtime storage v2 write ownership mirror', () => {
     await fs.mkdir(layoutDir, { recursive: true });
     await fs.writeFile(path.join(dataDir, 'workspaces.json'), JSON.stringify(workspaces), { mode: 0o600 });
     process.env.HOME = homeDir;
+    process.env.USERPROFILE = homeDir;
     process.env.CODEXMUX_RUNTIME_V2 = '1';
     process.env.CODEXMUX_RUNTIME_STORAGE_V2_MODE = 'write';
     process.env.CODEXMUX_RUNTIME_DB = dbPath;

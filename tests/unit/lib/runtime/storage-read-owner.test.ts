@@ -8,6 +8,7 @@ import type { ILayoutData, IWorkspacesData } from '@/types/terminal';
 
 describe('runtime storage v2 default read ownership', () => {
   const originalHome = process.env.HOME;
+  const originalUserProfile = process.env.USERPROFILE;
   const originalRuntimeV2 = process.env.CODEXMUX_RUNTIME_V2;
   const originalStorageMode = process.env.CODEXMUX_RUNTIME_STORAGE_V2_MODE;
   const originalRuntimeDb = process.env.CODEXMUX_RUNTIME_DB;
@@ -15,6 +16,7 @@ describe('runtime storage v2 default read ownership', () => {
 
   afterEach(async () => {
     process.env.HOME = originalHome;
+    process.env.USERPROFILE = originalUserProfile;
     process.env.CODEXMUX_RUNTIME_V2 = originalRuntimeV2;
     process.env.CODEXMUX_RUNTIME_STORAGE_V2_MODE = originalStorageMode;
     process.env.CODEXMUX_RUNTIME_DB = originalRuntimeDb;
@@ -86,6 +88,7 @@ describe('runtime storage v2 default read ownership', () => {
     db.close();
 
     process.env.HOME = homeDir;
+    process.env.USERPROFILE = homeDir;
     process.env.CODEXMUX_RUNTIME_V2 = '1';
     process.env.CODEXMUX_RUNTIME_STORAGE_V2_MODE = 'default';
     process.env.CODEXMUX_RUNTIME_DB = dbPath;
@@ -157,6 +160,7 @@ describe('runtime storage v2 default read ownership', () => {
     db.close();
 
     process.env.HOME = homeDir;
+    process.env.USERPROFILE = homeDir;
     process.env.CODEXMUX_RUNTIME_V2 = '1';
     process.env.CODEXMUX_RUNTIME_STORAGE_V2_MODE = 'default';
     process.env.CODEXMUX_RUNTIME_DB = dbPath;

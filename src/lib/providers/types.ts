@@ -21,10 +21,16 @@ export interface IAgentJsonlResolution {
   startedAt?: number | null;
 }
 
+export interface IAgentProviderStatusBehavior {
+  readonly watchJsonlWhenBound: boolean;
+  readonly deferStopHookUntilJsonlIdle: boolean;
+}
+
 export interface IAgentProvider {
   readonly id: string;
   readonly displayName: string;
   readonly panelType: TPanelType;
+  readonly statusBehavior: IAgentProviderStatusBehavior;
 
   matchesProcess(commandName: string): boolean;
   isValidSessionId(id: unknown): id is string;

@@ -25,6 +25,10 @@ const makeProvider = (overrides: Partial<IAgentProvider> = {}): IAgentProvider =
   id: 'codex',
   displayName: 'Codex',
   panelType: 'codex',
+  statusBehavior: {
+    watchJsonlWhenBound: true,
+    deferStopHookUntilJsonlIdle: true,
+  },
   matchesProcess: vi.fn(),
   isValidSessionId: (id: unknown): id is string => typeof id === 'string',
   detectActiveSession: vi.fn(),

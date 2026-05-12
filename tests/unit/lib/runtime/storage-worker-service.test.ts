@@ -7,17 +7,27 @@ import { createStorageWorkerService } from '@/lib/runtime/storage/worker-service
 
 describe('storage worker service', () => {
   let dir: string;
+  const services: Array<ReturnType<typeof createStorageWorkerService>> = [];
+
+  const createTestStorageWorkerService = (...args: Parameters<typeof createStorageWorkerService>) => {
+    const service = createStorageWorkerService(...args);
+    services.push(service);
+    return service;
+  };
 
   beforeEach(async () => {
     dir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-storage-worker-'));
   });
 
   afterEach(async () => {
+    for (const service of services.splice(0)) {
+      service.close();
+    }
     await fs.rm(dir, { recursive: true, force: true });
   });
 
   it('handles health and workspace creation commands', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
 
     const health = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
@@ -41,7 +51,7 @@ describe('storage worker service', () => {
   });
 
   it('returns structured errors for invalid worker commands', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
     const unknown = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
       target: 'storage',
@@ -77,7 +87,7 @@ describe('storage worker service', () => {
   });
 
   it('handles pending terminal tab intent lifecycle commands', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
     const created = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
       target: 'storage',
@@ -140,7 +150,7 @@ describe('storage worker service', () => {
   });
 
   it('handles legacy workspace pane mirror commands', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
 
     const ensured = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
@@ -179,7 +189,7 @@ describe('storage worker service', () => {
   });
 
   it('rejects terminal tab intents for panes outside the supplied workspace', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
     const created = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
       target: 'storage',
@@ -216,7 +226,7 @@ describe('storage worker service', () => {
   });
 
   it('deletes workspaces and returns cleanup sessions from the delete command', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
     const created = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
       target: 'storage',
@@ -251,7 +261,7 @@ describe('storage worker service', () => {
   });
 
   it('deletes terminal tabs and returns cleanup sessions from the delete command', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
     const created = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
       target: 'storage',
@@ -302,7 +312,7 @@ describe('storage worker service', () => {
   });
 
   it('returns only ready terminal tabs for attach authorization', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
     const created = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
       target: 'storage',
@@ -350,7 +360,7 @@ describe('storage worker service', () => {
   });
 
   it('lists ready terminal tabs and marks stale ready tabs failed', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
     const created = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
       target: 'storage',

@@ -26,6 +26,17 @@ describe('Electron smoke helpers', () => {
     expect(selectElectronPageTarget(targets, 'http://127.0.0.1:8122')?.url).toBe('http://127.0.0.1:8122/login');
   });
 
+  it('selects a packaged Electron local server page target', async () => {
+    const { selectElectronLocalPageTarget } = await loadLib();
+    const targets = [
+      { type: 'page', url: 'data:text/html,splash', webSocketDebuggerUrl: 'ws://splash' },
+      { type: 'page', url: 'http://localhost:8122/login', webSocketDebuggerUrl: 'ws://local' },
+      { type: 'page', url: 'https://example.invalid/', webSocketDebuggerUrl: 'ws://remote' },
+    ];
+
+    expect(selectElectronLocalPageTarget(targets)?.url).toBe('http://localhost:8122/login');
+  });
+
   it('builds Electron launch args with remote debugging before the app path', async () => {
     const { buildElectronSmokeArgs } = await loadLib();
 
@@ -93,6 +104,24 @@ describe('Electron smoke helpers', () => {
     })).toThrow(/requires macOS/);
   });
 
+  it('builds a packaged Windows executable launch command from a .exe path', async () => {
+    const { buildElectronSmokeLaunchCommand } = await loadLib();
+
+    expect(buildElectronSmokeLaunchCommand({
+      remoteDebuggingPort: 9222,
+      appPath: 'D:\\apps\\codexmux\\codexmux.exe',
+      platform: 'win32',
+    })).toEqual({
+      command: 'D:\\apps\\codexmux\\codexmux.exe',
+      args: [
+        '--remote-debugging-port=9222',
+        '--disable-gpu',
+        '--no-sandbox',
+      ],
+      mode: 'windows-exe',
+    });
+  });
+
   it('builds a runtime v2 page-context smoke script', async () => {
     const { buildElectronRuntimeV2EvalScript } = await loadLib();
 
@@ -116,6 +145,20 @@ describe('Electron smoke helpers', () => {
     const commandMatch = escapedScript.match(/const command = ("(?:\\.|[^"])*");/);
     expect(commandMatch).not.toBeNull();
     expect(JSON.parse(commandMatch?.[1] ?? 'null')).toBe("printf '%s\\n' 'electron-v2-'\\''marker'\r");
+  });
+
+  it('builds a Windows runtime v2 page-context marker command', async () => {
+    const { buildElectronRuntimeV2EvalScript } = await loadLib();
+
+    const script = buildElectronRuntimeV2EvalScript({
+      sessionName: 'rtv2-windows-pane-tab',
+      marker: 'windows-v2-marker',
+      commandKind: 'windows',
+    });
+    const commandMatch = script.match(/const command = ("(?:\\.|[^"])*");/);
+
+    expect(commandMatch).not.toBeNull();
+    expect(JSON.parse(commandMatch?.[1] ?? 'null')).toBe('echo windows-v2-marker\r');
   });
 
   it('builds reconnect smoke rounds after the initial attach', async () => {

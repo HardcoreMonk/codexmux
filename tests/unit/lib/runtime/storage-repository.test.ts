@@ -3,21 +3,34 @@ import os from 'os';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openRuntimeDatabase } from '@/lib/runtime/storage/schema';
+import type { TRuntimeDatabase } from '@/lib/runtime/storage/schema';
 import { createStorageRepository } from '@/lib/runtime/storage/repository';
 
 describe('runtime storage repository', () => {
   let dir: string;
+  const dbs: TRuntimeDatabase[] = [];
+
+  const openTestDatabase = (...args: Parameters<typeof openRuntimeDatabase>): TRuntimeDatabase => {
+    const db = openRuntimeDatabase(...args);
+    dbs.push(db);
+    return db;
+  };
 
   beforeEach(async () => {
     dir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-runtime-db-'));
   });
 
   afterEach(async () => {
+    for (const db of dbs.splice(0)) {
+      try {
+        db.close();
+      } catch {}
+    }
     await fs.rm(dir, { recursive: true, force: true });
   });
 
   it('creates pending terminal tab intents, assigns stable order, finalizes active tab, and projects only ready tabs', () => {
-    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const repo = createStorageRepository(db);
 
     const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
@@ -73,7 +86,7 @@ describe('runtime storage repository', () => {
   });
 
   it('rejects terminal tabs for panes outside the supplied workspace', () => {
-    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const repo = createStorageRepository(db);
 
     const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
@@ -94,7 +107,7 @@ describe('runtime storage repository', () => {
   });
 
   it('ensures legacy workspace and pane ids before creating v2 terminal tabs', () => {
-    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const repo = createStorageRepository(db);
 
     expect(repo.ensureWorkspacePane({
@@ -123,7 +136,7 @@ describe('runtime storage repository', () => {
   });
 
   it('records mutation events', () => {
-    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const repo = createStorageRepository(db);
 
     repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
@@ -134,7 +147,7 @@ describe('runtime storage repository', () => {
   });
 
   it('lists persisted workspaces for reload smoke', () => {
-    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const repo = createStorageRepository(db);
 
     const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
@@ -145,7 +158,7 @@ describe('runtime storage repository', () => {
   });
 
   it('marks pending terminal tabs failed for reconciliation', () => {
-    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const repo = createStorageRepository(db);
 
     const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
@@ -185,7 +198,7 @@ describe('runtime storage repository', () => {
   });
 
   it('deletes a workspace and returns cleanup sessions from the delete transaction', () => {
-    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const repo = createStorageRepository(db);
 
     const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
@@ -245,7 +258,7 @@ describe('runtime storage repository', () => {
   });
 
   it('deletes terminal tabs, returns cleanup sessions, reorders tabs, and updates active tab', () => {
-    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const repo = createStorageRepository(db);
     const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
     const firstPending = repo.createPendingTerminalTab({
@@ -294,7 +307,7 @@ describe('runtime storage repository', () => {
   });
 
   it('deletes failed or missing terminal tabs without cleanup sessions', () => {
-    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const repo = createStorageRepository(db);
     const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
     const failedPending = repo.createPendingTerminalTab({
@@ -317,7 +330,7 @@ describe('runtime storage repository', () => {
   });
 
   it('finds only finalized ready terminal tabs by session name', () => {
-    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const repo = createStorageRepository(db);
     const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
     const pending = repo.createPendingTerminalTab({
@@ -337,7 +350,7 @@ describe('runtime storage repository', () => {
   });
 
   it('lists ready terminal tabs and marks stale ready terminal tabs failed', () => {
-    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const repo = createStorageRepository(db);
     const workspace = repo.createWorkspace({ name: 'Runtime', defaultCwd: dir });
     const readyPending = repo.createPendingTerminalTab({
@@ -395,7 +408,7 @@ describe('runtime storage repository', () => {
   });
 
   it('reports a clear error when optional better-sqlite3 is unavailable', () => {
-    expect(() => openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'), {
+    expect(() => openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'), {
       loadDatabase: () => {
         throw new Error('Cannot find module better-sqlite3');
       },
@@ -406,7 +419,7 @@ describe('runtime storage repository', () => {
 
   it('records schema migration v1 and reopens idempotently', () => {
     const dbPath = path.join(dir, 'runtime-v2', 'state.db');
-    const db = openRuntimeDatabase(dbPath);
+    const db = openTestDatabase(dbPath);
 
     expect(db.prepare(`select version from schema_migrations order by version`).all()).toEqual([
       { version: 1 },
@@ -415,7 +428,7 @@ describe('runtime storage repository', () => {
     ]);
     db.close();
 
-    const reopened = openRuntimeDatabase(dbPath);
+    const reopened = openTestDatabase(dbPath);
     expect(reopened.prepare(`select version, count(*) as count from schema_migrations group by version`).all()).toEqual([
       { version: 1, count: 1 },
       { version: 2, count: 1 },
@@ -424,7 +437,7 @@ describe('runtime storage repository', () => {
   });
 
   it('applies runtime sqlite pragmas', () => {
-    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
 
     expect(db.pragma('busy_timeout', { simple: true })).toBe(5000);
     expect(String(db.pragma('journal_mode', { simple: true })).toLowerCase()).toBe('wal');
@@ -434,18 +447,18 @@ describe('runtime storage repository', () => {
 
   it('rejects databases from a newer runtime schema version', () => {
     const dbPath = path.join(dir, 'runtime-v2', 'state.db');
-    const db = openRuntimeDatabase(dbPath);
+    const db = openTestDatabase(dbPath);
     db.prepare(`insert into schema_migrations(version, applied_at) values(?, ?)`).run(99, new Date().toISOString());
     db.close();
 
-    expect(() => openRuntimeDatabase(dbPath)).toThrow(expect.objectContaining({
+    expect(() => openTestDatabase(dbPath)).toThrow(expect.objectContaining({
       code: 'runtime-v2-schema-too-new',
       retryable: false,
     }));
   });
 
   it('creates the full foundation schema', () => {
-    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const tables = db.prepare(`
       select name from sqlite_master where type = 'table' order by name asc
     `).all() as Array<{ name: string }>;

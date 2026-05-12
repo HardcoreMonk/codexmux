@@ -1,32 +1,28 @@
-# Issue Tracker
+# 이슈 트래커 규칙
 
-이 repo의 issue, PRD, triage 기록 위치와 조작 규칙.
+이 문서는 Codex가 issue tracker를 다룰 때의 저장소 규칙입니다.
 
-## Backend
+## 백엔드
 
-- Type: `github`
-- Location: `git@github.com:HardcoreMonk/codexmux.git`
-- CLI: `gh`
+Issue tracker backend와 세부 상태 규칙은 project-local 문서를 우선합니다. 연결된 GitHub/외부 issue 도구가 없으면 문서와 local handoff로만 상태를 남깁니다.
 
-## Rules
+## 규칙
 
-- Codex는 사용자가 명시하지 않은 issue 생성, close, label 변경을 하지 않는다.
-- multi-line issue body는 temp file 또는 heredoc을 사용해 shell quoting 위험을 줄인다.
-- issue를 읽을 때 body, comments, labels/status를 함께 확인한다.
-- local markdown 방식이면 `.scratch/<feature>/issues/<NN>-<slug>.md`를 기본으로 한다.
+- 사용자 명시 요청 없이 issue를 만들거나 닫거나 relabel하지 않습니다.
+- 코드와 문서로 확인 가능한 내용은 사용자에게 다시 묻지 않습니다.
+- 작업 상태는 spec, plan, handoff, `FOLLOW-UP.md` 중 적절한 곳에 남깁니다.
+- Windows-only release blocker는 `FOLLOW-UP.md` 또는 operations handoff에 명확히 남깁니다.
 
-## Publish
+## 발행
 
-When a workflow says "publish to the issue tracker":
+사용자가 issue 발행을 요청하면 다음 정보를 포함합니다.
 
-1. 대상 backend가 설정되어 있는지 확인한다.
-2. 생성/수정/close 행동을 사용자에게 명시한다.
-3. 실행 후 URL 또는 파일 경로를 보고한다.
+- 문제 또는 목표
+- 재현/검증 명령
+- 인수 기준
+- rollback 또는 운영 영향
+- 관련 문서 링크
 
-## Fetch
+## 조회
 
-When a workflow says "fetch the relevant ticket":
-
-1. issue number, URL, or local path를 확인한다.
-2. body, comments/history, labels/status를 읽는다.
-3. 이전 triage note가 있으면 중복 질문하지 않는다.
+Issue를 조회할 때는 현재 branch와 local docs의 상태를 먼저 확인합니다. 외부 issue 상태가 local docs와 충돌하면 충돌 사실을 보고하고 임의로 local 문서를 덮어쓰지 않습니다.

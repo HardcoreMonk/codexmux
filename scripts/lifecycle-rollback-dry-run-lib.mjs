@@ -4,6 +4,14 @@ import path from 'path';
 
 const runtimeEnvRe = /^Environment=(CODEXMUX_RUNTIME_[A-Z0-9_]+)=(.*)$/;
 
+export const runtimeV2RollbackEnv = {
+  CODEXMUX_RUNTIME_V2: '0',
+  CODEXMUX_RUNTIME_TERMINAL_V2_MODE: 'off',
+  CODEXMUX_RUNTIME_STORAGE_V2_MODE: 'off',
+  CODEXMUX_RUNTIME_TIMELINE_V2_MODE: 'off',
+  CODEXMUX_RUNTIME_STATUS_V2_MODE: 'off',
+};
+
 export const getDefaultRuntimeDropInPath = (homeDir = os.homedir()) =>
   path.join(homeDir, '.config', 'systemd', 'user', 'codexmux.service.d', 'runtime-v2-shadow.conf');
 
@@ -37,6 +45,7 @@ export const buildLifecycleRollbackDryRun = async ({
     dropInPath,
     dropInExists,
     runtimeEnv,
+    rollbackEnv: runtimeV2RollbackEnv,
     mutates: false,
     commands: dropInExists
       ? [

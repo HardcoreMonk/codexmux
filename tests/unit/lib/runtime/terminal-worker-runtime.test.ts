@@ -37,20 +37,25 @@ const execFileFailure = (message: string): void => {
   });
 };
 
-  const createFakePty = () => {
-    let exitHandler: (() => void) | null = null;
-    return {
-      onData: vi.fn((_onData: (data: string) => void) => ({ dispose: vi.fn() })),
-      onExit: vi.fn((handler: () => void) => {
-        exitHandler = handler;
-        return { dispose: vi.fn() };
-      }),
-      emitExit: () => exitHandler?.(),
-      kill: vi.fn(),
-      write: vi.fn(),
-      resize: vi.fn(),
-    };
+const createFakePty = () => {
+  let exitHandler: (() => void) | null = null;
+  let dataHandler: ((data: string) => void) | null = null;
+  return {
+    onData: vi.fn((onData: (data: string) => void) => {
+      dataHandler = onData;
+      return { dispose: vi.fn() };
+    }),
+    onExit: vi.fn((handler: () => void) => {
+      exitHandler = handler;
+      return { dispose: vi.fn() };
+    }),
+    emitData: (data: string) => dataHandler?.(data),
+    emitExit: () => exitHandler?.(),
+    kill: vi.fn(),
+    write: vi.fn(),
+    resize: vi.fn(),
   };
+};
 
 describe('terminal worker runtime', () => {
   beforeEach(() => {
@@ -224,5 +229,72 @@ describe('terminal worker runtime', () => {
       retryable: false,
       message: expect.stringContaining('permission denied'),
     });
+  });
+
+  it('returns optional terminal runtime metadata for tmux sessions', async () => {
+    execFileMock
+      .mockImplementationOnce((_cmd, _args, _options, callback) => callback(null, '', ''))
+      .mockImplementationOnce((_cmd, _args, _options, callback) => callback(
+        null,
+        { stdout: '/work/project\tbash\t4242\t1790000000\n', stderr: '' },
+      ));
+    const { createTerminalWorkerRuntime } = await import('@/lib/runtime/terminal/terminal-worker-runtime');
+    const runtime = createTerminalWorkerRuntime();
+
+    await expect(runtime.getSessionInfo?.('rtv2-ws-a-pane-b-tab-c')).resolves.toEqual({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      exists: true,
+      cwd: '/work/project',
+      command: 'bash',
+      pid: 4242,
+      startedAt: 1790000000000,
+      metadataSource: 'terminal-runtime',
+    });
+  });
+
+  it('satisfies the terminal runtime contract with mocked tmux and node-pty', async () => {
+    const fakePty = createFakePty();
+    ptySpawnMock.mockReturnValue(fakePty);
+    const { createTerminalWorkerRuntime } = await import('@/lib/runtime/terminal/terminal-worker-runtime');
+    const runtime = createTerminalWorkerRuntime();
+    const seen: string[] = [];
+
+    await expect(runtime.createSession({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      cols: 80,
+      rows: 24,
+      cwd: '/work/project',
+    })).resolves.toEqual({ sessionName: 'rtv2-ws-a-pane-b-tab-c' });
+
+    await expect(runtime.attach('rtv2-ws-a-pane-b-tab-c', 80, 24, (data) => {
+      seen.push(data);
+    })).resolves.toEqual({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      attached: true,
+    });
+
+    fakePty.emitData('ready\n');
+    await expect(runtime.writeStdin('rtv2-ws-a-pane-b-tab-c', 'pwd\n')).resolves.toEqual({ written: 4 });
+    await expect(runtime.resize('rtv2-ws-a-pane-b-tab-c', 100, 30)).resolves.toEqual({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      cols: 100,
+      rows: 30,
+    });
+    await expect(runtime.hasSession('rtv2-ws-a-pane-b-tab-c')).resolves.toEqual({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      exists: true,
+    });
+    await expect(runtime.detach('rtv2-ws-a-pane-b-tab-c')).resolves.toEqual({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      detached: true,
+    });
+    await expect(runtime.killSession('rtv2-ws-a-pane-b-tab-c')).resolves.toEqual({
+      sessionName: 'rtv2-ws-a-pane-b-tab-c',
+      killed: true,
+    });
+
+    expect(seen).toEqual(['ready\n']);
+    expect(fakePty.write).toHaveBeenCalledWith('pwd\n');
+    expect(fakePty.resize).toHaveBeenCalledWith(100, 30);
   });
 });

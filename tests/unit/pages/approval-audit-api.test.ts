@@ -103,4 +103,32 @@ describe('/api/approval/audit', () => {
     expect(mocks.readApprovalAuditEvents).toHaveBeenCalledWith({ limit: 200 });
     expect(response.body).toEqual({ events: [] });
   });
+
+  it('accepts sanitized approval push audit events', async () => {
+    const response = createResponse();
+
+    await handler(createRequest('POST', {
+      eventType: 'push-sent',
+      workspaceId: 'ws-1',
+      tabId: 'tab-1',
+      promptType: 'file',
+      approvalKind: 'allow',
+      riskLevel: 'medium',
+      approvalDetail: 'C:\\secret\\private.ts',
+    }), response.res);
+
+    expect(response.statusCode).toBe(200);
+    expect(mocks.appendApprovalAuditEvent).toHaveBeenCalledWith({
+      eventType: 'push-sent',
+      workspaceId: 'ws-1',
+      tabId: 'tab-1',
+      promptType: 'file',
+      approvalKind: 'allow',
+      riskLevel: 'medium',
+      selectedOptionIndex: undefined,
+      optionCount: undefined,
+      fallbackReason: undefined,
+    });
+    expect(JSON.stringify(mocks.appendApprovalAuditEvent.mock.calls)).not.toContain('private.ts');
+  });
 });

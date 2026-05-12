@@ -1,8 +1,14 @@
+import fs from 'fs/promises';
+import path from 'path';
 import { describe, expect, it } from 'vitest';
 
 import { parseCodexJsonlContent } from '@/lib/codex-session-parser';
 
 const line = (value: unknown): string => JSON.stringify(value);
+const fixturesDir = path.join(process.cwd(), 'tests', 'fixtures', 'codex-jsonl');
+
+const readFixture = async (name: string): Promise<string> =>
+  fs.readFile(path.join(fixturesDir, name), 'utf-8');
 
 describe('parseCodexJsonlContent', () => {
   it('parses Codex user and assistant event messages', () => {
@@ -202,5 +208,45 @@ describe('parseCodexJsonlContent', () => {
 
     expect(entries[0]).toMatchObject({ type: 'tool-call', status: 'error' });
     expect(entries[1]).toMatchObject({ type: 'tool-result', isError: true });
+  });
+
+  it('keeps legacy event-message Codex CLI fixture readable', async () => {
+    const entries = parseCodexJsonlContent(await readFixture('codex-cli-legacy-event-msg.jsonl'));
+
+    expect(entries).toHaveLength(2);
+    expect(entries[0]).toMatchObject({ type: 'user-message', text: 'Legacy user request' });
+    expect(entries[1]).toMatchObject({ type: 'assistant-message', markdown: 'Legacy assistant answer' });
+  });
+
+  it('keeps Codex CLI 0.128 mixed response_item fixture readable', async () => {
+    const entries = parseCodexJsonlContent(await readFixture('codex-cli-0-128-response-item-mixed.jsonl'));
+
+    expect(entries.map((entry) => entry.type)).toEqual([
+      'user-message',
+      'thinking',
+      'assistant-message',
+      'tool-call',
+      'tool-result',
+    ]);
+    expect(entries[0]).toMatchObject({ type: 'user-message', text: 'Implement fixture coverage' });
+    expect(entries[1]).toMatchObject({ type: 'thinking', thinking: 'Need inspect parser' });
+    expect(entries[2]).toMatchObject({ type: 'assistant-message', markdown: 'Reading fixture files' });
+    expect(entries[3]).toMatchObject({
+      type: 'tool-call',
+      toolName: 'exec_command',
+      summary: '$ git status --short',
+      status: 'success',
+    });
+    expect(entries[4]).toMatchObject({ type: 'tool-result', isError: false });
+  });
+
+  it('keeps Codex CLI 0.128 image input fixture deduped', async () => {
+    const entries = parseCodexJsonlContent(await readFixture('codex-cli-0-128-image-input.jsonl'));
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      type: 'user-message',
+      text: '[Image #1] Explain the screenshot',
+    });
   });
 });

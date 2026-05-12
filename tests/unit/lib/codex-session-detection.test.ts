@@ -41,6 +41,7 @@ describe('findCodexSessionJsonl', () => {
     tempHome = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-detect-'));
     vi.resetModules();
     vi.stubEnv('HOME', tempHome);
+    vi.stubEnv('USERPROFILE', tempHome);
   });
 
   afterEach(async () => {

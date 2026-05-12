@@ -24,6 +24,10 @@ const makeProvider = (parseIncremental: IAgentProvider['parseIncremental']): IAg
   id: 'codex',
   displayName: 'Codex',
   panelType: 'codex',
+  statusBehavior: {
+    watchJsonlWhenBound: true,
+    deferStopHookUntilJsonlIdle: true,
+  },
   matchesProcess: () => true,
   isValidSessionId: (id: unknown): id is string => typeof id === 'string',
   detectActiveSession: vi.fn(),

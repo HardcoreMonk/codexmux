@@ -1,9 +1,10 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-const droppedKeyPattern = /^(homeDir|serverOutput|output|logcat|cookie|token|password|sessionCookie|raw|stdout|stderr|sessionName|sessionId|workspaceId|tabId|jsonlPath|baseUrl|targetUrl|pageUrl|restoreUrl|devtools|adb|serial|serverPort|remoteDebuggingPort)$/i;
+const droppedKeyPattern = /^(homeDir|serverOutput|output|outputTail|logcat|cookie|token|password|sessionCookie|raw|stdout|stderr|sessionName|sessionId|workspaceId|tabId|jsonlPath|baseUrl|targetUrl|pageUrl|restoreUrl|devtools|adb|serial|serverPort|remoteDebuggingPort)$/i;
 const jsonlPathPattern = /(?:[A-Za-z]:)?[^"'\n\r\t ]*\.codex[\/\\]sessions[\/\\][^"'\n\r\t ]+/g;
 const tempPathPattern = /(?:[A-Za-z]:)?[\/\\]tmp[\/\\]codexmux-[^"'\n\r\t ]+/g;
+const windowsTempPathPattern = /(?:[A-Za-z]:)?[^"'\n\r\t ]*[\/\\]temp[\/\\]codexmux-[^"'\n\r\t ]+/gi;
 const smokeSecretPattern = /secret-(android|electron|browser|runtime|timeline|reconnect)-[a-z0-9-]+/gi;
 
 const timestampForFilename = (value) =>
@@ -14,8 +15,9 @@ export const buildSmokeArtifactFilename = ({ smokeName, status, endedAt = new Da
 
 const sanitizeString = (value) =>
   value
-    .replace(jsonlPathPattern, '[codex-session-path]')
+    .replace(windowsTempPathPattern, '[tmp]')
     .replace(tempPathPattern, '[tmp]')
+    .replace(jsonlPathPattern, '[codex-session-path]')
     .replace(smokeSecretPattern, '[content]');
 
 export const sanitizeSmokeArtifactPayload = (value) => {

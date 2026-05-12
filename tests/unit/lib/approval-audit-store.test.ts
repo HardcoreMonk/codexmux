@@ -67,4 +67,33 @@ describe('approval audit store', () => {
       { eventType: 'selection-sent', workspaceId: 'ws-2', tabId: 'tab-2' },
     ]);
   });
+
+  it('maps approval Web Push outcomes to sanitized audit event types', async () => {
+    const { resolveApprovalPushAuditEventType } = await import('@/lib/approval-audit-store');
+
+    expect(resolveApprovalPushAuditEventType({
+      skippedVisible: true,
+      attempted: 0,
+      sent: 0,
+      failed: 0,
+    })).toBe('push-skipped-visible');
+    expect(resolveApprovalPushAuditEventType({
+      skippedVisible: false,
+      attempted: 0,
+      sent: 0,
+      failed: 0,
+    })).toBe('push-skipped-empty');
+    expect(resolveApprovalPushAuditEventType({
+      skippedVisible: false,
+      attempted: 2,
+      sent: 1,
+      failed: 1,
+    })).toBe('push-sent');
+    expect(resolveApprovalPushAuditEventType({
+      skippedVisible: false,
+      attempted: 2,
+      sent: 0,
+      failed: 2,
+    })).toBe('push-failed');
+  });
 });

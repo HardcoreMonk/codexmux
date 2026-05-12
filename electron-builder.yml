@@ -22,6 +22,26 @@ mac:
   entitlementsInherit: build-resources/entitlements.mac.plist
   notarize: true
 
+win:
+  icon: build-resources/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: zip
+      arch:
+        - x64
+
+nsis:
+  artifactName: ${productName}-Setup-${version}.${ext}
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  include: build-resources/installer.nsh
+  runAfterFinish: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
 publish:
   provider: github
   owner: HardcoreMonk
@@ -48,6 +68,7 @@ files:
 asar: true
 asarUnpack:
   - "**/node-pty/**"
+  - "dist/workers/**"
   - ".next/standalone/**"
   - "src/config/tmux.conf"
 

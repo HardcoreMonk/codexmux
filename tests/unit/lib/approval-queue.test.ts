@@ -121,13 +121,17 @@ describe('approval queue helpers', () => {
       fallbackReason: null,
     };
 
-    expect(buildApprovalPushBody({ metadata: baseMetadata, fallbackText: 'Run tests?' })).toBe(
+    expect(buildApprovalPushBody({ metadata: baseMetadata, fallbackText: 'Run tests?', locale: 'en' })).toBe(
       'Command approval · medium · corepack pnpm test',
     );
     expect(buildApprovalPushBody({
       metadata: { ...baseMetadata, promptType: 'file', commandPreview: null, fileHints: ['server.ts', 'status.ts'] },
       fallbackText: 'Edit files?',
+      locale: 'en',
     })).toBe('File approval · medium · server.ts, status.ts');
+    expect(buildApprovalPushBody({ metadata: baseMetadata, fallbackText: '테스트 실행?', locale: 'ko' })).toBe(
+      '명령 승인 · 보통 · corepack pnpm test',
+    );
     expect(buildApprovalPushBody({ metadata: null, fallbackText: 'Run tests?' })).toBe('Run tests?');
   });
 

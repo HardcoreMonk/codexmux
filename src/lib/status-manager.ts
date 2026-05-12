@@ -1053,6 +1053,7 @@ export class StatusManager {
       notificationType,
       entry,
       providerId: provider?.id ?? null,
+      statusBehavior: provider?.statusBehavior ?? null,
     });
 
     if (hookEvent.kind === 'compact') {

@@ -17,7 +17,10 @@ describe('isAllowedJsonlPath', () => {
 
     const { isAllowedJsonlPath } = await import('@/lib/path-validation');
 
-    expect(isAllowedJsonlPath(path.join(home, '.codex', 'sessions', '2026', '05', '05', 'session.jsonl'))).toBe(true);
+    expect(isAllowedJsonlPath(
+      path.join(home, '.codex', 'sessions', '2026', '05', '05', 'session.jsonl'),
+      { homeDir: home },
+    )).toBe(true);
   });
 
   it('rejects legacy remote Codex JSONL paths', async () => {
@@ -26,6 +29,36 @@ describe('isAllowedJsonlPath', () => {
 
     const { isAllowedJsonlPath } = await import('@/lib/path-validation');
 
-    expect(isAllowedJsonlPath(path.join(home, '.codexmux', 'remote', 'codex', 'win11', 'session.jsonl'))).toBe(false);
+    expect(isAllowedJsonlPath(
+      path.join(home, '.codexmux', 'remote', 'codex', 'win11', 'session.jsonl'),
+      { homeDir: home },
+    )).toBe(false);
+  });
+
+  it('allows Windows Codex session JSONL paths with an injected home directory', async () => {
+    const { isAllowedJsonlPath } = await import('@/lib/path-validation');
+
+    expect(isAllowedJsonlPath(
+      'C:\\Users\\yohan\\.codex\\sessions\\2026\\05\\06\\session.jsonl',
+      { homeDir: 'C:\\Users\\yohan' },
+    )).toBe(true);
+  });
+
+  it('rejects Windows sibling directories that only share the sessions prefix', async () => {
+    const { isAllowedJsonlPath } = await import('@/lib/path-validation');
+
+    expect(isAllowedJsonlPath(
+      'C:\\Users\\yohan\\.codex\\sessions-backup\\session.jsonl',
+      { homeDir: 'C:\\Users\\yohan' },
+    )).toBe(false);
+  });
+
+  it('rejects Windows legacy remote Codex sidecar paths', async () => {
+    const { isAllowedJsonlPath } = await import('@/lib/path-validation');
+
+    expect(isAllowedJsonlPath(
+      'C:\\Users\\yohan\\.codexmux\\remote\\codex\\win11\\session.jsonl',
+      { homeDir: 'C:\\Users\\yohan' },
+    )).toBe(false);
   });
 });

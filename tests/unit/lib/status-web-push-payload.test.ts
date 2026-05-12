@@ -59,7 +59,7 @@ describe('status Web Push payload builder', () => {
 
     expect(payload).toEqual({
       title: 'Input Required',
-      body: 'Command approval · high · rm -rf build',
+      body: '명령 승인 · 높음 · rm -rf build',
       silent: false,
       tabId: 'tab-a',
       workspaceId: 'ws-1',

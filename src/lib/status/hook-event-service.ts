@@ -1,5 +1,6 @@
 import { shouldProcessHookEvent } from '@/lib/status-notification-policy';
 import { reduceHookState, type IHookStateDecision } from '@/lib/status-state-machine';
+import type { IAgentProviderStatusBehavior } from '@/lib/providers';
 import type { TCliState } from '@/types/timeline';
 import type { ILastEvent, ITabStatusEntry, TEventName } from '@/types/status';
 
@@ -32,6 +33,7 @@ interface IEvaluateStatusHookEventInput {
   notificationType?: string;
   entry: Pick<ITabStatusEntry, 'cliState' | 'eventSeq' | 'jsonlPath'>;
   providerId?: string | null;
+  statusBehavior?: IAgentProviderStatusBehavior | null;
   now?: () => number;
 }
 
@@ -40,6 +42,7 @@ export const evaluateStatusHookEvent = ({
   notificationType,
   entry,
   providerId,
+  statusBehavior,
   now = Date.now,
 }: IEvaluateStatusHookEventInput): TStatusHookEventIntent => {
   if (event === 'pre-compact' || event === 'post-compact') {
@@ -66,6 +69,7 @@ export const evaluateStatusHookEvent = ({
     currentState: prevState,
     eventName,
     providerId,
+    statusBehavior,
   });
   const newState = decision.nextState;
 
@@ -77,7 +81,7 @@ export const evaluateStatusHookEvent = ({
     newState,
     decision,
     shouldResolveJsonl: (newState === 'busy' || newState === 'needs-input') && !entry.jsonlPath,
-    shouldRecheckCodexStop: decision.deferCodexStop,
-    shouldRefreshStopSnippet: !decision.deferCodexStop && eventName === 'stop' && !!entry.jsonlPath,
+    shouldRecheckCodexStop: decision.deferStopHook,
+    shouldRefreshStopSnippet: !decision.deferStopHook && eventName === 'stop' && !!entry.jsonlPath,
   };
 };

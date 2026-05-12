@@ -31,6 +31,8 @@ export const buildElectronSmokeArgs = ({ remoteDebuggingPort, appPath = '.' }) =
 
 const isMacAppBundlePath = (appPath) => /\.app\/?$/i.test(String(appPath || ''));
 
+const isWindowsExecutablePath = (appPath) => /\.exe$/i.test(String(appPath || ''));
+
 const resolveMacAppExecutable = (appPath) => {
   const macOsDir = path.join(appPath, 'Contents', 'MacOS');
   const baseName = path.basename(appPath).replace(/\.app$/i, '');
@@ -74,6 +76,17 @@ export const buildElectronSmokeLaunchCommand = ({
     };
   }
 
+  if (isWindowsExecutablePath(normalizedAppPath)) {
+    if (platform !== 'win32') {
+      throw new Error(`Electron .exe smoke requires Windows; current platform is ${platform}`);
+    }
+    return {
+      command: normalizedAppPath,
+      args: chromeArgs,
+      mode: 'windows-exe',
+    };
+  }
+
   return {
     command: 'corepack',
     args: ['pnpm', 'exec', 'electron', ...buildElectronSmokeArgs({
@@ -94,6 +107,14 @@ export const selectElectronPageTarget = (targets, expectedUrl) => {
 
   const exact = candidates.find((target) => safeUrl(target.url)?.origin === expected?.origin);
   return exact ?? candidates[0];
+};
+
+export const selectElectronLocalPageTarget = (targets) => {
+  const candidates = targets.filter((target) => target?.type === 'page' && hasDevtoolsUrl(target));
+  return candidates.find((target) => {
+    const url = safeUrl(target.url);
+    return url?.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  }) ?? null;
 };
 
 const quoteShellArg = (value) => `'${String(value).replace(/'/g, "'\\''")}'`;
@@ -139,11 +160,14 @@ export const buildElectronRuntimeV2ReconnectRounds = ({
 export const buildElectronRuntimeV2EvalScript = ({
   sessionName,
   marker,
+  commandKind = 'posix',
   cols = 100,
   rows = 30,
   timeoutMs = 20_000,
 }) => {
-  const markerCommand = `printf '%s\\n' ${quoteShellArg(marker)}\r`;
+  const markerCommand = commandKind === 'windows'
+    ? `echo ${String(marker).replace(/[&|<>^]/g, '')}\r`
+    : `printf '%s\\n' ${quoteShellArg(marker)}\r`;
   const safeCols = Number(cols) || 100;
   const safeRows = Number(rows) || 30;
   const safeTimeoutMs = Number(timeoutMs) || 20_000;

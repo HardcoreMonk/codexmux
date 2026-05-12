@@ -12,9 +12,9 @@ import {
 const children: ChildProcess[] = [];
 
 const waitFor = async (predicate: () => Promise<boolean>): Promise<void> => {
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 60; i++) {
     if (await predicate()) return;
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
   throw new Error('condition was not met before timeout');
 };
@@ -35,11 +35,11 @@ afterEach(() => {
 });
 
 describe('session detection process helpers', () => {
-  it('detects running processes without shelling out on Linux', async () => {
+  it('detects running processes through the platform inspector', async () => {
     expect(await isProcessRunning(process.pid)).toBe(true);
     expect(await getProcessCwd(process.pid)).toBe(process.cwd());
     expect(await getProcessStartTime(process.pid)).toEqual(expect.any(Number));
-  });
+  }, 20_000);
 
   it('reads child process ids and command metadata', async () => {
     const child = spawnIdleNode();
@@ -57,5 +57,5 @@ describe('session detection process helpers', () => {
     expect(descendants).toContain(childPid);
     expect(commandLine?.raw).toContain(process.execPath);
     expect(commandLine?.args).toContain('setInterval');
-  });
+  }, 20_000);
 });

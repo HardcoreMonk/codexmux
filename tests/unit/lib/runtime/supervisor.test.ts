@@ -89,7 +89,7 @@ const createWorkers = () => {
   status.replies.set('status.live-device-visibility', { accepted: true });
   status.replies.set('status.live-remove-tab', { accepted: true });
   status.replies.set('status.live-poll', { polled: true });
-  status.replies.set('status.reduce-hook-state', { nextState: 'busy', changed: false, deferCodexStop: true });
+  status.replies.set('status.reduce-hook-state', { nextState: 'busy', changed: false, deferStopHook: true });
   status.replies.set('status.reduce-codex-state', { nextState: 'ready-for-review', changed: true, silent: false, skipHistory: false });
   status.replies.set('status.evaluate-notification-policy', {
     processHookEvent: true,
@@ -536,7 +536,11 @@ describe('runtime supervisor', () => {
       currentState: 'busy',
       eventName: 'stop',
       providerId: 'codex',
-    })).resolves.toEqual({ nextState: 'busy', changed: false, deferCodexStop: true });
+      statusBehavior: {
+        watchJsonlWhenBound: true,
+        deferStopHookUntilJsonlIdle: true,
+      },
+    })).resolves.toEqual({ nextState: 'busy', changed: false, deferStopHook: true });
     await expect(supervisor.reduceStatusCodexState({
       currentState: 'busy',
       running: true,
@@ -564,6 +568,10 @@ describe('runtime supervisor', () => {
       newState: 'ready-for-review',
       hasJsonlPath: true,
       providerId: 'codex',
+      statusBehavior: {
+        watchJsonlWhenBound: true,
+        deferStopHookUntilJsonlIdle: true,
+      },
       hasJsonlWatcher: true,
       sessionHistoryDedupeAccepted: true,
       reviewNotificationDedupeAccepted: true,
@@ -646,6 +654,10 @@ describe('runtime supervisor', () => {
           currentState: 'busy',
           eventName: 'stop',
           providerId: 'codex',
+          statusBehavior: {
+            watchJsonlWhenBound: true,
+            deferStopHookUntilJsonlIdle: true,
+          },
         },
       },
       {
@@ -674,6 +686,10 @@ describe('runtime supervisor', () => {
           newState: 'ready-for-review',
           hasJsonlPath: true,
           providerId: 'codex',
+          statusBehavior: {
+            watchJsonlWhenBound: true,
+            deferStopHookUntilJsonlIdle: true,
+          },
           hasJsonlWatcher: true,
           sessionHistoryDedupeAccepted: true,
           reviewNotificationDedupeAccepted: true,
