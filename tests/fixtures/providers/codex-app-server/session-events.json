@@ -1,0 +1,52 @@
+{
+  "events": [
+    {
+      "type": "session",
+      "sessionId": "app-session-1",
+      "sourceSessionId": "app-source-1",
+      "parentSessionId": "parent-session",
+      "rootSessionId": "root-session",
+      "relationshipType": "sub-agent",
+      "timestamp": "2026-05-07T01:00:00.000Z",
+      "summary": "Investigate app-server adapter",
+      "cwd": "/private/project",
+      "rawPrompt": "raw prompt must not leak"
+    },
+    {
+      "type": "message",
+      "eventId": "evt-user-1",
+      "sessionId": "app-session-1",
+      "role": "user",
+      "timestamp": "2026-05-07T01:00:01.000Z",
+      "text": "Check adapter state",
+      "rawPayload": {
+        "token": "secret-token"
+      }
+    },
+    {
+      "type": "message",
+      "eventId": "evt-assistant-1",
+      "sessionId": "app-session-1",
+      "role": "assistant",
+      "timestamp": "2026-05-07T01:00:02.000Z",
+      "text": "Adapter is fixture-only"
+    },
+    {
+      "type": "status",
+      "sessionId": "app-session-1",
+      "timestamp": "2026-05-07T01:00:03.000Z",
+      "cliState": "needs-input",
+      "currentAction": "Waiting for operator approval",
+      "requiresApproval": true,
+      "command": "rm -rf /private/project"
+    },
+    {
+      "type": "message",
+      "eventId": "evt-ignored",
+      "sessionId": "",
+      "role": "assistant",
+      "timestamp": "2026-05-07T01:00:04.000Z",
+      "text": "ignored malformed session"
+    }
+  ]
+}

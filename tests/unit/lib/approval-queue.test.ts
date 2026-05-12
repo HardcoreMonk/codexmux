@@ -11,6 +11,7 @@ import {
   getApprovalPromptTypeKey,
   getApprovalRiskKey,
   hasUsableApprovalOptions,
+  selectApprovalPromptMetadata,
   shouldRetryApprovalOptions,
 } from '@/lib/approval-queue';
 import type { IApprovalPromptMetadata } from '@/lib/permission-prompt';
@@ -132,5 +133,36 @@ describe('approval queue helpers', () => {
       '명령 승인 · 보통 · corepack pnpm test',
     );
     expect(buildApprovalPushBody({ metadata: null, fallbackText: 'Run tests?' })).toBe('Run tests?');
+  });
+
+  it('uses status-owned approval metadata as fallback until fresh pane metadata is useful', () => {
+    const statusMetadata: IApprovalPromptMetadata = {
+      promptType: 'command',
+      approvalKind: 'allow',
+      riskLevel: 'high',
+      commandPreview: 'corepack pnpm test',
+      fileHints: [],
+      fallbackReason: null,
+    };
+    const unknownPaneMetadata: IApprovalPromptMetadata = {
+      promptType: 'unknown',
+      approvalKind: 'unknown',
+      riskLevel: 'unknown',
+      commandPreview: null,
+      fileHints: [],
+      fallbackReason: null,
+    };
+    const freshPaneMetadata: IApprovalPromptMetadata = {
+      promptType: 'file',
+      approvalKind: 'allow',
+      riskLevel: 'medium',
+      commandPreview: null,
+      fileHints: ['status.ts'],
+      fallbackReason: null,
+    };
+
+    expect(selectApprovalPromptMetadata({ fetchedMetadata: null, statusMetadata })).toEqual(statusMetadata);
+    expect(selectApprovalPromptMetadata({ fetchedMetadata: unknownPaneMetadata, statusMetadata })).toEqual(statusMetadata);
+    expect(selectApprovalPromptMetadata({ fetchedMetadata: freshPaneMetadata, statusMetadata })).toEqual(freshPaneMetadata);
   });
 });

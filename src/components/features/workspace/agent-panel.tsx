@@ -90,6 +90,7 @@ const AgentPanel = ({
     sessionSummary,
     initMeta,
     sessionStats,
+    relationship,
     agentProcess: agentProcessFromTimeline,
     wsStatus,
     isLoading: isTimelineLoading,
@@ -297,6 +298,7 @@ const AgentPanel = ({
           sessionName={sessionName}
           sessionId={displayMeta.sessionId}
           jsonlPath={displayMeta.jsonlPath}
+          relationship={relationship}
         />
       ) : (
         <SessionMetaBarSkeleton />

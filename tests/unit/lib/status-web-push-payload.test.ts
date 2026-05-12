@@ -1,80 +1,101 @@
 import { describe, expect, it } from 'vitest';
-import { buildStatusWebPushPayload } from '@/lib/status-web-push-payload';
+
+import { buildStatusWebPushPayload } from '@/lib/status/web-push-payload';
 import type { ITabStatusEntry } from '@/types/status';
 
-const baseEntry: ITabStatusEntry = {
-  cliState: 'needs-input',
+const makeEntry = (overrides: Partial<ITabStatusEntry> = {}): ITabStatusEntry => ({
+  cliState: 'idle',
   workspaceId: 'ws-1',
-  tabName: 'codex',
-  tmuxSession: 'pt-ws-pane-tab',
-  agentSessionId: 'agent-1',
-  lastUserMessage: '테스트 실행 승인',
-};
+  tabName: 'Codex tab',
+  tmuxSession: 'codexmux:tab',
+  agentSessionId: 'session-a',
+  ...overrides,
+});
 
-describe('status web push payload', () => {
-  it('builds locale-aware needs-input approval payload from sanitized metadata', () => {
+describe('status Web Push payload builder', () => {
+  it('builds task-complete review payload with fallback body and silent flag', () => {
     const payload = buildStatusWebPushPayload({
-      pushType: 'needs-input',
-      tabId: 'tab-1',
-      entry: {
-        ...baseEntry,
-        approvalPromptMetadata: {
-          promptType: 'command',
-          approvalKind: 'allow',
-          riskLevel: 'medium',
-          commandPreview: 'corepack pnpm test',
-          fileHints: [],
-          fallbackReason: null,
-        },
-      },
-      workspace: { name: 'Workspace', directories: ['D:\\work\\repo'] },
-      config: { locale: 'ko', soundOnCompleteEnabled: true },
+      tabId: 'tab-a',
+      entry: makeEntry({
+        lastUserMessage: 'x'.repeat(120),
+      }),
+      pushType: 'review',
+      workspaceName: 'Workspace A',
+      workspaceDir: '/workspace/a',
+      soundOnCompleteEnabled: false,
     });
 
     expect(payload).toEqual({
-      title: '입력 필요',
-      body: '명령 승인 · 보통 · corepack pnpm test',
-      silent: false,
-      tabId: 'tab-1',
+      title: 'Task Complete',
+      body: 'x'.repeat(100),
+      silent: true,
+      tabId: 'tab-a',
       workspaceId: 'ws-1',
-      agentSessionId: 'agent-1',
-      workspaceName: 'Workspace',
-      workspaceDir: 'D:\\work\\repo',
-      approvalKind: 'allow',
-      promptType: 'command',
-      riskLevel: 'medium',
-      approvalDetail: 'corepack pnpm test',
+      agentSessionId: 'session-a',
+      workspaceName: 'Workspace A',
+      workspaceDir: '/workspace/a',
     });
   });
 
-  it('builds completion payload without approval fields', () => {
+  it('builds needs-input payload with approval metadata detail', () => {
     const payload = buildStatusWebPushPayload({
-      pushType: 'review',
-      tabId: 'tab-2',
-      entry: {
-        ...baseEntry,
-        cliState: 'ready-for-review',
-        workspaceId: 'ws-2',
-        agentSessionId: null,
-        lastUserMessage: 'Review this change',
-      },
-      workspace: null,
-      config: { locale: 'en', soundOnCompleteEnabled: false },
+      tabId: 'tab-a',
+      entry: makeEntry({
+        lastUserMessage: 'run command',
+        approvalPromptMetadata: {
+          promptType: 'command',
+          approvalKind: 'allow',
+          riskLevel: 'high',
+          commandPreview: 'rm -rf build',
+          fileHints: [],
+          fallbackReason: null,
+        },
+      }),
+      pushType: 'needs-input',
+      workspaceName: 'Workspace A',
+      workspaceDir: null,
+      soundOnCompleteEnabled: true,
     });
 
-    expect(payload).toMatchObject({
-      title: 'Task Complete',
-      body: 'Review this change',
-      silent: true,
-      tabId: 'tab-2',
-      workspaceId: 'ws-2',
-      agentSessionId: null,
+    expect(payload).toEqual({
+      title: 'Input Required',
+      body: '명령 승인 · 높음 · rm -rf build',
+      silent: false,
+      tabId: 'tab-a',
+      workspaceId: 'ws-1',
+      agentSessionId: 'session-a',
+      workspaceName: 'Workspace A',
+      workspaceDir: null,
+      approvalKind: 'allow',
+      promptType: 'command',
+      riskLevel: 'high',
+      approvalDetail: 'rm -rf build',
+    });
+  });
+
+  it('falls back to tab name then tab id when last user message is absent', () => {
+    expect(buildStatusWebPushPayload({
+      tabId: 'tab-a',
+      entry: makeEntry({
+        lastUserMessage: null,
+        tabName: 'Named tab',
+      }),
+      pushType: 'review',
       workspaceName: '',
       workspaceDir: null,
-    });
-    expect(payload).not.toHaveProperty('approvalKind');
-    expect(payload).not.toHaveProperty('promptType');
-    expect(payload).not.toHaveProperty('riskLevel');
-    expect(payload).not.toHaveProperty('approvalDetail');
+      soundOnCompleteEnabled: true,
+    }).body).toBe('Named tab');
+
+    expect(buildStatusWebPushPayload({
+      tabId: 'tab-a',
+      entry: makeEntry({
+        lastUserMessage: null,
+        tabName: '',
+      }),
+      pushType: 'review',
+      workspaceName: '',
+      workspaceDir: null,
+      soundOnCompleteEnabled: true,
+    }).body).toBe('tab-a');
   });
 });

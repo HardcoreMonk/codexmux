@@ -139,4 +139,51 @@ describe('session-list', () => {
     });
   });
 
+  it('exposes provider-neutral relationship metadata from session_meta hints', async () => {
+    const dir = path.join(tempHome, '.codex', 'sessions', '2026', '05', '07');
+    await fs.mkdir(dir, { recursive: true });
+    const filePath = path.join(dir, 'rollout-2026-05-07T01-00-00-019df800-3a02-73a0-a79e-8703b99a2f30.jsonl');
+
+    await fs.writeFile(
+      filePath,
+      [
+        jsonLine({
+          timestamp: '2026-05-07T01:00:00.000Z',
+          type: 'session_meta',
+          payload: {
+            id: '019df800-3a02-73a0-a79e-8703b99a2f30',
+            timestamp: '2026-05-07T01:00:00.000Z',
+            cwd: '/work/project',
+            parentSessionId: '019df700-3a02-73a0-a79e-8703b99a2f29',
+            rootSessionId: '019df600-3a02-73a0-a79e-8703b99a2f28',
+            relationshipType: 'sub-agent',
+            rawDetail: 'cwd=/work/project prompt=secret prompt',
+          },
+        }),
+        jsonLine({
+          timestamp: '2026-05-07T01:00:01.000Z',
+          type: 'event_msg',
+          payload: { type: 'user_message', message: 'Child work' },
+        }),
+      ].join('\n'),
+    );
+
+    const { listSessions } = await import('@/lib/session-list');
+    const sessions = await listSessions('tmux-session', '/work/project', 'codex');
+
+    expect(sessions[0].relationship).toEqual({
+      providerId: 'codex',
+      sourceSessionId: '019df800-3a02-73a0-a79e-8703b99a2f30',
+      parentSessionId: '019df700-3a02-73a0-a79e-8703b99a2f29',
+      rootSessionId: '019df600-3a02-73a0-a79e-8703b99a2f28',
+      relationshipType: 'sub-agent',
+      relationshipConfidence: 'high',
+    });
+    expect(JSON.stringify(sessions[0].relationship)).not.toContain('/work/project');
+    expect(JSON.stringify(sessions[0].relationship)).not.toContain('secret prompt');
+
+    const { findSessionRelationshipByJsonlPath } = await import('@/lib/session-index');
+    expect(await findSessionRelationshipByJsonlPath(filePath)).toEqual(sessions[0].relationship);
+  });
+
 });

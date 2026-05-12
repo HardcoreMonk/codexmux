@@ -4,6 +4,7 @@ import type { ICurrentAction, ILastEvent, TTabDisplayStatus, TTerminalStatus } f
 import type { TPanelType } from '@/types/terminal';
 import type { ISessionMetaData } from '@/hooks/use-session-meta';
 import type { IApprovalPromptMetadata } from '@/lib/permission-prompt';
+import { isAgentPanelType } from '@/lib/panel-type';
 
 export type TSessionView = 'session-list' | 'check' | 'timeline';
 
@@ -148,6 +149,16 @@ const applyAgentInstalledUpdate = (
   };
 };
 
+const resolvePanelTypeViewPatch = (
+  prev: ITabState,
+  panelType: TPanelType,
+): Partial<ITabState> => {
+  if (!isAgentPanelType(panelType)) return {};
+  if (prev.sessionView === 'check') return {};
+  if (prev.agentSessionId || prev.agentProcess === true) return {};
+  return { sessionView: 'session-list' };
+};
+
 const useTabStore = create<ITabStore>((set) => ({
   tabs: {},
   tabOrders: {},
@@ -237,8 +248,18 @@ const useTabStore = create<ITabStore>((set) => ({
   setPanelType: (tabId, panelType) =>
     set((state) => {
       const prev = state.tabs[tabId];
-      if (!prev || prev.panelType === panelType) return state;
-      return { tabs: updateTab(state.tabs, tabId, { panelType }) };
+      if (!prev) return state;
+      const patch = {
+        panelType,
+        ...resolvePanelTypeViewPatch(prev, panelType),
+      };
+      if (
+        prev.panelType === panelType
+        && (!patch.sessionView || prev.sessionView === patch.sessionView)
+      ) {
+        return state;
+      }
+      return { tabs: updateTab(state.tabs, tabId, patch) };
     }),
 
   setCurrentProcess: (tabId, process) =>

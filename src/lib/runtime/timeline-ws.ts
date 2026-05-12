@@ -137,20 +137,27 @@ export const handleRuntimeTimelineConnection = async (
     if (state.cleaned) return;
 
     const { info } = event;
-    if (info.status === 'running' && info.sessionId) {
-      sendJson(ws, {
-        type: 'timeline:session-changed',
-        newSessionId: info.sessionId,
-        reason: info.jsonlPath ? 'new-session-started' : 'session-waiting',
-      });
-      recordPerfCounter('runtime_v2.timeline_ws.default.session_changed');
-    }
-
     const resolved = await input.resolveInitialJsonl(info);
     if (state.cleaned) return;
 
     if (resolved && resolved.jsonlPath !== state.currentJsonlPath) {
+      sendJson(ws, {
+        type: 'timeline:session-changed',
+        newSessionId: resolved.sessionId,
+        reason: 'new-session-started',
+      });
+      recordPerfCounter('runtime_v2.timeline_ws.default.session_changed');
       await subscribeLive(resolved);
+      return;
+    }
+
+    if (info.status === 'running' && info.sessionId && !resolved) {
+      sendJson(ws, {
+        type: 'timeline:session-changed',
+        newSessionId: info.sessionId,
+        reason: 'session-waiting',
+      });
+      recordPerfCounter('runtime_v2.timeline_ws.default.session_changed');
     }
     if (info.status === 'not-running' && !resolved) {
       sendJson(ws, { type: 'timeline:session-changed', newSessionId: '', reason: 'session-ended' });

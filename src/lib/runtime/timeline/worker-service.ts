@@ -13,6 +13,7 @@ import { isAllowedJsonlPath } from '@/lib/path-validation';
 import { getProviderByPanelType, type IAgentProvider } from '@/lib/providers';
 import { normalizePanelType } from '@/lib/panel-type';
 import { listSessionPage } from '@/lib/session-list';
+import { findSessionRelationshipByJsonlPath } from '@/lib/session-index';
 import { countTimelineMessages, emptyMessageCounts, type IMessageCountResult } from '@/lib/timeline-message-counts';
 import type { ISessionWatcher } from '@/lib/session-detection';
 import type {
@@ -372,6 +373,7 @@ export const createTimelineWorkerService = (options: ICreateTimelineWorkerServic
       startLiveWatch(watcher);
     }
 
+    const relationship = await findSessionRelationshipByJsonlPath(input.jsonlPath).catch(() => null);
     const init: ITimelineInitMessage = {
       type: 'timeline:init',
       entries: result.entries,
@@ -382,6 +384,7 @@ export const createTimelineWorkerService = (options: ICreateTimelineWorkerServic
       jsonlPath: input.jsonlPath,
       summary: result.summary,
       meta: computeInitMeta(result.entries, result.fileSize, result.customTitle),
+      ...(relationship ? { relationship } : {}),
     };
 
     return ok(command, {

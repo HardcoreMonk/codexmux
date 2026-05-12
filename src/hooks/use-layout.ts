@@ -18,7 +18,8 @@ import {
   updateRatioAtPath,
   updatePaneInTree,
 } from '@/lib/layout-tree';
-import { readAgentSessionId, writeAgentSessionId } from '@/lib/agent-tab-fields';
+import { readAgentSessionId } from '@/lib/agent-tab-fields';
+import { isAgentPanelType } from '@/lib/panel-type';
 
 export { collectPanes, equalizeNode, getFirstPaneId, findAdjacentPaneInDirection } from '@/lib/layout-tree';
 export type { TDirection } from '@/lib/layout-tree';
@@ -590,17 +591,24 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
   },
 
   updateTabPanelType: (paneId, tabId, panelType) => {
+    const layout = get().layout;
+    const currentPane = layout ? findPane(layout.root, paneId) : null;
+    const currentTab = currentPane?.tabs.find((t) => t.id === tabId);
+    const hasStoredAgentSession = !!(currentTab && readAgentSessionId(currentTab));
+
     applyPaneUpdate(set, get, paneId, (pane) => ({
       ...pane,
       tabs: pane.tabs.map((t) => {
         if (t.id !== tabId) return t;
-        const updated: ITab = { ...t, panelType };
-        if (panelType === 'terminal') writeAgentSessionId(updated, null);
-        return updated;
+        return { ...t, panelType };
       }),
     }));
 
-    useTabStore.getState().setPanelType(tabId, panelType);
+    const tabStore = useTabStore.getState();
+    tabStore.setPanelType(tabId, panelType);
+    if (isAgentPanelType(panelType) && hasStoredAgentSession) {
+      tabStore.setSessionView(tabId, 'timeline');
+    }
 
     const { workspaceId } = get();
     patchApi(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`, workspaceId), { panelType }).then((data) => {

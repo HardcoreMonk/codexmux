@@ -39,6 +39,11 @@ const restoreEnv = () => {
   }
 };
 
+const clearRuntimeEnv = () => {
+  delete process.env.CODEXMUX_RUNTIME_V2;
+  delete process.env.CODEXMUX_RUNTIME_TIMELINE_V2_MODE;
+};
+
 const createResponse = () => {
   let statusCode = 0;
   let body: unknown;
@@ -76,7 +81,7 @@ const createRequest = (query: Record<string, string>, method = 'GET'): NextApiRe
 
 describe('/api/timeline/sessions', () => {
   beforeEach(() => {
-    restoreEnv();
+    clearRuntimeEnv();
     mocks.hasSession.mockReset();
     mocks.listSessionPage.mockReset();
     mocks.supervisor.listTimelineSessions.mockReset();
