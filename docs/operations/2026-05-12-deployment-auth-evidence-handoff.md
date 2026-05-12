@@ -145,3 +145,17 @@
   release blocker가 아니다.
 - packaged/installer launch smoke는 isolated Windows user dirs에서 local server
   health, Electron bridge, login surface, runtime v2 terminal을 확인했다.
+
+후속 자동 처리 증거:
+
+| 명령 | 결과 |
+| --- | --- |
+| `corepack pnpm smoke:windows:runtime-v2-rollback-drill` | passed, 설치 앱 silent install 후 runtime v2 `on -> off -> restored` 전환. off 상태는 인증 후 `/api/v2/runtime/health` `404 runtime-v2-disabled`, 복구 후 Phase 6 gate 통과 |
+| `CODEXMUX_WINDOWS_INSTALLED_OBSERVATION_DURATION_MS=300000 CODEXMUX_WINDOWS_INSTALLED_OBSERVATION_MAX_ROUNDS=24 corepack pnpm smoke:windows:installed-observation` | passed, `0.4.16` 설치본 302,808ms 관찰, 23회 반복 실행, 모든 round `version=0.4.16`, `commit=13fe69ba`, Phase 6 gate 통과, silent uninstall 확인 |
+| `corepack pnpm perf:timeline-jsonl` | passed, synthetic 2,500 turns / 5,000 entries, parse `19.67ms`, virtualization `recommended` |
+
+제품명/app id/data dir 결정:
+
+- 현 `codexmux` release line은 published updater와 기존 data dir 증거를 보존하기 위해
+  `productName=codexmux`, `appId=com.hardcoremonk.codexmux`, `~/.codexmux`를 유지한다.
+- `codexwinmux` 명칭은 별도 제품 line 또는 data migration ADR이 준비될 때 전환한다.

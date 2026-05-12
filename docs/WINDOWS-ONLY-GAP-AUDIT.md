@@ -142,15 +142,15 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 | Windows Electron bootstrap env | 완료 |
 | Windows Electron packaging contract | 완료 |
 | Windows release gate artifact | 완료 |
-| GitHub-hosted release asset과 published metadata | 완료: `v0.4.3` prerelease |
+| GitHub-hosted release asset과 published metadata | 완료: 최신 기준 `v0.4.16`, `latest.yml`, NSIS installer, `.blockmap`, zip asset 확인 |
 | 실제 installed app에서 published update `quitAndInstall` | 완료: `v0.4.15 -> v0.4.16` published installer baseline apply와 post-update health 확인 |
 | public code signing certificate trust | 비차단: 내부 전용 앱이라 public 인증 불필요 |
 | SmartScreen reputation 확인 | 비차단: 내부 전용 앱이라 public reputation 불필요 |
-| 장시간 실제 workspace 사용 안정성 | 대기 |
-| 제품명/app id/data dir의 codexwinmux 전환 결정 | 대기 |
-| rollback drill | 대기 |
-| 측정 기반 perf tuning | 대기 |
-| Phase 6 closeout | 대기 |
+| 장시간 실제 workspace 사용 안정성 | 완료: `0.4.16` 설치본으로 302,808ms 관찰, 23회 반복 실행, runtime v2 terminal과 Phase 6 gate 모두 통과 |
+| 제품명/app id/data dir의 codexwinmux 전환 결정 | 결정: 현 release line은 `codexmux`, `com.hardcoremonk.codexmux`, `~/.codexmux` 유지. `codexwinmux` 전환은 별도 제품 line/migration ADR에서 처리 |
+| rollback drill | 완료: 설치 앱에서 runtime v2 `on -> off -> restored` 전환, off 상태 `404 runtime-v2-disabled`, 복구 후 Phase 6 gate 확인 |
+| 측정 기반 perf tuning | 완료/비차단: timeline JSONL synthetic 5,000 entries parse `19.67ms`, virtualization 권고 유지, runtime worker counter clean |
+| Phase 6 closeout | 완료: packaged/installed/rollback smoke에 runtime v2 Phase 6 health/perf gate 반영 |
 
 ## 첫 구현 slice 기준
 

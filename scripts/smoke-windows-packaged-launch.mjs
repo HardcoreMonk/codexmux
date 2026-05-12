@@ -28,6 +28,10 @@ import {
   extractCookieHeader,
   resolveSmokeTerminalEndpoint,
 } from './runtime-v2-phase2-smoke-lib.mjs';
+import {
+  runtimeV2Phase6ExpectedModes,
+  validateRuntimeV2Phase6Gate,
+} from './runtime-v2-phase6-gate-lib.mjs';
 import { writeSmokeArtifact } from './smoke-artifact-lib.mjs';
 import { buildWindowsPackagedLaunchArtifactPayload } from './windows-package-smoke-artifact-lib.mjs';
 
@@ -66,20 +70,34 @@ const fail = async (code, message, details = {}) => {
 const resolveAppPath = () =>
   path.resolve(process.env.CODEXMUX_WINDOWS_PACKAGED_APP_PATH || path.join(rootDir, 'release', 'win-unpacked', 'codexmux.exe'));
 
-const buildIsolatedEnv = (homeDir) => ({
-  ...process.env,
-  HOME: homeDir,
-  USERPROFILE: homeDir,
-  APPDATA: path.join(homeDir, 'AppData', 'Roaming'),
-  LOCALAPPDATA: path.join(homeDir, 'AppData', 'Local'),
-  ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
-  NEXT_TELEMETRY_DISABLED: '1',
-  NO_AT_BRIDGE: '1',
-  CODEXMUX_RUNTIME_V2: '1',
-  CODEXMUX_RUNTIME_TERMINAL_V2_MODE: 'new-tabs',
-  CODEXMUX_RUNTIME_TERMINAL_ADAPTER: 'windows',
-  CODEXMUX_PROCESS_INSPECTOR_ADAPTER: 'windows',
-});
+const buildIsolatedEnv = (homeDir) => {
+  const env = {
+    ...process.env,
+    HOME: homeDir,
+    USERPROFILE: homeDir,
+    APPDATA: path.join(homeDir, 'AppData', 'Roaming'),
+    LOCALAPPDATA: path.join(homeDir, 'AppData', 'Local'),
+    ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
+    NEXT_TELEMETRY_DISABLED: '1',
+    NO_AT_BRIDGE: '1',
+    CODEXMUX_RUNTIME_V2: process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_V2 ?? '1',
+    CODEXMUX_RUNTIME_TERMINAL_V2_MODE:
+      process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_TERMINAL_V2_MODE ?? 'new-tabs',
+    CODEXMUX_RUNTIME_STORAGE_V2_MODE:
+      process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_STORAGE_V2_MODE ?? 'default',
+    CODEXMUX_RUNTIME_TIMELINE_V2_MODE:
+      process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_TIMELINE_V2_MODE ?? 'default',
+    CODEXMUX_RUNTIME_STATUS_V2_MODE:
+      process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_STATUS_V2_MODE ?? 'default',
+    CODEXMUX_RUNTIME_TERMINAL_ADAPTER: 'windows',
+    CODEXMUX_PROCESS_INSPECTOR_ADAPTER: 'windows',
+  };
+
+  Object.keys(env).forEach((key) => {
+    if (env[key] === undefined) delete env[key];
+  });
+  return env;
+};
 
 const prepareIsolatedEnvDirs = async (homeDir) => {
   await fs.mkdir(path.join(homeDir, 'AppData', 'Roaming'), { recursive: true });
@@ -224,6 +242,48 @@ const verifyRuntimeV2Terminal = async ({ cdp, baseUrl, cookie, checks }) => {
   }
 };
 
+const verifyRuntimeV2Phase6Gate = async ({ baseUrl, cookie, checks }) => {
+  const [runtimeHealth, perf] = await Promise.all([
+    jsonRequest(baseUrl, '/api/v2/runtime/health', cookie),
+    jsonRequest(baseUrl, '/api/debug/perf', cookie),
+  ]);
+  const result = validateRuntimeV2Phase6Gate({ health: runtimeHealth, perf });
+  if (!result.ok) {
+    throw new Error(`runtime v2 Phase 6 gate failed: ${JSON.stringify(result.failures)}`);
+  }
+  checks.push('runtime-v2-phase6-gate');
+  return {
+    ok: true,
+    expectedModes: runtimeV2Phase6ExpectedModes,
+    actualModes: {
+      terminalV2Mode: runtimeHealth?.terminalV2Mode ?? null,
+      storageV2Mode: runtimeHealth?.storageV2Mode ?? null,
+      timelineV2Mode: runtimeHealth?.timelineV2Mode ?? null,
+      statusV2Mode: runtimeHealth?.statusV2Mode ?? null,
+    },
+    checks: result.checks,
+  };
+};
+
+const verifyRuntimeV2Disabled = async ({ baseUrl, checks }) => {
+  const cookie = await ensureLoggedIn(baseUrl);
+  checks.push('server-login-rollback');
+  const res = await fetch(new URL('/api/v2/runtime/health', baseUrl), {
+    headers: { Cookie: cookie },
+  });
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+  if (res.status !== 404 || data?.error !== 'runtime-v2-disabled') {
+    throw new Error(`runtime v2 rollback-disabled health check failed: ${res.status} ${text}`);
+  }
+  checks.push('runtime-v2-disabled-health');
+  return {
+    ok: true,
+    status: res.status,
+    error: data.error,
+  };
+};
+
 const stopProcessTree = async (child) => {
   if (!child || child.exitCode !== null) return;
   if (process.platform === 'win32') {
@@ -309,11 +369,14 @@ const main = async () => {
   const consoleEvents = [];
   const runRuntimeV2Terminal = process.argv.includes('--runtime-v2-terminal')
     || process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_V2 === '1';
+  const expectRuntimeV2Disabled = process.env.CODEXMUX_WINDOWS_PACKAGED_EXPECT_RUNTIME_V2_DISABLED === '1';
   let electron = null;
   let cdp = null;
   let launch = null;
   let output = '';
   let runtimeV2Terminal = null;
+  let runtimeV2Phase6 = null;
+  let runtimeV2Disabled = null;
   const existingAppPids = await listWindowsAppProcessIds(appPath);
 
   try {
@@ -366,11 +429,20 @@ const main = async () => {
     if (health?.app !== 'codexmux') throw new Error(`packaged local server health failed: ${JSON.stringify(health)}`);
     checks.push('local-server-health');
 
+    if (expectRuntimeV2Disabled) {
+      runtimeV2Disabled = await verifyRuntimeV2Disabled({ baseUrl: state.origin, checks });
+    }
+
     if (runRuntimeV2Terminal) {
       const cookie = await ensureLoggedIn(state.origin);
       checks.push('server-login');
       runtimeV2Terminal = await verifyRuntimeV2Terminal({
         cdp,
+        baseUrl: state.origin,
+        cookie,
+        checks,
+      });
+      runtimeV2Phase6 = await verifyRuntimeV2Phase6Gate({
         baseUrl: state.origin,
         cookie,
         checks,
@@ -405,6 +477,8 @@ const main = async () => {
       state,
       health,
       runtimeV2Terminal,
+      runtimeV2Phase6,
+      runtimeV2Disabled,
       consoleEventCount: consoleEvents.length,
       blockingConsoleCount: blockingConsole.length,
     };
@@ -418,6 +492,7 @@ const main = async () => {
       remoteDebuggingPort,
       checks,
       runtimeV2TerminalRequested: runRuntimeV2Terminal,
+      expectRuntimeV2Disabled,
       outputTail: output.slice(-2000),
       consoleEvents: consoleEvents.slice(-20),
     });

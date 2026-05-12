@@ -124,4 +124,17 @@ corepack pnpm smoke:windows:package-gate
 
 ## 의사결정 메모
 
-Runtime v2 P3 잔여 작업은 rollback drill, 측정 기반 perf tuning, Phase 6 closeout입니다. 이 세 작업은 package/update smoke와 내부 장시간 workspace 사용 evidence 이후에 마무리합니다.
+2026-05-12 측정 기준:
+
+- `corepack pnpm perf:timeline-jsonl`: synthetic 2,500 turns / 5,000 entries, parse
+  `19.67ms`, virtualization `recommended`
+- `corepack pnpm smoke:windows:packaged-runtime-v2`: runtime v2 Phase 6 health/perf
+  gate 통과
+- `corepack pnpm smoke:windows:installed-observation`: `0.4.16` 설치본 302,808ms
+  관찰, 23회 반복 실행, 모든 round Phase 6 gate 통과
+- `corepack pnpm smoke:windows:runtime-v2-rollback-drill`: runtime v2
+  `on -> off -> restored` rollback path 통과
+
+Runtime v2 P3의 rollback drill, 측정 기반 perf tuning, Phase 6 closeout은 현재
+release blocker가 아닙니다. 실제 내부 사용자 trace에서 새 병목이 발견되면 이 문서의
+측정 항목을 기준으로 다시 tuning합니다.

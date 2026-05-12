@@ -155,6 +155,7 @@ Electron은 웹/PWA와 같은 React runtime v2 terminal hook을 사용합니다.
 corepack pnpm smoke:electron:runtime-v2
 corepack pnpm smoke:windows:packaged-runtime-v2
 corepack pnpm smoke:windows:installer-runtime-v2
+corepack pnpm smoke:windows:runtime-v2-rollback-drill
 ```
 
 검증 항목:
@@ -164,7 +165,26 @@ corepack pnpm smoke:windows:installer-runtime-v2
 - page reload/reconnect
 - packaged local server health
 - runtime startup diagnostics
+- runtime v2 Phase 6 health/perf gate
 - blocking console 0건
+
+설치 관찰 smoke:
+
+```bash
+CODEXMUX_WINDOWS_INSTALLED_OBSERVATION_DURATION_MS=300000 \
+CODEXMUX_WINDOWS_INSTALLED_OBSERVATION_MAX_ROUNDS=24 \
+corepack pnpm smoke:windows:installed-observation
+```
+
+이 smoke는 최신 NSIS installer를 임시 위치에 silent install하고, 같은 isolated
+Windows user dir에서 packaged launch/runtime v2 terminal/Phase 6 gate를 반복 실행한
+뒤 silent uninstall까지 확인합니다. 2026-05-12 기준 `0.4.16` 설치본으로 302,808ms
+관찰, 23회 반복 실행, 모든 round `version=0.4.16`, `commit=13fe69ba`가 통과했습니다.
+
+Runtime v2 rollback drill은 설치 앱에서 `on -> CODEXMUX_RUNTIME_V2=0 -> restored`
+순서를 확인합니다. off 상태는 인증 후 `/api/v2/runtime/health`가
+`404 runtime-v2-disabled`를 반환해야 하며, restored 상태는 다시 Phase 6 gate를
+통과해야 합니다.
 
 ## 알림
 
