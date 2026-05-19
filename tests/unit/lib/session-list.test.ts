@@ -127,6 +127,9 @@ describe('session-list', () => {
       await fs.utimes(filePath, mtime, mtime);
     }
 
+    const { refreshSessionIndex } = await import('@/lib/session-index');
+    await refreshSessionIndex();
+
     const { listSessionPage } = await import('@/lib/session-list');
     const page = await listSessionPage('tmux-session', '/work/project', 'codex', { offset: 1, limit: 1 });
 
@@ -136,6 +139,40 @@ describe('session-list', () => {
     expect(page.sessions[0]).toMatchObject({
       sessionId: '019dd011-3a02-73a0-a79e-8703b99a2f31',
       firstMessage: 'Middle work',
+    });
+  });
+
+  it('does not block the session list page on a cold index refresh', async () => {
+    const dir = path.join(tempHome, '.codex', 'sessions', '2026', '04', '29');
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'rollout-2026-04-29T01-00-00-019dd020-3a02-73a0-a79e-8703b99a2f30.jsonl'),
+      [
+        jsonLine({
+          timestamp: '2026-04-29T01:00:01.000Z',
+          type: 'session_meta',
+          payload: {
+            id: '019dd020-3a02-73a0-a79e-8703b99a2f30',
+            timestamp: '2026-04-29T01:00:00.000Z',
+            cwd: '/work/project',
+          },
+        }),
+        jsonLine({
+          timestamp: '2026-04-29T01:00:02.000Z',
+          type: 'event_msg',
+          payload: { type: 'user_message', message: 'Cold index work' },
+        }),
+      ].join('\n'),
+    );
+
+    const { listSessionPage } = await import('@/lib/session-list');
+    const page = await listSessionPage('tmux-session', '/work/project', 'codex', { offset: 0, limit: 50 });
+
+    expect(page).toMatchObject({
+      sessions: [],
+      total: 0,
+      hasMore: false,
+      refreshing: true,
     });
   });
 

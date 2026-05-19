@@ -3,6 +3,14 @@ import type { ISessionMeta } from '@/types/timeline';
 import type { TPanelType } from '@/types/terminal';
 
 const DEFAULT_LIMIT = 50;
+const REFRESH_RETRY_MS = 1000;
+
+interface ISessionListResponse {
+  sessions: ISessionMeta[];
+  total: number;
+  hasMore: boolean;
+  refreshing?: boolean;
+}
 
 interface IUseSessionListOptions {
   tmuxSession: string;
@@ -33,6 +41,8 @@ const useSessionList = ({
   const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshRetryTick, setRefreshRetryTick] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const isLoadingMoreRef = useRef(false);
@@ -45,6 +55,8 @@ const useSessionList = ({
     setTotal(0);
     setHasMore(false);
     setIsLoading(true);
+    setIsRefreshing(false);
+    setRefreshRetryTick(0);
     setError(null);
   }
 
@@ -64,23 +76,28 @@ const useSessionList = ({
     return `/api/timeline/sessions?${params.toString()}`;
   }, [tmuxSession]);
 
-  const fetchSessions = useCallback(async () => {
+  const fetchSessions = useCallback(async (showLoading = true) => {
     if (!tmuxSession) return;
-    setIsLoading(true);
+    if (showLoading) setIsLoading(true);
     setError(null);
+    let keepLoading = false;
 
     try {
       const url = buildUrl(0);
       const res = await fetch(url);
       if (!res.ok) throw new Error('세션 목록을 불러올 수 없습니다');
-      const data = await res.json();
+      const data = await res.json() as ISessionListResponse;
+      const refreshing = data.refreshing === true;
       setSessions(data.sessions);
       setTotal(data.total);
       setHasMore(data.hasMore);
+      setIsRefreshing(refreshing);
+      keepLoading = refreshing && data.sessions.length === 0;
     } catch (err) {
       setError(err instanceof Error ? err.message : '세션 목록을 불러올 수 없습니다');
+      setIsRefreshing(false);
     } finally {
-      setIsLoading(false);
+      setIsLoading(keepLoading);
     }
   }, [buildUrl, tmuxSession]);
 
@@ -89,6 +106,19 @@ const useSessionList = ({
       fetchSessions();
     }
   }, [enabled, fetchSessions, sessionKey]);
+
+  useEffect(() => {
+    if (!enabled || !isRefreshing) return;
+    const timer = window.setTimeout(() => {
+      setRefreshRetryTick((tick) => tick + 1);
+    }, REFRESH_RETRY_MS);
+    return () => window.clearTimeout(timer);
+  }, [enabled, isRefreshing, refreshRetryTick]);
+
+  useEffect(() => {
+    if (!enabled || refreshRetryTick === 0) return;
+    fetchSessions(false);
+  }, [enabled, fetchSessions, refreshRetryTick]);
 
   const prevCwdRef = useRef(cwd);
   useEffect(() => {
@@ -114,10 +144,11 @@ const useSessionList = ({
       const url = buildUrl(offset);
       const res = await fetch(url);
       if (!res.ok) return;
-      const data = await res.json();
+      const data = await res.json() as ISessionListResponse;
       setSessions((prev) => [...prev, ...data.sessions]);
       setTotal(data.total);
       setHasMore(data.hasMore);
+      setIsRefreshing(data.refreshing === true);
     } finally {
       isLoadingMoreRef.current = false;
       setIsLoadingMore(false);

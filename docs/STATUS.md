@@ -59,6 +59,12 @@ Windows에서는 process inspector adapter가 PID, command line, child/descendan
 
 Permission/input prompt는 JSONL marker가 늦거나 없을 수 있으므로 live pane capture를 함께 봅니다.
 
+## Hook event 경로
+
+Codex tab launch/resume은 `hooks={path="~/.codexmux/hooks.json"}`를 사용하지 않습니다. `src/lib/codex-command.ts`가 `hooks.SessionStart`, `hooks.UserPromptSubmit`, `hooks.Stop` inline TOML override를 만들어 `~/.codexmux/status-hook.sh`를 호출합니다.
+
+이 경로는 Codex CLI의 strict config parser가 기대하는 구조화된 hook table을 따릅니다. `hooks.json`은 생성 파일로 남아 있지만 status의 기준 source가 아닙니다.
+
 ## Resume 실패 분류
 
 Codex resume은 timeline WebSocket에서 요청하지만 상태 판단과 사용자 복구 흐름에 영향을 줍니다.
@@ -124,7 +130,7 @@ Codex CLI가 process 시작 뒤 JSONL을 늦게 만들 수 있으므로 session 
 - 기존 JSONL이 `interrupted`로 판정되어 현재 session이 끊긴 경우
 - tab에 저장된 `lastUserMessage`/`lastUserMessageAt` claim과 JSONL 안의 user message, timestamp, cwd가 일치하고 같은 claim window 안에 중복 후보가 없는 경우
 
-Web input은 claim 저장 뒤 timeline refresh signal을 발행합니다. 이미 열린 legacy/runtime timeline socket은 짧은 재시도 창 안에서 claim 기반 resolver를 다시 실행하므로, long-lived Codex process가 session id를 노출하지 않아도 소유권이 확인된 새 JSONL로만 전환합니다.
+Web input은 claim 저장 뒤 timeline refresh signal을 발행합니다. 이미 열린 legacy/runtime timeline socket은 짧은 재시도 창 안에서 claim 기반 resolver를 다시 실행하므로, long-lived Codex process가 session id를 노출하지 않아도 소유권이 확인된 새 JSONL로만 전환합니다. 입력 제출 자체는 bracketed paste frame에 Enter를 포함하고 후속 Enter를 한 번 더 보내는 방식으로 처리합니다.
 
 일반 session list lookup과 active tab mapping 모두 cwd만으로 최신 JSONL을 선택하지 않습니다.
 

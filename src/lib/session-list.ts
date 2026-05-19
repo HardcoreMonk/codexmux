@@ -14,6 +14,7 @@ export interface IListSessionPage {
   sessions: ISessionMeta[];
   total: number;
   hasMore: boolean;
+  refreshing: boolean;
 }
 
 export const listSessions = async (
@@ -38,11 +39,11 @@ export const listSessionPage = async (
   void cwdHint;
 
   if (!isAgentPanelType(panelType)) {
-    return { sessions: [], total: 0, hasMore: false };
+    return { sessions: [], total: 0, hasMore: false, refreshing: false };
   }
 
   return getSessionIndexPage({
-    waitForInitial: true,
+    waitForInitial: false,
     offset: options?.offset,
     limit: options?.limit,
   });

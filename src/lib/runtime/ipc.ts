@@ -24,6 +24,7 @@ const timelineSessionPageSchema = z.object({
   sessions: z.array(timelineSessionMetaSchema),
   total: z.number().int().nonnegative(),
   hasMore: z.boolean(),
+  refreshing: z.boolean().optional(),
 });
 const timelineMessageCountsSchema = z.object({
   userCount: z.number().int().nonnegative(),

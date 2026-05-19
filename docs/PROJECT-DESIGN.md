@@ -10,11 +10,12 @@ timeline 중심으로 보여줍니다.
 - 서비스 이름과 실행 파일은 `codexmux`, 짧은 별칭은 `cmux`입니다.
 - 데이터 디렉터리는 `~/.codexmux`, tmux socket은 `codexmux`, CLI header는 `x-cmux-token`입니다.
 - provider registry에는 `codex` panel type만 등록합니다.
-- Codex 실행은 `codex`, 재개는 `codex resume <sessionId>`를 사용합니다.
+- Codex 실행은 `codex`, 재개는 `codex resume <sessionId>`를 사용하며 hook event는 inline TOML override로 `status-hook.sh`에 연결합니다.
 - process detection은 tmux pane 아래의 `codex` process를 찾고 session id, process start time, live process cwd fallback 순서로 JSONL path를 연결합니다.
 - timeline, history, stats, daily report는 `~/.codex/sessions/**/*.jsonl`을 읽어 구성합니다.
+- session list는 `~/.codexmux/session-index.json` snapshot을 먼저 읽고, cold refresh 중이면 현재 snapshot을 표시한 뒤 재조회합니다.
 - `~/.codex`는 Codex CLI 소유 데이터이며 codexmux는 읽기 전용으로만 접근합니다.
-- terminal과 Codex 입력 포커스의 `Ctrl+D`는 앱 단축키가 아니라 EOF/EOT로 전달합니다.
+- terminal과 Codex 입력 포커스의 `Ctrl+D`는 앱 단축키가 아니라 EOF/EOT로 전달합니다. Codex 입력 바 제출은 bracketed paste + Enter frame과 후속 Enter로 처리합니다.
 - 모바일 foreground 복귀 시 terminal/status/timeline/sync WebSocket은 stale `OPEN` 상태를 신뢰하지 않고 재연결할 수 있습니다.
 - 성능 최적화는 `/api/debug/perf` snapshot으로 계측한 뒤 좁게 적용합니다. timeline append/render, diff, stats는 기준 데이터를 바꾸지 않는 batch/memo/short cache를 우선합니다.
 

@@ -41,6 +41,29 @@ Terminal WebSocket은 adapter와 무관하게 다음 동작을 기대합니다.
 
 Legacy URL은 `/api/terminal`, runtime v2 URL은 `/api/v2/terminal`입니다. Public protocol은 가능한 유지하고 backend 구현만 adapter로 교체합니다.
 
+## 입력 전송 계약
+
+Terminal raw input과 Codex web input은 같은 WebSocket을 쓰지만 의미가 다릅니다.
+
+| Frame | 용도 | 처리 |
+| --- | --- | --- |
+| `MSG_STDIN` | xterm raw key 입력 | byte를 그대로 pty stdin에 전달 |
+| `MSG_WEB_STDIN` | Codex 입력 바, mobile toolbar 같은 UI 제출 | copy mode를 빠져나온 뒤 app-originated input으로 전달 |
+
+Codex 입력 바는 prompt 본문을 bracketed paste로 감싸고 Enter를 같은 frame에 포함해 보냅니다. 그 뒤 Codex CLI의 긴 입력 확인 흐름을 위해 짧은 지연 후 Enter를 한 번 더 보냅니다. 이 계약은 재접속 직후 입력이 프롬프트에 남고 제출되지 않는 회귀를 막기 위한 것입니다.
+
+## Codex hook 설정
+
+Codex tab 실행과 resume command는 `hooks={path="~/.codexmux/hooks.json"}`를 넘기지 않습니다. 현재 Codex CLI는 `hooks`를 구조화된 TOML table로 해석하므로 path string override를 넣으면 config load 오류가 납니다.
+
+대신 `src/lib/codex-command.ts`가 다음 inline TOML override를 각각 `-c`로 전달합니다.
+
+- `hooks.SessionStart`
+- `hooks.UserPromptSubmit`
+- `hooks.Stop`
+
+각 hook은 `~/.codexmux/status-hook.sh`를 호출합니다. `~/.codexmux/hooks.json`은 local hook/statusline bridge 호환용 생성 파일로 남지만, Codex tab launch/resume의 config source는 아닙니다.
+
 ## 런타임 v2 터미널
 
 Runtime v2 Terminal Worker는 `ITerminalRuntimeAdapter`를 통해 구현을 선택합니다.

@@ -110,9 +110,9 @@
 ## ADR-014: 세션 목록은 백그라운드 인덱스를 사용한다
 
 - 상태: 승인
-- 결정: `/api/timeline/sessions`는 요청마다 JSONL을 재귀 scan하지 않고 `SessionIndexService` snapshot을 읽습니다.
+- 결정: `/api/timeline/sessions`는 요청마다 JSONL을 재귀 scan하지 않고 `SessionIndexService` snapshot을 읽습니다. Cold index refresh가 진행 중이면 현재 snapshot과 `refreshing` 상태를 즉시 반환하고, client가 짧게 재조회합니다.
 - 이유: session 수가 늘어나면 request path에서 전체 JSONL parsing과 정렬이 반복되어 비용이 커집니다.
-- 영향: 인덱스는 `~/.codexmux/session-index.json`에 persist하고 mtime/size가 바뀐 파일만 다시 파싱합니다.
+- 영향: 인덱스는 `~/.codexmux/session-index.json`에 persist하고 mtime/size가 바뀐 파일만 다시 파싱합니다. 저장 인덱스가 비어 있어도 session list request가 전체 refresh 완료를 기다리지 않습니다.
 
 ## ADR-015: approval queue metadata는 sanitized projection으로 유지한다
 
@@ -184,3 +184,10 @@
 - 이유: `codexmux`에는 이미 `productName=codexmux`, `appId=com.hardcoremonk.codexmux`, `~/.codexmux`, GitHub updater release history가 연결되어 있습니다. 이 line을 in-place rename하면 update channel, uninstall registry, updater cache, 기존 내부 사용자의 data dir ownership이 동시에 바뀌어 rollback과 증거 추적이 어려워집니다.
 - 영향: 이 저장소는 원본 기반, architecture 기준, smoke 증거를 유지합니다. `codexwinmux`는 `productName`, `appId`, data dir, release repo, updater cache를 독립적으로 소유해야 하며, `codexmux -> codexwinmux` 데이터 이동은 자동 rename이 아니라 명시적 migration/import로만 처리합니다.
 - 운영 기준: 반복 release/update smoke는 `docs/operations/windows-release-update-repeat-checklist.md`를 따르고, 제품 line migration 기준은 `docs/operations/codexwinmux-product-line-migration.md`를 따릅니다.
+
+## ADR-025: Codex CLI integration contract는 inline hook과 web-input 제출 frame으로 고정한다
+
+- 상태: 승인
+- 결정: Codex launch/resume command는 `hooks={path="~/.codexmux/hooks.json"}`를 사용하지 않고 `hooks.SessionStart`, `hooks.UserPromptSubmit`, `hooks.Stop` inline TOML override를 각각 `-c`로 전달합니다. Codex web input은 prompt 본문을 bracketed paste로 감싸고 Enter를 같은 frame에 포함한 뒤 후속 Enter를 한 번 더 보냅니다.
+- 이유: 현재 Codex CLI strict config parser는 `hooks` path string override를 구조화된 hook table로 보지 않아 config load 오류를 낼 수 있습니다. Web input을 raw text와 별도 Enter frame으로 나누면 재접속/copy mode/긴 입력 확인 상태에서 입력이 프롬프트에 남고 제출되지 않을 수 있습니다.
+- 영향: `~/.codexmux/hooks.json`은 local hook/statusline bridge 호환용 생성 파일로 남지만 launch/resume config source가 아닙니다. Codex command builder, `MSG_WEB_STDIN`, web input payload를 바꾸면 `TMUX.md`, `STATUS.md`, `DATA-DIR.md`, `TESTING.md`와 landing docs를 함께 갱신합니다.

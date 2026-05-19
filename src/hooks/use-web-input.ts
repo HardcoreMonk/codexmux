@@ -8,6 +8,12 @@ type TWebInputMode = 'input' | 'interrupt' | 'disabled';
 
 const RESTART_COMMANDS = new Set(['/new', '/clear']);
 const DRAFT_KEY_PREFIX = 'pt-input-draft:';
+const WEB_INPUT_FOLLOW_UP_ENTER_DELAY_MS = 600;
+
+interface IWebInputFrame {
+  data: string;
+  delayMs?: number;
+}
 
 const getDraftKey = (tabId: string) => `${DRAFT_KEY_PREFIX}${tabId}`;
 
@@ -38,6 +44,11 @@ const clearDraft = (tabId: string) => {
     /* ignore */
   }
 };
+
+const buildWebInputFrames = (raw: string): IWebInputFrame[] => [
+  { data: `\x1b[200~${raw}\x1b[201~\r` },
+  { data: '\r', delayMs: WEB_INPUT_FOLLOW_UP_ENTER_DELAY_MS },
+];
 
 interface IUseWebInputReturn {
   value: string;
@@ -104,13 +115,13 @@ const useWebInput = (
       onMessageSent?.(message);
     }
 
-    if (value.includes('\n')) {
-      sendStdin(`\x1b[200~${value}\x1b[201~\r`);
-      setTimeout(() => sendStdin('\r'), 500);
-    } else {
-      sendStdin(value);
-      setTimeout(() => sendStdin('\r'), 50);
-    }
+    buildWebInputFrames(value).forEach((frame) => {
+      if (frame.delayMs) {
+        setTimeout(() => sendStdin(frame.data), frame.delayMs);
+        return;
+      }
+      sendStdin(frame.data);
+    });
 
     setValue('');
     if (tabId) clearDraft(tabId);
@@ -147,5 +158,9 @@ const useWebInput = (
 };
 
 export default useWebInput;
-export { clearDraft as clearInputDraft };
+export {
+  WEB_INPUT_FOLLOW_UP_ENTER_DELAY_MS,
+  buildWebInputFrames,
+  clearDraft as clearInputDraft,
+};
 export type { TWebInputMode };

@@ -68,6 +68,7 @@ export interface ISessionIndexPage {
   sessions: ISessionMeta[];
   total: number;
   hasMore: boolean;
+  refreshing: boolean;
 }
 
 export interface ISessionIndexPageOptions {
@@ -420,6 +421,10 @@ const replaceDuplicateSessions = (sessions: IIndexedSessionMeta[]): IIndexedSess
 
 export const refreshSessionIndex = async (): Promise<void> => {
   ensureCurrentRoot();
+  if (state.refreshDebounceTimer) {
+    clearTimeout(state.refreshDebounceTimer);
+    state.refreshDebounceTimer = null;
+  }
   if (state.refreshPromise) return state.refreshPromise;
 
   state.refreshPromise = (async () => {
@@ -529,6 +534,7 @@ export const getSessionIndexPage = async (options?: ISessionIndexPageOptions): P
     sessions: state.sessions.slice(offset, end).map(toPublicSession),
     total,
     hasMore: end < total,
+    refreshing: !!state.refreshPromise || !!state.refreshDebounceTimer,
   };
 };
 
@@ -623,7 +629,7 @@ export const getSessionIndexPerfSnapshot = () => {
     sessions: state.sessions.length,
     indexedFiles: state.indexedFiles,
     refreshedAt: state.refreshedAt,
-    refreshing: !!state.refreshPromise,
+    refreshing: !!state.refreshPromise || !!state.refreshDebounceTimer,
     lastBuildMs: state.lastBuildMs,
     cacheHits: state.cacheHits,
     cacheMisses: state.cacheMisses,

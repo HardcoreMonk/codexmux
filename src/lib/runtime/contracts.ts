@@ -111,6 +111,7 @@ export interface IRuntimeTimelineSessionPage {
   sessions: ISessionMeta[];
   total: number;
   hasMore: boolean;
+  refreshing?: boolean;
 }
 
 export interface IRuntimeTimelineSessionListInput {

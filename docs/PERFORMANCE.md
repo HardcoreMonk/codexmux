@@ -68,6 +68,8 @@ Prompt, terminal output, cwd, JSONL path, token은 반환하지 않습니다.
 - Stats build는 in-flight promise로 중복 계산을 피합니다.
 - Runtime v2 worker diagnostics는 sanitized counter로 노출됩니다.
 - Stats cold path date filtering이 추가되었습니다.
+- Session list API는 cold index refresh를 기다리지 않고 현재 snapshot과 `refreshing` 상태를 반환하며,
+  client가 refresh 완료까지 짧게 재조회합니다.
 
 ## Timeline JSONL snapshot
 
@@ -138,3 +140,12 @@ corepack pnpm smoke:windows:package-gate
 Runtime v2 P3의 rollback drill, 측정 기반 perf tuning, Phase 6 closeout은 현재
 release blocker가 아닙니다. 실제 내부 사용자 trace에서 새 병목이 발견되면 이 문서의
 측정 항목을 기준으로 다시 tuning합니다.
+
+2026-05-16 측정 기준:
+
+- 로컬 Codex session data: JSONL 874개, `~/.codex/sessions` 1.5GB.
+- `refreshSessionIndex()` cold refresh: 약 9.2초.
+- `corepack pnpm perf:timeline-jsonl`: synthetic 2,500 turns / 5,000 entries, parse `18.57ms`,
+  virtualization `recommended`.
+- Session list cold path는 API request가 전체 refresh를 기다리지 않고 현재 snapshot과
+  `refreshing` 상태를 반환하도록 조정했습니다.

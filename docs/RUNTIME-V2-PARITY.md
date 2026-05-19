@@ -73,6 +73,9 @@ corepack pnpm smoke:runtime-v2:timeline-session-changed
 corepack pnpm smoke:runtime-v2:timeline-websocket-default
 ```
 
+Session list parity에는 legacy와 runtime v2 모두 cold index refresh 중 request path가 전체
+JSONL scan을 기다리지 않고 현재 page snapshot과 optional `refreshing` 상태를 반환하는 계약이 포함됩니다.
+
 ## 상태와 알림
 
 필수 parity:

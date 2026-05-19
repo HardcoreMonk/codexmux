@@ -35,9 +35,9 @@ codexmux의 영속 상태는 `~/.codexmux/` 아래에 저장됩니다. Codex CLI
 └── stats/
 ```
 
-`hooks.json`, `status-hook.sh`, `statusline.sh`는 local hook/statusline bridge용 생성 파일입니다. Codex tab 실행에는 필요하지 않습니다.
+Codex tab 실행은 inline hook config로 `status-hook.sh`를 직접 호출합니다. `hooks.json`은 local hook/statusline bridge 호환용 생성 파일이며 `hooks={path=...}` 형태로 Codex CLI에 전달하지 않습니다.
 
-`session-index.json`은 로컬 `~/.codex/sessions`의 session list metadata cache입니다. 삭제해도 다음 refresh에서 다시 생성되며, Codex JSONL 원본을 대체하지 않습니다.
+`session-index.json`은 로컬 `~/.codex/sessions`의 session list metadata cache입니다. 삭제해도 다음 refresh에서 다시 생성되며, Codex JSONL 원본을 대체하지 않습니다. 삭제 직후 첫 session list는 현재 snapshot을 먼저 보여주고 refresh 완료 뒤 갱신됩니다.
 
 ## 주요 파일
 
@@ -50,7 +50,7 @@ codexmux의 영속 상태는 `~/.codexmux/` 아래에 저장됩니다. Codex CLI
 | `cli-token` | CLI와 hook bridge token | 가능. 재시작 시 재생성 |
 | `port` | 현재 server port | 가능. 재시작 시 재생성 |
 | `cmux.lock` | 단일 인스턴스 guard | process가 없을 때만 삭제 |
-| `session-index.json` | 로컬 Codex session list metadata cache | 가능. 다음 refresh에서 재생성 |
+| `session-index.json` | 로컬 Codex session list metadata cache | 가능. 다음 refresh에서 재생성되며 첫 목록은 현재 snapshot일 수 있음 |
 | `stats/` | usage cache와 daily report. runtime build는 in-flight dedupe 적용 | 가능. 다음 요청에서 재계산 |
 
 ## 백업

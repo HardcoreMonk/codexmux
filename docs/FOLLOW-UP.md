@@ -76,7 +76,7 @@ Published update 검증:
 | 제품명/app id/data dir의 codexwinmux 전환 여부 결정 | 완료: ADR-024와 `docs/operations/codexwinmux-product-line-migration.md`에 분리 기준 기록. `codexmux` line은 기존 identity를 유지하고, `codexwinmux`는 별도 productName/appId/data dir/updater channel을 소유합니다. |
 | 다음 버전 release/update smoke 반복 | 완료: `docs/operations/windows-release-update-repeat-checklist.md` 추가, 2026-05-12 현재 `update-metadata`, `published-channel`, `published-install` 재확인 |
 | Runtime v2 live rollback drill evidence | 완료: 설치 앱에서 runtime v2 `on -> CODEXMUX_RUNTIME_V2=0 -> restored` 전환, disabled health `404 runtime-v2-disabled`, 복구 후 Phase 6 gate 통과 |
-| 측정 기반 perf tuning | 완료/비차단: `corepack pnpm perf:timeline-jsonl` synthetic 5,000 entries parse `19.67ms`, virtualization 권고 유지. package/installed runtime v2 worker counter는 Phase 6 gate에서 clean 확인 |
+| 측정 기반 perf tuning | 완료/비차단: `corepack pnpm perf:timeline-jsonl` synthetic 5,000 entries parse `18.57ms`, virtualization 권고 유지. session list cold index refresh는 비차단 응답으로 조정했고 package/installed runtime v2 worker counter는 Phase 6 gate에서 clean 확인 |
 | Phase 6 closeout | 완료: packaged runtime v2 smoke, 설치 관찰 smoke, rollback drill에 Phase 6 health/perf gate 반영 |
 
 ## 비차단 항목

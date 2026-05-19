@@ -149,7 +149,7 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 | 장시간 실제 workspace 사용 안정성 | 완료: `0.4.16` 설치본으로 302,808ms 관찰, 23회 반복 실행, runtime v2 terminal과 Phase 6 gate 모두 통과 |
 | 제품명/app id/data dir의 codexwinmux 전환 결정 | 결정: 현 release line은 `codexmux`, `com.hardcoremonk.codexmux`, `~/.codexmux` 유지. `codexwinmux` 전환은 별도 제품 line/migration ADR에서 처리 |
 | rollback drill | 완료: 설치 앱에서 runtime v2 `on -> off -> restored` 전환, off 상태 `404 runtime-v2-disabled`, 복구 후 Phase 6 gate 확인 |
-| 측정 기반 perf tuning | 완료/비차단: timeline JSONL synthetic 5,000 entries parse `19.67ms`, virtualization 권고 유지, runtime worker counter clean |
+| 측정 기반 perf tuning | 완료/비차단: timeline JSONL synthetic 5,000 entries parse `18.57ms`, virtualization 권고 유지, session list cold index refresh 비차단화, runtime worker counter clean |
 | Phase 6 closeout | 완료: packaged/installed/rollback smoke에 runtime v2 Phase 6 health/perf gate 반영 |
 
 ## 첫 구현 slice 기준

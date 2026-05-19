@@ -170,6 +170,31 @@ corepack pnpm vitest run tests/unit/lib/providers.test.ts
 - invalid provider id, empty display name, invalid panel type 감지
 - duplicate provider id와 duplicate panel type 감지
 
+Codex launch/resume command 또는 hook override 변경:
+
+```bash
+corepack pnpm vitest run tests/unit/lib/codex-command.test.ts
+codex -c 'hooks.SessionStart=[{matcher="startup|resume",hooks=[{type="command",command="sh \"$HOME/.codexmux/status-hook.sh\" session-start",timeout=3}]}]' -c 'hooks.UserPromptSubmit=[{hooks=[{type="command",command="sh \"$HOME/.codexmux/status-hook.sh\" prompt-submit",timeout=3}]}]' -c 'hooks.Stop=[{hooks=[{type="command",command="sh \"$HOME/.codexmux/status-hook.sh\" stop",timeout=3}]}]' --strict-config doctor --summary
+```
+
+검증 기준:
+
+- command builder가 `hooks={path=...}`를 생성하지 않음
+- `SessionStart`, `UserPromptSubmit`, `Stop` hook override가 `status-hook.sh`를 호출
+- Codex strict config parser가 override를 정상 load
+
+Codex web input 제출 변경:
+
+```bash
+corepack pnpm vitest run tests/unit/hooks/use-web-input.test.ts
+```
+
+검증 기준:
+
+- 단일 줄과 여러 줄 prompt 모두 bracketed paste frame으로 전송
+- 제출 Enter가 같은 frame에 포함됨
+- Codex CLI 확인 흐름을 위한 후속 Enter가 예약됨
+
 Status Web Push payload 변경:
 
 ```bash
@@ -197,9 +222,21 @@ corepack pnpm vitest run tests/unit/lib/status-jsonl-scan.test.ts
 통계와 timeline 변경은 다음을 확인합니다.
 
 - JSONL incremental parser가 중복 계산하지 않음
-- session index cache가 stale 결과를 오래 유지하지 않음
+- session index cache가 stale 결과를 오래 유지하지 않고, cold refresh 중 session list request가 전체 scan을 기다리지 않음
 - timeline entry id와 dedupe가 reconnect 후 안정적임
 - prompt, terminal output, JSONL path가 debug endpoint에 노출되지 않음
+
+Session index/session list 변경:
+
+```bash
+corepack pnpm vitest run tests/unit/lib/session-index.test.ts tests/unit/lib/session-list.test.ts tests/unit/pages/timeline-sessions.test.ts
+```
+
+검증 기준:
+
+- persisted index write는 내용 변경이 없으면 skip
+- cold index refresh 중 session list page는 현재 snapshot과 `refreshing` 상태를 반환
+- runtime/legacy timeline session API는 같은 page contract를 유지
 
 Timeline init meta helper 변경:
 
