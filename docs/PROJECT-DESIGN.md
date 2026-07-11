@@ -68,7 +68,7 @@ provider-neutral boundary 또는 Codex provider 내부에 추가합니다.
 - timeline virtualization과 adaptive status polling은 scroll anchoring, notification, unknown 복구 지연 리스크가 있어 성능 스냅샷 수치가 쌓인 뒤 단계적으로 검증합니다.
 - Codex app-server protocol은 안정화 전까지 post-MVP 후보로 둡니다.
 - setup-local install은 사용자 권한의 arbitrary PTY stdin을 허용하는 legacy adapter입니다. Elevated/multi-user service와 Windows host-owned install action은 별도 capability/host boundary가 필요합니다.
-- Upload directory validation은 user-scoped data directory와 동일 UID local process를 신뢰합니다. Windows hard-link/delete와 packaged kill-switch는 fresh Windows runner evidence 전까지 ADR verification 조건으로 남습니다.
+- Upload directory validation은 user-scoped data directory와 동일 사용자 local process를 신뢰합니다. Windows hard-link/delete와 packaged kill-switch는 `v0.4.20`에서 최초 검증하고 `v0.4.21`에서 privacy gate와 함께 반복했으며, 이후 stable release도 같은 package gate를 실행해야 합니다.
 
 ## MVP 이후 방향
 

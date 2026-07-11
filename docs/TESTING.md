@@ -90,6 +90,27 @@ Tag 기반 자동 릴리스는 `check` -> `browser reconnect` -> `fresh Windows 
 `prerelease` -> `target-tag published channel/install` -> `stable promotion` 순서입니다. Candidate
 baseline tag와 SHA-256은 workflow에 명시하며 다음 버전을 준비할 때 직전 stable Windows
 installer 값으로 갱신합니다. npm과 legacy macOS package는 Windows stable gate에 포함하지 않습니다.
+Prerelease 게시 전에 실패하면 Release와 asset이 생기지 않고, 게시 뒤 실패하면 candidate가
+prerelease로 남습니다.
+
+2026-07-12 `v0.4.20` workflow
+([run 29161183240](https://github.com/HardcoreMonk/codexmux/actions/runs/29161183240))는
+fresh Windows package/release gate와 실제 published updater 기능 경로를 최초
+검증했습니다. 후속 재감사에서 published-updater JSON 2개가 privacy scanner에 실패해
+privacy-safe evidence에서는 제외했습니다.
+
+현재 기준인 `v0.4.21` workflow
+([run 29162818458](https://github.com/HardcoreMonk/codexmux/actions/runs/29162818458))는
+실제 `v0.4.20` installer를 baseline으로 같은 package/release와 exact target-tag
+published channel/install을 반복하고, browser/package/published-updater JSON을 업로드 전에
+검사했습니다. Baseline installer SHA-256은
+`b98943708c2b0608fd5e5a49fc42aa21f59981ce3e78396de43bf89f5484936b`이며 post-update
+health는 `version=0.4.21`, `commit=3818a28`입니다. Stable release는 `latest.yml`, installer,
+matching blockmap, Windows zip의 정확한 네 asset으로 검증했습니다. Privacy-safe evidence는
+`smoke-browser-reconnect`, `smoke-windows-package-v0.4.21`,
+`smoke-windows-published-update-v0.4.21`입니다. 상세 근거는
+[v0.4.21 Windows release handoff](operations/2026-07-12-v0.4.21-windows-release-handoff.md)를
+따릅니다.
 
 ## Pre-auth bootstrap 보안
 
@@ -168,6 +189,8 @@ corepack pnpm smoke:windows:package-gate
 Windows upload gate는 실제 packaged exe와 fresh user tree에서 size/SHA/same-directory commit,
 abort 전에 reserved stage 실재, abort unlink, aged stage cleanup, committed `.part` 보존, 같은 exe의
 kill-switch restart를 확인합니다. Non-Windows의 `{ skipped: true }`는 실행 증거가 아닙니다.
+`v0.4.20` release workflow에서 이 exact check가 최초 통과했고 `v0.4.21`에서 privacy gate와
+함께 반복 통과했습니다. ADR-027과 ADR-028은 `Verified`입니다.
 
 ## 런타임 v2
 
@@ -444,15 +467,25 @@ Windows-only 전환 후에는 installer/package/update smoke와 internal rollout
 
 ## Smoke artifact 기준
 
-Smoke artifact에는 summary field만 저장합니다.
+Smoke artifact에는 원문 로그 대신 bounded, sanitized structured projection만 저장합니다.
 
-허용:
+```bash
+corepack pnpm check:smoke-artifacts -- <artifact-directory>
+```
 
-- step id
-- package script
-- pass/fail
-- duration
-- exit code
+Release workflow의 browser, Windows package, published updater job은 artifact upload 전에 이
+검사를 실행합니다. JSON이 없거나 파싱할 수 없거나 금지 key, URL, Codex session path,
+Linux/Windows smoke temp path, terminal escape가 남아 있으면 upload와 후속 stable 승격을
+중단합니다. 실패 출력은 raw value 대신 artifact basename, JSON path와 위반 label만
+포함합니다.
+
+대표 허용 항목:
+
+- smoke/check id와 package script
+- pass/fail, blocker label과 check 목록
+- duration, exit code, signal과 timeout 여부
+- product version, commit과 build time
+- non-sensitive count, mode와 artifact basename
 - sanitized error label
 
 금지:

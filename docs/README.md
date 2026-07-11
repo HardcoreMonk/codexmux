@@ -31,9 +31,13 @@ handoff는 `docs/operations/`에 보존하며, 당시 증거를 소급해 재작
 | `operations/windows-release-update-repeat-checklist.md` | 다음 버전마다 반복할 Windows release/update smoke 순서 |
 | `operations/2026-07-11-pre-auth-bootstrap-security-handoff.md` | setup/install 보안 구현, 검증 증거, 복구와 잔여 경계 |
 | `operations/2026-07-11-production-security-upload-integrity-handoff.md` | production dependency와 outer upload ingress 구현, 검증, Windows 증거 경계 |
+| `operations/2026-07-12-v0.4.20-windows-release-handoff.md` | 최초 Windows 기능 검증과 published artifact privacy 교정 |
+| `operations/2026-07-12-v0.4.21-windows-release-handoff.md` | 현재 stable release와 privacy-safe Windows 증거 |
 
-현재 open release blocker는 fresh Windows upload/package evidence를 수집하는
-[GitHub issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)입니다.
+현재 open release blocker는 없습니다. Fresh Windows upload/package와 published updater
+인수 조건은 `v0.4.20`에서 기능 검증하고 `v0.4.21`에서 privacy-safe evidence로
+재검증했습니다. [GitHub issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)은
+완료 조건과 workflow/asset 증거를 보존하는 추적 기록입니다.
 
 Root `CONTEXT.md`는 도메인 언어와 기준 소스 경계를, root `DESIGN.md`는
 UI 시각 계약을 담당합니다.

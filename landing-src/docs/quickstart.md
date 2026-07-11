@@ -9,7 +9,7 @@ permalink: /docs/quickstart/index.html
 codexmux는 여러 Codex workspace, session, tab을 관리하는 Codex 중심 session manager입니다. 현재 제품 방향은 Windows Runtime v2와 Electron desktop shell이며, macOS/Linux tmux server와 Android shell은 legacy/reference surface입니다.
 
 {% call callout('warning', 'Windows 전환 상태') %}
-Windows terminal runtime, process inspector, Electron NSIS/zip packaging은 구현되어 있습니다. 다만 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)의 fresh Windows packaged upload/release evidence가 아직 남아 있으므로 Windows 지원 완료나 일반 배포 완료로 해석하지 마세요.
+Windows terminal runtime, process inspector와 Electron NSIS/zip packaging은 v0.4.21 fresh Windows release와 artifact privacy gate를 통과했습니다. 이 결과는 unsigned 내부 stable release의 근거이며 public code-signed 지원 완료를 의미하지 않습니다.
 {% endcall %}
 
 ## 준비
@@ -55,7 +55,7 @@ Codex tab은 Runtime v2 terminal worker와 Windows adapter를 사용합니다. B
 
 ## Windows package 확인
 
-[Releases](https://github.com/HardcoreMonk/codexmux/releases/latest)의 NSIS installer/zip은 Windows 전환 smoke용 artifact입니다. Fresh Issue #16 evidence가 닫히기 전에는 production-ready 지원 package로 안내하지 않습니다. 설치와 package 검증 명령은 [설치](/codexmux/docs/installation/)에서 확인하세요.
+[Releases](https://github.com/HardcoreMonk/codexmux/releases/latest)의 `v0.4.21`은 내부 stable release입니다. NSIS installer는 실제 published updater apply를 통과했고, zip은 fresh Windows package gate를 통과했습니다. 세 evidence artifact도 upload 전 privacy gate를 통과했습니다. 조직의 unsigned app 실행 정책을 확인하고, 설치와 반복 package 검증 명령은 [설치](/codexmux/docs/installation/)에서 확인하세요.
 
 ## Legacy/reference 경로
 

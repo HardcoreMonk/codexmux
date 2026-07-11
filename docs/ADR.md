@@ -205,7 +205,7 @@
 
 ## ADR-027: 인증된 upload ingress는 outer custom server가 소유한다
 
-- 상태: Implemented
+- 상태: Verified
 - 결정: `/api/upload-image`와 `/api/upload-file`의 external ingress는 Next proxy와 Pages API route보다 앞선 outer custom server가 소유합니다. Request는 upload-scoped session/CLI 인증, credential별 Origin, strict framing과 bounded admission을 통과한 뒤 same-directory staged file로 streaming합니다. Writer close 뒤 `fs.link(stage, final)`로 destination을 원자적으로 no-replace publish하고 staged link를 제거합니다.
 - 이유: Next proxy의 10MiB body clone limit은 제한을 넘긴 crossing chunk 전체를 버리고 clone stream을 정상 EOF로 닫을 수 있습니다. 재현에서 11,534,336B generic body와 10,485,761B image body가 모두 10,444,800B artifact로 `200` 저장됐습니다. Global proxy cap 상향은 unauthenticated clone과 route-level full buffering의 memory amplification을 키웁니다.
 - trade-off: Custom server의 HTTP 책임이 두 route만큼 커지고 direct `next dev` 또는 internal standalone port는 upload surface가 아닙니다. Session rolling refresh, same-authority Origin과 CLI-token parity를 outer handler가 명시적으로 보존해야 합니다. Content-Length 없는 chunked custom client는 지원하지 않습니다.
@@ -214,15 +214,16 @@
 - 설계 근거: `docs/superpowers/specs/2026-07-11-production-security-upload-integrity-design.md`.
 - 검토 근거: `docs/superpowers/grill-me/2026-07-11-production-security-upload-integrity.md`에서 proxy cap, auth/Origin, HTTP framing, admission, cleanup, rollback과 Windows gate를 검토했습니다.
 - 승인 근거: `docs/superpowers/plans/2026-07-11-production-security-upload-integrity.md`의 독립 engineering review가 shutdown/Expect/quarantine/upgrade, Node timeout, maintenance, auth failure, memory oracle, Windows native storage gate와 TDD 실행 순서를 blocker 없이 통과했습니다.
-- 구현 근거: `docs/operations/2026-07-11-production-security-upload-integrity-handoff.md`에 dependency audit, Linux dev/prod upload, memory, browser, Electron 증거와 pending Windows boundary를 기록했습니다.
-- 잔여 검증 추적: [GitHub issue #16](https://github.com/HardcoreMonk/codexmux/issues/16). Fresh Windows package/updater/release gate가 모두 통과하기 전에는 `Verified`로 전이하지 않습니다.
+- 구현 근거: `docs/operations/2026-07-11-production-security-upload-integrity-handoff.md`에 dependency audit, Linux dev/prod upload, memory, browser, Electron 증거와 당시 pending Windows boundary를 기록했습니다.
+- 검증 근거: `v0.4.20` fresh Windows workflow에서 exact size/SHA, same-directory publish, reserved stage 관찰·삭제, aged stage cleanup, committed `.part` 보존과 kill switch 격리를 포함한 upload/package/release gate가 최초 통과했습니다. `v0.4.21`에서 같은 package gate와 artifact privacy gate를 재검증했습니다. 상세 결과는 `docs/operations/2026-07-12-v0.4.20-windows-release-handoff.md`, `docs/operations/2026-07-12-v0.4.21-windows-release-handoff.md`와 [GitHub issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)에 보존합니다.
 
 ## ADR-028: Windows stable release는 published updater 검증 뒤 승격한다
 
-- 상태: Implemented
-- 결정: Tag workflow는 고정된 직전 stable installer와 SHA-256을 사용해 fresh Windows package/release gate를 실행합니다. 통과한 정확한 네 자산만 prerelease로 게시하고, 같은 target tag의 published channel과 실제 baseline install `quitAndInstall` 검증이 통과한 뒤 stable/latest로 승격합니다.
+- 상태: Verified
+- 결정: Tag workflow는 고정된 직전 stable installer와 SHA-256을 사용해 fresh Windows package/release gate를 실행합니다. 통과한 정확한 네 자산만 prerelease로 게시하고, 같은 target tag의 published channel과 실제 baseline install `quitAndInstall` 검증, evidence artifact privacy scan이 통과한 뒤 stable/latest로 승격합니다.
 - 이유: Windows package를 만들지 않는 Linux/macOS 중심 workflow와 존재하지 않는 npm package publish를 stable release 선행 조건으로 두면 Windows-only 제품 목표를 검증하지 못하면서 릴리스는 반복 실패합니다. 반대로 asset 게시 직후 stable로 노출하면 published updater apply 실패를 rollback 전에 사용자가 받을 수 있습니다.
-- trade-off: 실패한 release candidate는 prerelease로 남습니다. 다음 release마다 baseline tag/version/SHA-256 pin을 갱신해야 하며 tag workflow는 저장소 전체에서 직렬 실행됩니다. npm 최초 publish와 legacy macOS package는 별도 작업으로 관리합니다.
-- 영향: Release runner는 pinned action/toolchain과 Codex CLI를 사용합니다. GitHub token은 asset 조회 단계에만 노출하고 packaged/updater child environment에서는 제거합니다. Non-Windows skip과 synthetic local feed는 acceptance가 아니며, exact target tag가 없거나 asset set이 다르면 fail closed합니다. Stable promotion 전후에 release 상태와 installer/blockmap/zip/`latest.yml` 네 자산을 확인합니다.
-- 검증 조건: GitHub Actions fresh Windows candidate에서 package/release gate가 통과하고, prerelease asset을 사용한 published channel/install smoke가 baseline version에서 target version으로 실제 적용된 뒤 stable promotion과 asset 재검증이 통과해야 `Verified`로 전이합니다.
-- 운영 기준: `docs/operations/windows-release-update-repeat-checklist.md`와 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)을 따릅니다.
+- trade-off: Prerelease 게시 뒤 실패한 candidate는 prerelease로 남습니다. 게시 전 실패는 Release와 asset을 만들지 않습니다. 다음 release마다 baseline tag/version/SHA-256 pin을 갱신해야 하며 tag workflow는 저장소 전체에서 직렬 실행됩니다. npm 최초 publish와 legacy macOS package는 별도 작업으로 관리합니다.
+- 영향: Release runner는 pinned action/toolchain과 Codex CLI를 사용합니다. GitHub token은 asset 조회 단계에만 노출하고 packaged/updater child environment에서는 제거합니다. Non-Windows skip과 synthetic local feed는 acceptance가 아니며, exact target tag가 없거나 asset set이 다르면 fail closed합니다. Browser/package/published-updater artifact에 금지 key, URL, session/temp path 또는 terminal escape가 남아도 upload와 promotion을 중단합니다. Stable promotion 전후에 release 상태와 installer/blockmap/zip/`latest.yml` 네 자산을 확인합니다.
+- 검증 조건: GitHub Actions fresh Windows candidate에서 package/release gate가 통과하고, prerelease asset을 사용한 published channel/install smoke가 baseline version에서 target version으로 실제 적용되며, evidence artifact privacy scan과 stable promotion/asset 재검증이 통과해야 `Verified`로 전이합니다.
+- 검증 근거: [workflow run 29161183240](https://github.com/HardcoreMonk/codexmux/actions/runs/29161183240)에서 `v0.4.20` 기능 경로를 최초 검증했습니다. 후속 artifact 재감사에서 published-updater JSON 2개를 privacy-safe evidence에서 제외한 뒤 sanitizer와 fail-closed scanner를 추가했고, [workflow run 29162818458](https://github.com/HardcoreMonk/codexmux/actions/runs/29162818458)에서 `v0.4.20` baseline을 사용한 `v0.4.21` package/release gate, 세 privacy scan, exact-tag published updater install, stable/latest 승격과 네 자산 재검증을 순서대로 통과했습니다. 상세 증거는 두 Windows release handoff에 기록합니다.
+- 운영 기준: 반복 release는 `docs/operations/windows-release-update-repeat-checklist.md`를 따릅니다. [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)은 `v0.4.20` 기능 검증과 `v0.4.21` privacy-safe 재검증의 완료 조건과 증거를 보존합니다.

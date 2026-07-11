@@ -65,12 +65,15 @@ codexmux는 Codex CLI 전용 웹 세션 매니저입니다. 범용 터미널 대
 
 ## 현재 구현 기준
 
-2026-07-11 기준 pre-auth bootstrap과 upload ingress 변경은 lifecycle review를 거쳐
-구현·검증되었습니다. Bootstrap은 ADR-026 `Verified`, upload ingress는 ADR-027
-`Implemented`이며 fresh Windows packaged filesystem 증거가 남아 있습니다.
+2026-07-12 기준 pre-auth bootstrap은 lifecycle review와 Linux dev/prod security smoke로,
+upload ingress와 Windows stable release path는 fresh Windows package/update gate로
+검증했습니다. Bootstrap은 ADR-026, upload ingress는 ADR-027, Windows stable release
+gate는 ADR-028 `Verified`입니다.
 
-- 현재 구현 기준 commit: `8977a247`
-- Windows 잔여 검증: [GitHub issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)
+- 현재 stable release: [`v0.4.21`](https://github.com/HardcoreMonk/codexmux/releases/tag/v0.4.21), commit `3818a28d`
+- Windows 검증 완료 추적: [GitHub issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)
 - 구현·복구 근거: `docs/operations/2026-07-11-pre-auth-bootstrap-security-handoff.md`,
-  `docs/operations/2026-07-11-production-security-upload-integrity-handoff.md`
+  `docs/operations/2026-07-11-production-security-upload-integrity-handoff.md`,
+  `docs/operations/2026-07-12-v0.4.20-windows-release-handoff.md`,
+  `docs/operations/2026-07-12-v0.4.21-windows-release-handoff.md`
 - 새 runtime/API/storage 변경은 같은 lifecycle과 ADR 상태 전이를 따릅니다.

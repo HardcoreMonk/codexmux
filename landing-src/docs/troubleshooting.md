@@ -13,14 +13,14 @@ permalink: /docs/troubleshooting/index.html
 첨부합니다.
 
 {% call callout('warning', '지원 상태를 먼저 확인하세요') %}
-Windows Runtime v2와 Electron package는 primary 전환 경로이지만 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)의 fresh packaged upload/release evidence가 아직 남아 있습니다. 구현된 기능과 검증 완료된 지원 범위를 구분해서 진단합니다. macOS/Linux tmux와 Android shell은 legacy/reference입니다.
+Windows Runtime v2와 Electron package는 primary 전환 경로이며 v0.4.21 fresh package/upload/published updater와 artifact privacy gate를 통과했습니다. 현재 지원 근거는 unsigned 내부 stable release 범위입니다. macOS/Linux tmux와 Android shell은 legacy/reference입니다.
 {% endcall %}
 
 ## 설치와 시작
 
 ### Windows package를 일반 release로 사용해도 되나요?
 
-현재 Releases의 NSIS/zip은 Windows 전환 smoke에 사용되는 artifact입니다. Issue #16이 닫히기 전에는 fresh Windows에서 현재 source의 packaged upload, package gate, release gate가 모두 확인됐다고 간주하지 않습니다.
+`v0.4.21`은 fresh Windows packaged upload와 package/release gate를 통과한 내부 stable release입니다. 실제 published update apply는 NSIS installer로 검증했고 zip은 package gate에서 검증했으며, evidence JSON은 upload 전 privacy scanner를 통과했습니다. Public code signing이 없으므로 조직의 SmartScreen과 unsigned app 실행 정책은 별도로 확인합니다.
 
 검증 담당자는 Windows host에서 fresh package를 만든 뒤 실행합니다.
 
@@ -234,7 +234,7 @@ HTTPS, browser notification permission, 앱의 알림 설정, `~/.codexmux/push-
 
 ## 다음으로
 
-- **[설치](/codexmux/docs/installation/)** — Windows package/source와 Issue #16 경계
+- **[설치](/codexmux/docs/installation/)** — Windows package/source와 stable release 경계
 - **[보안과 인증](/codexmux/docs/security-auth/)** — bootstrap, auth, HTTPS
 - **[데이터 디렉터리](/codexmux/docs/data-directory/)** — runtime DB와 upload cleanup
 - **[아키텍처](/codexmux/docs/architecture/)** — outer server와 Runtime v2 흐름

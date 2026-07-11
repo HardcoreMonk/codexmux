@@ -125,4 +125,5 @@ corepack pnpm smoke:windows:release-gate
 - Windows preflight는 tmux hard requirement에서 terminal runtime readiness로 전환되었습니다.
 - Windows service host와 host diagnostics smoke는 dry-run, loopback-local, no mutation 원칙을 확인했습니다.
 - Windows Electron env와 packaging contract smoke가 Windows PATH, `NODE_PATH`, NSIS/zip target을 확인했습니다.
-- Windows release gate artifact는 sanitized step summary만 저장합니다.
+- Windows release gate artifact는 bounded, sanitized structured result만 저장하고 pre-upload
+  privacy scanner를 통과한 JSON만 업로드합니다.

@@ -30,8 +30,9 @@ Windows 설치형 제품 마감은 별도 제품 line인
 | 웹 구조 | Next.js Pages Router + custom Node server |
 | terminal 구조 | Runtime v2 Windows adapter + legacy tmux adapter |
 | bootstrap 보안 | ADR-026 `Verified` |
-| upload ingress | ADR-027 `Implemented`; fresh Windows 증거 대기 |
-| 현재 release blocker | [GitHub issue #16](https://github.com/HardcoreMonk/codexmux/issues/16) |
+| upload ingress | ADR-027 `Verified` |
+| Windows release gate | `v0.4.21` stable/latest; ADR-028 `Verified` |
+| 배포 범위 | unsigned 내부 Windows release; public code signing과 SmartScreen reputation은 미검증 |
 
 ## 시작하기
 
@@ -110,14 +111,20 @@ corepack pnpm smoke:windows:packaged-launch
 corepack pnpm smoke:windows:upload-integrity
 corepack pnpm smoke:windows:package-gate
 corepack pnpm smoke:windows:release-gate
+corepack pnpm check:smoke-artifacts -- $env:CODEXMUX_SMOKE_ARTIFACT_DIR
 ```
 
 `CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_ALLOW_SYNTHETIC=1`은 개발용 fallback이며 release
 인수 증거를 대신하지 않습니다.
+Release evidence JSON은 privacy scanner를 통과해야 업로드되며, 실패하면 stable
+promotion도 진행하지 않습니다.
 
-Linux에서 Windows smoke가 `skipped`인 결과는 Windows 통과 증거가 아닙니다. ADR-027의
-남은 검증 절차와 인수 기준은 [issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)에서
-추적합니다.
+Linux에서 Windows smoke가 `skipped`인 결과는 Windows 통과 증거가 아닙니다. `v0.4.20`에서
+fresh Windows upload/package와 실제 published updater 적용을 최초 검증했고, `v0.4.21`은
+[workflow 29162818458](https://github.com/HardcoreMonk/codexmux/actions/runs/29162818458)에서
+같은 경로와 세 artifact privacy gate를 다시 통과했습니다. 현재 근거는
+[v0.4.21 release handoff](docs/operations/2026-07-12-v0.4.21-windows-release-handoff.md)에
+기록합니다.
 
 릴리스 tag workflow는 고정된 직전 installer와 SHA-256을 기준으로 fresh Windows package
 gate를 실행합니다. 통과한 자산은 먼저 prerelease로 게시하며, 같은 tag를 대상으로 실제
@@ -168,6 +175,8 @@ Pages route로 fallback하지 않습니다.
 | [docs/FOLLOW-UP.md](docs/FOLLOW-UP.md) | release blocker와 후속 작업 |
 | [pre-auth handoff](docs/operations/2026-07-11-pre-auth-bootstrap-security-handoff.md) | bootstrap 보안 구현·검증·복구 |
 | [upload handoff](docs/operations/2026-07-11-production-security-upload-integrity-handoff.md) | dependency/upload 구현·검증·Windows 경계 |
+| [v0.4.20 Windows release handoff](docs/operations/2026-07-12-v0.4.20-windows-release-handoff.md) | 최초 기능 검증과 published artifact privacy 교정 |
+| [v0.4.21 Windows release handoff](docs/operations/2026-07-12-v0.4.21-windows-release-handoff.md) | 현재 stable release와 privacy-safe Windows 증거 |
 | [제품 line migration](docs/operations/codexwinmux-product-line-migration.md) | `codexmux`와 `codexwinmux` 분리 기준 |
 
 ## 라이선스

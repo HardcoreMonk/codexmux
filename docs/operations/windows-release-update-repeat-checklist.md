@@ -24,6 +24,7 @@ $env:CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_BASE_INSTALLER_PATH = "C:\artifacts\cod
 corepack pnpm smoke:windows:update-metadata
 corepack pnpm smoke:windows:package-gate
 corepack pnpm smoke:windows:release-gate
+corepack pnpm check:smoke-artifacts -- $env:CODEXMUX_SMOKE_ARTIFACT_DIR
 ```
 
 확인 기준:
@@ -34,24 +35,27 @@ corepack pnpm smoke:windows:release-gate
 - package gate는 현재 version보다 낮은 실제 baseline installer를 사용합니다. Synthetic
   local-feed는 release evidence로 인정하지 않습니다.
 - `CODEXMUX_SMOKE_ARTIFACT_DIR`에 sanitized gate artifact가 생성됩니다.
+- Artifact privacy scanner가 금지 key/value를 찾지 않고 통과합니다. 실패한 artifact는
+  업로드하거나 stable promotion 근거로 사용하지 않습니다.
 - packaged runtime v2와 installer runtime v2 smoke가 Phase 6 gate를 통과합니다.
 
 ## GitHub Release 게시 후
 
-이전 버전이 `0.4.16`, 새 버전이 `0.4.17`인 예시입니다. Windows candidate gate가 통과한
-asset은 먼저 prerelease로 게시합니다.
+`<previous-version>`과 `<target-version>`을 실제 직전 stable과 candidate version으로
+바꿉니다. Windows candidate gate가 통과한 asset은 먼저 prerelease로 게시합니다.
 
 ```powershell
-$env:CODEXMUX_WINDOWS_UPDATER_CURRENT_VERSION = "0.4.16"
+$env:CODEXMUX_WINDOWS_UPDATER_CURRENT_VERSION = "<previous-version>"
 $env:CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INCLUDE_PRERELEASE = "1"
-$env:CODEXMUX_WINDOWS_UPDATER_PUBLISHED_TAG = "v0.4.17"
+$env:CODEXMUX_WINDOWS_UPDATER_PUBLISHED_TAG = "v<target-version>"
 corepack pnpm smoke:windows:updater-published-channel
 ```
 
 ```powershell
-$env:CODEXMUX_WINDOWS_PUBLISHED_BASE_INSTALLER_PATH = "release\codexmux-Setup-0.4.16.exe"
+$env:CODEXMUX_WINDOWS_PUBLISHED_BASE_INSTALLER_PATH = "release\codexmux-Setup-<previous-version>.exe"
 $env:CODEXMUX_WINDOWS_UPDATER_PUBLISHED_GENERIC_FEED = "1"
 corepack pnpm smoke:windows:updater-published-install
+corepack pnpm check:smoke-artifacts -- $env:CODEXMUX_SMOKE_ARTIFACT_DIR
 ```
 
 확인 기준:
@@ -63,7 +67,8 @@ corepack pnpm smoke:windows:updater-published-install
 - post-update `/api/health.version`이 새 버전입니다.
 - 위 target-tag channel/install smoke가 모두 통과한 뒤에만 prerelease를 stable/latest로
   승격합니다.
-- 실패한 candidate는 prerelease로 유지하고 새 tag나 asset으로 우회하지 않습니다.
+- Prerelease 게시 전 실패는 Release와 asset을 만들지 않습니다. 게시 후 실패는 candidate를
+  prerelease로 유지하며, 같은 tag를 이동하거나 asset을 바꿔 우회하지 않습니다.
 
 ## Runtime/사용 환경 증거
 
@@ -94,3 +99,26 @@ corepack pnpm smoke:windows:installed-observation
 - `corepack pnpm smoke:windows:update-metadata`: passed, `latestVersion=0.4.16`
 - `CODEXMUX_WINDOWS_UPDATER_CURRENT_VERSION=0.4.15 corepack pnpm smoke:windows:updater-published-channel`: passed, `0.4.15 -> 0.4.16`
 - `CODEXMUX_WINDOWS_PUBLISHED_BASE_INSTALLER_PATH=release\\codexmux-Setup-0.4.15.exe CODEXMUX_WINDOWS_UPDATER_PUBLISHED_GENERIC_FEED=1 corepack pnpm smoke:windows:updater-published-install`: passed, `quitAndInstall`, installer settle, post-update health `version=0.4.16`, `commit=13fe69ba`
+
+2026-07-12 `v0.4.20` 최초 기능 검증:
+
+- Workflow [29161183240](https://github.com/HardcoreMonk/codexmux/actions/runs/29161183240): fresh `windows-2025` package/release gate, prerelease 게시, published updater apply, stable/latest 승격 통과
+- Baseline: 실제 `v0.4.16` installer, SHA-256 `7933b764ad95642fcf9a7507e464a5de6e2bed5b5e2c6209c7ed43ca1b31da80`
+- Upload integrity: exact size/SHA, same-directory publish, abort/aged-stage cleanup, committed `.part` 보존, 동일 exe kill switch 통과
+- Published install: `v0.4.16 -> v0.4.20`, post-update health `version=0.4.20`, `commit=efffbed`
+- Stable asset: `latest.yml`, installer, matching blockmap, Windows zip 정확한 네 개
+- 운영 근거: `docs/operations/2026-07-12-v0.4.20-windows-release-handoff.md`
+
+Release 후 재감사에서 `smoke-windows-published-update-v0.4.20`의 JSON 2개는 privacy-safe
+evidence에서 제외했습니다. Package/upload와 실제 updater 적용 기능 결과는 유효하며 token이나
+credential은 발견하지 않았습니다.
+
+2026-07-12 `v0.4.21` privacy-safe release 재확인:
+
+- Workflow [29162818458](https://github.com/HardcoreMonk/codexmux/actions/runs/29162818458): 모든 job과 stable/latest 승격 통과
+- Baseline: 실제 `v0.4.20` installer, SHA-256 `b98943708c2b0608fd5e5a49fc42aa21f59981ce3e78396de43bf89f5484936b`
+- Package gate: `411634ms`; upload integrity `11341ms`; release gate `16312ms`
+- Updater: local `257386ms`, published `244973ms`, post-update health `version=0.4.21`, `commit=3818a28`
+- Privacy: browser/package/published-updater upload 전 검사와 workflow 중·직후 확보한 다운로드본 16개 JSON의 stable 승격 후 독립 검사 통과
+- Stable asset: `latest.yml`, installer, matching blockmap, Windows zip 정확한 네 개
+- 운영 근거: `docs/operations/2026-07-12-v0.4.21-windows-release-handoff.md`

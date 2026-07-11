@@ -116,8 +116,10 @@ corepack pnpm check:upload-memory
 
 2026-07-11 측정에서 harness control은 `196,464B`, retaining negative는 `52,559,535B`,
 production positive는 3회 모두 `130,912B` 증가했습니다. 이 Linux 증거는 fresh Windows
-packaged filesystem 증거를 대신하지 않으며, 남은 gate는
-[Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)에서 추적합니다.
+packaged filesystem 증거를 대신하지 않습니다. `v0.4.20` fresh Windows package gate가
+packaged upload integrity와 kill switch를 최초 통과했고 `v0.4.21`에서 같은 gate와
+artifact privacy 검사를 반복했습니다. 완료 근거는 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)과
+두 Windows release handoff에 있습니다.
 
 ## 피해야 할 작업
 

@@ -8,8 +8,8 @@ permalink: /ko/docs/installation/index.html
 
 현재 primary 전환 경로는 Windows Runtime v2를 사용하는 Electron desktop package입니다. 이 저장소는 기존 `codexmux` product identity와 release evidence를 유지하고, Windows 설치형 제품 마감은 별도 [codexwinmux 저장소](https://github.com/HardcoreMonk/codexwinmux)에서 진행합니다.
 
-{% call callout('warning', 'Fresh Windows gate 대기 중') %}
-NSIS/zip packaging과 Windows runtime 구현은 존재하지만 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)의 fresh Windows packaged upload, package gate, release gate evidence가 남아 있습니다. 아래 package를 검증 완료된 일반 사용자 release로 과장하지 않습니다.
+{% call callout('warning', '검증된 내부 Windows release') %}
+v0.4.21은 fresh Windows packaged upload, package/release gate, v0.4.20에서 v0.4.21로의 published update와 artifact privacy gate를 통과했습니다. 다만 public code signing이 없는 내부 release이므로 일반 공개 지원 package로 확대 해석하지 않습니다.
 {% endcall %}
 
 ## Windows package
@@ -22,7 +22,7 @@ NSIS/zip packaging과 Windows runtime 구현은 존재하지만 [Issue #16](http
 | `codexmux-<version>-win.zip` 계열 | 압축 해제형 package |
 | `latest.yml`, `.blockmap` | Electron updater metadata |
 
-검증에 참여할 때만 [codexmux Releases](https://github.com/HardcoreMonk/codexmux/releases/latest)의 artifact를 사용하고, version과 Issue #16 상태를 함께 확인하세요. Public code signing/SmartScreen reputation은 내부 배포 기준의 blocker가 아니지만 조직의 실행 정책은 별도로 따라야 합니다.
+조직에서 승인한 내부 배포에는 [codexmux Releases](https://github.com/HardcoreMonk/codexmux/releases/latest)의 exact 네 artifact를 사용하고 version을 함께 확인하세요. Public code signing/SmartScreen reputation은 내부 배포 기준의 blocker가 아니지만 조직의 실행 정책은 별도로 따라야 합니다.
 
 ## Windows source 실행
 
@@ -87,7 +87,7 @@ corepack pnpm smoke:windows:release-gate
 
 `package-gate`는 updater local-feed 단계를 포함합니다. Fresh runner의 `release/`에는 이전 installer가 없으므로 현재 version보다 낮은 실제 installer를 위 환경 변수로 전달해야 합니다. `CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_ALLOW_SYNTHETIC=1`은 개발 fallback일 뿐 release acceptance evidence로 인정하지 않습니다.
 
-Issue #16은 이 명령이 목록에 존재한다는 사실이 아니라, fresh Windows runner에서 현재 source보다 새 package와 실제 previous installer로 통과한 evidence를 요구합니다.
+`v0.4.21`은 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)의 조건대로 fresh Windows runner, 새 package와 실제 `v0.4.20` installer로 통과했습니다. 이후 stable release도 명령의 존재가 아니라 같은 실제 evidence를 남겨야 합니다.
 
 ## Port와 최초 설정
 
