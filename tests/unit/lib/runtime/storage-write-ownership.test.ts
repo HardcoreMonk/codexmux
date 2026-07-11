@@ -4,6 +4,15 @@ import path from 'path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ILayoutData, IWorkspacesData } from '@/types/terminal';
 
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+  }),
+}));
+
 describe('runtime storage v2 write ownership mirror', () => {
   let homeDir: string | null = null;
   const originalHome = process.env.HOME;
