@@ -53,7 +53,10 @@ const waitFor = async (label, fn, timeoutMs = DEFAULT_TIMEOUT_MS) => {
 const jsonRequest = async (baseUrl, pathname, cookie, init = {}) => {
   const headers = {
     ...(cookie ? { Cookie: cookie } : {}),
-    ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+    ...(init.body ? {
+      'Content-Type': 'application/json',
+      Origin: new URL(baseUrl).origin,
+    } : {}),
     ...(init.headers ?? {}),
   };
   let res;

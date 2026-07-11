@@ -191,3 +191,27 @@
 - 결정: Codex launch/resume command는 `hooks={path="~/.codexmux/hooks.json"}`를 사용하지 않고 `hooks.SessionStart`, `hooks.UserPromptSubmit`, `hooks.Stop` inline TOML override를 각각 `-c`로 전달합니다. Codex web input은 prompt 본문을 bracketed paste로 감싸고 Enter를 같은 frame에 포함한 뒤 후속 Enter를 한 번 더 보냅니다.
 - 이유: 현재 Codex CLI strict config parser는 `hooks` path string override를 구조화된 hook table로 보지 않아 config load 오류를 낼 수 있습니다. Web input을 raw text와 별도 Enter frame으로 나누면 재접속/copy mode/긴 입력 확인 상태에서 입력이 프롬프트에 남고 제출되지 않을 수 있습니다.
 - 영향: `~/.codexmux/hooks.json`은 local hook/statusline bridge 호환용 생성 파일로 남지만 launch/resume config source가 아닙니다. Codex command builder, `MSG_WEB_STDIN`, web input payload를 바꾸면 `TMUX.md`, `STATUS.md`, `DATA-DIR.md`, `TESTING.md`와 landing docs를 함께 갱신합니다.
+
+## ADR-026: Pre-auth bootstrap은 loopback exposure와 explicit install admission을 사용한다
+
+- 상태: Verified
+- 결정: setup으로 시작한 process는 `HOST`와 저장된 network access보다 우선해 `127.0.0.1`에 bind합니다. Setup first claim은 startup exposure/claim latch, loopback Host, same-authority Origin, JSON request를 모두 만족할 때만 허용합니다. `/api/install`은 generic WebSocket route에서 분리하고 setup-local 또는 authenticated admission과 반복 검증되는 setup lease를 사용합니다.
+- 이유: network source filter나 session 예외 하나만으로는 LAN RCE, browser CSRF/DNS rebinding, config 손상에 따른 auth downgrade, setup 완료 뒤 남은 PTY를 함께 막을 수 없습니다.
+- trade-off: remote onboarding과 Origin 없는 custom install client는 지원하지 않습니다. Setup에서 선택한 direct external bind는 restart 뒤 적용됩니다. 현재 loopback trust는 user-scoped, non-elevated process와 loopback Host를 보존하는 local browser로 제한하며 Host-rewriting proxy, intentional forwarding, elevated service에는 one-time capability 또는 host-owned action이 필요합니다.
+- 영향: config missing/setup/configured/invalid state를 분리하고 malformed/I/O/hash-only config는 fail closed합니다. `INIT_PASSWORD` mode의 install은 session을 요구합니다. Install PTY는 runtime terminal이 아닌 legacy infrastructure adapter로 남고 arbitrary stdin residual risk를 가집니다. Setup/config/auth/Origin 정책과 관련 test, architecture, data-dir, systemd, Windows gap 문서를 함께 갱신합니다.
+- 승인 조건: implementation plan이 strict config semantics, HTTP setup CSRF defense, typed install route, atomic execution slot, setup lease, dev/prod bind smoke, rollback을 모두 포함하고 engineering review를 통과해야 합니다.
+- 승인 근거: `docs/superpowers/plans/2026-07-11-pre-auth-bootstrap-security.md`의 engineering review가 config/preflight/proxy call-site, concurrent claim, typed upgrade guard, install slot/lease, dev/prod/root/Windows execution constraints를 검토하고 blocker 없이 통과했습니다.
+- 검증 근거: `docs/operations/2026-07-11-pre-auth-bootstrap-security-handoff.md`에 unit/static gate, Linux development/production attack smoke, fresh artifact gate, Electron build/browser/Electron runtime smoke와 Windows fresh-runner 제한을 기록했습니다.
+
+## ADR-027: 인증된 upload ingress는 outer custom server가 소유한다
+
+- 상태: Implemented
+- 결정: `/api/upload-image`와 `/api/upload-file`의 external ingress는 Next proxy와 Pages API route보다 앞선 outer custom server가 소유합니다. Request는 upload-scoped session/CLI 인증, credential별 Origin, strict framing과 bounded admission을 통과한 뒤 same-directory staged file로 streaming합니다. Writer close 뒤 `fs.link(stage, final)`로 destination을 원자적으로 no-replace publish하고 staged link를 제거합니다.
+- 이유: Next proxy의 10MiB body clone limit은 제한을 넘긴 crossing chunk 전체를 버리고 clone stream을 정상 EOF로 닫을 수 있습니다. 재현에서 11,534,336B generic body와 10,485,761B image body가 모두 10,444,800B artifact로 `200` 저장됐습니다. Global proxy cap 상향은 unauthenticated clone과 route-level full buffering의 memory amplification을 키웁니다.
+- trade-off: Custom server의 HTTP 책임이 두 route만큼 커지고 direct `next dev` 또는 internal standalone port는 upload surface가 아닙니다. Session rolling refresh, same-authority Origin과 CLI-token parity를 outer handler가 명시적으로 보존해야 합니다. Content-Length 없는 chunked custom client는 지원하지 않습니다.
+- 영향: Mutable admission/transaction state는 outer server instance 하나가 소유합니다. Stateless storage cleanup은 기존 authenticated cleanup API에서도 사용할 수 있지만 active staged file은 삭제하지 않습니다. `CODEXMUX_UPLOADS_DISABLED=1`은 old Pages route로 fallback하지 않고 exact upload route만 503으로 닫는 recovery mode입니다.
+- 검증 조건: production audit 0건, raw HTTP framing/Expect 공격 test, exact limit과 SHA-256 parity, active cleanup/abort/shutdown race, dev/prod Chromium smoke, Electron gate와 Windows hard-link/delete/package/updater evidence가 필요합니다. Windows evidence 전에는 Implemented 상태가 될 수 있어도 Verified로 이동하지 않습니다.
+- 설계 근거: `docs/superpowers/specs/2026-07-11-production-security-upload-integrity-design.md`.
+- 검토 근거: `docs/superpowers/grill-me/2026-07-11-production-security-upload-integrity.md`에서 proxy cap, auth/Origin, HTTP framing, admission, cleanup, rollback과 Windows gate를 검토했습니다.
+- 승인 근거: `docs/superpowers/plans/2026-07-11-production-security-upload-integrity.md`의 독립 engineering review가 shutdown/Expect/quarantine/upgrade, Node timeout, maintenance, auth failure, memory oracle, Windows native storage gate와 TDD 실행 순서를 blocker 없이 통과했습니다.
+- 구현 근거: `docs/operations/2026-07-11-production-security-upload-integrity-handoff.md`에 dependency audit, Linux dev/prod upload, memory, browser, Electron 증거와 pending Windows boundary를 기록했습니다.

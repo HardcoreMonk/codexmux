@@ -43,6 +43,16 @@ WantedBy=default.target
 
 System-wide service가 아니라 user service를 썼던 이유는 `~/.codexmux/`, `~/.codex/sessions/`, 사용자 tmux socket, NVM Node path가 사용자 기준이어야 했기 때문입니다.
 
+Fresh config에서 user service가 setup으로 시작하면 저장된 `HOST`보다 먼저
+`127.0.0.1`에만 bind하고, 외부 bind는 setup 완료 후 restart부터 적용합니다. Setup
+동안 remote onboarding은 지원하지 않습니다. System-wide/root service처럼 detectable
+elevated runtime에서 fresh setup을 시작하려면 valid `INIT_PASSWORD`가 필요하며, 이 값도
+remote setup을 허용하지 않고 login session gate만 추가합니다.
+
+Malformed/hash-only config로 startup이 실패하면 service를 멈춘 상태에서 bytes를
+백업·수정합니다. 비밀번호 reset은 `authPassword`와 `authSecret`을 함께 제거한 뒤
+restart하며 config 전체 삭제는 다른 앱 설정도 초기화하므로 기본 복구 절차가 아닙니다.
+
 ## 등록과 시작
 
 ```bash

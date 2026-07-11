@@ -10,8 +10,10 @@ const VALID_NETWORK_ACCESS: ReadonlyArray<TNetworkAccess> = ['localhost', 'tails
 
 let cachedSpec: IAccessSpec | null = null;
 let cachedSource = '';
+let setupRestrictedAtStartup = false;
 
 const resolveSource = (): string => {
+  if (setupRestrictedAtStartup) return 'localhost';
   const envHost = process.env.HOST?.trim();
   if (envHost) return envHost;
   const raw = process.env.__CMUX_NETWORK_ACCESS;
@@ -30,7 +32,18 @@ const getSpec = (): IAccessSpec => {
   return cachedSpec;
 };
 
-export const initAccessFilter = (envHost: string | undefined, networkAccess: TNetworkAccess | undefined) => {
+export interface IInitAccessFilterOptions {
+  envHost?: string;
+  networkAccess?: TNetworkAccess;
+  setupRequiredAtStartup: boolean;
+}
+
+export const initAccessFilter = ({
+  envHost,
+  networkAccess,
+  setupRequiredAtStartup,
+}: IInitAccessFilterOptions) => {
+  setupRestrictedAtStartup = setupRequiredAtStartup;
   if (!envHost?.trim()) {
     process.env.__CMUX_NETWORK_ACCESS = networkAccess ?? DEFAULT_NETWORK_ACCESS;
   }

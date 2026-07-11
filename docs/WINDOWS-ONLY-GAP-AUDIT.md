@@ -57,6 +57,7 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 | Platform Shell | desktop/mobile shell packaging | Electron, Android | Windows Electron shell |
 | Local Session Index | Codex JSONL discovery | `~/.codex/sessions` | Windows path semantics verified |
 | Release Verification | CI/smoke/package/install | mixed platform smoke | Windows package/update gate |
+| Upload Ingress | Next proxy와 Pages API buffering | outer streaming/no-replace publish | packaged Windows filesystem/kill-switch gate |
 
 ## 차이 매트릭스
 
@@ -83,7 +84,8 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 - Windows service host baseline과 host diagnostics smoke는 dry-run/no-mutation 원칙을 확인했습니다.
 - Electron bootstrap env는 Windows `PATH`와 `NODE_PATH` 구분자를 사용합니다.
 - Electron packaging contract는 Windows NSIS/zip target을 기본으로 합니다.
-- Windows package gate는 zip artifact, update metadata, updater local feed, packaged launch, packaged runtime v2, installer runtime v2 smoke를 묶습니다.
+- Windows package gate는 zip artifact, update metadata, updater local feed, packaged launch, packaged upload integrity, packaged runtime v2, installer runtime v2 smoke를 묶습니다.
+- Packaged upload gate 구현은 fresh HOME/USERPROFILE, actual `windows-exe`, size/SHA/same-directory publish, abort stage unlink, aged stage cleanup, committed `.part` 보존, 동일 exe kill-switch restart를 요구합니다. 2026-07-11 Linux run은 이 단계가 gate에 포함된 것만 확인했고 실제 Windows 실행 증거는 아직 없습니다.
 - 내부 전용 배포 조건에 따라 public code signing certificate와 SmartScreen reputation은 release blocker가 아닙니다.
 - `v0.4.3` GitHub prerelease는 `latest.yml`, NSIS installer, blockmap, zip asset을 포함합니다.
 - Read-only published channel smoke는 prerelease 포함 조건에서 `0.4.2 -> 0.4.3` metadata를 확인했습니다.
@@ -101,6 +103,9 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 - Type shape는 tmux session name, pane PID, pane current command가 항상 있다는 가정을 제거해야 합니다.
 - Rollback을 위해 tmux path는 migration fallback으로 잠시 유지합니다.
 - Windows service/tray/installer ownership은 별도 host boundary로 관리합니다.
+- Pre-auth bootstrap은 fresh setup을 loopback에 고정하고 install WebSocket을 typed admission/lease로 보호합니다. 이 local browser/user-process trust는 Windows service elevation, multi-user isolation, installer 권한 승격을 해결하지 않습니다.
+- Legacy install PTY는 platform command allowlist 밖에서 fail closed하며 Windows host-owned install/repair action의 대체물이 아닙니다.
+- Upload ingress는 Next보다 먼저 exact 두 route를 소유하고 hard-link no-replace publish를 사용합니다. Windows user profile filesystem의 hard-link/delete/retry와 packaged env propagation은 fresh runner에서 검증해야 합니다.
 
 ## 권장 전환 순서
 
@@ -137,11 +142,15 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 | Windows process inspector | 완료 |
 | Windows Codex session detection smoke | 완료 |
 | Windows preflight | 완료 |
+| Pre-auth local bootstrap admission | 완료: loopback bind, strict Host/Origin, INIT session, config fail-closed, dev/prod Linux smoke |
+| Windows host-owned setup/install capability | 미완료: service/tray/installer boundary와 one-time capability 후보 필요 |
 | Windows service host baseline | 완료 |
 | Windows host diagnostics | 완료 |
 | Windows Electron bootstrap env | 완료 |
 | Windows Electron packaging contract | 완료 |
 | Windows release gate artifact | 완료 |
+| Outer upload ingress Linux dev/prod/memory gate | 완료: dev/prod 각 12 checks, 50MiB positive 3회 external growth 130,912B |
+| Windows packaged upload integrity | 구현 완료, fresh Windows 실행 증거 미완료: `smoke:windows:upload-integrity`와 package-gate 재실행 필요 |
 | GitHub-hosted release asset과 published metadata | 완료: 최신 기준 `v0.4.16`, `latest.yml`, NSIS installer, `.blockmap`, zip asset 확인 |
 | 실제 installed app에서 published update `quitAndInstall` | 완료: `v0.4.15 -> v0.4.16` published installer baseline apply와 post-update health 확인 |
 | public code signing certificate trust | 비차단: 내부 전용 앱이라 public 인증 불필요 |

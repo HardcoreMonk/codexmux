@@ -33,6 +33,8 @@
 - 설치 앱 장시간 관찰 smoke: `0.4.16` 설치본 302.8초, 23회 반복 실행, Phase 6 gate 확인
 - `codexwinmux` 별도 제품 line ADR과 migration runbook
 - 다음 버전 release/update smoke 반복 체크리스트
+- Pre-auth bootstrap loopback exposure, strict setup claim, typed install admission/lease와 dev/prod 공격 smoke
+- Production dependency audit 0건과 outer-owned streaming upload ingress의 Linux dev/prod/memory/Electron gate
 
 ## 릴리스 전 확인
 
@@ -42,7 +44,15 @@
 corepack pnpm lint
 corepack pnpm tsc --noEmit
 corepack pnpm test
+corepack pnpm audit --prod
+CODEXMUX_PREAUTH_SMOKE_MODE=development corepack pnpm smoke:pre-auth-bootstrap
+corepack pnpm build
+CODEXMUX_PREAUTH_SMOKE_MODE=production corepack pnpm smoke:pre-auth-bootstrap
+corepack pnpm check:upload-memory
+CODEXMUX_UPLOAD_SMOKE_MODE=development corepack pnpm smoke:upload-integrity
+CODEXMUX_UPLOAD_SMOKE_MODE=production corepack pnpm smoke:upload-integrity
 corepack pnpm pack:electron
+corepack pnpm smoke:windows:upload-integrity
 corepack pnpm smoke:windows:package-gate
 ```
 
@@ -78,6 +88,7 @@ Published update 검증:
 | Runtime v2 live rollback drill evidence | 완료: 설치 앱에서 runtime v2 `on -> CODEXMUX_RUNTIME_V2=0 -> restored` 전환, disabled health `404 runtime-v2-disabled`, 복구 후 Phase 6 gate 통과 |
 | 측정 기반 perf tuning | 완료/비차단: `corepack pnpm perf:timeline-jsonl` synthetic 5,000 entries parse `18.57ms`, virtualization 권고 유지. session list cold index refresh는 비차단 응답으로 조정했고 package/installed runtime v2 worker counter는 Phase 6 gate에서 clean 확인 |
 | Phase 6 closeout | 완료: packaged runtime v2 smoke, 설치 관찰 smoke, rollback drill에 Phase 6 health/perf gate 반영 |
+| Production upload fresh Windows evidence | 미완료: 현재 source로 packaged exe를 만든 뒤 `smoke:windows:upload-integrity`, package/updater/release gate를 Windows에서 실행해야 ADR-027 Verified 가능 |
 
 ## 비차단 항목
 

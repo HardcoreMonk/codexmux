@@ -41,6 +41,7 @@ corepack pnpm pack:electron
 corepack pnpm smoke:windows:zip-artifact
 corepack pnpm smoke:windows:update-metadata
 corepack pnpm smoke:windows:packaged-launch
+corepack pnpm smoke:windows:upload-integrity
 corepack pnpm smoke:windows:packaged-runtime-v2
 corepack pnpm smoke:windows:installer-install
 corepack pnpm smoke:windows:installer-runtime-v2
@@ -50,6 +51,81 @@ corepack pnpm smoke:windows:package-gate
 ```
 
 `smoke:windows:updater-published-channel`은 설치나 update를 수행하지 않고 GitHub Releases channel을 read-only로 확인합니다. 실제 published update evidence는 설치된 앱보다 높은 버전의 published release가 있을 때 `smoke:windows:updater-published-install`로 확인합니다. Windows Electron updater는 외부 HTTPS 요청에 Node HTTP executor를 사용하며, stale tasklist 항목이 baseline installer를 막을 때는 `CODEXMUX_WINDOWS_PUBLISHED_BASE_ZIP_PATH`와 `CODEXMUX_WINDOWS_UPDATER_PUBLISHED_GENERIC_FEED=1`로 실제 GitHub release asset apply를 검증할 수 있습니다. Local feed updater smoke는 isolated 짧은 설치 경로에서 `quitAndInstall` 이후 updater installer process settle과 post-update packaged launch까지 확인합니다.
+
+## Pre-auth bootstrap 보안
+
+Unit/static gate:
+
+```bash
+corepack pnpm exec vitest run tests/unit/lib/config-store.test.ts tests/unit/lib/auth-credentials.test.ts tests/unit/lib/bootstrap-state.test.ts tests/unit/lib/request-authority.test.ts tests/unit/lib/bootstrap-request-guard.test.ts tests/unit/lib/access-filter.test.ts tests/unit/lib/server-bootstrap.test.ts tests/unit/lib/install-request-auth.test.ts tests/unit/lib/install-server.test.ts tests/unit/lib/runtime/server-ws-upgrade.test.ts tests/unit/pages/auth-setup.test.ts tests/unit/pages/auth-preflight.test.ts tests/unit/scripts/setup-origin-contract.test.ts tests/unit/proxy-config.test.ts
+```
+
+Live gate는 isolated HOME과 scrubbed env를 사용하며 dev/prod를 같은 공격 시나리오로
+검증합니다. Production evidence는 같은 source에서 build한 직후 실행해야 합니다.
+
+```bash
+CODEXMUX_PREAUTH_SMOKE_MODE=development corepack pnpm smoke:pre-auth-bootstrap
+corepack pnpm build
+CODEXMUX_PREAUTH_SMOKE_MODE=production corepack pnpm smoke:pre-auth-bootstrap
+```
+
+검증 범위는 setup loopback bind, public Host, attacker/missing authority, non-JSON POST,
+INIT session, install admission/65,537-byte frame/slot recovery/setup lease, configured restart,
+malformed/hash-only config bytes 보존, stale auth/latch env, 실제 port-file fallback입니다.
+Production은 locale-less `/_next/data`가 login redirect-only payload만 반환하는지, dynamic route
+parameter가 auth를 우회하지 않는지, authenticated absolute-form unknown WebSocket이 attacker
+destination을 선택하지 못하는지도 확인합니다.
+Root에서는 no-INIT setup-open startup 거절을 먼저 확인하고 INIT 흐름으로 계속합니다.
+
+게이트 분류:
+
+- Linux-required: dev/prod pre-auth smoke와 legacy install PTY.
+- GUI-dependent: browser reconnect와 Electron runtime smoke. Chromium/display가 없으면 제한을 기록합니다.
+- Windows-runner-only fresh gate: preflight, host diagnostics, freshly built packaged launch. 기존 완료 증거는 `WINDOWS-ONLY-GAP-AUDIT.md`에 유지하지만 현재 Linux run의 `skipped`를 새 Windows 증거로 대체하지 않습니다.
+
+## Production dependency와 upload integrity
+
+Dependency gate는 advisory ignore 없이 실행합니다.
+
+```bash
+corepack pnpm audit --prod
+```
+
+Upload unit/integration과 process-isolated memory gate:
+
+```bash
+corepack pnpm exec vitest run tests/unit/lib/upload-request-contract.test.ts tests/unit/lib/upload-request-auth.test.ts tests/unit/lib/upload-admission.test.ts tests/unit/lib/uploads-store.test.ts tests/unit/lib/upload-server.test.ts tests/unit/lib/server-http-dispatcher.test.ts tests/integration/upload-http-ingress.test.ts tests/unit/scripts/check-upload-stream-memory.test.ts tests/unit/scripts/upload-integrity-smoke-lib.test.ts
+corepack pnpm check:upload-memory
+```
+
+`check:upload-memory`는 50MiB body를 별도 client process에서 64KiB backpressure write로
+보냅니다. Bare HTTP control, 같은 production UploadServer/storage 경로의 retaining negative,
+production positive 3회를 각각 새 process로 실행합니다. `--expose-gc`는 tsx CLI entrypoint 뒤에
+두어야 합니다. Negative는 16MiB 이상 증가해야 하고 positive는 모두 16MiB 미만이어야 하며,
+size와 SHA-256도 일치해야 합니다.
+
+Live gate는 isolated `HOME`/`USERPROFILE`과 scrubbed auth env를 사용합니다.
+
+```bash
+CODEXMUX_UPLOAD_SMOKE_MODE=development corepack pnpm smoke:upload-integrity
+corepack pnpm build
+CODEXMUX_UPLOAD_SMOKE_MODE=production corepack pnpm smoke:upload-integrity
+```
+
+두 mode 모두 session/CLI/Origin, Expect와 raw framing, Chromium 10MiB/50MiB exact 및 +1,
+11MiB/37MiB SHA parity, 8-active/200MiB admission, idle/abort/manual cleanup, removed Pages route,
+Next large-body warning 부재, shutdown cleanup, kill switch를 12개 check로 검증합니다.
+
+Fresh Windows package는 Linux 결과로 대체하지 않습니다.
+
+```bash
+corepack pnpm smoke:windows:upload-integrity
+corepack pnpm smoke:windows:package-gate
+```
+
+Windows upload gate는 실제 packaged exe와 fresh user tree에서 size/SHA/same-directory commit,
+abort 전에 reserved stage 실재, abort unlink, aged stage cleanup, committed `.part` 보존, 같은 exe의
+kill-switch restart를 확인합니다. Non-Windows의 `{ skipped: true }`는 실행 증거가 아닙니다.
 
 ## 런타임 v2
 

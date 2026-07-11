@@ -27,6 +27,10 @@ describe('Windows package gate helpers', () => {
         script: 'smoke:windows:packaged-launch',
       },
       {
+        id: 'windows-upload-integrity',
+        script: 'smoke:windows:upload-integrity',
+      },
+      {
         id: 'windows-packaged-runtime-v2',
         script: 'smoke:windows:packaged-runtime-v2',
       },
@@ -52,6 +56,7 @@ describe('Windows package gate helpers', () => {
         'smoke:windows:zip-artifact',
         'smoke:windows:update-metadata',
         'smoke:windows:updater-local-feed',
+        'smoke:windows:upload-integrity',
         'smoke:windows:packaged-runtime-v2',
         'smoke:windows:installer-runtime-v2',
       ],

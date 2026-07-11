@@ -18,6 +18,11 @@ timeline 중심으로 보여줍니다.
 - terminal과 Codex 입력 포커스의 `Ctrl+D`는 앱 단축키가 아니라 EOF/EOT로 전달합니다. Codex 입력 바 제출은 bracketed paste + Enter frame과 후속 Enter로 처리합니다.
 - 모바일 foreground 복귀 시 terminal/status/timeline/sync WebSocket은 stale `OPEN` 상태를 신뢰하지 않고 재연결할 수 있습니다.
 - 성능 최적화는 `/api/debug/perf` snapshot으로 계측한 뒤 좁게 적용합니다. timeline append/render, diff, stats는 기준 데이터를 바꾸지 않는 batch/memo/short cache를 우선합니다.
+- 최초 setup process는 저장된 network access나 `HOST`보다 먼저 loopback에만 bind합니다. Setup claim이 끝나도 listener 확대는 restart 뒤 적용합니다.
+- `config.json`의 malformed JSON, I/O 오류, hash-only 인증 상태는 setup으로 downgrade하지 않고 startup/request를 fail closed합니다.
+- setup POST는 startup claim latch, loopback Host, same-authority Origin, JSON media type을 요구합니다. `/api/install`은 generic WebSocket 예외가 아니라 setup-local lease 또는 session admission을 사용합니다.
+- `/api/upload-image`와 `/api/upload-file`은 Next proxy/Pages route가 아니라 outer custom server가 소유합니다. Image/file limit은 10MiB/50MiB이고, successful publish는 same-directory hard link의 no-replace commit입니다.
+- Production dependency baseline은 Next `16.2.6`, next-intl `4.9.2`, ws `8.21.0`, js-yaml `4.2.0`과 제한된 PostCSS/Babel override이며 `pnpm audit --prod` 0건을 유지합니다.
 
 ## 주요 구성
 
@@ -29,6 +34,12 @@ timeline 중심으로 보여줍니다.
 | parser | `src/lib/codex-session-parser.ts` | Codex JSONL을 timeline entry로 변환 |
 | stats | `src/lib/stats/` | token, cost, session, daily report 집계 |
 | status | `src/lib/status-manager.ts` | tab state, polling, Web Push, WebSocket broadcast |
+| bootstrap security | `src/lib/server-bootstrap.ts`, `src/lib/request-authority.ts` | strict auth state, startup exposure, Host/Origin admission |
+| install admission | `src/lib/install-request-auth.ts`, `src/lib/install-server.ts` | typed install auth, atomic PTY slot, setup lease, bounded I/O |
+| upload contract/auth | `src/lib/upload-request-contract.ts`, `src/lib/upload-request-auth.ts` | raw target/header, session/CLI, Host/Origin/framing 계약 |
+| upload admission/server | `src/lib/upload-admission.ts`, `src/lib/upload-server.ts` | active/reserved budget, timeout, Expect, shutdown ownership |
+| upload storage | `src/lib/uploads-store.ts` | staged streaming, no-replace publish, committed/staged cleanup |
+| outer HTTP composition | `src/lib/server-http-dispatcher.ts`, `server.ts` | dev/prod upload 선점, Next fallback, signal drain |
 | performance | `src/lib/perf-metrics.ts` | runtime metric, duration/counter, 인증된 성능 스냅샷 |
 | docs | `docs/ARCHITECTURE-LOGIC.md` | 서버와 서비스 로직의 최신 구현 기준 |
 
@@ -56,6 +67,8 @@ provider-neutral boundary 또는 Codex provider 내부에 추가합니다.
 - foreground reconnect 중 timeline init/append가 겹칠 수 있으므로 stable id와 near-duplicate 제거가 UI 중복 방지의 핵심입니다.
 - timeline virtualization과 adaptive status polling은 scroll anchoring, notification, unknown 복구 지연 리스크가 있어 성능 스냅샷 수치가 쌓인 뒤 단계적으로 검증합니다.
 - Codex app-server protocol은 안정화 전까지 post-MVP 후보로 둡니다.
+- setup-local install은 사용자 권한의 arbitrary PTY stdin을 허용하는 legacy adapter입니다. Elevated/multi-user service와 Windows host-owned install action은 별도 capability/host boundary가 필요합니다.
+- Upload directory validation은 user-scoped data directory와 동일 UID local process를 신뢰합니다. Windows hard-link/delete와 packaged kill-switch는 fresh Windows runner evidence 전까지 ADR verification 조건으로 남습니다.
 
 ## MVP 이후 방향
 

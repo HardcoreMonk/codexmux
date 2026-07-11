@@ -1,5 +1,8 @@
 #!/usr/bin/env node
+import { createHash } from 'crypto';
+import { createReadStream } from 'fs';
 import fs from 'fs/promises';
+import net from 'net';
 import os from 'os';
 import path from 'path';
 import { spawn } from 'child_process';
@@ -21,7 +24,13 @@ import {
 } from './electron-smoke-lib.mjs';
 import {
   buildWindowsAppProcessIdScript,
+  buildWindowsPackagedIsolatedEnv,
+  buildWindowsUploadRequestHead,
+  isReservedWindowsUploadStageName,
   parseWindowsProcessIds,
+  resolveWindowsPackagedLaunchMode,
+  validateWindowsUploadIntegrityEvidence,
+  validateWindowsUploadReceiptLocation,
 } from './windows-packaged-launch-smoke-lib.mjs';
 import {
   collectPaneNodes,
@@ -37,18 +46,13 @@ import { buildWindowsPackagedLaunchArtifactPayload } from './windows-package-smo
 
 const DEFAULT_TIMEOUT_MS = 45_000;
 const PASSWORD = 'windows-packaged-runtime-v2-smoke';
-const SMOKE_NAME = 'windows-packaged-launch';
 const rootDir = process.cwd();
 const startedAt = new Date().toISOString();
-
-const resolveSmokeName = (payload) =>
-  payload?.runtimeV2Terminal || payload?.runtimeV2TerminalRequested
-    ? 'windows-packaged-runtime-v2'
-    : SMOKE_NAME;
+const mode = resolveWindowsPackagedLaunchMode({ argv: process.argv, env: process.env });
 
 const writeArtifact = async (status, payload) =>
   writeSmokeArtifact({
-    smokeName: resolveSmokeName(payload),
+    smokeName: mode.smokeName,
     status,
     startedAt,
     payload: buildWindowsPackagedLaunchArtifactPayload(payload),
@@ -70,34 +74,25 @@ const fail = async (code, message, details = {}) => {
 const resolveAppPath = () =>
   path.resolve(process.env.CODEXMUX_WINDOWS_PACKAGED_APP_PATH || path.join(rootDir, 'release', 'win-unpacked', 'codexmux.exe'));
 
-const buildIsolatedEnv = (homeDir) => {
-  const env = {
-    ...process.env,
-    HOME: homeDir,
-    USERPROFILE: homeDir,
-    APPDATA: path.join(homeDir, 'AppData', 'Roaming'),
-    LOCALAPPDATA: path.join(homeDir, 'AppData', 'Local'),
-    ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
-    NEXT_TELEMETRY_DISABLED: '1',
-    NO_AT_BRIDGE: '1',
-    CODEXMUX_RUNTIME_V2: process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_V2 ?? '1',
-    CODEXMUX_RUNTIME_TERMINAL_V2_MODE:
-      process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_TERMINAL_V2_MODE ?? 'new-tabs',
-    CODEXMUX_RUNTIME_STORAGE_V2_MODE:
-      process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_STORAGE_V2_MODE ?? 'default',
-    CODEXMUX_RUNTIME_TIMELINE_V2_MODE:
-      process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_TIMELINE_V2_MODE ?? 'default',
-    CODEXMUX_RUNTIME_STATUS_V2_MODE:
-      process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_STATUS_V2_MODE ?? 'default',
-    CODEXMUX_RUNTIME_TERMINAL_ADAPTER: 'windows',
-    CODEXMUX_PROCESS_INSPECTOR_ADAPTER: 'windows',
-  };
-
-  Object.keys(env).forEach((key) => {
-    if (env[key] === undefined) delete env[key];
-  });
-  return env;
-};
+const buildIsolatedEnv = (homeDir, { uploadsDisabled = false } = {}) => ({
+  ...buildWindowsPackagedIsolatedEnv({
+    baseEnv: process.env,
+    homeDir,
+    initPassword: mode.uploadIntegrity ? PASSWORD : undefined,
+    uploadsDisabled,
+  }),
+  CODEXMUX_RUNTIME_V2: process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_V2 ?? '1',
+  CODEXMUX_RUNTIME_TERMINAL_V2_MODE:
+    process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_TERMINAL_V2_MODE ?? 'new-tabs',
+  CODEXMUX_RUNTIME_STORAGE_V2_MODE:
+    process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_STORAGE_V2_MODE ?? 'default',
+  CODEXMUX_RUNTIME_TIMELINE_V2_MODE:
+    process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_TIMELINE_V2_MODE ?? 'default',
+  CODEXMUX_RUNTIME_STATUS_V2_MODE:
+    process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_STATUS_V2_MODE ?? 'default',
+  CODEXMUX_RUNTIME_TERMINAL_ADAPTER: 'windows',
+  CODEXMUX_PROCESS_INSPECTOR_ADAPTER: 'windows',
+});
 
 const prepareIsolatedEnvDirs = async (homeDir) => {
   await fs.mkdir(path.join(homeDir, 'AppData', 'Roaming'), { recursive: true });
@@ -119,7 +114,10 @@ const readPageState = (cdp) =>
 const jsonRequest = async (baseUrl, pathname, cookie, init = {}) => {
   const headers = {
     ...(cookie ? { Cookie: cookie } : {}),
-    ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+    ...(init.body ? {
+      'Content-Type': 'application/json',
+      Origin: new URL(baseUrl).origin,
+    } : {}),
     ...(init.headers ?? {}),
   };
   const res = await fetch(new URL(pathname, baseUrl), { ...init, headers });
@@ -130,10 +128,23 @@ const jsonRequest = async (baseUrl, pathname, cookie, init = {}) => {
   return data;
 };
 
+const login = async (baseUrl) => {
+  const res = await fetch(new URL('/api/auth/login', baseUrl), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: PASSWORD }),
+  });
+  if (!res.ok) throw new Error(`login failed: ${res.status} ${await res.text()}`);
+  const cookie = extractCookieHeader(res);
+  if (!cookie) throw new Error('login did not return a session cookie');
+  return cookie;
+};
+
 const ensureLoggedIn = async (baseUrl) => {
   const setup = await jsonRequest(baseUrl, '/api/auth/setup', '');
   if (setup?.needsSetup) {
-    await jsonRequest(baseUrl, '/api/auth/setup', '', {
+    const setupCookie = setup.requiresAuth ? await login(baseUrl) : '';
+    await jsonRequest(baseUrl, '/api/auth/setup', setupCookie, {
       method: 'POST',
       body: JSON.stringify({
         authPassword: PASSWORD,
@@ -144,16 +155,125 @@ const ensureLoggedIn = async (baseUrl) => {
       }),
     });
   }
+  return login(baseUrl);
+};
 
-  const res = await fetch(new URL('/api/auth/login', baseUrl), {
+const sha256Bytes = (value) => createHash('sha256').update(value).digest('hex');
+
+const sha256File = (filePath) => new Promise((resolve, reject) => {
+  const hash = createHash('sha256');
+  const stream = createReadStream(filePath);
+  stream.on('data', (chunk) => hash.update(chunk));
+  stream.once('error', reject);
+  stream.once('end', () => resolve(hash.digest('hex')));
+});
+
+const pathExists = async (filePath) => {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch (error) {
+    if (error?.code === 'ENOENT') return false;
+    throw error;
+  }
+};
+
+const uploadBytes = async ({
+  baseUrl,
+  pathname = '/api/upload-file',
+  cookie,
+  body,
+  contentType = 'application/octet-stream',
+  filename,
+  workspaceId,
+  tabId,
+}) => {
+  const response = await fetch(new URL(pathname, baseUrl), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password: PASSWORD }),
+    headers: {
+      Cookie: cookie,
+      Origin: new URL(baseUrl).origin,
+      'Content-Length': String(body.byteLength),
+      'Content-Type': contentType,
+      'X-Cmux-Filename': encodeURIComponent(filename),
+      'X-Cmux-Ws-Id': workspaceId,
+      'X-Cmux-Tab-Id': tabId,
+    },
+    body,
   });
-  if (!res.ok) throw new Error(`login failed: ${res.status} ${await res.text()}`);
-  const cookie = extractCookieHeader(res);
-  if (!cookie) throw new Error('login did not return a session cookie');
-  return cookie;
+  const text = await response.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    // Status and raw text remain available for a bounded smoke failure.
+  }
+  return { status: response.status, data, text };
+};
+
+const uploadDirectory = (homeDir, workspaceId, tabId) =>
+  path.join(homeDir, '.codexmux', 'uploads', workspaceId, tabId);
+
+const listDirectoryNames = async (directory) =>
+  fs.readdir(directory).catch((error) => {
+    if (error?.code === 'ENOENT') return [];
+    throw error;
+  });
+
+const listUploadFiles = async (homeDir) => {
+  const root = path.join(homeDir, '.codexmux', 'uploads');
+  const files = [];
+  const visit = async (directory) => {
+    const entries = await fs.readdir(directory, { withFileTypes: true }).catch((error) => {
+      if (error?.code === 'ENOENT') return [];
+      throw error;
+    });
+    for (const entry of entries) {
+      const entryPath = path.join(directory, entry.name);
+      if (entry.isDirectory()) await visit(entryPath);
+      else if (entry.isFile()) files.push(entryPath);
+    }
+  };
+  await visit(root);
+  return files.sort();
+};
+
+const openPartialUpload = async ({
+  baseUrl,
+  cookie,
+  contentLength,
+  partialBody,
+  workspaceId,
+  tabId,
+}) => {
+  const url = new URL(baseUrl);
+  const socket = net.createConnection({
+    host: url.hostname,
+    port: Number(url.port),
+  });
+  socket.on('error', () => undefined);
+  const closed = new Promise((resolve) => socket.once('close', resolve));
+  await new Promise((resolve, reject) => {
+    socket.once('connect', resolve);
+    socket.once('error', reject);
+  });
+  const head = buildWindowsUploadRequestHead({
+    baseUrl,
+    pathname: '/api/upload-file',
+    cookie,
+    contentLength,
+    contentType: 'application/octet-stream',
+    filename: 'partial-upload.bin',
+    workspaceId,
+    tabId,
+  });
+  await new Promise((resolve, reject) => {
+    socket.write(Buffer.concat([Buffer.from(head), partialBody]), (error) => {
+      if (error) reject(error);
+      else resolve();
+    });
+  });
+  return { socket, closed };
 };
 
 const setElectronCookie = async (cdp, baseUrl, cookie) => {
@@ -284,6 +404,190 @@ const verifyRuntimeV2Disabled = async ({ baseUrl, checks }) => {
   };
 };
 
+const verifyWindowsUploadIntegrity = async ({ baseUrl, cookie, homeDir, checks }) => {
+  const workspaceId = 'windows-smoke';
+  const tabId = 'upload-integrity';
+  const payload = Buffer.alloc(1024 * 1024 + 137, 0x5a);
+  const expectedSha256 = sha256Bytes(payload);
+  const uploaded = await uploadBytes({
+    baseUrl,
+    cookie,
+    body: payload,
+    filename: 'native-publish-payload.bin',
+    workspaceId,
+    tabId,
+  });
+  if (uploaded.status !== 200 || !uploaded.data?.path || !uploaded.data?.filename) {
+    throw new Error(`native upload failed: ${uploaded.status} ${uploaded.text}`);
+  }
+  const receiptLocation = validateWindowsUploadReceiptLocation({
+    homeDir,
+    workspaceId,
+    tabId,
+    filePath: uploaded.data.path,
+    filename: uploaded.data.filename,
+  });
+  const uploadedStat = await fs.stat(uploaded.data.path);
+  const actualSha256 = await sha256File(uploaded.data.path);
+  if (
+    !receiptLocation.valid
+    || uploadedStat.size !== payload.length
+    || actualSha256 !== expectedSha256
+  ) {
+    throw new Error('native upload integrity mismatch');
+  }
+  checks.push('upload-native-commit-size-sha-directory');
+
+  const abortWorkspaceId = 'windows-smoke';
+  const abortTabId = 'abort-cleanup';
+  const abortDirectory = uploadDirectory(homeDir, abortWorkspaceId, abortTabId);
+  const beforeAbort = new Set(await listDirectoryNames(abortDirectory));
+  const partial = await openPartialUpload({
+    baseUrl,
+    cookie,
+    contentLength: 1024 * 1024,
+    partialBody: Buffer.alloc(64 * 1024, 0x61),
+    workspaceId: abortWorkspaceId,
+    tabId: abortTabId,
+  });
+  const stagedPath = await waitFor('Windows reserved staged upload', async () => {
+    const names = await listDirectoryNames(abortDirectory);
+    const staged = names.find((name) => (
+      !beforeAbort.has(name) && isReservedWindowsUploadStageName(name)
+    ));
+    return staged ? path.join(abortDirectory, staged) : null;
+  }, DEFAULT_TIMEOUT_MS);
+  const stagedObservedBeforeAbort = await pathExists(stagedPath);
+  if (!stagedObservedBeforeAbort) {
+    throw new Error('reserved staged upload disappeared before abort');
+  }
+  partial.socket.destroy();
+  await Promise.race([
+    partial.closed,
+    sleep(5_000).then(() => {
+      throw new Error('partial upload socket close timed out');
+    }),
+  ]);
+  await waitFor('Windows staged upload unlink after abort', async () => (
+    !(await pathExists(stagedPath))
+  ), DEFAULT_TIMEOUT_MS);
+  const stagedExistsAfterAbort = await pathExists(stagedPath);
+  const abortRemainder = await listDirectoryNames(abortDirectory);
+  if (abortRemainder.length > 0) {
+    throw new Error(`aborted upload left files: ${abortRemainder.join(',')}`);
+  }
+  checks.push('upload-staged-observed-before-abort');
+  checks.push('upload-staged-unlinked-after-abort');
+
+  const cleanupWorkspaceId = 'windows-smoke';
+  const cleanupTabId = 'staged-cleanup';
+  const committedPart = await uploadBytes({
+    baseUrl,
+    cookie,
+    body: Buffer.from('committed part payload'),
+    filename: 'survivor.part',
+    workspaceId: cleanupWorkspaceId,
+    tabId: cleanupTabId,
+  });
+  if (
+    committedPart.status !== 200
+    || !committedPart.data?.path
+    || !committedPart.data.filename?.endsWith('.part')
+  ) {
+    throw new Error(`committed .part upload failed: ${committedPart.status} ${committedPart.text}`);
+  }
+  const cleanupDirectory = uploadDirectory(homeDir, cleanupWorkspaceId, cleanupTabId);
+  const stagedToken = createHash('sha256')
+    .update(`windows-upload-stage-${Date.now()}`)
+    .digest('hex')
+    .slice(0, 32);
+  const agedStagePath = path.join(cleanupDirectory, `.${stagedToken}.upload.part`);
+  await fs.writeFile(agedStagePath, 'aged reserved stage', { flag: 'wx' });
+  const agedAt = new Date(Date.now() - 31 * 60 * 1000);
+  await fs.utimes(agedStagePath, agedAt, agedAt);
+  await jsonRequest(baseUrl, '/api/uploads/cleanup', cookie, {
+    method: 'POST',
+    body: JSON.stringify({ mode: 'expired' }),
+  });
+  const agedStageExistsAfterCleanup = await pathExists(agedStagePath);
+  const committedPartExistsAfterCleanup = await pathExists(committedPart.data.path);
+  if (agedStageExistsAfterCleanup) {
+    throw new Error('aged reserved stage survived manual cleanup');
+  }
+  if (!committedPartExistsAfterCleanup) {
+    throw new Error('committed .part file did not survive manual cleanup');
+  }
+  checks.push('upload-aged-reserved-stage-cleaned');
+  checks.push('upload-committed-part-survives-staged-cleanup');
+
+  return {
+    receiptLocationValid: receiptLocation.valid,
+    expectedBytes: payload.length,
+    actualBytes: uploadedStat.size,
+    expectedSha256,
+    actualSha256,
+    stagedObservedBeforeAbort,
+    stagedExistsAfterAbort,
+    agedStageExistsAfterCleanup,
+    committedPartExistsAfterCleanup,
+    uploadedBytes: uploadedStat.size,
+  };
+};
+
+const verifyWindowsUploadKillSwitch = async ({ baseUrl, homeDir, checks }) => {
+  const beforeFiles = await listUploadFiles(homeDir);
+  const cookie = await ensureLoggedIn(baseUrl);
+  checks.push('upload-kill-switch-login');
+  const [image, file] = await Promise.all([
+    uploadBytes({
+      baseUrl,
+      pathname: '/api/upload-image',
+      cookie,
+      body: Buffer.from('x'),
+      contentType: 'image/png',
+      filename: 'disabled.png',
+      workspaceId: 'windows-smoke',
+      tabId: 'kill-switch',
+    }),
+    uploadBytes({
+      baseUrl,
+      pathname: '/api/upload-file',
+      cookie,
+      body: Buffer.from('x'),
+      filename: 'disabled.bin',
+      workspaceId: 'windows-smoke',
+      tabId: 'kill-switch',
+    }),
+  ]);
+  for (const response of [image, file]) {
+    if (response.status !== 503 || response.data?.code !== 'uploads-disabled') {
+      throw new Error(`upload kill switch mismatch: ${response.status} ${response.text}`);
+    }
+  }
+  checks.push('upload-kill-switch-exact-routes');
+
+  const healthResponse = await fetch(new URL('/api/health', baseUrl));
+  const configResponse = await fetch(new URL('/api/config', baseUrl), {
+    headers: { Cookie: cookie },
+  });
+  const afterFiles = await listUploadFiles(homeDir);
+  if (JSON.stringify(afterFiles) !== JSON.stringify(beforeFiles)) {
+    throw new Error('disabled upload created or removed an upload artifact');
+  }
+  if (!healthResponse.ok) throw new Error(`health failed with upload kill switch: ${healthResponse.status}`);
+  if (!configResponse.ok) {
+    throw new Error(`authenticated config failed with upload kill switch: ${configResponse.status}`);
+  }
+  checks.push('upload-kill-switch-health');
+  checks.push('upload-kill-switch-authenticated-api');
+
+  return {
+    disabledStatuses: [image.status, file.status],
+    healthAvailable: healthResponse.ok,
+    protectedApiAvailable: configResponse.ok,
+  };
+};
+
 const stopProcessTree = async (child) => {
   if (!child || child.exitCode !== null) return;
   if (process.platform === 'win32') {
@@ -351,6 +655,69 @@ const stopWindowsAppProcesses = async (appPath, excludePids = []) => {
   })));
 };
 
+const runDisabledPackagedUploadInstance = async ({
+  appPath,
+  homeDir,
+  timeoutMs,
+  checks,
+  consoleEvents,
+  existingAppPids,
+  onOutput,
+}) => {
+  const remoteDebuggingPort = await getFreePort();
+  const launch = buildElectronSmokeLaunchCommand({
+    remoteDebuggingPort,
+    appPath,
+    platform: process.platform,
+  });
+  let electron = null;
+  let cdp = null;
+  try {
+    electron = spawn(launch.command, launch.args, {
+      cwd: path.dirname(appPath),
+      env: buildIsolatedEnv(homeDir, { uploadsDisabled: true }),
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    electron.stdout.on('data', (chunk) => onOutput(chunk.toString()));
+    electron.stderr.on('data', (chunk) => onOutput(chunk.toString()));
+    checks.push('upload-kill-switch-packaged-launch');
+
+    const target = await waitFor('Windows upload kill-switch Electron target', async () => {
+      if (electron.exitCode !== null && launch.mode !== 'windows-exe') {
+        throw new Error(`upload kill-switch instance exited early with ${electron.exitCode}`);
+      }
+      const targets = await fetchJson(
+        `http://127.0.0.1:${remoteDebuggingPort}/json/list`,
+      ).catch(() => null);
+      return selectElectronLocalPageTarget(Array.isArray(targets) ? targets : []);
+    }, timeoutMs);
+    cdp = await connectCdp(target.webSocketDebuggerUrl);
+    attachConsoleCollectors(cdp, consoleEvents);
+    await enableCdpDomains(cdp);
+    const state = await waitFor('Windows upload kill-switch page ready', async () => {
+      const current = await readPageState(cdp);
+      return current.readyState === 'complete' && current.origin.startsWith('http://')
+        ? current
+        : null;
+    }, timeoutMs);
+    const health = await fetchJson(new URL('/api/health', state.origin).toString());
+    if (health?.app !== 'codexmux') {
+      throw new Error(`upload kill-switch health failed: ${JSON.stringify(health)}`);
+    }
+    return await verifyWindowsUploadKillSwitch({
+      baseUrl: state.origin,
+      homeDir,
+      checks,
+    });
+  } finally {
+    await requestElectronBrowserClose(cdp);
+    if (cdp) cdp.close();
+    await waitForChildExit(electron);
+    await stopProcessTree(electron);
+    await stopWindowsAppProcesses(appPath, existingAppPids);
+  }
+};
+
 const main = async () => {
   if (process.platform !== 'win32') {
     await fail('windows-packaged-launch-platform-mismatch', 'Windows packaged launch smoke requires win32.', {
@@ -363,12 +730,13 @@ const main = async () => {
   const remoteDebuggingPort = process.env.CODEXMUX_WINDOWS_PACKAGED_LAUNCH_PORT
     ? Number(process.env.CODEXMUX_WINDOWS_PACKAGED_LAUNCH_PORT)
     : await getFreePort();
-  const homeDir = process.env.CODEXMUX_WINDOWS_PACKAGED_LAUNCH_HOME
-    || await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-windows-packaged-launch-'));
+  const homeDir = mode.uploadIntegrity
+    ? await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-windows-upload-integrity-'))
+    : process.env.CODEXMUX_WINDOWS_PACKAGED_LAUNCH_HOME
+      || await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-windows-packaged-launch-'));
   const checks = [];
   const consoleEvents = [];
-  const runRuntimeV2Terminal = process.argv.includes('--runtime-v2-terminal')
-    || process.env.CODEXMUX_WINDOWS_PACKAGED_RUNTIME_V2 === '1';
+  const runRuntimeV2Terminal = mode.runtimeV2Terminal;
   const expectRuntimeV2Disabled = process.env.CODEXMUX_WINDOWS_PACKAGED_EXPECT_RUNTIME_V2_DISABLED === '1';
   let electron = null;
   let cdp = null;
@@ -377,6 +745,7 @@ const main = async () => {
   let runtimeV2Terminal = null;
   let runtimeV2Phase6 = null;
   let runtimeV2Disabled = null;
+  let uploadIntegrity = null;
   const existingAppPids = await listWindowsAppProcessIds(appPath);
 
   try {
@@ -390,6 +759,9 @@ const main = async () => {
       appPath,
       platform: process.platform,
     });
+    if (mode.uploadIntegrity && launch.mode !== 'windows-exe') {
+      throw new Error(`Windows upload integrity smoke requires a packaged executable: ${appPath}`);
+    }
     electron = spawn(launch.command, launch.args, {
       cwd: path.dirname(appPath),
       env: buildIsolatedEnv(homeDir),
@@ -429,7 +801,7 @@ const main = async () => {
     if (health?.app !== 'codexmux') throw new Error(`packaged local server health failed: ${JSON.stringify(health)}`);
     checks.push('local-server-health');
 
-    if (expectRuntimeV2Disabled) {
+    if (expectRuntimeV2Disabled && !mode.uploadIntegrity) {
       runtimeV2Disabled = await verifyRuntimeV2Disabled({ baseUrl: state.origin, checks });
     }
 
@@ -447,6 +819,51 @@ const main = async () => {
         cookie,
         checks,
       });
+    }
+
+    if (mode.uploadIntegrity) {
+      const cookie = await ensureLoggedIn(state.origin);
+      checks.push('upload-integrity-server-login');
+      const nativeEvidence = await verifyWindowsUploadIntegrity({
+        baseUrl: state.origin,
+        cookie,
+        homeDir,
+        checks,
+      });
+
+      await requestElectronBrowserClose(cdp);
+      if (cdp) cdp.close();
+      cdp = null;
+      await waitForChildExit(electron, 5_000);
+      await stopProcessTree(electron);
+      electron = null;
+      await stopWindowsAppProcesses(appPath, existingAppPids);
+      checks.push('upload-integrity-normal-instance-stopped');
+
+      const killSwitchEvidence = await runDisabledPackagedUploadInstance({
+        appPath,
+        homeDir,
+        timeoutMs,
+        checks,
+        consoleEvents,
+        existingAppPids,
+        onOutput: (chunk) => {
+          output += chunk;
+        },
+      });
+      const evidence = validateWindowsUploadIntegrityEvidence({
+        ...nativeEvidence,
+        ...killSwitchEvidence,
+      });
+      if (!evidence.ok) {
+        throw new Error(`Windows upload integrity evidence failed: ${evidence.failures.join(', ')}`);
+      }
+      uploadIntegrity = {
+        verified: true,
+        uploadedBytes: nativeEvidence.uploadedBytes,
+        disabledStatuses: killSwitchEvidence.disabledStatuses,
+      };
+      checks.push('upload-integrity-evidence-complete');
     }
 
     const blockingOutput = [
@@ -479,6 +896,7 @@ const main = async () => {
       runtimeV2Terminal,
       runtimeV2Phase6,
       runtimeV2Disabled,
+      uploadIntegrity,
       consoleEventCount: consoleEvents.length,
       blockingConsoleCount: blockingConsole.length,
     };
@@ -492,6 +910,7 @@ const main = async () => {
       remoteDebuggingPort,
       checks,
       runtimeV2TerminalRequested: runRuntimeV2Terminal,
+      uploadIntegrityRequested: mode.uploadIntegrity,
       expectRuntimeV2Disabled,
       outputTail: output.slice(-2000),
       consoleEvents: consoleEvents.slice(-20),

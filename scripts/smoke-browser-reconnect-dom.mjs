@@ -46,7 +46,10 @@ const fail = async (code, message, details = {}) => {
 const jsonRequest = async (baseUrl, pathname, cookie, init = {}) => {
   const headers = {
     ...(cookie ? { Cookie: cookie } : {}),
-    ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+    ...(init.body ? {
+      'Content-Type': 'application/json',
+      Origin: new URL(baseUrl).origin,
+    } : {}),
     ...(init.headers ?? {}),
   };
   const res = await fetch(new URL(pathname, baseUrl), { ...init, headers });

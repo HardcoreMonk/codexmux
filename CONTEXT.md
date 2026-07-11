@@ -41,6 +41,7 @@ codexmux는 Codex CLI 전용 웹 세션 매니저입니다. 범용 터미널 대
 | 런타임 어댑터 | OS별 terminal/process/service 구현 경계 | runtime v2, tmux legacy, Windows runtime |
 | Windows 전용 제품 | 지원 실행 타깃을 Windows로 고정하는 제품 전환 | packaging, host, release gate |
 | Windows 서비스 호스트 | 앱/backend 수명주기를 관리하는 host 경계 | Windows host diagnostics, future service |
+| Upload ingress | 인증된 raw file request를 bounded admission하고 `~/.codexmux/uploads/` artifact로 no-replace commit하는 outer custom server 경계 | `server.ts`, upload server/storage adapter |
 | 시각 계약 | 제품 UI의 theme, layout, component 상태, 반응형/accessibility 규칙 | `DESIGN.md`, `docs/STYLE.md` |
 
 ## 거부 또는 레거시 용어
@@ -56,6 +57,10 @@ codexmux는 Codex CLI 전용 웹 세션 매니저입니다. 범용 터미널 대
 - 런타임 동작 변경은 `docs/ADR.md`, `docs/ARCHITECTURE-LOGIC.md`, 관련 runtime 문서를 함께 갱신합니다.
 - UI 시각 변경은 root `DESIGN.md`와 `docs/STYLE.md`를 기준으로 검토합니다.
 - 제품/아키텍처 설명 변경은 `docs/PROJECT-DESIGN.md`와 `README.md` 문서 맵을 함께 확인합니다.
+- `/api/upload-image`, `/api/upload-file`의 external ingress는 Next proxy/API route가 아니라
+  outer custom server가 소유합니다. Upload transaction, policy, receipt, reservation lease는
+  해당 경계의 spec-local 구현 용어입니다. Final publish는 same-directory hard link 생성이
+  성공한 시점이며 기존 destination을 덮어쓰는 rename은 사용하지 않습니다.
 - 생성된 `docs/lifecycle/runs/*.json`은 도구 스냅샷입니다. 사람이 쓴 기준 문서로 승격하지 않습니다.
 
 ## 현재 프로젝트 설계 거버넌스 결정
