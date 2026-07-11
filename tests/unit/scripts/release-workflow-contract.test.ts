@@ -7,8 +7,12 @@ const require = createRequire(import.meta.url);
 const yaml = require('js-yaml') as { load: (source: string) => unknown };
 
 interface IWorkflowStep {
+  id?: string;
+  if?: string;
   name?: string;
   run?: string;
+  uses?: string;
+  with?: { name?: string };
 }
 
 interface IReleaseWorkflow {
@@ -58,5 +62,29 @@ describe('release workflow contract', () => {
       platformWorkflow.jobs['browser-reconnect'].steps,
       pinnedInstallCommand as string,
     );
+  });
+
+  it('blocks smoke artifact upload when the privacy check fails', () => {
+    const workflow = readWorkflow('release.yml');
+    const jobNames = [
+      'browser-reconnect-smoke',
+      'windows-package',
+      'windows-published-updater',
+    ];
+
+    jobNames.forEach((jobName) => {
+      const steps = workflow.jobs[jobName].steps;
+      const privacyIndex = steps.findIndex((step) => step.name === 'Verify smoke artifact privacy');
+      const uploadIndex = steps.findIndex((step) => step.with?.name?.startsWith('smoke-'));
+
+      expect(privacyIndex).toBeGreaterThanOrEqual(0);
+      expect(steps[privacyIndex]).toMatchObject({
+        id: 'smoke-artifact-privacy',
+        if: 'always()',
+      });
+      expect(steps[privacyIndex].run).toContain('pnpm check:smoke-artifacts');
+      expect(uploadIndex).toBeGreaterThan(privacyIndex);
+      expect(steps[uploadIndex].if).toBe("always() && steps.smoke-artifact-privacy.outcome == 'success'");
+    });
   });
 });

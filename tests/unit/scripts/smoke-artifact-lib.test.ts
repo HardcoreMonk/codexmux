@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { spawnSync } from 'child_process';
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
@@ -64,7 +65,6 @@ describe('smoke artifact helpers', () => {
         browser: { consoleEventCount: 1 },
         nested: {
           note: '[codex-session-path]',
-          message: '[content]',
         },
       },
     });
@@ -72,6 +72,7 @@ describe('smoke artifact helpers', () => {
     expect(artifact.payload).not.toHaveProperty('targetUrl');
     expect(artifact.payload.browser).not.toHaveProperty('pageUrl');
     expect(artifact.payload.nested).not.toHaveProperty('jsonlPath');
+    expect(artifact.payload.nested).not.toHaveProperty('message');
     expect(JSON.stringify(artifact)).not.toContain('prompt body');
     expect(JSON.stringify(artifact)).not.toContain('codexmux-android-timeline-foreground-secret');
     expect(JSON.stringify(artifact)).not.toContain('secret.jsonl');
@@ -101,12 +102,105 @@ describe('smoke artifact helpers', () => {
     expect(payload).toEqual({
       ok: true,
       note: '[tmp]',
-      nested: {
-        message: '[tmp]',
-      },
+      nested: {},
     });
     expect(JSON.stringify(payload)).not.toContain('terminal escape output');
     expect(JSON.stringify(payload)).not.toContain('codexmux-windows-terminal-smoke');
     expect(JSON.stringify(payload)).not.toContain('secret.jsonl');
+  });
+
+  it('drops nested child output tail fields', async () => {
+    const { sanitizeSmokeArtifactPayload } = await loadLib();
+    const payload = sanitizeSmokeArtifactPayload({
+      ok: true,
+      installResult: {
+        exitCode: 0,
+        stdoutTail: 'downloaded to C:\\Users\\runner\\AppData\\Local\\Temp\\cmux-up-secret\\payload.exe',
+        stderrTail: 'DevTools listening on ws://127.0.0.1:12345',
+      },
+    });
+
+    expect(payload).toEqual({
+      ok: true,
+      installResult: {
+        exitCode: 0,
+      },
+    });
+  });
+
+  it('drops nested URL fields and sanitizes cmux Windows temp paths', async () => {
+    const { sanitizeSmokeArtifactPayload } = await loadLib();
+    const payload = sanitizeSmokeArtifactPayload({
+      ok: true,
+      latestReleaseUrl: 'https://github.com/HardcoreMonk/codexmux/releases/tag/v0.4.20',
+      nested: {
+        downloadUri: 'https://example.com/private-target',
+        href: 'http://127.0.0.1:8122/login',
+        origin: 'http://127.0.0.1:8122',
+        note: 'C:\\Users\\runner\\AppData\\Local\\Temp\\cmux-up-secret\\updater-home',
+      },
+    });
+
+    expect(payload).toEqual({
+      ok: true,
+      nested: {
+        note: '[tmp]',
+      },
+    });
+  });
+
+  it('reports artifact privacy violations before upload', async () => {
+    const { findSmokeArtifactPrivacyViolations } = await loadLib();
+
+    expect(findSmokeArtifactPrivacyViolations).toBeTypeOf('function');
+    if (typeof findSmokeArtifactPrivacyViolations !== 'function') return;
+
+    expect(findSmokeArtifactPrivacyViolations({
+      payload: {
+        stdoutTail: 'raw terminal output',
+        latestReleaseUrl: 'https://example.com/releases/v1',
+        note: 'C:\\Users\\runner\\AppData\\Local\\Temp\\cmux-up-secret\\home',
+        blockers: ['https://example.com/private-blocker'],
+        checks: ['C:\\Users\\runner\\AppData\\Local\\Temp\\cmux-up-check\\home'],
+      },
+    })).toEqual([
+      '$.payload.stdoutTail:forbidden-key',
+      '$.payload.latestReleaseUrl:forbidden-key',
+      '$.payload.latestReleaseUrl:url',
+      '$.payload.note:temp-path',
+      '$.payload.blockers[0]:url',
+      '$.payload.checks[0]:temp-path',
+    ]);
+
+    expect(findSmokeArtifactPrivacyViolations({
+      payload: {
+        ok: true,
+        code: 'passed',
+        checks: ['package-gate'],
+      },
+    })).toEqual([]);
+    expect(findSmokeArtifactPrivacyViolations('https://example.com/private-root')).toEqual(['$:url']);
+  });
+
+  it('fails the artifact check command without echoing private values', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-smoke-artifact-check-'));
+    await fs.writeFile(path.join(dir, 'clean.json'), JSON.stringify({ payload: { ok: true } }));
+
+    const clean = spawnSync(process.execPath, ['scripts/check-smoke-artifacts.mjs', '--', dir], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    });
+    expect(clean.status).toBe(0);
+
+    const privateValue = 'https://example.com/private-target';
+    await fs.writeFile(path.join(dir, 'dirty.json'), JSON.stringify({ payload: { targetUrl: privateValue } }));
+    const dirty = spawnSync(process.execPath, ['scripts/check-smoke-artifacts.mjs', '--', dir], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    });
+
+    expect(dirty.status).toBe(1);
+    expect(dirty.stderr).toContain('smoke-artifact-privacy-violation');
+    expect(dirty.stderr).not.toContain(privateValue);
   });
 });

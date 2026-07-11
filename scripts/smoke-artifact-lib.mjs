@@ -1,11 +1,18 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-const droppedKeyPattern = /^(homeDir|serverOutput|output|outputTail|logcat|cookie|token|password|sessionCookie|raw|stdout|stderr|sessionName|sessionId|workspaceId|tabId|jsonlPath|baseUrl|targetUrl|pageUrl|restoreUrl|devtools|adb|serial|serverPort|remoteDebuggingPort)$/i;
+const droppedKeyPattern = /^(homeDir|serverOutput|output|outputTail|stdoutTail|stderrTail|message|logcat|cookie|token|password|sessionCookie|raw|stdout|stderr|sessionName|sessionId|workspaceId|tabId|jsonlPath|href|origin|devtools|adb|serial|serverPort|remoteDebuggingPort|.*(?:url|uri))$/i;
 const jsonlPathPattern = /(?:[A-Za-z]:)?[^"'\n\r\t ]*\.codex[\/\\]sessions[\/\\][^"'\n\r\t ]+/g;
 const tempPathPattern = /(?:[A-Za-z]:)?[\/\\]tmp[\/\\]codexmux-[^"'\n\r\t ]+/g;
-const windowsTempPathPattern = /(?:[A-Za-z]:)?[^"'\n\r\t ]*[\/\\]temp[\/\\]codexmux-[^"'\n\r\t ]+/gi;
+const windowsTempPathPattern = /(?:[A-Za-z]:)?[^"'\n\r\t ]*[\/\\]temp[\/\\](?:codexmux|cmux)-[^"'\n\r\t ]+/gi;
 const smokeSecretPattern = /secret-(android|electron|browser|runtime|timeline|reconnect)-[a-z0-9-]+/gi;
+const privacyForbiddenKeyPattern = /^(homeDir|serverOutput|output|outputTail|stdoutTail|stderrTail|message|logcat|cookie|token|password|sessionCookie|raw|stdout|stderr|sessionName|sessionId|workspaceId|tabId|jsonlPath|href|origin|devtools|adb|serial|serverPort|remoteDebuggingPort|.*(?:url|uri))$/i;
+const privacyStringPatterns = [
+  ['url', /(?:https?|wss?):\/\//i],
+  ['temp-path', /[\/\\](?:tmp|temp)[\/\\](?:codexmux|cmux)-/i],
+  ['codex-session-path', /\.codex[\/\\]sessions[\/\\]/i],
+  ['terminal-escape', /\u001b\[/],
+];
 
 const timestampForFilename = (value) =>
   new Date(value).toISOString().replace(/[-:]/g, '').replace('.', '').replace('Z', 'Z');
@@ -31,6 +38,35 @@ export const sanitizeSmokeArtifactPayload = (value) => {
       .filter(([key]) => !droppedKeyPattern.test(key))
       .map(([key, item]) => [key, sanitizeSmokeArtifactPayload(item)]),
   );
+};
+
+export const findSmokeArtifactPrivacyViolations = (value) => {
+  const violations = [];
+
+  const visit = (item, itemPath) => {
+    if (typeof item === 'string') {
+      privacyStringPatterns.forEach(([label, pattern]) => {
+        if (pattern.test(item)) violations.push(`${itemPath}:${label}`);
+      });
+      return;
+    }
+    if (Array.isArray(item)) {
+      item.forEach((entry, index) => visit(entry, `${itemPath}[${index}]`));
+      return;
+    }
+    if (!item || typeof item !== 'object') return;
+
+    Object.entries(item).forEach(([key, entry]) => {
+      const entryPath = `${itemPath}.${key}`;
+      if (privacyForbiddenKeyPattern.test(key)) {
+        violations.push(`${entryPath}:forbidden-key`);
+      }
+      visit(entry, entryPath);
+    });
+  };
+
+  visit(value, '$');
+  return violations;
 };
 
 export const writeSmokeArtifact = async ({

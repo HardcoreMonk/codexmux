@@ -10,7 +10,10 @@ import {
   sleep,
 } from './android-webview-smoke-lib.mjs';
 import { buildElectronSmokeLaunchCommand } from './electron-smoke-lib.mjs';
-import { writeSmokeArtifact } from './smoke-artifact-lib.mjs';
+import {
+  sanitizeSmokeArtifactPayload,
+  writeSmokeArtifact,
+} from './smoke-artifact-lib.mjs';
 import {
   buildNsisSilentInstallArgs,
   findWindowsInstallerBelowVersion,
@@ -45,8 +48,6 @@ const summarizeCommandResult = (result) => {
     exitCode: result.exitCode,
     signal: result.signal ?? null,
     timedOut: !!result.timedOut,
-    stdoutTail: result.stdout ? result.stdout.slice(-1600) : '',
-    stderrTail: result.stderr ? result.stderr.slice(-1600) : '',
   };
 };
 
@@ -64,11 +65,9 @@ const parsePackagedLaunchPayload = (stdout) => {
 const buildArtifactPayload = ({
   ok,
   code,
-  message,
   checks,
   blockers = [],
   latestReleaseTag,
-  latestReleaseUrl,
   latestVersion,
   baselineVersion,
   referencedInstallerName,
@@ -81,13 +80,11 @@ const buildArtifactPayload = ({
   postInstallLaunchResult,
   uninstallResult,
   statusSummary,
-}) => ({
+}) => sanitizeSmokeArtifactPayload({
   ok: ok === true,
   mutatesSystem: true,
   ...(code ? { code } : {}),
-  ...(message ? { message } : {}),
   latestReleaseTag: latestReleaseTag ?? null,
-  latestReleaseUrl: latestReleaseUrl ?? null,
   latestVersion: latestVersion ?? null,
   baselineVersion: baselineVersion ?? null,
   referencedInstallerName: referencedInstallerName ?? null,
@@ -119,11 +116,10 @@ const writeArtifact = async (status, payload) =>
     status,
     startedAt,
     payload: buildArtifactPayload(payload),
-  }).catch((err) => {
+  }).catch(() => {
     console.error(JSON.stringify({
       ok: false,
       code: 'smoke-artifact-write-failed',
-      message: err instanceof Error ? err.message : String(err),
     }, null, 2));
   });
 
@@ -715,7 +711,6 @@ const main = async () => {
     const successPayload = {
       ok: true,
       latestReleaseTag: latestRelease?.tag_name,
-      latestReleaseUrl: latestRelease?.html_url,
       latestVersion: latestMetadata?.version,
       baselineVersion,
       referencedInstallerName: channelResult?.referencedInstallerName,
@@ -733,13 +728,11 @@ const main = async () => {
     };
     await writeArtifact('passed', successPayload);
     console.log(JSON.stringify(buildArtifactPayload(successPayload), null, 2));
-  } catch (err) {
+  } catch {
     failurePayload = {
       ok: false,
       code: 'windows-updater-published-install-smoke-failed',
-      message: err instanceof Error ? err.message : String(err),
       latestReleaseTag: latestRelease?.tag_name,
-      latestReleaseUrl: latestRelease?.html_url,
       latestVersion: latestMetadata?.version,
       baselineVersion,
       referencedInstallerName: channelResult?.referencedInstallerName,

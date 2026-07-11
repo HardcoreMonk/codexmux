@@ -98,8 +98,13 @@ jobs:
       - run: pnpm exec playwright install chromium
       - run: CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke pnpm smoke:browser-reconnect
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - name: Verify smoke artifact privacy
+        id: smoke-artifact-privacy
         if: always()
+        run: pnpm check:smoke-artifacts -- artifacts/smoke
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always() && steps.smoke-artifact-privacy.outcome == 'success'
         with:
           name: smoke-browser-reconnect
           path: artifacts/smoke/*.json
@@ -156,6 +161,11 @@ jobs:
       - run: pnpm smoke:windows:package-gate
       - run: pnpm smoke:windows:release-gate
 
+      - name: Verify smoke artifact privacy
+        id: smoke-artifact-privacy
+        if: always()
+        run: pnpm check:smoke-artifacts -- artifacts/windows-package
+
       - name: Stage exact release assets
         shell: pwsh
         run: |
@@ -182,7 +192,7 @@ jobs:
           retention-days: 7
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: always()
+        if: always() && steps.smoke-artifact-privacy.outcome == 'success'
         with:
           name: smoke-windows-package-${{ github.ref_name }}
           path: artifacts/windows-package/*.json
@@ -274,8 +284,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - name: Verify smoke artifact privacy
+        id: smoke-artifact-privacy
         if: always()
+        run: pnpm check:smoke-artifacts -- artifacts/windows-published-update
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always() && steps.smoke-artifact-privacy.outcome == 'success'
         with:
           name: smoke-windows-published-update-${{ github.ref_name }}
           path: artifacts/windows-published-update/*.json
