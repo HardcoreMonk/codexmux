@@ -8,6 +8,8 @@ export const buildElectronBuilderArgs = ({ dir = false, extraArgs = [] } = {}) =
   ...(dir ? ['--dir'] : []),
   '--config.npmRebuild=false',
   ...extraArgs,
+  '--publish',
+  'never',
 ];
 
 export const buildElectronBuilderEnv = ({ env = process.env, shimDir }) => {

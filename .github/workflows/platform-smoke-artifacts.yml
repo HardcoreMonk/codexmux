@@ -38,6 +38,11 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+
+      - name: Install pinned Codex CLI
+        run: npm install --global @openai/codex@0.144.1
+
+      - run: codex --version
       - run: pnpm exec playwright install chromium
       - run: CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke pnpm smoke:browser-reconnect
       - uses: actions/upload-artifact@v7

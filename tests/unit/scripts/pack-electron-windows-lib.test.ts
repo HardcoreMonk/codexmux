@@ -13,6 +13,24 @@ describe('Windows Electron package wrapper helpers', () => {
       '--win',
       '--dir',
       '--config.npmRebuild=false',
+      '--publish',
+      'never',
+    ]);
+  });
+
+  it('keeps implicit publishing disabled after caller-provided arguments', async () => {
+    const { buildElectronBuilderArgs } = await loadLib();
+
+    expect(buildElectronBuilderArgs({
+      extraArgs: ['--config.compression=maximum', '--publish', 'always'],
+    })).toEqual([
+      '--win',
+      '--config.npmRebuild=false',
+      '--config.compression=maximum',
+      '--publish',
+      'always',
+      '--publish',
+      'never',
     ]);
   });
 
