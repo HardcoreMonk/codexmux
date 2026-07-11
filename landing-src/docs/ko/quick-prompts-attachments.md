@@ -30,19 +30,21 @@ permalink: /ko/docs/quick-prompts-attachments/index.html
 
 ## 이미지 드래그 앤 드롭
 
-이미지 파일(PNG, JPG, WebP 등)을 입력 바 어디에든 드롭하면 첨부됩니다. codexmux는 파일을 서버의 임시 경로에 업로드하고 프롬프트에 자동으로 reference를 삽입합니다.
+이미지 파일(PNG, JPG, GIF, WebP)을 입력 바 어디에든 드롭하면 첨부됩니다. Browser는 인증된 raw body를 `/api/upload-image`로 보내고, codexmux는 `~/.codexmux/uploads/<workspace>/<tab>/`에 artifact를 저장한 뒤 프롬프트에 경로를 삽입합니다. 이미지 한 개의 최대 크기는 **10MiB**입니다.
 
 추가로:
 
 - 클립보드에서 이미지 직접 **붙여넣기**
 - **클립 아이콘**을 클릭해 파일 다이얼로그에서 선택
-- 메시지당 **최대 20개 파일** 첨부 가능
+- 메시지당 thumbnail chip으로 유지되는 이미지는 **최대 20개**
 
 첨부 대기 중에는 입력 바 위에 썸네일 스트립이 나타납니다. 각 썸네일에는 X 버튼이 있어 전송 전에 제거할 수 있습니다.
 
 ## 그 외 파일 첨부
 
-같은 클립 아이콘은 이미지가 아닌 파일에도 동작합니다 — markdown, JSON, CSV, 소스 파일 등 무엇이든. codexmux가 임시 디렉토리에 두고 경로를 삽입해주면, Codex가 요청의 일부로 `read`할 수 있습니다.
+같은 클립 아이콘은 이미지가 아닌 파일에도 동작합니다 — markdown, JSON, CSV, 소스 파일 등 무엇이든. `/api/upload-file`은 파일 한 개당 **50MiB**까지 받고, 저장된 artifact 경로를 현재 cursor 위치에 바로 삽입합니다. 일반 파일은 image thumbnail chip이나 20개 image limit에 포함되지 않습니다.
+
+두 upload route는 outer custom server가 Next.js보다 먼저 처리합니다. Browser session cookie와 same-authority Origin 또는 유효한 `x-cmux-token`이 필요하며, 성공한 파일은 임시 OS directory가 아니라 앱 data directory에 남습니다. Committed artifact는 기본 24시간 TTL cleanup 대상이고, 실패한 transaction stage는 즉시 제거를 시도한 뒤 남으면 최소 30분 후 stale cleanup이 처리합니다.
 
 다른 머신에서 붙여넣은 스택 트레이스나 다른 프로젝트의 설정 파일처럼, Codex가 직접 닿을 수 없는 것을 공유하기에 가장 쉬운 방법입니다.
 
@@ -65,7 +67,7 @@ permalink: /ko/docs/quick-prompts-attachments/index.html
 
 | 키 | 동작 |
 |---|---|
-| <kbd>⌘I</kbd> | 세션 뷰 어디서든 입력에 포커스 |
+| <kbd>⌘I</kbd> / <kbd>Ctrl+I</kbd> | 세션 뷰 어디서든 입력에 포커스 |
 | <kbd>Enter</kbd> | 전송 |
 | <kbd>⇧Enter</kbd> | 줄바꿈 삽입 |
 | <kbd>Esc</kbd> | Codex가 busy일 때 interrupt 전송 |

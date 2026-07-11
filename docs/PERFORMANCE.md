@@ -13,6 +13,7 @@
 - timeline render와 dedupe
 - diff/stats cache
 - runtime v2 worker command latency
+- upload streaming의 process external memory와 backpressure
 
 ## 1차 목표
 
@@ -70,6 +71,7 @@ Prompt, terminal output, cwd, JSONL path, token은 반환하지 않습니다.
 - Stats cold path date filtering이 추가되었습니다.
 - Session list API는 cold index refresh를 기다리지 않고 현재 snapshot과 `refreshing` 상태를 반환하며,
   client가 refresh 완료까지 짧게 재조회합니다.
+- UploadServer의 50MiB streaming path는 process-isolated external-memory gate로 검증합니다.
 
 ## Timeline JSONL snapshot
 
@@ -96,6 +98,27 @@ Virtualization 판단은 다음 순서로 합니다.
 이 기준은 구현 개시 조건입니다. Render virtualization은 별도 plan에서 public behavior test와
 실제 app scroll/append evidence를 확보한 뒤 진행합니다.
 
+## Upload streaming memory gate
+
+Upload memory 검증은 50MiB body를 별도 client process에서 64KiB backpressure write로 보내고,
+각 scenario를 새 server process에서 실행합니다.
+
+```bash
+corepack pnpm check:upload-memory
+```
+
+- bare HTTP harness control과 production UploadServer/storage positive path를 비교합니다.
+- retaining negative control은 같은 production path에서 body를 의도적으로 유지해 계측이
+  실제 retention을 감지하는지 확인합니다.
+- negative control은 external memory가 16MiB 이상 증가해야 하고, positive run 3회는 모두
+  16MiB 미만이어야 합니다.
+- size와 SHA-256 parity도 함께 확인합니다.
+
+2026-07-11 측정에서 harness control은 `196,464B`, retaining negative는 `52,559,535B`,
+production positive는 3회 모두 `130,912B` 증가했습니다. 이 Linux 증거는 fresh Windows
+packaged filesystem 증거를 대신하지 않으며, 남은 gate는
+[Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)에서 추적합니다.
+
 ## 피해야 할 작업
 
 - 측정 없이 대규모 rewrite를 시작하지 않습니다.
@@ -111,9 +134,13 @@ corepack pnpm lint
 corepack pnpm tsc --noEmit
 corepack pnpm test
 corepack pnpm perf:timeline-jsonl -- --synthetic-turns 2500
+corepack pnpm check:upload-memory
 corepack pnpm smoke:runtime-v2:phase6-default-gate
 corepack pnpm smoke:windows:package-gate
 ```
+
+Windows package gate의 baseline installer와 artifact directory 전제는 `TESTING.md`의
+fresh Windows 절차를 따릅니다.
 
 성능 변경 후에는 실제 app에서 다음을 확인합니다.
 

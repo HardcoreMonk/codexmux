@@ -69,9 +69,10 @@ icon button은 가능한 lucide-react icon을 사용하고, 낯선 icon에는 to
 
 ## 반응형과 접근성
 
-- mobile touch target은 가능한 44px 이상으로 둡니다.
-- safe area를 고려합니다.
-- Android WebView, iPad Safari, desktop browser에서 input draft와 reconnect flow를 우선합니다.
+- Windows Electron과 desktop browser에서 keyboard focus, IME, input draft, reconnect flow를
+  primary 기준으로 검증합니다.
+- Android WebView와 iPad Safari는 legacy/mobile regression 범위입니다. 가능한 44px 이상의
+  touch target, safe area, input draft, reconnect 동작을 보존합니다.
 - UI text가 다른 control, terminal preview, status recovery UI를 가리지 않아야 합니다.
 - SSR page는 저장된 locale로 message bundle과 `html lang`을 맞춥니다.
 

@@ -22,11 +22,12 @@ Theme token은 Tailwind CSS v4와 shadcn/ui conventions를 따릅니다. 새 색
 - SSR page는 저장된 locale로 message bundle과 `html lang`을 맞춥니다.
 - 한국어 화면은 project font stack과 `word-break: keep-all`을 사용합니다.
 
-## 모바일
+## Windows 우선과 레거시 모바일
 
-- 가능한 touch target은 44px 이상으로 둡니다.
-- Safe area를 고려합니다.
-- Android WebView와 iPad Safari에서 input draft와 reconnect flow를 우선합니다.
+- Windows Electron과 desktop browser의 keyboard focus, IME, input draft, reconnect flow를
+  primary 기준으로 검증합니다.
+- Android WebView와 iPad Safari는 legacy/mobile regression surface입니다.
+- Legacy mobile에서는 가능한 touch target을 44px 이상으로 두고 safe area를 고려합니다.
 - Terminal preview와 status recovery UI가 서로 가리지 않아야 합니다.
 
 ## 색상 토큰
@@ -64,4 +65,4 @@ Chart는 비교 가능한 색 대비를 사용합니다. 같은 계열 shade만 
 - icon 대신 text badge로 tool button을 채움
 - terminal 위에 설명 text를 겹침
 - dashboard를 landing page처럼 구성
-- Windows 전용 제품 화면에 macOS/Linux 설치 안내를 primary로 노출
+- Windows 전용 제품 화면에 macOS/Linux/Android 설치 안내를 primary로 노출

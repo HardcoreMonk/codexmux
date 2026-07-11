@@ -6,51 +6,50 @@ permalink: /ko/docs/ports-env-vars/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-codexmux는 기본적으로 `localhost:8122`에서 실행됩니다. 필요하면 환경 변수로 port, network access, logging을 조정할 수 있습니다.
+fresh setup의 codexmux는 `127.0.0.1:8122`에서 실행됩니다. setup이 끝난 뒤에는 config 또는 환경 변수로 port, network access, logging을 조정할 수 있습니다.
 
 ## port와 host
 
-```bash
-PORT=9000 codexmux
-HOST=localhost,tailscale codexmux
-HOST=localhost,tailscale PORT=8122 codexmux
-HOST=all PORT=9000 codexmux
+```powershell
+$env:PORT = "9000"; codexmux
+$env:HOST = "localhost,tailscale"; codexmux
+$env:HOST = "localhost,tailscale"; $env:PORT = "8122"; codexmux
+$env:HOST = "all"; $env:PORT = "9000"; codexmux
 ```
 
 | 변수 | 기본값 | 의미 |
 |---|---|---|
 | `PORT` | `8122` | 외부 server port |
-| `HOST` | `localhost` | 허용할 접근 범위. env로 지정하면 앱의 네트워크 접근 설정이 잠김 |
+| `HOST` | fresh setup은 `localhost` | 허용할 접근 범위. env로 지정하면 앱의 네트워크 접근 설정이 잠김 |
 | `NODE_ENV` | 실행 방식에 따라 다름 | development/production pipeline 선택 |
 | `NO_UPDATE_NOTIFIER` | unset | `1`이면 version check 비활성화 |
+| `INIT_PASSWORD` | unset | setup 시작 시 초기 인증 session을 요구. 4자 미만이면 startup 실패 |
+| `CODEXMUX_UPLOADS_DISABLED` | unset | `1`이면 두 upload route만 `503`으로 차단 |
 
 `HOST`는 단순 bind 주소가 아니라 접근 필터입니다. 사용할 수 있는 키워드는 `localhost`, `tailscale`, `lan`, `all`이고, CIDR도 직접 지정할 수 있습니다. 예를 들어 `HOST=localhost,tailscale`은 로컬 브라우저와 Tailscale 대역만 허용합니다.
 
+설정이 끝나지 않은 process는 저장된 network access와 `HOST`를 무시하고 loopback에만 bind합니다. 먼저 로컬 브라우저에서 setup을 완료한 뒤 server를 재시작해야 선택한 외부 접근 범위가 적용됩니다. Configured startup은 `HOST`, `config.json`의 `networkAccess`, legacy default 순서로 접근 범위를 정합니다.
+
 `8122`가 사용 중이면 빈 port를 찾아 바인딩하고 `~/.codexmux/port`에 기록합니다.
 
-## shell 기본값 고정
+## PowerShell 실행 예시
 
-매번 같은 port와 접근 범위로 실행한다면 shell 함수로 감쌀 수 있습니다. zsh의 `$HOST`는 기본적으로 호스트명을 담는 특수 파라미터라서, 사용자가 실제로 export한 환경 변수만 읽도록 `printenv`를 사용합니다.
+현재 PowerShell session에서 같은 port와 접근 범위를 계속 사용하려면 환경 변수를 먼저 설정합니다.
 
-```zsh
-codexmux() {
-  local host="$(printenv HOST 2>/dev/null)"
-  local port="$(printenv PORT 2>/dev/null)"
-  [[ -n "$host" ]] || host="localhost,tailscale"
-  [[ -n "$port" ]] || port="8122"
-
-  HOST="$host" PORT="$port" command codexmux "$@"
-}
+```powershell
+$env:HOST = "localhost,tailscale"
+$env:PORT = "8122"
+codexmux
 ```
 
-소스 체크아웃에서 직접 실행 중이고 아직 빌드하지 않았다면 함수 안의 마지막 줄을 `cd /path/to/codexmux && HOST="$host" PORT="$port" corepack pnpm dev` 형태로 바꾸세요.
+소스 checkout에서는 같은 환경 변수를 설정한 뒤 `corepack pnpm dev`를 실행합니다.
 
 ## logging
 
-```bash
-LOG_LEVEL=debug codexmux
-LOG_LEVELS=status=debug codexmux
-LOG_LEVELS=status=debug,tmux=trace codexmux
+```powershell
+$env:LOG_LEVEL = "debug"; codexmux
+$env:LOG_LEVELS = "status=debug"; codexmux
+$env:LOG_LEVELS = "status=debug,tmux=trace"; codexmux
 ```
 
 | 변수 | 의미 |
@@ -58,13 +57,13 @@ LOG_LEVELS=status=debug,tmux=trace codexmux
 | `LOG_LEVEL` | 기본 log level |
 | `LOG_LEVELS` | module별 `name=level` override |
 
-주요 module은 `status`, `tmux`, `hooks`, `server`, `lock`입니다. log file은 `~/.codexmux/logs/`에 저장됩니다.
+주요 module은 `status`, `tmux`, `hooks`, `server`, `lock`, `upload-server`입니다. log file은 `~/.codexmux/logs/`에 저장됩니다.
 
 ## 파일 기반 값
 
 | 파일 | 내용 | 사용처 |
 |---|---|---|
-| `~/.codexmux/port` | 현재 server port | CLI, bridge script |
+| `~/.codexmux/port` | 현재 outer server port | CLI, hook/bridge script |
 | `~/.codexmux/cli-token` | 32-byte CLI token | `x-cmux-token` 인증 |
 
 CLI는 `CMUX_PORT`, `CMUX_TOKEN` 환경 변수가 있으면 파일보다 우선합니다.

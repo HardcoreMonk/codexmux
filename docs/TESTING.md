@@ -7,9 +7,16 @@
 모든 코드 변경의 기본 검증:
 
 ```bash
+corepack pnpm check:project-design
 corepack pnpm lint
 corepack pnpm tsc --noEmit
 corepack pnpm test
+```
+
+Canonical 문서 경계나 `landing-src/`를 바꾸면 landing build도 실행합니다.
+
+```bash
+corepack pnpm build:landing
 ```
 
 브라우저 UI나 Playwright spec을 추가/수정한 환경에서 Chromium이 없으면 한 번 설치합니다.
@@ -20,9 +27,11 @@ corepack pnpm exec playwright install chromium
 
 ## Windows 전환 게이트
 
-Windows-only 제품 전환에서 중요한 smoke:
+Windows-only 제품 전환에서 중요한 smoke. Sanitized evidence를 남길 directory를 먼저
+지정합니다.
 
-```bash
+```powershell
+$env:CODEXMUX_SMOKE_ARTIFACT_DIR = "C:\artifacts\codexmux-smoke"
 corepack pnpm audit:windows-platform
 corepack pnpm smoke:runtime-v2:terminal-windows
 corepack pnpm smoke:windows:preflight
@@ -36,7 +45,8 @@ corepack pnpm smoke:windows:release-gate
 
 패키지 산출물 검증:
 
-```bash
+```powershell
+$env:CODEXMUX_SMOKE_ARTIFACT_DIR = "C:\artifacts\codexmux-smoke"
 corepack pnpm pack:electron
 corepack pnpm smoke:windows:zip-artifact
 corepack pnpm smoke:windows:update-metadata
@@ -45,12 +55,26 @@ corepack pnpm smoke:windows:upload-integrity
 corepack pnpm smoke:windows:packaged-runtime-v2
 corepack pnpm smoke:windows:installer-install
 corepack pnpm smoke:windows:installer-runtime-v2
-corepack pnpm smoke:windows:updater-local-feed
-corepack pnpm smoke:windows:updater-published-channel
-corepack pnpm smoke:windows:package-gate
 ```
 
-`smoke:windows:updater-published-channel`은 설치나 update를 수행하지 않고 GitHub Releases channel을 read-only로 확인합니다. 실제 published update evidence는 설치된 앱보다 높은 버전의 published release가 있을 때 `smoke:windows:updater-published-install`로 확인합니다. Windows Electron updater는 외부 HTTPS 요청에 Node HTTP executor를 사용하며, stale tasklist 항목이 baseline installer를 막을 때는 `CODEXMUX_WINDOWS_PUBLISHED_BASE_ZIP_PATH`와 `CODEXMUX_WINDOWS_UPDATER_PUBLISHED_GENERIC_FEED=1`로 실제 GitHub release asset apply를 검증할 수 있습니다. Local feed updater smoke는 isolated 짧은 설치 경로에서 `quitAndInstall` 이후 updater installer process settle과 post-update packaged launch까지 확인합니다.
+`smoke:windows:updater-published-channel`은 설치나 update를 수행하지 않고 GitHub Releases channel을 read-only로 확인합니다. 실제 published update evidence는 설치된 앱보다 높은 버전의 published release가 있을 때 `smoke:windows:updater-published-install`로 확인합니다. Windows Electron updater는 외부 HTTPS 요청에 PowerShell `Invoke-WebRequest` executor를 사용하며, stale tasklist 항목이 baseline installer를 막을 때는 `CODEXMUX_WINDOWS_PUBLISHED_BASE_ZIP_PATH`와 `CODEXMUX_WINDOWS_UPDATER_PUBLISHED_GENERIC_FEED=1`로 실제 GitHub release asset apply를 검증할 수 있습니다. Local feed updater smoke는 isolated 짧은 설치 경로에서 `quitAndInstall` 이후 updater installer process settle과 post-update packaged launch까지 확인합니다.
+
+Published channel 검증은 published latest보다 낮은 실제 installed/current version을 지정합니다.
+
+```powershell
+$env:CODEXMUX_WINDOWS_UPDATER_CURRENT_VERSION = "<installed-version>"
+corepack pnpm smoke:windows:updater-published-channel
+```
+
+Fresh Windows runner에서 local-feed와 package gate를 실행할 때는 현재 version보다 낮은 실제
+installer를 지정합니다. Synthetic fallback은 release evidence로 인정하지 않습니다.
+
+```powershell
+$env:CODEXMUX_SMOKE_ARTIFACT_DIR = "C:\artifacts\codexmux-smoke"
+$env:CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_BASE_INSTALLER_PATH = "C:\artifacts\codexmux-Setup-<previous-version>.exe"
+corepack pnpm smoke:windows:updater-local-feed
+corepack pnpm smoke:windows:package-gate
+```
 
 ## Pre-auth bootstrap 보안
 
@@ -118,7 +142,10 @@ Next large-body warning 부재, shutdown cleanup, kill switch를 12개 check로 
 
 Fresh Windows package는 Linux 결과로 대체하지 않습니다.
 
-```bash
+```powershell
+corepack pnpm pack:electron
+$env:CODEXMUX_SMOKE_ARTIFACT_DIR = "C:\artifacts\codexmux-smoke"
+$env:CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_BASE_INSTALLER_PATH = "C:\artifacts\codexmux-Setup-<previous-version>.exe"
 corepack pnpm smoke:windows:upload-integrity
 corepack pnpm smoke:windows:package-gate
 ```
@@ -162,18 +189,32 @@ Playwright는 UI 회귀와 smoke 자동화에 사용합니다.
 
 ## Electron
 
-Electron 검증은 Windows packaging과 local server bootstrap을 중심으로 합니다.
+Electron 검증은 Linux development smoke와 Windows packaged smoke를 분리합니다.
 
 ```bash
 corepack pnpm vitest run tests/unit/electron/app-server-protocol.test.ts
 corepack pnpm build:electron:main
 corepack pnpm build:electron
-corepack pnpm smoke:electron:attach
-corepack pnpm smoke:electron:runtime-v2
+xvfb-run -a corepack pnpm smoke:electron:runtime-v2
+```
+
+`smoke:electron:attach`는 server를 시작하지 않습니다. 별도로 실행 중인 target을 명시한
+경우에만 사용합니다.
+
+```bash
+CODEXMUX_ELECTRON_SMOKE_URL=http://127.0.0.1:8122 \
+xvfb-run -a corepack pnpm smoke:electron:attach
+```
+
+Windows에서는 별도 packaged/installer 경로를 사용합니다.
+
+```powershell
 corepack pnpm smoke:windows:electron-env
 corepack pnpm smoke:windows:electron-packaging
 corepack pnpm smoke:windows:packaged-launch
+corepack pnpm smoke:windows:packaged-runtime-v2
 corepack pnpm smoke:windows:installer-install
+corepack pnpm smoke:windows:installer-runtime-v2
 ```
 
 `pack:electron:mac` 계열 명령은 legacy/manual path입니다. Windows-only release blocker로 사용하지 않습니다.

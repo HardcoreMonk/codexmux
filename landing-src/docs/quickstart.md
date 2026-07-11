@@ -1,69 +1,75 @@
 ---
 title: 빠른 시작
-description: Node.js와 tmux만 있으면 1분 안에 codexmux를 실행할 수 있습니다.
+description: Windows Runtime v2와 Electron 개발 경로로 codexmux를 실행하고 최초 설정을 완료합니다.
 eyebrow: 시작하기
 permalink: /docs/quickstart/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-codexmux는 웹 기반 터미널 멀티플렉서입니다. 모든 Codex 세션을 하나의 대시보드에서 관리하고, `tmux`로 세션을 유지하며, 책상에서도 휴대폰에서도 바로 이어서 작업할 수 있습니다.
+codexmux는 여러 Codex workspace, session, tab을 관리하는 Codex 중심 session manager입니다. 현재 제품 방향은 Windows Runtime v2와 Electron desktop shell이며, macOS/Linux tmux server와 Android shell은 legacy/reference surface입니다.
 
-## 시작하기 전에
-
-실행할 머신에 두 가지가 필요합니다.
-
-- **Node.js 20 이상** — `node -v`로 확인
-- **tmux** — `tmux -V`로 확인. 3.0 이상이면 OK
-
-{% call callout('note', 'macOS / Linux 전용') %}
-서버 실행은 macOS와 Linux를 기준으로 지원합니다.
+{% call callout('warning', 'Windows 전환 상태') %}
+Windows terminal runtime, process inspector, Electron NSIS/zip packaging은 구현되어 있습니다. 다만 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)의 fresh Windows packaged upload/release evidence가 아직 남아 있으므로 Windows 지원 완료나 일반 배포 완료로 해석하지 마세요.
 {% endcall %}
 
-## 실행
+## 준비
 
-명령어 하나. 글로벌 설치도 필요 없습니다.
+소스 checkout으로 Windows 경로를 확인하려면 다음이 필요합니다.
+
+- **Windows x64** — 현재 Electron package target
+- **Node.js 20.9 이상** — `node -v`로 확인
+- **Git** — `git --version`으로 확인
+- **Codex CLI** — `codex --version`과 login 상태 확인
+
+Windows Runtime v2 경로에는 tmux가 필요하지 않습니다.
+
+## Windows 개발 실행
+
+PowerShell에서:
+
+```powershell
+git clone https://github.com/HardcoreMonk/codexmux.git
+Set-Location codexmux
+corepack enable
+corepack pnpm install
+
+$env:CODEXMUX_RUNTIME_V2 = "1"
+$env:CODEXMUX_RUNTIME_TERMINAL_ADAPTER = "windows"
+$env:CODEXMUX_PROCESS_INSPECTOR_ADAPTER = "windows"
+$env:PORT = "8122"
+corepack pnpm dev:electron
+```
+
+`dev:electron`은 선택한 `PORT`의 health URL만 기다립니다. 이 wrapper는 server가 다른 빈 port로 fallback한 결과를 따라가지 않으므로 `8122`를 비우거나 실행 전에 다른 free port를 지정해야 합니다. `HOST`를 지정하지 않으면 wrapper가 `HOST=localhost`를 주입하므로 source dev는 config의 network access보다 localhost를 우선합니다.
+
+## 최초 설정
+
+처음 시작한 process는 `HOST`나 저장된 network setting보다 먼저 `127.0.0.1`에만 bind합니다.
+
+1. Electron 창 또는 `http://localhost:8122`를 로컬에서 엽니다.
+2. 비밀번호, locale, theme, network access를 설정합니다.
+3. 외부 access를 선택했다면 setup 완료 후 `$env:HOST="localhost,tailscale"`처럼 원하는 범위를 명시하고 server/Electron을 재시작합니다.
+4. workspace를 만들고 **Codex** tab을 엽니다.
+
+Codex tab은 Runtime v2 terminal worker와 Windows adapter를 사용합니다. Browser/Electron 창을 닫았다 다시 열 때는 저장된 layout과 Codex session metadata를 이용해 복구합니다.
+
+## Windows package 확인
+
+[Releases](https://github.com/HardcoreMonk/codexmux/releases/latest)의 NSIS installer/zip은 Windows 전환 smoke용 artifact입니다. Fresh Issue #16 evidence가 닫히기 전에는 production-ready 지원 package로 안내하지 않습니다. 설치와 package 검증 명령은 [설치](/codexmux/docs/installation/)에서 확인하세요.
+
+## Legacy/reference 경로
+
+다음 명령은 macOS/Linux tmux server line을 재현하는 legacy 경로입니다. Windows primary 경로가 아닙니다.
 
 ```bash
 npx codexmux
 ```
 
-`8122` 포트에서 서버가 뜹니다. 브라우저로 열어보세요.
-
-```
-http://localhost:8122
-```
-
-처음 실행 시 비밀번호 설정과 첫 워크스페이스 생성 절차가 안내됩니다.
-
-{% call callout('tip') %}
-영구 설치를 원하시면 `pnpm add -g codexmux && codexmux`로 쓸 수도 있습니다. 업데이트는 `pnpm up -g codexmux` 한 번이면 됩니다.
-{% endcall %}
-
-## Codex 세션 열기
-
-대시보드에서:
-
-1. 원하는 워크스페이스에서 **새 탭**을 누릅니다.
-2. **Codex** 템플릿을 선택하거나, 일반 터미널에서 `codex`를 직접 실행해도 됩니다.
-3. codexmux가 실행 중인 Codex CLI를 자동으로 인식해 상태·타임라인·권한/입력 프롬프트를 실시간으로 보여줍니다.
-
-브라우저를 닫아도 세션은 유지됩니다 — tmux가 프로세스를 계속 살려두기 때문입니다.
-
-## 휴대폰에서 접근
-
-기본값으로 codexmux는 `localhost`에만 바인드합니다. 외부에서 안전하게 접근하려면 Tailscale Serve를 쓰세요 (WireGuard + 자동 HTTPS, 포트 포워딩 불필요):
-
-```bash
-tailscale serve --bg --https=443 localhost:8122
-```
-
-휴대폰에서 `https://<machine>.<tailnet>.ts.net`를 열고 **공유 → 홈 화면에 추가**하면 PWA로 설치되고, 백그라운드에서도 Web Push 알림을 받을 수 있습니다.
-
-자세한 설정은 [Tailscale 접속](/codexmux/docs/tailscale/), iOS/Android 구체 방법은 [PWA 설정](/codexmux/docs/pwa-setup/)을 참고하세요.
+이 경로에는 Node.js와 tmux 3.0 이상이 필요합니다. Capacitor Android 앱과 PWA/mobile remote 문서도 Windows desktop 제품의 primary 설치 경로가 아니라 기존 server에 접속하는 reference surface로 유지합니다.
 
 ## 다음으로
 
-- **[설치](/codexmux/docs/installation/)** — 플랫폼별 세부 사항, macOS 네이티브 앱, 자동 시작
-- **[브라우저 지원](/codexmux/docs/browser-support/)** — 데스크탑/모바일 호환성 매트릭스
-- **[첫 세션](/codexmux/docs/first-session/)** — 대시보드 투어
-- **[키보드 단축키](/codexmux/docs/keyboard-shortcuts/)** — 전체 바인딩 한눈에
+- **[설치](/codexmux/docs/installation/)** — Windows package/source 명령과 legacy 경계
+- **[보안과 인증](/codexmux/docs/security-auth/)** — loopback setup과 restart 규칙
+- **[포트 & 환경 변수](/codexmux/docs/ports-env-vars/)** — source port 선택, packaged fallback, Runtime 설정
+- **[문제 해결](/codexmux/docs/troubleshooting/)** — Windows/Runtime v2 진단

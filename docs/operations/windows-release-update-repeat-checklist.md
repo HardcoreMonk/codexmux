@@ -5,13 +5,16 @@ artifact name, product identity만 다르고 검증 순서는 같습니다.
 
 ## Release 전
 
-```bash
+```powershell
 corepack pnpm lint --quiet
 corepack pnpm exec tsc --noEmit --pretty false
 corepack pnpm test
 corepack pnpm pack:electron
+$env:CODEXMUX_SMOKE_ARTIFACT_DIR = "C:\artifacts\codexmux-smoke"
+$env:CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_BASE_INSTALLER_PATH = "C:\artifacts\codexmux-Setup-<previous-version>.exe"
 corepack pnpm smoke:windows:update-metadata
 corepack pnpm smoke:windows:package-gate
+corepack pnpm smoke:windows:release-gate
 ```
 
 확인 기준:
@@ -19,20 +22,23 @@ corepack pnpm smoke:windows:package-gate
 - `release/latest.yml` version이 package version과 일치합니다.
 - `latest.yml`이 참조하는 installer가 `release/`에 있습니다.
 - matching `.blockmap`이 있습니다.
+- package gate는 현재 version보다 낮은 실제 baseline installer를 사용합니다. Synthetic
+  local-feed는 release evidence로 인정하지 않습니다.
+- `CODEXMUX_SMOKE_ARTIFACT_DIR`에 sanitized gate artifact가 생성됩니다.
 - packaged runtime v2와 installer runtime v2 smoke가 Phase 6 gate를 통과합니다.
 
 ## GitHub Release 게시 후
 
 이전 버전이 `0.4.15`, 새 버전이 `0.4.16`인 예시입니다.
 
-```bash
-CODEXMUX_WINDOWS_UPDATER_CURRENT_VERSION=0.4.15 \
+```powershell
+$env:CODEXMUX_WINDOWS_UPDATER_CURRENT_VERSION = "0.4.15"
 corepack pnpm smoke:windows:updater-published-channel
 ```
 
-```bash
-CODEXMUX_WINDOWS_PUBLISHED_BASE_INSTALLER_PATH=release\\codexmux-Setup-0.4.15.exe \
-CODEXMUX_WINDOWS_UPDATER_PUBLISHED_GENERIC_FEED=1 \
+```powershell
+$env:CODEXMUX_WINDOWS_PUBLISHED_BASE_INSTALLER_PATH = "release\codexmux-Setup-0.4.15.exe"
+$env:CODEXMUX_WINDOWS_UPDATER_PUBLISHED_GENERIC_FEED = "1"
 corepack pnpm smoke:windows:updater-published-install
 ```
 
@@ -46,13 +52,13 @@ corepack pnpm smoke:windows:updater-published-install
 
 ## Runtime/사용 환경 증거
 
-```bash
+```powershell
 corepack pnpm smoke:windows:runtime-v2-rollback-drill
 ```
 
-```bash
-CODEXMUX_WINDOWS_INSTALLED_OBSERVATION_DURATION_MS=300000 \
-CODEXMUX_WINDOWS_INSTALLED_OBSERVATION_MAX_ROUNDS=24 \
+```powershell
+$env:CODEXMUX_WINDOWS_INSTALLED_OBSERVATION_DURATION_MS = "300000"
+$env:CODEXMUX_WINDOWS_INSTALLED_OBSERVATION_MAX_ROUNDS = "24"
 corepack pnpm smoke:windows:installed-observation
 ```
 

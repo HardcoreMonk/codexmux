@@ -1,6 +1,8 @@
 # 후속 작업
 
-이 문서는 release 전 확인, 내부 배포 단계, post-MVP backlog를 추적합니다. 현재 우선순위는 Windows-only 내부 배포 가능 상태를 만드는 것입니다.
+이 문서는 release 전 확인, 내부 배포 단계, post-MVP backlog를 추적합니다. 현재 최우선
+차단 항목은 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)의 fresh Windows
+packaged upload integrity 증거입니다.
 
 ## 완료된 범위
 
@@ -38,9 +40,11 @@
 
 ## 릴리스 전 확인
 
-필수 검증:
+공통 및 Linux에서 확보하는 필수 검증:
 
 ```bash
+corepack pnpm check:project-design
+corepack pnpm build:landing
 corepack pnpm lint
 corepack pnpm tsc --noEmit
 corepack pnpm test
@@ -51,10 +55,32 @@ CODEXMUX_PREAUTH_SMOKE_MODE=production corepack pnpm smoke:pre-auth-bootstrap
 corepack pnpm check:upload-memory
 CODEXMUX_UPLOAD_SMOKE_MODE=development corepack pnpm smoke:upload-integrity
 CODEXMUX_UPLOAD_SMOKE_MODE=production corepack pnpm smoke:upload-integrity
+corepack pnpm smoke:browser-reconnect
+corepack pnpm build:electron
+xvfb-run -a corepack pnpm smoke:electron:runtime-v2
+```
+
+Electron development smoke는 Linux GUI/display 경로입니다. Headless Linux에서는 위와 같이
+Xvfb를 사용하고 GUI가 있는 Linux desktop에서는 직접 실행할 수 있습니다. Windows runtime
+증거는 `smoke:windows:packaged-runtime-v2`와 installer/package gate로 확인합니다.
+
+Issue #16을 닫기 위한 fresh Windows 검증:
+
+```powershell
+corepack pnpm install --frozen-lockfile
 corepack pnpm pack:electron
+$env:CODEXMUX_SMOKE_ARTIFACT_DIR = "C:\artifacts\codexmux-smoke"
+$env:CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_BASE_INSTALLER_PATH = "C:\artifacts\codexmux-Setup-<previous-version>.exe"
+corepack pnpm smoke:windows:updater-local-feed
+corepack pnpm smoke:windows:packaged-launch
 corepack pnpm smoke:windows:upload-integrity
 corepack pnpm smoke:windows:package-gate
+corepack pnpm smoke:windows:release-gate
 ```
+
+Baseline installer는 현재 version보다 낮은 실제 release artifact여야 합니다.
+`CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_ALLOW_SYNTHETIC=1`과 Non-Windows의
+`{ skipped: true }`는 ADR-027의 Windows release 증거가 아닙니다.
 
 Published update 검증:
 
@@ -88,7 +114,7 @@ Published update 검증:
 | Runtime v2 live rollback drill evidence | 완료: 설치 앱에서 runtime v2 `on -> CODEXMUX_RUNTIME_V2=0 -> restored` 전환, disabled health `404 runtime-v2-disabled`, 복구 후 Phase 6 gate 통과 |
 | 측정 기반 perf tuning | 완료/비차단: `corepack pnpm perf:timeline-jsonl` synthetic 5,000 entries parse `18.57ms`, virtualization 권고 유지. session list cold index refresh는 비차단 응답으로 조정했고 package/installed runtime v2 worker counter는 Phase 6 gate에서 clean 확인 |
 | Phase 6 closeout | 완료: packaged runtime v2 smoke, 설치 관찰 smoke, rollback drill에 Phase 6 health/perf gate 반영 |
-| Production upload fresh Windows evidence | 미완료: 현재 source로 packaged exe를 만든 뒤 `smoke:windows:upload-integrity`, package/updater/release gate를 Windows에서 실행해야 ADR-027 Verified 가능 |
+| [Issue #16: Production upload fresh Windows evidence](https://github.com/HardcoreMonk/codexmux/issues/16) | 미완료: 현재 source로 packaged exe를 만든 뒤 updater local feed, packaged launch, upload integrity, package gate, release gate를 fresh Windows에서 실행해야 ADR-027 Verified 가능 |
 
 ## 비차단 항목
 

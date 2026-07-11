@@ -62,4 +62,9 @@ Windows packaged evidence가 아닙니다. Windows release 시 `pack:electron:de
   process-wide aggregate cap은 별도 hardening 후보입니다.
 - Origin 검증은 same-authority이며 TLS scheme을 증명하는 full same-origin 계약이 아닙니다.
 
-이 작업에서는 commit, push, issue 변경, deploy를 수행하지 않았습니다.
+## 후속 게시 상태
+
+- 구현 commit: `8977a247` (`fix: secure bootstrap and upload ingress`)
+- remote: `HardcoreMonk/codexmux`의 `main`에 push 완료
+- ADR-026: `Verified`; 별도 open blocker 없음
+- deploy: 수행하지 않음

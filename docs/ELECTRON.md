@@ -4,29 +4,49 @@ codexmux Electron 앱은 Next.js UI를 데스크톱 shell 안에서 실행합니
 
 ## 명령
 
-```bash
+Windows source development:
+
+```powershell
+$env:PORT = "8122"
+$env:CODEXMUX_RUNTIME_V2 = "1"
+$env:CODEXMUX_RUNTIME_TERMINAL_ADAPTER = "windows"
+$env:CODEXMUX_PROCESS_INSPECTOR_ADAPTER = "windows"
 corepack pnpm dev:electron
-corepack pnpm dev:electron:attach
+```
+
+이미 `8122`에서 server가 실행 중일 때 Windows Electron만 연결:
+
+```powershell
+$env:ELECTRON_DEV_URL = "http://localhost:8122"
+corepack pnpm exec electron .
+```
+
+Build/package:
+
+```powershell
 corepack pnpm build:electron
 corepack pnpm pack:electron:dev
 corepack pnpm pack:electron
 ```
 
-Windows smoke:
+Windows smoke는 현재 version보다 낮은 실제 baseline installer를 준비한 뒤 실행합니다.
 
-```bash
+```powershell
+$env:CODEXMUX_SMOKE_ARTIFACT_DIR = "C:\artifacts\codexmux-smoke"
+$env:CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_BASE_INSTALLER_PATH = "C:\artifacts\codexmux-Setup-<previous-version>.exe"
+corepack pnpm pack:electron
 corepack pnpm smoke:windows:electron-env
 corepack pnpm smoke:windows:electron-packaging
 corepack pnpm smoke:windows:zip-artifact
 corepack pnpm smoke:windows:update-metadata
 corepack pnpm smoke:windows:packaged-launch
+corepack pnpm smoke:windows:upload-integrity
 corepack pnpm smoke:windows:packaged-runtime-v2
 corepack pnpm smoke:windows:installer-install
 corepack pnpm smoke:windows:installer-runtime-v2
 corepack pnpm smoke:windows:updater-local-feed
-corepack pnpm smoke:windows:updater-published-channel
-corepack pnpm smoke:windows:updater-published-install
 corepack pnpm smoke:windows:package-gate
+corepack pnpm smoke:windows:release-gate
 ```
 
 Legacy macOS packaging:
@@ -95,11 +115,33 @@ Windows wrapper는 electron-builder를 직접 호출하지 않고 `scripts/pack-
 
 `latest.yml`, installer exe, matching `.blockmap`은 같은 updater-visible artifact name을 가져야 합니다.
 
+## Packaged upload integrity
+
+Packaged local server도 `/api/upload-image`와 `/api/upload-file`을 embedded Next server보다
+앞선 outer custom server에서 처리합니다. Internal standalone port와 제거된 Pages API route는
+upload fallback surface가 아닙니다. `CODEXMUX_UPLOADS_DISABLED=1`로 같은 executable을 다시
+시작하면 두 upload route만 `503`으로 닫고 health, config, 기존 artifact tree는 유지해야 합니다.
+
+```powershell
+corepack pnpm pack:electron
+$env:CODEXMUX_SMOKE_ARTIFACT_DIR = "C:\artifacts\codexmux-smoke"
+$env:CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_BASE_INSTALLER_PATH = "C:\artifacts\codexmux-Setup-<previous-version>.exe"
+corepack pnpm smoke:windows:packaged-launch
+corepack pnpm smoke:windows:upload-integrity
+corepack pnpm smoke:windows:package-gate
+```
+
+2026-07-11 현재 이 gate 구현과 Linux dev/prod/Electron 검증은 완료됐지만 fresh Windows
+filesystem/package 실행 증거는 없습니다. [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)을
+닫기 전에는 ADR-027을 `Verified`로 올리지 않습니다.
+
 ## 업데이트 smoke
 
 Local feed smoke:
 
-```bash
+```powershell
+$env:CODEXMUX_SMOKE_ARTIFACT_DIR = "C:\artifacts\codexmux-smoke"
+$env:CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_BASE_INSTALLER_PATH = "C:\artifacts\codexmux-Setup-<previous-version>.exe"
 corepack pnpm smoke:windows:updater-local-feed
 ```
 
@@ -108,25 +150,35 @@ corepack pnpm smoke:windows:updater-local-feed
 `update-downloaded`, `quitAndInstall`, app exit, updater installer settle,
 post-install launch, registry/directory cleanup을 확인합니다.
 
+Fresh runner의 `release/`에는 이전 installer가 없으므로 현재 version보다 낮은 실제 artifact를
+위 환경 변수로 지정해야 합니다. `CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_ALLOW_SYNTHETIC=1`은
+개발용 fallback이며 release acceptance에는 사용하지 않습니다. 같은 환경 변수는 local-feed
+단계를 다시 실행하는 `smoke:windows:package-gate`에도 전달됩니다.
+
 Published channel smoke:
 
-```bash
+```powershell
+$env:CODEXMUX_SMOKE_ARTIFACT_DIR = "C:\artifacts\codexmux-smoke"
+$env:CODEXMUX_WINDOWS_UPDATER_CURRENT_VERSION = "<installed-lower-version>"
 corepack pnpm smoke:windows:updater-published-channel
 ```
 
 이 smoke는 설치나 update를 수행하지 않습니다. `electron-builder.yml`의 GitHub publish owner/repo에서 published release channel을 read-only로 확인합니다. 최신 published release에 `latest.yml`, installer, matching `.blockmap`, newer semver, download URL이 없으면 blocker로 실패합니다.
 
-Prerelease asset 검증이 필요하면 다음 환경 값을 함께 사용합니다.
+Prerelease도 published release 후보에 포함하려면 다음 환경 값을 함께 사용합니다. 이 값은
+prerelease 선택을 강제하지 않으며 publish 시각상 최신인 eligible release를 검사합니다.
 
-```bash
-CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INCLUDE_PRERELEASE=1 \
-CODEXMUX_WINDOWS_UPDATER_CURRENT_VERSION=0.4.2 \
+```powershell
+$env:CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INCLUDE_PRERELEASE = "1"
+$env:CODEXMUX_WINDOWS_UPDATER_CURRENT_VERSION = "0.4.2"
 corepack pnpm smoke:windows:updater-published-channel
 ```
 
 Published install smoke:
 
-```bash
+```powershell
+$env:CODEXMUX_SMOKE_ARTIFACT_DIR = "C:\artifacts\codexmux-smoke"
+$env:CODEXMUX_WINDOWS_PUBLISHED_BASE_INSTALLER_PATH = "C:\artifacts\codexmux-Setup-<previous-version>.exe"
 corepack pnpm smoke:windows:updater-published-install
 ```
 
@@ -137,9 +189,10 @@ corepack pnpm smoke:windows:updater-published-install
 PowerShell `Invoke-WebRequest` 기반 HTTP executor를 사용합니다. 최종 published
 install evidence는 다음 경로로 확보했습니다.
 
-```bash
-CODEXMUX_WINDOWS_PUBLISHED_BASE_INSTALLER_PATH=release\\codexmux-Setup-0.4.15.exe \
-CODEXMUX_WINDOWS_UPDATER_PUBLISHED_GENERIC_FEED=1 \
+```powershell
+$env:CODEXMUX_SMOKE_ARTIFACT_DIR = "C:\artifacts\codexmux-smoke"
+$env:CODEXMUX_WINDOWS_PUBLISHED_BASE_INSTALLER_PATH = "release\codexmux-Setup-0.4.15.exe"
+$env:CODEXMUX_WINDOWS_UPDATER_PUBLISHED_GENERIC_FEED = "1"
 corepack pnpm smoke:windows:updater-published-install
 ```
 
@@ -151,8 +204,15 @@ settle, post-update `/api/health.version=0.4.16`까지 확인합니다.
 
 Electron은 웹/PWA와 같은 React runtime v2 terminal hook을 사용합니다.
 
+Linux development/Electron smoke:
+
 ```bash
-corepack pnpm smoke:electron:runtime-v2
+xvfb-run -a corepack pnpm smoke:electron:runtime-v2
+```
+
+Windows packaged/installed smoke:
+
+```powershell
 corepack pnpm smoke:windows:packaged-runtime-v2
 corepack pnpm smoke:windows:installer-runtime-v2
 corepack pnpm smoke:windows:runtime-v2-rollback-drill
@@ -170,9 +230,9 @@ corepack pnpm smoke:windows:runtime-v2-rollback-drill
 
 설치 관찰 smoke:
 
-```bash
-CODEXMUX_WINDOWS_INSTALLED_OBSERVATION_DURATION_MS=300000 \
-CODEXMUX_WINDOWS_INSTALLED_OBSERVATION_MAX_ROUNDS=24 \
+```powershell
+$env:CODEXMUX_WINDOWS_INSTALLED_OBSERVATION_DURATION_MS = "300000"
+$env:CODEXMUX_WINDOWS_INSTALLED_OBSERVATION_MAX_ROUNDS = "24"
 corepack pnpm smoke:windows:installed-observation
 ```
 
@@ -196,6 +256,8 @@ Runtime v2 rollback drill은 설치 앱에서 `on -> CODEXMUX_RUNTIME_V2=0 -> re
 
 - Windows package가 실제로 빌드되었는지 확인합니다.
 - `release/latest.yml`, installer exe, `.blockmap` asset이 일치하는지 확인합니다.
+- 현재 source로 packaged upload integrity, package gate, release gate를 fresh Windows에서
+  실행하고 sanitized smoke artifact를 남깁니다.
 - 설치된 앱에서 published update apply evidence를 남깁니다. 현재 기준 증거는
   `v0.4.15 -> v0.4.16` published installer baseline smoke입니다.
 - 내부 전용 배포에서는 public code signing certificate trust와 SmartScreen reputation을 release blocker로 보지 않습니다.

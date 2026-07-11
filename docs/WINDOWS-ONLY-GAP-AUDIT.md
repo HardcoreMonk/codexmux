@@ -1,6 +1,7 @@
 # Windows-only 차이 감사
 
-날짜: 2026-05-06
+최초 작성: 2026-05-06
+현행화: 2026-07-11
 상태: 전환 기준 문서
 
 ## 결론
@@ -57,21 +58,21 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 | Platform Shell | desktop/mobile shell packaging | Electron, Android | Windows Electron shell |
 | Local Session Index | Codex JSONL discovery | `~/.codex/sessions` | Windows path semantics verified |
 | Release Verification | CI/smoke/package/install | mixed platform smoke | Windows package/update gate |
-| Upload Ingress | Next proxy와 Pages API buffering | outer streaming/no-replace publish | packaged Windows filesystem/kill-switch gate |
+| Upload Ingress | authenticated raw upload admission, streaming, publish/cleanup | outer streaming/no-replace publish, Linux dev/prod/memory 검증 완료 | packaged Windows filesystem/kill-switch gate pending |
 
 ## 차이 매트릭스
 
-| 영역 | 현재 가정 | Windows 목표 | 우선순위 |
+| 영역 | 현재 경계 | Windows 목표 | 상태 |
 | --- | --- | --- | --- |
-| 제품 계약 | macOS/Linux tmux server 중심 | Windows-only product | P0 |
-| Terminal runtime | tmux session과 pane PID 가정 | Windows-native persistent terminal | P0 |
-| Process inspection | `/proc`, `pgrep`, `ps`, `lsof` 가정 | Windows process tree adapter | P1 |
-| Preflight | tmux와 POSIX shell PATH 검사 | Windows Codex/Git/Node/pnpm/runtime 검사 | P1 |
-| Install script | POSIX `chmod`, `rm -rf` 흔적 | Windows-safe script | P0 |
-| Host operation | Linux `systemd --user` | tray/service/installer host | P2 |
-| Packaging | macOS/Android 기록 강함 | Windows NSIS/zip/updater | P0 |
-| Docs | 다중 platform 설명 | Windows 기준 + legacy 구분 | P0 |
-| Test gate | 혼합 smoke | Windows release gate | P0 |
+| 제품 계약 | `codexmux` legacy surface와 별도 `codexwinmux` product line 공존 | Windows-only product | 전환 진행 |
+| Terminal runtime | tmux fallback과 Windows node-pty/ConPTY adapter 공존 | Windows adapter를 packaged release 기준으로 유지 | 구현 완료 |
+| Process inspection | POSIX helper 격리와 Windows CIM inspector | Windows process tree adapter | 구현 완료 |
+| Preflight | platform별 runtime readiness 검사 | Windows Codex/Git/Node/pnpm/runtime 검사 | 구현 완료 |
+| Install action | typed admission 뒤 legacy user PTY | Windows host-owned install/repair capability | 미완료 |
+| Host operation | Linux `systemd --user` 기록과 Windows host baseline | tray/service/installer host | 부분 완료 |
+| Packaging | Windows NSIS/zip/updater와 legacy macOS/Android 기록 | fresh source Windows package/update evidence | upload 재검증 pending |
+| Docs | Windows 기준과 legacy/reference 문서 분리 | Windows 기준 유지 | 지속 관리 |
+| Test gate | Windows release/package gate와 legacy smoke 공존 | fresh source Windows gate | Issue #16 pending |
 
 ## 확인된 Windows 증거
 
@@ -121,7 +122,7 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 ## ADR 후보
 
 - 승인됨: Windows-only product target과 removed companion non-resurrection rule.
-- 후속: Windows terminal runtime adapter parity contract.
+- 구현됨: Windows terminal runtime adapter parity는 ADR-002와 runtime v2 문서가 소유.
 - 후속: Windows service/tray host와 installer ownership.
 - 후속: macOS/Linux/Android support removal policy.
 
@@ -150,7 +151,7 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 | Windows Electron packaging contract | 완료 |
 | Windows release gate artifact | 완료 |
 | Outer upload ingress Linux dev/prod/memory gate | 완료: dev/prod 각 12 checks, 50MiB positive 3회 external growth 130,912B |
-| Windows packaged upload integrity | 구현 완료, fresh Windows 실행 증거 미완료: `smoke:windows:upload-integrity`와 package-gate 재실행 필요 |
+| [Issue #16: Windows packaged upload integrity](https://github.com/HardcoreMonk/codexmux/issues/16) | 구현 완료, fresh Windows 실행 증거 미완료: updater local feed, packaged launch, `smoke:windows:upload-integrity`, package gate, release gate 재실행 필요 |
 | GitHub-hosted release asset과 published metadata | 완료: 최신 기준 `v0.4.16`, `latest.yml`, NSIS installer, `.blockmap`, zip asset 확인 |
 | 실제 installed app에서 published update `quitAndInstall` | 완료: `v0.4.15 -> v0.4.16` published installer baseline apply와 post-update health 확인 |
 | public code signing certificate trust | 비차단: 내부 전용 앱이라 public 인증 불필요 |
@@ -161,9 +162,10 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 | 측정 기반 perf tuning | 완료/비차단: timeline JSONL synthetic 5,000 entries parse `18.57ms`, virtualization 권고 유지, session list cold index refresh 비차단화, runtime worker counter clean |
 | Phase 6 closeout | 완료: packaged/installed/rollback smoke에 runtime v2 Phase 6 health/perf gate 반영 |
 
-## 첫 구현 slice 기준
+## 완료된 첫 구현 slice 기준
 
-성공 기준:
+다음 성공 기준은 구현과 기존 Windows smoke에서 충족했습니다. 현재 남은 release blocker는
+Issue #16의 upload-specific fresh package evidence입니다.
 
 - Terminal runtime contract가 create, attach, write, resize, detach, kill, presence, metadata projection을 포함합니다.
 - tmux runtime은 migration fallback으로 유지됩니다.

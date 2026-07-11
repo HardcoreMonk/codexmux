@@ -215,3 +215,4 @@
 - 검토 근거: `docs/superpowers/grill-me/2026-07-11-production-security-upload-integrity.md`에서 proxy cap, auth/Origin, HTTP framing, admission, cleanup, rollback과 Windows gate를 검토했습니다.
 - 승인 근거: `docs/superpowers/plans/2026-07-11-production-security-upload-integrity.md`의 독립 engineering review가 shutdown/Expect/quarantine/upgrade, Node timeout, maintenance, auth failure, memory oracle, Windows native storage gate와 TDD 실행 순서를 blocker 없이 통과했습니다.
 - 구현 근거: `docs/operations/2026-07-11-production-security-upload-integrity-handoff.md`에 dependency audit, Linux dev/prod upload, memory, browser, Electron 증거와 pending Windows boundary를 기록했습니다.
+- 잔여 검증 추적: [GitHub issue #16](https://github.com/HardcoreMonk/codexmux/issues/16). Fresh Windows package/updater/release gate가 모두 통과하기 전에는 `Verified`로 전이하지 않습니다.
