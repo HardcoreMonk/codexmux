@@ -44,6 +44,8 @@ describe('Windows packaged launch smoke helpers', () => {
       NEXTAUTH_SECRET: 'developer-secret',
       INIT_PASSWORD: 'developer-init-password',
       CODEXMUX_UPLOADS_DISABLED: '1',
+      GH_TOKEN: 'github-cli-token',
+      GITHUB_TOKEN: 'github-actions-token',
       __CMUX_PRISTINE_ENV: '{"stale":true}',
     };
 
@@ -72,6 +74,8 @@ describe('Windows packaged launch smoke helpers', () => {
     expect(normal).not.toHaveProperty('AUTH_PASSWORD');
     expect(normal).not.toHaveProperty('NEXTAUTH_SECRET');
     expect(normal).not.toHaveProperty('CODEXMUX_UPLOADS_DISABLED');
+    expect(normal).not.toHaveProperty('GH_TOKEN');
+    expect(normal).not.toHaveProperty('GITHUB_TOKEN');
     expect(normal).not.toHaveProperty('__CMUX_PRISTINE_ENV');
     expect(disabled.CODEXMUX_UPLOADS_DISABLED).toBe('1');
 

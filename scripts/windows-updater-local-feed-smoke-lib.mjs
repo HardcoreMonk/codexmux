@@ -59,6 +59,13 @@ export const buildWindowsUpdaterLocalFeedLatestMetadata = ({
   releaseDate,
 });
 
+export const withoutGitHubTokenEnv = (env = {}) => {
+  const childEnv = { ...env };
+  delete childEnv.GH_TOKEN;
+  delete childEnv.GITHUB_TOKEN;
+  return childEnv;
+};
+
 export const buildWindowsUpdaterSmokeEnv = ({
   env = process.env,
   feedUrl,
@@ -68,7 +75,7 @@ export const buildWindowsUpdaterSmokeEnv = ({
   useRealLocalAppData = false,
 }) => {
   const smokeEnv = {
-    ...env,
+    ...withoutGitHubTokenEnv(env),
     HOME: homeDir,
     USERPROFILE: homeDir,
     APPDATA: windowsJoin(homeDir, 'AppData', 'Roaming'),

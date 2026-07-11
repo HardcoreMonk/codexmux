@@ -13,6 +13,9 @@ corepack pnpm tsc --noEmit
 corepack pnpm test
 ```
 
+`next.config.ts`는 `turbopack.root=process.cwd()`로 active checkout을 고정합니다. 저장소 아래
+`.worktrees/`에서 build해도 parent checkout의 `.next/standalone`을 잘못 읽거나 쓰지 않아야 합니다.
+
 Canonical 문서 경계나 `landing-src/`를 바꾸면 landing build도 실행합니다.
 
 ```bash
@@ -60,11 +63,18 @@ corepack pnpm smoke:windows:installer-runtime-v2
 `smoke:windows:updater-published-channel`은 설치나 update를 수행하지 않고 GitHub Releases channel을 read-only로 확인합니다. 실제 published update evidence는 설치된 앱보다 높은 버전의 published release가 있을 때 `smoke:windows:updater-published-install`로 확인합니다. Windows Electron updater는 외부 HTTPS 요청에 PowerShell `Invoke-WebRequest` executor를 사용하며, stale tasklist 항목이 baseline installer를 막을 때는 `CODEXMUX_WINDOWS_PUBLISHED_BASE_ZIP_PATH`와 `CODEXMUX_WINDOWS_UPDATER_PUBLISHED_GENERIC_FEED=1`로 실제 GitHub release asset apply를 검증할 수 있습니다. Local feed updater smoke는 isolated 짧은 설치 경로에서 `quitAndInstall` 이후 updater installer process settle과 post-update packaged launch까지 확인합니다.
 
 Published channel 검증은 published latest보다 낮은 실제 installed/current version을 지정합니다.
+Prerelease candidate를 검사할 때는 target tag도 고정합니다.
 
 ```powershell
 $env:CODEXMUX_WINDOWS_UPDATER_CURRENT_VERSION = "<installed-version>"
+$env:CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INCLUDE_PRERELEASE = "1"
+$env:CODEXMUX_WINDOWS_UPDATER_PUBLISHED_TAG = "v<target-version>"
 corepack pnpm smoke:windows:updater-published-channel
 ```
+
+Target tag를 지정하면 publish 시각상 더 최신인 다른 release가 있어도 해당 tag의 metadata와
+asset만 평가합니다. Target이 없거나 prerelease 허용 조건과 맞지 않거나 tag semver와
+`latest.yml.version`이 다르면 실패합니다.
 
 Fresh Windows runner에서 local-feed와 package gate를 실행할 때는 현재 version보다 낮은 실제
 installer를 지정합니다. Synthetic fallback은 release evidence로 인정하지 않습니다.
@@ -75,6 +85,11 @@ $env:CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_BASE_INSTALLER_PATH = "C:\artifacts\cod
 corepack pnpm smoke:windows:updater-local-feed
 corepack pnpm smoke:windows:package-gate
 ```
+
+Tag 기반 자동 릴리스는 `check` -> `browser reconnect` -> `fresh Windows package/release gate` ->
+`prerelease` -> `target-tag published channel/install` -> `stable promotion` 순서입니다. Candidate
+baseline tag와 SHA-256은 workflow에 명시하며 다음 버전을 준비할 때 직전 stable Windows
+installer 값으로 갱신합니다. npm과 legacy macOS package는 Windows stable gate에 포함하지 않습니다.
 
 ## Pre-auth bootstrap 보안
 

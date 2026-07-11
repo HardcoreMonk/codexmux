@@ -66,10 +66,13 @@ const publishedAtTime = (release) => {
 export const selectLatestPublishedRelease = ({
   releases,
   includePrerelease = false,
+  targetTag,
 } = {}) => {
+  const normalizedTargetTag = isNonEmptyString(targetTag) ? targetTag.trim() : null;
   const published = (Array.isArray(releases) ? releases : [])
     .filter((release) => release && release.draft !== true)
-    .filter((release) => includePrerelease || release.prerelease !== true);
+    .filter((release) => includePrerelease || release.prerelease !== true)
+    .filter((release) => !normalizedTargetTag || release.tag_name === normalizedTargetTag);
 
   if (published.length === 0) return null;
 
@@ -93,17 +96,22 @@ export const evaluateWindowsPublishedUpdateChannel = ({
   currentVersion,
   latestMetadata,
   includePrerelease = false,
+  targetTag,
 } = {}) => {
   const blockers = [];
   const checks = [];
-  const latestRelease = selectLatestPublishedRelease({ releases, includePrerelease });
+  const latestRelease = selectLatestPublishedRelease({ releases, includePrerelease, targetTag });
   const releaseCount = Array.isArray(releases) ? releases.length : 0;
 
   if (!latestRelease) {
     addBlocker(
       blockers,
-      'windows-published-release-missing',
-      'No published GitHub release was found for the Windows updater channel.',
+      isNonEmptyString(targetTag)
+        ? 'windows-published-target-release-missing'
+        : 'windows-published-release-missing',
+      isNonEmptyString(targetTag)
+        ? `Published GitHub release ${targetTag.trim()} was not found for the Windows updater channel.`
+        : 'No published GitHub release was found for the Windows updater channel.',
     );
     return {
       ok: false,
@@ -162,6 +170,21 @@ export const evaluateWindowsPublishedUpdateChannel = ({
       'windows-published-version-missing',
       'Published latest.yml must include a release version.',
     );
+  }
+
+  const releaseTag = isNonEmptyString(latestRelease.tag_name) ? latestRelease.tag_name.trim() : null;
+  if (latestVersion && releaseTag) {
+    const tagComparison = compareSemver(releaseTag, latestVersion);
+    if (tagComparison === 0) {
+      checks.push('windows-published-tag-version-matches');
+    } else {
+      addBlocker(
+        blockers,
+        'windows-published-tag-version-mismatch',
+        'Published release tag and latest.yml version must match.',
+        { latestVersion, releaseTag },
+      );
+    }
   }
 
   if (currentVersion && latestVersion) {

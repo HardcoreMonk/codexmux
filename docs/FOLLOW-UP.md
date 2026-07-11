@@ -82,6 +82,10 @@ Baseline installer는 현재 version보다 낮은 실제 release artifact여야 
 `CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_ALLOW_SYNTHETIC=1`과 Non-Windows의
 `{ skipped: true }`는 ADR-027의 Windows release 증거가 아닙니다.
 
+`v0.4.17`부터 tag workflow가 고정된 baseline tag/SHA-256, fresh Windows package/release
+gate, prerelease 게시, exact target-tag published update apply, stable 승격을 순서대로 수행합니다.
+중간 단계가 실패하면 candidate는 prerelease에 머물며 Issue #16을 닫지 않습니다.
+
 Published update 검증:
 
 - GitHub Release에 `latest.yml`을 올립니다.

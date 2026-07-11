@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest';
 import nextConfig from '../../../next.config';
 
 describe('next output file tracing config', () => {
+  it('pins the Turbopack root to the active checkout', () => {
+    expect(nextConfig.turbopack?.root).toBe(process.cwd());
+  });
+
   it('uses the documented global route glob for root-level build artifacts', () => {
     const excludes = nextConfig.outputFileTracingExcludes ?? {};
     const globalExcludes = excludes['/*'] ?? [];

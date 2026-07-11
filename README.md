@@ -119,6 +119,11 @@ Linux에서 Windows smoke가 `skipped`인 결과는 Windows 통과 증거가 아
 남은 검증 절차와 인수 기준은 [issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)에서
 추적합니다.
 
+릴리스 tag workflow는 고정된 직전 installer와 SHA-256을 기준으로 fresh Windows package
+gate를 실행합니다. 통과한 자산은 먼저 prerelease로 게시하며, 같은 tag를 대상으로 실제
+published updater apply가 통과한 뒤에만 stable/latest로 승격합니다. macOS package와 npm
+publish는 Windows stable release의 선행 조건이 아닙니다.
+
 ## 아키텍처
 
 ```text

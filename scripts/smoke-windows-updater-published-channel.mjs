@@ -110,8 +110,9 @@ const main = async () => {
     const releasesUrl = process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_RELEASES_URL
       || buildReleasesApiUrl({ owner, repo });
     const includePrerelease = process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INCLUDE_PRERELEASE === '1';
+    const targetTag = process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_TAG?.trim() || null;
     const releases = JSON.parse(await request(releasesUrl));
-    const latestRelease = selectLatestPublishedRelease({ releases, includePrerelease });
+    const latestRelease = selectLatestPublishedRelease({ releases, includePrerelease, targetTag });
     const latestYamlAsset = getAsset(latestRelease, 'latest.yml');
     const latestMetadata = latestYamlAsset?.browser_download_url
       ? yaml.load(await request(latestYamlAsset.browser_download_url, { accept: 'application/octet-stream' }))
@@ -124,6 +125,7 @@ const main = async () => {
       }),
       latestMetadata,
       includePrerelease,
+      targetTag,
     });
     const payload = buildWindowsPublishedUpdateArtifactPayload(result);
 

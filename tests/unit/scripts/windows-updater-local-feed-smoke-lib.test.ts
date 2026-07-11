@@ -6,6 +6,19 @@ const loadLib = async () =>
   import(pathToFileURL(path.join(process.cwd(), 'scripts/windows-updater-local-feed-smoke-lib.mjs')).href);
 
 describe('Windows updater local feed smoke helpers', () => {
+  it('removes GitHub tokens from child environments without mutating the runner environment', async () => {
+    const { withoutGitHubTokenEnv } = await loadLib();
+    const source = {
+      PATH: 'C:\\Windows',
+      GH_TOKEN: 'github-cli-token',
+      GITHUB_TOKEN: 'github-actions-token',
+    };
+
+    expect(withoutGitHubTokenEnv(source)).toEqual({ PATH: 'C:\\Windows' });
+    expect(source.GH_TOKEN).toBe('github-cli-token');
+    expect(source.GITHUB_TOKEN).toBe('github-actions-token');
+  });
+
   it('bumps the patch version for a synthetic local feed update', async () => {
     const { bumpPatchVersion } = await loadLib();
 
@@ -54,7 +67,11 @@ describe('Windows updater local feed smoke helpers', () => {
     const { buildWindowsUpdaterSmokeEnv } = await loadLib();
 
     const env = buildWindowsUpdaterSmokeEnv({
-      env: { PATH: 'C:\\Windows' },
+      env: {
+        PATH: 'C:\\Windows',
+        GH_TOKEN: 'github-cli-token',
+        GITHUB_TOKEN: 'github-actions-token',
+      },
       feedUrl: 'http://127.0.0.1:8123/',
       statusPath: 'C:\\tmp\\updater-status.jsonl',
       installDir: 'C:\\tmp\\codexmux-app',
@@ -76,6 +93,8 @@ describe('Windows updater local feed smoke helpers', () => {
       CODEXMUX_ELECTRON_UPDATER_DISABLE_DIFFERENTIAL: '1',
       ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
     });
+    expect(env).not.toHaveProperty('GH_TOKEN');
+    expect(env).not.toHaveProperty('GITHUB_TOKEN');
   });
 
   it('does not override the updater install directory for default-path update smoke', async () => {

@@ -166,13 +166,18 @@ corepack pnpm smoke:windows:updater-published-channel
 이 smoke는 설치나 update를 수행하지 않습니다. `electron-builder.yml`의 GitHub publish owner/repo에서 published release channel을 read-only로 확인합니다. 최신 published release에 `latest.yml`, installer, matching `.blockmap`, newer semver, download URL이 없으면 blocker로 실패합니다.
 
 Prerelease도 published release 후보에 포함하려면 다음 환경 값을 함께 사용합니다. 이 값은
-prerelease 선택을 강제하지 않으며 publish 시각상 최신인 eligible release를 검사합니다.
+prerelease 허용 범위만 넓힙니다. 릴리스 검증에서는 `CODEXMUX_WINDOWS_UPDATER_PUBLISHED_TAG`를
+함께 지정해 publish 시각이 더 최신인 다른 release를 잘못 검사하지 않도록 합니다.
 
 ```powershell
 $env:CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INCLUDE_PRERELEASE = "1"
 $env:CODEXMUX_WINDOWS_UPDATER_CURRENT_VERSION = "0.4.2"
+$env:CODEXMUX_WINDOWS_UPDATER_PUBLISHED_TAG = "v0.4.3"
 corepack pnpm smoke:windows:updater-published-channel
 ```
+
+지정한 tag가 없거나 draft/prerelease 허용 조건에 맞지 않으면 fail closed합니다.
+선택한 release tag의 semver와 `latest.yml.version`이 다를 때도 fail closed합니다.
 
 Published install smoke:
 
@@ -184,7 +189,8 @@ corepack pnpm smoke:windows:updater-published-install
 
 이 smoke는 설치된 낮은 버전 앱에서 GitHub-hosted release로 update apply를
 시도합니다. published release가 prerelease이면
-`CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INCLUDE_PRERELEASE=1`을 함께 지정합니다.
+`CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INCLUDE_PRERELEASE=1`과 검증할
+`CODEXMUX_WINDOWS_UPDATER_PUBLISHED_TAG`를 함께 지정합니다.
 현재 Windows updater는 Electron 프로세스 내부 HTTPS timeout을 피하기 위해
 PowerShell `Invoke-WebRequest` 기반 HTTP executor를 사용합니다. 최종 published
 install evidence는 다음 경로로 확보했습니다.
@@ -263,3 +269,9 @@ Runtime v2 rollback drill은 설치 앱에서 `on -> CODEXMUX_RUNTIME_V2=0 -> re
 - 내부 전용 배포에서는 public code signing certificate trust와 SmartScreen reputation을 release blocker로 보지 않습니다.
 - 설치 경고나 내부 신뢰 절차는 release note와 설치 안내에 기록합니다.
 - 장시간 실제 workspace 사용을 내부 사용자 3~5명으로 검증합니다.
+
+`.github/workflows/release.yml`은 tag별 작업을 동시에 실행하지 않습니다. 고정한 직전 Windows
+installer의 SHA-256을 확인하고 fresh `windows-2025` runner에서 package/release gate를 실행한
+뒤 자산을 prerelease로 게시합니다. 정확한 target tag의 published channel과 실제
+`quitAndInstall`이 통과해야 stable/latest로 승격합니다. 실패한 candidate는 prerelease 상태로
+남으며 stable로 노출되지 않습니다. npm publish와 legacy macOS package는 이 gate와 분리합니다.

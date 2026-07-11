@@ -91,6 +91,7 @@ describe('Windows updater published channel smoke helpers', () => {
       'windows-published-release-present',
       'windows-published-latest-yml-asset-present',
       'windows-published-version-present',
+      'windows-published-tag-version-matches',
       'windows-published-version-newer-than-current',
       'windows-published-installer-asset-present',
       'windows-published-installer-size-matches',
@@ -98,6 +99,113 @@ describe('Windows updater published channel smoke helpers', () => {
       'windows-published-blockmap-asset-present',
       'windows-published-download-urls-present',
     ]);
+  });
+
+  it('blocks when the requested tag and latest.yml version do not match', async () => {
+    const { evaluateWindowsPublishedUpdateChannel } = await loadLib();
+
+    const result = evaluateWindowsPublishedUpdateChannel({
+      currentVersion: '0.4.16',
+      targetTag: 'v0.4.17',
+      includePrerelease: true,
+      latestMetadata: {
+        version: '0.4.18',
+        path: 'codexmux-Setup-0.4.18.exe',
+        sha512: 'installer-sha',
+        files: [
+          {
+            url: 'codexmux-Setup-0.4.18.exe',
+            sha512: 'installer-sha',
+            size: 123,
+          },
+        ],
+      },
+      releases: [
+        {
+          tag_name: 'v0.4.17',
+          draft: false,
+          prerelease: true,
+          assets: [
+            { name: 'latest.yml', size: 345, browser_download_url: 'https://example.test/latest.yml' },
+            { name: 'codexmux-Setup-0.4.18.exe', size: 123, browser_download_url: 'https://example.test/installer.exe' },
+            { name: 'codexmux-Setup-0.4.18.exe.blockmap', size: 456, browser_download_url: 'https://example.test/blockmap' },
+          ],
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.blockers.map((blocker: { ruleId: string }) => blocker.ruleId)).toContain(
+      'windows-published-tag-version-mismatch',
+    );
+  });
+
+  it('selects the requested release tag even when a newer release exists', async () => {
+    const { selectLatestPublishedRelease } = await loadLib();
+    const releases = [
+      {
+        tag_name: 'v0.4.18',
+        draft: false,
+        prerelease: false,
+        published_at: '2026-07-13T00:00:00Z',
+      },
+      {
+        tag_name: 'v0.4.17',
+        draft: false,
+        prerelease: true,
+        published_at: '2026-07-12T00:00:00Z',
+      },
+    ];
+
+    expect(selectLatestPublishedRelease({
+      releases,
+      includePrerelease: true,
+      targetTag: 'v0.4.17',
+    })?.tag_name).toBe('v0.4.17');
+  });
+
+  it('fails closed when the requested release tag is missing', async () => {
+    const { evaluateWindowsPublishedUpdateChannel } = await loadLib();
+
+    const result = evaluateWindowsPublishedUpdateChannel({
+      releases: [
+        {
+          tag_name: 'v0.4.18',
+          draft: false,
+          prerelease: false,
+        },
+      ],
+      currentVersion: '0.4.16',
+      targetTag: 'v0.4.17',
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.blockers.map((blocker: { ruleId: string }) => blocker.ruleId)).toEqual([
+      'windows-published-target-release-missing',
+    ]);
+  });
+
+  it('accepts the requested prerelease only when prereleases are enabled', async () => {
+    const { selectLatestPublishedRelease } = await loadLib();
+    const releases = [
+      {
+        tag_name: 'v0.4.17',
+        draft: false,
+        prerelease: true,
+        published_at: '2026-07-12T00:00:00Z',
+      },
+    ];
+
+    expect(selectLatestPublishedRelease({
+      releases,
+      includePrerelease: false,
+      targetTag: 'v0.4.17',
+    })).toBeNull();
+    expect(selectLatestPublishedRelease({
+      releases,
+      includePrerelease: true,
+      targetTag: 'v0.4.17',
+    })?.tag_name).toBe('v0.4.17');
   });
 
   it('blocks when the published version is not newer than the installed version', async () => {

@@ -216,3 +216,13 @@
 - 승인 근거: `docs/superpowers/plans/2026-07-11-production-security-upload-integrity.md`의 독립 engineering review가 shutdown/Expect/quarantine/upgrade, Node timeout, maintenance, auth failure, memory oracle, Windows native storage gate와 TDD 실행 순서를 blocker 없이 통과했습니다.
 - 구현 근거: `docs/operations/2026-07-11-production-security-upload-integrity-handoff.md`에 dependency audit, Linux dev/prod upload, memory, browser, Electron 증거와 pending Windows boundary를 기록했습니다.
 - 잔여 검증 추적: [GitHub issue #16](https://github.com/HardcoreMonk/codexmux/issues/16). Fresh Windows package/updater/release gate가 모두 통과하기 전에는 `Verified`로 전이하지 않습니다.
+
+## ADR-028: Windows stable release는 published updater 검증 뒤 승격한다
+
+- 상태: Implemented
+- 결정: Tag workflow는 고정된 직전 stable installer와 SHA-256을 사용해 fresh Windows package/release gate를 실행합니다. 통과한 정확한 네 자산만 prerelease로 게시하고, 같은 target tag의 published channel과 실제 baseline install `quitAndInstall` 검증이 통과한 뒤 stable/latest로 승격합니다.
+- 이유: Windows package를 만들지 않는 Linux/macOS 중심 workflow와 존재하지 않는 npm package publish를 stable release 선행 조건으로 두면 Windows-only 제품 목표를 검증하지 못하면서 릴리스는 반복 실패합니다. 반대로 asset 게시 직후 stable로 노출하면 published updater apply 실패를 rollback 전에 사용자가 받을 수 있습니다.
+- trade-off: 실패한 release candidate는 prerelease로 남습니다. 다음 release마다 baseline tag/version/SHA-256 pin을 갱신해야 하며 tag workflow는 저장소 전체에서 직렬 실행됩니다. npm 최초 publish와 legacy macOS package는 별도 작업으로 관리합니다.
+- 영향: Release runner는 pinned action/toolchain과 Codex CLI를 사용합니다. GitHub token은 asset 조회 단계에만 노출하고 packaged/updater child environment에서는 제거합니다. Non-Windows skip과 synthetic local feed는 acceptance가 아니며, exact target tag가 없거나 asset set이 다르면 fail closed합니다. Stable promotion 전후에 release 상태와 installer/blockmap/zip/`latest.yml` 네 자산을 확인합니다.
+- 검증 조건: GitHub Actions fresh Windows candidate에서 package/release gate가 통과하고, prerelease asset을 사용한 published channel/install smoke가 baseline version에서 target version으로 실제 적용된 뒤 stable promotion과 asset 재검증이 통과해야 `Verified`로 전이합니다.
+- 운영 기준: `docs/operations/windows-release-update-repeat-checklist.md`와 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)을 따릅니다.

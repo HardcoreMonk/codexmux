@@ -6,26 +6,34 @@ on:
       - 'v*'
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-windows-stable
   cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  WINDOWS_BASELINE_TAG: v0.4.16
+  WINDOWS_BASELINE_VERSION: 0.4.16
+  WINDOWS_BASELINE_SHA256: 7933b764ad95642fcf9a7507e464a5de6e2bed5b5e2c6209c7ed43ca1b31da80
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CODEXMUX_SMOKE_ARTIFACT_DIR: artifacts/linux-release
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: pnpm/action-setup@v5
-
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          node-version: 24
-          cache: pnpm
+          fetch-depth: 0
 
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm tsc --noEmit
-      - run: pnpm test
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24.15.0
+          cache: pnpm
 
       - name: Verify tag matches package.json version
         run: |
@@ -36,139 +44,283 @@ jobs:
             exit 1
           fi
 
+      - name: Verify tagged commit is on the default branch
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/$DEFAULT_BRANCH"; then
+            echo "Tagged commit $GITHUB_SHA is not on origin/$DEFAULT_BRANCH" >&2
+            exit 1
+          fi
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check:project-design
+      - run: pnpm lint
+      - run: pnpm tsc --noEmit
+      - run: pnpm test
+      - run: pnpm audit --prod
+      - run: CODEXMUX_PREAUTH_SMOKE_MODE=development pnpm smoke:pre-auth-bootstrap
+      - run: pnpm check:upload-memory
+      - run: CODEXMUX_UPLOAD_SMOKE_MODE=development pnpm smoke:upload-integrity
+      - run: pnpm build
+      - run: CODEXMUX_PREAUTH_SMOKE_MODE=production pnpm smoke:pre-auth-bootstrap
+      - run: CODEXMUX_UPLOAD_SMOKE_MODE=production pnpm smoke:upload-integrity
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: smoke-linux-release
+          path: artifacts/linux-release/*.json
+          if-no-files-found: warn
+          retention-days: 14
+
   browser-reconnect-smoke:
     needs: check
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 24
+          node-version: 24.15.0
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install chromium
       - run: CODEXMUX_SMOKE_ARTIFACT_DIR=artifacts/smoke pnpm smoke:browser-reconnect
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
         with:
           name: smoke-browser-reconnect
           path: artifacts/smoke/*.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
 
-  publish-npm:
+  windows-package:
     needs: check
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: pnpm/action-setup@v5
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-          registry-url: https://registry.npmjs.org
-
-      - run: npm install -g npm@latest
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-
-      - name: Debug OIDC token claims
-        run: |
-          TOKEN=$(curl -sSL -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org" | jq -r '.value')
-          node -e "
-            const [,body] = process.argv[1].split('.');
-            const claims = JSON.parse(Buffer.from(body, 'base64url').toString());
-            const keep = ['iss','aud','sub','repository','repository_owner','workflow','workflow_ref','ref','ref_type','event_name','environment','job_workflow_ref','runner_environment'];
-            for (const k of keep) console.log(k + ': ' + (claims[k] ?? '(none)'));
-          " "$TOKEN"
-
-      - run: npm publish --provenance --access public --loglevel=verbose
-
-  build-electron:
-    needs: check
-    runs-on: macos-14
+    runs-on: windows-2025
+    timeout-minutes: 120
     env:
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-      CSC_LINK: ${{ secrets.CSC_LINK }}
-      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      CODEXMUX_SMOKE_ARTIFACT_DIR: artifacts/windows-package
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 24
+          node-version: 24.15.0
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build:electron
-      - run: pnpm exec electron-builder --mac --publish never
 
-      - uses: actions/upload-artifact@v7
+      - name: Install pinned Codex CLI
+        run: npm install --global @openai/codex@0.144.1
+
+      - run: codex --version
+
+      - name: Download and verify the Windows baseline installer
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $assetName = "codexmux-Setup-$env:WINDOWS_BASELINE_VERSION.exe"
+          gh release download $env:WINDOWS_BASELINE_TAG --repo $env:GITHUB_REPOSITORY --pattern $assetName --dir baseline
+          $installers = @(Get-ChildItem -Path baseline -Filter $assetName -File)
+          if ($installers.Count -ne 1) { throw "Expected one baseline installer for $env:WINDOWS_BASELINE_TAG; found $($installers.Count)." }
+          $actualHash = (Get-FileHash -Path $installers[0].FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualHash -ne $env:WINDOWS_BASELINE_SHA256) { throw "Baseline SHA-256 mismatch: $actualHash" }
+          Add-Content -Path $env:GITHUB_ENV -Value "CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_BASE_INSTALLER_PATH=$($installers[0].FullName)"
+          New-Item -ItemType Directory -Force -Path $env:CODEXMUX_SMOKE_ARTIFACT_DIR | Out-Null
+          @{
+            schemaVersion = 1
+            tag = $env:WINDOWS_BASELINE_TAG
+            version = $env:WINDOWS_BASELINE_VERSION
+            asset = $assetName
+            sha256 = $actualHash
+          } | ConvertTo-Json | Set-Content -Path "$env:CODEXMUX_SMOKE_ARTIFACT_DIR/windows-release-baseline.json" -Encoding utf8
+
+      - run: pnpm pack:electron
+      - run: pnpm smoke:windows:package-gate
+      - run: pnpm smoke:windows:release-gate
+
+      - name: Stage exact release assets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          $assetNames = @(
+            "codexmux-Setup-$version.exe",
+            "codexmux-Setup-$version.exe.blockmap",
+            "codexmux-$version-win.zip",
+            'latest.yml'
+          )
+          New-Item -ItemType Directory -Force -Path artifacts/release | Out-Null
+          foreach ($assetName in $assetNames) {
+            $source = Join-Path release $assetName
+            if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Missing release asset: $source" }
+            Copy-Item -LiteralPath $source -Destination artifacts/release/$assetName
+          }
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: electron-mac
-          path: |
-            release/*.dmg
-            release/*.zip
-            release/*.blockmap
-            release/latest-mac.yml
+          name: electron-windows-${{ github.ref_name }}
+          path: artifacts/release/*
           if-no-files-found: error
           retention-days: 7
 
-  github-release:
-    needs: [publish-npm, build-electron, browser-reconnect-smoke]
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: smoke-windows-package-${{ github.ref_name }}
+          path: artifacts/windows-package/*.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  publish-prerelease:
+    needs: [browser-reconnect-smoke, windows-package]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: electron-mac
-          path: mac/
+          name: electron-windows-${{ github.ref_name }}
+          path: windows
 
-      - name: Generate changelog with Codex
-        id: changelog
+      - name: Refuse to demote an existing stable release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          set +e
-          BODY=$(node scripts/generate-changelog.mjs 2>changelog.err)
-          STATUS=$?
-          if [ $STATUS -ne 0 ] || [ -z "$BODY" ]; then
-            echo "::warning::Changelog generation failed (exit $STATUS), falling back to auto-generated notes"
-            cat changelog.err >&2 || true
-            echo "has_body=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_body=true" >> "$GITHUB_OUTPUT"
-            {
-              echo "body<<CHANGELOG_EOF"
-              printf '%s\n' "$BODY"
-              echo "CHANGELOG_EOF"
-            } >> "$GITHUB_OUTPUT"
+          if RELEASE=$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json isPrerelease 2>/dev/null); then
+            IS_PRERELEASE=$(printf '%s' "$RELEASE" | jq -r '.isPrerelease')
+            if [ "$IS_PRERELEASE" != 'true' ]; then
+              echo "Release $GITHUB_REF_NAME is already stable; refusing to demote it." >&2
+              exit 1
+            fi
           fi
 
-      - uses: softprops/action-gh-release@v3
+      - uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
-          body: ${{ steps.changelog.outputs.body }}
-          generate_release_notes: ${{ steps.changelog.outputs.has_body != 'true' }}
+          tag_name: ${{ github.ref_name }}
+          name: codexmux ${{ github.ref_name }}
+          draft: false
+          prerelease: true
+          make_latest: false
+          body_path: .github/release-notes/${{ github.ref_name }}.md
+          generate_release_notes: true
           files: |
-            mac/*.dmg
-            mac/*.zip
-            mac/*.blockmap
-            mac/latest-mac.yml
+            windows/codexmux-Setup-*.exe
+            windows/codexmux-Setup-*.exe.blockmap
+            windows/codexmux-*-win.zip
+            windows/latest.yml
           fail_on_unmatched_files: true
+
+  windows-published-updater:
+    needs: publish-prerelease
+    runs-on: windows-2025
+    timeout-minutes: 90
+    env:
+      CODEXMUX_SMOKE_ARTIFACT_DIR: artifacts/windows-published-update
+      CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INCLUDE_PRERELEASE: '1'
+      CODEXMUX_WINDOWS_UPDATER_PUBLISHED_GENERIC_FEED: '1'
+      CODEXMUX_WINDOWS_UPDATER_PUBLISHED_TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24.15.0
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Download and verify the Windows baseline installer
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $assetName = "codexmux-Setup-$env:WINDOWS_BASELINE_VERSION.exe"
+          gh release download $env:WINDOWS_BASELINE_TAG --repo $env:GITHUB_REPOSITORY --pattern $assetName --dir baseline
+          $installers = @(Get-ChildItem -Path baseline -Filter $assetName -File)
+          if ($installers.Count -ne 1) { throw "Expected one baseline installer for $env:WINDOWS_BASELINE_TAG; found $($installers.Count)." }
+          $actualHash = (Get-FileHash -Path $installers[0].FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualHash -ne $env:WINDOWS_BASELINE_SHA256) { throw "Baseline SHA-256 mismatch: $actualHash" }
+          Add-Content -Path $env:GITHUB_ENV -Value "CODEXMUX_WINDOWS_PUBLISHED_BASE_INSTALLER_PATH=$($installers[0].FullName)"
+          Add-Content -Path $env:GITHUB_ENV -Value "CODEXMUX_WINDOWS_UPDATER_CURRENT_VERSION=$env:WINDOWS_BASELINE_VERSION"
+
+      - run: pnpm smoke:windows:updater-published-channel
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - run: pnpm smoke:windows:updater-published-install
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: smoke-windows-published-update-${{ github.ref_name }}
+          path: artifacts/windows-published-update/*.json
+          if-no-files-found: error
+          retention-days: 30
+
+  promote-stable:
+    needs: windows-published-updater
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Verify prerelease state and assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          RELEASE=$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,assets)
+          printf '%s' "$RELEASE" | jq -e '.isDraft == false and .isPrerelease == true' >/dev/null
+          EXPECTED=$(printf '%s\n' \
+            "codexmux-Setup-$VERSION.exe" \
+            "codexmux-Setup-$VERSION.exe.blockmap" \
+            "codexmux-$VERSION-win.zip" \
+            'latest.yml' | sort)
+          ACTUAL=$(printf '%s' "$RELEASE" | jq -r '.assets[].name' | sort)
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo 'Prerelease assets do not match the expected Windows set.' >&2
+            diff <(printf '%s\n' "$EXPECTED") <(printf '%s\n' "$ACTUAL") || true
+            exit 1
+          fi
+
+      - name: Promote the verified prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --prerelease=false --latest --verify-tag
+
+      - name: Verify stable release state and assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          RELEASE=$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,assets)
+          printf '%s' "$RELEASE" | jq -e '.isDraft == false and .isPrerelease == false' >/dev/null
+          EXPECTED=$(printf '%s\n' \
+            "codexmux-Setup-$VERSION.exe" \
+            "codexmux-Setup-$VERSION.exe.blockmap" \
+            "codexmux-$VERSION-win.zip" \
+            'latest.yml' | sort)
+          ACTUAL=$(printf '%s' "$RELEASE" | jq -r '.assets[].name' | sort)
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo 'Stable release assets do not match the expected Windows set.' >&2
+            diff <(printf '%s\n' "$EXPECTED") <(printf '%s\n' "$ACTUAL") || true
+            exit 1
+          fi

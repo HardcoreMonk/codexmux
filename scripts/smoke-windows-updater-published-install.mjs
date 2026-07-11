@@ -24,6 +24,7 @@ import {
   filterWindowsUpdaterInstallerProcesses,
   parseWindowsUpdaterStatusEvents,
   summarizeWindowsUpdaterStatusEvents,
+  withoutGitHubTokenEnv,
 } from './windows-updater-local-feed-smoke-lib.mjs';
 import {
   evaluateWindowsPublishedUpdateChannel,
@@ -198,7 +199,11 @@ const buildPublishedGenericFeedUrl = (release) => {
   return url.toString();
 };
 
-const runCommand = (command, args, { cwd = rootDir, env = process.env, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) =>
+const runCommand = (command, args, {
+  cwd = rootDir,
+  env = withoutGitHubTokenEnv(process.env),
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+} = {}) =>
   new Promise((resolve) => {
     let stdout = '';
     let stderr = '';
@@ -247,7 +252,11 @@ const cleanupInstalledApp = async (installDir) => {
   };
 };
 
-const startCommand = (command, args, { cwd = rootDir, env = process.env, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) => {
+const startCommand = (command, args, {
+  cwd = rootDir,
+  env = withoutGitHubTokenEnv(process.env),
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+} = {}) => {
   const child = spawn(command, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
   let stdout = '';
   let stderr = '';
@@ -377,12 +386,12 @@ const runPostInstallLaunchSmoke = async ({ appExe, smokeRoot, expectedVersion })
   let lastResult = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     lastResult = await runCommand(process.execPath, ['scripts/smoke-windows-packaged-launch.mjs'], {
-      env: {
+      env: withoutGitHubTokenEnv({
         ...process.env,
         CODEXMUX_ELECTRON_UPDATER_DISABLED: '1',
         CODEXMUX_WINDOWS_PACKAGED_APP_PATH: appExe,
         CODEXMUX_WINDOWS_PACKAGED_LAUNCH_HOME: path.join(smokeRoot, `post-update-home-${attempt}`),
-      },
+      }),
       timeoutMs: 90_000,
     });
     const launchPayload = parsePackagedLaunchPayload(lastResult.stdout);
@@ -500,8 +509,9 @@ const loadPublishedChannel = async ({ checks }) => {
   const releasesUrl = process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_RELEASES_URL
     || buildReleasesApiUrl({ owner, repo });
   const includePrerelease = process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_INCLUDE_PRERELEASE === '1';
+  const targetTag = process.env.CODEXMUX_WINDOWS_UPDATER_PUBLISHED_TAG?.trim() || null;
   const releases = JSON.parse(await request(releasesUrl));
-  const latestRelease = selectLatestPublishedRelease({ releases, includePrerelease });
+  const latestRelease = selectLatestPublishedRelease({ releases, includePrerelease, targetTag });
   const latestYamlAsset = getAsset(latestRelease, 'latest.yml');
   const latestMetadata = latestYamlAsset?.browser_download_url
     ? yaml.load(await request(latestYamlAsset.browser_download_url, { accept: 'application/octet-stream' }))
@@ -512,6 +522,7 @@ const loadPublishedChannel = async ({ checks }) => {
     latestRelease,
     latestMetadata,
     includePrerelease,
+    targetTag,
   };
 };
 
@@ -584,6 +595,7 @@ const main = async () => {
       currentVersion: baselineVersion,
       latestMetadata,
       includePrerelease: channel.includePrerelease,
+      targetTag: channel.targetTag,
     });
     checks.push(...channelResult.checks.map((check) => `published-${check}`));
     if (!channelResult.ok) {
