@@ -122,3 +122,13 @@ credential은 발견하지 않았습니다.
 - Privacy: browser/package/published-updater upload 전 검사와 workflow 중·직후 확보한 다운로드본 16개 JSON의 stable 승격 후 독립 검사 통과
 - Stable asset: `latest.yml`, installer, matching blockmap, Windows zip 정확한 네 개
 - 운영 근거: `docs/operations/2026-07-12-v0.4.21-windows-release-handoff.md`
+
+2026-07-13 `v0.4.22` candidate 준비:
+
+- Baseline tag/version: `v0.4.21` / `0.4.21`
+- GitHub Release에서 다시 내려받은 `codexmux-Setup-0.4.21.exe` SHA-256:
+  `0e54fafe6465474e0092228a128755fdb04eba3698d8f2daf00327ad7bb24aaa`
+- Release 범위: Purplemux/Codexmux same-host browser cookie namespace 격리, 1회 재로그인 전환,
+  HTTP/WebSocket/install/upload 인증 회귀
+- Stable 승격 전 필수 증거: fresh Windows package/release gate, `v0.4.21 -> v0.4.22`
+  local/published updater apply, post-update health, browser/package/published-updater privacy scan
