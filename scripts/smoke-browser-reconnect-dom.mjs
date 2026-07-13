@@ -17,6 +17,8 @@ import {
 import { writeSmokeArtifact } from './smoke-artifact-lib.mjs';
 
 const PASSWORD = 'browser-reconnect-dom-smoke';
+const CODEXMUX_SESSION_COOKIE = 'codexmux-session-token';
+const SIBLING_SESSION_COOKIE = 'session-token';
 const DEFAULT_TIMEOUT_MS = 30_000;
 const SMOKE_NAME = 'browser-reconnect';
 const rootDir = process.cwd();
@@ -130,6 +132,9 @@ const ensureLoggedIn = async (baseUrl) => {
   if (!res.ok) throw new Error(`login failed: ${res.status} ${await res.text()}`);
   const cookie = extractCookieHeader(res);
   if (!cookie) throw new Error('login did not return a session cookie');
+  if (!cookie.startsWith(`${CODEXMUX_SESSION_COOKIE}=`)) {
+    throw new Error('login returned an unexpected session cookie namespace');
+  }
   return cookie;
 };
 
@@ -166,6 +171,15 @@ const runBrowserAssertion = async ({ baseUrl, cookie }) => {
     viewport: { width: 1280, height: 800 },
   });
   await addSessionCookie(context, baseUrl, cookie);
+  await context.addCookies([{
+    name: SIBLING_SESSION_COOKIE,
+    value: 'purplemux-sibling-session',
+    url: baseUrl,
+  }]);
+  const cookieNames = new Set((await context.cookies(baseUrl)).map(({ name }) => name));
+  if (!cookieNames.has(CODEXMUX_SESSION_COOKIE) || !cookieNames.has(SIBLING_SESSION_COOKIE)) {
+    throw new Error('same-host product session cookies did not coexist');
+  }
   const page = await context.newPage();
   const consoleEvents = [];
   page.on('console', (msg) => {
@@ -242,6 +256,7 @@ const main = async () => {
       tabId: tab.id,
       sessionName: tab.sessionName,
       checks: [
+        'same-host-session-cookie-isolation',
         'session-not-found-overlay-visible',
         'floating-reconnect-hidden',
         'restart-new-terminal-clickable',

@@ -125,7 +125,7 @@ describe('Windows packaged launch smoke helpers', () => {
     const head = buildWindowsUploadRequestHead({
       baseUrl: 'http://127.0.0.1:8122',
       pathname: '/api/upload-file',
-      cookie: 'session-token=smoke-token',
+      cookie: 'codexmux-session-token=smoke-token',
       contentLength: 65536,
       contentType: 'application/octet-stream',
       filename: 'partial payload.bin',
@@ -136,7 +136,7 @@ describe('Windows packaged launch smoke helpers', () => {
     expect(head).toContain('POST /api/upload-file HTTP/1.1\r\n');
     expect(head).toContain('Host: 127.0.0.1:8122\r\n');
     expect(head).toContain('Origin: http://127.0.0.1:8122\r\n');
-    expect(head).toContain('Cookie: session-token=smoke-token\r\n');
+    expect(head).toContain('Cookie: codexmux-session-token=smoke-token\r\n');
     expect(head).toContain('Content-Length: 65536\r\n');
     expect(head).toContain('X-Cmux-Filename: partial%20payload.bin\r\n');
     expect(head.match(/Content-Length:/g)).toHaveLength(1);

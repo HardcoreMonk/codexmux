@@ -70,9 +70,9 @@ describe('upload request authorization', () => {
   });
 
   it.each([
-    request({ cookies: ['session-token=valid-session', 'theme=dark'], cliTokens: ['valid-cli'] }),
-    request({ cliTokens: ['invalid-cli', 'valid-cli'], cookies: ['session-token=valid-session'] }),
-    request({ cookies: ['session-token=one; session-token=two'], cliTokens: ['valid-cli'] }),
+    request({ cookies: ['codexmux-session-token=valid-session', 'theme=dark'], cliTokens: ['valid-cli'] }),
+    request({ cliTokens: ['invalid-cli', 'valid-cli'], cookies: ['codexmux-session-token=valid-session'] }),
+    request({ cookies: ['codexmux-session-token=one; codexmux-session-token=two'], cliTokens: ['valid-cli'] }),
   ])('rejects structurally ambiguous credentials before verification', async (input) => {
     await expect(authorizeUploadRequest(input, deps)).resolves.toEqual({
       authorized: false,
@@ -92,7 +92,7 @@ describe('upload request authorization', () => {
 
     await expect(authorizeUploadRequest(request({
       cliTokens: ['invalid-cli'],
-      cookies: ['session-token=invalid-session'],
+      cookies: ['codexmux-session-token=invalid-session'],
     }), deps)).resolves.toEqual({
       authorized: false,
       statusCode: 401,
@@ -103,7 +103,7 @@ describe('upload request authorization', () => {
   it('accepts CLI credentials first and short-circuits a valid session', async () => {
     await expect(authorizeUploadRequest(request({
       cliTokens: ['valid-cli'],
-      cookies: ['session-token=valid-session'],
+      cookies: ['codexmux-session-token=valid-session'],
     }), deps)).resolves.toEqual({
       authorized: true,
       credential: { kind: 'cli' },
@@ -117,7 +117,7 @@ describe('upload request authorization', () => {
   it('falls back from an invalid CLI credential to a valid session', async () => {
     await expect(authorizeUploadRequest(request({
       cliTokens: ['invalid-cli'],
-      cookies: ['session-token=valid-session'],
+      cookies: ['session-token=purple-session; codexmux-session-token=valid-session'],
     }), deps)).resolves.toEqual({
       authorized: true,
       credential: {
@@ -134,7 +134,7 @@ describe('upload request authorization', () => {
     vi.mocked(deps.verifySessionToken)
       .mockResolvedValueOnce({ exp: NOW_EPOCH_SECONDS + MAX_AGE / 2 })
       .mockResolvedValueOnce({ exp: NOW_EPOCH_SECONDS + MAX_AGE / 2 - 1 });
-    const input = request({ cookies: ['session-token=valid-session'] });
+    const input = request({ cookies: ['codexmux-session-token=valid-session'] });
 
     await expect(authorizeUploadRequest(input, deps)).resolves.toMatchObject({
       authorized: true,
@@ -158,7 +158,7 @@ describe('upload request authorization', () => {
     );
 
     await expect(authorizeUploadRequest(
-      request({ cookies: ['session-token=private-session'] }),
+      request({ cookies: ['codexmux-session-token=private-session'] }),
       deps,
     )).resolves.toEqual({
       authorized: false,
@@ -173,7 +173,7 @@ describe('upload request authorization', () => {
       vi.mocked(deps.nowEpochSeconds).mockReturnValue(nowEpochSeconds);
 
       await expect(authorizeUploadRequest(
-        request({ cookies: ['session-token=valid-session'] }),
+        request({ cookies: ['codexmux-session-token=valid-session'] }),
         deps,
       )).resolves.toEqual({
         authorized: false,
@@ -200,7 +200,7 @@ describe('upload request authorization', () => {
       throw new Error('private-auth-secret');
     });
     await expect(authorizeUploadRequest(
-      request({ cookies: ['session-token=private-session'] }),
+      request({ cookies: ['codexmux-session-token=private-session'] }),
       deps,
     )).resolves.toEqual({
       authorized: false,
@@ -210,7 +210,7 @@ describe('upload request authorization', () => {
 
     vi.mocked(deps.verifySessionToken).mockRejectedValueOnce(new Error('private-session'));
     await expect(authorizeUploadRequest(
-      request({ cookies: ['session-token=private-session'] }),
+      request({ cookies: ['codexmux-session-token=private-session'] }),
       deps,
     )).resolves.toEqual({
       authorized: false,
@@ -221,7 +221,7 @@ describe('upload request authorization', () => {
 
   it('requires explicit default session runtime state before JWT verification', async () => {
     delete process.env.NEXTAUTH_SECRET;
-    const input = request({ cookies: ['session-token=malformed-private-token'] });
+    const input = request({ cookies: ['codexmux-session-token=malformed-private-token'] });
 
     await expect(authorizeUploadRequest(input)).resolves.toEqual({
       authorized: false,
@@ -240,7 +240,7 @@ describe('upload request authorization', () => {
   it('does not expose credential values in authorization results', async () => {
     const result = await authorizeUploadRequest(request({
       cliTokens: ['private-cli-token'],
-      cookies: ['session-token=private-session-token'],
+      cookies: ['codexmux-session-token=private-session-token'],
     }), deps);
     const serialized = JSON.stringify(result);
 

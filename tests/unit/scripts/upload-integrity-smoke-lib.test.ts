@@ -205,10 +205,10 @@ describe('upload integrity smoke helpers', () => {
   it('extracts a session cookie and constructs isolated session and CLI upload headers', async () => {
     const { buildUploadHeaders, extractSessionCookie } = await loadLib();
     const cookie = extractSessionCookie({
-      'set-cookie': ['session-token=signed-value; HttpOnly; Path=/'],
+      'set-cookie': ['codexmux-session-token=signed-value; HttpOnly; Path=/'],
     });
 
-    expect(cookie).toBe('session-token=signed-value');
+    expect(cookie).toBe('codexmux-session-token=signed-value');
     expect(buildUploadHeaders({
       port: 8122,
       credential: { kind: 'session', cookie },
@@ -220,7 +220,7 @@ describe('upload integrity smoke helpers', () => {
     })).toEqual({
       Host: '127.0.0.1:8122',
       Origin: 'http://127.0.0.1:8122',
-      Cookie: 'session-token=signed-value',
+      Cookie: 'codexmux-session-token=signed-value',
       'Content-Length': '3',
       'Content-Type': 'application/octet-stream',
       'X-Cmux-Filename': 'report%20%231.txt',

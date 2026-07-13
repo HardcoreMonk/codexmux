@@ -68,14 +68,14 @@ describe('runtime v2 phase 2 smoke helpers', () => {
 
     expect(extractCookieHeader({
       headers: {
-        getSetCookie: () => ['session-token=abc; Path=/; HttpOnly'],
+        getSetCookie: () => ['codexmux-session-token=abc; Path=/; HttpOnly'],
       },
-    })).toBe('session-token=abc');
+    })).toBe('codexmux-session-token=abc');
 
     expect(extractCookieHeader({
       headers: {
-        get: () => 'session-token=def; Path=/; HttpOnly',
+        get: () => 'codexmux-session-token=def; Path=/; HttpOnly',
       },
-    })).toBe('session-token=def');
+    })).toBe('codexmux-session-token=def');
   });
 });

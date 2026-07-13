@@ -41,6 +41,7 @@ codexmux는 Codex CLI 전용 웹 세션 매니저입니다. 범용 터미널 대
 | 런타임 어댑터 | OS별 terminal/process/service 구현 경계 | runtime v2, tmux legacy, Windows runtime |
 | Windows 전용 제품 | 지원 실행 타깃을 Windows로 고정하는 제품 전환 | packaging, host, release gate |
 | Windows 서비스 호스트 | 앱/backend 수명주기를 관리하는 host 경계 | Windows host diagnostics, future service |
+| 브라우저 인증 namespace | 같은 hostname의 sibling app과 충돌하지 않는 제품별 session cookie 경계 | `codexmux-session-token`, ADR-029 |
 | Upload ingress | 인증된 raw file request를 bounded admission하고 `~/.codexmux/uploads/` artifact로 no-replace commit하는 outer custom server 경계 | `server.ts`, upload server/storage adapter |
 | 시각 계약 | 제품 UI의 theme, layout, component 상태, 반응형/accessibility 규칙 | `DESIGN.md`, `docs/STYLE.md` |
 
@@ -75,5 +76,10 @@ gate는 ADR-028 `Verified`입니다.
 - 구현·복구 근거: `docs/operations/2026-07-11-pre-auth-bootstrap-security-handoff.md`,
   `docs/operations/2026-07-11-production-security-upload-integrity-handoff.md`,
   `docs/operations/2026-07-12-v0.4.20-windows-release-handoff.md`,
-  `docs/operations/2026-07-12-v0.4.21-windows-release-handoff.md`
+  `docs/operations/2026-07-12-v0.4.21-windows-release-handoff.md`,
+  `docs/operations/2026-07-12-purplemux-cookie-isolation-handoff.md`
+- 현재 source의 browser session cookie는 ADR-029에 따라 `codexmux-session-token`이며,
+  Purplemux와 같은 hostname에서 동시 실행할 수 있습니다. 이 변경을 처음 적용할 때만
+  Codexmux 재로그인이 필요하고, Purplemux가 계속 인증에 실패하면 Purplemux에도 한 번
+  로그인합니다. 두 제품의 terminal/runtime data는 유지됩니다.
 - 새 runtime/API/storage 변경은 같은 lifecycle과 ADR 상태 전이를 따릅니다.

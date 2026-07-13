@@ -181,6 +181,23 @@ streaming하고 observed byte와 Content-Length를 일치시킵니다. Same-dire
 no-replace commit point이며 `CODEXMUX_UPLOADS_DISABLED=1`은 Pages fallback 없이 두 route만
 503으로 닫습니다. PR #66의 full buffering 구현은 복사하지 않았습니다.
 
+### P1. 동일 hostname 인증 쿠키 충돌
+
+상태: **Codexmux source 조치 완료, 다음 release 반영 대기.** ADR-029에 따라 browser session
+cookie를 `codexmux-session-token`으로 분리했습니다.
+
+Purplemux `main@52140216`과 조치 전 Codexmux는 모두 `session-token; Path=/`을 사용했습니다.
+Browser cookie는 port로 격리되지 않으므로 같은 `localhost`에서 Purplemux `8022`와 Codexmux
+`8122`를 함께 실행하면 마지막 login/refresh가 앞선 JWT를 덮어씁니다. 두 제품의 secret이
+다르므로 다른 제품은 HTTP 인증과 WebSocket session attach에 실패합니다. Data directory,
+port, lock과 tmux socket은 이미 제품별로 분리되어 있어 session backend 충돌은 아니었습니다.
+
+Codexmux는 legacy cookie를 migration fallback으로 읽거나 logout에서 지우지 않습니다. 어느
+제품이 발급했는지 구분할 수 없고 Purplemux session을 다시 손상시키기 때문입니다. 변경 build로
+전환한 기존 Codexmux 사용자는 한 번 재로그인하며, 이후 두 cookie가 함께 전송되어도 각 제품이
+자기 namespace만 검증합니다. 전환 직전 legacy cookie가 Codexmux JWT였다면 Purplemux도 한 번
+재로그인해 자기 cookie를 복구합니다. Chromium reconnect smoke가 이 공존 경로를 고정합니다.
+
 ### P1. Electron 내부 Next server lifecycle
 
 production `startProd()`는 임의 internal port를 만든 뒤 standalone `server.js`를

@@ -137,6 +137,26 @@ parameter가 auth를 우회하지 않는지, authenticated absolute-form unknown
 destination을 선택하지 못하는지도 확인합니다.
 Root에서는 no-INIT setup-open startup 거절을 먼저 확인하고 INIT 흐름으로 계속합니다.
 
+## 동일 hostname 제품 공존
+
+Browser cookie는 port를 구분하지 않습니다. Codexmux와 Purplemux 같은 sibling app을 같은
+hostname의 다른 port에서 실행하는 회귀는 cookie 이름과 실제 Chromium 두 계층에서 확인합니다.
+
+```bash
+corepack pnpm exec vitest run tests/unit/lib/auth.test.ts tests/unit/lib/upload-request-auth.test.ts tests/unit/lib/install-request-auth.test.ts tests/unit/lib/runtime/api-auth.test.ts
+corepack pnpm smoke:browser-reconnect
+```
+
+Unit gate는 `codexmux-session-token`만 Codexmux 인증에 사용하고 legacy `session-token`만 있는
+request는 거부하며, 두 cookie가 함께 있으면 새 cookie를 선택하는지 확인합니다. Runtime v2
+HTTP/WebSocket query에는 새 이름과 legacy 이름 모두 credential로 전달할 수 없습니다.
+Chromium smoke는 Codexmux login cookie를 넣은 뒤 같은 hostname에 legacy cookie를 추가하고,
+두 cookie 공존 상태에서 page 인증과 terminal WebSocket recovery가 유지되는지 확인합니다.
+업데이트 전 browser session은 새 namespace가 없으므로 첫 요청에서 login으로 이동하는 것이
+정상이며, 한 번 재로그인한 뒤에는 기존 tmux/runtime session에 다시 접근할 수 있어야 합니다.
+Legacy cookie가 이전 Codexmux JWT라 Purplemux가 계속 `401`이면 Purplemux에도 한 번 로그인한
+뒤 두 앱을 다시 확인합니다.
+
 게이트 분류:
 
 - Linux-required: dev/prod pre-auth smoke와 legacy install PTY.

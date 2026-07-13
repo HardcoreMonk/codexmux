@@ -83,6 +83,20 @@ same-origin 또는 trusted proxy 계약이 아닙니다.
 실행 slot은 `idle -> starting -> active` owner token으로 직렬화하고 입력 frame 64KiB,
 queue 256 frame/1MiB, 출력 buffered amount 1MiB를 제한합니다.
 
+## 인증 쿠키 격리
+
+Browser session cookie는 `codexmux-session-token`입니다. Cookie는 hostname과 path를 기준으로
+전송되고 port로 격리되지 않으므로, 같은 `localhost`에서 서로 다른 port를 쓰는 sibling app과
+generic `session-token`을 공유하면 로그인이나 refresh 때 서로의 JWT를 덮어씁니다. Codexmux의
+HTTP, SSR, WebSocket, install, upload 경로는 공통 `SESSION_COOKIE`만 검증합니다.
+
+Legacy `session-token`은 Purplemux 같은 sibling app의 session일 수 있으므로 Codexmux가 읽거나
+login/logout에서 생성·삭제하지 않습니다. Namespace 변경 뒤 기존 Codexmux browser/Electron
+session은 한 번 다시 로그인해야 하며, tmux/runtime session과 `~/.codexmux/` 데이터는 그대로
+유지됩니다. 남은 legacy cookie가 이전 Codexmux JWT라 Purplemux 인증이 실패하면 Purplemux에도
+한 번 로그인해 legacy cookie를 복구합니다. Query string으로 전달된 새 cookie 이름과 legacy
+이름은 모두 credential leak 방지를 위해 fail closed합니다.
+
 ## Upload ingress
 
 `/api/upload-image`와 `/api/upload-file`의 external request는 development Next handler와

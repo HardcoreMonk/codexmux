@@ -30,6 +30,7 @@ Windows 설치형 제품 마감은 별도 제품 line인
 | 웹 구조 | Next.js Pages Router + custom Node server |
 | terminal 구조 | Runtime v2 Windows adapter + legacy tmux adapter |
 | bootstrap 보안 | ADR-026 `Verified` |
+| browser 인증 | `codexmux-session-token`; 같은 hostname의 Purplemux cookie와 분리 |
 | upload ingress | ADR-027 `Verified` |
 | Windows release gate | `v0.4.21` stable/latest; ADR-028 `Verified` |
 | 배포 범위 | unsigned 내부 Windows release; public code signing과 SmartScreen reputation은 미검증 |
@@ -177,6 +178,7 @@ Pages route로 fallback하지 않습니다.
 | [upload handoff](docs/operations/2026-07-11-production-security-upload-integrity-handoff.md) | dependency/upload 구현·검증·Windows 경계 |
 | [v0.4.20 Windows release handoff](docs/operations/2026-07-12-v0.4.20-windows-release-handoff.md) | 최초 기능 검증과 published artifact privacy 교정 |
 | [v0.4.21 Windows release handoff](docs/operations/2026-07-12-v0.4.21-windows-release-handoff.md) | 현재 stable release와 privacy-safe Windows 증거 |
+| [Purplemux cookie isolation handoff](docs/operations/2026-07-12-purplemux-cookie-isolation-handoff.md) | 동일 hostname 동시 실행 수정, 재로그인과 다음 release gate |
 | [제품 line migration](docs/operations/codexwinmux-product-line-migration.md) | `codexmux`와 `codexwinmux` 분리 기준 |
 
 ## 라이선스

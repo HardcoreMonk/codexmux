@@ -142,6 +142,18 @@ node -e 'const fs=require("fs"),os=require("os"),path=require("path");const p=pa
 
 재시작한 새 process에서 onboarding을 완료합니다. Malformed JSON이나 hash-only auth state는 setup으로 downgrade되지 않고 fail closed하므로 원본을 백업한 뒤 수정해야 합니다.
 
+### Purplemux와 함께 실행하면 로그인 또는 session 연결이 끊겨요
+
+같은 hostname의 다른 port도 browser cookie를 공유합니다. `codexmux-session-token`이 포함된
+build로 업데이트한 뒤 Codexmux에 한 번 다시 로그인하세요. 이후 Purplemux의
+`session-token`과 Codexmux cookie는 함께 존재하며 각 제품이 자기 cookie만 읽습니다.
+Purplemux가 계속 로그인 화면이나 `401`을 보이면 전환 전 legacy cookie가 Codexmux JWT였던
+상태이므로 Purplemux에도 한 번 로그인하세요. 로그인 순서는 그 뒤부터 서로 영향을 주지 않습니다.
+
+`~/.codexmux/`, `~/.purplemux/`, tmux/runtime session을 삭제하지 마세요. Browser의 모든
+localhost cookie를 일괄 삭제할 필요도 없습니다. 이전 build로 downgrade하면 generic cookie
+충돌이 다시 발생할 수 있습니다.
+
 ## Session과 Runtime v2
 
 ### Electron 창을 닫았더니 tab이 사라졌어요

@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose';
 
-export const SESSION_COOKIE = 'session-token';
+export const SESSION_COOKIE = 'codexmux-session-token';
 export const MAX_AGE = 7 * 86400;
 
 const getSecret = () => new TextEncoder().encode(process.env.NEXTAUTH_SECRET);

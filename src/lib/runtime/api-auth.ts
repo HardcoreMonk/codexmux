@@ -12,6 +12,7 @@ const hasForbiddenQueryCredential = (rawUrl: string | undefined): boolean => {
     'api_key',
     'apikey',
     'access_token',
+    SESSION_COOKIE.toLowerCase(),
     'session-token',
   ]);
   try {

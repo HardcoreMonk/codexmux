@@ -26,7 +26,9 @@ describe('runtime v2 api auth', () => {
   });
 
   it('accepts the session cookie', async () => {
-    await expect(verifyRuntimeV2ApiAuth(req({ cookie: 'session-token=valid-session-token' }))).resolves.toBe(true);
+    await expect(verifyRuntimeV2ApiAuth(req({
+      cookie: 'session-token=purple-session; codexmux-session-token=valid-session-token',
+    }))).resolves.toBe(true);
   });
 
   it('rejects missing credentials', async () => {
@@ -42,13 +44,14 @@ describe('runtime v2 api auth', () => {
       'api_key',
       'apikey',
       'access_token',
+      'codexmux-session-token',
       'session-token',
       'ToKeN',
     ];
 
     for (const name of forbiddenNames) {
       await expect(verifyRuntimeV2ApiAuth(req(
-        { 'x-cmux-token': 'valid-cli-token', cookie: 'session-token=valid-session-token' },
+        { 'x-cmux-token': 'valid-cli-token', cookie: 'codexmux-session-token=valid-session-token' },
         `/api/v2/runtime/health?${name}=valid-cli-token`,
       ))).resolves.toBe(false);
     }
@@ -56,7 +59,7 @@ describe('runtime v2 api auth', () => {
 
   it('fails closed for malformed request URLs', async () => {
     await expect(verifyRuntimeV2ApiAuth(req(
-      { 'x-cmux-token': 'valid-cli-token', cookie: 'session-token=valid-session-token' },
+      { 'x-cmux-token': 'valid-cli-token', cookie: 'codexmux-session-token=valid-session-token' },
       'http://[::1',
     ))).resolves.toBe(false);
   });
@@ -64,7 +67,9 @@ describe('runtime v2 api auth', () => {
 
 describe('runtime v2 websocket auth', () => {
   it('accepts session cookie for browser websocket clients', async () => {
-    await expect(verifyRuntimeV2WebSocketAuth(wsReq({ cookie: 'session-token=valid-session-token' }))).resolves.toBe(true);
+    await expect(verifyRuntimeV2WebSocketAuth(wsReq({
+      cookie: 'session-token=purple-session; codexmux-session-token=valid-session-token',
+    }))).resolves.toBe(true);
   });
 
   it('accepts x-cmux-token for node smoke websocket clients', async () => {
@@ -73,13 +78,13 @@ describe('runtime v2 websocket auth', () => {
 
   it('rejects credential query parameters but allows the terminal session query', async () => {
     await expect(verifyRuntimeV2WebSocketAuth(wsReq(
-      { cookie: 'session-token=valid-session-token' },
+      { cookie: 'codexmux-session-token=valid-session-token' },
       '/api/v2/terminal?session=rtv2-a',
     ))).resolves.toBe(true);
 
-    for (const name of ['token', 'authorization', 'API_KEY', 'access_token', 'session-token']) {
+    for (const name of ['token', 'authorization', 'API_KEY', 'access_token', 'codexmux-session-token', 'session-token']) {
       await expect(verifyRuntimeV2WebSocketAuth(wsReq(
-        { cookie: 'session-token=valid-session-token' },
+        { cookie: 'codexmux-session-token=valid-session-token' },
         `/api/v2/terminal?session=rtv2-a&${name}=valid-cli-token`,
       ))).resolves.toBe(false);
     }
@@ -87,7 +92,7 @@ describe('runtime v2 websocket auth', () => {
 
   it('fails closed for malformed websocket request URLs', async () => {
     await expect(verifyRuntimeV2WebSocketAuth(wsReq(
-      { 'x-cmux-token': 'valid-cli-token', cookie: 'session-token=valid-session-token' },
+      { 'x-cmux-token': 'valid-cli-token', cookie: 'codexmux-session-token=valid-session-token' },
       'http://[::1',
     ))).resolves.toBe(false);
   });

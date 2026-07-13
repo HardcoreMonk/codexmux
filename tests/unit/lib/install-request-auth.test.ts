@@ -108,7 +108,7 @@ describe('install request authorizer', () => {
       initSessionRequired: true,
     });
     const authorize = createInstallRequestAuthorizer(deps);
-    const req = request({ cookie: 'session-token=secret-cookie' });
+    const req = request({ cookie: 'codexmux-session-token=secret-cookie' });
 
     await expect(authorize(req)).resolves.toEqual({
       authorized: false,
@@ -134,7 +134,7 @@ describe('install request authorizer', () => {
       host: 'workstation.test:8122',
       origin: 'http://workstation.test:8122',
       remoteAddress: '192.168.1.20',
-      cookie: 'session-token=secret-cookie',
+      cookie: 'session-token=purple-session; codexmux-session-token=secret-cookie',
     });
 
     await expect(authorize(req)).resolves.toEqual({
@@ -214,7 +214,7 @@ describe('install request authorizer', () => {
     const result = await authorize(request({
       origin: 'http://private-hostname.test:8122',
       host: 'different.test:8122',
-      cookie: 'session-token=private-cookie',
+      cookie: 'codexmux-session-token=private-cookie',
     }));
 
     expect(JSON.stringify(result)).not.toContain('private-hostname');

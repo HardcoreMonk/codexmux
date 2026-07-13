@@ -26,7 +26,7 @@ runtime v2 Supervisor
   └─ status worker   -> process/status/notification
 ```
 
-외부 client는 하나의 port를 사용합니다. production에서는 outer server가 internal Next standalone server를 proxy하며, internal port는 upload fallback surface가 아닙니다. WebSocket은 역할별로 분리되고 upgrade 시 session cookie로 인증합니다. `/api/debug/perf`는 public health check가 아니라 session cookie 또는 `x-cmux-token`을 요구하는 진단 endpoint입니다.
+외부 client는 하나의 port를 사용합니다. production에서는 outer server가 internal Next standalone server를 proxy하며, internal port는 upload fallback surface가 아닙니다. WebSocket은 역할별로 분리되고 upgrade 시 `codexmux-session-token` cookie로 인증합니다. Browser cookie는 port로 격리되지 않으므로 이 제품별 이름이 같은 hostname의 Purplemux `session-token`과 충돌하지 않게 합니다. `/api/debug/perf`는 public health check가 아니라 session cookie 또는 `x-cmux-token`을 요구하는 진단 endpoint입니다.
 
 ## 브라우저
 
