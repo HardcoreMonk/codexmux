@@ -132,3 +132,29 @@ credential은 발견하지 않았습니다.
   HTTP/WebSocket/install/upload 인증 회귀
 - Stable 승격 전 필수 증거: fresh Windows package/release gate, `v0.4.21 -> v0.4.22`
   local/published updater apply, post-update health, browser/package/published-updater privacy scan
+
+2026-07-13 `v0.4.22` stable 반복 검증:
+
+- Release: [v0.4.22](https://github.com/HardcoreMonk/codexmux/releases/tag/v0.4.22), tag
+  `4af022090aa74ef3b2d7a01c9a8fd5bfe504f89a`, stable/latest
+- Workflow [29219010240](https://github.com/HardcoreMonk/codexmux/actions/runs/29219010240):
+  attempt 3에서 모든 job 통과. Attempt 1 Windows job `86720930232`와 attempt 2 job
+  `86722515155`는 각각 GitHub Actions 내부 오류로 취소됐고 release asset은 만들지 않았음
+- Baseline: 실제 `v0.4.21` installer, SHA-256
+  `0e54fafe6465474e0092228a128755fdb04eba3698d8f2daf00327ad7bb24aaa`
+- Windows: package gate `394584ms`, upload integrity `11724ms`, local updater `240046ms`,
+  release gate `17878ms`
+- Published updater: `v0.4.21 -> v0.4.22`, `254840ms`, post-update launch와
+  health `version=0.4.22`, `commit=4af0220` 확인
+- Privacy: browser/package/published-updater artifact 16개 JSON을 stable 승격 후 다시 내려받아
+  독립 검사, `fileCount=16` 통과
+- Stable asset SHA-256: zip
+  `a7711fe3b5757c23fff337b27bec156216cf52869179943f3bbf84925f61d75c`, installer
+  `84d0480b227113a776c5cd92f94ebe007171aef474be138e88f095ce0e0cdd35`, blockmap
+  `33aad79a443feb83713f1765f883179122724d2bc366cf88cb0624d6001b78ca`, `latest.yml`
+  `69fbccf4b5fb92bff17c71fdc67fe48f1c063fd4b120f33a90ea56ddf29797e7`
+- 운영 근거: `docs/operations/2026-07-13-v0.4.22-windows-release-handoff.md`
+
+CI의 browser와 updater smoke는 isolated/fresh profile을 사용합니다. 기존 `v0.4.21` Electron
+profile을 보존한 채 Codexmux 1회 재로그인, 필요한 경우 Purplemux 재로그인, 기존 Runtime v2
+WebSocket와 session-authenticated upload 재연결을 확인하는 작업은 ADR-029의 후속 조건입니다.

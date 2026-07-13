@@ -66,20 +66,22 @@ codexmux는 Codex CLI 전용 웹 세션 매니저입니다. 범용 터미널 대
 
 ## 현재 구현 기준
 
-2026-07-12 기준 pre-auth bootstrap은 lifecycle review와 Linux dev/prod security smoke로,
+2026-07-13 기준 pre-auth bootstrap은 lifecycle review와 Linux dev/prod security smoke로,
 upload ingress와 Windows stable release path는 fresh Windows package/update gate로
 검증했습니다. Bootstrap은 ADR-026, upload ingress는 ADR-027, Windows stable release
 gate는 ADR-028 `Verified`입니다.
 
-- 현재 stable release: [`v0.4.21`](https://github.com/HardcoreMonk/codexmux/releases/tag/v0.4.21), commit `3818a28d`
+- 현재 stable release: [`v0.4.22`](https://github.com/HardcoreMonk/codexmux/releases/tag/v0.4.22), commit `4af02209`
 - Windows 검증 완료 추적: [GitHub issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)
 - 구현·복구 근거: `docs/operations/2026-07-11-pre-auth-bootstrap-security-handoff.md`,
   `docs/operations/2026-07-11-production-security-upload-integrity-handoff.md`,
   `docs/operations/2026-07-12-v0.4.20-windows-release-handoff.md`,
   `docs/operations/2026-07-12-v0.4.21-windows-release-handoff.md`,
-  `docs/operations/2026-07-12-purplemux-cookie-isolation-handoff.md`
-- 현재 source의 browser session cookie는 ADR-029에 따라 `codexmux-session-token`이며,
-  Purplemux와 같은 hostname에서 동시 실행할 수 있습니다. 이 변경을 처음 적용할 때만
+  `docs/operations/2026-07-12-purplemux-cookie-isolation-handoff.md`,
+  `docs/operations/2026-07-13-v0.4.22-windows-release-handoff.md`
+- `v0.4.22`의 browser session cookie는 ADR-029에 따라 `codexmux-session-token`이며,
+  Purplemux와 같은 hostname에서 동시 실행할 수 있습니다. 운영 계약상 처음 적용할 때
   Codexmux 재로그인이 필요하고, Purplemux가 계속 인증에 실패하면 Purplemux에도 한 번
-  로그인합니다. 두 제품의 terminal/runtime data는 유지됩니다.
+  로그인합니다. Fresh CI profile은 기존 Electron cookie profile의 전환을 증명하지 않으므로
+  ADR-029는 `Implemented` 상태를 유지합니다. 두 제품의 terminal/runtime data는 유지됩니다.
 - 새 runtime/API/storage 변경은 같은 lifecycle과 ADR 상태 전이를 따릅니다.

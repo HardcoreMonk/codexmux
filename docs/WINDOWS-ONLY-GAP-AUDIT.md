@@ -1,7 +1,7 @@
 # Windows-only 차이 감사
 
 최초 작성: 2026-05-06
-현행화: 2026-07-12
+현행화: 2026-07-13
 상태: 전환 기준 문서
 
 ## 결론
@@ -70,7 +70,7 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 | Preflight | platform별 runtime readiness 검사 | Windows Codex/Git/Node/pnpm/runtime 검사 | 구현 완료 |
 | Install action | typed admission 뒤 legacy user PTY | Windows host-owned install/repair capability | 미완료 |
 | Host operation | Linux `systemd --user` 기록과 Windows host baseline | tray/service/installer host | 부분 완료 |
-| Packaging | Windows NSIS/zip/updater와 legacy macOS/Android 기록 | fresh source Windows package/update evidence | `v0.4.21` gate 완료 |
+| Packaging | Windows NSIS/zip/updater와 legacy macOS/Android 기록 | fresh source Windows package/update evidence | `v0.4.22` gate 완료 |
 | Docs | Windows 기준과 legacy/reference 문서 분리 | Windows 기준 유지 | 지속 관리 |
 | Test gate | Windows release/package gate와 legacy smoke 공존 | fresh source Windows gate | Issue #16 acceptance 완료 |
 
@@ -98,15 +98,21 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 - `v0.4.20`은 실제 `v0.4.16` installer에서 package/upload와 published updater 기능을
   최초 검증했습니다. 후속 재감사에서 published-updater JSON 2개는 privacy-safe
   evidence에서 제외했으며 token이나 credential은 발견하지 않았습니다.
-- 현재 stable/latest `v0.4.21`의 tag commit은
-  `3818a28dd28fc9590f7ad2d0cc9521b6e6a567a7`이며 실제 `v0.4.20` installer baseline을
+- 현재 stable/latest `v0.4.22`의 tag commit은
+  `4af022090aa74ef3b2d7a01c9a8fd5bfe504f89a`이며 실제 `v0.4.21` installer baseline을
   사용했습니다. Baseline SHA-256
-  `b98943708c2b0608fd5e5a49fc42aa21f59981ce3e78396de43bf89f5484936b`을 확인한 뒤
-  exact target-tag published channel/install과 세 artifact privacy scan을 통과했고,
-  post-update health는 `version=0.4.21`, `commit=3818a28`을 반환했습니다. Stable promotion은
-  `latest.yml`, installer, matching blockmap, Windows zip의 정확한 네 asset을 확인했습니다.
-  증거는 [workflow 29162818458](https://github.com/HardcoreMonk/codexmux/actions/runs/29162818458)과
-  `smoke-windows-published-update-v0.4.21` artifact에 남아 있습니다.
+  `0e54fafe6465474e0092228a128755fdb04eba3698d8f2daf00327ad7bb24aaa`를 확인한 뒤
+  exact target-tag published channel/install과 세 artifact privacy scan을 통과했습니다.
+  Published updater evidence의 post-update health는 `version=0.4.22`, `commit=4af0220`이며, stable
+  promotion은 `latest.yml`, installer, matching blockmap, Windows zip의 정확한 네 asset을
+  확인했습니다. 증거는
+  [workflow 29219010240](https://github.com/HardcoreMonk/codexmux/actions/runs/29219010240),
+  `smoke-windows-published-update-v0.4.22` artifact와
+  [v0.4.22 handoff](operations/2026-07-13-v0.4.22-windows-release-handoff.md)에 남아 있습니다.
+- `v0.4.22`의 browser와 updater smoke는 isolated/fresh profile을 사용합니다. 제품별 cookie
+  contract와 package/update 경로는 검증했지만 기존 `v0.4.21` Electron profile의 1회 재로그인,
+  기존 runtime session과 authenticated upload 재연결은 직접 검증하지 않았으므로 ADR-029는
+  `Implemented`를 유지합니다.
 
 ## 아키텍처 영향
 
@@ -164,8 +170,8 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 | Windows release gate artifact | 완료 |
 | Outer upload ingress Linux dev/prod/memory gate | 완료: dev/prod 각 12 checks, 50MiB positive 3회 external growth 130,912B |
 | [Issue #16: Windows packaged upload integrity](https://github.com/HardcoreMonk/codexmux/issues/16) | 완료: `v0.4.20` 기능 검증과 `v0.4.21` privacy-safe 재검증, ADR-027/028 `Verified` |
-| GitHub-hosted release asset과 published metadata | 완료: stable/latest `v0.4.21`의 `latest.yml`, NSIS installer, matching `.blockmap`, Windows zip 정확한 네 asset 확인 |
-| 실제 installed app에서 published update `quitAndInstall` | 완료: `v0.4.20 -> v0.4.21` exact target-tag published apply와 post-update health 확인. 기존 기능 근거도 보존 |
+| GitHub-hosted release asset과 published metadata | 완료: stable/latest `v0.4.22`의 `latest.yml`, NSIS installer, matching `.blockmap`, Windows zip 정확한 네 asset 확인 |
+| 실제 installed app에서 published update `quitAndInstall` | 완료: `v0.4.21 -> v0.4.22` exact target-tag published apply와 post-update health `version=0.4.22`, `commit=4af0220` 확인. 기존 기능 근거도 보존 |
 | public code signing certificate trust | 비차단: 내부 전용 앱이라 public 인증 불필요 |
 | SmartScreen reputation 확인 | 비차단: 내부 전용 앱이라 public reputation 불필요 |
 | 장시간 실제 workspace 사용 안정성 | 완료: `0.4.16` 설치본으로 302,808ms 관찰, 23회 반복 실행, runtime v2 terminal과 Phase 6 gate 모두 통과 |
@@ -176,7 +182,7 @@ codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에
 
 ## 완료된 첫 구현 slice 기준
 
-다음 성공 기준은 구현과 Windows smoke에서 충족했습니다. `v0.4.21` stable release 기준으로
+다음 성공 기준은 구현과 Windows smoke에서 충족했습니다. `v0.4.22` stable release 기준으로
 열린 release blocker는 없습니다. 전체 Windows-only 제품 전환에는 host-owned setup/install
 capability 같은 별도 미완료 항목이 남아 있습니다.
 
@@ -190,6 +196,6 @@ capability 같은 별도 미완료 항목이 남아 있습니다.
 Rollback은 일반 git revert 또는 surface mode `off`로 처리합니다.
 
 현재 release와 운영 진입 근거는
-[v0.4.21 Windows release handoff](operations/2026-07-12-v0.4.21-windows-release-handoff.md)를 따릅니다.
+[v0.4.22 Windows release handoff](operations/2026-07-13-v0.4.22-windows-release-handoff.md)를 따릅니다.
 이 release는 unsigned 내부 배포물이며, public code signing이나 외부 배포 준비 완료를
 의미하지 않습니다. npm publish와 legacy macOS package는 Windows stable gate 범위 밖입니다.

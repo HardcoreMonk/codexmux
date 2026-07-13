@@ -32,7 +32,7 @@ Windows 설치형 제품 마감은 별도 제품 line인
 | bootstrap 보안 | ADR-026 `Verified` |
 | browser 인증 | `codexmux-session-token`; 같은 hostname의 Purplemux cookie와 분리 |
 | upload ingress | ADR-027 `Verified` |
-| Windows release gate | `v0.4.21` stable/latest; ADR-028 `Verified` |
+| Windows release gate | `v0.4.22` stable/latest; ADR-028 `Verified` |
 | 배포 범위 | unsigned 내부 Windows release; public code signing과 SmartScreen reputation은 미검증 |
 
 ## 시작하기
@@ -121,10 +121,12 @@ Release evidence JSON은 privacy scanner를 통과해야 업로드되며, 실패
 promotion도 진행하지 않습니다.
 
 Linux에서 Windows smoke가 `skipped`인 결과는 Windows 통과 증거가 아닙니다. `v0.4.20`에서
-fresh Windows upload/package와 실제 published updater 적용을 최초 검증했고, `v0.4.21`은
-[workflow 29162818458](https://github.com/HardcoreMonk/codexmux/actions/runs/29162818458)에서
-같은 경로와 세 artifact privacy gate를 다시 통과했습니다. 현재 근거는
-[v0.4.21 release handoff](docs/operations/2026-07-12-v0.4.21-windows-release-handoff.md)에
+fresh Windows upload/package와 실제 published updater 적용을 최초 검증했고, `v0.4.21`에서
+privacy-safe evidence를 재검증했습니다. 현재 `v0.4.22`는
+[workflow 29219010240](https://github.com/HardcoreMonk/codexmux/actions/runs/29219010240)의
+attempt 3에서 실제 `v0.4.21 -> v0.4.22` package/published updater와 세 artifact privacy
+gate를 통과했습니다. 현재 근거는
+[v0.4.22 release handoff](docs/operations/2026-07-13-v0.4.22-windows-release-handoff.md)에
 기록합니다.
 
 릴리스 tag workflow는 고정된 직전 installer와 SHA-256을 기준으로 fresh Windows package
@@ -177,8 +179,9 @@ Pages route로 fallback하지 않습니다.
 | [pre-auth handoff](docs/operations/2026-07-11-pre-auth-bootstrap-security-handoff.md) | bootstrap 보안 구현·검증·복구 |
 | [upload handoff](docs/operations/2026-07-11-production-security-upload-integrity-handoff.md) | dependency/upload 구현·검증·Windows 경계 |
 | [v0.4.20 Windows release handoff](docs/operations/2026-07-12-v0.4.20-windows-release-handoff.md) | 최초 기능 검증과 published artifact privacy 교정 |
-| [v0.4.21 Windows release handoff](docs/operations/2026-07-12-v0.4.21-windows-release-handoff.md) | 현재 stable release와 privacy-safe Windows 증거 |
-| [Purplemux cookie isolation handoff](docs/operations/2026-07-12-purplemux-cookie-isolation-handoff.md) | 동일 hostname 동시 실행 수정, 재로그인과 다음 release gate |
+| [v0.4.21 Windows release handoff](docs/operations/2026-07-12-v0.4.21-windows-release-handoff.md) | 이전 privacy-safe Windows release 증거 |
+| [v0.4.22 Windows release handoff](docs/operations/2026-07-13-v0.4.22-windows-release-handoff.md) | 현재 stable release, cookie namespace와 Windows update 증거 |
+| [Purplemux cookie isolation handoff](docs/operations/2026-07-12-purplemux-cookie-isolation-handoff.md) | 동일 hostname 동시 실행 수정과 재로그인 복구 경계 |
 | [제품 line migration](docs/operations/codexwinmux-product-line-migration.md) | `codexmux`와 `codexwinmux` 분리 기준 |
 
 ## 라이선스

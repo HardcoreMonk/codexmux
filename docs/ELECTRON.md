@@ -134,10 +134,11 @@ corepack pnpm check:smoke-artifacts -- $env:CODEXMUX_SMOKE_ARTIFACT_DIR
 
 2026-07-12 `v0.4.20` workflow에서 실제 packaged exe의 size/SHA-256,
 same-directory publish, abort stage unlink, aged stage cleanup, committed `.part` 보존과
-동일 exe kill-switch restart를 최초 확인했습니다. 현재 `v0.4.21`
-[workflow 29162818458](https://github.com/HardcoreMonk/codexmux/actions/runs/29162818458)는
-같은 검사를 반복하고 `smoke-windows-package-v0.4.21`을 upload 전 privacy scanner로
-검증했습니다. ADR-027과 ADR-028은 `Verified`이며
+동일 exe kill-switch restart를 최초 확인했습니다. 현재 `v0.4.22`
+[workflow 29219010240 attempt 3](https://github.com/HardcoreMonk/codexmux/actions/runs/29219010240)는
+같은 검사를 package gate `394584ms`, upload integrity `11724ms`로 반복하고 browser,
+package, published-updater 세 artifact의 총 16개 JSON을 독립 privacy scan으로 확인했습니다.
+ADR-027과 ADR-028은 `Verified`이며
 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)의 acceptance를 충족했습니다.
 
 ## 업데이트 smoke
@@ -211,14 +212,21 @@ corepack pnpm smoke:windows:updater-published-install
 `codexmux-Setup-0.4.16.exe`를 실제로 다운로드하고, `quitAndInstall`, installer
 settle, post-update `/api/health.version=0.4.16`까지 확인합니다.
 
-현재 release evidence는 실제 `v0.4.20` installer를 baseline으로 사용한 exact target-tag
-`v0.4.21` published channel/install smoke입니다. Baseline installer SHA-256
-`b98943708c2b0608fd5e5a49fc42aa21f59981ce3e78396de43bf89f5484936b`을 먼저 확인하고,
-GitHub-hosted asset download, `quitAndInstall`, installer settle, post-update health의
-`version=0.4.21`, `commit=3818a28`까지 통과했습니다. Privacy-safe 증거 artifact는
-`smoke-windows-published-update-v0.4.21`입니다. `v0.4.20` updater 기능 결과는 유효하지만
+현재 release evidence는 실제 `v0.4.21` installer를 baseline으로 사용한 exact target-tag
+`v0.4.22` published channel/install smoke입니다. Baseline installer SHA-256
+`0e54fafe6465474e0092228a128755fdb04eba3698d8f2daf00327ad7bb24aaa`을 먼저 확인하고,
+local updater `240046ms`, release gate `17878ms`, GitHub-hosted asset download와 published
+updater `254840ms`, `quitAndInstall`, installer settle, post-update packaged launch의
+`/api/health.version=0.4.22`, `commit=4af0220` 일치를 통과했습니다. Tag commit은
+`4af022090aa74ef3b2d7a01c9a8fd5bfe504f89a`이고
+privacy-safe 증거 artifact는 `smoke-windows-published-update-v0.4.22`입니다. `v0.4.20` updater 기능 결과는 유효하지만
 해당 published-updater artifact의 JSON 2개는 후속 privacy 재감사에서 제외했습니다.
 `v0.4.15 -> v0.4.16` 검증도 초기 published updater 근거로 유지합니다.
+
+Release updater smoke는 fresh HOME/profile을 사용합니다. 따라서 `v0.4.22` 통과만으로 기존
+Electron storage의 legacy `session-token`이 login으로 전환되고, 1회 재로그인 뒤 Runtime v2
+WebSocket/upload가 복구되는 old-profile 경로를 증명하지 않습니다. 이 근거가 확보될 때까지
+ADR-029는 `Implemented`로 유지합니다.
 
 ## Electron 런타임 v2 smoke
 
@@ -280,7 +288,7 @@ Runtime v2 rollback drill은 설치 앱에서 `on -> CODEXMUX_RUNTIME_V2=0 -> re
   실행하고 sanitized smoke artifact를 남깁니다. Artifact는 pre-upload privacy scanner를
   통과해야 증거로 업로드할 수 있습니다.
 - 설치된 앱에서 published update apply evidence를 남깁니다. 현재 기준 증거는
-  `v0.4.20 -> v0.4.21` exact target-tag published installer smoke입니다.
+  `v0.4.21 -> v0.4.22` exact target-tag published installer smoke입니다.
 - 내부 전용 배포에서는 public code signing certificate trust와 SmartScreen reputation을 release blocker로 보지 않습니다.
 - 현재 Windows release는 unsigned 내부 배포물입니다. Public signing과 외부 배포 준비가
   완료됐다는 의미로 해석하지 않습니다.
@@ -293,8 +301,8 @@ installer의 SHA-256을 확인하고 fresh `windows-2025` runner에서 package/r
 `quitAndInstall`이 통과해야 stable/latest로 승격합니다. Prerelease 게시 전에 실패하면
 Release와 asset을 만들지 않고, 게시 이후 실패하면 candidate를 prerelease로 남겨 stable로
 노출하지 않습니다. Browser/package/published-updater artifact의 privacy scanner 실패도
-upload와 stable 승격을 차단합니다. `v0.4.21`은 이 흐름으로 `latest.yml`, installer,
+upload와 stable 승격을 차단합니다. `v0.4.22`는 이 흐름으로 `latest.yml`, installer,
 matching blockmap, Windows zip의 정확한 네 asset을 검증한 뒤 stable/latest로
 승격했습니다. npm publish와 legacy macOS package는 이 gate와 분리합니다. 상세 근거는
-[v0.4.21 Windows release handoff](operations/2026-07-12-v0.4.21-windows-release-handoff.md)에
+[v0.4.22 Windows release handoff](operations/2026-07-13-v0.4.22-windows-release-handoff.md)에
 기록합니다.

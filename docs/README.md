@@ -32,13 +32,17 @@ handoff는 `docs/operations/`에 보존하며, 당시 증거를 소급해 재작
 | `operations/2026-07-11-pre-auth-bootstrap-security-handoff.md` | setup/install 보안 구현, 검증 증거, 복구와 잔여 경계 |
 | `operations/2026-07-11-production-security-upload-integrity-handoff.md` | production dependency와 outer upload ingress 구현, 검증, Windows 증거 경계 |
 | `operations/2026-07-12-v0.4.20-windows-release-handoff.md` | 최초 Windows 기능 검증과 published artifact privacy 교정 |
-| `operations/2026-07-12-v0.4.21-windows-release-handoff.md` | 현재 stable release와 privacy-safe Windows 증거 |
+| `operations/2026-07-12-v0.4.21-windows-release-handoff.md` | 이전 privacy-safe Windows release 증거 |
+| `operations/2026-07-13-v0.4.22-windows-release-handoff.md` | 현재 stable release, cookie namespace와 Windows update 증거 |
 | `operations/2026-07-12-purplemux-cookie-isolation-handoff.md` | 동일 hostname의 Purplemux/Codexmux cookie 충돌 원인, source 수정과 release 경계 |
 
-`v0.4.21` 당시 release blocker는 닫혔습니다. 현재 source에는 같은 hostname의 Purplemux와
-동시 실행하기 위한 cookie namespace 수정이 추가됐으며, 다음 stable 승격 전 fresh Windows
-packaged update/relogin 검증이 남아 있습니다. 기존 upload/package와 published updater 인수
-조건은 `v0.4.20`에서 기능 검증하고 `v0.4.21`에서 privacy-safe evidence로 재검증했습니다.
+`v0.4.22`는 같은 hostname의 Purplemux와 동시 실행하기 위한 cookie namespace 수정을
+포함하고 fresh Windows package/published updater와 privacy gate를 통과해 stable/latest로
+승격했습니다. 다만 CI는 fresh profile을 사용하므로 기존 Electron cookie profile의 1회
+재로그인과 이전 runtime/upload session 재연결을 증명하지 않습니다. ADR-029는 해당 전환
+증거를 확보할 때까지 `Implemented` 상태를 유지합니다. 기존 upload/package와 published
+updater 인수 조건은 `v0.4.20`에서 기능 검증하고 `v0.4.21`에서 privacy-safe evidence로
+재검증했습니다.
 [GitHub issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)은 해당 완료 조건과
 workflow/asset 증거를 보존하는 추적 기록입니다.
 

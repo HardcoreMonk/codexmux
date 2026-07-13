@@ -99,17 +99,17 @@ fresh Windows package/release gate와 실제 published updater 기능 경로를 
 검증했습니다. 후속 재감사에서 published-updater JSON 2개가 privacy scanner에 실패해
 privacy-safe evidence에서는 제외했습니다.
 
-현재 기준인 `v0.4.21` workflow
-([run 29162818458](https://github.com/HardcoreMonk/codexmux/actions/runs/29162818458))는
-실제 `v0.4.20` installer를 baseline으로 같은 package/release와 exact target-tag
-published channel/install을 반복하고, browser/package/published-updater JSON을 업로드 전에
-검사했습니다. Baseline installer SHA-256은
-`b98943708c2b0608fd5e5a49fc42aa21f59981ce3e78396de43bf89f5484936b`이며 post-update
-health는 `version=0.4.21`, `commit=3818a28`입니다. Stable release는 `latest.yml`, installer,
-matching blockmap, Windows zip의 정확한 네 asset으로 검증했습니다. Privacy-safe evidence는
-`smoke-browser-reconnect`, `smoke-windows-package-v0.4.21`,
-`smoke-windows-published-update-v0.4.21`입니다. 상세 근거는
-[v0.4.21 Windows release handoff](operations/2026-07-12-v0.4.21-windows-release-handoff.md)를
+현재 기준인 `v0.4.22` workflow
+([run 29219010240 attempt 3](https://github.com/HardcoreMonk/codexmux/actions/runs/29219010240))는
+실제 `v0.4.21` installer를 baseline으로 package `394584ms`, packaged upload integrity
+`11724ms`, local updater `240046ms`, release gate `17878ms`, exact target-tag published updater
+`254840ms`를 통과했습니다. Baseline installer SHA-256은
+`0e54fafe6465474e0092228a128755fdb04eba3698d8f2daf00327ad7bb24aaa`이며 tag commit은
+`4af022090aa74ef3b2d7a01c9a8fd5bfe504f89a`입니다. Post-update packaged-launch artifact의
+health는 `version=0.4.22`, `commit=4af0220`입니다. Stable release는 `latest.yml`, installer,
+matching blockmap, Windows zip의 정확한 네 asset으로 검증했습니다. Browser/package/
+published-updater artifact의 16개 JSON은 workflow scan 뒤 독립 privacy scan도 통과했습니다.
+상세 근거는 [v0.4.22 Windows release handoff](operations/2026-07-13-v0.4.22-windows-release-handoff.md)를
 따릅니다.
 
 ## Pre-auth bootstrap 보안
@@ -155,7 +155,9 @@ Chromium smoke는 Codexmux login cookie를 넣은 뒤 같은 hostname에 legacy 
 업데이트 전 browser session은 새 namespace가 없으므로 첫 요청에서 login으로 이동하는 것이
 정상이며, 한 번 재로그인한 뒤에는 기존 tmux/runtime session에 다시 접근할 수 있어야 합니다.
 Legacy cookie가 이전 Codexmux JWT라 Purplemux가 계속 `401`이면 Purplemux에도 한 번 로그인한
-뒤 두 앱을 다시 확인합니다.
+뒤 두 앱을 다시 확인합니다. `v0.4.22` Windows updater smoke는 fresh HOME/profile을 사용하므로
+실제 기존 Electron profile의 legacy cookie, 1회 재로그인과 재연결을 검증하지 않습니다. 이
+old-profile 경로가 통과하기 전까지 ADR-029는 `Implemented`입니다.
 
 게이트 분류:
 
@@ -209,8 +211,9 @@ corepack pnpm smoke:windows:package-gate
 Windows upload gate는 실제 packaged exe와 fresh user tree에서 size/SHA/same-directory commit,
 abort 전에 reserved stage 실재, abort unlink, aged stage cleanup, committed `.part` 보존, 같은 exe의
 kill-switch restart를 확인합니다. Non-Windows의 `{ skipped: true }`는 실행 증거가 아닙니다.
-`v0.4.20` release workflow에서 이 exact check가 최초 통과했고 `v0.4.21`에서 privacy gate와
-함께 반복 통과했습니다. ADR-027과 ADR-028은 `Verified`입니다.
+`v0.4.20` release workflow에서 이 exact check가 최초 통과했고 `v0.4.21`과 `v0.4.22`에서
+privacy gate와 함께 반복 통과했습니다. `v0.4.22` packaged upload integrity는 `11724ms`,
+package gate는 `394584ms`였습니다. ADR-027과 ADR-028은 `Verified`입니다.
 
 ## 런타임 v2
 

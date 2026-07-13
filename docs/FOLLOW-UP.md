@@ -1,10 +1,11 @@
 # 후속 작업
 
-이 문서는 release 전 확인, 내부 배포 단계, post-MVP backlog를 추적합니다. 2026-07-12
-`v0.4.21` stable/latest 당시 blocker는 닫혔지만, 현재 source의 Purplemux cookie namespace
-수정은 아직 stable release에 포함되지 않았습니다. 다음 stable 승격 전 fresh Windows packaged
-update와 1회 재로그인 회귀를 확인해야 합니다. 현재 release는 unsigned 내부 배포물이며,
-public signing이나 외부 배포 준비 완료를 의미하지 않습니다.
+이 문서는 release 전 확인, 내부 배포 단계, post-MVP backlog를 추적합니다. 2026-07-13
+`v0.4.22`는 Purplemux cookie namespace 격리를 포함해 stable/latest로 승격됐습니다. Fresh
+Windows HOME/profile의 package와 updater gate는 통과했지만 기존 Electron profile에서 login
+전환, 1회 재로그인과 Runtime v2 WebSocket/upload 재연결을 직접 검증하는 근거는 남아 있습니다.
+현재 release는 unsigned 내부 배포물이며, public signing이나 외부 배포 준비 완료를 의미하지
+않습니다.
 
 ## 완료된 범위
 
@@ -42,6 +43,7 @@ public signing이나 외부 배포 준비 완료를 의미하지 않습니다.
 - `v0.4.20` fresh Windows package/release gate와 packaged upload integrity exact checks
 - `v0.4.16 -> v0.4.20` exact target-tag published updater apply와 stable promotion
 - `v0.4.21`에서 같은 Windows gate와 `v0.4.20 -> v0.4.21` updater apply 반복
+- `v0.4.22`에서 `v0.4.21 -> v0.4.22` package/local/published updater와 privacy 16개 JSON 재검증
 - Browser/package/published-updater evidence의 upload 전 privacy scanner와 stable promotion 차단
 - 같은 hostname에서 Purplemux와 동시 실행할 때 browser session cookie가 충돌하지 않도록
   `codexmux-session-token`으로 분리하고 Linux unit/dev/prod/Chromium 공존 회귀 검증 완료
@@ -103,17 +105,15 @@ fresh Windows package/upload와 published updater 기능 경로를 최초 완료
 재감사에서 published-updater JSON 2개를 privacy-safe evidence에서 제외했고 token이나
 credential은 발견하지 않았습니다.
 
-현재 기준 `v0.4.21`은
-[workflow 29162818458](https://github.com/HardcoreMonk/codexmux/actions/runs/29162818458)에서
-실제 `v0.4.20` installer와 SHA-256
-`b98943708c2b0608fd5e5a49fc42aa21f59981ce3e78396de43bf89f5484936b`을 baseline으로
-package/release gate, exact target-tag published channel/install과 세 privacy scan을
-통과했습니다. Release tag commit은
-`3818a28dd28fc9590f7ad2d0cc9521b6e6a567a7`이며 post-update health는
-`version=0.4.21`, `commit=3818a28`입니다. Privacy-safe artifact는
-`smoke-browser-reconnect`, `smoke-windows-package-v0.4.21`,
-`smoke-windows-published-update-v0.4.21`입니다. 상세 기록은
-[v0.4.21 Windows release handoff](operations/2026-07-12-v0.4.21-windows-release-handoff.md)에
+현재 기준 `v0.4.22`는
+[workflow 29219010240 attempt 3](https://github.com/HardcoreMonk/codexmux/actions/runs/29219010240)에서
+실제 `v0.4.21` installer와 SHA-256
+`0e54fafe6465474e0092228a128755fdb04eba3698d8f2daf00327ad7bb24aaa`를 baseline으로
+package `394584ms`, upload integrity `11724ms`, local updater `240046ms`, release gate
+`17878ms`, exact target-tag published updater `254840ms`와 stable/latest 승격을 통과했습니다.
+Release tag commit은 `4af022090aa74ef3b2d7a01c9a8fd5bfe504f89a`입니다. Browser,
+package, published-updater artifact를 합친 16개 JSON도 독립 privacy scan을 통과했습니다.
+상세 기록은 [v0.4.22 Windows release handoff](operations/2026-07-13-v0.4.22-windows-release-handoff.md)에
 있습니다.
 
 Published update 검증:
@@ -124,8 +124,8 @@ Published update 검증:
 - 설치된 낮은 버전 앱 기준 published channel metadata를 확인합니다.
 - `quitAndInstall` 후 새 앱 launch와 `/api/health`를 확인합니다. published install
   최초 기준 `0.4.15 -> 0.4.16`, 기능 기준 `0.4.16 -> 0.4.20`과 현재 privacy-safe 기준
-  `0.4.20 -> 0.4.21` updater apply가 통과했습니다. 현재 post-update health는
-  `version=0.4.21`, `commit=3818a28`입니다.
+  `0.4.21 -> 0.4.22` updater apply가 통과했습니다. Post-update packaged launch artifact의
+  health는 `version=0.4.22`, `commit=4af0220`입니다.
 - 내부 전용 배포이므로 public code signing certificate와 SmartScreen reputation은 필수 검증에서 제외합니다.
 - 설치 경고나 내부 신뢰 절차가 있으면 release note와 설치 안내에 기록합니다.
 
@@ -139,22 +139,22 @@ Published update 검증:
 
 ## 릴리스 검증 현황
 
-`v0.4.21` release 당시 blocker는 닫혔습니다. 다음 표의 장시간 관찰은 기존 `v0.4.16`
-근거를 보존하고 release gate 근거는 `v0.4.21`이며, 현재 source의 cookie namespace 변경은
-다음 release용 fresh Windows packaged 검증이 남아 있습니다.
+`v0.4.22` release gate와 stable/latest 승격은 완료됐습니다. 다음 표의 장시간 관찰은 기존
+`v0.4.16` 근거를 보존합니다. Cookie namespace의 release/package 근거는 확보했지만 실제 old
+Electron profile의 1회 재로그인과 재연결은 별도 후속 근거가 필요합니다.
 
 | 항목 | 상태 |
 | --- | --- |
-| GitHub-hosted release asset과 published metadata | 완료: stable/latest `v0.4.21`의 `latest.yml`, NSIS installer, matching `.blockmap`, Windows zip 정확한 네 asset 확인 |
-| 실제 설치된 낮은 버전 앱에서 GitHub-hosted 최신 버전으로 `quitAndInstall` | 완료: 실제 `v0.4.20` installer baseline에서 exact target tag `v0.4.21`로 apply, post-update health `version=0.4.21`, `commit=3818a28` 확인. 기존 기능 근거도 보존 |
+| GitHub-hosted release asset과 published metadata | 완료: stable/latest `v0.4.22`의 `latest.yml`, NSIS installer, matching `.blockmap`, Windows zip 정확한 네 asset 확인 |
+| 실제 설치된 낮은 버전 앱에서 GitHub-hosted 최신 버전으로 `quitAndInstall` | 완료: 실제 `v0.4.21` installer baseline에서 exact target tag `v0.4.22`로 apply하고 post-update health `version=0.4.22`, `commit=4af0220` 확인 |
 | Long-running installed app session | 완료: `CODEXMUX_WINDOWS_INSTALLED_OBSERVATION_DURATION_MS=300000`, 302,808ms 관찰, 23회 반복 실행, 모든 round `version=0.4.16`, `commit=13fe69ba`, Phase 6 gate 통과, silent uninstall 확인 |
 | 제품명/app id/data dir의 codexwinmux 전환 여부 결정 | 완료: ADR-024와 `docs/operations/codexwinmux-product-line-migration.md`에 분리 기준 기록. `codexmux` line은 기존 identity를 유지하고, `codexwinmux`는 별도 productName/appId/data dir/updater channel을 소유합니다. |
-| 다음 버전 release/update smoke 반복 | 완료: `docs/operations/windows-release-update-repeat-checklist.md`에 2026-07-12 `v0.4.20 -> v0.4.21` package/local/published update와 privacy 재검사 기록. 2026-05-12 초기 반복 근거도 보존 |
+| 다음 버전 release/update smoke 반복 | 완료: `docs/operations/windows-release-update-repeat-checklist.md`에 `v0.4.21 -> v0.4.22` package/local/published update와 독립 privacy 16개 JSON 재검사 기록. 이전 반복 근거도 보존 |
 | Runtime v2 live rollback drill evidence | 완료: 설치 앱에서 runtime v2 `on -> CODEXMUX_RUNTIME_V2=0 -> restored` 전환, disabled health `404 runtime-v2-disabled`, 복구 후 Phase 6 gate 통과 |
 | 측정 기반 perf tuning | 완료/비차단: `corepack pnpm perf:timeline-jsonl` synthetic 5,000 entries parse `18.57ms`, virtualization 권고 유지. session list cold index refresh는 비차단 응답으로 조정했고 package/installed runtime v2 worker counter는 Phase 6 gate에서 clean 확인 |
 | Phase 6 closeout | 완료: packaged runtime v2 smoke, 설치 관찰 smoke, rollback drill에 Phase 6 health/perf gate 반영 |
-| [Issue #16: Production upload fresh Windows evidence](https://github.com/HardcoreMonk/codexmux/issues/16) | 완료: `v0.4.20` 기능 검증과 `v0.4.21` privacy-safe 재검증, ADR-027/028 `Verified` |
-| Purplemux/Codexmux same-host cookie isolation | source/Linux 완료, release 대기: unit 1,445개, Chromium coexistence/reconnect, dev/prod bootstrap와 upload smoke 통과. Fresh Windows packaged `v0.4.21 -> next` update 후 Codexmux 재로그인, 필요 시 Purplemux 재로그인, Runtime v2 WebSocket/upload 확인 필요 |
+| [Issue #16: Production upload fresh Windows evidence](https://github.com/HardcoreMonk/codexmux/issues/16) | 완료: `v0.4.20` 기능 검증, `v0.4.21` privacy-safe 재검증과 `v0.4.22` 반복 검증, ADR-027/028 `Verified` |
+| Purplemux/Codexmux same-host cookie isolation | `v0.4.22` release와 fresh-profile updater 검증 완료. 기존 Electron profile에서 Codexmux 재로그인, 필요 시 Purplemux 재로그인, Runtime v2 WebSocket/upload 재연결을 직접 확인해야 하므로 ADR-029는 `Implemented` 유지 |
 
 ## 비차단 항목
 
