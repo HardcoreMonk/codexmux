@@ -4,10 +4,14 @@ import type { ITab, TPanelType } from '@/types/terminal';
 
 export interface IAgentResumeCommandOptions {
   workspaceId?: string;
+  tabId?: string;
+  sessionName?: string;
 }
 
 export interface IAgentLaunchCommandOptions {
   workspaceId?: string;
+  tabId?: string;
+  sessionName?: string;
 }
 
 export interface IAgentSessionWatchOptions {

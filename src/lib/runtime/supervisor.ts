@@ -135,6 +135,7 @@ export interface IRuntimeSupervisor {
   }): Promise<{ subscriberId: string }>;
   detachTerminal(input: { sessionName: string; subscriberId: string }): Promise<void>;
   writeTerminal(input: { sessionName: string; subscriberId: string; data: string }): Promise<void>;
+  writeTerminalSession(input: { sessionName: string; data: string }): Promise<void>;
   resizeTerminal(input: { sessionName: string; subscriberId: string; cols: number; rows: number }): Promise<void>;
 }
 
@@ -200,12 +201,12 @@ const getDbPath = (): string =>
 const runtimeDbFiles = (dbPath: string): string[] => [dbPath, `${dbPath}-wal`, `${dbPath}-shm`];
 
 const hasRuntimeDbFiles = (dbPath: string): boolean =>
-  runtimeDbFiles(dbPath).some((filePath) => fs.existsSync(filePath));
+  runtimeDbFiles(dbPath).some((filePath) => fs.existsSync(/*turbopackIgnore: true*/ filePath));
 
 const backupRuntimeDbFiles = (dbPath: string): void => {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   for (const filePath of runtimeDbFiles(dbPath)) {
-    if (!fs.existsSync(filePath)) continue;
+    if (!fs.existsSync(/*turbopackIgnore: true*/ filePath)) continue;
     fs.renameSync(filePath, `${filePath}.${stamp}.bak`);
   }
 };
@@ -1119,6 +1120,15 @@ export const createRuntimeSupervisorForTest = (
     async writeTerminal(input) {
       await this.ensureStarted();
       const sessionName = assertActiveTerminalSubscriber(input);
+      await getClients().terminal.request('terminal.write-stdin', {
+        sessionName,
+        data: input.data,
+      });
+    },
+
+    async writeTerminalSession(input) {
+      await this.ensureStarted();
+      const sessionName = await assertReadyTerminalSession(input.sessionName);
       await getClients().terminal.request('terminal.write-stdin', {
         sessionName,
         data: input.data,

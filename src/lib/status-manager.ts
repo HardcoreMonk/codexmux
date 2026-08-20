@@ -9,6 +9,7 @@ import {
 } from '@/lib/providers';
 import type { IAgentProvider } from '@/lib/providers';
 import { createRateLimitsWatcher } from '@/lib/rate-limits-watcher';
+import { mergeRateLimitsData, rateLimitsEqual } from '@/lib/codex-rate-limits';
 import { createLogger } from '@/lib/logger';
 import type { IPaneInfo } from '@/lib/tmux';
 import type { TCliState } from '@/types/timeline';
@@ -209,9 +210,11 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<IJsonlCheckResult> => 
 const checkProviderJsonlIdle = async (
   provider: IAgentProvider,
   jsonlPath: string,
+  onRateLimits?: (data: IRateLimitsData) => void,
 ): Promise<IJsonlCheckResult> => {
   if (provider.id !== 'codex') return checkJsonlIdle(jsonlPath);
   const result = await checkCodexJsonlState(jsonlPath);
+  if (result.rateLimits) onRateLimits?.(result.rateLimits);
   return {
     idle: result.idle,
     stale: result.stale,
@@ -375,11 +378,17 @@ export class StatusManager {
 
     if (this.options.enableRateLimits !== false) {
       this.rateLimitsWatcher = createRateLimitsWatcher((data) => {
-        this.lastRateLimits = data;
-        this.broadcast({ type: 'rate-limits:update', data });
+        this.publishRateLimits(data);
       });
       this.rateLimitsWatcher.start();
     }
+  }
+
+  private publishRateLimits(data: IRateLimitsData): void {
+    const merged = mergeRateLimitsData(this.lastRateLimits, data);
+    if (rateLimitsEqual(this.lastRateLimits, merged)) return;
+    this.lastRateLimits = merged;
+    this.broadcast({ type: 'rate-limits:update', data: merged });
   }
 
   private async scanAll(): Promise<void> {
@@ -444,7 +453,11 @@ export class StatusManager {
         ? await provider.isAgentRunning(paneInfo.pid, childPids)
         : false;
       if (agentRunning && entry.jsonlPath) {
-        const { idle, stale, lastAssistantSnippet } = await checkProviderJsonlIdle(provider, entry.jsonlPath);
+        const { idle, stale, lastAssistantSnippet } = await checkProviderJsonlIdle(
+          provider,
+          entry.jsonlPath,
+          (data) => this.publishRateLimits(data),
+        );
         jsonl = { idle, stale, lastAssistantSnippet };
       }
     }
@@ -495,7 +508,11 @@ export class StatusManager {
       return { ...emptyJsonlCheckResult(), jsonlPath, running: true, sessionId };
     }
 
-    const result = await checkProviderJsonlIdle(provider, jsonlPath);
+    const result = await checkProviderJsonlIdle(
+      provider,
+      jsonlPath,
+      (data) => this.publishRateLimits(data),
+    );
     return { ...result, jsonlPath, running: true, sessionId };
   }
 
@@ -721,6 +738,10 @@ export class StatusManager {
       result[tabId] = toStatusClientTabEntry(entry);
     }
     return result;
+  }
+
+  getRateLimitsForClient(): IRateLimitsData | null {
+    return this.lastRateLimits;
   }
 
   getPerfSnapshot() {
@@ -1076,7 +1097,12 @@ export class StatusManager {
     const seq = lastEvent.seq;
     entry.eventSeq = seq;
     entry.lastEvent = lastEvent;
-    this.broadcast({ type: 'status:hook-event', tabId, event: entry.lastEvent });
+    this.broadcast({
+      type: 'status:hook-event',
+      tabId,
+      sessionName: tmuxSession,
+      event: entry.lastEvent,
+    });
 
     if (hookEvent.shouldRecheckCodexStop) {
       hookLog.debug({ tabId, event: eventName, notificationType, seq, prevState }, 'queued Codex stop JSONL verification');
@@ -1128,7 +1154,7 @@ export class StatusManager {
 
     const provider = getProviderByPanelType(entry.panelType);
     const check = provider
-      ? await checkProviderJsonlIdle(provider, jsonlPath)
+      ? await checkProviderJsonlIdle(provider, jsonlPath, (data) => this.publishRateLimits(data))
       : await checkJsonlIdle(jsonlPath);
     const { next, changed } = mergeStatusMetadata(entry, {
       currentAction: check.currentAction,
@@ -1308,7 +1334,11 @@ export class StatusManager {
     const provider = getProviderByPanelType(entry.panelType);
     if (provider?.id === 'codex') {
       this.startJsonlWatch(tabId, jsonlPath);
-      const metadata = await checkProviderJsonlIdle(provider, jsonlPath);
+      const metadata = await checkProviderJsonlIdle(
+        provider,
+        jsonlPath,
+        (data) => this.publishRateLimits(data),
+      );
       this.mergeJsonlMetadata(entry, metadata);
       this.reconcileCodexState(tabId, entry, { ...metadata, jsonlPath, running: true });
       this.broadcastUpdate(tabId, entry);
@@ -1337,7 +1367,7 @@ export class StatusManager {
     }
 
     const check = provider
-      ? await checkProviderJsonlIdle(provider, jsonlPath)
+      ? await checkProviderJsonlIdle(provider, jsonlPath, (data) => this.publishRateLimits(data))
       : await checkJsonlIdle(jsonlPath);
     const { interrupted, lastEntryTs } = check;
 

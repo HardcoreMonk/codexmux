@@ -4,11 +4,11 @@ import { addExistingTabToPane, addTabToPane, updateTabAgentSessionId } from '@/l
 import { getActiveWorkspaceId, getWorkspaceById } from '@/lib/workspace-store';
 import { getStatusManager } from '@/lib/status-manager';
 import { getProviderByPanelType } from '@/lib/providers';
-import { sendKeys } from '@/lib/tmux';
 import { createLogger } from '@/lib/logger';
 import { shouldCreateTerminalTabInRuntimeV2 } from '@/lib/runtime/terminal-mode';
 import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
 import { getRuntimeStatusV2Mode } from '@/lib/runtime/status-mode';
+import { launchAgentInTab } from '@/lib/agent-launch-service';
 
 const log = createLogger('layout');
 
@@ -38,7 +38,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   const paneId = req.query.paneId as string;
-  const { name, cwd, panelType, command, resumeSessionId } = req.body ?? {};
+  const { name, cwd, panelType, command, resumeSessionId, startAgent } = req.body ?? {};
 
   const provider = resumeSessionId ? getProviderByPanelType(panelType ?? 'codex') : null;
   if (resumeSessionId) {
@@ -51,11 +51,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   try {
-    const shouldUseRuntimeV2 = shouldCreateTerminalTabInRuntimeV2() && isPlainTerminalTabRequest({
-      panelType,
-      command,
-      resumeSessionId,
-    });
+    const shouldUseRuntimeV2 = shouldCreateTerminalTabInRuntimeV2() && (
+      isPlainTerminalTabRequest({ panelType, command, resumeSessionId })
+      || (startAgent === true && panelType === 'codex')
+    );
     const workspace = shouldUseRuntimeV2 ? await getWorkspaceById(wsId) : null;
     const effectiveCwd = typeof cwd === 'string' && cwd.trim()
       ? cwd.trim()
@@ -79,7 +78,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
             name: typeof name === 'string' ? name.trim() : runtimeTab.name,
             order: runtimeTab.order,
             cwd: runtimeTab.cwd ?? effectiveCwd,
-            panelType: 'terminal',
+            panelType: panelType === 'codex' ? 'codex' : 'terminal',
             runtimeVersion: 2,
           });
           if (!added) {
@@ -116,11 +115,29 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       provider.writeSessionId(tab, resumeSessionId);
       setTimeout(async () => {
         try {
-          const resumeCmd = await provider.buildResumeCommand(resumeSessionId, { workspaceId: wsId });
-          await sendKeys(tab.sessionName, resumeCmd);
+          await launchAgentInTab({
+            workspaceId: wsId,
+            paneId,
+            tabId: tab.id,
+            action: 'resume',
+            sessionId: resumeSessionId,
+          });
         } catch (err) {
-          log.warn(`resume sendKeys failed: ${err instanceof Error ? err.message : err}`);
+          log.warn(`resume launch failed: ${err instanceof Error ? err.message : err}`);
         }
+      }, SHELL_READY_DELAY_MS);
+    }
+
+    if (startAgent === true && panelType === 'codex' && !resumeSessionId && !command) {
+      setTimeout(() => {
+        launchAgentInTab({
+          workspaceId: wsId,
+          paneId,
+          tabId: tab.id,
+          action: 'launch',
+        }).catch((err) => {
+          log.warn(`agent launch failed: ${err instanceof Error ? err.message : err}`);
+        });
       }, SHELL_READY_DELAY_MS);
     }
 

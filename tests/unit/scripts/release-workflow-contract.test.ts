@@ -16,7 +16,10 @@ interface IWorkflowStep {
 }
 
 interface IReleaseWorkflow {
-  jobs: Record<string, { steps: IWorkflowStep[] }>;
+  jobs: Record<string, {
+    permissions?: Record<string, string>;
+    steps: IWorkflowStep[];
+  }>;
 }
 
 const readWorkflow = (filename: string): IReleaseWorkflow =>
@@ -86,5 +89,41 @@ describe('release workflow contract', () => {
       expect(uploadIndex).toBeGreaterThan(privacyIndex);
       expect(steps[uploadIndex].if).toBe("always() && steps.smoke-artifact-privacy.outcome == 'success'");
     });
+  });
+
+  it('publishes the npm package through a minimal trusted publishing job', () => {
+    const workflow = readWorkflow('npm-publish.yml');
+    const publishJob = workflow.jobs.publish;
+    const steps = publishJob.steps;
+    const versionCheckIndex = steps.findIndex(
+      (step) => step.name === 'Verify tag and default branch',
+    );
+    const smokeIndex = steps.findIndex(
+      (step) => step.run === 'pnpm smoke:npm-package',
+    );
+    const auditIndex = steps.findIndex(
+      (step) => step.run === 'pnpm audit --prod',
+    );
+    const registryIndex = steps.findIndex(
+      (step) => step.name === 'Check existing npm version',
+    );
+    const publishIndex = steps.findIndex(
+      (step) => step.run === 'npm publish --access public',
+    );
+
+    expect(publishJob.permissions).toEqual({
+      contents: 'read',
+      'id-token': 'write',
+    });
+    expect(versionCheckIndex).toBeGreaterThanOrEqual(0);
+    expect(steps[versionCheckIndex].run).toContain('TAG_VERSION');
+    expect(steps[versionCheckIndex].run).toContain('git merge-base --is-ancestor');
+    expect(auditIndex).toBeGreaterThan(versionCheckIndex);
+    expect(smokeIndex).toBeGreaterThan(auditIndex);
+    expect(registryIndex).toBeGreaterThan(smokeIndex);
+    expect(steps[registryIndex].run).toContain('gitHead');
+    expect(publishIndex).toBeGreaterThan(registryIndex);
+    expect(steps[publishIndex].if).toBe("steps.registry.outputs.publish == 'true'");
+    expect(JSON.stringify(workflow)).not.toContain('NPM_TOKEN');
   });
 });

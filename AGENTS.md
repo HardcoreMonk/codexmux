@@ -197,6 +197,9 @@ design rule을 바꾸지 않는 한 ADR이 필요하지 않습니다.
 
 - 표준 lifecycle contract는 zone 상대 경로 `codex-project-mgmt/docs/codex-lifecycle-control-plane.md`를 따른다.
 - 기본 순서: `intake -> office-hours optional -> superpowers:brainstorming / writing-spec -> domain-architecture -> grill-me -> plan-design-review -> superpowers:writing-plans -> plan-eng-review -> implement -> code-review -> release -> operate`.
+- ADR lifecycle은 project pipeline과 별도다. ADR 상태는
+  `Draft -> Review -> Approved -> Implemented -> Verified -> Archived`를 사용하며,
+  pipeline stage 통과가 ADR approval을 의미하지 않는다.
 - 실제 spec, grill-me 기록, plan, handoff는 해당 project root의 project-local 산출물로 둔다.
 - 새 기능, 동작 변경, 작업 흐름 계약 변경, 여러 파일에 걸친 변경은 lightweight path를 사용하지 않는다.
 - `release` 이후에는 `docs/operations/YYYY-MM-DD-<topic>-handoff.md` 또는 project-equivalent handoff로 운영 진입 상태를 기록한다.

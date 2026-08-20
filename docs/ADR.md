@@ -187,10 +187,14 @@
 
 ## ADR-025: Codex CLI integration contract는 inline hook과 web-input 제출 frame으로 고정한다
 
-- 상태: 승인
-- 결정: Codex launch/resume command는 `hooks={path="~/.codexmux/hooks.json"}`를 사용하지 않고 `hooks.SessionStart`, `hooks.UserPromptSubmit`, `hooks.Stop` inline TOML override를 각각 `-c`로 전달합니다. Codex web input은 prompt 본문을 bracketed paste로 감싸고 Enter를 같은 frame에 포함한 뒤 후속 Enter를 한 번 더 보냅니다.
-- 이유: 현재 Codex CLI strict config parser는 `hooks` path string override를 구조화된 hook table로 보지 않아 config load 오류를 낼 수 있습니다. Web input을 raw text와 별도 Enter frame으로 나누면 재접속/copy mode/긴 입력 확인 상태에서 입력이 프롬프트에 남고 제출되지 않을 수 있습니다.
-- 영향: `~/.codexmux/hooks.json`은 local hook/statusline bridge 호환용 생성 파일로 남지만 launch/resume config source가 아닙니다. Codex command builder, `MSG_WEB_STDIN`, web input payload를 바꾸면 `TMUX.md`, `STATUS.md`, `DATA-DIR.md`, `TESTING.md`와 landing docs를 함께 갱신합니다.
+- 상태: Verified
+- 결정: Browser는 raw Codex command를 만들지 않고 tab-scoped launch/resume intent만 보냅니다. Server provider가 소유권과 안전한 shell, Codex `0.144.1+` compatibility를 확인한 뒤 `hooks.SessionStart`, `hooks.UserPromptSubmit`, `hooks.Stop` session override를 각각 `-c`로 조립합니다. 각 handler는 POSIX `command`와 Windows `commandWindows`로 `~/.codexmux/status-hook.cjs`를 호출하며 HMAC capability로 tab/session/expiry를 묶습니다. Codex web input은 prompt 본문을 bracketed paste로 감싸고 Enter를 같은 frame에 포함한 뒤 후속 Enter를 한 번 더 보냅니다.
+- 이유: Native Codex hook layer discovery를 유지하면 user/project/managed/plugin hook을 수동 TOML merge하거나 trust bypass하지 않고 codexmux session observer를 공존시킬 수 있습니다. Server command ownership은 CLI token과 hook command가 browser bundle로 새는 경계를 없앱니다. Web input을 raw text와 별도 Enter frame으로 나누면 재접속/copy mode/긴 입력 확인 상태에서 입력이 프롬프트에 남고 제출되지 않을 수 있습니다.
+- trade-off: Hook bridge는 최대 64KiB stdin, 1초 loopback 요청, 1.5초 process timeout의 non-blocking best-effort observer입니다. Electron executable도 standalone script를 실행할 수 있도록 handler는 `ELECTRON_RUN_AS_NODE=1`을 명시합니다. 실패해도 Codex action을 막지 않으며 JSONL/process polling으로 reconciliation합니다. Native hook의 사용자별 실행 순서는 codexmux가 보장하지 않습니다.
+- 영향: `~/.codexmux/hooks.json`의 `hooks`는 비워 두고 statusline 호환 설정만 생성합니다. 현재 session hook transport는 standalone Node bridge이며 남아 있는 `status-hook.sh`는 legacy 잔존 파일입니다. Command builder, provider option, agent launch API, `MSG_WEB_STDIN`, hook capability를 바꾸면 `TMUX.md`, `STATUS.md`, `DATA-DIR.md`, `TESTING.md`와 landing docs를 함께 갱신합니다.
+- 승인 근거: `docs/superpowers/specs/2026-08-14-purplemux-selected-adoption-design.md`, `docs/superpowers/grill-me/2026-08-14-purplemux-selected-adoption.md`, `docs/superpowers/plans/2026-08-14-purplemux-selected-adoption.md`에서 native coexistence, bounded preview, stale rate-limit, best-effort bridge, Git invalidation 정책을 승인했습니다.
+- 구현 근거: `src/lib/agent-launch-service.ts`, `src/lib/providers/codex/session-hooks.ts`, `src/lib/hook-settings.ts`와 대응 unit/strict-config smoke로 server ownership과 capability 경계를 고정했습니다.
+- 검증 근거: Codex 0.147.0 strict-config smoke, session hook serialization/capability test, full unit/type/build/Electron gate, Runtime v2 status/timeline smoke, browser reconnect와 실제 Linux user service 재시작이 통과했습니다. Windows package 실기 검증은 2026-08-15 사용자 결정으로 이 ADR의 완료 조건에서 제외했습니다.
 
 ## ADR-026: Pre-auth bootstrap은 loopback exposure와 explicit install admission을 사용한다
 
@@ -237,3 +241,14 @@
 - 영향: `~/.codexmux/`, tmux/runtime session, 비밀번호와 `authSecret`, CLI `x-cmux-token` 계약은 바뀌지 않습니다. 같은 hostname의 browser request에는 두 제품 cookie가 함께 실릴 수 있지만 각 제품은 자기 namespace만 검증합니다. Cookie 기밀성까지 port별로 격리하는 결정은 아니며, 그 수준이 필요하면 별도 hostname을 사용해야 합니다.
 - 검증 조건: unit test에서 새 이름과 legacy-only 거부, 두 cookie 공존 시 Codexmux cookie 선택, HTTP/Runtime v2 WebSocket/install/upload fixture, 새·legacy query credential 거부를 확인합니다. Chromium reconnect smoke는 Codexmux cookie를 설정한 뒤 같은 hostname에 legacy `session-token`을 추가하고 page auth와 WebSocket 복구가 유지되는지 검증합니다.
 - 검증 근거: Linux에서 full unit suite, lint, typecheck, production/landing build, dev/prod pre-auth bootstrap과 upload integrity smoke, Chromium same-host cookie coexistence/reconnect smoke가 통과했습니다. `v0.4.22` Windows release는 fresh HOME/profile에서 `v0.4.21 -> v0.4.22` local/published updater apply와 post-update packaged launch를 통과했습니다. 다만 fresh profile은 기존 Electron storage의 legacy cookie가 새 namespace 전환 뒤 login으로 이동하고, 1회 재로그인 후 Runtime v2 WebSocket/upload에 다시 연결되는 실제 old-profile 경로를 증명하지 않습니다. 따라서 상태는 `Implemented`로 유지하며 old Electron profile 수동/자동 증거를 확보한 뒤 `Verified`로 전이합니다. 상세 결과는 `docs/operations/2026-07-12-purplemux-cookie-isolation-handoff.md`와 `docs/operations/2026-07-13-v0.4.22-windows-release-handoff.md`에 기록합니다.
+
+## ADR-030: Windows installer와 npm 실행 package를 독립 배포면으로 운영한다
+
+- 상태: Implemented
+- 결정: Windows Electron installer는 primary distribution으로 유지하고, npm의 unscoped `codexmux` package는 legacy tmux 기반 custom Node web server의 secondary execution surface로 공개합니다. npm package는 `codexmux`/`cmux` bin만 지원하며 library `main`, Electron/Capacitor shell, NSIS/service install, updater를 제공하지 않습니다.
+- 이유: `npx`는 package를 npm cache에 설치해 bin을 실행하는 도구이므로 Windows 설치 프로그램과 같은 lifecycle을 제공할 수 없습니다. 두 surface를 한 release gate로 묶으면 npm registry나 OIDC 장애가 검증된 Windows stable promotion을 막거나, 반대로 Windows package 실패 전에 npm version이 공개되는 ownership 혼선을 만듭니다.
+- trade-off: 같은 source version이 GitHub Windows release와 npm registry에서 서로 다른 시점에 공개될 수 있습니다. npm 사용자는 Node `>=20.9.0`과 legacy tmux runtime을 직접 준비해야 하며 desktop updater/제거 기능을 받지 않습니다. Landing은 registry package의 install, bin, health smoke가 통과한 뒤에만 npm 명령을 활성화합니다.
+- 영향: npm tarball은 `bin/`, `dist/`, `.next/standalone/`, tmux config와 postinstall helper만 명시적으로 게시합니다. Capacitor/Electron build package는 dev dependency로 유지합니다. 후속 tag publish는 별도 `npm-publish.yml`의 GitHub Actions Trusted Publishing을 사용하며 장기 `NPM_TOKEN`을 두지 않습니다. npm publish 실패는 `.github/workflows/release.yml`의 Windows stable workflow와 독립입니다.
+- 승인 근거: `docs/superpowers/specs/2026-08-20-npm-npx-distribution-design.md`, `docs/superpowers/grill-me/2026-08-20-npm-npx-distribution.md`, `docs/superpowers/plans/2026-08-20-npm-npx-distribution.md`에서 사용자 1~7 전체 승인, package/runtime ownership, 공급망, landing activation 조건을 검토했습니다.
+- 구현 근거: CLI-only manifest, postinstall allowlist, build-only dependency 분리, local tarball install/run smoke와 `.github/workflows/npm-publish.yml`의 OIDC/idempotency contract를 구현했습니다. Next `16.3.1`, sharp `0.35.3`, PostCSS `8.5.23`, nanoid `5.1.16`으로 public package dependency audit를 0건으로 복구했습니다.
+- 검증 조건: local tarball의 lifecycle-enabled install, CLI help, isolated production health가 통과하고, 최초 public publish 뒤 exact registry version을 같은 방식으로 실행해야 `Verified`로 전이합니다.

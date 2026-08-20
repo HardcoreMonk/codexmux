@@ -249,6 +249,7 @@ export type TRuntimeStatusSendWebPushResult = IStatusSendWebPushResult;
 
 export interface IRuntimeStatusLiveSyncPayload {
   tabs: Record<string, IClientTabStatusEntry>;
+  rateLimits: IRateLimitsData | null;
 }
 
 export type TRuntimeStatusLiveUpdatePayload = Omit<IStatusUpdateMessage, 'type'>;
@@ -259,6 +260,7 @@ export interface IRuntimeStatusSessionHistoryUpdatePayload {
 
 export interface IRuntimeStatusHookEventPayload {
   tabId: string;
+  sessionName: string;
   event: ILastEvent;
 }
 

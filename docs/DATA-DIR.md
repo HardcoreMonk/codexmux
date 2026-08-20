@@ -16,7 +16,7 @@ codexmux의 앱 상태는 `~/.codexmux/`에 저장합니다. Codex CLI 원본 �
     state.db-wal
     state.db-shm
   hooks.json
-  status-hook.sh
+  status-hook.cjs
   statusline.sh
   session-index.json
   quick-prompts.json
@@ -44,8 +44,9 @@ codexmux의 앱 상태는 `~/.codexmux/`에 저장합니다. Codex CLI 원본 �
 | `workspaces.json` | legacy workspace 목록, active workspace, sidebar 상태 |
 | `workspaces/{wsId}/layout.json` | legacy pane/tab tree와 tab metadata |
 | `runtime-v2/state.db` | runtime v2 workspace/layout/tab/message-history SQLite projection |
-| `hooks.json` | local hook/statusline bridge 호환용 생성 파일. Codex tab 실행 config source는 아님 |
-| `status-hook.sh` | inline Codex hook override가 호출하는 status event bridge |
+| `hooks.json` | 빈 `hooks`와 statusline 호환 설정을 담는 생성 파일. Codex tab 실행 config source는 아님 |
+| `status-hook.cjs` | session-scoped Codex hook override가 호출하는 standalone Node bridge |
+| `status-hook.sh` | 이전 설치에 남을 수 있는 legacy bridge. 현재 생성하거나 호출하지 않음 |
 | `statusline.sh` | Codex status line bridge |
 | `session-index.json` | Codex JSONL session list metadata cache. Cold refresh 중에도 UI는 현재 snapshot을 먼저 표시 |
 | `quick-prompts.json` | 사용자 quick prompt와 내장 prompt 표시 상태 |
@@ -92,7 +93,7 @@ Runtime v2는 `runtime-v2/state.db`를 사용합니다.
 
 `~/.codex/`는 Codex CLI 소유 영역입니다. codexmux는 이 디렉터리에 앱 상태를 쓰지 않습니다.
 
-Codex launch/resume command는 `~/.codexmux/hooks.json`을 `hooks={path=...}` 형태로 넘기지 않습니다. Hook event는 `src/lib/codex-command.ts`의 inline TOML override가 `status-hook.sh`를 직접 호출해 전달합니다. `hooks.json`을 삭제해도 서버 재시작 때 다시 생성되며, 기존 local hook/statusline bridge 호환 파일로만 취급합니다.
+Codex launch/resume command는 `~/.codexmux/hooks.json`을 `hooks={path=...}` 형태로 넘기지 않습니다. Server provider가 만든 session-scoped inline TOML override는 `status-hook.cjs`를 직접 호출합니다. 이 bridge는 project package를 import하지 않고 `port`, `cli-token`, HMAC capability만 사용해 loopback hook API에 bounded request를 보냅니다. `hooks.json`을 삭제해도 서버 재시작 때 빈 hooks/statusline 설정으로 다시 생성됩니다.
 
 | 경로 | codexmux 처리 |
 | --- | --- |

@@ -33,8 +33,11 @@ const getNextInstall = (
     return { command: 'git', label: t('installGit') };
   }
   const agent = readRuntimeAgentStatus(status);
-  if (!agent.installed) {
-    return { command: 'codex', label: t('installCodex') };
+  if (!agent.installed || agent.compatible === false) {
+    return {
+      command: 'codex',
+      label: agent.installed ? t('updateCodex') : t('installCodex'),
+    };
   }
   return null;
 };
@@ -63,7 +66,8 @@ const ToolsRequiredPage = () => {
         { name: 'Git', ok: status.git.installed, version: status.git.version },
         {
           name: 'Codex CLI',
-          ok: readRuntimeAgentStatus(status).installed,
+          ok: readRuntimeAgentStatus(status).installed
+            && readRuntimeAgentStatus(status).compatible !== false,
           version: readRuntimeAgentStatus(status).version,
         },
       ]

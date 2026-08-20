@@ -1,6 +1,8 @@
 export interface IToolStatus {
   installed: boolean;
   version: string | null;
+  compatible?: boolean;
+  minimumVersion?: string;
 }
 
 export type TTerminalRuntimeAdapter = 'tmux' | 'windows';
@@ -56,4 +58,5 @@ export const isRuntimeOk = (status: IRuntimePreflightResult): boolean =>
   readRuntimeTerminalStatus(status).installed
   && readRuntimeTerminalStatus(status).compatible
   && status.git.installed
-  && readRuntimeAgentStatus(status).installed;
+  && readRuntimeAgentStatus(status).installed
+  && readRuntimeAgentStatus(status).compatible !== false;

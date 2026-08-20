@@ -87,6 +87,11 @@ Snapshot은 `byteLength`, `lineCount`, `entryCount`, `parseMs`, `virtualization.
 cwd, JSONL path는 출력하지 않습니다. File 입력도 source를 `file`로만 표시하고 실제 path는
 출력하지 않습니다.
 
+Rich timeline parser는 exec output accumulator와 client detail을 무제한 유지하지 않습니다.
+Semantic detail은 field 4KiB, entry 16KiB로 제한하고 secret-like redaction을 적용합니다.
+Rate-limit projection은 별도 session scan 없이 기존 256KiB JSONL tail read에서 함께
+계산합니다.
+
 Virtualization 판단은 다음 순서로 합니다.
 
 1. `recommended`: entry count, byte size, parse duration 중 하나가 상한을 넘으면 timeline

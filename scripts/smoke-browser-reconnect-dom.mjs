@@ -166,7 +166,11 @@ const addSessionCookie = async (context, baseUrl, cookie) => {
 };
 
 const runBrowserAssertion = async ({ baseUrl, cookie }) => {
-  const browser = await chromium.launch({ headless: true });
+  const executablePath = process.env.CODEXMUX_PLAYWRIGHT_EXECUTABLE_PATH;
+  const browser = await chromium.launch({
+    headless: true,
+    ...(executablePath ? { executablePath } : {}),
+  });
   const context = await browser.newContext({
     viewport: { width: 1280, height: 800 },
   });

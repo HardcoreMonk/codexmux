@@ -172,6 +172,8 @@ Terminal byte stream은 durable state가 아닙니다. Reconnect는 저장된 st
 
 Codex web input은 raw terminal key 입력과 분리해서 처리합니다. Client는 `MSG_WEB_STDIN` frame으로 app-originated input을 보내고, legacy terminal path는 tmux copy mode를 먼저 빠져나온 뒤 pty에 씁니다. Prompt 본문은 bracketed paste로 감싸고 Enter를 같은 frame에 포함하며, Codex CLI 확인 흐름을 위해 후속 Enter를 한 번 더 보냅니다.
 
+Agent launch/resume는 browser에서 command string을 조립하지 않습니다. Client intent를 받은 server가 workspace/pane/tab ownership, Codex panel, safe shell, minimum CLI version을 검증하고 provider command를 생성합니다. Runtime v2 내부 write는 subscriber가 없는 범용 stdin 우회로가 아니라 ready 상태의 exact terminal session에만 허용됩니다.
+
 ## Codex 세션 감지
 
 Codex session mapping은 다음 source를 조합합니다.
@@ -193,6 +195,8 @@ Timeline은 Codex JSONL record와 live pane prompt를 병합해 UI entry로 투�
 - entry id는 JSONL byte offset과 record identity를 기준으로 안정화합니다.
 - 같은 assistant text가 여러 record type으로 남는 경우 near-duplicate rule로 중복 표시를 줄입니다.
 - permission/input prompt는 JSONL marker가 늦거나 없을 수 있으므로 live pane capture로 보정합니다.
+- exec/web/MCP/patch/error/compaction record는 semantic entry로 투영하고 generic tool fallback을 유지합니다.
+- Rich detail은 secret-like 값을 redaction하고 field 4KiB, entry 16KiB로 제한합니다. Full output, download, local image URL은 만들지 않습니다.
 - older entry와 message count는 worker read command로 분리합니다.
 - session list는 `SessionIndexService` snapshot을 page 단위로 읽습니다. Cold refresh가 진행 중이면
   request path가 전체 JSONL scan을 기다리지 않고 현재 snapshot과 `refreshing` 상태를 반환합니다.
@@ -209,7 +213,9 @@ Timeline은 Codex JSONL record와 live pane prompt를 병합해 UI entry로 투�
 
 상태 전이는 pure helper에서 계산하고, `StatusManager`와 worker는 polling, watch, broadcast 같은 부수효과를 담당합니다. Provider adapter는 `statusBehavior`로 JSONL watch 유지와 stop hook 지연 여부를 명시하며, legacy manager와 runtime v2 worker IPC는 같은 shape를 소비합니다.
 
-Codex hook event는 command line의 inline `hooks.SessionStart`, `hooks.UserPromptSubmit`, `hooks.Stop` TOML override가 `~/.codexmux/status-hook.sh`를 호출해 들어옵니다. `~/.codexmux/hooks.json`은 생성 파일로 남지만 launch/resume command의 config source는 아닙니다.
+Codex hook event는 server provider가 만든 `hooks.SessionStart`, `hooks.UserPromptSubmit`, `hooks.Stop` session override가 standalone `~/.codexmux/status-hook.cjs`를 호출해 들어옵니다. Bridge는 CLI token과 tab/session/expiry capability를 loopback API에 전달하고 실패 시에도 Codex action을 막지 않습니다. User/project/managed/plugin hook은 native Codex layer discovery가 보존하며 codexmux가 사용자 TOML을 병합하지 않습니다.
+
+JSONL tail의 `token_count/rate_limits` observation은 작업 상태 scan과 같은 read에서 추출합니다. Window별 `observed_at`을 기준으로 newest merge/dedupe하고 reset 뒤 관찰이 없으면 `갱신 대기` 상태를 유지합니다.
 
 ## 성능과 진단
 

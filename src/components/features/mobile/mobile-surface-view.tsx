@@ -27,7 +27,7 @@ import type { TCliState } from '@/types/timeline';
 import useTerminalTheme from '@/hooks/use-terminal-theme';
 import useTabStore, { selectAgentProcess, selectAgentProcessCheckedAt, selectSessionView } from '@/hooks/use-tab-store';
 import { useLayoutStore } from '@/hooks/use-layout';
-import { buildCodexCommandFromStore } from '@/lib/codex-client-command';
+import { requestAgentLaunch } from '@/lib/agent-launch-client';
 import { readAgentSessionId } from '@/lib/agent-tab-fields';
 import { isAgentPanelType } from '@/lib/panel-type';
 import { resolveTerminalWebSocketEndpoint } from '@/lib/terminal-websocket-url';
@@ -142,7 +142,7 @@ const MobileSurfaceView = ({
   const focusInputRef = useRef<(() => void) | undefined>(undefined);
   const setInputValueRef = useRef<((v: string) => void) | undefined>(undefined);
 
-  const pendingRestartRef = useRef<string | null>(null);
+  const pendingRestartRef = useRef(false);
   const pendingAgentInputRef = useRef<string | null>(null);
   const lastTitleRef = useRef('');
   const agentProcess = useTabStore((s) => activeTabId ? selectAgentProcess(s.tabs, activeTabId) : null);
@@ -198,9 +198,9 @@ const MobileSurfaceView = ({
       const formatted = formatTabTitle(title);
       useTabMetadataStore.getState().setTitle(tabId, formatted);
       if (isShellProcess(title) && pendingRestartRef.current) {
-        const cmd = pendingRestartRef.current;
-        pendingRestartRef.current = null;
-        wsActionsRef.current.sendStdin(`${cmd}\r`);
+        pendingRestartRef.current = false;
+        const workspaceId = useLayoutStore.getState().workspaceId;
+        if (workspaceId) void requestAgentLaunch({ workspaceId, paneId, tabId });
       }
       const tab = tabsRef.current.find((t) => t.id === tabId);
       if (tab) {
@@ -399,31 +399,28 @@ const MobileSurfaceView = ({
     setIsCreating(false);
   }, [paneId, onCreateTab]);
 
-  const buildAgentCommand = useCallback((): string => {
-    return buildCodexCommandFromStore();
-  }, []);
-
   const handleNewAgentSession = useCallback(() => {
-    if (status !== 'connected' || !activeTabId) return;
+    if (status !== 'connected' || !activeTabId || !layoutWsId) return;
     useTabStore.getState().setSessionView(activeTabId, 'check');
-    sendStdin(`${buildAgentCommand()}\r`);
-  }, [status, sendStdin, activeTabId, buildAgentCommand]);
+    void requestAgentLaunch({ workspaceId: layoutWsId, paneId, tabId: activeTabId });
+  }, [status, activeTabId, layoutWsId, paneId]);
 
   const handleRestartAgentSession = useCallback(() => {
     if (status !== 'connected' || !activeTabId) return;
-    pendingRestartRef.current = buildAgentCommand();
+    pendingRestartRef.current = true;
     useTabStore.getState().setSessionView(activeTabId, 'check');
     sendStdin('/exit\r');
-  }, [status, sendStdin, activeTabId, buildAgentCommand]);
+  }, [status, sendStdin, activeTabId]);
 
   useEffect(() => {
     if (!pendingRestartRef.current || agentProcess === true) return;
     if (status !== 'connected') return;
     if (!isShellProcess(lastTitleRef.current)) return;
-    const cmd = pendingRestartRef.current;
-    pendingRestartRef.current = null;
-    sendStdin(`${cmd}\r`);
-  }, [agentProcess, status, sendStdin]);
+    pendingRestartRef.current = false;
+    if (layoutWsId && activeTabId) {
+      void requestAgentLaunch({ workspaceId: layoutWsId, paneId, tabId: activeTabId });
+    }
+  }, [agentProcess, status, layoutWsId, activeTabId, paneId]);
 
   const handleSendToAgent = useCallback((text: string) => {
     if (!activeTabId) return;

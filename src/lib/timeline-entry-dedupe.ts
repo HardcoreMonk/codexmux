@@ -87,6 +87,18 @@ export const getTimelineEntryFingerprint = (entry: ITimelineEntry): string => {
     case 'session-exit':
     case 'turn-end':
       return [entry.type, entry.timestamp].join(':');
+    case 'exec-command':
+      return [entry.type, entry.timestamp, entry.callId, clean(entry.command), entry.status].join(':');
+    case 'web-search':
+      return [entry.type, entry.timestamp, entry.callId, clean(entry.query), entry.status].join(':');
+    case 'mcp-call':
+      return [entry.type, entry.timestamp, entry.callId, entry.server, entry.tool, entry.status].join(':');
+    case 'patch-apply':
+      return [entry.type, entry.timestamp, entry.callId, stableJson(entry.files), entry.status].join(':');
+    case 'error-notice':
+      return [entry.type, entry.timestamp, entry.severity, clean(entry.message)].join(':');
+    case 'context-compacted':
+      return [entry.type, entry.timestamp, entry.beforeTokens ?? '', entry.afterTokens ?? ''].join(':');
   }
 };
 

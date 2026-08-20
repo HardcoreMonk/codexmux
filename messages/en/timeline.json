@@ -28,5 +28,13 @@
   "toolUsageCount": "{count} tool uses",
   "diffShow": "Show diff",
   "diffHide": "Hide diff",
-  "closeAria": "Close"
+  "closeAria": "Close",
+  "richCommand": "Command",
+  "richWebSearch": "Web search",
+  "richMcpCall": "MCP call",
+  "richPatch": "Patch",
+  "richNotice": "Codex notice",
+  "richCompaction": "Context compacted",
+  "richDetails": "Details",
+  "richTruncated": "truncated"
 }

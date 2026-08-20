@@ -71,6 +71,17 @@ corepack pnpm pack:electron:mac
 
 Electron 설정은 `~/.codexmux/config.json`을 공유합니다. Server mode는 `server.mode`, `server.remoteUrl`로 관리합니다.
 
+## Codex session hook bridge
+
+Electron renderer는 Codex command, CLI token, hook capability를 만들지 않습니다. Local server가
+검증된 tab launch intent로 session hook을 조립하고 `~/.codexmux/status-hook.cjs`를
+호출합니다. Electron executable을 standalone Node bridge runtime으로 사용할 때는
+`ELECTRON_RUN_AS_NODE=1`을 명시합니다. Bridge timeout이나 server 부재는 Codex action을
+중단시키지 않으며 JSONL/process polling이 상태를 재조정합니다.
+
+이 hook 변경의 완료 근거는 `docs/operations/2026-08-14-purplemux-selected-adoption-handoff.md`에
+있습니다. Windows package 실기 검증은 해당 선택 도입의 완료 조건이 아닙니다.
+
 ## 서버 모드
 
 로컬 서버:

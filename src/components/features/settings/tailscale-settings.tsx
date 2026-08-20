@@ -5,6 +5,7 @@ import { Check, Copy, ExternalLink, Info, RefreshCw, Trash2, AlertTriangle } fro
 import Spinner from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import isElectron from '@/hooks/use-is-electron';
+import { copyTextToClipboard } from '@/lib/clipboard';
 
 interface IServeEntry {
   httpsPort: string;
@@ -27,10 +28,11 @@ const DEFAULT_PORT = 8122;
 const CopyButton = ({ text }: { text: string }) => {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+  const handleCopy = async () => {
+    if (await copyTextToClipboard(text)) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
   };
 
   return (

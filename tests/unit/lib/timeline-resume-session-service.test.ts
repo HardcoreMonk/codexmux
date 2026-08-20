@@ -240,7 +240,11 @@ describe('timeline resume session service', () => {
       sessionId: 'session-a',
     });
 
-    expect(provider.buildResumeCommand).toHaveBeenCalledWith('session-a', { workspaceId: 'ws-1' });
+    expect(provider.buildResumeCommand).toHaveBeenCalledWith('session-a', {
+      workspaceId: 'ws-1',
+      tabId: undefined,
+      sessionName: 'codexmux:tab',
+    });
     expect(sendKeys).toHaveBeenCalledWith('codexmux:tab', 'codex resume session-a');
     expect(updateTabAgentSessionId).toHaveBeenCalledWith('codexmux:tab', provider, 'session-a');
     expect(ws.sent).toEqual([{

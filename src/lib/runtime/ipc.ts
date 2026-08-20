@@ -526,8 +526,19 @@ const statusLiveTabStatusEntrySchema = statusClientTabStatusEntrySchema.extend({
   jsonlPath: z.string().nullable().optional(),
   processRetries: z.number().int().nonnegative().optional(),
 }).strict();
+const statusRateLimitWindowSchema = z.object({
+  used_percentage: z.number(),
+  resets_at: z.number(),
+  observed_at: z.number().optional(),
+}).strict();
+const statusRateLimitsDataSchema = z.object({
+  ts: z.number(),
+  five_hour: statusRateLimitWindowSchema.nullable(),
+  seven_day: statusRateLimitWindowSchema.nullable(),
+}).strict();
 const statusLiveSyncPayloadSchema = z.object({
   tabs: z.record(z.string(), statusClientTabStatusEntrySchema),
+  rateLimits: statusRateLimitsDataSchema.nullable(),
 }).strict();
 const statusLiveUpdatePayloadSchema = statusClientTabStatusEntrySchema
   .omit({ cliState: true, workspaceId: true, tabName: true })
@@ -543,20 +554,12 @@ const statusSessionHistoryUpdateEventPayloadSchema = z.object({
 }).strict();
 const statusHookEventPayloadSchema = z.object({
   tabId: z.string().min(1),
+  sessionName: z.string().min(1),
   event: statusLastEventSchema,
 }).strict();
 const statusErrorEventPayloadSchema = z.object({
   code: z.string().min(1),
   message: z.string().min(1),
-}).strict();
-const statusRateLimitWindowSchema = z.object({
-  used_percentage: z.number(),
-  resets_at: z.number(),
-}).strict();
-const statusRateLimitsDataSchema = z.object({
-  ts: z.number(),
-  five_hour: statusRateLimitWindowSchema.nullable(),
-  seven_day: statusRateLimitWindowSchema.nullable(),
 }).strict();
 const statusRateLimitsEventPayloadSchema = z.object({
   data: statusRateLimitsDataSchema,

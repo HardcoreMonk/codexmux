@@ -99,7 +99,12 @@ interface ILayoutState {
   focusPane: (paneId: string) => void;
   updateRatio: (path: number[], ratio: number) => void;
   moveTab: (tabId: string, fromPaneId: string, toPaneId: string, toIndex: number) => void;
-  createTabInPane: (paneId: string, panelType?: TPanelType, command?: string) => Promise<ITab | null>;
+  createTabInPane: (
+    paneId: string,
+    panelType?: TPanelType,
+    command?: string,
+    startAgent?: boolean,
+  ) => Promise<ITab | null>;
   deleteTabInPane: (paneId: string, tabId: string) => Promise<void>;
   restartTabInPane: (paneId: string, tabId: string, command?: string) => Promise<boolean>;
   switchTabInPane: (paneId: string, tabId: string) => void;
@@ -368,7 +373,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
       });
       if (!res.ok) throw new Error();
       const data: ILayoutData = await res.json();
-      applyLayout(set, get, data);
+      applyLayoutPreserveFocus(set, get, data);
     } catch {
       toast.error('Pane을 닫을 수 없습니다');
     }
@@ -443,7 +448,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
     }).catch(() => get().fetchLayout(undefined, false));
   },
 
-  createTabInPane: async (paneId, explicitPanelType?, command?) => {
+  createTabInPane: async (paneId, explicitPanelType?, command?, startAgent = false) => {
     const { layout, workspaceId } = get();
     try {
       let panelType: TPanelType | undefined = explicitPanelType;
@@ -461,12 +466,12 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
       const res = await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs`, workspaceId), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cwd, panelType, command }),
+        body: JSON.stringify({ cwd, panelType, command, startAgent }),
       });
       if (!res.ok) throw new Error();
       const newTab: ITab = await res.json();
 
-      if (command) {
+      if (command || startAgent) {
         useTabStore.getState().initTab(newTab.id, { panelType, sessionView: 'check' });
       }
 

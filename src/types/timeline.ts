@@ -37,7 +37,13 @@ export type TTimelineEntryType =
   | 'ask-user-question'
   | 'interrupt'
   | 'session-exit'
-  | 'turn-end';
+  | 'turn-end'
+  | 'exec-command'
+  | 'web-search'
+  | 'mcp-call'
+  | 'patch-apply'
+  | 'error-notice'
+  | 'context-compacted';
 
 export interface ITimelineUserMessage {
   id: string;
@@ -204,6 +210,80 @@ export interface ITimelineTurnEnd {
   timestamp: number;
 }
 
+export interface ITimelineRichDetails {
+  fields: Record<string, string>;
+  truncated: boolean;
+}
+
+export interface ITimelineExecCommand {
+  id: string;
+  type: 'exec-command';
+  timestamp: number;
+  callId: string;
+  command: string;
+  cwd?: string;
+  exitCode?: number;
+  durationMs?: number;
+  status: TToolStatus;
+  details?: ITimelineRichDetails;
+}
+
+export interface ITimelineWebSearch {
+  id: string;
+  type: 'web-search';
+  timestamp: number;
+  callId: string;
+  query?: string;
+  resultCount?: number;
+  status: TToolStatus;
+  details?: ITimelineRichDetails;
+}
+
+export interface ITimelineMcpCall {
+  id: string;
+  type: 'mcp-call';
+  timestamp: number;
+  callId: string;
+  server: string;
+  tool: string;
+  status: TToolStatus;
+  details?: ITimelineRichDetails;
+}
+
+export interface ITimelinePatchFile {
+  path: string;
+  operation: 'add' | 'update' | 'delete' | 'unknown';
+}
+
+export interface ITimelinePatchApply {
+  id: string;
+  type: 'patch-apply';
+  timestamp: number;
+  callId: string;
+  files: ITimelinePatchFile[];
+  status: TToolStatus;
+  details?: ITimelineRichDetails;
+}
+
+export type TTimelineNoticeSeverity = 'warning' | 'error' | 'stream-error';
+
+export interface ITimelineErrorNotice {
+  id: string;
+  type: 'error-notice';
+  timestamp: number;
+  severity: TTimelineNoticeSeverity;
+  message: string;
+  details?: ITimelineRichDetails;
+}
+
+export interface ITimelineContextCompacted {
+  id: string;
+  type: 'context-compacted';
+  timestamp: number;
+  beforeTokens?: number;
+  afterTokens?: number;
+}
+
 export type ITimelineEntry =
   | ITimelineUserMessage
   | ITimelineAssistantMessage
@@ -217,7 +297,13 @@ export type ITimelineEntry =
   | ITimelineAskUserQuestion
   | ITimelineInterrupt
   | ITimelineSessionExit
-  | ITimelineTurnEnd;
+  | ITimelineTurnEnd
+  | ITimelineExecCommand
+  | ITimelineWebSearch
+  | ITimelineMcpCall
+  | ITimelinePatchApply
+  | ITimelineErrorNotice
+  | ITimelineContextCompacted;
 
 export interface IInitMeta {
   createdAt: string | null;

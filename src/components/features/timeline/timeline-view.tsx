@@ -25,6 +25,8 @@ import TaskChecklist from '@/components/features/timeline/task-checklist';
 import TaskProgressItem from '@/components/features/timeline/task-progress-item';
 import ScrollToBottomButton from '@/components/features/timeline/scroll-to-bottom-button';
 import PermissionPromptItem from '@/components/features/timeline/permission-prompt-item';
+import RichTimelineItem from '@/components/features/timeline/rich-timeline-item';
+import { calculateSafeSpacerShrink, calculateTimelineSpacerHeight } from '@/lib/timeline-spacer';
 
 interface ITimelineViewProps {
   entries: ITimelineEntry[];
@@ -157,6 +159,13 @@ const TimelineEntryRenderer = memo(({ entry, sessionName }: { entry: ITimelineEn
       return <InterruptItem />;
     case 'session-exit':
       return <SessionExitItem />;
+    case 'exec-command':
+    case 'web-search':
+    case 'mcp-call':
+    case 'patch-apply':
+    case 'error-notice':
+    case 'context-compacted':
+      return <RichTimelineItem entry={entry} />;
     default:
       return null;
   }
@@ -355,6 +364,13 @@ const TimelineView = ({
     }
   }, [lastUserMessageId, anchorUserId]);
 
+  useEffect(() => {
+    if (!anchorUserId) return;
+    if (groupedItems.some((item) => item.id === anchorUserId)) return;
+    setAnchorUserId(lastUserMessageId);
+    if (!lastUserMessageId) setSpacerHeight(0);
+  }, [anchorUserId, groupedItems, lastUserMessageId]);
+
   const [shouldProbeResumeDialog, setShouldProbeResumeDialog] = useState(false);
   const currentContextTokens = sessionStats?.currentContextTokens ?? 0;
   const resumeProbeDepsKey = `${cliState}:${currentContextTokens}:${initMeta?.lastTimestamp ?? 0}:${sessionName ?? ''}`;
@@ -391,8 +407,12 @@ const TimelineView = ({
     if (!scrollEl || !userEl || !spacerEl) return;
     const userBottom = userEl.offsetTop + userEl.offsetHeight;
     const postUserHeight = Math.max(0, spacerEl.offsetTop - userBottom);
-    const available = scrollEl.clientHeight - userEl.offsetHeight - ANCHOR_OFFSET;
-    const next = Math.max(0, available - postUserHeight);
+    const next = calculateTimelineSpacerHeight(
+      scrollEl.clientHeight,
+      userEl.offsetHeight,
+      postUserHeight,
+      ANCHOR_OFFSET,
+    );
     setSpacerHeight((prev) => (prev === next ? prev : next));
   }, [scrollRef]);
 
@@ -414,9 +434,9 @@ const TimelineView = ({
     if (current <= target) return;
     const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
     const headroom = Math.max(0, maxScroll - scrollTop);
-    const shrinkBy = Math.min(current - target, headroom);
-    if (shrinkBy <= 0) return;
-    setSpacerHeight(current - shrinkBy);
+    const next = calculateSafeSpacerShrink(current, target, headroom);
+    if (next === current) return;
+    setSpacerHeight(next);
   }, [scrollRef]);
 
   useLayoutEffect(() => {
@@ -431,11 +451,44 @@ const TimelineView = ({
 
   useEffect(() => {
     const scrollEl = scrollRef.current;
+    const contentEl = contentRef.current;
     if (!scrollEl) return;
     const ro = new ResizeObserver(() => measureSpacer());
     ro.observe(scrollEl);
+    if (contentEl) ro.observe(contentEl);
     return () => ro.disconnect();
-  }, [scrollRef, measureSpacer]);
+  }, [scrollRef, contentRef, measureSpacer]);
+
+  useEffect(() => {
+    const recover = () => {
+      shrinkSpacerSafely();
+      measureSpacer();
+    };
+    const recoverWithDelay = () => {
+      recover();
+      const timer = window.setTimeout(recover, ANCHOR_SETTLE_DELAY_MS);
+      return timer;
+    };
+    let timer: number | null = null;
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (timer !== null) window.clearTimeout(timer);
+      timer = recoverWithDelay();
+    };
+    const onForeground = () => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = recoverWithDelay();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('focus', onForeground);
+    window.addEventListener('pageshow', onForeground);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('focus', onForeground);
+      window.removeEventListener('pageshow', onForeground);
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [measureSpacer, shrinkSpacerSafely]);
 
   useEffect(() => {
     if (!anchorUserId) return;

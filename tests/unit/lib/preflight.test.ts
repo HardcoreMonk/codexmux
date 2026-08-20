@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createTerminalRuntimePreflightStatus,
+  isSemanticVersionAtLeast,
   parseToolSemanticVersion,
 } from '@/lib/preflight';
 import {
@@ -103,5 +104,12 @@ describe('preflight agent status', () => {
     expect(parseToolSemanticVersion('git version 2.54.0.windows.1')).toBe('2.54.0');
     expect(parseToolSemanticVersion('codex-cli 0.128.0')).toBe('0.128.0');
     expect(parseToolSemanticVersion('tmux 3.4')).toBe('3.4');
+  });
+
+  it('requires Codex 0.144.1 or newer without using float comparison', () => {
+    expect(isSemanticVersionAtLeast('0.144.1', '0.144.1')).toBe(true);
+    expect(isSemanticVersionAtLeast('0.147.0', '0.144.1')).toBe(true);
+    expect(isSemanticVersionAtLeast('0.99.0', '0.144.1')).toBe(false);
+    expect(isSemanticVersionAtLeast(null, '0.144.1')).toBe(false);
   });
 });

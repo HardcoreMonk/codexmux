@@ -10,9 +10,12 @@ timeline 중심으로 보여줍니다.
 - 서비스 이름과 실행 파일은 `codexmux`, 짧은 별칭은 `cmux`입니다.
 - 데이터 디렉터리는 `~/.codexmux`, tmux socket은 `codexmux`, CLI header는 `x-cmux-token`입니다.
 - provider registry에는 `codex` panel type만 등록합니다.
-- Codex 실행은 `codex`, 재개는 `codex resume <sessionId>`를 사용하며 hook event는 inline TOML override로 `status-hook.sh`에 연결합니다.
+- Browser는 Codex command를 직접 조립하지 않고 workspace/pane/tab launch intent만 보냅니다. Server는 layout ownership, 안전한 shell, Codex `0.144.1+` preflight를 확인한 뒤 실행 또는 `codex resume <sessionId>` command를 만듭니다.
+- Codex hook event는 native session-layer TOML override와 HMAC tab/session capability를 사용해 standalone `~/.codexmux/status-hook.cjs`로 전달합니다. User/project/managed/plugin hook은 Codex native discovery가 보존합니다.
 - process detection은 tmux pane 아래의 `codex` process를 찾고 session id, process start time, live process cwd fallback 순서로 JSONL path를 연결합니다.
-- timeline, history, stats, daily report는 `~/.codex/sessions/**/*.jsonl`을 읽어 구성합니다.
+- timeline, history, stats, daily report와 rate-limit observation은 `~/.codex/sessions/**/*.jsonl`을 읽어 구성합니다.
+- Timeline은 exec, web search, MCP, patch, error/warning, context compaction을 semantic row로 표시합니다. Detail은 secret-like redaction, field 4KiB, entry 16KiB 상한을 적용하고 full output/download/local image serving은 제공하지 않습니다.
+- Rate-limit은 5시간/7일 window별 최신 `observed_at`을 보존하며 reset 뒤 새 관찰이 없으면 0%를 합성하지 않고 `갱신 대기`로 표시합니다.
 - session list는 `~/.codexmux/session-index.json` snapshot을 먼저 읽고, cold refresh 중이면 현재 snapshot을 표시한 뒤 재조회합니다.
 - `~/.codex`는 Codex CLI 소유 데이터이며 codexmux는 읽기 전용으로만 접근합니다.
 - terminal과 Codex 입력 포커스의 `Ctrl+D`는 앱 단축키가 아니라 EOF/EOT로 전달합니다. Codex 입력 바 제출은 bracketed paste + Enter frame과 후속 Enter로 처리합니다.
@@ -22,7 +25,8 @@ timeline 중심으로 보여줍니다.
 - `config.json`의 malformed JSON, I/O 오류, hash-only 인증 상태는 setup으로 downgrade하지 않고 startup/request를 fail closed합니다.
 - setup POST는 startup claim latch, loopback Host, same-authority Origin, JSON media type을 요구합니다. `/api/install`은 generic WebSocket 예외가 아니라 setup-local lease 또는 session admission을 사용합니다.
 - `/api/upload-image`와 `/api/upload-file`은 Next proxy/Pages route가 아니라 outer custom server가 소유합니다. Image/file limit은 10MiB/50MiB이고, successful publish는 same-directory hard link의 no-replace commit입니다.
-- Production dependency baseline은 Next `16.2.6`, next-intl `4.9.2`, ws `8.21.0`, js-yaml `4.2.0`과 제한된 PostCSS/Babel override이며 `pnpm audit --prod` 0건을 유지합니다.
+- Windows Electron installer는 primary distribution이고 npm 실행 package는 legacy tmux 기반 web server의 secondary surface입니다. npm tarball은 CLI bin과 standalone server만 제공하며 Electron/Capacitor shell 또는 updater lifecycle을 제공하지 않습니다.
+- Production dependency baseline은 Next `16.3.1`, next-intl `4.9.2`, ws `8.21.0`, js-yaml `4.2.0`과 제한된 PostCSS/Babel override이며 `pnpm audit --prod` 0건을 유지합니다.
 
 ## 주요 구성
 
@@ -30,8 +34,13 @@ timeline 중심으로 보여줍니다.
 | --- | --- | --- |
 | provider | `src/lib/providers/codex/` | Codex adapter와 provider contract 구현 |
 | command | `src/lib/codex-command.ts` | Codex launch/resume command 생성 |
+| agent launch | `src/lib/agent-launch-service.ts`, `src/pages/api/agent/launch.ts` | Server-side ownership/preflight와 terminal write |
+| session hook | `src/lib/providers/codex/session-hooks.ts`, `src/lib/hook-settings.ts` | Native hook serialization, capability, Node bridge 생성 |
 | detection | `src/lib/codex-session-detection.ts` | process tree와 JSONL session 연결 |
 | parser | `src/lib/codex-session-parser.ts` | Codex JSONL을 timeline entry로 변환 |
+| timeline presentation | `src/lib/rich-timeline-presentation.ts` | Semantic entry의 icon/label/summary/meta/status projection |
+| rate limit | `src/lib/codex-rate-limits.ts`, `src/lib/rate-limit-view.ts` | Window observation parse/merge와 freshness projection |
+| Git refresh | `src/hooks/use-git-refresh-generation.ts`, `src/lib/git-refresh-generation.ts` | Stop generation 공유와 session별 consume 정책 |
 | stats | `src/lib/stats/` | token, cost, session, daily report 집계 |
 | status | `src/lib/status-manager.ts` | tab state, polling, Web Push, WebSocket broadcast |
 | bootstrap security | `src/lib/server-bootstrap.ts`, `src/lib/request-authority.ts` | strict auth state, startup exposure, Host/Origin admission |
@@ -40,6 +49,7 @@ timeline 중심으로 보여줍니다.
 | upload admission/server | `src/lib/upload-admission.ts`, `src/lib/upload-server.ts` | active/reserved budget, timeout, Expect, shutdown ownership |
 | upload storage | `src/lib/uploads-store.ts` | staged streaming, no-replace publish, committed/staged cleanup |
 | outer HTTP composition | `src/lib/server-http-dispatcher.ts`, `server.ts` | dev/prod upload 선점, Next fallback, signal drain |
+| npm distribution | `package.json`, `scripts/smoke-npm-package.mjs`, `.github/workflows/npm-publish.yml` | CLI tarball 계약, 격리 install/run smoke, OIDC publish |
 | performance | `src/lib/perf-metrics.ts` | runtime metric, duration/counter, 인증된 성능 스냅샷 |
 | docs | `docs/ARCHITECTURE-LOGIC.md` | 서버와 서비스 로직의 최신 구현 기준 |
 
@@ -61,6 +71,7 @@ provider-neutral boundary 또는 Codex provider 내부에 추가합니다.
 ## 리스크
 
 - Codex JSONL 형식은 CLI 버전에 따라 바뀔 수 있습니다. parser는 permissive하게 두고 fixture를 계속 보강합니다.
+- Hook event는 best-effort observer입니다. Bridge가 실패해도 Codex action을 막지 않고 JSONL/process polling으로 상태를 재조정합니다.
 - Codex CLI가 process 시작 후 JSONL을 늦게 쓰는 경우가 있어 process start time 매칭은 여유를 두고, cwd fallback은 live Codex process가 확인된 경우에만 씁니다.
 - `~/.codex`에는 auth와 local history가 들어갈 수 있으므로 원본 config/auth 파일을 브라우저에 노출하지 않습니다.
 - process detection은 플랫폼 의존성이 큽니다. Linux `/proc`, `pgrep`, `ps` fallback은 helper에 격리합니다.
@@ -69,6 +80,7 @@ provider-neutral boundary 또는 Codex provider 내부에 추가합니다.
 - Codex app-server protocol은 안정화 전까지 post-MVP 후보로 둡니다.
 - setup-local install은 사용자 권한의 arbitrary PTY stdin을 허용하는 legacy adapter입니다. Elevated/multi-user service와 Windows host-owned install action은 별도 capability/host boundary가 필요합니다.
 - Upload directory validation은 user-scoped data directory와 동일 사용자 local process를 신뢰합니다. Windows hard-link/delete와 packaged kill-switch는 `v0.4.20`에서 최초 검증하고 `v0.4.21`에서 privacy gate와 함께 반복했으며, 이후 stable release도 같은 package gate를 실행해야 합니다.
+- npm registry publish와 GitHub Windows stable promotion은 독립적으로 실패할 수 있습니다. 같은 source version의 공개 시점 차이는 각 배포면의 post-publish smoke와 handoff에 기록합니다.
 
 ## MVP 이후 방향
 

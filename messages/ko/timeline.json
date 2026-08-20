@@ -28,5 +28,13 @@
   "toolUsageCount": "도구 {count}회 사용",
   "diffShow": "diff 보기",
   "diffHide": "diff 숨기기",
-  "closeAria": "닫기"
+  "closeAria": "닫기",
+  "richCommand": "명령 실행",
+  "richWebSearch": "웹 검색",
+  "richMcpCall": "MCP 호출",
+  "richPatch": "패치 적용",
+  "richNotice": "Codex 알림",
+  "richCompaction": "컨텍스트 압축",
+  "richDetails": "세부 정보",
+  "richTruncated": "일부 생략됨"
 }

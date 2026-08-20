@@ -16,5 +16,16 @@
   "removeFromGroup": "그룹에서 제거",
   "ungrouped": "그룹 없음",
   "defaultGroupName": "새 그룹",
-  "emptyGroup": "(비어 있음)"
+  "emptyGroup": "(비어 있음)",
+  "rateLimits": {
+    "awaitingUpdate": "갱신 대기",
+    "awaitingUpdateDescription": "초기화 후 새 사용량 관찰을 기다리고 있습니다.",
+    "usedReset": "{percentage}% 사용 · {remaining} 후 초기화",
+    "projected": "현재 속도 기준 초기화 시점 예상 {percentage}%",
+    "observedAt": "마지막 관찰 {time}",
+    "now": "지금",
+    "daysHours": "{days}일 {hours}시간",
+    "hoursMinutes": "{hours}시간 {minutes}분",
+    "minutes": "{minutes}분"
+  }
 }

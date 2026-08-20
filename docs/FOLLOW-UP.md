@@ -1,6 +1,6 @@
 # 후속 작업
 
-이 문서는 release 전 확인, 내부 배포 단계, post-MVP backlog를 추적합니다. 2026-07-13
+이 문서는 release 전 확인, 내부 배포 단계, post-MVP backlog를 추적합니다. 2026-08-15
 `v0.4.22`는 Purplemux cookie namespace 격리를 포함해 stable/latest로 승격됐습니다. Fresh
 Windows HOME/profile의 package와 updater gate는 통과했지만 기존 Electron profile에서 login
 전환, 1회 재로그인과 Runtime v2 WebSocket/upload 재연결을 직접 검증하는 근거는 남아 있습니다.
@@ -47,6 +47,13 @@ Windows HOME/profile의 package와 updater gate는 통과했지만 기존 Electr
 - Browser/package/published-updater evidence의 upload 전 privacy scanner와 stable promotion 차단
 - 같은 hostname에서 Purplemux와 동시 실행할 때 browser session cookie가 충돌하지 않도록
   `codexmux-session-token`으로 분리하고 Linux unit/dev/prod/Chromium 공존 회귀 검증 완료
+- Purplemux 선택 기능 수동 도입: JSONL rate-limit과 stale UI, bounded rich timeline,
+  IME/clipboard/pane focus/timeline spacer/Git refresh 회귀 수정, native session hook과
+  server-side agent launch intent
+- 후속 자동화 보강: session별 Git generation consume, rich timeline presentation pure helper,
+  standalone Node hook bridge의 loopback/64KiB/fail-open integration test
+- ADR-025 `Verified`: Codex 0.147.0 strict-config, 1,480 unit tests, type/build/Electron,
+  Runtime v2 status/timeline, browser reconnect와 실제 Linux user service 재시작 통과
 
 ## 릴리스 전 확인
 
@@ -155,6 +162,7 @@ Electron profile의 1회 재로그인과 재연결은 별도 후속 근거가 �
 | Phase 6 closeout | 완료: packaged runtime v2 smoke, 설치 관찰 smoke, rollback drill에 Phase 6 health/perf gate 반영 |
 | [Issue #16: Production upload fresh Windows evidence](https://github.com/HardcoreMonk/codexmux/issues/16) | 완료: `v0.4.20` 기능 검증, `v0.4.21` privacy-safe 재검증과 `v0.4.22` 반복 검증, ADR-027/028 `Verified` |
 | Purplemux/Codexmux same-host cookie isolation | `v0.4.22` release와 fresh-profile updater 검증 완료. 기존 Electron profile에서 Codexmux 재로그인, 필요 시 Purplemux 재로그인, Runtime v2 WebSocket/upload 재연결을 직접 확인해야 하므로 ADR-029는 `Implemented` 유지 |
+| Purplemux 선택 기능 도입 | 완료: ADR-025 `Verified`, `docs/operations/2026-08-14-purplemux-selected-adoption-handoff.md`. Windows package 실기 검증은 이 범위의 완료 조건에서 제외 |
 
 ## 비차단 항목
 

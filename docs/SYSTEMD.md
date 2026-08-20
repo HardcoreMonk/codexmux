@@ -30,7 +30,7 @@ WorkingDirectory=/data/projects/codex-zone/codexmux
 Environment=NODE_ENV=production
 Environment=HOST=localhost,tailscale,192.168.0.0/16
 Environment=PORT=8122
-ExecStart=/home/hardcoremonk/.nvm/versions/node/v24.15.0/bin/node /data/projects/codex-zone/codexmux/bin/codexmux.js
+ExecStart=/usr/bin/node /data/projects/codex-zone/codexmux/bin/codexmux.js
 Restart=on-failure
 RestartSec=3
 KillSignal=SIGINT
@@ -41,7 +41,14 @@ TimeoutStopSec=20
 WantedBy=default.target
 ```
 
-System-wide service가 아니라 user service를 썼던 이유는 `~/.codexmux/`, `~/.codex/sessions/`, 사용자 tmux socket, NVM Node path가 사용자 기준이어야 했기 때문입니다.
+System-wide service가 아니라 user service를 썼던 이유는 `~/.codexmux/`, `~/.codex/sessions/`, 사용자 tmux socket과 Node runtime 환경이 사용자 기준이어야 했기 때문입니다. `ExecStart`의 Node path는 설치 시 `command -v node`로 확인한 현재 절대 경로와 일치시킵니다.
+
+예시 unit은 systemd 기본 `KillMode=control-group`을 사용하므로 service restart/stop 때 같은
+cgroup에서 시작된 legacy tmux server도 종료될 수 있습니다. 저장된 runtime v1 layout이
+그 session을 계속 가리키면 다음 browser reconnect에서 `session not found`가 표시되며 새
+terminal 재시작으로 복구합니다. 임의로 `KillMode=process`로 바꾸면 service stop 뒤 child가
+남는 반대 위험이 있으므로 Linux legacy 운영에서 별도 lifecycle 정책 없이 적용하지
+않습니다.
 
 Fresh config에서 user service가 setup으로 시작하면 저장된 `HOST`보다 먼저
 `127.0.0.1`에만 bind하고, 외부 bind는 setup 완료 후 restart부터 적용합니다. Setup

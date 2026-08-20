@@ -81,7 +81,7 @@ const createWorkers = () => {
   status.replies.set('status.health', { ok: true });
   status.replies.set('status.live-start', { started: true });
   status.replies.set('status.live-stop', { stopped: true });
-  status.replies.set('status.live-request-sync', { tabs: {} });
+  status.replies.set('status.live-request-sync', { tabs: {}, rateLimits: null });
   status.replies.set('status.live-hook-event', { accepted: true });
   status.replies.set('status.live-client-event', { accepted: true });
   status.replies.set('status.live-notify-last-user-message', { accepted: true });
@@ -748,7 +748,7 @@ describe('runtime supervisor', () => {
     expect(subscription.subscriberId).toMatch(/^sub-/);
     expect(subscription).toMatchObject({
       subscribed: true,
-      sync: { tabs: {} },
+      sync: { tabs: {}, rateLimits: null },
     });
     expect(status.commands).toEqual(expect.arrayContaining([
       { type: 'status.live-start', payload: {} },
@@ -795,7 +795,7 @@ describe('runtime supervisor', () => {
     const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
 
     await expect(supervisor.startStatusLive()).resolves.toEqual({ started: true });
-    await expect(supervisor.requestStatusLiveSync()).resolves.toEqual({ tabs: {} });
+    await expect(supervisor.requestStatusLiveSync()).resolves.toEqual({ tabs: {}, rateLimits: null });
     await expect(supervisor.sendStatusLiveHookEvent({
       tmuxSession: 'pt-ws-a-pane-b-tab-c',
       event: 'notification',

@@ -22,6 +22,30 @@ Canonical 문서 경계나 `landing-src/`를 바꾸면 landing build도 실행�
 corepack pnpm build:landing
 ```
 
+## npm 실행 package 게이트
+
+Manifest, published file allowlist, build-only dependency와 Trusted Publishing workflow 계약을
+먼저 검증합니다.
+
+```bash
+corepack pnpm exec vitest run tests/unit/scripts/npm-package-contract.test.ts tests/unit/scripts/npm-package-smoke-lib.test.ts tests/unit/scripts/release-workflow-contract.test.ts
+```
+
+실제 publish 후보는 repository build 뒤 tarball로 pack하고 빈 consumer project에 lifecycle
+script를 허용해 설치합니다. 설치된 bin의 help와 격리 production server의 `/api/health`까지
+통과해야 합니다.
+
+```bash
+corepack pnpm smoke:npm-package
+npm publish --dry-run
+```
+
+최초 public publish는 인증된 maintainer가 수행합니다. 이후 tag publish는
+`.github/workflows/npm-publish.yml`과 npm Trusted Publisher의 exact workflow 연결을 사용하며
+`NPM_TOKEN`을 요구하지 않습니다. Local tarball 통과는 registry publish 증거가 아니므로
+landing 활성화 전 `npm view`, exact registry version의 `npx help`, isolated server health를
+다시 확인합니다.
+
 브라우저 UI나 Playwright spec을 추가/수정한 환경에서 Chromium이 없으면 한 번 설치합니다.
 
 ```bash
@@ -351,15 +375,53 @@ corepack pnpm vitest run tests/unit/lib/providers.test.ts
 Codex launch/resume command 또는 hook override 변경:
 
 ```bash
-corepack pnpm vitest run tests/unit/lib/codex-command.test.ts
-codex -c 'hooks.SessionStart=[{matcher="startup|resume",hooks=[{type="command",command="sh \"$HOME/.codexmux/status-hook.sh\" session-start",timeout=3}]}]' -c 'hooks.UserPromptSubmit=[{hooks=[{type="command",command="sh \"$HOME/.codexmux/status-hook.sh\" prompt-submit",timeout=3}]}]' -c 'hooks.Stop=[{hooks=[{type="command",command="sh \"$HOME/.codexmux/status-hook.sh\" stop",timeout=3}]}]' --strict-config doctor --summary
+corepack pnpm exec vitest run tests/unit/lib/codex-command.test.ts tests/unit/lib/providers/codex-session-hooks.test.ts tests/unit/lib/agent-launch-service.test.ts tests/unit/lib/hook-settings.test.ts tests/unit/lib/status-hook-bridge.test.ts
+corepack pnpm smoke:codex-session-hooks
 ```
 
 검증 기준:
 
 - command builder가 `hooks={path=...}`를 생성하지 않음
-- `SessionStart`, `UserPromptSubmit`, `Stop` hook override가 `status-hook.sh`를 호출
-- Codex strict config parser가 override를 정상 load
+- browser는 launch intent만 만들고 server가 layout/process/version을 검증함
+- `SessionStart`, `UserPromptSubmit`, `Stop`이 POSIX/Windows command로 `status-hook.cjs`를 호출함
+- HMAC capability와 현재 layout의 tab/session ownership이 일치해야 event가 적용됨
+- bridge가 bounded/non-blocking이고 Codex strict config parser가 override를 정상 load함
+- minimum supported `0.144.1` fixture와 current CLI strict-config smoke를 확인함
+
+Rate-limit과 rich timeline 변경:
+
+```bash
+corepack pnpm exec vitest run tests/unit/lib/codex-rate-limits.test.ts tests/unit/lib/codex-jsonl-state.test.ts tests/unit/lib/rate-limit-view.test.ts
+corepack pnpm exec vitest run tests/unit/lib/codex-session-parser.test.ts tests/unit/lib/rich-timeline-presentation.test.ts tests/unit/lib/timeline-preview.test.ts tests/unit/lib/timeline-entry-dedupe.test.ts
+```
+
+검증 기준:
+
+- 기존 256KiB JSONL tail에서 상태와 최신 window별 rate-limit 관찰을 함께 추출함
+- reset 이후 새 관찰이 없으면 0%를 합성하지 않고 stale view를 반환함
+- semantic timeline entry가 deterministic ID와 generic fallback을 유지함
+- semantic entry의 icon/label/summary/meta/status projection이 parser와 분리된 pure helper에서 고정됨
+- secret-like redaction, field 4KiB, entry 16KiB 상한을 넘지 않음
+
+Terminal/UI 회귀와 Git refresh 변경:
+
+```bash
+corepack pnpm exec vitest run tests/unit/lib/terminal-key-event.test.ts tests/unit/lib/clipboard.test.ts tests/unit/lib/timeline-spacer.test.ts tests/unit/hooks/use-git-refresh-generation.test.ts tests/unit/lib/git-refresh-generation.test.ts
+```
+
+검증 기준:
+
+- IME composition은 xterm에 위임하고 clipboard fallback은 임시 DOM을 정리함
+- timeline spacer는 resize/visibility/focus/pageshow 복귀 뒤 안전 범위로 축소됨
+- Stop sequence는 matching session만 invalidate하고 inactive tab은 선택 시 한 번 fetch함
+- Git generation consume은 session별로 추적되어 hook instance가 다른 tab으로 전환돼도 generation을 누락하지 않음
+
+Playwright가 host distribution용 bundled Chromium을 제공하지 않지만 system Chrome이 있는
+환경에서는 다음처럼 browser smoke 실행 파일을 명시할 수 있습니다.
+
+```bash
+CODEXMUX_PLAYWRIGHT_EXECUTABLE_PATH=/usr/bin/google-chrome corepack pnpm smoke:browser-reconnect
+```
 
 Codex web input 제출 변경:
 

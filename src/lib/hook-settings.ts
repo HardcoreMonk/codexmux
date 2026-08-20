@@ -3,110 +3,99 @@ import path from 'path';
 import os from 'os';
 import { createLogger } from '@/lib/logger';
 import { STATUSLINE_SCRIPT_PATH, STATUSLINE_SCRIPT_CONTENT } from '@/lib/statusline-script';
+import { CODEXMUX_STATUS_HOOK_BRIDGE_PATH } from '@/lib/providers/codex/session-hooks';
 
 const log = createLogger('hooks');
 
 const BASE_DIR = path.join(os.homedir(), '.codexmux');
 const HOOKS_FILE = path.join(BASE_DIR, 'hooks.json');
 const PORT_FILE = path.join(BASE_DIR, 'port');
-const HOOK_SCRIPT = path.join(BASE_DIR, 'status-hook.sh');
+const HOOK_BRIDGE = CODEXMUX_STATUS_HOOK_BRIDGE_PATH;
 
 export const HOOK_SETTINGS_PATH = HOOKS_FILE;
 
-const HOOK_SCRIPT_CONTENT = `#!/bin/sh
-RAW_EVENT="\${1:-poll}"
-EVENT="$RAW_EVENT"
-PORT_FILE="$HOME/.codexmux/port"
-TOKEN_FILE="$HOME/.codexmux/cli-token"
-[ -f "$PORT_FILE" ] || exit 0
-[ -f "$TOKEN_FILE" ] || exit 0
-PORT=$(cat "$PORT_FILE")
-TOKEN=$(cat "$TOKEN_FILE")
-SESSION=$(tmux display-message -p '#{session_name}' 2>/dev/null) || SESSION=""
+const HOOK_BRIDGE_CONTENT = `'use strict';
+const fs = require('fs');
+const http = require('http');
+const os = require('os');
+const path = require('path');
 
-NOTIFICATION_TYPE=""
-case "$RAW_EVENT" in
-  SessionStart|session-start)
-    EVENT="session-start"
-    ;;
-  UserPromptSubmit|prompt-submit)
-    EVENT="prompt-submit"
-    ;;
-  PermissionRequest|permission-request)
-    EVENT="notification"
-    NOTIFICATION_TYPE="permission_prompt"
-    ;;
-  Notification|notification)
-    EVENT="notification"
-    ;;
-  Stop|stop)
-    EVENT="stop"
-    ;;
-  StopFailure|stop-failure)
-    EVENT="stop-failure"
-    ;;
-  PreCompact|pre-compact)
-    EVENT="pre-compact"
-    ;;
-  PostCompact|post-compact)
-    EVENT="post-compact"
-    ;;
-esac
+const MAX_STDIN_BYTES = 64 * 1024;
+const baseDir = path.join(os.homedir(), '.codexmux');
+const event = typeof process.argv[2] === 'string' ? process.argv[2] : 'poll';
+const session = typeof process.argv[3] === 'string' ? process.argv[3] : '';
+const capability = typeof process.argv[4] === 'string' ? process.argv[4] : '';
+let received = 0;
+let chunks = [];
 
-if [ "$EVENT" = "notification" ] && [ -z "$NOTIFICATION_TYPE" ]; then
-  NOTIFICATION_TYPE=$(sed -n 's/.*"notification_type"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p')
-fi
+process.stdin.on('data', (chunk) => {
+  if (received >= MAX_STDIN_BYTES) return;
+  const buffer = Buffer.from(chunk);
+  const remaining = MAX_STDIN_BYTES - received;
+  chunks.push(buffer.subarray(0, remaining));
+  received += Math.min(buffer.byteLength, remaining);
+});
 
-PAYLOAD="{\\"event\\":\\"\${EVENT}\\",\\"session\\":\\"\${SESSION}\\""
-if [ -n "$NOTIFICATION_TYPE" ]; then
-  PAYLOAD="\${PAYLOAD},\\"notificationType\\":\\"\${NOTIFICATION_TYPE}\\""
-fi
-PAYLOAD="\${PAYLOAD}}"
+process.stdin.on('end', () => {
+  try {
+    const port = Number.parseInt(fs.readFileSync(path.join(baseDir, 'port'), 'utf8').trim(), 10);
+    const token = fs.readFileSync(path.join(baseDir, 'cli-token'), 'utf8').trim();
+    if (!Number.isInteger(port) || port < 1 || port > 65535 || !token) process.exit(0);
+    const body = JSON.stringify({ event, session, capability });
+    const request = http.request({
+      host: '127.0.0.1',
+      port,
+      path: '/api/status/hook',
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'content-length': Buffer.byteLength(body),
+        'x-cmux-token': token,
+      },
+    }, (response) => {
+      response.resume();
+      response.on('end', () => process.exit(0));
+    });
+    request.setTimeout(1000, () => request.destroy());
+    request.on('error', () => process.exit(0));
+    request.end(body);
+  } catch {
+    process.exit(0);
+  }
+});
 
-curl -s -X POST -o /dev/null -H 'Content-Type: application/json' -H "x-cmux-token: \${TOKEN}" -d "$PAYLOAD" "http://localhost:\${PORT}/api/status/hook" 2>/dev/null
-exit 0
+process.stdin.resume();
+setTimeout(() => process.exit(0), 1500).unref();
 `;
 
-const hookEntry = (event: string, timeout = 3) => [
-  {
-    matcher: '',
-    hooks: [
-      {
-        type: 'command',
-        command: `sh "${HOOK_SCRIPT}" ${event}`,
-        timeout,
-      },
-    ],
-  },
-];
+export const getStatusHookBridgeSource = (): string => HOOK_BRIDGE_CONTENT;
 
 export const buildHookSettings = () => ({
-  hooks: {
-    SessionStart: hookEntry('session-start'),
-    UserPromptSubmit: hookEntry('prompt-submit'),
-    Stop: hookEntry('stop'),
-  },
+  hooks: {},
   statusLine: {
     type: 'command' as const,
     command: `sh "${STATUSLINE_SCRIPT_PATH}"`,
   },
 });
 
+const writeIfChanged = async (filePath: string, content: string, mode: number): Promise<void> => {
+  try {
+    if (await fs.readFile(filePath, 'utf-8') === content) return;
+  } catch {
+    // Create the file below.
+  }
+  const temporaryPath = `${filePath}.${process.pid}.tmp`;
+  await fs.writeFile(temporaryPath, content, { mode });
+  await fs.rename(temporaryPath, filePath);
+  await fs.chmod(filePath, mode);
+};
+
 export const ensureHookSettings = async (port: number): Promise<void> => {
   await fs.mkdir(BASE_DIR, { recursive: true });
 
-  // Write port file
   await fs.writeFile(PORT_FILE, String(port), { mode: 0o600 });
 
-  // Create hook script
-  try {
-    const existing = await fs.readFile(HOOK_SCRIPT, 'utf-8');
-    if (existing !== HOOK_SCRIPT_CONTENT) {
-      await fs.writeFile(HOOK_SCRIPT, HOOK_SCRIPT_CONTENT, { mode: 0o755 });
-    }
-  } catch {
-    await fs.writeFile(HOOK_SCRIPT, HOOK_SCRIPT_CONTENT, { mode: 0o755 });
-  }
+  await writeIfChanged(HOOK_BRIDGE, getStatusHookBridgeSource(), 0o700);
 
   // Create statusline script
   try {

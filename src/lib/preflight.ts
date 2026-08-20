@@ -57,6 +57,7 @@ export const getShellPath = async (): Promise<string> => {
   return shellPathPromise;
 };
 const MIN_TMUX_VERSION = 2.9;
+export const MIN_CODEX_VERSION = '0.144.1';
 
 interface IToolStatus {
   installed: boolean;
@@ -113,6 +114,27 @@ const execTool = async (
 
 export const parseToolSemanticVersion = (stdout: string): string | null =>
   stdout.trim().match(/(\d+(?:\.\d+)+)/)?.[1] ?? null;
+
+export const isSemanticVersionAtLeast = (version: string | null, minimum: string): boolean => {
+  if (!version) return false;
+  const left = version.split('.').map((part) => Number.parseInt(part, 10));
+  const right = minimum.split('.').map((part) => Number.parseInt(part, 10));
+  for (let index = 0; index < Math.max(left.length, right.length); index++) {
+    const leftPart = left[index] ?? 0;
+    const rightPart = right[index] ?? 0;
+    if (leftPart !== rightPart) return leftPart > rightPart;
+  }
+  return true;
+};
+
+const withCodexCompatibility = <T extends IToolStatus>(status: T): T & {
+  compatible: boolean;
+  minimumVersion: string;
+} => ({
+  ...status,
+  compatible: status.installed && isSemanticVersionAtLeast(status.version, MIN_CODEX_VERSION),
+  minimumVersion: MIN_CODEX_VERSION,
+});
 
 const CODEX_KNOWN_DIRS = [path.join(os.homedir(), '.local', 'bin')];
 
@@ -175,7 +197,9 @@ export const getPreflightStatus = async (): Promise<IPreflightResult> => {
 
   const tmuxStatus = { ...tmux, compatible: isTmuxCompatible(tmux) };
   const terminalRuntime = createTerminalRuntimePreflightStatus({ platform, tmux: tmuxStatus });
-  const coreReady = terminalRuntime.installed && terminalRuntime.compatible && git.installed && codex.installed;
+  const compatibleCodex = withCodexCompatibility(codex);
+  const coreReady = terminalRuntime.installed && terminalRuntime.compatible
+    && git.installed && compatibleCodex.installed && compatibleCodex.compatible;
 
   const codexBinaryPath = codex.installed ? null : await findCodexBinary();
   let codexLoggedIn = false;
@@ -188,7 +212,7 @@ export const getPreflightStatus = async (): Promise<IPreflightResult> => {
     }
   }
 
-  const codexStatus = { ...codex, binaryPath: codexBinaryPath, loggedIn: codexLoggedIn };
+  const codexStatus = { ...compatibleCodex, binaryPath: codexBinaryPath, loggedIn: codexLoggedIn };
   const result: IPreflightResult = {
     platform,
     tmux: tmuxStatus,
@@ -256,7 +280,7 @@ export const getRuntimePreflightStatus = async (): Promise<IRuntimePreflightResu
     tmux: tmuxStatus,
     terminalRuntime: createTerminalRuntimePreflightStatus({ platform, tmux: tmuxStatus }),
     git,
-    agent: codex,
+    agent: withCodexCompatibility(codex),
   };
 };
 

@@ -23,7 +23,7 @@ Windows 설치형 제품 마감은 별도 제품 line인
 
 | 항목 | 현재 기준 |
 | --- | --- |
-| 패키지 버전 | `0.4.22` |
+| 패키지 버전 | `0.4.23` |
 | 제품 전환 목표 | Windows 전용 설치형 서비스 |
 | UI 언어 | 기본 한국어, 지원 한국어·영어 |
 | 기본 포트 | `8122`; 점유 시 사용 가능한 포트로 fallback하고 `~/.codexmux/port`에 기록 |
@@ -133,6 +133,17 @@ gate를 통과했습니다. 현재 근거는
 gate를 실행합니다. 통과한 자산은 먼저 prerelease로 게시하며, 같은 tag를 대상으로 실제
 published updater apply가 통과한 뒤에만 stable/latest로 승격합니다. macOS package와 npm
 publish는 Windows stable release의 선행 조건이 아닙니다.
+
+Legacy tmux 기반 npm 실행 package는 Windows installer와 별도 배포면입니다. Publish 후보는
+다음 명령으로 실제 tarball install과 production health를 검증합니다.
+
+```bash
+corepack pnpm smoke:npm-package
+```
+
+최초 npm publish와 registry smoke가 통과하기 전에는 landing의 `npx` 명령을 공개 설치
+계약으로 간주하지 않습니다. 후속 tag publish는 GitHub Actions Trusted Publishing을
+사용하며 Windows stable workflow와 독립적으로 실행됩니다.
 
 ## 아키텍처
 

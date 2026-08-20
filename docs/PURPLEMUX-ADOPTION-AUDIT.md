@@ -1,7 +1,7 @@
 # Purplemux 반영 가능성 감사
 
 > 최초 감사 기준일: 2026-07-11
-> 현행화: 2026-07-13
+> 현행화: 2026-08-15
 > Purplemux 기준: `main@52140216` (`v0.4.5`)
 > Codexmux 감사 baseline: `main@cafc8de9` (`v0.4.16`)
 > Codexmux 현재 release: `v0.4.22@4af02209`
@@ -32,6 +32,22 @@ Windows release gate를 중심으로 발전했습니다.
 
 반대로 provider 전체, macOS LaunchAgent, tmux runtime 전체, 11개 locale, JSON 저장소,
 Electron prompt HTML은 가져오지 않습니다.
+
+## 2026-08-14 선택 도입 상태
+
+승인된 1~4 범위는 upstream merge 없이 codexmux architecture에 맞춰 수동 구현했습니다.
+
+| 범위 | 상태 | codexmux 적용 |
+| --- | --- | --- |
+| Rate limit | 구현 | 기존 JSONL tail에서 window별 관찰을 추출하고 reset 뒤 `갱신 대기` 표시 |
+| Rich timeline | 구현 | exec/web/MCP/patch/error/compaction semantic row, redaction과 4KiB/16KiB 상한 |
+| Terminal/UI 회귀 | 구현 | IME, clipboard fallback, pane focus, timeline spacer, Stop 기반 Git refresh |
+| Hook/launch | 구현 | server launch intent, native hook coexistence, HMAC capability, standalone Node bridge |
+
+Local image serving, full output/download, Claude provider, 비선택 Purplemux 회귀는 범위에서
+제외했습니다. Full unit/type/build/Electron gate, strict-config, Runtime v2와 browser smoke,
+실제 Linux service 재시작 증거는 구현 handoff에 기록했고 ADR-025를 `Verified`로
+승격했습니다. Windows package 실기 검증은 이 선택 도입 범위의 완료 조건에서 제외했습니다.
 
 분석 중 Purplemux와 Codexmux에 공통으로 남은 Critical/High 결함도 확인했습니다.
 Codexmux에서는 첫 실행 install WebSocket, production dependency, upload 무결성 P0를
@@ -139,8 +155,9 @@ loopback bind, strict Host/Origin, typed install admission/lease를 사용합니
 ### P0. production dependency advisory
 
 상태: **Codexmux 조치 완료.** 아래 표는 발견 시점 baseline입니다. 현재 Codexmux는 Next
-`16.2.6`, next-intl `4.9.2`, ws `8.21.0`, js-yaml `4.2.0`, PostCSS `8.5.10`, Babel
-`7.29.6`을 사용하며 `corepack pnpm audit --prod` 결과는 0건입니다.
+`16.3.1`, next-intl `4.9.2`, ws `8.21.0`, js-yaml `4.2.0`, PostCSS `8.5.23`, nanoid
+`5.1.16`, sharp `0.35.3`, Babel `7.29.6`을 사용하며 `corepack pnpm audit --prod` 결과는
+0건입니다.
 
 2026-07-11의 `corepack pnpm audit --prod` 결과입니다.
 
@@ -428,10 +445,10 @@ skip됐습니다.
    - resume ownership와 legacy backpressure
 3. **작은 회귀 수정 묶음**
    - pane focus, whitespace, spacer, IME, clipboard, sidebar status
-4. **Codex data parity project**
-   - rate limit producer
-   - rich timeline event와 local image serving
-   - hook merge와 cross-platform transport
+4. **Codex data parity project (선택 범위 검증 완료)**
+   - rate limit producer와 stale window UI
+   - bounded rich timeline event. Local image serving은 제외
+   - native hook coexistence와 cross-platform Node bridge
 5. **제품 선택 항목**
    - line height, touch key bar, device model, Git inspector, remote URL history
 
@@ -446,5 +463,6 @@ Purplemux는 Codexmux가 다시 기반으로 삼을 upstream이 아니라, 같�
 검증된 UI/runtime 회귀 수정입니다. Codexmux의 공통 P0 보안 부채는 outer upload와 strict
 bootstrap 경계로 제거했고, `v0.4.20`에서 packaged upload와 published updater 기능을 최초
 검증한 뒤 `v0.4.21`에서 privacy-safe evidence를 확인했고 `v0.4.22`에서 product-specific
-cookie와 같은 release path를 반복했습니다. 다음 우선순위는 rate limit과
-rich timeline을 Runtime v2와 approval contract 안에 수동 통합하는 것입니다.
+cookie와 같은 release path를 반복했습니다. Rate limit, bounded rich timeline, 관련 회귀,
+native session hook/server launch intent는 Runtime v2와 approval contract 안에 수동 통합했고,
+자동 검증과 실제 Linux service 재시작까지 완료했습니다.

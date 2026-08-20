@@ -35,6 +35,7 @@ handoff는 `docs/operations/`에 보존하며, 당시 증거를 소급해 재작
 | `operations/2026-07-12-v0.4.21-windows-release-handoff.md` | 이전 privacy-safe Windows release 증거 |
 | `operations/2026-07-13-v0.4.22-windows-release-handoff.md` | 현재 stable release, cookie namespace와 Windows update 증거 |
 | `operations/2026-07-12-purplemux-cookie-isolation-handoff.md` | 동일 hostname의 Purplemux/Codexmux cookie 충돌 원인, source 수정과 release 경계 |
+| `operations/2026-08-14-purplemux-selected-adoption-handoff.md` | Purplemux 선택 기능 수동 도입, 자동 검증과 Linux service 재시작 근거 |
 
 `v0.4.22`는 같은 hostname의 Purplemux와 동시 실행하기 위한 cookie namespace 수정을
 포함하고 fresh Windows package/published updater와 privacy gate를 통과해 stable/latest로
@@ -45,6 +46,11 @@ updater 인수 조건은 `v0.4.20`에서 기능 검증하고 `v0.4.21`에서 pri
 재검증했습니다.
 [GitHub issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)은 해당 완료 조건과
 workflow/asset 증거를 보존하는 추적 기록입니다.
+
+2026-08-14에는 Purplemux 비교 감사에서 선택한 rate-limit, bounded rich timeline,
+terminal/UI 회귀 수정, native session hook/server launch intent를 수동 도입했습니다.
+ADR-025는 자동 검증과 실제 Linux service 재시작을 근거로 `Verified`이며, Windows package
+실기 검증은 2026-08-15 사용자 결정에 따라 이 선택 도입의 완료 조건이 아닙니다.
 
 Root `CONTEXT.md`는 도메인 언어와 기준 소스 경계를, root `DESIGN.md`는
 UI 시각 계약을 담당합니다.
