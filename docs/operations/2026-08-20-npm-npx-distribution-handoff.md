@@ -2,7 +2,9 @@
 
 **작성일:** 2026-08-20
 
-**상태:** Implement/code-review 완료, release blocked, operate 미진입
+**갱신일:** 2026-08-21
+
+**상태:** Release 완료, registry smoke 통과, operate 진입 준비
 
 **Spec:** `docs/superpowers/specs/2026-08-20-npm-npx-distribution-design.md`
 
@@ -49,40 +51,46 @@ Pages Router dependency bundling, manual signal handling 문서를 다시 확인
 | `corepack pnpm smoke:npm-package` | pack/install/CLI/production health passed |
 | `corepack pnpm build:electron` | passed |
 | `npm publish --dry-run --ignore-scripts --json` | passed |
+| `npm publish --access public --ignore-scripts` | `codexmux@0.4.23` published |
+| `npm view codexmux@0.4.23` | version, `gitHead`, integrity matched |
+| registry `npm exec ... codexmux help` | passed |
+| registry isolated production health | `200`, version/commit matched |
 
 최종 dry-run은 985개 entry, tarball 9,826,555 bytes, unpacked 25,850,556 bytes다.
 `bin/codexmux.js`, `dist/server.js`, `.next/standalone/server.js`, postinstall 두 파일이 있고
 `dist-electron/main.js`는 없다.
 
-## Release blocker
+## 최초 publish 결과
 
-1. 현재 shell은 `npm whoami`가 `ENEEDAUTH`이며 maintainer login/2FA가 필요하다.
-2. Registry의 `codexmux`는 `E404`로 아직 존재하지 않는다.
-3. Working tree는 `v0.4.22` 이후 commit 위에 미커밋 변경이 있고 package version도
-   `0.4.22`다. 기존 Git tag와 다른 source를 같은 version으로 publish하지 않는다.
-4. 최초 package가 존재해야 `npm trust github` 또는 npmjs.com에서 Trusted Publisher를
-   등록할 수 있다.
-5. Workflow를 default branch에 commit/push하지 않았고 npm settings도 변경하지 않았다.
+- Maintainer `smtlkbs`가 npm WebAuthn 보안 키를 등록하고 CLI publish를 승인했다.
+- `codexmux@0.4.23`은 2026-08-20T16:15:39.226Z에 public `latest`로 게시됐다.
+- Registry `gitHead`는 release commit
+  `ef27e2971f04d828cf0f1281581ae7e7eb1d1072`와 일치한다.
+- Published tarball은 985개 파일, unpacked 25,850,572 bytes이며 SHA-1은
+  `e77f1d36c4a65eba057c15328129054bf05cefc2`다.
+- 저장소 밖 임시 directory에서 registry package로 `codexmux help`를 실행했고, 별도 HOME과
+  loopback port로 기동한 production server의 `/api/health`가 `200`과
+  `version=0.4.23`, `commit=ef27e297`을 반환했다.
+- 최초 publish와 exact registry smoke가 통과했으므로 ADR-030을 `Verified`로 전이한다.
 
-따라서 initial publish, registry smoke, landing 활성화는 수행하지 않았다. ADR-030은
-`Implemented`로 유지하며 registry exact-version smoke가 통과한 뒤 `Verified`로 전이한다.
+최종 publish는 clean commit package smoke와 두 번의 `prepublishOnly` production build가
+같은 version/commit으로 통과한 뒤, WebAuthn 재시도에서 publisher lifecycle 재실행만
+`--ignore-scripts`로 생략했다. Consumer install의 `postinstall` 계약은 local tarball smoke와
+registry install에서 모두 실행됐다.
 
-## 권장 release 순서
+## 남은 operate 진입 작업
 
-1. Maintainer가 현재 shell에서 `npm adduser`와 2FA를 완료한다.
-2. 현재 전체 작업의 release version을 다음 patch인 `0.4.23`으로 정하고 clean commit을 만든다.
-3. Clean commit에서 package smoke를 다시 실행하고 `npm publish --access public`으로 최초
-   publish한다.
-4. `npm trust github codexmux --repo HardcoreMonk/codexmux --file npm-publish.yml --allow-publish`
-   또는 npmjs.com의 package settings에서 exact workflow를 등록한다.
-5. 동일 commit에 `v0.4.23` tag를 만들면 npm workflow는 matching `gitHead`를 확인하고
-   idempotent하게 publish를 생략한다. 이후 version부터 OIDC publish를 수행한다.
-6. `npm view`, registry `npx help`, isolated production health 뒤 landing을
-   `npx --yes codexmux@latest`로 갱신하고 build한다.
+1. `npm trust github codexmux --repo HardcoreMonk/codexmux --file npm-publish.yml --allow-publish`
+   또는 npmjs.com package settings에서 exact workflow를 Trusted Publisher로 등록한다.
+2. Release commit `ef27e297`에 `v0.4.23` tag를 만들고 default branch와 tag를 push한다.
+   Workflow는 matching registry `gitHead`를 확인하고 publish를 생략해야 한다.
+3. Landing의 npm 설치 명령을 `npx --yes codexmux@latest`로 활성화하고, legacy tmux web
+   server 경로와 Windows installer를 구분한 뒤 landing build를 검증한다.
 
 ## Rollback
 
-- Public publish 전에는 manifest/workflow/landing 변경을 독립적으로 되돌릴 수 있다.
-- Published version은 overwrite하지 않는다. 문제가 있으면 deprecate하고 patch version으로
+- Published `0.4.23`은 overwrite하지 않는다. 문제가 있으면 deprecate하고 patch version으로
   수정한다.
+- Trusted Publisher와 landing은 아직 활성화하지 않았으므로 독립적으로 검토하거나 되돌릴 수
+  있다.
 - npm workflow 장애는 Windows release asset이나 updater channel을 변경하지 않는다.

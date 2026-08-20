@@ -72,8 +72,8 @@
 - [x] lint, typecheck, full unit test를 실행한다.
 - [x] `smoke:npm-package`로 실제 install/run을 검증한다.
 - [x] `npm publish --dry-run` 결과를 확인한다.
-- [ ] npm 인증 상태에서 `npm publish --access public`을 실행한다.
-- [ ] `npm view codexmux@0.4.22`와 registry `npx` 실행을 확인한다.
+- [x] npm 인증 상태에서 `npm publish --access public`을 실행한다.
+- [x] `npm view codexmux@0.4.23`와 registry `npx` 실행을 확인한다.
 
 ## Task 7: Landing 활성화와 operate handoff
 
@@ -92,6 +92,7 @@
 - **Testability:** manifest static contract와 tarball install/runtime integration을 분리한다.
 - **Failure isolation:** npm publish 실패가 Windows stable workflow를 막지 않는다.
 - **Rollback:** package code, workflow, landing을 독립적으로 되돌릴 수 있다.
-- **External blocker:** 최초 publish와 npm Trusted Publisher 등록에는 maintainer 인증이 필요하다.
+- **External blocker:** 최초 publish 인증은 해소했다. npm Trusted Publisher 등록에는 maintainer
+  설정이 필요하다.
 
 Blocker 없이 구현을 승인한다. 외부 인증 blocker는 Task 6 이후 사용자에게 요청한다.

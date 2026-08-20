@@ -244,7 +244,7 @@
 
 ## ADR-030: Windows installer와 npm 실행 package를 독립 배포면으로 운영한다
 
-- 상태: Implemented
+- 상태: Verified
 - 결정: Windows Electron installer는 primary distribution으로 유지하고, npm의 unscoped `codexmux` package는 legacy tmux 기반 custom Node web server의 secondary execution surface로 공개합니다. npm package는 `codexmux`/`cmux` bin만 지원하며 library `main`, Electron/Capacitor shell, NSIS/service install, updater를 제공하지 않습니다.
 - 이유: `npx`는 package를 npm cache에 설치해 bin을 실행하는 도구이므로 Windows 설치 프로그램과 같은 lifecycle을 제공할 수 없습니다. 두 surface를 한 release gate로 묶으면 npm registry나 OIDC 장애가 검증된 Windows stable promotion을 막거나, 반대로 Windows package 실패 전에 npm version이 공개되는 ownership 혼선을 만듭니다.
 - trade-off: 같은 source version이 GitHub Windows release와 npm registry에서 서로 다른 시점에 공개될 수 있습니다. npm 사용자는 Node `>=20.9.0`과 legacy tmux runtime을 직접 준비해야 하며 desktop updater/제거 기능을 받지 않습니다. Landing은 registry package의 install, bin, health smoke가 통과한 뒤에만 npm 명령을 활성화합니다.
@@ -252,3 +252,4 @@
 - 승인 근거: `docs/superpowers/specs/2026-08-20-npm-npx-distribution-design.md`, `docs/superpowers/grill-me/2026-08-20-npm-npx-distribution.md`, `docs/superpowers/plans/2026-08-20-npm-npx-distribution.md`에서 사용자 1~7 전체 승인, package/runtime ownership, 공급망, landing activation 조건을 검토했습니다.
 - 구현 근거: CLI-only manifest, postinstall allowlist, build-only dependency 분리, local tarball install/run smoke와 `.github/workflows/npm-publish.yml`의 OIDC/idempotency contract를 구현했습니다. Next `16.3.1`, sharp `0.35.3`, PostCSS `8.5.23`, nanoid `5.1.16`으로 public package dependency audit를 0건으로 복구했습니다.
 - 검증 조건: local tarball의 lifecycle-enabled install, CLI help, isolated production health가 통과하고, 최초 public publish 뒤 exact registry version을 같은 방식으로 실행해야 `Verified`로 전이합니다.
+- 검증 근거: `codexmux@0.4.23`을 release commit `ef27e2971f04d828cf0f1281581ae7e7eb1d1072`에서 최초 public publish했습니다. Registry `gitHead`와 integrity를 확인하고, 저장소 밖 격리 환경에서 registry package의 CLI help와 production `/api/health` `200`, `version=0.4.23`, `commit=ef27e297`을 검증했습니다. 상세 결과는 `docs/operations/2026-08-20-npm-npx-distribution-handoff.md`에 기록합니다.
