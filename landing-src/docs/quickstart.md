@@ -62,7 +62,7 @@ Codex tab은 Runtime v2 terminal worker와 Windows adapter를 사용합니다. B
 다음 명령은 macOS/Linux tmux server line을 재현하는 legacy 경로입니다. Windows primary 경로가 아닙니다.
 
 ```bash
-npx codexmux
+npx --yes codexmux@latest
 ```
 
 이 경로에는 Node.js와 tmux 3.0 이상이 필요합니다. Capacitor Android 앱과 PWA/mobile remote 문서도 Windows desktop 제품의 primary 설치 경로가 아니라 기존 server에 접속하는 reference surface로 유지합니다.

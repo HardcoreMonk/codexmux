@@ -81,14 +81,11 @@ isRoot: true
           <div class="install-block">
             <div class="install-cmd">
               <span class="prompt">$</span>
-              <span>npx codexmux</span>
-              <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="Copy" onclick="(function(b){navigator.clipboard.writeText('npx codexmux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
+              <span>npx --yes codexmux@latest</span>
+              <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="Copy" onclick="(function(b){navigator.clipboard.writeText('npx --yes codexmux@latest');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
             </div>
-            <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-mac>
-              <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
-                <path d="M17.05 20.28c-.98.95-2.05.88-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-              </svg>
-              Download for macOS
+            <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-windows>
+              Download Windows installer
             </a>
           </div>
 
@@ -99,9 +96,9 @@ isRoot: true
           </div>
 
           <div class="hero-meta">
-            <span><span class="ok">●</span> Node.js 20+</span>
-            <span><span class="ok">●</span> tmux required</span>
-            <span><span class="ok">●</span> macOS / Linux</span>
+            <span><span class="ok">●</span> Windows installer (primary)</span>
+            <span><span class="ok">●</span> npm: macOS / Linux</span>
+            <span><span class="ok">●</span> npm requires tmux</span>
           </div>
         </div>
 
@@ -839,16 +836,16 @@ isRoot: true
       <div class="eyebrow">Install</div>
       <h2>30 seconds, start to finish.</h2>
       <p class="lead">
-        All you need is Node.js 20+ and tmux. One line to install, then open your browser.
+        Use the Windows installer for the primary desktop product. The npm command runs the legacy tmux web server on macOS and Linux.
       </p>
 
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-body">
-            <h3>Run</h3>
-            <p>Start right away with npx. A global install also works.</p>
-<pre class="code"><span class="c">$</span> npx codexmux</pre>
+            <h3>Run the legacy web server</h3>
+            <p>On macOS or Linux with Node.js 20+ and tmux, run the published package directly.</p>
+<pre class="code"><span class="c">$</span> npx --yes codexmux@latest</pre>
           </div>
         </div>
 
@@ -873,10 +870,10 @@ isRoot: true
         <div class="step">
           <div class="step-num">4</div>
           <div class="step-body">
-            <h3>Native app (optional)</h3>
-            <p>On macOS you can also use the Electron build. Apple Silicon and Intel both supported.</p>
+            <h3>Windows installer (primary)</h3>
+            <p>Use the Electron installer on Windows. The npm command does not install the Windows desktop app.</p>
             <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" style="margin-top:0.5rem" data-ph-capture-attribute-cta="download">
-              Download the latest release →
+              Download the Windows installer →
             </a>
           </div>
         </div>
@@ -916,8 +913,7 @@ isRoot: true
 
         <details>
           <summary>Does it work on Windows?</summary>
-          <p>Not officially. Due to tmux and node-pty platform constraints, only macOS and Linux are supported.
-            It may work under WSL2, but that's outside our test coverage.</p>
+          <p>Yes. Use the Windows Electron installer for the primary product. The npm command is the legacy tmux web server for macOS and Linux, not the Windows installer.</p>
         </details>
 
         <details>
@@ -956,19 +952,16 @@ isRoot: true
         <div class="cta-body">
           <div class="eyebrow">Get started</div>
           <h2>One line is all it takes.</h2>
-          <p class="lead">With Node.js 20+ and tmux ready, you can be running in 30 seconds.</p>
+          <p class="lead">Download the Windows installer, or run the legacy tmux web server on macOS/Linux with npm.</p>
         </div>
         <div class="install-block cta-install">
           <div class="install-cmd">
             <span class="prompt">$</span>
-            <span>npx codexmux</span>
-            <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="Copy" onclick="(function(b){navigator.clipboard.writeText('npx codexmux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
+            <span>npx --yes codexmux@latest</span>
+            <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="Copy" onclick="(function(b){navigator.clipboard.writeText('npx --yes codexmux@latest');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
           </div>
-          <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-mac>
-            <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
-              <path d="M17.05 20.28c-.98.95-2.05.88-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-            </svg>
-            Download for macOS
+          <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-windows>
+            Download Windows installer
           </a>
         </div>
       </div>
@@ -1009,24 +1002,3 @@ isRoot: true
     </section>
 
   </main>
-
-  <div class="arch-modal" id="archModal" hidden>
-    <div class="arch-modal-backdrop" data-arch-close></div>
-    <div class="arch-modal-card" role="dialog" aria-modal="true" aria-labelledby="archModalTitle">
-      <button type="button" class="arch-modal-close" data-arch-close aria-label="Close">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M6 18L18 6"/></svg>
-      </button>
-      <h3 id="archModalTitle">Choose your Mac</h3>
-      <p class="arch-modal-sub">Pick the build that matches your chip.</p>
-      <div class="arch-modal-options">
-        <button type="button" class="arch-option" data-arch="arm64" data-ph-capture-attribute-cta="download_arm64">
-          <span class="arch-option-title">Apple Silicon</span>
-          <span class="arch-option-hint">arm64</span>
-        </button>
-        <button type="button" class="arch-option" data-arch="x64" data-ph-capture-attribute-cta="download_x64">
-          <span class="arch-option-title">Intel</span>
-          <span class="arch-option-hint">x86_64</span>
-        </button>
-      </div>
-    </div>
-  </div>

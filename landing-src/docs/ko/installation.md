@@ -119,7 +119,7 @@ Remove-Item -Recurse -Force (Join-Path $HOME ".codexmux")
 `npx`, global npm/pnpm, macOS package, Linux systemd, tmux server는 기존 macOS/Linux line을 재현하는 reference입니다. Windows Runtime v2 primary 설치 방법이 아닙니다.
 
 ```bash
-npx codexmux
+npx --yes codexmux@latest
 # 또는
 pnpm add -g codexmux
 codexmux

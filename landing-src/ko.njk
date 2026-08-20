@@ -81,14 +81,11 @@ isRoot: false
           <div class="install-block">
             <div class="install-cmd">
               <span class="prompt">$</span>
-              <span>npx codexmux</span>
-              <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="복사" onclick="(function(b){navigator.clipboard.writeText('npx codexmux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
+              <span>npx --yes codexmux@latest</span>
+              <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="복사" onclick="(function(b){navigator.clipboard.writeText('npx --yes codexmux@latest');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
             </div>
-            <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-mac>
-              <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
-                <path d="M17.05 20.28c-.98.95-2.05.88-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-              </svg>
-              macOS 앱 다운로드
+            <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-windows>
+              Windows 설치 프로그램 다운로드
             </a>
           </div>
 
@@ -99,9 +96,9 @@ isRoot: false
           </div>
 
           <div class="hero-meta">
-            <span><span class="ok">●</span> Node.js 20+</span>
-            <span><span class="ok">●</span> tmux 필요</span>
-            <span><span class="ok">●</span> macOS / Linux</span>
+            <span><span class="ok">●</span> Windows 설치 프로그램 (주 경로)</span>
+            <span><span class="ok">●</span> npm: macOS / Linux</span>
+            <span><span class="ok">●</span> npm은 tmux 필요</span>
           </div>
         </div>
 
@@ -839,16 +836,16 @@ isRoot: false
       <div class="eyebrow">설치</div>
       <h2>30초면 끝납니다.</h2>
       <p class="lead">
-        Node.js 20+와 tmux만 있으면 됩니다. 한 줄로 설치하고, 브라우저를 여세요.
+        주 제품은 Windows 설치 프로그램을 사용합니다. npm 명령은 macOS/Linux용 레거시 tmux 웹 서버를 실행합니다.
       </p>
 
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-body">
-            <h3>실행</h3>
-            <p>npx로 바로 시작할 수 있습니다. 전역 설치도 가능합니다.</p>
-<pre class="code"><span class="c">$</span> npx codexmux</pre>
+            <h3>레거시 웹 서버 실행</h3>
+            <p>Node.js 20+와 tmux가 있는 macOS/Linux에서 공개 패키지를 바로 실행합니다.</p>
+<pre class="code"><span class="c">$</span> npx --yes codexmux@latest</pre>
           </div>
         </div>
 
@@ -873,10 +870,10 @@ isRoot: false
         <div class="step">
           <div class="step-num">4</div>
           <div class="step-body">
-            <h3>네이티브 앱 (선택)</h3>
-            <p>macOS라면 Electron 빌드를 사용할 수 있습니다. Apple Silicon / Intel 모두 지원합니다.</p>
+            <h3>Windows 설치 프로그램 (주 경로)</h3>
+            <p>Windows에서는 Electron 설치 프로그램을 사용하세요. npm 명령은 Windows 데스크톱 앱을 설치하지 않습니다.</p>
             <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" style="margin-top:0.5rem" data-ph-capture-attribute-cta="download">
-              최신 릴리스 다운로드 →
+              Windows 설치 프로그램 다운로드 →
             </a>
           </div>
         </div>
@@ -916,8 +913,7 @@ isRoot: false
 
         <details>
           <summary>Windows에서도 쓸 수 있나요?</summary>
-          <p>공식적으로는 지원하지 않습니다. tmux와 node-pty의 플랫폼 제약 때문에 macOS와 Linux만 지원합니다.
-            WSL2 환경이라면 동작할 수 있으나 테스트 범위는 아닙니다.</p>
+          <p>예. 주 제품은 Windows Electron 설치 프로그램으로 제공합니다. npm 명령은 Windows 설치 프로그램이 아니라 macOS/Linux용 레거시 tmux 웹 서버입니다.</p>
         </details>
 
         <details>
@@ -956,19 +952,16 @@ isRoot: false
         <div class="cta-body">
           <div class="eyebrow">지금 시작하세요</div>
           <h2>한 줄이면 됩니다.</h2>
-          <p class="lead">Node.js 20+ 와 tmux 만 준비되어 있다면 30초 안에 실행할 수 있습니다.</p>
+          <p class="lead">Windows 설치 프로그램을 받거나, macOS/Linux에서 npm으로 레거시 tmux 웹 서버를 실행하세요.</p>
         </div>
         <div class="install-block cta-install">
           <div class="install-cmd">
             <span class="prompt">$</span>
-            <span>npx codexmux</span>
-            <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="복사" onclick="(function(b){navigator.clipboard.writeText('npx codexmux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
+            <span>npx --yes codexmux@latest</span>
+            <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="복사" onclick="(function(b){navigator.clipboard.writeText('npx --yes codexmux@latest');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
           </div>
-          <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-mac>
-            <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
-              <path d="M17.05 20.28c-.98.95-2.05.88-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-            </svg>
-            macOS 앱 다운로드
+          <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-windows>
+            Windows 설치 프로그램 다운로드
           </a>
         </div>
       </div>
@@ -1009,24 +1002,3 @@ isRoot: false
     </section>
 
   </main>
-
-  <div class="arch-modal" id="archModal" hidden>
-    <div class="arch-modal-backdrop" data-arch-close></div>
-    <div class="arch-modal-card" role="dialog" aria-modal="true" aria-labelledby="archModalTitle">
-      <button type="button" class="arch-modal-close" data-arch-close aria-label="닫기">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M6 18L18 6"/></svg>
-      </button>
-      <h3 id="archModalTitle">Mac을 선택하세요</h3>
-      <p class="arch-modal-sub">칩에 맞는 빌드를 선택하세요.</p>
-      <div class="arch-modal-options">
-        <button type="button" class="arch-option" data-arch="arm64" data-ph-capture-attribute-cta="download_arm64">
-          <span class="arch-option-title">Apple Silicon</span>
-          <span class="arch-option-hint">arm64</span>
-        </button>
-        <button type="button" class="arch-option" data-arch="x64" data-ph-capture-attribute-cta="download_x64">
-          <span class="arch-option-title">Intel</span>
-          <span class="arch-option-hint">x86_64</span>
-        </button>
-      </div>
-    </div>
-  </div>

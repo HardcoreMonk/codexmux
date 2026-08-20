@@ -4,7 +4,7 @@
 
 **갱신일:** 2026-08-21
 
-**상태:** Release 완료, registry smoke 통과, operate 진입 준비
+**상태:** Release 완료, registry/landing smoke 통과, Trusted Publisher와 tag 등록 대기
 
 **Spec:** `docs/superpowers/specs/2026-08-20-npm-npx-distribution-design.md`
 
@@ -55,6 +55,7 @@ Pages Router dependency bundling, manual signal handling 문서를 다시 확인
 | `npm view codexmux@0.4.23` | version, `gitHead`, integrity matched |
 | registry `npm exec ... codexmux help` | passed |
 | registry isolated production health | `200`, version/commit matched |
+| `corepack pnpm build:landing` | 353 files generated, passed |
 
 최종 dry-run은 985개 entry, tarball 9,826,555 bytes, unpacked 25,850,556 bytes다.
 `bin/codexmux.js`, `dist/server.js`, `.next/standalone/server.js`, postinstall 두 파일이 있고
@@ -78,19 +79,23 @@ Pages Router dependency bundling, manual signal handling 문서를 다시 확인
 `--ignore-scripts`로 생략했다. Consumer install의 `postinstall` 계약은 local tarball smoke와
 registry install에서 모두 실행됐다.
 
-## 남은 operate 진입 작업
+## Operate 진입 진행 상태
 
-1. `npm trust github codexmux --repo HardcoreMonk/codexmux --file npm-publish.yml --allow-publish`
-   또는 npmjs.com package settings에서 exact workflow를 Trusted Publisher로 등록한다.
-2. Release commit `ef27e297`에 `v0.4.23` tag를 만들고 default branch와 tag를 push한다.
-   Workflow는 matching registry `gitHead`를 확인하고 publish를 생략해야 한다.
-3. Landing의 npm 설치 명령을 `npx --yes codexmux@latest`로 활성화하고, legacy tmux web
-   server 경로와 Windows installer를 구분한 뒤 landing build를 검증한다.
+- [ ] `npm trust github codexmux --repo HardcoreMonk/codexmux --file npm-publish.yml
+  --allow-publish`로 exact workflow를 Trusted Publisher로 등록한다. npm 강한 인증용
+  최신 OTP 입력을 기다리고 있다.
+- [ ] Release commit `ef27e297`에 `v0.4.23` tag를 만들고 default branch와 tag를
+  push한다. Workflow는 matching registry `gitHead`를 확인하고 publish를 생략해야 한다.
+- [x] Landing의 npm 설치 명령을 `npx --yes codexmux@latest`로 활성화했다. 11개 locale에서
+  npm을 legacy macOS/Linux tmux web server 경로로 표시하고 Windows installer를 주 경로로
+  구분했다. Mac architecture modal은 제거했고 latest release의 `-Setup-*.exe`만 선택한다.
+  `corepack pnpm build:landing`은 353개 파일 생성을 완료했다.
 
 ## Rollback
 
 - Published `0.4.23`은 overwrite하지 않는다. 문제가 있으면 deprecate하고 patch version으로
   수정한다.
-- Trusted Publisher와 landing은 아직 활성화하지 않았으므로 독립적으로 검토하거나 되돌릴 수
-  있다.
+- Trusted Publisher는 아직 활성화하지 않았으므로 tag push 전에 독립적으로 검토할 수 있다.
+- Landing 변경은 source commit 단위로 되돌릴 수 있고 npm registry package에는 영향을 주지
+  않는다.
 - npm workflow 장애는 Windows release asset이나 updater channel을 변경하지 않는다.

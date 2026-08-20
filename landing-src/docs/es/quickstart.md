@@ -24,7 +24,7 @@ codexmux는 웹 기반 터미널 멀티플렉서입니다. 모든 Codex 세션�
 명령어 하나. 글로벌 설치도 필요 없습니다.
 
 ```bash
-npx codexmux
+npx --yes codexmux@latest
 ```
 
 `8122` 포트에서 서버가 뜹니다. 브라우저로 열어보세요.

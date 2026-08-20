@@ -6,7 +6,7 @@ permalink: /pt-BR/docs/installation/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-[빠른 시작](/codexmux/pt-BR/docs/quickstart/)에서 `npx codexmux`로 충분했다면 더 읽을 필요 없습니다. 이 페이지는 영구 설치, 데스크탑 앱, 또는 소스에서 실행하고 싶은 경우를 위한 안내입니다.
+[빠른 시작](/codexmux/pt-BR/docs/quickstart/)에서 `npx --yes codexmux@latest`로 충분했다면 더 읽을 필요 없습니다. 이 페이지는 영구 설치, 데스크탑 앱, 또는 소스에서 실행하고 싶은 경우를 위한 안내입니다.
 
 ## 요구사항
 
@@ -19,7 +19,7 @@ permalink: /pt-BR/docs/installation/index.html
 ### npx (설치 없이)
 
 ```bash
-npx codexmux
+npx --yes codexmux@latest
 ```
 
 첫 실행 시 `~/.npm/_npx/`에 캐시됩니다. 잠깐 써보거나 원격 서버에서 일회성으로 돌릴 때 좋습니다. 매 실행마다 최신 버전을 사용합니다.

@@ -242,7 +242,7 @@ HTTPS, browser notification permission, 앱의 알림 설정, `~/.codexmux/push-
 
 ### `tmux: command not found`
 
-이 오류는 `npx codexmux` 같은 macOS/Linux legacy server path에서만 해결 대상입니다. Windows Runtime v2 path에 tmux를 설치해 우회하지 마세요. Legacy path는 tmux 3.0 이상과 전용 `codexmux` socket을 사용하며 사용자의 `~/.tmux.conf`를 읽지 않습니다.
+이 오류는 `npx --yes codexmux@latest` 같은 macOS/Linux legacy server path에서만 해결 대상입니다. Windows Runtime v2 path에 tmux를 설치해 우회하지 마세요. Legacy path는 tmux 3.0 이상과 전용 `codexmux` socket을 사용하며 사용자의 `~/.tmux.conf`를 읽지 않습니다.
 
 ## 다음으로
 
