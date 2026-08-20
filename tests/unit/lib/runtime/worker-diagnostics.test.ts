@@ -13,7 +13,7 @@ describe('runtime worker diagnostics', () => {
   it('returns zeroed snapshots for every runtime v2 worker', () => {
     const snapshot = getRuntimeWorkerDiagnosticsSnapshot();
 
-    expect(Object.keys(snapshot)).toEqual(['storage', 'terminal', 'timeline', 'status']);
+    expect(Object.keys(snapshot)).toEqual(['storage', 'terminal', 'timeline', 'status', 'governance']);
     expect(snapshot.storage).toMatchObject({
       starts: 0,
       healthChecks: 0,

@@ -31,6 +31,47 @@ const runtimeErrorStatusByCode: Record<string, number> = {
   'runtime-v2-schema-too-new': 500,
   'timeline-jsonl-path-forbidden': 403,
   'timeline-provider-unknown': 400,
+  'catalog-query-invalid': 400,
+  'catalog-query-too-complex': 400,
+  'catalog-cursor-invalid': 400,
+  'catalog-path-forbidden': 403,
+  'catalog-session-not-found': 404,
+  'session-annotation-session-not-found': 404,
+  'session-annotation-version-conflict': 409,
+  'catalog-shadow-only': 503,
+  'catalog-unavailable': 503,
+  'approved-project-root-required': 403,
+  'approved-root-preview-not-found': 404,
+  'approved-root-preview-expired': 409,
+  'approved-root-preview-changed': 409,
+  'governance-path-invalid': 400,
+  'governance-path-not-absolute': 400,
+  'governance-path-traversal': 400,
+  'governance-path-not-found': 404,
+  'governance-path-not-directory': 400,
+  'governance-path-magic-link': 403,
+  'governance-path-nested-mount': 403,
+  'governance-path-outside-root': 403,
+  'projects-yaml-not-found': 404,
+  'projects-yaml-not-regular': 400,
+  'projects-yaml-too-large': 400,
+  'projects-yaml-invalid': 400,
+  'projects-yaml-field-too-long': 400,
+  'projects-yaml-too-many-projects': 400,
+  'projects-yaml-duplicate-id': 409,
+  'projects-yaml-duplicate-path': 409,
+  'project-import-preview-not-found': 404,
+  'project-import-preview-expired': 409,
+  'project-import-preview-root-changed': 409,
+  'project-import-preview-root-not-approved': 403,
+  'project-import-preview-source-changed': 409,
+  'project-import-preview-mismatch': 409,
+  'managed-project-not-found': 404,
+  'project-document-not-found': 404,
+  'project-document-path-forbidden': 403,
+  'project-document-not-regular': 403,
+  'project-document-binary': 403,
+  'governance-worker-unavailable': 503,
 };
 
 export const sendRuntimeApiError = (res: NextApiResponse, err: unknown): void => {
@@ -43,7 +84,7 @@ export const sendRuntimeApiError = (res: NextApiResponse, err: unknown): void =>
     const code = String((err as { code: unknown }).code);
     const retryable = Boolean((err as { retryable?: unknown }).retryable);
     const message = err instanceof Error ? err.message : code;
-    if (retryable || code === 'worker-exited' || code === 'worker-error') {
+    if (retryable || runtimeErrorStatusByCode[code] === 503 || code === 'worker-exited' || code === 'worker-error') {
       res.status(503).json({ error: code, message, retryable: true });
       return;
     }

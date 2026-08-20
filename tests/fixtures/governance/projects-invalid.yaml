@@ -1,0 +1,5 @@
+projects:
+  - id: invalid-shape
+    title: Invalid Shape
+    path: <fixture-root>/projects/invalid
+    unsupported: [inline, list]

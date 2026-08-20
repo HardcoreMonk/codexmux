@@ -425,6 +425,8 @@ describe('runtime storage repository', () => {
       { version: 1 },
       { version: 2 },
       { version: 3 },
+      { version: 4 },
+      { version: 5 },
     ]);
     db.close();
 
@@ -433,7 +435,93 @@ describe('runtime storage repository', () => {
       { version: 1, count: 1 },
       { version: 2, count: 1 },
       { version: 3, count: 1 },
+      { version: 4, count: 1 },
+      { version: 5, count: 1 },
     ]);
+  });
+
+  it('registers approved roots and managed projects with canonical path uniqueness and audit', () => {
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const repo = createStorageRepository(db);
+    const approvedAt = '2026-08-21T10:00:00.000Z';
+
+    const root = repo.registerApprovedProjectRoot({
+      id: 'root-1', label: 'Projects', canonicalPath: '/srv/projects', approvedAt,
+    });
+    const project = repo.registerManagedProject({
+      approvedRootId: root.id,
+      title: 'Demo',
+      relativePath: 'demo',
+      canonicalPath: '/srv/projects/demo',
+      source: 'manual',
+    });
+
+    expect(root).toEqual({ id: 'root-1', label: 'Projects', approvedAt });
+    expect(project).toMatchObject({
+      id: expect.stringMatching(/^project-/), approvedRootId: 'root-1', title: 'Demo',
+      relativePath: 'demo', source: 'manual',
+    });
+    expect(repo.listManagedProjects()).toEqual([project]);
+    expect(repo.listManagedProjectSnapshots()).toEqual([
+      expect.objectContaining({ ...project, canonicalPath: '/srv/projects/demo' }),
+    ]);
+    expect(repo.listGovernanceAuditEvents({ limit: 10 })).toEqual(expect.arrayContaining([
+      expect.objectContaining({ action: 'managed-project.register', targetProjectId: project.id, status: 'succeeded' }),
+    ]));
+    expect(() => repo.registerManagedProject({
+      approvedRootId: root.id,
+      title: 'Duplicate',
+      relativePath: 'duplicate',
+      canonicalPath: '/srv/projects/demo',
+      source: 'manual',
+    })).toThrow(expect.objectContaining({ code: 'managed-project-path-conflict' }));
+  });
+
+  it('applies selected import fields transactionally without deleting missing source projects', () => {
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const repo = createStorageRepository(db);
+    repo.registerApprovedProjectRoot({
+      id: 'root-1', label: 'Projects', canonicalPath: '/srv/projects', approvedAt: '2026-08-21T10:00:00.000Z',
+    });
+    const imported = repo.registerManagedProject({
+      approvedRootId: 'root-1', title: 'Old title', relativePath: 'demo', canonicalPath: '/srv/projects/demo',
+      source: 'projects-yaml', externalId: 'demo', sourceFingerprint: 'sha256:aaaaaa',
+    });
+    const missingFromSource = repo.registerManagedProject({
+      approvedRootId: 'root-1', title: 'Keep me', relativePath: 'missing', canonicalPath: '/srv/projects/missing',
+      source: 'projects-yaml', externalId: 'missing', sourceFingerprint: 'sha256:aaaaaa',
+    });
+
+    const result = repo.applyManagedProjectImport({
+      approvedRootId: 'root-1',
+      digest: `sha256:${'b'.repeat(64)}`,
+      sourceFingerprint: `sha256:${'c'.repeat(64)}`,
+      actions: [
+        {
+          status: 'add', externalId: 'new', title: 'New', relativePath: 'new',
+          canonicalPath: '/srv/projects/new', selectedFields: ['title'],
+        },
+        {
+          status: 'update', projectId: imported.id, externalId: 'demo', title: 'Renamed',
+          relativePath: 'unexpected-path', canonicalPath: '/srv/projects/unexpected-path', selectedFields: ['title'],
+        },
+        {
+          status: 'conflict', externalId: 'conflict', title: 'Conflict', relativePath: 'demo',
+          canonicalPath: '/srv/projects/demo', selectedFields: [],
+        },
+      ],
+    });
+
+    expect(result.counts).toEqual({ add: 1, update: 1, conflict: 1, unchanged: 0 });
+    expect(repo.listManagedProjects()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: imported.id, title: 'Renamed', relativePath: 'demo' }),
+      expect.objectContaining({ id: missingFromSource.id, title: 'Keep me' }),
+      expect.objectContaining({ title: 'New', externalId: 'new' }),
+    ]));
+    expect(db.prepare(`select count(*) as count from managed_project_imports`).get()).toEqual({ count: 1 });
+    expect(repo.listGovernanceAuditEvents({ limit: 10 })).toEqual(expect.arrayContaining([
+      expect.objectContaining({ action: 'managed-project.import', status: 'succeeded', summary: result.counts }),
+    ]));
   });
 
   it('applies runtime sqlite pragmas', () => {

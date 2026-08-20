@@ -10,9 +10,10 @@ codexmux는 Codex CLI 전용 웹 세션 매니저입니다. 범용 터미널 대
 여러 Codex 세션을 workspace, session, tab, timeline, status 중심으로 실행,
 재개, 모니터링, 검토하는 도구입니다.
 
-현재 저장소는 기존 codexmux 기반과 Windows 전용 제품 전환 기준을 함께 보관합니다.
-실제 Windows 설치형 제품 마감, 설치 관리자, 업데이트 근거는 별도
-`codexwinmux` 저장소를 기준으로 판단합니다.
+현재 제품/runtime 기준은 Linux 단일 엔진 호스트입니다. 한 호스트가 custom server,
+Runtime v2 worker, tmux, Codex JSONL, app-owned DB와 등록된 project filesystem을
+소유합니다. Windows 설치형 제품 마감, 설치 관리자와 업데이트 근거는 역사적 release
+증거로 보존하며 별도 `codexwinmux` 저장소의 판단 기준을 유지합니다.
 
 ## 기준 소스
 
@@ -39,7 +40,13 @@ codexmux는 Codex CLI 전용 웹 세션 매니저입니다. 범용 터미널 대
 | Timeline | Codex JSONL과 live event를 사용자 검토용 event stream으로 보여주는 surface | timeline server/worker |
 | Status | Codex 작업 상태, approval, notification 판단 투영 | status manager/worker |
 | 런타임 어댑터 | OS별 terminal/process/service 구현 경계 | runtime v2, tmux legacy, Windows runtime |
-| Windows 전용 제품 | 지원 실행 타깃을 Windows로 고정하는 제품 전환 | packaging, host, release gate |
+| Linux 단일 엔진 호스트 | server, worker, tmux, Codex 데이터와 project read를 한 Linux host가 소유하는 실행 토폴로지 | Runtime v2, systemd user service |
+| Session Catalog | Codex JSONL에서 계산한 session metadata와 검색 projection | Timeline Worker, app-owned index DB |
+| Managed Project | 승인된 root 아래에서 guidance, knowledge와 lifecycle 상태를 관리하는 project aggregate | Storage/Governance Worker |
+| Project Governance | Managed Project의 guidance, knowledge, check, audit를 제공하는 bounded context | Governance Worker |
+| Knowledge Index | project-local 문서의 navigation/search를 위한 재생성 가능한 projection | Governance Worker, app-owned index DB |
+| Project Lifecycle | spec, domain architecture, grill, plan, review, release, operate artifact 흐름 | project-local docs |
+| Windows 전용 제품 | 2026년 Windows product-line 전환과 release 검증의 역사적 결정 | packaging, host, release evidence |
 | Windows 서비스 호스트 | 앱/backend 수명주기를 관리하는 host 경계 | Windows host diagnostics, future service |
 | 브라우저 인증 namespace | 같은 hostname의 sibling app과 충돌하지 않는 제품별 session cookie 경계 | `codexmux-session-token`, ADR-029 |
 | Upload ingress | 인증된 raw file request를 bounded admission하고 `~/.codexmux/uploads/` artifact로 no-replace commit하는 outer custom server 경계 | `server.ts`, upload server/storage adapter |
@@ -52,6 +59,8 @@ codexmux는 Codex CLI 전용 웹 세션 매니저입니다. 범용 터미널 대
 - `tmux backend`: 새 도메인 경계 이름으로 쓰지 않습니다. tmux는 legacy infrastructure adapter입니다.
 - `Android primary client`: Windows 전용 전환 후 Android는 primary 제품 surface가 아닙니다.
 - 범용 `terminal dashboard`: codexmux 제품 정체성을 설명하는 기준 용어가 아닙니다.
+- 단독 `lifecycle`: Project Lifecycle, Runtime Operations, ADR Lifecycle 중 하나로 한정합니다.
+- `workspace project`: Workspace와 Managed Project를 하나의 entity로 합치는 이름으로 쓰지 않습니다.
 
 ## 경계 규칙
 
@@ -65,6 +74,13 @@ codexmux는 Codex CLI 전용 웹 세션 매니저입니다. 범용 터미널 대
 - 생성된 `docs/lifecycle/runs/*.json`은 도구 스냅샷입니다. 사람이 쓴 기준 문서로 승격하지 않습니다.
 
 ## 현재 구현 기준
+
+2026-08-21 기준 Session Operations와 Project Governance Phase 1~2가 Linux 단일 엔진에
+통합됐습니다. Timeline Worker는 Session Catalog, Storage Worker는 durable project/session
+상태, Governance Worker는 승인 project의 read-only Knowledge Index를 소유합니다. Project
+filesystem write, remote topology, GSD orchestration과 full-output search는 구현 범위가 아닙니다.
+검증과 rollback 경계는
+`docs/operations/2026-08-21-session-operations-governance-integration-handoff.md`에 기록합니다.
 
 2026-08-15 기준 pre-auth bootstrap은 lifecycle review와 Linux dev/prod security smoke로,
 upload ingress와 Windows stable release path는 fresh Windows package/update gate로

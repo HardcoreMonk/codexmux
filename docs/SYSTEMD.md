@@ -1,6 +1,6 @@
-# Linux systemd 참고 문서
+# Linux 단일 엔진 systemd 운영
 
-이 문서는 codexmux를 Linux에서 `systemd --user` 서비스로 운영하던 기록입니다. Windows-only 제품 전환 이후 primary 운영 기준은 Windows host/installer/update smoke입니다.
+이 문서는 codexmux Linux 단일 엔진을 `systemd --user` 서비스로 운영하는 기준입니다. 한 user service가 custom server, Runtime v2 worker, tmux adapter, Codex JSONL read와 등록 project read를 소유합니다.
 
 ## 기존 워크스테이션 기준
 
@@ -28,6 +28,8 @@ Documentation=https://github.com/HardcoreMonk/codexmux
 Type=simple
 WorkingDirectory=/data/projects/codex-zone/codexmux
 Environment=NODE_ENV=production
+Environment=CODEXMUX_RUNTIME_V2=1
+Environment=CODEXMUX_SESSION_CATALOG_MODE=default
 Environment=HOST=localhost,tailscale,192.168.0.0/16
 Environment=PORT=8122
 ExecStart=/usr/bin/node /data/projects/codex-zone/codexmux/bin/codexmux.js
@@ -41,14 +43,13 @@ TimeoutStopSec=20
 WantedBy=default.target
 ```
 
-System-wide service가 아니라 user service를 썼던 이유는 `~/.codexmux/`, `~/.codex/sessions/`, 사용자 tmux socket과 Node runtime 환경이 사용자 기준이어야 했기 때문입니다. `ExecStart`의 Node path는 설치 시 `command -v node`로 확인한 현재 절대 경로와 일치시킵니다.
+System-wide service가 아니라 user service를 사용하는 이유는 `~/.codexmux/`, `~/.codex/sessions/`, 사용자 tmux socket, 등록 project와 Node runtime 환경이 한 Linux 사용자 기준이어야 하기 때문입니다. `ExecStart`의 Node path는 설치 시 `command -v node`로 확인한 현재 절대 경로와 일치시킵니다.
 
 예시 unit은 systemd 기본 `KillMode=control-group`을 사용하므로 service restart/stop 때 같은
 cgroup에서 시작된 legacy tmux server도 종료될 수 있습니다. 저장된 runtime v1 layout이
 그 session을 계속 가리키면 다음 browser reconnect에서 `session not found`가 표시되며 새
-terminal 재시작으로 복구합니다. 임의로 `KillMode=process`로 바꾸면 service stop 뒤 child가
-남는 반대 위험이 있으므로 Linux legacy 운영에서 별도 lifecycle 정책 없이 적용하지
-않습니다.
+terminal 재시작으로 복구합니다. 임의로 `KillMode=process`로 바꾸면 service stop 뒤 worker나
+tmux child가 남을 수 있으므로 적용하지 않습니다.
 
 Fresh config에서 user service가 setup으로 시작하면 저장된 `HOST`보다 먼저
 `127.0.0.1`에만 bind하고, 외부 bind는 setup 완료 후 restart부터 적용합니다. Setup
@@ -102,9 +103,38 @@ curl -sS http://127.0.0.1:8122/api/health
 {"app":"codexmux","version":"<package-version>","commit":"<git-short-hash>","buildTime":"<iso-build-time>"}
 ```
 
-## 런타임 v2 rollback 참고
+Runtime와 worker health는 인증된 요청으로 별도 확인합니다.
 
-Linux 운영에서는 runtime v2 mode를 drop-in으로 관리했습니다.
+```bash
+curl -fsS -H "x-cmux-token: $(<~/.codexmux/cli-token)" \
+  http://127.0.0.1:8122/api/v2/runtime/health
+curl -fsS -H "x-cmux-token: $(<~/.codexmux/cli-token)" \
+  http://127.0.0.1:8122/api/sessions/health
+```
+
+`terminal`, `storage`, `timeline`, `status`는 core readiness입니다. `governance`가 degraded여도 core session operation은 유지되어야 하며 governance UI/API만 retry 가능한 오류와 저하 상태를 표시합니다.
+
+## 배포 전 점검
+
+```bash
+command -v node
+command -v tmux
+corepack pnpm build
+corepack pnpm build:server
+corepack pnpm smoke:runtime-v2:phase6-default-gate
+corepack pnpm perf:session-catalog
+corepack pnpm smoke:linux:session-governance
+corepack pnpm smoke:browser:session-governance
+```
+
+- service user가 `~/.codex/sessions/`와 등록 project를 읽고 `~/.codexmux/`를 쓸 수 있어야 합니다.
+- `runtime-v2`, `session-catalog`, `governance` 디렉터리는 `0700`, SQLite DB/WAL/SHM은 `0600`인지 확인합니다.
+- `dist/workers/`에 terminal/storage/timeline/status/governance worker bundle이 모두 있어야 합니다.
+- 실제 `systemctl --user restart`는 backup과 운영 승인을 받은 뒤 실행합니다. build/smoke 통과만으로 live service를 재시작하지 않습니다.
+
+## 런타임 v2 rollback
+
+Runtime v2 mode는 drop-in으로 관리할 수 있습니다.
 
 ```text
 ~/.config/systemd/user/codexmux.service.d/runtime-v2-shadow.conf
@@ -120,6 +150,8 @@ systemctl --user restart codexmux.service
 
 Surface별 rollback은 mode를 `off`로 바꾼 뒤 daemon reload/restart로 처리했습니다.
 
+Session Catalog나 Knowledge Index만 손상된 경우 전체 Runtime v2를 끄지 않습니다. service를 멈춘 뒤 해당 `index.db`, WAL, SHM을 quarantine하고 다시 시작해 rebuild/refresh합니다. `runtime-v2/state.db`에는 durable user state가 있으므로 먼저 backup하고 검증된 세 파일 단위로 복원합니다. 자세한 데이터 경계는 `DATA-DIR.md`를 따릅니다.
+
 ## Lifecycle control 참고
 
 `/experimental/runtime`의 lifecycle control은 임의 shell 입력을 받지 않고 allowlist action만 실행합니다.
@@ -132,11 +164,6 @@ Surface별 rollback은 mode를 `off`로 바꾼 뒤 daemon reload/restart로 처�
 
 실행 기록은 `~/.codexmux/lifecycle-actions.jsonl`에 sanitized event로 남깁니다.
 
-## Windows 전환 메모
+## 별도 Windows 배포면
 
-Linux service 문서는 보존하지만 새 제품 운영 기준으로 확장하지 않습니다. Windows에서는
-tray-first host, service-capable host, installer ownership, updater smoke가 별도 문서와 release
-gate의 기준이 됩니다. 2026-07-12 `v0.4.20`은 packaged upload와 published updater 기능을
-최초 검증했고 `v0.4.21`은 같은 fresh Windows 경로와 privacy gate를 반복했습니다. 완료
-근거는 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)과 두 Windows release
-handoff에 있습니다.
+Windows tray/service/installer/updater 근거는 역사적 release evidence와 `codexwinmux` 별도 제품 line 판단에 사용합니다. Linux Session Operations/Project Governance acceptance를 Windows package 결과로 대체하거나 그 반대로 대체하지 않습니다.

@@ -1,0 +1,4 @@
+{"type":"session_meta","timestamp":"2026-08-21T08:00:00.000Z","payload":{"id":"fixture-session-basic","cwd":"<fixture-root>/demo-project","model":"gpt-5.6","source":"synthetic"}}
+{"type":"response_item","timestamp":"2026-08-21T08:00:01.000Z","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Session Catalog 검색을 구현해 주세요."}]}}
+{"type":"response_item","timestamp":"2026-08-21T08:00:02.000Z","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"먼저 검색 projection 계약을 확인하겠습니다."}],"phase":"commentary"}}
+{"type":"response_item","timestamp":"2026-08-21T08:00:03.000Z","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"검색 projection 구현을 완료했습니다."}],"phase":"final"}}

@@ -5,14 +5,21 @@ import path from 'path';
 export type TRuntimeDatabase = import('better-sqlite3').Database;
 
 interface IBetterSqlite3Constructor {
-  new (dbPath: string): TRuntimeDatabase;
+  new (dbPath: string, options?: { readonly?: boolean; fileMustExist?: boolean }): TRuntimeDatabase;
 }
 
 export interface IOpenRuntimeDatabaseOptions {
   loadDatabase?: () => IBetterSqlite3Constructor;
+  beforeMigration?: (input: IRuntimeMigrationBackupInput) => void;
 }
 
-export const CURRENT_RUNTIME_SCHEMA_VERSION = 3;
+export interface IRuntimeMigrationBackupInput {
+  dbPath: string;
+  fromVersion: number;
+  toVersion: number;
+}
+
+export const CURRENT_RUNTIME_SCHEMA_VERSION = 5;
 
 const runtimeRequireBase = path.join(
   process.env.__CMUX_APP_DIR_UNPACKED || process.env.__CMUX_APP_DIR || path.join(/*turbopackIgnore: true*/ process.cwd()),
@@ -227,6 +234,87 @@ const RUNTIME_MIGRATIONS: IRuntimeMigration[] = [
       `);
     },
   },
+  {
+    version: 4,
+    up: (db) => {
+      db.exec(`
+        create table if not exists session_annotations (
+          session_id text primary key,
+          pinned integer not null default 0,
+          tags_json text not null default '[]',
+          version integer not null,
+          updated_at text not null
+        );
+
+        create table if not exists session_saved_filters (
+          id text primary key,
+          name text not null,
+          query_json text not null,
+          created_at text not null,
+          updated_at text not null
+        );
+
+        create index if not exists idx_runtime_session_annotations_pinned_updated
+          on session_annotations(pinned, updated_at desc);
+        create index if not exists idx_runtime_session_saved_filters_updated
+          on session_saved_filters(updated_at desc, id);
+      `);
+    },
+  },
+  {
+    version: 5,
+    up: (db) => {
+      db.exec(`
+        create table if not exists approved_project_roots (
+          id text primary key,
+          label text not null,
+          canonical_path text not null unique,
+          approved_at text not null
+        );
+
+        create table if not exists managed_projects (
+          id text primary key,
+          approved_root_id text not null references approved_project_roots(id) on delete restrict,
+          title text not null,
+          relative_path text not null,
+          canonical_path text not null unique,
+          source text not null,
+          external_id text null,
+          source_fingerprint text null,
+          created_at text not null,
+          updated_at text not null
+        );
+
+        create table if not exists managed_project_imports (
+          id text primary key,
+          approved_root_id text not null references approved_project_roots(id) on delete restrict,
+          digest text not null,
+          source_fingerprint text not null,
+          counts_json text not null,
+          imported_at text not null
+        );
+
+        create table if not exists governance_audit_events (
+          id text primary key,
+          action text not null,
+          target_project_id text null,
+          status text not null,
+          duration_ms integer not null,
+          summary_json text not null,
+          created_at text not null
+        );
+
+        create unique index if not exists idx_runtime_managed_projects_root_external
+          on managed_projects(approved_root_id, external_id) where external_id is not null;
+        create index if not exists idx_runtime_managed_projects_root_updated
+          on managed_projects(approved_root_id, updated_at desc, id);
+        create index if not exists idx_runtime_managed_project_imports_root_time
+          on managed_project_imports(approved_root_id, imported_at desc, id);
+        create index if not exists idx_runtime_governance_audit_project_time
+          on governance_audit_events(target_project_id, created_at desc, id);
+      `);
+    },
+  },
 ];
 
 const createSqliteUnavailableError = (cause: unknown): Error =>
@@ -298,19 +386,86 @@ const resolveDatabaseConstructor = (options: IOpenRuntimeDatabaseOptions): IBett
   }
 };
 
+const inspectRuntimeSchemaVersion = (
+  Database: IBetterSqlite3Constructor,
+  dbPath: string,
+): number => {
+  if (!fs.existsSync(dbPath)) return 0;
+  const db = new Database(dbPath, { readonly: true, fileMustExist: true });
+  try {
+    if (!hasSchemaMigrationsTable(db)) return 0;
+    const row = db.prepare(`select max(version) as version from schema_migrations`).get() as {
+      version: number | null;
+    };
+    return row.version ?? 0;
+  } finally {
+    db.close();
+  }
+};
+
+const createRuntimeMigrationBackup = ({
+  dbPath,
+  fromVersion,
+  toVersion,
+}: IRuntimeMigrationBackupInput): void => {
+  const timestamp = new Date().toISOString().replace(/[-:.]/g, '').replace('Z', 'Z');
+  const dataDir = path.dirname(path.dirname(dbPath));
+  const backupDir = path.join(dataDir, 'backups', `runtime-v2-migration-v${fromVersion}-v${toVersion}-${timestamp}`);
+  try {
+    fs.mkdirSync(backupDir, { recursive: true, mode: 0o700 });
+    for (const source of [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]) {
+      if (!fs.existsSync(/* turbopackIgnore: true */ source)) continue;
+      const destination = path.join(backupDir, path.basename(source));
+      fs.copyFileSync(source, destination, fs.constants.COPYFILE_EXCL);
+      fs.chmodSync(destination, 0o600);
+    }
+  } catch (cause) {
+    throw Object.assign(new Error('Runtime v2 migration backup failed.'), {
+      code: 'runtime-v2-migration-backup-failed',
+      retryable: false,
+      cause,
+    });
+  }
+};
+
+const applyPrivateMode = (filePath: string): void => {
+  try {
+    fs.chmodSync(filePath, 0o600);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+  }
+};
+
 export const openRuntimeDatabase = (
   dbPath: string,
   options: IOpenRuntimeDatabaseOptions = {},
 ): TRuntimeDatabase => {
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  const directory = path.dirname(dbPath);
+  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+  fs.chmodSync(directory, 0o700);
+  applyPrivateMode(dbPath);
+  applyPrivateMode(`${dbPath}-wal`);
+  applyPrivateMode(`${dbPath}-shm`);
   const Database = resolveDatabaseConstructor(options);
+  const existingVersion = inspectRuntimeSchemaVersion(Database, dbPath);
+  if (fs.existsSync(dbPath) && existingVersion < CURRENT_RUNTIME_SCHEMA_VERSION) {
+    (options.beforeMigration ?? createRuntimeMigrationBackup)({
+      dbPath,
+      fromVersion: existingVersion,
+      toVersion: CURRENT_RUNTIME_SCHEMA_VERSION,
+    });
+  }
   const db = new Database(dbPath);
   try {
+    applyPrivateMode(dbPath);
     db.pragma('busy_timeout = 5000');
     db.pragma('journal_mode = WAL');
     db.pragma('synchronous = NORMAL');
     db.pragma('foreign_keys = ON');
     runRuntimeMigrations(db);
+    applyPrivateMode(dbPath);
+    applyPrivateMode(`${dbPath}-wal`);
+    applyPrivateMode(`${dbPath}-shm`);
     return db;
   } catch (err) {
     try {

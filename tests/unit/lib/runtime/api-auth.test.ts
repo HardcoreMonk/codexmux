@@ -1,7 +1,11 @@
 import type { IncomingMessage } from 'http';
 import type { NextApiRequest } from 'next';
 import { describe, expect, it, vi } from 'vitest';
-import { verifyRuntimeV2ApiAuth, verifyRuntimeV2WebSocketAuth } from '@/lib/runtime/api-auth';
+import {
+  authorizeRuntimeV2ApiRequest,
+  verifyRuntimeV2ApiAuth,
+  verifyRuntimeV2WebSocketAuth,
+} from '@/lib/runtime/api-auth';
 
 vi.mock('@/lib/cli-token', () => ({
   verifyTokenValue: vi.fn((value: string) => value === 'valid-cli-token'),
@@ -62,6 +66,62 @@ describe('runtime v2 api auth', () => {
       { 'x-cmux-token': 'valid-cli-token', cookie: 'codexmux-session-token=valid-session-token' },
       'http://[::1',
     ))).resolves.toBe(false);
+  });
+
+  it('requires one Host and a same-authority Origin for cookie mutations', async () => {
+    const mutation = (rawHeaders: string[]) => ({
+      headers: { cookie: 'codexmux-session-token=valid-session-token' },
+      rawHeaders,
+      url: '/api/sessions/rebuild',
+    }) as NextApiRequest;
+
+    await expect(authorizeRuntimeV2ApiRequest(mutation([
+      'Host', 'localhost:8122',
+      'Origin', 'http://localhost:8122',
+      'Cookie', 'codexmux-session-token=valid-session-token',
+    ]), { mutation: true })).resolves.toMatchObject({
+      authorized: true,
+      credential: { kind: 'session' },
+    });
+    await expect(authorizeRuntimeV2ApiRequest(mutation([
+      'Host', 'localhost:8122',
+      'Cookie', 'codexmux-session-token=valid-session-token',
+    ]), { mutation: true })).resolves.toEqual({
+      authorized: false,
+      statusCode: 403,
+      reason: 'origin-forbidden',
+    });
+    await expect(authorizeRuntimeV2ApiRequest(mutation([
+      'Host', 'localhost:8122',
+      'HOST', 'localhost:8122',
+      'Origin', 'http://localhost:8122',
+      'Cookie', 'codexmux-session-token=valid-session-token',
+    ]), { mutation: true })).resolves.toEqual({
+      authorized: false,
+      statusCode: 403,
+      reason: 'origin-forbidden',
+    });
+  });
+
+  it('allows CLI mutations without Origin but validates Host and rejects query credentials', async () => {
+    const cliRequest = {
+      headers: { 'x-cmux-token': 'valid-cli-token' },
+      rawHeaders: ['Host', 'localhost:8122', 'x-cmux-token', 'valid-cli-token'],
+      url: '/api/sessions/rebuild',
+    } as unknown as NextApiRequest;
+
+    await expect(authorizeRuntimeV2ApiRequest(cliRequest, { mutation: true })).resolves.toEqual({
+      authorized: true,
+      credential: { kind: 'cli' },
+    });
+    await expect(authorizeRuntimeV2ApiRequest({
+      ...cliRequest,
+      url: '/api/sessions/rebuild?token=valid-cli-token',
+    } as NextApiRequest, { mutation: true })).resolves.toEqual({
+      authorized: false,
+      statusCode: 401,
+      reason: 'invalid-credential',
+    });
   });
 });
 

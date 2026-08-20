@@ -258,6 +258,44 @@ corepack pnpm smoke:runtime-v2:status-default
 
 Runtime v2 smoke는 같은 checkout에서 병렬 실행하면 dev lock, temp HOME, runtime DB, device/WebSocket target이 충돌할 수 있습니다. Terminal/package/Android device smoke는 단독 실행을 기준으로 합니다.
 
+## Session Operations와 Project Governance
+
+Release-candidate gate:
+
+```bash
+corepack pnpm build:server
+corepack pnpm smoke:runtime-v2
+corepack pnpm smoke:runtime-v2:storage-backup
+corepack pnpm smoke:runtime-v2:phase6-default-gate
+corepack pnpm perf:session-catalog
+corepack pnpm smoke:linux:session-governance
+corepack pnpm smoke:browser:session-governance
+corepack pnpm smoke:npm-package
+```
+
+`perf:session-catalog`는 기본 5,000-session fixture에서 initial index, incremental append, FTS query, replay projection과 RSS delta를 측정합니다. 현재 fail threshold는 각각 30초, 500ms, 1초, 200ms, 512MiB입니다. 측정 DB는 명시한 `CODEXMUX_SESSION_CATALOG_PERF_DB`가 없으면 임시 디렉터리에 만들고 종료 시 삭제합니다.
+
+`smoke:linux:session-governance`는 격리 `HOME`과 실제 custom server/tmux를 사용해 다음을 확인합니다.
+
+- Session Catalog rebuild/search/replay와 annotation
+- Approved Project Root preview/confirm, `projects.yaml` import와 read-only governance
+- project/Codex 원본 tree의 hash/metadata 무변경
+- runtime/catalog/governance SQLite private mode
+- Timeline/Governance Worker DB quarantine와 worker 자동 복구
+- projection rollback 전후 동일 terminal session 연결
+
+`smoke:browser:session-governance`는 한국어와 영어를 각각 격리 서버에서 실행해 SSR `lang`, search/replay, keyboard focus, governance degraded→recovery와 hydration error 부재를 확인합니다. Chromium이 없으면 먼저 다음 명령을 실행합니다.
+
+```bash
+corepack pnpm exec playwright install chromium
+```
+
+Projection 복구와 durable state 복구를 구분합니다. `session-catalog/index.db`와 `governance/index.db`는 quarantine 뒤 rebuild/refresh하고, `runtime-v2/state.db`는 다음 backup gate와 `DATA-DIR.md`의 세 파일 단위 restore 절차를 사용합니다.
+
+```bash
+corepack pnpm smoke:runtime-v2:storage-backup
+```
+
 ## 브라우저 UI와 Playwright
 
 Playwright는 UI 회귀와 smoke 자동화에 사용합니다.
@@ -541,14 +579,14 @@ corepack pnpm vitest run tests/unit/lib/codex-state-sqlite-indexer.test.ts
 
 ## Live deploy와 운영
 
-Legacy Linux service 운영에서는 다음 명령을 사용했습니다.
+Linux 단일 엔진 service 운영에서는 다음 명령을 사용합니다.
 
 ```bash
 corepack pnpm deploy:local
 curl -fsS http://127.0.0.1:8122/api/health
 ```
 
-Windows-only 전환 후에는 installer/package/update smoke와 internal rollout evidence가 운영 기준입니다.
+Session Operations/Project Governance 배포에서는 위 Linux/browser gate와 worker health를 먼저 확인합니다. 실제 service restart는 별도 운영 승인과 runtime state backup 뒤 실행합니다. Windows installer/package/update smoke는 별도 배포면의 증거이며 Linux engine gate를 대체하지 않습니다.
 
 ## Smoke artifact 기준
 

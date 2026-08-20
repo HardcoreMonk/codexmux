@@ -1,6 +1,6 @@
 # 터미널 런타임과 legacy tmux 경로
 
-이 문서는 기존 tmux 경로와 browser-facing terminal protocol을 설명합니다. Windows-only 전환 이후 tmux는 제품 domain API가 아니라 legacy infrastructure adapter입니다.
+이 문서는 Linux 단일 엔진의 tmux adapter와 browser-facing terminal protocol을 설명합니다. tmux는 제품 domain API가 아니라 Terminal Worker 뒤의 infrastructure adapter입니다.
 
 ## 구조
 
@@ -11,7 +11,7 @@ Browser xterm
 custom server / Terminal Worker
   | terminal runtime adapter
   v
-tmux adapter 또는 Windows adapter
+  Linux tmux adapter
   v
 shell / codex
 ```
@@ -40,6 +40,8 @@ Terminal WebSocket은 adapter와 무관하게 다음 동작을 기대합니다.
 | kill/delete | runtime session 종료 |
 
 Legacy URL은 `/api/terminal`, runtime v2 URL은 `/api/v2/terminal`입니다. Public protocol은 가능한 유지하고 backend 구현만 adapter로 교체합니다.
+
+Session Catalog와 Project Governance는 terminal byte stream을 소유하지 않습니다. Timeline Worker의 catalog rebuild나 Governance Worker의 index refresh/restart 중에도 existing terminal WebSocket과 tmux session은 유지되어야 합니다. Projection rollback smoke는 worker DB를 quarantine하고 worker를 재기동한 뒤 같은 terminal session에 재attach해 이 경계를 검증합니다.
 
 ## Install WebSocket
 

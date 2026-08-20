@@ -1,6 +1,6 @@
 # 아키텍처 결정 기록
 
-이 문서는 codexmux의 오래가는 설계 결정을 모읍니다. 세부 실행 흐름은 `ARCHITECTURE-LOGIC.md`, 상태 감지는 `STATUS.md`, terminal/runtime 경계는 `TMUX.md`와 Windows 전환 문서에 둡니다.
+이 문서는 codexmux의 오래가는 설계 결정을 모읍니다. 세부 실행 흐름은 `ARCHITECTURE-LOGIC.md`, 상태 감지는 `STATUS.md`, terminal/runtime 경계는 `TMUX.md`와 Linux 운영 문서에 둡니다. Windows 전환 문서는 역사적 제품·release 근거로 보존합니다.
 
 ## 작성 기준
 
@@ -12,7 +12,7 @@
 - `~/.codexmux/` 저장 구조, auth, security 동작 변경
 - Electron/Android 같은 platform shell 동작 변경
 - 알림, locale, 모바일 UX, 터미널 입력, 재연결, 중복 제거 같은 cross-surface 정책 변경
-- Windows-only 제품 타깃, packaging, installer, updater, host operation 변경
+- 제품 실행 토폴로지, packaging, installer, updater, host operation 변경
 
 작은 copy, 단일 컴포넌트 styling, 기존 결정과 충돌하지 않는 버그 수정은 새 ADR이 필요하지 않습니다.
 
@@ -172,10 +172,11 @@
 
 ## ADR-023: Windows-only 제품 타깃
 
-- 상태: 승인
+- 상태: Archived
 - 결정: codexmux의 다음 제품 전환 타깃은 Windows-only service/product입니다.
 - 이유: 사용자 목표는 기존 codexmux 기반을 Windows 전용 제품으로 구축하고 제공하는 것입니다.
 - 영향: Windows terminal runtime, Windows process inspector, Windows service/tray host, Windows installer/update smoke가 release 기준이 됩니다. macOS/Linux/Android 문서는 legacy/reference로 유지하고, 새 기능 기준으로 확장하지 않습니다.
+- 보존 이유: 2026년 Windows installer/updater와 `codexwinmux` product-line 결정의 맥락과 검증 근거를 설명합니다. 현재 제품/runtime target은 ADR-031이 대체합니다.
 
 ## ADR-024: codexwinmux는 별도 Windows 제품 line으로 분리한다
 
@@ -253,3 +254,14 @@
 - 구현 근거: CLI-only manifest, postinstall allowlist, build-only dependency 분리, local tarball install/run smoke와 `.github/workflows/npm-publish.yml`의 OIDC/idempotency contract를 구현했습니다. Next `16.3.1`, sharp `0.35.3`, PostCSS `8.5.23`, nanoid `5.1.16`으로 public package dependency audit를 0건으로 복구했습니다.
 - 검증 조건: local tarball의 lifecycle-enabled install, CLI help, isolated production health가 통과하고, 최초 public publish 뒤 exact registry version을 같은 방식으로 실행해야 `Verified`로 전이합니다.
 - 검증 근거: `codexmux@0.4.23`을 release commit `ef27e2971f04d828cf0f1281581ae7e7eb1d1072`에서 최초 public publish했습니다. Registry `gitHead`와 integrity를 확인하고, 저장소 밖 격리 환경에서 registry package의 CLI help와 production `/api/health` `200`, `version=0.4.23`, `commit=ef27e297`을 검증했습니다. 상세 결과는 `docs/operations/2026-08-20-npm-npx-distribution-handoff.md`에 기록합니다.
+
+## ADR-031: Linux 단일 엔진 호스트를 active product/runtime target으로 사용한다
+
+- 상태: Implemented
+- 결정: codexmux의 active product/runtime target을 Linux 단일 엔진 호스트로 고정합니다. 한 Linux host가 custom server, Runtime v2 worker, tmux, Codex CLI와 JSONL, app-owned DB, 등록된 project filesystem을 소유합니다. Browser와 선택 Electron client는 이 host에 접속하지만 session source, worker 또는 project writer가 되지 않습니다.
+- 이유: Session Operations와 Project Governance를 기존 Timeline, Status, Storage worker 경계에 통합하려면 JSONL watch, SQLite single-writer, canonical Linux path, mount와 symlink containment를 한 engine authority에서 보장해야 합니다. Windows-only target은 이 통합의 실제 운영 환경과 맞지 않습니다.
+- trade-off: 기존 Windows package와 updater parity는 새 기능 release gate가 아니며 remote node, collector, multi-engine federation은 지원하지 않습니다. Linux host가 단일 장애 지점이므로 worker별 degraded mode, projection rebuild, state backup과 systemd user service 절차가 필요합니다.
+- 영향: Timeline Worker는 Session Catalog raw JSONL read/watch와 index DB를, Storage Worker는 durable app state를, Governance Worker는 registered project read와 Knowledge Index를 각각 단독 소유합니다. Next API는 DB나 project filesystem을 직접 열지 않습니다. Windows release 증거와 ADR-030의 독립 배포면 결정은 삭제하거나 Linux acceptance로 재해석하지 않습니다.
+- 승인 근거: `docs/superpowers/specs/2026-08-21-session-operations-governance-integration-design.md`, `docs/superpowers/grill-me/2026-08-21-session-operations-governance-integration.md`, `docs/superpowers/plans/2026-08-21-session-operations-governance-integration.md`.
+- 구현 근거: Runtime v2에 Governance Worker와 Session Catalog ownership을 추가하고 Storage Worker에 session annotation/filter와 Approved Project Root/Managed Project durable state를 배치했습니다. Project Governance는 read-only API/UI, bounded discovery, metadata-only Knowledge Index, lifecycle/check/audit projection만 제공합니다.
+- 검증 조건: 전체 unit/type/lint/build, Runtime v2 core/backup/Phase 6 gate, 5,000-session performance, isolated Linux rollback, 한국어/영어 browser와 npm tarball smoke를 통과하고 운영 handoff를 남깁니다. 실제 user service restart와 장시간 관찰 근거를 확보하기 전에는 `Verified`로 전이하지 않습니다.

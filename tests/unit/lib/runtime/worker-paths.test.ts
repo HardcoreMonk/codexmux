@@ -14,6 +14,21 @@ describe('runtime worker path resolution', () => {
     });
   });
 
+  it('resolves the governance worker in development and production', () => {
+    expect(resolveRuntimeWorkerScript('governance-worker', {
+      cwd: '/repo', existsSync: () => true, env: { NODE_ENV: 'development', __CMUX_APP_DIR: '/app' },
+    })).toEqual({
+      scriptPath: path.join('/app', 'src', 'workers', 'governance-worker.ts'),
+      execArgv: ['--import', 'tsx'],
+    });
+    expect(resolveRuntimeWorkerScript('governance-worker', {
+      cwd: '/repo', existsSync: () => true, env: { NODE_ENV: 'production', __CMUX_APP_DIR: '/app' },
+    })).toEqual({
+      scriptPath: path.join('/app', 'dist', 'workers', 'governance-worker.js'),
+      execArgv: [],
+    });
+  });
+
   it('uses dist worker entrypoints in web/npm production', () => {
     expect(resolveRuntimeWorkerScript('terminal-worker', {
       cwd: '/repo',

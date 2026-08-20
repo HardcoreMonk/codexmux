@@ -5,6 +5,7 @@ const REQUIRED_PACKAGE_FILES = [
   'bin/codexmux.js',
   'bin/cli.js',
   'dist/server.js',
+  'dist/workers/governance-worker.js',
   '.next/standalone/server.js',
   'src/config/tmux.conf',
   'scripts/postinstall-node-pty.mjs',

@@ -1,14 +1,18 @@
 # Windows-only 차이 감사
 
 최초 작성: 2026-05-06
-현행화: 2026-07-13
-상태: 전환 기준 문서
+현행화: 2026-08-21
+상태: 역사적 Windows 전환·release 증거
+
+> 이 문서는 ADR-023이 active target이던 기간의 Windows 전환 판단과 release evidence를
+> 보존합니다. 현재 제품/runtime target은 ADR-031의 Linux 단일 엔진 호스트이며, 아래
+> 항목을 Linux acceptance나 현재 backlog로 재해석하지 않습니다.
 
 ## 결론
 
-codexmux는 아직 완전한 Windows 전용 제품이 아닙니다. 저장소에는 macOS/Linux tmux server, Linux `systemd` operation, Android Capacitor shell, legacy macOS packaging 기록이 남아 있습니다.
+이 감사가 작성될 당시 codexmux는 완전한 Windows 전용 제품이 아니었습니다. 저장소에는 macOS/Linux tmux server, Linux `systemd` operation, Android Capacitor shell, legacy macOS packaging 기록이 남아 있었습니다.
 
-전환 목표는 기존 Windows companion integration을 복구하는 것이 아니라, 제품 실행 기준 자체를 Windows-only service/product로 바꾸는 것입니다. ADR에서 제거한 remote JSONL sync, remote terminal sidecar, remote source model은 계속 제외합니다.
+당시 전환 목표는 기존 Windows companion integration을 복구하는 것이 아니라 제품 실행 기준 자체를 Windows-only service/product로 바꾸는 것이었습니다. ADR에서 제거한 remote JSONL sync, remote terminal sidecar, remote source model은 계속 제외합니다.
 
 ## 감사 소스
 

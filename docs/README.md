@@ -14,15 +14,15 @@ handoff는 `docs/operations/`에 보존하며, 당시 증거를 소급해 재작
 | --- | --- |
 | `ADR.md` | 오래가는 아키텍처 결정과 변경 트리거 |
 | `PROJECT-DESIGN.md` | 제품/아키텍처 설계 요약과 주요 구성 |
-| `WINDOWS-ONLY-GAP-AUDIT.md` | Windows 전용 제품 전환 gap, 도메인 언어, 전환 순서 |
+| `WINDOWS-ONLY-GAP-AUDIT.md` | ADR-023 기간의 Windows 전환 gap과 release 증거 보존 |
 | `PURPLEMUX-ADOPTION-AUDIT.md` | Purplemux 계보, 보안/구조 차이, 선택 이식 우선순위 |
-| `ARCHITECTURE-LOGIC.md` | server, runtime v2, workspace, terminal, timeline, status 흐름 |
+| `ARCHITECTURE-LOGIC.md` | Linux engine, runtime worker, Session Catalog, Project Governance와 API 흐름 |
 | `RUNTIME-V2-CUTOVER.md` | runtime v2 production 전환 단계와 rollback 기준 |
 | `RUNTIME-V2-PARITY.md` | runtime v2 surface별 parity와 증거 |
 | `STATUS.md` | Codex 작업 상태 감지, notification, timeline metadata |
-| `TMUX.md` | legacy tmux 경로와 terminal WebSocket 계약 |
+| `TMUX.md` | Linux tmux adapter와 terminal WebSocket 계약 |
 | `DATA-DIR.md` | `~/.codexmux/` 저장 구조와 삭제 기준 |
-| `TESTING.md` | unit/type/lint/build, Playwright, Windows package smoke 기준 |
+| `TESTING.md` | unit/type/lint/build, Linux engine, Playwright와 별도 package smoke 기준 |
 | `ELECTRON.md` | Electron desktop shell, Windows packaging, updater smoke |
 | `PERFORMANCE.md` | 성능 스냅샷, cache, polling, render 최적화 기준 |
 | `STYLE.md` | theme, color, terminal/mobile UI 규칙 |
@@ -36,6 +36,7 @@ handoff는 `docs/operations/`에 보존하며, 당시 증거를 소급해 재작
 | `operations/2026-07-13-v0.4.22-windows-release-handoff.md` | 현재 stable release, cookie namespace와 Windows update 증거 |
 | `operations/2026-07-12-purplemux-cookie-isolation-handoff.md` | 동일 hostname의 Purplemux/Codexmux cookie 충돌 원인, source 수정과 release 경계 |
 | `operations/2026-08-14-purplemux-selected-adoption-handoff.md` | Purplemux 선택 기능 수동 도입, 자동 검증과 Linux service 재시작 근거 |
+| `operations/2026-08-21-session-operations-governance-integration-handoff.md` | Session Catalog/Project Governance 구현, 검증, rollback과 운영 진입 경계 |
 
 `v0.4.22`는 같은 hostname의 Purplemux와 동시 실행하기 위한 cookie namespace 수정을
 포함하고 fresh Windows package/published updater와 privacy gate를 통과해 stable/latest로
@@ -55,12 +56,12 @@ ADR-025는 자동 검증과 실제 Linux service 재시작을 근거로 `Verifie
 Root `CONTEXT.md`는 도메인 언어와 기준 소스 경계를, root `DESIGN.md`는
 UI 시각 계약을 담당합니다.
 
-## 레거시 또는 참고 문서
+## 플랫폼 및 참고 문서
 
 | 문서 | 기준 |
 | --- | --- |
 | `ANDROID.md` | Android Capacitor shell 기록. Windows 전용 전환 후 primary surface가 아님 |
-| `SYSTEMD.md` | Linux `systemd --user` 운영 기록. Windows host 전환 후 legacy 운영 참고 |
+| `SYSTEMD.md` | Linux 단일 엔진의 `systemd --user` 운영 기준 |
 | `TAURI-EVALUATION.md` | Rust/Tauri 도입 검토 기록 |
 | `operations/` | 실제 배포, smoke, handoff 기록 |
 | `superpowers/specs/` | 구현 전 확정한 설계 산출물 |
@@ -76,13 +77,14 @@ UI 시각 계약을 담당합니다.
 
 ## 갱신 규칙
 
-- Windows 전용 제품 타깃, terminal runtime, process inspector, host/installer/update 정책을 바꾸면 `WINDOWS-ONLY-GAP-AUDIT.md`, `ADR.md`, 관련 `superpowers/specs/`와 `superpowers/plans/`를 함께 갱신합니다.
+- Linux 단일 엔진 토폴로지, terminal runtime, process inspector 또는 host 운영 정책을 바꾸면 `ADR.md`, `PROJECT-DESIGN.md`, `SYSTEMD.md`, 관련 `superpowers/specs/`와 `superpowers/plans/`를 함께 갱신합니다. Windows installer/updater의 역사적 판단을 바꿀 때만 `WINDOWS-ONLY-GAP-AUDIT.md`를 갱신합니다.
 - 제품/아키텍처 설계 요약을 바꾸면 `PROJECT-DESIGN.md`, `CONTEXT.md`, `README.md`의 문서 맵을 함께 확인합니다.
 - UI 시각 방향, token, layout, component 상태, 반응형/accessibility 규칙을 바꾸면 root `DESIGN.md`와 `STYLE.md`를 함께 확인합니다.
 - 프로젝트 설계 기준 문서 경계를 바꾸면 `corepack pnpm check:project-design`를 실행합니다.
 - 상태 모델, provider metadata, notification policy, Codex hook event 경로를 바꾸면 `STATUS.md`와 `ADR.md`를 함께 갱신합니다.
 - tmux, Windows terminal adapter, process 감지, terminal protocol, Codex web input 제출 frame, `Ctrl+D` 정책을 바꾸면 `TMUX.md` 또는 새 Windows runtime 문서를 갱신합니다.
 - server startup, WebSocket routing, shared singleton, runtime worker, sync 흐름을 바꾸면 `ARCHITECTURE-LOGIC.md`를 갱신합니다.
+- Session Catalog, Managed Project, Governance Worker, Knowledge Index, lifecycle projection 또는 project read policy를 바꾸면 `CONTEXT.md`, `ADR.md`, `PROJECT-DESIGN.md`, `ARCHITECTURE-LOGIC.md`, `DATA-DIR.md`, `TESTING.md`를 함께 확인합니다.
 - upload route ownership, request contract, admission, storage publish/cleanup 또는 kill switch를 바꾸면 `ADR.md`, `ARCHITECTURE-LOGIC.md`, `DATA-DIR.md`, `TESTING.md`를 함께 갱신합니다.
 - runtime v2 mode, migration, rollback, parity evidence를 바꾸면 `RUNTIME-V2-CUTOVER.md`와 `RUNTIME-V2-PARITY.md`를 갱신합니다.
 - 성능 계측, polling, timeline render/cache, WebSocket batching을 바꾸면 `PERFORMANCE.md`를 갱신합니다.

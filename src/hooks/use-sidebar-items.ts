@@ -9,6 +9,7 @@ interface ISidebarItem {
   icon: string;
   url: string;
   enabled: boolean;
+  labelKey?: 'notes' | 'stats' | 'sessionExplorer' | 'governance';
 }
 
 interface ISidebarItemsData {

@@ -6,6 +6,8 @@
   "deleteWorkspaceConfirm": "Close workspace ''{name}''?",
   "notes": "Notes",
   "stats": "Usage stats",
+  "sessionExplorer": "Session Explorer",
+  "governance": "Project Governance",
   "collapseSidebar": "Collapse sidebar",
   "expandSidebar": "Expand sidebar",
   "newWorkspace": "New Workspace",

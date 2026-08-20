@@ -1,6 +1,6 @@
 # 아키텍처와 서비스 로직
 
-codexmux는 Next.js Pages Router와 custom Node server를 함께 사용하는 Codex 세션 매니저입니다. 현재 구조는 legacy tmux 기반 경로와 runtime v2 worker 경로가 공존하며, 제품 목표는 Windows-only runtime/host로 전환하는 것입니다.
+codexmux는 Next.js Pages Router와 custom Node server를 함께 사용하는 Codex 세션 매니저입니다. Active runtime은 Linux 단일 엔진 호스트이며 legacy tmux 경로와 Runtime v2 worker 경로가 함께 동작합니다. Windows installer/updater 기록은 별도 배포면의 역사적 근거로 보존합니다.
 
 ## 핵심 구조
 
@@ -19,24 +19,28 @@ runtime v2 Supervisor
   | storage worker
   | timeline worker
   | status worker
+  | governance worker
   v
-terminal runtime adapter
-  | legacy tmux adapter
-  | Windows node-pty/ConPTY adapter
+Linux engine-owned sources
+  | tmux terminal adapter
+  | ~/.codex/sessions/**/*.jsonl (read-only)
+  | ~/.codexmux/**/*.db (app-owned)
+  | approved project roots (read-only)
 ```
 
 custom server와 Next.js API route는 같은 process 안에서도 서로 다른 module graph를 사용할 수 있습니다. 공유 상태는 `globalThis` singleton에 두고 재초기화를 막습니다.
 
 ## 런타임 v2
 
-Runtime v2는 Supervisor와 worker process로 terminal, storage, timeline, status 책임을 분리합니다.
+Runtime v2는 Supervisor와 worker process로 terminal, storage, timeline, status, governance 책임을 분리합니다.
 
 | 영역 | 책임 | Rollback |
 | --- | --- | --- |
 | Terminal Worker | terminal create/attach/write/resize/detach/kill | terminal mode `off` 또는 legacy adapter |
 | Storage Worker | workspace/layout/tab/message-history SQLite projection | storage mode `off` |
-| Timeline Worker | Codex JSONL read, live watch, session list | timeline mode `off` |
+| Timeline Worker | Codex JSONL read/live watch, timeline, Session Catalog와 검색 index | timeline mode `off`; catalog는 degraded |
 | Status Worker | Codex process/status policy, notification side effect | status mode `off` |
+| Governance Worker | 승인된 project 문서 read, Knowledge Index, lifecycle/check/audit projection | core worker는 유지하고 governance만 degraded |
 
 `CODEXMUX_RUNTIME_V2=1`에서 surface mode가 unset이면 Phase 6 기준 fallback을 적용합니다. 잘못된 명시 값은 fail closed로 legacy/off에 가깝게 처리합니다.
 
@@ -50,7 +54,7 @@ Runtime v2는 Supervisor와 worker process로 terminal, storage, timeline, statu
 6. process-scoped UploadServer를 만들고 Next.js request handler보다 앞에 연결합니다.
 7. typed WebSocket route와 health/smoke endpoint를 연결합니다.
 
-서버 시작 중 runtime v2 worker가 준비되지 않으면 해당 surface는 명확한 diagnostic을 반환해야 합니다. 브라우저는 stale tab을 조용히 busy/idle로 표시하지 않아야 합니다.
+서버 시작 중 runtime v2 core worker가 준비되지 않으면 해당 surface는 명확한 diagnostic을 반환해야 합니다. Governance Worker는 비핵심 worker이므로 준비 실패가 terminal/storage/timeline/status 시작을 막지 않고 governance surface만 degraded로 둡니다. 브라우저는 stale tab을 조용히 busy/idle로 표시하지 않아야 합니다.
 
 ## HTTP와 WebSocket 라우팅
 
@@ -67,6 +71,10 @@ Runtime v2는 Supervisor와 worker process로 terminal, storage, timeline, statu
 | `/api/upload-file` | outer-owned raw generic upload. exact 50MiB limit |
 | `/api/uploads/cleanup` | 인증된 committed/stale upload cleanup 제어 |
 | `/api/debug/perf` | 인증된 성능 snapshot |
+| `/api/sessions/*` | Session Catalog health/search/replay와 Storage Worker 소유 annotation/filter |
+| `/api/governance/roots/*` | Approved Project Root preview/명시적 confirm |
+| `/api/governance/import/*` | `projects.yaml` preview/선택적 confirm import |
+| `/api/governance/projects/*` | Managed Project catalog와 read-only summary/document/lifecycle/audit |
 
 WebSocket payload에는 terminal output, prompt, token, full path 같은 민감한 본문을 불필요하게 저장하지 않습니다.
 
@@ -144,9 +152,11 @@ Legacy store는 JSON 파일을 사용합니다. Runtime v2 store는 SQLite를 �
 | --- | --- | --- |
 | Legacy JSON | `~/.codexmux/workspaces.json`, `workspaces/*/layout.json` | rollback, migration fallback |
 | Runtime v2 SQLite | `~/.codexmux/runtime-v2/state.db` | workspace/layout/tab/message-history projection |
+| Session Catalog SQLite | `~/.codexmux/session-catalog/index.db` | JSONL metadata/message FTS/cursor/health projection. 삭제 후 rebuild 가능 |
+| Knowledge Index SQLite | `~/.codexmux/governance/index.db` | 문서 metadata/headings/fingerprint/link projection. 삭제 후 refresh 가능 |
 | Codex JSONL | `~/.codex/sessions/**/*.jsonl` | Codex 원본 timeline/status source. read-only |
 
-Runtime v2 default read가 켜져도 rollback용 JSON write는 유지합니다.
+Approved Project Root, Managed Project, import 결과, session annotation/saved filter와 sanitized governance audit는 `runtime-v2/state.db`의 durable app state입니다. Runtime v2 default read가 켜져도 rollback용 JSON write는 유지합니다. 세 SQLite 디렉터리는 `0700`, DB/WAL/SHM은 `0600`으로 유지합니다.
 
 ## 워크스페이스 로직
 
@@ -201,6 +211,27 @@ Timeline은 Codex JSONL record와 live pane prompt를 병합해 UI entry로 투�
 - session list는 `SessionIndexService` snapshot을 page 단위로 읽습니다. Cold refresh가 진행 중이면
   request path가 전체 JSONL scan을 기다리지 않고 현재 snapshot과 `refreshing` 상태를 반환합니다.
 
+## Session Catalog 로직
+
+Session Catalog는 Timeline Worker 내부의 재생성 가능한 projection입니다. JSONL raw read와 파일 cursor, session metadata, bounded message text/FTS를 한 worker가 소유하고 Next API는 DB나 JSONL path를 직접 열지 않습니다.
+
+- 검색 결과는 project label, model, 시간, 관계, turn 수와 bounded snippet만 반환하며 canonical path와 command를 노출하지 않습니다.
+- 복기는 catalog의 session id를 canonical JSONL cursor로 해석한 뒤 bounded page를 읽습니다. 요청 cursor가 파일 크기보다 크면 파일 크기로 제한합니다.
+- pin/tag와 saved filter는 검색 index가 아니라 Storage Worker의 durable state이며 optimistic version으로 갱신합니다.
+- rebuild는 원본 JSONL을 삭제하거나 변경하지 않습니다. 중복 요청은 한 rebuild로 합치고 health의 `queueLag`, `cursorAgeMs`, `rebuildState`로 진행 상태를 표시합니다.
+- index가 손상되면 DB/WAL/SHM을 quarantine하고 Timeline Worker를 재시작한 뒤 authenticated rebuild API로 재생성합니다.
+
+## Project Governance 로직
+
+Storage Worker는 Approved Project Root와 Managed Project의 canonical path를 durable하게 보관하지만 API 응답에는 path를 제거합니다. Governance Worker만 Storage가 전달한 snapshot으로 등록 project를 읽습니다.
+
+- root 등록과 `projects.yaml` import는 preview token, digest/source fingerprint, 10분 TTL과 exact confirmation phrase를 사용합니다. mutation은 기존 session/CLI auth와 same-authority Origin 정책을 재사용합니다.
+- root와 project는 `realpath` containment, Linux mount 경계, symlink/regular-file 검증을 매 scan과 문서 read에서 다시 확인합니다.
+- discovery는 Markdown allowlist와 file/count/total bytes/depth/time quota를 적용하고 `.git`, `.worktrees`, build/cache, `node_modules`, nested worktree와 symlink를 제외합니다.
+- Knowledge Index에는 path, kind, title, headings, fingerprint, lint, link만 저장합니다. 문서 본문은 index DB에 저장하지 않고 요청 시 최대 256KiB를 다시 읽습니다.
+- audit은 후보의 상대 path, line, category만 반환하고 matching secret body는 반환하지 않습니다.
+- Phase 2는 항상 `readOnly: true`입니다. scaffold, 문서 수정, lifecycle draft, delete/move/sync command는 IPC/API에 없습니다.
+
 ## 상태 로직
 
 상태 로직은 프로세스 상태, 작업 상태, 알림 상태를 분리해서 판단합니다.
@@ -233,21 +264,15 @@ JSONL tail의 `token_count/rate_limits` observation은 작업 상태 scan과 같
 
 ## 운영 로직
 
-Linux `systemd --user`, Android shell, macOS packaging은 현재 기록으로 남아 있지만 Windows-only 제품 전환의 primary path가 아닙니다. Windows 운영 기준은 다음 순서로 승격합니다.
-
-1. Windows terminal runtime smoke
-2. Windows process/session detection smoke
-3. Windows host diagnostics smoke
-4. Windows packaged launch smoke
-5. Windows installer install smoke
-6. Windows updater local/published channel smoke
-7. 내부 사용자 장시간 workspace 사용
+Linux `systemd --user`가 active engine 운영 경계입니다. 배포 전 build와 Runtime v2 core gate를 통과하고, Session Catalog 성능/재생성, Linux 격리 smoke, 한국어/영어 browser smoke를 확인합니다. 실제 service restart는 별도 운영 승인 뒤 수행하며 restart 전 `runtime-v2/state.db` backup을 만듭니다. Windows package와 updater 근거는 Linux engine acceptance를 대체하지 않습니다.
 
 ## 장애 대응 기준
 
 - Runtime worker가 죽으면 worker counter와 sanitized last error를 남깁니다.
+- Governance Worker가 죽으면 terminal/session operation을 유지한 채 governance UI를 degraded read model로 전환합니다.
 - Terminal session이 사라지면 stale ready tab으로 숨기지 않고 failed/diagnostic 상태를 표시합니다.
 - Storage migration 실패는 DB handle을 닫고 rollback 가능한 오류로 반환합니다.
+- Session Catalog와 Knowledge Index는 원본이 아닌 projection이므로 quarantine 후 rebuild/refresh합니다. `runtime-v2/state.db`는 projection처럼 삭제하지 않고 backup/restore 절차를 사용합니다.
 - Status/timeline worker rollback은 같은 public URL에서 legacy implementation으로 되돌릴 수 있어야 합니다.
 - Windows package smoke 실패는 release blocker입니다.
 - Upload 장애는 취약한 Pages route나 dependency로 되돌리지 않습니다. 먼저

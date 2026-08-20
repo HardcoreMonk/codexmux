@@ -5,7 +5,7 @@ export const runtimeV2Phase6ExpectedModes = {
   statusV2Mode: 'default',
 };
 
-const workerNames = ['storage', 'terminal', 'timeline', 'status'];
+const workerNames = ['storage', 'terminal', 'timeline', 'status', 'governance'];
 
 const failureCounterNames = [
   'healthFailures',
@@ -67,12 +67,16 @@ export const validateRuntimeV2Phase6Gate = ({ health, perf }) => {
   }
 
   for (const name of workerNames) {
+    const workerHealth = readObject(healthObject?.[name]);
+    const healthy = name === 'governance'
+      ? workerHealth?.state === 'ready' || workerHealth?.state === 'scanning'
+      : workerHealth?.ok === true;
     pushCheckOrFailure({
       checks,
       failures,
       check: `${name}-health-ok`,
       failure: `${name}-health-not-ok`,
-      ok: readObject(healthObject?.[name])?.ok === true,
+      ok: healthy,
     });
   }
 

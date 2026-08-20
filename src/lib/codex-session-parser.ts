@@ -766,11 +766,13 @@ export const readCodexEntriesBefore = async (
   try {
     if (beforeByte <= 0) return empty;
     const stat = await fs.stat(filePath);
+    const boundedBeforeByte = Math.min(beforeByte, stat.size);
+    if (boundedBeforeByte <= 0) return empty;
 
     let chunkSize = CHUNK_SIZE;
     while (true) {
-      const from = Math.max(0, beforeByte - chunkSize);
-      const { content, validFrom } = await readChunk(filePath, from, beforeByte);
+      const from = Math.max(0, boundedBeforeByte - chunkSize);
+      const { content, validFrom } = await readChunk(filePath, from, boundedBeforeByte);
       if (content) {
         const result = parseCodexContent(content, validFrom);
         if (result.entries.length >= maxEntries || from === 0) {

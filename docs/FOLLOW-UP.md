@@ -1,11 +1,9 @@
 # 후속 작업
 
-이 문서는 release 전 확인, 내부 배포 단계, post-MVP backlog를 추적합니다. 2026-08-15
-`v0.4.22`는 Purplemux cookie namespace 격리를 포함해 stable/latest로 승격됐습니다. Fresh
-Windows HOME/profile의 package와 updater gate는 통과했지만 기존 Electron profile에서 login
-전환, 1회 재로그인과 Runtime v2 WebSocket/upload 재연결을 직접 검증하는 근거는 남아 있습니다.
-현재 release는 unsigned 내부 배포물이며, public signing이나 외부 배포 준비 완료를 의미하지
-않습니다.
+이 문서는 release 전 확인, 내부 배포 단계, post-MVP backlog를 추적합니다. Active 제품/runtime
+target은 Linux 단일 엔진 호스트입니다. 기존 `v0.4.22` Windows package/updater와 unsigned 내부
+배포 기록은 별도 배포면의 역사적 근거로 보존하며 Linux Session Operations/Project Governance
+acceptance를 대체하지 않습니다.
 
 ## 완료된 범위
 
@@ -54,6 +52,9 @@ Windows HOME/profile의 package와 updater gate는 통과했지만 기존 Electr
   standalone Node hook bridge의 loopback/64KiB/fail-open integration test
 - ADR-025 `Verified`: Codex 0.147.0 strict-config, 1,480 unit tests, type/build/Electron,
   Runtime v2 status/timeline, browser reconnect와 실제 Linux user service 재시작 통과
+- Linux Session Operations/Project Governance Phase 1~2: Timeline Worker 소유 Session Catalog,
+  Storage Worker 소유 durable project/session state, Governance Worker 소유 read-only Knowledge
+  Index, 한국어/영어 운영 UI, 성능 baseline과 격리 Linux/browser rollback smoke
 
 ## 릴리스 전 확인
 
@@ -73,6 +74,9 @@ corepack pnpm check:upload-memory
 CODEXMUX_UPLOAD_SMOKE_MODE=development corepack pnpm smoke:upload-integrity
 CODEXMUX_UPLOAD_SMOKE_MODE=production corepack pnpm smoke:upload-integrity
 corepack pnpm smoke:browser-reconnect
+corepack pnpm perf:session-catalog
+corepack pnpm smoke:linux:session-governance
+corepack pnpm smoke:browser:session-governance
 corepack pnpm build:electron
 xvfb-run -a corepack pnpm smoke:electron:runtime-v2
 ```
@@ -171,6 +175,18 @@ Electron profile의 1회 재로그인과 재연결은 별도 후속 근거가 �
 | Public code signing certificate trust | 내부 전용 앱이라 release blocker가 아님 |
 | SmartScreen reputation | 내부 전용 앱이라 release blocker가 아님 |
 | Artifact scanner enumeration hardening | 현재 writer는 lowercase regular `.json`만 생성합니다. 대소문자 확장자와 symlink를 명시적으로 거부하는 방어 강화는 후속 비차단 작업입니다. |
+
+## 별도 lifecycle이 필요한 후속 범위
+
+다음 항목은 이번 read-only release의 연장이 아니며 각각 새 writing-spec, domain-architecture,
+Plan Grilling, plan review와 별도 release gate를 거쳐야 합니다.
+
+| 범위 | 현재 결정 | 다음 acceptance의 핵심 |
+| --- | --- | --- |
+| Phase 3 project write | scaffold, 문서 생성/갱신, lifecycle draft, delete/move/sync는 미구현 | preview/diff, path revalidation, conflict/no-clobber, backup/restore와 부분 실패 복구 |
+| Remote topology | collector, remote node, multi-engine federation 미지원 | engine authority, credential, ordering, partition/reconnect와 data residency |
+| GSD orchestration | GSD CLI/UI, FastAPI/Python collector, 원본 Bash 실행 미도입 | provenance, allowlist, cancellation, audit와 lifecycle ownership |
+| Full-output search | bounded message search/snippet만 제공 | secret/terminal output policy, quota, encryption/retention과 explicit opt-in |
 
 ## Codex lifecycle 기준
 

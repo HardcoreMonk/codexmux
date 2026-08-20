@@ -1,0 +1,9 @@
+projects:
+  - id: demo-project
+    title: Demo Project
+    path: <fixture-root>/projects/demo
+    enabled: true
+  - id: lifecycle-project
+    title: Lifecycle Project
+    path: <fixture-root>/projects/lifecycle
+    enabled: false

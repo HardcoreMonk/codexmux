@@ -6,6 +6,8 @@
   "deleteWorkspaceConfirm": "Workspace ''{name}''을 닫으시겠습니까?",
   "notes": "노트",
   "stats": "사용량 통계",
+  "sessionExplorer": "세션 탐색기",
+  "governance": "프로젝트 거버넌스",
   "collapseSidebar": "사이드바 접기",
   "expandSidebar": "사이드바 펼치기",
   "newWorkspace": "새 Workspace",

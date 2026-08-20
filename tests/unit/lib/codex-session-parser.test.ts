@@ -1,8 +1,9 @@
 import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import { describe, expect, it } from 'vitest';
 
-import { parseCodexJsonlContent } from '@/lib/codex-session-parser';
+import { parseCodexJsonlContent, readCodexEntriesBefore } from '@/lib/codex-session-parser';
 
 const line = (value: unknown): string => JSON.stringify(value);
 const fixturesDir = path.join(process.cwd(), 'tests', 'fixtures', 'codex-jsonl');
@@ -11,6 +12,34 @@ const readFixture = async (name: string): Promise<string> =>
   fs.readFile(path.join(fixturesDir, name), 'utf-8');
 
 describe('parseCodexJsonlContent', () => {
+  it('clamps an oversized replay cursor to the source file size', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-codex-replay-'));
+    const filePath = path.join(dir, 'session.jsonl');
+    try {
+      await fs.writeFile(filePath, [
+        line({
+          type: 'event_msg',
+          timestamp: '2026-08-21T10:00:00.000Z',
+          payload: { type: 'user_message', message: 'Replay request' },
+        }),
+        line({
+          type: 'event_msg',
+          timestamp: '2026-08-21T10:00:01.000Z',
+          payload: { type: 'agent_message', message: 'Replay response' },
+        }),
+        '',
+      ].join('\n'));
+
+      const result = await readCodexEntriesBefore(filePath, Number.MAX_SAFE_INTEGER, 20);
+
+      expect(result.entries).toHaveLength(2);
+      expect(result.fileSize).toBeGreaterThan(0);
+      expect(result.hasMore).toBe(false);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('parses Codex user and assistant event messages', () => {
     const content = [
       line({
