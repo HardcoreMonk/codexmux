@@ -4,7 +4,7 @@
 - 대상: Linux 단일 엔진 호스트
 - 범위: Session Operations Phase 1, Project Governance Phase 2 read-only
 - ADR: ADR-031 `Implemented`
-- 운영 상태: release-candidate 자동 검증 통과, live user service 미변경
+- 운영 상태: release-candidate 검증 및 Linux live user service 배포·재시작 검증 통과
 
 ## 결과
 
@@ -71,14 +71,46 @@ DB private mode, Timeline/Governance Worker quarantine 복구와 rollback 전후
 확인했습니다. Browser smoke는 한국어/영어 SSR locale, search/replay keyboard flow,
 Governance degraded→recovery와 hydration error 부재를 확인했습니다.
 
-Phase 6 명령의 기본 호출은 이 host에 live `~/.codexmux/cli-token`이 없어 admission 전에
-종료됐습니다. Live service를 만들거나 변경하지 않고 임시 HOME의 development server와
+초기 release-candidate 검증 시 Phase 6 명령의 기본 호출은 이 host에 live
+`~/.codexmux/cli-token`이 없어 admission 전에 종료됐습니다. 이 단계에서는 live service를
+만들거나 변경하지 않고 임시 HOME의 development server와
 `CODEXMUX_RUNTIME_V2_PHASE6_GATE_URL`을 사용해 같은 gate를 통과했습니다. Production 실행은
-별도 npm tarball 격리 install/health smoke로 검증했습니다.
+별도 npm tarball 격리 install/health smoke로 검증했습니다. 이후 승인된 live 배포에서는
+생성된 CLI token으로 같은 Phase 6 gate를 다시 통과했습니다.
 
 검증 중 oversized replay cursor가 빈 결과를 만드는 문제, runtime DB private mode 누락,
 Session Explorer의 중첩 button hydration 오류, smoke cleanup race와 Turbopack dynamic trace
 경고를 재현했습니다. 각각 회귀 테스트 또는 실제 smoke로 수정 후 재검증했습니다.
+
+## Live 배포 기록
+
+2026-08-21 사용자 승인 후 [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18)을
+배포 추적 항목으로 생성하고 구현 commit `d405f683`을
+`codex/session-operations-governance`에 push했습니다. 배포 checkout의 `main`은 해당 commit으로
+fast-forward했습니다. 기존 checkout의 관련 없는 수정
+`docs/operations/2026-08-20-npm-npx-distribution-handoff.md`와 `.ua/`는 그대로 보존했습니다.
+
+배포 전에는 `codexmux.service`, port 8122 listener, `runtime-v2/state.db`, Session Catalog DB,
+Governance DB가 모두 없었습니다. 따라서 복원할 기존 live service나 durable DB backup 대상은
+없었습니다. 문서와 일치하는 `~/.config/systemd/user/codexmux.service`를 새로 등록했으며
+`HOST=localhost`, `PORT=8122`, Runtime v2와 Session Catalog default mode로 외부 노출 없이
+활성화했습니다.
+
+| 확인 | 결과 |
+| --- | --- |
+| production install/build | `CI=true corepack pnpm install --frozen-lockfile`, commit `d405f683` production build 통과 |
+| 최초 기동 | PID `970414`, `active/running`, restart count 0 |
+| 요청된 service restart | PID `970414` → `971387`, 종료 상태 0, `active/running` |
+| public health | version `0.4.23`, commit `d405f683`, build time `2026-08-21T05:21:53+09:00` |
+| authenticated health | Storage, Terminal, Timeline, Status, Governance, Session Catalog 모두 ready/ok |
+| live terminal smoke | restart 전후 각각 create, attach, stdin/stdout, resize, reconnect, fan-out, backpressure, delete/cleanup 통과 |
+| live Phase 6 gate | restart 전후 각각 12 checks 통과, worker counter failure 0 |
+| durable file mode | runtime, session-catalog, governance DB/WAL/SHM 모두 `0600` |
+| warning journal | 배포 및 restart 구간 warning 이상 entry 없음 |
+
+기존 live tmux session은 없었으므로 reconnect 보존 대신 새 terminal의 전체 live smoke로
+검증했습니다. Fresh config는 현재 setup 상태이며 CLI token 기반 운영 API는 정상입니다.
+브라우저 사용자 비밀번호 설정과 외부 bind는 이번 배포에서 임의로 수행하지 않았습니다.
 
 ## Rollback
 
@@ -97,10 +129,10 @@ project source는 rollback 대상으로 삭제하지 않습니다.
 
 ## 운영 진입과 잔여 위험
 
-- 자동 release-candidate gate 완료 시점에는 live deploy, service 등록/재시작, commit과 push를
-  수행하지 않았습니다. 사용자 후속 승인에 따라 배포 추적 [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18)을 생성했으며 실제 운영 결과는 후속 기록으로 추가합니다.
-- Linux 단일 engine은 단일 장애 지점입니다. 장시간 live service 관찰과 실제 restart 증거가
-  없으므로 ADR-031은 `Implemented`이며 `Verified`가 아닙니다.
+- 사용자 승인 후 commit/push, live service 등록, 실제 restart와 restart 전후 terminal/API
+  smoke를 완료했습니다. Issue #18에는 최종 commit과 운영 증거를 동기화합니다.
+- Linux 단일 engine은 단일 장애 지점입니다. 실제 restart 증거는 확보했지만 장시간 live
+  service 관찰은 아직 없으므로 ADR-031은 `Implemented`이며 `Verified`가 아닙니다.
 - Governance Worker failure는 core terminal/session을 막지 않지만 governance 데이터는 refresh
   완료 전 stale/degraded일 수 있습니다.
 - JSONL schema 변화와 대규모 project tree는 parser/discovery quota 경고를 만들 수 있습니다.
