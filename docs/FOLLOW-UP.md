@@ -273,8 +273,8 @@ Linux engine acceptance를 Android smoke로 대체하지 않습니다.
 ## 문서와 운영
 
 - Canonical 문서는 한국어로 유지합니다.
-- GitHub Pages source와 artifact gate는 준비됐으며 commit/push 뒤 public Pages workflow와 URL
-  smoke가 필요합니다.
+- GitHub Pages source와 artifact gate를 PR #22로 main에 병합했고 workflow run 32485665955와
+  public landing/docs/guide/robots/sitemap/404 smoke가 통과했습니다.
 - 실제 release/smoke 결과는 `docs/operations/` handoff에 추가합니다.
 - 과거 logs/specs는 기록 보존을 위해 재작성하지 않습니다.
 - 2026-05-07 이후 100% closeout 배치는 CODEX panel timeline hotfix 회귀도 자동 row로 포함합니다. 권장 closeout 명령은 `CODEXMUX_BACKLOG_COMPLETION_ALLOW_DEFER=1 CODEXMUX_SMOKE_ARTIFACT_DIR=/tmp/codexmux-backlog-complete corepack pnpm ops:backlog:complete`입니다.

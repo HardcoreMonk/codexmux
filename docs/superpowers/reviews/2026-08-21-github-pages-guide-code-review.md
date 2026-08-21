@@ -48,5 +48,5 @@ availability를 따르도록 교정한 뒤 전체 artifact 검사를 다시 통�
 ## 잔여 경계
 
 - Root와 `ko/` 외 9개 locale은 정책상 보존된 snapshot이며 신규 운영 guide를 제공하지 않습니다.
-- GitHub Pages publish 결과와 public URL smoke는 commit/push 후 별도 확인해야 합니다.
+- GitHub Pages publish와 public URL smoke 결과는 operations handoff에 기록했습니다.
 - Custom domain, CNAME과 DNS는 이번 범위에 포함하지 않습니다.

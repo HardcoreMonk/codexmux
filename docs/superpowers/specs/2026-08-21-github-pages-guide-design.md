@@ -1,8 +1,8 @@
 # GitHub Pages 공개 가이드 설계
 
 - 날짜: 2026-08-21
-- 상태: Implemented
-- Lifecycle stage: `release` (publish pending)
+- 상태: Verified
+- Lifecycle stage: `operate`
 - 요청: GitHub Pages와 가이드 문서 생성, `opencodex.me` 정보 구조 참고
 
 ## 문제

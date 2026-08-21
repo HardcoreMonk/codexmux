@@ -43,7 +43,7 @@
 | `operations/2026-08-21-canonical-documentation-refresh-handoff.md` | canonical/landing 문서 감사 범위, 현행 기준과 보존 정책 |
 | `operations/2026-08-21-governed-project-scaffold-handoff.md` | Phase 3 scaffold 구현, 검증, gate-off 운영 인계와 활성화 조건 |
 | `operations/2026-08-21-governed-unmarked-adoption-handoff.md` | Existing unmarked artifact의 2-pass selective adoption 구현, 검증과 미배포 운영 경계 |
-| `operations/2026-08-21-github-pages-guide-handoff.md` | GitHub Pages 랜딩/가이드 source, artifact gate와 publish 보류 상태 |
+| `operations/2026-08-21-github-pages-guide-handoff.md` | GitHub Pages 랜딩/가이드, artifact gate, 배포와 공개 smoke 증거 |
 
 보존된 Windows stable release `v0.4.22`는 같은 hostname의 Purplemux와 동시 실행하기 위한 cookie namespace 수정을
 포함하고 fresh Windows package/published updater와 privacy gate를 통과해 stable/latest로
