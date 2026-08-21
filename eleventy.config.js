@@ -9,12 +9,18 @@ module.exports = function (eleventyConfig) {
     port: 8181,
   });
 
-  eleventyConfig.addFilter('docsNeighbors', (flat, slug) => {
-    const idx = flat.findIndex((i) => i.slug === slug);
+  const isGuideAvailable = (item, locale) =>
+    !Array.isArray(item?.locales) || item.locales.includes(locale);
+
+  eleventyConfig.addFilter('guideAvailable', isGuideAvailable);
+
+  eleventyConfig.addFilter('docsNeighbors', (flat, slug, locale) => {
+    const available = flat.filter((item) => isGuideAvailable(item, locale));
+    const idx = available.findIndex((i) => i.slug === slug);
     if (idx < 0) return { prev: null, next: null };
     return {
-      prev: idx > 0 ? flat[idx - 1] : null,
-      next: idx < flat.length - 1 ? flat[idx + 1] : null,
+      prev: idx > 0 ? available[idx - 1] : null,
+      next: idx < available.length - 1 ? available[idx + 1] : null,
     };
   });
 
@@ -46,11 +52,21 @@ module.exports = function (eleventyConfig) {
 
   eleventyConfig.addFilter('findDocsGroup', (nav, slug, locale) => {
     for (const group of nav) {
+      if (!isGuideAvailable(group, locale)) continue;
       for (const item of group.items) {
+        if (!isGuideAvailable(item, locale)) continue;
         if (item.slug === slug) return group.group[locale] || group.group.en || '';
       }
     }
     return '';
+  });
+
+  eleventyConfig.addFilter('findDocsItem', (nav, slug) => {
+    for (const group of nav) {
+      const item = group.items.find((candidate) => candidate.slug === slug);
+      if (item) return item;
+    }
+    return null;
   });
 
   eleventyConfig.addCollection('docs', (api) =>

@@ -43,6 +43,7 @@
     "dev": "tsx watch server.ts",
     "build": "next build && node scripts/post-build.js && tsup && node scripts/write-build-info.mjs",
     "build:landing": "eleventy",
+    "check:landing": "node scripts/check-landing-site.mjs",
     "dev:landing": "eleventy --serve",
     "build:server": "tsup",
     "verify:runtime-native": "node scripts/verify-runtime-native-bindings.mjs",

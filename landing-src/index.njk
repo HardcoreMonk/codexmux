@@ -3,8 +3,8 @@ layout: layouts/base.njk
 lang: en
 title: "codexmux — A web-native terminal multiplexer for Codex"
 description: "Run multiple Codex sessions in one dashboard. tmux-backed, web-native, mobile-ready. MIT open source."
-canonical: https://subicura.com/codexmux/
-ogUrl: https://subicura.com/codexmux/
+canonical: https://hardcoremonk.github.io/codexmux/
+ogUrl: https://hardcoremonk.github.io/codexmux/
 ogLocale: en_US
 ogLocaleAlternate: ko_KR
 permalink: /index.html
@@ -84,8 +84,8 @@ isRoot: true
               <span>npx --yes codexmux@latest</span>
               <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="Copy" onclick="(function(b){navigator.clipboard.writeText('npx --yes codexmux@latest');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
             </div>
-            <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-windows>
-              Download Windows installer
+            <a href="/codexmux/docs/quickstart/" class="btn-primary" data-ph-capture-attribute-cta="guide">
+              Open install guide
             </a>
           </div>
 
@@ -96,9 +96,9 @@ isRoot: true
           </div>
 
           <div class="hero-meta">
-            <span><span class="ok">●</span> Windows installer (primary)</span>
-            <span><span class="ok">●</span> npm: macOS / Linux</span>
-            <span><span class="ok">●</span> npm requires tmux</span>
+            <span><span class="ok">●</span> Linux single-engine runtime</span>
+            <span><span class="ok">●</span> Browser-first operations</span>
+            <span><span class="ok">●</span> npm or source install</span>
           </div>
         </div>
 
@@ -836,15 +836,15 @@ isRoot: true
       <div class="eyebrow">Install</div>
       <h2>30 seconds, start to finish.</h2>
       <p class="lead">
-        Use the Windows installer for the primary desktop product. The npm command runs the legacy tmux web server on macOS and Linux.
+        Run one Linux engine with Node.js 20.9+, tmux 3.0+, and a signed-in Codex CLI. Use npm for a quick start or a source build with systemd for long-running operation.
       </p>
 
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-body">
-            <h3>Run the legacy web server</h3>
-            <p>On macOS or Linux with Node.js 20+ and tmux, run the published package directly.</p>
+            <h3>Run the Linux engine</h3>
+            <p>On Linux with Node.js 20.9+, tmux 3.0+, and a signed-in Codex CLI, run the published package directly.</p>
 <pre class="code"><span class="c">$</span> npx --yes codexmux@latest</pre>
           </div>
         </div>
@@ -861,20 +861,20 @@ isRoot: true
         <div class="step">
           <div class="step-num">3</div>
           <div class="step-body">
-            <h3>Remote access (optional)</h3>
-            <p>For external access we recommend Tailscale Serve. WireGuard encryption and automatic certificates are included.</p>
-<pre class="code"><span class="c">$</span> tailscale serve --bg 8122</pre>
+            <h3>Configure long-running operation</h3>
+            <p>Build from source and run codexmux as a systemd user service with backup, restart, and health checks.</p>
+            <a href="/codexmux/docs/linux-service/" class="btn-primary" style="margin-top:0.5rem" data-ph-capture-attribute-cta="guide">
+              Open the Linux service guide →
+            </a>
           </div>
         </div>
 
         <div class="step">
           <div class="step-num">4</div>
           <div class="step-body">
-            <h3>Windows installer (primary)</h3>
-            <p>Use the Electron installer on Windows. The npm command does not install the Windows desktop app.</p>
-            <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" style="margin-top:0.5rem" data-ph-capture-attribute-cta="download">
-              Download the Windows installer →
-            </a>
+            <h3>Remote access (optional)</h3>
+            <p>Complete local setup first, then expose the engine through Tailscale Serve or an HTTPS reverse proxy.</p>
+<pre class="code"><span class="c">$</span> tailscale serve --bg 8122</pre>
           </div>
         </div>
       </div>
@@ -913,7 +913,7 @@ isRoot: true
 
         <details>
           <summary>Does it work on Windows?</summary>
-          <p>Yes. Use the Windows Electron installer for the primary product. The npm command is the legacy tmux web server for macOS and Linux, not the Windows installer.</p>
+          <p>The active product runtime is the Linux single engine. The preserved Windows Electron release is a separate historical packaging surface and does not replace the Linux engine.</p>
         </details>
 
         <details>
@@ -952,7 +952,7 @@ isRoot: true
         <div class="cta-body">
           <div class="eyebrow">Get started</div>
           <h2>One line is all it takes.</h2>
-          <p class="lead">Download the Windows installer, or run the legacy tmux web server on macOS/Linux with npm.</p>
+          <p class="lead">Start the Linux engine with npm, then complete local setup in your browser.</p>
         </div>
         <div class="install-block cta-install">
           <div class="install-cmd">
@@ -960,8 +960,8 @@ isRoot: true
             <span>npx --yes codexmux@latest</span>
             <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="Copy" onclick="(function(b){navigator.clipboard.writeText('npx --yes codexmux@latest');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
           </div>
-          <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-windows>
-            Download Windows installer
+          <a href="/codexmux/docs/quickstart/" class="btn-primary" data-ph-capture-attribute-cta="guide">
+            Open install guide
           </a>
         </div>
       </div>

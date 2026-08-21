@@ -3,8 +3,8 @@ layout: layouts/base.njk
 lang: ko
 title: "codexmux — Codex를 위한 웹 네이티브 터미널 멀티플렉서"
 description: "하나의 대시보드에서 여러 Codex 세션을 실행하세요. tmux 기반, 웹 네이티브, 모바일 대응. MIT 오픈소스."
-canonical: https://subicura.com/codexmux/ko/
-ogUrl: https://subicura.com/codexmux/ko/
+canonical: https://hardcoremonk.github.io/codexmux/ko/
+ogUrl: https://hardcoremonk.github.io/codexmux/ko/
 ogLocale: ko_KR
 ogLocaleAlternate: en_US
 permalink: /ko/index.html
@@ -84,8 +84,8 @@ isRoot: false
               <span>npx --yes codexmux@latest</span>
               <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="복사" onclick="(function(b){navigator.clipboard.writeText('npx --yes codexmux@latest');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
             </div>
-            <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-windows>
-              Windows 설치 프로그램 다운로드
+            <a href="/codexmux/ko/docs/quickstart/" class="btn-primary" data-ph-capture-attribute-cta="guide">
+              설치 가이드 열기
             </a>
           </div>
 
@@ -96,9 +96,9 @@ isRoot: false
           </div>
 
           <div class="hero-meta">
-            <span><span class="ok">●</span> Windows 설치 프로그램 (주 경로)</span>
-            <span><span class="ok">●</span> npm: macOS / Linux</span>
-            <span><span class="ok">●</span> npm은 tmux 필요</span>
+            <span><span class="ok">●</span> Linux 단일 엔진 runtime</span>
+            <span><span class="ok">●</span> Browser 중심 운영</span>
+            <span><span class="ok">●</span> npm 또는 source 설치</span>
           </div>
         </div>
 
@@ -836,15 +836,15 @@ isRoot: false
       <div class="eyebrow">설치</div>
       <h2>30초면 끝납니다.</h2>
       <p class="lead">
-        주 제품은 Windows 설치 프로그램을 사용합니다. npm 명령은 macOS/Linux용 레거시 tmux 웹 서버를 실행합니다.
+        Node.js 20.9+, tmux 3.0+, 로그인된 Codex CLI가 있는 Linux에서 단일 엔진을 실행합니다. 빠른 시작은 npm, 장기 운영은 source build와 systemd를 사용합니다.
       </p>
 
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-body">
-            <h3>레거시 웹 서버 실행</h3>
-            <p>Node.js 20+와 tmux가 있는 macOS/Linux에서 공개 패키지를 바로 실행합니다.</p>
+            <h3>Linux 엔진 실행</h3>
+            <p>Node.js 20.9+, tmux 3.0+, 로그인된 Codex CLI가 있는 Linux에서 공개 패키지를 바로 실행합니다.</p>
 <pre class="code"><span class="c">$</span> npx --yes codexmux@latest</pre>
           </div>
         </div>
@@ -861,20 +861,20 @@ isRoot: false
         <div class="step">
           <div class="step-num">3</div>
           <div class="step-body">
-            <h3>원격 접근 (선택)</h3>
-            <p>외부에서 접근하려면 Tailscale Serve를 추천합니다. WireGuard 암호화와 자동 인증서가 딸려 옵니다.</p>
-<pre class="code"><span class="c">$</span> tailscale serve --bg 8122</pre>
+            <h3>장기 운영 구성</h3>
+            <p>Source를 build하고 backup, restart, health 확인이 포함된 systemd user service로 실행합니다.</p>
+            <a href="/codexmux/ko/docs/linux-service/" class="btn-primary" style="margin-top:0.5rem" data-ph-capture-attribute-cta="guide">
+              Linux 서비스 가이드 열기 →
+            </a>
           </div>
         </div>
 
         <div class="step">
           <div class="step-num">4</div>
           <div class="step-body">
-            <h3>Windows 설치 프로그램 (주 경로)</h3>
-            <p>Windows에서는 Electron 설치 프로그램을 사용하세요. npm 명령은 Windows 데스크톱 앱을 설치하지 않습니다.</p>
-            <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" style="margin-top:0.5rem" data-ph-capture-attribute-cta="download">
-              Windows 설치 프로그램 다운로드 →
-            </a>
+            <h3>원격 접근 (선택)</h3>
+            <p>로컬 설정을 먼저 완료한 뒤 Tailscale Serve 또는 HTTPS reverse proxy로 엔진을 노출합니다.</p>
+<pre class="code"><span class="c">$</span> tailscale serve --bg 8122</pre>
           </div>
         </div>
       </div>
@@ -913,7 +913,7 @@ isRoot: false
 
         <details>
           <summary>Windows에서도 쓸 수 있나요?</summary>
-          <p>예. 주 제품은 Windows Electron 설치 프로그램으로 제공합니다. npm 명령은 Windows 설치 프로그램이 아니라 macOS/Linux용 레거시 tmux 웹 서버입니다.</p>
+          <p>현재 제품 runtime은 Linux 단일 엔진입니다. 보존된 Windows Electron release는 별도 역사적 packaging surface이며 Linux 엔진을 대체하지 않습니다.</p>
         </details>
 
         <details>
@@ -952,7 +952,7 @@ isRoot: false
         <div class="cta-body">
           <div class="eyebrow">지금 시작하세요</div>
           <h2>한 줄이면 됩니다.</h2>
-          <p class="lead">Windows 설치 프로그램을 받거나, macOS/Linux에서 npm으로 레거시 tmux 웹 서버를 실행하세요.</p>
+          <p class="lead">npm으로 Linux 엔진을 시작한 뒤 browser에서 로컬 설정을 완료하세요.</p>
         </div>
         <div class="install-block cta-install">
           <div class="install-cmd">
@@ -960,8 +960,8 @@ isRoot: false
             <span>npx --yes codexmux@latest</span>
             <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="복사" onclick="(function(b){navigator.clipboard.writeText('npx --yes codexmux@latest');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
           </div>
-          <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-windows>
-            Windows 설치 프로그램 다운로드
+          <a href="/codexmux/ko/docs/quickstart/" class="btn-primary" data-ph-capture-attribute-cta="guide">
+            설치 가이드 열기
           </a>
         </div>
       </div>

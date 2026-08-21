@@ -1,7 +1,7 @@
 module.exports = {
-  baseUrl: 'https://subicura.com/codexmux',
+  baseUrl: 'https://hardcoremonk.github.io/codexmux',
   assetVersion: {
-    css: '71',
+    css: '72',
     downloadJs: '1',
   },
   locales: [

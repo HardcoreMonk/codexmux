@@ -8,11 +8,15 @@ permalink: /fr/docs/index.html
 
 <div class="doc-home-grid">
 {%- for group in docsNav %}
+{%- if group | guideAvailable('fr') %}
 {%- for item in group.items %}
+{%- if item | guideAvailable('fr') %}
   <a class="doc-home-card" href="/codexmux/fr/docs/{{ item.slug }}/">
     <span class="doc-home-card-title">{{ item.label.ko }}</span>
     <span class="doc-home-card-desc">{{ group.group.ko }}</span>
   </a>
+{%- endif %}
 {%- endfor %}
+{%- endif %}
 {%- endfor %}
 </div>

@@ -581,5 +581,38 @@ module.exports = [
         }
       }
     ]
+  },
+  {
+    locales: ['en', 'ko'],
+    group: {
+      en: '운영 가이드',
+      ko: '운영 가이드'
+    },
+    items: [
+      {
+        slug: 'agent-quickstart',
+        locales: ['en', 'ko'],
+        label: {
+          en: '에이전트 빠른 시작',
+          ko: '에이전트 빠른 시작'
+        }
+      },
+      {
+        slug: 'linux-service',
+        locales: ['en', 'ko'],
+        label: {
+          en: 'Linux 서비스 운영',
+          ko: 'Linux 서비스 운영'
+        }
+      },
+      {
+        slug: 'project-governance',
+        locales: ['en', 'ko'],
+        label: {
+          en: 'Project Governance',
+          ko: 'Project Governance'
+        }
+      }
+    ]
   }
 ];

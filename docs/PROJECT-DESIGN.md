@@ -46,6 +46,9 @@ v2 Phase 6 gate가 통과했으며 Issue #18과 Phase 3 Issue #19에 근거를 �
 - Linux 단일 엔진은 source checkout 또는 npm standalone server로 실행합니다. Windows Electron installer/updater와 npm registry package는 ADR-030의 독립 배포면이며 npm tarball은 CLI bin, standalone server와 다섯 Runtime v2 worker bundle을 제공합니다.
 - Public npm `latest`는 `codexmux@0.4.23`이며 registry tarball install, CLI help와 production
   health smoke를 통과했습니다. Remote `v0.4.23` tag와 Trusted Publisher 등록은 보류 상태입니다.
+- Public 랜딩과 사용자 가이드는 Eleventy로 `_site/`를 만들고 GitHub Pages
+  `https://hardcoremonk.github.io/codexmux/`에 배포합니다. Root/`ko/` guide는 Linux 단일 엔진
+  계약을 반영하며 Pages artifact checker가 canonical과 내부 link를 검증합니다.
 - Production dependency baseline은 Next `16.3.1`, next-intl `4.9.2`, ws `8.21.0`, js-yaml `4.2.0`과 제한된 PostCSS/Babel override이며 `pnpm audit --prod` 0건을 유지합니다.
 
 ## 주요 구성
@@ -73,6 +76,7 @@ v2 Phase 6 gate가 통과했으며 Issue #18과 Phase 3 Issue #19에 근거를 �
 | upload storage | `src/lib/uploads-store.ts` | staged streaming, no-replace publish, committed/staged cleanup |
 | outer HTTP composition | `src/lib/server-http-dispatcher.ts`, `server.ts` | dev/prod upload 선점, Next fallback, signal drain |
 | npm distribution | `package.json`, `scripts/smoke-npm-package.mjs`, `.github/workflows/npm-publish.yml` | CLI tarball 계약, 격리 install/run smoke, OIDC publish |
+| public docs | `landing-src/`, `scripts/check-landing-site.mjs`, `.github/workflows/deploy-landing.yml` | GitHub Pages 랜딩/가이드 build, canonical·link gate와 배포 |
 | performance | `src/lib/perf-metrics.ts` | runtime metric, duration/counter, 인증된 성능 스냅샷 |
 | docs | `docs/ARCHITECTURE-LOGIC.md` | 서버와 서비스 로직의 최신 구현 기준 |
 
