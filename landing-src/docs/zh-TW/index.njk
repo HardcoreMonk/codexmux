@@ -8,11 +8,15 @@ permalink: /zh-TW/docs/index.html
 
 <div class="doc-home-grid">
 {%- for group in docsNav %}
+{%- if group | guideAvailable('zh-TW') %}
 {%- for item in group.items %}
+{%- if item | guideAvailable('zh-TW') %}
   <a class="doc-home-card" href="/codexmux/zh-TW/docs/{{ item.slug }}/">
     <span class="doc-home-card-title">{{ item.label.ko }}</span>
     <span class="doc-home-card-desc">{{ group.group.ko }}</span>
   </a>
+{%- endif %}
 {%- endfor %}
+{%- endif %}
 {%- endfor %}
 </div>

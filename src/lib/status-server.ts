@@ -4,7 +4,10 @@ import { getSessionHistory } from '@/lib/session-history';
 import { createLogger } from '@/lib/logger';
 import { getRuntimeStatusV2Mode } from '@/lib/runtime/status-mode';
 import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
-import type { IRuntimeStatusLiveEvent } from '@/lib/runtime/contracts';
+import type {
+  IRuntimeStatusLiveEvent,
+  IRuntimeStatusLiveSyncPayload,
+} from '@/lib/runtime/contracts';
 import type {
   TStatusClientMessage,
   TStatusServerMessage,
@@ -34,7 +37,12 @@ const toStatusServerMessage = (event: IRuntimeStatusLiveEvent): TStatusServerMes
     return { type: 'session-history:update', entry: event.payload.entry };
   }
   if (event.type === 'status.hook-event') {
-    return { type: 'status:hook-event', tabId: event.payload.tabId, event: event.payload.event };
+    return {
+      type: 'status:hook-event',
+      tabId: event.payload.tabId,
+      sessionName: event.payload.sessionName,
+      event: event.payload.event,
+    };
   }
   if (event.type === 'status.error') {
     log.warn('runtime status live error: %s', event.payload.message);
@@ -50,6 +58,16 @@ const sendSessionHistorySync = (ws: WebSocket): void => {
     const historySync: ISessionHistorySyncMessage = { type: 'session-history:sync', entries };
     sendJson(ws, historySync);
   }).catch(() => {});
+};
+
+const sendRuntimeStatusSync = (
+  ws: WebSocket,
+  sync: IRuntimeStatusLiveSyncPayload,
+): void => {
+  sendJson(ws, { type: 'status:sync', tabs: sync.tabs } satisfies IStatusSyncMessage);
+  if (sync.rateLimits) {
+    sendJson(ws, { type: 'rate-limits:update', data: sync.rateLimits });
+  }
 };
 
 const handleRuntimeStatusConnection = (ws: WebSocket): void => {
@@ -70,7 +88,7 @@ const handleRuntimeStatusConnection = (ws: WebSocket): void => {
       return;
     }
     subscriberId = subscription.subscriberId;
-    sendJson(ws, { type: 'status:sync', tabs: subscription.sync.tabs } satisfies IStatusSyncMessage);
+    sendRuntimeStatusSync(ws, subscription.sync);
   }).catch((err) => {
     log.error('runtime status subscribe failed: %s', err instanceof Error ? err.message : String(err));
     if (ws.readyState === WebSocket.OPEN) {
@@ -98,7 +116,7 @@ const handleRuntimeStatusConnection = (ws: WebSocket): void => {
 
         case 'status:request-sync':
           supervisor.requestStatusLiveSync().then((sync) => {
-            sendJson(ws, { type: 'status:sync', tabs: sync.tabs } satisfies IStatusSyncMessage);
+            sendRuntimeStatusSync(ws, sync);
           }).catch((err) => {
             log.warn('runtime status sync failed: %s', err instanceof Error ? err.message : String(err));
           });

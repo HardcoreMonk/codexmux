@@ -27,7 +27,10 @@ sidebar의 session dot은 Codex가 무엇을 하고 있는지 보여줍니다. c
 | Codex JSONL tail | session id, model, current action, token usage |
 | live pane capture | permission/input prompt, interrupted prompt 보정 |
 
-Codex hook event는 inline hook config가 `status-hook.sh`를 호출해 전달합니다. 생성된 `hooks.json`도 남아 있지만 Codex status는 이 파일을 launch config source로 보지 않습니다. session list는 로컬 `~/.codex/sessions/**/*.jsonl`에서 인덱싱한 resume 대상만 표시합니다. 인덱스 refresh 중에는 현재 snapshot을 먼저 보여주고 완료 뒤 갱신합니다.
+Codex hook event는 native session-layer TOML override와 tab/session capability를 통해
+standalone `status-hook.cjs` bridge로 전달됩니다. User/project/managed/plugin hook discovery는
+보존합니다. Session Explorer는 Timeline Worker의 Session Catalog가 만든 metadata와 bounded
+message index를 사용해 검색·replay하며, Status Worker의 live 상태와 역할을 섞지 않습니다.
 
 ## JSONL watcher
 

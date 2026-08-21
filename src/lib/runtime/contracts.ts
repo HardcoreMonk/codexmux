@@ -11,6 +11,36 @@ import type {
 import type { IStatusSendWebPushInput, IStatusSendWebPushResult } from '@/lib/runtime/status/web-push-actions';
 import type { IClientTabStatusEntry, ILastEvent, IRateLimitsData, IStatusUpdateMessage, ITabStatusEntry, TEventName } from '@/types/status';
 import type { ISessionHistoryEntry } from '@/types/session-history';
+import type {
+  ISavedSessionFilter,
+  ISessionAnnotation,
+  ISessionSearchPage,
+  ISessionSearchQuery,
+} from '@/lib/session-catalog/contracts';
+import type {
+  IApprovedProjectRoot,
+  IApprovedProjectRootSnapshot,
+  IGovernanceAuditEvent,
+  IGovernanceAuditCandidate,
+  IGovernanceRefreshResult,
+  IGovernanceWorkerHealth,
+  IManagedProject,
+  IManagedProjectSnapshot,
+  IProjectDocumentDetail,
+  IProjectDocumentRef,
+  IProjectGovernanceSummary,
+  IProjectLifecycleSnapshot,
+  TManagedProjectImportField,
+  TManagedProjectImportStatus,
+  TManagedProjectSource,
+} from '@/lib/governance/contracts';
+import type {
+  IGovernanceActionSummary,
+  IGovernanceRollbackPreview,
+  IScaffoldPreview,
+  TScaffoldArtifactId,
+  TScaffoldTemplateInput,
+} from '@/lib/governance/scaffold-contracts';
 
 export interface IRuntimeHealth {
   ok: boolean;
@@ -18,6 +48,7 @@ export interface IRuntimeHealth {
   terminal: unknown;
   timeline: unknown;
   status: unknown;
+  governance: unknown;
 }
 
 export interface IRuntimeWorkspace {
@@ -120,6 +151,114 @@ export interface IRuntimeTimelineSessionListInput {
   panelType: string;
   offset: number;
   limit: number;
+}
+
+export interface IRuntimeSessionCatalogHealth {
+  state: 'ready' | 'building' | 'degraded' | 'disabled';
+  queueLag: number;
+  cursorAgeMs: number | null;
+  rebuildState: 'idle' | 'building' | 'cancelling';
+  indexedSessions: number;
+  lastIndexedAt: string | null;
+}
+
+export type TRuntimeSessionCatalogSearchInput = ISessionSearchQuery;
+export type TRuntimeSessionCatalogSearchResult = ISessionSearchPage;
+
+export interface IRuntimeSessionCatalogReadEntriesInput {
+  sessionId: string;
+  beforeByte: number;
+  limit: number;
+  panelType: string;
+}
+
+export interface IRuntimeSessionCatalogRebuildResult {
+  started: boolean;
+  state: 'building' | 'already-building' | 'disabled';
+}
+
+export interface IRuntimeUpdateSessionAnnotationInput {
+  sessionId: string;
+  pinned: boolean;
+  tags: string[];
+  expectedVersion: number;
+}
+
+export type TRuntimeSessionAnnotation = ISessionAnnotation;
+export type TRuntimeSavedSessionFilter = ISavedSessionFilter;
+
+export type TRuntimeRegisterApprovedProjectRootInput = IApprovedProjectRootSnapshot;
+export type TRuntimeApprovedProjectRoot = IApprovedProjectRoot;
+export type TRuntimeApprovedProjectRootSnapshot = IApprovedProjectRootSnapshot;
+
+export interface IRuntimeRegisterManagedProjectInput {
+  approvedRootId: string;
+  title: string;
+  relativePath: string;
+  canonicalPath: string;
+  source: TManagedProjectSource;
+  externalId?: string;
+  sourceFingerprint?: string;
+}
+
+export interface IRuntimeManagedProjectImportAction {
+  status: TManagedProjectImportStatus;
+  projectId?: string;
+  externalId: string;
+  title: string;
+  relativePath: string;
+  canonicalPath: string;
+  selectedFields: TManagedProjectImportField[];
+}
+
+export interface IRuntimeApplyManagedProjectImportInput {
+  approvedRootId: string;
+  digest: string;
+  sourceFingerprint: string;
+  actions: IRuntimeManagedProjectImportAction[];
+}
+
+export interface IRuntimeManagedProjectImportResult {
+  counts: Record<TManagedProjectImportStatus, number>;
+}
+
+export type TRuntimeManagedProject = IManagedProject;
+export type TRuntimeManagedProjectSnapshot = IManagedProjectSnapshot;
+export type TRuntimeGovernanceAuditEvent = IGovernanceAuditEvent;
+export type TRuntimeGovernanceAuditCandidate = IGovernanceAuditCandidate;
+export type TRuntimeGovernanceRefreshResult = IGovernanceRefreshResult;
+export type TRuntimeGovernanceWorkerHealth = IGovernanceWorkerHealth;
+export type TRuntimeProjectDocumentDetail = IProjectDocumentDetail;
+export type TRuntimeProjectDocumentRef = IProjectDocumentRef;
+export type TRuntimeProjectGovernanceSummary = IProjectGovernanceSummary;
+export type TRuntimeProjectLifecycleSnapshot = IProjectLifecycleSnapshot;
+export type TRuntimeScaffoldPreview = IScaffoldPreview;
+export type TRuntimeGovernanceActionSummary = IGovernanceActionSummary;
+export type TRuntimeGovernanceRollbackPreview = IGovernanceRollbackPreview;
+
+export interface IRuntimePreviewScaffoldInput {
+  projectId: string;
+  artifacts: TScaffoldArtifactId[];
+  adoptArtifacts: TScaffoldArtifactId[];
+  input: TScaffoldTemplateInput;
+}
+
+export interface IRuntimeConfirmScaffoldInput {
+  projectId: string;
+  token: string;
+  digest: string;
+  confirmation: string;
+}
+
+export interface IRuntimeGovernanceActionInput {
+  projectId: string;
+  actionId: string;
+}
+
+export interface IRuntimeConfirmGovernanceRollbackInput extends IRuntimeGovernanceActionInput {
+  token: string;
+  digest: string;
+  confirmation: string;
 }
 
 export interface IRuntimeTimelineEntriesBeforeInput {
@@ -249,6 +388,7 @@ export type TRuntimeStatusSendWebPushResult = IStatusSendWebPushResult;
 
 export interface IRuntimeStatusLiveSyncPayload {
   tabs: Record<string, IClientTabStatusEntry>;
+  rateLimits: IRateLimitsData | null;
 }
 
 export type TRuntimeStatusLiveUpdatePayload = Omit<IStatusUpdateMessage, 'type'>;
@@ -259,6 +399,7 @@ export interface IRuntimeStatusSessionHistoryUpdatePayload {
 
 export interface IRuntimeStatusHookEventPayload {
   tabId: string;
+  sessionName: string;
   event: ILastEvent;
 }
 

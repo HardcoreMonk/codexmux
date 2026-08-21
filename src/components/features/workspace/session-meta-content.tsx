@@ -9,15 +9,17 @@ import type { IGitStatus } from '@/lib/git-status';
 import type { IAgentSessionRelationship } from '@/lib/agent-session-relationship';
 import ContextRing from '@/components/features/workspace/context-ring';
 import { SessionRelationshipDetailRow } from '@/components/features/workspace/session-relationship-indicator';
+import { copyTextToClipboard } from '@/lib/clipboard';
 
 const CopyIconButton = ({ text, className }: { text: string; className?: string }) => {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = (e: React.MouseEvent) => {
+  const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    if (await copyTextToClipboard(text)) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
   };
 
   return (

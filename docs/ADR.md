@@ -1,6 +1,6 @@
 # 아키텍처 결정 기록
 
-이 문서는 codexmux의 오래가는 설계 결정을 모읍니다. 세부 실행 흐름은 `ARCHITECTURE-LOGIC.md`, 상태 감지는 `STATUS.md`, terminal/runtime 경계는 `TMUX.md`와 Windows 전환 문서에 둡니다.
+이 문서는 codexmux의 오래가는 설계 결정을 모읍니다. 세부 실행 흐름은 `ARCHITECTURE-LOGIC.md`, 상태 감지는 `STATUS.md`, terminal/runtime 경계는 `TMUX.md`와 Linux 운영 문서에 둡니다. Windows 전환 문서는 역사적 제품·release 근거로 보존합니다.
 
 ## 작성 기준
 
@@ -12,7 +12,7 @@
 - `~/.codexmux/` 저장 구조, auth, security 동작 변경
 - Electron/Android 같은 platform shell 동작 변경
 - 알림, locale, 모바일 UX, 터미널 입력, 재연결, 중복 제거 같은 cross-surface 정책 변경
-- Windows-only 제품 타깃, packaging, installer, updater, host operation 변경
+- 제품 실행 토폴로지, packaging, installer, updater, host operation 변경
 
 작은 copy, 단일 컴포넌트 styling, 기존 결정과 충돌하지 않는 버그 수정은 새 ADR이 필요하지 않습니다.
 
@@ -172,10 +172,11 @@
 
 ## ADR-023: Windows-only 제품 타깃
 
-- 상태: 승인
+- 상태: Archived
 - 결정: codexmux의 다음 제품 전환 타깃은 Windows-only service/product입니다.
 - 이유: 사용자 목표는 기존 codexmux 기반을 Windows 전용 제품으로 구축하고 제공하는 것입니다.
 - 영향: Windows terminal runtime, Windows process inspector, Windows service/tray host, Windows installer/update smoke가 release 기준이 됩니다. macOS/Linux/Android 문서는 legacy/reference로 유지하고, 새 기능 기준으로 확장하지 않습니다.
+- 보존 이유: 2026년 Windows installer/updater와 `codexwinmux` product-line 결정의 맥락과 검증 근거를 설명합니다. 현재 제품/runtime target은 ADR-031이 대체합니다.
 
 ## ADR-024: codexwinmux는 별도 Windows 제품 line으로 분리한다
 
@@ -187,10 +188,14 @@
 
 ## ADR-025: Codex CLI integration contract는 inline hook과 web-input 제출 frame으로 고정한다
 
-- 상태: 승인
-- 결정: Codex launch/resume command는 `hooks={path="~/.codexmux/hooks.json"}`를 사용하지 않고 `hooks.SessionStart`, `hooks.UserPromptSubmit`, `hooks.Stop` inline TOML override를 각각 `-c`로 전달합니다. Codex web input은 prompt 본문을 bracketed paste로 감싸고 Enter를 같은 frame에 포함한 뒤 후속 Enter를 한 번 더 보냅니다.
-- 이유: 현재 Codex CLI strict config parser는 `hooks` path string override를 구조화된 hook table로 보지 않아 config load 오류를 낼 수 있습니다. Web input을 raw text와 별도 Enter frame으로 나누면 재접속/copy mode/긴 입력 확인 상태에서 입력이 프롬프트에 남고 제출되지 않을 수 있습니다.
-- 영향: `~/.codexmux/hooks.json`은 local hook/statusline bridge 호환용 생성 파일로 남지만 launch/resume config source가 아닙니다. Codex command builder, `MSG_WEB_STDIN`, web input payload를 바꾸면 `TMUX.md`, `STATUS.md`, `DATA-DIR.md`, `TESTING.md`와 landing docs를 함께 갱신합니다.
+- 상태: Verified
+- 결정: Browser는 raw Codex command를 만들지 않고 tab-scoped launch/resume intent만 보냅니다. Server provider가 소유권과 안전한 shell, Codex `0.144.1+` compatibility를 확인한 뒤 `hooks.SessionStart`, `hooks.UserPromptSubmit`, `hooks.Stop` session override를 각각 `-c`로 조립합니다. 각 handler는 POSIX `command`와 Windows `commandWindows`로 `~/.codexmux/status-hook.cjs`를 호출하며 HMAC capability로 tab/session/expiry를 묶습니다. Codex web input은 prompt 본문을 bracketed paste로 감싸고 Enter를 같은 frame에 포함한 뒤 후속 Enter를 한 번 더 보냅니다.
+- 이유: Native Codex hook layer discovery를 유지하면 user/project/managed/plugin hook을 수동 TOML merge하거나 trust bypass하지 않고 codexmux session observer를 공존시킬 수 있습니다. Server command ownership은 CLI token과 hook command가 browser bundle로 새는 경계를 없앱니다. Web input을 raw text와 별도 Enter frame으로 나누면 재접속/copy mode/긴 입력 확인 상태에서 입력이 프롬프트에 남고 제출되지 않을 수 있습니다.
+- trade-off: Hook bridge는 최대 64KiB stdin, 1초 loopback 요청, 1.5초 process timeout의 non-blocking best-effort observer입니다. Electron executable도 standalone script를 실행할 수 있도록 handler는 `ELECTRON_RUN_AS_NODE=1`을 명시합니다. 실패해도 Codex action을 막지 않으며 JSONL/process polling으로 reconciliation합니다. Native hook의 사용자별 실행 순서는 codexmux가 보장하지 않습니다.
+- 영향: `~/.codexmux/hooks.json`의 `hooks`는 비워 두고 statusline 호환 설정만 생성합니다. 현재 session hook transport는 standalone Node bridge이며 남아 있는 `status-hook.sh`는 legacy 잔존 파일입니다. Command builder, provider option, agent launch API, `MSG_WEB_STDIN`, hook capability를 바꾸면 `TMUX.md`, `STATUS.md`, `DATA-DIR.md`, `TESTING.md`와 landing docs를 함께 갱신합니다.
+- 승인 근거: `docs/superpowers/specs/2026-08-14-purplemux-selected-adoption-design.md`, `docs/superpowers/grill-me/2026-08-14-purplemux-selected-adoption.md`, `docs/superpowers/plans/2026-08-14-purplemux-selected-adoption.md`에서 native coexistence, bounded preview, stale rate-limit, best-effort bridge, Git invalidation 정책을 승인했습니다.
+- 구현 근거: `src/lib/agent-launch-service.ts`, `src/lib/providers/codex/session-hooks.ts`, `src/lib/hook-settings.ts`와 대응 unit/strict-config smoke로 server ownership과 capability 경계를 고정했습니다.
+- 검증 근거: Codex 0.147.0 strict-config smoke, session hook serialization/capability test, full unit/type/build/Electron gate, Runtime v2 status/timeline smoke, browser reconnect와 실제 Linux user service 재시작이 통과했습니다. Windows package 실기 검증은 2026-08-15 사용자 결정으로 이 ADR의 완료 조건에서 제외했습니다.
 
 ## ADR-026: Pre-auth bootstrap은 loopback exposure와 explicit install admission을 사용한다
 
@@ -237,3 +242,119 @@
 - 영향: `~/.codexmux/`, tmux/runtime session, 비밀번호와 `authSecret`, CLI `x-cmux-token` 계약은 바뀌지 않습니다. 같은 hostname의 browser request에는 두 제품 cookie가 함께 실릴 수 있지만 각 제품은 자기 namespace만 검증합니다. Cookie 기밀성까지 port별로 격리하는 결정은 아니며, 그 수준이 필요하면 별도 hostname을 사용해야 합니다.
 - 검증 조건: unit test에서 새 이름과 legacy-only 거부, 두 cookie 공존 시 Codexmux cookie 선택, HTTP/Runtime v2 WebSocket/install/upload fixture, 새·legacy query credential 거부를 확인합니다. Chromium reconnect smoke는 Codexmux cookie를 설정한 뒤 같은 hostname에 legacy `session-token`을 추가하고 page auth와 WebSocket 복구가 유지되는지 검증합니다.
 - 검증 근거: Linux에서 full unit suite, lint, typecheck, production/landing build, dev/prod pre-auth bootstrap과 upload integrity smoke, Chromium same-host cookie coexistence/reconnect smoke가 통과했습니다. `v0.4.22` Windows release는 fresh HOME/profile에서 `v0.4.21 -> v0.4.22` local/published updater apply와 post-update packaged launch를 통과했습니다. 다만 fresh profile은 기존 Electron storage의 legacy cookie가 새 namespace 전환 뒤 login으로 이동하고, 1회 재로그인 후 Runtime v2 WebSocket/upload에 다시 연결되는 실제 old-profile 경로를 증명하지 않습니다. 따라서 상태는 `Implemented`로 유지하며 old Electron profile 수동/자동 증거를 확보한 뒤 `Verified`로 전이합니다. 상세 결과는 `docs/operations/2026-07-12-purplemux-cookie-isolation-handoff.md`와 `docs/operations/2026-07-13-v0.4.22-windows-release-handoff.md`에 기록합니다.
+
+## ADR-030: Windows installer와 npm 실행 package를 독립 배포면으로 운영한다
+
+- 상태: Verified
+- 결정: Windows Electron installer는 primary distribution으로 유지하고, npm의 unscoped `codexmux` package는 legacy tmux 기반 custom Node web server의 secondary execution surface로 공개합니다. npm package는 `codexmux`/`cmux` bin만 지원하며 library `main`, Electron/Capacitor shell, NSIS/service install, updater를 제공하지 않습니다.
+- 이유: `npx`는 package를 npm cache에 설치해 bin을 실행하는 도구이므로 Windows 설치 프로그램과 같은 lifecycle을 제공할 수 없습니다. 두 surface를 한 release gate로 묶으면 npm registry나 OIDC 장애가 검증된 Windows stable promotion을 막거나, 반대로 Windows package 실패 전에 npm version이 공개되는 ownership 혼선을 만듭니다.
+- trade-off: 같은 source version이 GitHub Windows release와 npm registry에서 서로 다른 시점에 공개될 수 있습니다. npm 사용자는 Node `>=20.9.0`과 legacy tmux runtime을 직접 준비해야 하며 desktop updater/제거 기능을 받지 않습니다. Landing은 registry package의 install, bin, health smoke가 통과한 뒤에만 npm 명령을 활성화합니다.
+- 영향: npm tarball은 `bin/`, `dist/`, `.next/standalone/`, tmux config와 postinstall helper만 명시적으로 게시합니다. Capacitor/Electron build package는 dev dependency로 유지합니다. 후속 tag publish는 별도 `npm-publish.yml`의 GitHub Actions Trusted Publishing을 사용하며 장기 `NPM_TOKEN`을 두지 않습니다. npm publish 실패는 `.github/workflows/release.yml`의 Windows stable workflow와 독립입니다.
+- 승인 근거: `docs/superpowers/specs/2026-08-20-npm-npx-distribution-design.md`, `docs/superpowers/grill-me/2026-08-20-npm-npx-distribution.md`, `docs/superpowers/plans/2026-08-20-npm-npx-distribution.md`에서 사용자 1~7 전체 승인, package/runtime ownership, 공급망, landing activation 조건을 검토했습니다.
+- 구현 근거: CLI-only manifest, postinstall allowlist, build-only dependency 분리, local tarball install/run smoke와 `.github/workflows/npm-publish.yml`의 OIDC/idempotency contract를 구현했습니다. Next `16.3.1`, sharp `0.35.3`, PostCSS `8.5.23`, nanoid `5.1.16`으로 public package dependency audit를 0건으로 복구했습니다.
+- 검증 조건: local tarball의 lifecycle-enabled install, CLI help, isolated production health가 통과하고, 최초 public publish 뒤 exact registry version을 같은 방식으로 실행해야 `Verified`로 전이합니다.
+- 검증 근거: `codexmux@0.4.23`을 release commit `ef27e2971f04d828cf0f1281581ae7e7eb1d1072`에서 최초 public publish했습니다. Registry `gitHead`와 integrity를 확인하고, 저장소 밖 격리 환경에서 registry package의 CLI help와 production `/api/health` `200`, `version=0.4.23`, `commit=ef27e297`을 검증했습니다. 상세 결과는 `docs/operations/2026-08-20-npm-npx-distribution-handoff.md`에 기록합니다.
+- 현재 해석: ADR-031이 active runtime을 Linux 단일 엔진으로 변경했으므로 npm server는 더
+  이상 legacy secondary runtime이 아닙니다. Windows installer와 npm package가 독립
+  배포면이라는 핵심 결정은 유지하되 Linux engine acceptance는 npm/source/systemd 경로를
+  기준으로 합니다.
+
+## ADR-031: Linux 단일 엔진 호스트를 active product/runtime target으로 사용한다
+
+- 상태: Implemented
+- 결정: codexmux의 active product/runtime target을 Linux 단일 엔진 호스트로 고정합니다. 한 Linux host가 custom server, Runtime v2 worker, tmux, Codex CLI와 JSONL, app-owned DB, 등록된 project filesystem을 소유합니다. Browser와 선택 Electron client는 이 host에 접속하지만 session source, worker 또는 project writer가 되지 않습니다.
+- 이유: Session Operations와 Project Governance를 기존 Timeline, Status, Storage worker 경계에 통합하려면 JSONL watch, SQLite single-writer, canonical Linux path, mount와 symlink containment를 한 engine authority에서 보장해야 합니다. Windows-only target은 이 통합의 실제 운영 환경과 맞지 않습니다.
+- trade-off: 기존 Windows package와 updater parity는 새 기능 release gate가 아니며 remote node, collector, multi-engine federation은 지원하지 않습니다. Linux host가 단일 장애 지점이므로 worker별 degraded mode, projection rebuild, state backup과 systemd user service 절차가 필요합니다.
+- 영향: Timeline Worker는 Session Catalog raw JSONL read/watch와 index DB를, Storage Worker는
+  durable app state를, Governance Worker는 registered project read, Knowledge Index와 ADR-032의
+  governed scaffold write를 단독 소유합니다. Next API는 DB나 project filesystem을 직접 열지
+  않습니다. Windows release 증거와 ADR-030의 독립 배포면 결정은 삭제하거나 Linux
+  acceptance로 재해석하지 않습니다.
+- 승인 근거: `docs/superpowers/specs/2026-08-21-session-operations-governance-integration-design.md`, `docs/superpowers/grill-me/2026-08-21-session-operations-governance-integration.md`, `docs/superpowers/plans/2026-08-21-session-operations-governance-integration.md`.
+- 구현 근거: Runtime v2에 Governance Worker와 Session Catalog ownership을 추가하고 Storage
+  Worker에 session annotation/filter와 Approved Project Root/Managed Project durable state를
+  배치했습니다. 초기 read-only API/UI와 metadata-only Knowledge Index 위에 ADR-032의 gated
+  scaffold transaction을 확장했습니다.
+- 검증 조건: 전체 unit/type/lint/build, Runtime v2 core/backup/Phase 6 gate, 5,000-session performance, isolated Linux rollback, 한국어/영어 browser와 npm tarball smoke를 통과하고 운영 handoff를 남깁니다. 실제 user service restart와 장시간 관찰 근거를 확보하기 전에는 `Verified`로 전이하지 않습니다.
+- 운영 근거: 구현 commit `d405f683`을 port `8122`의 Linux `systemd --user` service로
+  배포했습니다. Browser 인증 설정 뒤 unit을 `HOST=0.0.0.0`으로 재시작해 실제
+  `0.0.0.0:8122` listener를 확인했습니다. 최초 기동과 실제 restart 전후에 live terminal
+  smoke, Runtime v2 Phase 6 12-check gate, worker/private DB health를 통과했고
+  [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18)을 완료했습니다. 장시간
+  live 관찰은 아직 없으므로 상태는 `Implemented`를 유지합니다. 상세 증거는
+  `docs/operations/2026-08-21-session-operations-governance-integration-handoff.md`에 있습니다.
+
+## ADR-032: Project file 변경은 Governance Action Run으로만 수행한다
+
+- 상태: Implemented
+- 결정: Project Governance의 project filesystem 변경은 Governance Worker가 소유하는
+  `GovernanceActionRun`의 preview, exact confirmation, staged publish, backup, compensation과
+  startup recovery 경로로만 수행합니다. Versioned template catalog의 신규 file 생성,
+  `MarkerOwnedBlock` 갱신과 artifact별 명시적 append-only adoption만 허용하며 arbitrary
+  overwrite, delete, move와 full sync를 허용하지 않습니다. Next API route와 browser는 project
+  path나 rendered file content를 조립하지 않습니다.
+- 이유: Managed Project 문서 변경은 승인 root containment, symlink/mount 방어, stale write
+  차단과 crash recovery를 하나의 authority에서 보장해야 합니다. 독립 API route, shell
+  script 또는 browser가 write를 나눠 소유하면 preview와 실제 publish 사이의 정책이
+  달라지고 partial write를 일관되게 복구할 수 없습니다.
+- trade-off: 여러 file을 포함한 action은 filesystem 수준의 단일 atomic transaction이
+  아니므로 durable journal과 compensating rollback이 필요합니다. Project별 writer lock은
+  codexmux action을 직렬화하지만 외부 editor를 잠그지 않으므로 confirm 직전 fingerprint
+  재검증, current output fingerprint가 일치하는 rollback 조건과 명시적 stale conflict가
+  필요합니다. Backup은 자동 삭제하지 않아 local disk와 민감 문서 preimage가 누적될 수
+  있습니다.
+- 영향: Governance Worker는 기존 read-only Knowledge Index reader에서 유일한 governed
+  project writer로 확장됩니다. Recovery data는
+  `~/.codexmux/backups/governance-actions/<project-id>/<action-id>/`에 `0700/0600` mode로
+  저장합니다. Write command는 `CODEXMUX_GOVERNANCE_WRITES=1` feature gate가 있을 때만
+  활성화하며 gate off에서도 pending recovery는 먼저 수행합니다. Knowledge Index는 write
+  성공 뒤 refresh되는 projection이며 refresh 실패를 project write 실패로 재해석하지
+  않습니다.
+- 승인 근거: 사용자가
+  `docs/superpowers/specs/2026-08-21-governed-project-scaffold-design.md`의 action 단위,
+  template authority, artifact catalog, backup/restore, architecture, UI/security와
+  verification/release 설계를 순차 승인했습니다. Domain language와 별도 ADR 생성도
+  승인했습니다.
+- 구현 조건: Plan Grilling, design review, Spec Freeze Snapshot, implementation plan과
+  engineering review를 통과한 뒤 TDD로 구현합니다. Preview token TTL은 10분이며 action은
+  한 Managed Project의 선택된 artifact 묶음으로 제한합니다.
+- 승인 근거 추가: `docs/superpowers/grill-me/2026-08-21-governed-project-scaffold.md`,
+  `docs/superpowers/reviews/2026-08-21-governed-project-scaffold-design-review.md`,
+  `docs/superpowers/plans/2026-08-21-governed-project-scaffold.md`,
+  `docs/superpowers/reviews/2026-08-21-governed-project-scaffold-eng-review.md`에서 외부 writer,
+  crash rollback, marker migration, 기존 unmarked file, UI state, startup recovery와 private
+  manifest/public audit 경계를 검토했습니다.
+- 검증 조건: marker/no-clobber, stale preview, 중간 publish failure, startup recovery,
+  rollback stale, symlink/nested mount/root escape, API auth/audit, 한국어·영어 browser와 실제
+  임시 Linux project create/update/rollback smoke를 통과해야 합니다. Live gate 활성화와 실제
+  Managed Project confirm은 각각 별도 운영 승인을 받습니다.
+- 운영 근거: 구현 commit `a8b2a299`과 private Runtime v2 backup hardening commit `9d32d049`를
+  Linux user service에 배포하고 `CODEXMUX_GOVERNANCE_WRITES=1` drop-in을 활성화했습니다.
+  Governance `writeState=ready`, scaffold 7-check, Linux 10-check, 한국어/영어 browser와
+  post-restart Phase 6 12-check gate를 통과했습니다. 등록 Managed Project가 0개라 실제 project
+  confirm은 수행하지 않았으며 Issue #19와 governed scaffold 운영 handoff에 근거를 남겼습니다.
+- 구현 근거: versioned template/marker, preview token, contained path policy, private journal/backup,
+  compensating transaction/startup recovery, Runtime v2 IPC/Supervisor, authenticated Pages API와
+  한국어·영어 UI를 구현했습니다. `corepack pnpm smoke:governance:scaffold`의 격리 Linux
+  create/update/rollback 및 private mode 검증을 통과했습니다. 최초 source release 시점에는 live
+  write gate를 활성화하지 않았고, 이후 위 운영 근거의 승인된 배포에서 gate를 활성화했습니다.
+  실제 운영 project 확인 뒤에만 `Verified` 전이를 검토합니다.
+- 2026-08-21 확장 근거: 기존 unmarked UTF-8 regular file은 첫 preview에서 confirm 불가
+  `adoption-available`로만 발견하고, artifact별 `Adoption Selection`을 반영한 새 preview에서만
+  `adopt` operation과 diff를 만듭니다. 신규 문서와 별도 marker ID/version을 가진 compact
+  `Adoption Template Variant`를 EOF에 append하며 기존 bytes를 exact prefix로 보존합니다.
+  NUL, invalid UTF-8와 marker-like CODEXMUX comment는 fail closed입니다. Public operation의
+  `adopt`는 기존 manifest v1 호환성을 위해 durable journal에서 `marker-update`로 정규화하고
+  exact preimage, output fingerprint, latest-first rollback 규칙을 그대로 재사용합니다. Backup은
+  recovery/rollback dependency 때문에 자동 prune하지 않습니다.
+- 확장 승인 근거: `docs/superpowers/specs/2026-08-21-governed-unmarked-adoption-design.md`,
+  `docs/superpowers/grill-me/2026-08-21-governed-unmarked-adoption.md`, design/engineering review와
+  implementation plan에서 append-only, 2-pass UI, semantic warning, durable compatibility와
+  latest-first rollback 경계를 확정했습니다. 이 확장은 기존 ADR-032 경계 안의 operation이므로
+  새 ADR을 만들지 않습니다.
+- 확장 운영 근거: 구현 commit `f46410b4`를 Linux user service에 배포했습니다. 재시작 전
+  `runtime-v2-storage-20260821T123122Z`에 DB/WAL/SHM과 workspace state 5개를 `0700/0600`으로
+  backup했고, PID `1104868`에서 `1149564`로 재기동했습니다. `0.0.0.0:8122`, Governance
+  `writeState=ready`, live Phase 6 12-check와 production scaffold 13-check, 한국어/영어 browser
+  4-check를 통과했습니다. 등록 Managed Project가 없어 실제 project confirm은 수행하지 않았고
+  [Issue #20](https://github.com/HardcoreMonk/codexmux/issues/20)에 근거를 남깁니다.

@@ -1,6 +1,7 @@
 # 런타임 v2 동등성 매트릭스
 
-이 문서는 runtime v2가 legacy behavior를 어디까지 대체했는지 확인하는 기준입니다. Windows-only 전환에서는 이 matrix가 release gate의 근거가 됩니다.
+이 문서는 runtime v2가 legacy behavior를 어디까지 대체했고 Linux Session Operations와
+Project Governance가 어떤 ownership을 추가했는지 확인하는 기준입니다.
 
 ## 기준
 
@@ -10,6 +11,8 @@
 | Terminal | tmux WebSocket | Terminal Worker + adapter | terminal `off` |
 | Timeline | JSONL parser + watcher | Timeline Worker | timeline `off` |
 | Status | StatusManager | Status Worker | status `off` |
+| Session Catalog | legacy session index/list | Timeline Worker + rebuildable SQLite/FTS | catalog `off` 또는 projection rebuild |
+| Project Governance | 없음 | Governance Worker + approved project read | governance degraded/refresh |
 | Sync | layout/status invalidation | 기존 client protocol 유지 | legacy URL 유지 |
 
 ## 워크스페이스와 레이아웃
@@ -76,6 +79,27 @@ corepack pnpm smoke:runtime-v2:timeline-websocket-default
 Session list parity에는 legacy와 runtime v2 모두 cold index refresh 중 request path가 전체
 JSONL scan을 기다리지 않고 현재 page snapshot과 optional `refreshing` 상태를 반환하는 계약이 포함됩니다.
 
+## Session Catalog와 Project Governance
+
+필수 계약:
+
+- Session Catalog rebuild/search/replay와 bounded FTS/snippet
+- annotation, pin/tag와 saved filter의 durable Storage Worker ownership
+- Approved Project Root와 Managed Project path 비노출
+- Governance Worker의 bounded discovery, Knowledge Index와 lifecycle/check/audit
+- Gate-controlled versioned scaffold preview/confirm, private journal recovery와 safe rollback
+- source tree 무변경, SQLite private mode와 projection quarantine 복구
+- Governance degraded 상태에서도 core terminal/session operation 유지
+
+검증:
+
+```bash
+corepack pnpm perf:session-catalog
+corepack pnpm smoke:linux:session-governance
+corepack pnpm smoke:browser:session-governance
+corepack pnpm smoke:governance:scaffold
+```
+
 ## 상태와 알림
 
 필수 parity:
@@ -112,7 +136,9 @@ corepack pnpm lint
 corepack pnpm tsc --noEmit
 corepack pnpm test
 corepack pnpm smoke:runtime-v2:phase6-default-gate
-corepack pnpm smoke:windows:release-gate
+corepack pnpm perf:session-catalog
+corepack pnpm smoke:linux:session-governance
+corepack pnpm smoke:browser:session-governance
 ```
 
 ## 확인된 증거 요약
@@ -127,3 +153,7 @@ corepack pnpm smoke:windows:release-gate
 - Windows Electron env와 packaging contract smoke가 Windows PATH, `NODE_PATH`, NSIS/zip target을 확인했습니다.
 - Windows release gate artifact는 bounded, sanitized structured result만 저장하고 pre-upload
   privacy scanner를 통과한 JSON만 업로드합니다.
+- Linux integration gate는 Session Catalog/Governance ownership, source tree 무변경,
+  projection rollback과 terminal 연결 유지, 한국어/영어 SSR/browser flow를 통과했습니다.
+- 초기 통합 commit `d405f683`과 Phase 3 build `9d32d049`의 live user service는 실제 restart
+  전후 terminal/scaffold/Linux/browser smoke와 Phase 6 12-check gate를 통과했습니다.

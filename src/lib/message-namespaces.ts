@@ -1,7 +1,7 @@
 export const MESSAGE_NAMESPACES = [
   'common', 'sidebar', 'header', 'terminal', 'connection',
   'workspace', 'login', 'onboarding', 'settings', 'stats',
-  'reset', 'reports', 'timeline',
+  'reset', 'reports', 'timeline', 'sessionExplorer', 'governance',
   'notification', 'session', 'messageHistory', 'webBrowser',
   'mobile', 'toolsRequired', 'diff', 'shortcuts', 'runtime',
 ] as const;

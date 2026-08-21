@@ -1,8 +1,9 @@
 import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import { describe, expect, it } from 'vitest';
 
-import { parseCodexJsonlContent } from '@/lib/codex-session-parser';
+import { parseCodexJsonlContent, readCodexEntriesBefore } from '@/lib/codex-session-parser';
 
 const line = (value: unknown): string => JSON.stringify(value);
 const fixturesDir = path.join(process.cwd(), 'tests', 'fixtures', 'codex-jsonl');
@@ -11,6 +12,34 @@ const readFixture = async (name: string): Promise<string> =>
   fs.readFile(path.join(fixturesDir, name), 'utf-8');
 
 describe('parseCodexJsonlContent', () => {
+  it('clamps an oversized replay cursor to the source file size', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-codex-replay-'));
+    const filePath = path.join(dir, 'session.jsonl');
+    try {
+      await fs.writeFile(filePath, [
+        line({
+          type: 'event_msg',
+          timestamp: '2026-08-21T10:00:00.000Z',
+          payload: { type: 'user_message', message: 'Replay request' },
+        }),
+        line({
+          type: 'event_msg',
+          timestamp: '2026-08-21T10:00:01.000Z',
+          payload: { type: 'agent_message', message: 'Replay response' },
+        }),
+        '',
+      ].join('\n'));
+
+      const result = await readCodexEntriesBefore(filePath, Number.MAX_SAFE_INTEGER, 20);
+
+      expect(result.entries).toHaveLength(2);
+      expect(result.fileSize).toBeGreaterThan(0);
+      expect(result.hasMore).toBe(false);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('parses Codex user and assistant event messages', () => {
     const content = [
       line({
@@ -208,6 +237,117 @@ describe('parseCodexJsonlContent', () => {
 
     expect(entries[0]).toMatchObject({ type: 'tool-call', status: 'error' });
     expect(entries[1]).toMatchObject({ type: 'tool-result', isError: true });
+  });
+
+  it('coalesces command begin, bounded deltas, and end into one semantic entry', () => {
+    const entries = parseCodexJsonlContent([
+      line({
+        type: 'response_item',
+        timestamp: '2026-04-27T13:28:20.000Z',
+        payload: {
+          type: 'function_call',
+          name: 'exec_command',
+          arguments: JSON.stringify({ cmd: 'pnpm test' }),
+          call_id: 'exec-1',
+        },
+      }),
+      line({
+        type: 'event_msg',
+        timestamp: '2026-04-27T13:28:20.100Z',
+        payload: { type: 'exec_command_begin', call_id: 'exec-1', command: 'pnpm test', cwd: '/repo' },
+      }),
+      line({
+        type: 'event_msg',
+        timestamp: '2026-04-27T13:28:20.200Z',
+        payload: { type: 'exec_command_delta', call_id: 'exec-1', chunk: 'ok\n' },
+      }),
+      line({
+        type: 'event_msg',
+        timestamp: '2026-04-27T13:28:21.000Z',
+        payload: {
+          type: 'exec_command_end',
+          call_id: 'exec-1',
+          exit_code: 0,
+          duration: { secs: 1, nanos: 0 },
+        },
+      }),
+      line({
+        type: 'response_item',
+        timestamp: '2026-04-27T13:28:21.001Z',
+        payload: { type: 'function_call_output', call_id: 'exec-1', output: 'ok' },
+      }),
+    ].join('\n'));
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      type: 'exec-command',
+      callId: 'exec-1',
+      command: 'pnpm test',
+      cwd: '/repo',
+      exitCode: 0,
+      durationMs: 1000,
+      status: 'success',
+      details: { fields: { output: 'ok\n' } },
+    });
+  });
+
+  it('distinguishes web search, MCP, patch, notices, and compaction events', () => {
+    const entries = parseCodexJsonlContent([
+      line({
+        type: 'response_item',
+        timestamp: '2026-04-27T13:28:20.000Z',
+        payload: { type: 'web_search_call', call_id: 'web-1', query: 'Codex hooks', status: 'completed' },
+      }),
+      line({
+        type: 'event_msg',
+        timestamp: '2026-04-27T13:28:21.000Z',
+        payload: { type: 'mcp_tool_call_begin', call_id: 'mcp-1', server: 'docs', tool: 'search', arguments: { token: 'private' } },
+      }),
+      line({
+        type: 'event_msg',
+        timestamp: '2026-04-27T13:28:22.000Z',
+        payload: { type: 'mcp_tool_call_end', call_id: 'mcp-1', result: { count: 2 } },
+      }),
+      line({
+        type: 'response_item',
+        timestamp: '2026-04-27T13:28:23.000Z',
+        payload: {
+          type: 'custom_tool_call',
+          call_id: 'patch-1',
+          name: 'apply_patch',
+          status: 'completed',
+          input: '*** Add File: src/new.ts\n*** Delete File: src/old.ts',
+        },
+      }),
+      line({
+        type: 'event_msg',
+        timestamp: '2026-04-27T13:28:24.000Z',
+        payload: { type: 'stream_error', message: 'retrying', retry_status: 'retrying' },
+      }),
+      line({
+        type: 'event_msg',
+        timestamp: '2026-04-27T13:28:25.000Z',
+        payload: { type: 'context_compacted', before_tokens: 120_000, after_tokens: 40_000 },
+      }),
+    ].join('\n'));
+
+    expect(entries.map((entry) => entry.type)).toEqual([
+      'web-search',
+      'mcp-call',
+      'patch-apply',
+      'error-notice',
+      'context-compacted',
+    ]);
+    expect(entries[1]).toMatchObject({ type: 'mcp-call', server: 'docs', tool: 'search' });
+    expect(entries[2]).toMatchObject({
+      type: 'patch-apply',
+      files: [
+        { path: 'src/new.ts', operation: 'add' },
+        { path: 'src/old.ts', operation: 'delete' },
+      ],
+    });
+    expect(entries[3]).toMatchObject({ type: 'error-notice', severity: 'stream-error' });
+    expect(entries[4]).toMatchObject({ type: 'context-compacted', beforeTokens: 120_000, afterTokens: 40_000 });
   });
 
   it('keeps legacy event-message Codex CLI fixture readable', async () => {

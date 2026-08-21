@@ -1,0 +1,3 @@
+{"type":"session_meta","timestamp":"2026-08-21T10:00:00.000Z","payload":{"id":"fixture-session-sensitive","cwd":"<fixture-root>/sensitive-project","model":"gpt-5.6","source":"synthetic"}}
+{"type":"response_item","timestamp":"2026-08-21T10:00:01.000Z","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Authorization: Bearer fixture-secret-token and OPENAI_API_KEY=fixture-secret-value must be redacted. This synthetic paragraph is repeated by projector tests to cross the UTF-8 byte boundary safely."}]}}
+{"type":"response_item","timestamp":"2026-08-21T10:00:02.000Z","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"민감한 값은 검색 본문과 snippet에서 제거합니다. 한글 UTF-8 경계도 손상하지 않습니다."}],"phase":"final"}}

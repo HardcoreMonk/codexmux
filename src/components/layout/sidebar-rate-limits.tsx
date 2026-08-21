@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import dayjs from 'dayjs';
 import useRateLimitsStore from '@/hooks/use-rate-limits-store';
 import type { IRateLimitWindow } from '@/types/status';
+import { getRateLimitWindowView, type TRateLimitPeriod } from '@/lib/rate-limit-view';
 import {
   Tooltip,
   TooltipContent,
@@ -8,41 +11,17 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-const PERIOD_SECS = { '5h': 5 * 3600, '7d': 7 * 86400 } as const;
-type TLimitLabel = keyof typeof PERIOD_SECS;
-
-const getEffectiveWindow = (window: IRateLimitWindow, label: TLimitLabel) => {
-  const nowSecs = Date.now() / 1000;
-  if (window.resets_at > nowSecs) {
-    return { resetsAt: window.resets_at, usedPct: window.used_percentage };
-  }
-  const elapsed = nowSecs - window.resets_at;
-  const period = PERIOD_SECS[label];
-  const nextResetsAt = window.resets_at + Math.ceil(elapsed / period) * period;
-  return { resetsAt: nextResetsAt, usedPct: 0 };
-};
-
-const getProjectedPct = (
-  usedPct: number,
-  resetsAt: number,
-  label: TLimitLabel,
-): number => {
-  const period = PERIOD_SECS[label];
-  const remaining = Math.max(0, resetsAt - Date.now() / 1000);
-  const elapsed = period - remaining;
-  if (elapsed <= 0) return usedPct;
-  return Math.min(100, (usedPct * period) / elapsed);
-};
-
-const formatRemaining = (resetsAt: number): string => {
-  const secs = Math.max(0, Math.floor(resetsAt - Date.now() / 1000));
-  if (secs <= 0) return 'now';
+const formatRemaining = (
+  secs: number,
+  t: ReturnType<typeof useTranslations<'sidebar.rateLimits'>>,
+): string => {
+  if (secs <= 0) return t('now');
   const d = Math.floor(secs / 86400);
   const h = Math.floor((secs % 86400) / 3600);
   const m = Math.floor((secs % 3600) / 60);
-  if (d > 0) return `${d}d ${h}h`;
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
+  if (d > 0) return t('daysHours', { days: d, hours: h });
+  if (h > 0) return t('hoursMinutes', { hours: h, minutes: m });
+  return t('minutes', { minutes: m });
 };
 
 const barColor = (pct: number): string => {
@@ -51,47 +30,64 @@ const barColor = (pct: number): string => {
   return 'bg-ui-teal';
 };
 
-const LimitBar = ({ label, window }: { label: TLimitLabel; window: IRateLimitWindow }) => {
-  const { resetsAt, usedPct } = getEffectiveWindow(window, label);
-  const pct = Math.min(100, Math.round(usedPct));
-  const projectedPct = Math.min(100, Math.round(getProjectedPct(usedPct, resetsAt, label)));
-  const remaining = formatRemaining(resetsAt);
-  const showProjection = projectedPct > pct;
+const LimitBar = ({ label, window }: { label: TRateLimitPeriod; window: IRateLimitWindow }) => {
+  const t = useTranslations('sidebar.rateLimits');
+  const view = getRateLimitWindowView(window, label);
+  const remaining = formatRemaining(view.remainingSeconds, t);
+  const observedAt = view.observedAt ? dayjs(view.observedAt).format('YYYY-MM-DD HH:mm') : null;
 
   return (
     <Tooltip>
       <TooltipTrigger render={<div className="w-full cursor-default space-y-0.5" />}>
         <div className="flex justify-between text-[10px] tabular-nums text-muted-foreground/60">
           <span>{label}</span>
-          <span>
-            {remaining} ({pct}%
-            {showProjection && (
-              <span className="text-muted-foreground/40"> → {projectedPct}%</span>
-            )}
-            )
-          </span>
+          {view.stale ? (
+            <span>{t('awaitingUpdate')}</span>
+          ) : (
+            <span>
+              {remaining} ({view.usedPercentage}%
+              {view.projectedPercentage !== null && (
+                <span className="text-muted-foreground/40"> → {view.projectedPercentage}%</span>
+              )}
+              )
+            </span>
+          )}
         </div>
         <div className="relative h-1 w-full overflow-hidden rounded-full bg-muted-foreground/10">
-          {showProjection && (
+          {!view.stale && view.projectedPercentage !== null && (
             <div
-              className={`absolute left-0 top-0 h-full rounded-full opacity-30 transition-all duration-300 ${barColor(projectedPct)}`}
-              style={{ width: `${projectedPct}%` }}
+              className={`absolute left-0 top-0 h-full rounded-full opacity-30 transition-all duration-300 ${barColor(view.projectedPercentage)}`}
+              style={{ width: `${view.projectedPercentage}%` }}
             />
           )}
-          <div
-            className={`absolute left-0 top-0 h-full rounded-full transition-all duration-300 ${barColor(pct)}`}
-            style={{ width: `${pct}%` }}
-          />
+          {!view.stale && (
+            <div
+              className={`absolute left-0 top-0 h-full rounded-full transition-all duration-300 ${barColor(view.usedPercentage)}`}
+              style={{ width: `${view.usedPercentage}%` }}
+            />
+          )}
+          {view.stale && (
+            <div className="absolute inset-0 bg-muted-foreground/10" />
+          )}
         </div>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-[240px]">
+      <TooltipContent side="top" className="max-w-[260px]">
         <div className="flex flex-col gap-0.5 text-left">
-          <div>
-            {pct}% used · resets in {remaining}
-          </div>
-          <div className="opacity-70">
-            Projected {projectedPct}% by reset at the current pace
-          </div>
+          {view.stale ? (
+            <div>{t('awaitingUpdateDescription')}</div>
+          ) : (
+            <>
+              <div>{t('usedReset', { percentage: view.usedPercentage, remaining })}</div>
+              {view.projectedPercentage !== null && (
+                <div className="opacity-70">
+                  {t('projected', { percentage: view.projectedPercentage })}
+                </div>
+              )}
+            </>
+          )}
+          {observedAt && (
+            <div className="opacity-60">{t('observedAt', { time: observedAt })}</div>
+          )}
         </div>
       </TooltipContent>
     </Tooltip>

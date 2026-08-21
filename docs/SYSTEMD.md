@@ -1,6 +1,6 @@
-# Linux systemd 참고 문서
+# Linux 단일 엔진 systemd 운영
 
-이 문서는 codexmux를 Linux에서 `systemd --user` 서비스로 운영하던 기록입니다. Windows-only 제품 전환 이후 primary 운영 기준은 Windows host/installer/update smoke입니다.
+이 문서는 codexmux Linux 단일 엔진을 `systemd --user` 서비스로 운영하는 기준입니다. 한 user service가 custom server, Runtime v2 worker, tmux adapter, Codex JSONL read와 등록 project의 governed scaffold write를 소유합니다.
 
 ## 기존 워크스테이션 기준
 
@@ -13,24 +13,35 @@
 네트워크와 포트:
 
 ```text
-HOST=localhost,tailscale,192.168.0.0/16
+HOST=0.0.0.0
 PORT=8122
 ```
+
+2026-08-21 현재 이 host의 unit은 enabled/active이며 governed adoption build commit `f46410b4`, version
+`0.4.23`을 `0.0.0.0:8122`에서 제공합니다. Browser 인증과
+`CODEXMUX_GOVERNANCE_WRITES=1` drop-in이 구성됐고 CLI token 기반 운영 API, Runtime v2와
+Governance `writeState=ready`도 정상입니다.
 
 ## 서비스 파일 예시
 
 ```ini
 [Unit]
-Description=codexmux web session manager
+Description=codexmux Linux single-engine session manager
 Documentation=https://github.com/HardcoreMonk/codexmux
+After=network.target
 
 [Service]
 Type=simple
 WorkingDirectory=/data/projects/codex-zone/codexmux
 Environment=NODE_ENV=production
-Environment=HOST=localhost,tailscale,192.168.0.0/16
+Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=CODEXMUX_RUNTIME_V2=1
+Environment=CODEXMUX_SESSION_CATALOG_MODE=default
+# 별도 승인 뒤에만 추가: Environment=CODEXMUX_GOVERNANCE_WRITES=1
+Environment=HOST=0.0.0.0
 Environment=PORT=8122
-ExecStart=/home/hardcoremonk/.nvm/versions/node/v24.15.0/bin/node /data/projects/codex-zone/codexmux/bin/codexmux.js
+Environment=PATH=/home/hardcoremonk/.nvm/versions/node/v24.19.0/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/hardcoremonk/.nvm/versions/node/v24.19.0/bin/node /data/projects/codex-zone/codexmux/bin/codexmux.js
 Restart=on-failure
 RestartSec=3
 KillSignal=SIGINT
@@ -41,7 +52,13 @@ TimeoutStopSec=20
 WantedBy=default.target
 ```
 
-System-wide service가 아니라 user service를 썼던 이유는 `~/.codexmux/`, `~/.codex/sessions/`, 사용자 tmux socket, NVM Node path가 사용자 기준이어야 했기 때문입니다.
+System-wide service가 아니라 user service를 사용하는 이유는 `~/.codexmux/`, `~/.codex/sessions/`, 사용자 tmux socket, 등록 project와 Node runtime 환경이 한 Linux 사용자 기준이어야 하기 때문입니다. `ExecStart`의 Node path는 설치 시 `command -v node`로 확인한 현재 절대 경로와 일치시킵니다.
+
+예시 unit은 systemd 기본 `KillMode=control-group`을 사용하므로 service restart/stop 때 같은
+cgroup에서 시작된 legacy tmux server도 종료될 수 있습니다. 저장된 runtime v1 layout이
+그 session을 계속 가리키면 다음 browser reconnect에서 `session not found`가 표시되며 새
+terminal 재시작으로 복구합니다. 임의로 `KillMode=process`로 바꾸면 service stop 뒤 worker나
+tmux child가 남을 수 있으므로 적용하지 않습니다.
 
 Fresh config에서 user service가 setup으로 시작하면 저장된 `HOST`보다 먼저
 `127.0.0.1`에만 bind하고, 외부 bind는 setup 완료 후 restart부터 적용합니다. Setup
@@ -58,6 +75,23 @@ restart하며 config 전체 삭제는 다른 앱 설정도 초기화하므로 �
 `Environment=CODEXMUX_UPLOADS_DISABLED=1`을 추가하고 daemon reload/restart합니다. 이 모드는
 두 upload route만 `503`으로 닫고 health와 기존 artifact tree는 유지합니다. Direct `next start`
 또는 제거된 Pages upload route로 fallback하지 않습니다.
+
+Governance scaffold write는 기본 off입니다. 활성화 전
+`corepack pnpm smoke:governance:scaffold`와 backup 여유 공간을 확인한 뒤 drop-in에
+`Environment=CODEXMUX_GOVERNANCE_WRITES=1`을 추가합니다. 비상 차단은 이 환경 변수를 제거하고
+daemon reload/restart합니다. Gate off도 미완료 action의 startup rollback을 건너뛰지 않으며
+`recovery-required`가 있으면 action backup을 삭제하지 않습니다.
+
+현재 host는 승인된 다음 drop-in을 사용합니다.
+
+```text
+~/.config/systemd/user/codexmux.service.d/governance-writes.conf
+```
+
+```ini
+[Service]
+Environment=CODEXMUX_GOVERNANCE_WRITES=1
+```
 
 ## 등록과 시작
 
@@ -95,9 +129,58 @@ curl -sS http://127.0.0.1:8122/api/health
 {"app":"codexmux","version":"<package-version>","commit":"<git-short-hash>","buildTime":"<iso-build-time>"}
 ```
 
-## 런타임 v2 rollback 참고
+Runtime와 worker health는 인증된 요청으로 별도 확인합니다.
 
-Linux 운영에서는 runtime v2 mode를 drop-in으로 관리했습니다.
+```bash
+curl -fsS -H "x-cmux-token: $(<~/.codexmux/cli-token)" \
+  http://127.0.0.1:8122/api/v2/runtime/health
+curl -fsS -H "x-cmux-token: $(<~/.codexmux/cli-token)" \
+  http://127.0.0.1:8122/api/sessions/health
+```
+
+`terminal`, `storage`, `timeline`, `status`는 core readiness입니다. `governance`가 degraded여도 core session operation은 유지되어야 하며 governance UI/API만 retry 가능한 오류와 저하 상태를 표시합니다.
+
+## 배포 전 점검
+
+```bash
+command -v node
+command -v tmux
+corepack pnpm build
+corepack pnpm build:server
+corepack pnpm smoke:runtime-v2:phase6-default-gate
+corepack pnpm perf:session-catalog
+corepack pnpm smoke:linux:session-governance
+corepack pnpm smoke:browser:session-governance
+```
+
+- service user가 `~/.codex/sessions/`와 등록 project를 읽고 `~/.codexmux/`를 쓸 수 있어야 합니다.
+- `runtime-v2`, `session-catalog`, `governance` 디렉터리는 `0700`, SQLite DB/WAL/SHM은 `0600`인지 확인합니다.
+- `dist/workers/`에 terminal/storage/timeline/status/governance worker bundle이 모두 있어야 합니다.
+- 실제 `systemctl --user restart`는 backup과 운영 승인을 받은 뒤 실행합니다. build/smoke 통과만으로 live service를 재시작하지 않습니다.
+
+최초 2026-08-21 배포 전에는 기존 unit, listener와 runtime/catalog/governance DB가 없어서
+backup 대상이 없었습니다. 이후 배포부터는 restart 전에 runtime DB/WAL/SHM을 같은 시점의
+한 세트로 backup합니다. 최초 배포는 restart 전후 live terminal 전체 smoke와 Phase 6
+12-check gate를 통과했으며 [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18)에
+완료 증거가 있습니다.
+
+Phase 3 배포에서는 service를 멈춘 뒤 `runtime-v2-storage-20260821T090636Z`에 durable DB/WAL/SHM과
+workspace state 5개를 backup하고 directory `0700`, file `0600`을 확인했습니다. Build commit
+`9d32d049`로 PID `1101874`에서 `1104868`로 재기동했고 public/authenticated health, Governance
+`writeState=ready`, Phase 6 12-check gate를 통과했습니다. Scaffold 7-check, Linux 10-check와
+한국어/영어 browser smoke도 통과했으며 [Issue #19](https://github.com/HardcoreMonk/codexmux/issues/19)에
+완료 근거를 남깁니다.
+
+Governed unmarked adoption 배포에서는 service를 멈춘 뒤
+`runtime-v2-storage-20260821T123122Z`에 같은 5개 durable/workspace state를 `0700/0600`으로
+backup했습니다. Build commit `f46410b4`로 PID `1104868`에서 `1149564`로 재기동했고
+`0.0.0.0:8122`, public/authenticated health, Governance `writeState=ready`, live Phase 6
+12-check를 확인했습니다. Production scaffold 13-check와 한국어/영어 browser 4-check도
+통과했으며 [Issue #20](https://github.com/HardcoreMonk/codexmux/issues/20)에 근거를 남깁니다.
+
+## 런타임 v2 rollback
+
+Runtime v2 mode는 drop-in으로 관리할 수 있습니다.
 
 ```text
 ~/.config/systemd/user/codexmux.service.d/runtime-v2-shadow.conf
@@ -113,6 +196,8 @@ systemctl --user restart codexmux.service
 
 Surface별 rollback은 mode를 `off`로 바꾼 뒤 daemon reload/restart로 처리했습니다.
 
+Session Catalog나 Knowledge Index만 손상된 경우 전체 Runtime v2를 끄지 않습니다. service를 멈춘 뒤 해당 `index.db`, WAL, SHM을 quarantine하고 다시 시작해 rebuild/refresh합니다. `runtime-v2/state.db`에는 durable user state가 있으므로 먼저 backup하고 검증된 세 파일 단위로 복원합니다. 자세한 데이터 경계는 `DATA-DIR.md`를 따릅니다.
+
 ## Lifecycle control 참고
 
 `/experimental/runtime`의 lifecycle control은 임의 shell 입력을 받지 않고 allowlist action만 실행합니다.
@@ -125,11 +210,6 @@ Surface별 rollback은 mode를 `off`로 바꾼 뒤 daemon reload/restart로 처�
 
 실행 기록은 `~/.codexmux/lifecycle-actions.jsonl`에 sanitized event로 남깁니다.
 
-## Windows 전환 메모
+## 별도 Windows 배포면
 
-Linux service 문서는 보존하지만 새 제품 운영 기준으로 확장하지 않습니다. Windows에서는
-tray-first host, service-capable host, installer ownership, updater smoke가 별도 문서와 release
-gate의 기준이 됩니다. 2026-07-12 `v0.4.20`은 packaged upload와 published updater 기능을
-최초 검증했고 `v0.4.21`은 같은 fresh Windows 경로와 privacy gate를 반복했습니다. 완료
-근거는 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)과 두 Windows release
-handoff에 있습니다.
+Windows tray/service/installer/updater 근거는 역사적 release evidence와 `codexwinmux` 별도 제품 line 판단에 사용합니다. Linux Session Operations/Project Governance acceptance를 Windows package 결과로 대체하거나 그 반대로 대체하지 않습니다.

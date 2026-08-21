@@ -40,7 +40,7 @@ codexmux는 몇 가지 최신 브라우저 API에 의존합니다. 빠진 API가
 | API | 사용 목적 | 폴백 |
 |---|---|---|
 | WebSocket | 터미널 I/O, 상태 동기화, 타임라인 | 필수 — 폴백 없음 |
-| Clipboard API | `npx codexmux` 복사, 코드블록 복사 | 사용 불가 시 버튼 숨김 |
+| Clipboard API | `npx --yes codexmux@latest` 복사, 코드블록 복사 | 사용 불가 시 버튼 숨김 |
 | Notifications API | 데스크탑/모바일 푸시 | 건너뜀 — 앱 내 상태는 그대로 표시 |
 | Service Workers | PWA + Web Push | 일반 웹 앱으로만 서빙 |
 | IntersectionObserver | 라이브 타임라인, nav reveal | 애니메이션 없이 렌더링 |

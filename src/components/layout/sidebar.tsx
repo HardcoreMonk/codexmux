@@ -635,6 +635,7 @@ const Sidebar = () => {
           <div className="flex items-center justify-between px-2 pb-2">
             <div className="flex items-center gap-0.5">
               {sidebarItems.map((item) => {
+                const itemName = item.labelKey ? t(item.labelKey) : item.name;
                 const isExternal = item.url.startsWith('http://') || item.url.startsWith('https://');
                 const isActive = isExternal
                   ? activeWebviewId === item.id
@@ -653,14 +654,14 @@ const Sidebar = () => {
                       )}
                       onClick={() => {
                         if (isExternal) {
-                          useWebviewStore.getState().open(item.id, item.url, item.name);
+                          useWebviewStore.getState().open(item.id, item.url, itemName);
                         } else {
                           useWebviewStore.getState().hide();
                           router.push(item.url);
                         }
                       }}
-                      aria-label={item.name}
-                      title={item.name}
+                      aria-label={itemName}
+                      title={itemName}
                     >
                       <IconRenderer name={item.icon} className="h-3.5 w-3.5" />
                     </button>

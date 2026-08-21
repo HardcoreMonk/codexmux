@@ -3,8 +3,8 @@ layout: layouts/base.njk
 lang: fr
 title: "codexmux — Un multiplexeur de terminal web-natif pour Codex"
 description: "Gérez plusieurs sessions Codex dans un seul tableau de bord. Basé sur tmux, web-natif, prêt pour le mobile. Open source MIT."
-canonical: https://subicura.com/codexmux/fr/
-ogUrl: https://subicura.com/codexmux/fr/
+canonical: https://hardcoremonk.github.io/codexmux/fr/
+ogUrl: https://hardcoremonk.github.io/codexmux/fr/
 ogLocale: fr_FR
 ogLocaleAlternate: en_US
 permalink: /fr/index.html
@@ -81,14 +81,11 @@ isRoot: false
           <div class="install-block">
             <div class="install-cmd">
               <span class="prompt">$</span>
-              <span>npx codexmux</span>
-              <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="Copier" onclick="(function(b){navigator.clipboard.writeText('npx codexmux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
+              <span>npx --yes codexmux@latest</span>
+              <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="Copier" onclick="(function(b){navigator.clipboard.writeText('npx --yes codexmux@latest');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
             </div>
-            <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-mac>
-              <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
-                <path d="M17.05 20.28c-.98.95-2.05.88-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-              </svg>
-              Télécharger pour macOS
+            <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-windows>
+              Télécharger l’installateur Windows
             </a>
           </div>
 
@@ -99,9 +96,9 @@ isRoot: false
           </div>
 
           <div class="hero-meta">
-            <span><span class="ok">●</span> Node.js 20+</span>
-            <span><span class="ok">●</span> tmux requis</span>
-            <span><span class="ok">●</span> macOS / Linux</span>
+            <span><span class="ok">●</span> Installateur Windows (principal)</span>
+            <span><span class="ok">●</span> npm : macOS / Linux</span>
+            <span><span class="ok">●</span> npm nécessite tmux</span>
           </div>
         </div>
 
@@ -839,16 +836,16 @@ isRoot: false
       <div class="eyebrow">Installer</div>
       <h2>30 secondes, du début à la fin.</h2>
       <p class="lead">
-        Il te faut juste Node.js 20+ et tmux. Une ligne pour installer, puis ouvre le navigateur.
+        Le produit principal utilise l’installateur Windows. La commande npm lance l’ancien serveur web tmux sur macOS et Linux.
       </p>
 
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-body">
-            <h3>Exécuter</h3>
-            <p>Démarre tout de suite avec npx. Une installation globale marche aussi.</p>
-<pre class="code"><span class="c">$</span> npx codexmux</pre>
+            <h3>Lancer l’ancien serveur web</h3>
+            <p>Sur macOS ou Linux avec Node.js 20+ et tmux, exécute directement le paquet publié.</p>
+<pre class="code"><span class="c">$</span> npx --yes codexmux@latest</pre>
           </div>
         </div>
 
@@ -873,10 +870,10 @@ isRoot: false
         <div class="step">
           <div class="step-num">4</div>
           <div class="step-body">
-            <h3>App native (optionnel)</h3>
-            <p>Sur macOS tu peux aussi utiliser le build Electron. Apple Silicon et Intel supportés.</p>
+            <h3>Installateur Windows (principal)</h3>
+            <p>Sous Windows, utilise l’installateur Electron. La commande npm n’installe pas l’application de bureau Windows.</p>
             <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" style="margin-top:0.5rem" data-ph-capture-attribute-cta="download">
-              Télécharger la dernière release →
+              Télécharger l’installateur Windows →
             </a>
           </div>
         </div>
@@ -916,8 +913,7 @@ isRoot: false
 
         <details>
           <summary>Ça marche sous Windows ?</summary>
-          <p>Pas officiellement. Les contraintes de tmux et node-pty font que seuls macOS et Linux sont supportés.
-            Ça peut tourner sous WSL2, mais ce n'est pas testé.</p>
+          <p>Oui. Le produit principal est fourni avec l’installateur Electron pour Windows. La commande npm est l’ancien serveur web tmux pour macOS et Linux, pas l’installateur Windows.</p>
         </details>
 
         <details>
@@ -956,19 +952,16 @@ isRoot: false
         <div class="cta-body">
           <div class="eyebrow">Commencer</div>
           <h2>Une ligne suffit.</h2>
-          <p class="lead">Avec Node.js 20+ et tmux prêts, c'est en route en 30 secondes.</p>
+          <p class="lead">Télécharge l’installateur Windows ou lance l’ancien serveur web tmux avec npm sur macOS/Linux.</p>
         </div>
         <div class="install-block cta-install">
           <div class="install-cmd">
             <span class="prompt">$</span>
-            <span>npx codexmux</span>
-            <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="Copier" onclick="(function(b){navigator.clipboard.writeText('npx codexmux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
+            <span>npx --yes codexmux@latest</span>
+            <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="Copier" onclick="(function(b){navigator.clipboard.writeText('npx --yes codexmux@latest');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
           </div>
-          <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-mac>
-            <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
-              <path d="M17.05 20.28c-.98.95-2.05.88-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-            </svg>
-            Télécharger pour macOS
+          <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-windows>
+            Télécharger l’installateur Windows
           </a>
         </div>
       </div>
@@ -1009,24 +1002,3 @@ isRoot: false
     </section>
 
   </main>
-
-  <div class="arch-modal" id="archModal" hidden>
-    <div class="arch-modal-backdrop" data-arch-close></div>
-    <div class="arch-modal-card" role="dialog" aria-modal="true" aria-labelledby="archModalTitle">
-      <button type="button" class="arch-modal-close" data-arch-close aria-label="Fermer">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M6 18L18 6"/></svg>
-      </button>
-      <h3 id="archModalTitle">Choisissez votre Mac</h3>
-      <p class="arch-modal-sub">Sélectionnez la version adaptée à votre processeur.</p>
-      <div class="arch-modal-options">
-        <button type="button" class="arch-option" data-arch="arm64" data-ph-capture-attribute-cta="download_arm64">
-          <span class="arch-option-title">Apple Silicon</span>
-          <span class="arch-option-hint">arm64</span>
-        </button>
-        <button type="button" class="arch-option" data-arch="x64" data-ph-capture-attribute-cta="download_x64">
-          <span class="arch-option-title">Intel</span>
-          <span class="arch-option-hint">x86_64</span>
-        </button>
-      </div>
-    </div>
-  </div>

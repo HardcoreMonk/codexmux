@@ -30,10 +30,16 @@ const sessionHistoryEntry: ISessionHistoryEntry = {
 };
 
 const createLiveManager = (tabs = {}) => {
+  const rateLimits = {
+    ts: 10,
+    five_hour: null,
+    seven_day: { used_percentage: 5, resets_at: 20, observed_at: 10 },
+  };
   const manager = {
     init: vi.fn(async () => undefined),
     shutdown: vi.fn(),
     getAllForClient: vi.fn(() => tabs),
+    getRateLimitsForClient: vi.fn(() => rateLimits),
     updateTabFromHook: vi.fn(),
     dismissTab: vi.fn(() => true),
     ackNotificationInput: vi.fn(() => true),
@@ -81,6 +87,11 @@ describe('status worker service', () => {
             workspaceId: 'ws-a',
             tabName: 'Codex',
           },
+        },
+        rateLimits: {
+          ts: 10,
+          five_hour: null,
+          seven_day: { used_percentage: 5, resets_at: 20, observed_at: 10 },
         },
       },
     });
@@ -185,6 +196,20 @@ describe('status worker service', () => {
       payload: {
         tabId: 'tab-a',
         cliState: 'needs-input',
+      },
+    });
+
+    emitBroadcast({ type: 'status:sync', tabs: {} });
+
+    expect(events[1]).toMatchObject({
+      type: 'status.sync',
+      payload: {
+        tabs: {},
+        rateLimits: {
+          ts: 10,
+          five_hour: null,
+          seven_day: { used_percentage: 5, resets_at: 20, observed_at: 10 },
+        },
       },
     });
   });

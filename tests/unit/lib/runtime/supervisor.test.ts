@@ -66,6 +66,17 @@ const createWorkers = () => {
     deleted: true,
     session: { sessionName: 'rtv2-ws-a-pane-b-tab-c' },
   });
+  storage.replies.set('storage.list-session-annotations', []);
+  storage.replies.set('storage.update-session-annotation', {
+    sessionId: 'session-1',
+    pinned: true,
+    tags: ['review'],
+    version: 1,
+    updatedAt: '2026-08-21T09:00:00.000Z',
+  });
+  storage.replies.set('storage.list-saved-session-filters', []);
+  storage.replies.set('storage.upsert-saved-session-filter', null);
+  storage.replies.set('storage.delete-saved-session-filter', { deleted: true });
   terminal.replies.set('terminal.health', { ok: true });
   terminal.replies.set('terminal.create-session', { sessionName: 'rtv2-ws-a-pane-b-tab-generated' });
   terminal.replies.set('terminal.attach', { sessionName: 'rtv2-ws-a-pane-b-tab-c', attached: true });
@@ -78,10 +89,21 @@ const createWorkers = () => {
   timeline.replies.set('timeline.list-sessions', { sessions: [], total: 0, hasMore: false });
   timeline.replies.set('timeline.read-entries-before', { entries: [], startByteOffset: 0, hasMore: false });
   timeline.replies.set('timeline.message-counts', { userCount: 0, assistantCount: 0, toolCount: 0, toolBreakdown: {} });
+  timeline.replies.set('timeline.catalog-health', {
+    state: 'ready',
+    queueLag: 0,
+    cursorAgeMs: 100,
+    rebuildState: 'idle',
+    indexedSessions: 1,
+    lastIndexedAt: '2026-08-21T09:00:00.000Z',
+  });
+  timeline.replies.set('timeline.catalog-search', { results: [], nextCursor: null, total: 0, health: 'ready' });
+  timeline.replies.set('timeline.catalog-read-entries', { entries: [], startByteOffset: 0, hasMore: false });
+  timeline.replies.set('timeline.catalog-rebuild', { started: true, state: 'building' });
   status.replies.set('status.health', { ok: true });
   status.replies.set('status.live-start', { started: true });
   status.replies.set('status.live-stop', { stopped: true });
-  status.replies.set('status.live-request-sync', { tabs: {} });
+  status.replies.set('status.live-request-sync', { tabs: {}, rateLimits: null });
   status.replies.set('status.live-hook-event', { accepted: true });
   status.replies.set('status.live-client-event', { accepted: true });
   status.replies.set('status.live-notify-last-user-message', { accepted: true });
@@ -181,6 +203,7 @@ describe('runtime supervisor', () => {
       terminal: { ok: true },
       timeline: { ok: true },
       status: { ok: true },
+      governance: { state: 'degraded', writeState: 'degraded', indexedProjects: 0, lastIndexedAt: null },
     });
 
     expect(storage.started).toBe(1);
@@ -246,6 +269,160 @@ describe('runtime supervisor', () => {
         payload: { jsonlPath: `${os.homedir()}/.codex/sessions/session.jsonl` },
       },
     ]));
+  });
+
+  it('keeps every Session Catalog call behind the Supervisor timeline facade', async () => {
+    const { storage, terminal, timeline, status } = createWorkers();
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
+
+    await expect(supervisor.getSessionCatalogHealth()).resolves.toMatchObject({ state: 'ready', indexedSessions: 1 });
+    await expect(supervisor.searchSessionCatalog({ query: 'worker', limit: 50 }))
+      .resolves.toMatchObject({ results: [], total: 0 });
+    await expect(supervisor.readSessionCatalogEntries({
+      sessionId: 'session-1',
+      beforeByte: 100,
+      limit: 50,
+      panelType: 'codex',
+    })).resolves.toMatchObject({ entries: [], hasMore: false });
+    await expect(supervisor.rebuildSessionCatalog()).resolves.toEqual({ started: true, state: 'building' });
+
+    expect(timeline.commands).toEqual(expect.arrayContaining([
+      { type: 'timeline.catalog-health', payload: {} },
+      { type: 'timeline.catalog-search', payload: { query: 'worker', limit: 50 } },
+      {
+        type: 'timeline.catalog-read-entries',
+        payload: { sessionId: 'session-1', beforeByte: 100, limit: 50, panelType: 'codex' },
+      },
+      { type: 'timeline.catalog-rebuild', payload: {} },
+    ]));
+    expect(storage.commands.map((item) => item.type)).not.toContain('storage.catalog-search');
+  });
+
+  it('merges Storage Worker annotations into catalog results and owns annotation updates', async () => {
+    const { storage, terminal, timeline, status } = createWorkers();
+    timeline.replies.set('timeline.catalog-search', {
+      results: [{
+        entry: {
+          sessionId: 'session-1',
+          projectLabel: 'codexmux',
+          startedAt: '2026-08-21T08:00:00.000Z',
+          lastActivityAt: '2026-08-21T08:01:00.000Z',
+          turnCount: 1,
+          indexedAt: '2026-08-21T09:00:00.000Z',
+        },
+        snippet: 'worker',
+      }],
+      nextCursor: null,
+      total: 1,
+      health: 'ready',
+    });
+    storage.replies.set('storage.list-session-annotations', [{
+      sessionId: 'session-1',
+      pinned: true,
+      tags: ['review'],
+      version: 1,
+      updatedAt: '2026-08-21T09:00:00.000Z',
+    }]);
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
+
+    await expect(supervisor.searchSessionCatalog({ query: 'worker' })).resolves.toMatchObject({
+      results: [{ annotation: { pinned: true, tags: ['review'] } }],
+    });
+    await expect(supervisor.updateSessionAnnotation({
+      sessionId: 'session-1',
+      pinned: true,
+      tags: ['review'],
+      expectedVersion: 0,
+    })).resolves.toMatchObject({ sessionId: 'session-1', version: 1 });
+
+    expect(timeline.commands).toContainEqual({
+      type: 'timeline.catalog-read-entries',
+      payload: { sessionId: 'session-1', beforeByte: 0, limit: 1, panelType: 'codex' },
+    });
+    expect(storage.commands).toEqual(expect.arrayContaining([
+      { type: 'storage.list-session-annotations', payload: { sessionIds: ['session-1'] } },
+      {
+        type: 'storage.update-session-annotation',
+        payload: {
+          sessionId: 'session-1',
+          pinned: true,
+          tags: ['review'],
+          expectedVersion: 0,
+          sessionExists: true,
+        },
+      },
+    ]));
+  });
+
+  it('keeps Approved Root and Managed Project writes behind the Storage Worker facade', async () => {
+    const { storage, terminal, timeline, status } = createWorkers();
+    storage.replies.set('storage.register-approved-project-root', {
+      id: 'root-1', label: 'Projects', approvedAt: '2026-08-21T10:00:00.000Z',
+    });
+    storage.replies.set('storage.register-managed-project', {
+      id: 'project-1', approvedRootId: 'root-1', title: 'Demo', relativePath: 'demo', source: 'manual',
+      createdAt: '2026-08-21T10:00:00.000Z', updatedAt: '2026-08-21T10:00:00.000Z',
+    });
+    storage.replies.set('storage.list-managed-projects', []);
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
+
+    await expect(supervisor.registerApprovedProjectRoot({
+      id: 'root-1', label: 'Projects', canonicalPath: '/srv/projects', approvedAt: '2026-08-21T10:00:00.000Z',
+    })).resolves.toMatchObject({ id: 'root-1' });
+    await expect(supervisor.registerManagedProject({
+      approvedRootId: 'root-1', title: 'Demo', relativePath: 'demo', canonicalPath: '/srv/projects/demo', source: 'manual',
+    })).resolves.toMatchObject({ id: 'project-1' });
+    await expect(supervisor.listManagedProjects()).resolves.toEqual([]);
+
+    expect(storage.commands).toEqual(expect.arrayContaining([
+      {
+        type: 'storage.register-approved-project-root',
+        payload: { id: 'root-1', label: 'Projects', canonicalPath: '/srv/projects', approvedAt: '2026-08-21T10:00:00.000Z' },
+      },
+      {
+        type: 'storage.register-managed-project',
+        payload: { approvedRootId: 'root-1', title: 'Demo', relativePath: 'demo', canonicalPath: '/srv/projects/demo', source: 'manual' },
+      },
+      { type: 'storage.list-managed-projects', payload: {} },
+    ]));
+  });
+
+  it('passes Storage-owned project snapshots to the read-only Governance Worker', async () => {
+    const { storage, terminal, timeline, status } = createWorkers();
+    const governance = new FakeWorker();
+    const projects = [{
+      id: 'project-1',
+      approvedRootId: 'root-1',
+      title: 'Demo',
+      relativePath: 'demo',
+      canonicalPath: '/srv/projects/demo',
+      source: 'manual',
+      createdAt: '2026-08-21T10:00:00.000Z',
+      updatedAt: '2026-08-21T10:00:00.000Z',
+    }];
+    storage.replies.set('storage.list-managed-project-snapshots', projects);
+    storage.replies.set('storage.list-approved-project-root-snapshots', []);
+    governance.replies.set('governance.refresh-projects', { refreshed: 1, failed: 0 });
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status, governance });
+
+    await expect(supervisor.refreshGovernanceProjects()).resolves.toEqual({ refreshed: 1, failed: 0 });
+    expect(storage.commands).toContainEqual({ type: 'storage.list-managed-project-snapshots', payload: {} });
+    expect(governance.commands).toContainEqual({ type: 'governance.refresh-projects', payload: { projects, roots: [] } });
+  });
+
+  it('keeps core runtime available when Governance Worker readiness fails', async () => {
+    const { storage, terminal, timeline, status } = createWorkers();
+    const governance = new FakeWorker();
+    governance.waitUntilReady = async () => {
+      throw Object.assign(new Error('index unavailable'), { code: 'governance-index-unavailable' });
+    };
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status, governance });
+
+    await expect(supervisor.ensureStarted()).resolves.toBeUndefined();
+    expect(storage.shutdowns).toBe(0);
+    expect(terminal.shutdowns).toBe(0);
+    expect(timeline.shutdowns).toBe(0);
+    expect(status.shutdowns).toBe(0);
   });
 
   it('subscribes timeline live events and fans out matching append events', async () => {
@@ -748,7 +925,7 @@ describe('runtime supervisor', () => {
     expect(subscription.subscriberId).toMatch(/^sub-/);
     expect(subscription).toMatchObject({
       subscribed: true,
-      sync: { tabs: {} },
+      sync: { tabs: {}, rateLimits: null },
     });
     expect(status.commands).toEqual(expect.arrayContaining([
       { type: 'status.live-start', payload: {} },
@@ -795,7 +972,7 @@ describe('runtime supervisor', () => {
     const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
 
     await expect(supervisor.startStatusLive()).resolves.toEqual({ started: true });
-    await expect(supervisor.requestStatusLiveSync()).resolves.toEqual({ tabs: {} });
+    await expect(supervisor.requestStatusLiveSync()).resolves.toEqual({ tabs: {}, rateLimits: null });
     await expect(supervisor.sendStatusLiveHookEvent({
       tmuxSession: 'pt-ws-a-pane-b-tab-c',
       event: 'notification',

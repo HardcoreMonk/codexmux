@@ -1,26 +1,39 @@
 ---
 title: 문제 해결 & FAQ
-description: Windows Electron/Runtime v2, 최초 설정, port, upload와 legacy tmux 경로의 진단 방법.
+description: Linux user service, Runtime v2, 최초 설정, port와 terminal 진단 방법.
 eyebrow: 레퍼런스
 permalink: /ko/docs/troubleshooting/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-문제를 보고할 때는 실행 경로(source, unpacked, NSIS), Windows version,
+문제를 보고할 때는 실행 경로(npm/source/systemd 또는 선택 Electron), Linux distribution,
 `/api/health`의 version/commit과 재현 순서를 적어
 [이슈를 열어주세요](https://github.com/HardcoreMonk/codexmux/issues). Runtime log 원본 전체를
 업로드하지 말고 token, path, workspace, command와 사용자 내용을 지운 최소 error excerpt만
 첨부합니다.
 
-{% call callout('warning', '지원 상태를 먼저 확인하세요') %}
-Windows Runtime v2와 Electron package는 primary 전환 경로이며 v0.4.21 fresh package/upload/published updater와 artifact privacy gate를 통과했습니다. 현재 지원 근거는 unsigned 내부 stable release 범위입니다. macOS/Linux tmux와 Android shell은 legacy/reference입니다.
+{% call callout('note', '현재 운영 기준') %}
+Active runtime은 Linux 단일 엔진이고 public npm package는 `0.4.23`입니다. Windows Electron
+`v0.4.22`는 별도 unsigned 내부 release 증거이며 Linux service acceptance를 대체하지 않습니다.
 {% endcall %}
 
 ## 설치와 시작
 
+### Linux service가 시작되지 않아요
+
+```bash
+systemctl --user status codexmux.service
+journalctl --user -u codexmux.service -n 100 --no-pager
+curl -fsS http://127.0.0.1:8122/api/health
+```
+
+Unit의 `WorkingDirectory`, `ExecStart` Node 절대 경로, `PATH`, tmux와 Codex CLI login을
+확인합니다. Source를 갱신했다면 `CI=true corepack pnpm install --frozen-lockfile`과
+`corepack pnpm build`를 먼저 실행합니다.
+
 ### Windows package를 일반 release로 사용해도 되나요?
 
-`v0.4.21`은 fresh Windows packaged upload와 package/release gate를 통과한 내부 stable release입니다. 실제 published update apply는 NSIS installer로 검증했고 zip은 package gate에서 검증했으며, evidence JSON은 upload 전 privacy scanner를 통과했습니다. Public code signing이 없으므로 조직의 SmartScreen과 unsigned app 실행 정책은 별도로 확인합니다.
+`v0.4.22`는 fresh Windows packaged upload와 package/release gate를 통과한 별도 내부 stable release입니다. 실제 published update apply는 NSIS installer로 검증했고 zip은 package gate에서 검증했으며, evidence JSON은 upload 전 privacy scanner를 통과했습니다. Public code signing이 없으므로 조직의 SmartScreen과 unsigned app 실행 정책은 별도로 확인합니다.
 
 검증 담당자는 Windows host에서 fresh package를 만든 뒤 실행합니다.
 
@@ -113,22 +126,24 @@ Get-Content (Join-Path $HOME ".codexmux\port")
 
 정상입니다. Fresh/INIT setup process는 `HOST`와 저장 network access보다 먼저 `127.0.0.1`에만 bind합니다. 원격 onboarding은 지원하지 않습니다.
 
-1. server를 실행한 Windows PC에서 setup을 완료합니다.
+1. Linux engine host에서 loopback browser로 setup을 완료합니다.
 2. network access를 선택합니다.
 3. server/Electron을 재시작합니다.
 4. 그 다음 HTTPS/Tailscale 또는 reverse proxy로 접속합니다.
 
 ### Setup 후에도 외부 접속이 안 돼요
 
-Setup 완료만으로 현재 listener가 넓어지지 않습니다. Packaged Electron은 재시작 후 저장된 network setting을 사용합니다. Source의 `dev:electron` wrapper는 `HOST`가 없으면 `localhost`를 주입하므로, 외부 접속이 필요한 source 실행에서는 재시작 전에 `HOST`를 명시하세요.
+Setup 완료만으로 현재 listener가 넓어지지 않습니다. Linux service unit의 `HOST`가
+`localhost`면 외부 접속을 허용하지 않습니다. 보안 검토 후 허용 범위를 unit에 명시하고
+daemon reload/restart합니다.
 
-```powershell
-$env:HOST = "localhost,tailscale"
-$env:PORT = "8122"
-corepack pnpm dev:electron
+```bash
+systemctl --user daemon-reload
+systemctl --user restart codexmux.service
 ```
 
-`HOST`를 environment로 지정하면 앱의 network setting은 잠깁니다. Packaged Electron의 config-driven 동작과 source wrapper의 environment 동작을 같은 경로로 해석하지 마세요.
+Remote onboarding은 지원하지 않습니다. Open internet에 직접 bind하지 말고 HTTPS/Tailscale
+또는 승인된 reverse proxy를 사용합니다.
 
 ### 비밀번호를 잊었어요
 
@@ -156,15 +171,16 @@ localhost cookie를 일괄 삭제할 필요도 없습니다. 이전 build로 dow
 
 ## Session과 Runtime v2
 
-### Electron 창을 닫았더니 tab이 사라졌어요
+### Browser를 닫았더니 tab이 사라졌어요
 
-Windows path의 terminal persistence는 Runtime v2 terminal worker/adapter가 담당하고, layout/message history는 runtime v2 SQLite와 rollback JSON에 저장됩니다. 다음 순서로 확인합니다.
+Linux terminal persistence는 Runtime v2 Terminal Worker와 tmux adapter가 담당하고,
+layout/message history는 runtime v2 SQLite에 저장됩니다. 다음 순서로 확인합니다.
 
 1. `/api/health`가 응답하는지 확인합니다.
 2. `~/.codexmux/logs/`에서 runtime worker startup error를 확인합니다.
 3. 중앙 recovery overlay가 `session-not-found`를 표시하면 단순 WebSocket reconnect 대신 tab session을 재시작합니다.
 
-Legacy macOS/Linux path에서만 `tmux -L codexmux ls`를 사용합니다.
+Linux engine의 tmux adapter 상태는 `tmux -L codexmux ls`로 확인합니다.
 
 ### Codex session이 resume되지 않아요
 
@@ -222,31 +238,33 @@ Open internet의 plain HTTP는 terminal/WebSocket payload를 암호화하지 않
 
 ### PWA 또는 Android 앱 문제인가요?
 
-PWA/mobile browser는 기존 Windows server에 접속할 수 있지만 primary Windows 설치 surface는 Electron입니다. Capacitor Android shell은 legacy/reference이며 새 Windows release acceptance를 대신하지 않습니다. Background 복귀 문제는 terminal/status/timeline/sync WebSocket을 다시 연결한 뒤 판단하세요.
+PWA/mobile browser와 Capacitor Android는 실행 중인 Linux engine에 접속하는 선택 client입니다.
+Background 복귀 문제는 terminal/status/timeline/sync WebSocket을 다시 연결한 뒤 판단하세요.
 
 ### Web Push가 오지 않아요
 
-HTTPS, browser notification permission, 앱의 알림 설정, `~/.codexmux/push-subscriptions.json`을 확인합니다. iOS는 Safari 16.4 이상에서 홈 화면에 추가한 PWA가 필요합니다. 이 경로도 Windows desktop primary 설치와는 별도입니다.
+HTTPS, browser notification permission, 앱의 알림 설정, `~/.codexmux/push-subscriptions.json`을 확인합니다. iOS는 Safari 16.4 이상에서 홈 화면에 추가한 PWA가 필요합니다.
 
 ## 데이터와 privacy
 
 ### 데이터는 어디에 있나요?
 
-앱 상태는 `~/.codexmux/`, Codex 원본 session은 `~/.codex/`에 있습니다. Windows에서 `~`는 일반적으로 `%USERPROFILE%`입니다. Upload artifact는 `~/.codexmux/uploads/<workspace>/<tab>/`에 저장되고 기본 24시간 TTL cleanup 대상입니다.
+앱 상태는 Linux service user의 `~/.codexmux/`, Codex 원본 session은 `~/.codex/`에 있습니다. Upload artifact는 `~/.codexmux/uploads/<workspace>/<tab>/`에 저장되고 기본 24시간 TTL cleanup 대상입니다.
 
 ### 외부 network request가 있나요?
 
 사용 행동 telemetry나 codexmux cloud storage는 없습니다. 다만 Codex CLI의 OpenAI 통신, Web Push delivery, CLI update notifier, Electron updater metadata 요청은 발생할 수 있습니다. CLI version 확인은 `NO_UPDATE_NOTIFIER=1`로 끌 수 있습니다.
 
-## Legacy tmux reference
+## Linux tmux adapter
 
 ### `tmux: command not found`
 
-이 오류는 `npx codexmux` 같은 macOS/Linux legacy server path에서만 해결 대상입니다. Windows Runtime v2 path에 tmux를 설치해 우회하지 마세요. Legacy path는 tmux 3.0 이상과 전용 `codexmux` socket을 사용하며 사용자의 `~/.tmux.conf`를 읽지 않습니다.
+Active Linux engine에는 tmux 3.0 이상이 필요합니다. 전용 `codexmux` socket과 repository
+`tmux.conf`를 사용하며 사용자의 `~/.tmux.conf`는 읽지 않습니다.
 
 ## 다음으로
 
-- **[설치](/codexmux/ko/docs/installation/)** — Windows package/source와 stable release 경계
+- **[설치](/codexmux/ko/docs/installation/)** — Linux npm/source와 systemd service
 - **[보안과 인증](/codexmux/ko/docs/security-auth/)** — bootstrap, auth, HTTPS
 - **[데이터 디렉터리](/codexmux/ko/docs/data-directory/)** — runtime DB와 upload cleanup
 - **[아키텍처](/codexmux/ko/docs/architecture/)** — outer server와 Runtime v2 흐름

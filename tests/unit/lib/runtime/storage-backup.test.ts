@@ -54,6 +54,9 @@ describe('runtime v2 storage backup', () => {
       .resolves.toContain('pt-secret-session');
     await expect(fs.readFile(path.join(result.backupDir, 'runtime-v2/state.db'), 'utf-8'))
       .resolves.toBe('sqlite-secret-content');
+    expect((await fs.stat(result.backupDir)).mode & 0o777).toBe(0o700);
+    expect((await fs.stat(path.join(result.backupDir, 'workspaces', 'ws-a'))).mode & 0o777).toBe(0o700);
+    expect((await fs.stat(path.join(result.backupDir, 'runtime-v2', 'state.db'))).mode & 0o777).toBe(0o600);
 
     const serialized = JSON.stringify(result);
     expect(serialized).not.toContain('/secret/project');
@@ -76,5 +79,6 @@ describe('runtime v2 storage backup', () => {
     expect(result.copied).toEqual([]);
     expect(result.backupDir.endsWith('runtime-v2-storage-20260504T052000Z')).toBe(true);
     await expect(fs.stat(result.backupDir)).resolves.toMatchObject({ isDirectory: expect.any(Function) });
+    expect((await fs.stat(result.backupDir)).mode & 0o777).toBe(0o700);
   });
 });

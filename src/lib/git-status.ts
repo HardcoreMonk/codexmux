@@ -164,15 +164,20 @@ const getRecentCommits = async (cwd: string, count = 3): Promise<IGitCommit[]> =
 
 const GIT_STATUS_TTL = 15_000;
 
-export const getGitStatus = async (tmuxSession: string): Promise<IGitStatus | null> => {
+export const getGitStatus = async (
+  tmuxSession: string,
+  options: { force?: boolean } = {},
+): Promise<IGitStatus | null> => {
   const cwd = await getSessionCwd(tmuxSession);
   if (!cwd) {
     throw new Error('tmux-session-not-found');
   }
 
   const cacheKey = `git-status:${cwd}`;
-  const cached = getCached<IGitStatus | null>(cacheKey);
-  if (cached !== null) return cached;
+  if (!options.force) {
+    const cached = getCached<IGitStatus | null>(cacheKey);
+    if (cached !== null) return cached;
+  }
 
   try {
     const { stdout } = await execFile(

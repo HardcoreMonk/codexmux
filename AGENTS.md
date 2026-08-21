@@ -9,9 +9,9 @@ AI가 생성한 코드도 시니어 엔지니어가 작성한 것처럼 보여�
 ## 프로젝트 개요
 
 - 제품: codexmux는 Codex 중심 웹 세션 매니저입니다.
-- 제품 목표: Windows 전용 서비스/제품으로 전환합니다. 기존 tmux 중심 macOS/Linux
-  서버와 Electron/Android shell 문서는 전환 계획이 대체하거나 폐기하기 전까지
-  현재 상태를 설명하는 surface로 취급합니다.
+- 제품 목표: Linux 단일 엔진 호스트에서 Codex 세션 운영과 프로젝트 거버넌스를
+  통합합니다. Windows installer/updater와 Electron/Android 기록은 역사적 release 또는
+  선택 client surface로 보존하며 Linux runtime acceptance를 대체하지 않습니다.
 - 프레임워크: custom Node server를 사용하는 Next.js Pages Router입니다.
 - 패키지 매니저: pnpm입니다. 명령 실행 시 `corepack pnpm ...`을 우선합니다.
 - 스타일링: Tailwind CSS v4와 shadcn/ui를 사용합니다.
@@ -136,7 +136,7 @@ Root `CONTEXT.md`는 도메인 언어와 기준 소스 경계를 담당합니다
 | `docs/TMUX.md` | tmux, terminal 관리, WebSocket 흐름 |
 | `docs/DATA-DIR.md` | `~/.codexmux/` directory 구조 |
 | `docs/TESTING.md` | test tier, Playwright/Chromium, platform smoke, live deploy 확인 |
-| `docs/WINDOWS-ONLY-GAP-AUDIT.md` | Windows 전용 제품 전환 gap과 architecture 후보 |
+| `docs/WINDOWS-ONLY-GAP-AUDIT.md` | 보존된 Windows 전환·release 증거와 역사적 architecture 후보 |
 | `docs/SYSTEMD.md` | Linux user service 운영 |
 | `docs/PERFORMANCE.md` | 성능 스냅샷, render/cache 최적화, 검증 |
 | `docs/STYLE.md` | theme과 color 사용 규칙 |
@@ -197,6 +197,9 @@ design rule을 바꾸지 않는 한 ADR이 필요하지 않습니다.
 
 - 표준 lifecycle contract는 zone 상대 경로 `codex-project-mgmt/docs/codex-lifecycle-control-plane.md`를 따른다.
 - 기본 순서: `intake -> office-hours optional -> superpowers:brainstorming / writing-spec -> domain-architecture -> grill-me -> plan-design-review -> superpowers:writing-plans -> plan-eng-review -> implement -> code-review -> release -> operate`.
+- ADR lifecycle은 project pipeline과 별도다. ADR 상태는
+  `Draft -> Review -> Approved -> Implemented -> Verified -> Archived`를 사용하며,
+  pipeline stage 통과가 ADR approval을 의미하지 않는다.
 - 실제 spec, grill-me 기록, plan, handoff는 해당 project root의 project-local 산출물로 둔다.
 - 새 기능, 동작 변경, 작업 흐름 계약 변경, 여러 파일에 걸친 변경은 lightweight path를 사용하지 않는다.
 - `release` 이후에는 `docs/operations/YYYY-MM-DD-<topic>-handoff.md` 또는 project-equivalent handoff로 운영 진입 상태를 기록한다.

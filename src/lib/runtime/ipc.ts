@@ -1,10 +1,70 @@
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { runtimeSessionNameSchema } from '@/lib/runtime/session-name';
+import {
+  sessionIdSchema,
+  savedSessionFilterSchema,
+  sessionAnnotationSchema,
+  sessionSearchPageSchema,
+  sessionSearchQuerySchema,
+  sessionTagSchema,
+} from '@/lib/session-catalog/contracts';
+import {
+  applyManagedProjectImportSchema,
+  approvedProjectRootSnapshotSchema,
+  approvedProjectRootSchema,
+  governanceAuditCandidateSchema,
+  governanceAuditEventSchema,
+  governanceRefreshResultSchema,
+  governanceWorkerHealthSchema,
+  managedProjectImportCountsSchema,
+  managedProjectSchema,
+  managedProjectSnapshotSchema,
+  projectDocumentDetailSchema,
+  projectDocumentRefSchema,
+  projectGovernanceSummarySchema,
+  projectIdSchema,
+  projectLifecycleSnapshotSchema,
+  registerApprovedProjectRootSchema,
+  registerManagedProjectSchema,
+  relativeDocumentPathSchema,
+} from '@/lib/governance/contracts';
+import {
+  governanceRollbackPreviewSchema,
+  scaffoldActionSummarySchema,
+  scaffoldPreviewInputSchema,
+  scaffoldPreviewSchema,
+  scaffoldPreviewTokenSchema,
+  scaffoldFingerprintSchema,
+} from '@/lib/governance/scaffold-contracts';
 
 const RUNTIME_TERMINAL_MAX_COLS = 500;
 const RUNTIME_TERMINAL_MAX_ROWS = 200;
 const emptyPayloadSchema = z.object({}).strict();
+const governanceProjectPayloadSchema = z.object({ projectId: projectIdSchema }).strict();
+const governanceDocumentPayloadSchema = z.object({
+  projectId: projectIdSchema,
+  path: relativeDocumentPathSchema,
+}).strict();
+const governanceRefreshPayloadSchema = z.object({
+  projects: z.array(managedProjectSnapshotSchema).max(2000),
+  roots: z.array(approvedProjectRootSnapshotSchema).max(200).default([]),
+}).strict();
+const governanceConfirmScaffoldPayloadSchema = z.object({
+  projectId: projectIdSchema,
+  token: scaffoldPreviewTokenSchema,
+  digest: scaffoldFingerprintSchema,
+  confirmation: z.string().trim().min(1).max(160),
+}).strict();
+const governanceActionPayloadSchema = z.object({
+  projectId: projectIdSchema,
+  actionId: projectIdSchema,
+}).strict();
+const governanceConfirmRollbackPayloadSchema = governanceActionPayloadSchema.extend({
+  token: scaffoldPreviewTokenSchema,
+  digest: scaffoldFingerprintSchema,
+  confirmation: z.string().trim().min(1).max(160),
+}).strict();
 const runtimeHealthReplySchema = z.object({ ok: z.boolean() }).passthrough();
 const timelineEntrySchema = z.object({
   id: z.string(),
@@ -331,6 +391,41 @@ const timelineReadEntriesBeforePayloadSchema = z.object({
   limit: z.number().int().min(1).max(200),
   panelType: z.string().min(1),
 });
+const timelineCatalogHealthSchema = z.object({
+  state: z.enum(['ready', 'building', 'degraded', 'disabled']),
+  queueLag: z.number().int().nonnegative(),
+  cursorAgeMs: z.number().int().nonnegative().nullable(),
+  rebuildState: z.enum(['idle', 'building', 'cancelling']),
+  indexedSessions: z.number().int().nonnegative(),
+  lastIndexedAt: z.iso.datetime().nullable(),
+}).strict();
+const timelineCatalogReadEntriesPayloadSchema = z.object({
+  sessionId: sessionIdSchema,
+  beforeByte: z.number().int().nonnegative(),
+  limit: z.number().int().min(1).max(200),
+  panelType: z.string().min(1).max(80),
+}).strict();
+const timelineCatalogRebuildResultSchema = z.object({
+  started: z.boolean(),
+  state: z.enum(['building', 'already-building', 'disabled']),
+}).strict();
+const storageListSessionAnnotationsPayloadSchema = z.object({
+  sessionIds: z.array(sessionIdSchema).max(200),
+}).strict();
+const storageUpdateSessionAnnotationPayloadSchema = z.object({
+  sessionId: sessionIdSchema,
+  pinned: z.boolean(),
+  tags: z.array(sessionTagSchema).max(20),
+  expectedVersion: z.number().int().nonnegative(),
+  sessionExists: z.boolean(),
+}).strict();
+const storageDeleteSavedSessionFilterPayloadSchema = z.object({
+  id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/),
+}).strict();
+const storageListGovernanceAuditPayloadSchema = z.object({
+  projectId: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/).optional(),
+  limit: z.number().int().min(1).max(200),
+}).strict();
 const timelineMessageCountsPayloadSchema = z.object({
   jsonlPath: z.string().min(1),
 });
@@ -526,8 +621,19 @@ const statusLiveTabStatusEntrySchema = statusClientTabStatusEntrySchema.extend({
   jsonlPath: z.string().nullable().optional(),
   processRetries: z.number().int().nonnegative().optional(),
 }).strict();
+const statusRateLimitWindowSchema = z.object({
+  used_percentage: z.number(),
+  resets_at: z.number(),
+  observed_at: z.number().optional(),
+}).strict();
+const statusRateLimitsDataSchema = z.object({
+  ts: z.number(),
+  five_hour: statusRateLimitWindowSchema.nullable(),
+  seven_day: statusRateLimitWindowSchema.nullable(),
+}).strict();
 const statusLiveSyncPayloadSchema = z.object({
   tabs: z.record(z.string(), statusClientTabStatusEntrySchema),
+  rateLimits: statusRateLimitsDataSchema.nullable(),
 }).strict();
 const statusLiveUpdatePayloadSchema = statusClientTabStatusEntrySchema
   .omit({ cliState: true, workspaceId: true, tabName: true })
@@ -543,20 +649,12 @@ const statusSessionHistoryUpdateEventPayloadSchema = z.object({
 }).strict();
 const statusHookEventPayloadSchema = z.object({
   tabId: z.string().min(1),
+  sessionName: z.string().min(1),
   event: statusLastEventSchema,
 }).strict();
 const statusErrorEventPayloadSchema = z.object({
   code: z.string().min(1),
   message: z.string().min(1),
-}).strict();
-const statusRateLimitWindowSchema = z.object({
-  used_percentage: z.number(),
-  resets_at: z.number(),
-}).strict();
-const statusRateLimitsDataSchema = z.object({
-  ts: z.number(),
-  five_hour: statusRateLimitWindowSchema.nullable(),
-  seven_day: statusRateLimitWindowSchema.nullable(),
 }).strict();
 const statusRateLimitsEventPayloadSchema = z.object({
   data: statusRateLimitsDataSchema,
@@ -617,6 +715,85 @@ export const runtimeCommandRegistry = {
   'storage.delete-terminal-tab': { payload: terminalTabIdPayloadSchema, reply: runtimeDeleteTerminalTabStorageResultSchema },
   'storage.list-workspaces': { payload: emptyPayloadSchema, reply: z.array(runtimeWorkspaceSchema) },
   'storage.get-layout': { payload: workspaceIdPayloadSchema, reply: runtimeLayoutSchema },
+  'storage.list-session-annotations': {
+    payload: storageListSessionAnnotationsPayloadSchema,
+    reply: z.array(sessionAnnotationSchema).max(200),
+  },
+  'storage.update-session-annotation': {
+    payload: storageUpdateSessionAnnotationPayloadSchema,
+    reply: sessionAnnotationSchema,
+  },
+  'storage.list-saved-session-filters': { payload: emptyPayloadSchema, reply: z.array(savedSessionFilterSchema).max(200) },
+  'storage.upsert-saved-session-filter': { payload: savedSessionFilterSchema, reply: savedSessionFilterSchema },
+  'storage.delete-saved-session-filter': {
+    payload: storageDeleteSavedSessionFilterPayloadSchema,
+    reply: z.object({ deleted: z.boolean() }).strict(),
+  },
+  'storage.register-approved-project-root': {
+    payload: registerApprovedProjectRootSchema,
+    reply: approvedProjectRootSchema,
+  },
+  'storage.list-approved-project-roots': { payload: emptyPayloadSchema, reply: z.array(approvedProjectRootSchema).max(200) },
+  'storage.list-approved-project-root-snapshots': {
+    payload: emptyPayloadSchema,
+    reply: z.array(registerApprovedProjectRootSchema).max(200),
+  },
+  'storage.register-managed-project': { payload: registerManagedProjectSchema, reply: managedProjectSchema },
+  'storage.list-managed-projects': { payload: emptyPayloadSchema, reply: z.array(managedProjectSchema).max(2000) },
+  'storage.list-managed-project-snapshots': {
+    payload: emptyPayloadSchema,
+    reply: z.array(managedProjectSnapshotSchema).max(2000),
+  },
+  'storage.apply-managed-project-import': {
+    payload: applyManagedProjectImportSchema,
+    reply: z.object({ counts: managedProjectImportCountsSchema }).strict(),
+  },
+  'storage.list-governance-audit-events': {
+    payload: storageListGovernanceAuditPayloadSchema,
+    reply: z.array(governanceAuditEventSchema).max(200),
+  },
+  'governance.health': { payload: emptyPayloadSchema, reply: governanceWorkerHealthSchema },
+  'governance.refresh-projects': { payload: governanceRefreshPayloadSchema, reply: governanceRefreshResultSchema },
+  'governance.get-project-summary': {
+    payload: governanceProjectPayloadSchema,
+    reply: projectGovernanceSummarySchema,
+  },
+  'governance.list-project-documents': {
+    payload: governanceProjectPayloadSchema,
+    reply: z.array(projectDocumentRefSchema).max(2000),
+  },
+  'governance.get-project-lifecycle': {
+    payload: governanceProjectPayloadSchema,
+    reply: projectLifecycleSnapshotSchema,
+  },
+  'governance.list-project-audit': {
+    payload: governanceProjectPayloadSchema,
+    reply: z.array(governanceAuditCandidateSchema).max(2000),
+  },
+  'governance.read-project-document': {
+    payload: governanceDocumentPayloadSchema,
+    reply: projectDocumentDetailSchema,
+  },
+  'governance.preview-scaffold': {
+    payload: scaffoldPreviewInputSchema,
+    reply: scaffoldPreviewSchema,
+  },
+  'governance.confirm-scaffold': {
+    payload: governanceConfirmScaffoldPayloadSchema,
+    reply: scaffoldActionSummarySchema,
+  },
+  'governance.list-actions': {
+    payload: governanceProjectPayloadSchema,
+    reply: z.array(scaffoldActionSummarySchema).max(500),
+  },
+  'governance.preview-action-rollback': {
+    payload: governanceActionPayloadSchema,
+    reply: governanceRollbackPreviewSchema,
+  },
+  'governance.confirm-action-rollback': {
+    payload: governanceConfirmRollbackPayloadSchema,
+    reply: scaffoldActionSummarySchema,
+  },
   'terminal.health': { payload: emptyPayloadSchema, reply: runtimeHealthReplySchema },
   'terminal.create-session': { payload: terminalCreatePayloadSchema, reply: runtimeTerminalSessionSchema },
   'terminal.attach': { payload: terminalResizePayloadSchema, reply: runtimeTerminalSessionSchema.extend({ attached: z.boolean() }) },
@@ -634,6 +811,10 @@ export const runtimeCommandRegistry = {
   'timeline.live-unsubscribe': { payload: timelineLiveUnsubscribePayloadSchema, reply: timelineLiveUnsubscribeResultSchema },
   'timeline.session-watch-subscribe': { payload: timelineSessionWatchSubscribePayloadSchema, reply: timelineSessionWatchSubscribeResultSchema },
   'timeline.session-watch-unsubscribe': { payload: timelineSessionWatchUnsubscribePayloadSchema, reply: timelineSessionWatchUnsubscribeResultSchema },
+  'timeline.catalog-health': { payload: emptyPayloadSchema, reply: timelineCatalogHealthSchema },
+  'timeline.catalog-search': { payload: sessionSearchQuerySchema, reply: sessionSearchPageSchema },
+  'timeline.catalog-read-entries': { payload: timelineCatalogReadEntriesPayloadSchema, reply: timelineEntriesBeforeSchema },
+  'timeline.catalog-rebuild': { payload: emptyPayloadSchema, reply: timelineCatalogRebuildResultSchema },
   'status.health': { payload: emptyPayloadSchema, reply: runtimeHealthReplySchema },
   'status.live-start': { payload: emptyPayloadSchema, reply: statusLiveStartResultSchema },
   'status.live-stop': { payload: emptyPayloadSchema, reply: statusLiveStopResultSchema },

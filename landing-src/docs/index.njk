@@ -1,18 +1,48 @@
 ---
-title: 문서
-description: codexmux를 실행하고, 커스터마이즈하고, 확장하기 위한 모든 것.
-eyebrow: 여기서 시작
+title: Documentation
+description: Install codexmux, operate live and historical Codex sessions, and govern project context.
+eyebrow: Start here
 permalink: /docs/index.html
 ---
-<p>설치, 일상적인 사용, 내부 구조까지 다룹니다. 처음이라면 <a href="/codexmux/docs/quickstart/">빠른 시작</a>부터 읽어보세요.</p>
+<p>Guides for the Linux single-engine runtime, live Codex control, Session Operations, Project Governance, and recovery.</p>
+
+<div class="doc-home-start">
+  <div>
+    <span class="doc-home-kicker">Install · Start · Open</span>
+    <h2>Start a first session in three minutes.</h2>
+    <p>Requires Node.js 20.9+, tmux 3.0+, and an authenticated Codex CLI.</p>
+  </div>
+  <pre><code>npx --yes codexmux@latest
+# http://127.0.0.1:8122</code></pre>
+  <div class="doc-home-actions">
+    <a href="/codexmux/docs/quickstart/">Human quickstart</a>
+    <a href="/codexmux/docs/agent-quickstart/">Agent quickstart</a>
+  </div>
+</div>
+<div class="doc-home-featured">
+  <a href="/codexmux/docs/session-operations/">
+    <span>Session Operations</span>
+    <strong>Search and replay durable Codex work.</strong>
+    <small>Session Catalog · filters · annotations · rebuild</small>
+  </a>
+  <a href="/codexmux/docs/project-governance/">
+    <span>Project Governance</span>
+    <strong>Manage approved project context safely.</strong>
+    <small>Knowledge Index · lifecycle · audit · guarded actions</small>
+  </a>
+</div>
 
 <div class="doc-home-grid">
 {%- for group in docsNav %}
+{%- if group | guideAvailable('en') %}
 {%- for item in group.items %}
+{%- if item | guideAvailable('en') %}
   <a class="doc-home-card" href="/codexmux/docs/{{ item.slug }}/">
-    <span class="doc-home-card-title">{{ item.label.ko }}</span>
-    <span class="doc-home-card-desc">{{ group.group.ko }}</span>
+    <span class="doc-home-card-title">{{ item.label.en or item.label.ko }}</span>
+    <span class="doc-home-card-desc">{{ group.group.en or group.group.ko }}</span>
   </a>
+{%- endif %}
 {%- endfor %}
+{%- endif %}
 {%- endfor %}
 </div>

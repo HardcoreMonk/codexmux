@@ -2,8 +2,9 @@
 
 codexmux는 여러 Codex CLI 작업을 workspace, session, tab, timeline, status 단위로
 실행하고 다시 연결하는 Codex 중심 웹 세션 매니저입니다. Next.js Pages Router UI와
-custom Node server를 함께 사용하며, 현재 저장소는 기존 tmux 경로와 Windows 전용
-Runtime v2 전환 기준을 모두 유지합니다.
+custom Node server를 함께 사용하며, 현재 active runtime은 Linux 단일 엔진 호스트입니다.
+한 Linux host가 Runtime v2 worker, tmux, Codex JSONL, app-owned DB와 등록 project read/governed write를
+소유합니다.
 
 Windows 설치형 제품 마감은 별도 제품 line인
 [`codexwinmux`](https://github.com/HardcoreMonk/codexwinmux)에서 진행합니다. 이 저장소는
@@ -15,41 +16,55 @@ Windows 설치형 제품 마감은 별도 제품 line인
 - 여러 workspace와 tab에서 terminal 및 Codex session 실행·재개
 - Codex process와 `~/.codex/sessions/**/*.jsonl` 기반 timeline/status 연결
 - reconnect, approval, notification, session list와 usage projection
-- Runtime v2 Supervisor/Worker와 Windows node-pty/ConPTY adapter
-- Electron Windows NSIS/zip packaging, installer, updater, release smoke
+- Session Catalog 검색·replay·annotation과 saved filter
+- Approved Project Root, Managed Project, Project Governance/Knowledge Index와 versioned scaffold
+- Runtime v2 Supervisor와 terminal/storage/timeline/status/governance worker
+- Linux tmux adapter와 `systemd --user` 운영, 선택적 Electron/Android client
+- 보존된 Electron Windows NSIS/zip packaging, installer, updater release smoke
 - `~/.codexmux/` 아래의 local-first 상태와 인증된 upload artifact 관리
 
 ## 현재 상태
 
 | 항목 | 현재 기준 |
 | --- | --- |
-| 패키지 버전 | `0.4.22` |
-| 제품 전환 목표 | Windows 전용 설치형 서비스 |
+| 패키지 버전 | `0.4.23` |
+| active 제품/runtime | Linux 단일 엔진 호스트, ADR-031 `Implemented` |
 | UI 언어 | 기본 한국어, 지원 한국어·영어 |
-| 기본 포트 | `8122`; 점유 시 사용 가능한 포트로 fallback하고 `~/.codexmux/port`에 기록 |
+| 현재 live service | `systemd --user`, authenticated `0.0.0.0:8122`, build commit `9d32d049`, governance writes active |
 | 웹 구조 | Next.js Pages Router + custom Node server |
-| terminal 구조 | Runtime v2 Windows adapter + legacy tmux adapter |
+| terminal 구조 | Runtime v2 Terminal Worker + Linux tmux adapter |
+| 운영 데이터 | `runtime-v2/state.db`, `session-catalog/index.db`, `governance/index.db` |
 | bootstrap 보안 | ADR-026 `Verified` |
 | browser 인증 | `codexmux-session-token`; 같은 hostname의 Purplemux cookie와 분리 |
 | upload ingress | ADR-027 `Verified` |
-| Windows release gate | `v0.4.22` stable/latest; ADR-028 `Verified` |
-| 배포 범위 | unsigned 내부 Windows release; public code signing과 SmartScreen reputation은 미검증 |
+| npm 배포 | `codexmux@0.4.23` public `latest`, ADR-030 `Verified` |
+| 보존된 Windows release | `v0.4.22` stable/latest; ADR-028 `Verified` |
 
 ## 시작하기
 
-필수 환경은 Node.js `>=20.9.0`, Corepack, pnpm입니다. macOS/Linux의 legacy server
-경로는 tmux가 필요하고, Windows 제품 경로는 별도 runtime adapter와 packaged smoke를
-사용합니다.
+active Linux engine에는 Node.js `>=20.9.0`, tmux `>=3.0`, Git, Codex CLI가 필요합니다.
+공개 npm package로 바로 실행할 수 있습니다.
+
+```bash
+npx --yes codexmux@latest
+```
+
+Source checkout 개발:
 
 ```bash
 git clone https://github.com/HardcoreMonk/codexmux.git
 cd codexmux
 corepack enable
 corepack pnpm install
+corepack pnpm dev
 ```
 
-Windows Runtime v2 개발 경로는 PowerShell에서 adapter를 명시합니다. `dev:electron` wrapper는
-시작할 port를 고정해 기다리므로 `PORT`에는 점유되지 않은 값을 사용합니다.
+Production build와 Linux user service 운영은 [systemd 문서](docs/SYSTEMD.md)를 따릅니다.
+현재 unit과 실제 listener는 `HOST=0.0.0.0`, `PORT=8122`이며 browser 인증이 구성된
+상태로 실행됩니다. 외부 네트워크에서 접근할 때도 인증을 통과해야 합니다.
+
+Windows Electron은 별도 배포면과 선택 client surface로 보존합니다. Windows source
+검증에서는 adapter를 명시합니다.
 
 ```powershell
 $env:PORT = "8122"
@@ -57,17 +72,6 @@ $env:CODEXMUX_RUNTIME_V2 = "1"
 $env:CODEXMUX_RUNTIME_TERMINAL_ADAPTER = "windows"
 $env:CODEXMUX_PROCESS_INSPECTOR_ADAPTER = "windows"
 corepack pnpm dev:electron
-```
-
-브라우저만 사용할 때는 같은 환경 변수에서 `corepack pnpm dev`를 실행합니다. 최초 setup
-process는 저장된 `HOST`나 network access 설정보다 먼저 loopback에만 bind합니다. Source
-`dev:electron`은 `HOST` 미지정 시 `localhost`를 주입하므로 외부 접근을 검증하려면 setup 후
-재시작 전에 `$env:HOST`를 명시해야 합니다.
-
-macOS/Linux의 legacy tmux 개발 경로:
-
-```bash
-corepack pnpm dev
 ```
 
 이미 `8122`에서 server가 실행 중이면 Electron만 연결할 수 있습니다.
@@ -88,6 +92,11 @@ corepack pnpm lint
 corepack pnpm test
 corepack pnpm audit --prod
 corepack pnpm build
+corepack pnpm smoke:runtime-v2
+corepack pnpm smoke:runtime-v2:phase6-default-gate
+corepack pnpm perf:session-catalog
+corepack pnpm smoke:linux:session-governance
+corepack pnpm smoke:browser:session-governance
 ```
 
 Bootstrap과 upload 경계를 바꾼 경우 dev/prod를 각각 확인합니다.
@@ -134,19 +143,33 @@ gate를 실행합니다. 통과한 자산은 먼저 prerelease로 게시하며, 
 published updater apply가 통과한 뒤에만 stable/latest로 승격합니다. macOS package와 npm
 publish는 Windows stable release의 선행 조건이 아닙니다.
 
+Linux tmux 기반 npm 실행 package는 Windows installer와 독립된 배포면입니다. Publish 후보는
+다음 명령으로 실제 tarball install과 production health를 검증합니다.
+
+```bash
+corepack pnpm smoke:npm-package
+```
+
+`codexmux@0.4.23`의 최초 public publish와 registry install/production health smoke는
+통과했습니다. 후속 tag publish는 GitHub Actions Trusted Publishing을 사용하며 Windows
+stable workflow와 독립적으로 실행됩니다. Trusted Publisher 등록과 remote `v0.4.23` tag는
+현재 보류 상태입니다.
+
 ## 아키텍처
 
 ```text
-Electron / Browser
+Browser / optional Electron or Android client
   -> Next.js Pages Router UI
   -> custom Node server
        -> HTTP, auth, exact upload ingress
        -> terminal / timeline / status / sync WebSocket
        -> Runtime v2 Supervisor / Worker
-            -> Windows node-pty/ConPTY adapter
-            -> legacy tmux adapter
-       -> Codex process inspection + local JSONL projection
-       -> ~/.codexmux state and upload storage
+            -> Terminal Worker -> Linux tmux adapter
+            -> Storage Worker -> durable SQLite
+            -> Timeline Worker -> JSONL + Session Catalog
+            -> Status Worker -> status/notification
+            -> Governance Worker -> approved project read
+       -> ~/.codexmux state, projections and upload storage
 ```
 
 `/api/upload-image`와 `/api/upload-file`은 Next proxy나 Pages API route가 아니라 outer
@@ -156,10 +179,10 @@ Pages route로 fallback하지 않습니다.
 
 ## 저장소 경계
 
-- `codexmux`: 기존 release identity, 원본 runtime, Windows 전환 계약과 검증 자산
+- `codexmux`: Linux 단일 엔진 제품/runtime, npm package, 기존 release identity와 검증 자산
 - `codexwinmux`: 별도 productName/app id/data dir/updater channel을 소유하는 Windows 제품 line
-- Electron Windows path: primary packaging surface
-- tmux, Linux systemd, Android, macOS package: migration·회귀 확인용 legacy/reference surface
+- Linux tmux/systemd: active runtime과 운영 surface
+- Electron/Windows package와 Android/macOS package: 선택 client 또는 역사적 release surface
 - `landing-src/docs/`: 기존 다국어 사용자 문서 보존 영역; 현재 제품 계약은 한국어·영어만 지원
 
 ## 문서
@@ -172,6 +195,8 @@ Pages route로 fallback하지 않습니다.
 | [docs/ADR.md](docs/ADR.md) | 아키텍처 결정과 상태 |
 | [docs/PROJECT-DESIGN.md](docs/PROJECT-DESIGN.md) | 제품·아키텍처 설계 요약 |
 | [docs/ARCHITECTURE-LOGIC.md](docs/ARCHITECTURE-LOGIC.md) | server, runtime, storage 흐름 |
+| [docs/SYSTEMD.md](docs/SYSTEMD.md) | Linux 단일 엔진 user service 운영 |
+| [docs/DATA-DIR.md](docs/DATA-DIR.md) | durable state와 projection 저장 경계 |
 | [docs/PURPLEMUX-ADOPTION-AUDIT.md](docs/PURPLEMUX-ADOPTION-AUDIT.md) | Purplemux 비교와 선택 이식 우선순위 |
 | [docs/TESTING.md](docs/TESTING.md) | test tier와 platform smoke |
 | [docs/WINDOWS-ONLY-GAP-AUDIT.md](docs/WINDOWS-ONLY-GAP-AUDIT.md) | Windows 전환 gap과 증거 |
@@ -180,8 +205,10 @@ Pages route로 fallback하지 않습니다.
 | [upload handoff](docs/operations/2026-07-11-production-security-upload-integrity-handoff.md) | dependency/upload 구현·검증·Windows 경계 |
 | [v0.4.20 Windows release handoff](docs/operations/2026-07-12-v0.4.20-windows-release-handoff.md) | 최초 기능 검증과 published artifact privacy 교정 |
 | [v0.4.21 Windows release handoff](docs/operations/2026-07-12-v0.4.21-windows-release-handoff.md) | 이전 privacy-safe Windows release 증거 |
-| [v0.4.22 Windows release handoff](docs/operations/2026-07-13-v0.4.22-windows-release-handoff.md) | 현재 stable release, cookie namespace와 Windows update 증거 |
+| [v0.4.22 Windows release handoff](docs/operations/2026-07-13-v0.4.22-windows-release-handoff.md) | 보존된 Windows stable release, cookie namespace와 update 증거 |
 | [Purplemux cookie isolation handoff](docs/operations/2026-07-12-purplemux-cookie-isolation-handoff.md) | 동일 hostname 동시 실행 수정과 재로그인 복구 경계 |
+| [npm distribution handoff](docs/operations/2026-08-20-npm-npx-distribution-handoff.md) | npm 0.4.23 publish, registry smoke와 보류된 tag/Trusted Publisher |
+| [Session Operations/Governance handoff](docs/operations/2026-08-21-session-operations-governance-integration-handoff.md) | 통합 구현, live 배포·restart와 rollback 증거 |
 | [제품 line migration](docs/operations/codexwinmux-product-line-migration.md) | `codexmux`와 `codexwinmux` 분리 기준 |
 
 ## 라이선스

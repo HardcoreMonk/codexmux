@@ -21,7 +21,7 @@ interface IPaneTabBarProps {
   paneCount: number;
   isSplitting: boolean;
   onSwitchTab: (tabId: string) => void;
-  onCreateTab: (panelType?: TPanelType, options?: { command?: string }) => void;
+  onCreateTab: (panelType?: TPanelType, options?: { startAgent?: boolean }) => void;
   onDeleteTab: (tabId: string) => void;
   onRenameTab: (tabId: string, name: string) => void;
   onReorderTabs: (tabIds: string[]) => void;

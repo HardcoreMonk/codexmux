@@ -1,6 +1,8 @@
 # 테스트와 smoke 가이드
 
-이 문서는 codexmux 변경을 검증하는 기준입니다. 현재 release 판단은 Windows-only 전환을 중심으로 합니다.
+이 문서는 codexmux 변경을 검증하는 기준입니다. 현재 release 판단은 Linux 단일 엔진,
+Runtime v2 worker, Session Operations와 Project Governance를 중심으로 합니다. Windows
+package/updater는 해당 배포면을 변경할 때 별도 gate로 검증합니다.
 
 ## 기본 게이트
 
@@ -20,7 +22,42 @@ Canonical 문서 경계나 `landing-src/`를 바꾸면 landing build도 실행�
 
 ```bash
 corepack pnpm build:landing
+corepack pnpm check:landing
 ```
+
+`check:landing`은 `_site/`의 필수 landing/docs/404/robots/sitemap/search artifact, GitHub Pages
+canonical URL, `/codexmux/` local link, path containment와 English/Korean product content
+contract를 검사합니다. Session Operations/Project Governance/Runtime Operations 핵심 용어가
+없거나 purplemux와 legacy mobile-primary claim이 current home에 다시 들어오면 실패합니다.
+Guide availability나 checker contract를 바꾸면 focused unit test를 함께 실행합니다.
+
+```bash
+corepack pnpm exec vitest run tests/unit/scripts/landing-site-check.test.ts
+```
+
+## npm 실행 package 게이트
+
+Manifest, published file allowlist, build-only dependency와 Trusted Publishing workflow 계약을
+먼저 검증합니다.
+
+```bash
+corepack pnpm exec vitest run tests/unit/scripts/npm-package-contract.test.ts tests/unit/scripts/npm-package-smoke-lib.test.ts tests/unit/scripts/release-workflow-contract.test.ts
+```
+
+실제 publish 후보는 repository build 뒤 tarball로 pack하고 빈 consumer project에 lifecycle
+script를 허용해 설치합니다. 설치된 bin의 help와 격리 production server의 `/api/health`까지
+통과해야 합니다.
+
+```bash
+corepack pnpm smoke:npm-package
+npm publish --dry-run
+```
+
+최초 public publish는 인증된 maintainer가 수행합니다. 이후 tag publish는
+`.github/workflows/npm-publish.yml`과 npm Trusted Publisher의 exact workflow 연결을 사용하며
+`NPM_TOKEN`을 요구하지 않습니다. Local tarball 통과는 registry publish 증거가 아니므로
+landing 활성화 전 `npm view`, exact registry version의 `npx help`, isolated server health를
+다시 확인합니다.
 
 브라우저 UI나 Playwright spec을 추가/수정한 환경에서 Chromium이 없으면 한 번 설치합니다.
 
@@ -28,9 +65,9 @@ corepack pnpm build:landing
 corepack pnpm exec playwright install chromium
 ```
 
-## Windows 전환 게이트
+## 별도 Windows 배포 게이트
 
-Windows-only 제품 전환에서 중요한 smoke. Sanitized evidence를 남길 directory를 먼저
+Windows package/updater 배포에서 중요한 smoke입니다. Sanitized evidence를 남길 directory를 먼저
 지정합니다.
 
 ```powershell
@@ -161,7 +198,7 @@ old-profile 경로가 통과하기 전까지 ADR-029는 `Implemented`입니다.
 
 게이트 분류:
 
-- Linux-required: dev/prod pre-auth smoke와 legacy install PTY.
+- Linux-required: dev/prod pre-auth smoke와 setup-local install PTY.
 - GUI-dependent: browser reconnect와 Electron runtime smoke. Chromium/display가 없으면 제한을 기록합니다.
 - Windows-runner-only fresh gate: preflight, host diagnostics, freshly built packaged launch. 기존 완료 증거는 `WINDOWS-ONLY-GAP-AUDIT.md`에 유지하지만 현재 Linux run의 `skipped`를 새 Windows 증거로 대체하지 않습니다.
 
@@ -223,6 +260,7 @@ Runtime v2 검증:
 corepack pnpm smoke:runtime-v2
 corepack pnpm smoke:runtime-v2:phase2
 corepack pnpm smoke:runtime-v2:phase6-default-gate
+corepack pnpm smoke:governance:scaffold
 corepack pnpm smoke:runtime-v2:storage-dry-run
 corepack pnpm smoke:runtime-v2:storage-write
 corepack pnpm smoke:runtime-v2:storage-default-read
@@ -233,6 +271,73 @@ corepack pnpm smoke:runtime-v2:status-default
 ```
 
 Runtime v2 smoke는 같은 checkout에서 병렬 실행하면 dev lock, temp HOME, runtime DB, device/WebSocket target이 충돌할 수 있습니다. Terminal/package/Android device smoke는 단독 실행을 기준으로 합니다.
+
+## Session Operations와 Project Governance
+
+Release-candidate gate:
+
+```bash
+corepack pnpm build:server
+corepack pnpm smoke:runtime-v2
+corepack pnpm smoke:runtime-v2:storage-backup
+corepack pnpm smoke:runtime-v2:phase6-default-gate
+corepack pnpm perf:session-catalog
+corepack pnpm smoke:linux:session-governance
+corepack pnpm smoke:browser:session-governance
+corepack pnpm smoke:npm-package
+```
+
+`perf:session-catalog`는 기본 5,000-session fixture에서 initial index, incremental append, FTS query, replay projection과 RSS delta를 측정합니다. 현재 fail threshold는 각각 30초, 500ms, 1초, 200ms, 512MiB입니다. 측정 DB는 명시한 `CODEXMUX_SESSION_CATALOG_PERF_DB`가 없으면 임시 디렉터리에 만들고 종료 시 삭제합니다.
+
+`smoke:linux:session-governance`는 격리 `HOME`과 실제 custom server/tmux를 사용해 다음을 확인합니다.
+
+- Session Catalog rebuild/search/replay와 annotation
+- Approved Project Root preview/confirm, `projects.yaml` import와 read-only governance
+- project/Codex 원본 tree의 hash/metadata 무변경
+- runtime/catalog/governance SQLite private mode
+- Timeline/Governance Worker DB quarantine와 worker 자동 복구
+- projection rollback 전후 동일 terminal session 연결
+
+`smoke:governance:scaffold`는 gate-on 격리 server와 temporary Approved Project Root에서
+invalid UTF-8/NUL/marker-like adoption conflict, first-pass discovery, selective re-preview,
+LF/CRLF exact-prefix adoption, stale adoption preview, adopted marker update, latest-first rollback,
+multi-file create, exact preimage rollback, `0700/0600` action backup과 선택 밖 project/Codex source
+무변경을 확인합니다. 실제 등록 project나 live service를 변경하지 않습니다. Cold Next startup이
+느린 환경은 `CODEXMUX_GOVERNED_SCAFFOLD_TIMEOUT_MS`로 bounded timeout을 조정합니다.
+
+`smoke:browser:session-governance`는 한국어와 영어를 각각 격리 서버에서 실행해 SSR `lang`,
+search/replay, keyboard focus, governance degraded→recovery, gate-off Scaffold panel과 hydration
+error 부재를 확인합니다. Gate-on flow에서는 unmarked artifact checkbox가 기본 unchecked인지,
+개별 선택 뒤 re-preview에서 exact-title confirmation과 semantic warning이 나타나는지, unchecked
+file이 유지되는지도 확인합니다. `CODEXMUX_SESSION_GOVERNANCE_BROWSER_SCOPE=gate|adoption`으로
+부분 재검증할 수 있습니다. Chromium이 없으면 먼저 다음 명령을 실행합니다.
+
+```bash
+corepack pnpm exec playwright install chromium
+```
+
+Projection 복구와 durable state 복구를 구분합니다. `session-catalog/index.db`와 `governance/index.db`는 quarantine 뒤 rebuild/refresh하고, `runtime-v2/state.db`는 다음 backup gate와 `DATA-DIR.md`의 세 파일 단위 restore 절차를 사용합니다.
+
+```bash
+corepack pnpm smoke:runtime-v2:storage-backup
+```
+
+2026-08-21 governed scaffold release-candidate에서 full suite는 1,629 passed, 3 skipped였고
+production build, scaffold/Linux/browser governance smoke, storage backup과 Runtime v2 Phase 6
+gate를 통과했습니다. 이전 Session Operations/Governance의 5,000-session performance와 npm
+tarball smoke 근거도 유지합니다.
+Phase 3 build commit `9d32d049`의 live user service는 `CODEXMUX_GOVERNANCE_WRITES=1`, Governance
+`writeState=ready`, private Runtime v2 backup, scaffold 7-check, Linux 10-check, 한국어/영어 browser와
+post-restart Phase 6 12-check gate를 통과했습니다. 등록 Managed Project가 0개여서 실제 project
+confirm 대신 격리 transaction smoke와 live gate/worker health를 release evidence로 사용했습니다.
+
+2026-08-21 governed unmarked adoption source release에서는 full suite `1,650 passed, 3 skipped`,
+typecheck, project-design check와 lint 0 error를 통과했습니다. Live checkout의 `.next/dist`를 보호하기
+위해 source를 `/tmp` mirror로 복사하고 `node_modules`를 hard-link copy한 뒤 production build,
+adoption/scaffold 13-check와 한국어·영어 browser 4-check를 실행했습니다. Linux session/governance
+10-check는 원래 process-recycle 전제인 development mode mirror에서, storage backup private-mode
+smoke는 같은 mirror에서 통과했습니다. Live 8122의 Phase 6 12-check는 read-only로 통과했지만
+adoption source 자체는 배포하거나 service를 재시작하지 않았습니다.
 
 ## 브라우저 UI와 Playwright
 
@@ -278,7 +383,8 @@ corepack pnpm smoke:windows:installer-install
 corepack pnpm smoke:windows:installer-runtime-v2
 ```
 
-`pack:electron:mac` 계열 명령은 legacy/manual path입니다. Windows-only release blocker로 사용하지 않습니다.
+`pack:electron:mac` 계열 명령은 legacy/manual path입니다. Linux engine 또는 Windows
+package release blocker로 사용하지 않습니다.
 
 App-server protocol 변경 기준:
 
@@ -289,7 +395,8 @@ App-server protocol 변경 기준:
 
 ## Android 참고 검증
 
-Android는 Windows-only 전환 후 primary surface가 아닙니다. 기록 보존 또는 mobile regression 확인이 필요할 때만 사용합니다.
+Android는 Linux engine에 접속하는 선택 client입니다. Linux engine release gate를 대체하지
+않고 mobile regression 확인이 필요할 때 사용합니다.
 
 ```bash
 corepack pnpm android:sync
@@ -351,15 +458,53 @@ corepack pnpm vitest run tests/unit/lib/providers.test.ts
 Codex launch/resume command 또는 hook override 변경:
 
 ```bash
-corepack pnpm vitest run tests/unit/lib/codex-command.test.ts
-codex -c 'hooks.SessionStart=[{matcher="startup|resume",hooks=[{type="command",command="sh \"$HOME/.codexmux/status-hook.sh\" session-start",timeout=3}]}]' -c 'hooks.UserPromptSubmit=[{hooks=[{type="command",command="sh \"$HOME/.codexmux/status-hook.sh\" prompt-submit",timeout=3}]}]' -c 'hooks.Stop=[{hooks=[{type="command",command="sh \"$HOME/.codexmux/status-hook.sh\" stop",timeout=3}]}]' --strict-config doctor --summary
+corepack pnpm exec vitest run tests/unit/lib/codex-command.test.ts tests/unit/lib/providers/codex-session-hooks.test.ts tests/unit/lib/agent-launch-service.test.ts tests/unit/lib/hook-settings.test.ts tests/unit/lib/status-hook-bridge.test.ts
+corepack pnpm smoke:codex-session-hooks
 ```
 
 검증 기준:
 
 - command builder가 `hooks={path=...}`를 생성하지 않음
-- `SessionStart`, `UserPromptSubmit`, `Stop` hook override가 `status-hook.sh`를 호출
-- Codex strict config parser가 override를 정상 load
+- browser는 launch intent만 만들고 server가 layout/process/version을 검증함
+- `SessionStart`, `UserPromptSubmit`, `Stop`이 POSIX/Windows command로 `status-hook.cjs`를 호출함
+- HMAC capability와 현재 layout의 tab/session ownership이 일치해야 event가 적용됨
+- bridge가 bounded/non-blocking이고 Codex strict config parser가 override를 정상 load함
+- minimum supported `0.144.1` fixture와 current CLI strict-config smoke를 확인함
+
+Rate-limit과 rich timeline 변경:
+
+```bash
+corepack pnpm exec vitest run tests/unit/lib/codex-rate-limits.test.ts tests/unit/lib/codex-jsonl-state.test.ts tests/unit/lib/rate-limit-view.test.ts
+corepack pnpm exec vitest run tests/unit/lib/codex-session-parser.test.ts tests/unit/lib/rich-timeline-presentation.test.ts tests/unit/lib/timeline-preview.test.ts tests/unit/lib/timeline-entry-dedupe.test.ts
+```
+
+검증 기준:
+
+- 기존 256KiB JSONL tail에서 상태와 최신 window별 rate-limit 관찰을 함께 추출함
+- reset 이후 새 관찰이 없으면 0%를 합성하지 않고 stale view를 반환함
+- semantic timeline entry가 deterministic ID와 generic fallback을 유지함
+- semantic entry의 icon/label/summary/meta/status projection이 parser와 분리된 pure helper에서 고정됨
+- secret-like redaction, field 4KiB, entry 16KiB 상한을 넘지 않음
+
+Terminal/UI 회귀와 Git refresh 변경:
+
+```bash
+corepack pnpm exec vitest run tests/unit/lib/terminal-key-event.test.ts tests/unit/lib/clipboard.test.ts tests/unit/lib/timeline-spacer.test.ts tests/unit/hooks/use-git-refresh-generation.test.ts tests/unit/lib/git-refresh-generation.test.ts
+```
+
+검증 기준:
+
+- IME composition은 xterm에 위임하고 clipboard fallback은 임시 DOM을 정리함
+- timeline spacer는 resize/visibility/focus/pageshow 복귀 뒤 안전 범위로 축소됨
+- Stop sequence는 matching session만 invalidate하고 inactive tab은 선택 시 한 번 fetch함
+- Git generation consume은 session별로 추적되어 hook instance가 다른 tab으로 전환돼도 generation을 누락하지 않음
+
+Playwright가 host distribution용 bundled Chromium을 제공하지 않지만 system Chrome이 있는
+환경에서는 다음처럼 browser smoke 실행 파일을 명시할 수 있습니다.
+
+```bash
+CODEXMUX_PLAYWRIGHT_EXECUTABLE_PATH=/usr/bin/google-chrome corepack pnpm smoke:browser-reconnect
+```
 
 Codex web input 제출 변경:
 
@@ -479,14 +624,19 @@ corepack pnpm vitest run tests/unit/lib/codex-state-sqlite-indexer.test.ts
 
 ## Live deploy와 운영
 
-Legacy Linux service 운영에서는 다음 명령을 사용했습니다.
+Linux 단일 엔진 service 운영에서는 다음 명령을 사용합니다.
 
 ```bash
 corepack pnpm deploy:local
 curl -fsS http://127.0.0.1:8122/api/health
 ```
 
-Windows-only 전환 후에는 installer/package/update smoke와 internal rollout evidence가 운영 기준입니다.
+Session Operations/Project Governance 배포에서는 위 Linux/browser gate와 worker health를
+먼저 확인합니다. 실제 service restart는 별도 운영 승인과, 기존 durable DB가 있으면 runtime
+state backup 뒤 실행합니다. 2026-08-21 최초 live 배포는 기존 DB가 없는 상태에서 unit을
+등록한 뒤 restart 전후 terminal smoke와 Phase 6 gate를 통과했습니다. Windows
+installer/package/update smoke는 별도 배포면의 증거이며 Linux engine gate를 대체하지
+않습니다.
 
 ## Smoke artifact 기준
 

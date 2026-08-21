@@ -1,6 +1,6 @@
 # 터미널 런타임과 legacy tmux 경로
 
-이 문서는 기존 tmux 경로와 browser-facing terminal protocol을 설명합니다. Windows-only 전환 이후 tmux는 제품 domain API가 아니라 legacy infrastructure adapter입니다.
+이 문서는 Linux 단일 엔진의 tmux adapter와 browser-facing terminal protocol을 설명합니다. tmux는 제품 domain API가 아니라 Terminal Worker 뒤의 infrastructure adapter입니다.
 
 ## 구조
 
@@ -11,7 +11,7 @@ Browser xterm
 custom server / Terminal Worker
   | terminal runtime adapter
   v
-tmux adapter 또는 Windows adapter
+  Linux tmux adapter
   v
 shell / codex
 ```
@@ -41,6 +41,8 @@ Terminal WebSocket은 adapter와 무관하게 다음 동작을 기대합니다.
 
 Legacy URL은 `/api/terminal`, runtime v2 URL은 `/api/v2/terminal`입니다. Public protocol은 가능한 유지하고 backend 구현만 adapter로 교체합니다.
 
+Session Catalog와 Project Governance는 terminal byte stream을 소유하지 않습니다. Timeline Worker의 catalog rebuild나 Governance Worker의 index refresh/restart 중에도 existing terminal WebSocket과 tmux session은 유지되어야 합니다. Projection rollback smoke는 worker DB를 quarantine하고 worker를 재기동한 뒤 같은 terminal session에 재attach해 이 경계를 검증합니다.
+
 ## Install WebSocket
 
 `/api/install`은 terminal WebSocket이나 generic no-auth path가 아닙니다. Custom server가
@@ -56,8 +58,8 @@ context만 `createInstallServer()`에 전달합니다.
 - stdin/resize queue와 PTY output buffer에 상한을 두며 command selector는 platform allowlist own key만 허용합니다.
 
 이 경로는 onboarding 도구 설치를 위해 사용자 권한 shell stdin을 받는 legacy
-infrastructure adapter입니다. Windows-only 제품의 privileged install/service action을
-대신하지 않습니다.
+infrastructure adapter입니다. Linux engine의 일반 terminal API나 별도 Windows
+host-owned privileged install/service action을 대신하지 않습니다.
 
 ## 입력 전송 계약
 
@@ -74,13 +76,17 @@ Codex 입력 바는 prompt 본문을 bracketed paste로 감싸고 Enter를 같�
 
 Codex tab 실행과 resume command는 `hooks={path="~/.codexmux/hooks.json"}`를 넘기지 않습니다. 현재 Codex CLI는 `hooks`를 구조화된 TOML table로 해석하므로 path string override를 넣으면 config load 오류가 납니다.
 
-대신 `src/lib/codex-command.ts`가 다음 inline TOML override를 각각 `-c`로 전달합니다.
+Browser surface는 raw command, CLI token, hook capability를 만들지 않습니다. `/api/agent/launch`에 workspace/pane/tab과 launch/resume intent만 보내며 server의 `agent-launch-service`가 layout ownership, Codex panel, terminal process, Codex `0.144.1+` preflight를 검증합니다. Runtime v2는 exact terminal session을 다시 확인한 내부 write method를, legacy는 기존 `sendKeys`를 사용합니다.
+
+Server Codex provider는 다음 session override를 각각 `-c`로 전달합니다.
 
 - `hooks.SessionStart`
 - `hooks.UserPromptSubmit`
 - `hooks.Stop`
 
-각 hook은 `~/.codexmux/status-hook.sh`를 호출합니다. `~/.codexmux/hooks.json`은 local hook/statusline bridge 호환용 생성 파일로 남지만, Codex tab launch/resume의 config source는 아닙니다.
+각 handler는 POSIX `command`와 Windows `commandWindows`, 3초 timeout, async 실행을 선언하고 standalone `~/.codexmux/status-hook.cjs`를 호출합니다. Packaged Electron executable을 Node runtime으로 재사용할 때도 script가 실행되도록 `ELECTRON_RUN_AS_NODE=1`을 명시합니다. Bridge는 tab/session/expiry HMAC capability와 CLI token을 loopback hook API에 전달하며, timeout이나 서버 부재가 Codex action을 막지 않도록 항상 성공 종료합니다.
+
+User/project/managed/plugin hook은 Codex native layer discovery를 그대로 사용합니다. codexmux는 사용자 config를 읽거나 병합하지 않으며 `~/.codexmux/hooks.json`에는 빈 `hooks`와 statusline 호환 설정만 생성합니다.
 
 ## 런타임 v2 터미널
 
@@ -96,6 +102,8 @@ Runtime v2 Terminal Worker는 `ITerminalRuntimeAdapter`를 통해 구현을 선�
 ## 입력과 단축키
 
 Terminal 또는 Codex 입력창에 focus가 있으면 `Ctrl+D`는 앱 단축키가 아니라 EOF/EOT(`0x04`)로 pty에 전달됩니다.
+
+IME composition 중이거나 keyCode 229인 key event는 xterm 입력으로 위임합니다. App-level Alt mapping을 처리하는 경우에는 browser 기본 동작보다 먼저 `preventDefault`합니다. Clipboard write는 secure-context API를 우선하고 불가능하면 정리되는 hidden textarea fallback을 사용합니다.
 
 | OS | 오른쪽 pane split 기본값 |
 | --- | --- |
@@ -142,7 +150,7 @@ Windows path에서는 Windows process inspector와 local `.codex/sessions` JSONL
 
 ## 타임라인 WebSocket
 
-Timeline WebSocket은 terminal output replay가 아니라 Codex JSONL과 live prompt projection을 제공합니다. Terminal stdout은 ephemeral stream이므로 durable timeline source가 아닙니다.
+Timeline WebSocket은 terminal output replay가 아니라 Codex JSONL과 live prompt projection을 제공합니다. Terminal stdout은 ephemeral stream이므로 durable timeline source가 아닙니다. Exec command, web search, MCP call, patch apply, error/warning, context compaction은 semantic row로 투영하되 field 4KiB, entry 16KiB 상한과 secret-like redaction을 적용합니다. Full output, download, local image serving은 제공하지 않습니다.
 
 ## Git DIFF 패널
 

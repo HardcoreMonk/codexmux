@@ -3,6 +3,7 @@ import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import {
   Drawer,
   DrawerContent,
@@ -61,7 +62,7 @@ const CopyPaneDrawer = ({ open, onOpenChange, sessionName }: ICopyPaneDrawerProp
   const handleCopyAll = useCallback(async () => {
     if (!content) return;
     try {
-      await navigator.clipboard.writeText(content);
+      if (!await copyTextToClipboard(content)) throw new Error('clipboard-write-failed');
       toast.success(t('copyPaneSuccess'), { duration: 1500 });
       onOpenChange(false);
     } catch {

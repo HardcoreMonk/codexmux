@@ -1,7 +1,9 @@
 import fs from 'fs/promises';
 import type { ICurrentAction } from '@/types/status';
+import type { IRateLimitsData } from '@/types/status';
 import type { ITimelineEntry, ITimelineToolCall } from '@/types/timeline';
 import { parseCodexJsonlContent } from '@/lib/codex-session-parser';
+import { findLatestCodexRateLimits } from '@/lib/codex-rate-limits';
 
 const READ_TAIL_BYTES = 256_000;
 const MAX_SNIPPET_LENGTH = 200;
@@ -42,6 +44,7 @@ export interface ICodexJsonlState {
   lastEntryTs: number | null;
   interrupted: boolean;
   completionTurnId: string | null;
+  rateLimits: IRateLimitsData | null;
 }
 
 const EMPTY_STATE: ICodexJsonlState = {
@@ -53,6 +56,7 @@ const EMPTY_STATE: ICodexJsonlState = {
   lastEntryTs: null,
   interrupted: false,
   completionTurnId: null,
+  rateLimits: null,
 };
 
 const truncate = (value: string): string =>
@@ -219,6 +223,10 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
     if (!content.trim()) return EMPTY_STATE;
 
     const stale = Date.now() - mtimeMs > STALE_MS_AWAITING_AGENT;
+    const rateLimits = findLatestCodexRateLimits(content, mtimeMs);
+    const withRateLimits = (
+      state: Omit<ICodexJsonlState, 'rateLimits'>,
+    ): ICodexJsonlState => ({ ...state, rateLimits });
     const markers = scanRawMarkers(content);
     const entries = parseCodexJsonlContent(content);
     const taskComplete = markers.lastTaskComplete;
@@ -231,7 +239,7 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
       && (taskComplete === null || markers.lastInterrupt.lineIndex > taskComplete.lineIndex);
 
     if (hasCurrentInterrupt && markers.lastInterrupt) {
-      return {
+      return withRateLimits({
         idle: true,
         stale: false,
         lastAssistantSnippet: null,
@@ -240,12 +248,12 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
         lastEntryTs: markers.lastInterrupt.timestamp ?? markers.lastEntryTs,
         interrupted: true,
         completionTurnId: null,
-      };
+      });
     }
 
     if (entries.length === 0) {
       if (hasCurrentTaskComplete && taskComplete) {
-        return {
+        return withRateLimits({
           idle: true,
           stale: false,
           lastAssistantSnippet: taskComplete.snippet,
@@ -259,14 +267,14 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
           lastEntryTs: taskComplete.timestamp ?? markers.lastEntryTs,
           interrupted: false,
           completionTurnId: taskComplete.turnId,
-        };
+        });
       }
 
-      return {
+      return withRateLimits({
         ...EMPTY_STATE,
         stale,
         lastEntryTs: markers.lastEntryTs,
-      };
+      });
     }
 
     const lastEntry = entries[entries.length - 1];
@@ -281,7 +289,7 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
     const completionSnippet = taskComplete?.snippet ?? lastAssistantSnippet;
 
     if (hasCurrentTaskComplete && taskComplete) {
-      return {
+      return withRateLimits({
         idle: true,
         stale: false,
         lastAssistantSnippet: completionSnippet,
@@ -295,14 +303,14 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
         lastEntryTs,
         interrupted: false,
         completionTurnId: taskComplete.turnId,
-      };
+      });
     }
 
     const pendingTool = pendingToolIdx > lastAssistantIdx && pendingToolIdx > lastUserIdx
       ? entries[pendingToolIdx]
       : null;
     if (pendingTool && pendingTool.type === 'tool-call') {
-      return {
+      return withRateLimits({
         idle: false,
         stale,
         lastAssistantSnippet,
@@ -311,11 +319,11 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
         lastEntryTs,
         interrupted: false,
         completionTurnId: null,
-      };
+      });
     }
 
     if (lastUserIdx > lastAssistantIdx) {
-      return {
+      return withRateLimits({
         idle: false,
         stale,
         lastAssistantSnippet: null,
@@ -324,11 +332,11 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
         lastEntryTs,
         interrupted: false,
         completionTurnId: null,
-      };
+      });
     }
 
     if (lastAssistantSnippet) {
-      return {
+      return withRateLimits({
         idle: false,
         stale,
         lastAssistantSnippet,
@@ -340,14 +348,14 @@ export const checkCodexJsonlState = async (filePath: string): Promise<ICodexJson
         lastEntryTs,
         interrupted: false,
         completionTurnId: null,
-      };
+      });
     }
 
-    return {
+    return withRateLimits({
       ...EMPTY_STATE,
       stale,
       lastEntryTs,
-    };
+    });
   } catch {
     return EMPTY_STATE;
   }

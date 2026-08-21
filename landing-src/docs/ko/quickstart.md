@@ -1,75 +1,73 @@
 ---
 title: 빠른 시작
-description: Windows Runtime v2와 Electron 개발 경로로 codexmux를 실행하고 최초 설정을 완료합니다.
+description: Linux 단일 엔진에서 codexmux를 실행하고 최초 설정과 Session Operations를 확인합니다.
 eyebrow: 시작하기
 permalink: /ko/docs/quickstart/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-codexmux는 여러 Codex workspace, session, tab을 관리하는 Codex 중심 session manager입니다. 현재 제품 방향은 Windows Runtime v2와 Electron desktop shell이며, macOS/Linux tmux server와 Android shell은 legacy/reference surface입니다.
+codexmux는 여러 Codex workspace, session, tab을 관리하는 Codex 중심 session manager입니다.
+현재 active runtime은 Linux 단일 엔진이며 한 host가 Runtime v2 worker, tmux, Codex JSONL,
+Session Catalog와 승인 project read를 소유합니다.
 
-{% call callout('warning', 'Windows 전환 상태') %}
-Windows terminal runtime, process inspector와 Electron NSIS/zip packaging은 v0.4.21 fresh Windows release와 artifact privacy gate를 통과했습니다. 이 결과는 unsigned 내부 stable release의 근거이며 public code-signed 지원 완료를 의미하지 않습니다.
+{% call callout('note', '현재 배포 기준') %}
+Public npm package는 `codexmux@0.4.23`입니다. Windows Electron package는 별도 배포면의
+보존된 release surface이며 Linux engine 설치를 대체하지 않습니다.
 {% endcall %}
 
 ## 준비
 
-소스 checkout으로 Windows 경로를 확인하려면 다음이 필요합니다.
+Linux engine에는 다음이 필요합니다.
 
-- **Windows x64** — 현재 Electron package target
 - **Node.js 20.9 이상** — `node -v`로 확인
+- **tmux 3.0 이상** — `tmux -V`로 확인
 - **Git** — `git --version`으로 확인
 - **Codex CLI** — `codex --version`과 login 상태 확인
 
-Windows Runtime v2 경로에는 tmux가 필요하지 않습니다.
+## npm package 실행
 
-## Windows 개발 실행
-
-PowerShell에서:
-
-```powershell
-git clone https://github.com/HardcoreMonk/codexmux.git
-Set-Location codexmux
-corepack enable
-corepack pnpm install
-
-$env:CODEXMUX_RUNTIME_V2 = "1"
-$env:CODEXMUX_RUNTIME_TERMINAL_ADAPTER = "windows"
-$env:CODEXMUX_PROCESS_INSPECTOR_ADAPTER = "windows"
-$env:PORT = "8122"
-corepack pnpm dev:electron
+```bash
+npx --yes codexmux@latest
 ```
 
-`dev:electron`은 선택한 `PORT`의 health URL만 기다립니다. 이 wrapper는 server가 다른 빈 port로 fallback한 결과를 따라가지 않으므로 `8122`를 비우거나 실행 전에 다른 free port를 지정해야 합니다. `HOST`를 지정하지 않으면 wrapper가 `HOST=localhost`를 주입하므로 source dev는 config의 network access보다 localhost를 우선합니다.
+기본 port는 `8122`입니다. Fresh setup은 저장된 network 설정보다 먼저 loopback에만
+bind하므로 같은 host에서 `http://127.0.0.1:8122`를 엽니다.
+
+## Source 개발 실행
+
+```bash
+git clone https://github.com/HardcoreMonk/codexmux.git
+cd codexmux
+corepack enable
+corepack pnpm install
+corepack pnpm dev
+```
+
+Production build와 장기 실행은 [설치](/codexmux/ko/docs/installation/)의 `systemd --user`
+절차를 사용합니다.
 
 ## 최초 설정
 
 처음 시작한 process는 `HOST`나 저장된 network setting보다 먼저 `127.0.0.1`에만 bind합니다.
 
-1. Electron 창 또는 `http://localhost:8122`를 로컬에서 엽니다.
+1. `http://127.0.0.1:8122`를 로컬에서 엽니다.
 2. 비밀번호, locale, theme, network access를 설정합니다.
-3. 외부 access를 선택했다면 setup 완료 후 `$env:HOST="localhost,tailscale"`처럼 원하는 범위를 명시하고 server/Electron을 재시작합니다.
+3. 외부 access가 필요하면 setup 완료 후 `HOST` 범위를 명시하고 service를 재시작합니다.
 4. workspace를 만들고 **Codex** tab을 엽니다.
 
-Codex tab은 Runtime v2 terminal worker와 Windows adapter를 사용합니다. Browser/Electron 창을 닫았다 다시 열 때는 저장된 layout과 Codex session metadata를 이용해 복구합니다.
+Codex tab은 Runtime v2 Terminal Worker와 Linux tmux adapter를 사용합니다. **Sessions**에서는
+과거 session 검색·replay·annotation을, **Governance**에서는 승인한 project의 guidance,
+knowledge, lifecycle과 audit read model을 확인할 수 있습니다.
 
-## Windows package 확인
+## 선택 client와 Windows package
 
-[Releases](https://github.com/HardcoreMonk/codexmux/releases/latest)의 `v0.4.21`은 내부 stable release입니다. NSIS installer는 실제 published updater apply를 통과했고, zip은 fresh Windows package gate를 통과했습니다. 세 evidence artifact도 upload 전 privacy gate를 통과했습니다. 조직의 unsigned app 실행 정책을 확인하고, 설치와 반복 package 검증 명령은 [설치](/codexmux/ko/docs/installation/)에서 확인하세요.
-
-## Legacy/reference 경로
-
-다음 명령은 macOS/Linux tmux server line을 재현하는 legacy 경로입니다. Windows primary 경로가 아닙니다.
-
-```bash
-npx codexmux
-```
-
-이 경로에는 Node.js와 tmux 3.0 이상이 필요합니다. Capacitor Android 앱과 PWA/mobile remote 문서도 Windows desktop 제품의 primary 설치 경로가 아니라 기존 server에 접속하는 reference surface로 유지합니다.
+Browser가 primary 운영 surface입니다. Electron과 Capacitor Android는 실행 중인 engine에
+연결하는 선택 client입니다. 보존된 Windows stable release는 `v0.4.22`이며 unsigned 내부
+package/update 증거 범위입니다.
 
 ## 다음으로
 
-- **[설치](/codexmux/ko/docs/installation/)** — Windows package/source 명령과 legacy 경계
+- **[설치](/codexmux/ko/docs/installation/)** — npm/source와 Linux user service
 - **[보안과 인증](/codexmux/ko/docs/security-auth/)** — loopback setup과 restart 규칙
-- **[포트 & 환경 변수](/codexmux/ko/docs/ports-env-vars/)** — source port 선택, packaged fallback, Runtime 설정
-- **[문제 해결](/codexmux/ko/docs/troubleshooting/)** — Windows/Runtime v2 진단
+- **[포트 & 환경 변수](/codexmux/ko/docs/ports-env-vars/)** — port, bind와 Runtime 설정
+- **[문제 해결](/codexmux/ko/docs/troubleshooting/)** — Linux service와 Runtime v2 진단

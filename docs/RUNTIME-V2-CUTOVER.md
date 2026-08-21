@@ -1,6 +1,8 @@
 # 런타임 v2 프로덕션 전환 기준
 
-Runtime v2는 terminal, storage, timeline, status를 worker boundary로 분리해 Windows-only runtime 전환을 가능하게 하는 기반입니다.
+Runtime v2는 terminal, storage, timeline, status, governance를 worker boundary로 분리하는
+Linux 단일 엔진의 실행 기반입니다. Windows terminal adapter와 package gate는 이 구조의
+별도 배포면으로 보존합니다.
 
 ## 현재 상태
 
@@ -8,7 +10,10 @@ Runtime v2는 terminal, storage, timeline, status를 worker boundary로 분리�
 - Windows terminal adapter는 node-pty/ConPTY 기반 create/attach/write/resize/detach/kill smoke를 통과했습니다.
 - Storage Worker는 SQLite projection을 사용합니다.
 - Timeline Worker와 Status Worker는 surface별 mode와 rollback path를 가집니다.
-- Phase 6 default gate와 Windows release/package gate smoke가 release 판단 기준으로 사용됩니다.
+- Timeline Worker는 Session Catalog read/watch/index를, Governance Worker는 승인 project의
+  read-only Knowledge Index와 lifecycle/check/audit projection을 소유합니다.
+- Linux Session Operations/Governance gate와 Phase 6 default gate가 active runtime release
+  기준입니다. Windows release/package gate는 Windows 배포면을 변경할 때만 추가합니다.
 - `0.4.16` 기준 packaged/installed/rollback Phase 6 증거는 완료되었습니다.
 - `v0.4.20` fresh Windows package/release gate는 packaged upload integrity를 포함해 최초
   통과했고, `v0.4.21`은 privacy-safe evidence를 재검증했습니다. `v0.4.22`는 실제
@@ -17,6 +22,10 @@ Runtime v2는 terminal, storage, timeline, status를 worker boundary로 분리�
   `docs/operations/2026-07-13-v0.4.22-windows-release-handoff.md`에 있습니다.
 - 이 updater evidence는 fresh profile을 사용하므로 cookie namespace 전환 뒤 기존 Runtime v2
   session 재연결을 입증하지 않습니다. 그 조건이 남아 있어 ADR-029는 `Implemented`입니다.
+- 2026-08-21 초기 통합 commit `d405f683`과 Phase 3 build `9d32d049`는 Linux user service에
+  배포되어 restart 전후 live terminal/scaffold/governance smoke와 Phase 6 gate를 통과했습니다.
+  Governance write gate와 private backup mode도 확인했으며 장시간 관찰 전까지 ADR-031은
+  `Implemented`입니다.
 
 아래 단계는 미착수 backlog가 아니라 구현 순서와 rollback runbook을 보존한 기록입니다.
 
@@ -26,7 +35,8 @@ Runtime v2는 terminal, storage, timeline, status를 worker boundary로 분리�
 - Surface별 mode를 분리해 작은 rollback이 가능해야 합니다.
 - 잘못된 명시 env 값은 fail closed해야 합니다.
 - Runtime v2가 꺼져도 legacy JSON/tmux path가 rollback으로 동작해야 합니다.
-- Windows-only 제품 전환 전까지 tmux path 삭제를 release blocker로 만들지 않습니다.
+- Linux tmux adapter는 active terminal runtime이므로 별도 approved adapter migration 없이
+  삭제하지 않습니다.
 
 ## 기능 플래그
 
@@ -37,6 +47,7 @@ Runtime v2는 terminal, storage, timeline, status를 worker boundary로 분리�
 | `CODEXMUX_RUNTIME_STORAGE_V2_MODE` | `off`, `shadow`, `write`, `default` | storage surface 전환. runtime v2 활성 상태의 unset 기본값은 `default` |
 | `CODEXMUX_RUNTIME_TIMELINE_V2_MODE` | `off`, `shadow`, `default` | timeline surface 전환. runtime v2 활성 상태의 unset 기본값은 `default` |
 | `CODEXMUX_RUNTIME_STATUS_V2_MODE` | `off`, `shadow`, `default` | status surface 전환. runtime v2 활성 상태의 unset 기본값은 `default` |
+| `CODEXMUX_SESSION_CATALOG_MODE` | `off`, `shadow`, `default` | Session Catalog serving 전환. unset 기본값은 `shadow`, live service는 `default` |
 | `CODEXMUX_RUNTIME_TERMINAL_ADAPTER` | `tmux`, `windows` | terminal infrastructure adapter |
 | `CODEXMUX_PROCESS_INSPECTOR_ADAPTER` | `posix`, `windows` | process inspector adapter |
 
@@ -154,9 +165,30 @@ corepack pnpm lifecycle:rollback-dry-run
 구조화해서 출력합니다. 실제 service 재시작과 live rollback evidence는 별도
 운영 drill에서 남깁니다.
 
-## Windows 전환 게이트
+## Linux Session Operations와 Governance 확장
 
-Windows-only 제품으로 release하려면 다음 smoke가 release blocker입니다.
+Phase 6 위에 다음 ownership을 추가합니다.
+
+- Timeline Worker: Codex JSONL read/watch와 Session Catalog projection
+- Storage Worker: annotation, saved filter, Approved Project Root와 Managed Project durable state
+- Governance Worker: 승인 project read, Knowledge Index와 lifecycle/check/audit projection
+
+검증:
+
+```bash
+corepack pnpm perf:session-catalog
+corepack pnpm smoke:linux:session-governance
+corepack pnpm smoke:browser:session-governance
+corepack pnpm smoke:runtime-v2:phase6-default-gate
+```
+
+Governance Worker는 non-core입니다. 실패 시 terminal/storage/timeline/status를 유지하고
+governance surface만 degraded로 전환합니다. Session Catalog와 Governance DB는 quarantine 후
+rebuild/refresh하지만 Storage Worker의 durable DB는 backup/restore합니다.
+
+## 별도 Windows 배포 게이트
+
+Windows Electron package/updater를 release하려면 다음 smoke가 해당 배포면의 blocker입니다.
 `CODEXMUX_SMOKE_ARTIFACT_DIR`와 현재 version보다 낮은 실제 baseline installer를 먼저
 지정합니다. Package gate의 synthetic local-feed는 release evidence가 아닙니다.
 

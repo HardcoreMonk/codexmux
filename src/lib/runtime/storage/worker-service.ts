@@ -107,6 +107,58 @@ export const createStorageWorkerService = (options: IStorageWorkerServiceOptions
           const input = parseRuntimeCommandPayload('storage.get-layout', command.payload);
           return ok(command, repo.getWorkspaceLayout(input.workspaceId));
         }
+        if (command.type === 'storage.list-session-annotations') {
+          const input = parseRuntimeCommandPayload('storage.list-session-annotations', command.payload);
+          return ok(command, repo.listSessionAnnotations(input.sessionIds));
+        }
+        if (command.type === 'storage.update-session-annotation') {
+          const input = parseRuntimeCommandPayload('storage.update-session-annotation', command.payload);
+          return ok(command, repo.updateSessionAnnotation(input));
+        }
+        if (command.type === 'storage.list-saved-session-filters') {
+          parseRuntimeCommandPayload('storage.list-saved-session-filters', command.payload);
+          return ok(command, repo.listSavedSessionFilters());
+        }
+        if (command.type === 'storage.upsert-saved-session-filter') {
+          const input = parseRuntimeCommandPayload('storage.upsert-saved-session-filter', command.payload);
+          return ok(command, repo.upsertSavedSessionFilter(input));
+        }
+        if (command.type === 'storage.delete-saved-session-filter') {
+          const input = parseRuntimeCommandPayload('storage.delete-saved-session-filter', command.payload);
+          return ok(command, { deleted: repo.deleteSavedSessionFilter(input.id) });
+        }
+        if (command.type === 'storage.register-approved-project-root') {
+          const input = parseRuntimeCommandPayload('storage.register-approved-project-root', command.payload);
+          return ok(command, repo.registerApprovedProjectRoot(input));
+        }
+        if (command.type === 'storage.list-approved-project-roots') {
+          parseRuntimeCommandPayload('storage.list-approved-project-roots', command.payload);
+          return ok(command, repo.listApprovedProjectRoots());
+        }
+        if (command.type === 'storage.list-approved-project-root-snapshots') {
+          parseRuntimeCommandPayload('storage.list-approved-project-root-snapshots', command.payload);
+          return ok(command, repo.listApprovedProjectRootSnapshots());
+        }
+        if (command.type === 'storage.register-managed-project') {
+          const input = parseRuntimeCommandPayload('storage.register-managed-project', command.payload);
+          return ok(command, repo.registerManagedProject(input));
+        }
+        if (command.type === 'storage.list-managed-projects') {
+          parseRuntimeCommandPayload('storage.list-managed-projects', command.payload);
+          return ok(command, repo.listManagedProjects());
+        }
+        if (command.type === 'storage.list-managed-project-snapshots') {
+          parseRuntimeCommandPayload('storage.list-managed-project-snapshots', command.payload);
+          return ok(command, repo.listManagedProjectSnapshots());
+        }
+        if (command.type === 'storage.apply-managed-project-import') {
+          const input = parseRuntimeCommandPayload('storage.apply-managed-project-import', command.payload);
+          return ok(command, repo.applyManagedProjectImport(input));
+        }
+        if (command.type === 'storage.list-governance-audit-events') {
+          const input = parseRuntimeCommandPayload('storage.list-governance-audit-events', command.payload);
+          return ok(command, repo.listGovernanceAuditEvents(input));
+        }
         return invalidCommand(command, {
           code: 'invalid-worker-command',
           message: `Unsupported storage command: ${command.type}`,

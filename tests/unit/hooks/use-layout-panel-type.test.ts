@@ -63,6 +63,48 @@ const createLayout = (panelType: 'terminal' | 'codex'): ILayoutData => ({
   updatedAt: new Date(0).toISOString(),
 });
 
+const createSplitLayout = (): ILayoutData => ({
+  root: {
+    type: 'split',
+    orientation: 'horizontal',
+    ratio: 0.5,
+    children: [
+      {
+        type: 'pane',
+        id: 'pane-left',
+        activeTabId: 'tab-left',
+        tabs: [{
+          id: 'tab-left',
+          sessionName: 'pt-ws-test-pane-left-tab-left',
+          name: '',
+          order: 0,
+        }],
+      },
+      {
+        type: 'pane',
+        id: 'pane-right',
+        activeTabId: 'tab-right-active',
+        tabs: [
+          {
+            id: 'tab-right-server',
+            sessionName: 'pt-ws-test-pane-right-tab-server',
+            name: '',
+            order: 0,
+          },
+          {
+            id: 'tab-right-active',
+            sessionName: 'pt-ws-test-pane-right-tab-active',
+            name: '',
+            order: 1,
+          },
+        ],
+      },
+    ],
+  },
+  activePaneId: 'pane-right',
+  updatedAt: new Date(0).toISOString(),
+});
+
 describe('useLayoutStore panel type switching', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -121,5 +163,32 @@ describe('useLayoutStore panel type switching', () => {
       panelType: 'codex',
       sessionView: 'timeline',
     });
+  });
+
+  it('preserves the surviving local pane and tab focus after closing another pane', async () => {
+    const layout = createSplitLayout();
+    const rightPane = layout.root.type === 'split' ? layout.root.children[1] : null;
+    if (!rightPane || rightPane.type !== 'pane') throw new Error('right pane fixture missing');
+
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        root: {
+          ...rightPane,
+          activeTabId: 'tab-right-server',
+        },
+        activePaneId: 'pane-right',
+        updatedAt: new Date(1).toISOString(),
+      }),
+    })));
+    useLayoutStore.setState({ layout });
+
+    await useLayoutStore.getState().closePane('pane-left');
+
+    const result = useLayoutStore.getState().layout;
+    expect(result?.activePaneId).toBe('pane-right');
+    expect(result?.root.type).toBe('pane');
+    if (result?.root.type !== 'pane') return;
+    expect(result.root.activeTabId).toBe('tab-right-active');
   });
 });

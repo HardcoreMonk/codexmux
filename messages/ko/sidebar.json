@@ -6,6 +6,8 @@
   "deleteWorkspaceConfirm": "Workspace ''{name}''을 닫으시겠습니까?",
   "notes": "노트",
   "stats": "사용량 통계",
+  "sessionExplorer": "세션 탐색기",
+  "governance": "프로젝트 거버넌스",
   "collapseSidebar": "사이드바 접기",
   "expandSidebar": "사이드바 펼치기",
   "newWorkspace": "새 Workspace",
@@ -16,5 +18,16 @@
   "removeFromGroup": "그룹에서 제거",
   "ungrouped": "그룹 없음",
   "defaultGroupName": "새 그룹",
-  "emptyGroup": "(비어 있음)"
+  "emptyGroup": "(비어 있음)",
+  "rateLimits": {
+    "awaitingUpdate": "갱신 대기",
+    "awaitingUpdateDescription": "초기화 후 새 사용량 관찰을 기다리고 있습니다.",
+    "usedReset": "{percentage}% 사용 · {remaining} 후 초기화",
+    "projected": "현재 속도 기준 초기화 시점 예상 {percentage}%",
+    "observedAt": "마지막 관찰 {time}",
+    "now": "지금",
+    "daysHours": "{days}일 {hours}시간",
+    "hoursMinutes": "{hours}시간 {minutes}분",
+    "minutes": "{minutes}분"
+  }
 }

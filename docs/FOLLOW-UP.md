@@ -1,11 +1,9 @@
 # 후속 작업
 
-이 문서는 release 전 확인, 내부 배포 단계, post-MVP backlog를 추적합니다. 2026-07-13
-`v0.4.22`는 Purplemux cookie namespace 격리를 포함해 stable/latest로 승격됐습니다. Fresh
-Windows HOME/profile의 package와 updater gate는 통과했지만 기존 Electron profile에서 login
-전환, 1회 재로그인과 Runtime v2 WebSocket/upload 재연결을 직접 검증하는 근거는 남아 있습니다.
-현재 release는 unsigned 내부 배포물이며, public signing이나 외부 배포 준비 완료를 의미하지
-않습니다.
+이 문서는 release 전 확인, 내부 배포 단계, post-MVP backlog를 추적합니다. Active 제품/runtime
+target은 Linux 단일 엔진 호스트입니다. 기존 `v0.4.22` Windows package/updater와 unsigned 내부
+배포 기록은 별도 배포면의 역사적 근거로 보존하며 Linux Session Operations/Project Governance
+acceptance를 대체하지 않습니다. Public npm package의 현재 version은 `0.4.23`입니다.
 
 ## 완료된 범위
 
@@ -47,6 +45,26 @@ Windows HOME/profile의 package와 updater gate는 통과했지만 기존 Electr
 - Browser/package/published-updater evidence의 upload 전 privacy scanner와 stable promotion 차단
 - 같은 hostname에서 Purplemux와 동시 실행할 때 browser session cookie가 충돌하지 않도록
   `codexmux-session-token`으로 분리하고 Linux unit/dev/prod/Chromium 공존 회귀 검증 완료
+- Purplemux 선택 기능 수동 도입: JSONL rate-limit과 stale UI, bounded rich timeline,
+  IME/clipboard/pane focus/timeline spacer/Git refresh 회귀 수정, native session hook과
+  server-side agent launch intent
+- 후속 자동화 보강: session별 Git generation consume, rich timeline presentation pure helper,
+  standalone Node hook bridge의 loopback/64KiB/fail-open integration test
+- ADR-025 `Verified`: Codex 0.147.0 strict-config, 1,480 unit tests, type/build/Electron,
+  Runtime v2 status/timeline, browser reconnect와 실제 Linux user service 재시작 통과
+- Linux Session Operations/Project Governance Phase 1~2: Timeline Worker 소유 Session Catalog,
+  Storage Worker 소유 durable project/session state, Governance Worker 소유 read-only Knowledge
+  Index, 한국어/영어 운영 UI, 성능 baseline과 격리 Linux/browser rollback smoke
+- Project Governance Phase 3 첫 vertical slice: 6개 versioned scaffold, marker-owned update,
+  preview/exact confirmation, private backup/journal, startup recovery, action history와 safe rollback.
+  Source와 격리 smoke를 완료하고 live `CODEXMUX_GOVERNANCE_WRITES=1` gate, private Runtime v2
+  backup, Governance `writeState=ready`와 post-restart 회귀 gate를 확인
+- Governed unmarked adoption source release: 2-pass artifact별 opt-in, exact-prefix compact marker
+  append, adopted marker update, private preimage/latest-first rollback과 한국어·영어 UI. 전체
+  test와 build/API/browser/Linux/storage gate를 통과하고 commit `f46410b4` live 배포·재시작 완료
+- `codexmux@0.4.23` public npm publish, registry tarball install/CLI/production health smoke
+- 구현 commit `d405f683`의 Linux `systemd --user` live 배포, 실제 restart 전후 terminal
+  smoke와 Phase 6 gate, [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18) 완료
 
 ## 릴리스 전 확인
 
@@ -55,6 +73,7 @@ Windows HOME/profile의 package와 updater gate는 통과했지만 기존 Electr
 ```bash
 corepack pnpm check:project-design
 corepack pnpm build:landing
+corepack pnpm check:landing
 corepack pnpm lint
 corepack pnpm tsc --noEmit
 corepack pnpm test
@@ -66,13 +85,42 @@ corepack pnpm check:upload-memory
 CODEXMUX_UPLOAD_SMOKE_MODE=development corepack pnpm smoke:upload-integrity
 CODEXMUX_UPLOAD_SMOKE_MODE=production corepack pnpm smoke:upload-integrity
 corepack pnpm smoke:browser-reconnect
+corepack pnpm perf:session-catalog
+corepack pnpm smoke:linux:session-governance
+corepack pnpm smoke:browser:session-governance
+corepack pnpm smoke:runtime-v2:storage-backup
+corepack pnpm smoke:runtime-v2:phase6-default-gate
+corepack pnpm smoke:npm-package
 corepack pnpm build:electron
 xvfb-run -a corepack pnpm smoke:electron:runtime-v2
 ```
 
 Electron development smoke는 Linux GUI/display 경로입니다. Headless Linux에서는 위와 같이
-Xvfb를 사용하고 GUI가 있는 Linux desktop에서는 직접 실행할 수 있습니다. Windows runtime
-증거는 `smoke:windows:packaged-runtime-v2`와 installer/package gate로 확인합니다.
+Xvfb를 사용하고 GUI가 있는 Linux desktop에서는 직접 실행할 수 있습니다. Electron/Windows
+surface를 변경하지 않은 Linux engine release에서는 Electron/Windows gate를 별도 배포면의
+증거로 취급합니다. Windows runtime 증거는 `smoke:windows:packaged-runtime-v2`와
+installer/package gate로 확인합니다.
+
+## 현재 Linux live 운영 상태
+
+| 항목 | 상태 |
+| --- | --- |
+| Live build | Governed adoption artifact `f46410b4`; 이전 Phase 3 artifact `9d32d049` |
+| user service | `codexmux.service` enabled, `active/running`, authenticated `0.0.0.0:8122` |
+| Runtime v2 | terminal `new-tabs`, storage/timeline/status `default` |
+| Session Catalog/Governance | 모두 ready, Governance `writeState=ready`, DB/WAL/SHM `0600` |
+| governance gate | `~/.config/systemd/user/codexmux.service.d/governance-writes.conf`, active |
+| latest backup | `runtime-v2-storage-20260821T123122Z`, 5 files, directory `0700`, file `0600` |
+| latest restart | PID `1104868` → `1149564`; start `2026-08-21 21:31:52 KST` |
+| issue | [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18), [Issue #19](https://github.com/HardcoreMonk/codexmux/issues/19), [Issue #20](https://github.com/HardcoreMonk/codexmux/issues/20) |
+| 운영 handoff | `operations/2026-08-21-governed-unmarked-adoption-handoff.md` |
+
+Browser 인증 설정 뒤 `HOST=0.0.0.0` unit을 다시 시작해 실제 외부 listener를
+활성화했습니다. 승인된 Phase 3 배포에서 governance write gate도 활성화했고 CLI token 기반
+운영 API와 Runtime v2 worker는 정상입니다. 등록 Managed Project는 0개라 실제 project confirm은
+수행하지 않았습니다. Governed adoption production scaffold/browser와 live Phase 6를
+post-restart로 반복했습니다. 실제 restart 증거는 확보했지만 장시간 live 관찰 전까지 ADR-031은
+`Implemented`입니다.
 
 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)의 acceptance를 충족한
 fresh Windows 검증:
@@ -155,6 +203,10 @@ Electron profile의 1회 재로그인과 재연결은 별도 후속 근거가 �
 | Phase 6 closeout | 완료: packaged runtime v2 smoke, 설치 관찰 smoke, rollback drill에 Phase 6 health/perf gate 반영 |
 | [Issue #16: Production upload fresh Windows evidence](https://github.com/HardcoreMonk/codexmux/issues/16) | 완료: `v0.4.20` 기능 검증, `v0.4.21` privacy-safe 재검증과 `v0.4.22` 반복 검증, ADR-027/028 `Verified` |
 | Purplemux/Codexmux same-host cookie isolation | `v0.4.22` release와 fresh-profile updater 검증 완료. 기존 Electron profile에서 Codexmux 재로그인, 필요 시 Purplemux 재로그인, Runtime v2 WebSocket/upload 재연결을 직접 확인해야 하므로 ADR-029는 `Implemented` 유지 |
+| Purplemux 선택 기능 도입 | 완료: ADR-025 `Verified`, `docs/operations/2026-08-14-purplemux-selected-adoption-handoff.md`. Windows package 실기 검증은 이 범위의 완료 조건에서 제외 |
+| Linux Session Operations/Project Governance | 완료: 구현·live 배포·restart·Issue #18 종료. 장시간 관찰은 ADR-031 `Verified` 전이의 별도 조건 |
+| Governed Project Scaffold Phase 3 | 완료: `9d32d049` live 배포, write gate 활성화, private backup, scaffold/Linux/browser/Phase 6 smoke와 Issue #19 근거 확보. 실제 등록 project confirm은 대상이 없어 미실행 |
+| Governed unmarked adoption | 완료: `f46410b4` live 배포, private backup, production scaffold/browser와 live Phase 6 smoke, Issue #20 근거 확보. 실제 등록 project confirm은 대상이 없어 미실행 |
 
 ## 비차단 항목
 
@@ -163,6 +215,21 @@ Electron profile의 1회 재로그인과 재연결은 별도 후속 근거가 �
 | Public code signing certificate trust | 내부 전용 앱이라 release blocker가 아님 |
 | SmartScreen reputation | 내부 전용 앱이라 release blocker가 아님 |
 | Artifact scanner enumeration hardening | 현재 writer는 lowercase regular `.json`만 생성합니다. 대소문자 확장자와 symlink를 명시적으로 거부하는 방어 강화는 후속 비차단 작업입니다. |
+| Browser setup과 외부 bind | fresh config는 local setup 상태입니다. 사용자 비밀번호 설정과 loopback 밖의 bind는 별도 운영 선택이며 현재 engine health blocker가 아닙니다. |
+| ADR-031 장시간 live 관찰 | 실제 restart는 통과했습니다. 대표 workspace의 장시간 사용·재접속 증거를 확보한 뒤 `Verified` 전이를 검토합니다. |
+| 실제 Managed Project adoption drill | 등록 project가 0개입니다. 대상이 생기면 별도 write 승인 아래 artifact별 preview/confirm/rollback과 semantic warning을 관찰합니다. |
+
+## 별도 lifecycle이 필요한 후속 범위
+
+다음 항목은 이번 read-only release의 연장이 아니며 각각 새 writing-spec, domain-architecture,
+Plan Grilling, plan review와 별도 release gate를 거쳐야 합니다.
+
+| 범위 | 현재 결정 | 다음 acceptance의 핵심 |
+| --- | --- | --- |
+| Phase 3 추가 write | lifecycle draft, delete/move/sync와 automatic/full-file adoption은 미구현 | 각각 별도 spec에서 ownership, conflict UX, retention과 rollback dependency 정의 |
+| Remote topology | collector, remote node, multi-engine federation 미지원 | engine authority, credential, ordering, partition/reconnect와 data residency |
+| GSD orchestration | GSD CLI/UI, FastAPI/Python collector, 원본 Bash 실행 미도입 | provenance, allowlist, cancellation, audit와 lifecycle ownership |
+| Full-output search | bounded message search/snippet만 제공 | secret/terminal output policy, quota, encryption/retention과 explicit opt-in |
 
 ## Codex lifecycle 기준
 
@@ -187,7 +254,8 @@ Electron profile의 1회 재로그인과 재연결은 별도 후속 근거가 �
 
 ## 모바일 앱
 
-Android는 legacy/reference surface입니다. Windows-only 제품 전환 중 새 primary feature 기준으로 확장하지 않습니다.
+Android는 Linux engine에 접속하는 선택 client입니다. Session/runtime authority로 확장하거나
+Linux engine acceptance를 Android smoke로 대체하지 않습니다.
 
 ## 아키텍처 모듈화
 
@@ -205,6 +273,8 @@ Android는 legacy/reference surface입니다. Windows-only 제품 전환 중 새
 ## 문서와 운영
 
 - Canonical 문서는 한국어로 유지합니다.
+- GitHub Pages source와 artifact gate를 PR #22로 main에 병합했고 workflow run 32485665955와
+  public landing/docs/guide/robots/sitemap/404 smoke가 통과했습니다.
 - 실제 release/smoke 결과는 `docs/operations/` handoff에 추가합니다.
 - 과거 logs/specs는 기록 보존을 위해 재작성하지 않습니다.
 - 2026-05-07 이후 100% closeout 배치는 CODEX panel timeline hotfix 회귀도 자동 row로 포함합니다. 권장 closeout 명령은 `CODEXMUX_BACKLOG_COMPLETION_ALLOW_DEFER=1 CODEXMUX_SMOKE_ARTIFACT_DIR=/tmp/codexmux-backlog-complete corepack pnpm ops:backlog:complete`입니다.

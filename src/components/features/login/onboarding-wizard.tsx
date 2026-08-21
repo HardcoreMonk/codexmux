@@ -125,7 +125,8 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
     onReady: (data) => {
       const agent = readPreflightAgent(data);
       const terminal = readPreflightTerminalStatus(data);
-      if (terminal.installed && terminal.compatible && data.git.installed && agent.installed && agent.loggedIn) {
+      if (terminal.installed && terminal.compatible && data.git.installed
+        && agent.installed && agent.compatible !== false && agent.loggedIn) {
         setStep('password');
       }
     },
@@ -259,7 +260,8 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
           ) : preflightStatus && preflightAgent &&
             readPreflightTerminalStatus(preflightStatus).installed &&
             readPreflightTerminalStatus(preflightStatus).compatible &&
-            preflightStatus.git.installed && preflightAgent.installed &&
+            preflightStatus.git.installed && preflightAgent.installed
+            && preflightAgent.compatible !== false &&
             !preflightAgent.loggedIn ? (
             <div className="flex flex-col gap-4">
               <p className="text-sm text-muted-foreground">{t('codexLoginDescription')}</p>
@@ -295,7 +297,7 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
             readPreflightTerminalStatus(preflightStatus).installed &&
             readPreflightTerminalStatus(preflightStatus).compatible &&
             preflightStatus.git.installed &&
-            preflightAgent?.installed
+            preflightAgent?.installed && preflightAgent.compatible !== false
           ) ? (() => {
             const agent = preflightStatus.agent;
             const terminal = readPreflightTerminalStatus(preflightStatus);
@@ -307,7 +309,10 @@ const OnboardingWizard = ({ onComplete, hostEnvLocked = false }: IOnboardingWiza
               { name: 'Homebrew', show: !brewInstalled },
               { name: readPreflightTerminalName(preflightStatus), show: !(terminal.installed && terminal.compatible) },
               { name: 'Git', show: !preflightStatus.git.installed },
-              { name: codexNeedsPath ? t('codexPathMissing') : 'Codex CLI', show: !agent.installed },
+              {
+                name: codexNeedsPath ? t('codexPathMissing') : 'Codex CLI',
+                show: !agent.installed || agent.compatible === false,
+              },
             ];
 
             const needsUpgrade = terminal.adapter === 'tmux' && terminal.installed && !terminal.compatible;

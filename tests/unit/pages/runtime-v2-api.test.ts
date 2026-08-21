@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => {
     listTimelineSessions: vi.fn(),
     readTimelineEntriesBefore: vi.fn(),
     getTimelineMessageCounts: vi.fn(),
+    getSessionCatalogHealth: vi.fn(),
   };
   return {
     auth: vi.fn(),
@@ -97,7 +98,18 @@ describe('runtime v2 api routes', () => {
     Object.values(mocks.supervisor).forEach((mock) => mock.mockReset());
     mocks.auth.mockResolvedValue(true);
     mocks.supervisor.ensureStarted.mockResolvedValue(undefined);
-    mocks.supervisor.health.mockResolvedValue({ ok: true, storage: {}, terminal: {} });
+    mocks.supervisor.health.mockResolvedValue({
+      ok: true,
+      storage: {},
+      terminal: {},
+      timeline: {},
+      status: {},
+      governance: { state: 'ready', indexedProjects: 2, lastIndexedAt: '2026-08-21T10:00:00.000Z' },
+    });
+    mocks.supervisor.getSessionCatalogHealth.mockResolvedValue({
+      state: 'ready', queueLag: 0, cursorAgeMs: 100, rebuildState: 'idle', indexedSessions: 4,
+      lastIndexedAt: '2026-08-21T10:00:00.000Z',
+    });
     mocks.supervisor.listWorkspaces.mockResolvedValue([{ id: 'ws-a', name: 'Runtime', defaultCwd: '/tmp', active: 1, orderIndex: 0, createdAt: 'now', updatedAt: 'now' }]);
     mocks.supervisor.createWorkspace.mockResolvedValue({ id: 'ws-a', rootPaneId: 'pane-a' });
     mocks.supervisor.deleteWorkspace.mockResolvedValue({ deleted: true, killedSessions: ['rtv2-ws-a-pane-a-tab-a'], failedKills: [] });
@@ -177,6 +189,8 @@ describe('runtime v2 api routes', () => {
     expect(health.statusCode).toBe(200);
     expect(health.body).toMatchObject({
       ok: true,
+      sessionCatalog: { state: 'ready', queueLag: 0, cursorAgeMs: 100, rebuildState: 'idle' },
+      governance: { state: 'ready', indexedProjects: 2 },
       terminalV2Mode: 'new-tabs',
       storageV2Mode: 'write',
       timelineV2Mode: 'shadow',

@@ -1,6 +1,8 @@
 # Electron과 Windows 패키징
 
-codexmux Electron 앱은 Next.js UI를 데스크톱 shell 안에서 실행합니다. 현재 제품 전환 기준에서는 Windows desktop shell, NSIS installer, updater smoke가 primary path입니다.
+codexmux Electron 앱은 Next.js UI를 데스크톱 shell 안에서 실행하는 선택 client입니다.
+현재 active runtime은 Linux 단일 엔진이며, 이 문서의 Windows desktop shell, NSIS installer와
+updater smoke는 별도 배포면의 보존된 release 계약입니다.
 
 ## 명령
 
@@ -70,6 +72,17 @@ corepack pnpm pack:electron:mac
 | `electron-builder.yml` | Windows NSIS/zip packaging, publish metadata |
 
 Electron 설정은 `~/.codexmux/config.json`을 공유합니다. Server mode는 `server.mode`, `server.remoteUrl`로 관리합니다.
+
+## Codex session hook bridge
+
+Electron renderer는 Codex command, CLI token, hook capability를 만들지 않습니다. Local server가
+검증된 tab launch intent로 session hook을 조립하고 `~/.codexmux/status-hook.cjs`를
+호출합니다. Electron executable을 standalone Node bridge runtime으로 사용할 때는
+`ELECTRON_RUN_AS_NODE=1`을 명시합니다. Bridge timeout이나 server 부재는 Codex action을
+중단시키지 않으며 JSONL/process polling이 상태를 재조정합니다.
+
+이 hook 변경의 완료 근거는 `docs/operations/2026-08-14-purplemux-selected-adoption-handoff.md`에
+있습니다. Windows package 실기 검증은 해당 선택 도입의 완료 조건이 아닙니다.
 
 ## 서버 모드
 

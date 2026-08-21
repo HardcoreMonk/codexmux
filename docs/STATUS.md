@@ -61,9 +61,24 @@ Permission/input prompt는 JSONL marker가 늦거나 없을 수 있으므로 liv
 
 ## Hook event 경로
 
-Codex tab launch/resume은 `hooks={path="~/.codexmux/hooks.json"}`를 사용하지 않습니다. `src/lib/codex-command.ts`가 `hooks.SessionStart`, `hooks.UserPromptSubmit`, `hooks.Stop` inline TOML override를 만들어 `~/.codexmux/status-hook.sh`를 호출합니다.
+Codex tab launch/resume은 `hooks={path="~/.codexmux/hooks.json"}`를 사용하지 않습니다. Browser는 workspace/pane/tab과 action만 server에 보내고, `agent-launch-service`가 현재 layout ownership, panel type, terminal process, Codex `0.144.1+` compatibility를 확인합니다. 검증된 server provider만 `hooks.SessionStart`, `hooks.UserPromptSubmit`, `hooks.Stop` session override를 만들어 `~/.codexmux/status-hook.cjs`를 호출합니다.
 
-이 경로는 Codex CLI의 strict config parser가 기대하는 구조화된 hook table을 따릅니다. `hooks.json`은 생성 파일로 남아 있지만 status의 기준 source가 아닙니다.
+각 handler에는 HMAC capability로 canonical tab id, terminal session name, expiry가 묶입니다. Hook API는 CLI token, capability, 현재 layout ownership을 모두 확인한 event만 reducer에 전달합니다. Bridge는 bounded stdin을 읽고 loopback으로만 1초 요청하며 모든 장애에서 성공 종료하는 best-effort observer입니다. Hook 관찰 누락은 JSONL/process polling이 보정하고 Codex action 자체를 막지 않습니다.
+
+User/project/managed/plugin hook은 Codex native layer discovery에 맡깁니다. codexmux는 user TOML을 읽거나 병합하지 않고 trust bypass flag도 쓰지 않습니다. `hooks.json`은 `hooks: {}`와 statusline 설정을 담는 생성 파일이며 status hook의 기준 source가 아닙니다.
+
+`Stop` event는 terminal session name과 sequence를 포함해 client에 전달됩니다. Matching tab의 Git generation만 증가시키고 active tab은 즉시 cache를 우회해 갱신하며 inactive tab은 선택될 때 한 번 갱신합니다. 같은 sequence는 중복 invalidation하지 않습니다. 두 Git hook은 consumed generation을 session별로 보존하므로 같은 hook instance가 tab을 전환해도 다른 session의 낮은 generation을 이미 처리한 값으로 오인하지 않습니다.
+
+## Rate-limit 관찰
+
+StatusManager는 기존 256KiB JSONL tail을 한 번 읽어 작업 상태와 `event_msg/token_count/rate_limits`를 함께 투영합니다. 현재 top-level `rate_limits`와 legacy `payload.rate_limits`를 모두 읽으며, 별도 session directory scan이나 원본 파일 write는 하지 않습니다.
+
+- key 이름과 무관하게 300분은 5시간, 10080분은 7일 window로 정규화합니다. `window_minutes`가 없는 legacy record만 primary/secondary 순서를 fallback으로 사용합니다.
+- `used_percent`와 `used_percentage`, absolute/relative reset을 모두 받아들입니다.
+- `observed_at`은 window별 최신 관찰을 보존하므로 한 window의 늦은 update가 다른 window를 되돌리지 않습니다.
+- reset 이후 새 관찰이 없으면 0%나 다음 reset을 합성하지 않고 `갱신 대기`로 표시합니다.
+- JSONL projection과 기존 rate-limit watcher는 같은 merge/dedupe publication gate를 사용합니다.
+- Runtime v2 status sync는 마지막 관측값을 함께 replay하므로 초기 scan 뒤에 연결한 client도 사용량을 표시합니다.
 
 ## Resume 실패 분류
 
@@ -123,6 +138,7 @@ Codex JSONL은 다음 record를 status와 timeline에 사용합니다.
 - assistant/user message record
 - tool call/result record
 - event message
+- `event_msg/token_count/rate_limits`
 - permission/input 관련 record
 
 Codex CLI가 process 시작 뒤 JSONL을 늦게 만들 수 있으므로 session id, process start time, live process를 먼저 봅니다. 실행 중인 Codex process가 session id를 노출하지 않는 경우에도 cwd 최신 JSONL만으로 active tab을 전환하지 않습니다. 최신 JSONL 채택은 다음 경우로 제한합니다.
@@ -164,6 +180,12 @@ Generic status policy는 provider id 문자열로 Codex 동작을 추론하지 �
 | `src/lib/status-web-push-payload.ts` | status Web Push payload projection |
 | `src/lib/status-state-machine.ts` | 상태 전이 helper |
 | `src/lib/status-jsonl-scan.ts` | legacy JSONL tail scan과 assistant/action 추출 |
+| `src/lib/codex-rate-limits.ts` | JSONL rate-limit observation parsing과 window merge |
+| `src/lib/rate-limit-view.ts` | reset/freshness UI projection |
+| `src/hooks/use-git-refresh-generation.ts` | Stop sequence별 session generation 공유 |
+| `src/lib/git-refresh-generation.ts` | active session별 generation consume 정책 |
+| `src/lib/providers/codex/session-hooks.ts` | Native session hook와 HMAC capability 직렬화 |
+| `src/lib/hook-settings.ts` | Standalone Node hook bridge 생성 |
 | `src/lib/status-notification-policy.ts` | notification 판단 |
 | `src/lib/status-session-mapping.ts` | Codex session mapping |
 | `src/lib/status-metadata.ts` | status metadata projection |

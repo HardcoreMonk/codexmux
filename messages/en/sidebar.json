@@ -6,6 +6,8 @@
   "deleteWorkspaceConfirm": "Close workspace ''{name}''?",
   "notes": "Notes",
   "stats": "Usage stats",
+  "sessionExplorer": "Session Explorer",
+  "governance": "Project Governance",
   "collapseSidebar": "Collapse sidebar",
   "expandSidebar": "Expand sidebar",
   "newWorkspace": "New Workspace",
@@ -16,5 +18,16 @@
   "removeFromGroup": "Remove from group",
   "ungrouped": "Ungrouped",
   "defaultGroupName": "New Group",
-  "emptyGroup": "(empty)"
+  "emptyGroup": "(empty)",
+  "rateLimits": {
+    "awaitingUpdate": "Awaiting update",
+    "awaitingUpdateDescription": "Waiting for a new usage observation after reset.",
+    "usedReset": "{percentage}% used · resets in {remaining}",
+    "projected": "Projected {percentage}% by reset at the current pace",
+    "observedAt": "Last observed {time}",
+    "now": "now",
+    "daysHours": "{days}d {hours}h",
+    "hoursMinutes": "{hours}h {minutes}m",
+    "minutes": "{minutes}m"
+  }
 }

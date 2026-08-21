@@ -1,10 +1,27 @@
 import { createRuntimeReply, parseRuntimeMessage } from '@/lib/runtime/ipc';
 import { createTimelineWorkerService } from '@/lib/runtime/timeline/worker-service';
+import {
+  createTimelineCatalogService,
+  createUnavailableTimelineCatalogService,
+} from '@/lib/runtime/timeline/catalog-service';
+import { getSessionCatalogMode } from '@/lib/runtime/session-catalog-mode';
+
+const catalogMode = getSessionCatalogMode();
+const catalog = catalogMode === 'off'
+  ? undefined
+  : (() => {
+    try {
+      return createTimelineCatalogService({ mode: catalogMode });
+    } catch {
+      return createUnavailableTimelineCatalogService();
+    }
+  })();
 
 const service = createTimelineWorkerService({
   sendEvent: (event) => {
     process.send?.(event);
   },
+  ...(catalog ? { catalog } : {}),
 });
 
 process.on('message', async (raw) => {

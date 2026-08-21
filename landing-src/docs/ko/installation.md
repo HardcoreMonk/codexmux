@@ -1,18 +1,52 @@
 ---
 title: 설치
-description: Windows Electron package와 source 실행, package smoke, legacy tmux 설치 경계.
+description: npm/source로 Linux 단일 엔진을 설치하고 systemd user service로 운영하는 기준.
 eyebrow: 시작하기
 permalink: /ko/docs/installation/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-현재 primary 전환 경로는 Windows Runtime v2를 사용하는 Electron desktop package입니다. 이 저장소는 기존 `codexmux` product identity와 release evidence를 유지하고, Windows 설치형 제품 마감은 별도 [codexwinmux 저장소](https://github.com/HardcoreMonk/codexwinmux)에서 진행합니다.
+현재 primary 설치 경로는 Linux 단일 엔진입니다. npm package 또는 source checkout이 custom
+server, Runtime v2 다섯 worker와 Linux tmux adapter를 실행합니다.
 
-{% call callout('warning', '검증된 내부 Windows release') %}
-v0.4.21은 fresh Windows packaged upload, package/release gate, v0.4.20에서 v0.4.21로의 published update와 artifact privacy gate를 통과했습니다. 다만 public code signing이 없는 내부 release이므로 일반 공개 지원 package로 확대 해석하지 않습니다.
+{% call callout('note', '현재 package') %}
+`codexmux@0.4.23`은 public npm `latest`이며 격리 tarball install, CLI와 production health
+smoke를 통과했습니다.
 {% endcall %}
 
-## Windows package
+## Linux npm 실행
+
+요구사항:
+
+- Linux
+- Node.js 20.9 이상
+- tmux 3.0 이상
+- Git과 로그인된 Codex CLI
+
+```bash
+npx --yes codexmux@latest
+```
+
+Global command가 필요하면 `pnpm add -g codexmux` 후 `codexmux`를 실행합니다.
+
+## Linux source와 user service
+
+```bash
+git clone https://github.com/HardcoreMonk/codexmux.git
+cd codexmux
+corepack enable
+corepack pnpm install
+corepack pnpm build
+```
+
+장기 실행은 `~/.config/systemd/user/codexmux.service`에 source checkout과 `command -v node`의
+절대 경로를 지정합니다. `CODEXMUX_RUNTIME_V2=1`,
+`CODEXMUX_SESSION_CATALOG_MODE=default`, `HOST=localhost`, `PORT=8122`를 사용하고
+`systemctl --user enable --now codexmux.service`로 시작합니다. 전체 unit과 backup/restart
+절차는 [systemd 문서](https://github.com/HardcoreMonk/codexmux/blob/main/docs/SYSTEMD.md)를
+따릅니다.
+
+## 별도 Windows package
 
 현재 `electron-builder.yml`의 Windows target은 x64 NSIS installer와 zip입니다.
 
@@ -87,7 +121,7 @@ corepack pnpm smoke:windows:release-gate
 
 `package-gate`는 updater local-feed 단계를 포함합니다. Fresh runner의 `release/`에는 이전 installer가 없으므로 현재 version보다 낮은 실제 installer를 위 환경 변수로 전달해야 합니다. `CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_ALLOW_SYNTHETIC=1`은 개발 fallback일 뿐 release acceptance evidence로 인정하지 않습니다.
 
-`v0.4.21`은 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)의 조건대로 fresh Windows runner, 새 package와 실제 `v0.4.20` installer로 통과했습니다. 이후 stable release도 명령의 존재가 아니라 같은 실제 evidence를 남겨야 합니다.
+`v0.4.22`는 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)의 조건대로 fresh Windows runner, 새 package와 실제 `v0.4.21` installer로 통과했습니다. 이후 stable release도 명령의 존재가 아니라 같은 실제 evidence를 남겨야 합니다.
 
 ## Port와 최초 설정
 
@@ -114,21 +148,14 @@ Remove-Item -Recurse -Force (Join-Path $HOME ".codexmux")
 
 이 작업은 workspace, runtime DB, 인증, log, upload를 모두 삭제하지만 Codex CLI 소유의 `~/.codex/`는 삭제하지 않습니다. 세부 구조는 [데이터 디렉터리](/codexmux/ko/docs/data-directory/)를 참고하세요.
 
-## Legacy/reference 설치
+## 선택 client와 보존된 package
 
-`npx`, global npm/pnpm, macOS package, Linux systemd, tmux server는 기존 macOS/Linux line을 재현하는 reference입니다. Windows Runtime v2 primary 설치 방법이 아닙니다.
-
-```bash
-npx codexmux
-# 또는
-pnpm add -g codexmux
-codexmux
-```
-
-이 경로에는 tmux 3.0 이상이 필요합니다. Legacy macOS package 명령과 Linux service 운영은 repository의 [Electron 문서](https://github.com/HardcoreMonk/codexmux/blob/main/docs/ELECTRON.md)와 [systemd 문서](https://github.com/HardcoreMonk/codexmux/blob/main/docs/SYSTEMD.md)에 기록으로 남아 있습니다.
+Browser가 Linux engine의 primary 운영 UI입니다. Electron과 Android는 실행 중인 server에
+접속하는 선택 client입니다. Windows installer/updater와 macOS package는 별도 release
+surface이며 Linux engine acceptance를 대신하지 않습니다.
 
 ## 다음으로
 
-- **[빠른 시작](/codexmux/ko/docs/quickstart/)** — Windows source 실행과 setup
+- **[빠른 시작](/codexmux/ko/docs/quickstart/)** — Linux npm/source 실행과 setup
 - **[포트 & 환경 변수](/codexmux/ko/docs/ports-env-vars/)** — runtime/network 변수
-- **[문제 해결](/codexmux/ko/docs/troubleshooting/)** — package, Runtime v2, port 진단
+- **[문제 해결](/codexmux/ko/docs/troubleshooting/)** — Linux service, Runtime v2와 port 진단

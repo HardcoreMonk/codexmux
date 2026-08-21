@@ -27,6 +27,7 @@ import {
   writeAgentSessionId,
   writeAgentSummary,
 } from '@/lib/agent-tab-fields';
+import { buildCodexSessionHookConfigs } from '@/lib/providers/codex/session-hooks';
 
 const readCodexCommandOptions = async (): Promise<ICodexCommandOptions> => {
   const config = await getConfig();
@@ -35,6 +36,18 @@ const readCodexCommandOptions = async (): Promise<ICodexCommandOptions> => {
     sandbox: config.codexSandbox ?? undefined,
     approvalPolicy: config.codexApprovalPolicy ?? undefined,
     search: config.codexSearchEnabled ?? false,
+  };
+};
+
+const readLaunchOptions = async (options: { tabId?: string; sessionName?: string }): Promise<ICodexCommandOptions> => {
+  const commandOptions = await readCodexCommandOptions();
+  if (!options.tabId || !options.sessionName) return commandOptions;
+  return {
+    ...commandOptions,
+    hookConfigs: buildCodexSessionHookConfigs({
+      tabId: options.tabId,
+      sessionName: options.sessionName,
+    }),
   };
 };
 
@@ -54,8 +67,8 @@ export const codexProvider: IAgentProvider = {
   isAgentRunning: (panePid, childPids) => isCodexRunning(panePid, childPids),
   watchSessions: (panePid, onChange, options) => watchCodexSessions(panePid, onChange, options),
 
-  buildResumeCommand: async (sessionId) => buildCodexResumeCommand(sessionId, await readCodexCommandOptions()),
-  buildLaunchCommand: async () => buildCodexLaunchCommand(await readCodexCommandOptions()),
+  buildResumeCommand: async (sessionId, options) => buildCodexResumeCommand(sessionId, await readLaunchOptions(options)),
+  buildLaunchCommand: async (options) => buildCodexLaunchCommand(await readLaunchOptions(options)),
   resolveJsonlPath: async (sessionId, cwd) => {
     const meta = await findCodexSessionJsonl(sessionId, cwd);
     return meta?.jsonlPath ?? null;

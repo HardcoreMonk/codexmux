@@ -1,0 +1,124 @@
+import { spawn } from 'child_process';
+import fs from 'fs/promises';
+import http from 'http';
+import os from 'os';
+import path from 'path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { getStatusHookBridgeSource } from '@/lib/hook-settings';
+
+const temporaryDirectories: string[] = [];
+
+const makeHome = async (): Promise<string> => {
+  const homeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-hook-bridge-test-'));
+  temporaryDirectories.push(homeDir);
+  await fs.mkdir(path.join(homeDir, '.codexmux'), { recursive: true });
+  return homeDir;
+};
+
+const runBridge = async ({
+  homeDir,
+  input = '',
+}: {
+  homeDir: string;
+  input?: string;
+}): Promise<{ code: number | null; stderr: string }> => {
+  const scriptPath = path.join(homeDir, '.codexmux', 'status-hook.cjs');
+  await fs.writeFile(scriptPath, getStatusHookBridgeSource(), { mode: 0o700 });
+
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [scriptPath, 'stop', 'session-a', 'capability-a'], {
+      env: {
+        ...process.env,
+        HOME: homeDir,
+        USERPROFILE: homeDir,
+      },
+      stdio: ['pipe', 'ignore', 'pipe'],
+      windowsHide: true,
+    });
+    let stderr = '';
+    child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+    child.on('error', reject);
+    child.on('close', (code) => resolve({ code, stderr }));
+    child.stdin.end(input);
+  });
+};
+
+afterEach(async () => {
+  await Promise.all(temporaryDirectories.splice(0).map((directory) =>
+    fs.rm(directory, { recursive: true, force: true })));
+});
+
+describe('status hook bridge', () => {
+  it('posts only the bounded event envelope to the loopback hook endpoint', async () => {
+    const homeDir = await makeHome();
+    const requestPromise = new Promise<{
+      body: string;
+      token: string | undefined;
+      url: string | undefined;
+    }>((resolve) => {
+      const server = http.createServer((request, response) => {
+        const chunks: Buffer[] = [];
+        request.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+        request.on('end', () => {
+          response.end();
+          server.close();
+          resolve({
+            body: Buffer.concat(chunks).toString('utf-8'),
+            token: request.headers['x-cmux-token'] as string | undefined,
+            url: request.url,
+          });
+        });
+      });
+      server.listen(0, '127.0.0.1', async () => {
+        const address = server.address();
+        if (!address || typeof address === 'string') throw new Error('hook test port missing');
+        await fs.writeFile(path.join(homeDir, '.codexmux', 'port'), String(address.port));
+        await fs.writeFile(path.join(homeDir, '.codexmux', 'cli-token'), 'token-a');
+      });
+    });
+
+    const result = await (async () => {
+      while (true) {
+        try {
+          await fs.access(path.join(homeDir, '.codexmux', 'port'));
+          break;
+        } catch {
+          await new Promise((resolve) => setTimeout(resolve, 5));
+        }
+      }
+      return runBridge({ homeDir, input: 'x'.repeat(70 * 1024) });
+    })();
+    expect(result).toEqual({ code: 0, stderr: '' });
+
+    const request = await requestPromise;
+    expect(request).toEqual({
+      body: JSON.stringify({
+        event: 'stop',
+        session: 'session-a',
+        capability: 'capability-a',
+      }),
+      token: 'token-a',
+      url: '/api/status/hook',
+    });
+  });
+
+  it('exits successfully when the loopback server is unavailable', async () => {
+    const homeDir = await makeHome();
+    const probe = http.createServer();
+    await new Promise<void>((resolve) => probe.listen(0, '127.0.0.1', resolve));
+    const address = probe.address();
+    if (!address || typeof address === 'string') throw new Error('hook test port missing');
+    await new Promise<void>((resolve, reject) => probe.close((error) => error ? reject(error) : resolve()));
+    await fs.writeFile(path.join(homeDir, '.codexmux', 'port'), String(address.port));
+    await fs.writeFile(path.join(homeDir, '.codexmux', 'cli-token'), 'token-a');
+
+    await expect(runBridge({ homeDir })).resolves.toEqual({ code: 0, stderr: '' });
+  });
+
+  it('stays dependency-free and avoids shell transport', () => {
+    const source = getStatusHookBridgeSource();
+    expect(source).toContain('MAX_STDIN_BYTES = 64 * 1024');
+    expect(source).toContain("host: '127.0.0.1'");
+    expect(source).not.toMatch(/@\/|node_modules|\bcurl\b|\btmux\b|child_process/);
+  });
+});

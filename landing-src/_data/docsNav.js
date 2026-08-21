@@ -194,6 +194,14 @@ module.exports = [
     },
     items: [
       {
+        slug: 'session-operations',
+        locales: ['en', 'ko'],
+        label: {
+          en: 'Session Operations',
+          ko: '세션 운영'
+        }
+      },
+      {
         slug: 'session-status',
         label: {
           en: '세션 상태',
@@ -578,6 +586,39 @@ module.exports = [
           'pt-BR': '문제 해결 & FAQ',
           ru: '문제 해결 & FAQ',
           tr: '문제 해결 & FAQ'
+        }
+      }
+    ]
+  },
+  {
+    locales: ['en', 'ko'],
+    group: {
+      en: '운영 가이드',
+      ko: '운영 가이드'
+    },
+    items: [
+      {
+        slug: 'agent-quickstart',
+        locales: ['en', 'ko'],
+        label: {
+          en: '에이전트 빠른 시작',
+          ko: '에이전트 빠른 시작'
+        }
+      },
+      {
+        slug: 'linux-service',
+        locales: ['en', 'ko'],
+        label: {
+          en: 'Linux 서비스 운영',
+          ko: 'Linux 서비스 운영'
+        }
+      },
+      {
+        slug: 'project-governance',
+        locales: ['en', 'ko'],
+        label: {
+          en: 'Project Governance',
+          ko: 'Project Governance'
         }
       }
     ]

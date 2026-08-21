@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import type { ITerminalThemeColors } from "@/lib/terminal-themes";
 import { createMultilineUrlLinkProvider } from "@/lib/multiline-url-link-provider";
 import isElectron from "@/hooks/use-is-electron";
+import { copyTextToClipboard } from "@/lib/clipboard";
+import { getTerminalKeyDecision } from "@/lib/terminal-key-event";
 
 interface IUseTerminalOptions {
   theme?: ITerminalThemeColors;
@@ -187,8 +189,9 @@ const useTerminal = ({ theme, fontSize = DEFAULT_FONT_SIZE, onInput, onResize, o
         writeText: async (_selection, text) => {
           if (!text) return;
           try {
-            await navigator.clipboard.writeText(text);
-            toast.success(callbacksRef.current.t('copyPaneSuccess'), { id: COPY_TOAST_ID, duration: 1500 });
+            if (await copyTextToClipboard(text)) {
+              toast.success(callbacksRef.current.t('copyPaneSuccess'), { id: COPY_TOAST_ID, duration: 1500 });
+            }
           } catch {
             // 브라우저 권한/포커스 이슈는 조용히 무시
           }
@@ -211,17 +214,13 @@ const useTerminal = ({ theme, fontSize = DEFAULT_FONT_SIZE, onInput, onResize, o
       });
 
       terminal.attachCustomKeyEventHandler((event) => {
+        const decision = getTerminalKeyDecision(event);
+        if (decision.delegate) return true;
         // macOptionIsMeta가 이중 ESC를 보내는 키만 직접 매핑
-        if (event.altKey && event.type === 'keydown') {
-          const seq: Record<string, string> = {
-            ArrowLeft: '\x1bb',
-            ArrowRight: '\x1bf',
-            Backspace: '\x1b\x7f',
-          };
-          if (seq[event.code]) {
-            callbacksRef.current.onInput?.(seq[event.code]);
-            return false;
-          }
+        if (decision.input) {
+          if (decision.preventDefault) event.preventDefault();
+          callbacksRef.current.onInput?.(decision.input);
+          return false;
         }
         return callbacksRef.current.customKeyEventHandler?.(event) ?? true;
       });

@@ -4,6 +4,7 @@ import net from 'net';
 import os from 'os';
 import path from 'path';
 import { spawn, execFileSync } from 'child_process';
+import { createHmac } from 'crypto';
 import { WebSocket } from 'ws';
 import { extractCookieHeader } from './runtime-v2-phase2-smoke-lib.mjs';
 import {
@@ -19,6 +20,17 @@ const MARKER = 'CODEXMUX_PERMISSION_SMOKE_SELECTED';
 const rootDir = process.cwd();
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const createHookCapability = ({ token, tabId, sessionName }) => {
+  const encoded = Buffer.from(JSON.stringify({
+    v: 1,
+    tabId,
+    sessionName,
+    expiresAt: Date.now() + 60_000,
+  })).toString('base64url');
+  const signature = createHmac('sha256', token).update(encoded).digest('base64url');
+  return `${encoded}.${signature}`;
+};
 
 const fail = (code, message, details = {}) => {
   console.error(JSON.stringify({ ok: false, code, message, ...details }, null, 2));
@@ -258,12 +270,18 @@ const main = async () => {
     checks.push('prompt-started');
 
     status = await connectStatus(server.baseUrl, cookie);
+    const capability = createHookCapability({
+      token,
+      tabId: tab.id,
+      sessionName,
+    });
     await jsonRequest(server.baseUrl, '/api/status/hook', '', {
       token,
       method: 'POST',
       body: JSON.stringify({
         event: 'notification',
         session: sessionName,
+        capability,
         notificationType: 'permission_prompt',
       }),
     });

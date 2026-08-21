@@ -82,6 +82,7 @@ export interface IStatusUpdateMessage {
 export interface IRateLimitWindow {
   used_percentage: number;
   resets_at: number;
+  observed_at?: number;
 }
 
 export interface IRateLimitsData {
@@ -108,6 +109,7 @@ export interface ISessionHistoryUpdateMessage {
 export interface IStatusHookEventMessage {
   type: 'status:hook-event';
   tabId: string;
+  sessionName: string;
   event: ILastEvent;
 }
 

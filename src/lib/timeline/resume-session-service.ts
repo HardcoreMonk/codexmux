@@ -23,7 +23,7 @@ interface ICreateTimelineResumeSessionServiceOptions {
   send: (ws: WebSocket, message: TTimelineServerMessage) => boolean;
   checkTerminalProcess: (tmuxSession: string) => Promise<ICheckTerminalProcessResult>;
   sendKeys: (tmuxSession: string, keys: string) => Promise<void>;
-  parseSessionName: (sessionName: string) => { wsId?: string } | null;
+  parseSessionName: (sessionName: string) => { wsId?: string; tabId?: string } | null;
   updateTabAgentSessionId: (
     sessionName: string,
     provider: IAgentProvider,
@@ -195,7 +195,11 @@ export const createTimelineResumeSessionService = (options: ICreateTimelineResum
       }
 
       const parsed = options.parseSessionName(tmuxSession);
-      const resumeCmd = await conn.provider.buildResumeCommand(sessionId, { workspaceId: parsed?.wsId });
+      const resumeCmd = await conn.provider.buildResumeCommand(sessionId, {
+        workspaceId: parsed?.wsId,
+        tabId: parsed?.tabId,
+        sessionName: tmuxSession,
+      });
       await options.sendKeys(tmuxSession, resumeCmd);
 
       await options.updateTabAgentSessionId(conn.sessionName, conn.provider, sessionId);
