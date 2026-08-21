@@ -352,3 +352,9 @@
   implementation plan에서 append-only, 2-pass UI, semantic warning, durable compatibility와
   latest-first rollback 경계를 확정했습니다. 이 확장은 기존 ADR-032 경계 안의 operation이므로
   새 ADR을 만들지 않습니다.
+- 확장 운영 근거: 구현 commit `f46410b4`를 Linux user service에 배포했습니다. 재시작 전
+  `runtime-v2-storage-20260821T123122Z`에 DB/WAL/SHM과 workspace state 5개를 `0700/0600`으로
+  backup했고, PID `1104868`에서 `1149564`로 재기동했습니다. `0.0.0.0:8122`, Governance
+  `writeState=ready`, live Phase 6 12-check와 production scaffold 13-check, 한국어/영어 browser
+  4-check를 통과했습니다. 등록 Managed Project가 없어 실제 project confirm은 수행하지 않았고
+  [Issue #20](https://github.com/HardcoreMonk/codexmux/issues/20)에 근거를 남깁니다.

@@ -20,7 +20,7 @@ transaction, recovery와 rollback을 재사용합니다.
 
 - Automatic/full-file adoption, semantic merge/section inference
 - Delete/move/full sync, lifecycle draft와 retention prune
-- 실제 Managed Project confirm, live deploy/restart, commit/push와 issue 변경
+- 실제 등록 Managed Project confirm과 장시간 사용 관찰
 
 ## Verification
 
@@ -30,39 +30,41 @@ transaction, recovery와 rollback을 재사용합니다.
 | Typecheck | 통과 |
 | Lint | 0 error, 기존 warning 6개 |
 | Project design check | 통과 |
-| Production build | `/tmp/codexmux-adoption-verify.HoK2GV` mirror에서 통과 |
-| Governed scaffold smoke | 13 checks 통과 |
-| Browser smoke | ko/en gate-off + selective adoption 4 checks 통과 |
+| Production build | live source checkout에서 commit `f46410b4`로 통과 |
+| Governed scaffold smoke | post-restart production mode 13 checks 통과 |
+| Browser smoke | post-restart production mode ko/en gate-off + selective adoption 4 checks 통과 |
 | Linux session/governance smoke | development-mode mirror 10 checks 통과 |
 | Runtime storage backup | private mode와 sanitized result 통과 |
-| Runtime v2 Phase 6 | live 8122 read-only 12 checks 통과 |
+| Runtime v2 Phase 6 | post-restart live 8122에서 12 checks 통과 |
 | Diff hygiene | `git diff --check` 통과 |
 
-Production build는 live checkout artifact 교체를 피하기 위해 `.git/.next/dist/_site/.ua`를 제외한
-temporary mirror에서 수행했습니다. Next 16 Turbopack의 project-root symlink 제한 때문에
-`node_modules`는 source link가 아니라 hard-link copy로 재사용했습니다.
+승인 전 production build는 live artifact 교체를 피하기 위해 temporary mirror에서 수행했습니다.
+운영 승인 후 source checkout에서 다시 build하고 user service를 재시작해 같은 acceptance를
+production mode로 반복했습니다.
 
 ## Audit
 
-- Live service: `active/running`, PID `1104868`, start timestamp `2026-08-21 18:06:49 KST`
-- Live build: `codexmux 0.4.23`, commit `9d32d049`
-- `CODEXMUX_GOVERNANCE_WRITES=1` 기존 운영 gate는 유지
-- Adoption source build/deploy/restart: 수행하지 않음
-- Commit/push/issue 변경: 수행하지 않음
+- Pre-deploy service: PID `1104868`, commit `9d32d049`
+- Backup: `runtime-v2-storage-20260821T123122Z`, 5 files, directory `0700`, file `0600`
+- Live service: `active/running`, PID `1149564`, start timestamp `2026-08-21 21:31:52 KST`
+- Listener: `0.0.0.0:8122`
+- Live build: `codexmux 0.4.23`, commit `f46410b4`, build time `2026-08-21T12:31:41.706Z`
+- Runtime/Governance: core workers와 Session Catalog ready, Governance `writeState=ready`
+- `CODEXMUX_GOVERNANCE_WRITES=1` 기존 운영 gate 유지
+- Branch `codex/governed-unmarked-adoption`에 구현 commit `f46410b4` push
+- [Issue #20](https://github.com/HardcoreMonk/codexmux/issues/20)에서 배포 acceptance와 증적 추적
 - 실제 등록 project confirm: 수행하지 않음
 - `.ua/` generated cache: 보존, 변경 범위에서 제외
 
 ## Blockers
 
-없습니다. Source release gate는 통과했습니다.
+없습니다. Source release와 live operate gate를 통과했습니다.
 
 ## Warnings
 
 - Production mode로 Linux session/governance smoke를 실행하면 worker PID recycle helper가 production
   child topology를 찾지 못합니다. 이 smoke의 canonical development-mode 실행은 10 checks를
   통과했으며 production build/API/browser smoke는 별도로 통과했습니다.
-- Mirror는 `.git`을 제외하므로 build-info commit은 `no-commit`입니다. Live build-info에는 영향이
-  없습니다.
 - Lint warning 6개는 기존 internal navigation rule이며 이번 diff에서 추가되지 않았습니다.
 
 ## Residual Risk
@@ -70,22 +72,19 @@ temporary mirror에서 수행했습니다. Next 16 Turbopack의 project-root sym
 - Compact block과 기존 본문의 의미 충돌 판단은 operator 책임입니다. 자동 semantic inference나
   force apply는 제공하지 않습니다.
 - Private adoption preimage는 자동 prune하지 않아 local disk 사용량이 누적될 수 있습니다.
-- 실제 Managed Project와 장시간 live 사용 근거는 deployment 이후 별도 운영 단계가 필요합니다.
+- 등록 Managed Project가 0개라 실제 artifact preview/confirm/rollback 근거는 아직 없습니다.
+- 장시간 live 사용과 reconnect 관찰은 후속 운영 단계가 필요합니다.
 
 ## Current Lifecycle Stage
 
-`release` — source 구현, code review와 격리 release gate는 완료했지만 live deployment는 보류했습니다.
-`operate`에는 진입하지 않았습니다.
+`operate` — commit `f46410b4` live 배포, private backup, service restart와 post-restart smoke를
+완료했습니다.
 
 ## Next Action
 
-운영 반영이 필요하면 별도 명시 승인 후 다음을 한 묶음으로 수행합니다.
-
-1. Commit/push/issue 범위를 다시 확인합니다.
-2. Source checkout build 또는 승인된 deploy workflow로 live artifact를 갱신합니다.
-3. `systemctl --user restart codexmux` 후 listener, auth, Governance `writeState=ready`를 확인합니다.
-4. Scaffold/adoption browser와 Phase 6 gate를 post-restart로 반복합니다.
-5. 실제 대상 project가 있을 때만 artifact별 preview/confirm/rollback drill을 별도 승인받습니다.
+실제 대상 project가 등록되면 별도 write 승인 아래 artifact별 preview/confirm/rollback drill을
+수행하고 semantic warning과 장시간 reconnect를 관찰합니다. 장애 시 governance write gate를
+먼저 끄고 직전 build와 `runtime-v2-storage-20260821T123122Z` backup을 rollback 기준으로 사용합니다.
 
 ## Follow-Up Tasks
 

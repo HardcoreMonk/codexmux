@@ -2,7 +2,7 @@
 
 - 날짜: 2026-08-21
 - 상태: Approved
-- Lifecycle stage: `release`
+- Lifecycle stage: `operate`
 - 선행 결정: ADR-032, Governed Project Scaffold Phase 3
 
 ## 문제
@@ -362,9 +362,12 @@ ADR-032의 기존 `unmarked file은 conflict` 구현 범위를 `명시적 append
 - ADR: 새 ADR 없음. ADR-032의 explicit adoption 확장 근거를 release에서 추가합니다.
 - Execution environment: Linux single host, Node `>=20.9.0`, Next.js Pages Router/custom server,
   Runtime v2 Governance Worker, POSIX filesystem와 systemd user service입니다.
-- Validation isolation: 현재 live service가 같은 checkout의 `.next/dist`를 사용하므로 production
-  build와 build-backed browser smoke는 source/node_modules를 공유하는 temporary mirror에서 실행해
-  승인 없는 live artifact 교체를 방지합니다.
+- Validation isolation: live service가 같은 checkout의 `.next/dist`를 사용하므로 운영 승인 전
+  production build와 build-backed browser smoke는 source/node_modules를 공유하는 temporary
+  mirror에서 실행해 live artifact 교체를 방지합니다. 승인 후 source checkout을 build합니다.
 - Release: TDD, full unit/type/lint/build, adoption/scaffold/Linux/browser/Phase 6/storage backup gate와
   operate handoff가 필요합니다. Commit/push/issue/live deploy/restart는 별도 명시 요청 전 금지합니다.
+- Operate evidence: 별도 명시 승인 후 commit `f46410b4`를 `0.0.0.0:8122`에 배포하고 private
+  Runtime v2 backup, service restart, live Phase 6 12-check와 production scaffold/browser smoke를
+  통과했습니다. [Issue #20](https://github.com/HardcoreMonk/codexmux/issues/20)에 추적합니다.
 - Residual risk: semantic conflict는 human review에 의존하고 action backup은 무기한 누적됩니다.
