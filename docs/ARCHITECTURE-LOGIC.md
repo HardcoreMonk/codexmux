@@ -235,16 +235,22 @@ Storage Worker는 Approved Project Root와 Managed Project의 canonical path를 
 - audit은 후보의 상대 path, line, category만 반환하고 matching secret body는 반환하지 않습니다.
 - `governance.preview-scaffold`는 browser가 지정한 artifact ID를 versioned catalog로 render하고
   root containment, mount/symlink, marker, file/action limit을 검증한 뒤 10분 opaque token과
-  bounded diff를 반환합니다. Browser는 path와 output을 지정하지 않습니다.
+  bounded diff를 반환합니다. Unmarked UTF-8 regular file은 첫 pass에서 confirm 불가
+  `adoption-available`로 반환합니다. Browser가 artifact별 `adoptArtifacts`를 선택해 다시
+  preview하면 별도 compact marker variant를 EOF에 append한 `adopt` diff를 만들며 unchecked
+  discovery artifact는 다음 request에서 제외합니다. Browser는 path와 output을 지정하지 않습니다.
 - `governance.confirm-scaffold`는 project title exact confirmation, token/digest와 target fingerprint를
-  다시 검증합니다. 신규 file은 same-directory hard-link no-replace, marker update는 atomic replace로
-  publish하고 모든 file 완료 뒤에만 durable `committed` 상태를 기록합니다.
+  다시 검증합니다. 신규 file은 same-directory hard-link no-replace, marker update와 adoption은
+  atomic replace로 publish하고 모든 file 완료 뒤에만 durable `committed` 상태를 기록합니다.
+  Adoption은 existing bytes의 strict UTF-8 round-trip, NUL/marker-like comment 부재와 exact prefix를
+  검증하고 durable manifest v1에서는 existing-file `marker-update`로 정규화합니다.
 - Preimage, stage progress와 created directory는 private action manifest에 기록합니다. Commit marker
   전 worker가 중단되면 gate 상태와 무관하게 startup에서 rollback하며 외부 변경은 덮어쓰지 않고
   `recovery-required`로 남깁니다. Public action history에는 canonical/backup path, diff, rendered
   content와 preimage가 없습니다.
 - Health의 `writeState`는 `disabled|ready|recovering|degraded`입니다. Summary `readOnly`는
-  `writeState === ready`일 때만 false입니다. Delete/move/full sync와 unmarked adoption은 없습니다.
+  `writeState === ready`일 때만 false입니다. Automatic/full-file adoption, semantic merge,
+  delete/move/full sync는 없습니다.
 
 ## 상태 로직
 

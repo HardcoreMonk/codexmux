@@ -53,7 +53,7 @@ const requestJson = async (baseUrl, pathname, { token, cookie, ...init } = {}) =
   return { payload, response };
 };
 
-const startServer = async (homeDir, port) => {
+const startServer = async (homeDir, port, writesEnabled = false) => {
   const env = {
     ...process.env,
     HOME: homeDir,
@@ -62,6 +62,7 @@ const startServer = async (homeDir, port) => {
     PORT: String(port),
     NEXT_TELEMETRY_DISABLED: '1',
     CODEXMUX_RUNTIME_V2: '1',
+    ...(writesEnabled ? { CODEXMUX_GOVERNANCE_WRITES: '1' } : {}),
     CODEXMUX_SESSION_CATALOG_MODE: 'default',
     CODEXMUX_RUNTIME_DB: path.join(homeDir, 'runtime-v2', 'state.db'),
   };
@@ -104,6 +105,8 @@ const prepareFixture = async (homeDir) => {
     fs.mkdir(sessionsRoot, { recursive: true }),
   ]);
   await fs.writeFile(path.join(projectPath, 'AGENTS.md'), '# Guidance\n');
+  await fs.mkdir(path.join(projectPath, 'docs', 'agents'), { recursive: true });
+  await fs.writeFile(path.join(projectPath, 'docs', 'agents', 'issue-tracker.md'), '# Existing issue rules\n');
   await fs.writeFile(path.join(projectPath, 'docs', 'superpowers', 'specs', 'feature.md'), '# Feature\n');
   await fs.writeFile(path.join(sessionsRoot, 'browser-smoke-session.jsonl'), [
     JSON.stringify({
@@ -249,12 +252,96 @@ const runLocale = async (browser, locale) => {
   }
 };
 
+const runAdoptionLocale = async (browser, locale) => {
+  const homeDir = await fs.mkdtemp(path.join(os.tmpdir(), `codexmux-session-governance-browser-${locale}-adoption-`));
+  const fixture = await prepareFixture(homeDir);
+  const server = await startServer(homeDir, await getFreePort(), true);
+  try {
+    const cookie = await configureServer(server, locale, fixture);
+    const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    await addCookie(context, server.baseUrl, cookie);
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('console', (message) => {
+      if (message.type() === 'error') errors.push(message.text());
+    });
+    const labels = locale === 'ko'
+      ? {
+          summary: '프로젝트 요약', preview: '변경 미리보기', available: '기존 파일 관리 등록 가능',
+          agents: 'AGENTS.md 등록', issue: 'docs/agents/issue-tracker.md 등록',
+          repreview: '선택 반영 후 다시 미리보기',
+          warning: '기존 본문은 유지하고 관리 블록만 추가합니다. 기존 지침과 충돌 여부를 직접 확인하세요.',
+          confirm: '계속하려면 프로젝트 이름 “Demo”을 정확히 입력하세요.', apply: 'Scaffold 적용',
+          committed: 'Scaffold 작업을 완료했습니다.',
+        }
+      : {
+          summary: 'Project summary', preview: 'Preview changes', available: 'Existing file available for adoption',
+          agents: 'Adopt AGENTS.md', issue: 'Adopt docs/agents/issue-tracker.md',
+          repreview: 'Re-preview selected adoption',
+          warning: 'Keep the existing body and append only the managed block. Review it for conflicts with existing guidance.',
+          confirm: 'Enter the exact project title “Demo” to continue.', apply: 'Apply scaffold',
+          committed: 'Scaffold action completed.',
+        };
+
+    await page.goto(`${server.baseUrl}/governance`, { waitUntil: 'networkidle', timeout: timeoutMs });
+    await page.getByLabel(labels.summary, { exact: true }).fill('Browser adoption smoke');
+    await page.getByRole('button', { name: labels.preview, exact: true }).click();
+    await page.getByText(labels.available, { exact: false }).first().waitFor({ timeout: timeoutMs });
+    if (await page.getByText(labels.confirm, { exact: true }).count() !== 0) {
+      throw new Error(`${locale} first-pass adoption exposed exact-title confirmation`);
+    }
+    const sheet = page.locator('[data-slot="sheet-content"]');
+    const agents = sheet.locator('label').filter({ hasText: labels.agents }).locator('[role="checkbox"]');
+    const issue = sheet.locator('label').filter({ hasText: labels.issue }).locator('[role="checkbox"]');
+    if (await agents.count() !== 1 || await issue.count() !== 1) {
+      throw new Error(`${locale} adoption controls missing: ${(await sheet.innerText()).slice(0, 2000)}`);
+    }
+    if (await agents.getAttribute('aria-checked') !== 'false'
+      || await issue.getAttribute('aria-checked') !== 'false') {
+      throw new Error(`${locale} adoption selection was not unchecked by default`);
+    }
+    await agents.click();
+    await page.getByRole('button', { name: labels.repreview, exact: true }).click();
+    await page.getByText(labels.warning, { exact: true }).waitFor({ timeout: timeoutMs });
+    await page.getByLabel(labels.confirm, { exact: true }).fill('Demo');
+    await page.getByRole('button', { name: labels.apply, exact: true }).click();
+    await page.getByText(labels.committed, { exact: true }).waitFor({ timeout: timeoutMs });
+
+    const agentsBytes = await fs.readFile(path.join(fixture.projectPath, 'AGENTS.md'));
+    const agentsPrefix = Buffer.from('# Guidance\n');
+    if (!agentsBytes.subarray(0, agentsPrefix.length).equals(agentsPrefix)
+      || !agentsBytes.includes(Buffer.from('BEGIN CODEXMUX:project-agents-adopted:v1'))) {
+      throw new Error(`${locale} browser adoption did not preserve the AGENTS.md prefix`);
+    }
+    if (await fs.readFile(path.join(fixture.projectPath, 'docs', 'agents', 'issue-tracker.md'), 'utf8')
+      !== '# Existing issue rules\n') {
+      throw new Error(`${locale} unchecked browser adoption target changed`);
+    }
+    const hydrationErrors = errors.filter((message) => /hydration|did not match/i.test(message));
+    if (hydrationErrors.length > 0) {
+      throw new Error(`${locale} adoption hydration error: ${hydrationErrors.join(' | ')}`);
+    }
+    await context.close();
+    return `${locale}-governed-selective-adoption`;
+  } finally {
+    await server.stop();
+    await fs.rm(homeDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  }
+};
+
 const main = async () => {
   const executablePath = process.env.CODEXMUX_PLAYWRIGHT_EXECUTABLE_PATH;
+  const scope = process.env.CODEXMUX_SESSION_GOVERNANCE_BROWSER_SCOPE || 'all';
   const browser = await chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}) });
   try {
     const checks = [];
-    for (const locale of ['ko', 'en']) checks.push(await runLocale(browser, locale));
+    if (scope !== 'adoption') {
+      for (const locale of ['ko', 'en']) checks.push(await runLocale(browser, locale));
+    }
+    if (scope !== 'gate') {
+      for (const locale of ['ko', 'en']) checks.push(await runAdoptionLocale(browser, locale));
+    }
     console.log(JSON.stringify({ ok: true, checks }, null, 2));
   } finally {
     await browser.close();

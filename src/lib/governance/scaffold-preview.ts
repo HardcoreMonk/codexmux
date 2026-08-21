@@ -11,10 +11,11 @@ import type {
 } from '@/lib/governance/scaffold-contracts';
 import {
   listScaffoldTemplates,
+  renderScaffoldAdoptionTemplateContent,
   renderScaffoldTemplate,
   renderScaffoldTemplateContent,
 } from '@/lib/governance/scaffold-template-catalog';
-import { planMarkerOwnedUpdate } from '@/lib/governance/scaffold-marker';
+import { planMarkerOwnedUpdate, planUnmarkedArtifactAdoption } from '@/lib/governance/scaffold-marker';
 import { createScaffoldTokenStore } from '@/lib/governance/scaffold-token';
 
 const MAX_FILE_BYTES = 256 * 1024;
@@ -28,7 +29,7 @@ export interface IConfirmedScaffoldArtifact {
   templateId: string;
   fromVersion: number | null;
   toVersion: number;
-  state: 'create' | 'marker-update';
+  state: 'create' | 'marker-update' | 'adopt';
   output: string;
   baseFingerprint: string;
   outputFingerprint: string;
@@ -46,6 +47,7 @@ export interface IConfirmedScaffoldPreview {
 interface IInternalPreview extends IConfirmedScaffoldPreview {
   input: TScaffoldTemplateInput;
   selectedArtifacts: TScaffoldArtifactId[];
+  adoptArtifacts: TScaffoldArtifactId[];
   publicArtifacts: IScaffoldArtifactPreview[];
   totalBytes: number;
 }
@@ -86,15 +88,22 @@ export const createScaffoldPreviewService = (options: ICreateScaffoldPreviewServ
     project,
     root,
     artifacts,
+    adoptArtifacts = [],
     input,
   }: {
     project: IManagedProjectSnapshot;
     root: IApprovedProjectRootSnapshot;
     artifacts: TScaffoldArtifactId[];
+    adoptArtifacts?: TScaffoldArtifactId[];
     input: TScaffoldTemplateInput;
   }): Promise<IInternalPreview> => {
     assertProjectBinding(project, root);
     const selected = new Set(artifacts);
+    const adoptionSelection = new Set(adoptArtifacts);
+    if (selected.size !== artifacts.length || adoptionSelection.size !== adoptArtifacts.length
+      || adoptArtifacts.some((id) => !selected.has(id))) {
+      throw scaffoldError('scaffold-adoption-selection-invalid', 'Adoption selection must be unique selected artifacts.');
+    }
     if (selected.has('design') && !input.uiProject) {
       throw scaffoldError('scaffold-design-requires-ui-project', 'DESIGN.md requires an explicitly declared UI project.');
     }
@@ -114,13 +123,26 @@ export const createScaffoldPreviewService = (options: ICreateScaffoldPreviewServ
         relativePath: definition.path,
       }, { ...(readMountInfo ? { readMountInfo } : {}) });
       const templateContent = renderScaffoldTemplateContent(definition.id, input);
+      const adoption = definition.adoption;
+      const adoptionSelected = adoptionSelection.has(definition.id);
+      const adoptionContent = adoption
+        ? renderScaffoldAdoptionTemplateContent(definition.id, input)
+        : null;
       let before = '';
       let output = renderScaffoldTemplate(definition.id, input);
       let baseFingerprint = 'absent';
       let state: IScaffoldArtifactPreview['state'] = 'create';
       let fromVersion: number | null = null;
       let errorCode: string | null = null;
-      if (target.exists) {
+      let templateId = definition.templateId;
+      let toVersion = definition.version;
+      if (!target.exists && adoptionSelected) {
+        templateId = adoption?.templateId ?? definition.templateId;
+        toVersion = adoption?.version ?? definition.version;
+        state = 'conflict';
+        errorCode = 'scaffold-adoption-target-missing';
+        output = '';
+      } else if (target.exists) {
         const bytes = await fs.readFile(target.targetPath);
         if (bytes.length > MAX_FILE_BYTES) {
           state = 'conflict';
@@ -132,44 +154,118 @@ export const createScaffoldPreviewService = (options: ICreateScaffoldPreviewServ
           output = '';
         } else {
           before = bytes.toString('utf8');
-          baseFingerprint = fingerprint(before);
-          const marker = planMarkerOwnedUpdate({
-            existing: before,
-            templateId: definition.templateId,
-            targetVersion: definition.version,
-            supportedVersions: [definition.version],
-            content: templateContent,
-          });
-          state = marker.state;
-          output = marker.output ?? '';
-          fromVersion = marker.fromVersion;
-          errorCode = marker.errorCode;
+          if (!Buffer.from(before, 'utf8').equals(bytes)) {
+            state = 'conflict';
+            errorCode = 'scaffold-adoption-invalid-utf8';
+            output = '';
+          } else {
+            baseFingerprint = fingerprint(before);
+            const fullMarker = planMarkerOwnedUpdate({
+              existing: before,
+              templateId: definition.templateId,
+              targetVersion: definition.version,
+              supportedVersions: [definition.version],
+              content: templateContent,
+            });
+            const adoptionMarker = adoption && adoptionContent
+              ? planMarkerOwnedUpdate({
+                existing: before,
+                templateId: adoption.templateId,
+                targetVersion: adoption.version,
+                supportedVersions: [adoption.version],
+                content: adoptionContent,
+              })
+              : null;
+            let ownedMarker: {
+              plan: typeof fullMarker;
+              templateId: string;
+              version: number;
+            } | null = null;
+            if (fullMarker.state !== 'conflict') {
+              ownedMarker = {
+                plan: fullMarker,
+                templateId: definition.templateId,
+                version: definition.version,
+              };
+            } else if (adoption && adoptionMarker && adoptionMarker.state !== 'conflict') {
+              ownedMarker = {
+                plan: adoptionMarker,
+                templateId: adoption.templateId,
+                version: adoption.version,
+              };
+            }
+
+            if (ownedMarker) {
+              templateId = ownedMarker.templateId;
+              toVersion = ownedMarker.version;
+              if (adoptionSelected) {
+                state = 'conflict';
+                errorCode = 'scaffold-adoption-target-owned';
+                output = '';
+              } else {
+                state = ownedMarker.plan.state;
+                output = ownedMarker.plan.output ?? '';
+                fromVersion = ownedMarker.plan.fromVersion;
+                errorCode = ownedMarker.plan.errorCode;
+              }
+            } else if (fullMarker.errorCode === 'unmarked-file-conflict'
+              && adoptionMarker?.errorCode === 'unmarked-file-conflict'
+              && adoption && adoptionContent) {
+              templateId = adoption.templateId;
+              toVersion = adoption.version;
+              const adoptionPlan = planUnmarkedArtifactAdoption({
+                existing: bytes,
+                templateId: adoption.templateId,
+                targetVersion: adoption.version,
+                content: adoptionContent,
+              });
+              if (adoptionPlan.state === 'conflict') {
+                state = 'conflict';
+                errorCode = adoptionPlan.errorCode;
+                output = '';
+              } else if (adoptionSelected) {
+                state = 'adopt';
+                output = adoptionPlan.output ?? '';
+                errorCode = null;
+              } else {
+                state = 'adoption-available';
+                output = '';
+                errorCode = null;
+              }
+            } else {
+              state = 'conflict';
+              errorCode = fullMarker.errorCode;
+              output = '';
+            }
+          }
         }
       }
       const outputBytes = Buffer.byteLength(output);
       if (outputBytes > MAX_FILE_BYTES) {
         throw scaffoldError('scaffold-file-too-large', `Scaffold artifact exceeds ${MAX_FILE_BYTES} bytes.`);
       }
-      const diff = state === 'create' || state === 'marker-update' ? boundedDiff(definition.path, before, output) : '';
+      const diff = state === 'create' || state === 'marker-update' || state === 'adopt'
+        ? boundedDiff(definition.path, before, output)
+        : '';
       publicArtifacts.push({
         id: definition.id,
         path: definition.path,
-        templateId: definition.templateId,
+        templateId,
         fromVersion,
-        toVersion: definition.version,
+        toVersion,
         state,
         diff,
         bytes: outputBytes,
         errorCode,
       });
-      if (state === 'create' || state === 'marker-update') {
+      if (state === 'create' || state === 'marker-update' || state === 'adopt') {
         confirmedArtifacts.push({
           id: definition.id,
           path: definition.path,
           absolutePath: target.targetPath,
-          templateId: definition.templateId,
+          templateId,
           fromVersion,
-          toVersion: definition.version,
+          toVersion,
           state,
           output,
           baseFingerprint,
@@ -187,6 +283,7 @@ export const createScaffoldPreviewService = (options: ICreateScaffoldPreviewServ
       projectTitle: project.title,
       input,
       selectedArtifacts: artifacts,
+      adoptArtifacts,
       artifacts: publicArtifacts.map(({ diff: _diff, ...artifact }) => ({
         ...artifact,
         baseFingerprint: confirmedArtifacts.find((candidate) => candidate.id === artifact.id)?.baseFingerprint ?? null,
@@ -200,6 +297,7 @@ export const createScaffoldPreviewService = (options: ICreateScaffoldPreviewServ
       digest,
       input,
       selectedArtifacts: [...artifacts],
+      adoptArtifacts: [...adoptArtifacts],
       artifacts: confirmedArtifacts,
       publicArtifacts,
       totalBytes,
@@ -211,6 +309,7 @@ export const createScaffoldPreviewService = (options: ICreateScaffoldPreviewServ
       project: IManagedProjectSnapshot;
       root: IApprovedProjectRootSnapshot;
       artifacts: TScaffoldArtifactId[];
+      adoptArtifacts?: TScaffoldArtifactId[];
       input: TScaffoldTemplateInput;
     }): Promise<IScaffoldPreview> {
       const built = await buildPreview(input);
@@ -250,6 +349,7 @@ export const createScaffoldPreviewService = (options: ICreateScaffoldPreviewServ
         project,
         root,
         artifacts: stored.selectedArtifacts,
+        adoptArtifacts: stored.adoptArtifacts,
         input: stored.input,
       });
       if (current.digest !== stored.digest) {
@@ -257,6 +357,12 @@ export const createScaffoldPreviewService = (options: ICreateScaffoldPreviewServ
       }
       if (current.publicArtifacts.some((artifact) => artifact.state === 'conflict')) {
         throw scaffoldError('scaffold-preview-conflict', 'Scaffold preview contains conflicts.');
+      }
+      if (current.publicArtifacts.some((artifact) => artifact.state === 'adoption-available')) {
+        throw scaffoldError(
+          'scaffold-adoption-selection-required',
+          'Scaffold preview requires an explicit adoption selection and a new preview.',
+        );
       }
       if (current.artifacts.length === 0) {
         throw scaffoldError('scaffold-no-changes', 'Scaffold preview does not contain any changes.');

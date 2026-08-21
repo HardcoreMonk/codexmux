@@ -252,7 +252,7 @@ describe('governance API', () => {
     }), scaffoldPreview.response);
     expect(scaffoldPreview.statusCode).toBe(200);
     expect(mocks.supervisor.previewGovernanceScaffold).toHaveBeenCalledWith(expect.objectContaining({
-      projectId: 'project-1', artifacts: ['context'],
+      projectId: 'project-1', artifacts: ['context'], adoptArtifacts: [],
     }));
 
     const scaffoldConfirm = createResponse();
@@ -288,6 +288,19 @@ describe('governance API', () => {
       method: 'POST', query: { projectId: 'project-1' },
       body: {
         artifacts: ['context'], path: '../../outside',
+        input: { title: 'Demo', summary: 'Summary', uiProject: false },
+      },
+    }), response.response);
+    expect(response.statusCode).toBe(400);
+    expect(mocks.supervisor.previewGovernanceScaffold).not.toHaveBeenCalled();
+  });
+
+  it('rejects an adoption selection outside the selected artifacts', async () => {
+    const response = createResponse();
+    await scaffoldPreviewHandler(createRequest({
+      method: 'POST', query: { projectId: 'project-1' },
+      body: {
+        artifacts: ['agents'], adoptArtifacts: ['context'],
         input: { title: 'Demo', summary: 'Summary', uiProject: false },
       },
     }), response.response);

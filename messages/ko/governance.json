@@ -83,6 +83,12 @@
     "history": "작업 이력",
     "noActions": "기록된 scaffold 작업이 없습니다.",
     "artifactCount": "문서 {count}개",
+    "adoptionSelect": "{path} 등록",
+    "adoptionAvailableDescription": "기존 본문을 바꾸지 않고 파일 끝에 codexmux 관리 블록을 추가할 수 있습니다.",
+    "adoptionRepreview": "선택 반영 후 다시 미리보기",
+    "adoptionSelectionHint": "등록할 파일을 개별 선택하세요. 선택하지 않은 파일은 다음 미리보기에서 제외됩니다.",
+    "adoptionSemanticWarning": "기존 본문은 유지하고 관리 블록만 추가합니다. 기존 지침과 충돌 여부를 직접 확인하세요.",
+    "adoptionSummary": "등록 대상 {count}개: {paths}",
     "recoveryRequired": "외부 변경과 충돌한 작업이 있습니다. 현재 파일, stage와 preimage를 수동으로 검토하세요.",
     "writeStateDescription": {
       "disabled": "CODEXMUX_GOVERNANCE_WRITES가 비활성 상태입니다. 읽기 모델과 이력은 계속 사용할 수 있습니다.",
@@ -93,6 +99,8 @@
     "artifactState": {
       "create": "생성",
       "marker-update": "marker 갱신",
+      "adoption-available": "기존 파일 관리 등록 가능",
+      "adopt": "기존 파일 관리 등록",
       "unchanged": "변경 없음",
       "conflict": "충돌",
       "skipped": "제외"

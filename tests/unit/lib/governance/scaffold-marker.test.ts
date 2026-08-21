@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { planMarkerOwnedUpdate, renderMarkerOwnedBlock } from '@/lib/governance/scaffold-marker';
+import {
+  planMarkerOwnedUpdate,
+  planUnmarkedArtifactAdoption,
+  renderMarkerOwnedBlock,
+} from '@/lib/governance/scaffold-marker';
 
 describe('governance scaffold marker', () => {
   it('preserves bytes outside the owned block', () => {
@@ -84,5 +88,53 @@ describe('governance scaffold marker', () => {
     });
     expect(result.output).toContain('line one\r\nline two');
     expect(result.output?.replace(/\r\n/g, '')).not.toContain('\n');
+  });
+
+  it.each([
+    { existing: Buffer.from(''), separator: '' },
+    { existing: Buffer.from('# Existing'), separator: '\n\n' },
+    { existing: Buffer.from('# Existing\n'), separator: '\n' },
+    { existing: Buffer.from('# Existing\n\n'), separator: '' },
+    { existing: Buffer.from('# Existing\r\n'), separator: '\r\n' },
+    { existing: Buffer.from('\ufeff# Existing\n'), separator: '\n' },
+  ])('appends an adoption block without changing the existing byte prefix', ({ existing, separator }) => {
+    const result = planUnmarkedArtifactAdoption({
+      existing,
+      templateId: 'project-context-adopted',
+      targetVersion: 1,
+      content: '## Managed context',
+    });
+
+    expect(result.state).toBe('adopt');
+    expect(result.output).not.toBeNull();
+    const output = Buffer.from(result.output ?? '', 'utf8');
+    expect(output.subarray(0, existing.length)).toEqual(existing);
+    expect(output.subarray(existing.length).toString('utf8')).toBe(
+      `${separator}${renderMarkerOwnedBlock('project-context-adopted', 1, '## Managed context',
+        existing.includes(Buffer.from('\r\n')) ? '\r\n' : '\n')}`,
+    );
+  });
+
+  it('fails closed for invalid UTF-8, NUL bytes, or marker-like comments', () => {
+    expect(planUnmarkedArtifactAdoption({
+      existing: Buffer.from([0xc3, 0x28]),
+      templateId: 'project-context-adopted',
+      targetVersion: 1,
+      content: 'managed',
+    })).toMatchObject({ state: 'conflict', errorCode: 'scaffold-adoption-invalid-utf8' });
+
+    expect(planUnmarkedArtifactAdoption({
+      existing: Buffer.from('before\0after'),
+      templateId: 'project-context-adopted',
+      targetVersion: 1,
+      content: 'managed',
+    })).toMatchObject({ state: 'conflict', errorCode: 'governance-artifact-not-text' });
+
+    expect(planUnmarkedArtifactAdoption({
+      existing: Buffer.from('<!-- BEGIN CODEXMUX:unknown -->'),
+      templateId: 'project-context-adopted',
+      targetVersion: 1,
+      content: 'managed',
+    })).toMatchObject({ state: 'conflict', errorCode: 'scaffold-adoption-marker-conflict' });
   });
 });

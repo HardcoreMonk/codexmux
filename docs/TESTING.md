@@ -288,13 +288,18 @@ corepack pnpm smoke:npm-package
 - projection rollback 전후 동일 terminal session 연결
 
 `smoke:governance:scaffold`는 gate-on 격리 server와 temporary Approved Project Root에서
-unmarked conflict, stale preview, multi-file create, marker update, exact preimage rollback,
-`0700/0600` action backup과 선택 밖 project/Codex source 무변경을 확인합니다. 실제 등록
-project나 live service를 변경하지 않습니다.
+invalid UTF-8/NUL/marker-like adoption conflict, first-pass discovery, selective re-preview,
+LF/CRLF exact-prefix adoption, stale adoption preview, adopted marker update, latest-first rollback,
+multi-file create, exact preimage rollback, `0700/0600` action backup과 선택 밖 project/Codex source
+무변경을 확인합니다. 실제 등록 project나 live service를 변경하지 않습니다. Cold Next startup이
+느린 환경은 `CODEXMUX_GOVERNED_SCAFFOLD_TIMEOUT_MS`로 bounded timeout을 조정합니다.
 
 `smoke:browser:session-governance`는 한국어와 영어를 각각 격리 서버에서 실행해 SSR `lang`,
 search/replay, keyboard focus, governance degraded→recovery, gate-off Scaffold panel과 hydration
-error 부재를 확인합니다. Chromium이 없으면 먼저 다음 명령을 실행합니다.
+error 부재를 확인합니다. Gate-on flow에서는 unmarked artifact checkbox가 기본 unchecked인지,
+개별 선택 뒤 re-preview에서 exact-title confirmation과 semantic warning이 나타나는지, unchecked
+file이 유지되는지도 확인합니다. `CODEXMUX_SESSION_GOVERNANCE_BROWSER_SCOPE=gate|adoption`으로
+부분 재검증할 수 있습니다. Chromium이 없으면 먼저 다음 명령을 실행합니다.
 
 ```bash
 corepack pnpm exec playwright install chromium
@@ -314,6 +319,14 @@ Phase 3 build commit `9d32d049`의 live user service는 `CODEXMUX_GOVERNANCE_WRI
 `writeState=ready`, private Runtime v2 backup, scaffold 7-check, Linux 10-check, 한국어/영어 browser와
 post-restart Phase 6 12-check gate를 통과했습니다. 등록 Managed Project가 0개여서 실제 project
 confirm 대신 격리 transaction smoke와 live gate/worker health를 release evidence로 사용했습니다.
+
+2026-08-21 governed unmarked adoption source release에서는 full suite `1,650 passed, 3 skipped`,
+typecheck, project-design check와 lint 0 error를 통과했습니다. Live checkout의 `.next/dist`를 보호하기
+위해 source를 `/tmp` mirror로 복사하고 `node_modules`를 hard-link copy한 뒤 production build,
+adoption/scaffold 13-check와 한국어·영어 browser 4-check를 실행했습니다. Linux session/governance
+10-check는 원래 process-recycle 전제인 development mode mirror에서, storage backup private-mode
+smoke는 같은 mirror에서 통과했습니다. Live 8122의 Phase 6 12-check는 read-only로 통과했지만
+adoption source 자체는 배포하거나 service를 재시작하지 않았습니다.
 
 ## 브라우저 UI와 Playwright
 

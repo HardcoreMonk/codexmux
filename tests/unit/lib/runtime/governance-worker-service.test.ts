@@ -96,20 +96,51 @@ describe('governance worker service', () => {
     const preview = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor', target: 'governance', type: 'governance.preview-scaffold',
       payload: {
-        projectId: 'project-1', artifacts: ['context'],
+        projectId: 'project-1', artifacts: ['agents', 'context'],
         input: { title: 'Demo', summary: 'Summary', uiProject: false },
       },
     }));
-    expect(preview).toMatchObject({ ok: true, payload: { projectId: 'project-1' } });
+    expect(preview).toMatchObject({
+      ok: true,
+      payload: {
+        projectId: 'project-1',
+        artifacts: expect.arrayContaining([expect.objectContaining({ id: 'agents', state: 'adoption-available' })]),
+      },
+    });
     const previewPayload = preview.payload as { token: string; digest: string };
-    const confirmed = await service.handleCommand(createRuntimeCommand({
+    const ineligible = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor', target: 'governance', type: 'governance.confirm-scaffold',
       payload: {
         projectId: 'project-1', token: previewPayload.token, digest: previewPayload.digest, confirmation: 'Demo',
       },
     }));
+    expect(ineligible).toMatchObject({ ok: false, error: { code: 'scaffold-adoption-selection-required' } });
+
+    const adoptionPreview = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor', target: 'governance', type: 'governance.preview-scaffold',
+      payload: {
+        projectId: 'project-1', artifacts: ['agents', 'context'], adoptArtifacts: ['agents'],
+        input: { title: 'Demo', summary: 'Summary', uiProject: false },
+      },
+    }));
+    expect(adoptionPreview).toMatchObject({
+      ok: true,
+      payload: {
+        artifacts: expect.arrayContaining([expect.objectContaining({ id: 'agents', state: 'adopt' })]),
+      },
+    });
+    const adoptionPayload = adoptionPreview.payload as { token: string; digest: string };
+    const confirmed = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor', target: 'governance', type: 'governance.confirm-scaffold',
+      payload: {
+        projectId: 'project-1', token: adoptionPayload.token, digest: adoptionPayload.digest, confirmation: 'Demo',
+      },
+    }));
     expect(confirmed).toMatchObject({ ok: true, payload: { state: 'committed' } });
     expect(await fs.readFile(path.join(projectRoot, 'CONTEXT.md'), 'utf8')).toContain('BEGIN CODEXMUX');
+    expect(await fs.readFile(path.join(projectRoot, 'AGENTS.md'), 'utf8')).toMatch(
+      /^# Guidance\n\n<!-- BEGIN CODEXMUX:project-agents-adopted:v1 -->/,
+    );
 
     const actions = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor', target: 'governance', type: 'governance.list-actions',
@@ -130,6 +161,7 @@ describe('governance worker service', () => {
     }));
     expect(rolledBack).toMatchObject({ ok: true, payload: { state: 'rolled-back' } });
     await expect(fs.access(path.join(projectRoot, 'CONTEXT.md'))).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(await fs.readFile(path.join(projectRoot, 'AGENTS.md'), 'utf8')).toBe('# Guidance\n');
   });
 
   it('revalidates indexed documents against binary and symlink changes before detail reads', async () => {

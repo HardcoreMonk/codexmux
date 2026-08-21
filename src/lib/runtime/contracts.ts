@@ -239,6 +239,7 @@ export type TRuntimeGovernanceRollbackPreview = IGovernanceRollbackPreview;
 export interface IRuntimePreviewScaffoldInput {
   projectId: string;
   artifacts: TScaffoldArtifactId[];
+  adoptArtifacts: TScaffoldArtifactId[];
   input: TScaffoldTemplateInput;
 }
 

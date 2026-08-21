@@ -11,7 +11,14 @@ export const scaffoldArtifactIdSchema = z.enum([
 ]);
 
 export type TScaffoldArtifactId = z.infer<typeof scaffoldArtifactIdSchema>;
-export type TScaffoldArtifactState = 'create' | 'marker-update' | 'unchanged' | 'conflict' | 'skipped';
+export type TScaffoldArtifactState =
+  | 'create'
+  | 'marker-update'
+  | 'adoption-available'
+  | 'adopt'
+  | 'unchanged'
+  | 'conflict'
+  | 'skipped';
 export type TGovernanceActionState =
   | 'preparing'
   | 'publishing'
@@ -35,14 +42,26 @@ export const scaffoldTemplateInputSchema = z.object({
 
 export type TScaffoldTemplateInput = z.infer<typeof scaffoldTemplateInputSchema>;
 
+const artifactSelectionSchema = z.array(scaffoldArtifactIdSchema).max(6).refine(
+  (values) => new Set(values).size === values.length,
+  'Artifact ids must be unique',
+);
+
 export const scaffoldPreviewInputSchema = z.object({
   projectId: projectIdSchema,
-  artifacts: z.array(scaffoldArtifactIdSchema).min(1).max(6).refine(
-    (values) => new Set(values).size === values.length,
-    'Artifact ids must be unique',
-  ),
+  artifacts: artifactSelectionSchema.min(1),
+  adoptArtifacts: artifactSelectionSchema.default([]),
   input: scaffoldTemplateInputSchema,
-}).strict();
+}).strict().superRefine(({ artifacts, adoptArtifacts }, ctx) => {
+  const selected = new Set(artifacts);
+  if (adoptArtifacts.some((id) => !selected.has(id))) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['adoptArtifacts'],
+      message: 'Adoption artifact ids must be selected artifacts',
+    });
+  }
+});
 
 export interface IScaffoldArtifactPreview {
   id: TScaffoldArtifactId;
@@ -72,7 +91,15 @@ export const scaffoldArtifactPreviewSchema: z.ZodType<IScaffoldArtifactPreview> 
   templateId: projectIdSchema,
   fromVersion: z.number().int().positive().nullable(),
   toVersion: z.number().int().positive(),
-  state: z.enum(['create', 'marker-update', 'unchanged', 'conflict', 'skipped']),
+  state: z.enum([
+    'create',
+    'marker-update',
+    'adoption-available',
+    'adopt',
+    'unchanged',
+    'conflict',
+    'skipped',
+  ]),
   diff: z.string().max(256 * 1024 + 64),
   bytes: z.number().int().nonnegative().max(256 * 1024),
   errorCode: z.string().regex(/^[a-z][a-z0-9-]{0,79}$/).nullable(),

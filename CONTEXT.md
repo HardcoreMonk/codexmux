@@ -48,6 +48,9 @@ Runtime v2 worker, tmux, Codex JSONL, app-owned DB와 등록된 project filesyst
 | Governance Action Run | 한 Managed Project의 scaffold preview, confirm, publish, recovery와 receipt를 묶는 aggregate | Governance Worker, action journal/backup |
 | Scaffold Artifact | versioned template catalog가 생성하거나 marker-owned block으로 갱신할 수 있는 허용 문서 | Project Governance scaffold catalog |
 | Marker-owned block | codexmux marker 사이에서만 Governance Action Run이 갱신할 수 있는 문서 영역 | scaffold marker parser, no-clobber policy |
+| Unmarked Artifact Adoption | 기존 bytes를 비소유 prefix로 유지하고 EOF에 새 marker-owned block만 추가하는 명시적 Governance Action Run | Project Governance scaffold preview/confirm |
+| Adoption Selection | 한 preview에서 사용자가 artifact별로 명시한 adoption intent | preview token/digest, API/IPC contract |
+| Adoption Template Variant | 신규 문서 template과 분리된 compact marker block definition | scaffold template catalog |
 | Project Lifecycle | spec, domain architecture, grill, plan, review, release, operate artifact 흐름 | project-local docs |
 | Windows 전용 제품 | 2026년 Windows product-line 전환과 release 검증의 역사적 결정 | packaging, host, release evidence |
 | Windows 서비스 호스트 | 앱/backend 수명주기를 관리하는 host 경계 | Windows host diagnostics, future service |
@@ -67,6 +70,8 @@ Runtime v2 worker, tmux, Codex JSONL, app-owned DB와 등록된 project filesyst
 - `workspace project`: Workspace와 Managed Project를 하나의 entity로 합치는 이름으로 쓰지 않습니다.
 - `ProjectWrite`, `FileSync`: create-only scaffold보다 넓은 arbitrary write/sync를 암시하는 public
   domain 이름으로 쓰지 않습니다.
+- `auto adoption`, `document takeover`, `full-file ownership`, `smart merge`, `section inference`:
+  기존 unmarked 본문의 소유권이나 의미를 추측하는 기능 이름으로 쓰지 않습니다.
 
 ## 경계 규칙
 
@@ -92,11 +97,16 @@ smoke를 통과했습니다. [GitHub issue #18](https://github.com/HardcoreMonk/
 완료됐으며, 장시간 live 관찰 전까지 ADR-031은 `Implemented`입니다. 검증과 rollback 경계는
 `docs/operations/2026-08-21-session-operations-governance-integration-handoff.md`에 기록합니다.
 
-Phase 3의 첫 범위인 `Governance Action Run` 소유 create-only scaffold와 marker-owned update는
-구현 및 격리 release gate를 통과했습니다. Live service는 systemd drop-in으로
+Phase 3의 첫 범위인 `Governance Action Run` 소유 create scaffold와 marker-owned update는
+구현 및 격리 release gate를 통과했습니다. 후속 `Unmarked Artifact Adoption`은 기존 UTF-8
+regular file을 자동 takeover하지 않고, 첫 discovery 뒤 artifact별 `Adoption Selection`을 반영한
+두 번째 preview에서 compact `Adoption Template Variant`만 EOF에 append하도록 구현했습니다.
+기존 bytes는 exact prefix로 보존하며 invalid UTF-8, NUL과 marker-like comment는 거부합니다.
+Live service는 systemd drop-in으로
 `CODEXMUX_GOVERNANCE_WRITES=1`을 활성화했고 Governance `writeState=ready`, private Runtime v2
 backup과 post-restart Phase 6 gate를 확인했습니다. 등록 Managed Project가 없어 실제 project
-confirm은 수행하지 않았습니다. [GitHub issue #19](https://github.com/HardcoreMonk/codexmux/issues/19)와 설계·운영 인계는
+confirm은 수행하지 않았습니다. Adoption source 변경은 아직 live 배포하지 않았습니다.
+[GitHub issue #19](https://github.com/HardcoreMonk/codexmux/issues/19)와 설계·운영 인계는
 `docs/superpowers/specs/2026-08-21-governed-project-scaffold-design.md`, ADR-032와
 `docs/operations/2026-08-21-governed-project-scaffold-handoff.md`를 따릅니다.
 

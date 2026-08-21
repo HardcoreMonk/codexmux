@@ -330,6 +330,7 @@ export const createGovernanceWorkerService = (options: IGovernanceWorkerServiceO
             project,
             root: requireRoot(project),
             artifacts: input.artifacts,
+            adoptArtifacts: input.adoptArtifacts,
             input: input.input,
           }));
         }

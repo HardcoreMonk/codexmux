@@ -30,9 +30,32 @@ export interface IUseGovernanceScaffoldOptions {
   onChanged?: () => void | Promise<void>;
 }
 
+export interface IScaffoldPreviewRequest {
+  artifacts: TScaffoldArtifactId[];
+  adoptArtifacts: TScaffoldArtifactId[];
+  input: TScaffoldTemplateInput;
+}
+
+export const createAdoptionRepreviewRequest = (
+  preview: IScaffoldPreview,
+  request: IScaffoldPreviewRequest,
+  selectedArtifacts: TScaffoldArtifactId[],
+): IScaffoldPreviewRequest => {
+  const available = new Set(preview.artifacts
+    .filter((artifact) => artifact.state === 'adoption-available')
+    .map((artifact) => artifact.id));
+  const selected = new Set(selectedArtifacts.filter((id) => available.has(id)));
+  return {
+    artifacts: request.artifacts.filter((id) => !available.has(id) || selected.has(id)),
+    adoptArtifacts: request.artifacts.filter((id) => selected.has(id)),
+    input: request.input,
+  };
+};
+
 const useGovernanceScaffold = ({ projectId, onChanged }: IUseGovernanceScaffoldOptions) => {
   const t = useTranslations('governance');
   const [preview, setPreview] = useState<IScaffoldPreview | null>(null);
+  const [previewRequest, setPreviewRequest] = useState<IScaffoldPreviewRequest | null>(null);
   const [rollbackPreview, setRollbackPreview] = useState<IGovernanceRollbackPreview | null>(null);
   const [actions, setActions] = useState<IGovernanceActionSummary[]>([]);
   const [busy, setBusy] = useState(false);
@@ -58,6 +81,7 @@ const useGovernanceScaffold = ({ projectId, onChanged }: IUseGovernanceScaffoldO
 
   useEffect(() => {
     setPreview(null);
+    setPreviewRequest(null);
     setRollbackPreview(null);
     setError(null);
     void refreshActions();
@@ -82,15 +106,31 @@ const useGovernanceScaffold = ({ projectId, onChanged }: IUseGovernanceScaffoldO
 
   const requestPreview = useCallback(async (input: {
     artifacts: TScaffoldArtifactId[];
+    adoptArtifacts?: TScaffoldArtifactId[];
     input: TScaffoldTemplateInput;
   }) => {
     if (!projectId) return;
+    const request = { ...input, adoptArtifacts: input.adoptArtifacts ?? [] };
     const result = await run(() => postJson<IScaffoldPreview>(
       `/api/governance/projects/${encodeURIComponent(projectId)}/scaffold/preview`,
-      input,
+      request,
     ));
-    if (result) setPreview(result);
+    if (result) {
+      setPreview(result);
+      setPreviewRequest(request);
+    }
   }, [projectId, run]);
+
+  const repreviewAdoptions = useCallback(async (selectedArtifacts: TScaffoldArtifactId[]) => {
+    if (!preview || !previewRequest) return;
+    const request = createAdoptionRepreviewRequest(preview, previewRequest, selectedArtifacts);
+    if (request.artifacts.length === 0) {
+      setError('scaffold-no-changes');
+      toast.error(t('scaffold.error'), { description: 'scaffold-no-changes' });
+      return;
+    }
+    await requestPreview(request);
+  }, [preview, previewRequest, requestPreview, t]);
 
   const confirmScaffold = useCallback(async (confirmation: string) => {
     if (!projectId || !preview) return;
@@ -100,6 +140,7 @@ const useGovernanceScaffold = ({ projectId, onChanged }: IUseGovernanceScaffoldO
     ));
     if (!result) return;
     setPreview(null);
+    setPreviewRequest(null);
     toast.success(t('scaffold.committed'));
     await Promise.all([refreshActions(), onChanged?.()]);
   }, [onChanged, preview, projectId, refreshActions, run, t]);
@@ -132,11 +173,15 @@ const useGovernanceScaffold = ({ projectId, onChanged }: IUseGovernanceScaffoldO
     busy,
     error,
     requestPreview,
+    repreviewAdoptions,
     confirmScaffold,
     requestRollbackPreview,
     confirmRollback,
     refreshActions,
-    closePreview: () => setPreview(null),
+    closePreview: () => {
+      setPreview(null);
+      setPreviewRequest(null);
+    },
     closeRollbackPreview: () => setRollbackPreview(null),
   };
 };

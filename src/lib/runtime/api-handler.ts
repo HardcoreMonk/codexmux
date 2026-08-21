@@ -84,6 +84,8 @@ const runtimeErrorStatusByCode: Record<string, number> = {
   'stale-preview': 409,
   'confirmation-mismatch': 409,
   'scaffold-preview-conflict': 409,
+  'scaffold-adoption-selection-required': 409,
+  'scaffold-adoption-selection-invalid': 400,
   'scaffold-no-changes': 409,
   'scaffold-design-requires-ui-project': 400,
   'scaffold-file-too-large': 413,

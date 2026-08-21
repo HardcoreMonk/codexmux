@@ -59,6 +59,9 @@ acceptance를 대체하지 않습니다. Public npm package의 현재 version은
   preview/exact confirmation, private backup/journal, startup recovery, action history와 safe rollback.
   Source와 격리 smoke를 완료하고 live `CODEXMUX_GOVERNANCE_WRITES=1` gate, private Runtime v2
   backup, Governance `writeState=ready`와 post-restart 회귀 gate를 확인
+- Governed unmarked adoption source release: 2-pass artifact별 opt-in, exact-prefix compact marker
+  append, adopted marker update, private preimage/latest-first rollback과 한국어·영어 UI. 전체
+  test와 temporary mirror build/API/browser/Linux/storage gate를 통과했으며 live 배포는 보류
 - `codexmux@0.4.23` public npm publish, registry tarball install/CLI/production health smoke
 - 구현 commit `d405f683`의 Linux `systemd --user` live 배포, 실제 restart 전후 terminal
   smoke와 Phase 6 gate, [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18) 완료
@@ -219,7 +222,8 @@ Plan Grilling, plan review와 별도 release gate를 거쳐야 합니다.
 
 | 범위 | 현재 결정 | 다음 acceptance의 핵심 |
 | --- | --- | --- |
-| Phase 3 확장 write | 첫 scaffold slice 완료. unmarked adoption, lifecycle draft, delete/move/sync는 미구현 | 별도 spec에서 ownership, conflict UX, retention과 rollback dependency 정의 |
+| Governed unmarked adoption | source 구현·code review·격리 release gate 완료. artifact별 2-pass opt-in, exact-prefix append, private preimage와 latest-first rollback 적용. live 배포/재시작은 미수행 | 별도 운영 승인으로 deploy/restart 여부 결정 |
+| Phase 3 추가 write | lifecycle draft, delete/move/sync와 automatic/full-file adoption은 미구현 | 각각 별도 spec에서 ownership, conflict UX, retention과 rollback dependency 정의 |
 | Remote topology | collector, remote node, multi-engine federation 미지원 | engine authority, credential, ordering, partition/reconnect와 data residency |
 | GSD orchestration | GSD CLI/UI, FastAPI/Python collector, 원본 Bash 실행 미도입 | provenance, allowlist, cancellation, audit와 lifecycle ownership |
 | Full-output search | bounded message search/snippet만 제공 | secret/terminal output policy, quota, encryption/retention과 explicit opt-in |
