@@ -22,6 +22,15 @@ Canonical 문서 경계나 `landing-src/`를 바꾸면 landing build도 실행�
 
 ```bash
 corepack pnpm build:landing
+corepack pnpm check:landing
+```
+
+`check:landing`은 `_site/`의 필수 landing/docs/404/robots/sitemap/search artifact, GitHub Pages
+canonical URL, `/codexmux/` local link와 path containment를 검사합니다. Guide availability나
+checker contract를 바꾸면 focused unit test를 함께 실행합니다.
+
+```bash
+corepack pnpm exec vitest run tests/unit/scripts/landing-site-check.test.ts
 ```
 
 ## npm 실행 package 게이트

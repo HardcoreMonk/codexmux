@@ -2,11 +2,12 @@
 
 이 디렉터리는 codexmux의 내부 설계, 운영, 플랫폼 전환 기준 문서를 모읍니다. 현재 기준 문서 언어는 한국어입니다.
 
-`landing-src/docs/`는 upstream 사용자 가이드 snapshot을 보존하는 legacy/reference
-surface이며 canonical 제품 계약이 아닙니다. Runtime·보안상 위험한 사실은 root/`ko/`
-사본에 함께 교정하지만, root(en)와 `ko/` 외 9개 locale의 한국어 복제본을 완성된
-번역으로 보지 않습니다. 제품 UI의 현재 지원 언어는 한국어와 영어입니다. 과거 실행 로그와 release
-handoff는 `docs/operations/`에 보존하며, 당시 증거를 소급해 재작성하지 않습니다.
+`landing-src/docs/`는 GitHub Pages에 배포하는 사용자 가이드 surface이며 canonical 제품 계약은
+아닙니다. Runtime·보안상 위험한 사실은 root/`ko/` 사본에 함께 교정하지만, root(en)와 `ko/`
+외 9개 locale의 한국어 복제본은 legacy snapshot이며 완성된 번역으로 보지 않습니다. 작성,
+검증, 배포 기준은 `GITHUB-PAGES.md`를 따릅니다. 제품 UI의 현재 지원 언어는 한국어와
+영어입니다. 과거 실행 로그와 release handoff는 `docs/operations/`에 보존하며, 당시 증거를
+소급해 재작성하지 않습니다.
 
 ## 현재 기준 문서
 
@@ -26,6 +27,7 @@ handoff는 `docs/operations/`에 보존하며, 당시 증거를 소급해 재작
 | `ELECTRON.md` | Electron desktop shell, Windows packaging, updater smoke |
 | `PERFORMANCE.md` | 성능 스냅샷, cache, polling, render 최적화 기준 |
 | `STYLE.md` | theme, color, terminal/mobile UI 규칙 |
+| `GITHUB-PAGES.md` | 공개 랜딩/가이드 작성, artifact 검증, Pages 배포와 rollback |
 | `FOLLOW-UP.md` | release 전 확인, 내부 배포 단계, post-MVP backlog |
 | `operations/codexwinmux-product-line-migration.md` | `codexmux`와 `codexwinmux` 제품 line 분리, data migration 기준 |
 | `operations/windows-release-update-repeat-checklist.md` | 다음 버전마다 반복할 Windows release/update smoke 순서 |
@@ -41,6 +43,7 @@ handoff는 `docs/operations/`에 보존하며, 당시 증거를 소급해 재작
 | `operations/2026-08-21-canonical-documentation-refresh-handoff.md` | canonical/landing 문서 감사 범위, 현행 기준과 보존 정책 |
 | `operations/2026-08-21-governed-project-scaffold-handoff.md` | Phase 3 scaffold 구현, 검증, gate-off 운영 인계와 활성화 조건 |
 | `operations/2026-08-21-governed-unmarked-adoption-handoff.md` | Existing unmarked artifact의 2-pass selective adoption 구현, 검증과 미배포 운영 경계 |
+| `operations/2026-08-21-github-pages-guide-handoff.md` | GitHub Pages 랜딩/가이드 source, artifact gate와 publish 보류 상태 |
 
 보존된 Windows stable release `v0.4.22`는 같은 hostname의 Purplemux와 동시 실행하기 위한 cookie namespace 수정을
 포함하고 fresh Windows package/published updater와 privacy gate를 통과해 stable/latest로
@@ -100,6 +103,7 @@ UI 시각 계약을 담당합니다.
 - runtime v2 mode, migration, rollback, parity evidence를 바꾸면 `RUNTIME-V2-CUTOVER.md`와 `RUNTIME-V2-PARITY.md`를 갱신합니다.
 - 성능 계측, polling, timeline render/cache, WebSocket batching을 바꾸면 `PERFORMANCE.md`를 갱신합니다.
 - 테스트 도구, smoke command, Codex command strict-config 검증, platform 검증 순서, package gate를 바꾸면 `TESTING.md`를 갱신합니다.
+- 공개 랜딩, 사용자 가이드, locale navigation, canonical URL 또는 Pages workflow를 바꾸면 `GITHUB-PAGES.md`, `TESTING.md`와 `landing-src/`의 영향을 함께 확인합니다.
 - Electron packaging, installer, updater, local server bootstrap을 바꾸면 `ELECTRON.md`를 갱신합니다.
 - 저장 파일 구조나 삭제 기준을 바꾸면 `DATA-DIR.md`를 갱신합니다.
 - release, deploy, smoke 결과가 운영 판단에 영향을 주면 `operations/` handoff를 추가하고 `FOLLOW-UP.md`의 상태를 갱신합니다.

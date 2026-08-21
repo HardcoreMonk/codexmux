@@ -1,0 +1,16 @@
+---
+permalink: /sitemap.xml
+eleventyExcludeFromCollections: true
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>{{ site.baseUrl }}/</loc></url>
+{%- for loc in site.locales %}
+{%- if not loc.isRoot %}
+  <url><loc>{{ site.baseUrl }}{{ loc.path }}</loc></url>
+{%- endif %}
+{%- endfor %}
+{%- for entry in collections.docs %}
+  <url><loc>{{ site.baseUrl }}{{ entry.url }}</loc></url>
+{%- endfor %}
+</urlset>
