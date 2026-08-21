@@ -161,6 +161,14 @@ Legacy store는 JSON 파일을 사용합니다. Runtime v2 store는 SQLite를 �
 
 Approved Project Root, Managed Project, import 결과, session annotation/saved filter와 sanitized governance audit는 `runtime-v2/state.db`의 durable app state입니다. Runtime v2 default read가 켜져도 rollback용 JSON write는 유지합니다. 세 SQLite 디렉터리는 `0700`, DB/WAL/SHM은 `0600`으로 유지합니다.
 
+Session Catalog의 text/project/model/date predicate는 Timeline Worker가, pin/tag predicate는 Storage
+Worker가 평가합니다. Annotation filter가 있으면 Storage Worker가 최대 10,000개의 bounded
+include/exclude session ID selection을 만들고 Timeline Worker가 bound JSON `json_each` membership을
+search/count/cursor SQL 전에 적용합니다. Supervisor는 확정된 최대 200개 page만 annotation으로
+hydrate하며 결과를 사후 제거하지 않습니다. Selection과 hydration 사이 pin/tag가 바뀌면 전체
+orchestration을 한 번 재시도하고 반복 충돌은 retryable error로 fail closed합니다. Filter가 없으면
+selection round trip을 생략합니다.
+
 ## 워크스페이스 로직
 
 Workspace는 id, name, directory, layout, active pane/tab을 묶는 app-level aggregate입니다.

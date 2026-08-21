@@ -3,10 +3,11 @@ import { z } from 'zod';
 import { runtimeSessionNameSchema } from '@/lib/runtime/session-name';
 import {
   sessionIdSchema,
+  sessionAnnotationSelectionSchema,
+  sessionCatalogSearchInputSchema,
   savedSessionFilterSchema,
   sessionAnnotationSchema,
   sessionSearchPageSchema,
-  sessionSearchQuerySchema,
   sessionTagSchema,
 } from '@/lib/session-catalog/contracts';
 import {
@@ -412,6 +413,12 @@ const timelineCatalogRebuildResultSchema = z.object({
 const storageListSessionAnnotationsPayloadSchema = z.object({
   sessionIds: z.array(sessionIdSchema).max(200),
 }).strict();
+const storageSelectSessionAnnotationsPayloadSchema = z.object({
+  pinned: z.boolean().optional(),
+  tags: z.array(sessionTagSchema).min(1).max(20).optional(),
+}).strict().refine((input) => input.pinned !== undefined || Boolean(input.tags?.length), {
+  message: 'At least one annotation predicate is required.',
+});
 const storageUpdateSessionAnnotationPayloadSchema = z.object({
   sessionId: sessionIdSchema,
   pinned: z.boolean(),
@@ -719,6 +726,10 @@ export const runtimeCommandRegistry = {
     payload: storageListSessionAnnotationsPayloadSchema,
     reply: z.array(sessionAnnotationSchema).max(200),
   },
+  'storage.select-session-annotations': {
+    payload: storageSelectSessionAnnotationsPayloadSchema,
+    reply: sessionAnnotationSelectionSchema,
+  },
   'storage.update-session-annotation': {
     payload: storageUpdateSessionAnnotationPayloadSchema,
     reply: sessionAnnotationSchema,
@@ -812,7 +823,7 @@ export const runtimeCommandRegistry = {
   'timeline.session-watch-subscribe': { payload: timelineSessionWatchSubscribePayloadSchema, reply: timelineSessionWatchSubscribeResultSchema },
   'timeline.session-watch-unsubscribe': { payload: timelineSessionWatchUnsubscribePayloadSchema, reply: timelineSessionWatchUnsubscribeResultSchema },
   'timeline.catalog-health': { payload: emptyPayloadSchema, reply: timelineCatalogHealthSchema },
-  'timeline.catalog-search': { payload: sessionSearchQuerySchema, reply: sessionSearchPageSchema },
+  'timeline.catalog-search': { payload: sessionCatalogSearchInputSchema, reply: sessionSearchPageSchema },
   'timeline.catalog-read-entries': { payload: timelineCatalogReadEntriesPayloadSchema, reply: timelineEntriesBeforeSchema },
   'timeline.catalog-rebuild': { payload: emptyPayloadSchema, reply: timelineCatalogRebuildResultSchema },
   'status.health': { payload: emptyPayloadSchema, reply: runtimeHealthReplySchema },

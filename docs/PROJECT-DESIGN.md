@@ -49,7 +49,9 @@ rebuild/search/replay/annotation과 같은 live session의 301초·11회 재연�
   health smoke를 통과했습니다. Local `v0.4.23`은 registry `gitHead`와 같은 `ef27e297`을
   가리키지만 remote tag는 없습니다. 이 tag를 그대로 push하면 tag snapshot에 없는 release
   note를 요구하는 Windows release workflow가 실패하므로 원격 publish는 보류했습니다.
-  Trusted Publisher는 npm CLI 인증 만료로 등록하지 못했습니다.
+  Trusted Publisher는 npm CLI 인증 만료로 등록하지 못했습니다. 2026-08-22 사용자가 최종
+  release gate를 열어 `0.4.24` package, registry와 live service 갱신을 승인했습니다. Remote
+  tag/GitHub Windows Release와 Trusted Publisher 등록은 이번 local npm publish와 분리합니다.
 - Public 랜딩과 사용자 가이드는 Eleventy로 `_site/`를 만들고 GitHub Pages
   `https://hardcoremonk.github.io/codexmux/`에 배포합니다. 메인 제품 정보 구조는 Session
   Operations, Live Session Control, Project Governance, Runtime Operations를 기준으로 하며,

@@ -102,6 +102,10 @@ npm trust github codexmux \
 
 기존 OTP나 credential은 재사용하거나 문서에 저장하지 않습니다.
 
+이후 사용자 결정으로 npm 작업은 임시 장애 해소 직후가 아니라 최종 개발 완료 gate로
+이동했습니다. 연속 개발 중에는 version/tag/Release/Trusted Publisher를 변경하지 않고,
+완료가 명시적으로 확정된 뒤 다음 version으로 통합 release합니다.
+
 ## Dependabot triage
 
 2026-08-22 시작 시 open PR은 Dependabot 10건뿐이었습니다.

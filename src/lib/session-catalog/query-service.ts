@@ -1,9 +1,9 @@
 import { Buffer } from 'node:buffer';
 import {
   sessionIdSchema,
-  sessionSearchQuerySchema,
+  sessionCatalogSearchInputSchema,
+  type ISessionCatalogSearchInput,
   type ISessionSearchPage,
-  type ISessionSearchQuery,
 } from '@/lib/session-catalog/contracts';
 import type { TSessionCatalogRepository } from '@/lib/session-catalog/index-repository';
 
@@ -59,8 +59,8 @@ const decodeCursor = (cursor: string): ISessionCatalogCursor => {
 };
 
 export const createSessionCatalogQueryService = (repository: TSessionCatalogRepository) => ({
-  search: (rawQuery: ISessionSearchQuery): ISessionSearchPage => {
-    const query = sessionSearchQuerySchema.parse(rawQuery);
+  search: (rawQuery: ISessionCatalogSearchInput): ISessionSearchPage => {
+    const query = sessionCatalogSearchInputSchema.parse(rawQuery);
     const limit = query.limit ?? 50;
     const match = buildFtsMatchExpression(query.query);
     const after = query.cursor ? decodeCursor(query.cursor) : undefined;
@@ -70,6 +70,7 @@ export const createSessionCatalogQueryService = (repository: TSessionCatalogRepo
       ...(query.models ? { models: query.models } : {}),
       ...(query.dateFrom ? { dateFrom: query.dateFrom } : {}),
       ...(query.dateTo ? { dateTo: query.dateTo } : {}),
+      ...(query.annotationSelection ? { annotationSelection: query.annotationSelection } : {}),
       ...(after ? { after } : {}),
       limit: limit + 1,
     };

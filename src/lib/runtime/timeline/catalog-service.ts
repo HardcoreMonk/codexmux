@@ -10,7 +10,7 @@ import type {
   IRuntimeSessionCatalogHealth,
   IRuntimeSessionCatalogReadEntriesInput,
   IRuntimeSessionCatalogRebuildResult,
-  TRuntimeSessionCatalogSearchInput,
+  TRuntimeTimelineCatalogSearchInput,
   TRuntimeSessionCatalogSearchResult,
   TRuntimeTimelineEntriesBeforeResult,
 } from '@/lib/runtime/contracts';
@@ -175,7 +175,7 @@ export const createTimelineCatalogService = ({
 
   return {
     health,
-    search: (input: TRuntimeSessionCatalogSearchInput): TRuntimeSessionCatalogSearchResult => {
+    search: (input: TRuntimeTimelineCatalogSearchInput): TRuntimeSessionCatalogSearchResult => {
       assertServing();
       return queryService.search(input);
     },

@@ -258,6 +258,13 @@
   이상 legacy secondary runtime이 아닙니다. Windows installer와 npm package가 독립
   배포면이라는 핵심 결정은 유지하되 Linux engine acceptance는 npm/source/systemd 경로를
   기준으로 합니다.
+- 2026-08-22 release cadence 결정: 연속 개발 중에는 npm version, remote tag, GitHub Release와
+  Trusted Publisher를 변경하지 않습니다. 최종 개발 완료가 명시적으로 확정된 뒤 현재 main을
+  기준으로 version과 release note를 함께 고정하고, 전체 release gate를 통과한 한 번의 npm
+  갱신으로 처리합니다. 이미 게시된 `0.4.23`과 local tag는 이동하거나 덮어쓰지 않습니다.
+- 2026-08-22 release gate 실행: 사용자가 `0.4.24` package version, registry publish, commit/push와
+  Linux live deploy/restart를 명시적으로 승인했습니다. Remote tag와 GitHub Windows Release는
+  독립 배포면이므로 이번 실행에서 만들지 않습니다.
 
 ## ADR-031: Linux 단일 엔진 호스트를 active product/runtime target으로 사용한다
 

@@ -64,6 +64,54 @@ describe('session annotation storage', () => {
       .toThrow(expect.objectContaining({ code: 'session-annotation-corrupt' }));
   });
 
+  it('selects exact include/exclude session sets for pinned and tag predicates', () => {
+    const repository = createStorageRepository(db);
+    const update = (sessionId: string, pinned: boolean, tags: string[]) => repository.updateSessionAnnotation({
+      sessionId,
+      pinned,
+      tags,
+      expectedVersion: 0,
+      sessionExists: true,
+      updatedAt: '2026-08-21T09:00:00.000Z',
+    });
+    update('session-pinned', true, ['review', 'urgent']);
+    update('session-review', false, ['review']);
+    update('session-urgent', false, ['urgent']);
+
+    expect(repository.selectSessionAnnotations({ pinned: true })).toEqual({
+      mode: 'include', sessionIds: ['session-pinned'],
+    });
+    expect(repository.selectSessionAnnotations({ pinned: false })).toEqual({
+      mode: 'exclude', sessionIds: ['session-pinned'],
+    });
+    expect(repository.selectSessionAnnotations({ tags: ['review', 'urgent'] })).toEqual({
+      mode: 'include', sessionIds: ['session-pinned'],
+    });
+    expect(repository.selectSessionAnnotations({ pinned: false, tags: ['review'] })).toEqual({
+      mode: 'include', sessionIds: ['session-review'],
+    });
+    expect(repository.selectSessionAnnotations({ tags: ['missing'] })).toEqual({
+      mode: 'include', sessionIds: [],
+    });
+  });
+
+  it('fails closed instead of truncating an oversized selection', () => {
+    const repository = createStorageRepository(db);
+    const insert = db.prepare(`
+      insert into session_annotations(session_id, pinned, tags_json, version, updated_at)
+      values (?, 1, '[]', 1, '2026-08-21T09:00:00.000Z')
+    `);
+    db.transaction(() => {
+      for (let index = 0; index <= 10_000; index += 1) {
+        insert.run(`session-${index.toString().padStart(5, '0')}`);
+      }
+    })();
+
+    expect(() => repository.selectSessionAnnotations({ pinned: true })).toThrow(expect.objectContaining({
+      code: 'session-annotation-selection-too-large', retryable: true,
+    }));
+  });
+
   it('persists and deletes validated saved filters', () => {
     const repository = createStorageRepository(db);
     const filter = {

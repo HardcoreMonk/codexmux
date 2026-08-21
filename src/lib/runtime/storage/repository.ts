@@ -4,6 +4,7 @@ import type {
   IRuntimeDeleteWorkspaceStorageResult,
   IRuntimeEnsureWorkspacePaneResult,
   IRuntimePendingTerminalTab,
+  IRuntimeSelectSessionAnnotationsInput,
   IRuntimeApplyManagedProjectImportInput,
   IRuntimeManagedProjectImportResult,
   IRuntimeRegisterManagedProjectInput,
@@ -12,11 +13,13 @@ import type {
   IRuntimeWorkspace,
   IRuntimeWorkspaceTerminalSession,
   TRuntimeLayout,
+  TRuntimeSessionAnnotationSelection,
 } from '@/lib/runtime/contracts';
 import { createRuntimeId } from '@/lib/runtime/session-name';
 import type { TRuntimeDatabase } from '@/lib/runtime/storage/schema';
 import type { IHistoryEntry } from '@/types/message-history';
 import {
+  SESSION_ANNOTATION_SELECTION_MAX_IDS,
   savedSessionFilterSchema,
   sessionTagSchema,
   type ISavedSessionFilter,
@@ -148,8 +151,8 @@ const wsId = (): string => createRuntimeId('ws');
 const paneId = (): string => createRuntimeId('pane');
 const eventId = (): string => createRuntimeId('evt');
 
-const annotationError = (code: string, message: string): Error =>
-  Object.assign(new Error(message), { code, retryable: false });
+const annotationError = (code: string, message: string, retryable = false): Error =>
+  Object.assign(new Error(message), { code, retryable });
 
 const governanceStorageError = (code: string, message: string): Error =>
   Object.assign(new Error(message), { code, retryable: false });
@@ -1025,6 +1028,48 @@ export const createStorageRepository = (db: TRuntimeDatabase) => {
       return sessionIds
         .map((sessionId) => this.getSessionAnnotation(sessionId))
         .filter((annotation): annotation is ISessionAnnotation => annotation !== null);
+    },
+
+    selectSessionAnnotations(input: IRuntimeSelectSessionAnnotationsInput): TRuntimeSessionAnnotationSelection {
+      const tags = [...new Set(input.tags ?? [])];
+      const excludePinned = input.pinned === false && tags.length === 0;
+      const conditions: string[] = [];
+      const params: Record<string, unknown> = {
+        limit: SESSION_ANNOTATION_SELECTION_MAX_IDS + 1,
+      };
+      if (excludePinned) {
+        conditions.push('a.pinned = 1');
+      } else if (input.pinned !== undefined) {
+        conditions.push('a.pinned = @pinned');
+        params.pinned = input.pinned ? 1 : 0;
+      }
+      if (tags.length > 0) {
+        conditions.push(`not exists (
+          select 1 from json_each(@tagsJson) requested
+          where not exists (
+            select 1 from json_each(a.tags_json) actual where actual.value = requested.value
+          )
+        )`);
+        params.tagsJson = JSON.stringify(tags);
+      }
+      const rows = db.prepare(`
+        select a.session_id as sessionId
+        from session_annotations a
+        ${conditions.length ? `where ${conditions.join(' and ')}` : ''}
+        order by a.session_id asc
+        limit @limit
+      `).all(params) as Array<{ sessionId: string }>;
+      if (rows.length > SESSION_ANNOTATION_SELECTION_MAX_IDS) {
+        throw annotationError(
+          'session-annotation-selection-too-large',
+          'Session annotation selection exceeds the supported limit.',
+          true,
+        );
+      }
+      return {
+        mode: excludePinned ? 'exclude' : 'include',
+        sessionIds: rows.map((row) => row.sessionId),
+      };
     },
 
     updateSessionAnnotation: db.transaction((input: IUpdateSessionAnnotationInput): ISessionAnnotation => {

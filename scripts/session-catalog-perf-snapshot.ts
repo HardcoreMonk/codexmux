@@ -13,6 +13,7 @@ export const SESSION_CATALOG_PERF_THRESHOLDS = {
   initialIndexMs: 30_000,
   incrementalAppendMs: 500,
   ftsQueryMs: 1_000,
+  annotationFilterQueryMs: 1_000,
   replayProjectionMs: 200,
   rssDeltaBytes: 512 * 1024 * 1024,
 } as const;
@@ -96,6 +97,18 @@ export const runSessionCatalogPerfSnapshot = async ({
     const search = queryService.search({ query: 'worker', limit: 50 });
     const ftsQuery = elapsed(startedAt);
 
+    const annotationSessionIds = Array.from(
+      { length: Math.ceil(sessionCount / 2) },
+      (_, index) => `perf-session-${(index * 2).toString().padStart(5, '0')}`,
+    );
+    startedAt = performance.now();
+    const annotationSearch = queryService.search({
+      query: 'worker',
+      limit: 50,
+      annotationSelection: { mode: 'include', sessionIds: annotationSessionIds },
+    });
+    const annotationFilterQuery = elapsed(startedAt);
+
     startedAt = performance.now();
     const replay = projectCodexJsonl((sources.get(first.canonicalPath) ?? Buffer.alloc(0)).toString('utf8'), {
       indexedAt: '2026-08-21T11:02:00.000Z',
@@ -106,10 +119,12 @@ export const runSessionCatalogPerfSnapshot = async ({
     const passed = indexedSessions === sessionCount
       && appendResult.mode === 'append'
       && search.total === sessionCount
+      && annotationSearch.total === annotationSessionIds.length
       && replay.records.length > 0
       && initialIndex <= SESSION_CATALOG_PERF_THRESHOLDS.initialIndexMs
       && incrementalAppend <= SESSION_CATALOG_PERF_THRESHOLDS.incrementalAppendMs
       && ftsQuery <= SESSION_CATALOG_PERF_THRESHOLDS.ftsQueryMs
+      && annotationFilterQuery <= SESSION_CATALOG_PERF_THRESHOLDS.annotationFilterQueryMs
       && replayProjection <= SESSION_CATALOG_PERF_THRESHOLDS.replayProjectionMs
       && rssDeltaBytes <= SESSION_CATALOG_PERF_THRESHOLDS.rssDeltaBytes;
 
@@ -117,9 +132,10 @@ export const runSessionCatalogPerfSnapshot = async ({
       sessionCount,
       indexedSessions,
       searchMatches: search.total,
+      annotationFilterMatches: annotationSearch.total,
       appendMode: appendResult.mode,
       replayRecords: replay.records.length,
-      timingsMs: { initialIndex, incrementalAppend, ftsQuery, replayProjection },
+      timingsMs: { initialIndex, incrementalAppend, ftsQuery, annotationFilterQuery, replayProjection },
       memory: { rssDeltaBytes },
       thresholds: SESSION_CATALOG_PERF_THRESHOLDS,
       passed,

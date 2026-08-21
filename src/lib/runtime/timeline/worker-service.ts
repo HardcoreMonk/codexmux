@@ -29,7 +29,7 @@ import type {
   IRuntimeTimelineSessionWatchUnsubscribeResult,
   IRuntimeTimelineSessionListInput,
   TRuntimeTimelineEntriesBeforeResult,
-  TRuntimeSessionCatalogSearchInput,
+  TRuntimeTimelineCatalogSearchInput,
   TRuntimeSessionCatalogSearchResult,
 } from '@/lib/runtime/contracts';
 import type { IInitMeta, ISessionInfo, ITimelineEntry, ITimelineInitMessage } from '@/types/timeline';
@@ -48,7 +48,7 @@ interface ICreateTimelineWorkerServiceOptions {
 
 export interface ITimelineCatalogService {
   health(): IRuntimeSessionCatalogHealth | Promise<IRuntimeSessionCatalogHealth>;
-  search(input: TRuntimeSessionCatalogSearchInput): TRuntimeSessionCatalogSearchResult | Promise<TRuntimeSessionCatalogSearchResult>;
+  search(input: TRuntimeTimelineCatalogSearchInput): TRuntimeSessionCatalogSearchResult | Promise<TRuntimeSessionCatalogSearchResult>;
   readEntries(input: IRuntimeSessionCatalogReadEntriesInput): Promise<TRuntimeTimelineEntriesBeforeResult>;
   rebuild(): Promise<IRuntimeSessionCatalogRebuildResult>;
   observeFile(jsonlPath: string): Promise<void>;

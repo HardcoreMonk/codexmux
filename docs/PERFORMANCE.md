@@ -117,9 +117,10 @@ corepack pnpm perf:session-catalog
 ```
 
 기본 5,000-session fixture의 fail threshold는 initial index 30초, incremental append 500ms,
-FTS query 1초, replay projection 200ms, RSS delta 512MiB입니다. 2026-08-21 integration
-snapshot은 각각 `5120.785ms`, `0.59ms`, `11.338ms`, `0.108ms`, `22,470,656 bytes`로
-통과했습니다. 원본 JSONL, prompt, full path는 측정 결과에 포함하지 않습니다.
+FTS query 1초, 2,500-ID annotation-filter query 1초, replay projection 200ms, RSS delta
+512MiB입니다. 2026-08-22 annotation pagination snapshot은 각각 `5156.764ms`, `0.564ms`,
+`11.249ms`, `11.547ms`, `0.111ms`, `22,167,552 bytes`였고 filtered count 2,500건을 정확히
+반환했습니다. 원본 JSONL, prompt, full path와 selection ID는 측정 결과에 포함하지 않습니다.
 
 ## Upload streaming memory gate
 

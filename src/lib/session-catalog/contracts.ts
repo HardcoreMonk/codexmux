@@ -8,6 +8,7 @@ const isoTimestampSchema = z.iso.datetime();
 export const sessionIdSchema = z.string().regex(catalogIdPattern);
 export const sessionTagSchema = z.string().regex(tagPattern);
 export const cursorSchema = z.string().regex(cursorPattern);
+export const SESSION_ANNOTATION_SELECTION_MAX_IDS = 10_000;
 
 export type TSessionRelationship = 'root' | 'child' | 'fork' | 'subagent' | 'unknown';
 export type TSessionCatalogHealth = 'ready' | 'building' | 'degraded' | 'disabled';
@@ -50,7 +51,7 @@ export interface ISessionSearchQuery {
   limit?: number;
 }
 
-export const sessionSearchQuerySchema: z.ZodType<ISessionSearchQuery> = z.object({
+export const sessionSearchQuerySchema = z.object({
   query: z.string().trim().max(512),
   models: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
   projects: z.array(z.string().trim().min(1).max(160)).max(50).optional(),
@@ -60,7 +61,30 @@ export const sessionSearchQuerySchema: z.ZodType<ISessionSearchQuery> = z.object
   dateTo: isoTimestampSchema.optional(),
   cursor: cursorSchema.optional(),
   limit: z.number().int().min(1).max(200).optional(),
-}).strict();
+}).strict() satisfies z.ZodType<ISessionSearchQuery>;
+
+export type TSessionAnnotationSelection =
+  | { mode: 'include'; sessionIds: string[] }
+  | { mode: 'exclude'; sessionIds: string[] };
+
+const sessionAnnotationSelectionIdsSchema = z.array(sessionIdSchema)
+  .max(SESSION_ANNOTATION_SELECTION_MAX_IDS)
+  .refine((sessionIds) => new Set(sessionIds).size === sessionIds.length, {
+    message: 'Session annotation selection IDs must be unique.',
+  });
+
+export const sessionAnnotationSelectionSchema: z.ZodType<TSessionAnnotationSelection> = z.discriminatedUnion('mode', [
+  z.object({ mode: z.literal('include'), sessionIds: sessionAnnotationSelectionIdsSchema }).strict(),
+  z.object({ mode: z.literal('exclude'), sessionIds: sessionAnnotationSelectionIdsSchema }).strict(),
+]);
+
+export interface ISessionCatalogSearchInput extends ISessionSearchQuery {
+  annotationSelection?: TSessionAnnotationSelection;
+}
+
+export const sessionCatalogSearchInputSchema: z.ZodType<ISessionCatalogSearchInput> = sessionSearchQuerySchema
+  .extend({ annotationSelection: sessionAnnotationSelectionSchema.optional() })
+  .strict();
 
 export interface ISessionSearchResult {
   entry: ISessionCatalogEntry;

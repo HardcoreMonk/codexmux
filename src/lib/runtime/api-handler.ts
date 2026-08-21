@@ -38,6 +38,8 @@ const runtimeErrorStatusByCode: Record<string, number> = {
   'catalog-session-not-found': 404,
   'session-annotation-session-not-found': 404,
   'session-annotation-version-conflict': 409,
+  'session-annotation-selection-too-large': 503,
+  'session-annotation-search-conflict': 503,
   'catalog-shadow-only': 503,
   'catalog-unavailable': 503,
   'approved-project-root-required': 403,

@@ -77,4 +77,29 @@ describe('session catalog repository', () => {
     expect(repository.search({ match: '"shared"', models: ['gpt-5.5'], limit: 50 })).toHaveLength(1);
     expect(repository.search({ match: '"shared"', dateFrom: '2026-08-21T00:00:00.000Z', limit: 50 })).toHaveLength(1);
   });
+
+  it('applies include and exclude selections to both rows and exact counts', () => {
+    const repository = createSessionCatalogRepository(db);
+    for (const [index, sessionId] of ['session-a', 'session-b', 'session-c', 'session-d'].entries()) {
+      repository.replaceProjection(projectCodexJsonl(
+        sessionContent(sessionId, 'shared selection phrase', `2026-08-21T08:0${index}:00.000Z`),
+        { indexedAt: '2026-08-21T09:00:00.000Z' },
+      ));
+    }
+
+    const include = { mode: 'include' as const, sessionIds: ['session-d', 'session-b'] };
+    const exclude = { mode: 'exclude' as const, sessionIds: ['session-c', 'session-a'] };
+    expect(repository.search({ match: '"shared"', annotationSelection: include, limit: 50 })
+      .map((result) => result.entry.sessionId)).toEqual(['session-d', 'session-b']);
+    expect(repository.countSearch({ match: '"shared"', annotationSelection: include, limit: 50 })).toBe(2);
+    expect(repository.search({ match: '"shared"', annotationSelection: exclude, limit: 50 })
+      .map((result) => result.entry.sessionId)).toEqual(['session-d', 'session-b']);
+    expect(repository.countSearch({ match: '"shared"', annotationSelection: exclude, limit: 50 })).toBe(2);
+    expect(repository.countSearch({
+      match: '"shared"', annotationSelection: { mode: 'include', sessionIds: [] }, limit: 50,
+    })).toBe(0);
+    expect(repository.countSearch({
+      match: '"shared"', annotationSelection: { mode: 'exclude', sessionIds: [] }, limit: 50,
+    })).toBe(4);
+  });
 });

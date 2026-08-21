@@ -13,6 +13,7 @@ class FakeWorker {
   shutdowns = 0;
   replies = new Map<string, unknown>();
   failures = new Map<string, Error>();
+  handlers = new Map<string, (payload: unknown) => unknown | Promise<unknown>>();
 
   start = (): void => {
     this.started += 1;
@@ -30,6 +31,8 @@ class FakeWorker {
     this.commands.push({ type, payload });
     const failure = this.failures.get(type);
     if (failure) throw failure;
+    const handler = this.handlers.get(type);
+    if (handler) return await handler(payload) as TResult;
     return this.replies.get(type) as TResult;
   };
 }
@@ -352,6 +355,119 @@ describe('runtime supervisor', () => {
         },
       },
     ]));
+  });
+
+  it('applies annotation selection before Timeline pagination and preserves exact page metadata', async () => {
+    const { storage, terminal, timeline, status } = createWorkers();
+    storage.replies.set('storage.select-session-annotations', {
+      mode: 'include', sessionIds: ['session-1'],
+    });
+    timeline.replies.set('timeline.catalog-search', {
+      results: [{
+        entry: {
+          sessionId: 'session-1',
+          projectLabel: 'codexmux',
+          startedAt: '2026-08-21T08:00:00.000Z',
+          lastActivityAt: '2026-08-21T08:01:00.000Z',
+          turnCount: 1,
+          indexedAt: '2026-08-21T09:00:00.000Z',
+        },
+        snippet: 'worker',
+      }],
+      nextCursor: 'eyJmaWx0ZXJlZCI6dHJ1ZX0',
+      total: 1,
+      health: 'ready',
+    });
+    storage.replies.set('storage.list-session-annotations', [{
+      sessionId: 'session-1', pinned: true, tags: ['review'], version: 1,
+      updatedAt: '2026-08-21T09:00:00.000Z',
+    }]);
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
+
+    await expect(supervisor.searchSessionCatalog({ query: 'worker', pinned: true, tags: ['review'] }))
+      .resolves.toMatchObject({
+        results: [{ annotation: { pinned: true, tags: ['review'] } }],
+        total: 1,
+        nextCursor: 'eyJmaWx0ZXJlZCI6dHJ1ZX0',
+      });
+
+    expect(storage.commands).toContainEqual({
+      type: 'storage.select-session-annotations', payload: { pinned: true, tags: ['review'] },
+    });
+    expect(timeline.commands).toContainEqual({
+      type: 'timeline.catalog-search',
+      payload: {
+        query: 'worker', pinned: true, tags: ['review'],
+        annotationSelection: { mode: 'include', sessionIds: ['session-1'] },
+      },
+    });
+  });
+
+  it('retries the complete filtered search once when hydrated annotations conflict', async () => {
+    const { storage, terminal, timeline, status } = createWorkers();
+    storage.replies.set('storage.select-session-annotations', {
+      mode: 'include', sessionIds: ['session-1'],
+    });
+    timeline.replies.set('timeline.catalog-search', {
+      results: [{
+        entry: {
+          sessionId: 'session-1', projectLabel: 'codexmux',
+          startedAt: '2026-08-21T08:00:00.000Z', lastActivityAt: '2026-08-21T08:01:00.000Z',
+          turnCount: 1, indexedAt: '2026-08-21T09:00:00.000Z',
+        },
+        snippet: 'worker',
+      }],
+      nextCursor: null,
+      total: 1,
+      health: 'ready',
+    });
+    let hydrationCount = 0;
+    storage.handlers.set('storage.list-session-annotations', () => {
+      hydrationCount += 1;
+      return [{
+        sessionId: 'session-1',
+        pinned: hydrationCount > 1,
+        tags: ['review'],
+        version: hydrationCount,
+        updatedAt: '2026-08-21T09:00:00.000Z',
+      }];
+    });
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
+
+    await expect(supervisor.searchSessionCatalog({ query: 'worker', pinned: true }))
+      .resolves.toMatchObject({ results: [{ annotation: { pinned: true } }] });
+    expect(storage.commands.filter((command) => command.type === 'storage.select-session-annotations')).toHaveLength(2);
+    expect(timeline.commands.filter((command) => command.type === 'timeline.catalog-search')).toHaveLength(2);
+    expect(hydrationCount).toBe(2);
+  });
+
+  it('fails closed when a filtered search still conflicts after one retry', async () => {
+    const { storage, terminal, timeline, status } = createWorkers();
+    storage.replies.set('storage.select-session-annotations', {
+      mode: 'include', sessionIds: ['session-1'],
+    });
+    timeline.replies.set('timeline.catalog-search', {
+      results: [{
+        entry: {
+          sessionId: 'session-1', projectLabel: 'codexmux',
+          startedAt: '2026-08-21T08:00:00.000Z', lastActivityAt: '2026-08-21T08:01:00.000Z',
+          turnCount: 1, indexedAt: '2026-08-21T09:00:00.000Z',
+        },
+        snippet: 'worker',
+      }],
+      nextCursor: null,
+      total: 1,
+      health: 'ready',
+    });
+    storage.replies.set('storage.list-session-annotations', [{
+      sessionId: 'session-1', pinned: false, tags: [], version: 1,
+      updatedAt: '2026-08-21T09:00:00.000Z',
+    }]);
+    const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status });
+
+    await expect(supervisor.searchSessionCatalog({ query: 'worker', pinned: true }))
+      .rejects.toMatchObject({ code: 'session-annotation-search-conflict', retryable: true });
+    expect(timeline.commands.filter((command) => command.type === 'timeline.catalog-search')).toHaveLength(2);
   });
 
   it('keeps Approved Root and Managed Project writes behind the Storage Worker facade', async () => {
