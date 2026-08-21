@@ -58,11 +58,12 @@ delta `22,167,552 bytes`도 모두 기존 gate를 통과했습니다.
 - 10,000개 초과 catalog scaling은 별도 lifecycle 대상입니다.
 - 현재 검증 host는 Linux이며 변경 코드는 Node/SQLite worker 내부로 platform-specific primitive를
   추가하지 않았습니다. Windows package surface는 변경하지 않았습니다.
-- Live service는 PID `1216337`, restart `0`, build `f46410b4`로 유지되어 이 수정은 아직 배포되지
-  않았습니다.
-- npm/version/tag/Release, commit/push와 live restart는 수행하지 않았습니다.
+- Release 뒤 live service는 PID `1294595`, restart `0`, build `322ccfb7`, version `0.4.24`로
+  동작합니다. 실제 pinned/tag 검색은 `results=1`, `total=1`, no cursor이며 Phase 6 gate도
+  통과했습니다.
+- Remote tag와 GitHub Windows Release는 독립 release gate로 유지했습니다.
 
 ## Review 결론
 
 승인된 Spec Freeze와 구현이 일치하고 correctness, security, performance와 rollback blocker가 없습니다.
-Source release candidate는 준비됐으며 live release는 별도 사용자 승인 뒤 진행합니다.
+Source review와 승인된 Linux live release/operate 검증이 완료됐습니다.

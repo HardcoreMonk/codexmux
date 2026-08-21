@@ -3,7 +3,7 @@
 ## 범위
 
 - 일자: 2026-08-22 KST
-- Lifecycle: `intake -> writing-spec -> domain-architecture -> grill-me -> plan-design-review -> writing-plans -> plan-eng-review -> implement -> code-review`
+- Lifecycle: `intake -> writing-spec -> domain-architecture -> grill-me -> plan-design-review -> writing-plans -> plan-eng-review -> implement -> code-review -> release -> operate`
 - 대상: Session Catalog `pinned`/`tags` filter의 exact total, page fill과 cursor
 - Release 경계: 사용자가 `0.4.24` npm publish, commit/push와 live deploy/restart를 승인함;
   remote tag/GitHub Windows Release는 별도 gate
@@ -51,16 +51,21 @@ bound JSON과 `json_each`를 사용하며 session 수만큼 SQL placeholder를 �
 | replay projection | `0.111ms` / 200ms 이하 |
 | RSS delta | `22,167,552 bytes` / 512MiB 이하 |
 
-Build는 `/tmp` mirror와 hard-link dependency copy에서 수행하고 mirror를 삭제했습니다. Source
-checkout의 `.next/dist`와 live service는 변경하지 않았습니다.
+Build는 `/tmp` mirror와 hard-link dependency copy에서 먼저 검증하고 mirror를 삭제했습니다.
+Release 시점에는 같은 source commit으로 production build와 live 배포를 다시 수행했습니다.
 
 ## 운영 상태와 rollback
 
-현재 live service는 이전 build `f46410b4`이므로 이 source 수정은 아직 반영되지 않았습니다. Live
-rebuild에서 확인된 filtered result 1건/`total=18` 현상은 배포 전까지 기존 build에서 유지됩니다.
-배포 승인이 있으면 Supervisor와 Storage/Timeline Worker를 같은 build로 배포하고 pin/tag saved filter
-replay에서 `results=1`, `total=1`을 확인해야 합니다.
+Commit `322ccfb777d45ef80fdcd9079cfcd88e3a9151ac`을 branch
+`codex/session-catalog-annotation-release-0.4.24`에 push하고 같은 build를 live service에
+배포했습니다. Service 정지 중 backup `runtime-v2-storage-20260821T163716Z`을 생성한 뒤 PID
+`1294595`, restart count 0으로 재기동했습니다. Listener는 authenticated `0.0.0.0:8122`, version은
+`0.4.24`, build time은 `2026-08-21T16:37:29.363Z`이며 governance write gate도 유지됩니다.
+
+실제 durable annotation을 대상으로 `pinned=true`, tag `verified-2026-08-22` 검색을 재실행했습니다.
+응답은 `results=1`, `total=1`, next cursor 없음이었고 모든 결과가 pin/tag predicate를
+만족했습니다. 이어서 live Phase 6 12-check도 통과했습니다.
 
 Durable schema/migration이 없으므로 rollback은 직전 source bundle로 되돌리면 됩니다. Catalog index와
-annotation DB restore는 필요하지 않습니다. npm 갱신은 최종 개발 완료가 명시적으로 확정될 때까지
-계속 보류합니다.
+annotation DB restore는 필요하지 않습니다. 필요하면 배포 전 backup에서 runtime durable state 5개를
+service 정지 상태로 복구합니다.

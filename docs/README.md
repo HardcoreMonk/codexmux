@@ -39,7 +39,7 @@ snapshot이고 완성된 번역으로 보지 않습니다. 작성,
 | `operations/2026-07-13-v0.4.22-windows-release-handoff.md` | 보존된 Windows stable release, cookie namespace와 update 증거 |
 | `operations/2026-07-12-purplemux-cookie-isolation-handoff.md` | 동일 hostname의 Purplemux/Codexmux cookie 충돌 원인, source 수정과 release 경계 |
 | `operations/2026-08-14-purplemux-selected-adoption-handoff.md` | Purplemux 선택 기능 수동 도입, 자동 검증과 Linux service 재시작 근거 |
-| `operations/2026-08-20-npm-npx-distribution-handoff.md` | npm 0.4.23 publish, registry/landing smoke와 보류된 tag/Trusted Publisher |
+| `operations/2026-08-20-npm-npx-distribution-handoff.md` | npm 0.4.23 publish, 0.4.24 release gate와 보류된 tag/Trusted Publisher |
 | `operations/2026-08-21-session-operations-governance-integration-handoff.md` | Session Catalog/Project Governance 구현, 검증, rollback과 운영 진입 경계 |
 | `operations/2026-08-21-canonical-documentation-refresh-handoff.md` | canonical/landing 문서 감사 범위, 현행 기준과 보존 정책 |
 | `operations/2026-08-21-governed-project-scaffold-handoff.md` | Phase 3 scaffold 구현, 검증, gate-off 운영 인계와 활성화 조건 |
@@ -69,6 +69,8 @@ user service에 순차 배포했습니다. Browser 인증, `HOST=0.0.0.0`과
 `CODEXMUX_GOVERNANCE_WRITES=1` drop-in을 적용해 listener와 governed writer를 활성화했습니다.
 2026-08-22에는 실제 Managed Project의 adoption/rollback, 실제 JSONL Session Catalog와 301초
 동일 세션 재연결 관찰을 완료해 ADR-031과 ADR-032를 `Verified`로 전환했습니다.
+같은 날 annotation-aware pagination commit `322ccfb7`, version `0.4.24`를 Linux user service에
+배포해 실제 pinned/tag 검색의 `results=1`, exact `total=1`과 Phase 6 gate를 확인했습니다.
 
 Root `CONTEXT.md`는 도메인 언어와 기준 소스 경계를, root `DESIGN.md`는
 UI 시각 계약을 담당합니다.
