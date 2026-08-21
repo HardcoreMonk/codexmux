@@ -26,8 +26,10 @@ corepack pnpm check:landing
 ```
 
 `check:landing`은 `_site/`의 필수 landing/docs/404/robots/sitemap/search artifact, GitHub Pages
-canonical URL, `/codexmux/` local link와 path containment를 검사합니다. Guide availability나
-checker contract를 바꾸면 focused unit test를 함께 실행합니다.
+canonical URL, `/codexmux/` local link, path containment와 English/Korean product content
+contract를 검사합니다. Session Operations/Project Governance/Runtime Operations 핵심 용어가
+없거나 purplemux와 legacy mobile-primary claim이 current home에 다시 들어오면 실패합니다.
+Guide availability나 checker contract를 바꾸면 focused unit test를 함께 실행합니다.
 
 ```bash
 corepack pnpm exec vitest run tests/unit/scripts/landing-site-check.test.ts
