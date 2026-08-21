@@ -51,13 +51,25 @@ export const projectDocumentsApiQuerySchema = projectGovernanceApiQuerySchema.ex
   path: relativeDocumentPathSchema.optional(),
 }).strict();
 
+const scaffoldApiArtifactSelectionSchema = z.array(scaffoldArtifactIdSchema).max(6).refine(
+  (values) => new Set(values).size === values.length,
+  'Artifact ids must be unique',
+);
+
 export const scaffoldPreviewApiBodySchema = z.object({
-  artifacts: z.array(scaffoldArtifactIdSchema).min(1).max(6).refine(
-    (values) => new Set(values).size === values.length,
-    'Artifact ids must be unique',
-  ),
+  artifacts: scaffoldApiArtifactSelectionSchema.min(1),
+  adoptArtifacts: scaffoldApiArtifactSelectionSchema.default([]),
   input: scaffoldTemplateInputSchema,
-}).strict();
+}).strict().superRefine(({ artifacts, adoptArtifacts }, ctx) => {
+  const selected = new Set(artifacts);
+  if (adoptArtifacts.some((id) => !selected.has(id))) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['adoptArtifacts'],
+      message: 'Adoption artifact ids must be selected artifacts',
+    });
+  }
+});
 
 export const scaffoldConfirmApiBodySchema = z.object({
   token: scaffoldPreviewTokenSchema,

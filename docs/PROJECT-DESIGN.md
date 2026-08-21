@@ -95,8 +95,9 @@ sanitized governance audit는 `runtime-v2/state.db`의 durable state입니다. K
 일반 API 응답에는 root/project canonical path를 포함하지 않습니다.
 
 Governed scaffold는 `AGENTS.md`, `CONTEXT.md`, 조건부 `DESIGN.md`와 세 `docs/agents/` 문서를
-버전 고정 catalog에서 render합니다. Existing unmarked file은 자동 채택하지 않고 marker 밖
-bytes를 보존합니다. Private preimage와 journal은
+버전 고정 catalog에서 render합니다. Existing unmarked file은 자동 채택하지 않습니다. 첫
+preview의 `adoption-available` artifact 중 사용자가 개별 선택한 file만 별도 compact adoption
+marker block을 EOF에 append하고 기존 bytes를 exact prefix로 보존합니다. Private preimage와 journal은
 `~/.codexmux/backups/governance-actions/<project-id>/<action-id>/`에 저장합니다.
 
 오래된 provider alias는 runtime에서 허용하지 않습니다. 새 기능도
@@ -124,5 +125,5 @@ provider-neutral boundary 또는 Codex provider 내부에 추가합니다.
 - 전체 세션의 pending approval을 모아 보는 approval queue를 만듭니다.
 - fork/sub-agent 관계를 UI에 표시합니다.
 - Codex CLI 버전별 JSONL fixture와 smoke test를 확장합니다.
-- Existing unmarked adoption, arbitrary project write/delete/move/full sync, remote/multi-engine
+- Automatic/full-file adoption, arbitrary project write/delete/move/full sync, remote/multi-engine
   topology, GSD orchestration과 full-output search는 각각 별도 lifecycle로 설계합니다.

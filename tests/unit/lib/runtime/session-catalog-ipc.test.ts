@@ -30,6 +30,23 @@ describe('session catalog IPC', () => {
       input: { title: 'Demo', summary: 'Summary', uiProject: false },
       path: '../../outside',
     })).toThrow(/Invalid runtime IPC payload/);
+    expect(parseRuntimeCommandPayload('governance.preview-scaffold', {
+      projectId: 'project-1',
+      artifacts: ['agents'],
+      input: { title: 'Demo', summary: 'Summary', uiProject: false },
+    })).toMatchObject({ adoptArtifacts: [] });
+    expect(parseRuntimeCommandPayload('governance.preview-scaffold', {
+      projectId: 'project-1',
+      artifacts: ['agents'],
+      adoptArtifacts: ['agents'],
+      input: { title: 'Demo', summary: 'Summary', uiProject: false },
+    })).toMatchObject({ adoptArtifacts: ['agents'] });
+    expect(() => parseRuntimeCommandPayload('governance.preview-scaffold', {
+      projectId: 'project-1',
+      artifacts: ['agents'],
+      adoptArtifacts: ['context'],
+      input: { title: 'Demo', summary: 'Summary', uiProject: false },
+    })).toThrow(/Invalid runtime IPC payload/);
   });
 
   it('validates annotation and saved-filter storage payloads', () => {

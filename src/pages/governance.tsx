@@ -68,6 +68,7 @@ const GovernancePage = () => {
         mode="scaffold"
         busy={scaffold.busy}
         onConfirm={scaffold.confirmScaffold}
+        onRepreview={scaffold.repreviewAdoptions}
         onOpenChange={(open) => { if (!open) scaffold.closePreview(); }}
       />
       <GovernanceScaffoldPreviewDrawer

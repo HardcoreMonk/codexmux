@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const rootDir = process.cwd();
-const timeoutMs = 45_000;
+const timeoutMs = Number(process.env.CODEXMUX_GOVERNED_SCAFFOLD_TIMEOUT_MS || 45_000);
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 const getFreePort = () => new Promise((resolve, reject) => {
@@ -79,10 +79,15 @@ const main = async () => {
   const projectPath = path.join(projectRoot, 'demo');
   const sessionsRoot = path.join(homeDir, '.codex', 'sessions');
   await Promise.all([
-    fs.mkdir(projectPath, { recursive: true }),
+    fs.mkdir(path.join(projectPath, 'docs', 'agents'), { recursive: true }),
     fs.mkdir(sessionsRoot, { recursive: true }),
   ]);
-  await fs.writeFile(path.join(projectPath, 'AGENTS.md'), '# Existing unmarked guidance\n');
+  const originalAgents = Buffer.from('# Existing unmarked guidance\n');
+  const originalIssueTracker = Buffer.from('# Existing issue rules\r\nUser rule\r\n');
+  const originalTriageLabels = Buffer.from('# Existing triage rules');
+  await fs.writeFile(path.join(projectPath, 'AGENTS.md'), originalAgents);
+  await fs.writeFile(path.join(projectPath, 'docs', 'agents', 'issue-tracker.md'), originalIssueTracker);
+  await fs.writeFile(path.join(projectPath, 'docs', 'agents', 'triage-labels.md'), originalTriageLabels);
   await fs.writeFile(path.join(projectPath, 'README.md'), '# Unrelated\n');
   await fs.writeFile(path.join(sessionsRoot, 'source.jsonl'), '{"source":"unchanged"}\n');
   const baseline = await snapshotTree(projectPath);
@@ -128,10 +133,163 @@ const main = async () => {
       approvedRootId: approvedRoot.id, title: 'Demo', path: projectPath,
     });
 
-    const conflict = await post(baseUrl, token, `/api/governance/projects/${project.id}/scaffold/preview`, {
-      artifacts: ['agents'], input: { title: 'Demo', summary: 'Smoke project', uiProject: false },
+    await fs.writeFile(path.join(projectPath, 'CONTEXT.md'), Buffer.from([0xc3, 0x28]));
+    const invalidUtf8 = await post(baseUrl, token, `/api/governance/projects/${project.id}/scaffold/preview`, {
+      artifacts: ['context'], input: { title: 'Demo', summary: 'Smoke project', uiProject: false },
     });
-    assert(conflict.artifacts[0]?.state === 'conflict', 'Unmarked file did not fail closed.');
+    assert(
+      invalidUtf8.artifacts[1]?.errorCode === 'scaffold-adoption-invalid-utf8',
+      'Invalid UTF-8 adoption target did not fail closed.',
+    );
+    await fs.unlink(path.join(projectPath, 'CONTEXT.md'));
+
+    const domainPath = path.join(projectPath, 'docs', 'agents', 'domain.md');
+    await fs.writeFile(domainPath, Buffer.from('before\0after'));
+    const nulPreview = await post(baseUrl, token, `/api/governance/projects/${project.id}/scaffold/preview`, {
+      artifacts: ['agent-domain'], input: { title: 'Demo', summary: 'Smoke project', uiProject: false },
+    });
+    assert(nulPreview.artifacts[5]?.errorCode === 'governance-artifact-not-text', 'NUL target did not fail closed.');
+    await fs.writeFile(domainPath, '<!-- BEGIN CODEXMUX:unknown -->\n');
+    const markerConflict = await post(baseUrl, token, `/api/governance/projects/${project.id}/scaffold/preview`, {
+      artifacts: ['agent-domain'], input: { title: 'Demo', summary: 'Smoke project', uiProject: false },
+    });
+    assert(
+      markerConflict.artifacts[5]?.errorCode === 'scaffold-adoption-marker-conflict',
+      'Marker-like target did not fail closed.',
+    );
+    await fs.unlink(domainPath);
+
+    const discovery = await post(baseUrl, token, `/api/governance/projects/${project.id}/scaffold/preview`, {
+      artifacts: ['agents', 'agent-issue-tracker', 'agent-triage-labels'],
+      input: { title: 'Demo', summary: 'Smoke project', uiProject: false },
+    });
+    assert(
+      ['agents', 'agent-issue-tracker', 'agent-triage-labels'].every((id) =>
+        discovery.artifacts.find((artifact) => artifact.id === id)?.state === 'adoption-available'),
+      'Unmarked adoption discovery was incomplete.',
+    );
+    const discoveryConfirm = await request(baseUrl, token, `/api/governance/projects/${project.id}/scaffold/confirm`, {
+      method: 'POST',
+      body: JSON.stringify({ token: discovery.token, digest: discovery.digest, confirmation: 'Demo' }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    assert(
+      discoveryConfirm.status === 409 && discoveryConfirm.payload?.error === 'scaffold-adoption-selection-required',
+      'First-pass adoption preview was confirmable.',
+    );
+
+    const adoptionRequest = {
+      artifacts: ['agents', 'agent-issue-tracker'],
+      adoptArtifacts: ['agents', 'agent-issue-tracker'],
+      input: { title: 'Demo', summary: 'Smoke project', uiProject: false },
+    };
+    const staleAdoption = await post(
+      baseUrl,
+      token,
+      `/api/governance/projects/${project.id}/scaffold/preview`,
+      adoptionRequest,
+    );
+    await fs.writeFile(path.join(projectPath, 'AGENTS.md'), '# External writer\n');
+    const staleAdoptionConfirm = await request(
+      baseUrl,
+      token,
+      `/api/governance/projects/${project.id}/scaffold/confirm`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ token: staleAdoption.token, digest: staleAdoption.digest, confirmation: 'Demo' }),
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
+    assert(staleAdoptionConfirm.status === 409, 'Stale adoption preview was not rejected.');
+    await fs.writeFile(path.join(projectPath, 'AGENTS.md'), originalAgents);
+
+    const adoptionPreview = await post(
+      baseUrl,
+      token,
+      `/api/governance/projects/${project.id}/scaffold/preview`,
+      adoptionRequest,
+    );
+    assert(
+      ['agents', 'agent-issue-tracker'].every((id) =>
+        adoptionPreview.artifacts.find((artifact) => artifact.id === id)?.state === 'adopt'),
+      'Selected adoption was not previewed.',
+    );
+    const adopted = await post(baseUrl, token, `/api/governance/projects/${project.id}/scaffold/confirm`, {
+      token: adoptionPreview.token, digest: adoptionPreview.digest, confirmation: 'Demo',
+    });
+    assert(adopted.state === 'committed', 'Adoption transaction was not committed.');
+    const adoptedAgents = await fs.readFile(path.join(projectPath, 'AGENTS.md'));
+    const adoptedIssueTracker = await fs.readFile(path.join(projectPath, 'docs', 'agents', 'issue-tracker.md'));
+    assert(adoptedAgents.subarray(0, originalAgents.length).equals(originalAgents), 'LF adoption changed existing bytes.');
+    assert(
+      adoptedIssueTracker.subarray(0, originalIssueTracker.length).equals(originalIssueTracker),
+      'CRLF adoption changed existing bytes.',
+    );
+    const issueSuffix = adoptedIssueTracker.subarray(originalIssueTracker.length).toString('utf8');
+    assert(!/(^|[^\r])\n/.test(issueSuffix), 'CRLF adoption introduced a lone LF.');
+    assert(
+      (await fs.readFile(path.join(projectPath, 'docs', 'agents', 'triage-labels.md'))).equals(originalTriageLabels),
+      'Unchecked adoption target changed.',
+    );
+
+    const adoptedUpdatePreview = await post(
+      baseUrl,
+      token,
+      `/api/governance/projects/${project.id}/scaffold/preview`,
+      { artifacts: ['agents'], input: { title: 'Demo', summary: 'Smoke project', uiProject: true } },
+    );
+    assert(
+      adoptedUpdatePreview.artifacts[0]?.state === 'marker-update'
+        && adoptedUpdatePreview.artifacts[0]?.templateId === 'project-agents-adopted',
+      'Adopted marker update switched variants.',
+    );
+    const adoptedUpdate = await post(baseUrl, token, `/api/governance/projects/${project.id}/scaffold/confirm`, {
+      token: adoptedUpdatePreview.token, digest: adoptedUpdatePreview.digest, confirmation: 'Demo',
+    });
+    const staleRollbackPreview = await post(
+      baseUrl,
+      token,
+      `/api/governance/projects/${project.id}/actions/${adopted.id}/rollback/preview`,
+      {},
+    );
+    const staleRollback = await post(
+      baseUrl,
+      token,
+      `/api/governance/projects/${project.id}/actions/${adopted.id}/rollback/confirm`,
+      { token: staleRollbackPreview.token, digest: staleRollbackPreview.digest, confirmation: 'Demo' },
+    );
+    assert(staleRollback.state === 'rollback-stale', 'Out-of-order adoption rollback was not rejected.');
+    const latestRollbackPreview = await post(
+      baseUrl,
+      token,
+      `/api/governance/projects/${project.id}/actions/${adoptedUpdate.id}/rollback/preview`,
+      {},
+    );
+    const latestRollback = await post(
+      baseUrl,
+      token,
+      `/api/governance/projects/${project.id}/actions/${adoptedUpdate.id}/rollback/confirm`,
+      { token: latestRollbackPreview.token, digest: latestRollbackPreview.digest, confirmation: 'Demo' },
+    );
+    assert(latestRollback.state === 'rolled-back', 'Latest adopted marker update rollback failed.');
+    const adoptionRollbackPreview = await post(
+      baseUrl,
+      token,
+      `/api/governance/projects/${project.id}/actions/${adopted.id}/rollback/preview`,
+      {},
+    );
+    const adoptionRollback = await post(
+      baseUrl,
+      token,
+      `/api/governance/projects/${project.id}/actions/${adopted.id}/rollback/confirm`,
+      { token: adoptionRollbackPreview.token, digest: adoptionRollbackPreview.digest, confirmation: 'Demo' },
+    );
+    assert(adoptionRollback.state === 'rolled-back', 'Adoption rollback failed.');
+    assert((await fs.readFile(path.join(projectPath, 'AGENTS.md'))).equals(originalAgents), 'AGENTS preimage was not exact.');
+    assert(
+      (await fs.readFile(path.join(projectPath, 'docs', 'agents', 'issue-tracker.md'))).equals(originalIssueTracker),
+      'Issue tracker preimage was not exact.',
+    );
 
     const stale = await post(baseUrl, token, `/api/governance/projects/${project.id}/scaffold/preview`, {
       artifacts: ['agent-domain'], input: { title: 'Demo', summary: 'Smoke project', uiProject: false },
@@ -144,7 +302,7 @@ const main = async () => {
       headers: { 'Content-Type': 'application/json' },
     });
     assert(staleConfirm.status === 409, 'Stale preview was not rejected.');
-    await fs.rm(path.join(projectPath, 'docs'), { recursive: true });
+    await fs.unlink(path.join(projectPath, 'docs', 'agents', 'domain.md'));
 
     const createPreview = await post(baseUrl, token, `/api/governance/projects/${project.id}/scaffold/preview`, {
       artifacts: ['context', 'agent-domain'],
@@ -183,6 +341,17 @@ const main = async () => {
     assert(await fs.readFile(updateTarget, 'utf8') === manualContext, 'Exact preimage was not restored.');
 
     const actionManifest = path.join(dataDirectory, 'backups', 'governance-actions', project.id, created.id, 'action.json');
+    const adoptionManifest = path.join(dataDirectory, 'backups', 'governance-actions', project.id, adopted.id, 'action.json');
+    const adoptionJournal = JSON.parse(await fs.readFile(adoptionManifest, 'utf8'));
+    assert(
+      adoptionJournal.artifacts.every((artifact) => artifact.state === 'marker-update'),
+      'Adoption leaked a new durable manifest state.',
+    );
+    assert(
+      (await Promise.all(adoptionJournal.artifacts.map((artifact) => fs.stat(artifact.preimagePath))))
+        .every((stat) => (stat.mode & 0o777) === 0o600),
+      'Adoption preimage permissions are not private.',
+    );
     const backupMode = (await fs.stat(path.dirname(actionManifest))).mode & 0o777;
     const manifestMode = (await fs.stat(actionManifest)).mode & 0o777;
     assert(backupMode === 0o700 && manifestMode === 0o600, 'Backup permissions are not private.');
@@ -193,8 +362,10 @@ const main = async () => {
     console.log(JSON.stringify({
       ok: true,
       checks: [
-        'unmarked-conflict', 'stale-preview', 'transaction-create', 'marker-update',
-        'exact-preimage-rollback', 'private-backup-modes', 'unselected-tree-preserved',
+        'invalid-adoption-targets', 'adoption-discovery', 'selective-adoption', 'stale-adoption-preview',
+        'exact-prefix-lf-crlf', 'adopted-marker-update', 'latest-first-rollback', 'stale-preview',
+        'transaction-create', 'marker-update', 'exact-preimage-rollback', 'private-backup-modes',
+        'unselected-tree-preserved',
       ],
     }, null, 2));
   } finally {

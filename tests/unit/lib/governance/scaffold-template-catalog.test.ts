@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SCAFFOLD_ARTIFACT_IDS,
   listScaffoldTemplates,
+  renderScaffoldAdoptionTemplate,
+  renderScaffoldAdoptionTemplateContent,
   renderScaffoldTemplate,
 } from '@/lib/governance/scaffold-template-catalog';
 
@@ -43,5 +45,43 @@ describe('governance scaffold template catalog', () => {
     expect(renderScaffoldTemplate('design', {
       title: 'Console', summary: 'Operator console.', uiProject: true,
     })).toContain('# Console DESIGN.md');
+  });
+
+  it('provides a unique compact adoption template for every artifact', () => {
+    const expected = new Map([
+      ['agents', ['project-agents-adopted', '## Codexmux Managed Workflow']],
+      ['context', ['project-context-adopted', '## Codexmux Managed Domain Guidance']],
+      ['design', ['project-design-adopted', '## Codexmux Managed UI Contract']],
+      ['agent-issue-tracker', ['agent-issue-tracker-adopted', '## Codexmux Managed Issue Rules']],
+      ['agent-triage-labels', ['agent-triage-labels-adopted', '## Codexmux Managed Triage Rules']],
+      ['agent-domain', ['agent-domain-adopted', '## Codexmux Managed Domain Rules']],
+    ]);
+    const templates = listScaffoldTemplates();
+    const templateIds = templates.map((template) => template.adoption?.templateId);
+
+    expect(new Set(templateIds).size).toBe(templates.length);
+    for (const template of templates) {
+      const [templateId, heading] = expected.get(template.id) ?? [];
+      expect(template.adoption).toMatchObject({ templateId, version: 1 });
+      const content = renderScaffoldAdoptionTemplateContent(template.id, {
+        title: 'Existing', summary: 'Existing project.', uiProject: true,
+      });
+      expect(content).toContain(heading);
+      expect(content).not.toMatch(/^# /m);
+      expect(renderScaffoldAdoptionTemplate(template.id, {
+        title: 'Existing', summary: 'Existing project.', uiProject: true,
+      })).toContain(`<!-- BEGIN CODEXMUX:${templateId}:v1 -->`);
+    }
+  });
+
+  it('keeps adoption rendering deterministic and validates UI-only artifacts', () => {
+    const input = { title: 'Existing', summary: 'Existing project.', uiProject: true };
+    expect(renderScaffoldAdoptionTemplate('context', input)).toBe(
+      renderScaffoldAdoptionTemplate('context', input),
+    );
+    expect(() => renderScaffoldAdoptionTemplate('design', {
+      ...input,
+      uiProject: false,
+    })).toThrowError(/UI project/);
   });
 });

@@ -289,10 +289,10 @@
 - 상태: Implemented
 - 결정: Project Governance의 project filesystem 변경은 Governance Worker가 소유하는
   `GovernanceActionRun`의 preview, exact confirmation, staged publish, backup, compensation과
-  startup recovery 경로로만 수행합니다. 첫 범위는 versioned template catalog의 신규 file
-  생성과 `MarkerOwnedBlock` 갱신이며 arbitrary overwrite, delete, move와 full sync를 허용하지
-  않습니다. Next API route와 browser는 project path나 rendered file content를 조립하지
-  않습니다.
+  startup recovery 경로로만 수행합니다. Versioned template catalog의 신규 file 생성,
+  `MarkerOwnedBlock` 갱신과 artifact별 명시적 append-only adoption만 허용하며 arbitrary
+  overwrite, delete, move와 full sync를 허용하지 않습니다. Next API route와 browser는 project
+  path나 rendered file content를 조립하지 않습니다.
 - 이유: Managed Project 문서 변경은 승인 root containment, symlink/mount 방어, stale write
   차단과 crash recovery를 하나의 authority에서 보장해야 합니다. 독립 API route, shell
   script 또는 browser가 write를 나눠 소유하면 preview와 실제 publish 사이의 정책이
@@ -336,5 +336,25 @@
 - 구현 근거: versioned template/marker, preview token, contained path policy, private journal/backup,
   compensating transaction/startup recovery, Runtime v2 IPC/Supervisor, authenticated Pages API와
   한국어·영어 UI를 구현했습니다. `corepack pnpm smoke:governance:scaffold`의 격리 Linux
-  create/update/rollback 및 private mode 검증을 통과했습니다. Live service의 write gate는
-  활성화하지 않았으므로 실제 운영 project 확인 뒤에만 `Verified` 전이를 검토합니다.
+  create/update/rollback 및 private mode 검증을 통과했습니다. 최초 source release 시점에는 live
+  write gate를 활성화하지 않았고, 이후 위 운영 근거의 승인된 배포에서 gate를 활성화했습니다.
+  실제 운영 project 확인 뒤에만 `Verified` 전이를 검토합니다.
+- 2026-08-21 확장 근거: 기존 unmarked UTF-8 regular file은 첫 preview에서 confirm 불가
+  `adoption-available`로만 발견하고, artifact별 `Adoption Selection`을 반영한 새 preview에서만
+  `adopt` operation과 diff를 만듭니다. 신규 문서와 별도 marker ID/version을 가진 compact
+  `Adoption Template Variant`를 EOF에 append하며 기존 bytes를 exact prefix로 보존합니다.
+  NUL, invalid UTF-8와 marker-like CODEXMUX comment는 fail closed입니다. Public operation의
+  `adopt`는 기존 manifest v1 호환성을 위해 durable journal에서 `marker-update`로 정규화하고
+  exact preimage, output fingerprint, latest-first rollback 규칙을 그대로 재사용합니다. Backup은
+  recovery/rollback dependency 때문에 자동 prune하지 않습니다.
+- 확장 승인 근거: `docs/superpowers/specs/2026-08-21-governed-unmarked-adoption-design.md`,
+  `docs/superpowers/grill-me/2026-08-21-governed-unmarked-adoption.md`, design/engineering review와
+  implementation plan에서 append-only, 2-pass UI, semantic warning, durable compatibility와
+  latest-first rollback 경계를 확정했습니다. 이 확장은 기존 ADR-032 경계 안의 operation이므로
+  새 ADR을 만들지 않습니다.
+- 확장 운영 근거: 구현 commit `f46410b4`를 Linux user service에 배포했습니다. 재시작 전
+  `runtime-v2-storage-20260821T123122Z`에 DB/WAL/SHM과 workspace state 5개를 `0700/0600`으로
+  backup했고, PID `1104868`에서 `1149564`로 재기동했습니다. `0.0.0.0:8122`, Governance
+  `writeState=ready`, live Phase 6 12-check와 production scaffold 13-check, 한국어/영어 browser
+  4-check를 통과했습니다. 등록 Managed Project가 없어 실제 project confirm은 수행하지 않았고
+  [Issue #20](https://github.com/HardcoreMonk/codexmux/issues/20)에 근거를 남깁니다.

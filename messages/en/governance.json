@@ -83,6 +83,12 @@
     "history": "Action history",
     "noActions": "No scaffold actions have been recorded.",
     "artifactCount": "{count} documents",
+    "adoptionSelect": "Adopt {path}",
+    "adoptionAvailableDescription": "Append a codexmux-managed block at EOF without changing the existing body.",
+    "adoptionRepreview": "Re-preview selected adoption",
+    "adoptionSelectionHint": "Select each file to adopt. Unchecked files are excluded from the next preview.",
+    "adoptionSemanticWarning": "Keep the existing body and append only the managed block. Review it for conflicts with existing guidance.",
+    "adoptionSummary": "{count, plural, one {# adoption: {paths}} other {# adoptions: {paths}}}",
     "recoveryRequired": "An action conflicts with an external change. Manually review the current file, stage, and preimage.",
     "writeStateDescription": {
       "disabled": "CODEXMUX_GOVERNANCE_WRITES is disabled. Read models and action history remain available.",
@@ -93,6 +99,8 @@
     "artifactState": {
       "create": "Create",
       "marker-update": "Marker update",
+      "adoption-available": "Existing file available for adoption",
+      "adopt": "Adopt existing file",
       "unchanged": "Unchanged",
       "conflict": "Conflict",
       "skipped": "Skipped"

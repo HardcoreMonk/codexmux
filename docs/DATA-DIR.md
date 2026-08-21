@@ -132,7 +132,10 @@ Session Catalog와 Knowledge Index는 source of truth가 아닙니다.
 Approved Project Root의 canonical path와 Managed Project canonical path는 `runtime-v2/state.db`에만
 저장하고 일반 catalog/API 응답에서는 제거합니다. Governance Worker는 등록 root 안에서 문서를
 scan하고, feature gate가 열린 경우 catalog scaffold만 생성하거나 marker-owned block을 갱신합니다.
-Action directory는 `0700`, manifest와 preimage는 `0600`이며 first release에는 자동 prune이
+명시적으로 선택한 unmarked UTF-8 regular file은 기존 bytes를 exact prefix로 보존한 채 EOF에
+adoption marker block을 append할 수 있습니다. Adoption도 기존 file update와 동일하게 exact
+preimage를 저장하고 durable manifest에는 `marker-update`로 기록합니다. Action directory는 `0700`,
+manifest와 preimage는 `0600`이며 pending/recovery/rollback dependency가 있으므로 자동 prune이
 없습니다. `projects.yaml`은 승인 root 바로 아래의 regular file만 import source로 읽습니다.
 
 ## Codex CLI 원본 데이터

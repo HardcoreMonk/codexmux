@@ -233,7 +233,7 @@ export const createProjectWriteTransaction = ({
           id,
           absolutePath,
           baseFingerprint,
-          state,
+          state: state === 'adopt' ? 'marker-update' : state,
         })),
       });
       let manifest: IScaffoldActionManifest = {
@@ -247,7 +247,7 @@ export const createProjectWriteTransaction = ({
           id: artifact.id,
           path: artifact.path,
           absolutePath: artifact.absolutePath,
-          state: artifact.state,
+          state: artifact.state === 'adopt' ? 'marker-update' : artifact.state,
           templateId: artifact.templateId,
           fromVersion: artifact.fromVersion,
           toVersion: artifact.toVersion,

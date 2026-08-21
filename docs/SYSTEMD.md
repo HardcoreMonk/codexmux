@@ -17,7 +17,7 @@ HOST=0.0.0.0
 PORT=8122
 ```
 
-2026-08-21 현재 이 host의 unit은 enabled/active이며 Phase 3 build commit `9d32d049`, version
+2026-08-21 현재 이 host의 unit은 enabled/active이며 governed adoption build commit `f46410b4`, version
 `0.4.23`을 `0.0.0.0:8122`에서 제공합니다. Browser 인증과
 `CODEXMUX_GOVERNANCE_WRITES=1` drop-in이 구성됐고 CLI token 기반 운영 API, Runtime v2와
 Governance `writeState=ready`도 정상입니다.
@@ -170,6 +170,13 @@ workspace state 5개를 backup하고 directory `0700`, file `0600`을 확인했�
 `writeState=ready`, Phase 6 12-check gate를 통과했습니다. Scaffold 7-check, Linux 10-check와
 한국어/영어 browser smoke도 통과했으며 [Issue #19](https://github.com/HardcoreMonk/codexmux/issues/19)에
 완료 근거를 남깁니다.
+
+Governed unmarked adoption 배포에서는 service를 멈춘 뒤
+`runtime-v2-storage-20260821T123122Z`에 같은 5개 durable/workspace state를 `0700/0600`으로
+backup했습니다. Build commit `f46410b4`로 PID `1104868`에서 `1149564`로 재기동했고
+`0.0.0.0:8122`, public/authenticated health, Governance `writeState=ready`, live Phase 6
+12-check를 확인했습니다. Production scaffold 13-check와 한국어/영어 browser 4-check도
+통과했으며 [Issue #20](https://github.com/HardcoreMonk/codexmux/issues/20)에 근거를 남깁니다.
 
 ## 런타임 v2 rollback
 

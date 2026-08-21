@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createProjectWriteTransaction } from '@/lib/governance/project-write-transaction';
 import type { IConfirmedScaffoldPreview } from '@/lib/governance/scaffold-preview';
 
-const fingerprint = (value: string): string =>
+const fingerprint = (value: string | Buffer): string =>
   `sha256:${createHash('sha256').update(value).digest('hex')}`;
 
 describe('project write transaction', () => {
@@ -45,6 +45,34 @@ describe('project write transaction', () => {
         ? [path.dirname(path.join(projectRoot, artifact.path))]
         : [],
     })),
+  });
+
+  const existingPreview = ({
+    before,
+    output,
+    state = 'adopt',
+  }: {
+    before: Buffer;
+    output: string;
+    state?: 'adopt' | 'marker-update';
+  }): IConfirmedScaffoldPreview => ({
+    projectId: 'project-1',
+    projectTitle: 'Demo',
+    canonicalProjectPath: projectRoot,
+    digest: fingerprint('preview'),
+    artifacts: [{
+      id: 'context',
+      path: 'CONTEXT.md',
+      absolutePath: path.join(projectRoot, 'CONTEXT.md'),
+      templateId: 'project-context-adopted',
+      fromVersion: state === 'adopt' ? null : 1,
+      toVersion: 1,
+      state,
+      output,
+      baseFingerprint: fingerprint(before),
+      outputFingerprint: fingerprint(output),
+      missingDirectories: [],
+    }],
   });
 
   it('commits create artifacts and safely rolls them back', async () => {
@@ -126,5 +154,47 @@ describe('project write transaction', () => {
     const result = await transaction.rollback('project-1', committed.id);
     expect(result.state).toBe('rollback-stale');
     expect(await fs.readFile(path.join(projectRoot, 'CONTEXT.md'), 'utf8')).toBe('external writer\n');
+  });
+
+  it('publishes adoption, journals it as marker-update, and restores the exact preimage', async () => {
+    const original = Buffer.from('\ufeff# Existing\r\nUser content\r\n', 'utf8');
+    const output = `${original.toString('utf8')}\r\n<!-- BEGIN CODEXMUX:project-context-adopted:v1 -->\r\nmanaged\r\n<!-- END CODEXMUX:project-context-adopted:v1 -->`;
+    await fs.writeFile(path.join(projectRoot, 'CONTEXT.md'), original, { mode: 0o640 });
+    const transaction = createProjectWriteTransaction({ backupRoot, randomActionId: () => 'action-adopt' });
+
+    const committed = await transaction.execute(existingPreview({ before: original, output }));
+    expect(await fs.readFile(path.join(projectRoot, 'CONTEXT.md'))).toEqual(Buffer.from(output));
+    const manifest = JSON.parse(await fs.readFile(
+      path.join(backupRoot, 'project-1', committed.id, 'action.json'),
+      'utf8',
+    )) as { artifacts: Array<{ state: string; preimagePath: string | null }> };
+    expect(manifest.artifacts[0]).toMatchObject({ state: 'marker-update' });
+    expect(await fs.readFile(manifest.artifacts[0]!.preimagePath!)).toEqual(original);
+
+    expect((await transaction.rollback('project-1', committed.id)).state).toBe('rolled-back');
+    expect(await fs.readFile(path.join(projectRoot, 'CONTEXT.md'))).toEqual(original);
+  });
+
+  it('enforces latest-first rollback across adoption and later marker updates', async () => {
+    const original = Buffer.from('# Existing\n');
+    const adopted = '# Existing\n\n<!-- BEGIN CODEXMUX:project-context-adopted:v1 -->\nv1\n<!-- END CODEXMUX:project-context-adopted:v1 -->';
+    const updated = adopted.replace('\nv1\n', '\nv2\n');
+    await fs.writeFile(path.join(projectRoot, 'CONTEXT.md'), original);
+    let actionId = 'action-adopt-first';
+    const transaction = createProjectWriteTransaction({ backupRoot, randomActionId: () => actionId });
+    const first = await transaction.execute(existingPreview({ before: original, output: adopted }));
+    actionId = 'action-marker-second';
+    const second = await transaction.execute(existingPreview({
+      before: Buffer.from(adopted),
+      output: updated,
+      state: 'marker-update',
+    }));
+
+    expect((await transaction.rollback('project-1', first.id)).state).toBe('rollback-stale');
+    expect(await fs.readFile(path.join(projectRoot, 'CONTEXT.md'), 'utf8')).toBe(updated);
+    expect((await transaction.rollback('project-1', second.id)).state).toBe('rolled-back');
+    expect(await fs.readFile(path.join(projectRoot, 'CONTEXT.md'), 'utf8')).toBe(adopted);
+    expect((await transaction.rollback('project-1', first.id)).state).toBe('rolled-back');
+    expect(await fs.readFile(path.join(projectRoot, 'CONTEXT.md'))).toEqual(original);
   });
 });
