@@ -326,10 +326,11 @@ corepack pnpm smoke:runtime-v2:storage-backup
 production build, scaffold/Linux/browser governance smoke, storage backup과 Runtime v2 Phase 6
 gate를 통과했습니다. 이전 Session Operations/Governance의 5,000-session performance와 npm
 tarball smoke 근거도 유지합니다.
-Phase 3 build commit `9d32d049`의 live user service는 `CODEXMUX_GOVERNANCE_WRITES=1`, Governance
+Phase 3 build commit `9d32d049` 당시 live user service는 `CODEXMUX_GOVERNANCE_WRITES=1`, Governance
 `writeState=ready`, private Runtime v2 backup, scaffold 7-check, Linux 10-check, 한국어/영어 browser와
-post-restart Phase 6 12-check gate를 통과했습니다. 등록 Managed Project가 0개여서 실제 project
-confirm 대신 격리 transaction smoke와 live gate/worker health를 release evidence로 사용했습니다.
+post-restart Phase 6 12-check gate를 통과했습니다. 2026-08-22에는 실제 `codexmux` Managed
+Project에서 unmarked `AGENTS.md`를 2-pass preview, exact confirm, latest-first rollback해 원본
+SHA-256과 Git clean 복구 및 private `0600` preimage를 확인했습니다.
 
 2026-08-21 governed unmarked adoption source release에서는 full suite `1,650 passed, 3 skipped`,
 typecheck, project-design check와 lint 0 error를 통과했습니다. Live checkout의 `.next/dist`를 보호하기
@@ -337,7 +338,9 @@ typecheck, project-design check와 lint 0 error를 통과했습니다. Live chec
 adoption/scaffold 13-check와 한국어·영어 browser 4-check를 실행했습니다. Linux session/governance
 10-check는 원래 process-recycle 전제인 development mode mirror에서, storage backup private-mode
 smoke는 같은 mirror에서 통과했습니다. Live 8122의 Phase 6 12-check는 read-only로 통과했지만
-adoption source 자체는 배포하거나 service를 재시작하지 않았습니다.
+adoption source는 이후 별도 승인 배포에서 live app build `f46410b4`로 전환됐습니다. 같은
+service에서 Session Catalog 실제 rebuild/search/replay/annotation과 301초·11회 동일 세션
+재연결을 확인하고 사후 Runtime v2 10-check와 Phase 6 12-check를 통과했습니다.
 
 ## 브라우저 UI와 Playwright
 

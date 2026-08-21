@@ -46,6 +46,7 @@ snapshot이고 완성된 번역으로 보지 않습니다. 작성,
 | `operations/2026-08-21-governed-unmarked-adoption-handoff.md` | Existing unmarked artifact의 2-pass selective adoption 구현, 검증과 미배포 운영 경계 |
 | `operations/2026-08-21-github-pages-guide-handoff.md` | GitHub Pages 랜딩/가이드, artifact gate, 배포와 공개 smoke 증거 |
 | `operations/2026-08-21-github-pages-product-redesign-handoff.md` | Session Operations/Project Governance 중심 Pages 재설계, 실배포와 service restart 증거 |
+| `operations/2026-08-22-live-verification-maintenance-handoff.md` | 실제 Managed Project/Session Catalog 검증, 301초 재연결 관찰, release·Dependabot 유지보수 결과 |
 
 보존된 Windows stable release `v0.4.22`는 같은 hostname의 Purplemux와 동시 실행하기 위한 cookie namespace 수정을
 포함하고 fresh Windows package/published updater와 privacy gate를 통과해 stable/latest로
@@ -63,11 +64,11 @@ ADR-025는 자동 검증과 실제 Linux service 재시작을 근거로 `Verifie
 실기 검증은 2026-08-15 사용자 결정에 따라 이 선택 도입의 완료 조건이 아닙니다.
 
 2026-08-21에는 `codexmux@0.4.23` public npm publish와 registry package smoke를 완료했고,
-Session Operations/Project Governance 초기 구현 commit `d405f683`과 Phase 3 build commit
-`9d32d049`를 Linux user service로 배포했습니다. 실제 restart 전후 terminal/Phase 6 gate가
-통과했고 Issue #18에 이어 Phase 3 Issue #19에 근거를 남겼습니다. Browser 인증,
-`HOST=0.0.0.0`과 `CODEXMUX_GOVERNANCE_WRITES=1` drop-in을 적용해 실제 listener와 governed
-write worker를 활성화했습니다. ADR-031의 장시간 관찰은 별도 운영 조건으로 남아 있습니다.
+Session Operations/Project Governance 구현 commit `d405f683`, `9d32d049`, `f46410b4`를 Linux
+user service에 순차 배포했습니다. Browser 인증, `HOST=0.0.0.0`과
+`CODEXMUX_GOVERNANCE_WRITES=1` drop-in을 적용해 listener와 governed writer를 활성화했습니다.
+2026-08-22에는 실제 Managed Project의 adoption/rollback, 실제 JSONL Session Catalog와 301초
+동일 세션 재연결 관찰을 완료해 ADR-031과 ADR-032를 `Verified`로 전환했습니다.
 
 Root `CONTEXT.md`는 도메인 언어와 기준 소스 경계를, root `DESIGN.md`는
 UI 시각 계약을 담당합니다.
