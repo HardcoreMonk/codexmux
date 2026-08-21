@@ -1,8 +1,8 @@
 # GitHub Pages 제품 재설계
 
 - 날짜: 2026-08-21
-- 상태: Implemented
-- Lifecycle stage: `release`
+- 상태: Verified
+- Lifecycle stage: `operate`
 - 이전 산출물: `2026-08-21-github-pages-guide-design.md`
 
 ## 문제

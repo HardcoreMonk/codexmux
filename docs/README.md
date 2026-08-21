@@ -45,7 +45,7 @@ snapshot이고 완성된 번역으로 보지 않습니다. 작성,
 | `operations/2026-08-21-governed-project-scaffold-handoff.md` | Phase 3 scaffold 구현, 검증, gate-off 운영 인계와 활성화 조건 |
 | `operations/2026-08-21-governed-unmarked-adoption-handoff.md` | Existing unmarked artifact의 2-pass selective adoption 구현, 검증과 미배포 운영 경계 |
 | `operations/2026-08-21-github-pages-guide-handoff.md` | GitHub Pages 랜딩/가이드, artifact gate, 배포와 공개 smoke 증거 |
-| `operations/2026-08-21-github-pages-product-redesign-handoff.md` | Session Operations/Project Governance 중심 Pages 재설계와 검증·배포 보류 경계 |
+| `operations/2026-08-21-github-pages-product-redesign-handoff.md` | Session Operations/Project Governance 중심 Pages 재설계, 실배포와 service restart 증거 |
 
 보존된 Windows stable release `v0.4.22`는 같은 hostname의 Purplemux와 동시 실행하기 위한 cookie namespace 수정을
 포함하고 fresh Windows package/published updater와 privacy gate를 통과해 stable/latest로

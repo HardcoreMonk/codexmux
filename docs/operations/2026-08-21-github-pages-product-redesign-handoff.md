@@ -2,7 +2,7 @@
 
 - 날짜: 2026-08-21
 - 범위: Public landing, Session Operations guide, documentation IA와 artifact validation
-- 운영 상태: source 구현과 release 검증 완료, commit·push·Pages 배포 대기
+- 운영 상태: source 구현, PR merge, GitHub Pages 실배포와 live service restart 검증 완료
 - Runtime 영향: 없음
 
 ## 결과
@@ -50,10 +50,39 @@ current scope로 구분했습니다.
 - 이번 작업은 app build나 Linux service artifact를 변경하지 않으므로 service restart가 필요 없다.
 - 기존 root guide의 한국어 shell 문자열과 legacy locale snapshot 전체 번역은 후속 migration 범위다.
 
-## 배포와 rollback
+## 실배포와 live service restart
 
-현재 public Pages에는 아직 반영되지 않았습니다. 별도 승인 후 commit, push와 Pages workflow를
-수행하고 root, `/ko/`, 두 Session Operations guide와 Project Governance guide를 smoke합니다.
+2026-08-21 사용자 승인 후 구현 commit `694111eb`을
+`codex/github-pages-product-redesign`에 push하고
+[PR #24](https://github.com/HardcoreMonk/codexmux/pull/24)를 merge했습니다. Merge commit은
+`c0b5c888`입니다. PR CI와 main CI가 모두 통과했고
+[Pages workflow](https://github.com/HardcoreMonk/codexmux/actions/runs/32492878001)의 install,
+build, artifact check, upload와 deploy가 모두 성공했습니다.
+
+Public root, Korean root, English/Korean Session Operations와 Project Governance guide 6개 URL은
+모두 HTTP 200이었습니다. 두 landing에서 Session Operations, Project Governance, Runtime
+Operations를 확인했고 purplemux와 legacy mobile-primary claim은 0건이었습니다. CSS version 73과
+1,200×630 Open Graph image도 HTTP 200을 반환했습니다.
+
+Pages 변경은 app runtime artifact를 바꾸지 않지만 요청된 live service restart도 별도로
+수행했습니다. 서비스를 중지한 상태에서 durable state 5개를
+`runtime-v2-storage-20260821T145427Z`에 backup한 뒤 시작했습니다. Backup directory는 `0700`,
+DB/WAL/SHM은 `0600`입니다. PID는 `1149564`에서 `1216337`로 바뀌었고 다음 항목을 확인했습니다.
+
+| 확인 | 결과 |
+| --- | --- |
+| service | `active/running`, restart count 0 |
+| listener | `0.0.0.0:8122` |
+| public health | `codexmux@0.4.23`, app build commit `f46410b4` |
+| runtime modes | terminal `new-tabs`, storage/timeline/status `default` |
+| governance | `state=ready`, `writeState=ready` |
+| Phase 6 gate | restart 전후 각각 12 checks 통과 |
+| warning journal | restart 구간 warning 이상 entry 없음 |
+
+Public health의 app build commit은 Pages-only 변경 전과 동일한 `f46410b4`가 정상입니다. 이번
+작업은 app source와 `.next` production artifact를 변경하거나 재배포하지 않았습니다.
+
+## Rollback
 
 문제가 생기면 Pages source와 validation 변경만 이전 revision으로 되돌려 다시 배포합니다.
 app runtime, Linux service와 `~/.codexmux/` durable data는 rollback 대상이 아닙니다.
