@@ -86,14 +86,17 @@ Runtime v2 worker, tmux, Codex JSONL, app-owned DB와 등록된 project filesyst
 project/session 상태, Governance Worker는 승인 project의 Knowledge Index와 governed scaffold
 write를 소유합니다. Arbitrary project write/delete/move/full sync, remote topology, GSD
 orchestration과 full-output search는 구현 범위가 아닙니다.
-구현 commit `d405f683`은 authenticated `0.0.0.0:8122`의 `systemd --user` service에 배포되어
-실제 restart 전후 terminal/worker smoke를 통과했습니다. [GitHub issue #18](https://github.com/HardcoreMonk/codexmux/issues/18)은
+초기 통합 commit `d405f683`과 Phase 3 build commit `9d32d049`는 authenticated
+`0.0.0.0:8122`의 `systemd --user` service에 배포되어 실제 restart 전후 terminal/worker
+smoke를 통과했습니다. [GitHub issue #18](https://github.com/HardcoreMonk/codexmux/issues/18)은
 완료됐으며, 장시간 live 관찰 전까지 ADR-031은 `Implemented`입니다. 검증과 rollback 경계는
 `docs/operations/2026-08-21-session-operations-governance-integration-handoff.md`에 기록합니다.
 
 Phase 3의 첫 범위인 `Governance Action Run` 소유 create-only scaffold와 marker-owned update는
-구현 및 격리 release gate를 통과했습니다. Live `CODEXMUX_GOVERNANCE_WRITES` gate는 별도 운영
-승인 전까지 off입니다. 설계와 운영 인계는
+구현 및 격리 release gate를 통과했습니다. Live service는 systemd drop-in으로
+`CODEXMUX_GOVERNANCE_WRITES=1`을 활성화했고 Governance `writeState=ready`, private Runtime v2
+backup과 post-restart Phase 6 gate를 확인했습니다. 등록 Managed Project가 없어 실제 project
+confirm은 수행하지 않았습니다. [GitHub issue #19](https://github.com/HardcoreMonk/codexmux/issues/19)와 설계·운영 인계는
 `docs/superpowers/specs/2026-08-21-governed-project-scaffold-design.md`, ADR-032와
 `docs/operations/2026-08-21-governed-project-scaffold-handoff.md`를 따릅니다.
 

@@ -328,6 +328,11 @@
   rollback stale, symlink/nested mount/root escape, API auth/audit, 한국어·영어 browser와 실제
   임시 Linux project create/update/rollback smoke를 통과해야 합니다. Live gate 활성화와 실제
   Managed Project confirm은 각각 별도 운영 승인을 받습니다.
+- 운영 근거: 구현 commit `a8b2a299`과 private Runtime v2 backup hardening commit `9d32d049`를
+  Linux user service에 배포하고 `CODEXMUX_GOVERNANCE_WRITES=1` drop-in을 활성화했습니다.
+  Governance `writeState=ready`, scaffold 7-check, Linux 10-check, 한국어/영어 browser와
+  post-restart Phase 6 12-check gate를 통과했습니다. 등록 Managed Project가 0개라 실제 project
+  confirm은 수행하지 않았으며 Issue #19와 governed scaffold 운영 handoff에 근거를 남겼습니다.
 - 구현 근거: versioned template/marker, preview token, contained path policy, private journal/backup,
   compensating transaction/startup recovery, Runtime v2 IPC/Supervisor, authenticated Pages API와
   한국어·영어 UI를 구현했습니다. `corepack pnpm smoke:governance:scaffold`의 격리 Linux

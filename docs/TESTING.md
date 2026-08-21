@@ -310,8 +310,10 @@ corepack pnpm smoke:runtime-v2:storage-backup
 production build, scaffold/Linux/browser governance smoke, storage backup과 Runtime v2 Phase 6
 gate를 통과했습니다. 이전 Session Operations/Governance의 5,000-session performance와 npm
 tarball smoke 근거도 유지합니다.
-구현 commit `d405f683`의 live user service에서도 restart 전후 terminal target smoke와 Phase 6
-12-check gate가 각각 통과했습니다.
+Phase 3 build commit `9d32d049`의 live user service는 `CODEXMUX_GOVERNANCE_WRITES=1`, Governance
+`writeState=ready`, private Runtime v2 backup, scaffold 7-check, Linux 10-check, 한국어/영어 browser와
+post-restart Phase 6 12-check gate를 통과했습니다. 등록 Managed Project가 0개여서 실제 project
+confirm 대신 격리 transaction smoke와 live gate/worker health를 release evidence로 사용했습니다.
 
 ## 브라우저 UI와 Playwright
 

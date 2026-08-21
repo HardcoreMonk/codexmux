@@ -10,10 +10,12 @@ Runtime v2 worker, tmux, Codex CLI/JSONL, app-owned DB와 등록된 project read
 Windows installer/updater는 보존된 별도 배포면이며 이번 Session Operations와 Project
 Governance acceptance를 대체하지 않습니다.
 
-2026-08-21 현재 구현 commit `d405f683`이 `HOST=0.0.0.0`, port `8122`의
+2026-08-21 현재 Phase 3 build commit `9d32d049`가 `HOST=0.0.0.0`, port `8122`의
 `systemd --user` service로 배포되어 실제 `0.0.0.0:8122` listener와 구성된 browser 인증을
-제공합니다. 실제 restart 전후 terminal smoke와 Runtime v2 Phase 6 gate가 통과했고 Issue
-#18은 완료됐습니다. 장시간 관찰 전까지 ADR-031은 `Implemented`입니다.
+제공합니다. `CODEXMUX_GOVERNANCE_WRITES=1`이 systemd drop-in에서 활성화됐고 Governance
+`writeState=ready`입니다. 실제 restart 전후 terminal/scaffold/Linux/browser smoke와 Runtime
+v2 Phase 6 gate가 통과했으며 Issue #18과 Phase 3 Issue #19에 근거를 남겼습니다. 장시간 관찰
+전까지 ADR-031은 `Implemented`입니다.
 
 ## 구현 상태
 
@@ -32,7 +34,8 @@ Governance acceptance를 대체하지 않습니다.
   소유하는 재생성 가능한 projection입니다.
 - Managed Project의 durable catalog는 Storage Worker가 소유합니다. Governance Worker는 registered
   project read, Knowledge Index와 versioned scaffold의 유일한 writer입니다. 쓰기는
-  `CODEXMUX_GOVERNANCE_WRITES=1`에서만 열리고 기본값은 off입니다.
+  `CODEXMUX_GOVERNANCE_WRITES=1`에서만 열리고 제품 기본값은 off입니다. 현재 live Linux
+  service는 승인된 systemd drop-in으로 이 gate를 활성화했습니다.
 - terminal과 Codex 입력 포커스의 `Ctrl+D`는 앱 단축키가 아니라 EOF/EOT로 전달합니다. Codex 입력 바 제출은 bracketed paste + Enter frame과 후속 Enter로 처리합니다.
 - 모바일 foreground 복귀 시 terminal/status/timeline/sync WebSocket은 stale `OPEN` 상태를 신뢰하지 않고 재연결할 수 있습니다.
 - 성능 최적화는 `/api/debug/perf` snapshot으로 계측한 뒤 좁게 적용합니다. timeline append/render, diff, stats는 기준 데이터를 바꾸지 않는 batch/memo/short cache를 우선합니다.

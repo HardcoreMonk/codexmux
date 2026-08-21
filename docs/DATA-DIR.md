@@ -115,7 +115,7 @@ Runtime v2는 `runtime-v2/state.db`를 사용합니다.
 corepack pnpm smoke:runtime-v2:storage-backup
 ```
 
-운영 backup은 service를 멈추거나 SQLite-consistent backup 경로를 사용해 `state.db`, `state.db-wal`, `state.db-shm`을 한 세트로 보존합니다. Migration은 schema write 전에 `backups/runtime-v2-migration-v<from>-v<to>-<timestamp>/`를 만듭니다. 복구할 때는 service를 중지하고 현재 세 파일을 별도 quarantine한 뒤 검증된 backup 세트를 원래 위치에 복원하고 권한을 확인합니다. 부분 파일만 섞지 않습니다.
+운영 backup은 service를 멈추거나 SQLite-consistent backup 경로를 사용해 `state.db`, `state.db-wal`, `state.db-shm`을 한 세트로 보존합니다. `backups/`와 timestamp backup 내부 directory는 `0700`, 복사된 file은 `0600`을 강제합니다. Migration은 schema write 전에 `backups/runtime-v2-migration-v<from>-v<to>-<timestamp>/`를 만듭니다. 복구할 때는 service를 중지하고 현재 세 파일을 별도 quarantine한 뒤 검증된 backup 세트를 원래 위치에 복원하고 권한을 확인합니다. 부분 파일만 섞지 않습니다.
 
 ### 재생성 가능한 index
 

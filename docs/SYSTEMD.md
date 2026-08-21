@@ -17,9 +17,10 @@ HOST=0.0.0.0
 PORT=8122
 ```
 
-2026-08-21 현재 이 host의 unit은 enabled/active이며 구현 commit `d405f683`, version
-`0.4.23`을 `0.0.0.0:8122`에서 제공합니다. Browser 인증이 구성됐고 CLI token 기반 운영
-API와 Runtime v2 worker health도 정상입니다.
+2026-08-21 현재 이 host의 unit은 enabled/active이며 Phase 3 build commit `9d32d049`, version
+`0.4.23`을 `0.0.0.0:8122`에서 제공합니다. Browser 인증과
+`CODEXMUX_GOVERNANCE_WRITES=1` drop-in이 구성됐고 CLI token 기반 운영 API, Runtime v2와
+Governance `writeState=ready`도 정상입니다.
 
 ## 서비스 파일 예시
 
@@ -80,6 +81,17 @@ Governance scaffold write는 기본 off입니다. 활성화 전
 `Environment=CODEXMUX_GOVERNANCE_WRITES=1`을 추가합니다. 비상 차단은 이 환경 변수를 제거하고
 daemon reload/restart합니다. Gate off도 미완료 action의 startup rollback을 건너뛰지 않으며
 `recovery-required`가 있으면 action backup을 삭제하지 않습니다.
+
+현재 host는 승인된 다음 drop-in을 사용합니다.
+
+```text
+~/.config/systemd/user/codexmux.service.d/governance-writes.conf
+```
+
+```ini
+[Service]
+Environment=CODEXMUX_GOVERNANCE_WRITES=1
+```
 
 ## 등록과 시작
 
@@ -151,6 +163,13 @@ backup 대상이 없었습니다. 이후 배포부터는 restart 전에 runtime 
 한 세트로 backup합니다. 최초 배포는 restart 전후 live terminal 전체 smoke와 Phase 6
 12-check gate를 통과했으며 [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18)에
 완료 증거가 있습니다.
+
+Phase 3 배포에서는 service를 멈춘 뒤 `runtime-v2-storage-20260821T090636Z`에 durable DB/WAL/SHM과
+workspace state 5개를 backup하고 directory `0700`, file `0600`을 확인했습니다. Build commit
+`9d32d049`로 PID `1101874`에서 `1104868`로 재기동했고 public/authenticated health, Governance
+`writeState=ready`, Phase 6 12-check gate를 통과했습니다. Scaffold 7-check, Linux 10-check와
+한국어/영어 browser smoke도 통과했으며 [Issue #19](https://github.com/HardcoreMonk/codexmux/issues/19)에
+완료 근거를 남깁니다.
 
 ## 런타임 v2 rollback
 

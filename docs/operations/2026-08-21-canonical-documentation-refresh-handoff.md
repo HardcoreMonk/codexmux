@@ -22,6 +22,11 @@ Remote `v0.4.23` tag와 Trusted Publisher 등록은 보류 상태입니다. Brow
 `HOST=0.0.0.0` unit을 PID `982288` → `984568`로 다시 시작해 실제 listener 확대를
 완료했습니다. ADR-031은 장시간 live 관찰 전까지 `Implemented`입니다.
 
+이 문서의 기준 표는 canonical refresh 시점 snapshot입니다. 같은 날 후속 Governed Project
+Scaffold 배포에서 live build가 `9d32d049`로 바뀌고 `CODEXMUX_GOVERNANCE_WRITES=1`이
+활성화됐습니다. 현재 운영 상태는
+`docs/operations/2026-08-21-governed-project-scaffold-handoff.md`와 Issue #19를 우선합니다.
+
 ## 감사 범위와 보존 정책
 
 저장소의 Markdown 556개를 canonical 문서, operations history, approved spec/plan,

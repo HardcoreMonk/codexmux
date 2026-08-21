@@ -155,5 +155,5 @@ corepack pnpm smoke:browser:session-governance
   privacy scanner를 통과한 JSON만 업로드합니다.
 - Linux integration gate는 Session Catalog/Governance ownership, source tree 무변경,
   projection rollback과 terminal 연결 유지, 한국어/영어 SSR/browser flow를 통과했습니다.
-- 구현 commit `d405f683`의 live user service는 실제 restart 전후 terminal smoke와 Phase 6
-  12-check gate를 통과했습니다.
+- 초기 통합 commit `d405f683`과 Phase 3 build `9d32d049`의 live user service는 실제 restart
+  전후 terminal/scaffold/Linux/browser smoke와 Phase 6 12-check gate를 통과했습니다.

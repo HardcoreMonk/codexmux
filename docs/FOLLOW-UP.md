@@ -57,7 +57,8 @@ acceptance를 대체하지 않습니다. Public npm package의 현재 version은
   Index, 한국어/영어 운영 UI, 성능 baseline과 격리 Linux/browser rollback smoke
 - Project Governance Phase 3 첫 vertical slice: 6개 versioned scaffold, marker-owned update,
   preview/exact confirmation, private backup/journal, startup recovery, action history와 safe rollback.
-  Source와 격리 smoke는 완료했고 live write gate는 비활성 상태로 유지
+  Source와 격리 smoke를 완료하고 live `CODEXMUX_GOVERNANCE_WRITES=1` gate, private Runtime v2
+  backup, Governance `writeState=ready`와 post-restart 회귀 gate를 확인
 - `codexmux@0.4.23` public npm publish, registry tarball install/CLI/production health smoke
 - 구현 commit `d405f683`의 Linux `systemd --user` live 배포, 실제 restart 전후 terminal
   smoke와 Phase 6 gate, [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18) 완료
@@ -100,17 +101,21 @@ installer/package gate로 확인합니다.
 
 | 항목 | 상태 |
 | --- | --- |
-| Source/main | `6899347b`, 구현 artifact `d405f683` |
+| Live build | Phase 3 artifact `9d32d049`; 초기 통합 artifact `d405f683` |
 | user service | `codexmux.service` enabled, `active/running`, authenticated `0.0.0.0:8122` |
 | Runtime v2 | terminal `new-tabs`, storage/timeline/status `default` |
-| Session Catalog/Governance | 모두 ready, DB/WAL/SHM `0600` |
-| restart | 검증 PID `970414` → `971387`; bind 준비 PID `971387` → `982288`; 외부 listener 적용 PID `982288` → `984568` |
-| issue | [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18) `completed` |
-| 운영 handoff | `operations/2026-08-21-session-operations-governance-integration-handoff.md` |
+| Session Catalog/Governance | 모두 ready, Governance `writeState=ready`, DB/WAL/SHM `0600` |
+| governance gate | `~/.config/systemd/user/codexmux.service.d/governance-writes.conf`, active |
+| latest backup | `runtime-v2-storage-20260821T090636Z`, 5 files, directory `0700`, file `0600` |
+| latest restart | PID `1101874` → `1104868`; warning 이상 journal entry 없음 |
+| issue | [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18) 및 [Issue #19](https://github.com/HardcoreMonk/codexmux/issues/19) |
+| 운영 handoff | `operations/2026-08-21-governed-project-scaffold-handoff.md` |
 
 Browser 인증 설정 뒤 `HOST=0.0.0.0` unit을 다시 시작해 실제 외부 listener를
-활성화했습니다. CLI token 기반 운영 API와 Runtime v2 worker는 정상입니다. 실제 restart
-증거는 확보했지만 장시간 live 관찰 전까지 ADR-031은 `Implemented`입니다.
+활성화했습니다. 승인된 Phase 3 배포에서 governance write gate도 활성화했고 CLI token 기반
+운영 API와 Runtime v2 worker는 정상입니다. 등록 Managed Project는 0개라 실제 project confirm은
+수행하지 않았습니다. 실제 restart 증거는 확보했지만 장시간 live 관찰 전까지 ADR-031은
+`Implemented`입니다.
 
 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)의 acceptance를 충족한
 fresh Windows 검증:
@@ -195,6 +200,7 @@ Electron profile의 1회 재로그인과 재연결은 별도 후속 근거가 �
 | Purplemux/Codexmux same-host cookie isolation | `v0.4.22` release와 fresh-profile updater 검증 완료. 기존 Electron profile에서 Codexmux 재로그인, 필요 시 Purplemux 재로그인, Runtime v2 WebSocket/upload 재연결을 직접 확인해야 하므로 ADR-029는 `Implemented` 유지 |
 | Purplemux 선택 기능 도입 | 완료: ADR-025 `Verified`, `docs/operations/2026-08-14-purplemux-selected-adoption-handoff.md`. Windows package 실기 검증은 이 범위의 완료 조건에서 제외 |
 | Linux Session Operations/Project Governance | 완료: 구현·live 배포·restart·Issue #18 종료. 장시간 관찰은 ADR-031 `Verified` 전이의 별도 조건 |
+| Governed Project Scaffold Phase 3 | 완료: `9d32d049` live 배포, write gate 활성화, private backup, scaffold/Linux/browser/Phase 6 smoke와 Issue #19 근거 확보. 실제 등록 project confirm은 대상이 없어 미실행 |
 
 ## 비차단 항목
 

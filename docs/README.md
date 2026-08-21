@@ -57,11 +57,11 @@ ADR-025는 자동 검증과 실제 Linux service 재시작을 근거로 `Verifie
 실기 검증은 2026-08-15 사용자 결정에 따라 이 선택 도입의 완료 조건이 아닙니다.
 
 2026-08-21에는 `codexmux@0.4.23` public npm publish와 registry package smoke를 완료했고,
-Session Operations/Project Governance 구현 commit `d405f683`을 Linux user service로
-배포했습니다. 실제 restart 전후 terminal/Phase 6 gate가 통과했고 Issue #18은
-`completed`입니다. Browser 인증 설정과 unit의 `HOST=0.0.0.0` 변경·재시작을 완료해 실제
-listener도 `0.0.0.0:8122`로 확대됐습니다. ADR-031의 장시간 관찰은 별도 운영 조건으로
-남아 있습니다.
+Session Operations/Project Governance 초기 구현 commit `d405f683`과 Phase 3 build commit
+`9d32d049`를 Linux user service로 배포했습니다. 실제 restart 전후 terminal/Phase 6 gate가
+통과했고 Issue #18에 이어 Phase 3 Issue #19에 근거를 남겼습니다. Browser 인증,
+`HOST=0.0.0.0`과 `CODEXMUX_GOVERNANCE_WRITES=1` drop-in을 적용해 실제 listener와 governed
+write worker를 활성화했습니다. ADR-031의 장시간 관찰은 별도 운영 조건으로 남아 있습니다.
 
 Root `CONTEXT.md`는 도메인 언어와 기준 소스 경계를, root `DESIGN.md`는
 UI 시각 계약을 담당합니다.
