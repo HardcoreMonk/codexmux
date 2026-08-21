@@ -12,6 +12,7 @@ import {
   wasPageRestored,
 } from '@/lib/foreground-reconnect';
 import type { TStatusServerMessage } from '@/types/status';
+import useGitRefreshGeneration from '@/hooks/use-git-refresh-generation';
 
 const RECONNECT_BASE = 1_000;
 const RECONNECT_MAX = 30_000;
@@ -114,6 +115,9 @@ const useAgentStatus = () => {
 
             case 'status:hook-event':
               useTabStore.getState().applyHookEvent(msg.tabId, msg.event);
+              if (msg.event.name === 'stop') {
+                useGitRefreshGeneration.getState().invalidate(msg.sessionName, msg.event.seq);
+              }
               break;
 
             case 'rate-limits:update':

@@ -12,10 +12,13 @@ export const parseRuntimeStatusV2Mode = (value: unknown): TRuntimeStatusV2Mode =
   return 'off';
 };
 
-export const resolveRuntimeStatusV2Mode = ({
-  runtimeV2Enabled = process.env.CODEXMUX_RUNTIME_V2 === '1',
-  statusMode = process.env.CODEXMUX_RUNTIME_STATUS_V2_MODE,
-}: IRuntimeStatusV2ModeOptions = {}): TRuntimeStatusV2Mode => {
+export const resolveRuntimeStatusV2Mode = (
+  options: IRuntimeStatusV2ModeOptions = {},
+): TRuntimeStatusV2Mode => {
+  const runtimeV2Enabled = options.runtimeV2Enabled ?? process.env.CODEXMUX_RUNTIME_V2 === '1';
+  const statusMode = Object.hasOwn(options, 'statusMode')
+    ? options.statusMode
+    : process.env.CODEXMUX_RUNTIME_STATUS_V2_MODE;
   if (statusMode === undefined && runtimeV2Enabled) return defaultRuntimeStatusV2Mode;
   return parseRuntimeStatusV2Mode(statusMode);
 };

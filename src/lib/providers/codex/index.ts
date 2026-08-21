@@ -8,6 +8,7 @@ import {
 import { getConfig } from '@/lib/config-store';
 import {
   detectActiveCodexSession,
+  findCodexSessionJsonlByPromptClaim,
   findCodexSessionJsonl,
   isCodexRunning,
   watchCodexSessions,
@@ -26,6 +27,7 @@ import {
   writeAgentSessionId,
   writeAgentSummary,
 } from '@/lib/agent-tab-fields';
+import { buildCodexSessionHookConfigs } from '@/lib/providers/codex/session-hooks';
 
 const readCodexCommandOptions = async (): Promise<ICodexCommandOptions> => {
   const config = await getConfig();
@@ -37,10 +39,26 @@ const readCodexCommandOptions = async (): Promise<ICodexCommandOptions> => {
   };
 };
 
+const readLaunchOptions = async (options: { tabId?: string; sessionName?: string }): Promise<ICodexCommandOptions> => {
+  const commandOptions = await readCodexCommandOptions();
+  if (!options.tabId || !options.sessionName) return commandOptions;
+  return {
+    ...commandOptions,
+    hookConfigs: buildCodexSessionHookConfigs({
+      tabId: options.tabId,
+      sessionName: options.sessionName,
+    }),
+  };
+};
+
 export const codexProvider: IAgentProvider = {
   id: 'codex',
   displayName: 'Codex',
   panelType: 'codex',
+  statusBehavior: {
+    watchJsonlWhenBound: true,
+    deferStopHookUntilJsonlIdle: true,
+  },
 
   matchesProcess: (commandName) => commandName === 'codex',
   isValidSessionId: isValidCodexThreadId,
@@ -49,14 +67,25 @@ export const codexProvider: IAgentProvider = {
   isAgentRunning: (panePid, childPids) => isCodexRunning(panePid, childPids),
   watchSessions: (panePid, onChange, options) => watchCodexSessions(panePid, onChange, options),
 
-  buildResumeCommand: async (sessionId) => buildCodexResumeCommand(sessionId, await readCodexCommandOptions()),
-  buildLaunchCommand: async () => buildCodexLaunchCommand(await readCodexCommandOptions()),
+  buildResumeCommand: async (sessionId, options) => buildCodexResumeCommand(sessionId, await readLaunchOptions(options)),
+  buildLaunchCommand: async (options) => buildCodexLaunchCommand(await readLaunchOptions(options)),
   resolveJsonlPath: async (sessionId, cwd) => {
     const meta = await findCodexSessionJsonl(sessionId, cwd);
     return meta?.jsonlPath ?? null;
   },
   resolveLatestJsonlPath: async (cwd) => {
     const meta = await findCodexSessionJsonl(null, cwd, { allowCwdFallback: true });
+    return meta
+      ? {
+          sessionId: meta.sessionId,
+          jsonlPath: meta.jsonlPath,
+          mtimeMs: meta.mtimeMs,
+          startedAt: meta.startedAt,
+        }
+      : null;
+  },
+  resolveJsonlPathForClaim: async (cwd, claim) => {
+    const meta = await findCodexSessionJsonlByPromptClaim(cwd, claim);
     return meta
       ? {
           sessionId: meta.sessionId,

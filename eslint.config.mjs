@@ -23,6 +23,7 @@ const eslintConfig = defineConfig([
     "build-resources/**",
     "dist/**",
     "dist-electron/**",
+    ".worktrees/**",
     "electron/**",
     "release/**",
     "scripts/**",

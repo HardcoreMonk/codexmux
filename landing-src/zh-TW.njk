@@ -3,8 +3,8 @@ layout: layouts/base.njk
 lang: zh-TW
 title: "codexmux — 為 Codex 打造的 Web 原生終端多工器"
 description: "在一個儀表板中執行多個 Codex 工作階段。以 tmux 為基礎、Web 原生、行動裝置適配。MIT 開源。"
-canonical: https://subicura.com/codexmux/zh-TW/
-ogUrl: https://subicura.com/codexmux/zh-TW/
+canonical: https://hardcoremonk.github.io/codexmux/zh-TW/
+ogUrl: https://hardcoremonk.github.io/codexmux/zh-TW/
 ogLocale: zh_TW
 ogLocaleAlternate: en_US
 permalink: /zh-TW/index.html
@@ -81,14 +81,11 @@ isRoot: false
           <div class="install-block">
             <div class="install-cmd">
               <span class="prompt">$</span>
-              <span>npx codexmux</span>
-              <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="複製" onclick="(function(b){navigator.clipboard.writeText('npx codexmux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
+              <span>npx --yes codexmux@latest</span>
+              <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="複製" onclick="(function(b){navigator.clipboard.writeText('npx --yes codexmux@latest');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
             </div>
-            <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-mac>
-              <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
-                <path d="M17.05 20.28c-.98.95-2.05.88-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-              </svg>
-              下載 macOS 應用程式
+            <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-windows>
+              下載 Windows 安裝程式
             </a>
           </div>
 
@@ -99,9 +96,9 @@ isRoot: false
           </div>
 
           <div class="hero-meta">
-            <span><span class="ok">●</span> Node.js 20+</span>
-            <span><span class="ok">●</span> 需要 tmux</span>
-            <span><span class="ok">●</span> macOS / Linux</span>
+            <span><span class="ok">●</span> Windows 安裝程式（主要路徑）</span>
+            <span><span class="ok">●</span> npm：macOS / Linux</span>
+            <span><span class="ok">●</span> npm 需要 tmux</span>
           </div>
         </div>
 
@@ -839,16 +836,16 @@ isRoot: false
       <div class="eyebrow">安裝</div>
       <h2>30 秒搞定。</h2>
       <p class="lead">
-        你只需要 Node.js 20+ 和 tmux。一行安裝,再打開瀏覽器即可。
+        主要產品使用 Windows 安裝程式。npm 指令執行適用於 macOS/Linux 的舊版 tmux Web 伺服器。
       </p>
 
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-body">
-            <h3>執行</h3>
-            <p>可直接用 npx 啟動,也支援全域安裝。</p>
-<pre class="code"><span class="c">$</span> npx codexmux</pre>
+            <h3>執行舊版 Web 伺服器</h3>
+            <p>在具備 Node.js 20+ 與 tmux 的 macOS/Linux 上直接執行已發布的套件。</p>
+<pre class="code"><span class="c">$</span> npx --yes codexmux@latest</pre>
           </div>
         </div>
 
@@ -873,10 +870,10 @@ isRoot: false
         <div class="step">
           <div class="step-num">4</div>
           <div class="step-body">
-            <h3>原生應用 (可選)</h3>
-            <p>macOS 上也可使用 Electron 版本,Apple Silicon 與 Intel 皆支援。</p>
+            <h3>Windows 安裝程式（主要路徑）</h3>
+            <p>Windows 請使用 Electron 安裝程式。npm 指令不會安裝 Windows 桌面應用程式。</p>
             <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" style="margin-top:0.5rem" data-ph-capture-attribute-cta="download">
-              下載最新版本 →
+              下載 Windows 安裝程式 →
             </a>
           </div>
         </div>
@@ -916,8 +913,7 @@ isRoot: false
 
         <details>
           <summary>Windows 能用嗎?</summary>
-          <p>官方不支援。由於 tmux 與 node-pty 的平台限制,只支援 macOS 與 Linux。
-            WSL2 可能可以執行,但不在測試範圍。</p>
+          <p>可以。主要產品透過 Windows Electron 安裝程式提供。npm 指令不是 Windows 安裝程式，而是適用於 macOS/Linux 的舊版 tmux Web 伺服器。</p>
         </details>
 
         <details>
@@ -956,19 +952,16 @@ isRoot: false
         <div class="cta-body">
           <div class="eyebrow">立即開始</div>
           <h2>一行指令就夠了。</h2>
-          <p class="lead">只要準備好 Node.js 20+ 和 tmux,30 秒內就能跑起來。</p>
+          <p class="lead">下載 Windows 安裝程式，或在 macOS/Linux 上透過 npm 執行舊版 tmux Web 伺服器。</p>
         </div>
         <div class="install-block cta-install">
           <div class="install-cmd">
             <span class="prompt">$</span>
-            <span>npx codexmux</span>
-            <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="複製" onclick="(function(b){navigator.clipboard.writeText('npx codexmux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
+            <span>npx --yes codexmux@latest</span>
+            <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="複製" onclick="(function(b){navigator.clipboard.writeText('npx --yes codexmux@latest');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
           </div>
-          <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-mac>
-            <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
-              <path d="M17.05 20.28c-.98.95-2.05.88-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-            </svg>
-            下載 macOS 應用程式
+          <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-windows>
+            下載 Windows 安裝程式
           </a>
         </div>
       </div>
@@ -1009,24 +1002,3 @@ isRoot: false
     </section>
 
   </main>
-
-  <div class="arch-modal" id="archModal" hidden>
-    <div class="arch-modal-backdrop" data-arch-close></div>
-    <div class="arch-modal-card" role="dialog" aria-modal="true" aria-labelledby="archModalTitle">
-      <button type="button" class="arch-modal-close" data-arch-close aria-label="關閉">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M6 18L18 6"/></svg>
-      </button>
-      <h3 id="archModalTitle">選擇你的 Mac</h3>
-      <p class="arch-modal-sub">請選擇與你處理器相符的版本。</p>
-      <div class="arch-modal-options">
-        <button type="button" class="arch-option" data-arch="arm64" data-ph-capture-attribute-cta="download_arm64">
-          <span class="arch-option-title">Apple Silicon</span>
-          <span class="arch-option-hint">arm64</span>
-        </button>
-        <button type="button" class="arch-option" data-arch="x64" data-ph-capture-attribute-cta="download_x64">
-          <span class="arch-option-title">Intel</span>
-          <span class="arch-option-hint">x86_64</span>
-        </button>
-      </div>
-    </div>
-  </div>

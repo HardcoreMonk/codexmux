@@ -5,6 +5,7 @@ import readline from 'readline';
 import os from 'os';
 import { createLogger } from '@/lib/logger';
 import { shouldUseRuntimeTimelineV2Reads, type IRuntimeTimelineV2ModeOptions } from '@/lib/runtime/timeline-mode';
+import { buildAgentSessionRelationship, type IAgentSessionRelationship } from '@/lib/agent-session-relationship';
 import type { ISessionMeta } from '@/types/timeline';
 
 const log = createLogger('session-index');
@@ -52,6 +53,7 @@ interface ICodexJsonlScanResult {
   startedAt: string | null;
   firstMessage: string;
   turnCount: number;
+  relationship: IAgentSessionRelationship | null;
 }
 
 export interface IIndexedCodexSessionJsonl {
@@ -66,6 +68,7 @@ export interface ISessionIndexPage {
   sessions: ISessionMeta[];
   total: number;
   hasMore: boolean;
+  refreshing: boolean;
 }
 
 export interface ISessionIndexPageOptions {
@@ -173,6 +176,44 @@ const extractCodexText = (content: unknown): string => {
     .join('\n\n');
 };
 
+const readString = (value: unknown): string | null =>
+  typeof value === 'string' && value.trim() ? value.trim() : null;
+
+const readRelationshipHint = (
+  data: Record<string, unknown>,
+  sessionId: string | null,
+): IAgentSessionRelationship | null => {
+  const id = readString(data.id) ?? sessionId;
+  if (!id) return null;
+
+  const parentSessionId = readString(data.parentSessionId)
+    ?? readString(data.parent_session_id)
+    ?? readString(data.parentId)
+    ?? readString(data.parent_id);
+  const rootSessionId = readString(data.rootSessionId)
+    ?? readString(data.root_session_id)
+    ?? readString(data.rootId)
+    ?? readString(data.root_id);
+  const sourceSessionId = readString(data.sourceSessionId)
+    ?? readString(data.source_session_id)
+    ?? id;
+  const relationshipType = readString(data.relationshipType)
+    ?? readString(data.relationship_type);
+
+  if (!parentSessionId && !rootSessionId && !relationshipType && sourceSessionId === id) {
+    return null;
+  }
+
+  return buildAgentSessionRelationship({
+    providerId: 'codex',
+    sessionId: id,
+    sourceSessionId,
+    parentSessionId,
+    rootSessionId,
+    relationshipType,
+  });
+};
+
 const collectJsonlFiles = async (dir: string, depth = 0): Promise<string[]> => {
   if (depth > 4) return [];
 
@@ -206,6 +247,7 @@ const scanCodexJsonl = async (filePath: string): Promise<ICodexJsonlScanResult> 
   let turnCount = 0;
   let fallbackFirstMessage = '';
   let fallbackTurnCount = 0;
+  let relationship: IAgentSessionRelationship | null = null;
 
   try {
     for await (const line of rl) {
@@ -235,6 +277,7 @@ const scanCodexJsonl = async (filePath: string): Promise<ICodexJsonlScanResult> 
           const ts = new Date(data.timestamp);
           if (!Number.isNaN(ts.getTime())) startedAt = ts.toISOString();
         }
+        relationship = readRelationshipHint(data, sessionId);
         continue;
       }
 
@@ -263,6 +306,7 @@ const scanCodexJsonl = async (filePath: string): Promise<ICodexJsonlScanResult> 
     startedAt,
     firstMessage: firstMessage || fallbackFirstMessage,
     turnCount: turnCount || fallbackTurnCount,
+    relationship,
   };
 };
 
@@ -358,6 +402,7 @@ const buildLocalSession = async (
     firstMessage: scan.firstMessage,
     turnCount: scan.turnCount,
     cwd: scan.cwd,
+    ...(scan.relationship ? { relationship: scan.relationship } : {}),
   };
 };
 
@@ -376,6 +421,10 @@ const replaceDuplicateSessions = (sessions: IIndexedSessionMeta[]): IIndexedSess
 
 export const refreshSessionIndex = async (): Promise<void> => {
   ensureCurrentRoot();
+  if (state.refreshDebounceTimer) {
+    clearTimeout(state.refreshDebounceTimer);
+    state.refreshDebounceTimer = null;
+  }
   if (state.refreshPromise) return state.refreshPromise;
 
   state.refreshPromise = (async () => {
@@ -485,7 +534,23 @@ export const getSessionIndexPage = async (options?: ISessionIndexPageOptions): P
     sessions: state.sessions.slice(offset, end).map(toPublicSession),
     total,
     hasMore: end < total,
+    refreshing: !!state.refreshPromise || !!state.refreshDebounceTimer,
   };
+};
+
+export const findSessionRelationshipByJsonlPath = async (
+  jsonlPath: string,
+): Promise<IAgentSessionRelationship | null> => {
+  ensureCurrentRoot();
+  if (!state.initialized) {
+    await initSessionIndexService();
+  }
+  if (state.sessions.length === 0) {
+    await refreshSessionIndex();
+  }
+
+  const session = state.sessions.find((meta) => meta.indexJsonlPath === jsonlPath);
+  return session?.relationship ?? null;
 };
 
 export const findIndexedCodexSessionJsonl = async (
@@ -550,6 +615,7 @@ export const parseCodexSessionMeta = async (jsonlPath: string): Promise<ISession
       firstMessage: scan.firstMessage,
       turnCount: scan.turnCount,
       cwd: scan.cwd,
+      ...(scan.relationship ? { relationship: scan.relationship } : {}),
     };
   } catch (err) {
     log.warn({ err }, `failed to parse Codex session meta: ${jsonlPath}`);
@@ -563,7 +629,7 @@ export const getSessionIndexPerfSnapshot = () => {
     sessions: state.sessions.length,
     indexedFiles: state.indexedFiles,
     refreshedAt: state.refreshedAt,
-    refreshing: !!state.refreshPromise,
+    refreshing: !!state.refreshPromise || !!state.refreshDebounceTimer,
     lastBuildMs: state.lastBuildMs,
     cacheHits: state.cacheHits,
     cacheMisses: state.cacheMisses,

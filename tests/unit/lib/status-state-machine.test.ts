@@ -3,17 +3,21 @@ import { describe, expect, it } from 'vitest';
 import { reduceCodexState, reduceHookState } from '@/lib/status-state-machine';
 
 describe('reduceHookState', () => {
-  it('keeps Codex stop hooks out of direct ready-for-review transitions', () => {
+  it('keeps provider stop hooks out of direct ready-for-review transitions when the adapter requests JSONL verification', () => {
     const decision = reduceHookState({
       currentState: 'busy',
       eventName: 'stop',
       providerId: 'codex',
+      statusBehavior: {
+        watchJsonlWhenBound: true,
+        deferStopHookUntilJsonlIdle: true,
+      },
     });
 
     expect(decision).toMatchObject({
       nextState: 'busy',
       changed: false,
-      deferCodexStop: true,
+      deferStopHook: true,
     });
   });
 
@@ -27,7 +31,7 @@ describe('reduceHookState', () => {
     expect(decision).toMatchObject({
       nextState: 'ready-for-review',
       changed: true,
-      deferCodexStop: false,
+      deferStopHook: false,
     });
   });
 
@@ -41,7 +45,7 @@ describe('reduceHookState', () => {
     expect(decision).toMatchObject({
       nextState: 'cancelled',
       changed: false,
-      deferCodexStop: false,
+      deferStopHook: false,
     });
   });
 });

@@ -24,6 +24,7 @@ export interface ITab {
   agentJsonlPath?: string | null;
   agentSummary?: string | null;
   lastUserMessage?: string | null;
+  lastUserMessageAt?: number | null;
   lastCommand?: string | null;
   cliState?: TCliState;
   dismissedAt?: number | null;

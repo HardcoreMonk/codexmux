@@ -17,6 +17,10 @@ const eventTypes = new Set<TApprovalAuditEventType>([
   'fallback',
   'selection-sent',
   'selection-failed',
+  'push-sent',
+  'push-failed',
+  'push-skipped-empty',
+  'push-skipped-visible',
 ]);
 const promptTypes = new Set<TApprovalPromptType>([
   'command',

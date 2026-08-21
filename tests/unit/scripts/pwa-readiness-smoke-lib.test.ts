@@ -121,4 +121,12 @@ describe('PWA readiness smoke helpers', () => {
       'sw-open-window',
     ]);
   });
+
+  it('accepts service worker notification deep link windows', async () => {
+    const { validateServiceWorkerScript } = await loadLib();
+    const script = await fs.readFile(path.join(process.cwd(), 'public/sw.js'), 'utf-8');
+
+    expect(validateServiceWorkerScript(script).errors).toEqual([]);
+    expect(validateServiceWorkerScript(script).checks).toContain('sw-open-window');
+  });
 });

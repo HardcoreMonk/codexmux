@@ -6,22 +6,14 @@ import {
   type IRuntimeEvent,
   type IRuntimeReply,
 } from '@/lib/runtime/ipc';
+import type { ITerminalRuntimeAdapter } from '@/lib/runtime/terminal/terminal-runtime-contract';
 import { validateWorkerCommandEnvelope, type IInvalidWorkerCommand } from '@/lib/runtime/worker-command-validation';
 
 const DEFAULT_STDOUT_FLUSH_MS = 16;
 const DEFAULT_MAX_PENDING_STDOUT_BYTES = 64 * 1024;
 const DEFAULT_MAX_STDOUT_FRAME_BYTES = 16 * 1024;
 
-export interface ITerminalWorkerRuntime {
-  health(): Promise<unknown>;
-  createSession(input: { sessionName: string; cols: number; rows: number; cwd?: string }): Promise<unknown>;
-  attach(sessionName: string, cols: number, rows: number, onData: (data: string) => void): Promise<unknown>;
-  detach(sessionName: string): Promise<unknown>;
-  killSession(sessionName: string): Promise<unknown>;
-  hasSession(sessionName: string): Promise<unknown>;
-  writeStdin(sessionName: string, data: string): Promise<unknown>;
-  resize(sessionName: string, cols: number, rows: number): Promise<unknown>;
-}
+export type ITerminalWorkerRuntime = ITerminalRuntimeAdapter;
 
 export interface ITerminalWorkerServiceOptions {
   runtime: ITerminalWorkerRuntime;

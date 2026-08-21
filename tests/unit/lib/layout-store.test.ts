@@ -44,6 +44,7 @@ import {
   restartTabSession,
   resolveLayoutDir,
   resolveLayoutFile,
+  updateTabUserMessageClaim,
   writeLayoutFile,
 } from '@/lib/layout-store';
 
@@ -125,6 +126,42 @@ describe('layout store normalization', () => {
       agentSummary: 'agent summary',
     });
     expect(terminalTab).not.toHaveProperty('agentSessionId');
+  });
+
+  it('persists tab-scoped user message claims separately from JSONL-derived messages', async () => {
+    const wsId = `ws-layout-store-claim-${process.pid}`;
+    const paneId = 'pane-claim';
+    const sessionName = `pt-${wsId}-${paneId}-tab-claim`;
+    await fs.rm(resolveLayoutDir(wsId), { recursive: true, force: true });
+    await fs.mkdir(resolveLayoutDir(wsId), { recursive: true });
+    await writeLayoutFile({
+      root: {
+        type: 'pane',
+        id: paneId,
+        activeTabId: 'tab-claim',
+        tabs: [{
+          id: 'tab-claim',
+          sessionName,
+          name: '',
+          order: 0,
+          runtimeVersion: 1,
+          panelType: 'codex',
+        }],
+      },
+      activePaneId: paneId,
+      updatedAt: new Date(0).toISOString(),
+    }, resolveLayoutFile(wsId));
+
+    await updateTabUserMessageClaim(sessionName, 'implement the approved fix', 1_000);
+    const layout = await readLayoutFile(resolveLayoutFile(wsId));
+    const tab = layout?.root.type === 'pane' ? layout.root.tabs[0] : null;
+
+    expect(tab).toMatchObject({
+      lastUserMessage: 'implement the approved fix',
+      lastUserMessageAt: 1_000,
+    });
+
+    await fs.rm(resolveLayoutDir(wsId), { recursive: true, force: true });
   });
 
   it('appends externally-created runtime v2 tabs without creating legacy tmux sessions', async () => {

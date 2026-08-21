@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  CODEXMUX_CODEX_HOOKS_CONFIG,
   buildCodexLaunchCommand,
   buildCodexResumeCommand,
   isValidCodexThreadId,
@@ -22,18 +21,21 @@ describe('codex command helpers', () => {
       approvalPolicy: 'on-request',
       search: true,
     })).toBe(
-      "codex -c 'hooks={path=\"~/.codexmux/hooks.json\"}' --cd '/tmp/my project' --model 'gpt-5.5' --sandbox danger-full-access --ask-for-approval on-request --search",
+      "codex --cd '/tmp/my project' --model 'gpt-5.5' --sandbox danger-full-access --ask-for-approval on-request --search",
     );
   });
 
-  it('exposes the codexmux hook config path for command construction', () => {
-    expect(CODEXMUX_CODEX_HOOKS_CONFIG).toBe('hooks={path="~/.codexmux/hooks.json"}');
+  it('adds only explicitly supplied native session-layer hooks', () => {
+    expect(buildCodexLaunchCommand({ hookConfigs: ['hooks.Stop=[]'] }))
+      .toBe("codex -c 'hooks.Stop=[]'");
   });
 
   it('builds a resume command for a valid thread id', () => {
     expect(buildCodexResumeCommand('019dcf1f-3a02-73a0-a79e-8703b99a2f30', {
       cwd: '/work',
-    })).toBe("codex -c 'hooks={path=\"~/.codexmux/hooks.json\"}' resume 019dcf1f-3a02-73a0-a79e-8703b99a2f30 --cd '/work'");
+    })).toBe(
+      "codex resume 019dcf1f-3a02-73a0-a79e-8703b99a2f30 --cd '/work'",
+    );
   });
 
   it('rejects invalid resume ids', () => {

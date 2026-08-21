@@ -1,0 +1,13 @@
+projects:
+  - id: demo-project
+    title: Demo Project
+    path: <fixture-root>/projects/demo
+    enabled: true
+  - id: duplicate-path
+    title: Duplicate Path
+    path: <fixture-root>/projects/demo
+    enabled: true
+  - id: invalid-shape
+    title: Invalid Shape
+    path: <fixture-root>/projects/invalid
+    unsupported: [inline, list]

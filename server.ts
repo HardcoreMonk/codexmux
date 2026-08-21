@@ -3,12 +3,23 @@ import './src/lib/pristine-env';
 import { createServer, request as httpRequest } from 'http';
 import type { IncomingMessage, ServerResponse } from 'http';
 import { createConnection } from 'net';
+import type { Duplex } from 'stream';
 import path from 'path';
 import next from 'next';
 import { WebSocketServer } from 'ws';
-import { verifySessionToken, SESSION_COOKIE, extractCookie } from './src/lib/auth';
+import {
+  buildCookieHeader,
+  extractCookie,
+  SESSION_COOKIE,
+  signSessionToken,
+  verifySessionToken,
+} from './src/lib/auth';
 import { handleConnection, gracefulShutdown } from './src/lib/terminal-server';
-import { handleInstallConnection, gracefulInstallShutdown } from './src/lib/install-server';
+import { createInstallServer, INSTALL_MAX_FRAME_BYTES } from './src/lib/install-server';
+import {
+  createInstallRequestAuthorizer,
+  createInstallSetupLeaseChecker,
+} from './src/lib/install-request-auth';
 import { handleTimelineConnection, gracefulTimelineShutdown } from './src/lib/timeline-server';
 import { handleSyncConnection, gracefulSyncShutdown } from './src/lib/sync-server';
 import { handleStatusConnection, gracefulStatusShutdown } from './src/lib/status-server';
@@ -19,12 +30,23 @@ import { acquireLock, releaseLock, registerLockCleanup } from './src/lib/lock';
 import { scanSessions, applyConfig } from './src/lib/tmux';
 import { initWorkspaceStore } from './src/lib/workspace-store';
 import { autoResumeOnStartup } from './src/lib/auto-resume';
-import { initAuthCredentials } from './src/lib/auth-credentials';
-import { initConfigStore, getConfig } from './src/lib/config-store';
 import { listInterfaceIps, resolveBindPlan } from './src/lib/network-access';
-import { getCurrentSpec, initAccessFilter, isRequestAllowed, setBoundHost } from './src/lib/access-filter';
-import { initShellPath } from './src/lib/preflight';
-import { cleanupExpiredUploads } from './src/lib/uploads-store';
+import { getCurrentSpec, isRequestAllowed, setBoundHost } from './src/lib/access-filter';
+import { validateOuterBootstrapRequest } from './src/lib/bootstrap-request-guard';
+import { initializeServerBootstrap } from './src/lib/server-bootstrap';
+import {
+  cleanupExpiredUploads,
+  cleanupStaleUploadParts,
+  streamUploadArtifact,
+} from './src/lib/uploads-store';
+import { createUploadAdmissionService } from './src/lib/upload-admission';
+import { authorizeUploadRequest } from './src/lib/upload-request-auth';
+import { createUploadServer, type IUploadServer } from './src/lib/upload-server';
+import {
+  createOuterServerLifecycle,
+  createServerHttpDispatcher,
+  listenWithFallback,
+} from './src/lib/server-http-dispatcher';
 import { cleanupOrphanSessionStats } from './src/lib/session-stats';
 import {
   initSessionIndexService,
@@ -38,6 +60,7 @@ import { handleRuntimeTerminalConnection } from './src/lib/runtime/terminal-ws';
 import {
   createWebSocketUpgradeHandler,
   type IRuntimeTerminalUpgradeContext,
+  type TUpgradeRequestGuardResult,
 } from './src/lib/runtime/server-ws-upgrade';
 import { createLogger } from './src/lib/logger';
 import pkg from './package.json';
@@ -51,9 +74,14 @@ const verifyWebSocketAuth = async (request: IncomingMessage): Promise<boolean> =
   return !!(await verifySessionToken(value));
 };
 
-const WS_PATHS = new Set(['/api/terminal', '/api/timeline', '/api/sync', '/api/status', '/api/install', '/api/v2/terminal']);
+const WS_PATHS = new Set(['/api/terminal', '/api/timeline', '/api/sync', '/api/status', '/api/v2/terminal']);
 
 const createWsServers = () => {
+  const authorizeInstallRequest = createInstallRequestAuthorizer();
+  const installServer = createInstallServer({
+    authorizeRequest: authorizeInstallRequest,
+    checkSetupLease: createInstallSetupLeaseChecker(),
+  });
   const wss = new WebSocketServer({ noServer: true });
   wss.on('connection', handleConnection);
 
@@ -66,8 +94,10 @@ const createWsServers = () => {
   const statusWss = new WebSocketServer({ noServer: true });
   statusWss.on('connection', handleStatusConnection);
 
-  const installWss = new WebSocketServer({ noServer: true });
-  installWss.on('connection', handleInstallConnection);
+  const installWss = new WebSocketServer({
+    noServer: true,
+    maxPayload: INSTALL_MAX_FRAME_BYTES,
+  });
 
   const runtimeTerminalWss = new WebSocketServer({ noServer: true });
   runtimeTerminalWss.on('connection', (ws: import('ws').WebSocket, _request: IncomingMessage, context: unknown) => {
@@ -78,11 +108,20 @@ const createWsServers = () => {
     );
   });
 
-  return { wss, timelineWss, syncWss, statusWss, installWss, runtimeTerminalWss };
+  return {
+    wss,
+    timelineWss,
+    syncWss,
+    statusWss,
+    installWss,
+    installServer,
+    authorizeInstallRequest,
+    runtimeTerminalWss,
+  };
 };
 
 const handleWsUpgrade = (
-  { wss, timelineWss, syncWss, statusWss, installWss }: ReturnType<typeof createWsServers>,
+  { wss, timelineWss, syncWss, statusWss }: ReturnType<typeof createWsServers>,
   request: IncomingMessage,
   socket: import('stream').Duplex,
   head: Buffer,
@@ -105,22 +144,55 @@ const handleWsUpgrade = (
     statusWss.handleUpgrade(request, socket, head, (ws) => {
       statusWss.emit('connection', ws);
     });
-  } else if (url.pathname === '/api/install') {
-    installWss.handleUpgrade(request, socket, head, (ws) => {
-      installWss.emit('connection', ws, request);
-    });
   }
 };
 
-const NO_AUTH_WS_PATHS = new Set(['/api/install']);
+const runShutdownOperations = async (
+  operations: Array<() => void | Promise<void>>,
+): Promise<void> => {
+  let firstError: unknown;
+  let hasError = false;
+  for (const operation of operations) {
+    try {
+      await operation();
+    } catch (error) {
+      if (hasError) continue;
+      hasError = true;
+      firstError = error;
+    }
+  }
+  if (hasError) throw firstError;
+};
 
-const shutdownWs = async () => {
-  shutdownSessionIndexService();
-  gracefulTimelineShutdown();
-  gracefulSyncShutdown();
-  gracefulStatusShutdown();
-  gracefulInstallShutdown();
-  await gracefulShutdown();
+const shutdownWs = async (servers: ReturnType<typeof createWsServers>): Promise<void> => {
+  await runShutdownOperations([
+    () => servers.installServer.shutdown(),
+    () => shutdownSessionIndexService(),
+    () => gracefulTimelineShutdown(),
+    () => gracefulSyncShutdown(),
+    () => gracefulStatusShutdown(),
+    () => gracefulShutdown(),
+  ]);
+};
+
+const terminateWsClients = (servers: ReturnType<typeof createWsServers>): void => {
+  const webSocketServers = [
+    servers.wss,
+    servers.timelineWss,
+    servers.syncWss,
+    servers.statusWss,
+    servers.installWss,
+    servers.runtimeTerminalWss,
+  ];
+  for (const webSocketServer of webSocketServers) {
+    for (const client of [...webSocketServer.clients]) {
+      try {
+        client.terminate();
+      } catch {
+        // WebSocket shutdown is best effort after the grace period.
+      }
+    }
+  }
 };
 
 // --- Production: HTTP proxy to Next.js standalone ---
@@ -172,26 +244,6 @@ const getFreePort = (): Promise<number> =>
     srv.on('error', reject);
   });
 
-const listenWithFallback = (server: import('http').Server, port: number, host: string): Promise<number> =>
-  new Promise((resolve, reject) => {
-    const onError = (err: NodeJS.ErrnoException) => {
-      if (err.code === 'EADDRINUSE') {
-        log.warn(`Port ${port} is in use, finding an available port...`);
-        server.removeListener('error', onError);
-        server.on('error', reject);
-        server.listen(0, host, () => {
-          resolve((server.address() as { port: number }).port);
-        });
-      } else {
-        reject(err);
-      }
-    };
-    server.on('error', onError);
-    server.listen(port, host, () => {
-      resolve((server.address() as { port: number }).port);
-    });
-  });
-
 const waitForPort = (port: number, timeoutMs = 10_000): Promise<void> =>
   new Promise((resolve, reject) => {
     const deadline = Date.now() + timeoutMs;
@@ -221,140 +273,184 @@ interface IStartResult {
   shutdown: () => Promise<void>;
 }
 
-const rejectRequest = (res: ServerResponse) => {
-  res.writeHead(403, { 'Content-Type': 'text/plain' });
-  res.end('Forbidden');
+type TFallbackRequest = (
+  request: IncomingMessage,
+  response: ServerResponse,
+) => void | Promise<void>;
+type TFallbackUpgrade = (
+  request: IncomingMessage,
+  socket: Duplex,
+  head: Buffer,
+) => void | Promise<void>;
+
+interface IStartOuterServerOptions {
+  port: number;
+  bindHost: string;
+  uploadServer: IUploadServer;
+  fallbackRequest: TFallbackRequest;
+  fallbackUpgrade: TFallbackUpgrade;
+}
+
+const validateServerRequest = (request: IncomingMessage): TUpgradeRequestGuardResult => {
+  if (!isRequestAllowed(request.socket.remoteAddress)) {
+    return { allowed: false, statusCode: 403, reason: 'source-forbidden' };
+  }
+  return validateOuterBootstrapRequest(request);
 };
 
-const rejectSocket = (socket: import('stream').Duplex) => {
-  socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
-  socket.destroy();
+const createWsUpgradeFallback = (
+  port: number,
+  wsServers: ReturnType<typeof createWsServers>,
+  fallbackUpgrade: TFallbackUpgrade,
+): TFallbackUpgrade => createWebSocketUpgradeHandler({
+  port,
+  wsPaths: WS_PATHS,
+  authorizeInstallRequest: wsServers.authorizeInstallRequest,
+  handleInstallUpgrade: (context, req, upgradeSocket, upgradeHead) => {
+    wsServers.installWss.handleUpgrade(req, upgradeSocket, upgradeHead, (ws) => {
+      void wsServers.installServer.handleConnection(ws, req, {
+        url: context.url,
+        admittedMode: context.authorization.mode,
+      }).catch(() => ws.close(1011, 'Install server error'));
+    });
+  },
+  verifyGenericAuth: verifyWebSocketAuth,
+  handleKnownUpgrade: (url, req, upgradeSocket, upgradeHead) => {
+    handleWsUpgrade(wsServers, req, upgradeSocket, upgradeHead, url);
+  },
+  handleRuntimeTerminalUpgrade: (context, req, upgradeSocket, upgradeHead) => {
+    wsServers.runtimeTerminalWss.handleUpgrade(req, upgradeSocket, upgradeHead, (ws) => {
+      wsServers.runtimeTerminalWss.emit('connection', ws, req, context);
+    });
+  },
+  fallbackUpgrade,
+  validateUpgradeRequest: () => ({ allowed: true }),
+  onUpgradeError: () => log.error('websocket-upgrade-failed'),
+});
+
+const waitForUpgradeGrace = (): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, 250));
+
+const shutdownRuntimeResources = async (): Promise<void> => {
+  await runShutdownOperations([
+    () => releaseLock(),
+    () => removePortFile(),
+    () => {
+      if (process.env.CODEXMUX_RUNTIME_V2 === '1') {
+        getRuntimeSupervisor().shutdown();
+      }
+    },
+  ]);
 };
 
-const startDev = async (port: number, appDir: string, bindHost: string): Promise<IStartResult> => {
-  const app = next({ dev: true, dir: appDir });
-  const handle = app.getRequestHandler();
+const startOuterServer = async ({
+  port,
+  bindHost,
+  uploadServer,
+  fallbackRequest,
+  fallbackUpgrade,
+}: IStartOuterServerOptions): Promise<IStartResult> => {
+  const server = createServer();
+  const wsServers = createWsServers();
+  const dispatcher = createServerHttpDispatcher({
+    validateRequest: validateServerRequest,
+    uploadServer,
+    fallbackRequest,
+    fallbackUpgrade: createWsUpgradeFallback(port, wsServers, fallbackUpgrade),
+  });
+  server.on('request', dispatcher.handleRequest);
+  server.on('checkContinue', dispatcher.handleCheckContinue);
+  server.on('checkExpectation', dispatcher.handleCheckExpectation);
+  server.on('upgrade', dispatcher.handleUpgrade);
 
-  await app.prepare();
-
-  const upgrade = app.getUpgradeHandler();
-  const server = createServer((req, res) => {
-    if (!isRequestAllowed(req.socket.remoteAddress)) {
-      rejectRequest(res);
-      return;
-    }
-    handle(req, res);
+  const lifecycle = createOuterServerLifecycle({
+    server,
+    uploadServer,
+    listen: () => listenWithFallback(
+      server,
+      port,
+      bindHost,
+      () => log.warn(`Port ${port} is in use, finding an available port...`),
+    ),
+    shutdownRuntime: shutdownRuntimeResources,
+    shutdownWebSockets: () => shutdownWs(wsServers),
+    waitForUpgradeGrace,
+    terminateWebSocketClients: () => terminateWsClients(wsServers),
+    terminateUpgradedSockets: dispatcher.terminateUpgradedSockets,
   });
 
-  const wsServers = createWsServers();
-
-  server.on('upgrade', createWebSocketUpgradeHandler({
-    port,
-    noAuthPaths: NO_AUTH_WS_PATHS,
-    wsPaths: WS_PATHS,
-    verifyGenericAuth: verifyWebSocketAuth,
-    handleKnownUpgrade: (url, req, upgradeSocket, upgradeHead) => {
-      handleWsUpgrade(wsServers, req, upgradeSocket, upgradeHead, url);
-    },
-    handleRuntimeTerminalUpgrade: (context, req, upgradeSocket, upgradeHead) => {
-      wsServers.runtimeTerminalWss.handleUpgrade(req, upgradeSocket, upgradeHead, (ws) => {
-        wsServers.runtimeTerminalWss.emit('connection', ws, req, context);
-      });
-    },
-    fallbackUpgrade: upgrade,
-    isRequestAllowed,
-    rejectSocket,
-    onUpgradeError: (err) => {
-      log.error(`websocket upgrade failed: ${err instanceof Error ? err.message : err}`);
-    },
-  }));
-
-  const shutdown = async () => {
-    releaseLock();
-    await removePortFile();
-    server.close();
-    if (process.env.CODEXMUX_RUNTIME_V2 === '1') {
-      getRuntimeSupervisor().shutdown();
-    }
-    await shutdownWs();
+  const removeSignalListeners = (): void => {
+    process.off('SIGTERM', exitGracefully);
+    process.off('SIGINT', exitGracefully);
+  };
+  let serverShutdownPromise: Promise<void> | null = null;
+  const shutdown = (): Promise<void> => {
+    serverShutdownPromise ??= lifecycle.shutdown().finally(removeSignalListeners);
+    return serverShutdownPromise;
+  };
+  const exitGracefully = (): void => {
+    void shutdown().then(
+      () => process.exit(0),
+      () => {
+        log.error('server-shutdown-failed');
+        process.exit(1);
+      },
+    );
   };
 
-  const exitGracefully = async () => {
-    await shutdown();
-    process.exit(0);
-  };
+  const actualPort = await lifecycle.start();
   process.on('SIGTERM', exitGracefully);
   process.on('SIGINT', exitGracefully);
-
-  const actualPort = await listenWithFallback(server, port, bindHost);
   return { port: actualPort, shutdown };
 };
 
-const startProd = async (port: number, appDir: string, bindHost: string): Promise<IStartResult> => {
+const startDev = async (
+  port: number,
+  appDir: string,
+  bindHost: string,
+  uploadServer: IUploadServer,
+): Promise<IStartResult> => {
+  const app = next({ dev: true, dir: appDir });
+  const handle = app.getRequestHandler();
+  await app.prepare();
+
+  return startOuterServer({
+    port,
+    bindHost,
+    uploadServer,
+    fallbackRequest: handle,
+    fallbackUpgrade: app.getUpgradeHandler(),
+  });
+};
+
+const startProd = async (
+  port: number,
+  appDir: string,
+  bindHost: string,
+  uploadServer: IUploadServer,
+): Promise<IStartResult> => {
   const internalPort = await getFreePort();
 
   const savedPort = process.env.PORT;
   process.env.PORT = String(internalPort);
   process.env.HOSTNAME = '127.0.0.1';
+  // The outer lifecycle must drain uploads before the embedded Next server can exit.
+  process.env.NEXT_MANUAL_SIG_HANDLE = 'true';
 
   const standaloneDir = process.env.__CMUX_APP_DIR_UNPACKED || appDir;
   const standalonePath = path.join(standaloneDir, '.next', 'standalone', 'server.js');
   require(standalonePath); // eslint-disable-line @typescript-eslint/no-require-imports
 
   process.env.PORT = savedPort;
-
   await waitForPort(internalPort);
 
-  const server = createServer((req, res) => {
-    if (!isRequestAllowed(req.socket.remoteAddress)) {
-      rejectRequest(res);
-      return;
-    }
-    proxyRequest(req, res, internalPort);
-  });
-
-  const wsServers = createWsServers();
-
-  server.on('upgrade', createWebSocketUpgradeHandler({
+  return startOuterServer({
     port,
-    noAuthPaths: NO_AUTH_WS_PATHS,
-    wsPaths: WS_PATHS,
-    verifyGenericAuth: verifyWebSocketAuth,
-    handleKnownUpgrade: (url, req, upgradeSocket, upgradeHead) => {
-      handleWsUpgrade(wsServers, req, upgradeSocket, upgradeHead, url);
-    },
-    handleRuntimeTerminalUpgrade: (context, req, upgradeSocket, upgradeHead) => {
-      wsServers.runtimeTerminalWss.handleUpgrade(req, upgradeSocket, upgradeHead, (ws) => {
-        wsServers.runtimeTerminalWss.emit('connection', ws, req, context);
-      });
-    },
-    fallbackUpgrade: (req, upgradeSocket, upgradeHead) => proxyUpgrade(req, upgradeSocket, upgradeHead, internalPort),
-    isRequestAllowed,
-    rejectSocket,
-    onUpgradeError: (err) => {
-      log.error(`websocket upgrade failed: ${err instanceof Error ? err.message : err}`);
-    },
-  }));
-
-  const shutdown = async () => {
-    releaseLock();
-    await removePortFile();
-    server.close();
-    if (process.env.CODEXMUX_RUNTIME_V2 === '1') {
-      getRuntimeSupervisor().shutdown();
-    }
-    await shutdownWs();
-  };
-
-  const exitGracefully = async () => {
-    await shutdown();
-    process.exit(0);
-  };
-  process.on('SIGTERM', exitGracefully);
-  process.on('SIGINT', exitGracefully);
-
-  const actualPort = await listenWithFallback(server, port, bindHost);
-  return { port: actualPort, shutdown };
+    bindHost,
+    uploadServer,
+    fallbackRequest: (request, response) => proxyRequest(request, response, internalPort),
+    fallbackUpgrade: (request, socket, head) => proxyUpgrade(request, socket, head, internalPort),
+  });
 };
 
 export const DEFAULT_PORT = 8122;
@@ -368,13 +464,7 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   await acquireLock(port);
   registerLockCleanup();
 
-  await Promise.all([initConfigStore(), initShellPath()]);
-
-  const credentials = await initAuthCredentials();
-  if (credentials) {
-    process.env.AUTH_PASSWORD = credentials.password;
-    process.env.NEXTAUTH_SECRET = credentials.secret;
-  }
+  const bootstrap = await initializeServerBootstrap();
 
   await scanSessions();
   await applyConfig();
@@ -397,16 +487,28 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
     await getStatusManager().init();
   }
 
-  const envHost = process.env.HOST?.trim();
-  const configData = await getConfig();
-  initAccessFilter(envHost, configData.networkAccess);
+  const { envHost } = bootstrap.network;
   const accessSpec = getCurrentSpec();
   const bindPlan = resolveBindPlan(accessSpec);
   setBoundHost(bindPlan.host);
 
+  const uploadServer = createUploadServer({
+    authorizeRequest: authorizeUploadRequest,
+    admission: createUploadAdmissionService(),
+    streamArtifact: streamUploadArtifact,
+    createSessionRefreshHeader: async (secure) =>
+      buildCookieHeader(await signSessionToken(), secure),
+    cleanupStaleParts: cleanupStaleUploadParts,
+    clock: {
+      now: Date.now,
+      setTimeout: (callback, delayMs) => setTimeout(callback, delayMs),
+      clearTimeout: (timer) => clearTimeout(timer),
+    },
+    disabled: process.env.CODEXMUX_UPLOADS_DISABLED === '1',
+  });
   const result = dev
-    ? await startDev(port, appDir, bindPlan.host)
-    : await startProd(port, appDir, bindPlan.host);
+    ? await startDev(port, appDir, bindPlan.host, uploadServer)
+    : await startProd(port, appDir, bindPlan.host, uploadServer);
 
   process.env.PORT = String(result.port);
 
@@ -417,7 +519,7 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
     .then((r) => {
       if (r.deleted > 0) log.info(`uploads cleanup: removed ${r.deleted} files (${r.freedBytes} bytes)`);
     })
-    .catch((err) => log.warn(`uploads cleanup failed: ${err instanceof Error ? err.message : err}`));
+    .catch(() => log.warn('uploads-cleanup-failed'));
 
   cleanupOrphanSessionStats().catch((err) =>
     log.warn(`session-stats cleanup failed: ${err instanceof Error ? err.message : err}`),
@@ -431,13 +533,18 @@ export const start = async (opts?: IStartOptions): Promise<IStartResult> => {
   for (const url of urls) {
     console.log(`       \x1b[36m${url}\x1b[0m`);
   }
-  if (envHost) {
+  if (bootstrap.network.setupRestrictedAtStartup) {
+    console.log(`  \x1b[2m➜\x1b[0m  Security: \x1b[33msetup mode, loopback-only\x1b[0m`);
+    if (envHost) {
+      console.log(`  \x1b[2m➜\x1b[0m  Deferred: \x1b[33mHOST=${envHost} applies after setup and restart\x1b[0m`);
+    }
+  } else if (envHost) {
     console.log(`  \x1b[2m➜\x1b[0m  Access: \x1b[33mHOST=${envHost}\x1b[0m`);
   }
   console.log(`  \x1b[2m➜\x1b[0m  Mode:   \x1b[33m${mode}\x1b[0m`);
-  const authStatus = !credentials
+  const authStatus = bootstrap.authBootstrap.mode === 'setup-open'
     ? `\x1b[33mwaiting for onboarding\x1b[0m \x1b[2m(${urls[0]}/login)\x1b[0m`
-    : credentials.init
+    : bootstrap.authBootstrap.mode === 'init-password'
       ? `\x1b[33minit password\x1b[0m \x1b[2m(onboarding required)\x1b[0m`
       : `\x1b[32mconfigured\x1b[0m`;
   console.log(`  \x1b[2m➜\x1b[0m  Auth:   ${authStatus}`);

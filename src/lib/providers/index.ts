@@ -64,7 +64,9 @@ export {
 } from '@/lib/providers/registry';
 export type {
   IAgentProvider,
+  IAgentProviderStatusBehavior,
   IAgentJsonlResolution,
+  IAgentPromptClaim,
   IAgentLaunchCommandOptions,
   IAgentResumeCommandOptions,
   IAgentSessionWatchOptions,

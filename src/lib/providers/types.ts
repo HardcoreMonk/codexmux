@@ -4,10 +4,14 @@ import type { ITab, TPanelType } from '@/types/terminal';
 
 export interface IAgentResumeCommandOptions {
   workspaceId?: string;
+  tabId?: string;
+  sessionName?: string;
 }
 
 export interface IAgentLaunchCommandOptions {
   workspaceId?: string;
+  tabId?: string;
+  sessionName?: string;
 }
 
 export interface IAgentSessionWatchOptions {
@@ -21,10 +25,21 @@ export interface IAgentJsonlResolution {
   startedAt?: number | null;
 }
 
+export interface IAgentPromptClaim {
+  message: string;
+  sentAt: number;
+}
+
+export interface IAgentProviderStatusBehavior {
+  readonly watchJsonlWhenBound: boolean;
+  readonly deferStopHookUntilJsonlIdle: boolean;
+}
+
 export interface IAgentProvider {
   readonly id: string;
   readonly displayName: string;
   readonly panelType: TPanelType;
+  readonly statusBehavior: IAgentProviderStatusBehavior;
 
   matchesProcess(commandName: string): boolean;
   isValidSessionId(id: unknown): id is string;
@@ -41,6 +56,7 @@ export interface IAgentProvider {
   buildLaunchCommand(options: IAgentLaunchCommandOptions): Promise<string>;
   resolveJsonlPath(sessionId: string, cwd: string): Promise<string | null>;
   resolveLatestJsonlPath?(cwd: string): Promise<IAgentJsonlResolution | null>;
+  resolveJsonlPathForClaim?(cwd: string, claim: IAgentPromptClaim): Promise<IAgentJsonlResolution | null>;
   parseJsonlContent(content: string): ITimelineEntry[];
   readTailEntries(filePath: string, maxEntries: number): Promise<IChunkReadResult>;
   readEntriesBefore(filePath: string, beforeByte: number, maxEntries: number): Promise<IChunkReadResult>;

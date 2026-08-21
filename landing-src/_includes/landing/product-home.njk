@@ -1,0 +1,93 @@
+{% set copy = landingProduct[lang] %}
+<nav class="nav product-nav" aria-label="Primary navigation">
+  <a href="#top" class="nav-brand">
+    <svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+    <span class="wordmark"><strong>codex</strong>mux</span>
+  </a>
+  <div class="nav-links">
+    <a href="#capabilities">{{ copy.nav.capabilities }}</a>
+    <a href="#workflow">{{ copy.nav.workflow }}</a>
+    <a href="#boundary">{{ copy.nav.boundary }}</a>
+    <a href="#architecture">{{ copy.nav.architecture }}</a>
+    <a href="#install">{{ copy.nav.install }}</a>
+  </div>
+  <div class="nav-spacer"></div>
+  <a href="{% if lang == 'ko' %}/codexmux/ko/docs/{% else %}/codexmux/docs/{% endif %}" class="nav-docs">{{ copy.nav.docs }}</a>
+  <details class="nav-lang">
+    <summary aria-label="{% if lang == 'ko' %}언어 선택{% else %}Choose language{% endif %}"><span class="lang-current">{{ copy.langLabel }}</span><span aria-hidden="true">⌄</span></summary>
+    <div class="lang-menu" role="menu">
+      <a href="/codexmux/" class="lang-opt{% if lang == 'en' %} is-active{% endif %}" lang="en" hreflang="en"{% if lang == 'en' %} aria-current="page"{% endif %}>English</a>
+      <a href="/codexmux/ko/" class="lang-opt{% if lang == 'ko' %} is-active{% endif %}" lang="ko" hreflang="ko"{% if lang == 'ko' %} aria-current="page"{% endif %}>한국어</a>
+    </div>
+  </details>
+  <a href="#install" class="nav-cta">{{ copy.nav.start }}</a>
+</nav>
+
+<main id="top" class="product-home">
+  <section class="product-hero">
+    <div class="product-hero-copy">
+      <div class="hero-eyebrow">{{ copy.hero.eyebrow }}</div>
+      <h1>{% for line in copy.hero.title %}<span>{{ line }}</span>{% endfor %}</h1>
+      <p class="product-hero-lead">{{ copy.hero.description }}</p>
+      <div class="product-hero-actions">
+        <div class="install-cmd"><span class="prompt">$</span><code>{{ copy.installCommand }}</code><button class="copy-btn" type="button" aria-label="{% if lang == 'ko' %}설치 명령 복사{% else %}Copy install command{% endif %}" onclick="(function(b){navigator.clipboard.writeText('{{ copy.installCommand }}');b.classList.add('copied');b.textContent='✓';setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button></div>
+        <a class="btn-primary" href="{% if lang == 'ko' %}/codexmux/ko/docs/quickstart/{% else %}/codexmux/docs/quickstart/{% endif %}">{{ copy.hero.guide }}</a>
+      </div>
+      <div class="product-proof" aria-label="Product properties">{% for item in copy.hero.proof %}<span><i aria-hidden="true"></i>{{ item }}</span>{% endfor %}</div>
+      <p class="product-integration-note">{{ copy.hero.integration }}</p>
+    </div>
+
+    <div class="product-preview" aria-label="{% if lang == 'ko' %}제품 기능 예시{% else %}Product capability preview{% endif %}">
+      <div class="product-preview-bar"><span class="preview-brand">codexmux</span><span class="preview-engine"><i aria-hidden="true"></i>{{ copy.preview.engine }}</span><span class="preview-ready">{{ copy.preview.ready }}</span></div>
+      <div class="product-preview-grid">
+        <div class="preview-panel preview-sessions">
+          <div class="preview-panel-head"><span>{{ copy.preview.sessions }}</span><span class="preview-count">2</span></div>
+          <div class="preview-search">⌕ <span>{{ copy.preview.search }}</span></div>
+          <div class="preview-result-list">{% for result in copy.preview.results %}<div class="preview-result{% if loop.first %} is-active{% endif %}"><div><span class="preview-project">{{ result.project }}</span><span class="preview-result-state">{{ result.state }}</span></div><strong>{{ result.title }}</strong><small>{{ result.meta }}</small></div>{% endfor %}</div>
+        </div>
+        <div class="preview-panel preview-governance">
+          <div class="preview-panel-head"><span>{{ copy.preview.governance }}</span><span class="preview-state">{{ copy.preview.writeState }}</span></div>
+          <div class="preview-project-title">{{ copy.preview.project }}</div>
+          <div class="preview-document-list">{% for document in copy.preview.documents %}<div><span>{{ document.name }}</span><small>{{ document.state }}</small></div>{% endfor %}</div>
+          <div class="preview-action"><span aria-hidden="true">◇</span>{{ copy.preview.action }}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="capabilities" class="product-section">
+    <div class="eyebrow">{{ copy.pillarsEyebrow }}</div><h2>{{ copy.pillarsTitle }}</h2><p class="lead">{{ copy.pillarsLead }}</p>
+    <div class="product-pillar-grid">{% for pillar in copy.pillars %}<article class="product-pillar"><div class="product-pillar-index">{{ pillar.index }}</div><h3>{{ pillar.name }}</h3><p>{{ pillar.description }}</p><ul>{% for feature in pillar.features %}<li>{{ feature }}</li>{% endfor %}</ul><a href="{{ pillar.href }}">{{ pillar.link }} <span aria-hidden="true">→</span></a></article>{% endfor %}</div>
+  </section>
+
+  <section id="workflow" class="product-section product-workflow-section">
+    <div class="eyebrow teal">{{ copy.workflowEyebrow }}</div><h2>{{ copy.workflowTitle }}</h2>
+    <div class="product-workflow">{% for item in copy.workflow %}<article><span class="workflow-step">{{ item.step }}</span><h3>{{ item.title }}</h3><p>{{ item.text }}</p></article>{% endfor %}</div>
+  </section>
+
+  <section id="boundary" class="product-section product-boundary-section">
+    <div class="eyebrow amber">{{ copy.boundaryEyebrow }}</div><h2>{{ copy.boundaryTitle }}</h2><p class="lead">{{ copy.boundaryLead }}</p>
+    <div class="capability-state-grid">{% for group in copy.capabilityGroups %}<article class="capability-state capability-state--{{ group.tone }}"><div class="capability-state-head"><i aria-hidden="true"></i><h3>{{ group.state }}</h3></div><p>{{ group.description }}</p><ul>{% for item in group.items %}<li>{{ item }}</li>{% endfor %}</ul></article>{% endfor %}</div>
+  </section>
+
+  <section id="architecture" class="product-section">
+    <div class="eyebrow coral">{{ copy.architectureEyebrow }}</div><h2>{{ copy.architectureTitle }}</h2><p class="lead">{{ copy.architectureLead }}</p>
+    <div class="product-architecture">{% for layer in copy.architecture %}<div class="architecture-node"><span>{{ layer.label }}</span><strong>{{ layer.title }}</strong><small>{{ layer.detail }}</small></div>{% if not loop.last %}<div class="architecture-arrow" aria-hidden="true">↓</div>{% endif %}{% endfor %}</div>
+  </section>
+
+  <section id="install" class="product-section product-install-section">
+    <div class="product-install-copy"><div class="eyebrow teal">{{ copy.installEyebrow }}</div><h2>{{ copy.installTitle }}</h2><p class="lead">{{ copy.installLead }}</p><p class="install-open">{{ copy.openBrowser }}</p><div class="product-link-row"><a href="{% if lang == 'ko' %}/codexmux/ko/docs/installation/{% else %}/codexmux/docs/installation/{% endif %}">{{ copy.installGuide }} <span aria-hidden="true">→</span></a><a href="{% if lang == 'ko' %}/codexmux/ko/docs/linux-service/{% else %}/codexmux/docs/linux-service/{% endif %}">{{ copy.serviceGuide }} <span aria-hidden="true">→</span></a></div></div>
+    <div class="product-install-terminal"><div><span></span><span></span><span></span></div><pre><code><b>$</b> {{ copy.installCommand }}
+
+  codexmux  http://127.0.0.1:8122
+  runtime   Linux single-engine
+  status    ready</code></pre></div>
+  </section>
+
+  <section id="docs" class="product-section">
+    <div class="eyebrow">{{ copy.docsEyebrow }}</div><h2>{{ copy.docsTitle }}</h2>
+    <div class="product-doc-grid">{% for card in copy.docsCards %}<a href="{{ card.href }}"><strong>{{ card.title }}</strong><span>{{ card.text }}</span><em>{{ card.link }} →</em></a>{% endfor %}</div>
+  </section>
+
+  <section class="product-closing"><div><h2>{{ copy.closingTitle }}</h2><p>{{ copy.closingText }}</p></div><a class="btn-primary" href="{% if lang == 'ko' %}/codexmux/ko/docs/{% else %}/codexmux/docs/{% endif %}">{{ copy.closingAction }}</a></section>
+</main>

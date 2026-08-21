@@ -107,7 +107,8 @@ const createDefaultPaneNode = (wsId: string, cwd?: string): { pane: IPaneNode; t
 };
 
 const extractWsIdFromPath = (filePath: string): string | null => {
-  const match = filePath.match(/workspaces\/(ws-[^/]+)\//);
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  const match = normalizedPath.match(/workspaces\/(ws-[^/]+)\//);
   return match?.[1] ?? null;
 };
 
@@ -625,6 +626,36 @@ export const updateTabLastUserMessage = (
     tab.lastUserMessage = lastUserMessage;
     return true;
   });
+
+export const updateTabUserMessageClaim = (
+  sessionName: string,
+  lastUserMessage: string,
+  sentAt = Date.now(),
+): Promise<void> =>
+  mutateTab(sessionName, (tab) => {
+    const nextMessage = lastUserMessage.trim();
+    if (!nextMessage) return false;
+    if (tab.lastUserMessage === nextMessage && tab.lastUserMessageAt === sentAt) return false;
+    tab.lastUserMessage = nextMessage;
+    tab.lastUserMessageAt = sentAt;
+    return true;
+  });
+
+export const readTabUserMessageClaim = async (
+  sessionName: string,
+): Promise<{ message: string; sentAt: number } | null> => {
+  const parsed = parseSessionName(sessionName);
+  if (!parsed) return null;
+
+  const layout = await readLayoutFile(resolveLayoutFile(parsed.wsId));
+  if (!layout) return null;
+
+  const tab = collectAllTabs(layout.root).find((t) => t.sessionName === sessionName);
+  const message = tab?.lastUserMessage?.trim();
+  const sentAt = tab?.lastUserMessageAt;
+  if (!message || typeof sentAt !== 'number' || !Number.isFinite(sentAt)) return null;
+  return { message, sentAt };
+};
 
 export const updateTabCliStatus = (
   sessionName: string,

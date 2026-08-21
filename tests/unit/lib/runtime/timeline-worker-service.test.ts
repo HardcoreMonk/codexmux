@@ -76,6 +76,61 @@ describe('timeline worker service', () => {
     expect(reply.payload).toEqual({ ok: true });
   });
 
+  it('handles catalog commands through an injected worker-owned service', async () => {
+    const catalog = {
+      health: vi.fn(() => ({
+        state: 'ready' as const,
+        queueLag: 0,
+        cursorAgeMs: 100,
+        rebuildState: 'idle' as const,
+        indexedSessions: 1,
+        lastIndexedAt: '2026-08-21T09:00:00.000Z',
+      })),
+      search: vi.fn(() => ({ results: [], nextCursor: null, total: 0, health: 'ready' as const })),
+      readEntries: vi.fn(async () => ({ entries: [], startByteOffset: 0, hasMore: false })),
+      rebuild: vi.fn(async () => ({ started: true, state: 'building' as const })),
+      observeFile: vi.fn(async () => undefined),
+      close: vi.fn(),
+    };
+    const service = createTimelineWorkerService({ catalog });
+
+    await expect(service.handleCommand(command('timeline.catalog-health'))).resolves.toMatchObject({
+      ok: true,
+      payload: { state: 'ready', indexedSessions: 1 },
+    });
+    await expect(service.handleCommand(command('timeline.catalog-search', { query: 'worker', limit: 50 })))
+      .resolves.toMatchObject({ ok: true, payload: { results: [], total: 0 } });
+    await expect(service.handleCommand(command('timeline.catalog-read-entries', {
+      sessionId: 'session-1',
+      beforeByte: 100,
+      limit: 50,
+      panelType: 'codex',
+    }))).resolves.toMatchObject({ ok: true, payload: { entries: [], hasMore: false } });
+    await expect(service.handleCommand(command('timeline.catalog-rebuild')))
+      .resolves.toMatchObject({ ok: true, payload: { started: true, state: 'building' } });
+
+    service.close();
+    expect(catalog.close).toHaveBeenCalledOnce();
+  });
+
+  it('reports catalog degradation without stopping ordinary timeline commands', async () => {
+    const catalog = {
+      health: vi.fn(() => ({ state: 'degraded' as const, queueLag: 0, cursorAgeMs: null, rebuildState: 'idle' as const, indexedSessions: 0, lastIndexedAt: null })),
+      search: vi.fn(() => { throw Object.assign(new Error('catalog unavailable'), { code: 'catalog-unavailable', retryable: true }); }),
+      readEntries: vi.fn(),
+      rebuild: vi.fn(),
+      observeFile: vi.fn(),
+      close: vi.fn(),
+    };
+    const service = createTimelineWorkerService({ catalog });
+
+    const failed = await service.handleCommand(command('timeline.catalog-search', { query: 'worker' }));
+    const healthy = await service.handleCommand(command('timeline.health'));
+
+    expect(failed).toMatchObject({ ok: false, error: { code: 'catalog-unavailable', retryable: true } });
+    expect(healthy).toMatchObject({ ok: true, payload: { ok: true } });
+  });
+
   it('reads older entries through the selected provider', async () => {
     const service = createTimelineWorkerService();
     const stat = await fs.stat(jsonlPath);

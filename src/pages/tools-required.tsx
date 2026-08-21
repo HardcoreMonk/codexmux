@@ -8,15 +8,22 @@ import { Button } from '@/components/ui/button';
 import AppLogo from '@/components/layout/app-logo';
 import InstallDialog from '@/components/features/login/install-dialog';
 import { useRuntimePreflight } from '@/hooks/use-runtime-preflight';
-import { isRuntimeOk, readRuntimeAgentStatus } from '@/types/preflight';
+import {
+  isRuntimeOk,
+  readRuntimeAgentStatus,
+  readRuntimeTerminalName,
+  readRuntimeTerminalStatus,
+} from '@/types/preflight';
 import type { IRuntimePreflightResult } from '@/types/preflight';
 
 const getNextInstall = (
   status: IRuntimePreflightResult,
   t: (key: string) => string,
 ): { command: string; label: string } | null => {
-  if (!(status.tmux.installed && status.tmux.compatible)) {
-    const needsUpgrade = status.tmux.installed && !status.tmux.compatible;
+  const terminal = readRuntimeTerminalStatus(status);
+  if (!(terminal.installed && terminal.compatible)) {
+    if (terminal.adapter !== 'tmux') return null;
+    const needsUpgrade = terminal.installed && !terminal.compatible;
     return {
       command: needsUpgrade ? 'tmux-upgrade' : 'tmux-install',
       label: needsUpgrade ? t('upgradeTmux') : t('installTmux'),
@@ -26,8 +33,11 @@ const getNextInstall = (
     return { command: 'git', label: t('installGit') };
   }
   const agent = readRuntimeAgentStatus(status);
-  if (!agent.installed) {
-    return { command: 'codex', label: t('installCodex') };
+  if (!agent.installed || agent.compatible === false) {
+    return {
+      command: 'codex',
+      label: agent.installed ? t('updateCodex') : t('installCodex'),
+    };
   }
   return null;
 };
@@ -48,11 +58,16 @@ const ToolsRequiredPage = () => {
 
   const tools = status
     ? [
-        { name: 'tmux', ok: status.tmux.installed && status.tmux.compatible, version: status.tmux.version },
+        {
+          name: readRuntimeTerminalName(status),
+          ok: readRuntimeTerminalStatus(status).installed && readRuntimeTerminalStatus(status).compatible,
+          version: readRuntimeTerminalStatus(status).version,
+        },
         { name: 'Git', ok: status.git.installed, version: status.git.version },
         {
           name: 'Codex CLI',
-          ok: readRuntimeAgentStatus(status).installed,
+          ok: readRuntimeAgentStatus(status).installed
+            && readRuntimeAgentStatus(status).compatible !== false,
           version: readRuntimeAgentStatus(status).version,
         },
       ]

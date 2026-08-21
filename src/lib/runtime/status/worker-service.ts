@@ -32,6 +32,7 @@ interface IStatusLiveManagerLike {
   init(): Promise<void>;
   shutdown(): void;
   getAllForClient(): Record<string, IClientTabStatusEntry>;
+  getRateLimitsForClient(): IRateLimitsUpdateMessage['data'] | null;
   updateTabFromHook(tmuxSession: string, event: string, notificationType?: string): void;
   dismissTab(tabId: string): boolean;
   ackNotificationInput(tabId: string, seq: number): boolean;
@@ -63,7 +64,10 @@ export const createStatusWorkerService = (options: ICreateStatusWorkerServiceOpt
         target: 'supervisor',
         type: 'status.sync',
         delivery: 'realtime',
-        payload: { tabs: (event as { tabs: Record<string, IClientTabStatusEntry> }).tabs },
+        payload: {
+          tabs: (event as { tabs: Record<string, IClientTabStatusEntry> }).tabs,
+          rateLimits: liveManager?.getRateLimitsForClient() ?? null,
+        },
       }));
       return;
     }
@@ -95,7 +99,7 @@ export const createStatusWorkerService = (options: ICreateStatusWorkerServiceOpt
         target: 'supervisor',
         type: 'status.hook-event',
         delivery: 'realtime',
-        payload: { tabId: payload.tabId, event: payload.event },
+        payload: { tabId: payload.tabId, sessionName: payload.sessionName, event: payload.event },
       }));
       return;
     }
@@ -171,7 +175,10 @@ export const createStatusWorkerService = (options: ICreateStatusWorkerServiceOpt
           return ok(command, { stopped });
         }
         if (command.type === 'status.live-request-sync') {
-          return ok(command, { tabs: liveManager?.getAllForClient() ?? {} });
+          return ok(command, {
+            tabs: liveManager?.getAllForClient() ?? {},
+            rateLimits: liveManager?.getRateLimitsForClient() ?? null,
+          });
         }
         if (command.type === 'status.live-hook-event') {
           const input = parseRuntimeCommandPayload('status.live-hook-event', command.payload);

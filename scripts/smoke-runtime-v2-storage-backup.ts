@@ -41,6 +41,13 @@ const main = async (): Promise<void> => {
     assert(copiedPaths.includes('workspaces/ws-smoke/layout.json'), 'workspace layout was not copied');
     assert(copiedPaths.includes('runtime-v2/state.db'), 'runtime v2 state.db was not copied');
 
+    const backupMode = (await fs.stat(result.backupDir)).mode & 0o777;
+    const runtimeDirectoryMode = (await fs.stat(path.join(result.backupDir, 'runtime-v2'))).mode & 0o777;
+    const runtimeFileMode = (await fs.stat(path.join(result.backupDir, 'runtime-v2', 'state.db'))).mode & 0o777;
+    assert(backupMode === 0o700, 'backup directory is not private');
+    assert(runtimeDirectoryMode === 0o700, 'nested backup directory is not private');
+    assert(runtimeFileMode === 0o600, 'backup file is not private');
+
     const copiedLayout = await fs.readFile(path.join(result.backupDir, 'workspaces/ws-smoke/layout.json'), 'utf-8');
     assert(copiedLayout.includes('pt-secret-backup-session'), 'copied layout content mismatch');
 
@@ -55,6 +62,7 @@ const main = async (): Promise<void> => {
       copiedCount: result.copied.length,
       copiedPaths,
       backupDirBasename: path.basename(result.backupDir),
+      privateModes: true,
     }, null, 2));
   } finally {
     await fs.rm(root, { recursive: true, force: true });

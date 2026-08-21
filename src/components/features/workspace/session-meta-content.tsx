@@ -6,16 +6,20 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { formatTokenCount, formatTokenDetail, formatCost } from '@/lib/model-tokens';
 import type { IGitStatus } from '@/lib/git-status';
+import type { IAgentSessionRelationship } from '@/lib/agent-session-relationship';
 import ContextRing from '@/components/features/workspace/context-ring';
+import { SessionRelationshipDetailRow } from '@/components/features/workspace/session-relationship-indicator';
+import { copyTextToClipboard } from '@/lib/clipboard';
 
 const CopyIconButton = ({ text, className }: { text: string; className?: string }) => {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = (e: React.MouseEvent) => {
+  const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    if (await copyTextToClipboard(text)) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
   };
 
   return (
@@ -144,6 +148,7 @@ export interface ITmuxInfo {
 export interface IMetaDetailProps {
   title: string;
   sessionId: string | null;
+  relationship?: IAgentSessionRelationship | null;
   createdAt: string | null;
   updatedAt: string | null;
   fileSize: number;
@@ -183,6 +188,7 @@ const shortenPath = (p: string): string => {
 export const MetaDetail = ({
   title,
   sessionId,
+  relationship,
   createdAt,
   updatedAt,
   fileSize,
@@ -296,6 +302,8 @@ export const MetaDetail = ({
             <span className="font-mono text-xs text-muted-foreground">{model}</span>
           </div>
         )}
+
+        <SessionRelationshipDetailRow relationship={relationship} />
 
         {createdAt && (
           <div className="flex items-baseline gap-2">

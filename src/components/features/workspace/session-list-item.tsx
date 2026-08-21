@@ -3,6 +3,7 @@ import { useTranslations } from 'next-intl';
 import dayjs from 'dayjs';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SessionRelationshipBadge } from '@/components/features/workspace/session-relationship-indicator';
 
 import type { ISessionMeta } from '@/types/timeline';
 
@@ -95,9 +96,12 @@ const SessionListItem = ({
         <span className="min-w-0 truncate text-sm font-medium text-left">
           {displayMessage}
         </span>
-        <span className="shrink-0 text-xs text-muted-foreground">
-          {t('turnCount', { count: session.turnCount })}
-        </span>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <SessionRelationshipBadge relationship={session.relationship} />
+          <span className="text-xs text-muted-foreground">
+            {t('turnCount', { count: session.turnCount })}
+          </span>
+        </div>
       </div>
     </button>
   );

@@ -4,6 +4,7 @@ import path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const originalHome = process.env.HOME;
+const originalUserProfile = process.env.USERPROFILE;
 
 describe('workspace store', () => {
   let homeDir: string;
@@ -14,6 +15,7 @@ describe('workspace store', () => {
     dataDir = path.join(homeDir, '.codexmux');
     await fs.mkdir(dataDir, { recursive: true });
     process.env.HOME = homeDir;
+    process.env.USERPROFILE = homeDir;
     delete (globalThis as { __codexmuxWorkspaceLock?: unknown }).__codexmuxWorkspaceLock;
     delete (globalThis as { __codexmuxWorkspacesContentCache?: unknown }).__codexmuxWorkspacesContentCache;
     vi.resetModules();
@@ -21,6 +23,7 @@ describe('workspace store', () => {
 
   afterEach(async () => {
     process.env.HOME = originalHome;
+    process.env.USERPROFILE = originalUserProfile;
     await fs.rm(homeDir, { recursive: true, force: true });
     vi.resetModules();
   });

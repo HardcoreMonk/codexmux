@@ -22,7 +22,10 @@ import { MetaCompact } from '@/components/features/workspace/session-meta-conten
 import MobileMetaSheet from './mobile-meta-sheet';
 import useQuickPrompts from '@/hooks/use-quick-prompts';
 import { isAgentPanelType } from '@/lib/panel-type';
-import { selectAgentSessionListRenderMode } from '@/lib/session-list-rendering';
+import {
+  selectAgentPanelContentMode,
+  selectAgentSessionListRenderMode,
+} from '@/lib/session-list-rendering';
 import type { ISessionMeta, TCliState } from '@/types/timeline';
 import type { TPanelType } from '@/types/terminal';
 
@@ -177,6 +180,7 @@ const MobileAgentPanel = ({
   const isInputVisible = view === 'timeline';
 
   const startingPromptOptions = useStartingPrompt(view === 'check', sessionName);
+  const contentMode = selectAgentPanelContentMode({ agentProcess, view });
 
   useEffect(() => {
     onCliStateChange(storeCliState);
@@ -229,15 +233,7 @@ const MobileAgentPanel = ({
     );
   }
 
-  if (agentProcess === null && view !== 'check' && view !== 'session-list') {
-    return (
-      <div className="animate-delayed-fade-in flex min-h-0 flex-1 flex-col items-center justify-center bg-muted">
-        <Spinner className="h-4 w-4 text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (view === 'check') {
+  if (contentMode === 'check') {
     return (
       <div className="animate-delayed-fade-in flex min-h-0 flex-1 flex-col items-center justify-center bg-muted">
         <Spinner className="h-4 w-4 text-muted-foreground" />
@@ -259,7 +255,7 @@ const MobileAgentPanel = ({
     );
   }
 
-  if (view === 'session-list') {
+  if (contentMode === 'session-list') {
     const renderMode = selectAgentSessionListRenderMode({
       isAgentPanel,
       isLoading: isSessionListLoading,

@@ -9,14 +9,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import type { TPanelType } from '@/types/terminal';
 import useIsMobile from '@/hooks/use-is-mobile';
 import useIsMac from '@/hooks/use-is-mac';
-import { buildCodexCommandFromStore } from '@/lib/codex-client-command';
 import { isAgentPanelType } from '@/lib/panel-type';
 
 interface IPaneNewTabMenuProps {
   paneId: string;
   isCreating: boolean;
   activePanelType?: TPanelType;
-  onCreateTab: (panelType?: TPanelType, options?: { command?: string }) => void;
+  onCreateTab: (panelType?: TPanelType, options?: { startAgent?: boolean }) => void;
 }
 
 const defaultKeyForPanelType = (panelType?: TPanelType): string => {
@@ -79,7 +78,7 @@ const PaneNewTabMenu = ({ paneId, isCreating, activePanelType, onCreateTab }: IP
   const handleSelect = (item: typeof menuItems[number]) => {
     setOpen(false);
     if ('startCodex' in item && item.startCodex) {
-      onCreateTab(item.type, { command: buildCodexCommandFromStore() });
+      onCreateTab(item.type, { startAgent: true });
     } else {
       onCreateTab(item.type);
     }

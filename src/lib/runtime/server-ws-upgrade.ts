@@ -1,5 +1,10 @@
 import type { IncomingMessage } from 'http';
 import type { Duplex } from 'stream';
+import type {
+  TAuthorizeInstallRequest,
+  TInstallAuthorizationMode,
+} from '@/lib/install-request-auth';
+import type { TBootstrapRequestRejectionReason } from '@/lib/bootstrap-request-guard';
 import { verifyRuntimeV2WebSocketAuth } from '@/lib/runtime/api-auth';
 import { parseRuntimeSessionName } from '@/lib/runtime/session-name';
 
@@ -11,6 +16,15 @@ export interface IRuntimeTerminalUpgradeContext {
   sessionName: string;
   cols: number;
   rows: number;
+}
+
+export interface IInstallWebSocketUpgradeContext {
+  readonly route: 'install';
+  readonly url: URL;
+  readonly authorization: {
+    readonly authorized: true;
+    readonly mode: TInstallAuthorizationMode;
+  };
 }
 
 export const parseTerminalDimension = (value: string | null, fallback: number, max: number): number => {
@@ -25,8 +39,14 @@ export interface IRouteWebSocketUpgradeOptions {
   socket: Duplex;
   head: Buffer;
   port: number;
-  noAuthPaths: ReadonlySet<string>;
   wsPaths: ReadonlySet<string>;
+  authorizeInstallRequest: TAuthorizeInstallRequest;
+  handleInstallUpgrade: (
+    context: IInstallWebSocketUpgradeContext,
+    request: IncomingMessage,
+    socket: Duplex,
+    head: Buffer,
+  ) => void;
   handleKnownUpgrade: (url: URL, request: IncomingMessage, socket: Duplex, head: Buffer) => void;
   handleRuntimeTerminalUpgrade: (
     context: IRuntimeTerminalUpgradeContext,
@@ -34,7 +54,11 @@ export interface IRouteWebSocketUpgradeOptions {
     socket: Duplex,
     head: Buffer,
   ) => void;
-  fallbackUpgrade: (request: IncomingMessage, socket: Duplex, head: Buffer) => void;
+  fallbackUpgrade: (
+    request: IncomingMessage,
+    socket: Duplex,
+    head: Buffer,
+  ) => void | Promise<void>;
   verifyRuntimeAuth?: typeof verifyRuntimeV2WebSocketAuth;
   verifyGenericAuth: (request: IncomingMessage) => Promise<boolean>;
   runtimeEnabled?: () => boolean;
@@ -42,17 +66,25 @@ export interface IRouteWebSocketUpgradeOptions {
 
 export interface ICreateWebSocketUpgradeHandlerOptions {
   port: number;
-  noAuthPaths: ReadonlySet<string>;
   wsPaths: ReadonlySet<string>;
+  authorizeInstallRequest: IRouteWebSocketUpgradeOptions['authorizeInstallRequest'];
+  handleInstallUpgrade: IRouteWebSocketUpgradeOptions['handleInstallUpgrade'];
   handleKnownUpgrade: IRouteWebSocketUpgradeOptions['handleKnownUpgrade'];
   handleRuntimeTerminalUpgrade: IRouteWebSocketUpgradeOptions['handleRuntimeTerminalUpgrade'];
   fallbackUpgrade: IRouteWebSocketUpgradeOptions['fallbackUpgrade'];
   verifyGenericAuth: IRouteWebSocketUpgradeOptions['verifyGenericAuth'];
-  isRequestAllowed: (remoteAddress: string | undefined) => boolean;
-  rejectSocket: (socket: Duplex) => void;
+  validateUpgradeRequest: (request: IncomingMessage) => TUpgradeRequestGuardResult;
   onUpgradeError?: (error: unknown) => void;
   routeUpgrade?: (options: IRouteWebSocketUpgradeOptions) => void | Promise<void>;
 }
+
+export type TUpgradeRequestGuardResult =
+  | { allowed: true }
+  | {
+      allowed: false;
+      statusCode: 400 | 403 | 415 | 503;
+      reason: TBootstrapRequestRejectionReason | 'source-forbidden';
+    };
 
 const safeDestroySocket = (socket: Duplex): void => {
   try {
@@ -94,6 +126,21 @@ const verifyUpgradeAuth = async (
   }
 };
 
+const getUpgradeStatusReason = (statusCode: 400 | 401 | 403 | 415 | 503): string => {
+  switch (statusCode) {
+    case 400:
+      return 'Bad Request';
+    case 401:
+      return 'Unauthorized';
+    case 403:
+      return 'Forbidden';
+    case 415:
+      return 'Unsupported Media Type';
+    case 503:
+      return 'Service Unavailable';
+  }
+};
+
 const hasInvalidRawRequestTargetChars = (rawUrl: string): boolean => /[#\u0000-\u0020\u007f-\u{10ffff}]/u.test(rawUrl);
 const hasMalformedPercentEncoding = (rawUrl: string): boolean => /%(?![0-9A-Fa-f]{2})/.test(rawUrl);
 const hasEncodedPathDelimiter = (rawUrl: string): boolean => /%(?:2[fF]|5[cC])/.test(rawUrl.split('?')[0] ?? '');
@@ -110,8 +157,9 @@ export const routeWebSocketUpgrade = async ({
   socket,
   head,
   port,
-  noAuthPaths,
   wsPaths,
+  authorizeInstallRequest,
+  handleInstallUpgrade,
   handleKnownUpgrade,
   handleRuntimeTerminalUpgrade,
   fallbackUpgrade,
@@ -176,8 +224,36 @@ export const routeWebSocketUpgrade = async ({
     return;
   }
 
-  if (noAuthPaths.has(url.pathname)) {
-    handleKnownUpgrade(url, request, socket, head);
+  if (url.pathname === '/api/install') {
+    let authorization;
+    try {
+      authorization = await authorizeInstallRequest(request);
+    } catch {
+      writeUpgradeJsonError(socket, 503, 'Service Unavailable', {
+        error: 'install-auth-unavailable',
+      });
+      return;
+    }
+    if (!authorization.authorized) {
+      writeUpgradeJsonError(
+        socket,
+        authorization.statusCode,
+        getUpgradeStatusReason(authorization.statusCode),
+        { error: authorization.reason },
+      );
+      return;
+    }
+
+    const admittedAuthorization = Object.freeze({
+      authorized: true as const,
+      mode: authorization.mode,
+    });
+    const context: IInstallWebSocketUpgradeContext = Object.freeze({
+      route: 'install' as const,
+      url,
+      authorization: admittedAuthorization,
+    });
+    handleInstallUpgrade(context, request, socket, head);
     return;
   }
 
@@ -191,26 +267,32 @@ export const routeWebSocketUpgrade = async ({
     return;
   }
 
-  fallbackUpgrade(request, socket, head);
+  await fallbackUpgrade(request, socket, head);
 };
 
 export const createWebSocketUpgradeHandler = ({
   port,
-  noAuthPaths,
   wsPaths,
+  authorizeInstallRequest,
+  handleInstallUpgrade,
   handleKnownUpgrade,
   handleRuntimeTerminalUpgrade,
   fallbackUpgrade,
   verifyGenericAuth,
-  isRequestAllowed,
-  rejectSocket,
+  validateUpgradeRequest,
   onUpgradeError,
   routeUpgrade = routeWebSocketUpgrade,
 }: ICreateWebSocketUpgradeHandlerOptions) => {
   return async (request: IncomingMessage, socket: Duplex, head: Buffer): Promise<void> => {
     try {
-      if (!isRequestAllowed(request.socket.remoteAddress)) {
-        rejectSocket(socket);
+      const requestAdmission = validateUpgradeRequest(request);
+      if (!requestAdmission.allowed) {
+        writeUpgradeJsonError(
+          socket,
+          requestAdmission.statusCode,
+          getUpgradeStatusReason(requestAdmission.statusCode),
+          { error: requestAdmission.reason },
+        );
         return;
       }
 
@@ -219,8 +301,9 @@ export const createWebSocketUpgradeHandler = ({
         socket,
         head,
         port,
-        noAuthPaths,
         wsPaths,
+        authorizeInstallRequest,
+        handleInstallUpgrade,
         verifyGenericAuth,
         handleKnownUpgrade,
         handleRuntimeTerminalUpgrade,

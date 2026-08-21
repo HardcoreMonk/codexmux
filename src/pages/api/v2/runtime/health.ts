@@ -24,9 +24,20 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
     const supervisor = getRuntimeSupervisor();
     await supervisor.ensureStarted();
-    const health = await supervisor.health();
+    const [health, sessionCatalog] = await Promise.all([
+      supervisor.health(),
+      supervisor.getSessionCatalogHealth().catch(() => ({
+        state: 'degraded' as const,
+        queueLag: 0,
+        cursorAgeMs: null,
+        rebuildState: 'idle' as const,
+        indexedSessions: 0,
+        lastIndexedAt: null,
+      })),
+    ]);
     return res.status(200).json({
       ...health,
+      sessionCatalog,
       terminalV2Mode: getRuntimeTerminalV2Mode(),
       storageV2Mode: getRuntimeStorageV2Mode(),
       timelineV2Mode: getRuntimeTimelineV2Mode(),

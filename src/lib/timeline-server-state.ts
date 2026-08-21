@@ -42,19 +42,46 @@ export interface IFileWatcher {
   tailSnapshot?: ITimelineTailSnapshot;
 }
 
+export type TTimelineSessionClaimRefreshListener = (sessionName: string) => void;
+
 const gTimeline = globalThis as unknown as {
   __cmuxTimelineConnections?: Map<WebSocket, ITimelineConnection>;
   __cmuxTimelineFileWatchers?: Map<string, IFileWatcher>;
   __cmuxTimelineSessionWatchers?: Map<string, ISessionWatcher>;
+  __cmuxTimelineSessionClaimRefreshListeners?: Set<TTimelineSessionClaimRefreshListener>;
 };
 
 if (!gTimeline.__cmuxTimelineConnections) gTimeline.__cmuxTimelineConnections = new Map();
 if (!gTimeline.__cmuxTimelineFileWatchers) gTimeline.__cmuxTimelineFileWatchers = new Map();
 if (!gTimeline.__cmuxTimelineSessionWatchers) gTimeline.__cmuxTimelineSessionWatchers = new Map();
+if (!gTimeline.__cmuxTimelineSessionClaimRefreshListeners) {
+  gTimeline.__cmuxTimelineSessionClaimRefreshListeners = new Set();
+}
 
 export const timelineConnections = gTimeline.__cmuxTimelineConnections;
 export const fileWatchers = gTimeline.__cmuxTimelineFileWatchers;
 export const sessionWatchers = gTimeline.__cmuxTimelineSessionWatchers;
+
+export const subscribeTimelineSessionClaimRefresh = (
+  listener: TTimelineSessionClaimRefreshListener,
+): (() => void) => {
+  gTimeline.__cmuxTimelineSessionClaimRefreshListeners!.add(listener);
+  return () => {
+    gTimeline.__cmuxTimelineSessionClaimRefreshListeners!.delete(listener);
+  };
+};
+
+export const requestTimelineSessionClaimRefresh = (sessionName: string): void => {
+  const normalized = sessionName.trim();
+  if (!normalized) return;
+  for (const listener of gTimeline.__cmuxTimelineSessionClaimRefreshListeners!) {
+    try {
+      listener(normalized);
+    } catch {
+      // Refresh is opportunistic; failed listeners should not reject the claim write.
+    }
+  }
+};
 
 export const canSendTimelineMessage = (ws: WebSocket): boolean =>
   ws.readyState === WebSocket.OPEN && ws.bufferedAmount < BACKPRESSURE_LIMIT;

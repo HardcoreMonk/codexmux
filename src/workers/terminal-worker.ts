@@ -1,9 +1,9 @@
 import { createRuntimeReply, parseRuntimeMessage } from '@/lib/runtime/ipc';
-import { createTerminalWorkerRuntime } from '@/lib/runtime/terminal/terminal-worker-runtime';
+import { createTerminalRuntimeAdapter } from '@/lib/runtime/terminal/terminal-runtime-adapter-factory';
 import { createTerminalWorkerService } from '@/lib/runtime/terminal/terminal-worker-service';
 
 const service = createTerminalWorkerService({
-  runtime: createTerminalWorkerRuntime(),
+  runtime: createTerminalRuntimeAdapter(),
   emitEvent: (event) => process.send?.(event),
 });
 

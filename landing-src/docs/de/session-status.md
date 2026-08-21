@@ -27,7 +27,7 @@ sidebar의 session dot은 Codex가 무엇을 하고 있는지 보여줍니다. c
 | Codex JSONL tail | session id, model, current action, token usage |
 | live pane capture | permission/input prompt, interrupted prompt 보정 |
 
-생성된 hook bridge file도 event를 보낼 수 있지만 Codex status는 이 파일에 의존하지 않습니다. session list는 로컬 `~/.codex/sessions/**/*.jsonl`에서 인덱싱한 resume 대상만 표시합니다.
+Codex hook event는 inline hook config가 `status-hook.sh`를 호출해 전달합니다. 생성된 `hooks.json`도 남아 있지만 Codex status는 이 파일을 launch config source로 보지 않습니다. session list는 로컬 `~/.codex/sessions/**/*.jsonl`에서 인덱싱한 resume 대상만 표시합니다. 인덱스 refresh 중에는 현재 snapshot을 먼저 보여주고 완료 뒤 갱신합니다.
 
 ## JSONL watcher
 

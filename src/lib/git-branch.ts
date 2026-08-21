@@ -8,15 +8,20 @@ const execFile = promisify(execFileCb);
 const CMD_TIMEOUT = 5000;
 const GIT_BRANCH_TTL = 15_000;
 
-export const getGitBranch = async (tmuxSession: string): Promise<string | null> => {
+export const getGitBranch = async (
+  tmuxSession: string,
+  options: { force?: boolean } = {},
+): Promise<string | null> => {
   const cwd = await getSessionCwd(tmuxSession);
   if (!cwd) {
     throw new Error('tmux-session-not-found');
   }
 
   const cacheKey = `git-branch:${cwd}`;
-  const cached = getCached<string | null>(cacheKey);
-  if (cached !== null) return cached;
+  if (!options.force) {
+    const cached = getCached<string | null>(cacheKey);
+    if (cached !== null) return cached;
+  }
 
   try {
     const { stdout } = await execFile(

@@ -7,6 +7,7 @@ export default defineConfig({
     'workers/terminal-worker': 'src/workers/terminal-worker.ts',
     'workers/timeline-worker': 'src/workers/timeline-worker.ts',
     'workers/status-worker': 'src/workers/status-worker.ts',
+    'workers/governance-worker': 'src/workers/governance-worker.ts',
   },
   format: ['cjs'],
   target: 'node20',

@@ -3,8 +3,8 @@ layout: layouts/base.njk
 lang: ja
 title: "codexmux — Codex のための Web ネイティブなターミナル・マルチプレクサー"
 description: "1 つのダッシュボードで複数の Codex セッションを実行。tmux ベース、Web ネイティブ、モバイル対応。MIT オープンソース。"
-canonical: https://subicura.com/codexmux/ja/
-ogUrl: https://subicura.com/codexmux/ja/
+canonical: https://hardcoremonk.github.io/codexmux/ja/
+ogUrl: https://hardcoremonk.github.io/codexmux/ja/
 ogLocale: ja_JP
 ogLocaleAlternate: en_US
 permalink: /ja/index.html
@@ -81,14 +81,11 @@ isRoot: false
           <div class="install-block">
             <div class="install-cmd">
               <span class="prompt">$</span>
-              <span>npx codexmux</span>
-              <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="コピー" onclick="(function(b){navigator.clipboard.writeText('npx codexmux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
+              <span>npx --yes codexmux@latest</span>
+              <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="コピー" onclick="(function(b){navigator.clipboard.writeText('npx --yes codexmux@latest');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
             </div>
-            <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-mac>
-              <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
-                <path d="M17.05 20.28c-.98.95-2.05.88-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-              </svg>
-              macOS アプリをダウンロード
+            <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-windows>
+              Windows インストーラーをダウンロード
             </a>
           </div>
 
@@ -99,9 +96,9 @@ isRoot: false
           </div>
 
           <div class="hero-meta">
-            <span><span class="ok">●</span> Node.js 20+</span>
-            <span><span class="ok">●</span> tmux が必要</span>
-            <span><span class="ok">●</span> macOS / Linux</span>
+            <span><span class="ok">●</span> Windows インストーラー（メイン）</span>
+            <span><span class="ok">●</span> npm: macOS / Linux</span>
+            <span><span class="ok">●</span> npm には tmux が必要</span>
           </div>
         </div>
 
@@ -839,16 +836,16 @@ isRoot: false
       <div class="eyebrow">インストール</div>
       <h2>30 秒で完了。</h2>
       <p class="lead">
-        Node.js 20+ と tmux さえあれば OK。1 行でインストールして、ブラウザを開くだけ。
+        メイン製品は Windows インストーラーを使用します。npm コマンドは macOS/Linux 向けのレガシー tmux Web サーバーを実行します。
       </p>
 
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-body">
-            <h3>実行</h3>
-            <p>npx ですぐに始められます。グローバルインストールも可能です。</p>
-<pre class="code"><span class="c">$</span> npx codexmux</pre>
+            <h3>レガシー Web サーバーを実行</h3>
+            <p>Node.js 20+ と tmux がある macOS/Linux で公開パッケージを直接実行します。</p>
+<pre class="code"><span class="c">$</span> npx --yes codexmux@latest</pre>
           </div>
         </div>
 
@@ -873,10 +870,10 @@ isRoot: false
         <div class="step">
           <div class="step-num">4</div>
           <div class="step-body">
-            <h3>ネイティブアプリ (任意)</h3>
-            <p>macOS なら Electron ビルドが使えます。Apple Silicon / Intel どちらも対応。</p>
+            <h3>Windows インストーラー（メイン）</h3>
+            <p>Windows では Electron インストーラーを使用してください。npm コマンドは Windows デスクトップアプリをインストールしません。</p>
             <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" style="margin-top:0.5rem" data-ph-capture-attribute-cta="download">
-              最新リリースをダウンロード →
+              Windows インストーラーをダウンロード →
             </a>
           </div>
         </div>
@@ -916,8 +913,7 @@ isRoot: false
 
         <details>
           <summary>Windows でも使えますか?</summary>
-          <p>公式にはサポートしていません。tmux と node-pty のプラットフォーム制約により、macOS と Linux のみ対応です。
-            WSL2 環境では動作する可能性がありますが、テスト範囲外です。</p>
+          <p>はい。メイン製品は Windows Electron インストーラーで提供します。npm コマンドは Windows インストーラーではなく、macOS/Linux 向けのレガシー tmux Web サーバーです。</p>
         </details>
 
         <details>
@@ -956,19 +952,16 @@ isRoot: false
         <div class="cta-body">
           <div class="eyebrow">今すぐ始める</div>
           <h2>1 行で十分です。</h2>
-          <p class="lead">Node.js 20+ と tmux が準備できていれば、30 秒以内に起動できます。</p>
+          <p class="lead">Windows インストーラーを入手するか、macOS/Linux で npm からレガシー tmux Web サーバーを実行してください。</p>
         </div>
         <div class="install-block cta-install">
           <div class="install-cmd">
             <span class="prompt">$</span>
-            <span>npx codexmux</span>
-            <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="コピー" onclick="(function(b){navigator.clipboard.writeText('npx codexmux');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
+            <span>npx --yes codexmux@latest</span>
+            <button class="copy-btn" type="button" data-ph-capture-attribute-cta="copy_install" aria-label="コピー" onclick="(function(b){navigator.clipboard.writeText('npx --yes codexmux@latest');b.classList.add('copied');b.textContent='✓';clearTimeout(b._t);b._t=setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button>
           </div>
-          <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-mac>
-            <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
-              <path d="M17.05 20.28c-.98.95-2.05.88-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-            </svg>
-            macOS アプリをダウンロード
+          <a href="https://github.com/HardcoreMonk/codexmux/releases/latest" class="btn-primary" target="_blank" rel="noopener" data-ph-capture-attribute-cta="download" data-download-windows>
+            Windows インストーラーをダウンロード
           </a>
         </div>
       </div>
@@ -1009,24 +1002,3 @@ isRoot: false
     </section>
 
   </main>
-
-  <div class="arch-modal" id="archModal" hidden>
-    <div class="arch-modal-backdrop" data-arch-close></div>
-    <div class="arch-modal-card" role="dialog" aria-modal="true" aria-labelledby="archModalTitle">
-      <button type="button" class="arch-modal-close" data-arch-close aria-label="閉じる">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M6 18L18 6"/></svg>
-      </button>
-      <h3 id="archModalTitle">Macを選択</h3>
-      <p class="arch-modal-sub">お使いのチップに合うビルドを選んでください。</p>
-      <div class="arch-modal-options">
-        <button type="button" class="arch-option" data-arch="arm64" data-ph-capture-attribute-cta="download_arm64">
-          <span class="arch-option-title">Apple Silicon</span>
-          <span class="arch-option-hint">arm64</span>
-        </button>
-        <button type="button" class="arch-option" data-arch="x64" data-ph-capture-attribute-cta="download_x64">
-          <span class="arch-option-title">Intel</span>
-          <span class="arch-option-hint">x86_64</span>
-        </button>
-      </div>
-    </div>
-  </div>

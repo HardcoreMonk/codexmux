@@ -15,6 +15,9 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_COMMIT_HASH: commitHash,
   },
   output: 'standalone',
+  turbopack: {
+    root: process.cwd(),
+  },
   bundlePagesRouterDependencies: true,
   outputFileTracingExcludes: {
     '/*': [

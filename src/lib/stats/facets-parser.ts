@@ -48,7 +48,8 @@ export const parseAllFacets = async (period: TPeriod): Promise<IFacetEntry[]> =>
   const tasks: (() => Promise<IFacetEntry | null>)[] = [];
 
   for (const dir of FACETS_DIRS) {
-    const files = (await fs.readdir(dir).catch(() => [])).filter((f) => f.endsWith('.json'));
+    const files = (await fs.readdir(/*turbopackIgnore: true*/ dir).catch(() => []))
+      .filter((f) => f.endsWith('.json'));
     tasks.push(...files.map((file) => async () => {
       try {
         const filePath = path.join(dir, file);

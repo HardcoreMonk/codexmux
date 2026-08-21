@@ -21,7 +21,8 @@ const LAN_RANGES = [
 ];
 
 const ipToBuffer = (ip: string): Buffer | null => {
-  const cleaned = ip.startsWith('::ffff:') ? ip.slice(7) : ip;
+  const mappedTail = ip.startsWith('::ffff:') ? ip.slice(7) : '';
+  const cleaned = mappedTail.includes('.') ? mappedTail : ip;
   if (cleaned.includes('.') && !cleaned.includes(':')) {
     const parts = cleaned.split('.').map((p) => Number(p));
     if (parts.length !== 4 || parts.some((p) => !Number.isInteger(p) || p < 0 || p > 255)) return null;
@@ -137,6 +138,21 @@ export const isAllowed = (spec: IAccessSpec, remoteAddress: string | undefined |
   const buf = ipToBuffer(remoteAddress);
   if (!buf) return false;
   return spec.cidrs.some((cidr) => cidrContains(cidr, buf));
+};
+
+export const isLoopbackAddress = (address: string | undefined | null): boolean => {
+  if (!address) return false;
+  const buf = ipToBuffer(address);
+  if (!buf) return false;
+  if (buf.length === 4) return buf[0] === 127;
+  const isMappedV4 = buf.subarray(0, 10).every((byte) => byte === 0)
+    && buf[10] === 0xff
+    && buf[11] === 0xff;
+  if (isMappedV4) return buf[12] === 127;
+  for (let index = 0; index < 15; index++) {
+    if (buf[index] !== 0) return false;
+  }
+  return buf[15] === 1;
 };
 
 const findInterfaceIp = (cidrRanges: string[]): string | null => {

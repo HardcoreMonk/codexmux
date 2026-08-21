@@ -41,8 +41,12 @@ const baseOptions = (overrides: Partial<IRouteWebSocketUpgradeOptions> = {}) => 
     socket: socket as never,
     head: Buffer.alloc(0),
     port: 8122,
-    noAuthPaths: new Set(['/api/install']),
     wsPaths: new Set(['/api/terminal', '/api/v2/terminal']),
+    authorizeInstallRequest: vi.fn(async () => ({
+      authorized: true as const,
+      mode: 'setup-local' as const,
+    })),
+    handleInstallUpgrade: vi.fn(),
     handleKnownUpgrade: vi.fn(),
     handleRuntimeTerminalUpgrade: vi.fn(),
     fallbackUpgrade: vi.fn(),
@@ -126,6 +130,8 @@ describe('runtime websocket upgrade routing', () => {
       await routeWebSocketUpgrade(options);
       expectJsonError(socket, status, error);
       expect(options.handleRuntimeTerminalUpgrade).not.toHaveBeenCalled();
+      expect(options.authorizeInstallRequest).not.toHaveBeenCalled();
+      expect(options.handleInstallUpgrade).not.toHaveBeenCalled();
       expect(options.handleKnownUpgrade).not.toHaveBeenCalled();
       expect(options.fallbackUpgrade).not.toHaveBeenCalled();
     }
@@ -137,6 +143,67 @@ describe('runtime websocket upgrade routing', () => {
     });
     await routeWebSocketUpgrade(auth.options);
     expectJsonError(auth.socket, '401 Unauthorized', 'Unauthorized');
+  });
+
+  it('routes install through its authorizer and immutable typed context', async () => {
+    const { options } = baseOptions({
+      request: request('/api/install?command=codex'),
+      wsPaths: new Set(['/api/install']),
+      verifyGenericAuth: vi.fn(async () => false),
+    });
+
+    await routeWebSocketUpgrade(options);
+
+    expect(options.authorizeInstallRequest).toHaveBeenCalledWith(options.request);
+    expect(options.handleInstallUpgrade).toHaveBeenCalledTimes(1);
+    const [context, handledRequest, handledSocket, handledHead] = vi.mocked(
+      options.handleInstallUpgrade,
+    ).mock.calls[0];
+    expect(context).toEqual({
+      route: 'install',
+      url: expect.objectContaining({ pathname: '/api/install' }),
+      authorization: { authorized: true, mode: 'setup-local' },
+    });
+    expect(Object.isFrozen(context)).toBe(true);
+    expect(Object.isFrozen(context.authorization)).toBe(true);
+    expect(handledRequest).toBe(options.request);
+    expect(handledSocket).toBe(options.socket);
+    expect(handledHead).toBe(options.head);
+    expect(options.verifyGenericAuth).not.toHaveBeenCalled();
+    expect(options.handleKnownUpgrade).not.toHaveBeenCalled();
+    expect(options.fallbackUpgrade).not.toHaveBeenCalled();
+  });
+
+  it('returns bounded install authorization failures without upgrading', async () => {
+    const rejected = baseOptions({
+      request: request('/api/install'),
+      authorizeInstallRequest: vi.fn(async () => ({
+        authorized: false as const,
+        statusCode: 403 as const,
+        reason: 'install-origin-mismatch' as const,
+      })),
+    });
+
+    await routeWebSocketUpgrade(rejected.options);
+
+    expectJsonError(rejected.socket, '403 Forbidden', 'install-origin-mismatch');
+    expect(rejected.options.handleInstallUpgrade).not.toHaveBeenCalled();
+    expect(rejected.options.handleKnownUpgrade).not.toHaveBeenCalled();
+    expect(rejected.options.fallbackUpgrade).not.toHaveBeenCalled();
+
+    const unavailable = baseOptions({
+      request: request('/api/install'),
+      authorizeInstallRequest: vi.fn(async () => {
+        throw new Error('sensitive dependency failure');
+      }),
+    });
+
+    await routeWebSocketUpgrade(unavailable.options);
+
+    expectJsonError(unavailable.socket, '503 Service Unavailable', 'install-auth-unavailable');
+    expect(unavailable.options.handleInstallUpgrade).not.toHaveBeenCalled();
+    expect(unavailable.options.handleKnownUpgrade).not.toHaveBeenCalled();
+    expect(unavailable.options.fallbackUpgrade).not.toHaveBeenCalled();
   });
 
   it('routes legacy known upgrades after generic auth and falls back otherwise', async () => {
@@ -155,23 +222,53 @@ describe('runtime websocket upgrade routing', () => {
     expect(fallback.options.fallbackUpgrade).toHaveBeenCalledWith(fallback.options.request, fallback.options.socket, fallback.options.head);
   });
 
-  it('factory rejects disallowed remotes and fail-closes route errors', async () => {
+  it('awaits and contains a rejected asynchronous upgrade fallback', async () => {
+    const error = new Error('next upgrade rejected');
     const socket = new FakeSocket();
-    const rejectSocket = vi.fn();
+    const onUpgradeError = vi.fn();
+    const handler = createWebSocketUpgradeHandler({
+      port: 8122,
+      wsPaths: new Set(),
+      authorizeInstallRequest: vi.fn(async () => ({
+        authorized: true as const,
+        mode: 'setup-local' as const,
+      })),
+      handleInstallUpgrade: vi.fn(),
+      handleKnownUpgrade: vi.fn(),
+      handleRuntimeTerminalUpgrade: vi.fn(),
+      fallbackUpgrade: vi.fn(async () => {
+        throw error;
+      }),
+      verifyGenericAuth: vi.fn(async () => true),
+      validateUpgradeRequest: () => ({ allowed: true }),
+      onUpgradeError,
+    });
+
+    await handler(request('/_next/webpack-hmr') as never, socket as never, Buffer.alloc(0));
+
+    expect(onUpgradeError).toHaveBeenCalledWith(error);
+    expect(socket.destroyed).toBe(true);
+  });
+
+  it('factory fail-closes route errors after request admission', async () => {
+    const socket = new FakeSocket();
     const routeUpgrade = vi.fn(() => {
       throw new Error('route failed');
     });
     const onUpgradeError = vi.fn();
     const handler = createWebSocketUpgradeHandler({
       port: 8122,
-      noAuthPaths: new Set(),
       wsPaths: new Set(),
+      authorizeInstallRequest: vi.fn(async () => ({
+        authorized: true as const,
+        mode: 'setup-local' as const,
+      })),
+      handleInstallUpgrade: vi.fn(),
       handleKnownUpgrade: vi.fn(),
       handleRuntimeTerminalUpgrade: vi.fn(),
       fallbackUpgrade: vi.fn(),
       verifyGenericAuth: vi.fn(async () => true),
-      isRequestAllowed: () => true,
-      rejectSocket,
+      validateUpgradeRequest: () => ({ allowed: true }),
       onUpgradeError,
       routeUpgrade,
     });
@@ -181,22 +278,41 @@ describe('runtime websocket upgrade routing', () => {
     expect(onUpgradeError).toHaveBeenCalled();
     expect(socket.destroyed).toBe(true);
     expect(socket.ended).toEqual([]);
-
-    const deniedSocket = new FakeSocket();
-    const denied = createWebSocketUpgradeHandler({
-      port: 8122,
-      noAuthPaths: new Set(),
-      wsPaths: new Set(),
-      handleKnownUpgrade: vi.fn(),
-      handleRuntimeTerminalUpgrade: vi.fn(),
-      fallbackUpgrade: vi.fn(),
-      verifyGenericAuth: vi.fn(async () => true),
-      isRequestAllowed: () => false,
-      rejectSocket,
-      routeUpgrade: vi.fn(),
-    });
-
-    await denied(request('/api/terminal') as never, deniedSocket as never, Buffer.alloc(0));
-    expect(rejectSocket).toHaveBeenCalledWith(deniedSocket);
   });
+
+  it.each([
+    [403, 'source-forbidden', '403 Forbidden'],
+    [400, 'missing-host', '400 Bad Request'],
+    [503, 'bootstrap-state-unavailable', '503 Service Unavailable'],
+  ] as const)(
+    'returns a bounded outer guard rejection (%i %s) before routing',
+    async (statusCode, reason, statusLine) => {
+      const socket = new FakeSocket();
+      const routeUpgrade = vi.fn();
+      const handler = createWebSocketUpgradeHandler({
+        port: 8122,
+        wsPaths: new Set(),
+        authorizeInstallRequest: vi.fn(async () => ({
+          authorized: true as const,
+          mode: 'setup-local' as const,
+        })),
+        handleInstallUpgrade: vi.fn(),
+        handleKnownUpgrade: vi.fn(),
+        handleRuntimeTerminalUpgrade: vi.fn(),
+        fallbackUpgrade: vi.fn(),
+        verifyGenericAuth: vi.fn(async () => true),
+        validateUpgradeRequest: () => ({
+          allowed: false,
+          statusCode,
+          reason,
+        }),
+        routeUpgrade,
+      });
+
+      await handler(request('/api/terminal') as never, socket as never, Buffer.alloc(0));
+
+      expectJsonError(socket, statusLine, reason);
+      expect(routeUpgrade).not.toHaveBeenCalled();
+    },
+  );
 });

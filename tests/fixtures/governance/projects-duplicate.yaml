@@ -1,0 +1,7 @@
+projects:
+  - id: first-project
+    title: First Project
+    path: <fixture-root>/projects/shared
+  - id: duplicate-path
+    title: Duplicate Path
+    path: <fixture-root>/projects/shared

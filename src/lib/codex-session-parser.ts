@@ -7,10 +7,18 @@ import type {
   ITimelineThinking,
   ITimelineToolCall,
   ITimelineToolResult,
+  ITimelineExecCommand,
+  ITimelineWebSearch,
+  ITimelineMcpCall,
+  ITimelinePatchApply,
+  ITimelineErrorNotice,
+  ITimelineContextCompacted,
+  ITimelinePatchFile,
   TToolStatus,
 } from '@/types/timeline';
 import fs from 'fs/promises';
 import { createTimelineEntryId } from '@/lib/timeline-entry-id';
+import { buildTimelineRichDetails } from '@/lib/timeline-preview';
 
 interface ICodexRolloutRecord {
   type?: string;
@@ -46,6 +54,16 @@ const tryParseJson = (value: unknown): Record<string, unknown> => {
 
 const truncate = (value: string, max = 120): string =>
   value.length > max ? `${value.slice(0, max)}...` : value;
+
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+
+const safeString = (value: unknown): string => typeof value === 'string' ? value : '';
+
+const safeNumber = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 
 const MESSAGE_PAIR_DEDUPE_WINDOW_MS = 1_000;
 
@@ -238,14 +256,298 @@ const parseToolResult = (
   };
 };
 
+interface IExecAccumulator {
+  kind: 'exec';
+  command: string;
+  cwd?: string;
+  output: string;
+  truncated: boolean;
+}
+
+interface IWebAccumulator {
+  kind: 'web';
+  query?: string;
+}
+
+interface IMcpAccumulator {
+  kind: 'mcp';
+  server: string;
+  tool: string;
+  arguments?: unknown;
+}
+
+interface IPatchAccumulator {
+  kind: 'patch';
+  files: ITimelinePatchFile[];
+}
+
+type TRichAccumulator = IExecAccumulator | IWebAccumulator | IMcpAccumulator | IPatchAccumulator;
+
+const MAX_ACCUMULATED_OUTPUT_BYTES = 16 * 1024;
+
+const appendExecOutput = (entry: IExecAccumulator, chunk: string): void => {
+  if (entry.truncated || !chunk) return;
+  const currentBytes = Buffer.byteLength(entry.output, 'utf-8');
+  const remaining = MAX_ACCUMULATED_OUTPUT_BYTES - currentBytes;
+  if (remaining <= 0) {
+    entry.truncated = true;
+    return;
+  }
+  const candidate = Buffer.from(chunk, 'utf-8');
+  if (candidate.byteLength <= remaining) {
+    entry.output += chunk;
+    return;
+  }
+  entry.output += candidate.subarray(0, remaining).toString('utf-8').replace(/�$/, '');
+  entry.truncated = true;
+};
+
+const readCommand = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string').join(' ');
+  return '';
+};
+
+const parseDurationMs = (value: unknown): number | undefined => {
+  const duration = asRecord(value);
+  if (!duration) return safeNumber(value);
+  const seconds = safeNumber(duration.secs) ?? safeNumber(duration.seconds) ?? 0;
+  const nanos = safeNumber(duration.nanos) ?? safeNumber(duration.nanoseconds) ?? 0;
+  return Math.round(seconds * 1000 + nanos / 1_000_000);
+};
+
+const parsePatchFiles = (input: string): ITimelinePatchFile[] => {
+  const files: ITimelinePatchFile[] = [];
+  const header = /^\*\*\*\s+(Add|Update|Delete)\s+File:\s+(.+?)\s*$/i;
+  for (const line of input.split('\n')) {
+    const match = line.match(header);
+    if (!match) continue;
+    files.push({
+      path: match[2],
+      operation: match[1].toLowerCase() as 'add' | 'update' | 'delete',
+    });
+  }
+  return files;
+};
+
+const parseResponseRichEntry = (
+  payload: Record<string, unknown>,
+  timestamp: number,
+): ITimelineWebSearch | ITimelinePatchApply | null => {
+  if (payload.type === 'web_search_call') {
+    const rawStatus = safeString(payload.status);
+    return {
+      id: '',
+      type: 'web-search',
+      timestamp,
+      callId: safeString(payload.call_id) || `web-${timestamp}`,
+      query: safeString(payload.query) || undefined,
+      status: rawStatus === 'failed' ? 'error' : rawStatus === 'completed' ? 'success' : 'pending',
+      details: buildTimelineRichDetails({ results: payload.results }),
+    };
+  }
+
+  if (payload.type === 'custom_tool_call' && payload.name === 'apply_patch') {
+    const input = safeString(payload.input);
+    const rawStatus = safeString(payload.status);
+    return {
+      id: '',
+      type: 'patch-apply',
+      timestamp,
+      callId: safeString(payload.call_id) || `patch-${timestamp}`,
+      files: parsePatchFiles(input),
+      status: rawStatus === 'failed' ? 'error' : rawStatus === 'completed' ? 'success' : 'pending',
+      details: buildTimelineRichDetails({ patch: input }),
+    };
+  }
+
+  return null;
+};
+
+const parseRichEvent = (
+  payload: Record<string, unknown>,
+  timestamp: number,
+  accumulators: Map<string, TRichAccumulator>,
+): ITimelineEntry | null => {
+  const type = safeString(payload.type);
+  const callId = safeString(payload.call_id);
+
+  if (type === 'error' || type === 'warning' || type === 'stream_error') {
+    const severity = type === 'stream_error' ? 'stream-error' : type;
+    return {
+      id: '',
+      type: 'error-notice',
+      timestamp,
+      severity,
+      message: safeString(payload.message) || type,
+      details: buildTimelineRichDetails({
+        retryStatus: payload.retry_status,
+        errorCode: payload.codex_error_info,
+      }),
+    } satisfies ITimelineErrorNotice;
+  }
+
+  if (type === 'context_compacted') {
+    return {
+      id: '',
+      type: 'context-compacted',
+      timestamp,
+      beforeTokens: safeNumber(payload.before_tokens),
+      afterTokens: safeNumber(payload.after_tokens),
+    } satisfies ITimelineContextCompacted;
+  }
+
+  if (type === 'exec_command_begin' && callId) {
+    accumulators.set(callId, {
+      kind: 'exec',
+      command: readCommand(payload.command),
+      cwd: safeString(payload.cwd) || undefined,
+      output: '',
+      truncated: false,
+    });
+    return null;
+  }
+
+  if (type === 'exec_command_delta' && callId) {
+    const existing = accumulators.get(callId);
+    if (existing?.kind === 'exec') appendExecOutput(existing, safeString(payload.chunk ?? payload.data));
+    return null;
+  }
+
+  if (type === 'exec_command_end' && callId) {
+    const existing = accumulators.get(callId);
+    const exec = existing?.kind === 'exec' ? existing : {
+      kind: 'exec' as const,
+      command: readCommand(payload.command),
+      cwd: safeString(payload.cwd) || undefined,
+      output: '',
+      truncated: false,
+    };
+    if (!exec.output) appendExecOutput(exec, safeString(payload.aggregated_output ?? payload.stdout));
+    accumulators.delete(callId);
+    const exitCode = safeNumber(payload.exit_code);
+    const details = buildTimelineRichDetails({ output: exec.output, stderr: payload.stderr });
+    if (details && exec.truncated) details.truncated = true;
+    return {
+      id: '',
+      type: 'exec-command',
+      timestamp,
+      callId,
+      command: exec.command,
+      cwd: exec.cwd,
+      exitCode,
+      durationMs: parseDurationMs(payload.duration),
+      status: exitCode === 0 ? 'success' : 'error',
+      details,
+    } satisfies ITimelineExecCommand;
+  }
+
+  if (type === 'web_search_begin' && callId) {
+    accumulators.set(callId, { kind: 'web', query: safeString(payload.query) || undefined });
+    return null;
+  }
+
+  if (type === 'web_search_end' && callId) {
+    const existing = accumulators.get(callId);
+    const results = Array.isArray(payload.results) ? payload.results : [];
+    accumulators.delete(callId);
+    return {
+      id: '',
+      type: 'web-search',
+      timestamp,
+      callId,
+      query: existing?.kind === 'web' ? existing.query : safeString(payload.query) || undefined,
+      resultCount: results.length || undefined,
+      status: 'success',
+      details: buildTimelineRichDetails({ summary: payload.summary, results }),
+    } satisfies ITimelineWebSearch;
+  }
+
+  if (type === 'mcp_tool_call_begin' && callId) {
+    accumulators.set(callId, {
+      kind: 'mcp',
+      server: safeString(payload.server),
+      tool: safeString(payload.tool),
+      arguments: payload.arguments,
+    });
+    return null;
+  }
+
+  if (type === 'mcp_tool_call_end' && callId) {
+    const existing = accumulators.get(callId);
+    accumulators.delete(callId);
+    return {
+      id: '',
+      type: 'mcp-call',
+      timestamp,
+      callId,
+      server: existing?.kind === 'mcp' ? existing.server : safeString(payload.server),
+      tool: existing?.kind === 'mcp' ? existing.tool : safeString(payload.tool),
+      status: payload.success === false || payload.error ? 'error' : 'success',
+      details: buildTimelineRichDetails({
+        arguments: existing?.kind === 'mcp' ? existing.arguments : payload.arguments,
+        result: payload.result,
+        error: payload.error,
+      }),
+    } satisfies ITimelineMcpCall;
+  }
+
+  if (type === 'patch_apply_begin' && callId) {
+    accumulators.set(callId, { kind: 'patch', files: [] });
+    return null;
+  }
+
+  if (type === 'patch_apply_updated' && callId) {
+    const existing = accumulators.get(callId);
+    const path = safeString(payload.path);
+    if (existing?.kind === 'patch' && path) {
+      const operation = safeString(payload.status).toLowerCase();
+      existing.files.push({
+        path,
+        operation: operation === 'add' || operation === 'update' || operation === 'delete'
+          ? operation
+          : 'unknown',
+      });
+    }
+    return null;
+  }
+
+  if (type === 'patch_apply_end' && callId) {
+    const existing = accumulators.get(callId);
+    accumulators.delete(callId);
+    return {
+      id: '',
+      type: 'patch-apply',
+      timestamp,
+      callId,
+      files: existing?.kind === 'patch' ? existing.files : [],
+      status: payload.success === false ? 'error' : 'success',
+      details: buildTimelineRichDetails({ error: payload.error }),
+    } satisfies ITimelinePatchApply;
+  }
+
+  return null;
+};
+
 const updateToolStatuses = (entries: ITimelineEntry[]): ITimelineEntry[] => {
+  const semanticCallIds = new Set(entries.flatMap((entry) => {
+    if (entry.type === 'exec-command' || entry.type === 'web-search'
+      || entry.type === 'mcp-call' || entry.type === 'patch-apply') {
+      return [entry.callId];
+    }
+    return [];
+  }));
+  const filtered = entries.filter((entry) => (
+    (entry.type !== 'tool-call' && entry.type !== 'tool-result')
+    || !semanticCallIds.has(entry.toolUseId)
+  ));
   const finalStatus = new Map<string, TToolStatus>();
-  for (const entry of entries) {
+  for (const entry of filtered) {
     if (entry.type === 'tool-result') {
       finalStatus.set(entry.toolUseId, entry.isError ? 'error' : 'success');
     }
   }
-  return entries.map((entry) => {
+  return filtered.map((entry) => {
     if (entry.type !== 'tool-call') return entry;
     const status = finalStatus.get(entry.toolUseId);
     return status ? { ...entry, status } : entry;
@@ -256,6 +558,7 @@ const parseCodexContent = (content: string, baseOffset = 0): ICodexParseResult =
   const entries: ITimelineEntry[] = [];
   const entryLineOffsets: number[] = [];
   const seenMessages = new Map<string, number>();
+  const richAccumulators = new Map<string, TRichAccumulator>();
   let errorCount = 0;
   let summary: string | undefined;
   let bytePos = 0;
@@ -293,6 +596,11 @@ const parseCodexContent = (content: string, baseOffset = 0): ICodexParseResult =
     const timestamp = toTimestamp(record.timestamp);
 
     if (record.type === 'event_msg') {
+      const richEntry = parseRichEvent(payload, timestamp, richAccumulators);
+      if (richEntry) {
+        pushEntry(richEntry);
+        continue;
+      }
       const message = parseEventMessage(payload, timestamp);
       if (message && !hasRecentMessage(seenMessages, message, timestamp)) {
         pushEntry(message);
@@ -302,6 +610,12 @@ const parseCodexContent = (content: string, baseOffset = 0): ICodexParseResult =
     }
 
     if (record.type !== 'response_item') continue;
+
+    const richEntry = parseResponseRichEntry(payload, timestamp);
+    if (richEntry) {
+      pushEntry(richEntry);
+      continue;
+    }
 
     const message = parseMessage(payload, timestamp);
     if (message) {
@@ -452,11 +766,13 @@ export const readCodexEntriesBefore = async (
   try {
     if (beforeByte <= 0) return empty;
     const stat = await fs.stat(filePath);
+    const boundedBeforeByte = Math.min(beforeByte, stat.size);
+    if (boundedBeforeByte <= 0) return empty;
 
     let chunkSize = CHUNK_SIZE;
     while (true) {
-      const from = Math.max(0, beforeByte - chunkSize);
-      const { content, validFrom } = await readChunk(filePath, from, beforeByte);
+      const from = Math.max(0, boundedBeforeByte - chunkSize);
+      const { content, validFrom } = await readChunk(filePath, from, boundedBeforeByte);
       if (content) {
         const result = parseCodexContent(content, validFrom);
         if (result.entries.length >= maxEntries || from === 0) {

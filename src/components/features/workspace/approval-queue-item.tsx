@@ -13,6 +13,7 @@ import {
   getApprovalPromptTypeKey,
   getApprovalRiskKey,
   hasUsableApprovalOptions,
+  selectApprovalPromptMetadata,
   shouldRetryApprovalOptions,
   type TApprovalFallbackReason,
 } from '@/lib/approval-queue';
@@ -29,6 +30,7 @@ interface IApprovalQueueItemProps {
   tabName: string;
   lastUserMessage?: string | null;
   lastEventSeq?: number;
+  approvalPromptMetadata?: IApprovalPromptMetadata | null;
   isActiveTab?: boolean;
   onNavigate?: (workspaceId: string, tabId: string) => void;
 }
@@ -50,6 +52,21 @@ interface IApprovalAuditPayload {
   selectedOptionIndex?: number;
   optionCount?: number;
   fallbackReason?: TApprovalFallbackReason;
+}
+
+interface IApprovalSelectionAuditContext {
+  workspaceId: string;
+  tabId: string;
+  promptType?: IApprovalPromptMetadata['promptType'];
+  approvalKind?: IApprovalPromptMetadata['approvalKind'];
+  riskLevel?: IApprovalPromptMetadata['riskLevel'];
+  selectedOptionIndex?: number;
+  optionCount?: number;
+}
+
+interface ISendSelectionResult {
+  ok: boolean;
+  serverReached: boolean;
 }
 
 const approvalPromptTypes = new Set(['command', 'file', 'permission', 'resume-directory', 'conversation', 'unknown']);
@@ -117,16 +134,20 @@ const fetchPermissionOptions = async (sessionName: string): Promise<IApprovalOpt
   return { options: [], metadata: null, captureEmpty: false, fallbackReason: 'parse-empty' };
 };
 
-const sendSelection = async (sessionName: string, optionIndex: number): Promise<boolean> => {
+const sendSelection = async (
+  sessionName: string,
+  optionIndex: number,
+  audit: IApprovalSelectionAuditContext,
+): Promise<ISendSelectionResult> => {
   try {
     const res = await fetch('/api/tmux/send-input', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session: sessionName, input: String(optionIndex + 1) }),
+      body: JSON.stringify({ session: sessionName, input: String(optionIndex + 1), audit }),
     });
-    return res.ok;
+    return { ok: res.ok, serverReached: true };
   } catch {
-    return false;
+    return { ok: false, serverReached: false };
   }
 };
 
@@ -153,6 +174,7 @@ const ApprovalQueueItem = ({
   tabName,
   lastUserMessage,
   lastEventSeq,
+  approvalPromptMetadata,
   isActiveTab,
   onNavigate,
 }: IApprovalQueueItemProps) => {
@@ -169,7 +191,7 @@ const ApprovalQueueItem = ({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 새 notification event가 들어오면 이전 선택 상태를 즉시 버려야 한다.
     setPhase('loading');
     setOptions([]);
-    setMetadata(null);
+    setMetadata(approvalPromptMetadata ?? null);
     setFallbackReason(null);
     setSelectedIndex(null);
     setSent(false);
@@ -181,6 +203,7 @@ const ApprovalQueueItem = ({
         eventType: 'fallback',
         workspaceId,
         tabId,
+        ...getApprovalAuditMetadata(approvalPromptMetadata ?? null),
         fallbackReason: 'no-session',
       });
       return () => { cancelled = true; };
@@ -189,26 +212,31 @@ const ApprovalQueueItem = ({
     fetchPermissionOptions(sessionName)
       .then((result) => {
         if (cancelled) return;
+        const nextMetadata = selectApprovalPromptMetadata({
+          fetchedMetadata: result.metadata,
+          statusMetadata: approvalPromptMetadata ?? null,
+        });
         if (!hasUsableApprovalOptions(result.options)) {
-          setMetadata(null);
+          setMetadata(nextMetadata);
           setFallbackReason(result.fallbackReason);
           setPhase('failed');
           recordApprovalAuditEvent({
             eventType: 'fallback',
             workspaceId,
             tabId,
+            ...getApprovalAuditMetadata(nextMetadata),
             fallbackReason: result.fallbackReason ?? 'parse-empty',
           });
           return;
         }
-        setMetadata(result.metadata);
+        setMetadata(nextMetadata);
         setOptions(result.options);
         setPhase('ready');
         recordApprovalAuditEvent({
           eventType: 'options-ready',
           workspaceId,
           tabId,
-          ...getApprovalAuditMetadata(result.metadata),
+          ...getApprovalAuditMetadata(nextMetadata),
           optionCount: result.options.length,
         });
       })
@@ -220,13 +248,14 @@ const ApprovalQueueItem = ({
             eventType: 'fallback',
             workspaceId,
             tabId,
+            ...getApprovalAuditMetadata(approvalPromptMetadata ?? null),
             fallbackReason: 'request-failed',
           });
         }
       });
 
     return () => { cancelled = true; };
-  }, [sessionName, lastEventSeq, workspaceId, tabId]);
+  }, [sessionName, lastEventSeq, workspaceId, tabId, approvalPromptMetadata]);
 
   const promptText = useMemo(
     () => getApprovalQueueFallbackText({ lastUserMessage, tabName }),
@@ -243,30 +272,27 @@ const ApprovalQueueItem = ({
       if (!sessionName || selectedIndex !== null || sent) return;
 
       setSelectedIndex(idx);
-      const ok = await sendSelection(sessionName, idx);
-      if (!ok) {
-        setSelectedIndex(null);
-        setFallbackReason('send-failed');
-        recordApprovalAuditEvent({
-          eventType: 'selection-failed',
-          workspaceId,
-          tabId,
-          ...getApprovalAuditMetadata(metadata),
-          selectedOptionIndex: idx,
-          optionCount: options.length,
-          fallbackReason: 'send-failed',
-        });
-        toast.error(t(getApprovalFallbackKey('send-failed')));
-        return;
-      }
-      recordApprovalAuditEvent({
-        eventType: 'selection-sent',
+      const auditContext = {
         workspaceId,
         tabId,
         ...getApprovalAuditMetadata(metadata),
         selectedOptionIndex: idx,
         optionCount: options.length,
-      });
+      };
+      const result = await sendSelection(sessionName, idx, auditContext);
+      if (!result.ok) {
+        setSelectedIndex(null);
+        setFallbackReason('send-failed');
+        if (!result.serverReached) {
+          recordApprovalAuditEvent({
+            eventType: 'selection-failed',
+            ...auditContext,
+            fallbackReason: 'send-failed',
+          });
+        }
+        toast.error(t(getApprovalFallbackKey('send-failed')));
+        return;
+      }
       if (lastEventSeq !== undefined) {
         ackNotificationInput(tabId, lastEventSeq);
       }

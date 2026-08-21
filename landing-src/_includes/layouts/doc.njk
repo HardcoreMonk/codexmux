@@ -3,6 +3,7 @@
 {%- set docsBasePath = '/docs/' if loc == 'en' else '/' + loc + '/docs/' %}
 {%- set docsUrlPrefix = '/codexmux' + docsBasePath %}
 {%- set landingUrl = '/codexmux/' if loc == 'en' else '/codexmux/' + loc + '/' %}
+{%- set currentGuide = docsNav | findDocsItem(page.fileSlug) %}
 <!DOCTYPE html>
 <html lang="{{ loc }}">
 <head>
@@ -17,9 +18,11 @@
   <meta property="og:image" content="{{ site.baseUrl }}/images/og-image.png" />
   <link rel="canonical" href="{{ site.baseUrl }}{{ page.url }}" />
 {%- for l in locales %}
+{%- if not currentGuide or currentGuide | guideAvailable(l.code) %}
   <link rel="alternate" hreflang="{{ l.htmlLang }}" href="{{ site.baseUrl }}{{ page.url | localizeDocsUrl(l.code) | replace('/codexmux', '') }}" />
+{%- endif %}
 {%- endfor %}
-  <link rel="alternate" hreflang="x-default" href="{{ site.baseUrl }}/docs/" />
+  <link rel="alternate" hreflang="x-default" href="{{ site.baseUrl }}{{ page.url | localizeDocsUrl('en') | replace('/codexmux', '') }}" />
   <link rel="icon" href="/codexmux/images/favicon.ico" sizes="any" />
   <link rel="icon" type="image/png" sizes="32x32" href="/codexmux/images/favicon-32x32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="/codexmux/images/favicon-16x16.png" />
@@ -32,7 +35,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&display=swap" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" />
   <link rel="stylesheet" href="/codexmux/style.css?v={{ site.assetVersion.css }}" />
-  <link rel="stylesheet" href="/codexmux/style-docs.css?v=7" />
+  <link rel="stylesheet" href="/codexmux/style-docs.css?v=8" />
 </head>
 <body class="doc-body">
   <nav class="doc-nav">
@@ -56,7 +59,9 @@
       </summary>
       <div class="doc-nav-lang-menu" role="menu">
 {%- for l in locales %}
+{%- if not currentGuide or currentGuide | guideAvailable(l.code) %}
         <a href="{{ page.url | localizeDocsUrl(l.code) }}" lang="{{ l.htmlLang }}"{% if l.code == loc %} class="is-active"{% endif %}>{{ l.label }}</a>
+{%- endif %}
 {%- endfor %}
       </div>
     </details>
@@ -88,12 +93,16 @@
       </button>
       <nav class="doc-sidebar-inner" aria-label="Documentation">
 {%- for group in docsNav %}
+{%- if group | guideAvailable(loc) %}
         <div class="doc-group">
-          <div class="doc-group-label">{{ group.group[loc] }}</div>
+          <div class="doc-group-label">{{ group.group[loc] or group.group.en }}</div>
 {%- for item in group.items %}
-          <a href="{{ docsUrlPrefix }}{{ item.slug }}/" class="doc-link{% if page.url == docsBasePath + item.slug + '/' %} is-active{% endif %}">{{ item.label[loc] }}</a>
+{%- if item | guideAvailable(loc) %}
+          <a href="{{ docsUrlPrefix }}{{ item.slug }}/" class="doc-link{% if page.url == docsBasePath + item.slug + '/' %} is-active{% endif %}">{{ item.label[loc] or item.label.en }}</a>
+{%- endif %}
 {%- endfor %}
         </div>
+{%- endif %}
 {%- endfor %}
       </nav>
     </aside>
@@ -112,13 +121,13 @@
           {{ content | safe }}
         </div>
 
-        {%- set nb = docsFlat | docsNeighbors(page.fileSlug) %}
+        {%- set nb = docsFlat | docsNeighbors(page.fileSlug, loc) %}
         {%- if nb.prev or nb.next %}
         <nav class="doc-pagination" aria-label="{{ t.pagination }}">
           {%- if nb.prev %}
           <a href="{{ docsUrlPrefix }}{{ nb.prev.slug }}/" class="doc-pag-link doc-pag-prev">
             <span class="doc-pag-dir">{{ t.previous }}</span>
-            <span class="doc-pag-title">{{ nb.prev.label[loc] }}</span>
+            <span class="doc-pag-title">{{ nb.prev.label[loc] or nb.prev.label.en }}</span>
           </a>
           {%- else %}
           <span></span>
@@ -126,7 +135,7 @@
           {%- if nb.next %}
           <a href="{{ docsUrlPrefix }}{{ nb.next.slug }}/" class="doc-pag-link doc-pag-next">
             <span class="doc-pag-dir">{{ t.next }}</span>
-            <span class="doc-pag-title">{{ nb.next.label[loc] }}</span>
+            <span class="doc-pag-title">{{ nb.next.label[loc] or nb.next.label.en }}</span>
           </a>
           {%- endif %}
         </nav>

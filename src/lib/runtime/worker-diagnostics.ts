@@ -1,4 +1,4 @@
-export type TRuntimeWorkerDiagnosticName = 'storage' | 'terminal' | 'timeline' | 'status';
+export type TRuntimeWorkerDiagnosticName = 'storage' | 'terminal' | 'timeline' | 'status' | 'governance';
 
 export type TRuntimeWorkerDiagnosticEvent =
   | 'start'
@@ -66,6 +66,7 @@ export interface IRuntimeWorkerDiagnosticsSnapshot {
   terminal: IRuntimeWorkerDiagnosticSnapshot;
   timeline: IRuntimeWorkerDiagnosticSnapshot;
   status: IRuntimeWorkerDiagnosticSnapshot;
+  governance: IRuntimeWorkerDiagnosticSnapshot;
 }
 
 interface IRuntimeWorkerDiagnosticDetails {
@@ -78,7 +79,7 @@ interface IRuntimeWorkerDiagnosticsGlobalState {
   __ptRuntimeWorkerDiagnostics?: Map<TRuntimeWorkerDiagnosticName, IRuntimeWorkerDiagnosticSnapshot>;
 }
 
-const workerNames: TRuntimeWorkerDiagnosticName[] = ['storage', 'terminal', 'timeline', 'status'];
+const workerNames: TRuntimeWorkerDiagnosticName[] = ['storage', 'terminal', 'timeline', 'status', 'governance'];
 
 const g = globalThis as unknown as IRuntimeWorkerDiagnosticsGlobalState;
 
@@ -249,6 +250,7 @@ export const getRuntimeWorkerDiagnosticsSnapshot = (): IRuntimeWorkerDiagnostics
     terminal: { ...(store.get('terminal') ?? createZeroSnapshot()) },
     timeline: { ...(store.get('timeline') ?? createZeroSnapshot()) },
     status: { ...(store.get('status') ?? createZeroSnapshot()) },
+    governance: { ...(store.get('governance') ?? createZeroSnapshot()) },
   };
 };
 

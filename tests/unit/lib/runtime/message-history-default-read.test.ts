@@ -6,6 +6,15 @@ import { importLegacyStorageSnapshot } from '@/lib/runtime/storage-import';
 import { openRuntimeDatabase } from '@/lib/runtime/storage/schema';
 import type { ILayoutData, IWorkspacesData } from '@/types/terminal';
 
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+  }),
+}));
+
 describe('runtime storage v2 message history ownership', () => {
   const originalHome = process.env.HOME;
   const originalRuntimeV2 = process.env.CODEXMUX_RUNTIME_V2;

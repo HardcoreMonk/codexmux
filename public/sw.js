@@ -23,6 +23,7 @@ self.addEventListener('push', (event) => {
       approvalKind: data.approvalKind || null,
       promptType: data.promptType || null,
       riskLevel: data.riskLevel || null,
+      approvalDetail: data.approvalDetail || null,
     },
   };
 
@@ -66,6 +67,7 @@ self.addEventListener('notificationclick', (event) => {
     approvalKind,
     promptType,
     riskLevel,
+    approvalDetail,
   } = event.notification.data || {};
   const navData = {
     tabId,
@@ -76,6 +78,7 @@ self.addEventListener('notificationclick', (event) => {
     approvalKind,
     promptType,
     riskLevel,
+    approvalDetail,
   };
 
   event.waitUntil(

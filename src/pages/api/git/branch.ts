@@ -16,7 +16,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   try {
-    const branch = await getGitBranch(tmuxSession);
+    const branch = await getGitBranch(tmuxSession, { force: req.query.force === '1' });
     return res.status(200).json({ branch });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

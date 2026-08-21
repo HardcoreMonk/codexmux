@@ -18,7 +18,6 @@ import useTabStore from '@/hooks/use-tab-store';
 import type { TCliState } from '@/types/timeline';
 import useMobileLayoutActions from '@/hooks/use-mobile-layout-actions';
 import { useAutoDeleteEmptyWorkspace } from '@/hooks/use-auto-delete-empty-workspace';
-import { buildCodexCommandFromStore } from '@/lib/codex-client-command';
 import { isAgentPanelType } from '@/lib/panel-type';
 
 const MobileTerminalPage = () => {
@@ -164,12 +163,8 @@ const MobileTerminalPage = () => {
 
   const handleCreateTab = useCallback(async (panelType?: TPanelType, options?: { command?: string }) => {
     if (!currentPane) return;
-    let cmd: string | undefined;
     const startAgent = options?.command === 'codex-new';
-    if (startAgent) {
-      cmd = buildCodexCommandFromStore();
-    }
-    const newTab = await layout.createTabInPane(currentPane.id, panelType, cmd);
+    const newTab = await layout.createTabInPane(currentPane.id, panelType, undefined, startAgent);
     if (newTab) {
       useTabStore.getState().initTab(newTab.id, { panelType, workspaceId: activeWorkspaceId ?? '' });
       if (startAgent) {

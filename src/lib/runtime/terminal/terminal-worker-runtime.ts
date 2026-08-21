@@ -129,6 +129,60 @@ const hasRuntimeSession = async (sessionName: string): Promise<boolean> => {
   }
 };
 
+const parseRuntimeSessionInfo = (sessionName: string, raw: string) => {
+  const [cwdRaw, commandRaw, pidRaw, createdRaw] = raw.trimEnd().split('\t');
+  const pid = Number.parseInt(pidRaw ?? '', 10);
+  const created = Number.parseInt(createdRaw ?? '', 10);
+  return {
+    sessionName,
+    exists: true,
+    cwd: cwdRaw || null,
+    command: commandRaw || null,
+    pid: Number.isFinite(pid) ? pid : null,
+    startedAt: Number.isFinite(created) ? created * 1000 : null,
+    metadataSource: 'terminal-runtime' as const,
+  };
+};
+
+const missingRuntimeSessionInfo = (sessionName: string) => ({
+  sessionName,
+  exists: false,
+  cwd: null,
+  command: null,
+  pid: null,
+  startedAt: null,
+  metadataSource: 'unavailable' as const,
+});
+
+const getRuntimeSessionInfo = async (sessionName: string) => {
+  assertRuntimeSessionName(sessionName);
+  if (!await hasRuntimeSession(sessionName)) return missingRuntimeSessionInfo(sessionName);
+
+  try {
+    const { stdout } = await execFile(
+      'tmux',
+      [
+        '-L',
+        RUNTIME_TMUX_SOCKET,
+        'display-message',
+        '-p',
+        '-t',
+        sessionName,
+        '#{pane_current_path}\t#{pane_current_command}\t#{pane_pid}\t#{session_created}',
+      ],
+      { timeout: CMD_TIMEOUT },
+    );
+    return parseRuntimeSessionInfo(sessionName, stdout);
+  } catch (err) {
+    if (isMissingTmuxSessionError(err)) return missingRuntimeSessionInfo(sessionName);
+    throw createRuntimeError(
+      'runtime-v2-terminal-metadata-failed',
+      `Runtime v2 tmux session metadata failed: ${sessionName}`,
+      err,
+    );
+  }
+};
+
 export const createTerminalWorkerRuntime = (): ITerminalWorkerRuntime => {
   const attached = new Map<string, IAttachedPty>();
 
@@ -189,6 +243,10 @@ export const createTerminalWorkerRuntime = (): ITerminalWorkerRuntime => {
 
     async hasSession(sessionName) {
       return { sessionName, exists: await hasRuntimeSession(sessionName) };
+    },
+
+    async getSessionInfo(sessionName) {
+      return getRuntimeSessionInfo(sessionName);
     },
 
     async writeStdin(sessionName, data) {

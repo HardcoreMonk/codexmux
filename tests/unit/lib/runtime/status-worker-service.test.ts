@@ -30,10 +30,16 @@ const sessionHistoryEntry: ISessionHistoryEntry = {
 };
 
 const createLiveManager = (tabs = {}) => {
+  const rateLimits = {
+    ts: 10,
+    five_hour: null,
+    seven_day: { used_percentage: 5, resets_at: 20, observed_at: 10 },
+  };
   const manager = {
     init: vi.fn(async () => undefined),
     shutdown: vi.fn(),
     getAllForClient: vi.fn(() => tabs),
+    getRateLimitsForClient: vi.fn(() => rateLimits),
     updateTabFromHook: vi.fn(),
     dismissTab: vi.fn(() => true),
     ackNotificationInput: vi.fn(() => true),
@@ -81,6 +87,11 @@ describe('status worker service', () => {
             workspaceId: 'ws-a',
             tabName: 'Codex',
           },
+        },
+        rateLimits: {
+          ts: 10,
+          five_hour: null,
+          seven_day: { used_percentage: 5, resets_at: 20, observed_at: 10 },
         },
       },
     });
@@ -187,6 +198,20 @@ describe('status worker service', () => {
         cliState: 'needs-input',
       },
     });
+
+    emitBroadcast({ type: 'status:sync', tabs: {} });
+
+    expect(events[1]).toMatchObject({
+      type: 'status.sync',
+      payload: {
+        tabs: {},
+        rateLimits: {
+          ts: 10,
+          five_hour: null,
+          seven_day: { used_percentage: 5, resets_at: 20, observed_at: 10 },
+        },
+      },
+    });
   });
 
   it('keeps Codex stop hooks out of direct ready-for-review transitions', async () => {
@@ -195,13 +220,17 @@ describe('status worker service', () => {
       currentState: 'busy',
       eventName: 'stop',
       providerId: 'codex',
+      statusBehavior: {
+        watchJsonlWhenBound: true,
+        deferStopHookUntilJsonlIdle: true,
+      },
     }));
 
     expect(reply.ok).toBe(true);
     expect(reply.payload).toEqual({
       nextState: 'busy',
       changed: false,
-      deferCodexStop: true,
+      deferStopHook: true,
     });
   });
 
@@ -248,6 +277,10 @@ describe('status worker service', () => {
       newState: 'ready-for-review',
       hasJsonlPath: true,
       providerId: 'codex',
+      statusBehavior: {
+        watchJsonlWhenBound: true,
+        deferStopHookUntilJsonlIdle: true,
+      },
       hasJsonlWatcher: true,
       sessionHistoryDedupeAccepted: true,
       reviewNotificationDedupeAccepted: true,
@@ -355,6 +388,10 @@ describe('status worker service', () => {
       agentSessionId: 'agent-a',
       workspaceName: 'Workspace',
       workspaceDir: null,
+      approvalKind: 'allow',
+      promptType: 'command',
+      riskLevel: 'medium',
+      approvalDetail: 'corepack pnpm test',
     };
 
     const reply = await service.handleCommand(command('status.send-web-push', {

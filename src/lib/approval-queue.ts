@@ -3,6 +3,7 @@ import type {
   TApprovalPromptType,
   TApprovalRiskLevel,
 } from '@/lib/permission-prompt';
+import { normalizeLocale, type TSupportedLocale } from '@/lib/locales';
 
 export type TApprovalFallbackReason =
   | 'no-session'
@@ -33,6 +34,40 @@ const APPROVAL_FALLBACK_KEYS: Record<TApprovalFallbackReason, string> = {
   'parse-empty': 'approvalFallback_parseEmpty',
   'send-failed': 'approvalFallback_sendFailed',
   'request-failed': 'approvalFallback_requestFailed',
+};
+
+const APPROVAL_PUSH_TYPE_LABELS: Record<TSupportedLocale, Record<TApprovalPromptType, string>> = {
+  ko: {
+    command: '명령 승인',
+    file: '파일 승인',
+    permission: '권한 승인',
+    'resume-directory': '디렉터리 선택',
+    conversation: '대화 선택',
+    unknown: '입력 필요',
+  },
+  en: {
+    command: 'Command approval',
+    file: 'File approval',
+    permission: 'Permission approval',
+    'resume-directory': 'Directory approval',
+    conversation: 'Conversation choice',
+    unknown: 'Input required',
+  },
+};
+
+const APPROVAL_PUSH_RISK_LABELS: Record<TSupportedLocale, Record<TApprovalRiskLevel, string>> = {
+  ko: {
+    high: '높음',
+    medium: '보통',
+    low: '낮음',
+    unknown: '확인 필요',
+  },
+  en: {
+    high: 'high',
+    medium: 'medium',
+    low: 'low',
+    unknown: 'unknown',
+  },
 };
 
 export const cleanApprovalOptionLabel = (label: string): string =>
@@ -78,4 +113,50 @@ export const getApprovalMetadataDetail = (metadata: IApprovalPromptMetadata | nu
   const visibleHints = fileHints.slice(0, 3).join(', ');
   const remainingCount = fileHints.length - 3;
   return remainingCount > 0 ? `${visibleHints} +${remainingCount}` : visibleHints;
+};
+
+const hasUsefulApprovalMetadata = (metadata: IApprovalPromptMetadata | null): boolean => {
+  if (!metadata) return false;
+  if (metadata.promptType !== 'unknown') return true;
+  if (metadata.approvalKind !== 'unknown') return true;
+  if (metadata.riskLevel !== 'unknown') return true;
+  return getApprovalMetadataDetail(metadata) !== null;
+};
+
+export const selectApprovalPromptMetadata = ({
+  fetchedMetadata,
+  statusMetadata,
+}: {
+  fetchedMetadata: IApprovalPromptMetadata | null;
+  statusMetadata: IApprovalPromptMetadata | null;
+}): IApprovalPromptMetadata | null => {
+  if (hasUsefulApprovalMetadata(fetchedMetadata)) return fetchedMetadata;
+  if (hasUsefulApprovalMetadata(statusMetadata)) return statusMetadata;
+  return fetchedMetadata ?? statusMetadata ?? null;
+};
+
+export const buildApprovalPushBody = ({
+  metadata,
+  fallbackText,
+  maxLength = 120,
+  locale,
+}: {
+  metadata: IApprovalPromptMetadata | null;
+  fallbackText: string;
+  maxLength?: number;
+  locale?: string | null;
+}): string => {
+  const fallback = fallbackText.trim();
+  if (!metadata || metadata.promptType === 'unknown') return fallback.slice(0, maxLength);
+
+  const resolvedLocale = normalizeLocale(locale);
+  const detail = getApprovalMetadataDetail(metadata);
+  const parts = [
+    APPROVAL_PUSH_TYPE_LABELS[resolvedLocale][metadata.promptType],
+    metadata.riskLevel !== 'unknown' ? APPROVAL_PUSH_RISK_LABELS[resolvedLocale][metadata.riskLevel] : null,
+    detail,
+  ].filter((part): part is string => !!part && part.trim().length > 0);
+
+  const body = parts.join(' · ');
+  return (body || fallback).slice(0, maxLength);
 };

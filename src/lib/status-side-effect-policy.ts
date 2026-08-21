@@ -1,4 +1,5 @@
 import type { TCliState } from '@/types/timeline';
+import type { IAgentProviderStatusBehavior } from '@/lib/providers/types';
 import { shouldSendNeedsInputNotification, shouldSendReviewNotification } from '@/lib/status-notification-policy';
 
 export interface IStatusSideEffectPolicyInput {
@@ -8,6 +9,7 @@ export interface IStatusSideEffectPolicyInput {
   skipHistory?: boolean;
   hasJsonlPath: boolean;
   providerId?: string | null;
+  statusBehavior?: IAgentProviderStatusBehavior | null;
   hasJsonlWatcher: boolean;
   sessionHistoryDedupeAccepted: boolean;
   reviewNotificationDedupeAccepted: boolean;
@@ -29,12 +31,13 @@ export const evaluateStatusSideEffects = ({
   silent,
   skipHistory,
   hasJsonlPath,
-  providerId,
+  statusBehavior,
   hasJsonlWatcher,
   sessionHistoryDedupeAccepted,
   reviewNotificationDedupeAccepted,
 }: IStatusSideEffectPolicyInput): IStatusSideEffectIntent => {
-  const shouldWatchJsonl = hasJsonlPath && (newState === 'busy' || newState === 'needs-input' || providerId === 'codex');
+  const shouldWatchJsonl = hasJsonlPath
+    && (newState === 'busy' || newState === 'needs-input' || !!statusBehavior?.watchJsonlWhenBound);
   const keepForFinalRead = newState === 'ready-for-review' && hasJsonlWatcher;
 
   return {

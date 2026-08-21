@@ -18,7 +18,8 @@ import {
   updateRatioAtPath,
   updatePaneInTree,
 } from '@/lib/layout-tree';
-import { readAgentSessionId, writeAgentSessionId } from '@/lib/agent-tab-fields';
+import { readAgentSessionId } from '@/lib/agent-tab-fields';
+import { isAgentPanelType } from '@/lib/panel-type';
 
 export { collectPanes, equalizeNode, getFirstPaneId, findAdjacentPaneInDirection } from '@/lib/layout-tree';
 export type { TDirection } from '@/lib/layout-tree';
@@ -98,7 +99,12 @@ interface ILayoutState {
   focusPane: (paneId: string) => void;
   updateRatio: (path: number[], ratio: number) => void;
   moveTab: (tabId: string, fromPaneId: string, toPaneId: string, toIndex: number) => void;
-  createTabInPane: (paneId: string, panelType?: TPanelType, command?: string) => Promise<ITab | null>;
+  createTabInPane: (
+    paneId: string,
+    panelType?: TPanelType,
+    command?: string,
+    startAgent?: boolean,
+  ) => Promise<ITab | null>;
   deleteTabInPane: (paneId: string, tabId: string) => Promise<void>;
   restartTabInPane: (paneId: string, tabId: string, command?: string) => Promise<boolean>;
   switchTabInPane: (paneId: string, tabId: string) => void;
@@ -367,7 +373,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
       });
       if (!res.ok) throw new Error();
       const data: ILayoutData = await res.json();
-      applyLayout(set, get, data);
+      applyLayoutPreserveFocus(set, get, data);
     } catch {
       toast.error('Pane을 닫을 수 없습니다');
     }
@@ -442,7 +448,7 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
     }).catch(() => get().fetchLayout(undefined, false));
   },
 
-  createTabInPane: async (paneId, explicitPanelType?, command?) => {
+  createTabInPane: async (paneId, explicitPanelType?, command?, startAgent = false) => {
     const { layout, workspaceId } = get();
     try {
       let panelType: TPanelType | undefined = explicitPanelType;
@@ -460,12 +466,12 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
       const res = await fetch(wsQuery(`/api/layout/pane/${paneId}/tabs`, workspaceId), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cwd, panelType, command }),
+        body: JSON.stringify({ cwd, panelType, command, startAgent }),
       });
       if (!res.ok) throw new Error();
       const newTab: ITab = await res.json();
 
-      if (command) {
+      if (command || startAgent) {
         useTabStore.getState().initTab(newTab.id, { panelType, sessionView: 'check' });
       }
 
@@ -590,17 +596,24 @@ const useLayoutStore = create<ILayoutState>((set, get) => ({
   },
 
   updateTabPanelType: (paneId, tabId, panelType) => {
+    const layout = get().layout;
+    const currentPane = layout ? findPane(layout.root, paneId) : null;
+    const currentTab = currentPane?.tabs.find((t) => t.id === tabId);
+    const hasStoredAgentSession = !!(currentTab && readAgentSessionId(currentTab));
+
     applyPaneUpdate(set, get, paneId, (pane) => ({
       ...pane,
       tabs: pane.tabs.map((t) => {
         if (t.id !== tabId) return t;
-        const updated: ITab = { ...t, panelType };
-        if (panelType === 'terminal') writeAgentSessionId(updated, null);
-        return updated;
+        return { ...t, panelType };
       }),
     }));
 
-    useTabStore.getState().setPanelType(tabId, panelType);
+    const tabStore = useTabStore.getState();
+    tabStore.setPanelType(tabId, panelType);
+    if (isAgentPanelType(panelType) && hasStoredAgentSession) {
+      tabStore.setSessionView(tabId, 'timeline');
+    }
 
     const { workspaceId } = get();
     patchApi(wsQuery(`/api/layout/pane/${paneId}/tabs/${tabId}`, workspaceId), { panelType }).then((data) => {

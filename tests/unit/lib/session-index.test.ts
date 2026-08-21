@@ -41,6 +41,7 @@ describe('session-index', () => {
   });
 
   afterEach(async () => {
+    vi.useRealTimers();
     vi.unstubAllEnvs();
     await fs.rm(tempHome, { recursive: true, force: true });
   });
@@ -111,6 +112,19 @@ describe('session-index', () => {
 
     expect(page.total).toBe(0);
     expect(page.sessions).toEqual([]);
+  });
+
+  it('clears the scheduled refresh when an initial blocking refresh runs first', async () => {
+    vi.useFakeTimers();
+    await writeSession();
+
+    const { getSessionIndexPage } = await import('@/lib/session-index');
+    const page = await getSessionIndexPage({ waitForInitial: true });
+
+    expect(page).toMatchObject({
+      total: 1,
+      refreshing: false,
+    });
   });
 
   it('prewarms the legacy session index only while legacy timeline reads own session lists', async () => {

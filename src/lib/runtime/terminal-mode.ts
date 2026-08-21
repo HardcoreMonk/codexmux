@@ -15,10 +15,13 @@ export const parseRuntimeTerminalV2Mode = (value: unknown): TRuntimeTerminalV2Mo
   return 'off';
 };
 
-export const resolveRuntimeTerminalV2Mode = ({
-  runtimeV2Enabled = process.env.CODEXMUX_RUNTIME_V2 === '1',
-  terminalMode = process.env.CODEXMUX_RUNTIME_TERMINAL_V2_MODE,
-}: Omit<IShouldCreateTerminalTabInRuntimeV2Options, 'explicitOptIn'> = {}): TRuntimeTerminalV2Mode => {
+export const resolveRuntimeTerminalV2Mode = (
+  options: Omit<IShouldCreateTerminalTabInRuntimeV2Options, 'explicitOptIn'> = {},
+): TRuntimeTerminalV2Mode => {
+  const runtimeV2Enabled = options.runtimeV2Enabled ?? process.env.CODEXMUX_RUNTIME_V2 === '1';
+  const terminalMode = Object.hasOwn(options, 'terminalMode')
+    ? options.terminalMode
+    : process.env.CODEXMUX_RUNTIME_TERMINAL_V2_MODE;
   if (terminalMode === undefined && runtimeV2Enabled) return defaultRuntimeTerminalV2Mode;
   return parseRuntimeTerminalV2Mode(terminalMode);
 };

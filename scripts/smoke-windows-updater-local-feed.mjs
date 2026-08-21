@@ -1,0 +1,637 @@
+#!/usr/bin/env node
+import { spawn } from 'child_process';
+import { createReadStream, existsSync } from 'fs';
+import fs from 'fs/promises';
+import http from 'http';
+import os from 'os';
+import path from 'path';
+import yaml from 'js-yaml';
+import {
+  getFreePort,
+  sleep,
+} from './android-webview-smoke-lib.mjs';
+import { buildElectronSmokeLaunchCommand } from './electron-smoke-lib.mjs';
+import { writeSmokeArtifact } from './smoke-artifact-lib.mjs';
+import {
+  buildNsisSilentInstallArgs,
+  findWindowsInstaller,
+  findWindowsInstallerBelowVersion,
+  getWindowsInstallerVersion,
+  resolveInstalledAppPaths,
+} from './windows-installer-smoke-lib.mjs';
+import {
+  buildWindowsUpdaterLocalFeedArtifactPayload,
+  buildWindowsUpdaterLocalFeedLatestMetadata,
+  buildWindowsUpdaterSmokeEnv,
+  bumpPatchVersion,
+  filterWindowsUpdaterInstallerProcesses,
+  parseWindowsUpdaterStatusEvents,
+  summarizeWindowsUpdaterStatusEvents,
+} from './windows-updater-local-feed-smoke-lib.mjs';
+
+const rootDir = process.cwd();
+const releaseDir = path.resolve(process.env.CODEXMUX_WINDOWS_RELEASE_DIR || path.join(rootDir, 'release'));
+const DEFAULT_TIMEOUT_MS = 300_000;
+const STATUS_TIMEOUT_MS = 180_000;
+const APP_EXIT_TIMEOUT_MS = 120_000;
+const SMOKE_NAME = 'windows-updater-local-feed';
+const startedAt = new Date().toISOString();
+
+const writeArtifact = async (status, payload) =>
+  writeSmokeArtifact({
+    smokeName: SMOKE_NAME,
+    status,
+    startedAt,
+    payload: buildWindowsUpdaterLocalFeedArtifactPayload(payload),
+  }).catch((err) => {
+    console.error(JSON.stringify({
+      ok: false,
+      code: 'smoke-artifact-write-failed',
+      message: err instanceof Error ? err.message : String(err),
+    }, null, 2));
+  });
+
+const fail = async (code, message, details = {}) => {
+  const payload = { ok: false, code, message, ...details };
+  await writeArtifact('failed', payload);
+  console.error(JSON.stringify(payload, null, 2));
+  process.exit(1);
+};
+
+const runCommand = (command, args, { cwd = rootDir, env = process.env, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) =>
+  new Promise((resolve) => {
+    let stdout = '';
+    let stderr = '';
+    let timedOut = false;
+    let child = null;
+    try {
+      child = spawn(command, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (err) {
+      resolve({ exitCode: 1, signal: null, stdout, stderr: err instanceof Error ? err.message : String(err), timedOut });
+      return;
+    }
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGKILL');
+    }, timeoutMs);
+
+    child.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
+    child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+    child.once('error', (err) => {
+      clearTimeout(timer);
+      resolve({ exitCode: 1, signal: null, stdout, stderr: `${stderr}${err.message}`, timedOut });
+    });
+    child.once('close', (exitCode, signal) => {
+      clearTimeout(timer);
+      resolve({ exitCode, signal, stdout, stderr, timedOut });
+    });
+  });
+
+const cleanupInstalledApp = async (installDir) => {
+  const results = [];
+  if (process.platform === 'win32') {
+    for (const key of [
+      'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\de60276d-bfaf-53ab-ba86-fe534382d031',
+      'HKCU\\Software\\de60276d-bfaf-53ab-ba86-fe534382d031',
+    ]) {
+      results.push(await runCommand('reg.exe', ['delete', key, '/f'], { timeoutMs: 30_000 }));
+    }
+  }
+  await fs.rm(installDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 1_000 });
+  return {
+    exitCode: results.every((result) => result.exitCode === 0 || /unable to find/i.test(result.stderr)) ? 0 : 1,
+    signal: null,
+    timedOut: results.some((result) => result.timedOut),
+    stdout: results.map((result) => result.stdout).join('\n'),
+    stderr: results.map((result) => result.stderr).join('\n'),
+  };
+};
+
+const startCommand = (command, args, { cwd = rootDir, env = process.env, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) => {
+  const child = spawn(command, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  let stdout = '';
+  let stderr = '';
+  let timedOut = false;
+  let settled = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    child.kill('SIGKILL');
+  }, timeoutMs);
+
+  child.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
+  child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+
+  const settle = (resolve, result) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    resolve(result);
+  };
+
+  const result = new Promise((resolve) => {
+    child.once('error', (err) => {
+      settle(resolve, { exitCode: 1, signal: null, stdout, stderr: `${stderr}${err.message}`, timedOut });
+    });
+    child.once('exit', (exitCode, signal) => {
+      settle(resolve, { exitCode, signal, stdout, stderr, timedOut });
+    });
+  });
+
+  return { child, result };
+};
+
+const stopProcessTree = async (child) => {
+  if (!child || child.exitCode !== null) return;
+  if (process.platform === 'win32') {
+    await new Promise((resolve) => {
+      const killer = spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+      killer.once('exit', resolve);
+      killer.once('error', resolve);
+    });
+    return;
+  }
+  child.kill('SIGTERM');
+  await Promise.race([
+    new Promise((resolve) => child.once('exit', resolve)),
+    sleep(5_000).then(() => {
+      if (child.exitCode === null) child.kill('SIGKILL');
+    }),
+  ]);
+};
+
+const assertExists = async (filePath, checkName, checks) => {
+  await fs.access(filePath);
+  checks.push(checkName);
+};
+
+const readStatusEvents = async (statusPath) => {
+  try {
+    return parseWindowsUpdaterStatusEvents(await fs.readFile(statusPath, 'utf8'));
+  } catch (err) {
+    if (err?.code === 'ENOENT') return [];
+    throw err;
+  }
+};
+
+const waitForUpdaterStatus = async (statusPath, timeoutMs = STATUS_TIMEOUT_MS) => {
+  const deadline = Date.now() + timeoutMs;
+  let lastSummary = summarizeWindowsUpdaterStatusEvents([]);
+  while (Date.now() < deadline) {
+    const events = await readStatusEvents(statusPath);
+    lastSummary = summarizeWindowsUpdaterStatusEvents(events);
+    const errorBlocker = lastSummary.blockers.find((blocker) => blocker.ruleId === 'updater-error-event');
+    if (errorBlocker) throw new Error(errorBlocker.message);
+    if (lastSummary.ok) return { events, summary: lastSummary };
+    await sleep(500);
+  }
+
+  throw new Error(`updater status timed out; blockers=${lastSummary.blockers.map((blocker) => blocker.ruleId).join(',')}`);
+};
+
+const parseProcessJson = (stdout) => {
+  const text = String(stdout || '').trim();
+  if (!text) return [];
+  const parsed = JSON.parse(text);
+  return Array.isArray(parsed) ? parsed : [parsed];
+};
+
+const listWindowsUpdaterInstallerProcesses = async ({ smokeRoot, installDir, includeUnscopedInstallers = false }) => {
+  if (process.platform !== 'win32') return [];
+  const script = `
+    Get-CimInstance Win32_Process |
+      Where-Object { $_.Name -like 'codexmux-Setup-*.exe' -or $_.Name -eq 'old-uninstaller.exe' } |
+      Select-Object @{Name='processId';Expression={$_.ProcessId}}, @{Name='name';Expression={$_.Name}}, @{Name='commandLine';Expression={$_.CommandLine}} |
+      ConvertTo-Json -Compress
+  `;
+  const result = await runCommand('powershell.exe', ['-NoProfile', '-Command', script], { timeoutMs: 30_000 });
+  if (result.exitCode !== 0 || result.timedOut) return [];
+  return filterWindowsUpdaterInstallerProcesses({
+    smokeRoot,
+    installDir,
+    includeUnscopedInstallers,
+    processes: parseProcessJson(result.stdout),
+  });
+};
+
+const waitForUpdaterInstallerProcesses = async ({
+  smokeRoot,
+  installDir,
+  includeUnscopedInstallers = false,
+  timeoutMs = 120_000,
+}) => {
+  const deadline = Date.now() + timeoutMs;
+  let running = [];
+  while (Date.now() < deadline) {
+    running = await listWindowsUpdaterInstallerProcesses({ smokeRoot, installDir, includeUnscopedInstallers });
+    if (running.length === 0) return { ok: true, running: [] };
+    await sleep(1_000);
+  }
+  return { ok: false, running };
+};
+
+const normalizeRange = (rangeHeader, size) => {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(String(rangeHeader || ''));
+  if (!match) return null;
+  const rawStart = match[1] === '' ? 0 : Number(match[1]);
+  const rawEnd = match[2] === '' ? size - 1 : Number(match[2]);
+  if (!Number.isSafeInteger(rawStart) || !Number.isSafeInteger(rawEnd)) return null;
+  const start = Math.max(0, rawStart);
+  const end = Math.min(size - 1, rawEnd);
+  if (start > end) return null;
+  return { start, end };
+};
+
+const serveLocalFeed = async ({ feedDir, releaseDir: artifactDir, port }) => {
+  const contentTypes = new Map([
+    ['.yml', 'text/yaml; charset=utf-8'],
+    ['.yaml', 'text/yaml; charset=utf-8'],
+    ['.exe', 'application/octet-stream'],
+    ['.blockmap', 'application/octet-stream'],
+  ]);
+
+  const resolveRequestFile = (requestUrl) => {
+    const url = new URL(requestUrl || '/', `http://127.0.0.1:${port}`);
+    const name = path.basename(decodeURIComponent(url.pathname.replace(/^\/+/, '') || 'latest.yml'));
+    const candidates = [
+      path.join(feedDir, name),
+      path.join(artifactDir, name),
+    ];
+    return candidates.find((candidate) => existsSync(candidate)) ?? null;
+  };
+
+  const server = http.createServer(async (req, res) => {
+    const filePath = resolveRequestFile(req.url);
+    if (!filePath) {
+      res.statusCode = 404;
+      res.end('not found');
+      return;
+    }
+
+    try {
+      const stat = await fs.stat(filePath);
+      const ext = path.extname(filePath).toLowerCase();
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Content-Type', contentTypes.get(ext) ?? 'application/octet-stream');
+
+      const range = normalizeRange(req.headers.range, stat.size);
+      if (range) {
+        res.statusCode = 206;
+        res.setHeader('Content-Length', String(range.end - range.start + 1));
+        res.setHeader('Content-Range', `bytes ${range.start}-${range.end}/${stat.size}`);
+        createReadStream(filePath, range).pipe(res);
+        return;
+      }
+
+      res.statusCode = 200;
+      res.setHeader('Content-Length', String(stat.size));
+      createReadStream(filePath).pipe(res);
+    } catch (err) {
+      res.statusCode = 500;
+      res.end(err instanceof Error ? err.message : String(err));
+    }
+  });
+
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, '127.0.0.1', () => {
+      server.off('error', reject);
+      resolve();
+    });
+  });
+
+  return {
+    url: `http://127.0.0.1:${port}/`,
+    close: () => new Promise((resolve) => server.close(resolve)),
+  };
+};
+
+const prepareLocalFeed = async ({ feedDir, latestPath, useSyntheticPatch = false }) => {
+  const latestMetadata = yaml.load(await fs.readFile(latestPath, 'utf8'));
+  const expectedInstalledVersion = latestMetadata?.version;
+  const nextVersion = useSyntheticPatch
+    ? process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_VERSION || bumpPatchVersion(latestMetadata?.version)
+    : latestMetadata?.version;
+  const localLatest = useSyntheticPatch
+    ? buildWindowsUpdaterLocalFeedLatestMetadata({
+        latestMetadata,
+        nextVersion,
+      })
+    : latestMetadata;
+
+  await fs.mkdir(feedDir, { recursive: true });
+  await fs.writeFile(path.join(feedDir, 'latest.yml'), yaml.dump(localLatest, { lineWidth: -1 }));
+  return {
+    nextVersion,
+    expectedInstalledVersion,
+    latestMetadata: localLatest,
+    mode: useSyntheticPatch ? 'synthetic-patch' : 'baseline-release-artifacts',
+  };
+};
+
+const parsePackagedLaunchPayload = (stdout) => {
+  const content = String(stdout || '').trim();
+  const jsonStart = content.indexOf('{');
+  if (jsonStart < 0) return null;
+  try {
+    return JSON.parse(content.slice(jsonStart));
+  } catch {
+    return null;
+  }
+};
+
+const runPostInstallLaunchSmoke = async ({ appExe, smokeRoot, expectedVersion }) => {
+  let lastResult = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    lastResult = await runCommand(process.execPath, ['scripts/smoke-windows-packaged-launch.mjs'], {
+      env: {
+        ...process.env,
+        CODEXMUX_ELECTRON_UPDATER_DISABLED: '1',
+        CODEXMUX_WINDOWS_PACKAGED_APP_PATH: appExe,
+        CODEXMUX_WINDOWS_PACKAGED_LAUNCH_HOME: path.join(smokeRoot, `post-update-home-${attempt}`),
+      },
+      timeoutMs: 90_000,
+    });
+    const launchPayload = parsePackagedLaunchPayload(lastResult.stdout);
+    if (
+      lastResult.exitCode === 0
+      && !lastResult.timedOut
+      && launchPayload?.health?.version === expectedVersion
+    ) {
+      return lastResult;
+    }
+    await sleep(5_000);
+  }
+  return lastResult;
+};
+
+const runUpdaterInstallAttempt = async ({
+  appExe,
+  feedUrl,
+  installDir,
+  smokeRoot,
+  attempt,
+}) => {
+  const updaterHomeDir = path.join(smokeRoot, `updater-home-${attempt}`);
+  const statusPath = path.join(smokeRoot, `updater-status-${attempt}.jsonl`);
+  await fs.mkdir(path.join(updaterHomeDir, 'AppData', 'Roaming'), { recursive: true });
+  await fs.mkdir(path.join(updaterHomeDir, 'AppData', 'Local'), { recursive: true });
+
+  const remoteDebuggingPort = await getFreePort();
+  const launch = buildElectronSmokeLaunchCommand({
+    remoteDebuggingPort,
+    appPath: appExe,
+    platform: process.platform,
+  });
+  const updateLaunch = startCommand(launch.command, launch.args, {
+    cwd: path.dirname(appExe),
+    env: buildWindowsUpdaterSmokeEnv({
+      env: process.env,
+      feedUrl,
+      statusPath,
+      installDir,
+      homeDir: updaterHomeDir,
+      useRealLocalAppData: installDir == null,
+    }),
+    timeoutMs: Number(process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_TIMEOUT_MS || DEFAULT_TIMEOUT_MS),
+  });
+
+  try {
+    const updaterStatus = await waitForUpdaterStatus(
+      statusPath,
+      Number(process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_STATUS_TIMEOUT_MS || STATUS_TIMEOUT_MS),
+    );
+    const updateLaunchResult = await Promise.race([
+      updateLaunch.result,
+      sleep(Number(process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_APP_EXIT_TIMEOUT_MS || APP_EXIT_TIMEOUT_MS)).then(() => ({
+        exitCode: null,
+        signal: null,
+        stdout: '',
+        stderr: 'packaged app did not exit after quitAndInstall',
+        timedOut: true,
+      })),
+    ]);
+
+    if (updateLaunchResult.exitCode !== 0 || updateLaunchResult.timedOut) {
+      throw new Error(`updater launch failed to exit cleanly: ${JSON.stringify({
+        exitCode: updateLaunchResult.exitCode,
+        signal: updateLaunchResult.signal,
+        timedOut: updateLaunchResult.timedOut,
+        stderr: updateLaunchResult.stderr.slice(-1600),
+      })}`);
+    }
+
+    return {
+      ok: true,
+      statusSummary: updaterStatus.summary,
+      updateLaunchResult,
+    };
+  } catch (err) {
+    await stopProcessTree(updateLaunch.child);
+    const events = await readStatusEvents(statusPath).catch(() => []);
+    const updateLaunchResult = await Promise.race([
+      updateLaunch.result,
+      sleep(5_000).then(() => null),
+    ]);
+    return {
+      ok: false,
+      error: err,
+      statusSummary: summarizeWindowsUpdaterStatusEvents(events),
+      updateLaunchResult,
+    };
+  }
+};
+
+const main = async () => {
+  if (process.platform !== 'win32') {
+    await fail('windows-updater-local-feed-platform-mismatch', 'Windows updater local feed smoke requires win32.', {
+      platform: process.platform,
+    });
+  }
+
+  const latestPath = path.join(releaseDir, 'latest.yml');
+  let installerPath = null;
+  const smokeRoot = process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_SMOKE_ROOT
+    || await fs.mkdtemp(path.join(os.tmpdir(), 'cmux-ul-'));
+  const feedDir = path.join(smokeRoot, 'feed');
+  const explicitInstallDir = process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_INSTALL_DIR;
+  const installDir = explicitInstallDir || path.join(smokeRoot, 'app');
+  const updaterInstallDirOverride = installDir;
+  const checks = [];
+  let localFeedServer = null;
+  let installResult = null;
+  let updateLaunchResult = null;
+  let postInstallLaunchResult = null;
+  let uninstallResult = null;
+  let statusSummary = null;
+  let failurePayload = null;
+  const paths = resolveInstalledAppPaths(installDir);
+
+  try {
+    await assertExists(latestPath, 'latest-yml-present', checks);
+    const latestMetadata = yaml.load(await fs.readFile(latestPath, 'utf8'));
+    const latestVersion = typeof latestMetadata?.version === 'string' ? latestMetadata.version : null;
+    if (!latestVersion) throw new Error('latest.yml must include version.');
+
+    const explicitInstaller = process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_BASE_INSTALLER_PATH
+      || process.env.CODEXMUX_WINDOWS_INSTALLER_PATH;
+    const baselineInstaller = explicitInstaller || findWindowsInstallerBelowVersion(releaseDir, latestVersion);
+    const useSyntheticPatch = !baselineInstaller
+      && process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_ALLOW_SYNTHETIC === '1';
+
+    if (!baselineInstaller && !useSyntheticPatch) {
+      throw new Error(`Windows updater local feed smoke requires a baseline installer below ${latestVersion}; set CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_BASE_INSTALLER_PATH or CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_ALLOW_SYNTHETIC=1.`);
+    }
+
+    installerPath = path.resolve(baselineInstaller || findWindowsInstaller(releaseDir) || '');
+    if (!installerPath) throw new Error('Windows installer not found under release/.');
+    await assertExists(installerPath, 'installer-present', checks);
+    const installerVersion = getWindowsInstallerVersion(installerPath);
+    if (installerVersion) checks.push(`installer-version-${installerVersion}`);
+
+    const feed = await prepareLocalFeed({ feedDir, latestPath, useSyntheticPatch });
+    checks.push(`local-feed-mode-${feed.mode}`);
+    checks.push('local-feed-latest-yml');
+
+    const port = Number(process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_PORT || await getFreePort());
+    localFeedServer = await serveLocalFeed({ feedDir, releaseDir, port });
+    checks.push('local-feed-server');
+
+    installResult = await runCommand(installerPath, buildNsisSilentInstallArgs(installDir), {
+      timeoutMs: Number(process.env.CODEXMUX_WINDOWS_INSTALLER_TIMEOUT_MS || DEFAULT_TIMEOUT_MS),
+    });
+    if (installResult.exitCode !== 0 || installResult.timedOut) {
+      throw new Error(`installer failed: ${JSON.stringify({
+        exitCode: installResult.exitCode,
+        signal: installResult.signal,
+        timedOut: installResult.timedOut,
+        stderr: installResult.stderr.slice(-1200),
+      })}`);
+    }
+    checks.push('silent-install');
+
+    await assertExists(paths.appExe, 'installed-exe-present', checks);
+    await assertExists(paths.appAsar, 'installed-app-asar-present', checks);
+    await assertExists(paths.uninstaller, 'uninstaller-present', checks);
+
+    const maxUpdaterAttempts = Number(process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_ATTEMPTS || 2);
+    let updaterAttempt = null;
+    for (let attempt = 1; attempt <= maxUpdaterAttempts; attempt += 1) {
+      if (attempt === 1) {
+        checks.push('installed-app-updater-launch');
+      } else {
+        checks.push(`installed-app-updater-retry-${attempt}`);
+      }
+      updaterAttempt = await runUpdaterInstallAttempt({
+        appExe: paths.appExe,
+        feedUrl: localFeedServer.url,
+        installDir: updaterInstallDirOverride,
+        smokeRoot,
+        attempt,
+      });
+      if (updaterAttempt.ok) break;
+    }
+    if (!updaterAttempt?.ok) {
+      statusSummary = updaterAttempt?.statusSummary ?? null;
+      updateLaunchResult = updaterAttempt?.updateLaunchResult ?? null;
+      throw updaterAttempt?.error ?? new Error('updater local feed install attempt failed');
+    }
+    statusSummary = updaterAttempt.statusSummary;
+    updateLaunchResult = updaterAttempt.updateLaunchResult;
+    checks.push(...statusSummary.checks);
+    checks.push('updater-app-exit-after-quit-and-install');
+
+    const installerSettle = await waitForUpdaterInstallerProcesses({
+      smokeRoot,
+      installDir: updaterInstallDirOverride,
+      timeoutMs: Number(process.env.CODEXMUX_WINDOWS_UPDATER_LOCAL_FEED_INSTALLER_SETTLE_TIMEOUT_MS || 300_000),
+    });
+    if (!installerSettle.ok) {
+      throw new Error(`updater installer processes did not settle: ${JSON.stringify(installerSettle.running)}`);
+    }
+    checks.push('updater-installer-processes-settled');
+
+    postInstallLaunchResult = await runPostInstallLaunchSmoke({
+      appExe: paths.appExe,
+      smokeRoot,
+      expectedVersion: feed.expectedInstalledVersion,
+    });
+    if (postInstallLaunchResult.exitCode !== 0 || postInstallLaunchResult.timedOut) {
+      throw new Error(`post-update installed app launch smoke failed: ${JSON.stringify({
+        exitCode: postInstallLaunchResult.exitCode,
+        signal: postInstallLaunchResult.signal,
+        timedOut: postInstallLaunchResult.timedOut,
+        stderr: postInstallLaunchResult.stderr.slice(-1600),
+        stdout: postInstallLaunchResult.stdout.slice(-1600),
+      })}`);
+    }
+    checks.push('post-update-installed-app-launch-smoke');
+
+    const postInstallPayload = parsePackagedLaunchPayload(postInstallLaunchResult.stdout);
+    const postInstallVersion = postInstallPayload?.health?.version ?? null;
+    if (postInstallVersion !== feed.expectedInstalledVersion) {
+      throw new Error(`post-update installed app version mismatch: expected ${feed.expectedInstalledVersion}, got ${postInstallVersion ?? 'null'}`);
+    }
+    checks.push('post-update-installed-app-version');
+
+    uninstallResult = await cleanupInstalledApp(installDir);
+    if (uninstallResult.exitCode !== 0 || uninstallResult.timedOut) {
+      throw new Error(`cleanup failed: ${JSON.stringify({
+        exitCode: uninstallResult.exitCode,
+        signal: uninstallResult.signal,
+        timedOut: uninstallResult.timedOut,
+        stderr: uninstallResult.stderr.slice(-1200),
+      })}`);
+    }
+    checks.push('installed-app-cleanup');
+
+    const successPayload = {
+      ok: true,
+      mutatesSystem: true,
+      feedUrl: localFeedServer.url,
+      installerPath,
+      installDir,
+      installMode: explicitInstallDir ? 'custom-dir' : 'isolated-short-dir',
+      checks,
+      statusSummary,
+      installResult,
+      updateLaunchResult,
+      postInstallLaunchResult,
+      uninstallResult,
+    };
+    await writeArtifact('passed', successPayload);
+    console.log(JSON.stringify(successPayload, null, 2));
+  } catch (err) {
+    failurePayload = {
+      ok: false,
+      code: 'windows-updater-local-feed-smoke-failed',
+      message: err instanceof Error ? err.message : String(err),
+      installerPath,
+      installDir,
+      installMode: explicitInstallDir ? 'custom-dir' : 'isolated-short-dir',
+      checks,
+      blockers: statusSummary?.blockers ?? [],
+      statusSummary,
+      installResult,
+      updateLaunchResult,
+      postInstallLaunchResult,
+      uninstallResult,
+    };
+  } finally {
+    if (localFeedServer) await localFeedServer.close().catch(() => null);
+    try {
+      uninstallResult = await cleanupInstalledApp(installDir);
+    } catch {
+      // Nothing to uninstall.
+    }
+    await fs.rm(smokeRoot, { recursive: true, force: true }).catch(() => null);
+  }
+
+  if (failurePayload) {
+    failurePayload.uninstallResult = uninstallResult;
+    await writeArtifact('failed', failurePayload);
+    console.error(JSON.stringify(failurePayload, null, 2));
+    process.exit(1);
+  }
+};
+
+main();

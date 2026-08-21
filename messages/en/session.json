@@ -11,6 +11,23 @@
   "weeksAgo": "{count}w ago",
   "monthsAgo": "{count}mo ago",
   "yearsAgo": "{count}y ago",
+  "relationship": {
+    "label": "Relation",
+    "fork": "Fork",
+    "subAgent": "Sub-agent",
+    "resume": "Resume",
+    "unknown": "Linked",
+    "parent": "parent",
+    "root": "root",
+    "target": "{kind} {id}",
+    "badgeTitle": "{type} via {kind} {id}",
+    "confidence": "{confidence} confidence",
+    "confidenceValue": {
+      "high": "high",
+      "medium": "medium",
+      "low": "low"
+    }
+  },
   "empty": {
     "closeLabel": "Close",
     "noSession": "No sessions",

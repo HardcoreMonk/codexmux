@@ -1,8 +1,8 @@
 import pino from 'pino';
 import path from 'path';
-import os from 'os';
+import { resolveCodexmuxLogDir } from '@/lib/host-paths';
 
-const LOG_DIR = path.join(os.homedir(), '.codexmux', 'logs');
+const LOG_DIR = resolveCodexmuxLogDir();
 const DEFAULT_LEVEL: pino.Level = (process.env.LOG_LEVEL as pino.Level) || 'info';
 
 // LOG_LEVELS=status=debug,tmux=trace

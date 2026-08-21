@@ -49,6 +49,49 @@ describe('checkCodexJsonlState', () => {
     expect(state.currentAction).toBeNull();
   });
 
+  it('returns the latest rate-limit observation from the existing tail read', async () => {
+    await writeJsonl([
+      {
+        type: 'event_msg',
+        timestamp: '2026-04-28T00:59:00.000Z',
+        payload: {
+          type: 'token_count',
+          rate_limits: {
+            primary: { used_percent: 42, window_minutes: 300, resets_at: 1_800_000_000 },
+            secondary: { used_percent: 9, window_minutes: 10_080, resets_at: 1_900_000_000 },
+          },
+        },
+      },
+    ]);
+
+    const state = await checkCodexJsonlState(filePath);
+
+    expect(state.rateLimits?.five_hour?.used_percentage).toBe(42);
+    expect(state.rateLimits?.seven_day?.used_percentage).toBe(9);
+  });
+
+  it('returns current top-level Codex rate-limit observations', async () => {
+    await writeJsonl([
+      {
+        type: 'event_msg',
+        timestamp: '2026-04-28T00:59:00.000Z',
+        payload: {
+          type: 'token_count',
+          info: { total_token_usage: { input_tokens: 10, output_tokens: 5 } },
+        },
+        rate_limits: {
+          primary: { used_percent: 9, window_minutes: 10_080, resets_at: 1_900_000_000 },
+          secondary: null,
+        },
+      },
+    ]);
+
+    const state = await checkCodexJsonlState(filePath);
+
+    expect(state.rateLimits?.five_hour).toBeNull();
+    expect(state.rateLimits?.seven_day?.used_percentage).toBe(9);
+  });
+
   it('reports a pending tool call as the current action', async () => {
     await writeJsonl([
       {

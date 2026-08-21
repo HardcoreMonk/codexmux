@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { selectAgentSessionListRenderMode } from '@/lib/session-list-rendering';
+import {
+  selectAgentPanelContentMode,
+  selectAgentSessionListRenderMode,
+} from '@/lib/session-list-rendering';
 
 describe('selectAgentSessionListRenderMode', () => {
   it('keeps the session list shell visible when an agent panel has no sessions', () => {
@@ -24,5 +27,26 @@ describe('selectAgentSessionListRenderMode', () => {
       isLoading: false,
       sessionCount: 0,
     })).toBe('empty');
+  });
+});
+
+describe('selectAgentPanelContentMode', () => {
+  it('keeps timeline rendering visible while agent process detection is still pending', () => {
+    expect(selectAgentPanelContentMode({
+      agentProcess: null,
+      view: 'timeline',
+    })).toBe('timeline');
+  });
+
+  it('keeps check and session-list views owned by their explicit states', () => {
+    expect(selectAgentPanelContentMode({
+      agentProcess: null,
+      view: 'check',
+    })).toBe('check');
+
+    expect(selectAgentPanelContentMode({
+      agentProcess: null,
+      view: 'session-list',
+    })).toBe('session-list');
   });
 });

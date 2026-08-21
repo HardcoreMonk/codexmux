@@ -67,12 +67,19 @@ const emptyConfig = (): IConfigData => ({
 });
 
 export const readConfig = async (): Promise<IConfigData | null> => {
+  let raw: string;
   try {
-    const raw = await fs.readFile(CONFIG_FILE, 'utf-8');
-    return JSON.parse(raw) as IConfigData;
-  } catch {
-    return null;
+    raw = await fs.readFile(CONFIG_FILE, 'utf-8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw err;
   }
+
+  const parsed = JSON.parse(raw) as unknown;
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('config.json root must be an object');
+  }
+  return parsed as IConfigData;
 };
 
 export const writeConfig = async (data: IConfigData): Promise<void> => {
@@ -97,11 +104,45 @@ export const writeConfig = async (data: IConfigData): Promise<void> => {
 const SCRYPT_KEYLEN = 64;
 const SCRYPT_SALT_LEN = 16;
 const SCRYPT_PREFIX = 'scrypt:';
+const SCRYPT_HASH_RE = /^scrypt:[0-9a-f]{32}:[0-9a-f]{128}$/;
+const AUTH_SECRET_RE = /^[0-9a-f]{64}$/;
 
 export const MIN_PASSWORD_LENGTH = 4;
 
 export const isHashedPassword = (value: string | undefined | null): boolean =>
-  typeof value === 'string' && value.startsWith(SCRYPT_PREFIX);
+  typeof value === 'string' && SCRYPT_HASH_RE.test(value);
+
+export type TStoredAuthState =
+  | { mode: 'setup-required'; authSecret: string | null }
+  | { mode: 'configured'; passwordHash: string; authSecret: string }
+  | {
+      mode: 'invalid';
+      reason: 'missing-auth-secret' | 'malformed-scrypt-hash' | 'invalid-auth-field';
+    };
+
+export const resolveStoredAuthState = (config: IConfigData): TStoredAuthState => {
+  const { authPassword, authSecret } = config;
+  if (
+    (authPassword !== undefined && typeof authPassword !== 'string')
+    || (authSecret !== undefined && (
+      typeof authSecret !== 'string'
+      || !AUTH_SECRET_RE.test(authSecret)
+    ))
+  ) {
+    return { mode: 'invalid', reason: 'invalid-auth-field' };
+  }
+
+  if (!authPassword || !authPassword.startsWith(SCRYPT_PREFIX)) {
+    return { mode: 'setup-required', authSecret: authSecret ?? null };
+  }
+  if (!isHashedPassword(authPassword)) {
+    return { mode: 'invalid', reason: 'malformed-scrypt-hash' };
+  }
+  if (!authSecret) {
+    return { mode: 'invalid', reason: 'missing-auth-secret' };
+  }
+  return { mode: 'configured', passwordHash: authPassword, authSecret };
+};
 
 export const hashPassword = async (plain: string): Promise<string> => {
   const salt = crypto.randomBytes(SCRYPT_SALT_LEN);
@@ -135,27 +176,40 @@ export const getConfig = async (): Promise<IConfigData> => {
 
 export const updateConfig = async (updates: Partial<Omit<IConfigData, 'updatedAt'>>): Promise<void> =>
   withLock(async () => {
-    const data = (await readConfig()) ?? emptyConfig();
+    const data = await readConfig();
+    if (!data) throw new Error('config.json is unavailable');
     Object.assign(data, updates);
     await writeConfig(data);
   });
 
-export const needsSetup = async (): Promise<boolean> => {
+export const readStoredAuthState = async (): Promise<TStoredAuthState> => {
   const data = await readConfig();
-  return !isHashedPassword(data?.authPassword);
+  if (!data) throw new Error('config.json is unavailable');
+  return resolveStoredAuthState(data);
 };
 
-export const initConfigStore = async (): Promise<void> => {
+export const needsSetup = async (): Promise<boolean> => {
+  const state = await readStoredAuthState();
+  if (state.mode === 'invalid') {
+    throw new Error(`stored auth state is invalid: ${state.reason}`);
+  }
+  return state.mode === 'setup-required';
+};
+
+export const initConfigStore = async (): Promise<IConfigData> => {
   await fs.mkdir(BASE_DIR, { recursive: true });
 
   const existing = await readConfig();
   if (existing) {
     log.debug('config.json loaded');
-    return;
+    return existing;
   }
 
-  await writeConfig(emptyConfig());
+  g.__ptConfigContentCache = undefined;
+  const created = emptyConfig();
+  await writeConfig(created);
   log.info('Initial config.json created (onboarding required)');
+  return created;
 };
 
 export const getDangerouslySkipPermissions = async (): Promise<boolean> => {

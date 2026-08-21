@@ -1,5 +1,6 @@
 import type { TCliState } from '@/types/timeline';
 import type { TEventName } from '@/types/status';
+import type { IAgentProviderStatusBehavior } from '@/lib/providers/types';
 
 export interface IStateDecision {
   nextState: TCliState;
@@ -9,13 +10,14 @@ export interface IStateDecision {
 }
 
 export interface IHookStateDecision extends IStateDecision {
-  deferCodexStop: boolean;
+  deferStopHook: boolean;
 }
 
 export interface IHookStateInput {
   currentState: TCliState;
   eventName: TEventName;
   providerId?: string | null;
+  statusBehavior?: IAgentProviderStatusBehavior | null;
 }
 
 export interface ICodexStateInput {
@@ -44,21 +46,21 @@ const hookEventTargetState = (eventName: TEventName): TCliState => {
 export const reduceHookState = ({
   currentState,
   eventName,
-  providerId,
+  statusBehavior,
 }: IHookStateInput): IHookStateDecision => {
   if (currentState === 'cancelled') {
     return {
       nextState: currentState,
       changed: false,
-      deferCodexStop: false,
+      deferStopHook: false,
     };
   }
 
-  if (eventName === 'stop' && providerId === 'codex') {
+  if (eventName === 'stop' && statusBehavior?.deferStopHookUntilJsonlIdle) {
     return {
       nextState: currentState,
       changed: false,
-      deferCodexStop: true,
+      deferStopHook: true,
     };
   }
 
@@ -66,7 +68,7 @@ export const reduceHookState = ({
   return {
     nextState,
     changed: currentState !== nextState,
-    deferCodexStop: false,
+    deferStopHook: false,
   };
 };
 

@@ -13,7 +13,11 @@ export type TApprovalAuditEventType =
   | 'options-ready'
   | 'fallback'
   | 'selection-sent'
-  | 'selection-failed';
+  | 'selection-failed'
+  | 'push-sent'
+  | 'push-failed'
+  | 'push-skipped-empty'
+  | 'push-skipped-visible';
 
 export interface IApprovalAuditEventInput {
   eventType: TApprovalAuditEventType;
@@ -43,6 +47,13 @@ export interface IApprovalAuditEvent {
 
 export interface IReadApprovalAuditEventsOptions {
   limit?: number;
+}
+
+export interface IApprovalPushAuditOutcome {
+  skippedVisible: boolean;
+  attempted: number;
+  sent: number;
+  failed: number;
 }
 
 const promptTypes = new Set<TApprovalPromptType>([
@@ -92,6 +103,18 @@ const normalizeEvent = (input: IApprovalAuditEventInput): IApprovalAuditEvent =>
     ? input.fallbackReason ?? null
     : 'request-failed',
 });
+
+export const resolveApprovalPushAuditEventType = ({
+  skippedVisible,
+  attempted,
+  sent,
+  failed,
+}: IApprovalPushAuditOutcome): TApprovalAuditEventType => {
+  if (skippedVisible) return 'push-skipped-visible';
+  if (sent > 0) return 'push-sent';
+  if (attempted === 0) return 'push-skipped-empty';
+  return failed > 0 ? 'push-failed' : 'push-skipped-empty';
+};
 
 const parseLine = (line: string): IApprovalAuditEvent | null => {
   try {

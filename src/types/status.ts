@@ -1,6 +1,7 @@
 import type { TCliState, TToolName } from '@/types/timeline';
 import type { TPanelType } from '@/types/terminal';
 import type { ISessionHistoryEntry } from '@/types/session-history';
+import type { IApprovalPromptMetadata } from '@/lib/permission-prompt';
 
 export type TTerminalStatus = 'idle' | 'running' | 'server';
 
@@ -41,6 +42,7 @@ export interface ITabStatusEntry {
   lastEvent?: ILastEvent | null;
   eventSeq?: number;
   lastInterruptTs?: number;
+  approvalPromptMetadata?: IApprovalPromptMetadata | null;
 }
 
 export type TTabDisplayStatus = 'busy' | 'ready-for-review' | 'needs-input' | 'idle' | 'unknown';
@@ -74,11 +76,13 @@ export interface IStatusUpdateMessage {
   compactingSince?: number | null;
   lastEvent?: ILastEvent | null;
   eventSeq?: number;
+  approvalPromptMetadata?: IApprovalPromptMetadata | null;
 }
 
 export interface IRateLimitWindow {
   used_percentage: number;
   resets_at: number;
+  observed_at?: number;
 }
 
 export interface IRateLimitsData {
@@ -105,6 +109,7 @@ export interface ISessionHistoryUpdateMessage {
 export interface IStatusHookEventMessage {
   type: 'status:hook-event';
   tabId: string;
+  sessionName: string;
   event: ILastEvent;
 }
 

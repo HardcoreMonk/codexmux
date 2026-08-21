@@ -3,6 +3,7 @@ import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MetaCompact, MetaDetail } from '@/components/features/workspace/session-meta-content';
+import type { IAgentSessionRelationship } from '@/lib/agent-session-relationship';
 import type { ISessionMetaData } from '@/hooks/use-session-meta';
 import useGitBranch from '@/hooks/use-git-branch';
 import useGitStatus from '@/hooks/use-git-status';
@@ -25,11 +26,12 @@ interface ISessionMetaBarProps {
   sessionName: string;
   sessionId: string | null;
   jsonlPath: string | null;
+  relationship?: IAgentSessionRelationship | null;
 }
 
 const RELATIVE_TIME_INTERVAL_MS = 60_000;
 
-const SessionMetaBar = ({ meta, sessionName, sessionId, jsonlPath }: ISessionMetaBarProps) => {
+const SessionMetaBar = ({ meta, sessionName, sessionId, jsonlPath, relationship }: ISessionMetaBarProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const toggleExpanded = useCallback(() => setIsExpanded((prev) => !prev), []);
   const collapse = useCallback(() => setIsExpanded(false), []);
@@ -110,6 +112,7 @@ const SessionMetaBar = ({ meta, sessionName, sessionId, jsonlPath }: ISessionMet
           <MetaDetail
             title={meta.title}
             sessionId={sessionId}
+            relationship={relationship}
             createdAt={meta.createdAt}
             updatedAt={meta.updatedAt}
             fileSize={meta.fileSize}

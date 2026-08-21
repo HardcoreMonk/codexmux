@@ -12,10 +12,13 @@ export const parseRuntimeTimelineV2Mode = (value: unknown): TRuntimeTimelineV2Mo
   return 'off';
 };
 
-export const resolveRuntimeTimelineV2Mode = ({
-  runtimeV2Enabled = process.env.CODEXMUX_RUNTIME_V2 === '1',
-  timelineMode = process.env.CODEXMUX_RUNTIME_TIMELINE_V2_MODE,
-}: IRuntimeTimelineV2ModeOptions = {}): TRuntimeTimelineV2Mode => {
+export const resolveRuntimeTimelineV2Mode = (
+  options: IRuntimeTimelineV2ModeOptions = {},
+): TRuntimeTimelineV2Mode => {
+  const runtimeV2Enabled = options.runtimeV2Enabled ?? process.env.CODEXMUX_RUNTIME_V2 === '1';
+  const timelineMode = Object.hasOwn(options, 'timelineMode')
+    ? options.timelineMode
+    : process.env.CODEXMUX_RUNTIME_TIMELINE_V2_MODE;
   if (timelineMode === undefined && runtimeV2Enabled) return defaultRuntimeTimelineV2Mode;
   return parseRuntimeTimelineV2Mode(timelineMode);
 };

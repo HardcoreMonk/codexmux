@@ -8,31 +8,26 @@ import {
   getProviderByPanelType,
 } from '@/lib/providers';
 import type { IAgentProvider } from '@/lib/providers';
-import { formatTabTitle } from '@/lib/tab-title';
-import { INTERRUPT_PREFIX, summarizeToolCall } from '@/lib/session-parser';
 import { createRateLimitsWatcher } from '@/lib/rate-limits-watcher';
+import { mergeRateLimitsData, rateLimitsEqual } from '@/lib/codex-rate-limits';
 import { createLogger } from '@/lib/logger';
-import { capturePaneAtWidth } from '@/lib/capture-at-width';
-import { parsePermissionOptions } from '@/lib/permission-prompt';
-import { hasCodexInterruptedPrompt } from '@/lib/codex-pane-state';
 import type { IPaneInfo } from '@/lib/tmux';
-import type { TCliState, TToolName } from '@/types/timeline';
-import type { ICurrentAction, TTerminalStatus, ITabStatusEntry, IClientTabStatusEntry, IStatusUpdateMessage, IRateLimitsData, TEventName, ILastEvent } from '@/types/status';
+import type { TCliState } from '@/types/timeline';
+import type { ICurrentAction, TTerminalStatus, ITabStatusEntry, IClientTabStatusEntry, IRateLimitsData } from '@/types/status';
+import {
+  addSessionHistoryEntry as addLegacySessionHistoryEntry,
+  updateSessionHistoryDismissedAt as updateLegacySessionHistoryDismissedAt,
+} from '@/lib/session-history';
 import type { ISessionHistoryEntry } from '@/types/session-history';
-import { addSessionHistoryEntry, updateSessionHistoryDismissedAt } from '@/lib/session-history';
-import webpush from 'web-push';
-import { getSubscriptions, removeSubscription, isAnyDeviceVisible } from '@/lib/push-subscriptions';
-import { getVAPIDKeys } from '@/lib/vapid-keys';
+import { isAnyDeviceVisible } from '@/lib/push-subscriptions';
 import { nanoid } from 'nanoid';
 import fs from 'fs/promises';
-import { watch, type FSWatcher } from 'fs';
 import { readAgentSessionId, readAgentSummary } from '@/lib/agent-tab-fields';
 import { checkCodexJsonlState } from '@/lib/codex-jsonl-state';
 import { getConfig } from '@/lib/config-store';
-import { reduceCodexState, reduceHookState } from '@/lib/status-state-machine';
+import { reduceCodexState } from '@/lib/status-state-machine';
 import { createDedupeKeyStore } from '@/lib/dedupe-key-store';
 import { completionKeyFor, normalizeSessionId, resolveAgentSessionId, sessionIdFromJsonlPath } from '@/lib/status-session-mapping';
-import { shouldProcessHookEvent } from '@/lib/status-notification-policy';
 import { mergeStatusMetadata } from '@/lib/status-metadata';
 import { forwardBridgeTraceStatusUpdate } from '@/lib/bridge-trace-forwarder';
 import { getPerfNow, recordPerfCounter, recordPerfDuration } from '@/lib/perf-metrics';
@@ -49,6 +44,51 @@ import {
   type IStatusSideEffectIntent,
   type IStatusSideEffectPolicyInput,
 } from '@/lib/status-side-effect-policy';
+import {
+  extractStatusAssistantInfo,
+  scanStatusJsonlLines,
+} from '@/lib/status/jsonl-idle-scan';
+import {
+  buildStatusSessionHistoryEntry,
+  type IStatusJsonlStats,
+} from '@/lib/status/session-history-entry';
+import { createStatusSessionHistoryPersistence } from '@/lib/status/session-history-persistence';
+import { createStatusPaneRecoveryService } from '@/lib/status/pane-recovery-service';
+import { StatusPollService } from '@/lib/status/poll-service';
+import { StatusJsonlWatchService } from '@/lib/status/jsonl-watch-service';
+import { evaluateStatusHookEvent } from '@/lib/status/hook-event-service';
+import { evaluateResolveUnknownStatus } from '@/lib/status/resolve-unknown-service';
+import { StatusStopRecheckService } from '@/lib/status/stop-recheck-service';
+import {
+  shouldEmitSyntheticJsonlInterrupt,
+  shouldKeepStatusJsonlWatch,
+  shouldScheduleDelayedJsonlInputRecovery,
+} from '@/lib/status/jsonl-reconciliation-service';
+import {
+  buildStatusRemoveMessage,
+  buildStatusUpdateMessage,
+  toStatusClientTabEntry,
+} from '@/lib/status/client-payload';
+import { reconcileStatusPollTabChanges } from '@/lib/status/poll-tab-reconciliation';
+import { buildStatusPollCreatedTabBootstrap } from '@/lib/status/poll-created-tab-bootstrap';
+import {
+  applyStatusPollTraversalCounts,
+  createStatusPollCounts,
+  recordStatusPollBroadcastRemove,
+  recordStatusPollBroadcastUpdate,
+  recordStatusPollTabKind,
+} from '@/lib/status/poll-counts';
+import { applyStatusPollTabEntryUpdate } from '@/lib/status/poll-tab-entry-update';
+import {
+  recoverStatusPollPaneInput,
+  resolveStatusPollUpdateAction,
+  StatusPollRecoveryService,
+} from '@/lib/status/poll-recovery-service';
+import { collectStatusPollWorkspaceTabs } from '@/lib/status/poll-workspace-traversal';
+import { buildStatusScanTabBootstrap } from '@/lib/status/scan-tab-bootstrap';
+import { deliverStatusWebPush } from '@/lib/status/web-push-delivery';
+import { buildStatusWebPushPayload } from '@/lib/status/web-push-payload';
+import { createStatusWebPushActions } from '@/lib/runtime/status/web-push-actions';
 
 const log = createLogger('status');
 const hookLog = createLogger('hooks');
@@ -63,18 +103,10 @@ type TChildPidCache = Map<number, Promise<number[]>>;
 
 const COMPACT_STALE_MS = 60_000;
 
-const POLL_INTERVAL_SMALL = 30_000;
-const POLL_INTERVAL_MEDIUM = 45_000;
-const POLL_INTERVAL_LARGE = 60_000;
-const TAB_COUNT_MEDIUM = 11;
-const TAB_COUNT_LARGE = 21;
 const BUSY_STUCK_MS = 10 * 60 * 1000;
 const JSONL_TAIL_SIZE = 8192;
 const JSONL_EXTENDED_TAIL_SIZE = 131_072;
-const STALE_MS_INTERRUPTED = 20_000;
-const STALE_MS_AWAITING_API = 90_000;
 const PROCESS_RETRY_COUNT = 3;
-const JSONL_WATCH_DEBOUNCE_MS = 100;
 const CODEX_STOP_RECHECK_MS = 500;
 
 interface IJsonlIdleCache {
@@ -93,125 +125,6 @@ interface IJsonlIdleCache {
 
 const MAX_JSONL_CACHE = 256;
 const jsonlIdleCache = new Map<string, IJsonlIdleCache>();
-
-const MAX_SNIPPET_LENGTH = 200;
-
-const toCurrentAction = (block: { name?: string; input?: Record<string, unknown> }): ICurrentAction => {
-  const toolName = (block.name ?? 'Tool') as TToolName;
-  const input = (block.input ?? {}) as Record<string, unknown>;
-  return { toolName, summary: summarizeToolCall(toolName, input) };
-};
-
-interface IAssistantExtract {
-  lastAssistantSnippet: string | null;
-  currentAction: ICurrentAction | null;
-  reset: boolean;
-}
-
-const extractAssistantInfo = (lines: string[]): IAssistantExtract => {
-  let userMessageSeen = false;
-
-  for (let i = lines.length - 1; i >= 0; i--) {
-    try {
-      const entry = JSON.parse(lines[i]);
-      if (entry.isSidechain) continue;
-
-      if (entry.type === 'user') {
-        const c = entry.message?.content;
-        const isToolResult = Array.isArray(c) && c.some((b: unknown) => (b as { type?: string }).type === 'tool_result');
-        if (!isToolResult) userMessageSeen = true;
-        continue;
-      }
-
-      if (entry.type !== 'assistant' || !entry.message?.content) continue;
-
-      if (userMessageSeen) return { lastAssistantSnippet: null, currentAction: null, reset: true };
-
-      const content = entry.message.content;
-      if (!Array.isArray(content)) continue;
-
-      let lastAssistantSnippet: string | null = null;
-      let currentAction: ICurrentAction | null = null;
-
-      for (let j = content.length - 1; j >= 0; j--) {
-        const block = content[j];
-        if (block.type === 'tool_use') {
-          currentAction = toCurrentAction(block);
-          break;
-        }
-        if (block.type === 'text' && block.text?.trim()) {
-          const text = block.text.trim();
-          currentAction = {
-            toolName: null,
-            summary: text.length > MAX_SNIPPET_LENGTH ? text.slice(0, MAX_SNIPPET_LENGTH) + '…' : text,
-          };
-          break;
-        }
-      }
-
-      for (let j = content.length - 1; j >= 0; j--) {
-        if (content[j].type === 'text' && content[j].text?.trim()) {
-          const text = content[j].text.trim();
-          lastAssistantSnippet = text.length > MAX_SNIPPET_LENGTH
-            ? text.slice(0, MAX_SNIPPET_LENGTH) + '…'
-            : text;
-          break;
-        }
-      }
-
-      return { lastAssistantSnippet, currentAction, reset: false };
-    } catch { continue; }
-  }
-  return { lastAssistantSnippet: null, currentAction: null, reset: false };
-};
-
-interface IScanResult {
-  matched: boolean;
-  idle: boolean;
-  stale: boolean;
-  needsStaleRecheck: boolean;
-  staleMs: number;
-  lastEntryTs: number | null;
-  interrupted: boolean;
-}
-
-const scanLines = (lines: string[], elapsed: number): IScanResult => {
-  for (let i = lines.length - 1; i >= 0; i--) {
-    try {
-      const entry = JSON.parse(lines[i]);
-
-      if (entry.isSidechain) continue;
-
-      const entryTs: number | null = entry.timestamp ? new Date(entry.timestamp).getTime() : null;
-
-      if (entry.type === 'system' && (entry.subtype === 'stop_hook_summary' || entry.subtype === 'turn_duration')) {
-        return { matched: true, idle: true, stale: false, needsStaleRecheck: false, staleMs: 0, lastEntryTs: entryTs, interrupted: false };
-      }
-
-      if (entry.type === 'assistant') {
-        const stopReason = entry.message?.stop_reason;
-        if (!stopReason) {
-          const idle = elapsed > STALE_MS_INTERRUPTED;
-          return { matched: true, idle, stale: true, needsStaleRecheck: !idle, staleMs: STALE_MS_INTERRUPTED, lastEntryTs: entryTs, interrupted: false };
-        }
-        return { matched: true, idle: stopReason !== 'tool_use', stale: false, needsStaleRecheck: false, staleMs: 0, lastEntryTs: entryTs, interrupted: false };
-      }
-
-      if (entry.type === 'user') {
-        const content = entry.message?.content;
-        if (Array.isArray(content) && content.length === 1 && typeof content[0]?.text === 'string' && content[0].text.startsWith(INTERRUPT_PREFIX)) {
-          return { matched: true, idle: true, stale: false, needsStaleRecheck: false, staleMs: 0, lastEntryTs: entryTs, interrupted: true };
-        }
-        const idle = elapsed > STALE_MS_AWAITING_API;
-        return { matched: true, idle, stale: true, needsStaleRecheck: !idle, staleMs: STALE_MS_AWAITING_API, lastEntryTs: entryTs, interrupted: false };
-      }
-    } catch {
-      continue;
-    }
-  }
-
-  return { matched: false, idle: elapsed > STALE_MS_AWAITING_API, stale: true, needsStaleRecheck: elapsed <= STALE_MS_AWAITING_API, staleMs: STALE_MS_AWAITING_API, lastEntryTs: null, interrupted: false };
-};
 
 interface IJsonlCheckResult {
   idle: boolean;
@@ -269,16 +182,16 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<IJsonlCheckResult> => 
       await handle.read(buffer, 0, readSize, stat.size - readSize);
       const lines = buffer.toString('utf-8').split('\n').filter((l) => l.trim());
 
-      let scan = scanLines(lines, elapsed);
-      let extracted = extractAssistantInfo(lines);
+      let scan = scanStatusJsonlLines(lines, elapsed);
+      let extracted = extractStatusAssistantInfo(lines);
 
       if (!scan.matched && stat.size > JSONL_TAIL_SIZE) {
         const extSize = Math.min(stat.size, JSONL_EXTENDED_TAIL_SIZE);
         const extBuffer = Buffer.alloc(extSize);
         await handle.read(extBuffer, 0, extSize, stat.size - extSize);
         const extLines = extBuffer.toString('utf-8').split('\n').filter((l) => l.trim());
-        scan = scanLines(extLines, elapsed);
-        if (!extracted.lastAssistantSnippet && !extracted.currentAction) extracted = extractAssistantInfo(extLines);
+        scan = scanStatusJsonlLines(extLines, elapsed);
+        if (!extracted.lastAssistantSnippet && !extracted.currentAction) extracted = extractStatusAssistantInfo(extLines);
       }
 
       if (jsonlIdleCache.size >= MAX_JSONL_CACHE) {
@@ -297,9 +210,11 @@ const checkJsonlIdle = async (jsonlPath: string): Promise<IJsonlCheckResult> => 
 const checkProviderJsonlIdle = async (
   provider: IAgentProvider,
   jsonlPath: string,
+  onRateLimits?: (data: IRateLimitsData) => void,
 ): Promise<IJsonlCheckResult> => {
   if (provider.id !== 'codex') return checkJsonlIdle(jsonlPath);
   const result = await checkCodexJsonlState(jsonlPath);
+  if (result.rateLimits) onRateLimits?.(result.rateLimits);
   return {
     idle: result.idle,
     stale: result.stale,
@@ -313,31 +228,8 @@ const checkProviderJsonlIdle = async (
   };
 };
 
-interface IJsonlStats {
-  toolUsage: Record<string, number>;
-  touchedFiles: string[];
-  lastAssistantText: string | null;
-  lastUserText: string | null;
-  firstUserTs: number | null;
-  lastAssistantTs: number | null;
-  turnDurationMs: number | null;
-}
-
-interface IStatusPollSnapshot {
-  startedAt: string;
-  endedAt: string;
-  durationMs: number;
-  workspaceCount: number;
-  paneCount: number;
-  scannedTabCount: number;
-  providerTabCount: number;
-  terminalTabCount: number;
-  broadcastUpdateCount: number;
-  broadcastRemoveCount: number;
-}
-
-const parseJsonlStats = async (jsonlPath: string): Promise<IJsonlStats> => {
-  const empty: IJsonlStats = { toolUsage: {}, touchedFiles: [], lastAssistantText: null, lastUserText: null, firstUserTs: null, lastAssistantTs: null, turnDurationMs: null };
+const parseJsonlStats = async (jsonlPath: string): Promise<IStatusJsonlStats> => {
+  const empty: IStatusJsonlStats = { toolUsage: {}, touchedFiles: [], lastAssistantText: null, lastUserText: null, firstUserTs: null, lastAssistantTs: null, turnDurationMs: null };
   try {
     const stat = await fs.stat(jsonlPath);
     if (stat.size === 0) return empty;
@@ -423,19 +315,59 @@ export interface IStatusManagerOptions {
 
 export class StatusManager {
   private tabs = new Map<string, ITabStatusEntry>();
-  private pollingTimer: ReturnType<typeof setInterval> | null = null;
-  private currentInterval = 0;
   private clients = new Set<WebSocket>();
   private initialized = false;
   private rateLimitsWatcher: ReturnType<typeof createRateLimitsWatcher> | null = null;
   private lastRateLimits: IRateLimitsData | null = null;
-  private jsonlWatchers = new Map<string, { watcher: FSWatcher; jsonlPath: string; debounceTimer: ReturnType<typeof setTimeout> | null }>();
   private compactStaleTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private reviewNotificationDedupe = createDedupeKeyStore();
   private sessionHistoryDedupe = createDedupeKeyStore();
-  private lastPoll: IStatusPollSnapshot | null = null;
+  private webPushActions = createStatusWebPushActions();
+  private paneRecovery = createStatusPaneRecoveryService({
+    warn: (message) => log.warn(message),
+  });
+  private readonly jsonlWatchService: StatusJsonlWatchService;
+  private readonly pollService: StatusPollService;
+  private readonly pollRecoveryService: StatusPollRecoveryService;
+  private readonly sessionHistoryPersistence: ReturnType<typeof createStatusSessionHistoryPersistence>;
+  private readonly stopRecheckService: StatusStopRecheckService;
 
-  constructor(private readonly options: IStatusManagerOptions = {}) {}
+  constructor(private readonly options: IStatusManagerOptions = {}) {
+    this.jsonlWatchService = new StatusJsonlWatchService({
+      onChange: (tabId, jsonlPath) => this.onJsonlFileChange(tabId, jsonlPath),
+      onStart: (tabId, jsonlPath) => log.debug('startJsonlWatch tabId=%s path=%s', tabId, jsonlPath),
+      onStop: (tabId) => log.debug('stopJsonlWatch tabId=%s', tabId),
+    });
+    this.pollService = new StatusPollService({
+      getTabCount: () => this.tabs.size,
+      poll: () => this.poll(),
+      onPollError: (err) => log.error({ err }, 'Polling error'),
+      recordCounter: recordPerfCounter,
+      getPerfNow,
+      recordDuration: recordPerfDuration,
+    });
+    this.pollRecoveryService = new StatusPollRecoveryService({
+      busyStuckMs: BUSY_STUCK_MS,
+    });
+    this.stopRecheckService = new StatusStopRecheckService({
+      delayMs: CODEX_STOP_RECHECK_MS,
+      recheckCodexStop: ({ tabId, tmuxSession }) => this.recheckCodexStopNow(tabId, tmuxSession),
+      refreshStopSnippet: ({ tabId, jsonlPath }) => this.refreshStopSnippet(tabId, jsonlPath),
+      clearJsonlCache: (jsonlPath) => jsonlIdleCache.delete(jsonlPath),
+      warn: (message) => hookLog.warn(message),
+    });
+    this.sessionHistoryPersistence = createStatusSessionHistoryPersistence({
+      shouldUseRuntimeDefault: () => this.shouldUseRuntimeStatusDefault(),
+      addRuntime: async (entry) => {
+        await getRuntimeSupervisor().addStatusSessionHistoryEntry(entry);
+      },
+      updateRuntimeDismissedAt: (input) => getRuntimeSupervisor().updateStatusSessionHistoryDismissedAt(input),
+      addLegacy: addLegacySessionHistoryEntry,
+      updateLegacyDismissedAt: updateLegacySessionHistoryDismissedAt,
+      recordCounter: recordPerfCounter,
+      warn: (message) => log.warn(message),
+    });
+  }
 
   async init(): Promise<void> {
     if (this.initialized) return;
@@ -446,28 +378,31 @@ export class StatusManager {
 
     if (this.options.enableRateLimits !== false) {
       this.rateLimitsWatcher = createRateLimitsWatcher((data) => {
-        this.lastRateLimits = data;
-        this.broadcast({ type: 'rate-limits:update', data });
+        this.publishRateLimits(data);
       });
       this.rateLimitsWatcher.start();
     }
+  }
+
+  private publishRateLimits(data: IRateLimitsData): void {
+    const merged = mergeRateLimitsData(this.lastRateLimits, data);
+    if (rateLimitsEqual(this.lastRateLimits, merged)) return;
+    this.lastRateLimits = merged;
+    this.broadcast({ type: 'rate-limits:update', data: merged });
   }
 
   private async scanAll(): Promise<void> {
     const { workspaces } = await getWorkspaces();
     const panesInfo = await getAllPanesInfo();
     const childPidCache: TChildPidCache = new Map();
-    for (const tabId of [...this.jsonlWatchers.keys()]) {
-      this.stopJsonlWatch(tabId);
-    }
+    this.jsonlWatchService.stopAll();
     this.tabs.clear();
 
-    for (const ws of workspaces) {
-      const layout = await readLayoutFile(resolveLayoutFile(ws.id));
-      if (!layout) continue;
-
-      const tabs = collectAllTabs(layout.root);
-      for (const tab of tabs) {
+    const traversal = await collectStatusPollWorkspaceTabs({
+      workspaces,
+      readLayout: async (workspaceId) => readLayoutFile(resolveLayoutFile(workspaceId)),
+    });
+    for (const { workspaceId, tab } of traversal.workspaceTabs) {
         const paneInfo = panesInfo.get(tab.sessionName);
         const provider = getProviderByPanelType(tab.panelType);
         const detected = await this.readTabMetadata(paneInfo, provider, {
@@ -475,74 +410,32 @@ export class StatusManager {
           jsonlPath: provider?.readJsonlPath(tab) ?? null,
           childPids: provider ? await this.getCachedChildPids(childPidCache, paneInfo) : undefined,
         });
-        const persisted: TCliState = (tab.cliState as TCliState | undefined) ?? 'idle';
-        let cliState: TCliState = persisted === 'busy' ? 'unknown' : persisted;
-        if (provider?.id === 'codex') {
-          if (!detected.running && (cliState === 'unknown' || cliState === 'inactive')) {
-            cliState = 'idle';
-          } else if (detected.running && !detected.jsonlPath) {
-            cliState = 'busy';
-          } else if (detected.running && detected.idle && detected.lastAssistantSnippet) {
-            cliState = 'ready-for-review';
-          } else if (detected.running && !detected.idle) {
-            cliState = 'busy';
-          }
-        }
-
         const { terminalStatus, listeningPorts } = provider
           ? { terminalStatus: 'idle' as const, listeningPorts: [] as number[] }
           : await this.detectTerminalStatus(paneInfo);
-        const currentProcess = paneInfo?.command;
-        const paneTitle = paneInfo ? `${paneInfo.command}|${paneInfo.path}` : undefined;
-        // lastEvent는 메모리 전용이라 재시작 시 유실. persisted needs-input 복원 시
-        // 클라 ack가 seq=0과 매칭할 baseline이 필요하므로 합성한다.
-        const syntheticLastEvent: ILastEvent | null = cliState === 'needs-input'
-          ? { name: 'notification', at: Date.now(), seq: 0 }
-          : null;
-        const agentSummary = readAgentSummary(tab);
-        const agentSessionId = resolveAgentSessionId({
-          detectedSessionId: detected.sessionId,
-          jsonlPath: detected.jsonlPath,
-          persistedSessionId: readAgentSessionId(tab),
-        });
-        this.tabs.set(tab.id, {
-          cliState,
-          workspaceId: ws.id,
-          tabName: tab.name || (paneTitle ? formatTabTitle(paneTitle) : ''),
-          currentProcess,
-          paneTitle,
-          tmuxSession: tab.sessionName,
-          panelType: tab.panelType,
+        const bootstrap = buildStatusScanTabBootstrap({
+          workspaceId,
+          tab,
+          providerId: provider?.id ?? null,
+          paneInfo,
+          detected,
           terminalStatus,
           listeningPorts,
-          agentSummary,
-          lastUserMessage: tab.lastUserMessage,
-          lastAssistantMessage: detected.lastAssistantSnippet,
-          currentAction: detected.currentAction,
-          readyForReviewAt: cliState === 'ready-for-review' ? Date.now() : null,
-          busySince: null,
-          dismissedAt: tab.dismissedAt ?? null,
-          agentSessionId,
-          jsonlPath: detected.jsonlPath,
-          lastEvent: syntheticLastEvent,
-          eventSeq: 0,
+          now: Date.now(),
         });
-        if ((cliState === 'needs-input' || cliState === 'unknown') && detected.jsonlPath) {
+        this.tabs.set(tab.id, bootstrap.entry);
+        if (bootstrap.actions.shouldStartJsonlWatch && detected.jsonlPath) {
           this.startJsonlWatch(tab.id, detected.jsonlPath);
         }
-        if (provider?.id === 'codex' && detected.jsonlPath) {
-          this.startJsonlWatch(tab.id, detected.jsonlPath);
-        }
-        if (provider?.id === 'codex' && detected.running) {
+        if (bootstrap.actions.shouldRecoverPaneInput) {
           const pendingRecovery = await this.recoverPendingInputFromPane(tab.id, { silent: true });
           if (!pendingRecovery.recovered) {
             await this.recoverInterruptedPromptFromPane(tab.id, { silent: true });
           }
         }
-        if (cliState === 'unknown') {
+        if (bootstrap.actions.shouldResolveUnknown) {
           this.resolveUnknown(tab.id).catch((err) => log.warn('resolveUnknown failed: %s', err));
         }
-      }
     }
   }
 
@@ -551,34 +444,35 @@ export class StatusManager {
     if (!entry || entry.cliState !== 'unknown') return;
 
     const provider = getProviderByPanelType(entry.panelType);
-    if (!provider) {
-      this.applyCliState(tabId, entry, 'idle', { silent: true, skipHistory: true });
-      this.persistToLayout(entry);
-      this.broadcastUpdate(tabId, entry);
-      return;
-    }
-    const paneInfo = (await getAllPanesInfo()).get(entry.tmuxSession);
-    const childPids = paneInfo?.pid ? await getChildPids(paneInfo.pid) : [];
-    const agentRunning = paneInfo?.pid
-      ? await provider.isAgentRunning(paneInfo.pid, childPids)
-      : false;
-
-    if (!agentRunning) {
-      this.applyCliState(tabId, entry, 'idle', { silent: true });
-      this.persistToLayout(entry);
-      this.broadcastUpdate(tabId, entry);
-      return;
-    }
-
-    if (entry.jsonlPath) {
-      const { idle, stale, lastAssistantSnippet } = await checkProviderJsonlIdle(provider, entry.jsonlPath);
-      if (idle && !stale && lastAssistantSnippet) {
-        this.applyCliState(tabId, entry, 'ready-for-review', { silent: true, skipHistory: true });
-        this.persistToLayout(entry);
-        this.broadcastUpdate(tabId, entry);
-        return;
+    let agentRunning = false;
+    let jsonl: { idle: boolean; stale: boolean; lastAssistantSnippet: string | null } | null = null;
+    if (provider) {
+      const paneInfo = (await getAllPanesInfo()).get(entry.tmuxSession);
+      const childPids = paneInfo?.pid ? await getChildPids(paneInfo.pid) : [];
+      agentRunning = paneInfo?.pid
+        ? await provider.isAgentRunning(paneInfo.pid, childPids)
+        : false;
+      if (agentRunning && entry.jsonlPath) {
+        const { idle, stale, lastAssistantSnippet } = await checkProviderJsonlIdle(
+          provider,
+          entry.jsonlPath,
+          (data) => this.publishRateLimits(data),
+        );
+        jsonl = { idle, stale, lastAssistantSnippet };
       }
     }
+
+    const decision = evaluateResolveUnknownStatus({
+      currentState: entry.cliState,
+      providerId: provider?.id ?? null,
+      agentRunning,
+      jsonl,
+    });
+    if (decision.action !== 'apply-state') return;
+
+    this.applyCliState(tabId, entry, decision.nextState, decision.options);
+    this.persistToLayout(entry);
+    this.broadcastUpdate(tabId, entry);
   }
 
   private getCachedChildPids(cache: TChildPidCache, paneInfo: IPaneInfo | undefined): Promise<number[]> {
@@ -614,7 +508,11 @@ export class StatusManager {
       return { ...emptyJsonlCheckResult(), jsonlPath, running: true, sessionId };
     }
 
-    const result = await checkProviderJsonlIdle(provider, jsonlPath);
+    const result = await checkProviderJsonlIdle(
+      provider,
+      jsonlPath,
+      (data) => this.publishRateLimits(data),
+    );
     return { ...result, jsonlPath, running: true, sessionId };
   }
 
@@ -669,69 +567,43 @@ export class StatusManager {
     return { terminalStatus: isShell ? 'idle' : 'running', listeningPorts: [] };
   }
 
-  private getPollingInterval(): number {
-    const count = this.tabs.size;
-    if (count >= TAB_COUNT_LARGE) return POLL_INTERVAL_LARGE;
-    if (count >= TAB_COUNT_MEDIUM) return POLL_INTERVAL_MEDIUM;
-    return POLL_INTERVAL_SMALL;
-  }
-
   async rescan(): Promise<void> {
     await this.scanAll();
   }
 
   startPolling(): void {
-    this.stopPolling();
-    this.currentInterval = this.getPollingInterval();
-    this.pollingTimer = setInterval(() => {
-      this.poll().catch((err) => {
-        recordPerfCounter('status.poll.errors');
-        log.error({ err }, 'Polling error');
-      });
-    }, this.currentInterval);
+    this.pollService.start();
   }
 
   stopPolling(): void {
-    if (this.pollingTimer) {
-      clearInterval(this.pollingTimer);
-      this.pollingTimer = null;
-      this.currentInterval = 0;
-    }
+    this.pollService.stop();
   }
 
   async poll(): Promise<void> {
-    const startedAtMs = Date.now();
-    const startedAtPerf = getPerfNow();
-    let workspaceCount = 0;
-    let paneCount = 0;
-    let scannedTabCount = 0;
-    let providerTabCount = 0;
-    let terminalTabCount = 0;
-    let broadcastUpdateCount = 0;
-    let broadcastRemoveCount = 0;
+    const pollContext = this.pollService.beginPoll();
+    const pollCounts = createStatusPollCounts();
 
     const { workspaces } = await getWorkspaces();
-    workspaceCount = workspaces.length;
+    const traversal = await collectStatusPollWorkspaceTabs({
+      workspaces,
+      readLayout: async (workspaceId) => readLayoutFile(resolveLayoutFile(workspaceId)),
+    });
     const panesInfo = await getAllPanesInfo();
-    paneCount = panesInfo.size;
+    applyStatusPollTraversalCounts(pollCounts, {
+      workspaceCount: traversal.workspaceCount,
+      paneCount: panesInfo.size,
+      scannedTabCount: traversal.scannedTabCount,
+    });
     const childPidCache: TChildPidCache = new Map();
-    const knownTabIds = new Set<string>();
+    const knownTabIds = traversal.knownTabIds;
     const tabsBeforePoll = new Set(this.tabs.keys());
     const now = Date.now();
 
-    for (const ws of workspaces) {
-      const layout = await readLayoutFile(resolveLayoutFile(ws.id));
-      if (!layout) continue;
-
-      const tabs = collectAllTabs(layout.root);
-      for (const tab of tabs) {
-        scannedTabCount++;
-        knownTabIds.add(tab.id);
+    for (const { workspaceId, tab } of traversal.workspaceTabs) {
         const existing = this.tabs.get(tab.id);
         const paneInfo = panesInfo.get(tab.sessionName);
         const provider = getProviderByPanelType(tab.panelType);
-        if (provider) providerTabCount++;
-        else terminalTabCount++;
+        recordStatusPollTabKind(pollCounts, !!provider);
 
         const { terminalStatus, listeningPorts } = provider
           ? { terminalStatus: 'idle' as const, listeningPorts: [] as number[] }
@@ -740,148 +612,111 @@ export class StatusManager {
         const newPaneTitle = paneInfo ? `${paneInfo.command}|${paneInfo.path}` : undefined;
 
         if (!existing) {
-          const persisted: TCliState = (tab.cliState as TCliState | undefined) ?? 'idle';
-          let initialState: TCliState = persisted === 'busy' ? 'unknown' : persisted;
           const detected = await this.readTabMetadata(paneInfo, provider, {
             sessionId: provider?.readSessionId(tab) ?? null,
             jsonlPath: provider?.readJsonlPath(tab) ?? null,
             childPids: provider ? await this.getCachedChildPids(childPidCache, paneInfo) : undefined,
           });
-          if (provider?.id === 'codex') {
-            if (!detected.running && (initialState === 'unknown' || initialState === 'inactive')) {
-              initialState = 'idle';
-            } else if (detected.running && !detected.jsonlPath) {
-              initialState = 'busy';
-            } else if (detected.running && detected.idle && detected.lastAssistantSnippet) {
-              initialState = 'ready-for-review';
-            } else if (detected.running && !detected.idle) {
-              initialState = 'busy';
-            }
-          }
-          // lastEvent는 메모리 전용이라 재시작 시 유실. persisted needs-input을 복원할 때는
-          // 클라이언트 ack가 seq=0과 매칭할 baseline이 필요하므로 합성한다.
-          const syntheticLastEvent: ILastEvent | null = initialState === 'needs-input'
-            ? { name: 'notification', at: Date.now(), seq: 0 }
-            : null;
-          const agentSummary = readAgentSummary(tab);
-          const agentSessionId = resolveAgentSessionId({
-            detectedSessionId: detected.sessionId,
-            jsonlPath: detected.jsonlPath,
-            persistedSessionId: readAgentSessionId(tab),
-          });
-          const entry: ITabStatusEntry = {
-            cliState: initialState,
-            workspaceId: ws.id,
-            tabName: tab.name || (newPaneTitle ? formatTabTitle(newPaneTitle) : ''),
-            currentProcess,
-            paneTitle: newPaneTitle,
-            tmuxSession: tab.sessionName,
-            panelType: tab.panelType,
+          const bootstrap = buildStatusPollCreatedTabBootstrap({
+            workspaceId,
+            tab,
+            providerId: provider?.id ?? null,
+            paneInfo,
+            detected,
             terminalStatus,
             listeningPorts,
-            agentSummary,
-            lastUserMessage: tab.lastUserMessage,
-            lastAssistantMessage: detected.lastAssistantSnippet,
-            currentAction: detected.currentAction,
-            agentSessionId,
-            jsonlPath: detected.jsonlPath,
-            lastEvent: syntheticLastEvent,
-            eventSeq: 0,
-          };
+            now: Date.now(),
+          });
+          const { entry } = bootstrap;
           this.tabs.set(tab.id, entry);
           this.persistToLayout(entry);
           this.broadcastUpdate(tab.id, entry);
-          broadcastUpdateCount++;
-          if (initialState === 'unknown') {
+          recordStatusPollBroadcastUpdate(pollCounts);
+          if (bootstrap.actions.shouldResolveUnknown) {
             this.resolveUnknown(tab.id).catch((err) => log.warn('resolveUnknown failed: %s', err));
           }
-          if (provider?.id === 'codex' && detected.jsonlPath) {
+          if (bootstrap.actions.shouldStartJsonlWatch && detected.jsonlPath) {
             this.startJsonlWatch(tab.id, detected.jsonlPath);
           }
           continue;
         }
 
-        const processChanged = existing.currentProcess !== currentProcess;
-        const messageChanged = existing.lastUserMessage !== tab.lastUserMessage;
-        const panelTypeChanged = existing.panelType !== tab.panelType;
+        const tabSummary = readAgentSummary(tab);
+        const baseTabChanges = reconcileStatusPollTabChanges({
+          existing,
+          currentProcess,
+          nextLastUserMessage: tab.lastUserMessage,
+          nextPanelType: tab.panelType,
+          nextTerminalStatus: terminalStatus,
+          nextListeningPorts: listeningPorts,
+          nextAgentSummary: tabSummary,
+          metadataChanged: false,
+          codexStateChanged: false,
+          retryCount: PROCESS_RETRY_COUNT,
+        });
         const refreshed = await this.readTabMetadata(paneInfo, provider, {
           sessionId: provider?.readSessionId(tab) ?? existing.agentSessionId ?? null,
           jsonlPath: provider?.readJsonlPath(tab) ?? existing.jsonlPath ?? null,
           childPids: provider ? await this.getCachedChildPids(childPidCache, paneInfo) : undefined,
         });
-        existing.tabName = tab.name || (newPaneTitle ? formatTabTitle(newPaneTitle) : '');
-        existing.currentProcess = currentProcess;
-        existing.paneTitle = newPaneTitle;
-        existing.workspaceId = ws.id;
-        existing.panelType = tab.panelType;
-        existing.agentSessionId = resolveAgentSessionId({
-          detectedSessionId: refreshed.sessionId,
-          jsonlPath: refreshed.jsonlPath,
+        applyStatusPollTabEntryUpdate({
+          entry: existing,
+          workspaceId,
+          tab,
+          paneTitle: newPaneTitle,
+          currentProcess,
+          refreshed,
           persistedSessionId: readAgentSessionId(tab),
-          currentSessionId: existing.agentSessionId,
+          processRetries: baseTabChanges.processRetries,
+          terminalChanged: baseTabChanges.terminalChanged,
+          terminalStatus,
+          listeningPorts,
+          summaryChanged: baseTabChanges.summaryChanged,
+          agentSummary: tabSummary,
         });
-        existing.jsonlPath = refreshed.jsonlPath ?? existing.jsonlPath;
-        existing.lastUserMessage = tab.lastUserMessage;
         const metadataChanged = this.mergeJsonlMetadata(existing, refreshed);
         const codexStateChanged = this.reconcileCodexState(tab.id, existing, refreshed);
         if (provider?.id === 'codex' && existing.jsonlPath) {
           this.startJsonlWatch(tab.id, existing.jsonlPath);
         }
 
-        if (processChanged) {
-          existing.processRetries = PROCESS_RETRY_COUNT;
-        }
-        const processRetryNeeded = !processChanged && (existing.processRetries ?? 0) > 0;
-        if (processRetryNeeded) {
-          existing.processRetries = existing.processRetries! - 1;
-        }
-
-        const prevPorts = existing.listeningPorts;
-        const portsChanged = prevPorts?.length !== listeningPorts.length
-          || listeningPorts.some((p, i) => prevPorts![i] !== p);
-        const terminalChanged = existing.terminalStatus !== terminalStatus || portsChanged;
-        if (terminalChanged) {
-          existing.terminalStatus = terminalStatus;
-          existing.listeningPorts = listeningPorts;
-        }
-
-        let summaryChanged = false;
-        const tabSummary = readAgentSummary(tab);
-        if (existing.agentSummary !== tabSummary) {
-          existing.agentSummary = tabSummary;
-          summaryChanged = true;
-        }
-
-        if (existing.cliState === 'busy' && existing.lastEvent
-            && now - existing.lastEvent.at > BUSY_STUCK_MS) {
-          const childPids = await this.getCachedChildPids(childPidCache, paneInfo);
-          const agentRunning = paneInfo?.pid && provider
-            ? await provider.isAgentRunning(paneInfo.pid, childPids)
-            : false;
-          if (!agentRunning) {
+        const busyRecovered = await this.pollRecoveryService.recoverBusyStuck({
+          currentState: existing.cliState,
+          lastEventAt: existing.lastEvent?.at,
+          now,
+          paneInfo,
+          provider,
+          getChildPids: (info) => this.getCachedChildPids(childPidCache, info),
+          forceIdle: () => {
             log.info({ tabId: tab.id }, 'busy stuck — agent process gone, forcing idle');
             this.applyCliState(tab.id, existing, 'idle', { silent: true });
             this.persistToLayout(existing);
             this.broadcastUpdate(tab.id, existing);
-            broadcastUpdateCount++;
-            continue;
-          }
+          },
+        });
+        if (busyRecovered) {
+          recordStatusPollBroadcastUpdate(pollCounts);
+          continue;
         }
 
-        const pendingInputRecovery = provider?.id === 'codex' && refreshed.running
-          ? await this.recoverPendingInputFromPane(tab.id)
-          : { recovered: false };
-        const interruptedPromptRecovery = provider?.id === 'codex' && refreshed.running && !pendingInputRecovery.recovered
-          ? await this.recoverInterruptedPromptFromPane(tab.id)
-          : { recovered: false };
-
-        if (pendingInputRecovery.recovered || interruptedPromptRecovery.recovered) {
-          broadcastUpdateCount++;
-        } else if (terminalChanged || processChanged || processRetryNeeded || messageChanged || panelTypeChanged || summaryChanged || metadataChanged || codexStateChanged) {
+        const paneRecovery = await recoverStatusPollPaneInput({
+          providerId: provider?.id ?? null,
+          running: refreshed.running,
+          recoverPending: () => this.recoverPendingInputFromPane(tab.id),
+          recoverInterrupted: () => this.recoverInterruptedPromptFromPane(tab.id),
+        });
+        const updateAction = resolveStatusPollUpdateAction({
+          paneRecovered: paneRecovery.recovered,
+          shouldBroadcastUpdate: baseTabChanges.shouldBroadcastUpdate,
+          metadataChanged,
+          codexStateChanged,
+        });
+        if (updateAction === 'count-only') {
+          recordStatusPollBroadcastUpdate(pollCounts);
+        } else if (updateAction === 'broadcast') {
           this.broadcastUpdate(tab.id, existing);
-          broadcastUpdateCount++;
+          recordStatusPollBroadcastUpdate(pollCounts);
         }
-      }
     }
 
     for (const tabId of tabsBeforePoll) {
@@ -889,56 +724,24 @@ export class StatusManager {
         this.stopJsonlWatch(tabId);
         this.tabs.delete(tabId);
         this.broadcastRemove(tabId);
-        broadcastRemoveCount++;
+        recordStatusPollBroadcastRemove(pollCounts);
       }
     }
 
-    const newInterval = this.getPollingInterval();
-    if (this.pollingTimer && newInterval !== this.currentInterval) {
-      this.startPolling();
-    }
-
-    const durationMs = getPerfNow() - startedAtPerf;
-    this.lastPoll = {
-      startedAt: new Date(startedAtMs).toISOString(),
-      endedAt: new Date().toISOString(),
-      durationMs: Number(durationMs.toFixed(2)),
-      workspaceCount,
-      paneCount,
-      scannedTabCount,
-      providerTabCount,
-      terminalTabCount,
-      broadcastUpdateCount,
-      broadcastRemoveCount,
-    };
-    recordPerfDuration('status.poll', durationMs);
+    this.pollService.refreshInterval();
+    this.pollService.finishPoll(pollContext, pollCounts);
   }
 
   getAllForClient(): Record<string, IClientTabStatusEntry> {
     const result: Record<string, IClientTabStatusEntry> = {};
     for (const [tabId, entry] of this.tabs) {
-      result[tabId] = {
-        cliState: entry.cliState,
-        workspaceId: entry.workspaceId,
-        tabName: entry.tabName,
-        currentProcess: entry.currentProcess,
-        paneTitle: entry.paneTitle,
-        panelType: entry.panelType,
-        terminalStatus: entry.terminalStatus,
-        listeningPorts: entry.listeningPorts,
-        agentSummary: entry.agentSummary,
-        lastUserMessage: entry.lastUserMessage,
-        lastAssistantMessage: entry.lastAssistantMessage,
-        currentAction: entry.currentAction,
-        readyForReviewAt: entry.readyForReviewAt,
-        busySince: entry.busySince,
-        dismissedAt: entry.dismissedAt,
-        agentSessionId: entry.agentSessionId,
-        lastEvent: entry.lastEvent,
-        eventSeq: entry.eventSeq,
-      };
+      result[tabId] = toStatusClientTabEntry(entry);
     }
     return result;
+  }
+
+  getRateLimitsForClient(): IRateLimitsData | null {
+    return this.lastRateLimits;
   }
 
   getPerfSnapshot() {
@@ -987,10 +790,10 @@ export class StatusManager {
         total: totalBufferedAmount,
         max: maxBufferedAmount,
       },
-      jsonlWatchers: this.jsonlWatchers.size,
+      jsonlWatchers: this.jsonlWatchService.size(),
       compactStaleTimers: this.compactStaleTimers.size,
-      currentIntervalMs: this.currentInterval,
-      lastPoll: this.lastPoll,
+      currentIntervalMs: this.pollService.getCurrentInterval(),
+      lastPoll: this.pollService.getLastSnapshot(),
     };
   }
 
@@ -1013,7 +816,7 @@ export class StatusManager {
       ...(opts.skipHistory !== undefined ? { skipHistory: opts.skipHistory } : {}),
       hasJsonlPath: !!entry.jsonlPath,
       providerId: provider?.id ?? null,
-      hasJsonlWatcher: this.jsonlWatchers.has(tabId),
+      hasJsonlWatcher: this.jsonlWatchService.has(tabId),
       sessionHistoryDedupeAccepted: wantsSessionHistory
         ? this.sessionHistoryDedupe.remember(opts.completionKey)
         : false,
@@ -1027,6 +830,7 @@ export class StatusManager {
     entry.cliState = newState;
     entry.readyForReviewAt = sideEffects.setReadyForReviewAt ? now : null;
     entry.busySince = sideEffects.setBusySince ? now : null;
+    if (newState !== 'needs-input') entry.approvalPromptMetadata = null;
     if (sideEffects.clearDismissedAt) entry.dismissedAt = null;
 
     if (sideEffects.saveSessionHistory) {
@@ -1082,29 +886,18 @@ export class StatusManager {
     const { workspaces } = await getWorkspaces();
     const ws = workspaces.find((w) => w.id === entry.workspaceId);
     const now = Date.now();
-    const startedAt = stats?.firstUserTs ?? prevBusySince ?? now;
-    const completedAt = cancelled ? now : (stats?.lastAssistantTs ?? now);
-    const duration = cancelled
-      ? completedAt - startedAt
-      : (stats?.turnDurationMs ?? (completedAt - startedAt));
 
-    const historyEntry: ISessionHistoryEntry = {
+    const historyEntry = buildStatusSessionHistoryEntry({
       id: nanoid(),
-      workspaceId: entry.workspaceId,
+      tabId,
+      entry,
       workspaceName: ws?.name ?? entry.workspaceId,
       workspaceDir: ws?.directories[0] ?? null,
-      tabId,
-      agentSessionId: entry.agentSessionId ?? null,
-      prompt: stats?.lastUserText ?? entry.lastUserMessage,
-      result: stats?.lastAssistantText ?? null,
-      startedAt,
-      completedAt,
-      duration,
-      dismissedAt: completedAt,
-      toolUsage: stats?.toolUsage ?? {},
-      touchedFiles: stats?.touchedFiles ?? [],
-      ...(cancelled ? { cancelled: true } : {}),
-    };
+      stats,
+      prevBusySince,
+      cancelled,
+      now,
+    });
 
     await this.addSessionHistoryEntry(historyEntry);
     this.broadcast({ type: 'session-history:update', entry: historyEntry });
@@ -1117,34 +910,14 @@ export class StatusManager {
   }
 
   private async addSessionHistoryEntry(entry: ISessionHistoryEntry): Promise<void> {
-    if (this.shouldUseRuntimeStatusDefault()) {
-      try {
-        await getRuntimeSupervisor().addStatusSessionHistoryEntry(entry);
-        recordPerfCounter('runtime_v2.status_session_history.add');
-        return;
-      } catch (err) {
-        recordPerfCounter('runtime_v2.status_session_history.add_fallback');
-        log.warn('runtime v2 session history add failed, falling back: %s', err instanceof Error ? err.message : String(err));
-      }
-    }
-    await addSessionHistoryEntry(entry);
+    await this.sessionHistoryPersistence.add(entry);
   }
 
   private async updateSessionHistoryDismissedAt(
     tabId: string,
     dismissedAt: number,
   ): Promise<ISessionHistoryEntry | null> {
-    if (this.shouldUseRuntimeStatusDefault()) {
-      try {
-        const result = await getRuntimeSupervisor().updateStatusSessionHistoryDismissedAt({ tabId, dismissedAt });
-        recordPerfCounter('runtime_v2.status_session_history.dismiss_update');
-        return result.entry;
-      } catch (err) {
-        recordPerfCounter('runtime_v2.status_session_history.dismiss_update_fallback');
-        log.warn('runtime v2 session history dismiss update failed, falling back: %s', err instanceof Error ? err.message : String(err));
-      }
-    }
-    return updateSessionHistoryDismissedAt(tabId, dismissedAt);
+    return this.sessionHistoryPersistence.updateDismissedAt({ tabId, dismissedAt });
   }
 
   dismissTab(tabId: string, exclude?: WebSocket): boolean {
@@ -1225,29 +998,20 @@ export class StatusManager {
   ): Promise<{ recovered: boolean; reason?: string }> {
     const entry = this.tabs.get(tabId);
     if (!entry) return { recovered: false, reason: 'no-entry' };
-    if (entry.cliState !== 'unknown' && entry.cliState !== 'busy' && entry.cliState !== 'idle') {
-      return { recovered: false, reason: 'not-pending-state' };
-    }
-    if (getProviderByPanelType(entry.panelType)?.id !== 'codex') {
-      return { recovered: false, reason: 'not-codex' };
-    }
-
-    const content = await capturePaneAtWidth(entry.tmuxSession, 120, 50).catch((err) => {
-      log.warn('recoverUnknownIfPending capture failed: %s', err);
-      return null;
+    const recovery = await this.paneRecovery.recoverPendingInput({
+      tabId,
+      entry,
+      silent: opts.silent,
     });
-    if (!content) return { recovered: false, reason: 'capture-failed' };
+    if (!recovery.recovered) return recovery;
 
-    const { options } = parsePermissionOptions(content);
-    if (options.length === 0) return { recovered: false, reason: 'no-options' };
+    entry.approvalPromptMetadata = recovery.approvalPromptMetadata;
+    entry.eventSeq = recovery.lastEvent.seq;
+    entry.lastEvent = recovery.lastEvent;
 
-    const now = Date.now();
-    const seq = (entry.eventSeq ?? 0) + 1;
-    entry.eventSeq = seq;
-    entry.lastEvent = { name: 'notification', at: now, seq };
-
-    hookLog.debug({ tabId, seq, options: options.length }, 'recover pending→needs-input from pane capture');
-    this.applyCliState(tabId, entry, 'needs-input', { silent: opts.silent });
+    const optionCount = recovery.log.event === 'pending-input' ? recovery.log.optionCount : 0;
+    hookLog.debug({ tabId, seq: recovery.log.seq, options: optionCount }, 'recover pending→needs-input from pane capture');
+    this.applyCliState(tabId, entry, recovery.nextState, recovery.applyOptions);
     this.persistToLayout(entry);
     this.broadcastUpdate(tabId, entry);
     return { recovered: true };
@@ -1259,32 +1023,20 @@ export class StatusManager {
   ): Promise<{ recovered: boolean; reason?: string }> {
     const entry = this.tabs.get(tabId);
     if (!entry) return { recovered: false, reason: 'no-entry' };
-    if (entry.cliState !== 'unknown' && entry.cliState !== 'busy') {
-      return { recovered: false, reason: 'not-pending-state' };
-    }
-    if (getProviderByPanelType(entry.panelType)?.id !== 'codex') {
-      return { recovered: false, reason: 'not-codex' };
-    }
-
-    const content = await capturePaneAtWidth(entry.tmuxSession, 120, 50).catch((err) => {
-      log.warn('recoverInterruptedPromptFromPane capture failed: %s', err);
-      return null;
+    const recovery = await this.paneRecovery.recoverInterruptedPrompt({
+      tabId,
+      entry,
+      silent: opts.silent,
     });
-    if (!content) return { recovered: false, reason: 'capture-failed' };
-    if (!hasCodexInterruptedPrompt(content)) return { recovered: false, reason: 'not-interrupted-prompt' };
+    if (!recovery.recovered) return recovery;
 
-    const now = Date.now();
-    const seq = (entry.eventSeq ?? 0) + 1;
-    entry.eventSeq = seq;
-    entry.lastEvent = { name: 'interrupt', at: now, seq };
-    entry.lastInterruptTs = now;
-    entry.currentAction = null;
+    entry.eventSeq = recovery.lastEvent.seq;
+    entry.lastEvent = recovery.lastEvent;
+    if (recovery.lastInterruptTs) entry.lastInterruptTs = recovery.lastInterruptTs;
+    if (recovery.clearCurrentAction) entry.currentAction = null;
 
-    hookLog.debug({ tabId, seq }, 'recover busy→idle from Codex interrupted prompt');
-    this.applyCliState(tabId, entry, 'idle', {
-      silent: opts.silent ?? true,
-      skipHistory: true,
-    });
+    hookLog.debug({ tabId, seq: recovery.log.seq }, 'recover busy→idle from Codex interrupted prompt');
+    this.applyCliState(tabId, entry, recovery.nextState, recovery.applyOptions);
     this.persistToLayout(entry);
     this.broadcastUpdate(tabId, entry);
     return { recovered: true };
@@ -1316,44 +1068,47 @@ export class StatusManager {
       return;
     }
 
-    if (event === 'pre-compact' || event === 'post-compact') {
+    const provider = getProviderByPanelType(entry.panelType);
+    const hookEvent = evaluateStatusHookEvent({
+      event,
+      notificationType,
+      entry,
+      providerId: provider?.id ?? null,
+      statusBehavior: provider?.statusBehavior ?? null,
+    });
+
+    if (hookEvent.kind === 'compact') {
       hookLog.debug({ tabId, event }, 'compact hook');
-      this.setCompacting(tabId, entry, event === 'pre-compact' ? Date.now() : null);
+      this.setCompacting(tabId, entry, hookEvent.compactingSince);
       return;
     }
 
-    if (event !== 'session-start' && event !== 'prompt-submit' && event !== 'notification' && event !== 'stop' && event !== 'interrupt') {
+    if (hookEvent.kind === 'ignore' && hookEvent.reason === 'unknown-event') {
       hookLog.debug({ tabId, event, notificationType }, 'unknown event, ignoring');
       return;
     }
-    const eventName = event as TEventName;
-    const provider = getProviderByPanelType(entry.panelType);
 
-    if (!shouldProcessHookEvent(eventName, notificationType)) {
-      hookLog.debug({ tabId, event: eventName, notificationType }, 'non-input notification, skipping state transition');
+    if (hookEvent.kind === 'ignore') {
+      hookLog.debug({ tabId, event: hookEvent.eventName, notificationType }, 'non-input notification, skipping state transition');
       return;
     }
 
-    const now = Date.now();
-    const seq = (entry.eventSeq ?? 0) + 1;
+    const { eventName, lastEvent, decision, prevState, newState } = hookEvent;
+    const seq = lastEvent.seq;
     entry.eventSeq = seq;
-    entry.lastEvent = { name: eventName, at: now, seq };
-    this.broadcast({ type: 'status:hook-event', tabId, event: entry.lastEvent });
-
-    const prevState = entry.cliState;
-    const decision = reduceHookState({
-      currentState: prevState,
-      eventName,
-      providerId: provider?.id ?? null,
+    entry.lastEvent = lastEvent;
+    this.broadcast({
+      type: 'status:hook-event',
+      tabId,
+      sessionName: tmuxSession,
+      event: entry.lastEvent,
     });
 
-    if (decision.deferCodexStop) {
+    if (hookEvent.shouldRecheckCodexStop) {
       hookLog.debug({ tabId, event: eventName, notificationType, seq, prevState }, 'queued Codex stop JSONL verification');
       this.recheckCodexStop(tabId, tmuxSession);
       return;
     }
-
-    const newState = decision.nextState;
 
     hookLog.debug(
       { tabId, event: eventName, notificationType, seq, prevState, newState, transition: decision.changed },
@@ -1366,58 +1121,50 @@ export class StatusManager {
       this.broadcastUpdate(tabId, entry);
     }
 
-    if ((newState === 'busy' || newState === 'needs-input') && !entry.jsonlPath) {
+    if (hookEvent.shouldResolveJsonl) {
       this.resolveAndWatchJsonl(tabId, tmuxSession).catch(() => {});
     }
 
-    if (eventName === 'stop' && entry.jsonlPath) {
-      const refreshSnippet = () => {
-        const provider = getProviderByPanelType(entry.panelType);
-        const check = provider
-          ? checkProviderJsonlIdle(provider, entry.jsonlPath!)
-          : checkJsonlIdle(entry.jsonlPath!);
-        check.then(({ currentAction, lastAssistantSnippet, reset }) => {
-          const { next, changed } = mergeStatusMetadata(entry, {
-            currentAction,
-            lastAssistantSnippet,
-            reset,
-          });
-          if (changed) {
-            entry.currentAction = next.currentAction;
-            entry.lastAssistantMessage = next.lastAssistantMessage;
-          }
-          const updated = changed;
-          if (updated) this.broadcastUpdate(tabId, entry);
-        }).catch(() => {});
-      };
-      refreshSnippet();
-      setTimeout(() => {
-        jsonlIdleCache.delete(entry.jsonlPath!);
-        refreshSnippet();
-      }, 500);
+    if (hookEvent.shouldRefreshStopSnippet && entry.jsonlPath) {
+      this.stopRecheckService.scheduleStopSnippetRefresh({ tabId, jsonlPath: entry.jsonlPath });
     }
   }
 
   private recheckCodexStop(tabId: string, tmuxSession: string): void {
-    setTimeout(() => {
-      const refresh = async () => {
-        let entry = this.tabs.get(tabId);
-        if (!entry) return;
+    this.stopRecheckService.scheduleCodexStopRecheck({ tabId, tmuxSession });
+  }
 
-        if (!entry.jsonlPath) {
-          await this.resolveAndWatchJsonl(tabId, tmuxSession);
-          entry = this.tabs.get(tabId);
-        }
+  private async recheckCodexStopNow(tabId: string, tmuxSession: string): Promise<void> {
+    let entry = this.tabs.get(tabId);
+    if (!entry) return;
 
-        if (!entry?.jsonlPath) return;
-        jsonlIdleCache.delete(entry.jsonlPath);
-        await this.onJsonlFileChange(tabId, entry.jsonlPath);
-      };
+    if (!entry.jsonlPath) {
+      await this.resolveAndWatchJsonl(tabId, tmuxSession);
+      entry = this.tabs.get(tabId);
+    }
 
-      refresh().catch((err) => {
-        hookLog.warn('Codex stop JSONL verification failed: %s', err);
-      });
-    }, CODEX_STOP_RECHECK_MS);
+    if (!entry?.jsonlPath) return;
+    jsonlIdleCache.delete(entry.jsonlPath);
+    await this.onJsonlFileChange(tabId, entry.jsonlPath);
+  }
+
+  private async refreshStopSnippet(tabId: string, jsonlPath: string): Promise<void> {
+    const entry = this.tabs.get(tabId);
+    if (!entry) return;
+
+    const provider = getProviderByPanelType(entry.panelType);
+    const check = provider
+      ? await checkProviderJsonlIdle(provider, jsonlPath, (data) => this.publishRateLimits(data))
+      : await checkJsonlIdle(jsonlPath);
+    const { next, changed } = mergeStatusMetadata(entry, {
+      currentAction: check.currentAction,
+      lastAssistantSnippet: check.lastAssistantSnippet,
+      reset: check.reset,
+    });
+    if (!changed) return;
+    entry.currentAction = next.currentAction;
+    entry.lastAssistantMessage = next.lastAssistantMessage;
+    this.broadcastUpdate(tabId, entry);
   }
 
   private setCompacting(tabId: string, entry: ITabStatusEntry, since: number | null): void {
@@ -1501,29 +1248,7 @@ export class StatusManager {
   }
 
   private broadcastUpdate(tabId: string, entry: ITabStatusEntry, exclude?: WebSocket): void {
-    const msg: IStatusUpdateMessage = {
-      type: 'status:update',
-      tabId,
-      cliState: entry.cliState,
-      workspaceId: entry.workspaceId,
-      tabName: entry.tabName,
-      currentProcess: entry.currentProcess,
-      paneTitle: entry.paneTitle,
-      panelType: entry.panelType,
-      terminalStatus: entry.terminalStatus,
-      listeningPorts: entry.listeningPorts,
-      agentSummary: entry.agentSummary,
-      lastUserMessage: entry.lastUserMessage,
-      lastAssistantMessage: entry.lastAssistantMessage,
-      currentAction: entry.currentAction,
-      readyForReviewAt: entry.readyForReviewAt,
-      busySince: entry.busySince,
-      dismissedAt: entry.dismissedAt,
-      agentSessionId: entry.agentSessionId,
-      compactingSince: entry.compactingSince,
-      lastEvent: entry.lastEvent,
-      eventSeq: entry.eventSeq,
-    };
+    const msg = buildStatusUpdateMessage(tabId, entry);
     this.broadcast(msg, exclude);
     forwardBridgeTraceStatusUpdate(msg).catch((err) => {
       log.debug('bridge trace forward failed: %s', err instanceof Error ? err.message : String(err));
@@ -1531,14 +1256,7 @@ export class StatusManager {
   }
 
   private broadcastRemove(tabId: string): void {
-    const msg: IStatusUpdateMessage = {
-      type: 'status:update',
-      tabId,
-      cliState: null,
-      workspaceId: '',
-      tabName: '',
-    };
-    this.broadcast(msg);
+    this.broadcast(buildStatusRemoveMessage(tabId));
   }
 
   private static readonly BACKPRESSURE_LIMIT = 1024 * 1024;
@@ -1610,13 +1328,17 @@ export class StatusManager {
       jsonlPath,
     });
 
-    if ((entry.cliState === 'busy' || entry.cliState === 'needs-input') && !this.jsonlWatchers.has(tabId)) {
+    if ((entry.cliState === 'busy' || entry.cliState === 'needs-input') && !this.jsonlWatchService.has(tabId)) {
       this.startJsonlWatch(tabId, jsonlPath);
     }
     const provider = getProviderByPanelType(entry.panelType);
     if (provider?.id === 'codex') {
       this.startJsonlWatch(tabId, jsonlPath);
-      const metadata = await checkProviderJsonlIdle(provider, jsonlPath);
+      const metadata = await checkProviderJsonlIdle(
+        provider,
+        jsonlPath,
+        (data) => this.publishRateLimits(data),
+      );
       this.mergeJsonlMetadata(entry, metadata);
       this.reconcileCodexState(tabId, entry, { ...metadata, jsonlPath, running: true });
       this.broadcastUpdate(tabId, entry);
@@ -1624,36 +1346,11 @@ export class StatusManager {
   }
 
   private startJsonlWatch(tabId: string, jsonlPath: string): void {
-    const existing = this.jsonlWatchers.get(tabId);
-    if (existing?.jsonlPath === jsonlPath) return;
-    if (existing) this.stopJsonlWatch(tabId);
-
-    log.debug('startJsonlWatch tabId=%s path=%s', tabId, jsonlPath);
-    try {
-      const watcher = watch(jsonlPath, () => {
-        const w = this.jsonlWatchers.get(tabId);
-        if (!w) return;
-        if (w.debounceTimer) clearTimeout(w.debounceTimer);
-        w.debounceTimer = setTimeout(() => {
-          this.onJsonlFileChange(tabId, jsonlPath).catch(() => {});
-        }, JSONL_WATCH_DEBOUNCE_MS);
-      });
-      watcher.on('error', () => {
-        this.stopJsonlWatch(tabId);
-      });
-      this.jsonlWatchers.set(tabId, { watcher, jsonlPath, debounceTimer: null });
-    } catch {
-      // file may not exist yet
-    }
+    this.jsonlWatchService.start(tabId, jsonlPath);
   }
 
   private stopJsonlWatch(tabId: string): void {
-    const w = this.jsonlWatchers.get(tabId);
-    if (!w) return;
-    log.debug('stopJsonlWatch tabId=%s', tabId);
-    if (w.debounceTimer) clearTimeout(w.debounceTimer);
-    try { w.watcher.close(); } catch { /* noop */ }
-    this.jsonlWatchers.delete(tabId);
+    this.jsonlWatchService.stop(tabId);
   }
 
   private async onJsonlFileChange(tabId: string, jsonlPath: string): Promise<void> {
@@ -1664,24 +1361,23 @@ export class StatusManager {
     }
     const provider = getProviderByPanelType(entry.panelType);
     const isCodex = provider?.id === 'codex';
-    const isActive = entry.cliState === 'busy' || entry.cliState === 'needs-input' || entry.cliState === 'unknown' || isCodex;
-    if (!isActive && entry.cliState !== 'ready-for-review') {
+    if (!shouldKeepStatusJsonlWatch({ cliState: entry.cliState, providerId: provider?.id ?? null })) {
       this.stopJsonlWatch(tabId);
       return;
     }
 
     const check = provider
-      ? await checkProviderJsonlIdle(provider, jsonlPath)
+      ? await checkProviderJsonlIdle(provider, jsonlPath, (data) => this.publishRateLimits(data))
       : await checkJsonlIdle(jsonlPath);
     const { interrupted, lastEntryTs } = check;
 
-    if (
-      interrupted
-      && entry.cliState === 'busy'
-      && lastEntryTs !== null
-      && lastEntryTs > (entry.lastInterruptTs ?? 0)
-      && lastEntryTs > (entry.lastEvent?.at ?? 0)
-    ) {
+    if (lastEntryTs !== null && shouldEmitSyntheticJsonlInterrupt({
+      currentState: entry.cliState,
+      interrupted,
+      lastEntryTs,
+      lastInterruptTs: entry.lastInterruptTs,
+      lastEventAt: entry.lastEvent?.at,
+    })) {
       entry.lastInterruptTs = lastEntryTs;
       hookLog.debug({ tabId, lastEntryTs }, 'synthetic interrupt from JSONL');
       this.updateTabFromHook(entry.tmuxSession, 'interrupt');
@@ -1701,7 +1397,10 @@ export class StatusManager {
         const interruptedRecovery = await this.recoverInterruptedPromptFromPane(tabId);
         if (interruptedRecovery.recovered) {
           changed = false;
-        } else if (entry.cliState === 'busy' && check.currentAction?.toolName) {
+        } else if (shouldScheduleDelayedJsonlInputRecovery({
+          currentState: entry.cliState,
+          currentAction: check.currentAction,
+        })) {
           setTimeout(() => {
             this.recoverPendingInputFromPane(tabId).catch((err) => {
               hookLog.debug({ tabId, err }, 'delayed permission prompt recovery failed');
@@ -1719,9 +1418,7 @@ export class StatusManager {
   shutdown(): void {
     this.stopPolling();
     this.rateLimitsWatcher?.stop();
-    for (const tabId of [...this.jsonlWatchers.keys()]) {
-      this.stopJsonlWatch(tabId);
-    }
+    this.jsonlWatchService.stopAll();
     for (const ws of this.clients) {
       if (ws.readyState === WebSocket.OPEN) {
         ws.close(1001, 'Server shutting down');
@@ -1741,62 +1438,28 @@ export class StatusManager {
   }
 
   private async sendWebPush(tabId: string, entry: ITabStatusEntry, pushType: 'review' | 'needs-input'): Promise<void> {
-    const title = pushType === 'needs-input' ? 'Input Required' : 'Task Complete';
-    const body = entry.lastUserMessage?.slice(0, 100) || entry.tabName || tabId;
     const ws = (await getWorkspaces()).workspaces.find((w) => w.id === entry.workspaceId);
     const config = await getConfig();
-    const approvalMetadata = pushType === 'needs-input'
-      ? {
-        approvalKind: 'unknown',
-        promptType: 'unknown',
-        riskLevel: 'unknown',
-      }
-      : {};
-    const payload = {
-      title,
-      body,
-      silent: pushType === 'review' && config.soundOnCompleteEnabled === false,
+    const payload = buildStatusWebPushPayload({
       tabId,
-      workspaceId: entry.workspaceId,
-      agentSessionId: entry.agentSessionId ?? null,
+      entry,
+      pushType,
       workspaceName: ws?.name ?? '',
       workspaceDir: ws?.directories[0] ?? null,
-      ...approvalMetadata,
-    };
+      soundOnCompleteEnabled: config.soundOnCompleteEnabled,
+    });
 
     const anyDeviceVisible = isAnyDeviceVisible();
-    if (this.shouldUseRuntimeStatusDefault()) {
-      try {
-        const result = await getRuntimeSupervisor().sendStatusWebPush({ anyDeviceVisible, payload });
-        recordPerfCounter('runtime_v2.status_web_push.sent', result.sent);
-        recordPerfCounter('runtime_v2.status_web_push.failed', result.failed);
-        recordPerfCounter('runtime_v2.status_web_push.removed', result.removed);
-        if (result.skippedVisible) recordPerfCounter('runtime_v2.status_web_push.skipped_visible');
-        return;
-      } catch (err) {
-        recordPerfCounter('runtime_v2.status_web_push.fallback');
-        log.warn('runtime v2 Web Push send failed, falling back: %s', err instanceof Error ? err.message : String(err));
-      }
-    }
-
-    if (anyDeviceVisible) return;
-    const subs = await getSubscriptions();
-    if (subs.length === 0) return;
-
-    const keys = await getVAPIDKeys();
-    webpush.setVapidDetails('mailto:noreply@codexmux.app', keys.publicKey, keys.privateKey);
-    const payloadText = JSON.stringify(payload);
-    for (const sub of subs) {
-      try {
-        await webpush.sendNotification(sub, payloadText);
-      } catch (err: unknown) {
-        const status = (err as { statusCode?: number }).statusCode;
-        if (status === 410 || status === 404) {
-          await removeSubscription(sub.endpoint);
-        }
-        log.warn('Web push send error: %s', status);
-      }
-    }
+    const result = await deliverStatusWebPush({
+      anyDeviceVisible,
+      payload,
+      useRuntimeDefault: this.shouldUseRuntimeStatusDefault(),
+      sendRuntime: (input) => getRuntimeSupervisor().sendStatusWebPush(input),
+      sendLegacy: (input) => this.webPushActions.send(input),
+      recordCounter: recordPerfCounter,
+      warn: (message) => log.warn(message),
+    });
+    if (result.failed > 0) log.warn('Web push send failed: %s', result.failed);
   }
 }
 

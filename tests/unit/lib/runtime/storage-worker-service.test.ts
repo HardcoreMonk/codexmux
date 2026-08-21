@@ -2,22 +2,32 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createRuntimeCommand } from '@/lib/runtime/ipc';
+import { createRuntimeCommand, runtimeCommandRegistry } from '@/lib/runtime/ipc';
 import { createStorageWorkerService } from '@/lib/runtime/storage/worker-service';
 
 describe('storage worker service', () => {
   let dir: string;
+  const services: Array<ReturnType<typeof createStorageWorkerService>> = [];
+
+  const createTestStorageWorkerService = (...args: Parameters<typeof createStorageWorkerService>) => {
+    const service = createStorageWorkerService(...args);
+    services.push(service);
+    return service;
+  };
 
   beforeEach(async () => {
     dir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-storage-worker-'));
   });
 
   afterEach(async () => {
+    for (const service of services.splice(0)) {
+      service.close();
+    }
     await fs.rm(dir, { recursive: true, force: true });
   });
 
   it('handles health and workspace creation commands', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
 
     const health = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
@@ -40,8 +50,85 @@ describe('storage worker service', () => {
     expect(created.payload).toEqual(expect.objectContaining({ id: expect.stringMatching(/^ws-/) }));
   });
 
+  it('owns session annotation and saved-filter mutations', async () => {
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const update = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.update-session-annotation',
+      payload: {
+        sessionId: 'session-1',
+        pinned: true,
+        tags: ['Review'],
+        expectedVersion: 0,
+        sessionExists: true,
+      },
+    }));
+    const annotations = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.list-session-annotations',
+      payload: { sessionIds: ['session-1'] },
+    }));
+    const filter = {
+      id: 'filter-1',
+      name: 'Review',
+      query: { query: 'worker', limit: 50 },
+      createdAt: '2026-08-21T09:00:00.000Z',
+      updatedAt: '2026-08-21T09:00:00.000Z',
+    };
+    const saved = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.upsert-saved-session-filter',
+      payload: filter,
+    }));
+    const listed = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.list-saved-session-filters',
+      payload: {},
+    }));
+
+    expect(update).toMatchObject({ ok: true, payload: { sessionId: 'session-1', tags: ['review'], version: 1 } });
+    expect(annotations).toMatchObject({ ok: true, payload: [{ sessionId: 'session-1', pinned: true }] });
+    expect(saved).toMatchObject({ ok: true, payload: { id: 'filter-1' } });
+    expect(listed).toMatchObject({ ok: true, payload: [{ id: 'filter-1' }] });
+  });
+
+  it('owns approved root and Managed Project state mutations', async () => {
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const rootInput = {
+      id: 'root-1', label: 'Projects', canonicalPath: '/srv/projects', approvedAt: '2026-08-21T10:00:00.000Z',
+    };
+    const root = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor', target: 'storage', type: 'storage.register-approved-project-root', payload: rootInput,
+    }));
+    const project = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor', target: 'storage', type: 'storage.register-managed-project',
+      payload: {
+        approvedRootId: 'root-1', title: 'Demo', relativePath: 'demo',
+        canonicalPath: '/srv/projects/demo', source: 'manual',
+      },
+    }));
+    const listed = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor', target: 'storage', type: 'storage.list-managed-projects', payload: {},
+    }));
+
+    expect(root).toMatchObject({ ok: true, payload: { id: 'root-1', label: 'Projects' } });
+    expect(project).toMatchObject({ ok: true, payload: { id: expect.stringMatching(/^project-/), title: 'Demo' } });
+    expect(listed).toMatchObject({ ok: true, payload: [{ title: 'Demo', relativePath: 'demo' }] });
+  });
+
+  it('does not register project filesystem write commands', () => {
+    const commandNames = Object.keys(runtimeCommandRegistry);
+    expect(commandNames).not.toContain('storage.write-project-file');
+    expect(commandNames).not.toContain('governance.write-project-file');
+    expect(commandNames.some((name) => /^governance\.(?:write|delete|move|scaffold|sync)/.test(name))).toBe(false);
+  });
+
   it('returns structured errors for invalid worker commands', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
     const unknown = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
       target: 'storage',
@@ -77,7 +164,7 @@ describe('storage worker service', () => {
   });
 
   it('handles pending terminal tab intent lifecycle commands', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
     const created = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
       target: 'storage',
@@ -140,7 +227,7 @@ describe('storage worker service', () => {
   });
 
   it('handles legacy workspace pane mirror commands', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
 
     const ensured = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
@@ -179,7 +266,7 @@ describe('storage worker service', () => {
   });
 
   it('rejects terminal tab intents for panes outside the supplied workspace', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
     const created = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
       target: 'storage',
@@ -216,7 +303,7 @@ describe('storage worker service', () => {
   });
 
   it('deletes workspaces and returns cleanup sessions from the delete command', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
     const created = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
       target: 'storage',
@@ -251,7 +338,7 @@ describe('storage worker service', () => {
   });
 
   it('deletes terminal tabs and returns cleanup sessions from the delete command', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
     const created = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
       target: 'storage',
@@ -302,7 +389,7 @@ describe('storage worker service', () => {
   });
 
   it('returns only ready terminal tabs for attach authorization', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
     const created = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
       target: 'storage',
@@ -350,7 +437,7 @@ describe('storage worker service', () => {
   });
 
   it('lists ready terminal tabs and marks stale ready tabs failed', async () => {
-    const service = createStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
+    const service = createTestStorageWorkerService({ dbPath: path.join(dir, 'runtime-v2', 'state.db') });
     const created = await service.handleCommand(createRuntimeCommand({
       source: 'supervisor',
       target: 'storage',

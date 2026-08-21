@@ -12,10 +12,13 @@ export const parseRuntimeStorageV2Mode = (value: unknown): TRuntimeStorageV2Mode
   return 'off';
 };
 
-export const resolveRuntimeStorageV2Mode = ({
-  runtimeV2Enabled = process.env.CODEXMUX_RUNTIME_V2 === '1',
-  storageMode = process.env.CODEXMUX_RUNTIME_STORAGE_V2_MODE,
-}: IRuntimeStorageV2ModeOptions = {}): TRuntimeStorageV2Mode => {
+export const resolveRuntimeStorageV2Mode = (
+  options: IRuntimeStorageV2ModeOptions = {},
+): TRuntimeStorageV2Mode => {
+  const runtimeV2Enabled = options.runtimeV2Enabled ?? process.env.CODEXMUX_RUNTIME_V2 === '1';
+  const storageMode = Object.hasOwn(options, 'storageMode')
+    ? options.storageMode
+    : process.env.CODEXMUX_RUNTIME_STORAGE_V2_MODE;
   if (storageMode === undefined && runtimeV2Enabled) return defaultRuntimeStorageV2Mode;
   return parseRuntimeStorageV2Mode(storageMode);
 };

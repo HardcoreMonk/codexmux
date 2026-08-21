@@ -8,6 +8,7 @@ import {
   collectAgentJsonlFilePaths,
   collectAgentJsonlFiles,
   extractSessionIdFromAgentJsonlPath,
+  filterAgentJsonlFilesByDates,
   type IAgentJsonlFile,
 } from './agent-jsonl-files';
 import { getPerfNow, recordPerfCounter, recordPerfDuration } from '@/lib/perf-metrics';
@@ -413,7 +414,10 @@ const findFirstDate = async (): Promise<string | null> => {
 const computeMissingDays = async (targetDates: Set<string>): Promise<Map<string, IStatsDailyData>> => {
   if (targetDates.size === 0) return new Map();
 
-  const files = await collectAgentJsonlFiles();
+  const allFiles = await collectAgentJsonlFiles();
+  const files = filterAgentJsonlFilesByDates(allFiles, targetDates);
+  recordPerfCounter('stats.cache.files_seen', allFiles.length);
+  recordPerfCounter('stats.cache.files_selected', files.length);
   const tasks = files.map((f) => () => parseDaysFromFile(f, targetDates));
   const allResults = await runWithConcurrency(tasks, CONCURRENCY_LIMIT);
 

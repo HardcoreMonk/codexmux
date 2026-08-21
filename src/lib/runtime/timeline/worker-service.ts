@@ -13,10 +13,14 @@ import { isAllowedJsonlPath } from '@/lib/path-validation';
 import { getProviderByPanelType, type IAgentProvider } from '@/lib/providers';
 import { normalizePanelType } from '@/lib/panel-type';
 import { listSessionPage } from '@/lib/session-list';
+import { findSessionRelationshipByJsonlPath } from '@/lib/session-index';
 import { countTimelineMessages, emptyMessageCounts, type IMessageCountResult } from '@/lib/timeline-message-counts';
 import type { ISessionWatcher } from '@/lib/session-detection';
 import type {
   IRuntimeTimelineEntriesBeforeInput,
+  IRuntimeSessionCatalogHealth,
+  IRuntimeSessionCatalogReadEntriesInput,
+  IRuntimeSessionCatalogRebuildResult,
   IRuntimeTimelineLiveSubscribePayload,
   IRuntimeTimelineLiveSubscribeResult,
   IRuntimeTimelineLiveUnsubscribeResult,
@@ -25,6 +29,8 @@ import type {
   IRuntimeTimelineSessionWatchUnsubscribeResult,
   IRuntimeTimelineSessionListInput,
   TRuntimeTimelineEntriesBeforeResult,
+  TRuntimeSessionCatalogSearchInput,
+  TRuntimeSessionCatalogSearchResult,
 } from '@/lib/runtime/contracts';
 import type { IInitMeta, ISessionInfo, ITimelineEntry, ITimelineInitMessage } from '@/types/timeline';
 
@@ -37,6 +43,16 @@ interface IMessageCountCacheEntry {
 interface ICreateTimelineWorkerServiceOptions {
   sendEvent?: (event: IRuntimeEvent) => void;
   getProvider?: (panelType: string) => IAgentProvider | null | undefined;
+  catalog?: ITimelineCatalogService;
+}
+
+export interface ITimelineCatalogService {
+  health(): IRuntimeSessionCatalogHealth | Promise<IRuntimeSessionCatalogHealth>;
+  search(input: TRuntimeSessionCatalogSearchInput): TRuntimeSessionCatalogSearchResult | Promise<TRuntimeSessionCatalogSearchResult>;
+  readEntries(input: IRuntimeSessionCatalogReadEntriesInput): Promise<TRuntimeTimelineEntriesBeforeResult>;
+  rebuild(): Promise<IRuntimeSessionCatalogRebuildResult>;
+  observeFile(jsonlPath: string): Promise<void>;
+  close(): void;
 }
 
 interface ILiveSubscriber {
@@ -157,10 +173,14 @@ export const createTimelineWorkerService = (options: ICreateTimelineWorkerServic
 
   const listSessions = async (input: IRuntimeTimelineSessionListInput) => {
     const panelType = normalizePanelType(input.panelType) ?? 'codex';
-    return listSessionPage(input.tmuxSession, input.cwd, panelType, {
+    const page = await listSessionPage(input.tmuxSession, input.cwd, panelType, {
       offset: input.offset,
       limit: input.limit,
     });
+    for (const session of page.sessions) {
+      if (session.jsonlPath) void options.catalog?.observeFile(session.jsonlPath);
+    }
+    return page;
   };
 
   const readEntriesBefore = async (
@@ -273,6 +293,7 @@ export const createTimelineWorkerService = (options: ICreateTimelineWorkerServic
           });
         }
       }
+      void options.catalog?.observeFile(watcher.jsonlPath);
     } catch (err) {
       emitLiveError(watcher, 'timeline-live-parse-failed', err instanceof Error ? err.message : String(err));
     } finally {
@@ -372,6 +393,7 @@ export const createTimelineWorkerService = (options: ICreateTimelineWorkerServic
       startLiveWatch(watcher);
     }
 
+    const relationship = await findSessionRelationshipByJsonlPath(input.jsonlPath).catch(() => null);
     const init: ITimelineInitMessage = {
       type: 'timeline:init',
       entries: result.entries,
@@ -382,6 +404,7 @@ export const createTimelineWorkerService = (options: ICreateTimelineWorkerServic
       jsonlPath: input.jsonlPath,
       summary: result.summary,
       meta: computeInitMeta(result.entries, result.fileSize, result.customTitle),
+      ...(relationship ? { relationship } : {}),
     };
 
     return ok(command, {
@@ -541,6 +564,34 @@ export const createTimelineWorkerService = (options: ICreateTimelineWorkerServic
           const input = parseRuntimeCommandPayload('timeline.session-watch-unsubscribe', command.payload);
           return unsubscribeSessionWatch(command, input.subscriberId);
         }
+        if (command.type === 'timeline.catalog-health') {
+          parseRuntimeCommandPayload('timeline.catalog-health', command.payload);
+          return ok(command, options.catalog
+            ? await options.catalog.health()
+            : {
+              state: 'disabled',
+              queueLag: 0,
+              cursorAgeMs: null,
+              rebuildState: 'idle',
+              indexedSessions: 0,
+              lastIndexedAt: null,
+            });
+        }
+        if (command.type === 'timeline.catalog-search') {
+          if (!options.catalog) return fail(command, 'catalog-disabled', 'Session Catalog is disabled.');
+          const input = parseRuntimeCommandPayload('timeline.catalog-search', command.payload);
+          return ok(command, await options.catalog.search(input));
+        }
+        if (command.type === 'timeline.catalog-read-entries') {
+          if (!options.catalog) return fail(command, 'catalog-disabled', 'Session Catalog is disabled.');
+          const input = parseRuntimeCommandPayload('timeline.catalog-read-entries', command.payload);
+          return ok(command, await options.catalog.readEntries(input));
+        }
+        if (command.type === 'timeline.catalog-rebuild') {
+          if (!options.catalog) return ok(command, { started: false, state: 'disabled' as const });
+          parseRuntimeCommandPayload('timeline.catalog-rebuild', command.payload);
+          return ok(command, await options.catalog.rebuild());
+        }
         return invalidCommand(command, {
           code: 'invalid-worker-command',
           message: `Unsupported timeline command: ${command.type}`,
@@ -567,6 +618,7 @@ export const createTimelineWorkerService = (options: ICreateTimelineWorkerServic
         removeSessionWatch(watchKey);
       }
       sessionWatchSubscribers.clear();
+      options.catalog?.close();
     },
   };
 };

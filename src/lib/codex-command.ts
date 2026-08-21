@@ -3,8 +3,6 @@ const THREAD_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const shellQuote = (value: string): string =>
   `'${value.replace(/'/g, `'\\''`)}'`;
 
-export const CODEXMUX_CODEX_HOOKS_CONFIG = 'hooks={path="~/.codexmux/hooks.json"}';
-
 export const isValidCodexThreadId = (id: unknown): id is string =>
   typeof id === 'string' && THREAD_ID_RE.test(id);
 
@@ -20,6 +18,7 @@ export interface ICodexCommandOptions {
   sandbox?: TCodexSandboxMode;
   approvalPolicy?: TCodexApprovalPolicy;
   search?: boolean;
+  hookConfigs?: string[];
 }
 
 const buildCodexOptions = (options: ICodexCommandOptions = {}): string[] => {
@@ -32,10 +31,11 @@ const buildCodexOptions = (options: ICodexCommandOptions = {}): string[] => {
   return parts;
 };
 
-const buildCodexGlobalOptions = (): string[] => ['-c', shellQuote(CODEXMUX_CODEX_HOOKS_CONFIG)];
+const buildCodexGlobalOptions = (options: ICodexCommandOptions): string[] =>
+  (options.hookConfigs ?? []).flatMap((config) => ['-c', shellQuote(config)]);
 
 export const buildCodexLaunchCommand = (options: ICodexCommandOptions = {}): string => {
-  const parts = ['codex', ...buildCodexGlobalOptions(), ...buildCodexOptions(options)];
+  const parts = ['codex', ...buildCodexGlobalOptions(options), ...buildCodexOptions(options)];
   return parts.join(' ');
 };
 
@@ -46,6 +46,6 @@ export const buildCodexResumeCommand = (
   if (!isValidCodexThreadId(threadId)) {
     throw new Error(`Invalid Codex thread ID format: ${threadId}`);
   }
-  const parts = ['codex', ...buildCodexGlobalOptions(), 'resume', threadId, ...buildCodexOptions(options)];
+  const parts = ['codex', ...buildCodexGlobalOptions(options), 'resume', threadId, ...buildCodexOptions(options)];
   return parts.join(' ');
 };

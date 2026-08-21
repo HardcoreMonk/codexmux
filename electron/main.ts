@@ -1,10 +1,26 @@
 import { capturePristineEnv } from './pristine-env';
 import { applyResolvedShellEnv } from './shell-env';
+import { applyElectronBootstrapEnv, buildFileImportSpecifier, buildPackagedNodePath } from './runtime-env';
+import {
+  appendUpdaterSmokeStatus,
+  buildWindowsUpdaterInstallArgs,
+  buildWindowsUpdaterSafeInstallerPath,
+  readUpdaterSmokeConfig,
+} from './updater-smoke';
+import { createWindowsUpdaterHttpExecutor } from './windows-updater-http';
+import {
+  getAppServerLabel,
+  normalizeAppServerConfig,
+  normalizeAppServerUrl,
+  resolveAppServerUrl,
+  type IAppServerConfig,
+} from './app-server-protocol';
 import { app, BrowserWindow, shell, Menu, ipcMain, session, screen, Notification, nativeTheme, dialog } from 'electron';
 import { autoUpdater, type UpdateInfo, type ProgressInfo } from 'electron-updater';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { spawn } from 'child_process';
 import { pickTaglines } from './splash-taglines';
 import { initBrowserBridge } from './browser-bridge';
 
@@ -12,26 +28,10 @@ const isDev = process.env.NODE_ENV === 'development';
 const devUrl = process.env.ELECTRON_DEV_URL;
 
 const fixEnv = () => {
-  const additions = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'];
-  const current = process.env.PATH || '';
-  const parts = current.split(':');
-  for (const dir of additions) {
-    if (!parts.includes(dir)) parts.unshift(dir);
-  }
-  process.env.PATH = parts.join(':');
-
-  // Finder/Dock에서 실행 시 locale 환경변수가 없어 Nerd Font 글리프가 깨짐
-  if (!process.env.LANG) {
-    process.env.LANG = 'en_US.UTF-8';
-  }
+  applyElectronBootstrapEnv(process.env, process.platform);
 };
 
 // --- Server Config (~/.codexmux/config.json) ---
-
-interface IServerConfig {
-  mode: 'local' | 'remote';
-  remoteUrl?: string;
-}
 
 interface IWindowState {
   x?: number;
@@ -44,7 +44,7 @@ interface IWindowState {
 }
 
 interface IAppConfig {
-  server?: IServerConfig;
+  server?: IAppServerConfig;
   windowState?: IWindowState;
   appTheme?: string;
 }
@@ -71,15 +71,12 @@ const writeAppConfig = (config: IAppConfig) => {
   }
 };
 
-const readServerConfig = (): IServerConfig => {
+const readServerConfig = (): IAppServerConfig => {
   const cfg = readAppConfig();
-  if (cfg.server?.mode === 'remote' && cfg.server?.remoteUrl) {
-    return { mode: 'remote', remoteUrl: cfg.server.remoteUrl };
-  }
-  return { mode: 'local' };
+  return normalizeAppServerConfig(cfg.server);
 };
 
-const writeServerConfig = (server: IServerConfig) => {
+const writeServerConfig = (server: IAppServerConfig) => {
   const cfg = readAppConfig();
   cfg.server = server;
   writeAppConfig(cfg);
@@ -221,7 +218,7 @@ const windows = new Set<BrowserWindow>();
 let lastFocusedWindow: BrowserWindow | null = null;
 let serverShutdown: (() => Promise<void>) | null = null;
 let isQuitting = false;
-let serverConfig: IServerConfig = { mode: 'local' };
+let serverConfig: IAppServerConfig = { mode: 'local' };
 let localPort: number | null = null;
 let cachedStart: ((opts: { port: number }) => Promise<{ port: number; shutdown: () => Promise<void> }>) | null = null;
 
@@ -239,25 +236,29 @@ const resolveCurrentUrl = (): string | null => {
   const primary = getPrimaryWindow();
   const url = primary?.webContents.getURL();
   if (url && url !== 'about:blank' && !url.startsWith('data:')) return url;
-  if (serverConfig.mode === 'remote' && serverConfig.remoteUrl) return serverConfig.remoteUrl;
-  if (localPort) return `http://localhost:${localPort}`;
-  return null;
+  return resolveAppServerUrl(serverConfig, localPort);
 };
 
 // --- Auto Updater ---
 
 const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const FIRST_CHECK_DELAY_MS = 3000;
+const UPDATER_SMOKE_FIRST_CHECK_DELAY_MS = 500;
 
 let updaterInitialized = false;
 let updateCheckTimer: ReturnType<typeof setInterval> | null = null;
 let pendingUpdateVersion: string | null = null;
 let isUpdateDialogOpen = false;
+const updaterSmokeConfig = readUpdaterSmokeConfig();
 
 const formatMsg = (template: string, values: Record<string, string>): string =>
   template.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? '');
 
-const canRunUpdater = (): boolean => !isDev && !devUrl && app.isPackaged;
+const canRunUpdater = (): boolean =>
+  process.env.CODEXMUX_ELECTRON_UPDATER_DISABLED !== '1'
+  && !isDev
+  && !devUrl
+  && app.isPackaged;
 
 const showUpdateDialog = (options: Electron.MessageBoxOptions) => {
   const primary = getPrimaryWindow();
@@ -278,16 +279,106 @@ const runExclusiveDialog = async (fn: () => Promise<void>) => {
   }
 };
 
+const quitAndInstallUpdate = ({
+  info,
+  isSilent,
+  isForceRunAfter,
+}: {
+  info: UpdateInfo;
+  isSilent: boolean;
+  isForceRunAfter: boolean;
+}): boolean => {
+  const downloadedFile = (info as UpdateInfo & { downloadedFile?: string }).downloadedFile;
+  if (process.platform !== 'win32' || !downloadedFile) {
+    autoUpdater.quitAndInstall(isSilent, isForceRunAfter);
+    return true;
+  }
+
+  try {
+    const installerPath = buildWindowsUpdaterSafeInstallerPath({
+      downloadedFile,
+      tempDir: os.tmpdir(),
+      nonce: `${process.pid}-${Date.now()}`,
+    });
+    fs.mkdirSync(path.dirname(installerPath), { recursive: true });
+    fs.copyFileSync(downloadedFile, installerPath);
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'windows-copied-installer-launched', {
+      downloadedFile: installerPath,
+    });
+    const child = spawn(
+      installerPath,
+      buildWindowsUpdaterInstallArgs({
+        isSilent,
+        isForceRunAfter,
+        installDir: updaterSmokeConfig.installDir,
+      }),
+      { detached: true, stdio: 'ignore' },
+    );
+    child.unref();
+    app.quit();
+    return true;
+  } catch (err) {
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'error', { error: err });
+    console.error('[updater] failed to launch copied Windows installer:', err);
+    return false;
+  }
+};
+
+const configureWindowsUpdaterHttpExecutor = () => {
+  if (process.platform !== 'win32') return;
+  (autoUpdater as unknown as { httpExecutor?: ReturnType<typeof createWindowsUpdaterHttpExecutor> }).httpExecutor =
+    createWindowsUpdaterHttpExecutor();
+  appendUpdaterSmokeStatus(updaterSmokeConfig, 'powershell-http-executor-configured');
+};
+
 const setupAutoUpdater = () => {
   if (updaterInitialized || !canRunUpdater()) return;
   updaterInitialized = true;
+  configureWindowsUpdaterHttpExecutor();
+
+  if (updaterSmokeConfig.enabled) {
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'configured', {
+      feedProvider: updaterSmokeConfig.feedUrl ? 'generic' : 'github',
+      ...(updaterSmokeConfig.feedUrl ? { feedUrl: updaterSmokeConfig.feedUrl } : {}),
+    });
+  }
+
+  if (updaterSmokeConfig.feedUrl) {
+    autoUpdater.setFeedURL({ provider: 'generic', url: updaterSmokeConfig.feedUrl });
+  }
+  if (updaterSmokeConfig.disableDifferentialDownload) {
+    autoUpdater.disableDifferentialDownload = true;
+  }
+  if (updaterSmokeConfig.installDir) {
+    (autoUpdater as unknown as { installDirectory?: string }).installDirectory = updaterSmokeConfig.installDir;
+  }
 
   autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.autoInstallOnAppQuit = false;
+
+  autoUpdater.on('checking-for-update', () => {
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'checking-for-update');
+  });
+
+  autoUpdater.on('update-not-available', (info: UpdateInfo) => {
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'update-not-available', { version: info.version });
+  });
 
   autoUpdater.on('update-available', (info: UpdateInfo) => {
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'update-available', { version: info.version });
     if (pendingUpdateVersion === info.version) return;
     pendingUpdateVersion = info.version;
+
+    if (updaterSmokeConfig.autoDownload) {
+      appendUpdaterSmokeStatus(updaterSmokeConfig, 'download-started', { version: info.version });
+      getPrimaryWindow()?.setProgressBar(0.05);
+      autoUpdater.downloadUpdate().catch((err) => {
+        appendUpdaterSmokeStatus(updaterSmokeConfig, 'error', { error: err });
+        console.error('[updater] downloadUpdate failed:', err);
+      });
+      return;
+    }
+
     runExclusiveDialog(async () => {
       const m = mt();
       const result = await showUpdateDialog({
@@ -300,7 +391,9 @@ const setupAutoUpdater = () => {
       });
       if (result.response === 0) {
         getPrimaryWindow()?.setProgressBar(0.05);
+        appendUpdaterSmokeStatus(updaterSmokeConfig, 'download-started', { version: info.version });
         autoUpdater.downloadUpdate().catch((err) => {
+          appendUpdaterSmokeStatus(updaterSmokeConfig, 'error', { error: err });
           console.error('[updater] downloadUpdate failed:', err);
         });
       }
@@ -308,11 +401,28 @@ const setupAutoUpdater = () => {
   });
 
   autoUpdater.on('download-progress', (progress: ProgressInfo) => {
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'download-progress', { percent: progress.percent });
     getPrimaryWindow()?.setProgressBar(progress.percent / 100);
   });
 
   autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
     getPrimaryWindow()?.setProgressBar(-1);
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'update-downloaded', {
+      version: info.version,
+      downloadedFile: (info as UpdateInfo & { downloadedFile?: string }).downloadedFile,
+    });
+
+    if (updaterSmokeConfig.autoInstall) {
+      isQuitting = true;
+      setTimeout(() => {
+        appendUpdaterSmokeStatus(updaterSmokeConfig, 'process-exit-for-install', { version: info.version });
+        process.exit(0);
+      }, 5000);
+      appendUpdaterSmokeStatus(updaterSmokeConfig, 'quit-and-install-started', { version: info.version });
+      quitAndInstallUpdate({ info, isSilent: true, isForceRunAfter: false });
+      return;
+    }
+
     runExclusiveDialog(async () => {
       const m = mt();
       const result = await showUpdateDialog({
@@ -325,12 +435,14 @@ const setupAutoUpdater = () => {
       });
       if (result.response === 0) {
         isQuitting = true;
-        autoUpdater.quitAndInstall();
+        appendUpdaterSmokeStatus(updaterSmokeConfig, 'quit-and-install-started', { version: info.version });
+        quitAndInstallUpdate({ info, isSilent: false, isForceRunAfter: false });
       }
     });
   });
 
   autoUpdater.on('error', (err: Error) => {
+    appendUpdaterSmokeStatus(updaterSmokeConfig, 'error', { error: err });
     console.error('[updater]', err);
     pendingUpdateVersion = null;
     getPrimaryWindow()?.setProgressBar(-1);
@@ -396,9 +508,13 @@ const startLocalServer = async (): Promise<number> => {
     const appDir = process.env.__CMUX_APP_DIR!;
     const appDirUnpacked = process.env.__CMUX_APP_DIR_UNPACKED || appDir;
     const standaloneMods = path.join(appDir, '.next', 'standalone', 'node_modules');
-    process.env.NODE_PATH = [standaloneMods, process.env.NODE_PATH].filter(Boolean).join(':');
+    process.env.NODE_PATH = buildPackagedNodePath({
+      platform: process.platform,
+      standaloneModules: standaloneMods,
+      existingNodePath: process.env.NODE_PATH,
+    });
     require('module').Module._initPaths(); // eslint-disable-line @typescript-eslint/no-require-imports
-    const mod = await import(path.join(appDir, 'dist', 'server.js'));
+    const mod = await import(buildFileImportSpecifier(path.join(appDir, 'dist', 'server.js')));
     cachedStart = mod.start;
   }
   let result;
@@ -424,21 +540,7 @@ const stopLocalServer = async () => {
 // --- Menu ---
 
 const getServerLabel = (): string => {
-  if (serverConfig.mode === 'remote') return serverConfig.remoteUrl || '';
-  return localPort ? `localhost:${localPort}` : 'localhost';
-};
-
-const normalizeServerUrl = (raw: string): string | null => {
-  const value = raw.trim();
-  if (!value) return null;
-  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? value : `http://${value}`;
-  try {
-    const url = new URL(withScheme);
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
-    return url.toString().replace(/\/$/, '');
-  } catch {
-    return null;
-  }
+  return getAppServerLabel(serverConfig, localPort);
 };
 
 const updateMenu = () => {
@@ -519,7 +621,7 @@ const handleSwitchToRemote = async () => {
   const parent = getPrimaryWindow();
   if (!parent) return;
 
-  const url = normalizeServerUrl(await showServerPrompt(parent, serverConfig.remoteUrl) ?? '');
+  const url = normalizeAppServerUrl(await showServerPrompt(parent, serverConfig.remoteUrl) ?? '');
   if (!url) {
     updateMenu();
     return;
@@ -767,7 +869,7 @@ const bootstrap = async () => {
     loadSplash(win);
     await shellEnvReady;
     const port = await startLocalServer();
-    win.loadURL(`http://localhost:${port}`);
+    win.loadURL(resolveAppServerUrl(serverConfig, port) ?? `http://localhost:${port}`);
     clearSplashHistory(win);
   }
 
@@ -775,7 +877,10 @@ const bootstrap = async () => {
 
   setupAutoUpdater();
   // 메인 윈도우 로딩이 끝나기 전에 다이얼로그가 뜨지 않도록 첫 체크를 지연
-  setTimeout(checkForUpdatesAuto, FIRST_CHECK_DELAY_MS);
+  setTimeout(
+    checkForUpdatesAuto,
+    updaterSmokeConfig.enabled ? UPDATER_SMOKE_FIRST_CHECK_DELAY_MS : FIRST_CHECK_DELAY_MS,
+  );
   startUpdateCheckTimer();
 };
 
@@ -824,7 +929,7 @@ ipcMain.handle('open-new-window', () => {
 });
 
 ipcMain.handle('set-dock-badge', (_event, count: number) => {
-  if (process.platform !== 'darwin') return;
+  if (process.platform !== 'darwin' || !app.dock) return;
   app.dock.setBadge(count > 0 ? String(count) : '');
 });
 
@@ -846,6 +951,19 @@ ipcMain.handle('get-system-resources', () => {
 });
 
 app.on('ready', bootstrap);
+
+const flushDefaultSessionStorage = async (): Promise<void> => {
+  try {
+    await Promise.resolve(session.defaultSession?.flushStorageData());
+  } catch {
+    // noop
+  }
+  try {
+    await Promise.resolve(session.defaultSession?.cookies?.flushStore());
+  } catch {
+    // noop
+  }
+};
 
 app.on('activate', () => {
   const primary = getPrimaryWindow();
@@ -872,8 +990,7 @@ app.on('window-all-closed', async () => {
   }
 
   // 2) 스토리지 flush (localStorage + 쿠키)
-  await session.defaultSession?.flushStorageData()?.catch(() => {});
-  await session.defaultSession?.cookies?.flushStore()?.catch(() => {});
+  await flushDefaultSessionStorage();
 
   // 3) 모든 cleanup 완료 후 종료.
   //    app.exit()는 FreeEnvironment를 건너뛰어
@@ -889,6 +1006,8 @@ app.on('before-quit', () => {
 });
 
 app.on('will-quit', async (event) => {
+  if (updaterSmokeConfig.autoInstall) return;
+
   event.preventDefault();
   const forceExit = setTimeout(() => app.exit(1), 3000);
 
@@ -899,8 +1018,7 @@ app.on('will-quit', async (event) => {
     serverShutdown = null;
   }
 
-  await session.defaultSession?.flushStorageData()?.catch(() => {});
-  await session.defaultSession?.cookies?.flushStore()?.catch(() => {});
+  await flushDefaultSessionStorage();
   clearTimeout(forceExit);
   app.exit(0);
 });

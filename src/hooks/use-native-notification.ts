@@ -3,6 +3,7 @@ import useTabStore from '@/hooks/use-tab-store';
 import useConfigStore from '@/hooks/use-config-store';
 import { navigateToTab } from '@/hooks/use-layout';
 import isElectron from '@/hooks/use-is-electron';
+import { buildStatusPushTitle } from '@/lib/notification-copy';
 
 interface IElectronAPI {
   showNotification: (title: string, body: string, options?: { silent?: boolean }) => Promise<boolean>;
@@ -30,7 +31,7 @@ const useNativeNotification = () => {
     });
 
     const unsubStore = useTabStore.subscribe((state, prev) => {
-      const { notificationsEnabled: enabled, soundOnCompleteEnabled } = useConfigStore.getState();
+      const { notificationsEnabled: enabled, soundOnCompleteEnabled, locale } = useConfigStore.getState();
       let notified = false;
       let attentionCount = 0;
 
@@ -44,12 +45,12 @@ const useNativeNotification = () => {
           ? tab.lastUserMessage.slice(0, 100)
           : tab.tabName || tabId;
         if (tab.cliState === 'ready-for-review') {
-          api.showNotification('Task Complete', body, { silent: !soundOnCompleteEnabled });
+          api.showNotification(buildStatusPushTitle({ pushType: 'review', locale }), body, { silent: !soundOnCompleteEnabled });
           lastNotifiedTabId = tabId;
           lastNotifiedWorkspaceId = tab.workspaceId;
           notified = true;
         } else if (tab.cliState === 'needs-input') {
-          api.showNotification('Input Required', body);
+          api.showNotification(buildStatusPushTitle({ pushType: 'needs-input', locale }), body);
           lastNotifiedTabId = tabId;
           lastNotifiedWorkspaceId = tab.workspaceId;
           notified = true;

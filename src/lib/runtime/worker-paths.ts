@@ -1,7 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 
-export type TRuntimeWorkerName = 'storage-worker' | 'terminal-worker' | 'timeline-worker' | 'status-worker';
+export type TRuntimeWorkerName =
+  | 'storage-worker'
+  | 'terminal-worker'
+  | 'timeline-worker'
+  | 'status-worker'
+  | 'governance-worker';
 
 export interface IWorkerScriptResolution {
   scriptPath: string;

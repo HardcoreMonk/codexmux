@@ -11,6 +11,23 @@
   "weeksAgo": "{count}주 전",
   "monthsAgo": "{count}개월 전",
   "yearsAgo": "{count}년 전",
+  "relationship": {
+    "label": "관계",
+    "fork": "포크",
+    "subAgent": "서브 에이전트",
+    "resume": "재개",
+    "unknown": "연결됨",
+    "parent": "상위",
+    "root": "루트",
+    "target": "{kind} {id}",
+    "badgeTitle": "{type}: {kind} {id}",
+    "confidence": "신뢰도 {confidence}",
+    "confidenceValue": {
+      "high": "높음",
+      "medium": "보통",
+      "low": "낮음"
+    }
+  },
   "empty": {
     "closeLabel": "닫기",
     "noSession": "세션 없음",

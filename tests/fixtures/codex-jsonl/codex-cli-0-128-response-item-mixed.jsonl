@@ -1,0 +1,12 @@
+{"type":"session_meta","timestamp":"2026-05-08T00:00:00.000Z","payload":{"id":"fixture-0-128","cwd":"<redacted>","originator":"codex_cli","cli_version":"0.128.0","source":"synthetic","model_provider":"openai"}}
+{"type":"event_msg","timestamp":"2026-05-08T00:00:01.000Z","payload":{"type":"task_started","turn_id":"turn-fixture","started_at":"2026-05-08T00:00:01.000Z","model_context_window":262144,"collaboration_mode_kind":"default"}}
+{"type":"response_item","timestamp":"2026-05-08T00:00:01.100Z","payload":{"type":"message","role":"developer","content":[{"type":"input_text","text":"fixture developer instructions"}]}}
+{"type":"response_item","timestamp":"2026-05-08T00:00:01.200Z","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"<environment_context>\n  <cwd><redacted></cwd>\n</environment_context>"}]}}
+{"type":"response_item","timestamp":"2026-05-08T00:00:02.000Z","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Implement fixture coverage"}]}}
+{"type":"event_msg","timestamp":"2026-05-08T00:00:02.002Z","payload":{"type":"user_message","message":"Implement fixture coverage","images":[],"local_images":[],"text_elements":[]}}
+{"type":"event_msg","timestamp":"2026-05-08T00:00:03.000Z","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":10,"output_tokens":5}},"rate_limits":null}}
+{"type":"response_item","timestamp":"2026-05-08T00:00:04.000Z","payload":{"type":"reasoning","summary":["Need inspect parser"],"content":null,"encrypted_content":"redacted"}}
+{"type":"event_msg","timestamp":"2026-05-08T00:00:05.000Z","payload":{"type":"agent_message","message":"Reading fixture files","phase":"commentary","memory_citation":null}}
+{"type":"response_item","timestamp":"2026-05-08T00:00:05.002Z","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Reading fixture files"}],"phase":"commentary"}}
+{"type":"response_item","timestamp":"2026-05-08T00:00:06.000Z","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\":\"git status --short\",\"workdir\":\"<redacted>\"}","call_id":"call_fixture_1"}}
+{"type":"response_item","timestamp":"2026-05-08T00:00:07.000Z","payload":{"type":"function_call_output","call_id":"call_fixture_1","output":"Process exited with code 0\nOutput:\n"}}

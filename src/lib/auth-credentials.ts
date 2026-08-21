@@ -1,49 +1,43 @@
 import {
-  readConfig,
   updateConfig,
   hashPassword,
   generateSecret,
-  isHashedPassword,
   MIN_PASSWORD_LENGTH,
+  resolveStoredAuthState,
 } from '@/lib/config-store';
-import { createLogger } from '@/lib/logger';
+import type { IConfigData } from '@/lib/config-store';
 
-const log = createLogger('auth-credentials');
+export type TAuthBootstrapState =
+  | { mode: 'setup-open' }
+  | { mode: 'init-password'; passwordHash: string; secret: string }
+  | { mode: 'configured'; passwordHash: string; secret: string };
 
-interface IAuthCredentials {
-  password: string;
-  secret: string;
-  init: boolean;
-}
-
-const consumeInitPasswordEnv = (): string | null => {
-  const value = process.env.INIT_PASSWORD;
-  if (!value) return null;
-  if (value.length < MIN_PASSWORD_LENGTH) {
-    log.warn(`INIT_PASSWORD ignored: must be at least ${MIN_PASSWORD_LENGTH} characters`);
-    delete process.env.INIT_PASSWORD;
-    return null;
+export const initAuthCredentials = async (config: IConfigData): Promise<TAuthBootstrapState> => {
+  const storedState = resolveStoredAuthState(config);
+  if (storedState.mode === 'invalid') {
+    throw new Error(`stored auth state is invalid: ${storedState.reason}`);
   }
-  return value;
-};
-
-export const initAuthCredentials = async (): Promise<IAuthCredentials | null> => {
-  const config = await readConfig();
-
-  if (isHashedPassword(config?.authPassword) && config?.authSecret) {
+  if (storedState.mode === 'configured') {
     delete process.env.INIT_PASSWORD;
-    return { password: config.authPassword!, secret: config.authSecret, init: false };
+    return {
+      mode: 'configured',
+      passwordHash: storedState.passwordHash,
+      secret: storedState.authSecret,
+    };
   }
 
-  const initPassword = consumeInitPasswordEnv();
-  if (!initPassword) return null;
+  const initPassword = process.env.INIT_PASSWORD;
+  if (initPassword === undefined) return { mode: 'setup-open' };
+  if (initPassword.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(`INIT_PASSWORD must be at least ${MIN_PASSWORD_LENGTH} characters`);
+  }
 
   const hashed = await hashPassword(initPassword);
-  const secret = config?.authSecret ?? generateSecret();
+  const secret = storedState.authSecret ?? generateSecret();
 
-  if (!config?.authSecret) {
+  if (!storedState.authSecret) {
     await updateConfig({ authSecret: secret });
   }
 
-  return { password: hashed, secret, init: true };
+  return { mode: 'init-password', passwordHash: hashed, secret };
 };

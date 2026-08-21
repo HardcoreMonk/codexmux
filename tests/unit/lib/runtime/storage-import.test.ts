@@ -5,21 +5,34 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { importLegacyStorageSnapshot } from '@/lib/runtime/storage-import';
 import { createStorageRepository } from '@/lib/runtime/storage/repository';
 import { openRuntimeDatabase } from '@/lib/runtime/storage/schema';
+import type { TRuntimeDatabase } from '@/lib/runtime/storage/schema';
 import type { ILayoutData, IWorkspacesData } from '@/types/terminal';
 
 describe('runtime v2 storage import', () => {
   let dir: string;
+  const dbs: TRuntimeDatabase[] = [];
+
+  const openTestDatabase = (...args: Parameters<typeof openRuntimeDatabase>): TRuntimeDatabase => {
+    const db = openRuntimeDatabase(...args);
+    dbs.push(db);
+    return db;
+  };
 
   beforeEach(async () => {
     dir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexmux-storage-import-'));
   });
 
   afterEach(async () => {
+    for (const db of dbs.splice(0)) {
+      try {
+        db.close();
+      } catch {}
+    }
     await fs.rm(dir, { recursive: true, force: true });
   });
 
   it('imports grouped workspaces, split panes, legacy tabs, non-terminal tabs, and status metadata idempotently', () => {
-    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const workspacesData: IWorkspacesData = {
       groups: [{ id: 'group-a', name: 'Secret Group', collapsed: true }],
       activeWorkspaceId: 'ws-a',
@@ -186,7 +199,7 @@ describe('runtime v2 storage import', () => {
   });
 
   it('imports workspace sidebar state and all workspace directories for default read hydration', () => {
-    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const workspacesData: IWorkspacesData = {
       groups: [{ id: 'group-a', name: 'Group A', collapsed: false }],
       activeWorkspaceId: 'ws-a',
@@ -248,7 +261,7 @@ describe('runtime v2 storage import', () => {
   });
 
   it('prunes sqlite rows that are absent from the legacy snapshot when requested', () => {
-    const db = openRuntimeDatabase(path.join(dir, 'runtime-v2', 'state.db'));
+    const db = openTestDatabase(path.join(dir, 'runtime-v2', 'state.db'));
     const workspacesData: IWorkspacesData = {
       groups: [],
       activeWorkspaceId: 'ws-keep',

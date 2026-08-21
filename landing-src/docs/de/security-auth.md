@@ -30,7 +30,7 @@ codexmux는 셀프 호스팅 방식이며 모든 데이터가 사용자의 머�
 rm ~/.codexmux/config.json
 ```
 
-codexmux를 재시작하면 (`pnpm start`, `npx codexmux` 등 평소 실행 방법) 온보딩 화면이 다시 나타나 새 비밀번호를 설정할 수 있습니다.
+codexmux를 재시작하면 (`pnpm start`, `npx --yes codexmux@latest` 등 평소 실행 방법) 온보딩 화면이 다시 나타나 새 비밀번호를 설정할 수 있습니다.
 
 이 작업은 같은 파일에 저장된 다른 설정(테마, 언어, 폰트 크기, 알림 토글 등)도 함께 초기화합니다. 워크스페이스와 탭은 `workspaces.json`과 `workspaces/` 디렉토리에 들어 있으니 레이아웃은 영향받지 않습니다.
 

@@ -87,4 +87,23 @@ describe('status side-effect policy', () => {
       stopJsonlWatch: true,
     });
   });
+
+  it('keeps JSONL watch bound when the provider adapter requests it', () => {
+    expect(evaluateStatusSideEffects({
+      previousState: 'busy',
+      newState: 'idle',
+      hasJsonlPath: true,
+      providerId: 'codex',
+      statusBehavior: {
+        watchJsonlWhenBound: true,
+        deferStopHookUntilJsonlIdle: true,
+      },
+      hasJsonlWatcher: false,
+      sessionHistoryDedupeAccepted: false,
+      reviewNotificationDedupeAccepted: false,
+    })).toMatchObject({
+      startJsonlWatch: true,
+      stopJsonlWatch: false,
+    });
+  });
 });

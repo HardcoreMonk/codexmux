@@ -1,0 +1,1827 @@
+{
+  "artifacts": {
+    "grill": "docs/superpowers/grill-me/2026-05-11-project-design-governance.md",
+    "handoff": "docs/operations/2026-05-11-project-design-governance-handoff.md",
+    "plan": "docs/superpowers/plans/2026-05-11-project-design-governance.md",
+    "spec": "docs/superpowers/specs/2026-05-11-project-design-governance-design.md"
+  },
+  "created_artifacts": [
+    "docs/superpowers/specs/2026-05-11-project-design-governance-design.md",
+    "docs/superpowers/grill-me/2026-05-11-project-design-governance.md",
+    "docs/superpowers/plans/2026-05-11-project-design-governance.md",
+    "docs/operations/2026-05-11-project-design-governance-handoff.md",
+    "docs/lifecycle/runs/2026-05-11-project-design-governance.json"
+  ],
+  "date": "2026-05-11",
+  "generated_at": "2026-05-11T00:00:00",
+  "lint": {
+    "errors": [],
+    "warnings": []
+  },
+  "redactions": {
+    "args": 4,
+    "internal_ref": 15,
+    "local_path": 4,
+    "secret": 0
+  },
+  "run_id": "2026-05-11-project-design-governance",
+  "scan_summary": {
+    "context_docs": {
+      "CONTEXT-MAP.md": false,
+      "CONTEXT.md": false,
+      "docs/adr": false
+    },
+    "documents": [
+      {
+        "bytes": 9663,
+        "headings": [
+          "AGENTS.md",
+          "Project Overview",
+          "Core Rules",
+          "Commands",
+          "Platform Notes",
+          "Codex And Terminal Rules",
+          "Shared State",
+          "UI And Locale Rules",
+          "Documentation",
+          "Agent Workflow Contract",
+          "Comment Policy",
+          "Refactoring Exclusions"
+        ],
+        "path": "AGENTS.md"
+      },
+      {
+        "bytes": 137,
+        "headings": [
+          "codexmux \u2014 Claude compatibility"
+        ],
+        "path": "CLAUDE.md"
+      },
+      {
+        "bytes": 13574,
+        "headings": [
+          "\uc544\ud0a4\ud14d\ucc98 \uacb0\uc815 \uae30\ub85d",
+          "\uc791\uc131 \uae30\uc900",
+          "ADR-001: Next.js Pages Router\uc640 custom server \uc720\uc9c0",
+          "ADR-002: \ud130\ubbf8\ub110 \ub7f0\ud0c0\uc784\uc740 adapter \uacbd\uacc4 \ub4a4\uc5d0 \ub454\ub2e4",
+          "ADR-003: Codex provider \uc911\uc2ec \ubaa8\ub378",
+          "ADR-004: \uacf5\uc720 \uc0c1\ud0dc\ub294 `globalThis` singleton\uc5d0 \ub454\ub2e4",
+          "ADR-005: \uc571 \uc0c1\ud0dc\uc640 Codex \uc6d0\ubcf8 \uc0c1\ud0dc\ub97c \ubd84\ub9ac\ud55c\ub2e4",
+          "ADR-006: \ud55c\uad6d\uc5b4 \uae30\ubcf8, \uc601\uc5b4 UI \ubcd1\ud589",
+          "ADR-007: Electron\uacfc Android\ub294 \ud074\ub77c\uc774\uc5b8\ud2b8 shell\uc774\ub2e4",
+          "ADR-008: \uc54c\ub9bc \uc0ac\uc6b4\ub4dc\ub294 \uacf5\ud1b5 \uc124\uc815\uc73c\ub85c \uc81c\uc5b4\ud55c\ub2e4",
+          "ADR-009: terminal \uc81c\uc5b4 \uc785\ub825\uc740 \uc571 \ub2e8\ucd95\ud0a4\ubcf4\ub2e4 \uc6b0\uc120\ud55c\ub2e4",
+          "ADR-010: \uc0c1\ud0dc\uc640 \ud0c0\uc784\ub77c\uc778 \uc815\ucc45\uc740 \uc21c\uc218 \ubaa8\ub4c8\ub85c \ubd84\ub9ac\ud55c\ub2e4"
+        ],
+        "path": "docs/ADR.md"
+      },
+      {
+        "bytes": 2372,
+        "headings": [
+          "\ub3c4\uba54\uc778 \ubb38\uc11c \uaddc\uce59",
+          "\uc791\uc5c5 \uc804\uc5d0 \uc77d\uc744 \ubb38\uc11c",
+          "\ub3c4\uba54\uc778 \uc544\ud0a4\ud14d\ucc98 pass",
+          "\uc6a9\uc5b4",
+          "ADR",
+          "Improve codebase architecture \uacbd\uacc4"
+        ],
+        "path": "docs/agents/domain.md"
+      },
+      {
+        "bytes": 1149,
+        "headings": [
+          "\uc774\uc288 \ud2b8\ub798\ucee4 \uaddc\uce59",
+          "\ubc31\uc5d4\ub4dc",
+          "\uaddc\uce59",
+          "\ubc1c\ud589",
+          "\uc870\ud68c"
+        ],
+        "path": "docs/agents/issue-tracker.md"
+      },
+      {
+        "bytes": 1468,
+        "headings": [
+          "Triage label \uaddc\uce59",
+          "\ubd84\ub958",
+          "\uc0c1\ud0dc",
+          "\uaddc\uce59"
+        ],
+        "path": "docs/agents/triage-labels.md"
+      },
+      {
+        "bytes": 4040,
+        "headings": [
+          "Android \ucc38\uace0 \ubb38\uc11c",
+          "\uba85\ub839",
+          "\ubc84\uc804 \uad00\ub9ac",
+          "\uad6c\uc870",
+          "\ubaa8\ubc14\uc77c UX \uae30\uc900",
+          "\uc5f0\uacb0 \ud750\ub984",
+          "\ud3ec\uadf8\ub77c\uc6b4\ub4dc \uc7ac\uc5f0\uacb0",
+          "\ub7f0\ud0c0\uc784 v2 smoke",
+          "\ube4c\ub4dc \uc0b0\ucd9c\ubb3c"
+        ],
+        "path": "docs/ANDROID.md"
+      },
+      {
+        "bytes": 7829,
+        "headings": [
+          "\uc544\ud0a4\ud14d\ucc98\uc640 \uc11c\ube44\uc2a4 \ub85c\uc9c1",
+          "\ud575\uc2ec \uad6c\uc870",
+          "\ub7f0\ud0c0\uc784 v2",
+          "\uc11c\ubc84 \uc2dc\uc791 \ud750\ub984",
+          "HTTP\uc640 WebSocket \ub77c\uc6b0\ud305",
+          "\uc0c1\ud0dc \uc800\uc7a5 \ub85c\uc9c1",
+          "\uc6cc\ud06c\uc2a4\ud398\uc774\uc2a4 \ub85c\uc9c1",
+          "\ud130\ubbf8\ub110 \ub85c\uc9c1",
+          "Codex \uc138\uc158 \uac10\uc9c0",
+          "\ud0c0\uc784\ub77c\uc778 \ub85c\uc9c1",
+          "\uc0c1\ud0dc \ub85c\uc9c1",
+          "\uc131\ub2a5\uacfc \uc9c4\ub2e8"
+        ],
+        "path": "docs/ARCHITECTURE-LOGIC.md"
+      },
+      {
+        "bytes": 4260,
+        "headings": [
+          "`~/.codexmux/` \ub370\uc774\ud130 \ub514\ub809\ud130\ub9ac",
+          "\uad6c\uc870",
+          "\uc8fc\uc694 \ud30c\uc77c",
+          "\ub7f0\ud0c0\uc784 v2 SQLite",
+          "Codex CLI \uc6d0\ubcf8 \ub370\uc774\ud130",
+          "`config.json` \uc8fc\uc694 \uc124\uc815",
+          "\ub2e8\ucd95\ud0a4 \ud30c\uc77c",
+          "\uc0ad\uc81c \uae30\uc900"
+        ],
+        "path": "docs/DATA-DIR.md"
+      },
+      {
+        "bytes": 5672,
+        "headings": [
+          "Electron\uacfc Windows \ud328\ud0a4\uc9d5",
+          "\uba85\ub839",
+          "\uc8fc\uc694 \ud30c\uc77c",
+          "\uc11c\ubc84 \ubaa8\ub4dc",
+          "Windows \ud328\ud0a4\uc9d5 \uacc4\uc57d",
+          "\uc5c5\ub370\uc774\ud2b8 smoke",
+          "Electron \ub7f0\ud0c0\uc784 v2 smoke",
+          "\uc54c\ub9bc",
+          "\ub9b4\ub9ac\uc2a4 \uc804 \ud655\uc778"
+        ],
+        "path": "docs/ELECTRON.md"
+      },
+      {
+        "bytes": 4998,
+        "headings": [
+          "\ud6c4\uc18d \uc791\uc5c5",
+          "\uc644\ub8cc\ub41c \ubc94\uc704",
+          "\ub9b4\ub9ac\uc2a4 \uc804 \ud655\uc778",
+          "\ub0b4\ubd80 \ubc30\ud3ec \ub2e8\uacc4",
+          "\ub0a8\uc740 \ucc28\ub2e8 \ud56d\ubaa9",
+          "Codex lifecycle \uae30\uc900",
+          "Approval workflow \uae30\uc900",
+          "App-server adapter \uae30\uc900",
+          "\ubaa8\ubc14\uc77c \uc571",
+          "\uc544\ud0a4\ud14d\ucc98 \ubaa8\ub4c8\ud654",
+          "\uc131\ub2a5",
+          "\ubb38\uc11c\uc640 \uc6b4\uc601"
+        ],
+        "path": "docs/FOLLOW-UP.md"
+      },
+      {
+        "bytes": 7375,
+        "headings": [
+          "2026-05-03 Android Runtime Stabilization Handoff",
+          "\ubc30\ud3ec \uc0c1\ud0dc",
+          "\uc218\uc815 \ub0b4\uc6a9",
+          "\uac80\uc99d \uacb0\uacfc",
+          "\ub0a8\uc740 \ub9b4\ub9ac\uc2a4 \ub9ac\uc2a4\ud06c",
+          "\uc6b4\uc601 \uae30\uc900"
+        ],
+        "path": "docs/operations/2026-05-03-android-runtime-stabilization-handoff.md"
+      },
+      {
+        "bytes": 2255,
+        "headings": [
+          "2026-05-04 Android Foreground/Recovery Handoff",
+          "Scope",
+          "Changes",
+          "Evidence",
+          "Remaining Risk"
+        ],
+        "path": "docs/operations/2026-05-04-android-foreground-recovery-handoff.md"
+      },
+      {
+        "bytes": 1225,
+        "headings": [
+          "Browser Reconnect DOM Smoke Handoff",
+          "Summary",
+          "Deployment",
+          "Verification",
+          "Remaining Work"
+        ],
+        "path": "docs/operations/2026-05-04-browser-reconnect-dom-smoke-handoff.md"
+      },
+      {
+        "bytes": 1856,
+        "headings": [
+          "PWA Startup Branding Handoff",
+          "Summary",
+          "Deployment",
+          "Verification",
+          "Operator Note"
+        ],
+        "path": "docs/operations/2026-05-04-pwa-startup-branding-handoff.md"
+      },
+      {
+        "bytes": 2859,
+        "headings": [
+          "2026-05-04 v0.4.1 Release Handoff",
+          "Scope",
+          "Release State",
+          "Verification",
+          "Notes",
+          "Remaining"
+        ],
+        "path": "docs/operations/2026-05-04-release-v0.4.1-handoff.md"
+      },
+      {
+        "bytes": 2329,
+        "headings": [
+          "Runtime V2 Shadow Handoff",
+          "Summary",
+          "Live Flags",
+          "Verification",
+          "Rollback",
+          "Remaining Gate"
+        ],
+        "path": "docs/operations/2026-05-04-runtime-v2-shadow-handoff.md"
+      },
+      {
+        "bytes": 1061,
+        "headings": [
+          "Runtime V2 Status Shadow Handoff",
+          "Summary",
+          "Remaining Gate",
+          "Verification"
+        ],
+        "path": "docs/operations/2026-05-04-runtime-v2-status-shadow-handoff.md"
+      },
+      {
+        "bytes": 1625,
+        "headings": [
+          "Runtime V2 Storage Backup Handoff",
+          "Summary",
+          "Live Snapshot",
+          "Verification",
+          "Remaining Gate"
+        ],
+        "path": "docs/operations/2026-05-04-runtime-v2-storage-backup-handoff.md"
+      },
+      {
+        "bytes": 1625,
+        "headings": [
+          "Runtime v2 Storage Default Read Handoff",
+          "Scope",
+          "Evidence",
+          "Ownership Status",
+          "Remaining Gate"
+        ],
+        "path": "docs/operations/2026-05-04-runtime-v2-storage-default-read-handoff.md"
+      },
+      {
+        "bytes": 1603,
+        "headings": [
+          "Runtime V2 Storage Dry-run Handoff",
+          "Summary",
+          "Live Snapshot",
+          "Verification",
+          "Remaining Gate"
+        ],
+        "path": "docs/operations/2026-05-04-runtime-v2-storage-dry-run-handoff.md"
+      },
+      {
+        "bytes": 2800,
+        "headings": [
+          "Runtime V2 Storage Import Handoff",
+          "Summary",
+          "Live Snapshot",
+          "Verification",
+          "Remaining Gate"
+        ],
+        "path": "docs/operations/2026-05-04-runtime-v2-storage-import-handoff.md"
+      },
+      {
+        "bytes": 1431,
+        "headings": [
+          "Runtime V2 Storage Shadow Handoff",
+          "Summary",
+          "Verification",
+          "Remaining Gate"
+        ],
+        "path": "docs/operations/2026-05-04-runtime-v2-storage-shadow-handoff.md"
+      },
+      {
+        "bytes": 1441,
+        "headings": [
+          "Runtime v2 Storage Write Handoff",
+          "Scope",
+          "Evidence",
+          "Ownership Status",
+          "Remaining Gate"
+        ],
+        "path": "docs/operations/2026-05-04-runtime-v2-storage-write-handoff.md"
+      },
+      {
+        "bytes": 1409,
+        "headings": [
+          "Runtime V2 Timeline Shadow Handoff",
+          "Summary",
+          "Remaining Gate",
+          "Verification"
+        ],
+        "path": "docs/operations/2026-05-04-runtime-v2-timeline-shadow-handoff.md"
+      },
+      {
+        "bytes": 1855,
+        "headings": [
+          "2026-05-05 Android Release AAB Handoff",
+          "Scope",
+          "Local Secret State",
+          "Changes",
+          "Verification",
+          "Remaining Release Ops"
+        ],
+        "path": "docs/operations/2026-05-05-android-release-aab-handoff.md"
+      },
+      {
+        "bytes": 2045,
+        "headings": [
+          "Android Timeline Foreground Reconnect Handoff",
+          "Scope",
+          "Verification",
+          "Output Policy",
+          "Remaining Work"
+        ],
+        "path": "docs/operations/2026-05-05-android-timeline-foreground-handoff.md"
+      },
+      {
+        "bytes": 3606,
+        "headings": [
+          "Approval Queue 1\ucc28 Handoff",
+          "\uc0c1\ud0dc",
+          "\ubcc0\uacbd \ubc94\uc704",
+          "\uac80\uc99d",
+          "\ub0a8\uc740 \uc791\uc5c5"
+        ],
+        "path": "docs/operations/2026-05-05-approval-queue-handoff.md"
+      },
+      {
+        "bytes": 1149,
+        "headings": [
+          "Bridge External Trace Handoff",
+          "Scope",
+          "Runtime Contract",
+          "Verification",
+          "Operational Notes"
+        ],
+        "path": "docs/operations/2026-05-05-bridge-external-trace-handoff.md"
+      },
+      {
+        "bytes": 2892,
+        "headings": [
+          "2026-05-05 Codex \uc785\ub825 \ud504\ub86c\ud504\ud2b8 \ubcf5\uad6c handoff",
+          "\ubc94\uc704",
+          "\ubc30\ud3ec",
+          "\ubcc0\uacbd",
+          "\uac80\uc99d",
+          "\uc6b4\uc601 \uba54\ubaa8"
+        ],
+        "path": "docs/operations/2026-05-05-codex-input-prompt-recovery-handoff.md"
+      },
+      {
+        "bytes": 1775,
+        "headings": [
+          "Deploy d3248c4 Handoff",
+          "Scope",
+          "Verification",
+          "Rollback",
+          "Remaining Work"
+        ],
+        "path": "docs/operations/2026-05-05-deploy-d3248c4-handoff.md"
+      },
+      {
+        "bytes": 2790,
+        "headings": [
+          "2026-05-05 P2 To P3 Runtime Storage Handoff",
+          "Scope",
+          "Live Mode",
+          "P2 Evidence",
+          "P3 Storage Preflight",
+          "Remaining Gates"
+        ],
+        "path": "docs/operations/2026-05-05-p2-to-p3-runtime-storage-handoff.md"
+      },
+      {
+        "bytes": 2014,
+        "headings": [
+          "2026-05-05 Perf Baseline Runtime V2 Default Handoff",
+          "Scope",
+          "Runtime Observation Status",
+          "Perf Snapshot",
+          "Notes"
+        ],
+        "path": "docs/operations/2026-05-05-perf-baseline-runtime-v2-default-handoff.md"
+      },
+      {
+        "bytes": 1620,
+        "headings": [
+          "2026-05-05 RC Platform Smoke Handoff",
+          "Scope",
+          "Systemd",
+          "Electron",
+          "Android",
+          "Notes"
+        ],
+        "path": "docs/operations/2026-05-05-rc-platform-smoke-handoff.md"
+      },
+      {
+        "bytes": 2091,
+        "headings": [
+          "2026-05-05 Release Smoke Artifacts Handoff",
+          "Scope",
+          "Artifact Contract",
+          "Release Workflow",
+          "Verification",
+          "Remaining Work"
+        ],
+        "path": "docs/operations/2026-05-05-release-smoke-artifacts-handoff.md"
+      },
+      {
+        "bytes": 2995,
+        "headings": [
+          "2026-05-05 Runtime V2 Live New Tabs Default Handoff",
+          "Scope",
+          "Change",
+          "Verification",
+          "Rollback",
+          "Remaining Gates"
+        ],
+        "path": "docs/operations/2026-05-05-runtime-v2-live-new-tabs-default-handoff.md"
+      },
+      {
+        "bytes": 1554,
+        "headings": [
+          "Runtime V2 Observation Operator Closeout",
+          "\uc0c1\ud0dc",
+          "Evidence",
+          "Consequence"
+        ],
+        "path": "docs/operations/2026-05-05-runtime-v2-observation-closeout.md"
+      },
+      {
+        "bytes": 2481,
+        "headings": [
+          "Runtime V2 Timeline Default-read Handoff",
+          "Scope",
+          "Verification",
+          "Live Transition",
+          "Rollback",
+          "Remaining Work"
+        ],
+        "path": "docs/operations/2026-05-05-runtime-v2-timeline-default-read-handoff.md"
+      },
+      {
+        "bytes": 2288,
+        "headings": [
+          "Runtime V2 Timeline Live Shadow Handoff - 2026-05-05",
+          "Scope",
+          "Implemented",
+          "Verification",
+          "Remaining Gates",
+          "Rollback"
+        ],
+        "path": "docs/operations/2026-05-05-runtime-v2-timeline-live-shadow-handoff.md"
+      },
+      {
+        "bytes": 1159,
+        "headings": [
+          "Runtime V2 Timeline Resume Safety Handoff",
+          "Scope",
+          "Verification",
+          "Rollback",
+          "Remaining Work"
+        ],
+        "path": "docs/operations/2026-05-05-runtime-v2-timeline-resume-safety-handoff.md"
+      },
+      {
+        "bytes": 1220,
+        "headings": [
+          "Runtime V2 Timeline Session-changed Handoff",
+          "Scope",
+          "Verification",
+          "Rollback",
+          "Remaining Work"
+        ],
+        "path": "docs/operations/2026-05-05-runtime-v2-timeline-session-changed-handoff.md"
+      },
+      {
+        "bytes": 1636,
+        "headings": [
+          "Runtime V2 Timeline Session Watch Contract Handoff",
+          "Scope",
+          "Verification",
+          "Rollback",
+          "Remaining Work"
+        ],
+        "path": "docs/operations/2026-05-05-runtime-v2-timeline-session-watch-contract-handoff.md"
+      },
+      {
+        "bytes": 3215,
+        "headings": [
+          "Runtime V2 Timeline WebSocket Cutover Handoff",
+          "Scope",
+          "Implementation Notes",
+          "Verification",
+          "Rollback",
+          "Follow-up"
+        ],
+        "path": "docs/operations/2026-05-05-runtime-v2-timeline-websocket-cutover-handoff.md"
+      },
+      {
+        "bytes": 1896,
+        "headings": [
+          "2026-05-05 Windows Integration Removal Handoff",
+          "Scope",
+          "Verification",
+          "Notes",
+          "Follow-up"
+        ],
+        "path": "docs/operations/2026-05-05-windows-integration-removal-handoff.md"
+      },
+      {
+        "bytes": 2156,
+        "headings": [
+          "Ops Automation Batch Handoff",
+          "Implemented",
+          "Verification",
+          "Remaining External Evidence",
+          "Notes"
+        ],
+        "path": "docs/operations/2026-05-06-ops-automation-batch-handoff.md"
+      },
+      {
+        "bytes": 2905,
+        "headings": [
+          "2026-05-07 Windows Package/Update Handoff",
+          "Scope",
+          "Verification",
+          "Operational Interpretation",
+          "Remaining External Evidence"
+        ],
+        "path": "docs/operations/2026-05-07-windows-package-update-handoff.md"
+      },
+      {
+        "bytes": 5170,
+        "headings": [
+          "\uc131\ub2a5 \ucd5c\uc801\ud654 \uae30\uc900",
+          "\ubc30\uacbd",
+          "1\ucc28 \ubaa9\ud45c",
+          "\uc6b0\uc120\uc21c\uc704",
+          "\uacc4\uce21 \ud56d\ubaa9",
+          "\uad6c\ud604 \ud6c4\ubcf4",
+          "\uc644\ub8cc\ub41c \ubc29\ud5a5 \uc694\uc57d",
+          "Timeline JSONL snapshot",
+          "\ud53c\ud574\uc57c \ud560 \uc791\uc5c5",
+          "\uac80\uc99d \uae30\uc900",
+          "\uc758\uc0ac\uacb0\uc815 \uba54\ubaa8"
+        ],
+        "path": "docs/PERFORMANCE.md"
+      },
+      {
+        "bytes": 3745,
+        "headings": [
+          "\ubb38\uc11c \ub9f5",
+          "\ud604\uc7ac \uae30\uc900 \ubb38\uc11c",
+          "\ub808\uac70\uc2dc \ub610\ub294 \ucc38\uace0 \ubb38\uc11c",
+          "\uc5d0\uc774\uc804\ud2b8 \uc791\uc5c5 \uaddc\uce59",
+          "\uac31\uc2e0 \uaddc\uce59"
+        ],
+        "path": "docs/README.md"
+      },
+      {
+        "bytes": 4803,
+        "headings": [
+          "\ub7f0\ud0c0\uc784 v2 \ud504\ub85c\ub355\uc158 \uc804\ud658 \uacc4\ud68d",
+          "\ud604\uc7ac \uc0c1\ud0dc",
+          "\uc804\ud658 \uaddc\uce59",
+          "\uae30\ub2a5 \ud50c\ub798\uadf8",
+          "0\ub2e8\uacc4: \ub3d9\ub4f1\uc131 \ubaa9\ub85d\ud654",
+          "1\ub2e8\uacc4: Shadow \ub7f0\ud0c0\uc784",
+          "2\ub2e8\uacc4: \uc0c8 tab\uc6a9 \ud130\ubbf8\ub110 v2",
+          "3\ub2e8\uacc4: Storage v2 shadow/default \uc804\ud658",
+          "4\ub2e8\uacc4: Timeline v2 WebSocket \uc804\ud658",
+          "5\ub2e8\uacc4: Status v2 \uc804\ud658",
+          "6\ub2e8\uacc4: \uae30\ubcf8 \ub7f0\ud0c0\uc784 v2",
+          "Windows \uc804\ud658 \uac8c\uc774\ud2b8"
+        ],
+        "path": "docs/RUNTIME-V2-CUTOVER.md"
+      },
+      {
+        "bytes": 3699,
+        "headings": [
+          "\ub7f0\ud0c0\uc784 v2 \ub3d9\ub4f1\uc131 \ub9e4\ud2b8\ub9ad\uc2a4",
+          "\uae30\uc900",
+          "\uc6cc\ud06c\uc2a4\ud398\uc774\uc2a4\uc640 \ub808\uc774\uc544\uc6c3",
+          "\ud130\ubbf8\ub110",
+          "\ud0c0\uc784\ub77c\uc778",
+          "\uc0c1\ud0dc\uc640 \uc54c\ub9bc",
+          "\ub3d9\uae30\ud654\uc640 \uc124\uc815",
+          "\ub2e8\uacc4 \uac8c\uc774\ud2b8",
+          "\ud655\uc778\ub41c \uc99d\uac70 \uc694\uc57d"
+        ],
+        "path": "docs/RUNTIME-V2-PARITY.md"
+      },
+      {
+        "bytes": 7051,
+        "headings": [
+          "Codex \uc791\uc5c5 \uc0c1\ud0dc \uac10\uc9c0",
+          "\ud750\ub984",
+          "\ub7f0\ud0c0\uc784 v2 \uc0c1\ud0dc",
+          "\ud504\ub85c\uc138\uc2a4 \uc0c1\ud0dc",
+          "\uc791\uc5c5 \uc0c1\ud0dc",
+          "Resume \uc2e4\ud328 \ubd84\ub958",
+          "\uc54c\ub9bc",
+          "\uc774\ubca4\ud2b8 \ubaa8\ub378",
+          "JSONL \uba54\ud0c0\ub370\uc774\ud130",
+          "\ud074\ub77c\uc774\uc5b8\ud2b8 \ud544\ub4dc",
+          "Provider Registry",
+          "\uad00\ub828 \ud30c\uc77c"
+        ],
+        "path": "docs/STATUS.md"
+      },
+      {
+        "bytes": 2413,
+        "headings": [
+          "\uc2a4\ud0c0\uc77c \uac00\uc774\ub4dc",
+          "\uc6d0\uce59",
+          "\ud14c\ub9c8",
+          "\ub85c\ucf00\uc77c\uacfc \ud0c0\uc774\ud3ec\uadf8\ub798\ud53c",
+          "\ubaa8\ubc14\uc77c",
+          "\uc0c9\uc0c1 \ud1a0\ud070",
+          "\ucc28\ud2b8 \uc0c9\uc0c1",
+          "\uae08\uc9c0 \uc7a5\uc2dd",
+          "\uae08\uc9c0 \ud328\ud134 \uc608\uc2dc"
+        ],
+        "path": "docs/STYLE.md"
+      },
+      {
+        "bytes": 1914,
+        "headings": [
+          "Windows Integration Removal Plan Grilling",
+          "Context",
+          "Grill-Me Questions And Decisions",
+          "1. Should existing `~/.codexmux/remote/codex/` files be deleted automatically?",
+          "2. Should removed API routes return `410 Gone` for compatibility?",
+          "3. Should `source=remote` remain as an ignored query option?",
+          "4. Is this reversible?",
+          "Result"
+        ],
+        "path": "docs/superpowers/grill-me/2026-05-05-windows-integration-removal.md"
+      },
+      {
+        "bytes": 353239,
+        "headings": [
+          "Runtime Architecture Redesign Implementation Plan",
+          "Scope",
+          "Engineering Review Guardrails",
+          "Plan Grilling Resolutions"
+        ],
+        "path": "docs/superpowers/plans/2026-05-02-runtime-architecture-redesign.md"
+      },
+      {
+        "bytes": 4788,
+        "headings": [
+          "Runtime v2 New Tab Routing Implementation Plan",
+          "Files",
+          "Tasks",
+          "Task 1: Preserve Runtime Version Through IPC",
+          "Task 2: Mirror Legacy Workspace/Panes Into Runtime Storage",
+          "Task 3: Append Runtime Tabs To Legacy JSON Layout",
+          "Task 4: Route Plain New Terminal Tabs Through Runtime v2",
+          "Task 5: Select The Existing Terminal Surface Endpoint By Runtime Version",
+          "Task 6: Documentation",
+          "Task 7: Verification And Integration"
+        ],
+        "path": "docs/superpowers/plans/2026-05-03-runtime-v2-new-tab-routing.md"
+      },
+      {
+        "bytes": 5173,
+        "headings": [
+          "Runtime v2 Phase 2 Gate Smoke Implementation Plan",
+          "Files",
+          "Tasks",
+          "Task 1: Phase 2 Smoke Helper Library",
+          "Task 2: Terminal Mode-Aware Runtime Health",
+          "Task 3: Browser Reload And Server Restart Gate Smoke",
+          "Task 4: Docs And Platform Gates",
+          "Task 5: Verification And Integration"
+        ],
+        "path": "docs/superpowers/plans/2026-05-03-runtime-v2-phase2-gate-smoke.md"
+      },
+      {
+        "bytes": 4296,
+        "headings": [
+          "Runtime v2 Phase 2 Hardening Implementation Plan",
+          "Files",
+          "Tasks",
+          "Task 1: Extend Runtime v2 Smoke Protocol Helpers",
+          "Task 2: Extend Server Smoke For Web Stdin, Heartbeat, And Backpressure",
+          "Task 3: Add Runtime v2 Rollback Diagnostic For Existing Tabs",
+          "Task 4: Documentation",
+          "Task 5: Verification And Integration"
+        ],
+        "path": "docs/superpowers/plans/2026-05-03-runtime-v2-phase2-hardening.md"
+      },
+      {
+        "bytes": 2192,
+        "headings": [
+          "Runtime v2 Production Cutover Implementation Plan",
+          "Files",
+          "Tasks",
+          "Task 1: Canonical Cutover Document",
+          "Task 2: Documentation Map",
+          "Task 3: Verification",
+          "Self-Review"
+        ],
+        "path": "docs/superpowers/plans/2026-05-03-runtime-v2-production-cutover.md"
+      },
+      {
+        "bytes": 3426,
+        "headings": [
+          "Runtime v2 Shadow Diagnostics Implementation Plan",
+          "Files",
+          "Tasks",
+          "Task 1: TDD Diagnostics Store",
+          "Task 2: TDD Worker Client Instrumentation",
+          "Task 3: TDD Perf Snapshot Exposure",
+          "Task 4: Parity And Operating Docs",
+          "Task 5: Verification And Integration",
+          "Self-Review"
+        ],
+        "path": "docs/superpowers/plans/2026-05-03-runtime-v2-shadow-diagnostics.md"
+      },
+      {
+        "bytes": 3057,
+        "headings": [
+          "Runtime v2 Startup Diagnostics Implementation Plan",
+          "Files",
+          "Tasks",
+          "Task 1: TDD Startup Diagnostic Helper",
+          "Task 2: TDD Worker Health Counters",
+          "Task 3: Server Startup Wire-Up",
+          "Task 4: Docs",
+          "Task 5: Verification And Integration"
+        ],
+        "path": "docs/superpowers/plans/2026-05-03-runtime-v2-startup-diagnostics.md"
+      },
+      {
+        "bytes": 3863,
+        "headings": [
+          "Runtime v2 Status Worker Foundation Implementation Plan",
+          "Files",
+          "Tasks",
+          "Task 1: Failing Tests",
+          "Task 2: IPC And Worker Process",
+          "Task 3: Status Worker Service",
+          "Task 4: Supervisor Integration",
+          "Task 5: Docs And Verification",
+          "Self-Review"
+        ],
+        "path": "docs/superpowers/plans/2026-05-03-runtime-v2-status-worker-foundation.md"
+      },
+      {
+        "bytes": 3265,
+        "headings": [
+          "Runtime V2 Storage Tab Delete Implementation Plan",
+          "Files",
+          "Task 1: Storage Delete Command",
+          "Task 2: Supervisor and API Route",
+          "Task 3: Docs and Verification"
+        ],
+        "path": "docs/superpowers/plans/2026-05-03-runtime-v2-storage-tab-delete.md"
+      },
+      {
+        "bytes": 11690,
+        "headings": [
+          "Runtime V2 Terminal Lifecycle Hardening Implementation Plan",
+          "Scope",
+          "Files",
+          "Task 1: Storage Ready-Tab Lifecycle",
+          "Task 2: Terminal Worker Session Presence",
+          "Task 3: Supervisor Ready-Tab Reconciliation",
+          "Task 4: Runtime V2 Reconnect Hook",
+          "Task 5: Documentation and Verification"
+        ],
+        "path": "docs/superpowers/plans/2026-05-03-runtime-v2-terminal-lifecycle-hardening.md"
+      },
+      {
+        "bytes": 2881,
+        "headings": [
+          "Runtime v2 Terminal Mode Identity Implementation Plan",
+          "Files",
+          "Tasks",
+          "Task 1: TDD Terminal Mode Helper",
+          "Task 2: TDD Runtime Version In Contracts",
+          "Task 3: TDD Legacy New Tab Identity",
+          "Task 4: Docs",
+          "Task 5: Verification And Integration"
+        ],
+        "path": "docs/superpowers/plans/2026-05-03-runtime-v2-terminal-mode-identity.md"
+      },
+      {
+        "bytes": 3772,
+        "headings": [
+          "Runtime V2 Terminal Production-Parity Smoke Implementation Plan",
+          "Files",
+          "Task 1: Runtime v2 Smoke Helper Library",
+          "Task 2: Expand Server Smoke Scenario",
+          "Task 3: Docs and Verification"
+        ],
+        "path": "docs/superpowers/plans/2026-05-03-runtime-v2-terminal-production-smoke.md"
+      },
+      {
+        "bytes": 4696,
+        "headings": [
+          "Runtime v2 Timeline Worker Foundation Implementation Plan",
+          "Files",
+          "Tasks",
+          "Task 1: Failing Tests",
+          "Task 2: IPC And Worker Process",
+          "Task 3: Timeline Worker Service",
+          "Task 4: Supervisor And API Surface",
+          "Task 5: Docs And Verification",
+          "Self-Review"
+        ],
+        "path": "docs/superpowers/plans/2026-05-03-runtime-v2-timeline-worker-foundation.md"
+      },
+      {
+        "bytes": 35938,
+        "headings": [
+          "Approval Queue Metadata Implementation Plan",
+          "File Structure",
+          "Task 1: Parser Metadata",
+          "Task 2: Permission Options API Metadata"
+        ],
+        "path": "docs/superpowers/plans/2026-05-05-approval-queue-metadata.md"
+      },
+      {
+        "bytes": 12836,
+        "headings": [
+          "Approval Queue Implementation Plan",
+          "Task 1: Shared Approval Queue Helpers",
+          "Task 2: Approval Queue Item Component",
+          "Task 3: Wire The Global Notification Panel",
+          "Task 4: Verification"
+        ],
+        "path": "docs/superpowers/plans/2026-05-05-approval-queue.md"
+      },
+      {
+        "bytes": 2656,
+        "headings": [
+          "Lifecycle Control Actions Implementation Plan",
+          "Task 1: Lifecycle Action Core",
+          "Task 2: Lifecycle Action API",
+          "Task 3: Lifecycle Control UI",
+          "Task 4: Docs And Verification"
+        ],
+        "path": "docs/superpowers/plans/2026-05-05-lifecycle-control-actions.md"
+      },
+      {
+        "bytes": 31502,
+        "headings": [
+          "Lifecycle Control UI Implementation Plan",
+          "File Structure",
+          "Task 1: Lifecycle Helper",
+          "Task 2: Read-Only Lifecycle Panel Component"
+        ],
+        "path": "docs/superpowers/plans/2026-05-05-lifecycle-control-ui.md"
+      },
+      {
+        "bytes": 19498,
+        "headings": [
+          "Release Smoke Artifacts Implementation Plan",
+          "File Structure",
+          "Tasks",
+          "Task 1: Add Smoke Artifact Helper",
+          "Task 2: Wire Browser And Electron Smoke Artifacts",
+          "Task 3: Wire Android Smoke Artifacts",
+          "Task 4: Add Release Workflow Artifact Job",
+          "Task 5: Update Docs And Handoff",
+          "Smoke Artifact Evidence",
+          "2026-05-05 Release Smoke Artifacts Handoff",
+          "Scope",
+          "Artifact Contract"
+        ],
+        "path": "docs/superpowers/plans/2026-05-05-release-smoke-artifacts.md"
+      },
+      {
+        "bytes": 1204,
+        "headings": [
+          "Runtime V2 Code Default Fallback Plan",
+          "Tasks",
+          "Verification Commands"
+        ],
+        "path": "docs/superpowers/plans/2026-05-05-runtime-v2-code-default-fallback.md"
+      },
+      {
+        "bytes": 9554,
+        "headings": [
+          "Runtime V2 Full Default And Ops Approval Implementation Plan",
+          "File Structure",
+          "Task 1: Observation Closeout Documentation",
+          "Task 2: Phase 4 Timeline v2 Live Shadow Spec",
+          "Task 3: Phase 4 Timeline v2 Live Shadow Implementation Plan",
+          "Task 3a: Phase 4 Timeline v2 Live Shadow First Code Slice",
+          "Task 3b: Phase 4 Timeline v2 HTTP Default-read Slice",
+          "Task 3c: Phase 4 Timeline Resume Safety Evidence",
+          "Task 3d: Phase 4 Timeline Session-changed Evidence",
+          "Task 3e: Phase 4 Timeline Session Watcher Contract Foundation",
+          "Task 3f: Android Foreground Timeline Reconnect Evidence",
+          "Task 4: Phase 5 Status v2 Side-effect Spec"
+        ],
+        "path": "docs/superpowers/plans/2026-05-05-runtime-v2-full-default-ops-approval.md"
+      },
+      {
+        "bytes": 1202,
+        "headings": [
+          "Runtime V2 Phase 6 Default Gate Plan",
+          "Tasks",
+          "Verification Commands"
+        ],
+        "path": "docs/superpowers/plans/2026-05-05-runtime-v2-phase6-default-gate.md"
+      },
+      {
+        "bytes": 3179,
+        "headings": [
+          "Runtime V2 Status Ack/Dismiss Shadow Implementation Plan",
+          "File Structure",
+          "Tasks",
+          "Task 1: Pure Policy Tests",
+          "Task 2: Policy Implementation",
+          "Task 3: Runtime IPC",
+          "Task 4: StatusManager Shadow Integration",
+          "Task 5: Smoke, Docs, Verification",
+          "Self-Review"
+        ],
+        "path": "docs/superpowers/plans/2026-05-05-runtime-v2-status-ack-dismiss-shadow.md"
+      },
+      {
+        "bytes": 3528,
+        "headings": [
+          "Runtime V2 Status Live Event Bridge Implementation Plan",
+          "File Structure",
+          "Tasks",
+          "Task 1: IPC Event Schemas",
+          "Task 2: Worker Skeleton",
+          "Task 3: Supervisor Fan-out",
+          "Task 4: Default Bridge",
+          "Task 5: Verification",
+          "Self-Review"
+        ],
+        "path": "docs/superpowers/plans/2026-05-05-runtime-v2-status-live-event-bridge.md"
+      },
+      {
+        "bytes": 2851,
+        "headings": [
+          "Runtime V2 Status Session History Worker Implementation Plan",
+          "File Structure",
+          "Tasks",
+          "Task 1: Worker Command Tests",
+          "Task 2: Adapter And IPC Implementation",
+          "Task 3: Supervisor And StatusManager Integration",
+          "Task 4: Verification And Docs",
+          "Self-Review"
+        ],
+        "path": "docs/superpowers/plans/2026-05-05-runtime-v2-status-session-history-worker.md"
+      },
+      {
+        "bytes": 4194,
+        "headings": [
+          "Runtime V2 Status Side-effect Shadow Implementation Plan",
+          "File Structure",
+          "Tasks",
+          "Task 1: Pure Policy Tests",
+          "Task 2: Policy Implementation",
+          "Task 3: Worker IPC",
+          "Task 4: Supervisor Proxy",
+          "Task 5: StatusManager Shadow Integration",
+          "Task 6: Smoke And Docs",
+          "Self-Review"
+        ],
+        "path": "docs/superpowers/plans/2026-05-05-runtime-v2-status-side-effect-shadow.md"
+      },
+      {
+        "bytes": 2643,
+        "headings": [
+          "Runtime V2 Status Web Push Worker Implementation Plan",
+          "File Structure",
+          "Tasks",
+          "Task 1: Worker Command Tests",
+          "Task 2: Adapter And IPC Implementation",
+          "Task 3: StatusManager Integration",
+          "Task 4: Verification And Docs",
+          "Self-Review"
+        ],
+        "path": "docs/superpowers/plans/2026-05-05-runtime-v2-status-web-push-worker.md"
+      },
+      {
+        "bytes": 8277,
+        "headings": [
+          "Runtime V2 Timeline Live Shadow Implementation Plan",
+          "File Structure",
+          "Task 1: IPC Contracts And Tests",
+          "Task 2: Worker Live Service",
+          "Task 3: Worker Event Emission",
+          "Task 4: Supervisor Subscription API",
+          "Task 5: Shadow Compare Helper",
+          "Task 6: Legacy Timeline Server Shadow Hook",
+          "Task 7: Smoke Script",
+          "Task 8: Documentation And Verification",
+          "Out Of Scope For This Plan"
+        ],
+        "path": "docs/superpowers/plans/2026-05-05-runtime-v2-timeline-live-shadow.md"
+      },
+      {
+        "bytes": 34549,
+        "headings": [
+          "Runtime V2 Timeline WebSocket Cutover Implementation Plan",
+          "File Structure",
+          "Task 1: Runtime Timeline WebSocket Bridge Tests",
+          "Task 2: Runtime Timeline WebSocket Bridge Implementation"
+        ],
+        "path": "docs/superpowers/plans/2026-05-05-runtime-v2-timeline-websocket-cutover.md"
+      },
+      {
+        "bytes": 36928,
+        "headings": [
+          "Windows Integration Removal Implementation Plan",
+          "File Structure",
+          "Task 1: Regression Tests For Local-Only Session History",
+          "Task 2: Simplify Shared Session And Timeline Contracts",
+          "Task 3: Remove Windows Session List UI And Remote Hooks"
+        ],
+        "path": "docs/superpowers/plans/2026-05-05-windows-integration-removal.md"
+      },
+      {
+        "bytes": 3894,
+        "headings": [
+          "Domain Architecture Lifecycle Implementation Plan",
+          "File Structure",
+          "Task 1: Preserve Approved Design Input",
+          "Task 2: Update Project Agent Contract",
+          "Task 3: Update Domain Documentation",
+          "Task 4: Verify Documentation Change",
+          "Self-Review"
+        ],
+        "path": "docs/superpowers/plans/2026-05-06-domain-architecture-lifecycle.md"
+      },
+      {
+        "bytes": 29921,
+        "headings": [
+          "Operations Automation Batch Implementation Plan",
+          "File Structure",
+          "Task 1: Optional Platform Smoke Artifact Workflow",
+          "Task 2: Stats Parsed Session Reuse",
+          "Task 3: Approval Lock-Screen Copy From Parsed Metadata"
+        ],
+        "path": "docs/superpowers/plans/2026-05-06-ops-automation-batch.md"
+      },
+      {
+        "bytes": 2623,
+        "headings": [
+          "Stats Date Filtering Implementation Plan",
+          "Tasks",
+          "Task 1: Failing Tests",
+          "Task 2: Helper Implementation",
+          "Task 3: Apply Filtering",
+          "Task 4: Docs And Verification",
+          "Self-Review"
+        ],
+        "path": "docs/superpowers/plans/2026-05-06-stats-date-filtering.md"
+      },
+      {
+        "bytes": 4685,
+        "headings": [
+          "Windows-only platform \uc804\ud658 \uc2e4\ud589 \uacc4\ud68d",
+          "\ud30c\uc77c \uad6c\uc870",
+          "0\ub2e8\uacc4: \uc81c\ud488 \ud0c0\uae43 \uae30\uc900 \uace0\uc815",
+          "1\ub2e8\uacc4: Platform contract\uc640 \ud14c\uc2a4\ud2b8",
+          "2\ub2e8\uacc4: \ud130\ubbf8\ub110 \ub7f0\ud0c0\uc784 boundary",
+          "3\ub2e8\uacc4: Windows \ud130\ubbf8\ub110 \ub7f0\ud0c0\uc784",
+          "4\ub2e8\uacc4: Windows process\uc640 Codex session detection",
+          "5\ub2e8\uacc4: Windows host operations",
+          "6\ub2e8\uacc4: Packaging\uacfc surface \uc804\ud658",
+          "Design review \uba54\ubaa8 \uae30\uc900",
+          "Engineering review \uccb4\ud06c\ub9ac\uc2a4\ud2b8",
+          "\ud604\uc7ac \ub0a8\uc740 \uc791\uc5c5"
+        ],
+        "path": "docs/superpowers/plans/2026-05-06-windows-only-platform-transition.md"
+      },
+      {
+        "bytes": 29309,
+        "headings": [
+          "Windows Platform Contract Baseline Implementation Plan",
+          "Grill-me Decisions",
+          "Plan Design Review",
+          "File Structure",
+          "Task 1: Terminal Runtime Contract",
+          "Task 2: Current tmux Runtime Contract Coverage",
+          "Task 3: Process Inspector Boundary"
+        ],
+        "path": "docs/superpowers/plans/2026-05-06-windows-platform-contract-baseline.md"
+      },
+      {
+        "bytes": 1691,
+        "headings": [
+          "\uae30\uc900 \ubb38\uc11c \ud55c\uad6d\uc5b4 \uc7ac\uc791\uc131 \uacc4\ud68d",
+          "\ubaa9\ud45c",
+          "\uc811\uadfc",
+          "\ub300\uc0c1 \ud30c\uc77c",
+          "\uc791\uc5c5 1: \ubc94\uc704 \uace0\uc815",
+          "\uc791\uc5c5 2: \uae30\uc900 \ubb38\uc11c \uc7ac\uc791\uc131",
+          "\uc791\uc5c5 3: \uac80\uc99d"
+        ],
+        "path": "docs/superpowers/plans/2026-05-08-korean-canonical-docs.md"
+      },
+      {
+        "bytes": 67811,
+        "headings": [
+          "codexmux Runtime Architecture Redesign Design",
+          "Purpose",
+          "Approved Direction",
+          "First Slice Decisions"
+        ],
+        "path": "docs/superpowers/specs/2026-05-02-runtime-architecture-redesign-design.md"
+      },
+      {
+        "bytes": 2365,
+        "headings": [
+          "Runtime v2 New Tab Routing Design",
+          "Goal",
+          "Scope",
+          "Non-Goals",
+          "Behavior",
+          "Tests"
+        ],
+        "path": "docs/superpowers/specs/2026-05-03-runtime-v2-new-tab-routing-design.md"
+      },
+      {
+        "bytes": 2683,
+        "headings": [
+          "Runtime v2 Shadow Diagnostics Design",
+          "Goal",
+          "Scope",
+          "Non-Goals",
+          "Architecture",
+          "Diagnostic Fields",
+          "Tests",
+          "Rollback"
+        ],
+        "path": "docs/superpowers/specs/2026-05-03-runtime-v2-shadow-diagnostics-design.md"
+      },
+      {
+        "bytes": 1622,
+        "headings": [
+          "Runtime v2 Startup Diagnostics Design",
+          "Goal",
+          "Scope",
+          "Non-Goals",
+          "Behavior",
+          "Tests"
+        ],
+        "path": "docs/superpowers/specs/2026-05-03-runtime-v2-startup-diagnostics-design.md"
+      },
+      {
+        "bytes": 1437,
+        "headings": [
+          "Runtime v2 Status Worker Foundation Design",
+          "Goal",
+          "Scope",
+          "Decisions",
+          "Verification"
+        ],
+        "path": "docs/superpowers/specs/2026-05-03-runtime-v2-status-worker-foundation-design.md"
+      },
+      {
+        "bytes": 2958,
+        "headings": [
+          "Runtime v2 Storage Tab Delete Design",
+          "Purpose",
+          "Scope",
+          "Design",
+          "Acceptance Criteria"
+        ],
+        "path": "docs/superpowers/specs/2026-05-03-runtime-v2-storage-tab-delete-design.md"
+      },
+      {
+        "bytes": 6258,
+        "headings": [
+          "Runtime v2 Terminal Lifecycle Hardening Design",
+          "Purpose",
+          "Scope",
+          "Decisions",
+          "Ready Tab Reconciliation",
+          "Failed Ready Tabs",
+          "Terminal Worker Has Session",
+          "Runtime v2 Client Reconnect",
+          "Promotion Boundary",
+          "Acceptance Criteria"
+        ],
+        "path": "docs/superpowers/specs/2026-05-03-runtime-v2-terminal-lifecycle-hardening-design.md"
+      },
+      {
+        "bytes": 1719,
+        "headings": [
+          "Runtime v2 Terminal Mode Identity Design",
+          "Goal",
+          "Scope",
+          "Non-Goals",
+          "Behavior",
+          "Tests"
+        ],
+        "path": "docs/superpowers/specs/2026-05-03-runtime-v2-terminal-mode-identity-design.md"
+      },
+      {
+        "bytes": 4224,
+        "headings": [
+          "Runtime v2 Terminal Production-Parity Smoke Design",
+          "Purpose",
+          "Scope",
+          "Design",
+          "Smoke Script Behavior",
+          "Helper Extraction",
+          "Platform Smoke Docs",
+          "Acceptance Criteria"
+        ],
+        "path": "docs/superpowers/specs/2026-05-03-runtime-v2-terminal-production-smoke-design.md"
+      },
+      {
+        "bytes": 1963,
+        "headings": [
+          "Runtime v2 Timeline Worker Foundation Design",
+          "Goal",
+          "Scope",
+          "Decisions",
+          "Non-Goals",
+          "Verification"
+        ],
+        "path": "docs/superpowers/specs/2026-05-03-runtime-v2-timeline-worker-foundation-design.md"
+      },
+      {
+        "bytes": 1917,
+        "headings": [
+          "Android Release AAB Ops Design",
+          "Goal",
+          "Scope",
+          "Design",
+          "Rollback",
+          "Verification"
+        ],
+        "path": "docs/superpowers/specs/2026-05-05-android-release-aab-ops-design.md"
+      },
+      {
+        "bytes": 4462,
+        "headings": [
+          "Approval Queue Design",
+          "Goal",
+          "Scope",
+          "Current Flow",
+          "Proposed UX",
+          "Architecture",
+          "Data And Security",
+          "Error Handling",
+          "Testing"
+        ],
+        "path": "docs/superpowers/specs/2026-05-05-approval-queue-design.md"
+      },
+      {
+        "bytes": 12828,
+        "headings": [
+          "Approval Queue Metadata Design",
+          "Goal",
+          "Context",
+          "Scope",
+          "Non-Goals",
+          "Data Model",
+          "Metadata Extraction",
+          "API",
+          "UI",
+          "Web Push And Deep Link",
+          "Error Handling",
+          "Security And Privacy"
+        ],
+        "path": "docs/superpowers/specs/2026-05-05-approval-queue-metadata-design.md"
+      },
+      {
+        "bytes": 2271,
+        "headings": [
+          "Lifecycle Control Actions Design",
+          "Goal",
+          "Actions",
+          "Safety",
+          "Audit",
+          "UI",
+          "Validation"
+        ],
+        "path": "docs/superpowers/specs/2026-05-05-lifecycle-control-actions-design.md"
+      },
+      {
+        "bytes": 6928,
+        "headings": [
+          "Lifecycle Control UI Design",
+          "Goal",
+          "Context",
+          "Scope",
+          "Non-Goals",
+          "UX",
+          "Data Flow",
+          "Architecture",
+          "Error Handling",
+          "Security And Privacy",
+          "Testing",
+          "Documentation"
+        ],
+        "path": "docs/superpowers/specs/2026-05-05-lifecycle-control-ui-design.md"
+      },
+      {
+        "bytes": 6250,
+        "headings": [
+          "Release Smoke Artifacts Design",
+          "Goal",
+          "Context",
+          "Scope",
+          "Non-Goals",
+          "Artifact Contract",
+          "CI Design",
+          "Docs",
+          "Rollout",
+          "Success"
+        ],
+        "path": "docs/superpowers/specs/2026-05-05-release-smoke-artifacts-design.md"
+      },
+      {
+        "bytes": 1456,
+        "headings": [
+          "Runtime V2 Code Default Fallback Design",
+          "Goal",
+          "Scope",
+          "Non-goals",
+          "Rollback",
+          "Verification"
+        ],
+        "path": "docs/superpowers/specs/2026-05-05-runtime-v2-code-default-fallback-design.md"
+      },
+      {
+        "bytes": 7332,
+        "headings": [
+          "Runtime V2 Full Default And Ops Approval Design",
+          "Goal",
+          "Current State",
+          "Decomposition",
+          "1. Phase 4 Timeline v2 Live Shadow",
+          "2. Phase 5 Status v2 Side Effects",
+          "3. Measurement-based Performance Tuning",
+          "4. Approval Workflow High-grade Path",
+          "5. Lifecycle Control Executable UI",
+          "Grill-me Review",
+          "Test Strategy",
+          "Rollout Order"
+        ],
+        "path": "docs/superpowers/specs/2026-05-05-runtime-v2-full-default-ops-approval-design.md"
+      },
+      {
+        "bytes": 2030,
+        "headings": [
+          "Runtime V2 Phase 6 Default Gate Design",
+          "Goal",
+          "Scope",
+          "Non-goals",
+          "Rollback",
+          "Success"
+        ],
+        "path": "docs/superpowers/specs/2026-05-05-runtime-v2-phase6-default-gate-design.md"
+      },
+      {
+        "bytes": 2837,
+        "headings": [
+          "Runtime V2 Status Ack/Dismiss Shadow Design",
+          "Goal",
+          "Current State",
+          "Scope",
+          "Non-goals",
+          "Data Flow",
+          "Verification",
+          "Rollback"
+        ],
+        "path": "docs/superpowers/specs/2026-05-05-runtime-v2-status-ack-dismiss-shadow-design.md"
+      },
+      {
+        "bytes": 3068,
+        "headings": [
+          "Runtime V2 Status Live Event Bridge Design",
+          "Goal",
+          "Current State",
+          "Target Ownership",
+          "Event Contract",
+          "Rollout",
+          "Non-goals",
+          "Verification",
+          "Rollback"
+        ],
+        "path": "docs/superpowers/specs/2026-05-05-runtime-v2-status-live-event-bridge-design.md"
+      },
+      {
+        "bytes": 2117,
+        "headings": [
+          "Runtime V2 Status Session History Worker Design",
+          "Goal",
+          "Current State",
+          "Scope",
+          "Non-goals",
+          "Verification",
+          "Rollback"
+        ],
+        "path": "docs/superpowers/specs/2026-05-05-runtime-v2-status-session-history-worker-design.md"
+      },
+      {
+        "bytes": 3652,
+        "headings": [
+          "Runtime V2 Status Side-effect Shadow Design",
+          "Goal",
+          "Current State",
+          "Scope",
+          "Non-goals",
+          "Data Flow",
+          "Error Handling",
+          "Verification",
+          "Rollback"
+        ],
+        "path": "docs/superpowers/specs/2026-05-05-runtime-v2-status-side-effect-shadow-design.md"
+      },
+      {
+        "bytes": 2140,
+        "headings": [
+          "Runtime V2 Status Web Push Worker Design",
+          "Goal",
+          "Current State",
+          "Scope",
+          "Non-goals",
+          "Verification",
+          "Rollback"
+        ],
+        "path": "docs/superpowers/specs/2026-05-05-runtime-v2-status-web-push-worker-design.md"
+      },
+      {
+        "bytes": 4675,
+        "headings": [
+          "Runtime V2 Timeline Live Shadow Design",
+          "Goal",
+          "Current Boundary",
+          "Design",
+          "Worker Live Watch Service",
+          "Legacy Shadow Integration",
+          "Default Promotion",
+          "Resume Handling",
+          "Error Handling",
+          "Testing",
+          "Rollback"
+        ],
+        "path": "docs/superpowers/specs/2026-05-05-runtime-v2-timeline-live-shadow-design.md"
+      },
+      {
+        "bytes": 7942,
+        "headings": [
+          "Runtime V2 Timeline WebSocket Cutover Design",
+          "Goal",
+          "Current State",
+          "Scope",
+          "Non-goals",
+          "Architecture",
+          "Mode Router",
+          "V2 WebSocket Session",
+          "Session-changed Delivery",
+          "Cleanup",
+          "Data Flow",
+          "Error Handling"
+        ],
+        "path": "docs/superpowers/specs/2026-05-05-runtime-v2-timeline-websocket-cutover-design.md"
+      },
+      {
+        "bytes": 9137,
+        "headings": [
+          "Windows Integration Removal Design",
+          "Context",
+          "Goal",
+          "Non-Goals",
+          "Scope",
+          "Architecture",
+          "UI Behavior",
+          "API And Server Behavior",
+          "Data Handling",
+          "Documentation",
+          "Tests And Verification",
+          "Rollback"
+        ],
+        "path": "docs/superpowers/specs/2026-05-05-windows-integration-removal-design.md"
+      },
+      {
+        "bytes": 3494,
+        "headings": [
+          "Domain Architecture Lifecycle Design",
+          "Goal",
+          "Scope",
+          "Domain Architecture Pass",
+          "Improve Codebase Architecture",
+          "Non-Goals",
+          "Review Notes",
+          "Lifecycle Impact",
+          "Self-Review"
+        ],
+        "path": "docs/superpowers/specs/2026-05-06-domain-architecture-lifecycle-design.md"
+      },
+      {
+        "bytes": 6971,
+        "headings": [
+          "Operations Automation Batch Design",
+          "Goal",
+          "Context",
+          "Scope",
+          "1. Release/CI artifact preservation",
+          "2. Measurement-based perf tuning",
+          "3. Approval queue follow-up",
+          "4. Lifecycle Control follow-up",
+          "5. Long/external smoke evidence",
+          "6. Post-MVP backlog grooming",
+          "Non-Goals",
+          "Architecture"
+        ],
+        "path": "docs/superpowers/specs/2026-05-06-ops-automation-batch-design.md"
+      },
+      {
+        "bytes": 2328,
+        "headings": [
+          "Stats Date Filtering Design",
+          "Goal",
+          "Evidence",
+          "Scope",
+          "Non-Goals",
+          "Safety",
+          "Success"
+        ],
+        "path": "docs/superpowers/specs/2026-05-06-stats-date-filtering-design.md"
+      },
+      {
+        "bytes": 5233,
+        "headings": [
+          "Windows-only platform \uc804\ud658 \uc124\uacc4",
+          "\ubaa9\ud45c",
+          "\ub9e5\ub77d",
+          "\uc2b9\uc778\ub41c \uc81c\ud488 \ud615\ud0dc",
+          "\ubc94\uc704",
+          "\uc81c\uc678 \ubc94\uc704",
+          "\ub3c4\uba54\uc778 \uc544\ud0a4\ud14d\ucc98 pass",
+          "\ub7f0\ud0c0\uc784 \uacbd\uacc4",
+          "Host, install, packaging \uae30\uc900",
+          "\ud14c\uc2a4\ud2b8, \ub9b4\ub9ac\uc2a4, \uc6b4\uc601",
+          "Improve codebase architecture \ud6c4\ubcf4",
+          "\uac80\ud1a0 \uba54\ubaa8 \uae30\uc900"
+        ],
+        "path": "docs/superpowers/specs/2026-05-06-windows-only-platform-transition-design.md"
+      },
+      {
+        "bytes": 1094,
+        "headings": [
+          "Agent Provider Contract Test \uc124\uacc4",
+          "\ubaa9\ud45c",
+          "\ubc94\uc704",
+          "\uc81c\uc678",
+          "\uc131\uacf5 \uae30\uc900"
+        ],
+        "path": "docs/superpowers/specs/2026-05-08-agent-provider-contract-tests-design.md"
+      },
+      {
+        "bytes": 1356,
+        "headings": [
+          "App-server Protocol Contract \uc124\uacc4",
+          "\ubaa9\ud45c",
+          "\ubc94\uc704",
+          "\uc81c\uc678",
+          "\uc131\uacf5 \uae30\uc900"
+        ],
+        "path": "docs/superpowers/specs/2026-05-08-app-server-protocol-contract-design.md"
+      },
+      {
+        "bytes": 1560,
+        "headings": [
+          "Approval Push Audit \uc124\uacc4",
+          "\ubaa9\ud45c",
+          "\ubc94\uc704",
+          "\uc81c\uc678",
+          "\ubcf4\uc548 \uacbd\uacc4",
+          "\uc131\uacf5 \uae30\uc900"
+        ],
+        "path": "docs/superpowers/specs/2026-05-08-approval-push-audit-design.md"
+      },
+      {
+        "bytes": 1929,
+        "headings": [
+          "Codex State SQLite \uc77d\uae30 \uc804\uc6a9 Indexer \uc124\uacc4",
+          "\ubaa9\ud45c",
+          "\ubc94\uc704",
+          "\uc81c\uc678",
+          "\uacbd\uacc4",
+          "\uc131\uacf5 \uae30\uc900"
+        ],
+        "path": "docs/superpowers/specs/2026-05-08-codex-state-sqlite-readonly-indexer-design.md"
+      },
+      {
+        "bytes": 1561,
+        "headings": [
+          "Mobile Lock-screen Approval Copy \uc124\uacc4",
+          "\ubaa9\ud45c",
+          "\ubc94\uc704",
+          "\uc81c\uc678",
+          "\ubb38\uad6c \uae30\uc900",
+          "\uc131\uacf5 \uae30\uc900"
+        ],
+        "path": "docs/superpowers/specs/2026-05-08-mobile-lock-screen-approval-copy-design.md"
+      },
+      {
+        "bytes": 1068,
+        "headings": [
+          "Status Web Push Payload Module \uc124\uacc4",
+          "\ubaa9\ud45c",
+          "\ubc94\uc704",
+          "\uc81c\uc678",
+          "\uc131\uacf5 \uae30\uc900"
+        ],
+        "path": "docs/superpowers/specs/2026-05-08-status-web-push-payload-module-design.md"
+      },
+      {
+        "bytes": 3408,
+        "headings": [
+          "Timeline JSONL Perf Snapshot Design",
+          "\ubaa9\ud45c",
+          "\ud604\uc7ac \uc0c1\ud0dc",
+          "\ubc94\uc704",
+          "\uc81c\uc678 \ubc94\uc704",
+          "\uc124\uacc4",
+          "Rollback",
+          "\uac80\uc99d",
+          "\uc218\uc6a9 \uae30\uc900"
+        ],
+        "path": "docs/superpowers/specs/2026-05-08-timeline-jsonl-perf-snapshot-design.md"
+      },
+      {
+        "bytes": 3098,
+        "headings": [
+          "Linux systemd \ucc38\uace0 \ubb38\uc11c",
+          "\uae30\uc874 \uc6cc\ud06c\uc2a4\ud14c\uc774\uc158 \uae30\uc900",
+          "\uc11c\ube44\uc2a4 \ud30c\uc77c \uc608\uc2dc",
+          "\ub4f1\ub85d\uacfc \uc2dc\uc791",
+          "\uc6b4\uc601 \uba85\ub839",
+          "\ub7f0\ud0c0\uc784 v2 rollback \ucc38\uace0",
+          "Lifecycle control \ucc38\uace0",
+          "Windows \uc804\ud658 \uba54\ubaa8"
+        ],
+        "path": "docs/SYSTEMD.md"
+      },
+      {
+        "bytes": 2852,
+        "headings": [
+          "Rust + Tauri \ub3c4\uc785 \ud0c0\ub2f9\uc131 \uac80\ud1a0",
+          "\uacb0\ub860",
+          "\ud604\uc7ac \uad6c\uc870 \uc694\uc57d",
+          "\uae30\ub300 \ud6a8\uacfc",
+          "\uc8fc\uc694 \ub9ac\uc2a4\ud06c",
+          "\uc2dc\ub098\ub9ac\uc624 \ud3c9\uac00",
+          "\uc758\uc0ac\uacb0\uc815 \uae30\uc900",
+          "\uad8c\uc7a5 PoC \ubc94\uc704",
+          "\ud604\uc7ac \uacb0\uc815"
+        ],
+        "path": "docs/TAURI-EVALUATION.md"
+      },
+      {
+        "bytes": 9005,
+        "headings": [
+          "\ud14c\uc2a4\ud2b8\uc640 smoke \uac00\uc774\ub4dc",
+          "\uae30\ubcf8 \uac8c\uc774\ud2b8",
+          "Windows \uc804\ud658 \uac8c\uc774\ud2b8",
+          "\ub7f0\ud0c0\uc784 v2",
+          "\ube0c\ub77c\uc6b0\uc800 UI\uc640 Playwright",
+          "Electron",
+          "Android \ucc38\uace0 \uac80\uc99d",
+          "\uad8c\ud55c, \ud1b5\uacc4, \ud0c0\uc784\ub77c\uc778",
+          "Live deploy\uc640 \uc6b4\uc601",
+          "Smoke artifact \uae30\uc900"
+        ],
+        "path": "docs/TESTING.md"
+      },
+      {
+        "bytes": 4294,
+        "headings": [
+          "\ud130\ubbf8\ub110 \ub7f0\ud0c0\uc784\uacfc legacy tmux \uacbd\ub85c",
+          "\uad6c\uc870",
+          "tmux \uc124\uc815",
+          "\ud130\ubbf8\ub110 WebSocket",
+          "\ub7f0\ud0c0\uc784 v2 \ud130\ubbf8\ub110",
+          "\uc785\ub825\uacfc \ub2e8\ucd95\ud0a4",
+          "\uc81c\ubaa9 \uba54\ud0c0\ub370\uc774\ud130",
+          "Codex \uac10\uc9c0",
+          "\ud0c0\uc784\ub77c\uc778 WebSocket",
+          "Git DIFF \ud328\ub110",
+          "\uc11c\ubc84 \uc2dc\uc791 \uc21c\uc11c",
+          "\uad00\ub828 \ud30c\uc77c"
+        ],
+        "path": "docs/TMUX.md"
+      },
+      {
+        "bytes": 8081,
+        "headings": [
+          "Windows-only \ucc28\uc774 \uac10\uc0ac",
+          "\uacb0\ub860",
+          "\uac10\uc0ac \uc18c\uc2a4",
+          "\ub3c4\uba54\uc778 \uc6a9\uc5b4",
+          "\uacbd\uacc4 \ucee8\ud14d\uc2a4\ud2b8 \ud6c4\ubcf4",
+          "\ucc28\uc774 \ub9e4\ud2b8\ub9ad\uc2a4",
+          "\ud655\uc778\ub41c Windows \uc99d\uac70",
+          "\uc544\ud0a4\ud14d\ucc98 \uc601\ud5a5",
+          "\uad8c\uc7a5 \uc804\ud658 \uc21c\uc11c",
+          "ADR \ud6c4\ubcf4",
+          "\uc81c\uc678 \ubc94\uc704",
+          "\ub0a8\uc740 \uc804\ud658 \ud56d\ubaa9"
+        ],
+        "path": "docs/WINDOWS-ONLY-GAP-AUDIT.md"
+      },
+      {
+        "bytes": 4844,
+        "headings": [
+          "codexmux",
+          "\ud604\uc7ac \uc0c1\ud0dc",
+          "Windows \uc804\ud658 \uae30\uc900",
+          "\ub85c\uceec \uac1c\ubc1c",
+          "\uac80\uc99d \uba85\ub839",
+          "\uc544\ud0a4\ud14d\ucc98 \uae30\uc900",
+          "\ubb38\uc11c \ub9f5",
+          "\ud604\uc7ac \uacbd\uacc4",
+          "\ub77c\uc774\uc120\uc2a4"
+        ],
+        "path": "README.md"
+      },
+      {
+        "bytes": 519,
+        "headings": [
+          "Codex JSONL fixtures"
+        ],
+        "path": "tests/fixtures/codex-jsonl/README.md"
+      }
+    ],
+    "git": {
+      "branch": "codex/windows-platform-contract-baseline",
+      "dirty_count": 0,
+      "head": "97d73486"
+    },
+    "packages": [
+      "package.json",
+      "pnpm-lock.yaml"
+    ],
+    "redactions": {
+      "args": 4,
+      "internal_ref": 15,
+      "local_path": 4,
+      "secret": 0
+    }
+  },
+  "schema_version": 1,
+  "stages": {
+    "code-review": "pending",
+    "domain-architecture": "draft",
+    "grill-me": "draft",
+    "implement": "pending",
+    "intake": "draft",
+    "operate": "draft",
+    "plan-design-review": "pending",
+    "plan-eng-review": "pending",
+    "release": "draft",
+    "superpowers:brainstorming": "draft",
+    "superpowers:writing-plans": "draft"
+  },
+  "status": "created",
+  "target": {
+    "path": ".",
+    "project_id": "codexmux"
+  },
+  "tool": "lifecycle-redesign-start",
+  "topic": "project-design-governance"
+}

@@ -437,6 +437,7 @@ const MobileNavigationSheet = ({
           <SidebarRateLimits />
           <div className="flex items-center gap-0.5 px-3 pt-1 pb-4">
             {sidebarItems.map((item) => {
+              const itemName = item.labelKey ? ts(item.labelKey) : item.name;
               const isExternal = item.url.startsWith('http://') || item.url.startsWith('https://');
               const navPath = isExternal ? `/webview?url=${encodeURIComponent(item.url)}` : item.url;
               return (
@@ -447,8 +448,8 @@ const MobileNavigationSheet = ({
                     onOpenChange(false);
                     router.push(navPath);
                   }}
-                  aria-label={item.name}
-                  title={item.name}
+                  aria-label={itemName}
+                  title={itemName}
                 >
                   <IconRenderer name={item.icon} className="h-[15px] w-[15px]" />
                 </button>

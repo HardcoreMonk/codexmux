@@ -24,7 +24,17 @@ vi.mock('@/lib/perf-metrics', () => ({
       delayMs: { min: 0, mean: 0, max: 0, stddev: 0, p50: 0, p95: 0, p99: 0 },
       utilization: { idle: 0, active: 0, utilization: 0 },
     },
-    timings: {},
+    timings: {
+      'stats.cache.build': {
+        count: 1,
+        averageMs: 1200,
+        maxMs: 3200,
+        lastMs: 3200,
+        totalMs: 3200,
+        minMs: 3200,
+        updatedAt: '2026-05-01T00:00:00.000Z',
+      },
+    },
     counters: {},
   }),
 }));
@@ -143,6 +153,16 @@ describe('/api/debug/perf', () => {
     const body = response.body as TJsonBody;
     expect(body.runtime).toBeTruthy();
     expect(body.services).toBeTruthy();
+    expect(body.triage).toMatchObject({
+      summary: { high: 1 },
+      items: [
+        {
+          category: 'stats',
+          metric: 'stats.cache.build',
+          severity: 'high',
+        },
+      ],
+    });
 
     const runtime = body.runtime as TJsonBody;
     const services = body.services as TJsonBody;

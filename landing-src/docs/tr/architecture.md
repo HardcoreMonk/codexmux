@@ -19,7 +19,7 @@ codexmux는 브라우저, Node.js 서버, 호스트의 tmux와 Codex CLI로 구�
   └─ /api/timeline/sessions -> session-index.ts -> local Codex 목록
 ```
 
-WebSocket은 역할별로 분리되어 있고 upgrade 시 `session-token` cookie로 인증합니다. `/api/debug/perf`는 public health check가 아니라 session cookie 또는 `x-cmux-token`을 요구하는 진단 endpoint입니다.
+WebSocket은 역할별로 분리되어 있고 upgrade 시 `codexmux-session-token` cookie로 인증합니다. 제품별 cookie 이름은 같은 hostname의 Purplemux `session-token`과 충돌하지 않습니다. `/api/debug/perf`는 public health check가 아니라 session cookie 또는 `x-cmux-token`을 요구하는 진단 endpoint입니다.
 
 ## 브라우저
 
@@ -50,9 +50,10 @@ codexmux는 `codexmux` socket에 격리된 tmux session을 만들고 `src/config
 ## Codex 연동
 
 - `src/lib/codex-command.ts`가 `codex`와 `codex resume <sessionId>` command를 만듭니다.
+- Codex hook event는 inline `hooks.SessionStart`, `hooks.UserPromptSubmit`, `hooks.Stop` override로 `status-hook.sh`에 연결합니다.
 - `src/lib/codex-session-detection.ts`가 pane process tree에서 `codex` process를 찾고, session id/process start time/live process cwd fallback 순서로 JSONL을 연결합니다.
 - `src/lib/codex-session-parser.ts`가 JSONL을 timeline entry로 변환합니다.
-- `src/lib/session-index.ts`가 로컬 JSONL을 session list snapshot으로 정규화합니다. session list 요청은 필요한 page만 public shape로 변환합니다.
+- `src/lib/session-index.ts`가 로컬 JSONL을 session list snapshot으로 정규화합니다. session list 요청은 필요한 page만 public shape로 변환하며, cold refresh 중에는 현재 snapshot과 `refreshing` 상태를 먼저 반환합니다.
 - stats와 daily report는 같은 JSONL을 읽어 계산합니다. stats cache build는 동시 요청이 하나의 in-flight 작업을 공유합니다.
 - timeline tail snapshot, diff short cache, session index, hidden-state polling guard는 source of truth를 바꾸지 않고 반복 계산과 렌더 비용을 줄입니다.
 

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import enNotification from '@/../messages/en/notification.json';
 import koNotification from '@/../messages/ko/notification.json';
 import {
+  buildApprovalPushBody,
   cleanApprovalOptionLabel,
   getApprovalFallbackKey,
   getApprovalMetadataDetail,
@@ -10,6 +11,7 @@ import {
   getApprovalPromptTypeKey,
   getApprovalRiskKey,
   hasUsableApprovalOptions,
+  selectApprovalPromptMetadata,
   shouldRetryApprovalOptions,
 } from '@/lib/approval-queue';
 import type { IApprovalPromptMetadata } from '@/lib/permission-prompt';
@@ -107,5 +109,60 @@ describe('approval queue helpers', () => {
     );
     expect(getApprovalMetadataDetail(null)).toBeNull();
     expect(getApprovalMetadataDetail({ ...baseMetadata, commandPreview: null, fileHints: [] })).toBeNull();
+  });
+
+  it('builds concise lock-screen copy from approval metadata', () => {
+    const baseMetadata: IApprovalPromptMetadata = {
+      promptType: 'command',
+      approvalKind: 'allow',
+      riskLevel: 'medium',
+      commandPreview: 'corepack pnpm test',
+      fileHints: [],
+      fallbackReason: null,
+    };
+
+    expect(buildApprovalPushBody({ metadata: baseMetadata, fallbackText: 'Run tests?', locale: 'en' })).toBe(
+      'Command approval · medium · corepack pnpm test',
+    );
+    expect(buildApprovalPushBody({
+      metadata: { ...baseMetadata, promptType: 'file', commandPreview: null, fileHints: ['server.ts', 'status.ts'] },
+      fallbackText: 'Edit files?',
+      locale: 'en',
+    })).toBe('File approval · medium · server.ts, status.ts');
+    expect(buildApprovalPushBody({ metadata: baseMetadata, fallbackText: '테스트 실행?', locale: 'ko' })).toBe(
+      '명령 승인 · 보통 · corepack pnpm test',
+    );
+    expect(buildApprovalPushBody({ metadata: null, fallbackText: 'Run tests?' })).toBe('Run tests?');
+  });
+
+  it('uses status-owned approval metadata as fallback until fresh pane metadata is useful', () => {
+    const statusMetadata: IApprovalPromptMetadata = {
+      promptType: 'command',
+      approvalKind: 'allow',
+      riskLevel: 'high',
+      commandPreview: 'corepack pnpm test',
+      fileHints: [],
+      fallbackReason: null,
+    };
+    const unknownPaneMetadata: IApprovalPromptMetadata = {
+      promptType: 'unknown',
+      approvalKind: 'unknown',
+      riskLevel: 'unknown',
+      commandPreview: null,
+      fileHints: [],
+      fallbackReason: null,
+    };
+    const freshPaneMetadata: IApprovalPromptMetadata = {
+      promptType: 'file',
+      approvalKind: 'allow',
+      riskLevel: 'medium',
+      commandPreview: null,
+      fileHints: ['status.ts'],
+      fallbackReason: null,
+    };
+
+    expect(selectApprovalPromptMetadata({ fetchedMetadata: null, statusMetadata })).toEqual(statusMetadata);
+    expect(selectApprovalPromptMetadata({ fetchedMetadata: unknownPaneMetadata, statusMetadata })).toEqual(statusMetadata);
+    expect(selectApprovalPromptMetadata({ fetchedMetadata: freshPaneMetadata, statusMetadata })).toEqual(freshPaneMetadata);
   });
 });

@@ -222,6 +222,7 @@ describe('runtime ipc', () => {
           eventSeq: 2,
         },
       },
+      rateLimits: null,
     })).toEqual({
       tabs: {
         'tab-a': {
@@ -234,6 +235,7 @@ describe('runtime ipc', () => {
           eventSeq: 2,
         },
       },
+      rateLimits: null,
     });
 
     expect(parseRuntimeEventPayload('status.update', {
@@ -277,9 +279,11 @@ describe('runtime ipc', () => {
 
     expect(parseRuntimeEventPayload('status.hook-event', {
       tabId: 'tab-a',
+      sessionName: 'session-a',
       event: { name: 'notification', at: 10, seq: 4 },
     })).toEqual({
       tabId: 'tab-a',
+      sessionName: 'session-a',
       event: { name: 'notification', at: 10, seq: 4 },
     });
 
@@ -424,7 +428,10 @@ describe('runtime ipc', () => {
     expect(parseRuntimeCommandPayload('status.live-stop', {})).toEqual({});
     expect(parseRuntimeReplyPayload('status.live-stop', { stopped: true })).toEqual({ stopped: true });
     expect(parseRuntimeCommandPayload('status.live-request-sync', {})).toEqual({});
-    expect(parseRuntimeReplyPayload('status.live-request-sync', { tabs: {} })).toEqual({ tabs: {} });
+    expect(parseRuntimeReplyPayload('status.live-request-sync', {
+      tabs: {},
+      rateLimits: null,
+    })).toEqual({ tabs: {}, rateLimits: null });
     expect(parseRuntimeCommandPayload('status.live-hook-event', {
       tmuxSession: 'pt-ws-a-pane-b-tab-c',
       event: 'notification',
@@ -584,6 +591,10 @@ describe('runtime ipc', () => {
       agentSessionId: 'agent-a',
       workspaceName: 'Workspace',
       workspaceDir: null,
+      approvalKind: 'allow',
+      promptType: 'command',
+      riskLevel: 'medium',
+      approvalDetail: 'corepack pnpm test',
     };
     expect(parseRuntimeCommandPayload('status.send-web-push', {
       anyDeviceVisible: false,

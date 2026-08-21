@@ -3,6 +3,14 @@ import os from 'os';
 import path from 'path';
 import type {
   IRuntimeCreateWorkspaceResult,
+  IRuntimeApplyManagedProjectImportInput,
+  IRuntimeConfirmGovernanceRollbackInput,
+  IRuntimeConfirmScaffoldInput,
+  IRuntimeGovernanceActionInput,
+  IRuntimePreviewScaffoldInput,
+  IRuntimeManagedProjectImportResult,
+  IRuntimeRegisterManagedProjectInput,
+  TRuntimeRegisterApprovedProjectRootInput,
   IRuntimeDeleteTerminalTabResult,
   IRuntimeDeleteTerminalTabStorageResult,
   IRuntimeDeleteWorkspaceResult,
@@ -37,6 +45,10 @@ import type {
   TRuntimeStatusUpdateSessionHistoryDismissedAtResult,
   IRuntimeTerminalSessionPresence,
   IRuntimeTerminalTab,
+  IRuntimeSessionCatalogHealth,
+  IRuntimeSessionCatalogReadEntriesInput,
+  IRuntimeSessionCatalogRebuildResult,
+  IRuntimeUpdateSessionAnnotationInput,
   IRuntimeTimelineEntriesBeforeInput,
   IRuntimeTimelineLiveAppendEvent,
   IRuntimeTimelineLiveErrorEvent,
@@ -53,6 +65,25 @@ import type {
   IRuntimeTimelineSessionWatchUnsubscribeResult,
   TRuntimeTimelineEntriesBeforeResult,
   TRuntimeTimelineMessageCounts,
+  TRuntimeSessionCatalogSearchInput,
+  TRuntimeSessionCatalogSearchResult,
+  TRuntimeSavedSessionFilter,
+  TRuntimeApprovedProjectRoot,
+  TRuntimeApprovedProjectRootSnapshot,
+  TRuntimeGovernanceAuditEvent,
+  TRuntimeGovernanceAuditCandidate,
+  TRuntimeGovernanceActionSummary,
+  TRuntimeGovernanceRollbackPreview,
+  TRuntimeGovernanceRefreshResult,
+  TRuntimeGovernanceWorkerHealth,
+  TRuntimeManagedProject,
+  TRuntimeManagedProjectSnapshot,
+  TRuntimeProjectDocumentDetail,
+  TRuntimeProjectDocumentRef,
+  TRuntimeProjectGovernanceSummary,
+  TRuntimeProjectLifecycleSnapshot,
+  TRuntimeScaffoldPreview,
+  TRuntimeSessionAnnotation,
   TRuntimeStatusCodexStateInput,
   TRuntimeStatusDecision,
   TRuntimeStatusHookDecision,
@@ -82,6 +113,34 @@ export interface IRuntimeSupervisor {
   listTimelineSessions(input: IRuntimeTimelineSessionListInput): Promise<IRuntimeTimelineSessionPage>;
   readTimelineEntriesBefore(input: IRuntimeTimelineEntriesBeforeInput): Promise<TRuntimeTimelineEntriesBeforeResult>;
   getTimelineMessageCounts(jsonlPath: string): Promise<TRuntimeTimelineMessageCounts>;
+  getSessionCatalogHealth(): Promise<IRuntimeSessionCatalogHealth>;
+  searchSessionCatalog(input: TRuntimeSessionCatalogSearchInput): Promise<TRuntimeSessionCatalogSearchResult>;
+  readSessionCatalogEntries(input: IRuntimeSessionCatalogReadEntriesInput): Promise<TRuntimeTimelineEntriesBeforeResult>;
+  rebuildSessionCatalog(): Promise<IRuntimeSessionCatalogRebuildResult>;
+  updateSessionAnnotation(input: IRuntimeUpdateSessionAnnotationInput): Promise<TRuntimeSessionAnnotation>;
+  listSavedSessionFilters(): Promise<TRuntimeSavedSessionFilter[]>;
+  upsertSavedSessionFilter(filter: TRuntimeSavedSessionFilter): Promise<TRuntimeSavedSessionFilter>;
+  deleteSavedSessionFilter(id: string): Promise<{ deleted: boolean }>;
+  registerApprovedProjectRoot(input: TRuntimeRegisterApprovedProjectRootInput): Promise<TRuntimeApprovedProjectRoot>;
+  listApprovedProjectRoots(): Promise<TRuntimeApprovedProjectRoot[]>;
+  listApprovedProjectRootSnapshots(): Promise<TRuntimeApprovedProjectRootSnapshot[]>;
+  registerManagedProject(input: IRuntimeRegisterManagedProjectInput): Promise<TRuntimeManagedProject>;
+  listManagedProjects(): Promise<TRuntimeManagedProject[]>;
+  listManagedProjectSnapshots(): Promise<TRuntimeManagedProjectSnapshot[]>;
+  applyManagedProjectImport(input: IRuntimeApplyManagedProjectImportInput): Promise<IRuntimeManagedProjectImportResult>;
+  listGovernanceAuditEvents(input: { projectId?: string; limit: number }): Promise<TRuntimeGovernanceAuditEvent[]>;
+  getGovernanceHealth(): Promise<TRuntimeGovernanceWorkerHealth>;
+  refreshGovernanceProjects(force?: boolean): Promise<TRuntimeGovernanceRefreshResult>;
+  getProjectGovernanceSummary(projectId: string): Promise<TRuntimeProjectGovernanceSummary>;
+  listProjectDocuments(projectId: string): Promise<TRuntimeProjectDocumentRef[]>;
+  getProjectLifecycle(projectId: string): Promise<TRuntimeProjectLifecycleSnapshot>;
+  listProjectAuditCandidates(projectId: string): Promise<TRuntimeGovernanceAuditCandidate[]>;
+  readProjectDocument(projectId: string, documentPath: string): Promise<TRuntimeProjectDocumentDetail>;
+  previewGovernanceScaffold(input: IRuntimePreviewScaffoldInput): Promise<TRuntimeScaffoldPreview>;
+  confirmGovernanceScaffold(input: IRuntimeConfirmScaffoldInput): Promise<TRuntimeGovernanceActionSummary>;
+  listGovernanceActions(projectId: string): Promise<TRuntimeGovernanceActionSummary[]>;
+  previewGovernanceActionRollback(input: IRuntimeGovernanceActionInput): Promise<TRuntimeGovernanceRollbackPreview>;
+  confirmGovernanceActionRollback(input: IRuntimeConfirmGovernanceRollbackInput): Promise<TRuntimeGovernanceActionSummary>;
   subscribeTimelineLive(input: IRuntimeTimelineLiveSubscribeInput): Promise<IRuntimeTimelineLiveSubscribeResult>;
   unsubscribeTimelineLive(subscriberId: string): Promise<IRuntimeTimelineLiveUnsubscribeResult>;
   subscribeTimelineSessionWatch(input: IRuntimeTimelineSessionWatchSubscribeInput): Promise<IRuntimeTimelineSessionWatchSubscribeResult>;
@@ -135,6 +194,7 @@ export interface IRuntimeSupervisor {
   }): Promise<{ subscriberId: string }>;
   detachTerminal(input: { sessionName: string; subscriberId: string }): Promise<void>;
   writeTerminal(input: { sessionName: string; subscriberId: string; data: string }): Promise<void>;
+  writeTerminalSession(input: { sessionName: string; data: string }): Promise<void>;
   resizeTerminal(input: { sessionName: string; subscriberId: string; cols: number; rows: number }): Promise<void>;
 }
 
@@ -173,6 +233,7 @@ interface IRuntimeSupervisorClients {
   terminal: IRuntimeWorkerClientLike;
   timeline: IRuntimeWorkerClientLike;
   status: IRuntimeWorkerClientLike;
+  governance: IRuntimeWorkerClientLike;
 }
 
 export interface ICreateRuntimeSupervisorForTestOptions {
@@ -180,10 +241,12 @@ export interface ICreateRuntimeSupervisorForTestOptions {
   terminal?: IRuntimeWorkerClientLike;
   timeline?: IRuntimeWorkerClientLike;
   status?: IRuntimeWorkerClientLike;
+  governance?: IRuntimeWorkerClientLike;
   createStorageClient?: () => IRuntimeWorkerClientLike;
   createTerminalClient?: (handlers: { onEvent: (event: TRuntimeMessage) => void; onExit: () => void }) => IRuntimeWorkerClientLike;
   createTimelineClient?: (handlers: { onEvent: (event: TRuntimeMessage) => void; onExit: (err?: Error) => void }) => IRuntimeWorkerClientLike;
   createStatusClient?: (handlers: { onEvent: (event: TRuntimeMessage) => void; onExit: (err?: Error) => void }) => IRuntimeWorkerClientLike;
+  createGovernanceClient?: () => IRuntimeWorkerClientLike;
   captureTerminalEventHandler?: (handler: (event: IRuntimeEvent) => void) => void;
   captureTimelineEventHandler?: (handler: (event: IRuntimeEvent) => void) => void;
   captureStatusEventHandler?: (handler: (event: IRuntimeEvent) => void) => void;
@@ -200,12 +263,12 @@ const getDbPath = (): string =>
 const runtimeDbFiles = (dbPath: string): string[] => [dbPath, `${dbPath}-wal`, `${dbPath}-shm`];
 
 const hasRuntimeDbFiles = (dbPath: string): boolean =>
-  runtimeDbFiles(dbPath).some((filePath) => fs.existsSync(filePath));
+  runtimeDbFiles(dbPath).some((filePath) => fs.existsSync(/*turbopackIgnore: true*/ filePath));
 
 const backupRuntimeDbFiles = (dbPath: string): void => {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   for (const filePath of runtimeDbFiles(dbPath)) {
-    if (!fs.existsSync(filePath)) continue;
+    if (!fs.existsSync(/*turbopackIgnore: true*/ filePath)) continue;
     fs.renameSync(filePath, `${filePath}.${stamp}.bak`);
   }
 };
@@ -233,6 +296,9 @@ export const createRuntimeSupervisorForTest = (
   let preparedDbPath: string | null = null;
   let reconciledTerminalTabs = false;
   let statusLiveRetained = false;
+  let governanceRefreshPromise: Promise<TRuntimeGovernanceRefreshResult> | null = null;
+  let governanceRefreshResult: TRuntimeGovernanceRefreshResult | null = null;
+  let governanceRefreshedAt = 0;
   let clients: IRuntimeSupervisorClients | null = null;
   const terminalSubscribers = new Map<string, Map<string, ITerminalSubscriber>>();
   const terminalAttachAttempts = new Map<string, ITerminalAttachAttempt>();
@@ -373,6 +439,34 @@ export const createRuntimeSupervisorForTest = (
 
   options.captureStatusEventHandler?.(onStatusWorkerEvent);
 
+  const hasInjectedCoreClient = Boolean(
+    options.storage
+    || options.terminal
+    || options.timeline
+    || options.status
+    || options.createStorageClient
+    || options.createTerminalClient
+    || options.createTimelineClient
+    || options.createStatusClient,
+  );
+
+  const unavailableGovernanceClient: IRuntimeWorkerClientLike = {
+    start: () => undefined,
+    waitUntilReady: async () => undefined,
+    shutdown: () => undefined,
+    request: async <TPayload, TResult>(type: string, _payload: TPayload): Promise<TResult> => {
+      if (type === 'governance.health') {
+        return {
+          state: 'degraded', writeState: 'degraded', indexedProjects: 0, lastIndexedAt: null,
+        } as TResult;
+      }
+      throw Object.assign(new Error('Governance worker is unavailable in this runtime.'), {
+        code: 'governance-worker-unavailable',
+        retryable: true,
+      });
+    },
+  };
+
   const createClients = (): IRuntimeSupervisorClients => ({
     storage: options.storage ?? options.createStorageClient?.() ?? new RuntimeWorkerClient({
       name: 'storage',
@@ -409,6 +503,13 @@ export const createRuntimeSupervisorForTest = (
       onEvent: onStatusWorkerMessage,
       onExit: onStatusWorkerExit,
     }),
+    governance: options.governance ?? options.createGovernanceClient?.() ?? (hasInjectedCoreClient
+      ? unavailableGovernanceClient
+      : new RuntimeWorkerClient({
+          name: 'governance',
+          workerName: 'governance-worker',
+          readinessCommand: 'governance.health',
+        })),
   });
 
   const getClients = (): IRuntimeSupervisorClients => {
@@ -417,6 +518,7 @@ export const createRuntimeSupervisorForTest = (
   };
 
   const shutdownClients = (): void => {
+    clients?.governance.shutdown();
     clients?.terminal.shutdown();
     clients?.timeline.shutdown();
     clients?.status.shutdown();
@@ -559,7 +661,7 @@ export const createRuntimeSupervisorForTest = (
   const startInternal = async (): Promise<void> => {
     if (started) return;
     process.env.CODEXMUX_RUNTIME_DB = prepareRuntimeDbPath();
-    const { storage, terminal, timeline, status } = getClients();
+    const { storage, terminal, timeline, status, governance } = getClients();
     try {
       storage.start();
       await storage.waitUntilReady();
@@ -569,6 +671,8 @@ export const createRuntimeSupervisorForTest = (
       await timeline.waitUntilReady();
       status.start();
       await status.waitUntilReady();
+      governance.start();
+      await governance.waitUntilReady().catch(() => undefined);
       await reconcileTerminalTabs();
       started = true;
     } catch (err) {
@@ -610,18 +714,34 @@ export const createRuntimeSupervisorForTest = (
       timelineSessionWatchSubscribers.clear();
       statusLiveSubscribers.clear();
       statusLiveRetained = false;
+      governanceRefreshPromise = null;
+      governanceRefreshResult = null;
+      governanceRefreshedAt = 0;
     },
 
     async health() {
       await this.ensureStarted();
-      const { storage, terminal, timeline, status } = getClients();
-      const [storageHealth, terminalHealth, timelineHealth, statusHealth] = await Promise.all([
+      const { storage, terminal, timeline, status, governance } = getClients();
+      const [storageHealth, terminalHealth, timelineHealth, statusHealth, governanceHealth] = await Promise.all([
         storage.request('storage.health', {}),
         terminal.request('terminal.health', {}),
         timeline.request('timeline.health', {}),
         status.request('status.health', {}),
+        governance.request('governance.health', {}).catch(() => ({
+          state: 'degraded',
+          writeState: 'degraded',
+          indexedProjects: 0,
+          lastIndexedAt: null,
+        })),
       ]);
-      return { ok: true, storage: storageHealth, terminal: terminalHealth, timeline: timelineHealth, status: statusHealth };
+      return {
+        ok: true,
+        storage: storageHealth,
+        terminal: terminalHealth,
+        timeline: timelineHealth,
+        status: statusHealth,
+        governance: governanceHealth,
+      };
     },
 
     async listWorkspaces() {
@@ -727,6 +847,286 @@ export const createRuntimeSupervisorForTest = (
         'timeline.message-counts',
         { jsonlPath },
       );
+    },
+
+    async getSessionCatalogHealth() {
+      await this.ensureStarted();
+      return getClients().timeline.request<Record<string, never>, IRuntimeSessionCatalogHealth>(
+        'timeline.catalog-health',
+        {},
+      );
+    },
+
+    async searchSessionCatalog(input) {
+      await this.ensureStarted();
+      const { timeline, storage } = getClients();
+      const page = await timeline.request<TRuntimeSessionCatalogSearchInput, TRuntimeSessionCatalogSearchResult>(
+        'timeline.catalog-search',
+        input,
+      );
+      const sessionIds = page.results.map((result) => result.entry.sessionId);
+      if (sessionIds.length === 0) return page;
+      const annotations = await storage.request<{ sessionIds: string[] }, TRuntimeSessionAnnotation[]>(
+        'storage.list-session-annotations',
+        { sessionIds },
+      );
+      const annotationsBySession = new Map(annotations.map((annotation) => [annotation.sessionId, annotation]));
+      const results = page.results
+        .map((result) => ({
+          ...result,
+          ...(annotationsBySession.get(result.entry.sessionId)
+            ? { annotation: annotationsBySession.get(result.entry.sessionId) }
+            : {}),
+        }))
+        .filter((result) => input.pinned === undefined || Boolean(result.annotation?.pinned) === input.pinned)
+        .filter((result) => !input.tags?.length || input.tags.every((tag) => result.annotation?.tags.includes(tag)));
+      return { ...page, results };
+    },
+
+    async readSessionCatalogEntries(input) {
+      await this.ensureStarted();
+      return getClients().timeline.request<IRuntimeSessionCatalogReadEntriesInput, TRuntimeTimelineEntriesBeforeResult>(
+        'timeline.catalog-read-entries',
+        input,
+      );
+    },
+
+    async rebuildSessionCatalog() {
+      await this.ensureStarted();
+      return getClients().timeline.request<Record<string, never>, IRuntimeSessionCatalogRebuildResult>(
+        'timeline.catalog-rebuild',
+        {},
+      );
+    },
+
+    async updateSessionAnnotation(input) {
+      await this.ensureStarted();
+      const { timeline, storage } = getClients();
+      await timeline.request<IRuntimeSessionCatalogReadEntriesInput, TRuntimeTimelineEntriesBeforeResult>(
+        'timeline.catalog-read-entries',
+        { sessionId: input.sessionId, beforeByte: 0, limit: 1, panelType: 'codex' },
+      );
+      return storage.request<IRuntimeUpdateSessionAnnotationInput & { sessionExists: true }, TRuntimeSessionAnnotation>(
+        'storage.update-session-annotation',
+        { ...input, sessionExists: true },
+      );
+    },
+
+    async listSavedSessionFilters() {
+      await this.ensureStarted();
+      return getClients().storage.request<Record<string, never>, TRuntimeSavedSessionFilter[]>(
+        'storage.list-saved-session-filters',
+        {},
+      );
+    },
+
+    async upsertSavedSessionFilter(filter) {
+      await this.ensureStarted();
+      return getClients().storage.request<TRuntimeSavedSessionFilter, TRuntimeSavedSessionFilter>(
+        'storage.upsert-saved-session-filter',
+        filter,
+      );
+    },
+
+    async deleteSavedSessionFilter(id) {
+      await this.ensureStarted();
+      return getClients().storage.request<{ id: string }, { deleted: boolean }>(
+        'storage.delete-saved-session-filter',
+        { id },
+      );
+    },
+
+    async registerApprovedProjectRoot(input) {
+      await this.ensureStarted();
+      return getClients().storage.request<TRuntimeRegisterApprovedProjectRootInput, TRuntimeApprovedProjectRoot>(
+        'storage.register-approved-project-root',
+        input,
+      );
+    },
+
+    async listApprovedProjectRoots() {
+      await this.ensureStarted();
+      return getClients().storage.request<Record<string, never>, TRuntimeApprovedProjectRoot[]>(
+        'storage.list-approved-project-roots',
+        {},
+      );
+    },
+
+    async listApprovedProjectRootSnapshots() {
+      await this.ensureStarted();
+      return getClients().storage.request<Record<string, never>, TRuntimeApprovedProjectRootSnapshot[]>(
+        'storage.list-approved-project-root-snapshots',
+        {},
+      );
+    },
+
+    async registerManagedProject(input) {
+      await this.ensureStarted();
+      const project = await getClients().storage.request<IRuntimeRegisterManagedProjectInput, TRuntimeManagedProject>(
+        'storage.register-managed-project',
+        input,
+      );
+      governanceRefreshedAt = 0;
+      return project;
+    },
+
+    async listManagedProjects() {
+      await this.ensureStarted();
+      return getClients().storage.request<Record<string, never>, TRuntimeManagedProject[]>(
+        'storage.list-managed-projects',
+        {},
+      );
+    },
+
+    async listManagedProjectSnapshots() {
+      await this.ensureStarted();
+      return getClients().storage.request<Record<string, never>, TRuntimeManagedProjectSnapshot[]>(
+        'storage.list-managed-project-snapshots',
+        {},
+      );
+    },
+
+    async applyManagedProjectImport(input) {
+      await this.ensureStarted();
+      const result = await getClients().storage.request<IRuntimeApplyManagedProjectImportInput, IRuntimeManagedProjectImportResult>(
+        'storage.apply-managed-project-import',
+        input,
+      );
+      governanceRefreshedAt = 0;
+      return result;
+    },
+
+    async listGovernanceAuditEvents(input) {
+      await this.ensureStarted();
+      return getClients().storage.request<typeof input, TRuntimeGovernanceAuditEvent[]>(
+        'storage.list-governance-audit-events',
+        input,
+      );
+    },
+
+    async getGovernanceHealth() {
+      await this.ensureStarted();
+      return getClients().governance.request<Record<string, never>, TRuntimeGovernanceWorkerHealth>(
+        'governance.health',
+        {},
+      );
+    },
+
+    async refreshGovernanceProjects(force = false) {
+      await this.ensureStarted();
+      if (governanceRefreshPromise) return governanceRefreshPromise;
+      if (!force && governanceRefreshResult && Date.now() - governanceRefreshedAt < 5_000) {
+        return governanceRefreshResult;
+      }
+      const { storage, governance } = getClients();
+      governanceRefreshPromise = (async () => {
+        const [projects, roots] = await Promise.all([
+          storage.request<Record<string, never>, TRuntimeManagedProjectSnapshot[]>(
+            'storage.list-managed-project-snapshots',
+            {},
+          ),
+          storage.request<Record<string, never>, TRuntimeApprovedProjectRootSnapshot[]>(
+            'storage.list-approved-project-root-snapshots',
+            {},
+          ),
+        ]);
+        const result = await governance.request<
+          { projects: TRuntimeManagedProjectSnapshot[]; roots: TRuntimeApprovedProjectRootSnapshot[] },
+          TRuntimeGovernanceRefreshResult
+        >('governance.refresh-projects', { projects, roots });
+        governanceRefreshResult = result;
+        governanceRefreshedAt = Date.now();
+        return result;
+      })();
+      try {
+        return await governanceRefreshPromise;
+      } finally {
+        governanceRefreshPromise = null;
+      }
+    },
+
+    async getProjectGovernanceSummary(projectId) {
+      await this.ensureStarted();
+      return getClients().governance.request<{ projectId: string }, TRuntimeProjectGovernanceSummary>(
+        'governance.get-project-summary',
+        { projectId },
+      );
+    },
+
+    async listProjectDocuments(projectId) {
+      await this.ensureStarted();
+      return getClients().governance.request<{ projectId: string }, TRuntimeProjectDocumentRef[]>(
+        'governance.list-project-documents',
+        { projectId },
+      );
+    },
+
+    async getProjectLifecycle(projectId) {
+      await this.ensureStarted();
+      return getClients().governance.request<{ projectId: string }, TRuntimeProjectLifecycleSnapshot>(
+        'governance.get-project-lifecycle',
+        { projectId },
+      );
+    },
+
+    async listProjectAuditCandidates(projectId) {
+      await this.ensureStarted();
+      return getClients().governance.request<{ projectId: string }, TRuntimeGovernanceAuditCandidate[]>(
+        'governance.list-project-audit',
+        { projectId },
+      );
+    },
+
+    async readProjectDocument(projectId, documentPath) {
+      await this.ensureStarted();
+      return getClients().governance.request<
+        { projectId: string; path: string },
+        TRuntimeProjectDocumentDetail
+      >('governance.read-project-document', { projectId, path: documentPath });
+    },
+
+    async previewGovernanceScaffold(input) {
+      await this.ensureStarted();
+      return getClients().governance.request<IRuntimePreviewScaffoldInput, TRuntimeScaffoldPreview>(
+        'governance.preview-scaffold',
+        input,
+      );
+    },
+
+    async confirmGovernanceScaffold(input) {
+      await this.ensureStarted();
+      const result = await getClients().governance.request<
+        IRuntimeConfirmScaffoldInput,
+        TRuntimeGovernanceActionSummary
+      >('governance.confirm-scaffold', input);
+      governanceRefreshedAt = 0;
+      return result;
+    },
+
+    async listGovernanceActions(projectId) {
+      await this.ensureStarted();
+      return getClients().governance.request<{ projectId: string }, TRuntimeGovernanceActionSummary[]>(
+        'governance.list-actions',
+        { projectId },
+      );
+    },
+
+    async previewGovernanceActionRollback(input) {
+      await this.ensureStarted();
+      return getClients().governance.request<
+        IRuntimeGovernanceActionInput,
+        TRuntimeGovernanceRollbackPreview
+      >('governance.preview-action-rollback', input);
+    },
+
+    async confirmGovernanceActionRollback(input) {
+      await this.ensureStarted();
+      const result = await getClients().governance.request<
+        IRuntimeConfirmGovernanceRollbackInput,
+        TRuntimeGovernanceActionSummary
+      >('governance.confirm-action-rollback', input);
+      governanceRefreshedAt = 0;
+      return result;
     },
 
     async subscribeTimelineLive(input) {
@@ -1119,6 +1519,15 @@ export const createRuntimeSupervisorForTest = (
     async writeTerminal(input) {
       await this.ensureStarted();
       const sessionName = assertActiveTerminalSubscriber(input);
+      await getClients().terminal.request('terminal.write-stdin', {
+        sessionName,
+        data: input.data,
+      });
+    },
+
+    async writeTerminalSession(input) {
+      await this.ensureStarted();
+      const sessionName = await assertReadyTerminalSession(input.sessionName);
       await getClients().terminal.request('terminal.write-stdin', {
         sessionName,
         data: input.data,

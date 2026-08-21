@@ -3,9 +3,11 @@ import type {
   ITimelineEntry,
   IInitMeta,
   ISessionStats,
+  TTimelineResumeFailureCode,
   TTimelineConnectionStatus,
   TTimelineServerMessage,
 } from '@/types/timeline';
+import type { IAgentSessionRelationship } from '@/lib/agent-session-relationship';
 import { nextReconnectDelay } from '@/lib/reconnect-policy';
 import {
   NATIVE_APP_STATE_EVENT,
@@ -23,12 +25,16 @@ interface IResumeStartedPayload {
 }
 
 interface IResumeBlockedPayload {
-  reason: string;
+  reason: TTimelineResumeFailureCode;
+  message?: string;
+  recoverable?: boolean;
   processName?: string;
 }
 
 interface IResumeErrorPayload {
+  code?: TTimelineResumeFailureCode;
   message: string;
+  recoverable?: boolean;
 }
 
 interface IUseTimelineWebSocketOptions {
@@ -36,7 +42,7 @@ interface IUseTimelineWebSocketOptions {
   agentSessionId?: string | null;
   panelType?: string;
   enabled: boolean;
-  onInit: (entries: ITimelineEntry[], totalEntries: number, sessionId: string, summary?: string, meta?: IInitMeta, startByteOffset?: number, hasMore?: boolean, jsonlPath?: string | null, isAgentStarting?: boolean, sessionStats?: ISessionStats | null) => void;
+  onInit: (entries: ITimelineEntry[], totalEntries: number, sessionId: string, summary?: string, meta?: IInitMeta, startByteOffset?: number, hasMore?: boolean, jsonlPath?: string | null, isAgentStarting?: boolean, sessionStats?: ISessionStats | null, relationship?: IAgentSessionRelationship | null) => void;
   onAppend: (entries: ITimelineEntry[]) => void;
   onSessionChanged: (newSessionId: string, reason: string) => void;
   onStatsUpdate?: (stats: ISessionStats) => void;
@@ -134,7 +140,7 @@ const useTimelineWebSocket = ({
           const msg = JSON.parse(event.data) as TTimelineServerMessage;
           switch (msg.type) {
             case 'timeline:init':
-              callbacksRef.current.onInit(msg.entries, msg.totalEntries, msg.sessionId, msg.summary, msg.meta, msg.startByteOffset, msg.hasMore, msg.jsonlPath, msg.isAgentStarting, msg.sessionStats);
+              callbacksRef.current.onInit(msg.entries, msg.totalEntries, msg.sessionId, msg.summary, msg.meta, msg.startByteOffset, msg.hasMore, msg.jsonlPath, msg.isAgentStarting, msg.sessionStats, msg.relationship);
               break;
             case 'timeline:append':
               callbacksRef.current.onAppend(msg.entries);
@@ -157,11 +163,17 @@ const useTimelineWebSocket = ({
             case 'timeline:resume-blocked':
               callbacksRef.current.onResumeBlocked?.({
                 reason: msg.reason,
+                message: msg.message,
+                recoverable: msg.recoverable,
                 processName: msg.processName,
               });
               break;
             case 'timeline:resume-error':
-              callbacksRef.current.onResumeError?.({ message: msg.message });
+              callbacksRef.current.onResumeError?.({
+                code: msg.code,
+                message: msg.message,
+                recoverable: msg.recoverable,
+              });
               break;
           }
         } catch (err) {
