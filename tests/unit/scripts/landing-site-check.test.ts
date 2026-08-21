@@ -104,4 +104,54 @@ describe('landing site artifact check', () => {
       requiredPaths: ['index.html'],
     })).rejects.toThrow('escapes landing root');
   });
+
+  it('enforces required and forbidden content in generated pages', async () => {
+    const { checkLandingSite } = await loadLib();
+    await writeValidSite();
+
+    await expect(checkLandingSite({
+      siteDir,
+      canonicalBase: 'https://hardcoremonk.github.io/codexmux',
+      requiredPaths: ['index.html'],
+      contentContracts: [{
+        path: 'index.html',
+        includes: ['Session Operations', 'Project Governance'],
+        excludes: ['purplemux'],
+      }],
+    })).rejects.toThrow('missing required landing content');
+
+    await write('index.html', `
+      <link rel="canonical" href="https://hardcoremonk.github.io/codexmux/">
+      <h1>Session Operations</h1>
+      <p>Project Governance</p>
+    `);
+
+    await expect(checkLandingSite({
+      siteDir,
+      canonicalBase: 'https://hardcoremonk.github.io/codexmux',
+      requiredPaths: ['index.html'],
+      contentContracts: [{
+        path: 'index.html',
+        includes: ['Session Operations', 'Project Governance'],
+        excludes: ['purplemux'],
+      }],
+    })).resolves.toMatchObject({ contentContracts: 1 });
+
+    await write('index.html', `
+      <link rel="canonical" href="https://hardcoremonk.github.io/codexmux/">
+      <h1>Session Operations</h1>
+      <p>Project Governance · purplemux</p>
+    `);
+
+    await expect(checkLandingSite({
+      siteDir,
+      canonicalBase: 'https://hardcoremonk.github.io/codexmux',
+      requiredPaths: ['index.html'],
+      contentContracts: [{
+        path: 'index.html',
+        includes: ['Session Operations', 'Project Governance'],
+        excludes: ['purplemux'],
+      }],
+    })).rejects.toThrow('forbidden landing content');
+  });
 });

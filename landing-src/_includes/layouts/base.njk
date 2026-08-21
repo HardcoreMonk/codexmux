@@ -7,17 +7,15 @@
   <script>
   (function(){try{
     if(location.search.indexOf('nr')!==-1)return;
-    var S=['en','ko','ja','zh-CN','zh-TW','de','es','fr','pt-BR','ru','tr'];
+    var S=['en','ko'];
     function match(l){
       if(!l)return null;
       if(S.indexOf(l)!==-1)return l;
-      if(/^zh/i.test(l))return /Hant|TW|HK|MO/i.test(l)?'zh-TW':'zh-CN';
-      if(/^pt/i.test(l))return 'pt-BR';
       var b=l.split('-')[0];
       return S.indexOf(b)!==-1?b:null;
     }
     var target=null;
-    try{target=localStorage.getItem('pmx-locale');}catch(_){}
+    try{target=match(localStorage.getItem('pmx-locale'));}catch(_){}
     if(!target){
       var langs=navigator.languages||[navigator.language||'en'];
       for(var i=0;i<langs.length;i++){var m=match(langs[i]);if(m){target=m;break;}}
@@ -76,7 +74,7 @@
       <svg class="brand-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
       <span class="wordmark"><strong>codex</strong>mux</span>
       <span class="muted" style="font-weight:400; margin-left:0.4rem">MIT License</span>
-      <span class="foot-tagline"><span class="pct">100%</span> Codex · <span class="pct">0%</span> keyboard</span>
+      <span class="foot-tagline">Session operations · Project governance</span>
     </div>
     <div class="foot-links">
       <a href="{% if lang and lang != 'en' %}/codexmux/{{ lang }}/docs/{% else %}/codexmux/docs/{% endif %}">Docs</a>

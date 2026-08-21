@@ -194,6 +194,14 @@ module.exports = [
     },
     items: [
       {
+        slug: 'session-operations',
+        locales: ['en', 'ko'],
+        label: {
+          en: 'Session Operations',
+          ko: '세션 운영'
+        }
+      },
+      {
         slug: 'session-status',
         label: {
           en: '세션 상태',

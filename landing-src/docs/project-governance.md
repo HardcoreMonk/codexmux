@@ -1,18 +1,18 @@
 ---
 title: Project Governance
-description: Approved Project Root, Managed Project, Knowledge Index와 안전한 scaffold/adoption 운영.
-eyebrow: 운영 가이드
+description: Operate Approved Project Roots, Managed Projects, the Knowledge Index, and guarded scaffold or adoption actions.
+eyebrow: Operations guide
 permalink: /docs/project-governance/index.html
 ---
 {% from "docs/callouts.njk" import callout %}
 
-Project Governance는 승인한 Linux filesystem root 아래의 project guidance, knowledge,
-lifecycle와 audit를 한 화면에서 읽고 관리합니다. Workspace와 Managed Project는 서로 다른
-단위이며 project path는 public catalog 응답에 노출하지 않습니다.
+Project Governance reads project guidance, knowledge, lifecycle artifacts, and audit findings under
+approved Linux filesystem roots. Workspace and Managed Project are different units, and public catalog
+responses do not expose project filesystem paths.
 
-## 준비 상태
+## Check readiness
 
-`/governance`를 열기 전에 authenticated runtime health에서 Governance Worker 상태를 확인합니다.
+Before opening `/governance`, check Governance Worker state through authenticated Runtime health.
 
 ```bash
 IFS= read -r codexmux_cli_token < ~/.codexmux/cli-token
@@ -20,62 +20,65 @@ curl -fsS -H "x-cmux-token: $codexmux_cli_token" \
   http://127.0.0.1:8122/api/v2/runtime/health
 ```
 
-`state=ready`이면 read model을 사용할 수 있습니다. `writeState=disabled`여도 approved root,
-project summary, document metadata와 audit read는 유지됩니다.
+When `state=ready`, the read model is available. Approved roots, project summaries, document metadata,
+and audit reads remain available when `writeState=disabled`.
 
-## Root와 project 등록
+## Register a root and project
 
-1. `/governance`의 **승인된 루트 추가**에서 canonical Linux directory를 preview합니다.
-2. 표시된 canonical path와 conflict를 검토하고 확인합니다.
-3. 승인 root 아래의 project title/directory를 등록하거나 root 바로 아래 `projects.yaml`을
-   preview/import합니다.
-4. project를 선택해 guidance, knowledge, lifecycle/check와 audit candidate를 확인합니다.
+1. In `/governance`, preview a canonical Linux directory under **Add approved root**.
+2. Review the displayed canonical path and conflicts, then confirm it.
+3. Register a project title and directory under that root, or preview and selectively import the
+   `projects.yaml` regular file immediately below the root.
+4. Select a project to inspect guidance, knowledge, lifecycle/check state, and audit candidates.
 
-Root escape, symlink traversal, nested mount와 승인 root 밖 project는 fail closed입니다.
-`projects.yaml`은 승인 root 바로 아래 regular file만 읽습니다.
+Root escapes, symlink traversal, nested mounts, and projects outside an approved root fail closed.
 
 ## Write gate
 
-Scaffold create/update/adoption과 rollback은 기본 off입니다. 별도 운영 승인 후 systemd drop-in에
-다음을 추가하고 restart합니다.
+Scaffold create/update/adoption and rollback are off by default. After separate operator approval, add
+this systemd drop-in and restart the service.
 
 ```ini
 [Service]
 Environment=CODEXMUX_GOVERNANCE_WRITES=1
 ```
 
-{% call callout('warning', 'Write gate는 권한 우회가 아닙니다') %}
-Gate가 켜져도 preview token, exact project title confirmation, root containment, fingerprint
-revalidation, private backup과 project별 writer lock을 모두 통과해야 합니다.
+{% call callout('warning', 'The write gate is not an authorization bypass') %}
+Even with the gate enabled, an action must pass preview token validation, exact project title
+confirmation, root containment, fingerprint revalidation, private backup, and the per-project writer
+lock.
 {% endcall %}
 
-## Scaffold와 기존 문서 adoption
+## Scaffold and adopt existing documents
 
-- Missing artifact는 versioned full-document template으로 생성합니다.
-- Marker-owned artifact는 marker block 안에서만 갱신합니다.
-- 기존 unmarked UTF-8 regular file은 첫 preview에서 `관리 등록 가능`으로만 표시됩니다.
-- Operator가 artifact를 개별 선택하고 다시 preview해야 append-only adoption이 생성됩니다.
-- Adoption은 기존 bytes를 exact prefix로 보존하고 EOF에 compact marker block만 추가합니다.
-- NUL, invalid UTF-8 또는 marker-like conflict는 자동 overwrite하지 않습니다.
+- Missing artifacts use versioned full-document templates.
+- Marker-owned artifacts are changed only inside their marker block.
+- An existing unmarked UTF-8 regular file is only marked as adoptable in the first preview.
+- The operator selects artifacts individually and requests a second preview before an append-only
+  adoption can be confirmed.
+- Adoption preserves all existing bytes as an exact prefix and appends one compact marker block at EOF.
+- NUL, invalid UTF-8, and marker-like conflicts are rejected instead of overwritten.
 
-Preview diff와 semantic warning을 읽은 뒤 exact project title을 입력해 confirm합니다. `adopt all`,
-force merge, delete/move/full sync는 제공하지 않습니다.
+Review the preview diff and semantic warnings, then enter the exact project title to confirm. There is
+no adopt-all, force merge, delete, move, or full-sync action.
 
-## Action history와 rollback
+## Action history and rollback
 
-각 action은 `~/.codexmux/backups/governance-actions/<project-id>/<action-id>/`에 private journal과
-exact preimage를 남깁니다. Directory는 `0700`, manifest/preimage는 `0600`입니다.
+Each action stores a private journal and exact preimage under
+`~/.codexmux/backups/governance-actions/<project-id>/<action-id>/`. Directories use mode `0700` and
+manifest/preimage files use `0600`.
 
-- 현재 output fingerprint가 receipt와 다르면 rollback은 `rollback-stale`로 중단됩니다.
-- 같은 artifact의 최신 action부터 역순으로 rollback합니다.
-- Pending/recovery-required와 rollback 가능한 backup은 자동 prune하지 않습니다.
-- Knowledge Index refresh 실패는 이미 commit된 project write를 취소하지 않습니다.
+- Rollback stops as `rollback-stale` when current output no longer matches the receipt fingerprint.
+- Roll back the newest action for an artifact first.
+- Pending, recovery-required, and rollback-capable backups are not pruned automatically.
+- A Knowledge Index refresh failure does not reverse an already committed project write.
 
-비상 차단은 write drop-in을 제거하고 service를 재시작합니다. Gate off 상태에서도 미완료 action의
-startup recovery는 먼저 수행합니다.
+For an emergency stop, remove the write drop-in and restart the service. Startup recovery for an
+unfinished action still runs before the disabled gate is enforced.
 
-## 다음 단계
+## Next steps
 
-- [Linux 서비스 운영](/codexmux/docs/linux-service/) — backup, restart와 health
-- [데이터 디렉터리](/codexmux/docs/data-directory/) — durable/project backup 경계
-- [아키텍처](/codexmux/docs/architecture/) — worker ownership과 API routing
+- [Session Operations](/codexmux/docs/session-operations/) — find the sessions connected to project work
+- [Linux service operations](/codexmux/docs/linux-service/) — backup, restart, and health
+- [Data directory](/codexmux/docs/data-directory/) — durable state and project backup boundaries
+- [Architecture](/codexmux/docs/architecture/) — worker ownership and API routing

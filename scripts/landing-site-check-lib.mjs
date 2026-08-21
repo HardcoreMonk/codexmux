@@ -55,6 +55,7 @@ export const checkLandingSite = async ({
   siteDir,
   canonicalBase,
   requiredPaths = [],
+  contentContracts = [],
 }) => {
   const absoluteSiteDir = path.resolve(siteDir);
   const normalizedCanonicalBase = canonicalBase.replace(/\/+$/, '');
@@ -94,9 +95,30 @@ export const checkLandingSite = async ({
     }
   }
 
+  for (const contract of contentContracts) {
+    const targetPath = path.resolve(absoluteSiteDir, contract.path);
+    assertContained(absoluteSiteDir, targetPath, 'contentContracts', contract.path);
+    if (!await fileExists(targetPath)) {
+      throw new Error(`missing landing content target: ${contract.path}`);
+    }
+
+    const content = await fs.readFile(targetPath, 'utf8');
+    for (const requiredContent of contract.includes ?? []) {
+      if (!content.includes(requiredContent)) {
+        throw new Error(`missing required landing content: ${contract.path} -> ${requiredContent}`);
+      }
+    }
+    for (const forbiddenContent of contract.excludes ?? []) {
+      if (content.includes(forbiddenContent)) {
+        throw new Error(`forbidden landing content: ${contract.path} -> ${forbiddenContent}`);
+      }
+    }
+  }
+
   return {
     files: files.length,
     htmlFiles: htmlFiles.length,
     localLinks,
+    contentContracts: contentContracts.length,
   };
 };

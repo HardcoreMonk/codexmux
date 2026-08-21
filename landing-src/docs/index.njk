@@ -1,23 +1,35 @@
 ---
-title: 문서
-description: codexmux를 실행하고, 커스터마이즈하고, 확장하기 위한 모든 것.
-eyebrow: 여기서 시작
+title: Documentation
+description: Install codexmux, operate live and historical Codex sessions, and govern project context.
+eyebrow: Start here
 permalink: /docs/index.html
 ---
-<p>Linux 단일 엔진 설치, Codex 세션 운영, 원격 접속과 Project Governance까지 다룹니다.</p>
+<p>Guides for the Linux single-engine runtime, live Codex control, Session Operations, Project Governance, and recovery.</p>
 
 <div class="doc-home-start">
   <div>
     <span class="doc-home-kicker">Install · Start · Open</span>
-    <h2>3분 안에 첫 세션을 시작하세요.</h2>
-    <p>Node.js 20.9+, tmux 3.0+, 로그인된 Codex CLI가 필요합니다.</p>
+    <h2>Start a first session in three minutes.</h2>
+    <p>Requires Node.js 20.9+, tmux 3.0+, and an authenticated Codex CLI.</p>
   </div>
   <pre><code>npx --yes codexmux@latest
 # http://127.0.0.1:8122</code></pre>
   <div class="doc-home-actions">
-    <a href="/codexmux/docs/quickstart/">사람용 빠른 시작</a>
-    <a href="/codexmux/docs/agent-quickstart/">에이전트 빠른 시작</a>
+    <a href="/codexmux/docs/quickstart/">Human quickstart</a>
+    <a href="/codexmux/docs/agent-quickstart/">Agent quickstart</a>
   </div>
+</div>
+<div class="doc-home-featured">
+  <a href="/codexmux/docs/session-operations/">
+    <span>Session Operations</span>
+    <strong>Search and replay durable Codex work.</strong>
+    <small>Session Catalog · filters · annotations · rebuild</small>
+  </a>
+  <a href="/codexmux/docs/project-governance/">
+    <span>Project Governance</span>
+    <strong>Manage approved project context safely.</strong>
+    <small>Knowledge Index · lifecycle · audit · guarded actions</small>
+  </a>
 </div>
 
 <div class="doc-home-grid">
@@ -26,8 +38,8 @@ permalink: /docs/index.html
 {%- for item in group.items %}
 {%- if item | guideAvailable('en') %}
   <a class="doc-home-card" href="/codexmux/docs/{{ item.slug }}/">
-    <span class="doc-home-card-title">{{ item.label.ko }}</span>
-    <span class="doc-home-card-desc">{{ group.group.ko }}</span>
+    <span class="doc-home-card-title">{{ item.label.en or item.label.ko }}</span>
+    <span class="doc-home-card-desc">{{ group.group.en or group.group.ko }}</span>
   </a>
 {%- endif %}
 {%- endfor %}
