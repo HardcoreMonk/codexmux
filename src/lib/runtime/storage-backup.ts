@@ -27,6 +27,9 @@ const KNOWN_STORAGE_FILES = [
   'runtime-v2/state.db-shm',
 ] as const;
 
+const PRIVATE_DIRECTORY_MODE = 0o700;
+const PRIVATE_FILE_MODE = 0o600;
+
 const toPosixPath = (filePath: string): string =>
   filePath.split(path.sep).join('/');
 
@@ -35,6 +38,11 @@ const timestampForBackup = (): string =>
 
 const fileExists = async (filePath: string): Promise<boolean> =>
   fs.access(filePath).then(() => true).catch(() => false);
+
+const ensurePrivateDirectory = async (directoryPath: string): Promise<void> => {
+  await fs.mkdir(directoryPath, { recursive: true, mode: PRIVATE_DIRECTORY_MODE });
+  await fs.chmod(directoryPath, PRIVATE_DIRECTORY_MODE);
+};
 
 const collectFilesRecursively = async (rootDir: string, relativeDir: string): Promise<string[]> => {
   const absoluteDir = path.join(rootDir, relativeDir);
@@ -77,13 +85,14 @@ export const createRuntimeStorageBackup = async ({
   const relativePaths = await collectStorageFiles(dataDir);
   const copied: IRuntimeStorageBackupEntry[] = [];
 
-  await fs.mkdir(backupDir, { recursive: true });
+  await ensurePrivateDirectory(backupDir);
 
   for (const relativePath of relativePaths) {
     const source = path.join(dataDir, ...relativePath.split('/'));
     const destination = path.join(backupDir, ...relativePath.split('/'));
-    await fs.mkdir(path.dirname(destination), { recursive: true });
+    await ensurePrivateDirectory(path.dirname(destination));
     await fs.copyFile(source, destination);
+    await fs.chmod(destination, PRIVATE_FILE_MODE);
     const stat = await fs.stat(destination);
     copied.push({ relativePath, bytes: stat.size });
   }
