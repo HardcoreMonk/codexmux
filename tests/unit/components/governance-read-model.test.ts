@@ -8,6 +8,7 @@ import koMessages from '@/../messages/ko/governance.json';
 
 const Provider = NextIntlClientProvider as React.ComponentType<{
   locale: string;
+  timeZone?: string;
   messages: Record<string, unknown>;
   children?: React.ReactNode;
 }>;
@@ -15,6 +16,7 @@ const Provider = NextIntlClientProvider as React.ComponentType<{
 const renderGovernance = (locale: 'ko' | 'en', overrides: Record<string, unknown> = {}): string =>
   renderToStaticMarkup(React.createElement(Provider, {
     locale,
+    timeZone: 'Asia/Seoul',
     messages: { governance: locale === 'ko' ? koMessages : enMessages },
   }, React.createElement(GovernanceReadModel, {
     projects: [{
@@ -39,7 +41,7 @@ const renderGovernance = (locale: 'ko' | 'en', overrides: Record<string, unknown
       lint: { projectId: 'project-1', valid: true, errors: [], warnings: [] },
     },
     audit: [],
-    health: { state: 'ready', indexedProjects: 1, lastIndexedAt: '2026-08-21T10:10:00.000Z' },
+    health: { state: 'ready', writeState: 'disabled', indexedProjects: 1, lastIndexedAt: '2026-08-21T10:10:00.000Z' },
     loading: false,
     error: null,
     onSelectProject: vi.fn(),
@@ -49,11 +51,11 @@ const renderGovernance = (locale: 'ko' | 'en', overrides: Record<string, unknown
   })));
 
 describe('Governance read model', () => {
-  it('renders a dense Korean master-detail view with explicit Linux read-only boundaries', () => {
+  it('renders a dense Korean master-detail view with an explicit Linux gate-off boundary', () => {
     const markup = renderGovernance('ko');
     expect(markup).toContain('프로젝트 거버넌스');
     expect(markup).toContain('Linux 단일 엔진');
-    expect(markup).toContain('읽기 전용');
+    expect(markup).toContain('쓰기 비활성');
     expect(markup).toContain('AGENTS.md');
     expect(markup).toContain('구현');
     expect(markup).not.toContain('프로젝트 파일 쓰기');

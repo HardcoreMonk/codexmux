@@ -58,8 +58,8 @@ context만 `createInstallServer()`에 전달합니다.
 - stdin/resize queue와 PTY output buffer에 상한을 두며 command selector는 platform allowlist own key만 허용합니다.
 
 이 경로는 onboarding 도구 설치를 위해 사용자 권한 shell stdin을 받는 legacy
-infrastructure adapter입니다. Windows-only 제품의 privileged install/service action을
-대신하지 않습니다.
+infrastructure adapter입니다. Linux engine의 일반 terminal API나 별도 Windows
+host-owned privileged install/service action을 대신하지 않습니다.
 
 ## 입력 전송 계약
 

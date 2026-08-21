@@ -16,6 +16,22 @@ describe('session catalog IPC', () => {
     ]));
   });
 
+  it('registers bounded governed scaffold commands', () => {
+    expect(Object.keys(runtimeCommandRegistry)).toEqual(expect.arrayContaining([
+      'governance.preview-scaffold',
+      'governance.confirm-scaffold',
+      'governance.list-actions',
+      'governance.preview-action-rollback',
+      'governance.confirm-action-rollback',
+    ]));
+    expect(() => parseRuntimeCommandPayload('governance.preview-scaffold', {
+      projectId: 'project-1',
+      artifacts: ['context'],
+      input: { title: 'Demo', summary: 'Summary', uiProject: false },
+      path: '../../outside',
+    })).toThrow(/Invalid runtime IPC payload/);
+  });
+
   it('validates annotation and saved-filter storage payloads', () => {
     expect(parseRuntimeCommandPayload('storage.update-session-annotation', {
       sessionId: 'session-1',

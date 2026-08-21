@@ -6,9 +6,14 @@ codexmux는 Codex CLI 전용 웹 세션 매니저입니다. 범용 터미널 대
 timeline 중심으로 보여줍니다.
 
 Active runtime target은 Linux 단일 엔진 호스트입니다. 한 호스트가 custom server,
-Runtime v2 worker, tmux, Codex CLI/JSONL, app-owned DB와 등록된 project read를 소유합니다.
+Runtime v2 worker, tmux, Codex CLI/JSONL, app-owned DB와 등록된 project read/governed write를 소유합니다.
 Windows installer/updater는 보존된 별도 배포면이며 이번 Session Operations와 Project
 Governance acceptance를 대체하지 않습니다.
+
+2026-08-21 현재 구현 commit `d405f683`이 `HOST=0.0.0.0`, port `8122`의
+`systemd --user` service로 배포되어 실제 `0.0.0.0:8122` listener와 구성된 browser 인증을
+제공합니다. 실제 restart 전후 terminal smoke와 Runtime v2 Phase 6 gate가 통과했고 Issue
+#18은 완료됐습니다. 장시간 관찰 전까지 ADR-031은 `Implemented`입니다.
 
 ## 구현 상태
 
@@ -25,8 +30,9 @@ Governance acceptance를 대체하지 않습니다.
 - `~/.codex`는 Codex CLI 소유 데이터이며 codexmux는 읽기 전용으로만 접근합니다.
 - Session Catalog는 Timeline Worker가 JSONL read/watch와 app-owned 검색 index를 단독으로
   소유하는 재생성 가능한 projection입니다.
-- Managed Project의 durable catalog는 Storage Worker가, registered project read와 Knowledge
-  Index는 Governance Worker가 소유합니다. 첫 release는 project filesystem을 변경하지 않습니다.
+- Managed Project의 durable catalog는 Storage Worker가 소유합니다. Governance Worker는 registered
+  project read, Knowledge Index와 versioned scaffold의 유일한 writer입니다. 쓰기는
+  `CODEXMUX_GOVERNANCE_WRITES=1`에서만 열리고 기본값은 off입니다.
 - terminal과 Codex 입력 포커스의 `Ctrl+D`는 앱 단축키가 아니라 EOF/EOT로 전달합니다. Codex 입력 바 제출은 bracketed paste + Enter frame과 후속 Enter로 처리합니다.
 - 모바일 foreground 복귀 시 terminal/status/timeline/sync WebSocket은 stale `OPEN` 상태를 신뢰하지 않고 재연결할 수 있습니다.
 - 성능 최적화는 `/api/debug/perf` snapshot으로 계측한 뒤 좁게 적용합니다. timeline append/render, diff, stats는 기준 데이터를 바꾸지 않는 batch/memo/short cache를 우선합니다.
@@ -35,6 +41,8 @@ Governance acceptance를 대체하지 않습니다.
 - setup POST는 startup claim latch, loopback Host, same-authority Origin, JSON media type을 요구합니다. `/api/install`은 generic WebSocket 예외가 아니라 setup-local lease 또는 session admission을 사용합니다.
 - `/api/upload-image`와 `/api/upload-file`은 Next proxy/Pages route가 아니라 outer custom server가 소유합니다. Image/file limit은 10MiB/50MiB이고, successful publish는 same-directory hard link의 no-replace commit입니다.
 - Linux 단일 엔진은 source checkout 또는 npm standalone server로 실행합니다. Windows Electron installer/updater와 npm registry package는 ADR-030의 독립 배포면이며 npm tarball은 CLI bin, standalone server와 다섯 Runtime v2 worker bundle을 제공합니다.
+- Public npm `latest`는 `codexmux@0.4.23`이며 registry tarball install, CLI help와 production
+  health smoke를 통과했습니다. Remote `v0.4.23` tag와 Trusted Publisher 등록은 보류 상태입니다.
 - Production dependency baseline은 Next `16.3.1`, next-intl `4.9.2`, ws `8.21.0`, js-yaml `4.2.0`과 제한된 PostCSS/Babel override이며 `pnpm audit --prod` 0건을 유지합니다.
 
 ## 주요 구성
@@ -52,7 +60,7 @@ Governance acceptance를 대체하지 않습니다.
 | Git refresh | `src/hooks/use-git-refresh-generation.ts`, `src/lib/git-refresh-generation.ts` | Stop generation 공유와 session별 consume 정책 |
 | stats | `src/lib/stats/` | token, cost, session, daily report 집계 |
 | session catalog | `src/lib/session-catalog/` | session metadata, bounded message search와 rebuildable index |
-| project governance | `src/lib/governance/` | approved root, managed project, knowledge와 audit read model |
+| project governance | `src/lib/governance/` | approved root, knowledge read model, scaffold preview/transaction/복구 |
 | project lifecycle | `src/lib/project-lifecycle/` | project-local artifact discovery, stage derivation과 lint |
 | status | `src/lib/status-manager.ts` | tab state, polling, Web Push, WebSocket broadcast |
 | bootstrap security | `src/lib/server-bootstrap.ts`, `src/lib/request-authority.ts` | strict auth state, startup exposure, Host/Origin admission |
@@ -83,6 +91,11 @@ sanitized governance audit는 `runtime-v2/state.db`의 durable state입니다. K
 `governance/index.db`에 문서 metadata와 관계만 저장하고 project 문서 본문은 저장하지 않습니다.
 일반 API 응답에는 root/project canonical path를 포함하지 않습니다.
 
+Governed scaffold는 `AGENTS.md`, `CONTEXT.md`, 조건부 `DESIGN.md`와 세 `docs/agents/` 문서를
+버전 고정 catalog에서 render합니다. Existing unmarked file은 자동 채택하지 않고 marker 밖
+bytes를 보존합니다. Private preimage와 journal은
+`~/.codexmux/backups/governance-actions/<project-id>/<action-id>/`에 저장합니다.
+
 오래된 provider alias는 runtime에서 허용하지 않습니다. 새 기능도
 provider-neutral boundary 또는 Codex provider 내부에 추가합니다.
 
@@ -108,4 +121,5 @@ provider-neutral boundary 또는 Codex provider 내부에 추가합니다.
 - 전체 세션의 pending approval을 모아 보는 approval queue를 만듭니다.
 - fork/sub-agent 관계를 UI에 표시합니다.
 - Codex CLI 버전별 JSONL fixture와 smoke test를 확장합니다.
-- Project filesystem write, remote/multi-engine topology, GSD orchestration과 full-output search는 각각 별도 lifecycle로 설계합니다.
+- Existing unmarked adoption, arbitrary project write/delete/move/full sync, remote/multi-engine
+  topology, GSD orchestration과 full-output search는 각각 별도 lifecycle로 설계합니다.

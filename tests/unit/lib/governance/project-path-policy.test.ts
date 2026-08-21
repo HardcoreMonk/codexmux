@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   parseLinuxMountInfo,
   resolveApprovedProjectRoot,
+  resolveGovernanceArtifactTarget,
   resolveManagedProjectPath,
 } from '@/lib/governance/project-path-policy';
 
@@ -68,5 +69,31 @@ describe('project path policy', () => {
       canonicalProjectPath: path.join(root, 'project'),
       relativePath: 'project',
     });
+  });
+
+  it('resolves only catalog-relative regular or missing artifact targets', async () => {
+    const project = path.join(root, 'project');
+    await expect(resolveGovernanceArtifactTarget({
+      approvedRootPath: root,
+      projectPath: project,
+      relativePath: 'docs/agents/domain.md',
+    }, { readMountInfo: async () => '' })).resolves.toMatchObject({ exists: false });
+    await expect(resolveGovernanceArtifactTarget({
+      approvedRootPath: root,
+      projectPath: project,
+      relativePath: '../outside.md',
+    }, { readMountInfo: async () => '' })).rejects.toMatchObject({ code: 'governance-artifact-path-invalid' });
+  });
+
+  it('rejects a symlink in an artifact ancestor', async () => {
+    const project = path.join(root, 'project');
+    const outside = path.join(dir, 'outside-artifacts');
+    await fs.mkdir(outside);
+    await fs.symlink(outside, path.join(project, 'docs'));
+    await expect(resolveGovernanceArtifactTarget({
+      approvedRootPath: root,
+      projectPath: project,
+      relativePath: 'docs/agents/domain.md',
+    }, { readMountInfo: async () => '' })).rejects.toMatchObject({ code: 'governance-artifact-symlink' });
   });
 });

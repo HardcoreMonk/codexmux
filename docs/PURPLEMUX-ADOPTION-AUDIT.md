@@ -1,18 +1,19 @@
 # Purplemux 반영 가능성 감사
 
 > 최초 감사 기준일: 2026-07-11
-> 현행화: 2026-08-15
+> 현행화: 2026-08-21
 > Purplemux 기준: `main@52140216` (`v0.4.5`)
 > Codexmux 감사 baseline: `main@cafc8de9` (`v0.4.16`)
-> Codexmux 현재 release: `v0.4.22@4af02209`
+> 감사 당시 Windows stable release: `v0.4.22@4af02209`
+> 현재 제품/runtime target: ADR-031 Linux 단일 엔진, npm `0.4.23`
 
 ## 결론
 
 Purplemux를 merge하거나 릴리스 단위로 따라가는 방식은 권장하지 않습니다. 두 저장소는
 같은 계보지만 제품과 runtime 방향이 이미 갈라졌습니다. Purplemux는 Claude Code와 Codex,
-macOS/Linux, tmux, JSON 파일 저장을 중심으로 발전했고, Codexmux는 Codex 전용,
-Windows, Runtime v2 worker, SQLite projection, ConPTY/node-pty adapter, 승인 감사와
-Windows release gate를 중심으로 발전했습니다.
+macOS/Linux, tmux, JSON 파일 저장을 중심으로 발전했고, Codexmux는 Codex 전용 Runtime v2
+worker, SQLite projection, 승인 감사와 bounded timeline을 중심으로 발전했습니다. 이 감사
+당시 Windows 전환 판단은 보존하되 현재 Codexmux authority는 Linux 단일 엔진입니다.
 
 반영 가치는 다음 세 범주에 있습니다.
 
@@ -342,7 +343,9 @@ Vitest 6개가 통과했습니다. 이 결과가 제품 적합성을 의미하�
 Purplemux의 최종 Codex provider는 user `~/.codex/config.toml` hook을 읽고 Purplemux
 hook과 event별로 병합하며, shell string 대신 Node launcher가 argv로 Codex를 실행합니다.
 Codexmux는 세 event의 `-c hooks.*=` 값을 고정해 같은 event의 user hook을 덮을 수 있고,
-POSIX `sh` status hook은 Windows 전용 목표와 맞지 않습니다.
+POSIX `sh` status hook은 당시 Windows 전용 목표와 맞지 않았습니다. 현재 구현은 native
+session-layer TOML override와 standalone Node hook bridge를 사용하며 Linux engine에서도
+user/project/managed/plugin hook discovery를 보존합니다.
 
 반영할 것은 구현 파일이 아니라 다음 contract입니다.
 

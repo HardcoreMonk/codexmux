@@ -4,12 +4,17 @@ import path from 'node:path';
 import { scanGovernanceSecretCandidates, type IGovernanceSecretCandidate } from '@/lib/governance/audit-service';
 import { checkProjectDocuments } from '@/lib/governance/check-service';
 import type {
+  IApprovedProjectRootSnapshot,
   IManagedProject,
   IManagedProjectSnapshot,
   IProjectGovernanceSummary,
   IProjectLifecycleSnapshot,
   TKnowledgeIndexState,
 } from '@/lib/governance/contracts';
+import type { IGovernanceActionSummary } from '@/lib/governance/scaffold-contracts';
+import { createScaffoldPreviewService } from '@/lib/governance/scaffold-preview';
+import { createScaffoldTokenStore } from '@/lib/governance/scaffold-token';
+import { createProjectWriteTransaction } from '@/lib/governance/project-write-transaction';
 import { discoverProjectDocuments } from '@/lib/governance/document-discovery';
 import { openKnowledgeIndex } from '@/lib/governance/knowledge-index';
 import { assertNoNestedLinuxMount } from '@/lib/governance/project-path-policy';
@@ -24,6 +29,8 @@ import { validateWorkerCommandEnvelope, type IInvalidWorkerCommand } from '@/lib
 
 export interface IGovernanceWorkerServiceOptions {
   indexPath: string;
+  backupRoot?: string;
+  writesEnabled?: boolean;
   now?: () => Date;
   readMountInfo?: () => Promise<string>;
 }
@@ -43,12 +50,39 @@ const isContainedPath = (root: string, candidate: string): boolean => {
 export const createGovernanceWorkerService = (options: IGovernanceWorkerServiceOptions) => {
   const index = openKnowledgeIndex(options.indexPath);
   const snapshots = new Map<string, IManagedProjectSnapshot>();
+  const roots = new Map<string, IApprovedProjectRootSnapshot>();
   const summaries = new Map<string, IProjectGovernanceSummary>();
   const lifecycles = new Map<string, IProjectLifecycleSnapshot>();
   const audits = new Map<string, IGovernanceSecretCandidate[]>();
   const now = options.now ?? (() => new Date());
+  const writesEnabled = options.writesEnabled ?? false;
+  const backupRoot = options.backupRoot ?? path.join(path.dirname(options.indexPath), 'governance-actions');
+  const transaction = createProjectWriteTransaction({ backupRoot, now });
+  const previewService = createScaffoldPreviewService({
+    now: () => now().getTime(),
+    ...(options.readMountInfo ? { readMountInfo: options.readMountInfo } : {}),
+  });
+  const rollbackTokens = createScaffoldTokenStore<{
+    projectId: string;
+    actionId: string;
+    projectTitle: string;
+    digest: string;
+  }>({ now: () => now().getTime() });
+  const activeWrites = new Set<string>();
   let indexState: TKnowledgeIndexState = 'ready';
+  let writeState: 'disabled' | 'ready' | 'recovering' | 'degraded' = 'recovering';
   let lastIndexedAt: string | null = null;
+
+  const initialization = (async () => {
+    try {
+      const recovered = await transaction.recoverPending();
+      writeState = recovered.some((action) => action.state === 'recovery-required')
+        ? 'degraded'
+        : writesEnabled ? 'ready' : 'disabled';
+    } catch {
+      writeState = 'degraded';
+    }
+  })();
 
   const ok = <TPayload>(command: IRuntimeCommand, payload: TPayload): IRuntimeReply<TPayload> =>
     createRuntimeReply({
@@ -82,12 +116,17 @@ export const createGovernanceWorkerService = (options: IGovernanceWorkerServiceO
       error,
     });
 
-  const refreshProjects = async (projects: IManagedProjectSnapshot[]) => {
+  const refreshProjects = async (
+    projects: IManagedProjectSnapshot[],
+    approvedRoots: IApprovedProjectRootSnapshot[] = [],
+  ) => {
     indexState = 'scanning';
     snapshots.clear();
     summaries.clear();
     lifecycles.clear();
     audits.clear();
+    roots.clear();
+    for (const root of approvedRoots) roots.set(root.id, root);
     let refreshed = 0;
     let failed = 0;
 
@@ -117,7 +156,7 @@ export const createGovernanceWorkerService = (options: IGovernanceWorkerServiceO
         summaries.set(project.id, {
           project: toPublicProject(project),
           engine: 'linux-single-host',
-          readOnly: true,
+          readOnly: writeState !== 'ready',
           documentCount: discovery.documents.length,
           warningCount: checks.warningCount + discovery.warnings.length,
           lifecycleStage: lifecycle.stage,
@@ -142,6 +181,51 @@ export const createGovernanceWorkerService = (options: IGovernanceWorkerServiceO
       });
     }
     return snapshot;
+  };
+
+  const requireRoot = (project: IManagedProjectSnapshot): IApprovedProjectRootSnapshot => {
+    const root = roots.get(project.approvedRootId);
+    if (!root) {
+      throw Object.assign(new Error(`Approved project root not found: ${project.approvedRootId}`), {
+        code: 'approved-project-root-not-found',
+      });
+    }
+    return root;
+  };
+
+  const requireWrites = (): void => {
+    if (!writesEnabled) {
+      throw Object.assign(new Error('Governance writes are disabled.'), {
+        code: 'governance-writes-disabled',
+      });
+    }
+    if (writeState !== 'ready') {
+      throw Object.assign(new Error('Governance writes are not ready.'), {
+        code: writeState === 'recovering' ? 'governance-writes-recovering' : 'governance-writes-degraded',
+        retryable: writeState === 'recovering',
+      });
+    }
+  };
+
+  const withProjectWrite = async <TResult>(projectId: string, task: () => Promise<TResult>): Promise<TResult> => {
+    if (activeWrites.has(projectId)) {
+      throw Object.assign(new Error('A governance write is already active for this project.'), {
+        code: 'governance-project-write-busy',
+        retryable: true,
+      });
+    }
+    activeWrites.add(projectId);
+    try {
+      return await task();
+    } finally {
+      activeWrites.delete(projectId);
+    }
+  };
+
+  const refreshAfterWrite = async (action: IGovernanceActionSummary): Promise<IGovernanceActionSummary> => {
+    const result = await refreshProjects([...snapshots.values()], [...roots.values()]);
+    if (result.failed === 0) return action;
+    return transaction.markIndexStale(action.projectId, action.id);
   };
 
   const readProjectDocument = async (projectId: string, documentPath: string) => {
@@ -200,16 +284,17 @@ export const createGovernanceWorkerService = (options: IGovernanceWorkerServiceO
 
   return {
     async handleCommand(command: IRuntimeCommand): Promise<IRuntimeReply> {
+      await initialization;
       const invalid = validateWorkerCommandEnvelope(command, { workerName: 'governance', namespace: 'governance' });
       if (invalid) return invalidCommand(command, invalid);
       try {
         if (command.type === 'governance.health') {
           parseRuntimeCommandPayload('governance.health', command.payload);
-          return ok(command, { state: indexState, indexedProjects: summaries.size, lastIndexedAt });
+          return ok(command, { state: indexState, writeState, indexedProjects: summaries.size, lastIndexedAt });
         }
         if (command.type === 'governance.refresh-projects') {
           const input = parseRuntimeCommandPayload('governance.refresh-projects', command.payload);
-          return ok(command, await refreshProjects(input.projects));
+          return ok(command, await refreshProjects(input.projects, input.roots));
         }
         if (command.type === 'governance.get-project-summary') {
           const input = parseRuntimeCommandPayload('governance.get-project-summary', command.payload);
@@ -237,6 +322,86 @@ export const createGovernanceWorkerService = (options: IGovernanceWorkerServiceO
           const input = parseRuntimeCommandPayload('governance.read-project-document', command.payload);
           return ok(command, await readProjectDocument(input.projectId, input.path));
         }
+        if (command.type === 'governance.preview-scaffold') {
+          requireWrites();
+          const input = parseRuntimeCommandPayload('governance.preview-scaffold', command.payload);
+          const project = requireSnapshot(input.projectId);
+          return ok(command, await previewService.createPreview({
+            project,
+            root: requireRoot(project),
+            artifacts: input.artifacts,
+            input: input.input,
+          }));
+        }
+        if (command.type === 'governance.confirm-scaffold') {
+          requireWrites();
+          const input = parseRuntimeCommandPayload('governance.confirm-scaffold', command.payload);
+          const project = requireSnapshot(input.projectId);
+          return ok(command, await withProjectWrite(project.id, async () => {
+            const confirmed = await previewService.confirmPreview({
+              token: input.token,
+              digest: input.digest,
+              project,
+              root: requireRoot(project),
+              confirmation: input.confirmation,
+            });
+            return refreshAfterWrite(await transaction.execute(confirmed));
+          }));
+        }
+        if (command.type === 'governance.list-actions') {
+          const input = parseRuntimeCommandPayload('governance.list-actions', command.payload);
+          requireSnapshot(input.projectId);
+          return ok(command, await transaction.listActions(input.projectId));
+        }
+        if (command.type === 'governance.preview-action-rollback') {
+          requireWrites();
+          const input = parseRuntimeCommandPayload('governance.preview-action-rollback', command.payload);
+          const project = requireSnapshot(input.projectId);
+          const rollback = await transaction.inspectRollback(input.projectId, input.actionId);
+          if (rollback.projectTitle !== project.title) {
+            throw Object.assign(new Error('Managed project title changed after the action.'), {
+              code: 'governance-action-project-changed',
+            });
+          }
+          const stored = rollbackTokens.create({
+            projectId: input.projectId,
+            actionId: input.actionId,
+            projectTitle: rollback.projectTitle,
+            digest: rollback.digest,
+          });
+          return ok(command, {
+            token: stored.token,
+            expiresAt: stored.expiresAt,
+            digest: rollback.digest,
+            projectId: input.projectId,
+            projectTitle: rollback.projectTitle,
+            action: rollback.action,
+            artifacts: rollback.artifacts,
+          });
+        }
+        if (command.type === 'governance.confirm-action-rollback') {
+          requireWrites();
+          const input = parseRuntimeCommandPayload('governance.confirm-action-rollback', command.payload);
+          const project = requireSnapshot(input.projectId);
+          return ok(command, await withProjectWrite(project.id, async () => {
+            const stored = rollbackTokens.get(input.token);
+            if (
+              stored.projectId !== input.projectId
+              || stored.actionId !== input.actionId
+              || stored.digest !== input.digest
+              || stored.projectTitle !== input.confirmation
+              || project.title !== input.confirmation
+            ) {
+              throw Object.assign(new Error('Rollback preview binding changed.'), { code: 'stale-preview' });
+            }
+            const current = await transaction.inspectRollback(input.projectId, input.actionId);
+            if (current.digest !== stored.digest) {
+              throw Object.assign(new Error('Rollback targets changed after preview.'), { code: 'stale-preview' });
+            }
+            rollbackTokens.consume(input.token);
+            return refreshAfterWrite(await transaction.rollback(input.projectId, input.actionId));
+          }));
+        }
         return invalidCommand(command, {
           code: 'invalid-worker-command',
           message: `Unsupported governance command: ${command.type}`,
@@ -255,6 +420,10 @@ export const createGovernanceWorkerService = (options: IGovernanceWorkerServiceO
 
     close(): void {
       index.close();
+    },
+
+    initialize(): Promise<void> {
+      return initialization;
     },
   };
 };

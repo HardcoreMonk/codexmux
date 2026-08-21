@@ -93,14 +93,17 @@ fast-forward했습니다. 기존 checkout의 관련 없는 수정
 배포 전에는 `codexmux.service`, port 8122 listener, `runtime-v2/state.db`, Session Catalog DB,
 Governance DB가 모두 없었습니다. 따라서 복원할 기존 live service나 durable DB backup 대상은
 없었습니다. 문서와 일치하는 `~/.config/systemd/user/codexmux.service`를 새로 등록했으며
-`HOST=localhost`, `PORT=8122`, Runtime v2와 Session Catalog default mode로 외부 노출 없이
-활성화했습니다.
+최초 배포는 `HOST=localhost`, `PORT=8122`, Runtime v2와 Session Catalog default mode로
+외부 노출 없이 활성화했습니다. 이후 승인된 운영 요청으로 unit을 `HOST=0.0.0.0`으로
+변경했고, browser 인증 설정 후 재시작해 실제 `0.0.0.0:8122` listener를 활성화했습니다.
 
 | 확인 | 결과 |
 | --- | --- |
 | production install/build | `CI=true corepack pnpm install --frozen-lockfile`, commit `d405f683` production build 통과 |
 | 최초 기동 | PID `970414`, `active/running`, restart count 0 |
 | 요청된 service restart | PID `970414` → `971387`, 종료 상태 0, `active/running` |
+| bind 설정 service restart | PID `971387` → `982288`, unit `HOST=0.0.0.0`, setup-mode listener `127.0.0.1:8122` |
+| 외부 listener 적용 restart | PID `982288` → `984568`, authenticated `0.0.0.0:8122`, worker health ready/ok |
 | public health | version `0.4.23`, commit `d405f683`, build time `2026-08-21T05:21:53+09:00` |
 | authenticated health | Storage, Terminal, Timeline, Status, Governance, Session Catalog 모두 ready/ok |
 | live terminal smoke | restart 전후 각각 create, attach, stdin/stdout, resize, reconnect, fan-out, backpressure, delete/cleanup 통과 |
@@ -110,7 +113,9 @@ Governance DB가 모두 없었습니다. 따라서 복원할 기존 live service
 
 기존 live tmux session은 없었으므로 reconnect 보존 대신 새 terminal의 전체 live smoke로
 검증했습니다. Fresh config는 현재 setup 상태이며 CLI token 기반 운영 API는 정상입니다.
-브라우저 사용자 비밀번호 설정과 외부 bind는 이번 배포에서 임의로 수행하지 않았습니다.
+브라우저 인증 설정과 외부 listener 확대가 완료됐습니다. 최신 restart 직후 stale browser
+terminal reference 한 건에서 `session not found` warning이 있었지만 service와 모든 worker
+health는 정상입니다.
 
 ## Rollback
 
@@ -130,7 +135,8 @@ project source는 rollback 대상으로 삭제하지 않습니다.
 ## 운영 진입과 잔여 위험
 
 - 사용자 승인 후 commit/push, live service 등록, 실제 restart와 restart 전후 terminal/API
-  smoke를 완료했습니다. Issue #18에는 최종 commit과 운영 증거를 동기화합니다.
+  smoke를 완료했습니다. 최종 commit과 운영 증거를 동기화한 Issue #18은 `completed`로
+  종료했습니다.
 - Linux 단일 engine은 단일 장애 지점입니다. 실제 restart 증거는 확보했지만 장시간 live
   service 관찰은 아직 없으므로 ADR-031은 `Implemented`이며 `Verified`가 아닙니다.
 - Governance Worker failure는 core terminal/session을 막지 않지만 governance 데이터는 refresh

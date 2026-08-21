@@ -1,6 +1,9 @@
 # 아키텍처와 서비스 로직
 
-codexmux는 Next.js Pages Router와 custom Node server를 함께 사용하는 Codex 세션 매니저입니다. Active runtime은 Linux 단일 엔진 호스트이며 legacy tmux 경로와 Runtime v2 worker 경로가 함께 동작합니다. Windows installer/updater 기록은 별도 배포면의 역사적 근거로 보존합니다.
+codexmux는 Next.js Pages Router와 custom Node server를 함께 사용하는 Codex 세션
+매니저입니다. Active runtime은 Linux 단일 엔진 호스트이며 Runtime v2 worker와 Linux tmux
+adapter가 함께 동작합니다. Windows installer/updater 기록은 별도 배포면의 역사적 근거로
+보존합니다.
 
 ## 핵심 구조
 
@@ -25,7 +28,7 @@ Linux engine-owned sources
   | tmux terminal adapter
   | ~/.codex/sessions/**/*.jsonl (read-only)
   | ~/.codexmux/**/*.db (app-owned)
-  | approved project roots (read-only)
+  | approved project roots (governed scaffold write)
 ```
 
 custom server와 Next.js API route는 같은 process 안에서도 서로 다른 module graph를 사용할 수 있습니다. 공유 상태는 `globalThis` singleton에 두고 재초기화를 막습니다.
@@ -40,7 +43,7 @@ Runtime v2는 Supervisor와 worker process로 terminal, storage, timeline, statu
 | Storage Worker | workspace/layout/tab/message-history SQLite projection | storage mode `off` |
 | Timeline Worker | Codex JSONL read/live watch, timeline, Session Catalog와 검색 index | timeline mode `off`; catalog는 degraded |
 | Status Worker | Codex process/status policy, notification side effect | status mode `off` |
-| Governance Worker | 승인된 project 문서 read, Knowledge Index, lifecycle/check/audit projection | core worker는 유지하고 governance만 degraded |
+| Governance Worker | 승인 project read, Knowledge Index, scaffold transaction/journal/recovery | core worker는 유지하고 governance만 degraded |
 
 `CODEXMUX_RUNTIME_V2=1`에서 surface mode가 unset이면 Phase 6 기준 fallback을 적용합니다. 잘못된 명시 값은 fail closed로 legacy/off에 가깝게 처리합니다.
 
@@ -74,7 +77,7 @@ Runtime v2는 Supervisor와 worker process로 terminal, storage, timeline, statu
 | `/api/sessions/*` | Session Catalog health/search/replay와 Storage Worker 소유 annotation/filter |
 | `/api/governance/roots/*` | Approved Project Root preview/명시적 confirm |
 | `/api/governance/import/*` | `projects.yaml` preview/선택적 confirm import |
-| `/api/governance/projects/*` | Managed Project catalog와 read-only summary/document/lifecycle/audit |
+| `/api/governance/projects/*` | Managed Project read model, scaffold/action preview-confirm와 history |
 
 WebSocket payload에는 terminal output, prompt, token, full path 같은 민감한 본문을 불필요하게 저장하지 않습니다.
 
@@ -230,7 +233,18 @@ Storage Worker는 Approved Project Root와 Managed Project의 canonical path를 
 - discovery는 Markdown allowlist와 file/count/total bytes/depth/time quota를 적용하고 `.git`, `.worktrees`, build/cache, `node_modules`, nested worktree와 symlink를 제외합니다.
 - Knowledge Index에는 path, kind, title, headings, fingerprint, lint, link만 저장합니다. 문서 본문은 index DB에 저장하지 않고 요청 시 최대 256KiB를 다시 읽습니다.
 - audit은 후보의 상대 path, line, category만 반환하고 matching secret body는 반환하지 않습니다.
-- Phase 2는 항상 `readOnly: true`입니다. scaffold, 문서 수정, lifecycle draft, delete/move/sync command는 IPC/API에 없습니다.
+- `governance.preview-scaffold`는 browser가 지정한 artifact ID를 versioned catalog로 render하고
+  root containment, mount/symlink, marker, file/action limit을 검증한 뒤 10분 opaque token과
+  bounded diff를 반환합니다. Browser는 path와 output을 지정하지 않습니다.
+- `governance.confirm-scaffold`는 project title exact confirmation, token/digest와 target fingerprint를
+  다시 검증합니다. 신규 file은 same-directory hard-link no-replace, marker update는 atomic replace로
+  publish하고 모든 file 완료 뒤에만 durable `committed` 상태를 기록합니다.
+- Preimage, stage progress와 created directory는 private action manifest에 기록합니다. Commit marker
+  전 worker가 중단되면 gate 상태와 무관하게 startup에서 rollback하며 외부 변경은 덮어쓰지 않고
+  `recovery-required`로 남깁니다. Public action history에는 canonical/backup path, diff, rendered
+  content와 preimage가 없습니다.
+- Health의 `writeState`는 `disabled|ready|recovering|degraded`입니다. Summary `readOnly`는
+  `writeState === ready`일 때만 false입니다. Delete/move/full sync와 unmarked adoption은 없습니다.
 
 ## 상태 로직
 
@@ -264,17 +278,25 @@ JSONL tail의 `token_count/rate_limits` observation은 작업 상태 scan과 같
 
 ## 운영 로직
 
-Linux `systemd --user`가 active engine 운영 경계입니다. 배포 전 build와 Runtime v2 core gate를 통과하고, Session Catalog 성능/재생성, Linux 격리 smoke, 한국어/영어 browser smoke를 확인합니다. 실제 service restart는 별도 운영 승인 뒤 수행하며 restart 전 `runtime-v2/state.db` backup을 만듭니다. Windows package와 updater 근거는 Linux engine acceptance를 대체하지 않습니다.
+Linux `systemd --user`가 active engine 운영 경계입니다. 배포 전 build와 Runtime v2 core
+gate를 통과하고, Session Catalog 성능/재생성, Linux 격리 smoke, 한국어/영어 browser
+smoke를 확인합니다. 실제 service restart는 별도 운영 승인 뒤 수행하며 기존 durable DB가
+있으면 먼저 `runtime-v2/state.db` backup을 만듭니다. 2026-08-21 최초 배포는 기존 DB가
+없는 fresh host에서 실행됐고 restart 전후 terminal/Phase 6 gate를 통과했습니다. Windows
+package와 updater 근거는 Linux engine acceptance를 대체하지 않습니다.
 
 ## 장애 대응 기준
 
 - Runtime worker가 죽으면 worker counter와 sanitized last error를 남깁니다.
 - Governance Worker가 죽으면 terminal/session operation을 유지한 채 governance UI를 degraded read model로 전환합니다.
+- Governance write 장애는 먼저 `CODEXMUX_GOVERNANCE_WRITES`를 제거하고 restart해 새 action만
+  차단합니다. Pending journal recovery와 action history read는 gate off에서도 유지합니다.
 - Terminal session이 사라지면 stale ready tab으로 숨기지 않고 failed/diagnostic 상태를 표시합니다.
 - Storage migration 실패는 DB handle을 닫고 rollback 가능한 오류로 반환합니다.
 - Session Catalog와 Knowledge Index는 원본이 아닌 projection이므로 quarantine 후 rebuild/refresh합니다. `runtime-v2/state.db`는 projection처럼 삭제하지 않고 backup/restore 절차를 사용합니다.
 - Status/timeline worker rollback은 같은 public URL에서 legacy implementation으로 되돌릴 수 있어야 합니다.
-- Windows package smoke 실패는 release blocker입니다.
+- Linux engine gate 또는 live terminal/reconnect 실패는 active release blocker입니다.
+- Windows package smoke 실패는 Windows 배포면을 변경하는 release의 blocker입니다.
 - Upload 장애는 취약한 Pages route나 dependency로 되돌리지 않습니다. 먼저
   `CODEXMUX_UPLOADS_DISABLED=1`로 ingress만 중지하고, patched dependency와 outer route
   ownership을 유지한 forward fix를 배포합니다.

@@ -134,6 +134,7 @@
     "perf:timeline-jsonl": "tsx scripts/timeline-jsonl-perf-snapshot.ts",
     "perf:session-catalog": "tsx scripts/session-catalog-perf-snapshot.ts",
     "smoke:linux:session-governance": "node scripts/smoke-linux-session-governance.mjs",
+    "smoke:governance:scaffold": "node scripts/smoke-governed-project-scaffold.mjs",
     "smoke:browser:session-governance": "node scripts/smoke-session-governance-browser.mjs",
     "lifecycle:rollback-dry-run": "node scripts/lifecycle-rollback-dry-run.mjs",
     "deploy:local": "node scripts/deploy-local.mjs",

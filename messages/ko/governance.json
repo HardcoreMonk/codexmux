@@ -3,7 +3,14 @@
   "pageTitle": "프로젝트 거버넌스 · codexmux",
   "engine": "Linux 단일 엔진",
   "readOnly": "읽기 전용",
-  "phaseBoundary": "프로젝트 문서는 읽기 전용으로 스캔합니다. 파일 변경 기능은 후속 단계입니다.",
+  "phaseBoundary": "프로젝트 문서는 계속 읽을 수 있지만 현재 배포에서는 scaffold 쓰기 gate가 비활성입니다.",
+  "writePhaseBoundary": "승인된 프로젝트에서 버전 고정 scaffold를 미리보고 트랜잭션으로 적용할 수 있습니다.",
+  "writeState": {
+    "disabled": "쓰기 비활성",
+    "ready": "쓰기 준비됨",
+    "recovering": "복구 중",
+    "degraded": "쓰기 저하됨"
+  },
   "projects": "관리 프로젝트",
   "noProjects": "관리 프로젝트가 없습니다",
   "noProjectsDescription": "승인된 루트에서 프로젝트를 등록하거나 projects.yaml을 가져오세요.",
@@ -53,6 +60,60 @@
   "importProjects": "projects.yaml 가져오기",
   "importCounts": "추가 {add} · 갱신 {update} · 충돌 {conflict} · 동일 {unchanged}",
   "importCompleted": "프로젝트 가져오기를 완료했습니다.",
+  "scaffold": {
+    "title": "프로젝트 Scaffold",
+    "description": "codexmux 소유 marker가 있는 운영 문서를 생성하거나 안전하게 갱신합니다.",
+    "projectTitle": "문서 프로젝트 이름",
+    "summary": "프로젝트 요약",
+    "summaryPlaceholder": "제품 경계와 목적을 간결하게 입력하세요.",
+    "uiProject": "UI 프로젝트",
+    "uiProjectDescription": "DESIGN.md 선택을 허용합니다.",
+    "artifacts": "생성할 문서",
+    "preview": "변경 미리보기",
+    "previewTitle": "Scaffold 변경 미리보기",
+    "rollbackPreviewTitle": "작업 롤백 미리보기",
+    "expiresIn": "{seconds}초 후 만료",
+    "confirmProject": "계속하려면 프로젝트 이름 “{title}”을 정확히 입력하세요.",
+    "apply": "Scaffold 적용",
+    "rollback": "안전 롤백",
+    "processing": "처리 중…",
+    "committed": "Scaffold 작업을 완료했습니다.",
+    "rolledBack": "작업을 안전하게 롤백했습니다.",
+    "error": "거버넌스 작업에 실패했습니다.",
+    "history": "작업 이력",
+    "noActions": "기록된 scaffold 작업이 없습니다.",
+    "artifactCount": "문서 {count}개",
+    "recoveryRequired": "외부 변경과 충돌한 작업이 있습니다. 현재 파일, stage와 preimage를 수동으로 검토하세요.",
+    "writeStateDescription": {
+      "disabled": "CODEXMUX_GOVERNANCE_WRITES가 비활성 상태입니다. 읽기 모델과 이력은 계속 사용할 수 있습니다.",
+      "ready": "Scaffold 쓰기를 사용할 수 있습니다.",
+      "recovering": "미완료 작업을 복구하는 동안 새 쓰기를 시작할 수 없습니다.",
+      "degraded": "복구 충돌 또는 worker 오류로 새 쓰기가 차단되었습니다. 작업 이력을 확인하세요."
+    },
+    "artifactState": {
+      "create": "생성",
+      "marker-update": "marker 갱신",
+      "unchanged": "변경 없음",
+      "conflict": "충돌",
+      "skipped": "제외"
+    },
+    "rollbackState": {
+      "delete": "생성 파일 삭제",
+      "restore": "preimage 복원",
+      "already-restored": "이미 복원됨",
+      "conflict": "외부 변경 충돌"
+    },
+    "actionState": {
+      "preparing": "준비 중",
+      "publishing": "게시 중",
+      "committed": "완료",
+      "index-stale": "완료·인덱스 지연",
+      "rolling-back": "롤백 중",
+      "rolled-back": "롤백 완료",
+      "recovery-required": "수동 복구 필요",
+      "rollback-stale": "롤백 충돌"
+    }
+  },
   "kind": {
     "agents": "에이전트 지침",
     "context": "컨텍스트",

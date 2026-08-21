@@ -1,6 +1,8 @@
 # 성능 최적화 기준
 
-성능 작업은 먼저 측정하고, source of truth를 바꾸지 않는 좁은 변경부터 진행합니다. Windows-only 전환 중에는 packaged app과 installed app의 실제 workspace 사용 안정성이 특히 중요합니다.
+성능 작업은 먼저 측정하고, source of truth를 바꾸지 않는 좁은 변경부터 진행합니다. 현재는
+Linux 단일 엔진의 terminal/reconnect, worker health, Session Catalog와 Governance refresh
+안정성이 우선이며 Windows packaged/installed app 수치는 별도 배포면의 회귀 근거입니다.
 
 ## 배경
 
@@ -71,6 +73,8 @@ Prompt, terminal output, cwd, JSONL path, token은 반환하지 않습니다.
 - Stats cold path date filtering이 추가되었습니다.
 - Session list API는 cold index refresh를 기다리지 않고 현재 snapshot과 `refreshing` 상태를 반환하며,
   client가 refresh 완료까지 짧게 재조회합니다.
+- Session Catalog는 5,000-session fixture로 initial index, incremental append, FTS query,
+  replay projection과 RSS delta를 독립 측정합니다.
 - UploadServer의 50MiB streaming path는 process-isolated external-memory gate로 검증합니다.
 
 ## Timeline JSONL snapshot
@@ -103,6 +107,20 @@ Virtualization 판단은 다음 순서로 합니다.
 이 기준은 구현 개시 조건입니다. Render virtualization은 별도 plan에서 public behavior test와
 실제 app scroll/append evidence를 확보한 뒤 진행합니다.
 
+## Session Catalog snapshot
+
+Session Operations 변경은 다음 gate로 검색 projection의 초기 구축과 증분 비용을 함께
+측정합니다.
+
+```bash
+corepack pnpm perf:session-catalog
+```
+
+기본 5,000-session fixture의 fail threshold는 initial index 30초, incremental append 500ms,
+FTS query 1초, replay projection 200ms, RSS delta 512MiB입니다. 2026-08-21 integration
+snapshot은 각각 `5120.785ms`, `0.59ms`, `11.338ms`, `0.108ms`, `22,470,656 bytes`로
+통과했습니다. 원본 JSONL, prompt, full path는 측정 결과에 포함하지 않습니다.
+
 ## Upload streaming memory gate
 
 Upload memory 검증은 50MiB body를 별도 client process에서 64KiB backpressure write로 보내고,
@@ -132,7 +150,8 @@ artifact privacy 검사를 반복했습니다. 완료 근거는 [Issue #16](http
 - Terminal byte stream을 durable DB에 저장하지 않습니다.
 - Prompt, stdout, full path를 perf/debug endpoint에 넣지 않습니다.
 - UI polish를 이유로 terminal reconnect 안정성을 흔들지 않습니다.
-- Windows package smoke 전에는 성능 개선을 release 완료로 주장하지 않습니다.
+- Linux engine gate와 실제 terminal/reconnect 확인 전에는 현재 제품 성능 개선을 release
+  완료로 주장하지 않습니다. Windows package 변경은 별도 Windows gate를 추가로 통과합니다.
 
 ## 검증 기준
 
@@ -141,13 +160,14 @@ corepack pnpm lint
 corepack pnpm tsc --noEmit
 corepack pnpm test
 corepack pnpm perf:timeline-jsonl -- --synthetic-turns 2500
+corepack pnpm perf:session-catalog
 corepack pnpm check:upload-memory
 corepack pnpm smoke:runtime-v2:phase6-default-gate
-corepack pnpm smoke:windows:package-gate
+corepack pnpm smoke:linux:session-governance
 ```
 
-Windows package gate의 baseline installer와 artifact directory 전제는 `TESTING.md`의
-fresh Windows 절차를 따릅니다.
+Windows package surface를 바꾼 경우에는 `smoke:windows:package-gate`를 추가하고 baseline
+installer와 artifact directory 전제는 `TESTING.md`의 fresh Windows 절차를 따릅니다.
 
 성능 변경 후에는 실제 app에서 다음을 확인합니다.
 

@@ -11,6 +11,7 @@ import {
 } from '@/lib/session-catalog/contracts';
 import {
   applyManagedProjectImportSchema,
+  approvedProjectRootSnapshotSchema,
   approvedProjectRootSchema,
   governanceAuditCandidateSchema,
   governanceAuditEventSchema,
@@ -28,6 +29,14 @@ import {
   registerManagedProjectSchema,
   relativeDocumentPathSchema,
 } from '@/lib/governance/contracts';
+import {
+  governanceRollbackPreviewSchema,
+  scaffoldActionSummarySchema,
+  scaffoldPreviewInputSchema,
+  scaffoldPreviewSchema,
+  scaffoldPreviewTokenSchema,
+  scaffoldFingerprintSchema,
+} from '@/lib/governance/scaffold-contracts';
 
 const RUNTIME_TERMINAL_MAX_COLS = 500;
 const RUNTIME_TERMINAL_MAX_ROWS = 200;
@@ -39,6 +48,22 @@ const governanceDocumentPayloadSchema = z.object({
 }).strict();
 const governanceRefreshPayloadSchema = z.object({
   projects: z.array(managedProjectSnapshotSchema).max(2000),
+  roots: z.array(approvedProjectRootSnapshotSchema).max(200).default([]),
+}).strict();
+const governanceConfirmScaffoldPayloadSchema = z.object({
+  projectId: projectIdSchema,
+  token: scaffoldPreviewTokenSchema,
+  digest: scaffoldFingerprintSchema,
+  confirmation: z.string().trim().min(1).max(160),
+}).strict();
+const governanceActionPayloadSchema = z.object({
+  projectId: projectIdSchema,
+  actionId: projectIdSchema,
+}).strict();
+const governanceConfirmRollbackPayloadSchema = governanceActionPayloadSchema.extend({
+  token: scaffoldPreviewTokenSchema,
+  digest: scaffoldFingerprintSchema,
+  confirmation: z.string().trim().min(1).max(160),
 }).strict();
 const runtimeHealthReplySchema = z.object({ ok: z.boolean() }).passthrough();
 const timelineEntrySchema = z.object({
@@ -748,6 +773,26 @@ export const runtimeCommandRegistry = {
   'governance.read-project-document': {
     payload: governanceDocumentPayloadSchema,
     reply: projectDocumentDetailSchema,
+  },
+  'governance.preview-scaffold': {
+    payload: scaffoldPreviewInputSchema,
+    reply: scaffoldPreviewSchema,
+  },
+  'governance.confirm-scaffold': {
+    payload: governanceConfirmScaffoldPayloadSchema,
+    reply: scaffoldActionSummarySchema,
+  },
+  'governance.list-actions': {
+    payload: governanceProjectPayloadSchema,
+    reply: z.array(scaffoldActionSummarySchema).max(500),
+  },
+  'governance.preview-action-rollback': {
+    payload: governanceActionPayloadSchema,
+    reply: governanceRollbackPreviewSchema,
+  },
+  'governance.confirm-action-rollback': {
+    payload: governanceConfirmRollbackPayloadSchema,
+    reply: scaffoldActionSummarySchema,
   },
   'terminal.health': { payload: emptyPayloadSchema, reply: runtimeHealthReplySchema },
   'terminal.create-session': { payload: terminalCreatePayloadSchema, reply: runtimeTerminalSessionSchema },

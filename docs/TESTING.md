@@ -1,6 +1,8 @@
 # 테스트와 smoke 가이드
 
-이 문서는 codexmux 변경을 검증하는 기준입니다. 현재 release 판단은 Windows-only 전환을 중심으로 합니다.
+이 문서는 codexmux 변경을 검증하는 기준입니다. 현재 release 판단은 Linux 단일 엔진,
+Runtime v2 worker, Session Operations와 Project Governance를 중심으로 합니다. Windows
+package/updater는 해당 배포면을 변경할 때 별도 gate로 검증합니다.
 
 ## 기본 게이트
 
@@ -52,9 +54,9 @@ landing 활성화 전 `npm view`, exact registry version의 `npx help`, isolated
 corepack pnpm exec playwright install chromium
 ```
 
-## Windows 전환 게이트
+## 별도 Windows 배포 게이트
 
-Windows-only 제품 전환에서 중요한 smoke. Sanitized evidence를 남길 directory를 먼저
+Windows package/updater 배포에서 중요한 smoke입니다. Sanitized evidence를 남길 directory를 먼저
 지정합니다.
 
 ```powershell
@@ -185,7 +187,7 @@ old-profile 경로가 통과하기 전까지 ADR-029는 `Implemented`입니다.
 
 게이트 분류:
 
-- Linux-required: dev/prod pre-auth smoke와 legacy install PTY.
+- Linux-required: dev/prod pre-auth smoke와 setup-local install PTY.
 - GUI-dependent: browser reconnect와 Electron runtime smoke. Chromium/display가 없으면 제한을 기록합니다.
 - Windows-runner-only fresh gate: preflight, host diagnostics, freshly built packaged launch. 기존 완료 증거는 `WINDOWS-ONLY-GAP-AUDIT.md`에 유지하지만 현재 Linux run의 `skipped`를 새 Windows 증거로 대체하지 않습니다.
 
@@ -247,6 +249,7 @@ Runtime v2 검증:
 corepack pnpm smoke:runtime-v2
 corepack pnpm smoke:runtime-v2:phase2
 corepack pnpm smoke:runtime-v2:phase6-default-gate
+corepack pnpm smoke:governance:scaffold
 corepack pnpm smoke:runtime-v2:storage-dry-run
 corepack pnpm smoke:runtime-v2:storage-write
 corepack pnpm smoke:runtime-v2:storage-default-read
@@ -284,7 +287,14 @@ corepack pnpm smoke:npm-package
 - Timeline/Governance Worker DB quarantine와 worker 자동 복구
 - projection rollback 전후 동일 terminal session 연결
 
-`smoke:browser:session-governance`는 한국어와 영어를 각각 격리 서버에서 실행해 SSR `lang`, search/replay, keyboard focus, governance degraded→recovery와 hydration error 부재를 확인합니다. Chromium이 없으면 먼저 다음 명령을 실행합니다.
+`smoke:governance:scaffold`는 gate-on 격리 server와 temporary Approved Project Root에서
+unmarked conflict, stale preview, multi-file create, marker update, exact preimage rollback,
+`0700/0600` action backup과 선택 밖 project/Codex source 무변경을 확인합니다. 실제 등록
+project나 live service를 변경하지 않습니다.
+
+`smoke:browser:session-governance`는 한국어와 영어를 각각 격리 서버에서 실행해 SSR `lang`,
+search/replay, keyboard focus, governance degraded→recovery, gate-off Scaffold panel과 hydration
+error 부재를 확인합니다. Chromium이 없으면 먼저 다음 명령을 실행합니다.
 
 ```bash
 corepack pnpm exec playwright install chromium
@@ -295,6 +305,13 @@ Projection 복구와 durable state 복구를 구분합니다. `session-catalog/i
 ```bash
 corepack pnpm smoke:runtime-v2:storage-backup
 ```
+
+2026-08-21 governed scaffold release-candidate에서 full suite는 1,629 passed, 3 skipped였고
+production build, scaffold/Linux/browser governance smoke, storage backup과 Runtime v2 Phase 6
+gate를 통과했습니다. 이전 Session Operations/Governance의 5,000-session performance와 npm
+tarball smoke 근거도 유지합니다.
+구현 commit `d405f683`의 live user service에서도 restart 전후 terminal target smoke와 Phase 6
+12-check gate가 각각 통과했습니다.
 
 ## 브라우저 UI와 Playwright
 
@@ -340,7 +357,8 @@ corepack pnpm smoke:windows:installer-install
 corepack pnpm smoke:windows:installer-runtime-v2
 ```
 
-`pack:electron:mac` 계열 명령은 legacy/manual path입니다. Windows-only release blocker로 사용하지 않습니다.
+`pack:electron:mac` 계열 명령은 legacy/manual path입니다. Linux engine 또는 Windows
+package release blocker로 사용하지 않습니다.
 
 App-server protocol 변경 기준:
 
@@ -351,7 +369,8 @@ App-server protocol 변경 기준:
 
 ## Android 참고 검증
 
-Android는 Windows-only 전환 후 primary surface가 아닙니다. 기록 보존 또는 mobile regression 확인이 필요할 때만 사용합니다.
+Android는 Linux engine에 접속하는 선택 client입니다. Linux engine release gate를 대체하지
+않고 mobile regression 확인이 필요할 때 사용합니다.
 
 ```bash
 corepack pnpm android:sync
@@ -586,7 +605,12 @@ corepack pnpm deploy:local
 curl -fsS http://127.0.0.1:8122/api/health
 ```
 
-Session Operations/Project Governance 배포에서는 위 Linux/browser gate와 worker health를 먼저 확인합니다. 실제 service restart는 별도 운영 승인과 runtime state backup 뒤 실행합니다. Windows installer/package/update smoke는 별도 배포면의 증거이며 Linux engine gate를 대체하지 않습니다.
+Session Operations/Project Governance 배포에서는 위 Linux/browser gate와 worker health를
+먼저 확인합니다. 실제 service restart는 별도 운영 승인과, 기존 durable DB가 있으면 runtime
+state backup 뒤 실행합니다. 2026-08-21 최초 live 배포는 기존 DB가 없는 상태에서 unit을
+등록한 뒤 restart 전후 terminal smoke와 Phase 6 gate를 통과했습니다. Windows
+installer/package/update smoke는 별도 배포면의 증거이며 Linux engine gate를 대체하지
+않습니다.
 
 ## Smoke artifact 기준
 

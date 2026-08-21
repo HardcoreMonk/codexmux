@@ -1,5 +1,11 @@
 import { z } from 'zod';
 import { projectIdSchema, relativeDocumentPathSchema } from '@/lib/governance/contracts';
+import {
+  scaffoldArtifactIdSchema,
+  scaffoldFingerprintSchema,
+  scaffoldPreviewTokenSchema,
+  scaffoldTemplateInputSchema,
+} from '@/lib/governance/scaffold-contracts';
 
 const previewTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{20,200}$/);
 const fingerprintSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
@@ -44,3 +50,23 @@ export const projectGovernanceApiQuerySchema = z.object({
 export const projectDocumentsApiQuerySchema = projectGovernanceApiQuerySchema.extend({
   path: relativeDocumentPathSchema.optional(),
 }).strict();
+
+export const scaffoldPreviewApiBodySchema = z.object({
+  artifacts: z.array(scaffoldArtifactIdSchema).min(1).max(6).refine(
+    (values) => new Set(values).size === values.length,
+    'Artifact ids must be unique',
+  ),
+  input: scaffoldTemplateInputSchema,
+}).strict();
+
+export const scaffoldConfirmApiBodySchema = z.object({
+  token: scaffoldPreviewTokenSchema,
+  digest: scaffoldFingerprintSchema,
+  confirmation: z.string().trim().min(1).max(160),
+}).strict();
+
+export const governanceActionApiQuerySchema = projectGovernanceApiQuerySchema.extend({
+  actionId: projectIdSchema,
+}).strict();
+
+export const governanceRollbackConfirmApiBodySchema = scaffoldConfirmApiBodySchema;

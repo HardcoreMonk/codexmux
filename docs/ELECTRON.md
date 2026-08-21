@@ -1,6 +1,8 @@
 # Electron과 Windows 패키징
 
-codexmux Electron 앱은 Next.js UI를 데스크톱 shell 안에서 실행합니다. 현재 제품 전환 기준에서는 Windows desktop shell, NSIS installer, updater smoke가 primary path입니다.
+codexmux Electron 앱은 Next.js UI를 데스크톱 shell 안에서 실행하는 선택 client입니다.
+현재 active runtime은 Linux 단일 엔진이며, 이 문서의 Windows desktop shell, NSIS installer와
+updater smoke는 별도 배포면의 보존된 release 계약입니다.
 
 ## 명령
 

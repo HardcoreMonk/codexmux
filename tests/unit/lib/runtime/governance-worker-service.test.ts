@@ -53,7 +53,83 @@ describe('governance worker service', () => {
   it('keeps project filesystem mutation commands out of the registry', () => {
     const names = Object.keys(runtimeCommandRegistry);
     expect(names).toContain('governance.refresh-projects');
-    expect(names.some((name) => /^governance\.(?:write|delete|move|scaffold|sync)/.test(name))).toBe(false);
+    expect(names).toContain('governance.preview-scaffold');
+    expect(names.some((name) => /^governance\.(?:write|delete|move|sync)/.test(name))).toBe(false);
+  });
+
+  it('fails closed when writes are disabled', async () => {
+    const health = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor', target: 'governance', type: 'governance.health', payload: {},
+    }));
+    const preview = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor', target: 'governance', type: 'governance.preview-scaffold',
+      payload: {
+        projectId: 'project-1', artifacts: ['context'],
+        input: { title: 'Demo', summary: 'Summary', uiProject: false },
+      },
+    }));
+    expect(health).toMatchObject({ ok: true, payload: { writeState: 'disabled' } });
+    expect(preview).toMatchObject({ ok: false, error: { code: 'governance-writes-disabled' } });
+  });
+
+  it('previews, confirms, lists and rolls back a governed scaffold action', async () => {
+    service.close();
+    service = createGovernanceWorkerService({
+      indexPath: path.join(dir, 'write-index.db'),
+      backupRoot: path.join(dir, 'backups'),
+      writesEnabled: true,
+      readMountInfo: async () => '',
+    });
+    const projectRoot = path.join(dir, 'project');
+    const root = {
+      id: 'root-1', label: 'Projects', canonicalPath: dir, approvedAt: '2026-08-21T10:00:00.000Z',
+    };
+    const project = {
+      id: 'project-1', approvedRootId: 'root-1', title: 'Demo', relativePath: 'project',
+      canonicalPath: projectRoot, source: 'manual' as const,
+      createdAt: '2026-08-21T10:00:00.000Z', updatedAt: '2026-08-21T10:00:00.000Z',
+    };
+    await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor', target: 'governance', type: 'governance.refresh-projects',
+      payload: { projects: [project], roots: [root] },
+    }));
+    const preview = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor', target: 'governance', type: 'governance.preview-scaffold',
+      payload: {
+        projectId: 'project-1', artifacts: ['context'],
+        input: { title: 'Demo', summary: 'Summary', uiProject: false },
+      },
+    }));
+    expect(preview).toMatchObject({ ok: true, payload: { projectId: 'project-1' } });
+    const previewPayload = preview.payload as { token: string; digest: string };
+    const confirmed = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor', target: 'governance', type: 'governance.confirm-scaffold',
+      payload: {
+        projectId: 'project-1', token: previewPayload.token, digest: previewPayload.digest, confirmation: 'Demo',
+      },
+    }));
+    expect(confirmed).toMatchObject({ ok: true, payload: { state: 'committed' } });
+    expect(await fs.readFile(path.join(projectRoot, 'CONTEXT.md'), 'utf8')).toContain('BEGIN CODEXMUX');
+
+    const actions = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor', target: 'governance', type: 'governance.list-actions',
+      payload: { projectId: 'project-1' },
+    }));
+    const actionId = (actions.payload as Array<{ id: string }>)[0]!.id;
+    const rollbackPreview = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor', target: 'governance', type: 'governance.preview-action-rollback',
+      payload: { projectId: 'project-1', actionId },
+    }));
+    const rollbackPayload = rollbackPreview.payload as { token: string; digest: string };
+    const rolledBack = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor', target: 'governance', type: 'governance.confirm-action-rollback',
+      payload: {
+        projectId: 'project-1', actionId, token: rollbackPayload.token,
+        digest: rollbackPayload.digest, confirmation: 'Demo',
+      },
+    }));
+    expect(rolledBack).toMatchObject({ ok: true, payload: { state: 'rolled-back' } });
+    await expect(fs.access(path.join(projectRoot, 'CONTEXT.md'))).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it('revalidates indexed documents against binary and symlink changes before detail reads', async () => {

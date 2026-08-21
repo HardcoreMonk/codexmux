@@ -6,15 +6,18 @@
 
 | Label | 의미 |
 | --- | --- |
+| `platform/linux` | active Linux engine, systemd, tmux와 host 운영 |
 | `platform/windows` | Windows runtime, host, installer, updater |
 | `runtime-v2` | Supervisor/worker/storage/timeline/status runtime |
+| `session-catalog` | Session Catalog index, search, replay와 rebuild |
+| `governance` | Managed Project, Knowledge Index, lifecycle와 audit read model |
 | `terminal` | terminal adapter, attach, input, resize, reconnect |
 | `process-inspection` | process tree, Codex session detection, JSONL mapping |
 | `packaging` | Electron builder, NSIS, zip, signing, release asset |
 | `updater` | `latest.yml`, blockmap, download, `quitAndInstall` |
 | `docs` | canonical docs, specs, operations handoff |
 | `legacy/android` | Android reference path |
-| `legacy/linux` | systemd/tmux Linux reference path |
+| `legacy/windows` | 보존된 Windows package/update evidence 또는 별도 제품 line 작업 |
 
 ## 상태
 
@@ -31,5 +34,6 @@
 ## 규칙
 
 - Release blocker는 `blocked` 또는 `needs-smoke`로 남깁니다.
-- Windows-only 전환 작업은 legacy Android/Linux label과 섞지 않습니다.
+- Active Linux engine 작업과 별도 Windows package/legacy Android 작업을 같은 platform
+  label로 섞지 않습니다.
 - 제품명/app id/data dir 결정처럼 되돌리기 어려운 항목은 ADR 후보로 표시합니다.

@@ -4,12 +4,19 @@ import { createRuntimeReply, parseRuntimeMessage } from '@/lib/runtime/ipc';
 
 const dataDirectory = process.env.CODEXMUX_DATA_DIR || path.join(process.env.HOME || process.cwd(), '.codexmux');
 const indexPath = process.env.CODEXMUX_GOVERNANCE_INDEX || path.join(dataDirectory, 'governance', 'index.db');
-const service = createGovernanceWorkerService({ indexPath });
+const backupRoot = path.join(dataDirectory, 'backups', 'governance-actions');
+const service = createGovernanceWorkerService({
+  indexPath,
+  backupRoot,
+  writesEnabled: process.env.CODEXMUX_GOVERNANCE_WRITES === '1',
+});
+const initialization = service.initialize();
 
 process.on('message', async (raw) => {
   try {
     const message = parseRuntimeMessage(raw);
     if (message.kind !== 'command') return;
+    await initialization;
     process.send?.(await service.handleCommand(message));
   } catch (error) {
     const commandId = typeof raw === 'object' && raw && 'id' in raw && typeof raw.id === 'string'

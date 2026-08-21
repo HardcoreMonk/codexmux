@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { relativeDocumentPathSchema } from '@/lib/governance/contracts';
 
 export interface ILinuxMountInfoEntry {
   mountPoint: string;
@@ -164,4 +165,79 @@ export const resolveManagedProjectPath = async ({
   await assertNoNestedLinuxMount(canonicalRootPath, deps.readMountInfo);
   const relativePath = path.relative(canonicalRootPath, canonicalProjectPath).split(path.sep).join('/');
   return { canonicalRootPath, canonicalProjectPath, relativePath };
+};
+
+export interface IResolvedGovernanceArtifactTarget {
+  canonicalProjectPath: string;
+  targetPath: string;
+  exists: boolean;
+  missingDirectories: string[];
+}
+
+export const resolveGovernanceArtifactTarget = async ({
+  approvedRootPath,
+  projectPath,
+  relativePath,
+}: {
+  approvedRootPath: string;
+  projectPath: string;
+  relativePath: string;
+}, overrides: IProjectPathPolicyDependencies = {}): Promise<IResolvedGovernanceArtifactTarget> => {
+  if (!relativeDocumentPathSchema.safeParse(relativePath).success) {
+    throw pathPolicyError('governance-artifact-path-invalid', 'Governance artifact path is invalid.');
+  }
+  const resolved = await resolveManagedProjectPath({
+    approvedRootPath,
+    candidatePath: projectPath,
+  }, overrides);
+  const segments = relativePath.split('/');
+  const targetPath = path.join(resolved.canonicalProjectPath, ...segments);
+  if (!isContained(resolved.canonicalProjectPath, targetPath)) {
+    throw pathPolicyError('governance-artifact-path-invalid', 'Governance artifact path is outside the project.');
+  }
+
+  let cursor = resolved.canonicalProjectPath;
+  const missingDirectories: string[] = [];
+  let missing = false;
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index];
+    if (!segment) throw pathPolicyError('governance-artifact-path-invalid', 'Governance artifact path is invalid.');
+    cursor = path.join(cursor, segment);
+    const final = index === segments.length - 1;
+    if (missing) {
+      if (!final) missingDirectories.push(cursor);
+      continue;
+    }
+    let stat: Awaited<ReturnType<typeof fs.lstat>>;
+    try {
+      stat = await fs.lstat(cursor);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      missing = true;
+      if (!final) missingDirectories.push(cursor);
+      continue;
+    }
+    if (stat.isSymbolicLink()) {
+      throw pathPolicyError('governance-artifact-symlink', 'Governance artifact path contains a symlink.');
+    }
+    if (!final && !stat.isDirectory()) {
+      throw pathPolicyError('governance-artifact-ancestor-not-directory', 'Governance artifact ancestor is not a directory.');
+    }
+    if (final && !stat.isFile()) {
+      throw pathPolicyError('governance-artifact-not-regular', 'Governance artifact is not a regular file.');
+    }
+  }
+
+  if (!missing) {
+    const canonicalTarget = await fs.realpath(targetPath);
+    if (!isContained(resolved.canonicalProjectPath, canonicalTarget)) {
+      throw pathPolicyError('governance-artifact-path-invalid', 'Governance artifact path is outside the project.');
+    }
+  }
+  return {
+    canonicalProjectPath: resolved.canonicalProjectPath,
+    targetPath,
+    exists: !missing,
+    missingDirectories,
+  };
 };

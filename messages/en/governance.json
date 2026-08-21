@@ -3,7 +3,14 @@
   "pageTitle": "Project Governance · codexmux",
   "engine": "Linux single engine",
   "readOnly": "Read-only",
-  "phaseBoundary": "Project documents are scanned read-only. File mutations remain a later phase.",
+  "phaseBoundary": "Project documents remain readable, but the scaffold write gate is disabled in this deployment.",
+  "writePhaseBoundary": "Preview and transactionally apply versioned scaffolds inside approved projects.",
+  "writeState": {
+    "disabled": "Writes disabled",
+    "ready": "Write ready",
+    "recovering": "Recovering",
+    "degraded": "Writes degraded"
+  },
   "projects": "Managed projects",
   "noProjects": "No managed projects",
   "noProjectsDescription": "Register a project under an approved root or import projects.yaml.",
@@ -53,6 +60,60 @@
   "importProjects": "Import projects.yaml",
   "importCounts": "add {add} · update {update} · conflict {conflict} · unchanged {unchanged}",
   "importCompleted": "Project import completed.",
+  "scaffold": {
+    "title": "Project Scaffold",
+    "description": "Create or safely update operational documents in codexmux-owned marker blocks.",
+    "projectTitle": "Document project title",
+    "summary": "Project summary",
+    "summaryPlaceholder": "Describe the product boundary and purpose briefly.",
+    "uiProject": "UI project",
+    "uiProjectDescription": "Allows DESIGN.md to be selected.",
+    "artifacts": "Documents to create",
+    "preview": "Preview changes",
+    "previewTitle": "Scaffold change preview",
+    "rollbackPreviewTitle": "Action rollback preview",
+    "expiresIn": "expires in {seconds}s",
+    "confirmProject": "Enter the exact project title “{title}” to continue.",
+    "apply": "Apply scaffold",
+    "rollback": "Safe rollback",
+    "processing": "Processing…",
+    "committed": "Scaffold action completed.",
+    "rolledBack": "Action safely rolled back.",
+    "error": "Governance action failed.",
+    "history": "Action history",
+    "noActions": "No scaffold actions have been recorded.",
+    "artifactCount": "{count} documents",
+    "recoveryRequired": "An action conflicts with an external change. Manually review the current file, stage, and preimage.",
+    "writeStateDescription": {
+      "disabled": "CODEXMUX_GOVERNANCE_WRITES is disabled. Read models and action history remain available.",
+      "ready": "Scaffold writes are available.",
+      "recovering": "New writes are blocked while incomplete actions are recovered.",
+      "degraded": "A recovery conflict or worker error blocks new writes. Review action history."
+    },
+    "artifactState": {
+      "create": "Create",
+      "marker-update": "Marker update",
+      "unchanged": "Unchanged",
+      "conflict": "Conflict",
+      "skipped": "Skipped"
+    },
+    "rollbackState": {
+      "delete": "Delete created file",
+      "restore": "Restore preimage",
+      "already-restored": "Already restored",
+      "conflict": "External change conflict"
+    },
+    "actionState": {
+      "preparing": "Preparing",
+      "publishing": "Publishing",
+      "committed": "Committed",
+      "index-stale": "Committed · index stale",
+      "rolling-back": "Rolling back",
+      "rolled-back": "Rolled back",
+      "recovery-required": "Recovery required",
+      "rollback-stale": "Rollback stale"
+    }
+  },
   "kind": {
     "agents": "Agent guidance",
     "context": "Context",

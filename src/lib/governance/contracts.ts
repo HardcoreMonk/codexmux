@@ -191,7 +191,7 @@ export const projectDocumentRefSchema: z.ZodType<IProjectDocumentRef> = z.object
 export interface IProjectGovernanceSummary {
   project: IManagedProject;
   engine: 'linux-single-host';
-  readOnly: true;
+  readOnly: boolean;
   documentCount: number;
   warningCount: number;
   lifecycleStage: TProjectLifecycleStage | null;
@@ -202,7 +202,7 @@ export interface IProjectGovernanceSummary {
 export const projectGovernanceSummarySchema: z.ZodType<IProjectGovernanceSummary> = z.object({
   project: managedProjectSchema,
   engine: z.literal('linux-single-host'),
-  readOnly: z.literal(true),
+  readOnly: z.boolean(),
   documentCount: z.number().int().nonnegative(),
   warningCount: z.number().int().nonnegative(),
   lifecycleStage: z.enum([
@@ -280,12 +280,14 @@ export const lifecycleLintResultSchema: z.ZodType<ILifecycleLintResult> = z.obje
 
 export interface IGovernanceWorkerHealth {
   state: 'ready' | 'scanning' | 'degraded';
+  writeState: 'disabled' | 'ready' | 'recovering' | 'degraded';
   indexedProjects: number;
   lastIndexedAt: string | null;
 }
 
 export const governanceWorkerHealthSchema: z.ZodType<IGovernanceWorkerHealth> = z.object({
   state: z.enum(['ready', 'scanning', 'degraded']),
+  writeState: z.enum(['disabled', 'ready', 'recovering', 'degraded']),
   indexedProjects: z.number().int().nonnegative(),
   lastIndexedAt: isoTimestampSchema.nullable(),
 }).strict();

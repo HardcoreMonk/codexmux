@@ -45,6 +45,9 @@ Runtime v2 worker, tmux, Codex JSONL, app-owned DB와 등록된 project filesyst
 | Managed Project | 승인된 root 아래에서 guidance, knowledge와 lifecycle 상태를 관리하는 project aggregate | Storage/Governance Worker |
 | Project Governance | Managed Project의 guidance, knowledge, check, audit를 제공하는 bounded context | Governance Worker |
 | Knowledge Index | project-local 문서의 navigation/search를 위한 재생성 가능한 projection | Governance Worker, app-owned index DB |
+| Governance Action Run | 한 Managed Project의 scaffold preview, confirm, publish, recovery와 receipt를 묶는 aggregate | Governance Worker, action journal/backup |
+| Scaffold Artifact | versioned template catalog가 생성하거나 marker-owned block으로 갱신할 수 있는 허용 문서 | Project Governance scaffold catalog |
+| Marker-owned block | codexmux marker 사이에서만 Governance Action Run이 갱신할 수 있는 문서 영역 | scaffold marker parser, no-clobber policy |
 | Project Lifecycle | spec, domain architecture, grill, plan, review, release, operate artifact 흐름 | project-local docs |
 | Windows 전용 제품 | 2026년 Windows product-line 전환과 release 검증의 역사적 결정 | packaging, host, release evidence |
 | Windows 서비스 호스트 | 앱/backend 수명주기를 관리하는 host 경계 | Windows host diagnostics, future service |
@@ -57,10 +60,13 @@ Runtime v2 worker, tmux, Codex JSONL, app-owned DB와 등록된 project filesyst
 - `Windows companion integration`: 제거된 remote/sidecar 모델을 되살리는 의미로 쓰지 않습니다.
 - `Windows bridge`: 기준 runtime 용어로 쓰지 않습니다.
 - `tmux backend`: 새 도메인 경계 이름으로 쓰지 않습니다. tmux는 legacy infrastructure adapter입니다.
-- `Android primary client`: Windows 전용 전환 후 Android는 primary 제품 surface가 아닙니다.
+- `Android primary client`: Android는 Linux engine에 접속하는 선택 client이며 primary runtime
+  authority가 아닙니다.
 - 범용 `terminal dashboard`: codexmux 제품 정체성을 설명하는 기준 용어가 아닙니다.
 - 단독 `lifecycle`: Project Lifecycle, Runtime Operations, ADR Lifecycle 중 하나로 한정합니다.
 - `workspace project`: Workspace와 Managed Project를 하나의 entity로 합치는 이름으로 쓰지 않습니다.
+- `ProjectWrite`, `FileSync`: create-only scaffold보다 넓은 arbitrary write/sync를 암시하는 public
+  domain 이름으로 쓰지 않습니다.
 
 ## 경계 규칙
 
@@ -75,19 +81,29 @@ Runtime v2 worker, tmux, Codex JSONL, app-owned DB와 등록된 project filesyst
 
 ## 현재 구현 기준
 
-2026-08-21 기준 Session Operations와 Project Governance Phase 1~2가 Linux 단일 엔진에
-통합됐습니다. Timeline Worker는 Session Catalog, Storage Worker는 durable project/session
-상태, Governance Worker는 승인 project의 read-only Knowledge Index를 소유합니다. Project
-filesystem write, remote topology, GSD orchestration과 full-output search는 구현 범위가 아닙니다.
-검증과 rollback 경계는
+2026-08-21 기준 Session Operations와 Project Governance Phase 1~3 첫 vertical slice가 Linux
+단일 엔진에 통합됐습니다. Timeline Worker는 Session Catalog, Storage Worker는 durable
+project/session 상태, Governance Worker는 승인 project의 Knowledge Index와 governed scaffold
+write를 소유합니다. Arbitrary project write/delete/move/full sync, remote topology, GSD
+orchestration과 full-output search는 구현 범위가 아닙니다.
+구현 commit `d405f683`은 authenticated `0.0.0.0:8122`의 `systemd --user` service에 배포되어
+실제 restart 전후 terminal/worker smoke를 통과했습니다. [GitHub issue #18](https://github.com/HardcoreMonk/codexmux/issues/18)은
+완료됐으며, 장시간 live 관찰 전까지 ADR-031은 `Implemented`입니다. 검증과 rollback 경계는
 `docs/operations/2026-08-21-session-operations-governance-integration-handoff.md`에 기록합니다.
+
+Phase 3의 첫 범위인 `Governance Action Run` 소유 create-only scaffold와 marker-owned update는
+구현 및 격리 release gate를 통과했습니다. Live `CODEXMUX_GOVERNANCE_WRITES` gate는 별도 운영
+승인 전까지 off입니다. 설계와 운영 인계는
+`docs/superpowers/specs/2026-08-21-governed-project-scaffold-design.md`, ADR-032와
+`docs/operations/2026-08-21-governed-project-scaffold-handoff.md`를 따릅니다.
 
 2026-08-15 기준 pre-auth bootstrap은 lifecycle review와 Linux dev/prod security smoke로,
 upload ingress와 Windows stable release path는 fresh Windows package/update gate로
 검증했습니다. Bootstrap은 ADR-026, upload ingress는 ADR-027, Windows stable release
 gate는 ADR-028 `Verified`입니다.
 
-- 현재 stable release: [`v0.4.22`](https://github.com/HardcoreMonk/codexmux/releases/tag/v0.4.22), commit `4af02209`
+- 현재 npm package: `codexmux@0.4.23`, registry commit `ef27e297`
+- 보존된 Windows stable release: [`v0.4.22`](https://github.com/HardcoreMonk/codexmux/releases/tag/v0.4.22), commit `4af02209`
 - Windows 검증 완료 추적: [GitHub issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)
 - 구현·복구 근거: `docs/operations/2026-07-11-pre-auth-bootstrap-security-handoff.md`,
   `docs/operations/2026-07-11-production-security-upload-integrity-handoff.md`,

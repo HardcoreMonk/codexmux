@@ -1,6 +1,6 @@
 # Linux 단일 엔진 systemd 운영
 
-이 문서는 codexmux Linux 단일 엔진을 `systemd --user` 서비스로 운영하는 기준입니다. 한 user service가 custom server, Runtime v2 worker, tmux adapter, Codex JSONL read와 등록 project read를 소유합니다.
+이 문서는 codexmux Linux 단일 엔진을 `systemd --user` 서비스로 운영하는 기준입니다. 한 user service가 custom server, Runtime v2 worker, tmux adapter, Codex JSONL read와 등록 project의 governed scaffold write를 소유합니다.
 
 ## 기존 워크스테이션 기준
 
@@ -13,26 +13,34 @@
 네트워크와 포트:
 
 ```text
-HOST=localhost,tailscale,192.168.0.0/16
+HOST=0.0.0.0
 PORT=8122
 ```
+
+2026-08-21 현재 이 host의 unit은 enabled/active이며 구현 commit `d405f683`, version
+`0.4.23`을 `0.0.0.0:8122`에서 제공합니다. Browser 인증이 구성됐고 CLI token 기반 운영
+API와 Runtime v2 worker health도 정상입니다.
 
 ## 서비스 파일 예시
 
 ```ini
 [Unit]
-Description=codexmux web session manager
+Description=codexmux Linux single-engine session manager
 Documentation=https://github.com/HardcoreMonk/codexmux
+After=network.target
 
 [Service]
 Type=simple
 WorkingDirectory=/data/projects/codex-zone/codexmux
 Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
 Environment=CODEXMUX_RUNTIME_V2=1
 Environment=CODEXMUX_SESSION_CATALOG_MODE=default
-Environment=HOST=localhost,tailscale,192.168.0.0/16
+# 별도 승인 뒤에만 추가: Environment=CODEXMUX_GOVERNANCE_WRITES=1
+Environment=HOST=0.0.0.0
 Environment=PORT=8122
-ExecStart=/usr/bin/node /data/projects/codex-zone/codexmux/bin/codexmux.js
+Environment=PATH=/home/hardcoremonk/.nvm/versions/node/v24.19.0/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/hardcoremonk/.nvm/versions/node/v24.19.0/bin/node /data/projects/codex-zone/codexmux/bin/codexmux.js
 Restart=on-failure
 RestartSec=3
 KillSignal=SIGINT
@@ -66,6 +74,12 @@ restart하며 config 전체 삭제는 다른 앱 설정도 초기화하므로 �
 `Environment=CODEXMUX_UPLOADS_DISABLED=1`을 추가하고 daemon reload/restart합니다. 이 모드는
 두 upload route만 `503`으로 닫고 health와 기존 artifact tree는 유지합니다. Direct `next start`
 또는 제거된 Pages upload route로 fallback하지 않습니다.
+
+Governance scaffold write는 기본 off입니다. 활성화 전
+`corepack pnpm smoke:governance:scaffold`와 backup 여유 공간을 확인한 뒤 drop-in에
+`Environment=CODEXMUX_GOVERNANCE_WRITES=1`을 추가합니다. 비상 차단은 이 환경 변수를 제거하고
+daemon reload/restart합니다. Gate off도 미완료 action의 startup rollback을 건너뛰지 않으며
+`recovery-required`가 있으면 action backup을 삭제하지 않습니다.
 
 ## 등록과 시작
 
@@ -131,6 +145,12 @@ corepack pnpm smoke:browser:session-governance
 - `runtime-v2`, `session-catalog`, `governance` 디렉터리는 `0700`, SQLite DB/WAL/SHM은 `0600`인지 확인합니다.
 - `dist/workers/`에 terminal/storage/timeline/status/governance worker bundle이 모두 있어야 합니다.
 - 실제 `systemctl --user restart`는 backup과 운영 승인을 받은 뒤 실행합니다. build/smoke 통과만으로 live service를 재시작하지 않습니다.
+
+최초 2026-08-21 배포 전에는 기존 unit, listener와 runtime/catalog/governance DB가 없어서
+backup 대상이 없었습니다. 이후 배포부터는 restart 전에 runtime DB/WAL/SHM을 같은 시점의
+한 세트로 backup합니다. 최초 배포는 restart 전후 live terminal 전체 smoke와 Phase 6
+12-check gate를 통과했으며 [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18)에
+완료 증거가 있습니다.
 
 ## 런타임 v2 rollback
 

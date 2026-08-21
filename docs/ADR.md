@@ -254,6 +254,10 @@
 - 구현 근거: CLI-only manifest, postinstall allowlist, build-only dependency 분리, local tarball install/run smoke와 `.github/workflows/npm-publish.yml`의 OIDC/idempotency contract를 구현했습니다. Next `16.3.1`, sharp `0.35.3`, PostCSS `8.5.23`, nanoid `5.1.16`으로 public package dependency audit를 0건으로 복구했습니다.
 - 검증 조건: local tarball의 lifecycle-enabled install, CLI help, isolated production health가 통과하고, 최초 public publish 뒤 exact registry version을 같은 방식으로 실행해야 `Verified`로 전이합니다.
 - 검증 근거: `codexmux@0.4.23`을 release commit `ef27e2971f04d828cf0f1281581ae7e7eb1d1072`에서 최초 public publish했습니다. Registry `gitHead`와 integrity를 확인하고, 저장소 밖 격리 환경에서 registry package의 CLI help와 production `/api/health` `200`, `version=0.4.23`, `commit=ef27e297`을 검증했습니다. 상세 결과는 `docs/operations/2026-08-20-npm-npx-distribution-handoff.md`에 기록합니다.
+- 현재 해석: ADR-031이 active runtime을 Linux 단일 엔진으로 변경했으므로 npm server는 더
+  이상 legacy secondary runtime이 아닙니다. Windows installer와 npm package가 독립
+  배포면이라는 핵심 결정은 유지하되 Linux engine acceptance는 npm/source/systemd 경로를
+  기준으로 합니다.
 
 ## ADR-031: Linux 단일 엔진 호스트를 active product/runtime target으로 사용한다
 
@@ -261,7 +265,71 @@
 - 결정: codexmux의 active product/runtime target을 Linux 단일 엔진 호스트로 고정합니다. 한 Linux host가 custom server, Runtime v2 worker, tmux, Codex CLI와 JSONL, app-owned DB, 등록된 project filesystem을 소유합니다. Browser와 선택 Electron client는 이 host에 접속하지만 session source, worker 또는 project writer가 되지 않습니다.
 - 이유: Session Operations와 Project Governance를 기존 Timeline, Status, Storage worker 경계에 통합하려면 JSONL watch, SQLite single-writer, canonical Linux path, mount와 symlink containment를 한 engine authority에서 보장해야 합니다. Windows-only target은 이 통합의 실제 운영 환경과 맞지 않습니다.
 - trade-off: 기존 Windows package와 updater parity는 새 기능 release gate가 아니며 remote node, collector, multi-engine federation은 지원하지 않습니다. Linux host가 단일 장애 지점이므로 worker별 degraded mode, projection rebuild, state backup과 systemd user service 절차가 필요합니다.
-- 영향: Timeline Worker는 Session Catalog raw JSONL read/watch와 index DB를, Storage Worker는 durable app state를, Governance Worker는 registered project read와 Knowledge Index를 각각 단독 소유합니다. Next API는 DB나 project filesystem을 직접 열지 않습니다. Windows release 증거와 ADR-030의 독립 배포면 결정은 삭제하거나 Linux acceptance로 재해석하지 않습니다.
+- 영향: Timeline Worker는 Session Catalog raw JSONL read/watch와 index DB를, Storage Worker는
+  durable app state를, Governance Worker는 registered project read, Knowledge Index와 ADR-032의
+  governed scaffold write를 단독 소유합니다. Next API는 DB나 project filesystem을 직접 열지
+  않습니다. Windows release 증거와 ADR-030의 독립 배포면 결정은 삭제하거나 Linux
+  acceptance로 재해석하지 않습니다.
 - 승인 근거: `docs/superpowers/specs/2026-08-21-session-operations-governance-integration-design.md`, `docs/superpowers/grill-me/2026-08-21-session-operations-governance-integration.md`, `docs/superpowers/plans/2026-08-21-session-operations-governance-integration.md`.
-- 구현 근거: Runtime v2에 Governance Worker와 Session Catalog ownership을 추가하고 Storage Worker에 session annotation/filter와 Approved Project Root/Managed Project durable state를 배치했습니다. Project Governance는 read-only API/UI, bounded discovery, metadata-only Knowledge Index, lifecycle/check/audit projection만 제공합니다.
+- 구현 근거: Runtime v2에 Governance Worker와 Session Catalog ownership을 추가하고 Storage
+  Worker에 session annotation/filter와 Approved Project Root/Managed Project durable state를
+  배치했습니다. 초기 read-only API/UI와 metadata-only Knowledge Index 위에 ADR-032의 gated
+  scaffold transaction을 확장했습니다.
 - 검증 조건: 전체 unit/type/lint/build, Runtime v2 core/backup/Phase 6 gate, 5,000-session performance, isolated Linux rollback, 한국어/영어 browser와 npm tarball smoke를 통과하고 운영 handoff를 남깁니다. 실제 user service restart와 장시간 관찰 근거를 확보하기 전에는 `Verified`로 전이하지 않습니다.
+- 운영 근거: 구현 commit `d405f683`을 port `8122`의 Linux `systemd --user` service로
+  배포했습니다. Browser 인증 설정 뒤 unit을 `HOST=0.0.0.0`으로 재시작해 실제
+  `0.0.0.0:8122` listener를 확인했습니다. 최초 기동과 실제 restart 전후에 live terminal
+  smoke, Runtime v2 Phase 6 12-check gate, worker/private DB health를 통과했고
+  [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18)을 완료했습니다. 장시간
+  live 관찰은 아직 없으므로 상태는 `Implemented`를 유지합니다. 상세 증거는
+  `docs/operations/2026-08-21-session-operations-governance-integration-handoff.md`에 있습니다.
+
+## ADR-032: Project file 변경은 Governance Action Run으로만 수행한다
+
+- 상태: Implemented
+- 결정: Project Governance의 project filesystem 변경은 Governance Worker가 소유하는
+  `GovernanceActionRun`의 preview, exact confirmation, staged publish, backup, compensation과
+  startup recovery 경로로만 수행합니다. 첫 범위는 versioned template catalog의 신규 file
+  생성과 `MarkerOwnedBlock` 갱신이며 arbitrary overwrite, delete, move와 full sync를 허용하지
+  않습니다. Next API route와 browser는 project path나 rendered file content를 조립하지
+  않습니다.
+- 이유: Managed Project 문서 변경은 승인 root containment, symlink/mount 방어, stale write
+  차단과 crash recovery를 하나의 authority에서 보장해야 합니다. 독립 API route, shell
+  script 또는 browser가 write를 나눠 소유하면 preview와 실제 publish 사이의 정책이
+  달라지고 partial write를 일관되게 복구할 수 없습니다.
+- trade-off: 여러 file을 포함한 action은 filesystem 수준의 단일 atomic transaction이
+  아니므로 durable journal과 compensating rollback이 필요합니다. Project별 writer lock은
+  codexmux action을 직렬화하지만 외부 editor를 잠그지 않으므로 confirm 직전 fingerprint
+  재검증, current output fingerprint가 일치하는 rollback 조건과 명시적 stale conflict가
+  필요합니다. Backup은 자동 삭제하지 않아 local disk와 민감 문서 preimage가 누적될 수
+  있습니다.
+- 영향: Governance Worker는 기존 read-only Knowledge Index reader에서 유일한 governed
+  project writer로 확장됩니다. Recovery data는
+  `~/.codexmux/backups/governance-actions/<project-id>/<action-id>/`에 `0700/0600` mode로
+  저장합니다. Write command는 `CODEXMUX_GOVERNANCE_WRITES=1` feature gate가 있을 때만
+  활성화하며 gate off에서도 pending recovery는 먼저 수행합니다. Knowledge Index는 write
+  성공 뒤 refresh되는 projection이며 refresh 실패를 project write 실패로 재해석하지
+  않습니다.
+- 승인 근거: 사용자가
+  `docs/superpowers/specs/2026-08-21-governed-project-scaffold-design.md`의 action 단위,
+  template authority, artifact catalog, backup/restore, architecture, UI/security와
+  verification/release 설계를 순차 승인했습니다. Domain language와 별도 ADR 생성도
+  승인했습니다.
+- 구현 조건: Plan Grilling, design review, Spec Freeze Snapshot, implementation plan과
+  engineering review를 통과한 뒤 TDD로 구현합니다. Preview token TTL은 10분이며 action은
+  한 Managed Project의 선택된 artifact 묶음으로 제한합니다.
+- 승인 근거 추가: `docs/superpowers/grill-me/2026-08-21-governed-project-scaffold.md`,
+  `docs/superpowers/reviews/2026-08-21-governed-project-scaffold-design-review.md`,
+  `docs/superpowers/plans/2026-08-21-governed-project-scaffold.md`,
+  `docs/superpowers/reviews/2026-08-21-governed-project-scaffold-eng-review.md`에서 외부 writer,
+  crash rollback, marker migration, 기존 unmarked file, UI state, startup recovery와 private
+  manifest/public audit 경계를 검토했습니다.
+- 검증 조건: marker/no-clobber, stale preview, 중간 publish failure, startup recovery,
+  rollback stale, symlink/nested mount/root escape, API auth/audit, 한국어·영어 browser와 실제
+  임시 Linux project create/update/rollback smoke를 통과해야 합니다. Live gate 활성화와 실제
+  Managed Project confirm은 각각 별도 운영 승인을 받습니다.
+- 구현 근거: versioned template/marker, preview token, contained path policy, private journal/backup,
+  compensating transaction/startup recovery, Runtime v2 IPC/Supervisor, authenticated Pages API와
+  한국어·영어 UI를 구현했습니다. `corepack pnpm smoke:governance:scaffold`의 격리 Linux
+  create/update/rollback 및 private mode 검증을 통과했습니다. Live service의 write gate는
+  활성화하지 않았으므로 실제 운영 project 확인 뒤에만 `Verified` 전이를 검토합니다.

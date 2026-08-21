@@ -201,11 +201,13 @@ const runLocale = async (browser, locale) => {
     const labels = locale === 'ko'
       ? {
           title: '세션 검색', query: '메시지 검색', search: '검색', replay: '세션 복기',
-          governance: '프로젝트 거버넌스', readOnly: '읽기 전용', degraded: 'Governance Worker가 저하 상태입니다',
+          governance: '프로젝트 거버넌스', writeDisabled: '쓰기 비활성', scaffold: '프로젝트 Scaffold',
+          preview: '변경 미리보기', degraded: 'Governance Worker가 저하 상태입니다',
         }
       : {
           title: 'Session Explorer', query: 'Message search', search: 'Search', replay: 'Session replay',
-          governance: 'Project Governance', readOnly: 'Read-only', degraded: 'Governance worker is degraded',
+          governance: 'Project Governance', writeDisabled: 'Writes disabled', scaffold: 'Project Scaffold',
+          preview: 'Preview changes', degraded: 'Governance worker is degraded',
         };
     await page.goto(`${server.baseUrl}/sessions`, { waitUntil: 'networkidle', timeout: timeoutMs });
     if (await page.locator('html').getAttribute('lang') !== locale) throw new Error(`${locale} SSR locale mismatch`);
@@ -230,13 +232,17 @@ const runLocale = async (browser, locale) => {
     await page.unroute('**/api/governance/projects');
     await page.reload({ waitUntil: 'networkidle', timeout: timeoutMs });
     await page.getByRole('heading', { name: labels.governance }).waitFor({ timeout: timeoutMs });
-    await page.getByText(labels.readOnly, { exact: true }).waitFor({ timeout: timeoutMs });
+    await page.getByText(labels.writeDisabled, { exact: true }).first().waitFor({ timeout: timeoutMs });
+    await page.getByText(labels.scaffold, { exact: true }).waitFor({ timeout: timeoutMs });
+    if (!await page.getByRole('button', { name: labels.preview, exact: true }).isDisabled()) {
+      throw new Error(`${locale} governance gate-off preview was enabled`);
+    }
     const hydrationErrors = errors.filter((message) => /hydration|did not match/i.test(message));
     if (hydrationErrors.length > 0) {
       throw new Error(`${locale} hydration error: ${hydrationErrors.join(' | ')}`);
     }
     await context.close();
-    return `${locale}-ssr-search-replay-governance-recovery`;
+    return `${locale}-ssr-search-replay-governance-gate-off-recovery`;
   } finally {
     await server.stop();
     await fs.rm(homeDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });

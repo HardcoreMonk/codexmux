@@ -11,7 +11,8 @@ Issue tracker backend와 세부 상태 규칙은 project-local 문서를 우선�
 - 사용자 명시 요청 없이 issue를 만들거나 닫거나 relabel하지 않습니다.
 - 코드와 문서로 확인 가능한 내용은 사용자에게 다시 묻지 않습니다.
 - 작업 상태는 spec, plan, handoff, `FOLLOW-UP.md` 중 적절한 곳에 남깁니다.
-- Windows-only release blocker는 `FOLLOW-UP.md` 또는 operations handoff에 명확히 남깁니다.
+- Active Linux engine release blocker는 `FOLLOW-UP.md` 또는 operations handoff에 명확히
+  남깁니다. Windows package/updater blocker는 별도 Windows 배포면으로 구분합니다.
 
 ## 발행
 

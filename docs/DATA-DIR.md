@@ -24,6 +24,11 @@ codexmux의 앱 상태는 `~/.codexmux/`에 저장합니다. Codex CLI 원본 �
     index.db-wal
     index.db-shm
   backups/
+    governance-actions/
+      <project-id>/
+        <action-id>/
+          action.json
+          preimage/
   hooks.json
   status-hook.cjs
   statusline.sh
@@ -55,7 +60,7 @@ codexmux의 앱 상태는 `~/.codexmux/`에 저장합니다. Codex CLI 원본 �
 | `runtime-v2/state.db` | runtime v2 workspace/layout/tab/message-history와 session annotation/filter, Approved Project Root/Managed Project/audit durable state |
 | `session-catalog/index.db` | Codex JSONL metadata, bounded searchable message, FTS, file cursor와 health projection |
 | `governance/index.db` | Managed Project 문서 metadata, heading, fingerprint, lint와 link projection. 본문 미저장 |
-| `backups/` | runtime v2 explicit/migration backup. projection DB backup 용도가 아님 |
+| `backups/` | runtime v2 backup과 governance action의 private journal/preimage. projection DB backup 용도가 아님 |
 | `hooks.json` | 빈 `hooks`와 statusline 호환 설정을 담는 생성 파일. Codex tab 실행 config source는 아님 |
 | `status-hook.cjs` | session-scoped Codex hook override가 호출하는 standalone Node bridge |
 | `status-hook.sh` | 이전 설치에 남을 수 있는 legacy bridge. 현재 생성하거나 호출하지 않음 |
@@ -124,7 +129,11 @@ Session Catalog와 Knowledge Index는 source of truth가 아닙니다.
 
 ## Managed Project 데이터 경계
 
-Approved Project Root의 canonical path와 Managed Project canonical path는 `runtime-v2/state.db`에만 저장하고 일반 catalog/API 응답에서는 제거합니다. Governance Worker는 등록된 root 안에서 문서를 읽기 전용으로 scan하며 Phase 2에서는 project filesystem에 파일을 만들거나 수정하거나 삭제하지 않습니다. `projects.yaml`도 승인 root 바로 아래의 regular file만 import source로 읽습니다.
+Approved Project Root의 canonical path와 Managed Project canonical path는 `runtime-v2/state.db`에만
+저장하고 일반 catalog/API 응답에서는 제거합니다. Governance Worker는 등록 root 안에서 문서를
+scan하고, feature gate가 열린 경우 catalog scaffold만 생성하거나 marker-owned block을 갱신합니다.
+Action directory는 `0700`, manifest와 preimage는 `0600`이며 first release에는 자동 prune이
+없습니다. `projects.yaml`은 승인 root 바로 아래의 regular file만 import source로 읽습니다.
 
 ## Codex CLI 원본 데이터
 
@@ -177,7 +186,7 @@ restart 뒤 적용됩니다.
 | `runtime-v2/` | runtime v2 DB 초기화. rollback JSON은 별도 |
 | `session-catalog/` | Session Catalog projection 초기화. 원본 JSONL에서 authenticated rebuild 필요 |
 | `governance/` | Knowledge Index projection 초기화. Managed Project refresh 필요 |
-| `backups/` | runtime durable state 복구 근거 삭제. 검증된 대체 backup 없이 삭제하지 않음 |
+| `backups/` | runtime durable state와 governance action 복구 근거 삭제. 검증된 대체 backup 없이 삭제하지 않음 |
 | `session-index.json` | session list cache 재생성. 삭제 직후 첫 목록은 비어 있을 수 있고 refresh 완료 뒤 갱신 |
 | `stats/` | usage cache와 report 재생성 |
 | `logs/` | 서버 로그 삭제 |
@@ -185,3 +194,8 @@ restart 뒤 적용됩니다.
 | `remote/codex/` | 이전 Windows companion 데이터. 현재 앱은 읽지 않음 |
 
 `~/.codex/sessions/`는 Codex CLI 원본 데이터입니다. codexmux 초기화 목적으로 삭제하지 않습니다.
+
+2026-08-21 최초 Linux live 배포에서 `runtime-v2/state.db`,
+`session-catalog/index.db`, `governance/index.db`가 새로 생성됐고 DB/WAL/SHM은 모두
+`0600`으로 확인했습니다. 기존 durable DB가 없었으므로 초기 backup 대상은 없었으며 이후
+배포부터는 이 문서의 세 파일 단위 backup/restore 계약을 적용합니다.

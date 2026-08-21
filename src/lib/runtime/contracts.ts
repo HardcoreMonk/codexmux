@@ -34,6 +34,13 @@ import type {
   TManagedProjectImportStatus,
   TManagedProjectSource,
 } from '@/lib/governance/contracts';
+import type {
+  IGovernanceActionSummary,
+  IGovernanceRollbackPreview,
+  IScaffoldPreview,
+  TScaffoldArtifactId,
+  TScaffoldTemplateInput,
+} from '@/lib/governance/scaffold-contracts';
 
 export interface IRuntimeHealth {
   ok: boolean;
@@ -225,6 +232,33 @@ export type TRuntimeProjectDocumentDetail = IProjectDocumentDetail;
 export type TRuntimeProjectDocumentRef = IProjectDocumentRef;
 export type TRuntimeProjectGovernanceSummary = IProjectGovernanceSummary;
 export type TRuntimeProjectLifecycleSnapshot = IProjectLifecycleSnapshot;
+export type TRuntimeScaffoldPreview = IScaffoldPreview;
+export type TRuntimeGovernanceActionSummary = IGovernanceActionSummary;
+export type TRuntimeGovernanceRollbackPreview = IGovernanceRollbackPreview;
+
+export interface IRuntimePreviewScaffoldInput {
+  projectId: string;
+  artifacts: TScaffoldArtifactId[];
+  input: TScaffoldTemplateInput;
+}
+
+export interface IRuntimeConfirmScaffoldInput {
+  projectId: string;
+  token: string;
+  digest: string;
+  confirmation: string;
+}
+
+export interface IRuntimeGovernanceActionInput {
+  projectId: string;
+  actionId: string;
+}
+
+export interface IRuntimeConfirmGovernanceRollbackInput extends IRuntimeGovernanceActionInput {
+  token: string;
+  digest: string;
+  confirmation: string;
+}
 
 export interface IRuntimeTimelineEntriesBeforeInput {
   jsonlPath: string;

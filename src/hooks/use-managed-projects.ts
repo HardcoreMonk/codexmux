@@ -41,6 +41,7 @@ const useManagedProjects = () => {
   const [documentDetail, setDocumentDetail] = useState<IProjectDocumentDetail | null>(null);
   const [documentLoading, setDocumentLoading] = useState(false);
   const [documentError, setDocumentError] = useState<string | null>(null);
+  const [projectRevision, setProjectRevision] = useState(0);
   const projectRequestId = useRef(0);
 
   const refresh = useCallback(async () => {
@@ -59,9 +60,10 @@ const useManagedProjects = () => {
         current && result.projects.some((project) => project.id === current)
           ? current
           : result.projects[0]?.id ?? null);
+      setProjectRevision((current) => current + 1);
     } catch (requestError) {
       setError(errorCode(requestError));
-      setHealth({ state: 'degraded', indexedProjects: 0, lastIndexedAt: null });
+      setHealth({ state: 'degraded', writeState: 'degraded', indexedProjects: 0, lastIndexedAt: null });
     } finally {
       setLoading(false);
     }
@@ -99,7 +101,7 @@ const useManagedProjects = () => {
     }).finally(() => {
       if (projectRequestId.current === requestId) setLoading(false);
     });
-  }, [selectedProjectId]);
+  }, [projectRevision, selectedProjectId]);
 
   const openDocument = useCallback(async (documentPath: string) => {
     if (!selectedProjectId) return;

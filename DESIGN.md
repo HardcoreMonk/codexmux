@@ -89,7 +89,8 @@ icon button은 가능한 lucide-react icon을 사용하고, 낯선 icon에는 to
 - dashboard를 landing page처럼 구성하지 않습니다.
 - decorative orb, gradient blob, bokeh background, 의미 없는 SVG hero를 넣지 않습니다.
 - 단일 hue variation만으로 전체 화면을 만들지 않습니다.
-- Windows 전용 제품 화면에 macOS/Linux/Android 안내를 primary action처럼 노출하지 않습니다.
+- Linux engine 운영 화면에 역사적 Windows package나 선택 client 안내를 primary
+  action처럼 노출하지 않습니다.
 
 ## 에이전트 작업 가이드
 

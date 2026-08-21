@@ -21,6 +21,11 @@ const mocks = vi.hoisted(() => {
     getProjectLifecycle: vi.fn(),
     listProjectAuditCandidates: vi.fn(),
     readProjectDocument: vi.fn(),
+    previewGovernanceScaffold: vi.fn(),
+    confirmGovernanceScaffold: vi.fn(),
+    listGovernanceActions: vi.fn(),
+    previewGovernanceActionRollback: vi.fn(),
+    confirmGovernanceActionRollback: vi.fn(),
   };
   return { auth: vi.fn(), supervisor, getRuntimeSupervisor: vi.fn(() => supervisor) };
 });
@@ -37,6 +42,11 @@ import summaryHandler from '@/pages/api/governance/projects/[projectId]/summary'
 import documentsHandler from '@/pages/api/governance/projects/[projectId]/documents';
 import lifecycleHandler from '@/pages/api/governance/projects/[projectId]/lifecycle';
 import auditHandler from '@/pages/api/governance/projects/[projectId]/audit';
+import scaffoldPreviewHandler from '@/pages/api/governance/projects/[projectId]/scaffold/preview';
+import scaffoldConfirmHandler from '@/pages/api/governance/projects/[projectId]/scaffold/confirm';
+import actionsHandler from '@/pages/api/governance/projects/[projectId]/actions/index';
+import rollbackPreviewHandler from '@/pages/api/governance/projects/[projectId]/actions/[actionId]/rollback/preview';
+import rollbackConfirmHandler from '@/pages/api/governance/projects/[projectId]/actions/[actionId]/rollback/confirm';
 
 const createResponse = () => {
   let statusCode = 0;
@@ -101,7 +111,9 @@ describe('governance API', () => {
       counts: { add: 1, update: 0, conflict: 0, unchanged: 0 },
     });
     mocks.supervisor.refreshGovernanceProjects.mockResolvedValue({ refreshed: 1, failed: 0 });
-    mocks.supervisor.getGovernanceHealth.mockResolvedValue({ state: 'ready', indexedProjects: 1, lastIndexedAt: null });
+    mocks.supervisor.getGovernanceHealth.mockResolvedValue({
+      state: 'ready', writeState: 'disabled', indexedProjects: 1, lastIndexedAt: null,
+    });
     mocks.supervisor.getProjectGovernanceSummary.mockResolvedValue({
       project: {
         id: 'project-1', approvedRootId: 'root-1', title: 'Demo', relativePath: 'demo', source: 'manual',
@@ -119,6 +131,30 @@ describe('governance API', () => {
     mocks.supervisor.readProjectDocument.mockResolvedValue({
       projectId: 'project-1', path: 'AGENTS.md', markdown: '# Guidance', truncated: false,
       fingerprint: `sha256:${'a'.repeat(64)}`,
+    });
+    mocks.supervisor.previewGovernanceScaffold.mockResolvedValue({
+      token: 'a'.repeat(32), digest: `sha256:${'a'.repeat(64)}`, projectId: 'project-1',
+      projectTitle: 'Demo', expiresAt: Date.now() + 60_000, artifacts: [], totalBytes: 0,
+    });
+    mocks.supervisor.confirmGovernanceScaffold.mockResolvedValue({
+      id: 'action-1', projectId: 'project-1', state: 'committed', artifactCount: 1,
+      createdAt: '2026-08-21T10:00:00.000Z', updatedAt: '2026-08-21T10:00:00.000Z',
+      errorCode: null, indexState: 'ready',
+    });
+    mocks.supervisor.listGovernanceActions.mockResolvedValue([]);
+    mocks.supervisor.previewGovernanceActionRollback.mockResolvedValue({
+      token: 'b'.repeat(32), digest: `sha256:${'b'.repeat(64)}`, expiresAt: Date.now() + 60_000,
+      projectId: 'project-1', projectTitle: 'Demo', artifacts: [],
+      action: {
+        id: 'action-1', projectId: 'project-1', state: 'committed', artifactCount: 1,
+        createdAt: '2026-08-21T10:00:00.000Z', updatedAt: '2026-08-21T10:00:00.000Z',
+        errorCode: null, indexState: 'ready',
+      },
+    });
+    mocks.supervisor.confirmGovernanceActionRollback.mockResolvedValue({
+      id: 'action-1', projectId: 'project-1', state: 'rolled-back', artifactCount: 1,
+      createdAt: '2026-08-21T10:00:00.000Z', updatedAt: '2026-08-21T10:00:00.000Z',
+      errorCode: null, indexState: 'ready',
     });
   });
 
@@ -203,5 +239,59 @@ describe('governance API', () => {
     }), create.response);
     expect(create.statusCode).toBe(201);
     expect(mocks.auth).toHaveBeenLastCalledWith(expect.anything(), { mutation: true });
+  });
+
+  it('serves sanitized scaffold and rollback preview-confirm APIs', async () => {
+    const scaffoldPreview = createResponse();
+    await scaffoldPreviewHandler(createRequest({
+      method: 'POST', query: { projectId: 'project-1' },
+      body: {
+        artifacts: ['context'],
+        input: { title: 'Demo', summary: 'Summary', uiProject: false },
+      },
+    }), scaffoldPreview.response);
+    expect(scaffoldPreview.statusCode).toBe(200);
+    expect(mocks.supervisor.previewGovernanceScaffold).toHaveBeenCalledWith(expect.objectContaining({
+      projectId: 'project-1', artifacts: ['context'],
+    }));
+
+    const scaffoldConfirm = createResponse();
+    await scaffoldConfirmHandler(createRequest({
+      method: 'POST', query: { projectId: 'project-1' },
+      body: { token: 'a'.repeat(32), digest: `sha256:${'a'.repeat(64)}`, confirmation: 'Demo' },
+    }), scaffoldConfirm.response);
+    expect(scaffoldConfirm.statusCode).toBe(200);
+
+    const actions = createResponse();
+    await actionsHandler(createRequest({ query: { projectId: 'project-1' } }), actions.response);
+    expect(actions.statusCode).toBe(200);
+
+    const rollbackPreview = createResponse();
+    await rollbackPreviewHandler(createRequest({
+      method: 'POST', query: { projectId: 'project-1', actionId: 'action-1' }, body: {},
+    }), rollbackPreview.response);
+    expect(rollbackPreview.statusCode).toBe(200);
+
+    const rollbackConfirm = createResponse();
+    await rollbackConfirmHandler(createRequest({
+      method: 'POST', query: { projectId: 'project-1', actionId: 'action-1' },
+      body: { token: 'b'.repeat(32), digest: `sha256:${'b'.repeat(64)}`, confirmation: 'Demo' },
+    }), rollbackConfirm.response);
+    expect(rollbackConfirm.statusCode).toBe(200);
+    expect(mocks.auth).toHaveBeenLastCalledWith(expect.anything(), { mutation: true });
+    expect(JSON.stringify([scaffoldConfirm.body, actions.body, rollbackConfirm.body])).not.toContain(root);
+  });
+
+  it('rejects arbitrary scaffold paths before the Supervisor boundary', async () => {
+    const response = createResponse();
+    await scaffoldPreviewHandler(createRequest({
+      method: 'POST', query: { projectId: 'project-1' },
+      body: {
+        artifacts: ['context'], path: '../../outside',
+        input: { title: 'Demo', summary: 'Summary', uiProject: false },
+      },
+    }), response.response);
+    expect(response.statusCode).toBe(400);
+    expect(mocks.supervisor.previewGovernanceScaffold).not.toHaveBeenCalled();
   });
 });

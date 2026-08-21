@@ -203,7 +203,7 @@ describe('runtime supervisor', () => {
       terminal: { ok: true },
       timeline: { ok: true },
       status: { ok: true },
-      governance: { state: 'degraded', indexedProjects: 0, lastIndexedAt: null },
+      governance: { state: 'degraded', writeState: 'degraded', indexedProjects: 0, lastIndexedAt: null },
     });
 
     expect(storage.started).toBe(1);
@@ -401,12 +401,13 @@ describe('runtime supervisor', () => {
       updatedAt: '2026-08-21T10:00:00.000Z',
     }];
     storage.replies.set('storage.list-managed-project-snapshots', projects);
+    storage.replies.set('storage.list-approved-project-root-snapshots', []);
     governance.replies.set('governance.refresh-projects', { refreshed: 1, failed: 0 });
     const supervisor = createRuntimeSupervisorForTest({ storage, terminal, timeline, status, governance });
 
     await expect(supervisor.refreshGovernanceProjects()).resolves.toEqual({ refreshed: 1, failed: 0 });
     expect(storage.commands).toContainEqual({ type: 'storage.list-managed-project-snapshots', payload: {} });
-    expect(governance.commands).toContainEqual({ type: 'governance.refresh-projects', payload: { projects } });
+    expect(governance.commands).toContainEqual({ type: 'governance.refresh-projects', payload: { projects, roots: [] } });
   });
 
   it('keeps core runtime available when Governance Worker readiness fails', async () => {

@@ -4,6 +4,10 @@ import path from 'path';
 import type {
   IRuntimeCreateWorkspaceResult,
   IRuntimeApplyManagedProjectImportInput,
+  IRuntimeConfirmGovernanceRollbackInput,
+  IRuntimeConfirmScaffoldInput,
+  IRuntimeGovernanceActionInput,
+  IRuntimePreviewScaffoldInput,
   IRuntimeManagedProjectImportResult,
   IRuntimeRegisterManagedProjectInput,
   TRuntimeRegisterApprovedProjectRootInput,
@@ -68,6 +72,8 @@ import type {
   TRuntimeApprovedProjectRootSnapshot,
   TRuntimeGovernanceAuditEvent,
   TRuntimeGovernanceAuditCandidate,
+  TRuntimeGovernanceActionSummary,
+  TRuntimeGovernanceRollbackPreview,
   TRuntimeGovernanceRefreshResult,
   TRuntimeGovernanceWorkerHealth,
   TRuntimeManagedProject,
@@ -76,6 +82,7 @@ import type {
   TRuntimeProjectDocumentRef,
   TRuntimeProjectGovernanceSummary,
   TRuntimeProjectLifecycleSnapshot,
+  TRuntimeScaffoldPreview,
   TRuntimeSessionAnnotation,
   TRuntimeStatusCodexStateInput,
   TRuntimeStatusDecision,
@@ -129,6 +136,11 @@ export interface IRuntimeSupervisor {
   getProjectLifecycle(projectId: string): Promise<TRuntimeProjectLifecycleSnapshot>;
   listProjectAuditCandidates(projectId: string): Promise<TRuntimeGovernanceAuditCandidate[]>;
   readProjectDocument(projectId: string, documentPath: string): Promise<TRuntimeProjectDocumentDetail>;
+  previewGovernanceScaffold(input: IRuntimePreviewScaffoldInput): Promise<TRuntimeScaffoldPreview>;
+  confirmGovernanceScaffold(input: IRuntimeConfirmScaffoldInput): Promise<TRuntimeGovernanceActionSummary>;
+  listGovernanceActions(projectId: string): Promise<TRuntimeGovernanceActionSummary[]>;
+  previewGovernanceActionRollback(input: IRuntimeGovernanceActionInput): Promise<TRuntimeGovernanceRollbackPreview>;
+  confirmGovernanceActionRollback(input: IRuntimeConfirmGovernanceRollbackInput): Promise<TRuntimeGovernanceActionSummary>;
   subscribeTimelineLive(input: IRuntimeTimelineLiveSubscribeInput): Promise<IRuntimeTimelineLiveSubscribeResult>;
   unsubscribeTimelineLive(subscriberId: string): Promise<IRuntimeTimelineLiveUnsubscribeResult>;
   subscribeTimelineSessionWatch(input: IRuntimeTimelineSessionWatchSubscribeInput): Promise<IRuntimeTimelineSessionWatchSubscribeResult>;
@@ -444,7 +456,9 @@ export const createRuntimeSupervisorForTest = (
     shutdown: () => undefined,
     request: async <TPayload, TResult>(type: string, _payload: TPayload): Promise<TResult> => {
       if (type === 'governance.health') {
-        return { state: 'degraded', indexedProjects: 0, lastIndexedAt: null } as TResult;
+        return {
+          state: 'degraded', writeState: 'degraded', indexedProjects: 0, lastIndexedAt: null,
+        } as TResult;
       }
       throw Object.assign(new Error('Governance worker is unavailable in this runtime.'), {
         code: 'governance-worker-unavailable',
@@ -715,6 +729,7 @@ export const createRuntimeSupervisorForTest = (
         status.request('status.health', {}),
         governance.request('governance.health', {}).catch(() => ({
           state: 'degraded',
+          writeState: 'degraded',
           indexedProjects: 0,
           lastIndexedAt: null,
         })),
@@ -1005,14 +1020,20 @@ export const createRuntimeSupervisorForTest = (
       }
       const { storage, governance } = getClients();
       governanceRefreshPromise = (async () => {
-        const projects = await storage.request<Record<string, never>, TRuntimeManagedProjectSnapshot[]>(
-          'storage.list-managed-project-snapshots',
-          {},
-        );
+        const [projects, roots] = await Promise.all([
+          storage.request<Record<string, never>, TRuntimeManagedProjectSnapshot[]>(
+            'storage.list-managed-project-snapshots',
+            {},
+          ),
+          storage.request<Record<string, never>, TRuntimeApprovedProjectRootSnapshot[]>(
+            'storage.list-approved-project-root-snapshots',
+            {},
+          ),
+        ]);
         const result = await governance.request<
-          { projects: TRuntimeManagedProjectSnapshot[] },
+          { projects: TRuntimeManagedProjectSnapshot[]; roots: TRuntimeApprovedProjectRootSnapshot[] },
           TRuntimeGovernanceRefreshResult
-        >('governance.refresh-projects', { projects });
+        >('governance.refresh-projects', { projects, roots });
         governanceRefreshResult = result;
         governanceRefreshedAt = Date.now();
         return result;
@@ -1062,6 +1083,50 @@ export const createRuntimeSupervisorForTest = (
         { projectId: string; path: string },
         TRuntimeProjectDocumentDetail
       >('governance.read-project-document', { projectId, path: documentPath });
+    },
+
+    async previewGovernanceScaffold(input) {
+      await this.ensureStarted();
+      return getClients().governance.request<IRuntimePreviewScaffoldInput, TRuntimeScaffoldPreview>(
+        'governance.preview-scaffold',
+        input,
+      );
+    },
+
+    async confirmGovernanceScaffold(input) {
+      await this.ensureStarted();
+      const result = await getClients().governance.request<
+        IRuntimeConfirmScaffoldInput,
+        TRuntimeGovernanceActionSummary
+      >('governance.confirm-scaffold', input);
+      governanceRefreshedAt = 0;
+      return result;
+    },
+
+    async listGovernanceActions(projectId) {
+      await this.ensureStarted();
+      return getClients().governance.request<{ projectId: string }, TRuntimeGovernanceActionSummary[]>(
+        'governance.list-actions',
+        { projectId },
+      );
+    },
+
+    async previewGovernanceActionRollback(input) {
+      await this.ensureStarted();
+      return getClients().governance.request<
+        IRuntimeGovernanceActionInput,
+        TRuntimeGovernanceRollbackPreview
+      >('governance.preview-action-rollback', input);
+    },
+
+    async confirmGovernanceActionRollback(input) {
+      await this.ensureStarted();
+      const result = await getClients().governance.request<
+        IRuntimeConfirmGovernanceRollbackInput,
+        TRuntimeGovernanceActionSummary
+      >('governance.confirm-action-rollback', input);
+      governanceRefreshedAt = 0;
+      return result;
     },
 
     async subscribeTimelineLive(input) {

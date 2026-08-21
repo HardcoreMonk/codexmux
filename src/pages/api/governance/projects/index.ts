@@ -5,7 +5,12 @@ import { authorizeRuntimeV2ApiRequest } from '@/lib/runtime/api-auth';
 import { parseRuntimeApiBody, sendRuntimeApiError, sendRuntimeDisabled } from '@/lib/runtime/api-handler';
 import { getRuntimeSupervisor } from '@/lib/runtime/supervisor';
 
-const degradedHealth = { state: 'degraded' as const, indexedProjects: 0, lastIndexedAt: null };
+const degradedHealth = {
+  state: 'degraded' as const,
+  writeState: 'degraded' as const,
+  indexedProjects: 0,
+  lastIndexedAt: null,
+};
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (process.env.CODEXMUX_RUNTIME_V2 !== '1') return sendRuntimeDisabled(res);

@@ -1,6 +1,8 @@
 # Android 참고 문서
 
-Android 앱은 Capacitor 기반 WebView shell입니다. Windows-only 전환 이후 Android는 primary 제품 surface가 아니라 legacy/mobile 참고 경로입니다. 새 Windows release 기준을 Android smoke로 대체하지 않습니다.
+Android 앱은 실행 중인 Linux codexmux engine에 연결하는 Capacitor 기반 WebView
+shell입니다. Android는 session/runtime authority가 아닌 선택 mobile client이므로 Linux
+engine gate를 Android smoke로 대체하지 않습니다.
 
 ## 명령
 

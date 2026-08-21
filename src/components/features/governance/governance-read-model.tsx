@@ -1,6 +1,7 @@
 import dayjs from 'dayjs';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, BookOpen, RefreshCw, ShieldCheck } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type {
@@ -25,6 +26,8 @@ interface IGovernanceReadModelProps {
   onSelectProject: (projectId: string) => void;
   onRefresh: () => void | Promise<void>;
   onOpenDocument: (documentPath: string) => void | Promise<void>;
+  scaffoldPanel?: ReactNode;
+  actionHistory?: ReactNode;
 }
 
 const GovernanceReadModel = ({
@@ -40,10 +43,14 @@ const GovernanceReadModel = ({
   onSelectProject,
   onRefresh,
   onOpenDocument,
+  scaffoldPanel,
+  actionHistory,
 }: IGovernanceReadModelProps) => {
   const t = useTranslations('governance');
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? null;
-  const degraded = health?.state === 'degraded' || error === 'governance-worker-unavailable';
+  const writeState = health?.writeState ?? 'degraded';
+  const degraded = health?.state === 'degraded' || writeState === 'degraded'
+    || error === 'governance-worker-unavailable';
   const errorLabel = error === 'origin-forbidden'
     ? t('permissionDenied')
     : error === 'managed-project-not-found'
@@ -60,7 +67,12 @@ const GovernanceReadModel = ({
           <ShieldCheck className="h-4 w-4 text-agent-active" />
           <h1 className="text-sm font-semibold">{t('title')}</h1>
           <span className="rounded bg-muted px-2 py-0.5 text-[11px] font-medium">{t('engine')}</span>
-          <span className="rounded bg-ui-yellow/10 px-2 py-0.5 text-[11px] font-medium text-ui-yellow">{t('readOnly')}</span>
+          <span className={cn(
+            'rounded px-2 py-0.5 text-[11px] font-medium',
+            writeState === 'ready'
+              ? 'bg-agent-active/10 text-agent-active'
+              : 'bg-ui-yellow/10 text-ui-yellow',
+          )}>{t(`writeState.${writeState}`)}</span>
         </div>
         <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={() => void onRefresh()}>
           <RefreshCw className="h-3.5 w-3.5" />
@@ -68,7 +80,9 @@ const GovernanceReadModel = ({
         </Button>
       </header>
 
-      <div className="border-b bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">{t('phaseBoundary')}</div>
+      <div className="border-b bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">
+        {writeState === 'ready' ? t('writePhaseBoundary') : t('phaseBoundary')}
+      </div>
 
       {(degraded || errorLabel) && (
         <div className="flex items-start gap-2 border-b border-destructive/20 bg-destructive/5 px-4 py-3 text-xs">
@@ -138,6 +152,8 @@ const GovernanceReadModel = ({
                 </div>
               </section>
 
+              {scaffoldPanel}
+
               <section className="min-h-48 rounded-md border">
                 <div className="flex items-center gap-2 border-b px-3 py-2 text-xs font-semibold">
                   <BookOpen className="h-3.5 w-3.5" />
@@ -192,6 +208,7 @@ const GovernanceReadModel = ({
                     </div>
                   )}
               </section>
+              {actionHistory}
             </div>
           )}
         </main>
