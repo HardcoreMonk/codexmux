@@ -2,9 +2,9 @@
 
 **작성일:** 2026-08-20
 
-**갱신일:** 2026-08-21
+**갱신일:** 2026-08-22
 
-**상태:** npm 0.4.23과 landing 배포 완료, source `main` 후속 통합 완료, Trusted Publisher 등록과 v0.4.23 tag push 보류
+**상태:** npm 0.4.23과 landing 배포 완료, source `main` 후속 통합 완료. Trusted Publisher는 local npm 인증 만료, v0.4.23 tag push는 tagged snapshot의 release note 누락 때문에 보류
 
 **Spec:** `docs/superpowers/specs/2026-08-20-npm-npx-distribution-design.md`
 
@@ -143,26 +143,27 @@ commit을 그대로 보존하며, 이 source 진전이 기존 package를 덮어�
    npm trust list codexmux --json
    ```
 
-2. Tag push 직전에 다음 상태를 다시 확인한다.
+2. 2026-08-22 재점검에서 local npm 인증은 `E401`로 만료됐습니다. 재인증 후 위 trust
+   command를 실행하고 list 결과를 확인합니다. 기존 OTP나 credential은 재사용하지 않습니다.
+
+3. 다음 version release 전 다음 상태를 확인합니다.
    - worktree와 `main`이 의도한 상태인지 확인한다.
-   - remote `v0.4.23`이 여전히 없는지 확인한다.
-   - local `v0.4.23`이 `ef27e297`을 가리키는지 확인한다.
-   - `npm view codexmux@0.4.23 gitHead`가 full SHA `ef27e297...`과 일치하는지 확인한다.
+   - release note가 tag snapshot의 `.github/release-notes/<tag>.md`에 포함됐는지 확인한다.
+   - tag version, `package.json` version과 release note filename이 같은지 확인한다.
 
-3. 확인 후 local tag만 push한다. `main`은 이미 push 완료 상태다.
+4. `v0.4.23` local tag는 push하지 않습니다. Registry `gitHead` 보존 때문에 이 tag를 최신
+   main으로 이동할 수 없고, 기존 `ef27e297` snapshot에는
+   `.github/release-notes/v0.4.23.md`가 없습니다. 그대로 push하면 full Windows workflow가
+   release publish 단계에서 실패합니다.
 
-   ```bash
-   git push codexmux refs/tags/v0.4.23
-   ```
-
-4. Tag push는 `.github/workflows/npm-publish.yml`과 `.github/workflows/release.yml`을 함께
-   시작한다. 두 workflow를 모두 끝까지 확인한다.
+5. 다음 version tag push는 `.github/workflows/npm-publish.yml`과
+   `.github/workflows/release.yml`을 함께 시작합니다. 두 workflow를 모두 끝까지 확인합니다.
    - npm workflow는 registry의 existing version `gitHead`가 tag commit과 같음을 확인한 뒤
      publish를 생략해야 한다.
-   - Windows release workflow는 validation과 package/release gate를 통과한 뒤 v0.4.23
+   - Windows release workflow는 validation과 package/release gate를 통과한 뒤 해당 version의
      installer, zip, blockmap, updater metadata를 게시해야 한다.
 
-5. 완료 후 remote tag, GitHub Release asset, npm `latest`/`gitHead`, public landing을 다시
+6. 완료 후 remote tag, GitHub Release asset, npm `latest`/`gitHead`, public landing을 다시
    확인하고 이 handoff에 run URL과 결과를 기록한다. 문서 commit/push는 사용자 요청이 있을
    때만 수행한다.
 

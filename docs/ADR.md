@@ -261,7 +261,7 @@
 
 ## ADR-031: Linux 단일 엔진 호스트를 active product/runtime target으로 사용한다
 
-- 상태: Implemented
+- 상태: Verified
 - 결정: codexmux의 active product/runtime target을 Linux 단일 엔진 호스트로 고정합니다. 한 Linux host가 custom server, Runtime v2 worker, tmux, Codex CLI와 JSONL, app-owned DB, 등록된 project filesystem을 소유합니다. Browser와 선택 Electron client는 이 host에 접속하지만 session source, worker 또는 project writer가 되지 않습니다.
 - 이유: Session Operations와 Project Governance를 기존 Timeline, Status, Storage worker 경계에 통합하려면 JSONL watch, SQLite single-writer, canonical Linux path, mount와 symlink containment를 한 engine authority에서 보장해야 합니다. Windows-only target은 이 통합의 실제 운영 환경과 맞지 않습니다.
 - trade-off: 기존 Windows package와 updater parity는 새 기능 release gate가 아니며 remote node, collector, multi-engine federation은 지원하지 않습니다. Linux host가 단일 장애 지점이므로 worker별 degraded mode, projection rebuild, state backup과 systemd user service 절차가 필요합니다.
@@ -280,13 +280,17 @@
   배포했습니다. Browser 인증 설정 뒤 unit을 `HOST=0.0.0.0`으로 재시작해 실제
   `0.0.0.0:8122` listener를 확인했습니다. 최초 기동과 실제 restart 전후에 live terminal
   smoke, Runtime v2 Phase 6 12-check gate, worker/private DB health를 통과했고
-  [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18)을 완료했습니다. 장시간
-  live 관찰은 아직 없으므로 상태는 `Implemented`를 유지합니다. 상세 증거는
-  `docs/operations/2026-08-21-session-operations-governance-integration-handoff.md`에 있습니다.
+  [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18)을 완료했습니다. 2026-08-22에는
+  같은 live workspace/session에 301초 동안 11회 새 WebSocket으로 재연결하고 매 회
+  Storage, Terminal, Timeline, Status, Governance와 Session Catalog health를 확인했습니다.
+  관찰 전후 Runtime v2 10-check와 종료 직후 Phase 6 12-check도 통과해 장시간 관찰 조건을
+  충족했으므로 `Verified`로 전이합니다. 상세 증거는
+  `docs/operations/2026-08-21-session-operations-governance-integration-handoff.md`와
+  `docs/operations/2026-08-22-live-verification-maintenance-handoff.md`에 있습니다.
 
 ## ADR-032: Project file 변경은 Governance Action Run으로만 수행한다
 
-- 상태: Implemented
+- 상태: Verified
 - 결정: Project Governance의 project filesystem 변경은 Governance Worker가 소유하는
   `GovernanceActionRun`의 preview, exact confirmation, staged publish, backup, compensation과
   startup recovery 경로로만 수행합니다. Versioned template catalog의 신규 file 생성,
@@ -331,8 +335,8 @@
 - 운영 근거: 구현 commit `a8b2a299`과 private Runtime v2 backup hardening commit `9d32d049`를
   Linux user service에 배포하고 `CODEXMUX_GOVERNANCE_WRITES=1` drop-in을 활성화했습니다.
   Governance `writeState=ready`, scaffold 7-check, Linux 10-check, 한국어/영어 browser와
-  post-restart Phase 6 12-check gate를 통과했습니다. 등록 Managed Project가 0개라 실제 project
-  confirm은 수행하지 않았으며 Issue #19와 governed scaffold 운영 handoff에 근거를 남겼습니다.
+  post-restart Phase 6 12-check gate를 통과했습니다. 당시 등록 Managed Project가 0개라 실제
+  project confirm은 수행하지 않았으며 Issue #19와 governed scaffold 운영 handoff에 근거를 남겼습니다.
 - 구현 근거: versioned template/marker, preview token, contained path policy, private journal/backup,
   compensating transaction/startup recovery, Runtime v2 IPC/Supervisor, authenticated Pages API와
   한국어·영어 UI를 구현했습니다. `corepack pnpm smoke:governance:scaffold`의 격리 Linux
@@ -358,3 +362,12 @@
   `writeState=ready`, live Phase 6 12-check와 production scaffold 13-check, 한국어/영어 browser
   4-check를 통과했습니다. 등록 Managed Project가 없어 실제 project confirm은 수행하지 않았고
   [Issue #20](https://github.com/HardcoreMonk/codexmux/issues/20)에 근거를 남깁니다.
+- 실제 project 검증 근거: 2026-08-22 live service에 Approved Project Root
+  `/data/projects/codex-zone`와 Managed Project `codexmux`를 등록했습니다. 기존 unmarked
+  `AGENTS.md`를 첫 preview에서 `adoption-available`로 확인하고 artifact를 명시 선택한 두 번째
+  preview에서 `adopt` operation을 생성했습니다. Action
+  `action-c4fbd533-292d-4c9e-9823-9201e3606a0d`을 exact confirmation으로 commit한 뒤
+  latest-first rollback했습니다. Rollback 뒤 SHA-256은 원본과 같고 Git status는 clean이며
+  private manifest/preimage mode는 모두 `0600`입니다. 격리 smoke와 live gate 외에 실제 등록
+  project의 preview/confirm/rollback 조건까지 충족했으므로 `Verified`로 전이합니다. 상세
+  증거는 `docs/operations/2026-08-22-live-verification-maintenance-handoff.md`에 있습니다.

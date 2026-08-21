@@ -22,10 +22,10 @@ Linux 단일 엔진의 실행 기반입니다. Windows terminal adapter와 packa
   `docs/operations/2026-07-13-v0.4.22-windows-release-handoff.md`에 있습니다.
 - 이 updater evidence는 fresh profile을 사용하므로 cookie namespace 전환 뒤 기존 Runtime v2
   session 재연결을 입증하지 않습니다. 그 조건이 남아 있어 ADR-029는 `Implemented`입니다.
-- 2026-08-21 초기 통합 commit `d405f683`과 Phase 3 build `9d32d049`는 Linux user service에
-  배포되어 restart 전후 live terminal/scaffold/governance smoke와 Phase 6 gate를 통과했습니다.
-  Governance write gate와 private backup mode도 확인했으며 장시간 관찰 전까지 ADR-031은
-  `Implemented`입니다.
+- 2026-08-21 초기 통합 commit `d405f683`, Phase 3 build `9d32d049`와 adoption build
+  `f46410b4`를 Linux user service에 배포해 restart 전후 terminal/scaffold/governance smoke와
+  Phase 6 gate를 통과했습니다. 2026-08-22에는 같은 session의 301초·11회 재연결과 매 round
+  worker health, 사후 terminal 10-check와 Phase 6 12-check를 통과해 ADR-031은 `Verified`입니다.
 
 아래 단계는 미착수 backlog가 아니라 구현 순서와 rollback runbook을 보존한 기록입니다.
 

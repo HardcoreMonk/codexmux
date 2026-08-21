@@ -62,6 +62,14 @@ acceptance를 대체하지 않습니다. Public npm package의 현재 version은
 - Governed unmarked adoption source release: 2-pass artifact별 opt-in, exact-prefix compact marker
   append, adopted marker update, private preimage/latest-first rollback과 한국어·영어 UI. 전체
   test와 build/API/browser/Linux/storage gate를 통과하고 commit `f46410b4` live 배포·재시작 완료
+- 실제 Approved Project Root/Managed Project 등록과 `AGENTS.md` 2-pass adoption
+  preview→confirm→rollback 완료. 원본 SHA-256·Git clean 복구와 private `0600` preimage 확인
+- 실제 Session Catalog rebuild로 26개 JSONL에서 18개 session을 index하고 search, 11-entry
+  replay, pin/tag 저장과 filter 확인
+- 같은 live workspace/session을 301초 동안 유지하며 11회 새 WebSocket 재연결과 11회 worker
+  health를 확인하고 직후 Runtime v2 10-check·Phase 6 12-check 통과. ADR-031/032 `Verified`
+- Dependabot 10건 triage: stale/conflicting/failing 8건 근거 기록 후 종료, #1/#17은 current
+  main rebase·fresh CI 통과 후 병합, open PR 0건과 Pages 재배포 성공
 - `codexmux@0.4.23` public npm publish, registry tarball install/CLI/production health smoke
 - 구현 commit `d405f683`의 Linux `systemd --user` live 배포, 실제 restart 전후 terminal
   smoke와 Phase 6 gate, [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18) 완료
@@ -110,17 +118,17 @@ installer/package gate로 확인합니다.
 | Runtime v2 | terminal `new-tabs`, storage/timeline/status `default` |
 | Session Catalog/Governance | 모두 ready, Governance `writeState=ready`, DB/WAL/SHM `0600` |
 | governance gate | `~/.config/systemd/user/codexmux.service.d/governance-writes.conf`, active |
-| latest backup | `runtime-v2-storage-20260821T123122Z`, 5 files, directory `0700`, file `0600` |
-| latest restart | PID `1104868` → `1149564`; start `2026-08-21 21:31:52 KST` |
+| latest backup | `runtime-v2-storage-20260821T145427Z`, directory `0700`, DB/WAL/SHM `0600` |
+| latest restart | PID `1149564` → `1216337`; start `2026-08-21 23:54:27 KST`, restart count `0` |
 | issue | [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18), [Issue #19](https://github.com/HardcoreMonk/codexmux/issues/19), [Issue #20](https://github.com/HardcoreMonk/codexmux/issues/20) |
-| 운영 handoff | `operations/2026-08-21-governed-unmarked-adoption-handoff.md` |
+| 운영 handoff | `operations/2026-08-22-live-verification-maintenance-handoff.md` |
 
 Browser 인증 설정 뒤 `HOST=0.0.0.0` unit을 다시 시작해 실제 외부 listener를
 활성화했습니다. 승인된 Phase 3 배포에서 governance write gate도 활성화했고 CLI token 기반
-운영 API와 Runtime v2 worker는 정상입니다. 등록 Managed Project는 0개라 실제 project confirm은
-수행하지 않았습니다. Governed adoption production scaffold/browser와 live Phase 6를
-post-restart로 반복했습니다. 실제 restart 증거는 확보했지만 장시간 live 관찰 전까지 ADR-031은
-`Implemented`입니다.
+운영 API와 Runtime v2 worker는 정상입니다. 2026-08-22에는 `codexmux`를 실제 Managed Project로
+등록해 adoption preview/confirm/rollback을 완료하고 Session Catalog를 실제 JSONL로 rebuild해
+검색·replay·annotation을 확인했습니다. 301초 동안 동일 세션 재연결을 관찰하고 사후 gate까지
+통과해 ADR-031과 ADR-032는 `Verified`입니다.
 
 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)의 acceptance를 충족한
 fresh Windows 검증:
@@ -204,9 +212,9 @@ Electron profile의 1회 재로그인과 재연결은 별도 후속 근거가 �
 | [Issue #16: Production upload fresh Windows evidence](https://github.com/HardcoreMonk/codexmux/issues/16) | 완료: `v0.4.20` 기능 검증, `v0.4.21` privacy-safe 재검증과 `v0.4.22` 반복 검증, ADR-027/028 `Verified` |
 | Purplemux/Codexmux same-host cookie isolation | `v0.4.22` release와 fresh-profile updater 검증 완료. 기존 Electron profile에서 Codexmux 재로그인, 필요 시 Purplemux 재로그인, Runtime v2 WebSocket/upload 재연결을 직접 확인해야 하므로 ADR-029는 `Implemented` 유지 |
 | Purplemux 선택 기능 도입 | 완료: ADR-025 `Verified`, `docs/operations/2026-08-14-purplemux-selected-adoption-handoff.md`. Windows package 실기 검증은 이 범위의 완료 조건에서 제외 |
-| Linux Session Operations/Project Governance | 완료: 구현·live 배포·restart·Issue #18 종료. 장시간 관찰은 ADR-031 `Verified` 전이의 별도 조건 |
-| Governed Project Scaffold Phase 3 | 완료: `9d32d049` live 배포, write gate 활성화, private backup, scaffold/Linux/browser/Phase 6 smoke와 Issue #19 근거 확보. 실제 등록 project confirm은 대상이 없어 미실행 |
-| Governed unmarked adoption | 완료: `f46410b4` live 배포, private backup, production scaffold/browser와 live Phase 6 smoke, Issue #20 근거 확보. 실제 등록 project confirm은 대상이 없어 미실행 |
+| Linux Session Operations/Project Governance | 완료: 구현·live 배포·restart·Issue #18 종료와 301초·11회 동일 세션 재연결 관찰. ADR-031 `Verified` |
+| Governed Project Scaffold Phase 3 | 완료: `9d32d049` live 배포, write gate 활성화, private backup, scaffold/Linux/browser/Phase 6 smoke와 Issue #19 근거 확보 |
+| Governed unmarked adoption | 완료: `f46410b4` live 배포와 실제 `codexmux` Managed Project의 `AGENTS.md` adoption preview/confirm/rollback. ADR-032 `Verified` |
 
 ## 비차단 항목
 
@@ -216,8 +224,9 @@ Electron profile의 1회 재로그인과 재연결은 별도 후속 근거가 �
 | SmartScreen reputation | 내부 전용 앱이라 release blocker가 아님 |
 | Artifact scanner enumeration hardening | 현재 writer는 lowercase regular `.json`만 생성합니다. 대소문자 확장자와 symlink를 명시적으로 거부하는 방어 강화는 후속 비차단 작업입니다. |
 | Browser setup과 외부 bind | fresh config는 local setup 상태입니다. 사용자 비밀번호 설정과 loopback 밖의 bind는 별도 운영 선택이며 현재 engine health blocker가 아닙니다. |
-| ADR-031 장시간 live 관찰 | 실제 restart는 통과했습니다. 대표 workspace의 장시간 사용·재접속 증거를 확보한 뒤 `Verified` 전이를 검토합니다. |
-| 실제 Managed Project adoption drill | 등록 project가 0개입니다. 대상이 생기면 별도 write 승인 아래 artifact별 preview/confirm/rollback과 semantic warning을 관찰합니다. |
+| Session Catalog filter total | pin/tag filter 결과는 1개로 정확하지만 응답 `total`은 filter 전 18로 남습니다. Pagination count semantics 수정은 동작 변경이므로 별도 lifecycle로 처리합니다. |
+| npm Trusted Publisher | npm CLI `11.17.0`은 지원하지만 local registry 인증이 `E401`로 만료됐습니다. 계정 재인증 뒤 `npm trust github codexmux --repo HardcoreMonk/codexmux --file npm-publish.yml --allow-publish --yes`를 실행합니다. |
+| Remote `v0.4.23` tag/Release | Local tag와 registry `gitHead`는 `ef27e297`로 일치하지만 해당 snapshot에 `.github/release-notes/v0.4.23.md`가 없습니다. 현재 tag-triggered Windows workflow를 실패시키지 않도록 push를 보류하고 다음 version에서 release note 포함 tag를 발행합니다. |
 
 ## 별도 lifecycle이 필요한 후속 범위
 
@@ -273,8 +282,8 @@ Linux engine acceptance를 Android smoke로 대체하지 않습니다.
 ## 문서와 운영
 
 - Canonical 문서는 한국어로 유지합니다.
-- GitHub Pages source와 artifact gate를 PR #22로 main에 병합했고 workflow run 32485665955와
-  public landing/docs/guide/robots/sitemap/404 smoke가 통과했습니다.
+- GitHub Pages source와 artifact gate는 PR #22, 제품 재설계는 PR #24, 배포 handoff는 PR #25로
+  main에 병합했습니다. 공개 landing, 양 언어 guide, robots/sitemap/404 smoke가 통과했습니다.
 - 실제 release/smoke 결과는 `docs/operations/` handoff에 추가합니다.
 - 과거 logs/specs는 기록 보존을 위해 재작성하지 않습니다.
 - 2026-05-07 이후 100% closeout 배치는 CODEX panel timeline hotfix 회귀도 자동 row로 포함합니다. 권장 closeout 명령은 `CODEXMUX_BACKLOG_COMPLETION_ALLOW_DEFER=1 CODEXMUX_SMOKE_ARTIFACT_DIR=/tmp/codexmux-backlog-complete corepack pnpm ops:backlog:complete`입니다.

@@ -178,6 +178,13 @@ backup했습니다. Build commit `f46410b4`로 PID `1104868`에서 `1149564`로 
 12-check를 확인했습니다. Production scaffold 13-check와 한국어/영어 browser 4-check도
 통과했으며 [Issue #20](https://github.com/HardcoreMonk/codexmux/issues/20)에 근거를 남깁니다.
 
+GitHub Pages 제품 재설계 운영 확인에서는
+`runtime-v2-storage-20260821T145427Z` backup을 `0700/0600`으로 생성한 뒤 PID `1149564`에서
+`1216337`로 재기동했습니다. Start timestamp는 `2026-08-21 23:54:27 KST`, restart count는
+0이며 app build는 `f46410b4`를 유지합니다. 2026-08-22 같은 service에서 301초·11회 동일
+session 재연결과 worker health를 관찰하고 종료 직후 Runtime v2 10-check와 Phase 6 12-check를
+통과했습니다.
+
 ## 런타임 v2 rollback
 
 Runtime v2 mode는 drop-in으로 관리할 수 있습니다.

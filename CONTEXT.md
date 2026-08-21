@@ -86,16 +86,17 @@ Runtime v2 worker, tmux, Codex JSONL, app-owned DB와 등록된 project filesyst
 
 ## 현재 구현 기준
 
-2026-08-21 기준 Session Operations와 Project Governance Phase 1~3 첫 vertical slice가 Linux
+2026-08-22 기준 Session Operations와 Project Governance Phase 1~3 첫 vertical slice가 Linux
 단일 엔진에 통합됐습니다. Timeline Worker는 Session Catalog, Storage Worker는 durable
 project/session 상태, Governance Worker는 승인 project의 Knowledge Index와 governed scaffold
 write를 소유합니다. Arbitrary project write/delete/move/full sync, remote topology, GSD
 orchestration과 full-output search는 구현 범위가 아닙니다.
-초기 통합 commit `d405f683`과 Phase 3 build commit `9d32d049`는 authenticated
-`0.0.0.0:8122`의 `systemd --user` service에 배포되어 실제 restart 전후 terminal/worker
-smoke를 통과했습니다. [GitHub issue #18](https://github.com/HardcoreMonk/codexmux/issues/18)은
-완료됐으며, 장시간 live 관찰 전까지 ADR-031은 `Implemented`입니다. 검증과 rollback 경계는
-`docs/operations/2026-08-21-session-operations-governance-integration-handoff.md`에 기록합니다.
+초기 통합 commit `d405f683`, Phase 3 build `9d32d049`와 adoption build `f46410b4`는
+authenticated `0.0.0.0:8122`의 `systemd --user` service에 배포되어 실제 restart 전후
+terminal/worker smoke를 통과했습니다. 실제 Managed Project adoption/rollback과 301초 동안
+11회 동일 세션 재연결·worker health도 통과해 ADR-031과 ADR-032는 `Verified`입니다. 검증과
+rollback 경계는 `docs/operations/2026-08-22-live-verification-maintenance-handoff.md`에
+기록합니다.
 
 Phase 3의 첫 범위인 `Governance Action Run` 소유 create scaffold와 marker-owned update는
 구현 및 격리 release gate를 통과했습니다. 후속 `Unmarked Artifact Adoption`은 기존 UTF-8

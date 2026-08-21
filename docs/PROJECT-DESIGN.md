@@ -10,12 +10,13 @@ Runtime v2 worker, tmux, Codex CLI/JSONL, app-owned DB와 등록된 project read
 Windows installer/updater는 보존된 별도 배포면이며 이번 Session Operations와 Project
 Governance acceptance를 대체하지 않습니다.
 
-2026-08-21 현재 Phase 3 build commit `9d32d049`가 `HOST=0.0.0.0`, port `8122`의
+2026-08-22 현재 live app build commit `f46410b4`가 `HOST=0.0.0.0`, port `8122`의
 `systemd --user` service로 배포되어 실제 `0.0.0.0:8122` listener와 구성된 browser 인증을
 제공합니다. `CODEXMUX_GOVERNANCE_WRITES=1`이 systemd drop-in에서 활성화됐고 Governance
-`writeState=ready`입니다. 실제 restart 전후 terminal/scaffold/Linux/browser smoke와 Runtime
-v2 Phase 6 gate가 통과했으며 Issue #18과 Phase 3 Issue #19에 근거를 남겼습니다. 장시간 관찰
-전까지 ADR-031은 `Implemented`입니다.
+`writeState=ready`입니다. 실제 restart, Managed Project adoption/rollback, Session Catalog
+rebuild/search/replay/annotation과 같은 live session의 301초·11회 재연결 관찰을 통과했습니다.
+관찰 직후 Runtime v2 10-check와 Phase 6 12-check도 통과해 ADR-031과 ADR-032는
+`Verified`입니다.
 
 ## 구현 상태
 
@@ -45,7 +46,10 @@ v2 Phase 6 gate가 통과했으며 Issue #18과 Phase 3 Issue #19에 근거를 �
 - `/api/upload-image`와 `/api/upload-file`은 Next proxy/Pages route가 아니라 outer custom server가 소유합니다. Image/file limit은 10MiB/50MiB이고, successful publish는 same-directory hard link의 no-replace commit입니다.
 - Linux 단일 엔진은 source checkout 또는 npm standalone server로 실행합니다. Windows Electron installer/updater와 npm registry package는 ADR-030의 독립 배포면이며 npm tarball은 CLI bin, standalone server와 다섯 Runtime v2 worker bundle을 제공합니다.
 - Public npm `latest`는 `codexmux@0.4.23`이며 registry tarball install, CLI help와 production
-  health smoke를 통과했습니다. Remote `v0.4.23` tag와 Trusted Publisher 등록은 보류 상태입니다.
+  health smoke를 통과했습니다. Local `v0.4.23`은 registry `gitHead`와 같은 `ef27e297`을
+  가리키지만 remote tag는 없습니다. 이 tag를 그대로 push하면 tag snapshot에 없는 release
+  note를 요구하는 Windows release workflow가 실패하므로 원격 publish는 보류했습니다.
+  Trusted Publisher는 npm CLI 인증 만료로 등록하지 못했습니다.
 - Public 랜딩과 사용자 가이드는 Eleventy로 `_site/`를 만들고 GitHub Pages
   `https://hardcoremonk.github.io/codexmux/`에 배포합니다. 메인 제품 정보 구조는 Session
   Operations, Live Session Control, Project Governance, Runtime Operations를 기준으로 하며,
@@ -100,6 +104,11 @@ projection입니다. Pin/tag와 saved filter, Approved Project Root, Managed Pro
 sanitized governance audit는 `runtime-v2/state.db`의 durable state입니다. Knowledge Index는
 `governance/index.db`에 문서 metadata와 관계만 저장하고 project 문서 본문은 저장하지 않습니다.
 일반 API 응답에는 root/project canonical path를 포함하지 않습니다.
+
+2026-08-22 live rebuild는 `~/.codex/sessions`의 JSONL 26개에서 18개 session을 index했고,
+검색과 11-entry replay, pin/tag 저장 및 filter를 확인했습니다. Pin/tag filter는 결과 1개를
+정확히 반환하지만 pagination `total`이 filter 전 18로 남는 결함이 있어 별도 lifecycle
+수정 대상으로 추적합니다.
 
 Governed scaffold는 `AGENTS.md`, `CONTEXT.md`, 조건부 `DESIGN.md`와 세 `docs/agents/` 문서를
 버전 고정 catalog에서 render합니다. Existing unmarked file은 자동 채택하지 않습니다. 첫
