@@ -1,7 +1,7 @@
 # 1차 영역 탐색과 선택 상태 명료화 설계
 
 - 작성일: 2026-08-23
-- 상태: Implemented — code-review 통과, release 승인 대기
+- 상태: Released — live 검증과 operate handoff 완료
 - 대상: desktop browser 우선, Electron/mobile regression
 - 범위: Workspace, Session Catalog, Project Governance의 식별·선택·전환
 
@@ -319,4 +319,6 @@ schema, write semantics와 project discovery 범위는 바꾸지 않으며 2,001
   `docs/superpowers/reviews/2026-08-23-navigation-selection-clarity-eng-review.md`
 - Code review:
   `docs/superpowers/reviews/2026-08-23-navigation-selection-clarity-code-review.md`
-- 다음 stage: `release`
+- Operations handoff:
+  `docs/operations/2026-08-23-navigation-selection-clarity-handoff.md`
+- 현재 stage: `operate`

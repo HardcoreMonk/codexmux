@@ -1,7 +1,7 @@
 # 1차 영역 탐색과 선택 상태 명료화 구현 계획
 
 - 날짜: 2026-08-23
-- 상태: Implemented — code-review 통과, release 승인 대기
+- 상태: Completed — live deploy와 operate handoff 완료
 - 대상 spec: `docs/superpowers/specs/2026-08-23-navigation-selection-clarity-design.md`
 - Domain review: `docs/superpowers/reviews/2026-08-23-navigation-selection-clarity-domain-architecture.md`
 - Grill-me: `docs/superpowers/grill-me/2026-08-23-navigation-selection-clarity.md`
@@ -235,4 +235,6 @@ corepack pnpm smoke:browser:session-governance
   `docs/superpowers/reviews/2026-08-23-navigation-selection-clarity-eng-review.md`
 - Code review:
   `docs/superpowers/reviews/2026-08-23-navigation-selection-clarity-code-review.md`
-- 다음 stage: `release`
+- Operations handoff:
+  `docs/operations/2026-08-23-navigation-selection-clarity-handoff.md`
+- 현재 stage: `operate`

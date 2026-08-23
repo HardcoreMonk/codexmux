@@ -17,8 +17,8 @@ HOST=0.0.0.0
 PORT=8122
 ```
 
-2026-08-22 현재 이 host의 unit은 enabled/active이며 Session Catalog pagination build commit
-`322ccfb7`, version `0.4.24`를 `0.0.0.0:8122`에서 제공합니다. Browser 인증과
+2026-08-23 현재 이 host의 unit은 enabled/active이며 Navigation Selection Clarity build commit
+`a6a49588`, version `0.4.24`를 `0.0.0.0:8122`에서 제공합니다. Browser 인증과
 `CODEXMUX_GOVERNANCE_WRITES=1` drop-in이 구성됐고 CLI token 기반 운영 API, Runtime v2와
 Governance `writeState=ready`도 정상입니다.
 
@@ -191,6 +191,15 @@ Build commit `322ccfb7`, version `0.4.24`로 PID `1294595`, start
 `2026-08-22 01:37:36 KST`, restart count 0으로 재기동했고 listener `0.0.0.0:8122`, governance
 write gate와 Phase 6 12-check를 확인했습니다. 실제 pinned/tag 검색은 `results=1`, exact
 `total=1`, no cursor를 반환했습니다.
+
+Navigation Selection Clarity 배포에서는 service를 멈춘 뒤
+`runtime-v2-storage-20260823T135639Z`에 같은 durable/workspace state 5개를 `0700/0600`으로
+백업했습니다. Build commit `a6a49588`, version `0.4.24`로 PID `88057`, start
+`2026-08-23 22:57:01 KST`, restart count 0으로 재기동했습니다. Live terminal/reconnect 10-check,
+Phase 6 12-check, Governance lifecycle 236-evidence 응답과 desktop/mobile navigation browser gate를
+통과했습니다. 상세 근거는
+[Navigation Selection Clarity handoff](operations/2026-08-23-navigation-selection-clarity-handoff.md)에
+있습니다.
 
 ## 런타임 v2 rollback
 
