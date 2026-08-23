@@ -12,7 +12,8 @@ lifecycle와 audit를 한 화면에서 읽고 관리합니다. Workspace와 Mana
 
 ## 준비 상태
 
-`/governance`를 열기 전에 authenticated runtime health에서 Governance Worker 상태를 확인합니다.
+고정 1차 탐색에서 **거버넌스**를 선택합니다. Route는 `/governance`입니다. 화면을 운영하기 전에
+authenticated runtime health에서 Governance Worker 상태를 확인합니다.
 
 ```bash
 IFS= read -r codexmux_cli_token < ~/.codexmux/cli-token

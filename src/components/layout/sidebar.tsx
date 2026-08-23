@@ -48,6 +48,8 @@ import useWebviewStore from '@/hooks/use-webview-store';
 import IconRenderer from '@/components/features/settings/icon-renderer';
 import SidebarRateLimits from '@/components/layout/sidebar-rate-limits';
 import isElectron from '@/hooks/use-is-electron';
+import AppAreaNavigation from '@/components/layout/app-area-navigation';
+import { isCoreAppAreaSidebarItem, resolveAppArea } from '@/lib/app-navigation';
 
 const MIN_WIDTH = 160;
 const MAX_WIDTH = 480;
@@ -60,6 +62,7 @@ const handleLogout = async () => {
 const Sidebar = () => {
   const t = useTranslations('sidebar');
   const tc = useTranslations('common');
+  const tn = useTranslations('navigation');
   const router = useRouter();
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const groups = useWorkspaceStore((s) => s.groups);
@@ -78,6 +81,12 @@ const Sidebar = () => {
   const selectWorkspace = useSelectWorkspace();
   const { items: sidebarItems } = useSidebarItems();
   const activeWebviewId = useWebviewStore((s) => s.activeId);
+  const utilityItems = useMemo(
+    () => sidebarItems.filter((item) => !isCoreAppAreaSidebarItem(item.id)),
+    [sidebarItems],
+  );
+  const currentArea = activeWebviewId ? null : resolveAppArea(router.pathname);
+  const activeWorkspaceName = workspaces.find((workspace) => workspace.id === activeWorkspaceId)?.name;
 
   const settingsOpen = useWorkspaceStore((s) => s.isSettingsDialogOpen);
   const setSettingsOpen = useWorkspaceStore((s) => s.setSettingsDialogOpen);
@@ -87,7 +96,7 @@ const Sidebar = () => {
   const sidebarTab = mounted ? storedSidebarTab : 'workspace';
 
   const handleSidebarTabChange = useCallback((v: string) => {
-    useWorkspaceStore.getState().setSidebarTab(v as 'workspace' | 'sessions');
+    useWorkspaceStore.getState().setSidebarTab(v as 'workspace' | 'activity');
   }, []);
   const showShortcuts = useShortcutHints();
 
@@ -343,7 +352,12 @@ const Sidebar = () => {
     useWorkspaceStore.getState().toggleSidebar();
   }, []);
 
-  const isNavActive = (path: string) => router.pathname.startsWith(path);
+  const handleAppAreaNavigate = useCallback(() => {
+    useWebviewStore.getState().hide();
+  }, []);
+
+  const isNavActive = (path: string) =>
+    router.pathname === path || (path !== '/' && router.pathname.startsWith(`${path}/`));
 
   type TRenderEntry = { ws: IWorkspace; flatIdx: number };
   type TRenderSection =
@@ -425,7 +439,7 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="relative flex shrink-0">
+    <div data-desktop-sidebar="true" className="relative flex shrink-0">
       <div
         className="flex shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar"
         suppressHydrationWarning
@@ -436,8 +450,8 @@ const Sidebar = () => {
           borderRightStyle: collapsed ? 'none' : undefined,
           transition: isDragging ? 'none' : 'width 200ms ease, min-width 200ms ease',
         }}
-        role="navigation"
-        aria-label={t('workspaceList')}
+        role="complementary"
+        aria-label={tn('label')}
       >
         <div
           className="relative z-[60] flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border px-3 pl-traffic-light"
@@ -475,7 +489,16 @@ const Sidebar = () => {
           </div>
         </div>
 
+        <AppAreaNavigation
+          currentArea={currentArea}
+          lastWorkspaceName={activeWorkspaceName}
+          onNavigate={handleAppAreaNavigate}
+        />
+
         <div className="shrink-0 border-b border-sidebar-border px-2 py-1.5">
+          <div className="mb-1 px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {tn('workspaceContext')}
+          </div>
           <Tabs
             value={sidebarTab}
             onValueChange={handleSidebarTabChange}
@@ -483,7 +506,7 @@ const Sidebar = () => {
           >
             <TabsList className="h-7 w-full">
               <TabsTrigger value="workspace" className="relative h-full flex-1 px-2.5 text-[11px] tracking-wide">
-                WORKSPACE
+                {tn('workspace')}
                 {sidebarTab !== 'workspace' && (
                   <ShortcutKey
                     mac="⌘⇧B"
@@ -495,14 +518,14 @@ const Sidebar = () => {
                   />
                 )}
               </TabsTrigger>
-              <TabsTrigger value="sessions" className="relative h-full flex-1 px-2.5 text-[11px] tracking-wide">
-                SESSIONS
+              <TabsTrigger value="activity" className="relative h-full flex-1 px-2.5 text-[11px] tracking-wide">
+                {tn('activity')}
                 {sessionsBadge > 0 && (
                   <span className="ml-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded bg-[var(--ui-coral)] px-0.5 text-[9px] font-medium leading-none text-white">
                     {sessionsBadge}
                   </span>
                 )}
-                {sidebarTab !== 'sessions' && (
+                {sidebarTab !== 'activity' && (
                   <ShortcutKey
                     mac="⌘⇧B"
                     other="^⇧B"
@@ -559,8 +582,11 @@ const Sidebar = () => {
                         onUngroup={handleUngroup}
                       />
                     </div>
-                    {!section.group.collapsed &&
-                      section.workspaces.map((entry) => renderWorkspaceRow(entry))}
+                    {!section.group.collapsed && section.workspaces.length > 0 && (
+                      <div role="listbox" aria-label={section.group.name}>
+                        {section.workspaces.map((entry) => renderWorkspaceRow(entry))}
+                      </div>
+                    )}
                     {!section.group.collapsed && section.workspaces.length === 0 && (
                       <div
                         className={cn(
@@ -585,6 +611,8 @@ const Sidebar = () => {
                 <div
                   key="ungrouped"
                   className="min-h-[8px]"
+                  role="listbox"
+                  aria-label={t('ungrouped')}
                   onDragOver={(e) =>
                     handleUngroupedAreaDragOver(e, section.lastPosition)
                   }
@@ -632,87 +660,64 @@ const Sidebar = () => {
 
           <SidebarRateLimits />
 
-          <div className="flex items-center justify-between px-2 pb-2">
-            <div className="flex items-center gap-0.5">
-              {sidebarItems.map((item) => {
-                const itemName = item.labelKey ? t(item.labelKey) : item.name;
-                const isExternal = item.url.startsWith('http://') || item.url.startsWith('https://');
-                const isActive = isExternal
-                  ? activeWebviewId === item.id
-                  : isNavActive(item.url) && !activeWebviewId;
-                const shortcutMap: Record<string, { mac: string; other: string }> = {
-                  'builtin-notes': { mac: '⌘⇧E', other: '^⇧E' },
-                  'builtin-stats': { mac: '⌘⇧U', other: '^⇧U' },
-                };
-                const shortcut = shortcutMap[item.id];
-                return (
-                  <div key={item.id} className="relative">
-                    <button
-                      className={cn(
-                        'flex h-7 w-7 items-center justify-center rounded transition-colors hover:bg-sidebar-accent',
-                        isActive ? 'text-foreground' : 'text-muted-foreground',
-                      )}
-                      onClick={() => {
-                        if (isExternal) {
-                          useWebviewStore.getState().open(item.id, item.url, itemName);
-                        } else {
-                          useWebviewStore.getState().hide();
-                          router.push(item.url);
-                        }
-                      }}
-                      aria-label={itemName}
-                      title={itemName}
-                    >
-                      <IconRenderer name={item.icon} className="h-3.5 w-3.5" />
-                    </button>
-                    {shortcut && (
-                      <ShortcutKey
-                        mac={shortcut.mac}
-                        other={shortcut.other}
-                        className={cn(
-                          'absolute -right-0.5 -top-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-medium leading-none text-muted-foreground transition-opacity duration-200 pointer-events-none',
-                          showShortcuts ? 'opacity-100' : 'opacity-0',
-                        )}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-              <div className="relative">
+          <nav aria-label={tn('utilities')} className="space-y-0.5 px-2 pb-1">
+            {utilityItems.map((item) => {
+              const itemName = item.labelKey ? t(item.labelKey) : item.name;
+              const isExternal = item.url.startsWith('http://') || item.url.startsWith('https://');
+              const isActive = isExternal
+                ? activeWebviewId === item.id
+                : isNavActive(item.url) && !activeWebviewId;
+              const shortcutMap: Record<string, { mac: string; other: string }> = {
+                'builtin-notes': { mac: '⌘⇧E', other: '^⇧E' },
+                'builtin-stats': { mac: '⌘⇧U', other: '^⇧U' },
+              };
+              const shortcut = shortcutMap[item.id];
+              return (
                 <button
-                  className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
-                  onClick={() => setSettingsOpen(true)}
-                  aria-label={tc('settings')}
-                >
-                  <Settings className="h-3.5 w-3.5" />
-                </button>
-                <ShortcutKey
-                  mac="⌘,"
-                  other="^,"
+                  key={item.id}
                   className={cn(
-                    'absolute -right-0.5 -top-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-medium leading-none text-muted-foreground transition-opacity duration-200 pointer-events-none',
-                    showShortcuts ? 'opacity-100' : 'opacity-0',
+                    'relative flex min-h-9 w-full items-center gap-2 rounded-md px-2.5 text-xs text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    isActive && 'bg-accent/70 font-semibold text-foreground',
                   )}
-                />
-              </div>
-            </div>
-            <div className="relative">
-              <button
-                className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent"
-                onClick={handleToggleCollapse}
-                aria-label={t('collapseSidebar')}
-              >
-                <ChevronsLeft className="h-3.5 w-3.5" />
-              </button>
-              <ShortcutKey
-                mac="⌘B"
-                other="^B"
-                className={cn(
-                  'absolute -right-0.5 -top-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-medium leading-none text-muted-foreground transition-opacity duration-200 pointer-events-none',
-                  showShortcuts ? 'opacity-100' : 'opacity-0',
-                )}
-              />
-            </div>
+                  onClick={() => {
+                    if (isExternal) {
+                      useWebviewStore.getState().open(item.id, item.url, itemName);
+                    } else {
+                      useWebviewStore.getState().hide();
+                      router.push(item.url);
+                    }
+                  }}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  {isActive && <span aria-hidden="true" className="absolute inset-y-1 left-0 w-0.5 rounded-r bg-focus-indicator" />}
+                  <IconRenderer name={item.icon} className="h-4 w-4 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate text-left">{itemName}</span>
+                  {shortcut && showShortcuts && (
+                    <ShortcutKey mac={shortcut.mac} other={shortcut.other} />
+                  )}
+                </button>
+              );
+            })}
+            <button
+              className="flex min-h-9 w-full items-center gap-2 rounded-md px-2.5 text-xs text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 flex-1 truncate text-left">{tc('settings')}</span>
+              {showShortcuts && <ShortcutKey mac="⌘," other="^," />}
+            </button>
+          </nav>
+          <div className="border-t border-sidebar-border p-1">
+            <button
+              className="flex min-h-9 w-full items-center gap-2 rounded-md px-2.5 text-xs text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={handleToggleCollapse}
+              aria-label={t('collapseSidebar')}
+              aria-expanded="true"
+            >
+              <ChevronsLeft className="h-4 w-4 shrink-0" />
+              <span>{t('collapseSidebar')}</span>
+              {showShortcuts && <ShortcutKey mac="⌘B" other="^B" className="ml-auto" />}
+            </button>
           </div>
         </div>
       </div>
@@ -758,15 +763,63 @@ const Sidebar = () => {
       )}
 
       {collapsed && (
-        <div className="flex w-8 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-          <button
-            className="flex flex-1 items-center justify-center text-muted-foreground transition-colors hover:bg-sidebar-accent"
-            onClick={handleToggleCollapse}
-            aria-label={t('expandSidebar')}
-            aria-expanded="false"
-          >
-            <ChevronsRight className="h-4 w-4" />
-          </button>
+        <div className="flex w-10 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
+          <AppAreaNavigation
+            currentArea={currentArea}
+            variant="rail"
+            onNavigate={handleAppAreaNavigate}
+          />
+          <nav aria-label={tn('utilities')} className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto px-1 py-2">
+            {utilityItems.map((item) => {
+              const itemName = item.labelKey ? t(item.labelKey) : item.name;
+              const isExternal = item.url.startsWith('http://') || item.url.startsWith('https://');
+              const isActive = isExternal
+                ? activeWebviewId === item.id
+                : isNavActive(item.url) && !activeWebviewId;
+              return (
+                <button
+                  key={item.id}
+                  className={cn(
+                    'relative flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    isActive && 'bg-accent/70 text-foreground',
+                  )}
+                  onClick={() => {
+                    if (isExternal) {
+                      useWebviewStore.getState().open(item.id, item.url, itemName);
+                    } else {
+                      useWebviewStore.getState().hide();
+                      router.push(item.url);
+                    }
+                  }}
+                  aria-label={itemName}
+                  aria-current={isActive ? 'page' : undefined}
+                  title={itemName}
+                >
+                  {isActive && <span aria-hidden="true" className="absolute inset-y-1 left-0 w-0.5 rounded-r bg-focus-indicator" />}
+                  <IconRenderer name={item.icon} className="h-4 w-4" />
+                </button>
+              );
+            })}
+          </nav>
+          <div className="space-y-1 border-t border-sidebar-border p-1">
+            <button
+              className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => setSettingsOpen(true)}
+              aria-label={tc('settings')}
+              title={tc('settings')}
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+            <button
+              className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={handleToggleCollapse}
+              aria-label={t('expandSidebar')}
+              aria-expanded="false"
+              title={t('expandSidebar')}
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
 

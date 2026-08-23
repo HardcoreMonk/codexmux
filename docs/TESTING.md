@@ -316,6 +316,16 @@ error 부재를 확인합니다. Gate-on flow에서는 unmarked artifact checkbo
 file이 유지되는지도 확인합니다. `CODEXMUX_SESSION_GOVERNANCE_BROWSER_SCOPE=gate|adoption`으로
 부분 재검증할 수 있습니다. Chromium이 없으면 먼저 다음 명령을 실행합니다.
 
+Lifecycle evidence bound를 바꾸면 201개 응답 허용과 2,001개 거부를 포함한 Governance
+contract/IPC/worker test를 함께 실행합니다.
+
+```bash
+corepack pnpm exec vitest run \
+  tests/unit/lib/governance/contracts.test.ts \
+  tests/unit/lib/runtime/ipc.test.ts \
+  tests/unit/lib/runtime/governance-worker-service.test.ts
+```
+
 ```bash
 corepack pnpm exec playwright install chromium
 ```
@@ -346,6 +356,11 @@ adoption source는 이후 별도 승인 배포에서 live app build `f46410b4`�
 service에서 Session Catalog 실제 rebuild/search/replay/annotation과 301초·11회 동일 세션
 재연결을 확인하고 사후 Runtime v2 10-check와 Phase 6 12-check를 통과했습니다.
 
+2026-08-23 Navigation Selection Clarity release에서는 full suite 270 files/1,689 tests가 통과했고
+1 file/3 tests는 skip됐습니다. Production build `a6a49588`, service PID `88057`, live
+terminal/reconnect 10-check, Phase 6 12-check, Governance lifecycle 236-evidence HTTP 200과 실제
+desktop/mobile current/selection browser gate를 확인했습니다.
+
 ## 브라우저 UI와 Playwright
 
 Playwright는 UI 회귀와 smoke 자동화에 사용합니다.
@@ -359,6 +374,32 @@ Playwright는 UI 회귀와 smoke 자동화에 사용합니다.
 - auth 전 public route에서 status/Web Push/service worker noise 없음
 
 프론트엔드 변경 뒤에는 실제 browser screenshot 또는 Playwright 확인을 남깁니다.
+
+Session/Governance navigation smoke는 isolated HOME과 synthetic fixture를 사용해 한국어·영어의
+desktop/mobile 탐색과 선택 상태도 검증합니다.
+
+```bash
+corepack pnpm smoke:browser:session-governance
+```
+
+검증 범위:
+
+- `/`, `/sessions`, `/governance`의 core current area 정확히 1개
+- Reports/Stats/custom webview 같은 utility surface의 core current area 0개
+- Legacy `sidebar-tab=sessions`의 Activity hydration
+- Desktop expanded/40px rail의 label, indicator와 focus target
+- Mobile 48px bottom navigation, route header와 non-workspace tab bar 미렌더링
+- Navigation sheet utility action 최소 44px
+- Session result와 Managed Project의 `aria-selected` 및 persistent marker
+- Console/page/hydration error 0건
+
+`CODEXMUX_SMOKE_ARTIFACT_DIR`를 지정하면 synthetic navigation 영역만 한국어·영어,
+desktop/mobile, dark/light PNG로 저장합니다. Cookie, token, 실제 terminal content와 사용자 path는
+artifact에 포함하지 않습니다.
+
+Live 배포 뒤에는 isolated smoke만으로 끝내지 않고 authenticated production origin에서 세 core
+route의 current count, Governance selected project, mobile 48px target과 console error 0건을 다시
+확인합니다.
 
 ## Electron
 

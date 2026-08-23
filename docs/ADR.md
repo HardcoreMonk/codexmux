@@ -378,3 +378,9 @@
   private manifest/preimage mode는 모두 `0600`입니다. 격리 smoke와 live gate 외에 실제 등록
   project의 preview/confirm/rollback 조건까지 충족했으므로 `Verified`로 전이합니다. 상세
   증거는 `docs/operations/2026-08-22-live-verification-maintenance-handoff.md`에 있습니다.
+- 2026-08-23 운영 확장 근거: 등록 project의 lifecycle evidence 235개가 기존 typed IPC maximum
+  200개를 넘어 read API가 fail closed하는 것을 release preflight에서 발견했습니다. Project
+  document response와 같은 maximum 2,000개로 bounded contract를 정렬하고 2,001개 거부 test를
+  추가했습니다. Build `a6a49588` 배포 뒤 새 operations handoff를 포함한 236 evidence가 HTTP 200으로
+  응답하고 Governance `writeState=ready`, Phase 6 12-check를 통과했습니다. Durable schema와
+  Governance Action Run write semantics는 바꾸지 않으므로 ADR-032의 결정 경계는 유지합니다.

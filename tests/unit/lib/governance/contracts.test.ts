@@ -9,6 +9,7 @@ import {
   projectDocumentRefSchema,
   projectGovernanceSummarySchema,
   projectIdSchema,
+  projectLifecycleSnapshotSchema,
   relativeDocumentPathSchema,
 } from '@/lib/governance/contracts';
 
@@ -93,6 +94,33 @@ describe('governance contracts', () => {
       errors: [{ code: 'missing-plan', artifactPath: null }],
       warnings: [],
     })).toMatchObject({ valid: false });
+  });
+
+  it('accepts lifecycle evidence up to the project document response bound', () => {
+    const evidence = Array.from({ length: 201 }, (_, index) => ({
+      projectId: 'project-1',
+      stage: 'operate' as const,
+      state: 'complete' as const,
+      artifactPath: `docs/operations/handoff-${index}.md`,
+      fingerprint: `sha256:${index.toString(16).padStart(64, '0')}`,
+    }));
+    const snapshot = {
+      projectId: 'project-1',
+      stage: 'operate' as const,
+      evidence,
+      lint: {
+        projectId: 'project-1',
+        valid: true,
+        errors: [],
+        warnings: [],
+      },
+    };
+
+    expect(projectLifecycleSnapshotSchema.parse(snapshot).evidence).toHaveLength(201);
+    expect(projectLifecycleSnapshotSchema.safeParse({
+      ...snapshot,
+      evidence: Array.from({ length: 2_001 }, () => evidence[0]),
+    }).success).toBe(false);
   });
 
   it('keeps governance registry fixtures bounded and synthetic', () => {

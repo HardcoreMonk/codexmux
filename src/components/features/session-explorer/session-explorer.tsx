@@ -292,12 +292,22 @@ const SessionExplorer = ({
             data-result-index={index}
             tabIndex={selectedIndex === index ? 0 : -1}
             className={cn(
-              'mb-1 flex min-h-11 w-full items-start gap-3 rounded-md border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              selectedIndex === index ? 'border-agent-active/40 bg-agent-active/5' : 'hover:bg-muted/50',
+              'relative mb-1 flex min-h-11 w-full items-start gap-3 rounded-md border px-3 py-2 pl-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              selectedIndex === index ? 'border-border bg-accent/70 text-foreground shadow-sm' : 'hover:bg-muted/50',
             )}
             onFocus={() => onSelectIndex(index)}
-            onClick={() => onOpenSession(result.entry.sessionId)}
+            onClick={() => {
+              onSelectIndex(index);
+              onOpenSession(result.entry.sessionId);
+            }}
           >
+            {selectedIndex === index && (
+              <span
+                aria-hidden="true"
+                data-selection-marker="true"
+                className="absolute inset-y-2 left-0 w-0.5 rounded-r bg-focus-indicator"
+              />
+            )}
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
                 <span className="font-medium text-foreground">{result.entry.projectLabel}</span>

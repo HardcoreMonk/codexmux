@@ -67,12 +67,32 @@ codexmux UI는 Codex CLI 작업을 오래 켜 두고 반복적으로 확인하�
 
 icon button은 가능한 lucide-react icon을 사용하고, 낯선 icon에는 tooltip을 둡니다.
 
+### 탐색과 선택
+
+Workspace, Sessions, Governance는 desktop과 mobile에서 같은 순서의 1차 앱 영역으로
+표시합니다. 현재 route와 domain entity 선택은 서로 다른 상태입니다.
+
+| 의미 | 필수 표현 |
+| --- | --- |
+| Current app area | leading indicator, selected surface, icon/label, `aria-current="page"` |
+| Selected entity | border, selected surface, persistent marker, `aria-selected="true"` |
+| Expanded disclosure | chevron과 child visibility, `aria-expanded` |
+| Keyboard focus | selection과 독립된 `focus-visible` ring |
+| Runtime status | busy, needs-input, review, degraded의 기존 semantic color와 badge |
+
+Navigation selection에는 runtime status token을 사용하지 않습니다. `focus-indicator`,
+`accent`, `foreground`, `border`를 사용하며 color 하나만으로 상태를 구분하지 않습니다.
+Notes, Stats, custom webview 같은 utility surface에서는 세 app area 중 어느 것도 current로
+표시하지 않습니다.
+
 ## 반응형과 접근성
 
 - Windows Electron과 desktop browser에서 keyboard focus, IME, input draft, reconnect flow를
   primary 기준으로 검증합니다.
 - Android WebView와 iPad Safari는 legacy/mobile regression 범위입니다. 가능한 44px 이상의
   touch target, safe area, input draft, reconnect 동작을 보존합니다.
+- Mobile은 48px 이상의 label 포함 app area navigation을 유지하고 Workspace 전용 tab bar는
+  Workspace route에서만 표시합니다.
 - UI text가 다른 control, terminal preview, status recovery UI를 가리지 않아야 합니다.
 - SSR page는 저장된 locale로 message bundle과 `html lang`을 맞춥니다.
 

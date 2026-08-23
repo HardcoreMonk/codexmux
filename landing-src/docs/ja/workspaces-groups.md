@@ -38,13 +38,17 @@ permalink: /ja/docs/workspaces-groups/index.html
 
 ## 워크스페이스 전환
 
+제품의 고정 1차 영역은 **워크스페이스**, **세션**, **거버넌스**입니다. 사이드바의
+**워크스페이스 / 활동** 전환은 Workspace 안에서 목록과 운영 activity를 바꾸는 local context이며,
+과거 세션을 검색하는 Session Catalog route와 다릅니다.
+
 사이드바에서 클릭하거나, 숫자 키로 전환합니다.
 
 | 동작 | macOS | Linux / Windows |
 |---|---|---|
 | 워크스페이스 1–9로 이동 | <kbd>⌘1</kbd> – <kbd>⌘9</kbd> | <kbd>Ctrl+1</kbd> – <kbd>Ctrl+9</kbd> |
 | 사이드바 토글 | <kbd>⌘B</kbd> | <kbd>Ctrl+B</kbd> |
-| 사이드바 모드 전환 (워크스페이스 ↔ 세션) | <kbd>⌘⇧B</kbd> | <kbd>Ctrl+Shift+B</kbd> |
+| 사이드바 context 전환 (워크스페이스 ↔ 활동) | <kbd>⌘⇧B</kbd> | <kbd>Ctrl+Shift+B</kbd> |
 
 사이드바의 순서가 그대로 숫자 키 매핑입니다. 위/아래로 드래그하면 해당 슬롯이 바뀝니다.
 

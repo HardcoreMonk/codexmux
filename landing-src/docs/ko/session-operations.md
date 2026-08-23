@@ -12,8 +12,9 @@ permalink: /ko/docs/session-operations/index.html
 
 ## 세션 탐색기 열기
 
-로그인한 뒤 `/sessions`를 엽니다. 화면에는 Timeline Worker health, catalog freshness, 저장 필터,
-검색 조건, 결과와 세션 복기 drawer가 표시됩니다.
+로그인한 뒤 고정 1차 탐색에서 **세션**을 선택합니다. Route는 `/sessions`입니다. 화면에는
+Timeline Worker health, catalog freshness, 저장 필터, 검색 조건, 결과와 세션 복기 drawer가
+표시됩니다. Workspace 아래 **활동**은 live 상태 context이며 이 catalog와 다릅니다.
 
 다음 조건을 조합할 수 있습니다.
 

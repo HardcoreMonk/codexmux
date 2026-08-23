@@ -11,6 +11,53 @@ const timeoutMs = Number(process.env.CODEXMUX_SESSION_GOVERNANCE_BROWSER_TIMEOUT
 const password = 'session-governance-browser-smoke';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const assert = (condition, message) => {
+  if (!condition) throw new Error(message);
+};
+
+const assertAppArea = async (page, variant, expectedHref, label) => {
+  const navigation = page.locator(`nav[data-variant="${variant}"]`);
+  await navigation.waitFor({ timeout: timeoutMs });
+  const current = navigation.locator('[aria-current="page"]');
+  const expectedCount = expectedHref ? 1 : 0;
+  assert(await current.count() === expectedCount, `${label} current app area count mismatch`);
+  if (expectedHref) {
+    assert(await current.getAttribute('href') === expectedHref, `${label} current app area href mismatch`);
+  }
+  return navigation;
+};
+
+const assertMinimumTarget = async (locator, minimum, label) => {
+  const box = await locator.boundingBox();
+  const tolerance = 0.01;
+  assert(
+    !!box && box.width + tolerance >= minimum && box.height + tolerance >= minimum,
+    `${label} target is smaller than ${minimum}px (${box ? `${box.width}x${box.height}` : 'missing'})`,
+  );
+};
+
+const captureNavigation = async (page, name, selector) => {
+  const artifactDir = process.env.CODEXMUX_SMOKE_ARTIFACT_DIR;
+  if (!artifactDir) return;
+  await fs.mkdir(artifactDir, { recursive: true });
+  await page.locator('nextjs-portal').evaluateAll((elements) => {
+    for (const element of elements) element.setAttribute('hidden', '');
+  });
+  const target = page.locator(selector);
+  await target.screenshot({ path: path.join(artifactDir, `${name}-dark.png`) });
+  const originalClass = await page.locator('html').getAttribute('class');
+  await page.evaluate(() => {
+    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add('light');
+  });
+  await page.waitForTimeout(300);
+  await target.screenshot({ path: path.join(artifactDir, `${name}-light.png`) });
+  await page.evaluate((className) => {
+    if (className === null) document.documentElement.removeAttribute('class');
+    else document.documentElement.setAttribute('class', className);
+  }, originalClass);
+};
+
 const getFreePort = () => new Promise((resolve, reject) => {
   const server = net.createServer();
   server.listen(0, '127.0.0.1', () => {
@@ -206,14 +253,38 @@ const runLocale = async (browser, locale) => {
           title: '세션 검색', query: '메시지 검색', search: '검색', replay: '세션 복기',
           governance: '프로젝트 거버넌스', writeDisabled: '쓰기 비활성', scaffold: '프로젝트 Scaffold',
           preview: '변경 미리보기', degraded: 'Governance Worker가 저하 상태입니다',
+          activity: '활동', collapse: '사이드바 접기', expand: '사이드바 펼치기',
+          openMenu: '메뉴 열기', sessionsArea: '세션', governanceArea: '거버넌스',
+          notes: '노트', stats: '사용량 통계', appInfo: '앱 정보',
         }
       : {
           title: 'Session Explorer', query: 'Message search', search: 'Search', replay: 'Session replay',
           governance: 'Project Governance', writeDisabled: 'Writes disabled', scaffold: 'Project Scaffold',
           preview: 'Preview changes', degraded: 'Governance worker is degraded',
+          activity: 'Activity', collapse: 'Collapse sidebar', expand: 'Expand sidebar',
+          openMenu: 'Open menu', sessionsArea: 'Sessions', governanceArea: 'Governance',
+          notes: 'Notes', stats: 'Usage stats', appInfo: 'App Info',
         };
+
+    await page.goto(`${server.baseUrl}/`, { waitUntil: 'networkidle', timeout: timeoutMs });
+    await assertAppArea(page, 'desktop', '/', `${locale} desktop workspace`);
+    await page.evaluate(() => localStorage.setItem('sidebar-tab', 'sessions'));
+    await page.reload({ waitUntil: 'networkidle', timeout: timeoutMs });
+    const activityTab = page.getByRole('tab', { name: labels.activity, exact: true });
+    await activityTab.waitFor({ timeout: timeoutMs });
+    assert(await activityTab.getAttribute('aria-selected') === 'true', `${locale} legacy activity tab was not normalized`);
+    await page.getByRole('button', { name: labels.collapse, exact: true }).click();
+    const rail = await assertAppArea(page, 'rail', '/', `${locale} desktop collapsed workspace`);
+    await assertMinimumTarget(rail.locator('a').first(), 40, `${locale} desktop rail`);
+    await page.getByRole('button', { name: labels.expand, exact: true }).click({ force: true });
+    await assertAppArea(page, 'desktop', '/', `${locale} desktop expanded workspace`);
+
+    await page.goto(`${server.baseUrl}/reports`, { waitUntil: 'networkidle', timeout: timeoutMs });
+    await assertAppArea(page, 'desktop', null, `${locale} desktop utility`);
+
     await page.goto(`${server.baseUrl}/sessions`, { waitUntil: 'networkidle', timeout: timeoutMs });
     if (await page.locator('html').getAttribute('lang') !== locale) throw new Error(`${locale} SSR locale mismatch`);
+    await assertAppArea(page, 'desktop', '/sessions', `${locale} desktop sessions`);
     await page.getByRole('heading', { name: labels.title }).waitFor({ timeout: timeoutMs });
     await page.getByRole('textbox', { name: labels.query }).fill('governance');
     await page.getByRole('button', { name: labels.search, exact: true }).click();
@@ -221,8 +292,12 @@ const runLocale = async (browser, locale) => {
     await result.waitFor({ timeout: timeoutMs });
     await result.focus();
     if (!await result.evaluate((element) => element === document.activeElement)) throw new Error('search result focus failed');
+    assert(await result.getAttribute('aria-selected') === 'true', `${locale} focused session result was not selected`);
+    assert(await result.locator('[data-selection-marker="true"]').count() === 1, `${locale} session selection marker missing`);
+    await captureNavigation(page, `${locale}-desktop-sessions-navigation`, '[data-desktop-sidebar="true"]');
     await result.press('Enter');
     await page.getByText(labels.replay, { exact: true }).waitFor({ timeout: timeoutMs });
+    assert(await result.getAttribute('aria-selected') === 'true', `${locale} replay cleared session selection`);
 
     let intercepted = true;
     await page.route('**/api/governance/projects', async (route) => {
@@ -231,15 +306,41 @@ const runLocale = async (browser, locale) => {
       return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'governance-worker-unavailable' }) });
     });
     await page.goto(`${server.baseUrl}/governance`, { waitUntil: 'networkidle', timeout: timeoutMs });
+    await assertAppArea(page, 'desktop', '/governance', `${locale} desktop governance degraded`);
     await page.getByText(labels.degraded, { exact: true }).waitFor({ timeout: timeoutMs });
     await page.unroute('**/api/governance/projects');
     await page.reload({ waitUntil: 'networkidle', timeout: timeoutMs });
+    await assertAppArea(page, 'desktop', '/governance', `${locale} desktop governance`);
     await page.getByRole('heading', { name: labels.governance }).waitFor({ timeout: timeoutMs });
     await page.getByText(labels.writeDisabled, { exact: true }).first().waitFor({ timeout: timeoutMs });
     await page.getByText(labels.scaffold, { exact: true }).waitFor({ timeout: timeoutMs });
     if (!await page.getByRole('button', { name: labels.preview, exact: true }).isDisabled()) {
       throw new Error(`${locale} governance gate-off preview was enabled`);
     }
+    const selectedProject = page.locator('aside [role="listbox"] [role="option"][aria-selected="true"]').first();
+    await selectedProject.waitFor({ timeout: timeoutMs });
+    assert(await selectedProject.locator('[data-selection-marker="true"]').count() === 1, `${locale} project selection marker missing`);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${server.baseUrl}/sessions`, { waitUntil: 'networkidle', timeout: timeoutMs });
+    const mobileSessions = await assertAppArea(page, 'mobile-bottom', '/sessions', `${locale} mobile sessions`);
+    for (const link of await mobileSessions.locator('a').all()) {
+      await assertMinimumTarget(link, 44, `${locale} mobile primary navigation`);
+    }
+    assert(await page.locator('[data-mobile-workspace-tab-bar="true"]').count() === 0, `${locale} sessions rendered workspace tab bar`);
+    assert(await page.locator('header').first().getByText(labels.sessionsArea, { exact: true }).count() === 1, `${locale} mobile sessions header mismatch`);
+
+    await page.goto(`${server.baseUrl}/governance`, { waitUntil: 'networkidle', timeout: timeoutMs });
+    await assertAppArea(page, 'mobile-bottom', '/governance', `${locale} mobile governance`);
+    assert(await page.locator('[data-mobile-workspace-tab-bar="true"]').count() === 0, `${locale} governance rendered workspace tab bar`);
+    assert(await page.locator('header').first().getByText(labels.governanceArea, { exact: true }).count() === 1, `${locale} mobile governance header mismatch`);
+    await page.getByRole('button', { name: labels.openMenu, exact: true }).click();
+    await assertAppArea(page, 'mobile-sheet', '/governance', `${locale} mobile sheet governance`);
+    await assertMinimumTarget(page.getByRole('button', { name: labels.notes, exact: true }), 44, `${locale} mobile notes utility`);
+    await assertMinimumTarget(page.getByRole('button', { name: labels.stats, exact: true }), 44, `${locale} mobile stats utility`);
+    await assertMinimumTarget(page.getByRole('button', { name: labels.appInfo, exact: true }), 44, `${locale} mobile app info utility`);
+    await captureNavigation(page, `${locale}-mobile-governance-navigation`, '[data-slot="sheet-content"]');
+
     const hydrationErrors = errors.filter((message) => /hydration|did not match/i.test(message));
     if (hydrationErrors.length > 0) {
       throw new Error(`${locale} hydration error: ${hydrationErrors.join(' | ')}`);

@@ -47,6 +47,7 @@ snapshot이고 완성된 번역으로 보지 않습니다. 작성,
 | `operations/2026-08-21-github-pages-guide-handoff.md` | GitHub Pages 랜딩/가이드, artifact gate, 배포와 공개 smoke 증거 |
 | `operations/2026-08-21-github-pages-product-redesign-handoff.md` | Session Operations/Project Governance 중심 Pages 재설계, 실배포와 service restart 증거 |
 | `operations/2026-08-22-live-verification-maintenance-handoff.md` | 실제 Managed Project/Session Catalog 검증, 301초 재연결 관찰, release·Dependabot 유지보수 결과 |
+| `operations/2026-08-23-navigation-selection-clarity-handoff.md` | Workspace/Sessions/Governance 탐색 명료화, lifecycle IPC hotfix, live 배포와 rollback 기준 |
 
 보존된 Windows stable release `v0.4.22`는 같은 hostname의 Purplemux와 동시 실행하기 위한 cookie namespace 수정을
 포함하고 fresh Windows package/published updater와 privacy gate를 통과해 stable/latest로
@@ -71,6 +72,10 @@ user service에 순차 배포했습니다. Browser 인증, `HOST=0.0.0.0`과
 동일 세션 재연결 관찰을 완료해 ADR-031과 ADR-032를 `Verified`로 전환했습니다.
 같은 날 annotation-aware pagination commit `322ccfb7`, version `0.4.24`를 Linux user service에
 배포해 실제 pinned/tag 검색의 `results=1`, exact `total=1`과 Phase 6 gate를 확인했습니다.
+2026-08-23에는 navigation build `a6a49588`을 같은 service에 배포했습니다. Runtime v2
+terminal/reconnect 10-check, Phase 6 12-check, Governance lifecycle 236-evidence 응답과 실제
+desktop/mobile current/selection 상태를 확인했습니다. Public npm `latest`는 registry 기준
+`0.4.23`이며 source/live version `0.4.24`와 배포면을 구분합니다.
 
 Root `CONTEXT.md`는 도메인 언어와 기준 소스 경계를, root `DESIGN.md`는
 UI 시각 계약을 담당합니다.

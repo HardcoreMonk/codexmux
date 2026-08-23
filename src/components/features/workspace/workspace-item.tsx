@@ -78,7 +78,7 @@ const WorkspaceItem = ({
     <ContextMenu>
       <ContextMenuTrigger
         className={cn(
-          'relative flex cursor-pointer flex-col justify-center overflow-hidden border-l-2 px-3 py-2 transition-colors duration-75',
+          'relative flex cursor-pointer flex-col justify-center overflow-hidden border-l-2 px-3 py-2 transition-colors duration-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
           isActive
             ? 'border-l-focus-indicator bg-accent text-foreground'
             : 'border-l-transparent text-muted-foreground hover:bg-sidebar-accent',
@@ -88,9 +88,14 @@ const WorkspaceItem = ({
           transition: 'opacity 150ms, background-color 75ms',
         }}
         onClick={handleClick}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          handleClick();
+        }}
         onDoubleClick={startEditing}
-        role="button"
-        aria-current={isActive ? 'true' : undefined}
+        role="option"
+        aria-selected={isActive}
         tabIndex={0}
         render={<div />}
       >

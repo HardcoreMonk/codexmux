@@ -40,6 +40,8 @@ import MobileWorkspaceGroupHeader from '@/components/features/mobile/mobile-work
 import RenameGroupDialog from '@/components/features/workspace/rename-group-dialog';
 import EditWorkspaceDialog from '@/components/features/workspace/edit-workspace-dialog';
 import MobileAndroidAppDialog from '@/components/features/mobile/mobile-android-app-dialog';
+import AppAreaNavigation from '@/components/layout/app-area-navigation';
+import { isCoreAppAreaSidebarItem, type TAppArea } from '@/lib/app-navigation';
 
 const WorkspacePortsLabel = ({ workspaceId }: { workspaceId: string }) => {
   const label = useTabStore(
@@ -52,6 +54,7 @@ const WorkspacePortsLabel = ({ workspaceId }: { workspaceId: string }) => {
 interface IMobileNavigationSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  currentArea: TAppArea | null;
   workspaces: IWorkspace[];
   activeWorkspaceId: string | null;
   workspaceLayouts: Record<string, IPaneNode[]>;
@@ -65,6 +68,7 @@ interface IMobileNavigationSheetProps {
 const MobileNavigationSheet = ({
   open,
   onOpenChange,
+  currentArea,
   workspaces,
   activeWorkspaceId,
   workspaceLayouts,
@@ -78,12 +82,13 @@ const MobileNavigationSheet = ({
   const tc = useTranslations('common');
   const ts = useTranslations('sidebar');
   const tw = useTranslations('workspace');
+  const tn = useTranslations('navigation');
   const router = useRouter();
   const mobileTab = useWorkspaceStore((s) => s.sidebarTab);
   const groups = useWorkspaceStore((s) => s.groups);
 
   const handleMobileTabChange = useCallback((v: string) => {
-    useWorkspaceStore.getState().setSidebarTab(v as 'workspace' | 'sessions');
+    useWorkspaceStore.getState().setSidebarTab(v as 'workspace' | 'activity');
   }, []);
   const { attentionCount, busyCount } = useNotificationCount();
   const sessionsBadge = attentionCount + busyCount;
@@ -100,6 +105,10 @@ const MobileNavigationSheet = ({
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const metadata = useTabMetadataStore((s) => s.metadata);
   const { items: sidebarItems } = useSidebarItems();
+  const utilityItems = useMemo(
+    () => sidebarItems.filter((item) => !isCoreAppAreaSidebarItem(item.id)),
+    [sidebarItems],
+  );
 
   const handleToggleGroup = useCallback((groupId: string) => {
     useWorkspaceStore.getState().toggleGroupCollapsed(groupId);
@@ -289,13 +298,16 @@ const MobileNavigationSheet = ({
         <div className="flex items-stretch">
           <button
             className={cn(
-              'flex min-h-11 min-w-0 flex-1 touch-manipulation items-center gap-2 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none',
+              'relative flex min-h-11 min-w-0 flex-1 touch-manipulation items-center gap-2 px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
               isActive
-                ? 'bg-accent/30 font-medium text-foreground active:bg-accent/70'
+                ? 'bg-accent/70 font-medium text-foreground active:bg-accent'
                 : 'text-foreground hover:bg-accent/50 active:bg-accent/70',
             )}
             onClick={() => handleToggleWorkspace(ws.id)}
+            aria-expanded={isExpanded}
+            aria-label={isActive ? `${ws.name}, ${tn('currentWorkspace')}` : ws.name}
           >
+            {isActive && <span aria-hidden="true" className="absolute inset-y-2 left-0 w-0.5 rounded-r bg-focus-indicator" />}
             {isExpanded ? (
               <ChevronDown size={14} className="shrink-0 text-muted-foreground" />
             ) : (
@@ -355,7 +367,19 @@ const MobileNavigationSheet = ({
           >
             <X size={20} />
           </button>
-          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          <SheetTitle className="text-sm font-semibold">{tn('label')}</SheetTitle>
+        </SheetHeader>
+
+        <AppAreaNavigation
+          currentArea={currentArea}
+          variant="mobile-sheet"
+          onNavigate={() => onOpenChange(false)}
+        />
+
+        <div className="shrink-0 border-b px-2 py-1.5">
+          <div className="mb-1 px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {tn('workspaceContext')}
+          </div>
           <Tabs
             value={mobileTab}
             onValueChange={handleMobileTabChange}
@@ -363,10 +387,10 @@ const MobileNavigationSheet = ({
           >
             <TabsList className="h-7 w-full">
               <TabsTrigger value="workspace" className="h-full flex-1 touch-manipulation px-2.5 text-[11px] tracking-wide">
-                WORKSPACE
+                {tn('workspace')}
               </TabsTrigger>
-              <TabsTrigger value="sessions" className="h-full flex-1 touch-manipulation px-2.5 text-[11px] tracking-wide">
-                SESSIONS
+              <TabsTrigger value="activity" className="h-full flex-1 touch-manipulation px-2.5 text-[11px] tracking-wide">
+                {tn('activity')}
                 {sessionsBadge > 0 && (
                   <span className="ml-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded bg-[var(--ui-coral)] px-0.5 text-[9px] font-medium leading-none text-white">
                     {sessionsBadge}
@@ -375,7 +399,7 @@ const MobileNavigationSheet = ({
               </TabsTrigger>
             </TabsList>
           </Tabs>
-        </SheetHeader>
+        </div>
 
         {mobileTab === 'workspace' ? (
           <div
@@ -423,7 +447,7 @@ const MobileNavigationSheet = ({
                 onClick={onCreateWorkspace}
               >
                 <Plus size={16} />
-                Workspace
+                {tn('workspace')}
               </button>
               <button
                 className="flex min-h-11 w-12 shrink-0 touch-manipulation items-center justify-center text-muted-foreground transition-colors hover:bg-accent active:bg-accent/70 focus-visible:outline-none"
@@ -435,43 +459,49 @@ const MobileNavigationSheet = ({
             </div>
           )}
           <SidebarRateLimits />
-          <div className="flex items-center gap-0.5 px-3 pt-1 pb-4">
-            {sidebarItems.map((item) => {
+          <div className="flex flex-wrap items-center gap-1 px-3 pt-1 pb-4">
+            {utilityItems.map((item) => {
               const itemName = item.labelKey ? ts(item.labelKey) : item.name;
               const isExternal = item.url.startsWith('http://') || item.url.startsWith('https://');
               const navPath = isExternal ? `/webview?url=${encodeURIComponent(item.url)}` : item.url;
+              const isActive = isExternal ? router.asPath === navPath : router.pathname === item.url;
               return (
                 <button
                   key={item.id}
-                  className="flex h-8 w-8 touch-manipulation items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent active:bg-accent/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className={cn(
+                    'relative flex h-11 w-11 touch-manipulation items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent active:bg-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    isActive && 'bg-accent/70 text-foreground',
+                  )}
                   onClick={() => {
                     onOpenChange(false);
                     router.push(navPath);
                   }}
                   aria-label={itemName}
+                  aria-current={isActive ? 'page' : undefined}
                   title={itemName}
                 >
-                  <IconRenderer name={item.icon} className="h-[15px] w-[15px]" />
+                  {isActive && <span aria-hidden="true" className="absolute inset-y-2 left-0 w-0.5 rounded-r bg-focus-indicator" />}
+                  <IconRenderer name={item.icon} className="h-4 w-4" />
                 </button>
               );
             })}
             <button
-              className="flex h-8 w-8 touch-manipulation items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent active:bg-accent/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex h-11 w-11 touch-manipulation items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent active:bg-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => setAppInfoOpen(true)}
               aria-label={t('appInfo')}
               title={t('appInfo')}
             >
-              <Info size={15} />
+              <Info size={16} />
             </button>
             <button
-              className="flex h-8 w-8 touch-manipulation items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent active:bg-accent/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex h-11 w-11 touch-manipulation items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent active:bg-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => {
                 onOpenChange(false);
                 onOpenSettings();
               }}
               aria-label={tc('settings')}
             >
-              <Settings size={15} />
+              <Settings size={16} />
             </button>
           </div>
         </div>

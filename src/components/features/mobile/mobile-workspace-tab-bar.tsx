@@ -70,7 +70,7 @@ const MobileWorkspaceTabBar = ({
   if (totalTabs === 0) return null;
 
   return (
-    <div className="shrink-0 border-t bg-background">
+    <div data-mobile-workspace-tab-bar="true" className="shrink-0 border-t bg-background">
       <div
         className="flex h-10 items-center justify-center overflow-x-auto px-4"
         style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}

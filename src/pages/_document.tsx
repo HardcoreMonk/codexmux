@@ -69,7 +69,7 @@ class MyDocument extends Document<IDocumentProps> {
     const effectiveMinWidth = sidebarCollapsed ? 0 : 160;
 
     const serverActiveWs = JSON.stringify(this.props.activeWorkspaceId || '');
-    const initScript = `window.__SB__=(function(){var s=sessionStorage,l=localStorage,t=l.getItem("sidebar-tab"),a=s.getItem("active-ws")||${serverActiveWs};return{w:${sidebarWidth},c:${sidebarCollapsed},t:t==="sessions"?"sessions":"workspace",a:a||""}})()`;
+    const initScript = `window.__SB__=(function(){var s=sessionStorage,l=localStorage,t=l.getItem("sidebar-tab"),a=s.getItem("active-ws")||${serverActiveWs};return{w:${sidebarWidth},c:${sidebarCollapsed},t:t==="sessions"||t==="activity"?"activity":"workspace",a:a||""}})()`;
 
     return (
       <Html lang={this.props.locale} suppressHydrationWarning>

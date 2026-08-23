@@ -18,6 +18,7 @@ Windows 설치형 제품 마감은 별도 제품 line인
 - reconnect, approval, notification, session list와 usage projection
 - Session Catalog 검색·replay·annotation과 saved filter
 - Approved Project Root, Managed Project, Project Governance/Knowledge Index와 versioned scaffold
+- Workspace, Sessions, Governance 고정 1차 탐색과 route/entity/focus 상태 분리
 - Runtime v2 Supervisor와 terminal/storage/timeline/status/governance worker
 - Linux tmux adapter와 `systemd --user` 운영, 선택적 Electron/Android client
 - 보존된 Electron Windows NSIS/zip packaging, installer, updater release smoke
@@ -27,10 +28,10 @@ Windows 설치형 제품 마감은 별도 제품 line인
 
 | 항목 | 현재 기준 |
 | --- | --- |
-| 패키지 버전 | `0.4.24` |
+| source/package.json 버전 | `0.4.24` |
 | active 제품/runtime | Linux 단일 엔진 호스트, ADR-031 `Verified` |
 | UI 언어 | 기본 한국어, 지원 한국어·영어 |
-| 현재 live service | `systemd --user`, authenticated `0.0.0.0:8122`, app build `322ccfb7`, governance writes active |
+| 현재 live service | `systemd --user`, authenticated `0.0.0.0:8122`, app build `a6a49588`, governance writes active |
 | 웹 구조 | Next.js Pages Router + custom Node server |
 | terminal 구조 | Runtime v2 Terminal Worker + Linux tmux adapter |
 | 운영 데이터 | `runtime-v2/state.db`, `session-catalog/index.db`, `governance/index.db` |
@@ -156,6 +157,11 @@ stable workflow와 독립적으로 실행됩니다. 2026-08-22에는 `0.4.24` pa
 Linux live 배포를 완료했습니다. Remote tag와 GitHub Windows Release는 별도 gate로 유지하며
 기존 local `v0.4.23` tag는 remote에 게시하지 않습니다.
 
+2026-08-23에는 Workspace, Sessions, Governance 1차 탐색과 entity selection을 명료화한
+build `a6a49588`을 Linux user service에 배포했습니다. Runtime v2 terminal/reconnect 10-check,
+Phase 6 12-check, Governance lifecycle 236-evidence 응답과 실제 desktop/mobile browser 검증을
+통과했습니다. Public npm `latest`는 registry 확인 기준 계속 `0.4.23`입니다.
+
 ## 아키텍처
 
 ```text
@@ -210,6 +216,7 @@ Pages route로 fallback하지 않습니다.
 | [Purplemux cookie isolation handoff](docs/operations/2026-07-12-purplemux-cookie-isolation-handoff.md) | 동일 hostname 동시 실행 수정과 재로그인 복구 경계 |
 | [npm distribution handoff](docs/operations/2026-08-20-npm-npx-distribution-handoff.md) | npm 0.4.23 publish, registry smoke와 보류된 tag/Trusted Publisher |
 | [Session Operations/Governance handoff](docs/operations/2026-08-21-session-operations-governance-integration-handoff.md) | 통합 구현, live 배포·restart와 rollback 증거 |
+| [Navigation Selection Clarity handoff](docs/operations/2026-08-23-navigation-selection-clarity-handoff.md) | 고정 1차 탐색, lifecycle IPC hotfix, live 배포·restart와 browser/Runtime 검증 |
 | [제품 line migration](docs/operations/codexwinmux-product-line-migration.md) | `codexmux`와 `codexwinmux` 분리 기준 |
 
 ## 라이선스

@@ -37,9 +37,12 @@ locale만 `landing-src/_data/docsNav.js`의 `locales`로 선언해야 합니다.
    `Runtime Operations` 순서로 설명합니다.
 3. 기능은 `Available now`, `Guarded actions`, `Not in current scope`를 구분해 과장하지 않습니다.
 4. 문서 home에서 Session Operations와 Project Governance를 같은 깊이의 핵심 진입점으로 둡니다.
-5. 사람용 빠른 시작과 에이전트 빠른 시작을 분리합니다.
-6. 설치 문서는 prerequisite, 실행, 생성되는 상태, 다음 행동 순서로 씁니다.
-7. 운영 문서는 backup, restart, health, rollback을 같은 문맥에 둡니다.
+5. 제품 UI 설명에서는 Workspace, Sessions, Governance를 고정 1차 App Area로 쓰고, Workspace 내부
+   `Activity`를 Session Catalog route와 구분합니다. Core area는 숨김/reorder 가능한 sidebar shortcut으로
+   설명하지 않습니다.
+6. 사람용 빠른 시작과 에이전트 빠른 시작을 분리합니다.
+7. 설치 문서는 prerequisite, 실행, 생성되는 상태, 다음 행동 순서로 씁니다.
+8. 운영 문서는 backup, restart, health, rollback을 같은 문맥에 둡니다.
 8. 외부 bind, password, governance write, restart와 data 삭제에는 사용자 승인 경계를 적습니다.
 
 이 구조는 [opencodex.me](https://opencodex.me/)의 짧은 시작 경로와 category 분리 원칙을

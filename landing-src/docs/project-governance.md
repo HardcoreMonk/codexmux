@@ -12,7 +12,8 @@ responses do not expose project filesystem paths.
 
 ## Check readiness
 
-Before opening `/governance`, check Governance Worker state through authenticated Runtime health.
+Select **Governance** in the fixed primary navigation; its route is `/governance`. Before operating the
+page, check Governance Worker state through authenticated Runtime health.
 
 ```bash
 IFS= read -r codexmux_cli_token < ~/.codexmux/cli-token

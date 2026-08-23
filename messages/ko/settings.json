@@ -208,6 +208,7 @@
     "title": "사이드바 항목",
     "description": "사이드바 하단에 표시할 바로가기 항목을 관리합니다.",
     "itemsSection": "항목",
+    "alwaysVisible": "항상 표시",
     "addItem": "항목 추가",
     "editItem": "항목 수정",
     "nameLabel": "이름",

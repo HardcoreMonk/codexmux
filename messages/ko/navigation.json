@@ -1,0 +1,12 @@
+{
+  "label": "주요 영역",
+  "workspace": "워크스페이스",
+  "sessions": "세션",
+  "governance": "거버넌스",
+  "activity": "활동",
+  "workspaceContext": "워크스페이스 컨텍스트",
+  "utilities": "유틸리티",
+  "lastWorkspace": "마지막 작업공간: {name}",
+  "currentWorkspace": "현재 작업공간",
+  "alwaysVisible": "항상 표시"
+}

@@ -5,7 +5,7 @@
 > Purplemux 기준: `main@52140216` (`v0.4.5`)
 > Codexmux 감사 baseline: `main@cafc8de9` (`v0.4.16`)
 > 감사 당시 Windows stable release: `v0.4.22@4af02209`
-> 현재 제품/runtime target: ADR-031 Linux 단일 엔진, npm `0.4.23`
+> 현재 제품/runtime target: ADR-031 Linux 단일 엔진, source/live `0.4.24`, public npm `0.4.23`
 
 ## 결론
 

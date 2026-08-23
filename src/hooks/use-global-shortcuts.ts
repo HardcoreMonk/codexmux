@@ -88,7 +88,7 @@ const useGlobalShortcuts = () => {
     'view.toggle_sidebar_tab',
     () => {
       const store = useWorkspaceStore.getState();
-      const next = store.sidebarTab === 'workspace' ? 'sessions' : 'workspace';
+      const next = store.sidebarTab === 'workspace' ? 'activity' : 'workspace';
       store.setSidebarTab(next);
       if (store.sidebarCollapsed) store.toggleSidebar();
     },

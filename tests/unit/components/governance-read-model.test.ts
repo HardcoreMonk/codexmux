@@ -73,4 +73,14 @@ describe('Governance read model', () => {
     expect(degraded).not.toContain('Run scaffold');
     expect(degraded).not.toContain('Sync files');
   });
+
+  it('exposes the selected managed project as a neutral listbox option', () => {
+    const markup = renderGovernance('en');
+    expect(markup).toContain('role="listbox"');
+    expect(markup).toContain('role="option"');
+    expect(markup).toContain('aria-selected="true"');
+    expect(markup).toContain('data-selection-marker="true"');
+    expect(markup).toContain('bg-accent/70');
+    expect(markup).not.toContain('border-agent-active/40 bg-agent-active/5');
+  });
 });

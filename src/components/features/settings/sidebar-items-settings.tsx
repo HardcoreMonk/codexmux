@@ -14,6 +14,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from '@dnd-kit/utilities';
 import {
   GripVertical,
+  LockKeyhole,
   Pencil,
   Plus,
   RotateCcw,
@@ -34,6 +35,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import useSidebarItems, { type ISidebarItem } from '@/hooks/use-sidebar-items';
 import IconPicker from '@/components/features/settings/icon-picker';
+import { isCoreAppAreaSidebarItem } from '@/lib/app-navigation';
+import { cn } from '@/lib/utils';
 
 interface IFormState {
   mode: 'add' | 'edit';
@@ -107,8 +110,11 @@ interface ISortableBuiltinItemProps {
 }
 
 const SortableBuiltinItem = ({ item, onToggle }: ISortableBuiltinItemProps) => {
+  const t = useTranslations('settings.sidebarItems');
+  const fixed = isCoreAppAreaSidebarItem(item.id);
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
+    disabled: fixed,
   });
 
   const style = {
@@ -124,7 +130,10 @@ const SortableBuiltinItem = ({ item, onToggle }: ISortableBuiltinItemProps) => {
         ref={setActivatorNodeRef}
         {...attributes}
         {...listeners}
-        className="flex shrink-0 cursor-grab items-center text-muted-foreground/50 active:cursor-grabbing"
+        className={cn(
+          'flex shrink-0 items-center text-muted-foreground/50',
+          fixed ? 'cursor-default' : 'cursor-grab active:cursor-grabbing',
+        )}
       >
         <GripVertical className="h-4 w-4" />
       </div>
@@ -136,7 +145,17 @@ const SortableBuiltinItem = ({ item, onToggle }: ISortableBuiltinItemProps) => {
         <p className="truncate font-mono text-xs text-muted-foreground">{item.url}</p>
       </div>
       <div className="flex shrink-0 items-center">
-        <Switch checked={item.enabled} onCheckedChange={(v) => onToggle(item.id, v)} />
+        {fixed && (
+          <span className="mr-2 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+            <LockKeyhole className="h-3 w-3" />
+            {t('alwaysVisible')}
+          </span>
+        )}
+        <Switch
+          checked={fixed || item.enabled}
+          disabled={fixed}
+          onCheckedChange={(v) => onToggle(item.id, v)}
+        />
       </div>
     </div>
   );

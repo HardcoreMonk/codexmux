@@ -208,6 +208,7 @@
     "title": "Sidebar Items",
     "description": "Manage shortcut items displayed at the bottom of the sidebar.",
     "itemsSection": "Items",
+    "alwaysVisible": "Always visible",
     "addItem": "Add Item",
     "editItem": "Edit Item",
     "nameLabel": "Name",

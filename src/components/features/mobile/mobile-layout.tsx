@@ -9,6 +9,9 @@ import { navigateToTab } from '@/hooks/use-layout';
 import SettingsDialog from '@/components/features/workspace/settings-dialog';
 import useMobileLayoutActions from '@/hooks/use-mobile-layout-actions';
 import type { ILayoutData, IPaneNode } from '@/types/terminal';
+import AppAreaNavigation from '@/components/layout/app-area-navigation';
+import { resolveAppArea } from '@/lib/app-navigation';
+import { useTranslations } from 'next-intl';
 
 interface IMobileLayoutProps {
   children: ReactNode;
@@ -16,6 +19,8 @@ interface IMobileLayoutProps {
 
 const MobileLayout = ({ children }: IMobileLayoutProps) => {
   const router = useRouter();
+  const tn = useTranslations('navigation');
+  const ts = useTranslations('sidebar');
   const [menuOpen, setMenuOpen] = useState(false);
   const settingsOpen = useWorkspaceStore((s) => s.isSettingsDialogOpen);
   const setSettingsOpen = useWorkspaceStore((s) => s.setSettingsDialogOpen);
@@ -108,6 +113,18 @@ const MobileLayout = ({ children }: IMobileLayoutProps) => {
   }, [workspaces, storeLayout, storeWorkspaceId, layoutCache]);
 
   const isWorkspacePage = router.pathname === '/';
+  const currentArea = resolveAppArea(router.pathname);
+  const activeWorkspaceName = workspaces.find((workspace) => workspace.id === activeWorkspaceId)?.name;
+  const utilityLabel = router.pathname === '/reports'
+    ? ts('notes')
+    : router.pathname === '/stats'
+      ? ts('stats')
+      : undefined;
+  const headerContext = isWorkspacePage
+    ? activeWorkspaceName
+    : currentArea
+      ? tn(currentArea)
+      : utilityLabel;
 
   const activeLayout = (activeWorkspaceId === storeWorkspaceId && storeLayout)
     ? storeLayout
@@ -159,22 +176,32 @@ const MobileLayout = ({ children }: IMobileLayoutProps) => {
       <div style={{ paddingTop: 'env(safe-area-inset-top)' }} className="shrink-0">
         <AppHeader
           onMenuOpen={() => setMenuOpen(true)}
-          workspaceId={activeWorkspaceId ?? undefined}
-          workspaceName={workspaces.find((ws) => ws.id === activeWorkspaceId)?.name}
+          workspaceId={isWorkspacePage ? activeWorkspaceId ?? undefined : undefined}
+          workspaceName={headerContext}
         />
       </div>
       {children}
-      <MobileWorkspaceTabBar
-        workspaces={workspaces}
-        activeWorkspaceId={activeWorkspaceId}
-        workspaceLayouts={workspaceLayouts}
-        selectedPaneId={activePaneId}
-        selectedTabId={activeTabId}
-        onSelect={handleSelectSurface}
-      />
+      {isWorkspacePage && (
+        <MobileWorkspaceTabBar
+          workspaces={workspaces}
+          activeWorkspaceId={activeWorkspaceId}
+          workspaceLayouts={workspaceLayouts}
+          selectedPaneId={activePaneId}
+          selectedTabId={activeTabId}
+          onSelect={handleSelectSurface}
+        />
+      )}
+      <div className="shrink-0" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <AppAreaNavigation
+          currentArea={currentArea}
+          variant="mobile-bottom"
+          onNavigate={() => setMenuOpen(false)}
+        />
+      </div>
       <MobileNavigationSheet
         open={menuOpen}
         onOpenChange={setMenuOpen}
+        currentArea={currentArea}
         workspaces={workspaces}
         activeWorkspaceId={activeWorkspaceId}
         workspaceLayouts={workspaceLayouts}
