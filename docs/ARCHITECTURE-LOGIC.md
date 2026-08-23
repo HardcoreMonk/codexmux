@@ -178,6 +178,19 @@ Workspace는 id, name, directory, layout, active pane/tab을 묶는 app-level ag
 - runtime DB snapshot이 authoritative한 상태에서는 빈 snapshot도 정상 상태로 취급합니다.
 - workspace 삭제는 관련 tab/session cleanup intent를 함께 남겨야 합니다.
 
+## 앱 영역 탐색과 선택 projection
+
+`resolveAppArea(pathname)`은 Pages Router pathname만 해석해 `workspace`, `sessions`,
+`governance` 또는 `null`을 반환합니다. `AppAreaNavigation`은 이 projection을 desktop expanded,
+collapsed rail, mobile bottom과 navigation sheet에서 공유합니다. Active custom webview나 Reports,
+Stats 같은 utility surface에서는 caller가 current area를 `null`로 유지합니다.
+
+Workspace 내부 `workspace|activity` tab은 route가 아니라 local context입니다. Legacy
+`sidebar-tab=sessions`는 hydration 전에 `activity`로 normalize합니다. Current route는
+`aria-current`, Workspace/Session/Managed Project selection은 `aria-selected`, disclosure는
+`aria-expanded`, keyboard focus는 `focus-visible`로 표현하며 runtime status color를 navigation
+selection에 사용하지 않습니다.
+
 ## 터미널 로직
 
 Terminal API가 기대하는 동작은 adapter와 무관하게 같습니다.
@@ -241,6 +254,9 @@ Storage Worker는 Approved Project Root와 Managed Project의 canonical path를 
 - discovery는 Markdown allowlist와 file/count/total bytes/depth/time quota를 적용하고 `.git`, `.worktrees`, build/cache, `node_modules`, nested worktree와 symlink를 제외합니다.
 - Knowledge Index에는 path, kind, title, headings, fingerprint, lint, link만 저장합니다. 문서 본문은 index DB에 저장하지 않고 요청 시 최대 256KiB를 다시 읽습니다.
 - audit은 후보의 상대 path, line, category만 반환하고 matching secret body는 반환하지 않습니다.
+- Project Lifecycle snapshot evidence는 project document response와 같은 2,000개 maximum으로
+  bounded합니다. 초과 응답은 IPC validation에서 fail closed하며 상한 접근 시 pagination 또는
+  summarized evidence contract를 별도 설계합니다.
 - `governance.preview-scaffold`는 browser가 지정한 artifact ID를 versioned catalog로 render하고
   root containment, mount/symlink, marker, file/action limit을 검증한 뒤 10분 opaque token과
   bounded diff를 반환합니다. Unmarked UTF-8 regular file은 첫 pass에서 confirm 불가

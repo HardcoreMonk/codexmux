@@ -78,6 +78,10 @@ codexmux의 앱 상태는 `~/.codexmux/`에 저장합니다. Codex CLI 원본 �
 | `logs/` | 서버 로그 |
 | `uploads/` | upload artifact와 transaction 중 reserved staged file |
 
+Workspace sidebar의 `workspace|activity` 선택은 이 directory가 아니라 browser `localStorage`의
+`sidebar-tab`에 저장합니다. 이전 값 `sessions`는 load 시 `activity`로 normalize하며 Session
+Catalog의 `/sessions` route 선택과는 별도 상태입니다.
+
 ## Upload artifact
 
 External upload ingress는 `uploads/<workspace-id>/<tab-id>/`에만 씁니다. Workspace/tab id와

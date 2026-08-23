@@ -1,6 +1,6 @@
 ---
-title: 사이드바 & Codex 옵션
-description: 사이드바 단축 항목, 퀵 프롬프트, Codex CLI option 설정.
+title: 탐색, 사이드바 & Codex 옵션
+description: 고정 1차 영역, 사이드바 utility, 퀵 프롬프트와 Codex CLI option 설정.
 eyebrow: 설정
 permalink: /ja/docs/sidebar-options/index.html
 ---
@@ -8,14 +8,24 @@ permalink: /ja/docs/sidebar-options/index.html
 
 sidebar, quick prompt, Codex launch option은 Settings에서 조정합니다. 이 값은 새 session과 dashboard 사용 흐름에 영향을 줍니다.
 
+## 주요 영역과 Workspace context
+
+**워크스페이스**, **세션**, **거버넌스**는 desktop과 mobile에서 항상 같은 순서로 표시되는 고정
+1차 영역입니다. 현재 영역은 label, surface와 indicator로 표시되며 설정에서 숨기거나 순서를 바꿀 수
+없습니다. **워크스페이스 / 활동**은 Workspace 내부 목록과 운영 activity를 전환하며 Session Catalog
+route와 별개입니다.
+
 ## sidebar shortcut
 
 **Settings** -> **Sidebar**에서 sidebar 하단 shortcut을 관리합니다.
 
-- drag로 순서 변경.
-- switch로 표시/숨김.
+- Notes, Stats와 custom item을 drag로 순서 변경.
+- Utility item을 switch로 표시/숨김.
 - custom item 추가와 삭제.
 - 기본값으로 reset.
+
+Sessions와 Governance가 목록에 보여도 **항상 표시**되는 core area이므로 switch와 drag가
+비활성화됩니다.
 
 ## quick prompt
 

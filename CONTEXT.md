@@ -52,6 +52,8 @@ Runtime v2 worker, tmux, Codex JSONL, app-owned DB와 등록된 project filesyst
 | Adoption Selection | 한 preview에서 사용자가 artifact별로 명시한 adoption intent | preview token/digest, API/IPC contract |
 | Adoption Template Variant | 신규 문서 template과 분리된 compact marker block definition | scaffold template catalog |
 | Project Lifecycle | spec, domain architecture, grill, plan, review, release, operate artifact 흐름 | project-local docs |
+| App Area | Workspace, Sessions, Governance 중 현재 route가 가리키는 고정 1차 제품 영역 | Pages Router, `AppAreaNavigation` |
+| Workspace Activity | busy, needs-input, review, completed 상태를 모은 Workspace 내부 context panel | sidebar local state, notification projection |
 | Windows 전용 제품 | 2026년 Windows product-line 전환과 release 검증의 역사적 결정 | packaging, host, release evidence |
 | Windows 서비스 호스트 | 앱/backend 수명주기를 관리하는 host 경계 | Windows host diagnostics, future service |
 | 브라우저 인증 namespace | 같은 hostname의 sibling app과 충돌하지 않는 제품별 session cookie 경계 | `codexmux-session-token`, ADR-029 |
@@ -86,7 +88,7 @@ Runtime v2 worker, tmux, Codex JSONL, app-owned DB와 등록된 project filesyst
 
 ## 현재 구현 기준
 
-2026-08-22 기준 Session Operations와 Project Governance Phase 1~3 첫 vertical slice가 Linux
+2026-08-23 기준 Session Operations와 Project Governance Phase 1~3 첫 vertical slice가 Linux
 단일 엔진에 통합됐습니다. Timeline Worker는 Session Catalog, Storage Worker는 durable
 project/session 상태, Governance Worker는 승인 project의 Knowledge Index와 governed scaffold
 write를 소유합니다. Arbitrary project write/delete/move/full sync, remote topology, GSD
@@ -105,8 +107,8 @@ regular file을 자동 takeover하지 않고, 첫 discovery 뒤 artifact별 `Ado
 기존 bytes는 exact prefix로 보존하며 invalid UTF-8, NUL과 marker-like comment는 거부합니다.
 Live service는 systemd drop-in으로
 `CODEXMUX_GOVERNANCE_WRITES=1`을 활성화했고 Governance `writeState=ready`, private Runtime v2
-backup과 post-restart Phase 6 gate를 확인했습니다. 등록 Managed Project가 없어 실제 project
-confirm은 수행하지 않았습니다. Adoption source 변경은 아직 live 배포하지 않았습니다.
+backup과 post-restart Phase 6 gate를 확인했습니다. 실제 `codexmux` Managed Project에서
+`AGENTS.md` adoption preview/confirm/rollback과 원본 SHA-256 복구까지 완료했습니다.
 [GitHub issue #19](https://github.com/HardcoreMonk/codexmux/issues/19)와 설계·운영 인계는
 `docs/superpowers/specs/2026-08-21-governed-project-scaffold-design.md`, ADR-032와
 `docs/operations/2026-08-21-governed-project-scaffold-handoff.md`를 따릅니다.
@@ -116,7 +118,7 @@ upload ingress와 Windows stable release path는 fresh Windows package/update ga
 검증했습니다. Bootstrap은 ADR-026, upload ingress는 ADR-027, Windows stable release
 gate는 ADR-028 `Verified`입니다.
 
-- 현재 npm package: `codexmux@0.4.23`, registry commit `ef27e297`
+- 현재 public npm package: `codexmux@0.4.23`, registry commit `ef27e297`
 - 보존된 Windows stable release: [`v0.4.22`](https://github.com/HardcoreMonk/codexmux/releases/tag/v0.4.22), commit `4af02209`
 - Windows 검증 완료 추적: [GitHub issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)
 - 구현·복구 근거: `docs/operations/2026-07-11-pre-auth-bootstrap-security-handoff.md`,
@@ -136,3 +138,11 @@ gate는 ADR-028 `Verified`입니다.
   native session hook/server launch intent를 포함합니다. ADR-025는 full automated gate와
   실제 Linux user service 재시작을 근거로 `Verified`입니다. Windows package 실기 검증은
   이 선택 도입의 완료 조건에서 제외했습니다.
+
+현재 live Linux build는 `a6a49588`, source version은 `0.4.24`입니다. Workspace, Sessions,
+Governance는 고정 `App Area`이며 기존 sidebar `sessions` local state는 `Workspace Activity`로
+normalize합니다. Current route는 `aria-current`, Workspace/Session/Managed Project 선택은
+`aria-selected`, disclosure는 `aria-expanded`, focus는 `focus-visible`로 분리합니다. 등록
+project의 Project Lifecycle evidence 236개는 bounded IPC maximum 2,000 안에서 응답하며
+2,001개 이상은 거부합니다. 최신 배포·rollback 근거는
+`docs/operations/2026-08-23-navigation-selection-clarity-handoff.md`에 있습니다.

@@ -73,6 +73,8 @@ acceptance를 대체하지 않습니다. Public npm package의 현재 version은
 - `codexmux@0.4.23` public npm publish, registry tarball install/CLI/production health smoke
 - 구현 commit `d405f683`의 Linux `systemd --user` live 배포, 실제 restart 전후 terminal
   smoke와 Phase 6 gate, [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18) 완료
+- Workspace/Sessions/Governance 고정 탐색, Workspace Activity 명명, entity selection 접근성,
+  lifecycle evidence 2,000 IPC bound와 live desktop/mobile 검증 완료
 
 ## 릴리스 전 확인
 
@@ -113,15 +115,15 @@ installer/package gate로 확인합니다.
 
 | 항목 | 상태 |
 | --- | --- |
-| Live build | Session Catalog annotation pagination artifact `322ccfb7`; 이전 governed adoption artifact `f46410b4` |
+| Live build | Navigation Selection Clarity/hotfix artifact `a6a49588`, version `0.4.24` |
 | user service | `codexmux.service` enabled, `active/running`, authenticated `0.0.0.0:8122` |
 | Runtime v2 | terminal `new-tabs`, storage/timeline/status `default` |
 | Session Catalog/Governance | 모두 ready, Governance `writeState=ready`, DB/WAL/SHM `0600` |
 | governance gate | `~/.config/systemd/user/codexmux.service.d/governance-writes.conf`, active |
-| latest backup | `runtime-v2-storage-20260821T163716Z`, service 정지 중 durable/workspace state 5개 |
-| latest restart | PID `1294595`; start `2026-08-22 01:37:36 KST`, restart count `0` |
+| latest backup | `runtime-v2-storage-20260823T135639Z`, service 정지 중 durable/workspace state 5개, `0700/0600` |
+| latest restart | PID `88057`; start `2026-08-23 22:57:01 KST`, restart count `0` |
 | issue | [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18), [Issue #19](https://github.com/HardcoreMonk/codexmux/issues/19), [Issue #20](https://github.com/HardcoreMonk/codexmux/issues/20) |
-| 운영 handoff | `operations/2026-08-22-live-verification-maintenance-handoff.md` |
+| 운영 handoff | `operations/2026-08-23-navigation-selection-clarity-handoff.md` |
 
 Browser 인증 설정 뒤 `HOST=0.0.0.0` unit을 다시 시작해 실제 외부 listener를
 활성화했습니다. 승인된 Phase 3 배포에서 governance write gate도 활성화했고 CLI token 기반
@@ -131,6 +133,10 @@ Browser 인증 설정 뒤 `HOST=0.0.0.0` unit을 다시 시작해 실제 외부 
 통과해 ADR-031과 ADR-032는 `Verified`입니다.
 Annotation-aware pagination build `322ccfb7` 배포 뒤에는 실제 pinned/tag 조건에서
 `results=1`, `total=1`, no cursor와 조건 일치를 확인하고 Phase 6 12-check를 다시 통과했습니다.
+Navigation build `a6a49588` 배포 뒤에는 Workspace/Sessions/Governance current state,
+Session/Managed Project selection, mobile 48px target과 console error 0건을 실제 browser에서
+확인했습니다. Governance lifecycle은 236 evidence를 HTTP 200으로 반환하고 worker counter도
+clean입니다.
 
 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)의 acceptance를 충족한
 fresh Windows 검증:
@@ -217,6 +223,7 @@ Electron profile의 1회 재로그인과 재연결은 별도 후속 근거가 �
 | Linux Session Operations/Project Governance | 완료: 구현·live 배포·restart·Issue #18 종료와 301초·11회 동일 세션 재연결 관찰. ADR-031 `Verified` |
 | Governed Project Scaffold Phase 3 | 완료: `9d32d049` live 배포, write gate 활성화, private backup, scaffold/Linux/browser/Phase 6 smoke와 Issue #19 근거 확보 |
 | Governed unmarked adoption | 완료: `f46410b4` live 배포와 실제 `codexmux` Managed Project의 `AGENTS.md` adoption preview/confirm/rollback. ADR-032 `Verified` |
+| Navigation Selection Clarity | 완료: `a6a49588` live 배포, desktop/mobile App Area current state, entity selection, terminal/reconnect 10-check와 Phase 6 12-check 통과 |
 
 ## 비차단 항목
 
@@ -227,7 +234,7 @@ Electron profile의 1회 재로그인과 재연결은 별도 후속 근거가 �
 | Artifact scanner enumeration hardening | 현재 writer는 lowercase regular `.json`만 생성합니다. 대소문자 확장자와 symlink를 명시적으로 거부하는 방어 강화는 후속 비차단 작업입니다. |
 | Browser setup과 외부 bind | fresh config는 local setup 상태입니다. 사용자 비밀번호 설정과 loopback 밖의 bind는 별도 운영 선택이며 현재 engine health blocker가 아닙니다. |
 | Session Catalog filter total | 완료: `0.4.24` live 배포 뒤 annotation selection이 적용된 실제 pinned/tag filter에서 `results=1`, `total=1`, no cursor와 조건 일치를 확인했습니다. |
-| npm `0.4.24` release gate | 2026-08-22 사용자가 package version, registry publish와 live service 갱신을 승인했습니다. Remote tag/GitHub Windows Release와 Trusted Publisher는 별도 gate입니다. |
+| npm `0.4.24` release gate | Source/package version과 Linux live service는 `0.4.24`입니다. Registry publish는 수행하지 않아 public `latest`는 확인 기준 `0.4.23`이며 remote tag/GitHub Windows Release와 Trusted Publisher도 별도 gate입니다. |
 | Local `v0.4.23` tag | Registry `gitHead`와 같은 `ef27e297`을 유지하되 remote에 게시하거나 이동하지 않습니다. 다음 release는 새 version/tag를 사용합니다. |
 
 ## 별도 lifecycle이 필요한 후속 범위

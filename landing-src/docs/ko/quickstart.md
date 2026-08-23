@@ -55,9 +55,11 @@ Production build와 장기 실행은 [설치](/codexmux/ko/docs/installation/)�
 3. 외부 access가 필요하면 setup 완료 후 `HOST` 범위를 명시하고 service를 재시작합니다.
 4. workspace를 만들고 **Codex** tab을 엽니다.
 
-Codex tab은 Runtime v2 Terminal Worker와 Linux tmux adapter를 사용합니다. **Sessions**에서는
-과거 session 검색·replay·annotation을, **Governance**에서는 승인한 project의 guidance,
-knowledge, lifecycle과 audit read model을 확인할 수 있습니다.
+Codex tab은 Runtime v2 Terminal Worker와 Linux tmux adapter를 사용합니다. 화면의 고정 1차
+탐색에서 **워크스페이스**, **세션**, **거버넌스**를 전환합니다. **세션**에서는 과거 session
+검색·replay·annotation을, **거버넌스**에서는 승인한 project의 guidance, knowledge, lifecycle과
+audit read model을 확인할 수 있습니다. Workspace 내부 **활동**은 Session Catalog와 다른 운영
+context입니다.
 
 ## 선택 client와 Windows package
 

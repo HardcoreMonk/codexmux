@@ -12,8 +12,9 @@ Codex-owned source logs.
 
 ## Open Session Explorer
 
-Open `/sessions` after signing in. The page shows Timeline Worker health, catalog freshness, saved
-filters, search controls, results, and the Session replay drawer.
+After signing in, select **Sessions** in the fixed primary navigation. Its route is `/sessions`. The
+page shows Timeline Worker health, catalog freshness, saved filters, search controls, results, and the
+Session replay drawer. **Activity** under Workspace is a separate live-status context, not this catalog.
 
 You can filter by:
 

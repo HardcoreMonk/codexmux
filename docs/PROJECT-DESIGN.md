@@ -10,14 +10,15 @@ Runtime v2 worker, tmux, Codex CLI/JSONL, app-owned DB와 등록된 project read
 Windows installer/updater는 보존된 별도 배포면이며 이번 Session Operations와 Project
 Governance acceptance를 대체하지 않습니다.
 
-2026-08-22 현재 live app build commit `322ccfb7`, version `0.4.24`가 `HOST=0.0.0.0`, port `8122`의
+2026-08-23 현재 live app build commit `a6a49588`, version `0.4.24`가 `HOST=0.0.0.0`, port `8122`의
 `systemd --user` service로 배포되어 실제 `0.0.0.0:8122` listener와 구성된 browser 인증을
 제공합니다. `CODEXMUX_GOVERNANCE_WRITES=1`이 systemd drop-in에서 활성화됐고 Governance
 `writeState=ready`입니다. 실제 restart, Managed Project adoption/rollback, Session Catalog
 rebuild/search/replay/annotation과 같은 live session의 301초·11회 재연결 관찰을 통과했습니다.
 관찰 직후 Runtime v2 10-check와 Phase 6 12-check도 통과해 ADR-031과 ADR-032는
 `Verified`입니다. Annotation-aware pagination 배포 뒤 실제 pinned/tag 검색도 결과 1건과 exact
-total 1건으로 일치하고 Phase 6 gate를 다시 통과했습니다.
+total 1건으로 일치합니다. Navigation 배포에서는 terminal/reconnect 10-check, Phase 6 12-check,
+Governance lifecycle 236-evidence와 desktop/mobile browser gate를 통과했습니다.
 
 ## 구현 상태
 
@@ -38,6 +39,9 @@ total 1건으로 일치하고 Phase 6 gate를 다시 통과했습니다.
   project read, Knowledge Index와 versioned scaffold의 유일한 writer입니다. 쓰기는
   `CODEXMUX_GOVERNANCE_WRITES=1`에서만 열리고 제품 기본값은 off입니다. 현재 live Linux
   service는 승인된 systemd drop-in으로 이 gate를 활성화했습니다.
+- Workspace, Sessions, Governance는 고정된 1차 App Area입니다. Workspace 내부 Activity는
+  Session Catalog route와 다른 local context이며 utility surface에서는 어느 core area도 current로
+  표시하지 않습니다. Route, entity selection, disclosure와 focus는 각각 별도 상태를 사용합니다.
 - terminal과 Codex 입력 포커스의 `Ctrl+D`는 앱 단축키가 아니라 EOF/EOT로 전달합니다. Codex 입력 바 제출은 bracketed paste + Enter frame과 후속 Enter로 처리합니다.
 - 모바일 foreground 복귀 시 terminal/status/timeline/sync WebSocket은 stale `OPEN` 상태를 신뢰하지 않고 재연결할 수 있습니다.
 - 성능 최적화는 `/api/debug/perf` snapshot으로 계측한 뒤 좁게 적용합니다. timeline append/render, diff, stats는 기준 데이터를 바꾸지 않는 batch/memo/short cache를 우선합니다.
@@ -50,9 +54,9 @@ total 1건으로 일치하고 Phase 6 gate를 다시 통과했습니다.
   health smoke를 통과했습니다. Local `v0.4.23`은 registry `gitHead`와 같은 `ef27e297`을
   가리키지만 remote tag는 없습니다. 이 tag를 그대로 push하면 tag snapshot에 없는 release
   note를 요구하는 Windows release workflow가 실패하므로 원격 publish는 보류했습니다.
-  Trusted Publisher는 npm CLI 인증 만료로 등록하지 못했습니다. 2026-08-22 사용자가 최종
-  release gate를 열어 `0.4.24` package, registry와 live service 갱신을 승인했습니다. Remote
-  tag/GitHub Windows Release와 Trusted Publisher 등록은 이번 local npm publish와 분리합니다.
+  Trusted Publisher는 npm CLI 인증 만료로 등록하지 못했습니다. `0.4.24` source와 Linux live
+  service는 검증·배포됐지만 registry publish는 수행하지 않아 public `latest`는 계속 `0.4.23`입니다.
+  Remote tag/GitHub Windows Release와 Trusted Publisher 등록도 별도 배포면으로 유지합니다.
 - Public 랜딩과 사용자 가이드는 Eleventy로 `_site/`를 만들고 GitHub Pages
   `https://hardcoremonk.github.io/codexmux/`에 배포합니다. 메인 제품 정보 구조는 Session
   Operations, Live Session Control, Project Governance, Runtime Operations를 기준으로 하며,
@@ -78,6 +82,7 @@ total 1건으로 일치하고 Phase 6 gate를 다시 통과했습니다.
 | session catalog | `src/lib/session-catalog/` | session metadata, bounded message search와 rebuildable index |
 | project governance | `src/lib/governance/` | approved root, knowledge read model, scaffold preview/transaction/복구 |
 | project lifecycle | `src/lib/project-lifecycle/` | project-local artifact discovery, stage derivation과 lint |
+| app navigation | `src/lib/app-navigation.ts`, `src/components/layout/app-area-navigation.tsx` | route 기반 App Area와 desktop/mobile current-state projection |
 | status | `src/lib/status-manager.ts` | tab state, polling, Web Push, WebSocket broadcast |
 | bootstrap security | `src/lib/server-bootstrap.ts`, `src/lib/request-authority.ts` | strict auth state, startup exposure, Host/Origin admission |
 | install admission | `src/lib/install-request-auth.ts`, `src/lib/install-server.ts` | typed install auth, atomic PTY slot, setup lease, bounded I/O |
@@ -109,9 +114,10 @@ sanitized governance audit는 `runtime-v2/state.db`의 durable state입니다. K
 일반 API 응답에는 root/project canonical path를 포함하지 않습니다.
 
 2026-08-22 live rebuild는 `~/.codex/sessions`의 JSONL 26개에서 18개 session을 index했고,
-검색과 11-entry replay, pin/tag 저장 및 filter를 확인했습니다. Pin/tag filter는 결과 1개를
-정확히 반환하지만 pagination `total`이 filter 전 18로 남는 결함이 있어 별도 lifecycle
-수정 대상으로 추적합니다.
+검색과 11-entry replay, pin/tag 저장 및 filter를 확인했습니다. Annotation-aware pagination
+배포 뒤 pin/tag filter는 `results=1`, exact `total=1`, no cursor로 조건과 일치합니다.
+Project Lifecycle snapshot은 project document response와 같은 maximum 2,000 evidence로 bounded하며
+현재 등록 project의 236개 evidence가 HTTP 200으로 검증됐습니다.
 
 Governed scaffold는 `AGENTS.md`, `CONTEXT.md`, 조건부 `DESIGN.md`와 세 `docs/agents/` 문서를
 버전 고정 catalog에서 render합니다. Existing unmarked file은 자동 채택하지 않습니다. 첫
