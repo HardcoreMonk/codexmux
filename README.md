@@ -190,7 +190,8 @@ Pages route로 fallback하지 않습니다.
 - `codexwinmux`: 별도 productName/app id/data dir/updater channel을 소유하는 Windows 제품 line
 - Linux tmux/systemd: active runtime과 운영 surface
 - Electron/Windows package와 Android/macOS package: 선택 client 또는 역사적 release surface
-- `landing-src/docs/`: 기존 다국어 사용자 문서 보존 영역; 현재 제품 계약은 한국어·영어만 지원
+- `landing-src/`: Eleventy 기반 공개 home/docs 공통 shell, theme/search와 사용자 문서 source;
+  현재 제품 home 계약은 한국어·영어, 나머지 locale은 문서 URL 호환 snapshot
 
 ## 문서
 

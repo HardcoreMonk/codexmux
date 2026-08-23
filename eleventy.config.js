@@ -4,6 +4,7 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({ 'landing-src/style-docs.css': 'style-docs.css' });
   eleventyConfig.addPassthroughCopy({ 'landing-src/download.js': 'download.js' });
   eleventyConfig.addPassthroughCopy({ 'landing-src/docs.js': 'docs.js' });
+  eleventyConfig.addPassthroughCopy({ 'landing-src/site-shell.js': 'site-shell.js' });
 
   eleventyConfig.setServerOptions({
     port: 8181,

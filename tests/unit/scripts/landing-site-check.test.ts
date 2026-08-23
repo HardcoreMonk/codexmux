@@ -154,4 +154,46 @@ describe('landing site artifact check', () => {
       }],
     })).rejects.toThrow('forbidden landing content');
   });
+
+  it('enforces the shared site shell contract on generated pages', async () => {
+    const { checkLandingSite } = await loadLib();
+    await writeValidSite();
+
+    await write('index.html', `
+      <link rel="canonical" href="https://hardcoremonk.github.io/codexmux/">
+      <header data-site-header>
+        <button data-theme-cycle>Auto</button>
+        <button data-site-menu>Menu</button>
+      </header>
+      <picture><source srcset="/codexmux/images/hero-engine.webp"></picture>
+    `);
+
+    await expect(checkLandingSite({
+      siteDir,
+      canonicalBase: 'https://hardcoremonk.github.io/codexmux',
+      requiredPaths: ['index.html'],
+      contentContracts: [{
+        path: 'index.html',
+        includes: ['data-site-header', 'data-theme-cycle', 'data-site-menu', 'hero-engine.webp'],
+        excludes: ['swiper-bundle'],
+      }],
+    })).resolves.toMatchObject({ contentContracts: 1 });
+
+    await write('index.html', `
+      <link rel="canonical" href="https://hardcoremonk.github.io/codexmux/">
+      <header data-site-header><button data-theme-cycle>Auto</button></header>
+      <script src="swiper-bundle.js"></script>
+    `);
+
+    await expect(checkLandingSite({
+      siteDir,
+      canonicalBase: 'https://hardcoremonk.github.io/codexmux',
+      requiredPaths: ['index.html'],
+      contentContracts: [{
+        path: 'index.html',
+        includes: ['data-site-menu'],
+        excludes: ['swiper-bundle'],
+      }],
+    })).rejects.toThrow('missing required landing content');
+  });
 });

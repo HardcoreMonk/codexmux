@@ -1,93 +1,109 @@
 {% set copy = landingProduct[lang] %}
-<nav class="nav product-nav" aria-label="Primary navigation">
-  <a href="#top" class="nav-brand">
-    <svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
-    <span class="wordmark"><strong>codex</strong>mux</span>
-  </a>
-  <div class="nav-links">
-    <a href="#capabilities">{{ copy.nav.capabilities }}</a>
-    <a href="#workflow">{{ copy.nav.workflow }}</a>
-    <a href="#boundary">{{ copy.nav.boundary }}</a>
-    <a href="#architecture">{{ copy.nav.architecture }}</a>
-    <a href="#install">{{ copy.nav.install }}</a>
-  </div>
-  <div class="nav-spacer"></div>
-  <a href="{% if lang == 'ko' %}/codexmux/ko/docs/{% else %}/codexmux/docs/{% endif %}" class="nav-docs">{{ copy.nav.docs }}</a>
-  <details class="nav-lang">
-    <summary aria-label="{% if lang == 'ko' %}언어 선택{% else %}Choose language{% endif %}"><span class="lang-current">{{ copy.langLabel }}</span><span aria-hidden="true">⌄</span></summary>
-    <div class="lang-menu" role="menu">
-      <a href="/codexmux/" class="lang-opt{% if lang == 'en' %} is-active{% endif %}" lang="en" hreflang="en"{% if lang == 'en' %} aria-current="page"{% endif %}>English</a>
-      <a href="/codexmux/ko/" class="lang-opt{% if lang == 'ko' %} is-active{% endif %}" lang="ko" hreflang="ko"{% if lang == 'ko' %} aria-current="page"{% endif %}>한국어</a>
-    </div>
-  </details>
-  <a href="#install" class="nav-cta">{{ copy.nav.start }}</a>
-</nav>
-
-<main id="top" class="product-home">
-  <section class="product-hero">
-    <div class="product-hero-copy">
-      <div class="hero-eyebrow">{{ copy.hero.eyebrow }}</div>
-      <h1>{% for line in copy.hero.title %}<span>{{ line }}</span>{% endfor %}</h1>
-      <p class="product-hero-lead">{{ copy.hero.description }}</p>
-      <div class="product-hero-actions">
-        <div class="install-cmd"><span class="prompt">$</span><code>{{ copy.installCommand }}</code><button class="copy-btn" type="button" aria-label="{% if lang == 'ko' %}설치 명령 복사{% else %}Copy install command{% endif %}" onclick="(function(b){navigator.clipboard.writeText('{{ copy.installCommand }}');b.classList.add('copied');b.textContent='✓';setTimeout(function(){b.classList.remove('copied');b.textContent='⧉';},1800);})(this)">⧉</button></div>
-        <a class="btn-primary" href="{% if lang == 'ko' %}/codexmux/ko/docs/quickstart/{% else %}/codexmux/docs/quickstart/{% endif %}">{{ copy.hero.guide }}</a>
+<main id="content" class="ocx-home">
+  <section class="ocx-hero" aria-labelledby="hero-title">
+    <picture class="ocx-hero-art" aria-hidden="true">
+      <source srcset="{{ assetPrefix }}images/hero-engine.webp" type="image/webp" />
+      <img src="{{ assetPrefix }}images/hero-engine.png" alt="{{ copy.hero.artworkAlt }}" width="1717" height="916" fetchpriority="high" />
+    </picture>
+    <div class="ocx-hero-shade" aria-hidden="true"></div>
+    <div class="ocx-hero-copy">
+      <p class="ocx-kicker">{{ copy.hero.eyebrow }}</p>
+      <h1 id="hero-title">{{ copy.hero.title }}</h1>
+      <p class="ocx-hero-lead">{{ copy.hero.description }}</p>
+      <div class="ocx-hero-actions">
+        <a class="ocx-button ocx-button--primary" href="{% if lang == 'ko' %}/codexmux/ko/docs/quickstart/{% else %}/codexmux/docs/quickstart/{% endif %}">{{ copy.hero.primaryAction }} <span aria-hidden="true">→</span></a>
+        <a class="ocx-button ocx-button--glass" href="https://github.com/HardcoreMonk/codexmux" target="_blank" rel="noopener">{{ copy.hero.secondaryAction }}</a>
       </div>
-      <div class="product-proof" aria-label="Product properties">{% for item in copy.hero.proof %}<span><i aria-hidden="true"></i>{{ item }}</span>{% endfor %}</div>
-      <p class="product-integration-note">{{ copy.hero.integration }}</p>
+      <div class="ocx-hero-chips" aria-label="Product areas">{% for chip in copy.hero.chips %}<span>{{ chip }}</span>{% endfor %}</div>
+      <p class="ocx-hero-note">{{ copy.hero.note }}</p>
+    </div>
+  </section>
+
+  <section class="ocx-quickstart" aria-labelledby="quickstart-title">
+    <div class="ocx-quickstart-copy">
+      <p class="ocx-kicker">{{ copy.quickstart.eyebrow }}</p>
+      <h2 id="quickstart-title">{% for line in copy.quickstart.title %}<span>{{ line }}</span>{% endfor %}</h2>
+      <p>{{ copy.quickstart.description }}</p>
+      <div class="ocx-version-note"><span>{{ copy.quickstart.versionNote }}</span><strong>codexmux@{{ copy.publicVersion }}</strong><small>source/live {{ copy.sourceVersion }}</small></div>
+    </div>
+    <div class="ocx-terminal-card">
+      <div class="ocx-terminal-bar"><span></span><span></span><span></span><strong>bash</strong></div>
+      <pre>{% for line in copy.quickstart.lines %}<code><b>$</b> {{ line.command }} <em># {{ line.note }}</em></code>{% endfor %}</pre>
+      <button type="button" class="ocx-copy" data-copy-text="{{ copy.installCommand }}" aria-label="{% if lang == 'ko' %}설치 명령 복사{% else %}Copy install command{% endif %}">⧉</button>
+      <a href="{% if lang == 'ko' %}/codexmux/ko/docs/quickstart/{% else %}/codexmux/docs/quickstart/{% endif %}">{{ copy.quickstart.guide }} <span aria-hidden="true">→</span></a>
+    </div>
+  </section>
+
+  <section class="ocx-proof" aria-labelledby="proof-title">
+    <div class="ocx-section-heading">
+      <p class="ocx-kicker">{{ copy.proof.eyebrow }}</p>
+      <h2 id="proof-title">{{ copy.proof.title }}</h2>
+      <p>{{ copy.proof.description }}</p>
     </div>
 
-    <div class="product-preview" aria-label="{% if lang == 'ko' %}제품 기능 예시{% else %}Product capability preview{% endif %}">
-      <div class="product-preview-bar"><span class="preview-brand">codexmux</span><span class="preview-engine"><i aria-hidden="true"></i>{{ copy.preview.engine }}</span><span class="preview-ready">{{ copy.preview.ready }}</span></div>
-      <div class="product-preview-grid">
-        <div class="preview-panel preview-sessions">
-          <div class="preview-panel-head"><span>{{ copy.preview.sessions }}</span><span class="preview-count">2</span></div>
-          <div class="preview-search">⌕ <span>{{ copy.preview.search }}</span></div>
-          <div class="preview-result-list">{% for result in copy.preview.results %}<div class="preview-result{% if loop.first %} is-active{% endif %}"><div><span class="preview-project">{{ result.project }}</span><span class="preview-result-state">{{ result.state }}</span></div><strong>{{ result.title }}</strong><small>{{ result.meta }}</small></div>{% endfor %}</div>
-        </div>
-        <div class="preview-panel preview-governance">
-          <div class="preview-panel-head"><span>{{ copy.preview.governance }}</span><span class="preview-state">{{ copy.preview.writeState }}</span></div>
-          <div class="preview-project-title">{{ copy.preview.project }}</div>
-          <div class="preview-document-list">{% for document in copy.preview.documents %}<div><span>{{ document.name }}</span><small>{{ document.state }}</small></div>{% endfor %}</div>
-          <div class="preview-action"><span aria-hidden="true">◇</span>{{ copy.preview.action }}</div>
-        </div>
+    <div class="ocx-app-frame" role="img" aria-label="{% if lang == 'ko' %}Workspace, Sessions, Governance의 선택 상태가 구분된 codexmux 제품 화면 예시{% else %}codexmux product preview with distinct Workspace, Sessions and Governance selection states{% endif %}">
+      <div class="ocx-app-topbar" aria-hidden="true">
+        <span class="ocx-app-brand"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>codexmux</span>
+        <nav aria-label="App areas">{% for area in copy.preview.areas %}<span{% if area == 'Sessions' %} class="is-current" aria-current="page"{% endif %}>{{ area }}</span>{% endfor %}</nav>
+        <span class="ocx-worker-state"><i aria-hidden="true"></i>{{ copy.preview.ready }}</span>
+      </div>
+      <div class="ocx-app-grid" aria-hidden="true">
+        <aside class="ocx-app-sidebar">
+          <div class="ocx-preview-label">Session Catalog</div>
+          <div class="ocx-preview-search">⌕ <span>{{ copy.preview.search }}</span></div>
+          <div class="ocx-preview-filter">{{ copy.preview.filter }}</div>
+          {% for result in copy.preview.results %}<article{% if loop.first %} class="is-selected"{% endif %}><div><span>{{ result.project }}</span><em>{{ result.state }}</em></div><strong>{{ result.title }}</strong><small>{{ result.meta }}</small></article>{% endfor %}
+        </aside>
+        <section class="ocx-app-replay">
+          <header><div><span>{{ copy.preview.replay }}</span><strong>{{ copy.preview.replayTitle }}</strong></div><span>•••</span></header>
+          <div class="ocx-timeline">{% for item in copy.preview.timeline %}<div><i aria-hidden="true"></i><span>{{ item }}</span><small>0{{ loop.index }}:2{{ loop.index }}</small></div>{% endfor %}</div>
+          <div class="ocx-command-line"><span>$</span><code>corepack pnpm test</code><strong>{{ copy.preview.checks }}</strong></div>
+        </section>
+        <aside class="ocx-app-context">
+          <div class="ocx-preview-label">{{ copy.preview.context }}</div>
+          <strong>{{ copy.preview.project }}</strong>
+          <div>{% for document in copy.preview.documents %}<span>{{ document }}</span>{% endfor %}</div>
+          <p>◇ {{ copy.preview.guarded }}</p>
+        </aside>
       </div>
     </div>
+    <p class="ocx-proof-caption">{{ copy.proof.caption }}</p>
   </section>
 
-  <section id="capabilities" class="product-section">
-    <div class="eyebrow">{{ copy.pillarsEyebrow }}</div><h2>{{ copy.pillarsTitle }}</h2><p class="lead">{{ copy.pillarsLead }}</p>
-    <div class="product-pillar-grid">{% for pillar in copy.pillars %}<article class="product-pillar"><div class="product-pillar-index">{{ pillar.index }}</div><h3>{{ pillar.name }}</h3><p>{{ pillar.description }}</p><ul>{% for feature in pillar.features %}<li>{{ feature }}</li>{% endfor %}</ul><a href="{{ pillar.href }}">{{ pillar.link }} <span aria-hidden="true">→</span></a></article>{% endfor %}</div>
+  <section class="ocx-capabilities" aria-labelledby="capabilities-title">
+    <div class="ocx-section-heading">
+      <p class="ocx-kicker">{{ copy.capabilities.eyebrow }}</p>
+      <h2 id="capabilities-title">{{ copy.capabilities.title }}</h2>
+      <p>{{ copy.capabilities.description }}</p>
+    </div>
+    <div class="ocx-bento">
+      {% for card in copy.capabilities.cards %}
+      <article class="ocx-bento-card ocx-bento-card--{{ card.key }}{% if card.size %} is-{{ card.size }}{% endif %}">
+        <div class="ocx-card-label"><span aria-hidden="true">{% if card.key == 'sessions' %}⌕{% elif card.key == 'governance' %}◇{% elif card.key == 'workspace' %}▦{% elif card.key == 'reconnect' %}↻{% elif card.key == 'runtime' %}⌁{% elif card.key == 'guarded' %}□{% elif card.key == 'local' %}◉{% else %}文{% endif %}</span>{{ card.label }}</div>
+        <h3>{{ card.title }}</h3>
+        <p>{{ card.text }}</p>
+        <div class="ocx-card-visual" aria-hidden="true">
+          {% if card.key == 'sessions' %}<span class="ocx-mini-search">⌕ project:codexmux tag:release</span><span class="ocx-mini-row is-active"><i></i> Navigation clarity <b>Pinned</b></span><span class="ocx-mini-row"><i></i> Runtime recovery <b>Replay</b></span>
+          {% elif card.key == 'governance' %}<span>AGENTS.md <b>Guidance</b></span><span>CONTEXT.md <b>Indexed</b></span><span>Lifecycle <b>Operate</b></span><em>Preview required before write</em>
+          {% elif card.key == 'workspace' %}<span><i class="is-busy"></i>Busy</span><span><i class="is-input"></i>Needs input</span><span><i class="is-done"></i>Completed</span>
+          {% elif card.key == 'reconnect' %}<span>terminal</span><i>→</i><span>reconnect</span><i>→</i><strong>same session</strong>
+          {% elif card.key == 'runtime' %}<span>Terminal <i></i></span><span>Timeline <i></i></span><span>Storage <i></i></span><span>Governance <i></i></span>
+          {% elif card.key == 'guarded' %}<span>Preview</span><i>→</i><span>Confirm</span><i>→</i><span>Journal</span><i>→</i><strong>Rollback</strong>
+          {% elif card.key == 'local' %}<code>runtime-v2/state.db</code><code>session-catalog/index.db</code><code>governance/index.db</code>
+          {% else %}<strong>한국어</strong><i>/</i><strong>English</strong><span>focus-visible · reduced-motion · 44px</span>{% endif %}
+        </div>
+        {% if card.href %}<a href="{{ card.href }}">{{ card.link }} <span aria-hidden="true">→</span></a>{% endif %}
+      </article>
+      {% endfor %}
+    </div>
   </section>
 
-  <section id="workflow" class="product-section product-workflow-section">
-    <div class="eyebrow teal">{{ copy.workflowEyebrow }}</div><h2>{{ copy.workflowTitle }}</h2>
-    <div class="product-workflow">{% for item in copy.workflow %}<article><span class="workflow-step">{{ item.step }}</span><h3>{{ item.title }}</h3><p>{{ item.text }}</p></article>{% endfor %}</div>
+  <section class="ocx-doc-map" aria-labelledby="docs-title">
+    <div class="ocx-section-heading">
+      <p class="ocx-kicker">{{ copy.docs.eyebrow }}</p>
+      <h2 id="docs-title">{{ copy.docs.title }}</h2>
+    </div>
+    <div class="ocx-doc-grid">{% for group in copy.docs.groups %}<div><h3>{{ group.title }}</h3><ul>{% for link in group.links %}<li><a href="{{ link.href }}">{{ link.label }}</a></li>{% endfor %}</ul></div>{% endfor %}</div>
+    <a class="ocx-doc-action" href="{% if lang == 'ko' %}/codexmux/ko/docs/{% else %}/codexmux/docs/{% endif %}">{{ copy.docs.action }} <span aria-hidden="true">→</span></a>
   </section>
-
-  <section id="boundary" class="product-section product-boundary-section">
-    <div class="eyebrow amber">{{ copy.boundaryEyebrow }}</div><h2>{{ copy.boundaryTitle }}</h2><p class="lead">{{ copy.boundaryLead }}</p>
-    <div class="capability-state-grid">{% for group in copy.capabilityGroups %}<article class="capability-state capability-state--{{ group.tone }}"><div class="capability-state-head"><i aria-hidden="true"></i><h3>{{ group.state }}</h3></div><p>{{ group.description }}</p><ul>{% for item in group.items %}<li>{{ item }}</li>{% endfor %}</ul></article>{% endfor %}</div>
-  </section>
-
-  <section id="architecture" class="product-section">
-    <div class="eyebrow coral">{{ copy.architectureEyebrow }}</div><h2>{{ copy.architectureTitle }}</h2><p class="lead">{{ copy.architectureLead }}</p>
-    <div class="product-architecture">{% for layer in copy.architecture %}<div class="architecture-node"><span>{{ layer.label }}</span><strong>{{ layer.title }}</strong><small>{{ layer.detail }}</small></div>{% if not loop.last %}<div class="architecture-arrow" aria-hidden="true">↓</div>{% endif %}{% endfor %}</div>
-  </section>
-
-  <section id="install" class="product-section product-install-section">
-    <div class="product-install-copy"><div class="eyebrow teal">{{ copy.installEyebrow }}</div><h2>{{ copy.installTitle }}</h2><p class="lead">{{ copy.installLead }}</p><p class="install-open">{{ copy.openBrowser }}</p><div class="product-link-row"><a href="{% if lang == 'ko' %}/codexmux/ko/docs/installation/{% else %}/codexmux/docs/installation/{% endif %}">{{ copy.installGuide }} <span aria-hidden="true">→</span></a><a href="{% if lang == 'ko' %}/codexmux/ko/docs/linux-service/{% else %}/codexmux/docs/linux-service/{% endif %}">{{ copy.serviceGuide }} <span aria-hidden="true">→</span></a></div></div>
-    <div class="product-install-terminal"><div><span></span><span></span><span></span></div><pre><code><b>$</b> {{ copy.installCommand }}
-
-  codexmux  http://127.0.0.1:8122
-  runtime   Linux single-engine
-  status    ready</code></pre></div>
-  </section>
-
-  <section id="docs" class="product-section">
-    <div class="eyebrow">{{ copy.docsEyebrow }}</div><h2>{{ copy.docsTitle }}</h2>
-    <div class="product-doc-grid">{% for card in copy.docsCards %}<a href="{{ card.href }}"><strong>{{ card.title }}</strong><span>{{ card.text }}</span><em>{{ card.link }} →</em></a>{% endfor %}</div>
-  </section>
-
-  <section class="product-closing"><div><h2>{{ copy.closingTitle }}</h2><p>{{ copy.closingText }}</p></div><a class="btn-primary" href="{% if lang == 'ko' %}/codexmux/ko/docs/{% else %}/codexmux/docs/{% endif %}">{{ copy.closingAction }}</a></section>
 </main>
