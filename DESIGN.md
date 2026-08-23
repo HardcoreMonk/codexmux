@@ -20,6 +20,21 @@ codexmux UI는 Codex CLI 작업을 오래 켜 두고 반복적으로 확인하�
 - Terminal, timeline, status, approval, stats는 사용자가 빠르게 상태를 판단할 수
   있게 가까운 곳에 배치합니다.
 
+### 공개 사이트 예외
+
+`landing-src/`의 공개 홈페이지와 문서는 제품 runtime UI가 아니라 제품을 설명하는 projection
+surface입니다. 홈페이지는 첫 방문자가 설치와 운영 영역을 빠르게 찾을 수 있도록 다음 시각
+문법을 사용할 수 있습니다.
+
+- Home/docs 공통 floating header와 grouped navigation
+- 제품 경계를 설명하는 단일 image-led hero와 code-native product preview
+- quickstart terminal, capability bento, docs map
+- Auto, Light, Dark theme와 한국어·영어 제품 home
+
+이 예외는 앱 화면의 marketing hero 금지를 완화하지 않습니다. 공개 사이트의 장식 자산도 제품
+의미를 전달해야 하며, 제3자 문구·코드·로고·screenshot을 복제하거나 실제 사용자 데이터처럼
+보이는 값을 사용하지 않습니다.
+
 ## 토큰과 색상
 
 색상은 상태 의미를 구분하는 데만 강하게 사용합니다.

@@ -2,13 +2,25 @@
 {%- set t = i18n[loc] %}
 {%- set docsBasePath = '/docs/' if loc == 'en' else '/' + loc + '/docs/' %}
 {%- set docsUrlPrefix = '/codexmux' + docsBasePath %}
-{%- set landingUrl = '/codexmux/' if loc == 'en' else '/codexmux/' + loc + '/' %}
 {%- set currentGuide = docsNav | findDocsItem(page.fileSlug) %}
 <!DOCTYPE html>
 <html lang="{{ loc }}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>
+    (function () {
+      var preference = 'auto';
+      try {
+        var stored = localStorage.getItem('codexmux-site-theme');
+        if (stored === 'light' || stored === 'dark') preference = stored;
+      } catch (_) {}
+      document.documentElement.dataset.themePreference = preference;
+      document.documentElement.dataset.theme = preference === 'auto'
+        ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : preference;
+    })();
+  </script>
   <title>{{ title }} — codexmux docs</title>
   <meta name="description" content="{{ description }}" />
   <meta property="og:title" content="{{ title }} — codexmux docs" />
@@ -17,9 +29,9 @@
   <meta property="og:url" content="{{ site.baseUrl }}{{ page.url }}" />
   <meta property="og:image" content="{{ site.baseUrl }}/images/og-image.png" />
   <link rel="canonical" href="{{ site.baseUrl }}{{ page.url }}" />
-{%- for l in locales %}
-{%- if not currentGuide or currentGuide | guideAvailable(l.code) %}
-  <link rel="alternate" hreflang="{{ l.htmlLang }}" href="{{ site.baseUrl }}{{ page.url | localizeDocsUrl(l.code) | replace('/codexmux', '') }}" />
+{%- for language in locales %}
+{%- if not currentGuide or currentGuide | guideAvailable(language.code) %}
+  <link rel="alternate" hreflang="{{ language.htmlLang }}" href="{{ site.baseUrl }}{{ page.url | localizeDocsUrl(language.code) | replace('/codexmux', '') }}" />
 {%- endif %}
 {%- endfor %}
   <link rel="alternate" hreflang="x-default" href="{{ site.baseUrl }}{{ page.url | localizeDocsUrl('en') | replace('/codexmux', '') }}" />
@@ -27,7 +39,8 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/codexmux/images/favicon-32x32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="/codexmux/images/favicon-16x16.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/codexmux/images/apple-touch-icon.png" />
-  <meta name="theme-color" content="#131313" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f8f6" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0c0e0f" />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -35,57 +48,31 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&display=swap" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" />
   <link rel="stylesheet" href="/codexmux/style.css?v={{ site.assetVersion.css }}" />
-  <link rel="stylesheet" href="/codexmux/style-docs.css?v=8" />
+  <link rel="stylesheet" href="/codexmux/style-docs.css?v={{ site.assetVersion.docsCss }}" />
 </head>
 <body class="doc-body">
-  <nav class="doc-nav">
-    <a href="{{ landingUrl }}" class="doc-nav-brand">
-      <svg class="brand-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
-      <span class="wordmark"><strong>codex</strong>mux</span>
-      <span class="doc-nav-divider">/</span>
-      <span class="doc-nav-section">{{ t.docsBrand }}</span>
-    </a>
-    <div class="doc-nav-spacer"></div>
-    <button type="button" class="doc-search" data-doc-search aria-label="{{ t.searchLabel }}">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      <span>{{ t.searchLabel }}</span>
-      <kbd>⌘K</kbd>
-    </button>
-    <details class="doc-nav-lang">
-      <summary aria-label="{{ t.switcherAria }}">
-        <svg class="doc-nav-lang-globe" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-        <span class="doc-nav-lang-text">{{ t.langLabel }}</span>
-        <svg class="doc-nav-lang-chevron" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 4l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </summary>
-      <div class="doc-nav-lang-menu" role="menu">
-{%- for l in locales %}
-{%- if not currentGuide or currentGuide | guideAvailable(l.code) %}
-        <a href="{{ page.url | localizeDocsUrl(l.code) }}" lang="{{ l.htmlLang }}"{% if l.code == loc %} class="is-active"{% endif %}>{{ l.label }}</a>
-{%- endif %}
-{%- endfor %}
-      </div>
-    </details>
-    <a href="https://github.com/HardcoreMonk/codexmux" class="doc-nav-github" target="_blank" rel="noopener" aria-label="GitHub">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.69-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.18-3.09-.12-.29-.51-1.46.11-3.04 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.62 1.58.23 2.75.11 3.04.74.8 1.18 1.83 1.18 3.09 0 4.42-2.69 5.4-5.26 5.68.41.35.78 1.05.78 2.12 0 1.53-.01 2.77-.01 3.15 0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/></svg>
-    </a>
-  </nav>
+{%- set shellLocale = loc %}
+{%- set shellIsDocs = true %}
+{%- set shellSearchLabel = t.searchLabel %}
+{%- set shellSearchPlaceholder = t.searchPlaceholder %}
+{%- set shellSearchResultsLabel = t.searchLabel %}
+{%- set shellNavigateLabel = t.navigate %}
+{%- set shellOpenLabel = t.open %}
+{%- set shellCloseLabel = t.close %}
+{% include "chrome/site-header.njk" %}
 
   {%- set currentGroup = docsNav | findDocsGroup(page.fileSlug, loc) %}
   <div class="doc-mobile-header">
-    <button type="button" class="doc-menu-btn" data-sidebar-open aria-label="Menu" aria-controls="doc-sidebar" aria-expanded="false">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    <button type="button" class="doc-menu-btn" data-sidebar-open aria-label="{{ t.docsBrand }}" title="{{ t.docsBrand }}" aria-controls="doc-sidebar" aria-expanded="false">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11a2 2 0 0 1 2 2v15a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v17a2 2 0 0 1 2-2h2.5a2.5 2.5 0 0 1 2.5 2.5z"/></svg>
     </button>
     <nav class="doc-breadcrumb" aria-label="Breadcrumb">
-      {%- if currentGroup %}
-      <span class="doc-breadcrumb-group">{{ currentGroup }}</span>
-      <span class="doc-breadcrumb-sep">›</span>
-      {%- endif %}
+      {%- if currentGroup %}<span class="doc-breadcrumb-group">{{ currentGroup }}</span><span class="doc-breadcrumb-sep">›</span>{%- endif %}
       <span class="doc-breadcrumb-current">{{ title }}</span>
     </nav>
   </div>
 
   <div class="doc-sidebar-backdrop" data-sidebar-backdrop hidden></div>
-
   <div class="doc-shell">
     <aside class="doc-sidebar" id="doc-sidebar">
       <button type="button" class="doc-sidebar-close" data-sidebar-close aria-label="{{ t.close }}">
@@ -112,61 +99,26 @@
         <header class="doc-header">
           <div class="doc-eyebrow">{{ eyebrow or t.docsBrand }}</div>
           <h1 class="doc-title">{{ title }}</h1>
-          {%- if description %}
-          <p class="doc-subtitle">{{ description }}</p>
-          {%- endif %}
+          {%- if description %}<p class="doc-subtitle">{{ description }}</p>{%- endif %}
         </header>
+        <div class="doc-content" data-doc-content>{{ content | safe }}</div>
 
-        <div class="doc-content" data-doc-content>
-          {{ content | safe }}
-        </div>
-
-        {%- set nb = docsFlat | docsNeighbors(page.fileSlug, loc) %}
-        {%- if nb.prev or nb.next %}
+        {%- set neighbors = docsFlat | docsNeighbors(page.fileSlug, loc) %}
+        {%- if neighbors.prev or neighbors.next %}
         <nav class="doc-pagination" aria-label="{{ t.pagination }}">
-          {%- if nb.prev %}
-          <a href="{{ docsUrlPrefix }}{{ nb.prev.slug }}/" class="doc-pag-link doc-pag-prev">
-            <span class="doc-pag-dir">{{ t.previous }}</span>
-            <span class="doc-pag-title">{{ nb.prev.label[loc] or nb.prev.label.en }}</span>
-          </a>
-          {%- else %}
-          <span></span>
-          {%- endif %}
-          {%- if nb.next %}
-          <a href="{{ docsUrlPrefix }}{{ nb.next.slug }}/" class="doc-pag-link doc-pag-next">
-            <span class="doc-pag-dir">{{ t.next }}</span>
-            <span class="doc-pag-title">{{ nb.next.label[loc] or nb.next.label.en }}</span>
-          </a>
-          {%- endif %}
+          {%- if neighbors.prev %}<a href="{{ docsUrlPrefix }}{{ neighbors.prev.slug }}/" class="doc-pag-link doc-pag-prev"><span class="doc-pag-dir">{{ t.previous }}</span><span class="doc-pag-title">{{ neighbors.prev.label[loc] or neighbors.prev.label.en }}</span></a>{%- else %}<span></span>{%- endif %}
+          {%- if neighbors.next %}<a href="{{ docsUrlPrefix }}{{ neighbors.next.slug }}/" class="doc-pag-link doc-pag-next"><span class="doc-pag-dir">{{ t.next }}</span><span class="doc-pag-title">{{ neighbors.next.label[loc] or neighbors.next.label.en }}</span></a>{%- endif %}
         </nav>
         {%- endif %}
       </article>
 
-      <aside class="doc-toc" aria-label="{{ t.onThisPage }}">
-        <div class="doc-toc-label">{{ t.onThisPage }}</div>
-        <nav class="doc-toc-list" data-doc-toc></nav>
-      </aside>
+      <aside class="doc-toc" aria-label="{{ t.onThisPage }}"><div class="doc-toc-label">{{ t.onThisPage }}</div><nav class="doc-toc-list" data-doc-toc></nav></aside>
     </main>
   </div>
 
-  <div class="doc-search-overlay" data-search-overlay hidden>
-    <div class="doc-search-backdrop" data-search-close></div>
-    <div class="doc-search-modal" role="dialog" aria-modal="true" aria-labelledby="doc-search-label">
-      <div class="doc-search-field">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        <input type="search" class="doc-search-input" data-search-input placeholder="{{ t.searchPlaceholder }}" aria-label="{{ t.searchLabel }}" autocomplete="off" spellcheck="false" data-locale="{{ loc }}" />
-        <button type="button" class="doc-search-esc" data-search-close aria-label="{{ t.close }}">Esc</button>
-      </div>
-      <div class="doc-search-results" data-search-results role="listbox" aria-label="Search results"></div>
-      <div class="doc-search-footer">
-        <span><kbd>↑</kbd><kbd>↓</kbd> {{ t.navigate }}</span>
-        <span><kbd>↵</kbd> {{ t.open }}</span>
-        <span><kbd>Esc</kbd> {{ t.close }}</span>
-      </div>
-    </div>
-  </div>
-
+{% include "chrome/search-overlay.njk" %}
   <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js" defer></script>
-  <script src="/codexmux/docs.js?v=5" defer></script>
+  <script src="/codexmux/docs.js?v={{ site.assetVersion.docsJs }}" defer></script>
+  <script src="/codexmux/site-shell.js?v={{ site.assetVersion.siteShellJs }}" defer></script>
 </body>
 </html>

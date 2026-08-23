@@ -15,6 +15,11 @@ codexmux UI는 운영 도구입니다. 화면은 조용하고 밀도 있게 구�
 
 Theme token은 Tailwind CSS v4와 shadcn/ui conventions를 따릅니다. 새 색을 즉흥적으로 늘리지 않고 기존 token을 우선합니다.
 
+공개 사이트는 `data-theme-preference=auto|light|dark`와 resolved
+`data-theme=light|dark`를 사용합니다. 저장값이 없으면 system preference를 따르고, header의 theme
+control은 Auto → Light → Dark 순서로 순환합니다. 첫 paint 전에 resolved theme를 설정해 화면
+깜빡임을 줄입니다.
+
 ## 로케일과 타이포그래피
 
 - 기본 locale은 `ko`입니다.
@@ -57,11 +62,30 @@ Color는 상태 의미를 구분하는 데 사용합니다.
 - Utility route와 custom webview는 core app area를 거짓 current로 표시하지 않습니다.
 - Hover, selected와 focus-visible이 겹쳐도 selected marker와 focus ring이 모두 보여야 합니다.
 
+## 공개 홈페이지와 문서 shell
+
+- Homepage와 docs는 brand, grouped navigation, search, GitHub, theme, locale control을 공유합니다.
+- Desktop header는 floating pill을 사용하고, mobile은 search와 menu를 남긴 compact header로
+  전환합니다. Mobile target은 가능한 44px 이상이어야 합니다.
+- Homepage section 순서는 hero, quickstart, product proof, capability bento, docs map입니다.
+- Hero artwork는 한 장만 eager load하고 WebP 우선, PNG fallback을 제공합니다.
+- 제품 preview는 live API나 실제 session data를 쓰지 않는 code-native 설명 surface입니다.
+- Workspace, Sessions, Governance route와 entity selection, runtime status는 서로 다른 label,
+  surface, indicator로 표현합니다.
+- Docs는 desktop sidebar/TOC와 mobile drawer/breadcrumb를 유지하며 home과 같은 theme token을
+  소비합니다.
+- Search dialog는 keyboard shortcut, focus-visible, `Esc` 닫기와 trigger focus 복귀를 제공합니다.
+
 ## 차트 색상
 
 Chart는 비교 가능한 색 대비를 사용합니다. 같은 계열 shade만 반복하지 않습니다.
 
 ## 금지 장식
+
+아래 항목은 제품 runtime UI에 적용합니다. 공개 homepage는 위 공개 사이트 계약 안에서 단일
+hero와 framed 설명 surface를 사용할 수 있습니다. 공개 homepage의 display heading만 읽을 수
+있는 min/max가 있는 `clamp()`와 제한된 tight tracking을 사용할 수 있으며, control·본문·제품
+preview에는 적용하지 않습니다.
 
 - decorative orb
 - gradient blob

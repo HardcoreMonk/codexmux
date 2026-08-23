@@ -1,7 +1,10 @@
 module.exports = {
   baseUrl: 'https://hardcoremonk.github.io/codexmux',
   assetVersion: {
-    css: '73',
+    css: '74',
+    docsCss: '9',
+    docsJs: '6',
+    siteShellJs: '1',
     downloadJs: '1',
   },
   locales: [

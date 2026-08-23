@@ -60,9 +60,11 @@ Governance lifecycle 236-evidence와 desktop/mobile browser gate를 통과했습
 - Public 랜딩과 사용자 가이드는 Eleventy로 `_site/`를 만들고 GitHub Pages
   `https://hardcoremonk.github.io/codexmux/`에 배포합니다. 메인 제품 정보 구조는 Session
   Operations, Live Session Control, Project Governance, Runtime Operations를 기준으로 하며,
-  구현 완료·보호된 작업·현재 제외 범위를 분리합니다. Root 신규 핵심 guide는 English,
-  `/ko/`는 Korean을 제공하고 Pages artifact checker가 canonical, 내부 link와 product content
-  contract를 검증합니다.
+  구현 완료·보호된 작업·현재 제외 범위를 분리합니다. Home/docs는 floating header, global search,
+  Auto/Light/Dark theme와 mobile menu를 공유하고, homepage는 hero, quickstart, code-native product
+  proof, capability bento와 docs map 순서입니다. Root 신규 핵심 guide는 English, `/ko/`는 Korean을
+  제공하고 Pages artifact checker가 canonical, 내부 link, shared shell과 product content contract를
+  검증합니다.
 - Production dependency baseline은 Next `16.3.1`, next-intl `4.9.2`, ws `8.21.0`, js-yaml `4.2.0`과 제한된 PostCSS/Babel override이며 `pnpm audit --prod` 0건을 유지합니다.
 
 ## 주요 구성
@@ -91,7 +93,7 @@ Governance lifecycle 236-evidence와 desktop/mobile browser gate를 통과했습
 | upload storage | `src/lib/uploads-store.ts` | staged streaming, no-replace publish, committed/staged cleanup |
 | outer HTTP composition | `src/lib/server-http-dispatcher.ts`, `server.ts` | dev/prod upload 선점, Next fallback, signal drain |
 | npm distribution | `package.json`, `scripts/smoke-npm-package.mjs`, `.github/workflows/npm-publish.yml` | CLI tarball 계약, 격리 install/run smoke, OIDC publish |
-| public docs | `landing-src/`, `scripts/check-landing-site.mjs`, `.github/workflows/deploy-landing.yml` | GitHub Pages product home/가이드 build, canonical·link·content gate와 배포 |
+| public docs | `landing-src/`, `scripts/check-landing-site.mjs`, `.github/workflows/deploy-landing.yml` | GitHub Pages shared home/docs shell, theme/search, canonical·link·content gate와 배포 |
 | performance | `src/lib/perf-metrics.ts` | runtime metric, duration/counter, 인증된 성능 스냅샷 |
 | docs | `docs/ARCHITECTURE-LOGIC.md` | 서버와 서비스 로직의 최신 구현 기준 |
 

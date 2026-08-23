@@ -25,15 +25,25 @@ corepack pnpm build:landing
 corepack pnpm check:landing
 ```
 
-`check:landing`은 `_site/`의 필수 landing/docs/404/robots/sitemap/search artifact, GitHub Pages
-canonical URL, `/codexmux/` local link, path containment와 English/Korean product content
-contract를 검사합니다. Session Operations/Project Governance/Runtime Operations 핵심 용어가
-없거나 purplemux와 legacy mobile-primary claim이 current home에 다시 들어오면 실패합니다.
+`check:landing`은 `_site/`의 필수 landing/docs/404/robots/sitemap/search/shared-shell/hero artifact,
+GitHub Pages canonical URL, `/codexmux/` local link, path containment와 English/Korean product
+content contract를 검사합니다. Theme/search/mobile-menu hook 또는 Session Operations/Project
+Governance/Runtime Operations 핵심 용어가 없거나 Swiper, purplemux와 legacy mobile-primary
+claim이 current home에 다시 들어오면 실패합니다.
 Guide availability나 checker contract를 바꾸면 focused unit test를 함께 실행합니다.
 
 ```bash
 corepack pnpm exec vitest run tests/unit/scripts/landing-site-check.test.ts
 ```
+
+Public home/docs shell 변경은 Chromium에서 다음을 추가로 확인합니다.
+
+- Desktop/mobile, Light/Dark에서 horizontal overflow와 blocking page error 0건
+- Mobile menu와 docs drawer의 `aria-expanded`, `Esc` close
+- Auto → Light → Dark 순환, resolved theme와 localStorage persistence
+- Search dialog open, locale-scoped result, keyboard close와 trigger focus 복귀
+- Docs sidebar active item 정확히 1개
+- Hero image, quickstart, product proof, bento와 docs map의 순서와 text contrast
 
 ## npm 실행 package 게이트
 

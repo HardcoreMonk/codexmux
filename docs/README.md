@@ -48,6 +48,7 @@ snapshot이고 완성된 번역으로 보지 않습니다. 작성,
 | `operations/2026-08-21-github-pages-product-redesign-handoff.md` | Session Operations/Project Governance 중심 Pages 재설계, 실배포와 service restart 증거 |
 | `operations/2026-08-22-live-verification-maintenance-handoff.md` | 실제 Managed Project/Session Catalog 검증, 301초 재연결 관찰, release·Dependabot 유지보수 결과 |
 | `operations/2026-08-23-navigation-selection-clarity-handoff.md` | Workspace/Sessions/Governance 탐색 명료화, lifecycle IPC hotfix, live 배포와 rollback 기준 |
+| `operations/2026-08-24-public-site-opencodex-renewal-handoff.md` | Public home/docs 공통 shell 리뉴얼, local 검증과 보류된 Pages release 경계 |
 
 보존된 Windows stable release `v0.4.22`는 같은 hostname의 Purplemux와 동시 실행하기 위한 cookie namespace 수정을
 포함하고 fresh Windows package/published updater와 privacy gate를 통과해 stable/latest로

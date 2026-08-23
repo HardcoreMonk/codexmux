@@ -92,11 +92,15 @@
     index: null,
     focused: -1,
     currentResults: [],
+    trigger: null,
+    previousFocus: null,
   };
 
   function openSearch() {
     if (!searchState.overlay) return;
+    searchState.previousFocus = document.activeElement;
     searchState.overlay.hidden = false;
+    searchState.trigger.setAttribute('aria-expanded', 'true');
     document.body.style.overflow = 'hidden';
     setTimeout(function () { searchState.input.focus(); }, 0);
     renderResults(searchState.input.value);
@@ -105,8 +109,13 @@
   function closeSearch() {
     if (!searchState.overlay) return;
     searchState.overlay.hidden = true;
+    searchState.trigger.setAttribute('aria-expanded', 'false');
     document.body.style.overflow = '';
     searchState.focused = -1;
+    if (searchState.previousFocus && searchState.previousFocus.focus) {
+      searchState.previousFocus.focus();
+    }
+    searchState.previousFocus = null;
   }
 
   function renderResults(query) {
@@ -187,6 +196,7 @@
     if (!overlay || !trigger) return;
 
     searchState.overlay = overlay;
+    searchState.trigger = trigger;
     searchState.input = overlay.querySelector('[data-search-input]');
     searchState.results = overlay.querySelector('[data-search-results]');
 
