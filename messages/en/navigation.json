@@ -1,0 +1,12 @@
+{
+  "label": "Primary areas",
+  "workspace": "Workspace",
+  "sessions": "Sessions",
+  "governance": "Governance",
+  "activity": "Activity",
+  "workspaceContext": "Workspace context",
+  "utilities": "Utilities",
+  "lastWorkspace": "Last workspace: {name}",
+  "currentWorkspace": "Current workspace",
+  "alwaysVisible": "Always visible"
+}

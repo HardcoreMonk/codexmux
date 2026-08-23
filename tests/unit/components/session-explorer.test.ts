@@ -74,6 +74,29 @@ describe('Session Explorer', () => {
     expect(markup).not.toContain('rm -rf');
   });
 
+  it('marks the selected result with persistent neutral selection semantics', () => {
+    const markup = renderExplorer('en', {
+      selectedIndex: 0,
+      page: {
+        results: [{
+          entry: {
+            sessionId: 'session-selected', projectLabel: 'codexmux', model: 'gpt-5',
+            startedAt: '2026-08-21T08:00:00.000Z', lastActivityAt: '2026-08-21T08:30:00.000Z',
+            turnCount: 2, indexedAt: '2026-08-21T09:00:00.000Z', relationship: 'root',
+          },
+          snippet: 'Selected session',
+        }],
+        nextCursor: null,
+        total: 1,
+        health: 'ready',
+      },
+    });
+    expect(markup).toContain('aria-selected="true"');
+    expect(markup).toContain('data-selection-marker="true"');
+    expect(markup).toContain('bg-accent/70');
+    expect(markup).not.toContain('border-agent-active/40 bg-agent-active/5');
+  });
+
   it('renders degraded state and explains rebuild safety in both locales', () => {
     const en = renderExplorer('en', {
       error: 'catalog-unavailable',

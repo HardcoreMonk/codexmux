@@ -54,7 +54,7 @@ const AppHeader = ({ onMenuOpen, workspaceId, workspaceName }: IAppHeaderProps) 
       <div className="flex min-w-0 items-center gap-1.5">
         {onMenuOpen && (
           <button
-            className="relative flex h-8 w-8 shrink-0 items-center justify-center text-foreground"
+            className="relative flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-md text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={onMenuOpen}
             aria-label={t('openMenu')}
           >
@@ -96,7 +96,7 @@ const AppHeader = ({ onMenuOpen, workspaceId, workspaceName }: IAppHeaderProps) 
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7"
+                        className="h-11 w-11"
                       />
                     }
                   />

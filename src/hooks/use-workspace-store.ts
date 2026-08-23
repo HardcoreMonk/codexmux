@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { t } from '@/lib/i18n';
 import { getVisuallyOrderedWorkspaces } from '@/lib/workspace-order';
 import type { IWorkspace, IWorkspaceGroup } from '@/types/terminal';
+import { normalizeSidebarTab, type TSidebarTab } from '@/lib/sidebar-tab';
 
 const reorderToVisual = (
   workspaces: IWorkspace[],
@@ -29,7 +30,7 @@ interface IWorkspaceState {
   activeWorkspaceId: string | null;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
-  sidebarTab: 'workspace' | 'sessions';
+  sidebarTab: TSidebarTab;
   isSettingsDialogOpen: boolean;
   isCheatSheetOpen: boolean;
   isLoading: boolean;
@@ -56,16 +57,16 @@ interface IWorkspaceState {
   toggleSidebar: () => void;
   setSidebarWidth: (width: number) => void;
   saveSidebarWidth: (width: number) => void;
-  setSidebarTab: (tab: 'workspace' | 'sessions') => void;
+  setSidebarTab: (tab: TSidebarTab) => void;
   setSettingsDialogOpen: (open: boolean) => void;
   setCheatSheetOpen: (open: boolean) => void;
   validateDirectory: (directory: string) => Promise<IValidateResponse>;
 }
 
-const getInitialSidebar = (): { sidebarWidth: number; sidebarCollapsed: boolean; sidebarTab: 'workspace' | 'sessions' } => {
+const getInitialSidebar = (): { sidebarWidth: number; sidebarCollapsed: boolean; sidebarTab: TSidebarTab } => {
   if (typeof window !== 'undefined') {
     const sb = (window as unknown as Record<string, unknown>).__SB__ as { w: number; c: boolean; t?: string } | undefined;
-    if (sb) return { sidebarWidth: sb.w, sidebarCollapsed: sb.c, sidebarTab: sb.t === 'sessions' ? 'sessions' : 'workspace' };
+    if (sb) return { sidebarWidth: sb.w, sidebarCollapsed: sb.c, sidebarTab: normalizeSidebarTab(sb.t) };
   }
   return { sidebarWidth: 240, sidebarCollapsed: false, sidebarTab: 'workspace' };
 };

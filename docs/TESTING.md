@@ -360,6 +360,28 @@ Playwright는 UI 회귀와 smoke 자동화에 사용합니다.
 
 프론트엔드 변경 뒤에는 실제 browser screenshot 또는 Playwright 확인을 남깁니다.
 
+Session/Governance navigation smoke는 isolated HOME과 synthetic fixture를 사용해 한국어·영어의
+desktop/mobile 탐색과 선택 상태도 검증합니다.
+
+```bash
+corepack pnpm smoke:browser:session-governance
+```
+
+검증 범위:
+
+- `/`, `/sessions`, `/governance`의 core current area 정확히 1개
+- Reports/Stats/custom webview 같은 utility surface의 core current area 0개
+- Legacy `sidebar-tab=sessions`의 Activity hydration
+- Desktop expanded/40px rail의 label, indicator와 focus target
+- Mobile 48px bottom navigation, route header와 non-workspace tab bar 미렌더링
+- Navigation sheet utility action 최소 44px
+- Session result와 Managed Project의 `aria-selected` 및 persistent marker
+- Console/page/hydration error 0건
+
+`CODEXMUX_SMOKE_ARTIFACT_DIR`를 지정하면 synthetic navigation 영역만 한국어·영어,
+desktop/mobile, dark/light PNG로 저장합니다. Cookie, token, 실제 terminal content와 사용자 path는
+artifact에 포함하지 않습니다.
+
 ## Electron
 
 Electron 검증은 Linux development smoke와 Windows packaged smoke를 분리합니다.

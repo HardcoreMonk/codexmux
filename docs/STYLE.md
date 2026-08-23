@@ -44,6 +44,19 @@ Color는 상태 의미를 구분하는 데 사용합니다.
 
 단일 hue variation만으로 전체 화면을 만들지 않습니다. Purple/blue gradient, beige/sand, dark slate, brown/orange 계열이 화면 전체를 지배하지 않게 합니다.
 
+## Navigation과 selection
+
+- Workspace, Sessions, Governance는 숨길 수 없는 core app area입니다.
+- Desktop expanded navigation은 icon+label과 leading indicator를 사용합니다.
+- Collapsed rail은 최소 40px이며 tooltip, accessible label과 current indicator를 유지합니다.
+- Mobile app area item은 icon+label, 최소 48px이며 safe area를 침범하지 않습니다.
+- Current route는 `aria-current="page"`, selected list entity는 `aria-selected`, disclosure는
+  `aria-expanded`를 사용합니다.
+- Navigation/selection은 `focus-indicator`, `accent`, `foreground`, `border` 조합을 사용합니다.
+- `agent-active`, warning, destructive 계열은 runtime/lifecycle 상태 의미로만 사용합니다.
+- Utility route와 custom webview는 core app area를 거짓 current로 표시하지 않습니다.
+- Hover, selected와 focus-visible이 겹쳐도 selected marker와 focus ring이 모두 보여야 합니다.
+
 ## 차트 색상
 
 Chart는 비교 가능한 색 대비를 사용합니다. 같은 계열 shade만 반복하지 않습니다.

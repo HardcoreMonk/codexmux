@@ -103,27 +103,38 @@ const GovernanceReadModel = ({
 
       <div className="grid min-h-0 flex-1 md:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="min-h-0 overflow-y-auto border-r p-2">
-          <div className="px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t('projects')}</div>
+          <div id="managed-project-list-label" className="px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t('projects')}</div>
           {projects.length === 0 && (
             <div className="rounded-md border border-dashed p-4 text-xs">
               <div className="font-medium">{t('noProjects')}</div>
               <div className="mt-1 text-muted-foreground">{t('noProjectsDescription')}</div>
             </div>
           )}
-          {projects.map((project) => (
-            <button
-              key={project.id}
-              type="button"
-              className={cn(
-                'mb-1 min-h-11 w-full rounded-md border px-3 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                project.id === selectedProjectId ? 'border-agent-active/40 bg-agent-active/5' : 'hover:bg-muted/50',
-              )}
-              onClick={() => onSelectProject(project.id)}
-            >
-              <span className="block truncate font-medium">{project.title}</span>
-              <span className="mt-0.5 block truncate font-mono text-[10px] text-muted-foreground">{project.relativePath}</span>
-            </button>
-          ))}
+          <div role="listbox" aria-labelledby="managed-project-list-label">
+            {projects.map((project) => (
+              <button
+                key={project.id}
+                type="button"
+                role="option"
+                aria-selected={project.id === selectedProjectId}
+                className={cn(
+                  'relative mb-1 min-h-11 w-full rounded-md border px-3 py-2 pl-4 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  project.id === selectedProjectId ? 'border-border bg-accent/70 text-foreground shadow-sm' : 'hover:bg-muted/50',
+                )}
+                onClick={() => onSelectProject(project.id)}
+              >
+                {project.id === selectedProjectId && (
+                  <span
+                    aria-hidden="true"
+                    data-selection-marker="true"
+                    className="absolute inset-y-2 left-0 w-0.5 rounded-r bg-focus-indicator"
+                  />
+                )}
+                <span className="block truncate font-medium">{project.title}</span>
+                <span className="mt-0.5 block truncate font-mono text-[10px] text-muted-foreground">{project.relativePath}</span>
+              </button>
+            ))}
+          </div>
         </aside>
 
         <main className="min-h-0 overflow-y-auto p-3">
