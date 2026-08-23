@@ -100,6 +100,11 @@ describe('timeline worker service', () => {
     });
     await expect(service.handleCommand(command('timeline.catalog-search', { query: 'worker', limit: 50 })))
       .resolves.toMatchObject({ ok: true, payload: { results: [], total: 0 } });
+    await expect(service.handleCommand(command('timeline.catalog-search', {
+      query: 'worker',
+      pinned: true,
+      annotationSelection: { mode: 'include', sessionIds: ['session-1'] },
+    }))).resolves.toMatchObject({ ok: true, payload: { results: [], total: 0 } });
     await expect(service.handleCommand(command('timeline.catalog-read-entries', {
       sessionId: 'session-1',
       beforeByte: 100,
@@ -110,6 +115,11 @@ describe('timeline worker service', () => {
       .resolves.toMatchObject({ ok: true, payload: { started: true, state: 'building' } });
 
     service.close();
+    expect(catalog.search).toHaveBeenCalledWith({
+      query: 'worker',
+      pinned: true,
+      annotationSelection: { mode: 'include', sessionIds: ['session-1'] },
+    });
     expect(catalog.close).toHaveBeenCalledOnce();
   });
 

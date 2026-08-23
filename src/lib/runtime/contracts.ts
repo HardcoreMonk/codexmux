@@ -14,8 +14,10 @@ import type { ISessionHistoryEntry } from '@/types/session-history';
 import type {
   ISavedSessionFilter,
   ISessionAnnotation,
+  ISessionCatalogSearchInput,
   ISessionSearchPage,
   ISessionSearchQuery,
+  TSessionAnnotationSelection,
 } from '@/lib/session-catalog/contracts';
 import type {
   IApprovedProjectRoot,
@@ -163,7 +165,15 @@ export interface IRuntimeSessionCatalogHealth {
 }
 
 export type TRuntimeSessionCatalogSearchInput = ISessionSearchQuery;
+export type TRuntimeTimelineCatalogSearchInput = ISessionCatalogSearchInput;
 export type TRuntimeSessionCatalogSearchResult = ISessionSearchPage;
+
+export interface IRuntimeSelectSessionAnnotationsInput {
+  pinned?: boolean;
+  tags?: string[];
+}
+
+export type TRuntimeSessionAnnotationSelection = TSessionAnnotationSelection;
 
 export interface IRuntimeSessionCatalogReadEntriesInput {
   sessionId: string;

@@ -9,6 +9,7 @@ describe('session catalog IPC', () => {
       'timeline.catalog-read-entries',
       'timeline.catalog-rebuild',
       'storage.list-session-annotations',
+      'storage.select-session-annotations',
       'storage.update-session-annotation',
       'storage.list-saved-session-filters',
       'storage.upsert-saved-session-filter',
@@ -64,11 +65,30 @@ describe('session catalog IPC', () => {
       expectedVersion: 0,
       sessionExists: true,
     })).toThrow(/Invalid runtime IPC payload/);
+    expect(parseRuntimeCommandPayload('storage.select-session-annotations', {
+      pinned: false,
+      tags: ['review'],
+    })).toEqual({ pinned: false, tags: ['review'] });
+    expect(() => parseRuntimeCommandPayload('storage.select-session-annotations', {}))
+      .toThrow(/Invalid runtime IPC payload/);
   });
 
   it('validates bounded search and session-id payloads', () => {
     expect(parseRuntimeCommandPayload('timeline.catalog-search', { query: 'worker', limit: 50 }))
       .toEqual({ query: 'worker', limit: 50 });
+    expect(parseRuntimeCommandPayload('timeline.catalog-search', {
+      query: 'worker',
+      limit: 50,
+      annotationSelection: { mode: 'include', sessionIds: ['session-1'] },
+    })).toEqual({
+      query: 'worker',
+      limit: 50,
+      annotationSelection: { mode: 'include', sessionIds: ['session-1'] },
+    });
+    expect(() => parseRuntimeCommandPayload('timeline.catalog-search', {
+      query: 'worker',
+      annotationSelection: { mode: 'include', sessionIds: ['session-1', 'session-1'] },
+    })).toThrow(/Invalid runtime IPC payload/);
     expect(() => parseRuntimeCommandPayload('timeline.catalog-search', { query: 'worker', limit: 201 }))
       .toThrow(/Invalid runtime IPC payload/);
     expect(() => parseRuntimeCommandPayload('timeline.catalog-read-entries', {

@@ -132,6 +132,36 @@ describe('session catalog API', () => {
     });
   });
 
+  it('returns the Supervisor filtered page metadata without recomputing it', async () => {
+    mocks.supervisor.searchSessionCatalog.mockResolvedValueOnce({
+      results: [{
+        entry: {
+          sessionId: 'session-1', projectLabel: 'codexmux',
+          startedAt: '2026-08-21T08:00:00.000Z', lastActivityAt: '2026-08-21T08:01:00.000Z',
+          turnCount: 1, indexedAt: '2026-08-21T09:00:00.000Z',
+        },
+        snippet: 'worker',
+        annotation: {
+          sessionId: 'session-1', pinned: true, tags: ['review'], version: 1,
+          updatedAt: '2026-08-21T09:00:00.000Z',
+        },
+      }],
+      nextCursor: 'eyJmaWx0ZXJlZCI6dHJ1ZX0',
+      total: 1,
+      health: 'ready',
+    });
+    const result = createResponse();
+
+    await searchHandler(createRequest({ query: { query: 'worker', pinned: 'true' } }), result.response);
+
+    expect(result.statusCode).toBe(200);
+    expect(result.body).toMatchObject({
+      results: [{ entry: { sessionId: 'session-1' }, annotation: { pinned: true } }],
+      nextCursor: 'eyJmaWx0ZXJlZCI6dHJ1ZX0',
+      total: 1,
+    });
+  });
+
   it('serves health and session-id based rich timeline entries', async () => {
     const health = createResponse();
     await healthHandler(createRequest({ url: '/api/sessions/health' }), health.response);
@@ -232,5 +262,19 @@ describe('session catalog API', () => {
     const degraded = createResponse();
     await searchHandler(createRequest({ query: { query: '' } }), degraded.response);
     expect(degraded.statusCode).toBe(503);
+
+    mocks.supervisor.searchSessionCatalog.mockRejectedValueOnce(Object.assign(
+      new Error('Session annotations changed during the filtered search.'),
+      { code: 'session-annotation-search-conflict', retryable: true },
+    ));
+    const annotationConflict = createResponse();
+    await searchHandler(createRequest({ query: { query: '', pinned: 'true' } }), annotationConflict.response);
+    expect(annotationConflict.statusCode).toBe(503);
+    expect(annotationConflict.body).toEqual({
+      error: 'session-annotation-search-conflict',
+      message: 'Session annotations changed during the filtered search.',
+      retryable: true,
+    });
+    expect(JSON.stringify(annotationConflict.body)).not.toContain('session-1');
   });
 });

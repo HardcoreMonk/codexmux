@@ -1,6 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { recordPerfCounter } from '@/lib/perf-metrics';
 import type {
   IRuntimeCreateWorkspaceResult,
   IRuntimeApplyManagedProjectImportInput,
@@ -48,6 +49,7 @@ import type {
   IRuntimeSessionCatalogHealth,
   IRuntimeSessionCatalogReadEntriesInput,
   IRuntimeSessionCatalogRebuildResult,
+  IRuntimeSelectSessionAnnotationsInput,
   IRuntimeUpdateSessionAnnotationInput,
   IRuntimeTimelineEntriesBeforeInput,
   IRuntimeTimelineLiveAppendEvent,
@@ -67,6 +69,8 @@ import type {
   TRuntimeTimelineMessageCounts,
   TRuntimeSessionCatalogSearchInput,
   TRuntimeSessionCatalogSearchResult,
+  TRuntimeSessionAnnotationSelection,
+  TRuntimeTimelineCatalogSearchInput,
   TRuntimeSavedSessionFilter,
   TRuntimeApprovedProjectRoot,
   TRuntimeApprovedProjectRootSnapshot,
@@ -860,27 +864,61 @@ export const createRuntimeSupervisorForTest = (
     async searchSessionCatalog(input) {
       await this.ensureStarted();
       const { timeline, storage } = getClients();
-      const page = await timeline.request<TRuntimeSessionCatalogSearchInput, TRuntimeSessionCatalogSearchResult>(
-        'timeline.catalog-search',
-        input,
-      );
-      const sessionIds = page.results.map((result) => result.entry.sessionId);
-      if (sessionIds.length === 0) return page;
-      const annotations = await storage.request<{ sessionIds: string[] }, TRuntimeSessionAnnotation[]>(
-        'storage.list-session-annotations',
-        { sessionIds },
-      );
-      const annotationsBySession = new Map(annotations.map((annotation) => [annotation.sessionId, annotation]));
-      const results = page.results
-        .map((result) => ({
+      const filtered = input.pinned !== undefined || Boolean(input.tags?.length);
+      const matchesPredicate = (annotation: TRuntimeSessionAnnotation | undefined): boolean =>
+        (input.pinned === undefined || Boolean(annotation?.pinned) === input.pinned)
+        && (!input.tags?.length || input.tags.every((tag) => annotation?.tags.includes(tag)));
+      const runSearch = async (): Promise<{
+        page: TRuntimeSessionCatalogSearchResult;
+        predicateConflict: boolean;
+      }> => {
+        const predicate: IRuntimeSelectSessionAnnotationsInput = {
+          ...(input.pinned !== undefined ? { pinned: input.pinned } : {}),
+          ...(input.tags?.length ? { tags: input.tags } : {}),
+        };
+        const annotationSelection = filtered
+          ? await storage.request<IRuntimeSelectSessionAnnotationsInput, TRuntimeSessionAnnotationSelection>(
+            'storage.select-session-annotations',
+            predicate,
+          )
+          : undefined;
+        const timelineInput: TRuntimeTimelineCatalogSearchInput = {
+          ...input,
+          ...(annotationSelection ? { annotationSelection } : {}),
+        };
+        const page = await timeline.request<TRuntimeTimelineCatalogSearchInput, TRuntimeSessionCatalogSearchResult>(
+          'timeline.catalog-search',
+          timelineInput,
+        );
+        const sessionIds = page.results.map((result) => result.entry.sessionId);
+        if (sessionIds.length === 0) return { page, predicateConflict: false };
+        const annotations = await storage.request<{ sessionIds: string[] }, TRuntimeSessionAnnotation[]>(
+          'storage.list-session-annotations',
+          { sessionIds },
+        );
+        const annotationsBySession = new Map(annotations.map((annotation) => [annotation.sessionId, annotation]));
+        const results = page.results.map((result) => ({
           ...result,
           ...(annotationsBySession.get(result.entry.sessionId)
             ? { annotation: annotationsBySession.get(result.entry.sessionId) }
             : {}),
-        }))
-        .filter((result) => input.pinned === undefined || Boolean(result.annotation?.pinned) === input.pinned)
-        .filter((result) => !input.tags?.length || input.tags.every((tag) => result.annotation?.tags.includes(tag)));
-      return { ...page, results };
+        }));
+        return {
+          page: { ...page, results },
+          predicateConflict: filtered && results.some((result) => !matchesPredicate(result.annotation)),
+        };
+      };
+
+      const first = await runSearch();
+      if (!first.predicateConflict) return first.page;
+      recordPerfCounter('runtime_v2.session_catalog.annotation_search_retry');
+      const second = await runSearch();
+      if (!second.predicateConflict) return second.page;
+      recordPerfCounter('runtime_v2.session_catalog.annotation_search_conflict');
+      throw Object.assign(new Error('Session annotations changed during the filtered search.'), {
+        code: 'session-annotation-search-conflict',
+        retryable: true,
+      });
     },
 
     async readSessionCatalogEntries(input) {

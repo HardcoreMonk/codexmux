@@ -26,6 +26,7 @@ describe('Session Catalog performance snapshot', () => {
     expect(report).toMatchObject({
       sessionCount: 50,
       indexedSessions: 50,
+      annotationFilterMatches: 25,
       thresholds: SESSION_CATALOG_PERF_THRESHOLDS,
       passed: true,
     });
@@ -33,6 +34,7 @@ describe('Session Catalog performance snapshot', () => {
       initialIndex: expect.any(Number),
       incrementalAppend: expect.any(Number),
       ftsQuery: expect.any(Number),
+      annotationFilterQuery: expect.any(Number),
       replayProjection: expect.any(Number),
     });
     expect(report.memory).toMatchObject({ rssDeltaBytes: expect.any(Number) });

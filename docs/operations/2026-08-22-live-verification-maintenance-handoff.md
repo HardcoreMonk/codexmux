@@ -102,6 +102,10 @@ npm trust github codexmux \
 
 기존 OTP나 credential은 재사용하거나 문서에 저장하지 않습니다.
 
+이후 사용자 결정으로 npm 작업은 임시 장애 해소 직후가 아니라 최종 개발 완료 gate로
+이동했습니다. 연속 개발 중에는 version/tag/Release/Trusted Publisher를 변경하지 않고,
+완료가 명시적으로 확정된 뒤 다음 version으로 통합 release합니다.
+
 ## Dependabot triage
 
 2026-08-22 시작 시 open PR은 Dependabot 10건뿐이었습니다.
@@ -121,3 +125,14 @@ npm trust github codexmux \
 - Project file은 rollback돼 작업 전 byte와 같습니다.
 - Remote `v0.4.23` tag/Release와 npm Trusted Publisher는 변경하지 않았습니다.
 - `.ua/domain-graph.json`은 untracked 분석 산출물로 유지하며 commit 대상에서 제외합니다.
+
+## Annotation pagination 후속 교정 배포
+
+별도 behavior-change lifecycle에서 annotation selection을 Timeline SQL page/count/cursor 전에
+적용하도록 교정했습니다. Commit `322ccfb7`, version `0.4.24`를 2026-08-22 01:37:36 KST에
+재기동했고 PID는 `1294595`, restart count는 0입니다. 정지 중 backup
+`runtime-v2-storage-20260821T163716Z`에 durable/workspace state 5개를 보존했습니다.
+
+기존 동일 annotation 조건을 다시 조회한 결과는 `results=1`, `total=1`, no cursor이며 반환된
+모든 항목이 pin과 `verified-2026-08-22` tag를 만족했습니다. Phase 6 12-check도 재통과해 위의
+`total=18` 관찰은 교정 전 역사적 증거로만 유지합니다.

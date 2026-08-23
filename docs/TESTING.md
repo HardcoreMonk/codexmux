@@ -287,7 +287,11 @@ corepack pnpm smoke:browser:session-governance
 corepack pnpm smoke:npm-package
 ```
 
-`perf:session-catalog`는 기본 5,000-session fixture에서 initial index, incremental append, FTS query, replay projection과 RSS delta를 측정합니다. 현재 fail threshold는 각각 30초, 500ms, 1초, 200ms, 512MiB입니다. 측정 DB는 명시한 `CODEXMUX_SESSION_CATALOG_PERF_DB`가 없으면 임시 디렉터리에 만들고 종료 시 삭제합니다.
+`perf:session-catalog`는 기본 5,000-session fixture에서 initial index, incremental append, FTS query,
+2,500-ID annotation-filter query, replay projection과 RSS delta를 측정합니다. 현재 fail threshold는
+각각 30초, 500ms, 1초, 1초, 200ms, 512MiB입니다. Annotation 측정은 exact filtered count도 함께
+검증합니다. 측정 DB는 명시한 `CODEXMUX_SESSION_CATALOG_PERF_DB`가 없으면 임시 디렉터리에 만들고
+종료 시 삭제합니다.
 
 `smoke:linux:session-governance`는 격리 `HOME`과 실제 custom server/tmux를 사용해 다음을 확인합니다.
 

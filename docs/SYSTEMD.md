@@ -17,8 +17,8 @@ HOST=0.0.0.0
 PORT=8122
 ```
 
-2026-08-21 현재 이 host의 unit은 enabled/active이며 governed adoption build commit `f46410b4`, version
-`0.4.23`을 `0.0.0.0:8122`에서 제공합니다. Browser 인증과
+2026-08-22 현재 이 host의 unit은 enabled/active이며 Session Catalog pagination build commit
+`322ccfb7`, version `0.4.24`를 `0.0.0.0:8122`에서 제공합니다. Browser 인증과
 `CODEXMUX_GOVERNANCE_WRITES=1` drop-in이 구성됐고 CLI token 기반 운영 API, Runtime v2와
 Governance `writeState=ready`도 정상입니다.
 
@@ -184,6 +184,13 @@ GitHub Pages 제품 재설계 운영 확인에서는
 0이며 app build는 `f46410b4`를 유지합니다. 2026-08-22 같은 service에서 301초·11회 동일
 session 재연결과 worker health를 관찰하고 종료 직후 Runtime v2 10-check와 Phase 6 12-check를
 통과했습니다.
+
+Session Catalog annotation pagination 배포에서는 service를 멈춘 뒤
+`runtime-v2-storage-20260821T163716Z`에 durable DB/WAL/SHM과 workspace state 5개를 백업했습니다.
+Build commit `322ccfb7`, version `0.4.24`로 PID `1294595`, start
+`2026-08-22 01:37:36 KST`, restart count 0으로 재기동했고 listener `0.0.0.0:8122`, governance
+write gate와 Phase 6 12-check를 확인했습니다. 실제 pinned/tag 검색은 `results=1`, exact
+`total=1`, no cursor를 반환했습니다.
 
 ## 런타임 v2 rollback
 

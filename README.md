@@ -27,10 +27,10 @@ Windows 설치형 제품 마감은 별도 제품 line인
 
 | 항목 | 현재 기준 |
 | --- | --- |
-| 패키지 버전 | `0.4.23` |
+| 패키지 버전 | `0.4.24` |
 | active 제품/runtime | Linux 단일 엔진 호스트, ADR-031 `Verified` |
 | UI 언어 | 기본 한국어, 지원 한국어·영어 |
-| 현재 live service | `systemd --user`, authenticated `0.0.0.0:8122`, app build `f46410b4`, governance writes active |
+| 현재 live service | `systemd --user`, authenticated `0.0.0.0:8122`, app build `322ccfb7`, governance writes active |
 | 웹 구조 | Next.js Pages Router + custom Node server |
 | terminal 구조 | Runtime v2 Terminal Worker + Linux tmux adapter |
 | 운영 데이터 | `runtime-v2/state.db`, `session-catalog/index.db`, `governance/index.db` |
@@ -152,8 +152,9 @@ corepack pnpm smoke:npm-package
 
 `codexmux@0.4.23`의 최초 public publish와 registry install/production health smoke는
 통과했습니다. 후속 tag publish는 GitHub Actions Trusted Publishing을 사용하며 Windows
-stable workflow와 독립적으로 실행됩니다. Trusted Publisher 등록과 remote `v0.4.23` tag는
-현재 보류 상태입니다.
+stable workflow와 독립적으로 실행됩니다. 2026-08-22에는 `0.4.24` package release gate와
+Linux live 배포를 완료했습니다. Remote tag와 GitHub Windows Release는 별도 gate로 유지하며
+기존 local `v0.4.23` tag는 remote에 게시하지 않습니다.
 
 ## 아키텍처
 

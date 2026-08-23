@@ -113,13 +113,13 @@ installer/package gate로 확인합니다.
 
 | 항목 | 상태 |
 | --- | --- |
-| Live build | Governed adoption artifact `f46410b4`; 이전 Phase 3 artifact `9d32d049` |
+| Live build | Session Catalog annotation pagination artifact `322ccfb7`; 이전 governed adoption artifact `f46410b4` |
 | user service | `codexmux.service` enabled, `active/running`, authenticated `0.0.0.0:8122` |
 | Runtime v2 | terminal `new-tabs`, storage/timeline/status `default` |
 | Session Catalog/Governance | 모두 ready, Governance `writeState=ready`, DB/WAL/SHM `0600` |
 | governance gate | `~/.config/systemd/user/codexmux.service.d/governance-writes.conf`, active |
-| latest backup | `runtime-v2-storage-20260821T145427Z`, directory `0700`, DB/WAL/SHM `0600` |
-| latest restart | PID `1149564` → `1216337`; start `2026-08-21 23:54:27 KST`, restart count `0` |
+| latest backup | `runtime-v2-storage-20260821T163716Z`, service 정지 중 durable/workspace state 5개 |
+| latest restart | PID `1294595`; start `2026-08-22 01:37:36 KST`, restart count `0` |
 | issue | [Issue #18](https://github.com/HardcoreMonk/codexmux/issues/18), [Issue #19](https://github.com/HardcoreMonk/codexmux/issues/19), [Issue #20](https://github.com/HardcoreMonk/codexmux/issues/20) |
 | 운영 handoff | `operations/2026-08-22-live-verification-maintenance-handoff.md` |
 
@@ -129,6 +129,8 @@ Browser 인증 설정 뒤 `HOST=0.0.0.0` unit을 다시 시작해 실제 외부 
 등록해 adoption preview/confirm/rollback을 완료하고 Session Catalog를 실제 JSONL로 rebuild해
 검색·replay·annotation을 확인했습니다. 301초 동안 동일 세션 재연결을 관찰하고 사후 gate까지
 통과해 ADR-031과 ADR-032는 `Verified`입니다.
+Annotation-aware pagination build `322ccfb7` 배포 뒤에는 실제 pinned/tag 조건에서
+`results=1`, `total=1`, no cursor와 조건 일치를 확인하고 Phase 6 12-check를 다시 통과했습니다.
 
 [Issue #16](https://github.com/HardcoreMonk/codexmux/issues/16)의 acceptance를 충족한
 fresh Windows 검증:
@@ -224,9 +226,9 @@ Electron profile의 1회 재로그인과 재연결은 별도 후속 근거가 �
 | SmartScreen reputation | 내부 전용 앱이라 release blocker가 아님 |
 | Artifact scanner enumeration hardening | 현재 writer는 lowercase regular `.json`만 생성합니다. 대소문자 확장자와 symlink를 명시적으로 거부하는 방어 강화는 후속 비차단 작업입니다. |
 | Browser setup과 외부 bind | fresh config는 local setup 상태입니다. 사용자 비밀번호 설정과 loopback 밖의 bind는 별도 운영 선택이며 현재 engine health blocker가 아닙니다. |
-| Session Catalog filter total | pin/tag filter 결과는 1개로 정확하지만 응답 `total`은 filter 전 18로 남습니다. Pagination count semantics 수정은 동작 변경이므로 별도 lifecycle로 처리합니다. |
-| npm Trusted Publisher | npm CLI `11.17.0`은 지원하지만 local registry 인증이 `E401`로 만료됐습니다. 계정 재인증 뒤 `npm trust github codexmux --repo HardcoreMonk/codexmux --file npm-publish.yml --allow-publish --yes`를 실행합니다. |
-| Remote `v0.4.23` tag/Release | Local tag와 registry `gitHead`는 `ef27e297`로 일치하지만 해당 snapshot에 `.github/release-notes/v0.4.23.md`가 없습니다. 현재 tag-triggered Windows workflow를 실패시키지 않도록 push를 보류하고 다음 version에서 release note 포함 tag를 발행합니다. |
+| Session Catalog filter total | 완료: `0.4.24` live 배포 뒤 annotation selection이 적용된 실제 pinned/tag filter에서 `results=1`, `total=1`, no cursor와 조건 일치를 확인했습니다. |
+| npm `0.4.24` release gate | 2026-08-22 사용자가 package version, registry publish와 live service 갱신을 승인했습니다. Remote tag/GitHub Windows Release와 Trusted Publisher는 별도 gate입니다. |
+| Local `v0.4.23` tag | Registry `gitHead`와 같은 `ef27e297`을 유지하되 remote에 게시하거나 이동하지 않습니다. 다음 release는 새 version/tag를 사용합니다. |
 
 ## 별도 lifecycle이 필요한 후속 범위
 

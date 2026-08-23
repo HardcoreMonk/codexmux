@@ -57,4 +57,39 @@ describe('session catalog query service', () => {
     expect(() => service.search({ query: 'shared', cursor: 'Zm9yZ2Vk' }))
       .toThrow(expect.objectContaining({ code: 'catalog-cursor-invalid' }));
   });
+
+  it('paginates and counts with the same annotation selection', () => {
+    const repository = createSessionCatalogRepository(db);
+    for (const [index, sessionId] of ['session-a', 'session-b', 'session-c', 'session-d'].entries()) {
+      repository.replaceProjection(projection(sessionId, 'shared result', `2026-08-21T08:0${index}:00.000Z`));
+    }
+    const service = createSessionCatalogQueryService(repository);
+    const annotationSelection = {
+      mode: 'include' as const,
+      sessionIds: ['session-a', 'session-c', 'session-d'],
+    };
+
+    const first = service.search({ query: 'shared', limit: 2, annotationSelection });
+    const second = service.search({
+      query: 'shared', limit: 2, annotationSelection, cursor: first.nextCursor ?? undefined,
+    });
+
+    expect(first.results.map((result) => result.entry.sessionId)).toEqual(['session-d', 'session-c']);
+    expect(first.total).toBe(3);
+    expect(first.nextCursor).not.toBeNull();
+    expect(second.results.map((result) => result.entry.sessionId)).toEqual(['session-a']);
+    expect(second.total).toBe(3);
+    expect(second.nextCursor).toBeNull();
+  });
+
+  it('keeps catalog health semantics for an empty include selection', () => {
+    const repository = createSessionCatalogRepository(db);
+    repository.replaceProjection(projection('session-a', 'shared result', '2026-08-21T08:00:00.000Z'));
+    const service = createSessionCatalogQueryService(repository);
+
+    expect(service.search({
+      query: 'shared',
+      annotationSelection: { mode: 'include', sessionIds: [] },
+    })).toEqual({ results: [], nextCursor: null, total: 0, health: 'ready' });
+  });
 });

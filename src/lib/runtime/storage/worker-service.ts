@@ -111,6 +111,10 @@ export const createStorageWorkerService = (options: IStorageWorkerServiceOptions
           const input = parseRuntimeCommandPayload('storage.list-session-annotations', command.payload);
           return ok(command, repo.listSessionAnnotations(input.sessionIds));
         }
+        if (command.type === 'storage.select-session-annotations') {
+          const input = parseRuntimeCommandPayload('storage.select-session-annotations', command.payload);
+          return ok(command, repo.selectSessionAnnotations(input));
+        }
         if (command.type === 'storage.update-session-annotation') {
           const input = parseRuntimeCommandPayload('storage.update-session-annotation', command.payload);
           return ok(command, repo.updateSessionAnnotation(input));

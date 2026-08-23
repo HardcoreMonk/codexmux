@@ -10,13 +10,14 @@ Runtime v2 worker, tmux, Codex CLI/JSONL, app-owned DB와 등록된 project read
 Windows installer/updater는 보존된 별도 배포면이며 이번 Session Operations와 Project
 Governance acceptance를 대체하지 않습니다.
 
-2026-08-22 현재 live app build commit `f46410b4`가 `HOST=0.0.0.0`, port `8122`의
+2026-08-22 현재 live app build commit `322ccfb7`, version `0.4.24`가 `HOST=0.0.0.0`, port `8122`의
 `systemd --user` service로 배포되어 실제 `0.0.0.0:8122` listener와 구성된 browser 인증을
 제공합니다. `CODEXMUX_GOVERNANCE_WRITES=1`이 systemd drop-in에서 활성화됐고 Governance
 `writeState=ready`입니다. 실제 restart, Managed Project adoption/rollback, Session Catalog
 rebuild/search/replay/annotation과 같은 live session의 301초·11회 재연결 관찰을 통과했습니다.
 관찰 직후 Runtime v2 10-check와 Phase 6 12-check도 통과해 ADR-031과 ADR-032는
-`Verified`입니다.
+`Verified`입니다. Annotation-aware pagination 배포 뒤 실제 pinned/tag 검색도 결과 1건과 exact
+total 1건으로 일치하고 Phase 6 gate를 다시 통과했습니다.
 
 ## 구현 상태
 
@@ -49,7 +50,9 @@ rebuild/search/replay/annotation과 같은 live session의 301초·11회 재연�
   health smoke를 통과했습니다. Local `v0.4.23`은 registry `gitHead`와 같은 `ef27e297`을
   가리키지만 remote tag는 없습니다. 이 tag를 그대로 push하면 tag snapshot에 없는 release
   note를 요구하는 Windows release workflow가 실패하므로 원격 publish는 보류했습니다.
-  Trusted Publisher는 npm CLI 인증 만료로 등록하지 못했습니다.
+  Trusted Publisher는 npm CLI 인증 만료로 등록하지 못했습니다. 2026-08-22 사용자가 최종
+  release gate를 열어 `0.4.24` package, registry와 live service 갱신을 승인했습니다. Remote
+  tag/GitHub Windows Release와 Trusted Publisher 등록은 이번 local npm publish와 분리합니다.
 - Public 랜딩과 사용자 가이드는 Eleventy로 `_site/`를 만들고 GitHub Pages
   `https://hardcoremonk.github.io/codexmux/`에 배포합니다. 메인 제품 정보 구조는 Session
   Operations, Live Session Control, Project Governance, Runtime Operations를 기준으로 하며,

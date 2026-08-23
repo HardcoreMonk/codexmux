@@ -1,4 +1,8 @@
-import type { ISessionCatalogEntry, ISessionSearchResult } from '@/lib/session-catalog/contracts';
+import type {
+  ISessionCatalogEntry,
+  ISessionSearchResult,
+  TSessionAnnotationSelection,
+} from '@/lib/session-catalog/contracts';
 import type { ISessionCatalogProjection, ISessionCatalogSearchRecord } from '@/lib/session-catalog/jsonl-projector';
 import type { TSessionCatalogDatabase } from '@/lib/session-catalog/schema';
 
@@ -19,6 +23,7 @@ export interface ISessionCatalogSearchRepositoryInput {
   models?: string[];
   dateFrom?: string;
   dateTo?: string;
+  annotationSelection?: TSessionAnnotationSelection;
   after?: { lastActivityAt: string; sessionId: string };
   limit: number;
 }
@@ -162,6 +167,13 @@ export const createSessionCatalogRepository = (db: TSessionCatalogDatabase) => {
     if (input.dateTo) {
       conditions.push('s.last_activity_at <= @dateTo');
       params.dateTo = input.dateTo;
+    }
+    if (input.annotationSelection?.sessionIds.length) {
+      params.annotationSessionIds = JSON.stringify(input.annotationSelection.sessionIds);
+      const membership = 's.session_id in (select value from json_each(@annotationSessionIds))';
+      conditions.push(input.annotationSelection.mode === 'include' ? membership : `not (${membership})`);
+    } else if (input.annotationSelection?.mode === 'include') {
+      conditions.push('0');
     }
     if (!count && input.after) {
       conditions.push('(s.last_activity_at < @afterActivity or (s.last_activity_at = @afterActivity and s.session_id < @afterSessionId))');

@@ -4,7 +4,7 @@
 
 **갱신일:** 2026-08-22
 
-**상태:** npm 0.4.23과 landing 배포 완료, source `main` 후속 통합 완료. Trusted Publisher는 local npm 인증 만료, v0.4.23 tag push는 tagged snapshot의 release note 누락 때문에 보류
+**상태:** npm 0.4.23 public 유지, `0.4.24` release candidate package/audit/smoke와 Linux live 배포 통과. Local npm WebAuth 승인과 registry publish 진행 중이며 remote tag/Windows Release는 별도 gate
 
 **Spec:** `docs/superpowers/specs/2026-08-20-npm-npx-distribution-design.md`
 
@@ -123,6 +123,13 @@ commit을 그대로 보존하며, 이 source 진전이 기존 package를 덮어�
 `v0.4.23` tag를 생성하지는 않았습니다.
 
 ## 후속 작업
+
+2026-08-22 사용자가 최종 release gate를 열어 `0.4.24` package, registry와 live service 갱신을
+승인했습니다. Package/release note를 새 version으로 고정하고 tarball consumer smoke와 production
+audit를 통과했습니다. Source commit `322ccfb7`을 release branch에 push하고 같은 build를
+authenticated `0.0.0.0:8122` Linux service에 배포해 Phase 6와 실제 annotation filter exact
+total을 확인했습니다. Registry publish는 npm WebAuth 승인 직전 단계이며 remote tag와 Windows
+Release는 이번 local npm publish와 분리합니다.
 
 1. Trusted Publisher 등록을 재개할 때 npmjs.com의 `codexmux` package settings에서 다음
    exact 값을 사용한다.

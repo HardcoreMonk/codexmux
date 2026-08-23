@@ -70,6 +70,12 @@ describe('storage worker service', () => {
       type: 'storage.list-session-annotations',
       payload: { sessionIds: ['session-1'] },
     }));
+    const selection = await service.handleCommand(createRuntimeCommand({
+      source: 'supervisor',
+      target: 'storage',
+      type: 'storage.select-session-annotations',
+      payload: { pinned: true, tags: ['review'] },
+    }));
     const filter = {
       id: 'filter-1',
       name: 'Review',
@@ -92,6 +98,7 @@ describe('storage worker service', () => {
 
     expect(update).toMatchObject({ ok: true, payload: { sessionId: 'session-1', tags: ['review'], version: 1 } });
     expect(annotations).toMatchObject({ ok: true, payload: [{ sessionId: 'session-1', pinned: true }] });
+    expect(selection).toMatchObject({ ok: true, payload: { mode: 'include', sessionIds: ['session-1'] } });
     expect(saved).toMatchObject({ ok: true, payload: { id: 'filter-1' } });
     expect(listed).toMatchObject({ ok: true, payload: [{ id: 'filter-1' }] });
   });
