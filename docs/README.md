@@ -48,7 +48,7 @@ snapshot이고 완성된 번역으로 보지 않습니다. 작성,
 | `operations/2026-08-21-github-pages-product-redesign-handoff.md` | Session Operations/Project Governance 중심 Pages 재설계, 실배포와 service restart 증거 |
 | `operations/2026-08-22-live-verification-maintenance-handoff.md` | 실제 Managed Project/Session Catalog 검증, 301초 재연결 관찰, release·Dependabot 유지보수 결과 |
 | `operations/2026-08-23-navigation-selection-clarity-handoff.md` | Workspace/Sessions/Governance 탐색 명료화, lifecycle IPC hotfix, live 배포와 rollback 기준 |
-| `operations/2026-08-24-public-site-opencodex-renewal-handoff.md` | Public home/docs 공통 shell 리뉴얼, local 검증과 보류된 Pages release 경계 |
+| `operations/2026-08-24-public-site-opencodex-renewal-handoff.md` | Public home/docs 공통 shell 리뉴얼, Pages 배포와 live desktop/mobile smoke |
 
 보존된 Windows stable release `v0.4.22`는 같은 hostname의 Purplemux와 동시 실행하기 위한 cookie namespace 수정을
 포함하고 fresh Windows package/published updater와 privacy gate를 통과해 stable/latest로
@@ -77,6 +77,10 @@ user service에 순차 배포했습니다. Browser 인증, `HOST=0.0.0.0`과
 terminal/reconnect 10-check, Phase 6 12-check, Governance lifecycle 236-evidence 응답과 실제
 desktop/mobile current/selection 상태를 확인했습니다. Public npm `latest`는 registry 기준
 `0.4.23`이며 source/live version `0.4.24`와 배포면을 구분합니다.
+
+2026-08-24에는 public home/docs shell을 `b0bfed43`으로 GitHub Pages에 배포했습니다. 두 Pages
+workflow와 final HTTPS desktop/mobile smoke에서 theme, search, menu, locale/docs selection,
+hero/OG asset, overflow와 page error 0건을 확인해 public surface가 `operate`에 진입했습니다.
 
 Root `CONTEXT.md`는 도메인 언어와 기준 소스 경계를, root `DESIGN.md`는
 UI 시각 계약을 담당합니다.

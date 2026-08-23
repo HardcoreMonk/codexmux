@@ -1,8 +1,8 @@
 # Public Site opencodex Renewal
 
 - 날짜: 2026-08-24
-- 상태: Implemented · release ready
-- Lifecycle stage: `release`
+- 상태: Verified
+- Lifecycle stage: `operate`
 - 기준 사이트: `https://opencodex.me/` 2026-08-24 snapshot
 
 ## 문제
@@ -167,11 +167,13 @@ commit하지 않고 workflow가 이전 artifact를 재생성한다. Linux runtim
 
 ## Implementation Verification
 
-2026-08-24 local release candidate는 shared shell, EN/KO home, 11개 docs snapshot URL과 original
-hero/OG asset을 구현했습니다. Eleventy 361 HTML build, 23,548 local link, full unit 1,690 tests,
-TypeScript, lint와 project design gate를 통과했습니다. Chromium desktop/mobile Light/Dark matrix는
-horizontal overflow와 page error 0건이었고 theme persistence, search, menu, docs drawer와 active
-selection을 확인했습니다.
+2026-08-24 release는 shared shell, EN/KO home, 11개 docs snapshot URL과 original hero/OG asset을
+구현했습니다. Eleventy 361 HTML build, 23,548 local link, full unit 1,690 tests, TypeScript, lint와
+project design gate를 통과했습니다. Chromium desktop/mobile Light/Dark matrix는 horizontal
+overflow와 page error 0건이었고 theme persistence, search, menu, docs drawer와 active selection을
+확인했습니다.
 
-Commit, push와 GitHub Pages live deploy는 별도 명시 승인을 기다리므로 `operate`에는 진입하지
-않았습니다.
+구현 commit `e6c17edd`, main merge `b73637bf`와 mobile search focus hotfix `b0bfed43`을 push했습니다.
+GitHub Pages run `32655553787`, `32656043852`가 모두 성공했고 final HTTPS smoke에서 여섯 core URL,
+hero/OG/script asset, mobile menu→search handoff, focus restore와 docs selection을 확인해 `operate`에
+진입했습니다.

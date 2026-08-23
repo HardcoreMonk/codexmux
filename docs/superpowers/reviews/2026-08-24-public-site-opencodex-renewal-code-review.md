@@ -1,8 +1,8 @@
 # Public Site opencodex Renewal Code Review
 
 - 날짜: 2026-08-24
-- 결과: Approved for release
-- 기준: uncommitted local release candidate on `codex/public-site-opencodex-renewal`
+- 결과: Verified
+- 기준: deployed commit `b0bfed43`
 - Graph review: `.ua/knowledge-graph.json` 부재로 수동 diff/source review 수행
 
 ## Changed Components
@@ -23,6 +23,7 @@
 | Medium | `og-image.png`가 이전 homepage를 표시함 | 새 1200×630 homepage render로 교체 |
 | Low | Mobile global menu와 docs drawer가 같은 hamburger icon을 사용함 | docs drawer를 book icon과 locale label로 구분 |
 | Low | Search close 뒤 keyboard focus가 사라짐 | trigger 보존, `aria-expanded`, focus restore 적용 |
+| Medium | Live mobile에서 열린 site menu와 search가 `Esc`를 함께 소비해 menu button으로 focus 이동 | Search open 시 menu를 먼저 닫는 event contract와 trigger 고정 후 재배포·live 검증 |
 | Low | Linux quickstart에 macOS `open` command와 stale test count가 노출됨 | `xdg-open`과 정성적 check status로 교정 |
 | Low | 교체된 `.doc-nav*` style이 남아 있음 | 사용되지 않는 legacy nav CSS 제거 |
 
@@ -42,5 +43,5 @@
 artifact 전체 local link 검사가 URL blast radius를 닫습니다. 가장 큰 회귀 가능성은 locale path,
 responsive header와 theme token이며 artifact contract와 Chromium matrix로 검증했습니다.
 
-Blocking finding은 없습니다. Live Pages URL 확인 전까지 release-ready이며 operate 증거로 보지
-않습니다.
+Blocking finding은 없습니다. Pages run `32656043852`와 final live mobile/desktop smoke까지 통과해
+operate 증거를 확보했습니다.

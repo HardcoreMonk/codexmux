@@ -3,11 +3,10 @@
 ## 범위
 
 - 일자: 2026-08-24 KST
-- Lifecycle: `intake -> writing-spec -> domain-architecture -> grill-me -> plan-design-review -> writing-plans -> plan-eng-review -> implement -> code-review -> release`
+- Lifecycle: `intake -> writing-spec -> domain-architecture -> grill-me -> plan-design-review -> writing-plans -> plan-eng-review -> implement -> code-review -> release -> operate`
 - 대상: GitHub Pages English/Korean homepage와 모든 docs locale의 공통 public shell
 - Reference: `https://opencodex.me/`의 구조·interaction grammar
-- Release 경계: local release candidate와 검증 완료
-- 보류: commit, push, GitHub Pages deploy와 live smoke
+- Release 경계: commit, main merge, GitHub Pages deploy와 final live smoke 완료
 - 제외: Linux user service restart, app runtime/API/worker/auth/data 변경
 
 ## 구현 결과
@@ -41,6 +40,12 @@
 | Interaction | mobile menu, theme persistence, search result/escape/focus, docs drawer/active item passed |
 | Legacy locale | de home 기존 nav 보존, de docs English shell fallback, overflow 0 |
 | Diff hygiene | `git diff --check` passed |
+| Source | feature `e6c17edd`, main merge `b73637bf`, focus hotfix `b0bfed43` |
+| Pages initial | [run 32655553787](https://github.com/HardcoreMonk/codexmux/actions/runs/32655553787), success |
+| Pages final | [run 32656043852](https://github.com/HardcoreMonk/codexmux/actions/runs/32656043852), success |
+| Live HTTP | Home/KO/docs/KO docs/EN·KO Session Operations 6 URL HTTP 200 |
+| Live assets | `site-shell.js` 4,339 B, hero WebP 82,266 B, OG PNG 531,778 B, 모두 HTTP 200 |
+| Live browser | desktop/mobile overflow 0, hero load, theme persistence, search 5 results, docs active 1, page error 0 |
 
 ## Asset provenance
 
@@ -52,20 +57,19 @@
 
 ## Release와 operate 경계
 
-현재 branch는 `codex/public-site-opencodex-renewal`이며 working tree에 release candidate가
-uncommitted 상태로 있습니다. 사용자의 별도 명시 요청 전에는 commit, push, Pages workflow와
-live URL mutation을 수행하지 않습니다. 따라서 lifecycle은 `release`에 있고 `operate`가 아닙니다.
-
-승인 뒤에는 commit/push 후 `Deploy landing to GitHub Pages` workflow 성공을 확인하고 다음 URL을
-desktop/mobile로 smoke합니다.
+사용자 승인 뒤 feature commit `e6c17edd`를 원격 branch에 push하고 main merge `b73637bf`를
+배포했습니다. 첫 live smoke에서 mobile site menu가 열린 상태로 search를 실행하면 `Esc` 뒤 focus가
+menu button으로 이동하는 경계를 발견했습니다. Search open이 site menu를 먼저 닫도록 hotfix
+`b0bfed43`을 배포한 뒤 다음 URL을 2026-08-24 02:50 KST에 다시 확인했습니다.
 
 - `/codexmux/`, `/codexmux/ko/`
 - `/codexmux/docs/`, `/codexmux/ko/docs/`
 - `/codexmux/docs/session-operations/`, `/codexmux/ko/docs/session-operations/`
 - canonical, hero/OG/style/script load, theme persistence, search, mobile menu와 404
 
-Live smoke까지 통과하면 이 handoff에 workflow run, deployed commit과 확인 시각을 추가하고
-lifecycle을 `operate`로 전환합니다.
+Final smoke는 menu→search 전환, search result 5개, `Esc` focus restore, Auto→Light→Dark persistence,
+docs drawer와 `aria-current` 1개, horizontal overflow와 page error 0건을 확인했습니다. GitHub Pages는
+deployed commit `b0bfed43`으로 `operate`에 진입했습니다. Linux user service는 재시작하지 않았습니다.
 
 ## Rollback
 
