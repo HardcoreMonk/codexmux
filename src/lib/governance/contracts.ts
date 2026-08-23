@@ -312,7 +312,7 @@ export interface IProjectLifecycleSnapshot {
 export const projectLifecycleSnapshotSchema: z.ZodType<IProjectLifecycleSnapshot> = z.object({
   projectId: projectIdSchema,
   stage: projectLifecycleStageSchema,
-  evidence: z.array(lifecycleEvidenceSchema).max(200),
+  evidence: z.array(lifecycleEvidenceSchema).max(2000),
   lint: lifecycleLintResultSchema,
 }).strict();
 

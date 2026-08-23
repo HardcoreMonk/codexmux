@@ -223,6 +223,14 @@ corepack pnpm smoke:browser:session-governance
 
 ## Lifecycle 승인
 
+### Release blocker hotfix
+
+- Modify: `src/lib/governance/contracts.ts`
+- Modify: `tests/unit/lib/governance/contracts.test.ts`
+- Red: 201개 lifecycle evidence가 기존 maximum 200에서 거부되는 것을 재현합니다.
+- Green: document response와 같은 maximum 2,000을 허용하고 2,001개는 거부합니다.
+- Regression: Governance contract, Runtime IPC와 governance worker test를 함께 실행합니다.
+
 - Plan engineering review:
   `docs/superpowers/reviews/2026-08-23-navigation-selection-clarity-eng-review.md`
 - Code review:

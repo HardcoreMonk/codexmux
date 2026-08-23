@@ -71,6 +71,11 @@ Blocking 또는 high-severity finding은 없습니다. Review 중 listbox label�
 mobile 44px geometry의 subpixel tolerance를 보정했으며, 수정 후 전체 gate와 isolated browser smoke를
 다시 통과했습니다.
 
+Release preflight에서는 현재 project의 lifecycle evidence 235개가 IPC 상한 200개를 넘는 운영 blocker가
+추가로 발견됐습니다. 사용자 승인 뒤 snapshot maximum을 project document response와 같은 2,000개로
+확장하고 2,001개 거부 test를 추가했습니다. 이 변경은 payload를 계속 bounded 상태로 유지하며 durable
+schema와 Governance write path를 바꾸지 않습니다.
+
 ## Review 결론
 
 구현은 승인된 정보 구조와 상태 의미를 충족하고 terminal/runtime 경계를 침범하지 않습니다. 다음

@@ -304,6 +304,13 @@ terminal session을 변경하지 않습니다.
 
 ## Lifecycle 승인
 
+### Release blocker addendum
+
+Live release preflight에서 등록 project의 lifecycle evidence 235개가 Runtime IPC snapshot 상한 200개를
+넘어 Governance lifecycle API가 `command-failed`를 반환했습니다. 2026-08-23 사용자 승인에 따라
+project document response와 동일한 bounded maximum 2,000개로 snapshot contract를 확장합니다. Durable
+schema, write semantics와 project discovery 범위는 바꾸지 않으며 2,001개 이상은 계속 거부합니다.
+
 - Domain architecture: `docs/superpowers/reviews/2026-08-23-navigation-selection-clarity-domain-architecture.md`
 - Plan Grilling: `docs/superpowers/grill-me/2026-08-23-navigation-selection-clarity.md`
 - Design review: `docs/superpowers/reviews/2026-08-23-navigation-selection-clarity-design-review.md`
