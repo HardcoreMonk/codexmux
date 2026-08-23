@@ -98,7 +98,8 @@
 
   function openSearch() {
     if (!searchState.overlay) return;
-    searchState.previousFocus = document.activeElement;
+    document.dispatchEvent(new CustomEvent('codexmux:close-site-menu'));
+    searchState.previousFocus = searchState.trigger;
     searchState.overlay.hidden = false;
     searchState.trigger.setAttribute('aria-expanded', 'true');
     document.body.style.overflow = 'hidden';

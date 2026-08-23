@@ -94,6 +94,7 @@
     panel.addEventListener('click', function (event) {
       if (event.target.closest('a')) close();
     });
+    document.addEventListener('codexmux:close-site-menu', close);
     document.addEventListener('keydown', function (event) {
       if (event.key === 'Escape' && !panel.hidden) {
         close();
